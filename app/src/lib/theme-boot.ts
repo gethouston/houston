@@ -17,6 +17,8 @@
  * evaluate before the app module graph boots and stays unit-testable.
  */
 
+import { color } from "@houston/design-tokens";
+
 export type Theme = "light" | "dark";
 
 /**
@@ -29,6 +31,12 @@ const THEME_CACHE_KEY = "houston.theme.cache";
  * Set the `data-theme` attribute every themed token keys off. Dark is the only
  * attribute value: light is the document default, so it is expressed by the
  * attribute being absent (subtrees still pin themselves with `data-theme`).
+ *
+ * Also re-points the `theme-color` meta (the browser/OS chrome colour — mobile
+ * URL bar, PWA title bar) at the same surface the theme paints behind the app
+ * (the body background in globals.css): light `input` #fcfcfc, dark `base`
+ * #141416 — the exact pair the pre-paint frame in index.html hardcodes. The
+ * meta ships in index.html, so it is only ever updated here, never created.
  */
 export function applyThemeAttribute(theme: Theme): void {
   const el = document.documentElement;
@@ -37,6 +45,12 @@ export function applyThemeAttribute(theme: Theme): void {
   } else {
     el.removeAttribute("data-theme");
   }
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute(
+      "content",
+      theme === "dark" ? color.dark.base : color.light.input,
+    );
 }
 
 /**

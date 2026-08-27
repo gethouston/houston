@@ -18,7 +18,7 @@ const pageBase: CSSProperties = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  minHeight: "100vh",
+  minHeight: "100dvh",
   fontFamily: "system-ui, -apple-system, sans-serif",
   padding: 24,
 };
@@ -105,7 +105,7 @@ export const ui: Record<string, CSSProperties> = {
 
   shell: {
     display: "flex",
-    height: "100vh",
+    height: "100dvh",
     background: "#0d0d0d",
     color: "#f5f5f5",
     fontFamily: "system-ui, -apple-system, sans-serif",

@@ -91,8 +91,18 @@ export default defineConfig({
       // on, and the visual suite, which runs as its own project below (so the
       // default `test:e2e` run — and CI — never picks up pixel baselines).
       name: "chromium",
-      testIgnore: ["**/sign-in.spec.ts", "**/visual/**"],
+      testIgnore: ["**/sign-in.spec.ts", "**/visual/**", "**/mobile/**"],
       use: { ...devices["Desktop Chrome"], viewport: DESKTOP_VIEWPORT },
+    },
+    {
+      // Phone-class project (Pixel 7: 412px logical width, touch, mobile UA)
+      // against the SAME identity-OFF server as `chromium`. Only `e2e/mobile/`
+      // specs run here — phone coverage is written into that directory
+      // deliberately, spec by spec, rather than re-running the desktop suite
+      // at a width it was never written for.
+      name: "mobile",
+      testDir: "./e2e/mobile",
+      use: { ...devices["Pixel 7"] },
     },
     {
       // Visual-regression suite (pixel baselines). Runs ONLY via `test:visual`

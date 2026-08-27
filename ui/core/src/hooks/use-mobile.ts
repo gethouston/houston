@@ -1,8 +1,12 @@
 "use client";
 
+import { breakpointPx } from "@houston/design-tokens";
 import * as React from "react";
 
-const MOBILE_BREAKPOINT = 768;
+/* The ONE responsive boundary (below = phone, at/above = desktop), from the
+   breakpoint token so this hook and the Tailwind `md:` edge can never drift
+   (see ui/core/tests/breakpoint-sync.test.ts). */
+const MOBILE_BREAKPOINT = breakpointPx.mobile;
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(

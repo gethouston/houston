@@ -28,7 +28,7 @@ class FakeLocalStorage {
   }
 }
 
-/** Just enough of `document.documentElement` to observe `data-theme`. */
+/** Just enough of an element to observe attributes (`data-theme`, `content`). */
 class FakeElement {
   attrs = new Map<string, string>();
   setAttribute(name: string, value: string): void {
@@ -41,11 +41,19 @@ class FakeElement {
 
 let fake: FakeLocalStorage;
 let root: FakeElement;
+let themeColorMeta: FakeElement;
 beforeEach(() => {
   fake = new FakeLocalStorage();
   globalThis.localStorage = fake as unknown as Storage;
   root = new FakeElement();
-  globalThis.document = { documentElement: root } as unknown as Document;
+  themeColorMeta = new FakeElement();
+  globalThis.document = {
+    documentElement: root,
+    // theme-boot only ever looks up the theme-color meta (shipped in
+    // index.html); anything else resolving to null matches a real document.
+    querySelector: (selector: string) =>
+      selector === 'meta[name="theme-color"]' ? themeColorMeta : null,
+  } as unknown as Document;
 });
 afterEach(() => {
   // @ts-expect-error — tear down the fakes between tests.
@@ -59,6 +67,21 @@ test("dark sets data-theme, light removes it", () => {
   assert.equal(root.attrs.get("data-theme"), "dark");
   applyThemeAttribute("light");
   assert.equal(root.attrs.has("data-theme"), false);
+});
+
+test("the theme-color meta tracks the applied theme's frame surface", () => {
+  applyThemeAttribute("dark");
+  assert.equal(themeColorMeta.attrs.get("content"), "#141416");
+  applyThemeAttribute("light");
+  assert.equal(themeColorMeta.attrs.get("content"), "#fcfcfc");
+});
+
+test("a document without the theme-color meta still themes cleanly", () => {
+  (
+    globalThis.document as { querySelector: (s: string) => null }
+  ).querySelector = () => null;
+  assert.doesNotThrow(() => applyThemeAttribute("dark"));
+  assert.equal(root.attrs.get("data-theme"), "dark");
 });
 
 test("the mirror round-trips both themes", () => {

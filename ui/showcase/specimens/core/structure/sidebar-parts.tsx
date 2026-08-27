@@ -60,7 +60,7 @@ const agents = [
 /**
  * The whole composition, in a bounded frame. `collapsible="none"` is the one
  * mode that lays out in flow — the other two pin the sidebar to the viewport
- * with `position: fixed` and `h-svh`, which only works in a real app shell.
+ * with `position: fixed` and `h-dvh`, which only works in a real app shell.
  */
 export function ComposedSidebar() {
   return (

@@ -17,7 +17,7 @@ export const C = {
 } as const;
 
 export const page: CSSProperties = {
-  minHeight: "100vh",
+  minHeight: "100dvh",
   background: C.bg,
   color: C.text,
   fontFamily: "ui-sans-serif, system-ui, sans-serif",

@@ -14,7 +14,7 @@ import i18n from "../../lib/i18n";
  */
 export function StorageUnavailableScreen({ onRetry }: { onRetry: () => void }) {
   return (
-    <div className="flex h-screen items-center justify-center bg-gutter px-6 text-ink">
+    <div className="flex h-dvh items-center justify-center bg-gutter px-6 text-ink">
       <div className="flex max-w-md flex-col items-center gap-4 text-center">
         <h1 className="text-lg font-medium">
           {i18n.t("errors:auth.storageUnavailableTitle")}

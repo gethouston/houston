@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { color, durationMs, easing, radius, space } from "../dist/ts/tokens.ts";
+import {
+  breakpoint,
+  breakpointPx,
+  color,
+  durationMs,
+  easing,
+  radius,
+  space,
+} from "../dist/ts/tokens.ts";
 
 /**
  * Smoke test: the generated TypeScript entry point is importable, typed, and
@@ -20,5 +28,12 @@ describe("generated TypeScript tokens", () => {
   it("exposes scale tokens", () => {
     expect(space["16"]).toBe("16px");
     expect(radius.composer).toBe("28px");
+  });
+
+  it("exposes the mobile breakpoint in both CSS and JS forms", () => {
+    // Must stay equal to Tailwind v4's default `md` boundary — the token is
+    // what keeps useIsMobile() and the `md:` utilities on the same edge.
+    expect(breakpoint.mobile).toBe("768px");
+    expect(breakpointPx.mobile).toBe(768);
   });
 });

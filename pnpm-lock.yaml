@@ -180,6 +180,9 @@ importers:
       '@houston/agentstore-contract':
         specifier: workspace:*
         version: link:../packages/agentstore-contract
+      '@houston/design-tokens':
+        specifier: workspace:*
+        version: link:../packages/design-tokens
       '@houston/protocol':
         specifier: workspace:*
         version: link:../packages/protocol
