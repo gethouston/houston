@@ -2,7 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover lets the document extend under the notch / home
+         indicator so env(safe-area-inset-*) resolves (see the safe-area
+         utilities in ui/core/src/globals.css); without it every inset is 0. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Browser/OS chrome colour (mobile URL bar, PWA title bar). Same values
+         as the pre-JS frame below: light screen #fcfcfc, dark gutter #141416.
+         The guard script flips it pre-paint; app/src/lib/theme-boot.ts keeps
+         it in sync with every later theme change. -->
+    <meta name="theme-color" content="#fcfcfc" />
     <title>Houston</title>
     <!-- Pre-JS frame. The app's CSS arrives with the app bundle, so the FIRST
          painted frame is whatever this document says — before any module runs.
@@ -31,6 +39,9 @@
       try {
         if (localStorage.getItem("houston.theme.cache") === "dark") {
           document.documentElement.setAttribute("data-theme", "dark");
+          document
+            .querySelector('meta[name="theme-color"]')
+            .setAttribute("content", "#141416");
         }
       } catch (e) {
         /* storage disabled/hardened webview — same as a first launch */

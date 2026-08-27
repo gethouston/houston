@@ -81,6 +81,14 @@ A packaged build (or `pnpm tauri dev` with no host URL) spawns the staged sideca
 - Cross-surface structure (component added/changed) → bump `design/inventory/inventory.yaml` + CHANGELOG + manifests in the SAME PR (`pnpm check:parity`; procedures in `design/inventory/README.md`).
 - Visual-value changes to key screens → re-record Playwright visual baselines (`test:visual:update`, both `darwin` + `linux` sets) in the SAME PR.
 
+### Responsive (mobile web)
+- ONE breakpoint: 768px, tokenized in `packages/design-tokens` (`breakpoint.mobile`). Below = phone, at/above = desktop; no tablet tier. `useIsMobile()` (ui/core) reads the token; Tailwind's `md:` is the same edge (pinned by `ui/core/tests/breakpoint-sync.test.ts`). Width-based everywhere, Tauri window included — never platform sniffing.
+- Strict mobile-first Tailwind: unprefixed utilities are the PHONE layer, `md:` is the desktop layer; never `max-md:`. Grandfathering: any file you touch, you convert to this convention in the same PR — no big-bang rewrite, and desktop rendering stays pixel-identical.
+- A layout difference is `md:` classes. `useIsMobile()` is ONLY for structural forks (a genuinely different component tree), never for layout tweaks.
+- Every screen change ships BOTH breakpoints in the same PR — a desktop-only or phone-only layout change is an incomplete PR.
+- Full-height layouts use `dvh` (`h-dvh`, `100dvh`) — never `vh`/`h-screen`/`svh`, which missize under collapsing mobile browser chrome. Fixed top/bottom chrome pads with the safe-area utilities (`pt-safe`/`pb-safe`, ui/core globals.css); `viewport-fit=cover` in both index.html files is what makes them resolve.
+- The mobile nav stack is the ONLY code that touches `history` (pushState/popstate). Everything else navigates through it.
+
 ### Host / shell boundary
 `packages/{host,runtime,domain}` are frontend-agnostic: no Tauri, no React, no webview assumption. Tauri glue lives in `app/src-tauri` with no domain logic. Windows rule for the shell crate: use `dirs::home_dir()`, never `HOME`.
 

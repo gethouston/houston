@@ -26,7 +26,7 @@ export function FirstRunScreen({
     <div
       data-theme="light"
       className={cn(
-        "relative flex h-screen flex-col bg-gutter text-ink",
+        "relative flex h-dvh flex-col bg-gutter text-ink",
         className,
       )}
     >

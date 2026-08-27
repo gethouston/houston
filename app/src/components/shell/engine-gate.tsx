@@ -135,7 +135,7 @@ function GateMessage({ children }: { children: ReactNode }) {
         alignItems: "center",
         justifyContent: "center",
         textAlign: "center",
-        height: "100vh",
+        height: "100dvh",
         padding: "0 24px",
         fontFamily: "system-ui, sans-serif",
         color: "var(--ht-ink-muted)",

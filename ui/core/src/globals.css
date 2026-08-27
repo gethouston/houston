@@ -28,6 +28,38 @@
   color-scheme: light;
 }
 
+/* The ONE responsive boundary: unprefixed utilities are the phone layer, `md:`
+   is the desktop layer — there is no other tier. Declared explicitly (Tailwind
+   v4's default md is the same 768px) because a media query cannot read a var():
+   the value must be spelled here, so the breakpoint token
+   (packages/design-tokens tokens/scale/breakpoint.json — what useIsMobile()
+   reads) is pinned to this declaration by ui/core/tests/breakpoint-sync.test.ts.
+   Change the token and this line together, or that test fails. */
+@theme {
+  --breakpoint-md: 768px;
+}
+
+/* Safe-area insets (notch / home indicator), for FIXED top/bottom chrome on
+   phones — e.g. a bottom tab bar pads itself with pb-safe so the home
+   indicator never covers its targets. env() resolves to 0 on desktop and any
+   un-notched phone, so these are inert everywhere else; an element that also
+   needs design padding stacks it via calc, e.g.
+   pb-[calc(env(safe-area-inset-bottom)+theme(spacing.2))]. Requires
+   viewport-fit=cover on the viewport meta (app/index.html +
+   packages/web/index.html) or every env() resolves to 0. */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@utility pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+@utility pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
 /* Corner radius. Kept as a PLAIN :root var (not a @theme token) so the four
    direct `var(--radius)` consumers (input-group.tsx, sonner.tsx) keep resolving:
    `@theme inline` below inlines every var it owns into the utilities and emits

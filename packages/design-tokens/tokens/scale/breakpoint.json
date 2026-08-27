@@ -1,0 +1,7 @@
+{
+  "breakpoint": {
+    "$type": "dimension",
+    "$description": "The ONE responsive boundary: below = phone, at/above = desktop. Deliberately equal to Tailwind v4's default `md` (768px) so unprefixed utilities are the phone layer and `md:` is the desktop layer with no third tier. useIsMobile() (ui/core) reads this token; ui/core/tests/breakpoint-sync.test.ts pins the Tailwind `--breakpoint-md` declaration to it.",
+    "mobile": { "$value": "768px" }
+  }
+}
