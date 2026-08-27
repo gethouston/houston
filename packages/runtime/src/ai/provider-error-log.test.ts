@@ -83,6 +83,27 @@ describe("logProviderError", () => {
     );
   });
 
+  it("keeps a deactivated ChatGPT workspace a warning — user account state, not custody", () => {
+    // OpenAI authenticated the served token and rejected the WORKSPACE behind
+    // it (PRODUCT-1547): only the user can fix that, the reconnect card says
+    // so, and a Sentry error per retried turn adds no signal.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    logProviderError(
+      {
+        kind: "unauthenticated",
+        provider: "openai-codex",
+        cause: "token_revoked",
+        message: '{"detail":{"code":"deactivated_workspace"}}',
+      },
+      { model: "gpt-5.5" },
+    );
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("kind=unauthenticated cause=token_revoked ::"),
+    );
+  });
+
   it("keeps a caller-cancelled abort a warning even as kind=unknown", () => {
     // The AbortError a mid-request cancel raises ("This operation was
     // aborted") classifies as unknown, but it is the user's Stop or a dropped

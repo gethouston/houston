@@ -29,6 +29,17 @@ const EXPECTED_KINDS: ReadonlySet<ProviderError["kind"]> = new Set([
  */
 const EXPECTED_UNKNOWN_DETAIL = /operation was aborted/i;
 
+/**
+ * Auth bodies that are the USER's account standing, not broken credential
+ * custody: ChatGPT's `deactivated_workspace` means OpenAI authenticated the
+ * served token and then rejected the WORKSPACE behind it (subscription ended,
+ * account deactivated). The reconnect card already tells the user, and only
+ * they can fix it — a Sentry error per retried turn adds no signal
+ * (PRODUCT-1547). Custody-break auth failures (4XG-style storms) carry none
+ * of these bodies and stay errors.
+ */
+const EXPECTED_AUTH_DETAIL = /deactivated_workspace/i;
+
 export interface ProviderErrorLogContext {
   model?: string | null;
   status?: number | null;
@@ -69,6 +80,8 @@ export function logProviderError(
   const expected =
     EXPECTED_KINDS.has(error.kind) ||
     (error.kind === "unauthenticated" && error.cause === "no_credentials") ||
+    (error.kind === "unauthenticated" &&
+      EXPECTED_AUTH_DETAIL.test(verbatim ?? "")) ||
     (error.kind === "unknown" && EXPECTED_UNKNOWN_DETAIL.test(verbatim ?? ""));
   if (expected) console.warn(line);
   else console.error(line);
