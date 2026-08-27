@@ -70,6 +70,7 @@ export interface SchedulerDeps {
 export class Scheduler {
   private timer: ReturnType<typeof setInterval> | undefined;
   private lastTick: Date;
+  private startedAt: Date;
   private readonly intervalMs: number;
   private readonly dedupTtlSec: number;
   private readonly now: () => Date;
@@ -81,11 +82,13 @@ export class Scheduler {
     this.intervalMs = deps.intervalMs ?? 30_000;
     this.dedupTtlSec = deps.dedupTtlSec ?? 3600;
     this.lastTick = this.now();
+    this.startedAt = this.lastTick;
   }
 
   start(): void {
     if (this.timer) return;
     this.lastTick = this.now();
+    this.startedAt = this.lastTick;
     this.timer = setInterval(() => {
       void this.tick(this.now()).catch((err) =>
         console.error(
@@ -117,8 +120,22 @@ export class Scheduler {
       console.error("[scheduler] workspace listing failed:", reason(err));
       return;
     }
+    // The backstop grace shifts the WHOLE cron-eval window, not a threshold on
+    // each instant: consecutive ticks' shifted windows still tile exactly, so
+    // every instant is evaluated once, at the true cron time — the dedup key
+    // the fire burns matches the one the external delivery burned. The left
+    // edge clamps to scheduler start: without it the shift would reach up to
+    // one grace BEFORE this process existed, and a pod restarting right after
+    // a delivered fire would re-fire that instant (the fire lock is
+    // process-local) — "a freshly started replica never replays history"
+    // must survive the grace.
+    const grace = this.deps.cronFireGraceMs ?? 0;
+    const evalSince = grace
+      ? new Date(Math.max(since.getTime() - grace, this.startedAt.getTime()))
+      : since;
+    const evalNow = grace ? new Date(now.getTime() - grace) : now;
     for (const ws of workspaces) {
-      await this.scanWorkspace(ws, since, now);
+      await this.scanWorkspace(ws, evalSince, evalNow);
     }
   }
 
@@ -146,7 +163,6 @@ export class Scheduler {
             newId: this.newId,
             dedupTtlSec: this.dedupTtlSec,
             cronFiresEnabled: this.deps.mode !== "external",
-            cronFireGraceMs: this.deps.cronFireGraceMs ?? 0,
           },
           ws,
           agent,

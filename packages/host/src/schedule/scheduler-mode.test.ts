@@ -68,7 +68,7 @@ test("external mode disables only cron firing and still reconciles running runs"
   expect(items[0]).toMatchObject({ id: "existing-run", status: "error" });
 });
 
-async function graceSetup() {
+async function graceSetup(startAt: Date = SINCE) {
   const store = new MemoryWorkspaceStore();
   const vfs = new MemoryVfs();
   const ws = await store.getOrCreatePersonalWorkspace("alice");
@@ -85,7 +85,7 @@ async function graceSetup() {
     lock,
     firer,
     cronFireGraceMs: 120_000,
-    now: () => SINCE,
+    now: () => startAt,
     newId: () => "run-1",
   });
   return { scheduler, firer, lock };
@@ -120,5 +120,18 @@ test("a graced fire dedupes against an instant the external delivery already bur
 
   await scheduler.tick(DUE);
   await scheduler.tick(new Date("2026-06-12T14:02:30.000Z"));
+  expect(firer.jobs).toHaveLength(0);
+});
+
+test("the grace look-back never replays instants due before scheduler start", async () => {
+  // A pod restarted 30s AFTER the 14:00:00 instant fired (and its
+  // process-local burn was lost): the shifted window would reach back to it,
+  // but the start clamp keeps a fresh replica from replaying history.
+  const { scheduler, firer } = await graceSetup(
+    new Date("2026-06-12T14:00:30.000Z"),
+  );
+
+  await scheduler.tick(new Date("2026-06-12T14:02:30.000Z"));
+  await scheduler.tick(new Date("2026-06-12T14:04:30.000Z"));
   expect(firer.jobs).toHaveLength(0);
 });
