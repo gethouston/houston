@@ -74,7 +74,11 @@ pub async fn start_codex_oauth_loopback(app: AppHandle) -> Result<(), String> {
             // documented event-callback exception to the no-silent-failure
             // rule (no UI thread here). The frontend's retry is the safety net.
             Ok(Err(e)) => tracing::error!("[codex-oauth-loopback] listener error: {e}"),
-            Err(_) => tracing::error!(
+            // Expected: the user closed the consent tab or bailed on the
+            // login, so no callback ever arrives. Nothing in Houston broke —
+            // info keeps it out of Sentry (issue 7615221773), matching the
+            // GCIP loopback's timeout arm.
+            Err(_) => tracing::info!(
                 "[codex-oauth-loopback] timed out after {}s with no callback; freeing port",
                 LISTEN_TIMEOUT.as_secs()
             ),
