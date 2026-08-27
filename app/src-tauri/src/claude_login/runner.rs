@@ -142,7 +142,13 @@ where
             if let Err(e) = child.kill().await {
                 tracing::error!("[claude-login] failed to kill helper after timeout: {e}");
             }
-            tracing::error!(
+            // INFO, not error: an abandoned login (user closed the consent
+            // tab or walked away) is expected behavior and this expiry IS the
+            // designed teardown — same reasoning as the oauth-loopback
+            // listener timeout and the runtime's abandoned-login expiry.
+            // Nothing in Houston broke, so don't mint a Sentry event per
+            // abandonment; the frontend toasts its own retryable copy.
+            tracing::info!(
                 "[claude-login] timed out after {}s with no result",
                 LOGIN_TIMEOUT.as_secs()
             );
