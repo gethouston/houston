@@ -7,6 +7,7 @@ import {
   makeInstallSkillTool,
   SKILL_DIRECTORY_TOOL_NAMES,
 } from "./find-skills";
+import { httpSandboxFetch } from "./sandbox-fetch";
 
 /**
  * find_skills / install_skill are thin proxies to the host's /sandbox/skills/*
@@ -47,7 +48,7 @@ function mockFetch(reply: () => { status?: number; body?: unknown }) {
   return calls;
 }
 
-const OPTS = { baseUrl: "http://host/", sandboxToken: "sb-token" };
+const OPTS = { call: httpSandboxFetch("http://host/", "sb-token") };
 const find = makeFindSkillsTool(OPTS);
 const install = makeInstallSkillTool(OPTS);
 const CTX = {} as ExtensionContext;

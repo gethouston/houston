@@ -36,16 +36,14 @@ import {
   planReadyFallback,
   runWithInteractionCapture,
 } from "../session/interaction";
-import {
-  buildToolSelection,
-  turnCodeExecutionMode,
-} from "../session/tool-selection";
+import { turnCodeExecutionMode } from "../session/tool-selection";
 import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makePlanReadyTool } from "../session/tools/plan-ready";
 import { makePoolBashTool } from "../session/tools/pool-bash";
 import { makeRunCodeTool } from "../session/tools/run-code";
+import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { ProvidedContext } from "../session/workspace-context";
 import {
   appendAssistantMessageAt,
@@ -53,6 +51,8 @@ import {
   loadConversation,
 } from "../store/conversation-file";
 import { createTurnModelRuntime } from "./turn-runtime";
+import { buildTurnHostTools, buildTurnToolSelection } from "./turn-toolset";
+import type { TurnGrantScope } from "./types";
 
 /**
  * One pi turn against resolved hydrated directories. Unlike chat.ts (one
@@ -70,8 +70,7 @@ export interface TurnOutcome {
   /**
    * What the model ended the turn waiting on the user for (ask_user), if
    * anything. The per-turn SERVER carries it on the clean terminal `done` frame
-   * it sends after sync-back — never on an error. request_connection isn't
-   * available here (integrations are off in cloud turn mode).
+   * it sends after sync-back, never on an error.
    */
   pendingInteraction?: PendingInteraction;
 }
@@ -120,6 +119,10 @@ export interface PiTurnRequest {
   author?: MessageAuthor;
   /** Gateway-provided workspace/user context for the session prompt. */
   context?: ProvidedContext;
+  /** Non-secret capability scopes copied from the parsed turn grant. */
+  grant?: { scopes: TurnGrantScope[] };
+  /** Turn-local routing closure; it owns all grant-bearing calls. */
+  sandbox?: { call: SandboxFetch };
 }
 
 export interface PiTurnDirectories {
@@ -196,21 +199,11 @@ export async function runPiTurn(
       pin?.model,
     );
 
-    const toolSelection = buildToolSelection({
-      codeExecution: turnCodeExecutionMode(
-        config.codeExecution,
-        config.poolSingleUse,
-      ),
-      integrations: false,
-      // The retired stateless per-turn cloud runtime has no sandbox routine,
-      // learning, or skills route wired (it syncs the whole workspace prefix),
-      // so every host-proxying tool is off here — the standing per-agent pods
-      // run in server mode with them on.
-      saveRoutine: false,
-      saveLearning: false,
-      skillDirectory: false,
-    });
-    const sandbox = toolSelection.includeRunCode
+    const toolSelection = buildTurnToolSelection(
+      turn,
+      turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
+    );
+    const codeSandbox = toolSelection.includeRunCode
       ? makeRunCodeTool({
           baseUrl: config.codeSandboxUrl,
           token: config.codeSandboxToken,
@@ -263,14 +256,14 @@ export async function runPiTurn(
           sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
         }),
         // ask_user is available in every mode (holds no credential); its name is
-        // already in toolSelection.toolNames. request_connection is NOT — it is
-        // gated with the integration tools, which are off in cloud turn mode.
+        // already in toolSelection.toolNames.
         makeAskUserTool(),
         // plan_ready is registered always but name-gated to Plan mode by
         // toolNamesForMode (harmless in execute/auto — pi exposes it only when
         // its name is in the mode's allowlist).
         makePlanReadyTool(),
-        ...(sandbox ? [sandbox] : []),
+        ...(codeSandbox ? [codeSandbox] : []),
+        ...buildTurnHostTools(turn),
         // When local bash is enabled (single-use pool worker), shadow pi's
         // built-in bash with one whose child env is scrubbed to a non-secret
         // allowlist — pi's default copies process.env, which here carries the

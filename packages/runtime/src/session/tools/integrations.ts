@@ -4,6 +4,7 @@ import { currentActingContext } from "../acting-context";
 import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
 import { searchEmptyText, searchLeadNote } from "./integrations-search-notes";
+import type { SandboxFetch } from "./sandbox-fetch";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google
@@ -156,10 +157,7 @@ const NO_AGENT_ACCESS_GUIDANCE =
   "The user does not have access to this agent, so its connected apps cannot be used for them. Tell the user plainly that someone who manages this agent needs to give them access to it in this agent's Settings, under People. Do not retry until they confirm they have access, do not call request_connection, and never imply Houston lacks the app or that something is broken.";
 
 export interface IntegrationToolOptions {
-  /** The host control-plane base URL (HOUSTON_CONTROL_PLANE_URL). */
-  baseUrl: string;
-  /** The per-sandbox HMAC token (HOUSTON_SANDBOX_TOKEN). */
-  sandboxToken: string;
+  call: SandboxFetch;
 }
 
 /**
@@ -247,8 +245,6 @@ interface ActionResult {
 
 /** Both integration tools, or `[]` when the host can't be reached (no creds). */
 export function makeIntegrationTools(opts: IntegrationToolOptions) {
-  const base = opts.baseUrl.replace(/\/$/, "");
-
   async function post<T>(
     path: "search" | "execute",
     body: unknown,
@@ -259,11 +255,10 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     // (chat.ts wraps the turn), so it's present only when this turn received one —
     // absent otherwise, preserving the act-as-owner behavior.
     const acting = currentActingContext();
-    const res = await fetch(`${base}/sandbox/integrations/${path}`, {
+    const res = await opts.call(`/sandbox/integrations/${path}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${opts.sandboxToken}`,
         ...(acting?.actingAs ? { "x-houston-acting-as": acting.actingAs } : {}),
         ...(acting?.actingUser
           ? { "x-houston-acting-user": acting.actingUser }
@@ -307,6 +302,11 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         });
         throw new Error(
           "The user is signed out of Houston, so connected apps can't act for them yet. A sign-in card has been queued in the interaction flow. Queue any request_connection you still need (it will follow the sign-in step), then end your turn. Do NOT tell the user to open Settings — Houston sends you a message automatically once they're signed in.",
+        );
+      }
+      if (code === "grant_expired") {
+        throw new Error(
+          "This turn's connected-app access expired before the action could run. Do not retry it in this turn, especially if it may have changed external data. Tell the user plainly that connected apps are temporarily unavailable and ask them to send a new message to continue.",
         );
       }
       // integrations_not_configured (503): connected apps are not set up in this

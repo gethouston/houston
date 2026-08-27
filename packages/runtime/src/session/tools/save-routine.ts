@@ -3,6 +3,7 @@ import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import { currentTurnMode } from "../turn-mode-context";
+import type { SandboxFetch } from "./sandbox-fetch";
 
 /**
  * The agent's structured tool to CREATE or UPDATE a scheduled task (a Routine).
@@ -108,9 +109,7 @@ const SaveRoutineParams = Type.Object({
 type SaveRoutineParams = Static<typeof SaveRoutineParams>;
 
 export interface SaveRoutineToolOptions {
-  baseUrl: string;
-  /** The per-sandbox HMAC token (HOUSTON_SANDBOX_TOKEN). */
-  sandboxToken: string;
+  call: SandboxFetch;
 }
 
 /**
@@ -139,8 +138,6 @@ interface SavedRoutine {
 }
 
 export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
-  const base = opts.baseUrl.replace(/\/$/, "");
-
   return defineTool({
     name: SAVE_ROUTINE_TOOL_NAME,
     label: "Save a scheduled task",
@@ -161,11 +158,10 @@ export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
       // tools. Turn-scoped; absent outside a turn.
       const acting = currentActingContext();
       const auto = currentTurnMode() === "auto";
-      const res = await fetch(`${base}/sandbox/routines/save`, {
+      const res = await opts.call("/sandbox/routines/save", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          authorization: `Bearer ${opts.sandboxToken}`,
           ...(acting?.actingAs
             ? { "x-houston-acting-as": acting.actingAs }
             : {}),

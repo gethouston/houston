@@ -3,6 +3,7 @@ import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import { currentTurnModel, type TurnModel } from "../turn-model-context";
+import type { SandboxFetch } from "./sandbox-fetch";
 import { CONVERSATION_ID_HEADER } from "./save-learning";
 
 /**
@@ -66,9 +67,7 @@ const UpdateMissionStatusParams = Type.Object({
 type UpdateMissionStatusParams = Static<typeof UpdateMissionStatusParams>;
 
 export interface MissionToolOptions {
-  baseUrl: string;
-  /** The per-sandbox HMAC token (HOUSTON_SANDBOX_TOKEN). */
-  sandboxToken: string;
+  call: SandboxFetch;
 }
 
 /**
@@ -99,8 +98,6 @@ export function missionPin(
 }
 
 export function makeMissionTools(opts: MissionToolOptions) {
-  const base = opts.baseUrl.replace(/\/$/, "");
-
   /** Shared authed call; forwards the acting identity + this conversation's id
    *  so the host can stamp attribution and enforce the self/depth guards. */
   async function call(
@@ -111,11 +108,10 @@ export function makeMissionTools(opts: MissionToolOptions) {
   ): Promise<unknown> {
     const acting = currentActingContext();
     const conversationId = currentConversationId();
-    const res = await fetch(`${base}/sandbox/missions${path}`, {
+    const res = await opts.call(`/sandbox/missions${path}`, {
       method,
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${opts.sandboxToken}`,
         ...(acting?.actingAs ? { "x-houston-acting-as": acting.actingAs } : {}),
         ...(acting?.actingUser
           ? { "x-houston-acting-user": acting.actingUser }

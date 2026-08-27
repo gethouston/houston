@@ -131,13 +131,13 @@ test.each([
       "utf8",
     ),
   ).toBe('[{"id":"a1","title":"Plan","status":"running"}]');
-  // Workspace files are the turn's deliverable: they sync. `.houston/`
-  // internals beyond the explicit grants stay out of scope.
+  // Agent-owned files sync, including structured docs; only runtime state stays
+  // conversation-scoped.
   expect(keys).toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
-  expect(keys).not.toContain(
+  expect(keys).toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
   );
-  expect(keys).not.toContain(
+  expect(keys).toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
   );
   // The landed writes name the events other tabs need: the conversation, the
@@ -147,13 +147,15 @@ test.each([
   expect(emitted.at(-1)).toMatchObject({
     type: "done",
     data: {
-      poolWritesOutOfScope: 2,
-      changed: ["ActivityChanged", "ConversationsChanged", "FilesChanged"],
+      changed: [
+        "ActivityChanged",
+        "ConversationsChanged",
+        "FilesChanged",
+        "RoutinesChanged",
+      ],
     },
   });
-  expect(log).toHaveBeenCalledWith(
-    "[turn] pool_writes_out_of_scope=2 prefix=ws/w1/agent-1 conversation=c1",
-  );
+  expect(log).not.toHaveBeenCalled();
   log.mockRestore();
 });
 

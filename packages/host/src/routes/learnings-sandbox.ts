@@ -1,20 +1,14 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  loadActivities,
-  loadLearnings,
-  saveLearnings,
-  type TextStore,
-} from "@houston/domain";
-import type { HoustonEvent, Learning } from "@houston/protocol";
+import type { HoustonEvent } from "@houston/protocol";
 import { ACTING_AS_HEADER, actingAuthorFromHeader } from "../auth/acting";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
-import { withDocLock } from "./doc-lock";
 import { bearer, header, json, readJson } from "./http";
+import { appendLearningChecked } from "./learning-write";
 
 /** The header the runtime's `save_learning` tool carries the turn's conversation
  *  id on, so the mission a learning came from can be resolved. Provenance only —
@@ -124,76 +118,22 @@ export async function handleSandboxLearnings(
     ? (actingAuthorFromHeader(req.headers[ACTING_AS_HEADER]) ??
       (actingUser ? { user_id: actingUser } : null))
     : null;
-  const mission = await resolveMission(
-    vfs,
-    root,
-    header(req, CONVERSATION_ID_HEADER),
-  );
-
-  const learning: Learning = {
+  const result = await appendLearningChecked(vfs, root, {
     id: randomUUID(),
     text,
-    created_at: new Date().toISOString(),
-    // Spread-when-present: absent provenance writes NO key, so a single-player
-    // learnings.json stays byte-identical in shape to today's.
-    ...(taughtBy ? { taught_by: taughtBy } : {}),
-    ...mission,
-  };
-
-  // Merge-save: read what is there, append, write the whole set back — so a
-  // second save never clobbers the first. Under the per-doc lock (see
-  // doc-lock.ts) because the read-modify-write is only merge-safe when it is
-  // ATOMIC: two saves from different conversations on the same pod, or a save
-  // racing the Memory tab's whole-file PUT (agent-data.ts, same key), would
-  // otherwise both load the same base list and the last write would win.
-  await withDocLock(`${root}#learnings`, async () => {
-    const { items } = await loadLearnings(vfs, root);
-    await saveLearnings(vfs, root, [...items, learning]);
+    nowIso: new Date().toISOString(),
+    ...(taughtBy ? { taughtBy } : {}),
+    conversationId: header(req, CONVERSATION_ID_HEADER),
   });
+  if ("error" in result) {
+    json(res, 400, { error: result.error });
+    return true;
+  }
   // React on the SAME channel a UI or file-watcher write does; scope to the
   // workspace owner, exactly as the agent-data learnings PUT does.
   const event: HoustonEvent = { type: "LearningsChanged", agentPath: agent.id };
   deps.events?.emit(ws.ownerUserId, event);
 
-  json(res, 201, learning);
+  json(res, 201, result.learning);
   return true;
-}
-
-/**
- * The mission a conversation belongs to, as the learning's mission keys, or an
- * empty object when there is no id / no match / the read failed.
- *
- * Matching uses the SAME convention as per-mission attribution
- * (`activity-attribution.ts`): a mission's `session_key` IS the turn's
- * conversation id, with `activity-<id>` as the fallback for missions whose key
- * was never persisted separately.
- *
- * `mission_title` is denormalized on purpose: the mission may later be renamed
- * or deleted, and a learning that reads "from a mission that no longer exists"
- * is worse than one that keeps the title it was taught under. Renderers prefer
- * the live title looked up by `mission_id` and fall back to this.
- */
-async function resolveMission(
-  store: TextStore,
-  root: string,
-  conversationId: string | undefined,
-): Promise<{ mission_id?: string; mission_title?: string }> {
-  if (!conversationId) return {};
-  try {
-    const { items } = await loadActivities(store, root);
-    const activity = items.find(
-      (a) =>
-        a.session_key === conversationId ||
-        `activity-${a.id}` === conversationId,
-    );
-    if (!activity) return {};
-    return {
-      mission_id: activity.id,
-      ...(activity.title ? { mission_title: activity.title } : {}),
-    };
-  } catch (err) {
-    // Provenance is metadata: never cost the user their learning over it.
-    console.error(`[learnings] mission lookup failed for ${root}:`, err);
-    return {};
-  }
 }

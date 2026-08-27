@@ -1,6 +1,4 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { CommunitySkill } from "@houston/protocol";
-import type { CommunityDirectory } from "../skills/community";
 import { json, readJson } from "./http";
 import {
   communityDirectory,
@@ -8,6 +6,7 @@ import {
   previewDirectory,
 } from "./skills-directory";
 import type { SandboxSkillsDeps } from "./skills-sandbox";
+import { searchCommunitySkills } from "./skills-search";
 
 /**
  * The SEARCH half of `/sandbox/skills/*` — the agent's `find_skills` tool (see
@@ -27,61 +26,8 @@ import type { SandboxSkillsDeps } from "./skills-sandbox";
  * installs each. Visibility is bounded by {@link RESULT_LIMIT} alone; every hit
  * inside it ships, described or not.
  */
-const ENRICH_LIMIT = 10;
-
-/**
- * How many merged hits come back. skills.sh answers EVERY search with 100 rows
- * whether or not any of them are relevant (a nonsense query still returns 100),
- * so the deep tail is noise by construction and merging three queries could
- * otherwise put 300 rows in the model's context. This keeps the union of all
- * queries well past the head — the rank-6 misses that motivated the cap fix —
- * without spending thousands of tokens on rows nobody would ever pick.
- */
-const RESULT_LIMIT = 60;
-
 /** At most this many queries per call; each is one spaced skills.sh request. */
 const MAX_QUERIES = 3;
-
-/** What the agent gets back per hit — the search row plus the description the
- *  recommendation actually rests on. */
-interface FoundSkill {
-  skillId: string;
-  source: string;
-  name: string;
-  installs: number;
-  description?: string;
-}
-
-/**
- * Run each query and fold the result lists into one ranked list.
- *
- * A skill keeps its BEST position across the queries, so a rank-1 hit for the
- * phrasing that happened to match stays rank 1 in the merge instead of being
- * diluted by the queries that missed it — that is the entire point of asking
- * for several phrasings. Ties (the common case, since every query has its own
- * rank 1) break toward install count, which is the one quality signal the search
- * rows carry. Queries run concurrently; `CommunityDirectory` serializes the
- * actual outbound requests through its own global spacing, so this cannot
- * burst past the rate limit.
- */
-async function mergeSearches(
-  directory: Pick<CommunityDirectory, "search">,
-  queries: string[],
-): Promise<CommunitySkill[]> {
-  const lists = await Promise.all(queries.map((q) => directory.search(q)));
-  const best = new Map<string, { hit: CommunitySkill; rank: number }>();
-  for (const list of lists) {
-    list.forEach((hit, rank) => {
-      const key = `${hit.source}#${hit.skillId}`;
-      const seen = best.get(key);
-      if (!seen || rank < seen.rank) best.set(key, { hit, rank });
-    });
-  }
-  return [...best.values()]
-    .sort((a, b) => a.rank - b.rank || b.hit.installs - a.hit.installs)
-    .slice(0, RESULT_LIMIT)
-    .map((e) => e.hit);
-}
 
 /**
  * Run every query, merge the results, and return them ranked, with the top
@@ -115,7 +61,7 @@ export async function searchAction(
     ? body.queries
         .filter((q: unknown): q is string => typeof q === "string")
         .map((q: string) => q.trim())
-        .filter(Boolean)
+        .filter((query: string) => query.length > 0)
         .slice(0, MAX_QUERIES)
     : [];
   if (!queries.length) {
@@ -123,38 +69,15 @@ export async function searchAction(
     return;
   }
   try {
-    const hits = await mergeSearches(
-      deps.directory ?? communityDirectory,
+    const result = await searchCommunitySkills(
+      {
+        directory: deps.directory ?? communityDirectory,
+        previews: deps.previews ?? previewDirectory,
+        fetchImpl,
+      },
       queries,
     );
-    const enriched = await Promise.all(
-      hits.map(async (hit, rank): Promise<FoundSkill> => {
-        const base: FoundSkill = {
-          skillId: hit.skillId,
-          source: hit.source,
-          name: hit.name,
-          installs: hit.installs,
-        };
-        // Past the enrichment budget the hit still ships — ranked, named, and
-        // installable — just without a fetched description.
-        if (rank >= ENRICH_LIMIT) return base;
-        try {
-          const preview = await (deps.previews ?? previewDirectory).preview(
-            fetchImpl,
-            hit.source,
-            hit.skillId,
-          );
-          return preview.description
-            ? { ...base, description: preview.description }
-            : base;
-        } catch {
-          // Best-effort by design (see above): one unreachable SKILL.md must
-          // not cost the user the whole answer.
-          return base;
-        }
-      }),
-    );
-    json(res, 200, { skills: enriched });
+    json(res, 200, result);
   } catch (err) {
     failSkill(res, err);
   }

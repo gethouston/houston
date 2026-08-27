@@ -2,6 +2,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
+import type { SandboxFetch } from "./sandbox-fetch";
 
 /**
  * The agent's structured tool to SAVE a learning (a stable fact or preference
@@ -35,9 +36,7 @@ const SaveLearningParams = Type.Object({
 type SaveLearningParams = Static<typeof SaveLearningParams>;
 
 export interface SaveLearningToolOptions {
-  baseUrl: string;
-  /** The per-sandbox HMAC token (HOUSTON_SANDBOX_TOKEN). */
-  sandboxToken: string;
+  call: SandboxFetch;
 }
 
 /** What the host echoes back on a successful save. */
@@ -46,8 +45,6 @@ interface SavedLearning {
 }
 
 export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
-  const base = opts.baseUrl.replace(/\/$/, "");
-
   return defineTool({
     name: SAVE_LEARNING_TOOL_NAME,
     label: "Remember this",
@@ -67,11 +64,10 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
       // the host then simply stamps nothing.
       const acting = currentActingContext();
       const conversationId = currentConversationId();
-      const res = await fetch(`${base}/sandbox/learnings/save`, {
+      const res = await opts.call("/sandbox/learnings/save", {
         method: "POST",
         headers: {
           "content-type": "application/json",
-          authorization: `Bearer ${opts.sandboxToken}`,
           ...(acting?.actingAs
             ? { "x-houston-acting-as": acting.actingAs }
             : {}),

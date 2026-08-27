@@ -6,6 +6,7 @@ import {
   makeRequestCredentialTool,
   REQUEST_CREDENTIAL_TOOL_NAME,
 } from "./request-credential";
+import type { SandboxFetch } from "./sandbox-fetch";
 
 export { REQUEST_CREDENTIAL_TOOL_NAME };
 
@@ -76,8 +77,7 @@ const AddParams = Type.Object({
 type AddParams = Static<typeof AddParams>;
 
 export interface CustomIntegrationToolOptions {
-  baseUrl: string;
-  sandboxToken: string;
+  call: SandboxFetch;
 }
 
 interface DetectResponse {
@@ -103,18 +103,15 @@ interface AddResponse {
 }
 
 export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
-  const base = opts.baseUrl.replace(/\/$/, "");
-
   async function post<T>(
     path: "detect" | "add" | "remove" | "status",
     body: unknown,
     signal: AbortSignal | undefined,
   ): Promise<T> {
-    const res = await fetch(`${base}/sandbox/integrations/custom/${path}`, {
+    const res = await opts.call(`/sandbox/integrations/custom/${path}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${opts.sandboxToken}`,
       },
       body: JSON.stringify(body),
       signal,
@@ -266,11 +263,10 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
       // tool refuses with guidance); any other failure relays like the
       // sibling calls so the model hears the real reason.
       async status(slug, signal) {
-        const res = await fetch(`${base}/sandbox/integrations/custom/status`, {
+        const res = await opts.call("/sandbox/integrations/custom/status", {
           method: "POST",
           headers: {
             "content-type": "application/json",
-            authorization: `Bearer ${opts.sandboxToken}`,
           },
           body: JSON.stringify({ slug }),
           signal,

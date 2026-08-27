@@ -1,6 +1,17 @@
 import type { ChatMessage, TurnMode } from "@houston/protocol";
 import type { ServedCredential } from "../auth/auth-file";
 
+/** Independently deployable authority carried by a per-turn grant. */
+export type TurnGrantScope = "integrations" | "agent-writes";
+
+/** Parsed short-lived authority for host-proxying tools. */
+export interface TurnGrant {
+  url: string;
+  token: string;
+  expires: number;
+  scopes: TurnGrantScope[];
+}
+
 /**
  * The self-contained turn request the control plane sends. Everything a turn
  * needs rides in: identity (for the GCS prefix), the user's text, and the
@@ -96,4 +107,6 @@ export interface TurnRequest {
     token: string;
     heartbeatUrl: string;
   };
+  /** Secret turn-local authority. Never log, export, persist, or put in env. */
+  grant?: TurnGrant;
 }

@@ -164,3 +164,79 @@ test("parseTurnRequest carries the turn's pinned provider; junk reads as absent"
   expect(parseTurnRequest({ ...BASE, provider: "" }).provider).toBeUndefined();
   expect(parseTurnRequest({ ...BASE, provider: 5 }).provider).toBeUndefined();
 });
+
+const CLAIMED = {
+  ...BASE,
+  hostToken: "host-secret",
+  claim: {
+    id: "claim-1",
+    bootId: "boot-1",
+    token: "claim-secret",
+    heartbeatUrl: "https://gateway.test/heartbeat",
+  },
+};
+
+test("parseTurnRequest leaves an absent grant absent", () => {
+  expect(parseTurnRequest(CLAIMED).grant).toBeUndefined();
+});
+
+test("parseTurnRequest accepts and normalizes a claimed turn grant", () => {
+  expect(
+    parseTurnRequest({
+      ...CLAIMED,
+      grant: {
+        url: "https://gateway.test:8443/",
+        token: "acting-v1.secret",
+        expires: 1_900_000_000,
+        scopes: ["integrations", "future-scope", "agent-writes"],
+      },
+    }).grant,
+  ).toEqual({
+    url: "https://gateway.test:8443",
+    token: "acting-v1.secret",
+    expires: 1_900_000_000,
+    scopes: ["integrations", "agent-writes"],
+  });
+});
+
+test.each([
+  ["a malformed URL", { url: "not a url" }],
+  ["a non-http URL", { url: "ftp://gateway.test" }],
+  ["URL credentials", { url: "https://user:password@gateway.test" }],
+  ["a URL path", { url: "https://gateway.test/internal" }],
+  ["a URL query", { url: "https://gateway.test?x=1" }],
+  ["a URL hash", { url: "https://gateway.test#x" }],
+  ["an empty token", { token: "" }],
+  ["a zero expiry", { expires: 0 }],
+  ["a fractional expiry", { expires: 1.5 }],
+  ["a non-array scope list", { scopes: "integrations" }],
+  ["an extra key", { extra: true }],
+])("rejects a grant with %s", (_case, override) => {
+  expect(() =>
+    parseTurnRequest({
+      ...CLAIMED,
+      grant: {
+        url: "https://gateway.test",
+        token: "acting-v1.secret",
+        expires: 1_900_000_000,
+        scopes: ["integrations"],
+        ...override,
+      },
+    }),
+  ).toThrow("invalid 'grant'");
+});
+
+test("a grant requires a claim and is refused on a shadow turn", () => {
+  const grant = {
+    url: "https://gateway.test",
+    token: "acting-v1.secret",
+    expires: 1_900_000_000,
+    scopes: ["integrations"],
+  };
+  expect(() => parseTurnRequest({ ...BASE, grant })).toThrow(
+    "grant requires a claim",
+  );
+  expect(() => parseTurnRequest({ ...CLAIMED, shadow: true, grant })).toThrow(
+    "shadow turn cannot carry a grant",
+  );
+});

@@ -66,6 +66,10 @@ async function claimedTurn(docPutStatus: number) {
 
 test("a durable turn names the conversation and board as changed", async () => {
   const { deps, turn, filesystem, resolved } = await claimedTurn(200);
+  filesystem.immediateWrites.add(
+    `${workspaceRel}/.houston/routines/routines.json`,
+  );
+  filesystem.immediateWrites.add("custom-integrations.json");
   const result = await finishTurnDurability({
     deps,
     turn,
@@ -76,7 +80,12 @@ test("a durable turn names the conversation and board as changed", async () => {
     transcript: null,
   });
   expect(result.outcome).toEqual({});
-  expect(result.changed).toEqual(["ActivityChanged", "ConversationsChanged"]);
+  expect(result.changed).toEqual([
+    "ActivityChanged",
+    "ConversationsChanged",
+    "CustomIntegrationsChanged",
+    "RoutinesChanged",
+  ]);
 });
 
 test("a family whose doc projection failed is not announced", async () => {

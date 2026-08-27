@@ -1,0 +1,112 @@
+import type {
+  ActingContext,
+  ProviderSearchResult,
+} from "@houston/host/src/integrations/provider";
+import { IntegrationRegistry } from "@houston/host/src/integrations/registry";
+import { RemoteIntegrationProvider } from "@houston/host/src/integrations/remote";
+import {
+  type ActionResult,
+  IntegrationSigninRequiredError,
+} from "@houston/host/src/integrations/types";
+import {
+  executeIntegration,
+  searchIntegrations,
+} from "@houston/host/src/routes/integrations-fanout";
+import type { TurnCustomContext } from "./turn-custom-context";
+import type { TurnSandboxDeps } from "./turn-sandbox";
+
+/** The gateway no longer accepts this turn's short-lived authority. */
+export class TurnGrantExpiredError extends Error {}
+
+class GrantRemoteProvider extends RemoteIntegrationProvider {
+  override async search(
+    userId: string,
+    query: string,
+    acting?: ActingContext,
+    app?: string,
+  ): Promise<ProviderSearchResult> {
+    try {
+      return await super.search(userId, query, acting, app);
+    } catch (error) {
+      if (error instanceof IntegrationSigninRequiredError) {
+        throw new TurnGrantExpiredError();
+      }
+      throw error;
+    }
+  }
+
+  override async execute(
+    userId: string,
+    action: string,
+    params: Record<string, unknown>,
+    acting?: ActingContext,
+    account?: string,
+  ): Promise<ActionResult> {
+    try {
+      return await super.execute(userId, action, params, acting, account);
+    } catch (error) {
+      if (error instanceof IntegrationSigninRequiredError) {
+        throw new TurnGrantExpiredError();
+      }
+      throw error;
+    }
+  }
+}
+
+/** Build the Composio/custom integration routes used by the turn facade. */
+export function makeTurnIntegrationRoutes(
+  deps: TurnSandboxDeps,
+  fetchImpl: typeof fetch,
+  getCustom: () => Promise<TurnCustomContext>,
+) {
+  const gateway = new GrantRemoteProvider({
+    id: "composio",
+    upstreamUrl: deps.grant.url,
+    token: () => null,
+    fetch: fetchImpl,
+  });
+  return async (path: string, body: Record<string, unknown>) => {
+    if (path.endsWith("/search")) {
+      if (typeof body.query !== "string") {
+        return Response.json({ error: "missing 'query'" }, { status: 400 });
+      }
+      const registry = new IntegrationRegistry([
+        gateway,
+        (await getCustom()).provider,
+      ]);
+      const app = typeof body.app === "string" ? body.app.trim() : "";
+      return Response.json(
+        await searchIntegrations({
+          registry,
+          userId: deps.workspaceId,
+          query: body.query,
+          acting: { actingAs: deps.grant.token },
+          ...(app ? { app } : {}),
+          fatalFailure: (error) => error instanceof TurnGrantExpiredError,
+        }),
+      );
+    }
+    if (typeof body.action !== "string") {
+      return Response.json({ error: "missing 'action'" }, { status: 400 });
+    }
+    const registry = new IntegrationRegistry([
+      gateway,
+      (await getCustom()).provider,
+    ]);
+    const params =
+      body.params && typeof body.params === "object"
+        ? (body.params as Record<string, unknown>)
+        : {};
+    const account = typeof body.account === "string" ? body.account : "";
+    return Response.json(
+      await executeIntegration({
+        registry,
+        userId: deps.workspaceId,
+        action: body.action,
+        params,
+        acting: { actingAs: deps.grant.token },
+        ...(account ? { account } : {}),
+      }),
+    );
+  };
+}

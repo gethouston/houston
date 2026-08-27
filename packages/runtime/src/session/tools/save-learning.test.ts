@@ -2,6 +2,7 @@ import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
 import { runWithActingContext } from "../acting-context";
 import { runWithConversationId } from "../conversation-context";
+import { httpSandboxFetch } from "./sandbox-fetch";
 import {
   CONVERSATION_ID_HEADER,
   makeSaveLearningTool,
@@ -48,8 +49,7 @@ function mockFetch(reply: () => { status?: number; body?: unknown }) {
 }
 
 const tool = makeSaveLearningTool({
-  baseUrl: "https://host.test/",
-  sandboxToken: "sb-tok",
+  call: httpSandboxFetch("https://host.test/", "sb-tok"),
 });
 const ctx = {} as unknown as ExtensionContext;
 const run = (params: unknown) =>

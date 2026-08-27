@@ -1,6 +1,4 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
-import type { IntegrationRegistry } from "../integrations/registry";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, header, json, optionalTrimmed, readJson } from "./http";
@@ -9,6 +7,9 @@ import {
   relayIntegrationUpstreamError,
   signinRequired,
 } from "./integrations";
+import { executeIntegration, searchIntegrations } from "./integrations-fanout";
+
+export { providerForAction } from "./integrations-fanout";
 
 /**
  * Which provider owns an action the runtime tool passed with no explicit
@@ -17,17 +18,6 @@ import {
  * non-custom provider (Composio's slug convention), falling back to whatever
  * is registered.
  */
-export function providerForAction(
-  registry: IntegrationRegistry,
-  action: string,
-): string {
-  const ids = registry.ids();
-  if (action.startsWith(CUSTOM_ACTION_PREFIX) && ids.includes("custom")) {
-    return "custom";
-  }
-  return ids.find((id) => id !== "custom") ?? ids[0] ?? "custom";
-}
-
 /**
  * The RUNTIME-facing integrations proxy (`/sandbox/integrations/*`, authed by
  * the per-sandbox HMAC token): the agent's `integration_search` /
@@ -108,59 +98,18 @@ export async function handleSandboxIntegrations(
       // Optional `app`: the agent's HARD scope when the task names an app —
       // each provider returns only that app's actions (PRODUCT-1274).
       const app = optionalTrimmed(body.app);
-      const providerIds = explicit ? [explicit] : registry.ids();
-      // Fan out and merge. One provider failing must not hide another's
-      // results (desktop signed out: the gateway adapter throws while the
-      // key-free custom provider still answers) — but an ALL-empty merge with
-      // a signin failure underneath must still surface THAT, or the runtime
-      // would render the wrong speech act ("no such app" instead of the
-      // sign-in card).
-      const fanOut = async (scope: string | undefined) => {
-        const settled = await Promise.allSettled(
-          providerIds.map((id) =>
-            registry.get(id).search(ws.ownerUserId, query, acting, scope),
-          ),
-        );
-        const fulfilled = settled.flatMap((s) =>
-          s.status === "fulfilled" ? [s.value] : [],
-        );
-        return {
-          items: fulfilled.flatMap((r) => r.items),
-          scopes: fulfilled.flatMap((r) => (r.scope ? [r.scope] : [])),
-          failures: settled.flatMap((s) =>
-            s.status === "rejected" ? [s.reason] : [],
-          ),
-        };
-      };
-      let { items, scopes, failures } = await fanOut(app);
-      // A provider that IGNORED the scope (a remote upstream predating the
-      // contract) may have merged in UNSCOPED items: no retry (it would serve
-      // the same unscoped result again), but the flag tells the runtime tool
-      // the results are not certainly the named app's — and that an empty
-      // result proves nothing about the app existing.
-      const scopeIgnored = app !== undefined && scopes.includes("ignored");
-      // A scope NO provider resolved (a typo, a guess) merges to empty — a
-      // resolved scope always yields at least the app's toolkit row. Retry
-      // unscoped ONCE, here and only here: a provider falling back on its own
-      // would pollute the merge with unscoped noise ranked ahead of another
-      // provider's correctly scoped hits. The flag tells the runtime tool the
-      // results are NOT the named app's.
-      let unscopedFallback = false;
-      if (app && !scopeIgnored && items.length === 0 && failures.length === 0) {
-        ({ items, failures } = await fanOut(undefined));
-        unscopedFallback = items.length > 0;
-      }
-      if (items.length === 0 && failures.length > 0) {
-        throw (
-          failures.find((f) => f instanceof IntegrationSigninRequiredError) ??
-          failures[0]
-        );
-      }
-      json(res, 200, {
-        items,
-        ...(unscopedFallback ? { unscopedFallback: true } : {}),
-        ...(scopeIgnored ? { scopeIgnored: true } : {}),
-      });
+      json(
+        res,
+        200,
+        await searchIntegrations({
+          registry,
+          userId: ws.ownerUserId,
+          query,
+          acting,
+          app,
+          provider: explicit ?? undefined,
+        }),
+      );
       return true;
     }
 
@@ -170,9 +119,6 @@ export async function handleSandboxIntegrations(
       json(res, 400, { error: "missing 'action'" });
       return true;
     }
-    const provider = registry.get(
-      explicit ?? providerForAction(registry, action),
-    );
     const params =
       body.params && typeof body.params === "object"
         ? (body.params as Record<string, unknown>)
@@ -191,7 +137,15 @@ export async function handleSandboxIntegrations(
     json(
       res,
       200,
-      await provider.execute(ws.ownerUserId, action, params, acting, account),
+      await executeIntegration({
+        registry,
+        userId: ws.ownerUserId,
+        action,
+        params,
+        acting,
+        account,
+        provider: explicit ?? undefined,
+      }),
     );
     return true;
   } catch (err) {

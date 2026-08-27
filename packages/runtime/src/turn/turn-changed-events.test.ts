@@ -15,10 +15,12 @@ describe("changedEventTypes", () => {
         "workspaces/Houston/Agent/.houston/routines/routines.json",
         "workspaces/Houston/Agent/.houston/config/config.json",
         "workspaces/Houston/Agent/.houston/learnings/learnings.json",
+        "custom-integrations.json",
       ]),
     ).toEqual([
       "ActivityChanged",
       "ConfigChanged",
+      "CustomIntegrationsChanged",
       "LearningsChanged",
       "RoutineRunsChanged",
       "RoutinesChanged",
@@ -56,8 +58,7 @@ describe("changedEventTypes", () => {
     ).toEqual([]);
     // The canonical classifier (agentFileEventType) is prefix-based, so this
     // agent's own activity SCHEMA file maps to ActivityChanged — a rare, safe
-    // over-fire (a refetch), never a miss. Claimed turns never sync .houston
-    // internals anyway (claimedTurnIncludes excludes them).
+    // over-fire (a refetch), never a miss.
     expect(
       changedEventTypes(layout, [
         "workspaces/Houston/Agent/.houston/activity/activity.schema.json",

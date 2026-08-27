@@ -77,6 +77,7 @@ export async function finishTurnDurability(
     changed = changedEventTypes(opts.filesystem, [
       ...uploaded,
       ...synced.deleted,
+      ...opts.filesystem.immediateWrites,
     ]);
   } catch (error) {
     // A fenced object write means the claim was adopted mid-sync: report it

@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import { agentScopeIncludes } from "./turn-agent-scope";
 import type { TurnFilesystem } from "./turn-filesystem";
 
 /**
@@ -20,9 +21,7 @@ export type OpInclude = (relativePath: string) => boolean;
  *  accept) — never the runtime tree (conversations, sessions, auth), which
  *  stays conversation-scoped. Mirrors the pod-store's ops-claim scope. */
 export function agentRouteScope(workspaceRel: string): OpInclude {
-  const root = `${workspaceRel}/`;
-  const runtime = `${posix.join(workspaceRel, ".houston", "runtime")}/`;
-  return (rel) => rel.startsWith(root) && !rel.startsWith(runtime);
+  return (relativePath) => agentScopeIncludes(relativePath, workspaceRel);
 }
 
 /** One conversation's file + sessions. */

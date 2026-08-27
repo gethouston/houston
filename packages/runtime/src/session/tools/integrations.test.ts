@@ -7,6 +7,7 @@ import {
 } from "../interaction";
 import { runWithTurnMode } from "../turn-mode-context";
 import { makeIntegrationTools } from "./integrations";
+import { httpSandboxFetch } from "./sandbox-fetch";
 
 /**
  * The agent's integration tools are thin proxies to the host's
@@ -49,8 +50,7 @@ function mockFetch(
 }
 
 const [search, execute, requestConnection] = makeIntegrationTools({
-  baseUrl: "https://host.test/",
-  sandboxToken: "sb-tok",
+  call: httpSandboxFetch("https://host.test/", "sb-tok"),
 });
 if (!search || !execute || !requestConnection)
   throw new Error("expected three integration tools");
@@ -416,6 +416,20 @@ test("a 409 (signed out) queues a signin step and tells the model to end its tur
       },
     ],
   });
+});
+
+test("an expired turn grant refuses without queuing signin or suggesting retry", async () => {
+  mockFetch(() => ({
+    status: 401,
+    body: { error: "turn grant expired", code: "grant_expired" },
+  }));
+  const holder = newInteractionHolder();
+  const failure = runWithInteractionCapture(holder, () =>
+    run(execute, { action: "GMAIL_SEND_EMAIL" }),
+  );
+  await expect(failure).rejects.toThrow(/access expired/i);
+  await expect(failure).rejects.toThrow(/Do not retry/i);
+  expect(holder.pending).toBeUndefined();
 });
 
 test("a 503 (not set up) is an honest, closed message and queues nothing", async () => {

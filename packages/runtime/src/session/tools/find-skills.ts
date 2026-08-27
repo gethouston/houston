@@ -1,5 +1,6 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
+import type { SandboxFetch } from "./sandbox-fetch";
 
 /**
  * The agent's tools for the OPEN SKILLS DIRECTORY (skills.sh): find a skill for
@@ -52,9 +53,7 @@ const InstallSkillParams = Type.Object({
 type InstallSkillParams = Static<typeof InstallSkillParams>;
 
 export interface SkillDirectoryToolOptions {
-  baseUrl: string;
-  /** The per-sandbox HMAC token (HOUSTON_SANDBOX_TOKEN). */
-  sandboxToken: string;
+  call: SandboxFetch;
 }
 
 interface FoundSkill {
@@ -78,12 +77,10 @@ async function post<T>(
   signal: AbortSignal | undefined,
   toolName: string,
 ): Promise<T> {
-  const base = opts.baseUrl.replace(/\/$/, "");
-  const res = await fetch(`${base}/sandbox/skills/${route}`, {
+  const res = await opts.call(`/sandbox/skills/${route}`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
-      authorization: `Bearer ${opts.sandboxToken}`,
     },
     body: JSON.stringify(body),
     signal,

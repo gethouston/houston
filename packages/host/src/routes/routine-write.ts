@@ -77,6 +77,8 @@ export interface RoutineWriteOptions {
   triggersEnabled: boolean;
   /** ISO clock the caller supplies (domain stays pure). */
   nowIso: string;
+  /** Stable id supplied when an optimistic write may be retried. */
+  id?: string;
 }
 
 /**
@@ -123,7 +125,7 @@ export async function createRoutineChecked(
     const { items } = await loadRoutines(vfs, root);
     const routine = createRoutine(
       input,
-      crypto.randomUUID(),
+      opts.id ?? crypto.randomUUID(),
       opts.nowIso,
       opts.createdBy,
     );

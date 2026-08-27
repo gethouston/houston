@@ -10,6 +10,7 @@ import {
 } from "../../session/interaction";
 import { makeAskUserTool } from "../../session/tools/ask-user";
 import { makeIntegrationTools } from "../../session/tools/integrations";
+import { httpSandboxFetch } from "../../session/tools/sandbox-fetch";
 import {
   buildHoustonMcpServer,
   HOUSTON_MCP_SERVER_NAME,
@@ -19,7 +20,9 @@ import {
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import type { SessionsStore } from "./sessions-store";
 
-const INTEGRATIONS = { baseUrl: "http://host.local", sandboxToken: "tok" };
+const INTEGRATIONS = {
+  call: httpSandboxFetch("http://host.local", "tok"),
+};
 
 /**
  * Build the MCP server with a fake `createSdkMcpServer` that captures the adapted
@@ -27,7 +30,7 @@ const INTEGRATIONS = { baseUrl: "http://host.local", sandboxToken: "tok" };
  * real SDK (and without spawning any subprocess).
  */
 function build(
-  integrations?: { baseUrl: string; sandboxToken: string },
+  integrations?: { call: ReturnType<typeof httpSandboxFetch> },
   mode?: "execute" | "plan" | "auto",
 ): {
   mcp: HoustonMcp;
