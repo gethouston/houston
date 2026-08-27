@@ -2,6 +2,13 @@ import type { PortableUploadPreviewResponse } from "@houston-ai/engine-client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { setPanelOwner } from "../components/shell/detail-panel-owners.ts";
+import {
+  initialNavState,
+  type NavEntry,
+  type NavMode,
+  navigated,
+  viewFieldsOf,
+} from "../lib/nav-stack.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
 import { INBOX_VIEW_ID } from "../lib/top-level-views.ts";
@@ -198,7 +205,24 @@ interface UIState {
   workspaceSectionCollapsed: boolean;
   /** File shown by the global preview dialog, or null when closed. */
   filePreview: FilePreviewTarget | null;
-  setViewMode: (mode: string) => void;
+  /**
+   * The navigation stack (`lib/nav-stack.ts`): every screen-level location the
+   * user has visited, with `navIndex` as the cursor. The nav-aware actions
+   * below fold their writes in (`navigated`), and `lib/nav-history.ts` mirrors
+   * the pair into browser history — the ONLY code that touches `history` — so
+   * back/forward walk the app. Not persisted: a refresh re-boots to one entry.
+   */
+  navStack: NavEntry[];
+  navIndex: number;
+  /** Pop one level — the programmatic equivalent of the browser back button. */
+  navBack: () => void;
+  /**
+   * Jump the stack to `index` (clamped) and apply that entry, closing the
+   * detail panel through its owner when the entry has none. For the history
+   * sync layer's popstate handler and {@link UIState.navBack} only.
+   */
+  navApplyHistory: (index: number) => void;
+  setViewMode: (mode: string, opts?: { nav?: NavMode }) => void;
   /**
    * Open a team view: the ONE writer of `viewMode` + `activeTeamId` +
    * `teamSection` (+ `teamAgentFilter`), so the view is never half-set. It is
@@ -212,6 +236,8 @@ interface UIState {
       agentFilter?: string | null;
       agentFocus?: boolean;
       teamSettingsFocus?: boolean;
+      /** `replace` for redirects (boot, dead-view guard); default `push`. */
+      nav?: NavMode;
     },
   ) => void;
   setTeamAgentFilter: (agentId: string | null) => void;
@@ -328,6 +354,9 @@ const initialUIState = {
   teamAgentFilter: null,
   teamAgentFocus: false,
   teamSettingsFocus: false,
+  // The single-entry boot stack; its root mirrors the initial view fields
+  // above (pinned by app/tests/ui-store-nav.test.ts).
+  ...initialNavState(),
 } satisfies Partial<UIState>;
 
 let toastCounter = 0;
@@ -337,28 +366,64 @@ const toastTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 export const useUIStore = create<UIState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       ...initialUIState,
 
-      setViewMode: (viewMode) => set({ viewMode }),
+      navBack: () => get().navApplyHistory(get().navIndex - 1),
+      navApplyHistory: (index) => {
+        const s = get();
+        const clamped = Math.max(0, Math.min(index, s.navStack.length - 1));
+        if (clamped === s.navIndex) return;
+        const entry = s.navStack[clamped];
+        set({ navIndex: clamped, ...viewFieldsOf(entry) });
+        // The panel closes through its OWNER (deselect and all), outside the
+        // write above: the closer's own store writes then find the stack
+        // already at the panel-less entry, so they fold in as no-ops instead
+        // of double-popping. An entry WITH a panel can't reopen it — the
+        // selection it derived from is gone (see NavEntry.panelOpen).
+        if (!entry.panelOpen && get().missionPanelOpen) {
+          const close = get().onPanelClose;
+          if (close) close();
+          else get().closeMissionPanel();
+        }
+      },
+      setViewMode: (viewMode, opts) =>
+        set((s) => navigated(s, { viewMode }, opts?.nav ?? "push")),
       openTeamView: (activeTeamId, teamSection, opts) => {
         const teamAgentFilter = opts?.agentFilter ?? null;
         const teamAgentFocus =
           opts?.agentFocus === true && teamAgentFilter !== null;
-        set({
-          viewMode: TEAM_VIEW_ID,
-          activeTeamId,
-          teamSection,
-          teamAgentFilter,
-          teamAgentFocus,
-          teamSettingsFocus:
-            !teamAgentFocus && opts?.teamSettingsFocus === true,
-        });
+        set((s) =>
+          navigated(
+            s,
+            {
+              viewMode: TEAM_VIEW_ID,
+              activeTeamId,
+              teamSection,
+              teamAgentFilter,
+              teamAgentFocus,
+              teamSettingsFocus:
+                !teamAgentFocus && opts?.teamSettingsFocus === true,
+            },
+            opts?.nav ?? "push",
+          ),
+        );
       },
       setTeamAgentFilter: (teamAgentFilter) => set({ teamAgentFilter }),
-      setSettingsSection: (settingsSection) => set({ settingsSection }),
+      // Drilling INTO a section is a new place; back to the index is a
+      // "back" (pops when the index is where the user came from).
+      setSettingsSection: (settingsSection) =>
+        set((s) =>
+          navigated(
+            s,
+            { settingsSection },
+            settingsSection === null ? "retreat" : "push",
+          ),
+        ),
       openSettings: (settingsSection) =>
-        set({ viewMode: "settings", settingsSection }),
+        set((s) =>
+          navigated(s, { viewMode: "settings", settingsSection }, "push"),
+        ),
       setActivityPanelId: (activityPanelId, options) =>
         set({
           activityPanelId,
@@ -441,13 +506,23 @@ export const useUIStore = create<UIState>()(
             open,
           );
           if (missionPanelOwners === s.missionPanelOwners) return s;
-          return {
-            missionPanelOwners,
-            missionPanelOpen: missionPanelOwners.length > 0,
-          };
+          const missionPanelOpen = missionPanelOwners.length > 0;
+          const partial = { missionPanelOwners, missionPanelOpen };
+          // Only the panel's open/shut TRANSITIONS are navigation (a second
+          // claim on an open panel is not a move): opening pushes a level the
+          // back button can pop, the last release retreats it.
+          if (missionPanelOpen === s.missionPanelOpen) return partial;
+          return navigated(s, partial, missionPanelOpen ? "push" : "retreat");
         }),
       closeMissionPanel: () =>
-        set({ missionPanelOwners: [], missionPanelOpen: false }),
+        set((s) => {
+          const partial = { missionPanelOwners: [], missionPanelOpen: false };
+          // Same retreat as the last owner's release: closing the panel is a
+          // "back" when the previous entry is this view without it.
+          return s.missionPanelOpen
+            ? navigated(s, partial, "retreat")
+            : partial;
+        }),
       setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
       setPendingRoutineChat: (pendingRoutineChat) =>
         set({ pendingRoutineChat }),
