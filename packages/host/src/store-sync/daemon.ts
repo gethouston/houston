@@ -12,6 +12,7 @@ import {
   logHydrated,
   logSyncFailed,
   logSyncResult,
+  runFinalSync,
   runSyncBack,
   STORE_SYNC_EXCLUDES,
   type StoreSyncOptions,
@@ -89,14 +90,7 @@ export class StoreSyncDaemon {
       this.started = false;
       return;
     }
-    try {
-      await this.syncOnce();
-    } catch (err) {
-      this.opts.log(
-        "[store-sync] FINAL sync failed; local changes may be lost",
-        err,
-      );
-    }
+    await runFinalSync(this.opts, () => this.syncOnce());
     this.started = false;
   }
 

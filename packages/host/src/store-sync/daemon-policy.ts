@@ -29,6 +29,8 @@ export interface StoreSyncOptions {
   maxHydrateBytes?: number;
   /** Gateway's explicit generation-precondition capability (boot lease). */
   generations?: boolean;
+  /** One delay per retry of the shutdown flush; override to speed up tests. */
+  finalSyncRetryDelaysMs?: number[];
   log: (msg: string, err?: unknown) => void;
 }
 
@@ -107,6 +109,42 @@ export function logSyncFailed(
   opts.log(
     `[store-sync] ${trigger} sync failed; will retry (${err instanceof Error ? err.message : String(err)})`,
   );
+}
+
+/** One delay per retry of the shutdown flush, so attempts = delays + 1. */
+export const FINAL_SYNC_RETRY_DELAYS_MS = [1_000, 4_000];
+
+/**
+ * The shutdown flush races the same deploy window that drains the pod (an
+ * engine roll restarts the gateway too), and unlike the periodic pass it has
+ * no next tick to absorb a blip — sync-back's generation-guarded uploads get
+ * exactly one fetch attempt, so a lone `fetch failed` used to abort the whole
+ * final sync (HOUSTON-APP-58V). Bounded retries absorb the blip; only
+ * exhausting them reports with the error, because at that point recent local
+ * changes really may be lost.
+ */
+export async function runFinalSync(
+  opts: StoreSyncOptions,
+  syncOnce: () => Promise<void>,
+): Promise<void> {
+  const delays = opts.finalSyncRetryDelaysMs ?? FINAL_SYNC_RETRY_DELAYS_MS;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await syncOnce();
+    } catch (err) {
+      if (attempt >= delays.length) {
+        opts.log(
+          "[store-sync] FINAL sync failed; local changes may be lost",
+          err,
+        );
+        return;
+      }
+      opts.log(
+        `[store-sync] FINAL sync failed; retrying (${err instanceof Error ? err.message : String(err)})`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
+    }
+  }
 }
 
 export function logSyncResult(

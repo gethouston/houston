@@ -388,6 +388,87 @@ test("a fencing loss latches once, halts scheduling, and skips the final drain",
   expect(fencingLogs[0]?.message).toContain("lease lost");
 });
 
+test("the final sync retries a shutdown blip and flushes on a later attempt (HOUSTON-APP-58V)", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-final-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-final-local-"));
+  const inner = new LocalDirStore(remoteRoot);
+  let failures = 0;
+  const flaky: ObjectStore = {
+    list: (prefix) => inner.list(prefix),
+    download: (key, dest) => inner.download(key, dest),
+    upload: (src, key) => {
+      if (failures < 1) {
+        failures += 1;
+        return Promise.reject(new TypeError("fetch failed"));
+      }
+      return inner.upload(src, key);
+    },
+    delete: (key) => inner.delete(key),
+  };
+  const logs: Array<{ message: string; err?: unknown }> = [];
+  const daemon = new StoreSyncDaemon({
+    store: flaky,
+    rootDir: localRoot,
+    quietMs: 60_000,
+    intervalMs: 60_000,
+    finalSyncRetryDelaysMs: [5],
+    log: (message, err) => logs.push({ message, err }),
+  });
+  await daemon.hydrate();
+  daemon.start();
+  writeFileSync(join(localRoot, "final.txt"), "final");
+  await daemon.stop();
+
+  // The blip was absorbed: the file flushed, the retry logged as an err-less
+  // breadcrumb with the cause inlined, and nothing reported as an error.
+  expect(readFileSync(join(remoteRoot, "final.txt"), "utf8")).toBe("final");
+  const finalFailures = logs.filter((l) =>
+    l.message.includes("FINAL sync failed"),
+  );
+  expect(finalFailures).toHaveLength(1);
+  expect(finalFailures[0]?.err).toBeUndefined();
+  expect(finalFailures[0]?.message).toContain("fetch failed");
+});
+
+test("the final sync reports with the error only after exhausting its retries", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-final-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-final-local-"));
+  const inner = new LocalDirStore(remoteRoot);
+  let attempts = 0;
+  const dead: ObjectStore = {
+    list: (prefix) => inner.list(prefix),
+    download: (key, dest) => inner.download(key, dest),
+    upload: () => {
+      attempts += 1;
+      return Promise.reject(new TypeError("fetch failed"));
+    },
+    delete: (key) => inner.delete(key),
+  };
+  const logs: Array<{ message: string; err?: unknown }> = [];
+  const daemon = new StoreSyncDaemon({
+    store: dead,
+    rootDir: localRoot,
+    quietMs: 60_000,
+    intervalMs: 60_000,
+    finalSyncRetryDelaysMs: [5, 5],
+    log: (message, err) => logs.push({ message, err }),
+  });
+  await daemon.hydrate();
+  daemon.start();
+  writeFileSync(join(localRoot, "final.txt"), "final");
+  await daemon.stop();
+
+  expect(attempts).toBe(3);
+  const finalFailures = logs.filter((l) =>
+    l.message.includes("FINAL sync failed"),
+  );
+  expect(finalFailures).toHaveLength(3);
+  expect(finalFailures[0]?.err).toBeUndefined();
+  expect(finalFailures[1]?.err).toBeUndefined();
+  expect(finalFailures[2]?.err).toBeDefined();
+  expect(finalFailures[2]?.message).toContain("local changes may be lost");
+});
+
 test("a transient sync failure is a breadcrumb; only a streak reports the error", async () => {
   const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-flaky-remote-"));
   const localRoot = mkdtempSync(join(tmpdir(), "store-sync-flaky-local-"));
