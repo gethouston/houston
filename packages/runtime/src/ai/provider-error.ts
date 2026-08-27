@@ -51,6 +51,15 @@ const TERMINAL_SESSION_PATTERNS = [
   "session was terminated",
   "log in again",
   "login again",
+  // ChatGPT's structured code when the OAuth account's workspace itself was
+  // deactivated (subscription ended, admin/OpenAI deactivation). The body is
+  // the bare `{"detail":{"code":"deactivated_workspace"}}` — no status, no
+  // prose — so nothing else here matches it and it degraded to `unknown`: the
+  // report-bug card plus a Sentry error per turn instead of the reconnect card
+  // (PRODUCT-1547: 331 events from 11 users). Terminal for THIS account —
+  // signing in again only helps with a different/reactivated one — which is
+  // exactly what the token_revoked copy says.
+  "deactivated_workspace",
 ];
 
 const INVALID_KEY_PATTERNS = [

@@ -68,6 +68,23 @@ test.each([
   if (err.kind === "unauthenticated") expect(err.cause).toBe("token_revoked");
 });
 
+test("Codex deactivated workspace → unauthenticated / token_revoked (PRODUCT-1547)", () => {
+  // ChatGPT rejects the WORKSPACE behind an otherwise-valid OAuth token with
+  // this bare structured body — no status, no prose — so nothing else in the
+  // classifier can match it and it degraded to `unknown` (report-bug card +
+  // a Sentry error per turn). Terminal for this account: the reconnect card's
+  // "access revoked, sign in again" is the honest copy, and the strict
+  // revocation-report gate (auth/revocation-markers.ts) deliberately does NOT
+  // list it — the token still works, so nothing may delete it.
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+    message: '{"detail":{"code":"deactivated_workspace"}}',
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("token_revoked");
+});
+
 test("pi prompt-time 'No API key found' → unauthenticated / no_credentials (HOU-718)", () => {
   // pi RAISES this (formatNoApiKeyFoundMessage) when the user logged out of a
   // provider that stayed selected — it never arrives as an errored
