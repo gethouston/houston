@@ -3,6 +3,18 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v70 - 2026-08-28
+
+The phone gets a real shell. Below 768px a bottom tab bar holds the app's three
+places -- Agents (the landing tab), the Tasks board, and Settings -- and
+switching tabs resets the navigation trail to the tapped tab's root, the way
+native tab bars do, so hardware back stays on the new tab. The Tasks tab wears
+the same needs-you count badge the rail's rows do (the cross-agent sum of
+missions waiting on the user, nothing at zero), and the bar pads itself against
+the phone's home indicator. A new task starts from a compose control in the
+mobile top bar, beside the hamburger; chat is deliberately not a tab, and the
+long tail stays in the drawer.
+
 ## v69 - 2026-08-21
 
 A routine now says which AI account it runs on, and whether that account works,

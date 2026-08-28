@@ -49,3 +49,23 @@ test("board home — narrow", async ({ page }) => {
 
   await expect(page).toHaveScreenshot("board-narrow.png", { fullPage: true });
 });
+
+/**
+ * Phone-width shell, both themes: the mobile chrome (top bar with hamburger +
+ * compose, bottom tab bar with the needs-you badge) is a first-class surface
+ * now, so it gets its own baselines at a phone viewport.
+ */
+for (const theme of THEMES) {
+  test(`mobile shell — ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+
+    await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+    await expect(page.getByTestId("mobile-tab-bar")).toBeVisible();
+    await pinTheme(page, theme);
+
+    await expect(page).toHaveScreenshot(`mobile-shell-${theme}.png`, {
+      fullPage: true,
+    });
+  });
+}

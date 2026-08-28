@@ -127,3 +127,5 @@ components:
     status: not-started
   team-screen:
     status: not-started
+  mobile-tab-bar:
+    status: not-started

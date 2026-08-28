@@ -248,7 +248,12 @@ interface UIState {
    * Settings" always lands on the index, and a deep link always lands on its
    * section, whether or not Settings was already open.
    */
-  openSettings: (section: SettingsSectionId | null) => void;
+  openSettings: (
+    section: SettingsSectionId | null,
+    opts?: {
+      /** `reset` for the mobile tab bar; default `push`. */ nav?: NavMode;
+    },
+  ) => void;
   setActivityPanelId: (
     id: string | null,
     options?: { forceOpen?: boolean },
@@ -420,9 +425,13 @@ export const useUIStore = create<UIState>()(
             settingsSection === null ? "retreat" : "push",
           ),
         ),
-      openSettings: (settingsSection) =>
+      openSettings: (settingsSection, opts) =>
         set((s) =>
-          navigated(s, { viewMode: "settings", settingsSection }, "push"),
+          navigated(
+            s,
+            { viewMode: "settings", settingsSection },
+            opts?.nav ?? "push",
+          ),
         ),
       setActivityPanelId: (activityPanelId, options) =>
         set({

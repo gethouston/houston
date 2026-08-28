@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 69
+version: 70
 
 components:
   - id: agent-avatar
@@ -1531,3 +1531,34 @@ components:
       control naming the team it returns to; every members-card control names
       the person it acts on.
     since: 55
+
+  - id: mobile-tab-bar
+    title: Mobile tab bar
+    purpose: >-
+      The phone shell's bottom bar: the three places the app is, one tap away,
+      below 768px only.
+    anatomy: [tab-row, tab-glyph, tab-label, needs-you-badge]
+    states: [resting, active, with-count]
+    variants: []
+    behavior: >-
+      Three tabs and never a fourth: Agents (the landing tab), the Tasks board,
+      and Settings. Chat is never a tab, a new task starts from the top bar's
+      compose control, and the long tail (store, skills, workspaces) stays in
+      the drawer, so the bar stays three thumb-sized certainties rather than a
+      scrolling menu. Switching tabs RESETS the navigation trail to the tapped
+      tab's root, the way native tab bars do: the old tab's drill-in is
+      abandoned, and the hardware back button afterwards stays on the new tab
+      instead of resurrecting what the user navigated away from. Every location
+      in the app lights exactly one tab -- Settings its own screen, an
+      unnarrowed team board the Tasks tab, and everything else the Agents
+      landing tab -- so the bar is never dark. The Tasks tab carries the same
+      needs-you count badge the rail's rows wear, the cross-agent sum of
+      missions waiting on the user, and shows nothing at zero. The bar pads
+      itself against the phone's home indicator and stays visible over the
+      full-screen chat, so the tabs remain the constant way out.
+    a11y: >-
+      A nav landmark with an accessible name; each tab is a real button
+      carrying aria-current on the active one, and the count badge announces
+      its meaning ("N issues need you") rather than a bare number. Targets are
+      at least 44px tall.
+    since: 70

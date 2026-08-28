@@ -118,6 +118,50 @@ describe("navigated retreat", () => {
   });
 });
 
+describe("navigated reset", () => {
+  it("rebuilds the stack to the destination as its only entry", () => {
+    const stack = [
+      navEntryOf(at("team")),
+      navEntryOf(at("skills")),
+      navEntryOf(at("skills", true)),
+    ];
+    const s = state(at("skills", true), { navStack: stack, navIndex: 2 });
+    const out = navigated(s, { viewMode: "settings" }, "reset");
+    assert.ok("navStack" in out);
+    assert.equal(out.navIndex, 0);
+    assert.equal(out.navStack.length, 1);
+    assert.equal(out.navStack[0].viewMode, "settings");
+    // A NEW array, never the popped-in-place identity: the history mirror
+    // echoes a rebuild as replaceState, not history.go.
+    assert.notEqual(out.navStack, stack);
+  });
+
+  it("still rebuilds when the destination IS the current location", () => {
+    // Re-tapping the active tab at a drilled depth must abandon the trail.
+    const stack = [navEntryOf(at("team")), navEntryOf(at("team", true))];
+    const s = state(at("team", true), { navStack: stack, navIndex: 1 });
+    const out = navigated(s, { missionPanelOpen: true }, "reset");
+    assert.ok("navStack" in out);
+    assert.equal(out.navIndex, 0);
+    assert.equal(out.navStack.length, 1);
+  });
+
+  it("drops the forward set even from the root", () => {
+    const stack = [navEntryOf(at("team")), navEntryOf(at("settings"))];
+    const s = state(at("team"), { navStack: stack, navIndex: 0 });
+    const out = navigated(s, { viewMode: "team" }, "reset");
+    assert.ok("navStack" in out);
+    assert.equal(out.navStack.length, 1);
+    assert.equal(out.navStack[0].viewMode, "team");
+  });
+
+  it("is a no-op when the stack already is the bare root", () => {
+    const s = state(at("inbox"), initialNavState());
+    const out = navigated(s, { viewMode: "inbox" }, "reset");
+    assert.equal("navStack" in out, false);
+  });
+});
+
 describe("entry plumbing", () => {
   it("snapshots missionPanelOpen as the entry's panel level", () => {
     assert.equal(navEntryOf(at("team", true)).panelOpen, true);

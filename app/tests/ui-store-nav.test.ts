@@ -151,6 +151,33 @@ describe("navBack / navApplyHistory", () => {
     assert.equal(now.navIndex, 0);
   });
 
+  it("a tab reset rebuilds the stack to the tapped root", () => {
+    // The mobile tab bar's semantics: switching tabs abandons the old tab's
+    // trail instead of stacking on top of it.
+    const s = useUIStore.getState();
+    s.openTeamView("team-a", "mission-control", { nav: "replace" });
+    s.openSettings("shortcuts");
+    useUIStore.getState().openTeamView("team-a", "mission-control", {
+      nav: "reset",
+    });
+    const now = useUIStore.getState();
+    assert.equal(now.navIndex, 0);
+    assert.equal(now.navStack.length, 1);
+    assert.equal(now.navStack[0].viewMode, "team");
+    assert.equal(now.viewMode, "team");
+  });
+
+  it("openSettings resets to the index when the tab bar asks", () => {
+    const s = useUIStore.getState();
+    s.openSettings("shortcuts");
+    useUIStore.getState().openSettings(null, { nav: "reset" });
+    const now = useUIStore.getState();
+    assert.equal(now.navIndex, 0);
+    assert.equal(now.navStack.length, 1);
+    assert.equal(now.viewMode, "settings");
+    assert.equal(now.settingsSection, null);
+  });
+
   it("reset returns the stack to the single boot entry", () => {
     const s = useUIStore.getState();
     s.setViewMode("skills");

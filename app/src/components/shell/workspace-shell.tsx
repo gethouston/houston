@@ -16,6 +16,7 @@ import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { KeepAliveViews } from "./keep-alive-views";
+import { MobileTabBar } from "./mobile-tab-bar";
 import { MobileTopBar } from "./mobile-top-bar";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
@@ -131,6 +132,10 @@ export function WorkspaceShell({
             </div>
           </Sidebar>
         </div>
+        {/* Bottom tab bar (Agents / Tasks / Settings); CSS-hidden at md+.
+            Below the content row so the full-screen mission panel overlay
+            never covers it — the tabs stay reachable over an open chat. */}
+        <MobileTabBar />
         <CreateAgentDialog />
         <AgentWarmingDialog />
         <ExportAgentWizard />

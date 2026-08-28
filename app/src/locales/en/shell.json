@@ -31,6 +31,7 @@
     "myAccounts": "My accounts",
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
+    "newMission": "New task",
     "newTeam": "New team",
     "openMenu": "Open menu",
     "reportProblem": "Report a problem",
@@ -386,6 +387,12 @@
     },
     "workspace": "Workspace",
     "yourTeams": "Your teams"
+  },
+  "tabBar": {
+    "agents": "Agents",
+    "label": "Main navigation",
+    "missionControl": "Tasks",
+    "settings": "Settings"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Native Sentry smoke triggered",
