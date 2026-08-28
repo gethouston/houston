@@ -645,6 +645,28 @@ test("missing prefix hydrates to an empty manifest", async () => {
   expect((await hydrate(store, "ws/none/agent-x", work)).size).toBe(0);
 });
 
+test("startHydrate exposes the complete listing and counts filtered objects", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, {
+    "workspace/keep.txt": "keep",
+    "workspace/skip.txt": "skip",
+  });
+  let listed: string[] = [];
+
+  const started = await startHydrate(store, PREFIX, work, {
+    filter: (rel, listing) => {
+      listed = listing.map((object) => object.rel);
+      return rel.endsWith("keep.txt");
+    },
+  });
+  await started.done;
+
+  expect(listed.sort()).toEqual(["workspace/keep.txt", "workspace/skip.txt"]);
+  expect(started.skippedObjects).toBe(1);
+  expect([...started.manifest.keys()]).toEqual(["workspace/keep.txt"]);
+  expect(existsSync(join(work, "workspace", "skip.txt"))).toBe(false);
+});
+
 test("hydrate materializes many files faithfully under concurrency", async () => {
   const { storeRoot, store, work } = setup();
   const files: Record<string, string> = {};
@@ -660,10 +682,11 @@ test("hydrate materializes many files faithfully under concurrency", async () =>
   }
 });
 
-test("startHydrate lands priority files before background hydration resolves", async () => {
+test("startHydrate lands priority files before filtering the bulk", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, {
-    "data/settings.json": "settings",
+    "data/settings.json": "workspace/late.txt",
+    "workspace/drop.txt": "drop",
     "workspace/late.txt": "late",
   });
   let release: () => void = () => undefined;
@@ -683,11 +706,16 @@ test("startHydrate lands priority files before background hydration resolves", a
 
   const started = await startHydrate(gated, PREFIX, work, {
     priority: (rel) => rel === "data/settings.json",
+    filter: (rel, _listing, hydratedRoot) =>
+      rel === "data/settings.json" ||
+      rel === readFileSync(join(hydratedRoot, "data", "settings.json"), "utf8"),
   });
 
   expect(readFileSync(join(work, "data", "settings.json"), "utf8")).toBe(
-    "settings",
+    "workspace/late.txt",
   );
+  expect(started.skippedObjects).toBe(1);
+  expect(existsSync(join(work, "workspace", "drop.txt"))).toBe(false);
   expect(existsSync(join(work, "workspace", "late.txt"))).toBe(false);
   release();
   await started.done;

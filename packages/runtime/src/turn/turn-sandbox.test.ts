@@ -26,6 +26,7 @@ async function fixture(fetchImpl: typeof fetch = fetch) {
     manifest: new Map(),
     vfs: new FsVfs(root),
     listedObjects: 0,
+    skippedObjects: 0,
     generationAware: true,
     immediateWrites: new Set(),
   } satisfies TurnFilesystem;

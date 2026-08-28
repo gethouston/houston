@@ -1,9 +1,24 @@
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  utimesSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { LocalDirStore } from "@houston/runtime-client/object-sync";
+import {
+  LocalDirStore,
+  type ObjectStore,
+} from "@houston/runtime-client/object-sync";
 import { expect, test } from "vitest";
-import { claimedTurnIncludes, prepareTurnFilesystem } from "./turn-filesystem";
+import { createSessionsStore } from "../backends/claude/sessions-store";
+import { resumeSessionManager } from "../backends/pi/backend";
+import {
+  claimedTurnIncludes,
+  prepareTurnFilesystem,
+  syncTurnFilesystem,
+} from "./turn-filesystem";
 import { ownConversationOnly } from "./turn-hot-set";
 
 test("route-op excludes skip the runtime tree wherever the agent sits", async () => {
@@ -100,9 +115,14 @@ test("a claimed turn's filter leaves other conversations' history out of the hyd
   );
   for (const id of ["c1", "c2"]) {
     mkdirSync(join(runtime, "sessions", id), { recursive: true });
+    mkdirSync(join(runtime, "sessions", id, "claude"), { recursive: true });
     mkdirSync(join(runtime, "conversations"), { recursive: true });
     writeFileSync(join(runtime, "conversations", `${id}.json`), "{}");
     writeFileSync(join(runtime, "sessions", id, "s.jsonl"), "");
+    writeFileSync(
+      join(runtime, "sessions", id, "claude", "sessions.json"),
+      "{}",
+    );
   }
   writeFileSync(join(runtime, "settings.json"), "{}");
   const fs = await prepareTurnFilesystem({
@@ -115,9 +135,122 @@ test("a claimed turn's filter leaves other conversations' history out of the hyd
   const keys = [...fs.manifest.keys()].sort();
   expect(keys).toEqual([
     "workspaces/Personal/Bob/.houston/runtime/conversations/c1.json",
+    "workspaces/Personal/Bob/.houston/runtime/sessions/c1/claude/sessions.json",
     "workspaces/Personal/Bob/.houston/runtime/sessions/c1/s.jsonl",
     "workspaces/Personal/Bob/.houston/runtime/settings.json",
   ]);
+});
+
+test("a claimed turn hydrates live session tails and leaves skips untouched", async () => {
+  const storeRoot = mkdtempSync(join(tmpdir(), "session-diet-store-"));
+  const prefix = "ws/w1/agent-1";
+  const agentRel = "workspaces/Personal/Bob";
+  const runtimeRel = `${agentRel}/.houston/runtime`;
+  const sessionRel = `${runtimeRel}/sessions/c1`;
+  const root = join(storeRoot, prefix);
+  const seed = (rel: string, content: string) => {
+    const file = join(root, ...rel.split("/"));
+    mkdirSync(join(file, ".."), { recursive: true });
+    writeFileSync(file, content);
+    return file;
+  };
+  seed(`${agentRel}/note.txt`, "workspace stays eager");
+  seed(`${runtimeRel}/settings.json`, "{}");
+  seed(`${runtimeRel}/conversations/c1.json`, "{}");
+  const piOld = `${sessionRel}/2026-08-20T19-00-01-250Z_old.jsonl`;
+  const piReadable = `${sessionRel}/2026-08-21T19-00-01-250Z_readable.jsonl`;
+  const piCorrupt = `${sessionRel}/2026-08-22T19-00-01-250Z_torn.jsonl`;
+  const piSession = (id: string) =>
+    `${JSON.stringify({
+      type: "session",
+      version: 3,
+      id,
+      timestamp: "2026-08-20T19:00:01.250Z",
+      cwd: "/previous/turn/workspace",
+    })}\n`;
+  seed(piOld, piSession("old"));
+  const piReadableFile = seed(piReadable, piSession("readable"));
+  seed(piCorrupt, "not json\n");
+  const unexpectedSibling = `${sessionRel}/session.lock`;
+  seed(unexpectedSibling, "stale lock");
+  seed(`${sessionRel}/harness.json`, '{"backend":"claude"}');
+  seed(`${sessionRel}/claude/sessions.json`, '{"c1":"session-new"}');
+  const claudeOld = `${sessionRel}/claude/projects/old/session-old.jsonl`;
+  const claudeNew = `${sessionRel}/claude/projects/foreign/session-new.jsonl`;
+  const claudeOldFile = seed(claudeOld, "old claude");
+  const claudeNewFile = seed(claudeNew, "new claude");
+  seed(`${sessionRel}/claude/statsig/cache.json`, "cache");
+  utimesSync(piReadableFile, new Date(1_000), new Date(1_000));
+  // The relocated stale session uploaded after the fresh retry. Its newer
+  // store timestamp must not outrank the sessions.json pointer.
+  utimesSync(claudeOldFile, new Date(2_000), new Date(2_000));
+  utimesSync(claudeNewFile, new Date(1_000), new Date(1_000));
+
+  const inner = new LocalDirStore(storeRoot);
+  const uploads: string[] = [];
+  const deletes: string[] = [];
+  const store: ObjectStore = {
+    list: (scope) => inner.list(scope),
+    manifest: (scope) => inner.manifest(scope),
+    download: (key, dest, options) => inner.download(key, dest, options),
+    upload: async (source, key, options) => {
+      uploads.push(key);
+      return inner.upload(source, key, options);
+    },
+    delete: async (key, options) => {
+      deletes.push(key);
+      return inner.delete(key, options);
+    },
+  };
+  const fs = await prepareTurnFilesystem({
+    store,
+    prefix,
+    root: mkdtempSync(join(tmpdir(), "session-diet-root-")),
+    claimed: true,
+    filter: ownConversationOnly("c1"),
+  });
+
+  expect([...fs.manifest.keys()]).toContain(piReadable);
+  expect([...fs.manifest.keys()]).toContain(piCorrupt);
+  expect([...fs.manifest.keys()]).toContain(claudeNew);
+  expect([...fs.manifest.keys()]).not.toContain(piOld);
+  expect([...fs.manifest.keys()]).not.toContain(claudeOld);
+  expect(fs.skippedObjects).toBe(4);
+  expect(existsSync(join(fs.storeRoot, ...piOld.split("/")))).toBe(false);
+  expect(existsSync(join(fs.storeRoot, ...claudeOld.split("/")))).toBe(false);
+  expect(existsSync(join(fs.storeRoot, ...unexpectedSibling.split("/")))).toBe(
+    false,
+  );
+  expect(
+    resumeSessionManager(
+      fs.workspaceDir,
+      join(fs.dataDir, "sessions", "c1"),
+      false,
+    ).getSessionFile(),
+  ).toBe(join(fs.storeRoot, ...piReadable.split("/")));
+
+  const configDir = join(fs.dataDir, "sessions", "c1", "claude");
+  const sessions = createSessionsStore({
+    configDir,
+    sessionsFile: join(configDir, "sessions.json"),
+    cwd: fs.workspaceDir,
+  });
+  expect(sessions.resolveResume("c1")).toBe("session-new");
+
+  await syncTurnFilesystem({
+    store,
+    prefix,
+    filesystem: fs,
+    conversationId: "c1",
+    claimed: true,
+  });
+  expect(uploads.some((key) => key.endsWith(`/${piOld}`))).toBe(false);
+  expect(uploads.some((key) => key.endsWith(`/${claudeOld}`))).toBe(false);
+  expect(deletes.some((key) => key.endsWith(`/${piOld}`))).toBe(false);
+  expect(deletes.some((key) => key.endsWith(`/${claudeOld}`))).toBe(false);
+  expect(await inner.list(prefix)).toContain(`${prefix}/${piOld}`);
+  expect(await inner.list(prefix)).toContain(`${prefix}/${claudeOld}`);
+  expect(await inner.list(prefix)).toContain(`${prefix}/${unexpectedSibling}`);
 });
 
 test("a claimed turn whose agent holds only other conversations still resolves its layout", async () => {

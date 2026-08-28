@@ -61,3 +61,17 @@ test("no marks means no timings field on the done frame", () => {
   };
   expect(frame.data).toBeNull();
 });
+
+test("the done frame reports hydrated and skipped object counts", () => {
+  const frame = turnTerminalFrame(
+    {},
+    "t1",
+    0,
+    undefined,
+    undefined,
+    [],
+    undefined,
+    { hydratedObjects: 7, skippedObjects: 88 },
+  ) as unknown as { data: Record<string, number> };
+  expect(frame.data).toMatchObject({ hydratedObjects: 7, skippedObjects: 88 });
+});

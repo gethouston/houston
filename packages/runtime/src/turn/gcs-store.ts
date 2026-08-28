@@ -1,14 +1,18 @@
 import { Storage } from "@google-cloud/storage";
 import {
+  type ObjectMetadata,
   ObjectNotFoundError,
   type ObjectStore,
 } from "@houston/runtime-client/object-sync";
 
+// Partial responses must retain nextPageToken or the client cannot auto-page.
+const LIST_FIELDS = "items(name,size,md5Hash,updated),nextPageToken";
+
 /**
  * GCS-backed ObjectStore. Auth is Application Default Credentials (the Cloud
  * Run service account); the runtime SA holds objectAdmin on THIS bucket only.
- * Thin by design — all hydration/diff logic lives in hydrate.ts and is tested
- * against LocalDirStore; this adapter is exercised by the deploy smoke test.
+ * Thin by design — hydration/diff logic lives in hydrate.ts; this adapter only
+ * maps GCS object operations and listing metadata onto the shared port.
  */
 export class GcsStore implements ObjectStore {
   private readonly bucket;
@@ -19,8 +23,24 @@ export class GcsStore implements ObjectStore {
   }
 
   async list(prefix: string): Promise<string[]> {
-    const [files] = await this.bucket.getFiles({ prefix: `${prefix}/` });
+    const files = await this.listFiles(prefix);
     return files.map((f) => f.name).sort();
+  }
+
+  /** GCS listing metadata for hydration; generations stay disabled here. */
+  async manifest(prefix = ""): Promise<ObjectMetadata[]> {
+    const files = await this.listFiles(prefix);
+    return files
+      .map((file) => {
+        const size = Number(file.metadata.size ?? 0);
+        return {
+          key: file.name,
+          size: Number.isFinite(size) && size >= 0 ? size : 0,
+          md5: file.metadata.md5Hash ?? "",
+          updated: file.metadata.updated ?? "",
+        };
+      })
+      .sort((left, right) => left.key.localeCompare(right.key));
   }
 
   async download(key: string, destFile: string): Promise<void> {
@@ -43,5 +63,13 @@ export class GcsStore implements ObjectStore {
 
   async delete(key: string): Promise<void> {
     await this.bucket.file(key).delete({ ignoreNotFound: true });
+  }
+
+  private async listFiles(prefix: string) {
+    const [files] = await this.bucket.getFiles({
+      prefix: prefix ? `${prefix}/` : "",
+      fields: LIST_FIELDS,
+    });
+    return files;
   }
 }
