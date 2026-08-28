@@ -440,6 +440,22 @@ test("retries download and still writes the file atomically", async () => {
   expect(readdirSync(join(dir, "nested"))).toEqual(["dest.txt"]);
 });
 
+test("versioned download returns the object generation header", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "http-object-store-versioned-"));
+  const destination = join(dir, "dest.txt");
+  const store = retryStore(
+    async () =>
+      new Response("payload", {
+        headers: { "X-Houston-Generation": "17" },
+      }),
+  );
+
+  await expect(
+    store.downloadVersioned("file.txt", destination),
+  ).resolves.toEqual({ generation: "17" });
+  expect(readFileSync(destination, "utf8")).toBe("payload");
+});
+
 test("a 413 PUT surfaces as the typed ObjectTooLargeError, with no retry", async () => {
   let calls = 0;
   const fetchImpl: typeof fetch = async () => {

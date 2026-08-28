@@ -146,6 +146,32 @@ test("community search returns stale cache when skills.sh rate limits", async ()
   expect(skills[0]?.id).toBe("owner/repo/writing");
 });
 
+test("community search never turns cancellation into a stale-cache success", async () => {
+  const clock = fakeClock();
+  const dir = new CommunityDirectory({
+    endpoint: "https://x/api/search",
+    now: clock.now,
+    sleep: clock.sleep,
+    freshTtlMs: 0,
+    fetchImpl: fakeFetch(() => jsonRes({ skills: [SKILL_HIT] })),
+  });
+  await dir.search("writing");
+  clock.state.t += 1;
+  const controller = new AbortController();
+  controller.abort(new Error("search cancelled"));
+  const cancelledFetch: typeof fetch = async (_input, init) => {
+    init?.signal?.throwIfAborted();
+    throw new Error("missing signal");
+  };
+
+  await expect(
+    dir.search("writing", {
+      fetchImpl: cancelledFetch,
+      signal: controller.signal,
+    }),
+  ).rejects.toThrow("search cancelled");
+});
+
 test("community search maps a persistent 429 to rate_limited when no cache", async () => {
   const clock = fakeClock();
   const dir = new CommunityDirectory({

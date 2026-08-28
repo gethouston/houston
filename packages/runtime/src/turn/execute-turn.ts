@@ -281,6 +281,7 @@ export async function executeTurn(
         heartbeat,
         outcome,
         transcript,
+        ...(turnSandbox ? { views: turnSandbox.views() } : {}),
       });
       outcome = durable.outcome;
       emit(
@@ -303,9 +304,11 @@ export async function executeTurn(
   } finally {
     try {
       await turnSandbox?.dispose().catch((error: unknown) => {
-        console.error(
-          `[turn] sandbox dispose failed (${error instanceof Error ? error.name : typeof error})`,
-        );
+        const detail =
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : typeof error;
+        console.error(`[turn] sandbox dispose failed (${detail})`);
       });
     } finally {
       try {

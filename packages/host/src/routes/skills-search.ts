@@ -19,14 +19,16 @@ export interface SkillsSearchDeps {
   directory: Pick<CommunityDirectory, "search">;
   previews: Pick<PreviewDirectory, "preview">;
   fetchImpl: typeof fetch;
+  signal?: AbortSignal | null;
 }
 
 async function mergeSearches(
   directory: SkillsSearchDeps["directory"],
   queries: string[],
+  opts: Pick<SkillsSearchDeps, "fetchImpl" | "signal">,
 ): Promise<CommunitySkill[]> {
   const lists = await Promise.all(
-    queries.map((query) => directory.search(query)),
+    queries.map((query) => directory.search(query, opts)),
   );
   const best = new Map<string, { hit: CommunitySkill; rank: number }>();
   for (const list of lists) {
@@ -47,7 +49,7 @@ export async function searchCommunitySkills(
   deps: SkillsSearchDeps,
   queries: string[],
 ): Promise<{ skills: FoundSkill[] }> {
-  const hits = await mergeSearches(deps.directory, queries);
+  const hits = await mergeSearches(deps.directory, queries, deps);
   const skills = await Promise.all(
     hits.map(async (hit, rank): Promise<FoundSkill> => {
       const base: FoundSkill = {

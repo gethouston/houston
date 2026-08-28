@@ -24,6 +24,7 @@ export interface TurnWriteRoutesDeps {
   conversationId: string;
   actingAs?: { userId: string; name?: string };
   fetchImpl: typeof fetch;
+  signal?: AbortSignal | null;
 }
 
 const json = (status: number, body: unknown): Response =>
@@ -37,6 +38,9 @@ async function saveRoutine(
   const creating = typeof id !== "string" || id === "";
   const stableId = creating ? randomUUID() : id;
   const nowIso = new Date().toISOString();
+  // Turn requests do not carry the account timezone, and the agent-scoped
+  // store cannot read account preferences. Pooled cron validation therefore
+  // keeps the null-zone fallback until dispatch includes that context.
   const result = await mutateTurnDocument({
     ...deps,
     relativePath: docKey(deps.filesystem.workspaceRel, "routines"),
@@ -129,6 +133,7 @@ export async function handleTurnWriteRoute(
           directory: communityDirectory,
           previews: previewDirectory,
           fetchImpl: deps.fetchImpl,
+          ...(deps.signal ? { signal: deps.signal } : {}),
         },
         queries,
       ),

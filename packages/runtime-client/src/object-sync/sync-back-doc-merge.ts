@@ -58,19 +58,20 @@ function mergeArrayDocument(
   ];
 }
 
-function mergeDocument(
+/** Merge local document entries into a refreshed remote document. */
+export function mergeDocumentBodies(
   relativePath: string,
   localBody: string,
   remoteBody: string,
 ): string | undefined {
   const field = arrayIdentity(relativePath);
+  if (!field && relativePath !== CUSTOM_DEFINITIONS) return undefined;
   const remote = JSON.parse(remoteBody) as unknown;
   const local = JSON.parse(localBody) as unknown;
   if (field) {
     const merged = mergeArrayDocument(remote, local, field, relativePath);
     return `${JSON.stringify(merged, null, 2)}\n`;
   }
-  if (relativePath !== CUSTOM_DEFINITIONS) return undefined;
   const remoteShape = objectDocument(remote, relativePath);
   const localShape = objectDocument(local, relativePath);
   if (remoteShape.version !== 1 || localShape.version !== 1) {
@@ -107,7 +108,11 @@ export async function mergeSyncBackDocument(opts: {
   try {
     await opts.store.download(opts.key, remoteTemp);
     const remoteBody = await readFile(remoteTemp, "utf8");
-    const merged = mergeDocument(opts.relativePath, localBody, remoteBody);
+    const merged = mergeDocumentBodies(
+      opts.relativePath,
+      localBody,
+      remoteBody,
+    );
     if (merged === undefined) return undefined;
     await writeFile(opts.abs, merged);
     const { size } = await stat(opts.abs);
