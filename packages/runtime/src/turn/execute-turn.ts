@@ -242,6 +242,7 @@ export async function executeTurn(
                     emit,
                     abort.signal,
                     turnSandbox ? { call: turnSandbox.call } : undefined,
+                    timings,
                   ),
                 ),
             ),
@@ -277,6 +278,7 @@ export async function executeTurn(
         }
       }
 
+      timings.t_run_done = performance.now();
       const durable = await finishTurnDurability({
         deps,
         turn: { ...turn, turnId },
@@ -288,6 +290,7 @@ export async function executeTurn(
         ...(turnSandbox ? { views: turnSandbox.views() } : {}),
       });
       outcome = durable.outcome;
+      timings.t_durable = performance.now();
       emit(
         turnTerminalFrame(
           outcome,
@@ -296,6 +299,7 @@ export async function executeTurn(
           durable.transcriptSkipped,
           durable.activityDocSkipped,
           durable.changed,
+          timings,
         ),
       );
       await turnLog?.flush();

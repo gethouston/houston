@@ -189,12 +189,14 @@ test("an unclaimed turn retains full sync-back", async () => {
   // Unclaimed turns sync the whole prefix and now classify every landed key
   // through the canonical rule: the workspace file fires FilesChanged and the
   // session write fires ConversationsChanged (deduped, sorted).
-  expect(emitted.at(-1)).toEqual(
-    expect.objectContaining({
-      type: "done",
-      data: { changed: ["ConversationsChanged", "FilesChanged"] },
-    }),
-  );
+  const done = emitted.at(-1) as {
+    type: string;
+    data: Record<string, unknown>;
+  };
+  expect(done.type).toBe("done");
+  expect(done.data.changed).toEqual(["ConversationsChanged", "FilesChanged"]);
+  // Every real turn now reports its phase marks as whole-ms deltas.
+  expect(done.data.timingsMs).toMatchObject({ tmpdir: expect.any(Number) });
 });
 
 test("shadow resolves a standing layout and reports hydrated objects", async () => {

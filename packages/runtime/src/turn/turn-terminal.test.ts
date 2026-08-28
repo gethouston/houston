@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, test } from "vitest";
 import { turnTerminalFrame } from "./turn-terminal";
 
 describe("turnTerminalFrame", () => {
@@ -40,4 +40,24 @@ describe("turnTerminalFrame", () => {
       turnId: "t1",
     });
   });
+});
+
+test("the done frame reports phase marks as whole-ms deltas from the earliest", () => {
+  const frame = turnTerminalFrame({}, "t1", 0, undefined, undefined, [], {
+    t_accept: 1000,
+    t_tmpdir: 1010.4,
+    t_first_model_event: 2500.9,
+  }) as unknown as { data: { timingsMs: Record<string, number> } };
+  expect(frame.data.timingsMs).toEqual({
+    accept: 0,
+    tmpdir: 10,
+    first_model_event: 1501,
+  });
+});
+
+test("no marks means no timings field on the done frame", () => {
+  const frame = turnTerminalFrame({}, "t1", 0) as unknown as {
+    data: unknown;
+  };
+  expect(frame.data).toBeNull();
 });
