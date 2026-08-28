@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
-import { piTurnRequest } from "./pi-turn-request";
+import { turnSessionRequest } from "./turn-request";
 import type { TurnRequest } from "./types";
 
 /**
- * PRODUCT-1515: the provider a pool turn runs on. The turn's PIN (the
+ * The provider a pool turn runs on comes from its pin. The turn's PIN (the
  * conversation's picked provider, forwarded by the dispatcher — or a routine's
  * own pinned provider overlaid by executeTurn) must outrank the attached
  * credential's provider: a dispatcher that serves the wrong credential fails
@@ -30,7 +30,7 @@ const base: TurnRequest = {
 };
 
 test("the pinned provider outranks the attached credential's", () => {
-  const turn = piTurnRequest(
+  const turn = turnSessionRequest(
     { ...base, provider: "openrouter" },
     "t1",
     emit,
@@ -40,18 +40,21 @@ test("the pinned provider outranks the attached credential's", () => {
 });
 
 test("an unpinned legacy dispatch runs on the credential's provider", () => {
-  expect(piTurnRequest(base, "t1", emit, signal).provider).toBe("anthropic");
+  expect(turnSessionRequest(base, "t1", emit, signal).provider).toBe(
+    "anthropic",
+  );
 });
 
 test("no pin and no credential leaves the provider unattributed", () => {
   expect(
-    piTurnRequest({ ...base, credential: null }, "t1", emit, signal).provider,
+    turnSessionRequest({ ...base, credential: null }, "t1", emit, signal)
+      .provider,
   ).toBe("");
 });
 
 test("only grant scopes and the sandbox closure reach the pi request", () => {
   const call = async () => Response.json({});
-  const turn = piTurnRequest(
+  const turn = turnSessionRequest(
     {
       ...base,
       claim: {

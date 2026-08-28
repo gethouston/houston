@@ -129,9 +129,12 @@ function tokenEnv(token: ClaudeToken | undefined): Record<string, string> {
  * byte-identical to before that guard existed.
  */
 export function buildClaudeEnv(
-  configDir: string,
   token: ClaudeToken | undefined,
-  credentialStorageDir?: string,
+  opts: {
+    configDir: string;
+    credentialStorageDir?: string;
+    homeDir?: string;
+  },
 ): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
@@ -139,18 +142,19 @@ export function buildClaudeEnv(
       env[key] = value;
     }
   }
-  env.CLAUDE_CONFIG_DIR = configDir;
-  if (credentialStorageDir !== undefined) {
+  env.CLAUDE_CONFIG_DIR = opts.configDir;
+  if (opts.homeDir !== undefined) env.HOME = opts.homeDir;
+  if (opts.credentialStorageDir !== undefined) {
     // The CLI reads an EMPTY `CLAUDE_SECURESTORAGE_CONFIG_DIR` as `~/.houston`'s
     // neighbour `~/.claude` — the machine user's PERSONAL credential (trap #2) —
     // and a RELATIVE one against the subprocess cwd, which is the agent's
     // workspace, so credential material would land in user-visible files. Both
     // are worse than the leak this var closes, so neither is accepted.
-    if (!isAbsolute(credentialStorageDir))
+    if (!isAbsolute(opts.credentialStorageDir))
       throw new Error(
-        `the Claude credential store must be an absolute path, got "${credentialStorageDir}"`,
+        `the Claude credential store must be an absolute path, got "${opts.credentialStorageDir}"`,
       );
-    env.CLAUDE_SECURESTORAGE_CONFIG_DIR = credentialStorageDir;
+    env.CLAUDE_SECURESTORAGE_CONFIG_DIR = opts.credentialStorageDir;
   }
   // Belt-and-braces: the credential keys are not in the allowlist, but assert the
   // invariant so a future allowlist edit can never re-admit an ambient one.

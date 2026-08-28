@@ -10,7 +10,7 @@ import {
   markWorkerSpent,
   workerSpent,
 } from "./single-use";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 const servers: Server[] = [];
 const homes: string[] = [];
@@ -79,7 +79,7 @@ test("the spent marker latches under HOUSTON_HOME and survives re-checks", async
 test("a claimed turn spends the worker: begin before the turn, settled after", async () => {
   await isolatedHome();
   const order: string[] = [];
-  const runTurn: typeof runPiTurn = async () => {
+  const runTurn: TurnRunner = async () => {
     order.push("turn");
     return {};
   };
@@ -113,7 +113,7 @@ test("a single-use worker REJECTS an unclaimed real turn (no reusable bash)", as
   await isolatedHome();
   const begin = vi.fn(async () => undefined);
   const settled = vi.fn();
-  const runTurn: typeof runPiTurn = async () => ({});
+  const runTurn: TurnRunner = async () => ({});
   const base = await listen(
     createTurnServer({
       store: new LocalDirStore(await mkdtemp(join(tmpdir(), "single-use-"))),
@@ -143,7 +143,7 @@ test("a single-use worker binds the turn to its own pod UID (X-Pool-Pod-UID)", a
     await markWorkerSpent();
   });
   const settled = vi.fn();
-  const runTurn: typeof runPiTurn = async () => ({});
+  const runTurn: TurnRunner = async () => ({});
   const base = await listen(
     createTurnServer({
       store: await seededStore(),
@@ -182,7 +182,7 @@ test("a single-use worker binds the turn to its own pod UID (X-Pool-Pod-UID)", a
 test("a spent worker refuses further turns via the draining gate", async () => {
   await isolatedHome();
   await markWorkerSpent();
-  const runTurn: typeof runPiTurn = async () => ({});
+  const runTurn: TurnRunner = async () => ({});
   const base = await listen(
     createTurnServer({
       store: await seededStore(),
@@ -211,7 +211,7 @@ test("concurrency-1: a second claimed turn cannot straddle the first's release",
     firstStarted = r;
   });
   let calls = 0;
-  const runTurn: typeof runPiTurn = async () => {
+  const runTurn: TurnRunner = async () => {
     calls += 1;
     firstStarted();
     await firstRunning;

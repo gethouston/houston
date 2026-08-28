@@ -149,6 +149,22 @@ jobs:
             -f selfhost/Dockerfile \
             -t "$SHA_TAG" -t "$POC_TAG" \
             .
+          docker run --rm --entrypoint sh "$SHA_TAG" -c '
+            ARCH=$(node -p "process.arch")
+            case "$ARCH" in
+              x64|arm64) ;;
+              *) echo "ERROR: unsupported engine image architecture: $ARCH" >&2; exit 1 ;;
+            esac
+            BINARY="/app/dist/runtime/node_modules/@anthropic-ai/claude-agent-sdk-linux-${ARCH}/claude"
+            if [ ! -e "$BINARY" ]; then
+              echo "ERROR: Claude Agent SDK binary is missing for image architecture $ARCH: $BINARY" >&2
+              exit 1
+            fi
+            if [ ! -x "$BINARY" ]; then
+              echo "ERROR: Claude Agent SDK binary is not executable: $BINARY" >&2
+              exit 1
+            fi
+          '
           docker push "$SHA_TAG"
           docker push "$POC_TAG"
           # Resolve the immutable digest of the pushed image for the roll below.

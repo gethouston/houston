@@ -9,6 +9,10 @@ import { PrefixedVfs } from "@houston/host/src/vfs";
 import { applyServedCredential } from "../auth/auth-file";
 import { anonymizeTextsWith } from "../session/anonymize";
 import type { OpAnswer } from "./op-credential";
+import {
+  assertWorkerOpProvider,
+  WorkerOpDeclinedError,
+} from "./op-provider-guard";
 import type { OpRequest } from "./parse-op-request";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { createTurnModelRuntime } from "./turn-runtime";
@@ -50,6 +54,7 @@ export async function applyAnonymizeOp(
           dataDir,
           credential.provider,
         );
+        assertWorkerOpProvider(model.provider);
         return anonymizeTextsWith({ workspaceDir, model, modelRuntime }, items);
       }
     : undefined;
@@ -59,6 +64,7 @@ export async function applyAnonymizeOp(
       vfs,
       root,
       ...(ai ? { ai } : {}),
+      rethrowAiError: (error) => error instanceof WorkerOpDeclinedError,
       aiUnavailableReason:
         "AI anonymization is not available right now; showing pattern-based redactions only",
     },

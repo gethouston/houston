@@ -40,6 +40,8 @@ export async function runPortableAnonymize(
     vfs: Vfs;
     root: string;
     ai?: AnonymizeAiRunner;
+    /** Errors this surface must handle outside the patterns fallback. */
+    rethrowAiError?: (error: unknown) => boolean;
     /** Surface-specific `aiError` copy when no runner exists at all. */
     aiUnavailableReason?: string;
   },
@@ -82,6 +84,7 @@ export async function runPortableAnonymize(
       redactSecrets,
     );
   } catch (e) {
+    if (deps.rethrowAiError?.(e)) throw e;
     return {
       ...(await anonymizeContent(content, redactSecrets)),
       aiError: e instanceof Error ? e.message : String(e),

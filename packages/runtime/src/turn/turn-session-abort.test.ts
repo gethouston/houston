@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireFrame } from "@houston/runtime-client";
 import { expect, test, vi } from "vitest";
-import { runPiTurn } from "./turn-session";
+import { runTurn } from "./turn-session";
 
 vi.mock("./turn-runtime", () => ({
   createTurnModelRuntime: async () => ({
@@ -31,8 +31,8 @@ test("an abort raised out of prompt() ends the turn quietly, not as an error", a
   const dataDir = await mkdtemp(join(tmpdir(), "turn-abort-data-"));
   const frames: WireFrame[] = [];
 
-  const outcome = await runPiTurn(
-    { workspaceDir, dataDir },
+  const outcome = await runTurn(
+    { workspaceDir, dataDir, turnRoot: workspaceDir },
     {
       conversationId: "c1",
       text: "hello",

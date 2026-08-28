@@ -8,7 +8,7 @@ import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { zipSync } from "fflate";
 import { afterEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 /**
  * Tranche-2 pool ops (PRODUCT-1469): portable export/preview/store, the
@@ -28,7 +28,7 @@ async function listen(server: Server): Promise<string> {
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
-const noopTurn: typeof runPiTurn = async () => ({});
+const noopTurn: TurnRunner = async () => ({});
 
 async function seedAgent(): Promise<{
   storeRoot: string;

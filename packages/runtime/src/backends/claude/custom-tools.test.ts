@@ -10,8 +10,10 @@ import {
 } from "../../session/interaction";
 import { makeAskUserTool } from "../../session/tools/ask-user";
 import { makeIntegrationTools } from "../../session/tools/integrations";
+import { makePlanReadyTool } from "../../session/tools/plan-ready";
 import { httpSandboxFetch } from "../../session/tools/sandbox-fetch";
 import {
+  type BridgedPiTool,
   buildHoustonMcpServer,
   HOUSTON_MCP_SERVER_NAME,
   type HoustonMcp,
@@ -32,6 +34,7 @@ const INTEGRATIONS = {
 function build(
   integrations?: { call: ReturnType<typeof httpSandboxFetch> },
   mode?: "execute" | "plan" | "auto",
+  explicitTools?: BridgedPiTool[],
 ): {
   mcp: HoustonMcp;
   tools: SdkMcpToolDefinition[];
@@ -52,6 +55,7 @@ function build(
     createSdkMcpServer: fakeCreate,
     integrations,
     mode,
+    tools: explicitTools,
   });
   return { mcp, tools: capturedTools, serverName: capturedName };
 }
@@ -318,6 +322,20 @@ test("the allowlist always matches the exposed tool set", () => {
   expect(mcp.allowedTools).toEqual(
     tools.map((t) => `mcp__${HOUSTON_MCP_SERVER_NAME}__${t.name}`),
   );
+});
+
+test("an explicit tool list replaces the server defaults and remains mode-filtered", () => {
+  const explicit = [
+    makeAskUserTool(),
+    makePlanReadyTool(),
+  ] as unknown as BridgedPiTool[];
+
+  expect(
+    build(INTEGRATIONS, undefined, explicit).tools.map((t) => t.name),
+  ).toEqual(["ask_user"]);
+  expect(
+    build(INTEGRATIONS, "plan", explicit).tools.map((t) => t.name),
+  ).toEqual(["ask_user", "plan_ready"]);
 });
 
 // --- naming ----------------------------------------------------------------

@@ -12,7 +12,7 @@ import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterAll, expect, test } from "vitest";
 import { poolBashEnv } from "../session/tools/pool-bash";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 const scratch = mkdtempSync(join(tmpdir(), "houston-pool-leaks-"));
 process.env.HOUSTON_MODE = "turn";
@@ -262,7 +262,7 @@ test("a granted turn keeps every operational secret out of pi, tools, bash, and 
   expect(Object.values(process.env)).not.toContain(secrets.host);
 
   let observed = false;
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     const serialized = JSON.stringify(turn);
     expect(serialized).not.toContain(secrets.grant);
     expect(serialized).not.toContain(secrets.host);

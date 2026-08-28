@@ -2,6 +2,7 @@ import { DEFAULT_TURN_MODE, type TurnMode } from "@houston/protocol";
 import { resolveModel } from "../ai/providers";
 import { authStorage, modelRuntime } from "../auth/storage";
 import { createClaudeBackend } from "../backends/claude/backend";
+import { serverClaudeLayout } from "../backends/claude/paths";
 import { readAnthropicToken } from "../backends/claude/read-token";
 import { createPiBackend } from "../backends/pi/backend";
 import {
@@ -196,7 +197,7 @@ registerBackend(
   "anthropic",
   createClaudeBackend({
     workspaceDir: config.workspaceDir,
-    dataDir: config.dataDir,
+    layout: serverClaudeLayout(config.dataDir),
     readToken: () => readAnthropicToken(authStorage),
     toolSelection,
     systemPrompt: config.systemPrompt || SYSTEM_PROMPT,

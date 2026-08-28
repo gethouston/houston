@@ -12,7 +12,7 @@ import {
 } from "../store/conversation-file";
 import { createTurnServer } from "./server";
 import type { TurnServerDeps } from "./server-types";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 const servers: Server[] = [];
 
@@ -193,7 +193,7 @@ test("claimed turn publishes its persisted user and assistant before done", asyn
   const requests: TranscriptRequest[] = [];
   let userMessage: ChatMessage | undefined;
   let assistantMessage: ChatMessage | undefined;
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     const conversationsDir = join(filesystem.dataDir, "conversations");
     userMessage = appendUserMessageAt(
       conversationsDir,
@@ -248,7 +248,7 @@ test("claimed turn publishes its persisted user and assistant before done", asyn
 test("a transcript 404 disables publication for the turn without failing it", async () => {
   const objects = seedStandingLayout();
   const requests: TranscriptRequest[] = [];
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     const conversationsDir = join(filesystem.dataDir, "conversations");
     appendUserMessageAt(conversationsDir, turn.conversationId, turn.text, {
       turnId: turn.turnId,
@@ -279,7 +279,7 @@ test("a transcript 404 disables publication for the turn without failing it", as
 test("a transcript 409 fences the claimed turn", async () => {
   const objects = seedStandingLayout();
   const requests: TranscriptRequest[] = [];
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     const conversationsDir = join(filesystem.dataDir, "conversations");
     appendUserMessageAt(conversationsDir, turn.conversationId, turn.text, {
       turnId: turn.turnId,
@@ -306,7 +306,7 @@ test("a transcript 409 fences the claimed turn", async () => {
 test("a transcript 503 becomes part of the terminal error", async () => {
   const objects = seedStandingLayout();
   const requests: TranscriptRequest[] = [];
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     const conversationsDir = join(filesystem.dataDir, "conversations");
     appendUserMessageAt(conversationsDir, turn.conversationId, turn.text, {
       turnId: turn.turnId,
@@ -344,7 +344,7 @@ test("a transcript network failure becomes part of the terminal error", async ()
     }
     return backingFetch(input, init);
   };
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     appendUserMessageAt(
       join(filesystem.dataDir, "conversations"),
       turn.conversationId,
@@ -368,7 +368,7 @@ test("a transcript network failure becomes part of the terminal error", async ()
 test("a turn without an assistant message publishes only its user row", async () => {
   const objects = seedStandingLayout();
   const requests: TranscriptRequest[] = [];
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     appendUserMessageAt(
       join(filesystem.dataDir, "conversations"),
       turn.conversationId,
@@ -428,7 +428,7 @@ test("a shadow turn makes no transcript requests", async () => {
 test("an assistant 404 after a landed user row is a failure, not deploy skew", async () => {
   const objects = seedStandingLayout();
   const requests: TranscriptRequest[] = [];
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     const conversationsDir = join(filesystem.dataDir, "conversations");
     appendUserMessageAt(conversationsDir, turn.conversationId, turn.text, {
       turnId: turn.turnId,
@@ -457,7 +457,7 @@ test("an assistant 404 after a landed user row is a failure, not deploy skew", a
 test("a corrupt conversation file still ends in a terminal error frame", async () => {
   const objects = seedStandingLayout();
   const requests: TranscriptRequest[] = [];
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     // The turn "ran" but left the conversation file unparseable.
     writeFileSync(
       join(filesystem.dataDir, "conversations", `${turn.conversationId}.json`),
@@ -483,7 +483,7 @@ test("the user row lands on the user frame, before the turn finishes", async () 
   const objects = seedStandingLayout();
   const requests: TranscriptRequest[] = [];
   let requestsWhenTurnEnded = -1;
-  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+  const runTurn: TurnRunner = async (filesystem, turn) => {
     const conversationsDir = join(filesystem.dataDir, "conversations");
     const { message } = appendUserMessageAt(
       conversationsDir,

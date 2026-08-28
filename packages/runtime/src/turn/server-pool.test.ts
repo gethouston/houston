@@ -15,7 +15,7 @@ import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test } from "vitest";
 import { currentActingContext } from "../session/acting-context";
 import { createTurnServer } from "./server";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 const servers: Server[] = [];
 afterEach(() =>
@@ -81,7 +81,7 @@ test("capacity rejects a concurrent turn and frees the slot after terminal", asy
     markStarted = resolve;
   });
   const store = new LocalDirStore(mkdtempSync(join(tmpdir(), "pool-store-")));
-  const runTurn: typeof runPiTurn = async () => {
+  const runTurn: TurnRunner = async () => {
     markStarted?.();
     await gate;
     return {};
@@ -104,7 +104,7 @@ test("capacity rejects a concurrent turn and frees the slot after terminal", asy
 test("a thrown turn never wedges admission", async () => {
   let calls = 0;
   const store = new LocalDirStore(mkdtempSync(join(tmpdir(), "pool-store-")));
-  const runTurn: typeof runPiTurn = async () => {
+  const runTurn: TurnRunner = async () => {
     calls += 1;
     if (calls === 1) throw new Error("boom");
     return {};
@@ -200,7 +200,7 @@ test("a fenced heartbeat skips syncBack and emits claim_fenced", async () => {
   );
   mkdirSync(dirname(settings), { recursive: true });
   writeFileSync(settings, "{}");
-  const runTurn: typeof runPiTurn = async (layout) => {
+  const runTurn: TurnRunner = async (layout) => {
     await writeFile(join(layout.workspaceDir, "must-not-sync.txt"), "nope");
     await new Promise((resolve) => setTimeout(resolve, 20));
     return {};
@@ -229,7 +229,7 @@ test("a fenced heartbeat skips syncBack and emits claim_fenced", async () => {
 test("the supplied turn id and acting identity reach the turn session", async () => {
   let seen: unknown;
   const store = new LocalDirStore(mkdtempSync(join(tmpdir(), "pool-store-")));
-  const runTurn: typeof runPiTurn = async (_root, turn) => {
+  const runTurn: TurnRunner = async (_root, turn) => {
     seen = {
       turnId: turn.turnId,
       author: turn.author,
@@ -299,7 +299,7 @@ test("a claimed turn outlives a dropped client connection and still syncs", asyn
   const done = new Promise<void>((resolve) => {
     finished = resolve;
   });
-  const runTurn: typeof runPiTurn = async (layout, turn) => {
+  const runTurn: TurnRunner = async (layout, turn) => {
     // Give the client time to hang up, then keep working as if nothing
     // happened: the claim, not the socket, owns this turn.
     await new Promise((resolve) => setTimeout(resolve, 150));
@@ -344,7 +344,7 @@ test("a fenced heartbeat aborts the running claimed turn", async () => {
   });
   const heartbeatBase = await listen(heartbeat);
   const store = new LocalDirStore(seedStandingAgent());
-  const runTurn: typeof runPiTurn = async (_layout, turn) => {
+  const runTurn: TurnRunner = async (_layout, turn) => {
     status = 409;
     await new Promise<void>((resolve) => {
       turn.signal?.addEventListener("abort", () => resolve(), { once: true });

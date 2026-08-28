@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test, vi } from "vitest";
 import { createTurnServer } from "./server";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 const servers: Server[] = [];
 afterEach(() =>
@@ -89,7 +89,7 @@ test.each([
   const prefixRoot = join(storeRoot, "ws", "w1", "agent-1");
   await seed(prefixRoot, `${dataRel}/settings.json`, "{}");
   await seed(prefixRoot, `${dataRel}/conversations/c1.json`, '{"before":1}');
-  const runTurn: typeof runPiTurn = async (layout) => {
+  const runTurn: TurnRunner = async (layout) => {
     await seed(layout.dataDir, "conversations/c1.json", '{"after":1}');
     await seed(layout.dataDir, "sessions/c1/state.json", "session");
     await seed(
@@ -169,7 +169,7 @@ test("an unclaimed turn retains full sync-back", async () => {
   const storeRoot = await mkdtemp(join(tmpdir(), "turn-store-"));
   const prefixRoot = join(storeRoot, "ws", "w1", "agent-1");
   await seed(prefixRoot, "data/settings.json", "{}");
-  const runTurn: typeof runPiTurn = async (layout) => {
+  const runTurn: TurnRunner = async (layout) => {
     await seed(layout.workspaceDir, "result.txt", "workspace");
     await seed(layout.dataDir, "sessions/c1/state.json", "session");
     return {};
@@ -201,7 +201,7 @@ test("shadow resolves a standing layout and reports hydrated objects", async () 
   const storeRoot = await mkdtemp(join(tmpdir(), "turn-store-"));
   const prefixRoot = join(storeRoot, "ws", "w1", "agent-1");
   await seed(prefixRoot, "workspaces/W/A/.houston/runtime/settings.json", "{}");
-  const runTurn = vi.fn<typeof runPiTurn>();
+  const runTurn = vi.fn<TurnRunner>();
   const base = await listen(
     createTurnServer({
       store: new LocalDirStore(storeRoot),
@@ -218,7 +218,7 @@ test("shadow resolves a standing layout and reports hydrated objects", async () 
 
 test("a claimed turn on an EMPTY prefix is layout_unexpected, never a seeded cloudrun tree", async () => {
   const storeRoot = await mkdtemp(join(tmpdir(), "turn-store-"));
-  const runTurn = vi.fn<typeof runPiTurn>();
+  const runTurn = vi.fn<TurnRunner>();
   const base = await listen(
     createTurnServer({
       store: new LocalDirStore(storeRoot),
@@ -240,7 +240,7 @@ test("a claimed turn on an EMPTY prefix is layout_unexpected, never a seeded clo
 
 test("an unclaimed turn on an EMPTY prefix still starts as a fresh cloudrun agent", async () => {
   const storeRoot = await mkdtemp(join(tmpdir(), "turn-store-"));
-  const runTurn = vi.fn<typeof runPiTurn>(async () => ({}));
+  const runTurn = vi.fn<TurnRunner>(async () => ({}));
   const base = await listen(
     createTurnServer({
       store: new LocalDirStore(storeRoot),

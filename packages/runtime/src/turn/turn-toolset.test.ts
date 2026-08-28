@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import { toolNamesForMode } from "../session/tool-selection";
-import type { PiTurnRequest } from "./turn-session";
+import type { TurnSessionRequest } from "./turn-session";
 import { buildTurnHostTools, buildTurnToolSelection } from "./turn-toolset";
 
-const base = (scopes?: PiTurnRequest["grant"]): PiTurnRequest => ({
+const base = (scopes?: TurnSessionRequest["grant"]): TurnSessionRequest => ({
   conversationId: "c1",
   text: "hello",
   provider: "openai",

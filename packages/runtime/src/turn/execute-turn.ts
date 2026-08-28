@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -9,13 +9,13 @@ import { runWithActingContext } from "../session/acting-context";
 import { releaseConversation, runWithConversationScope } from "../session/bus";
 import { openSSE } from "../transport/sse";
 import { startClaimHeartbeat } from "./claim-heartbeat";
-import { piTurnRequest } from "./pi-turn-request";
 import type { TurnServerDeps } from "./server-types";
 import { finishTurnDurability } from "./turn-durability";
 import { prepareTurnFilesystem } from "./turn-filesystem";
 import { ownConversationOnly } from "./turn-hot-set";
 import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
+import { turnSessionRequest } from "./turn-request";
 import {
   prepareRoutineTurn,
   type RoutinePhase,
@@ -24,7 +24,7 @@ import {
 } from "./turn-routine";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { makeTurnSandboxFetch } from "./turn-sandbox";
-import { runPiTurn, type TurnOutcome } from "./turn-session";
+import { runTurn, type TurnOutcome } from "./turn-session";
 import { poolIdentity, resolveTurnStore } from "./turn-store";
 import { turnSetupErrorFrame, turnTerminalFrame } from "./turn-terminal";
 import { createTurnTranscript } from "./turn-transcript";
@@ -39,6 +39,10 @@ export async function executeTurn(
   timings: Record<string, number>,
 ): Promise<void> {
   const root = await mkdtemp(join(tmpdir(), "houston-turn-"));
+  await Promise.all([
+    mkdir(join(root, "home"), { recursive: true }),
+    mkdir(join(root, "claude-credstore"), { recursive: true }),
+  ]);
   timings.t_tmpdir = performance.now();
   const scope = `${turn.workspaceId}/${turn.agentId}`;
   const abort = new AbortController();
@@ -220,7 +224,7 @@ export async function executeTurn(
           error: "No provider connected. Connect your subscription first.",
         };
       } else {
-        const run = deps.runTurn ?? runPiTurn;
+        const run = deps.runTurn ?? runTurn;
         try {
           outcome = await runWithConversationScope(scope, () =>
             runWithActingContext(
@@ -231,8 +235,8 @@ export async function executeTurn(
               },
               () =>
                 run(
-                  filesystem,
-                  piTurnRequest(
+                  { ...filesystem, turnRoot: root },
+                  turnSessionRequest(
                     effectiveTurn,
                     turnId,
                     emit,

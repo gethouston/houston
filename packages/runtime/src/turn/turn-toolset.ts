@@ -9,9 +9,9 @@ import { makeSkillDirectoryTools } from "../session/tools/find-skills";
 import { makeIntegrationTools } from "../session/tools/integrations";
 import { makeSaveLearningTool } from "../session/tools/save-learning";
 import { makeSaveRoutineTool } from "../session/tools/save-routine";
-import type { PiTurnRequest } from "./turn-session";
+import type { TurnSessionRequest } from "./turn-session";
 
-function capabilities(turn: PiTurnRequest) {
+function capabilities(turn: TurnSessionRequest) {
   const scopes = new Set(turn.grant?.scopes ?? []);
   const callable = turn.sandbox !== undefined;
   return {
@@ -22,7 +22,7 @@ function capabilities(turn: PiTurnRequest) {
 
 /** Build the turn's name allowlist from non-secret grant scopes. */
 export function buildTurnToolSelection(
-  turn: PiTurnRequest,
+  turn: TurnSessionRequest,
   codeExecution: CodeExecutionMode,
 ): ToolSelection {
   const enabled = capabilities(turn);
@@ -38,7 +38,7 @@ export function buildTurnToolSelection(
 
 /** Register only the host-proxying tool objects admitted by grant scopes. */
 export function buildTurnHostTools(
-  turn: PiTurnRequest,
+  turn: TurnSessionRequest,
 ): PiBackendDeps["customTools"] {
   if (!turn.sandbox) return [];
   const enabled = capabilities(turn);

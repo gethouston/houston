@@ -11,7 +11,11 @@ import {
   type ClaudeToken,
   createClaudeBackend,
 } from "./backend";
-import { claudeCredentialsFile, claudeLoginConfigDir } from "./paths";
+import {
+  claudeCredentialsFile,
+  claudeLoginConfigDir,
+  serverClaudeLayout,
+} from "./paths";
 import { anthropicCredentialStorageDir } from "./scope-guard";
 import type { ClaudeQuery } from "./session";
 import { titleWithClaude } from "./title";
@@ -145,7 +149,7 @@ function backendDeps(): ClaudeBackendDeps {
   const workspaceDir = mkdtempSync(join(tmpdir(), "claude-401-ws-"));
   return {
     workspaceDir,
-    dataDir,
+    layout: serverClaudeLayout(dataDir),
     readToken: () => memberToken,
     toolSelection: { toolNames: [], includeRunCode: false },
     systemPrompt: "houston",
@@ -273,12 +277,18 @@ test("a non-absolute credential store is refused (it would resolve inside the wo
   // The CLI resolves a relative value against the subprocess cwd — the agent's
   // workspace — and an EMPTY one against `~/.claude`, the machine user's PERSONAL
   // credential (trap #2). Both are worse than the leak this closes.
-  expect(() => buildClaudeEnv("/cfg", memberToken, "auth-users/x")).toThrow(
-    /must be an absolute path/,
-  );
-  expect(() => buildClaudeEnv("/cfg", memberToken, "")).toThrow(
-    /must be an absolute path/,
-  );
+  expect(() =>
+    buildClaudeEnv(memberToken, {
+      configDir: "/cfg",
+      credentialStorageDir: "auth-users/x",
+    }),
+  ).toThrow(/must be an absolute path/);
+  expect(() =>
+    buildClaudeEnv(memberToken, {
+      configDir: "/cfg",
+      credentialStorageDir: "",
+    }),
+  ).toThrow(/must be an absolute path/);
 });
 
 test("an ambient CLAUDE_SECURESTORAGE_CONFIG_DIR never reaches the subprocess", async () => {

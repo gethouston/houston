@@ -5,10 +5,10 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { claudeBaseDir, claudeProjectsDir, claudeSessionsFile } from "./paths";
 
 // NOTE on isolation: `sessions.json` (the conversationId → session_id map) lives
 // per-agent under `dataDir`, but the transcript `projects` tree is SHARED (it
@@ -58,13 +58,15 @@ export interface SessionsStore {
  * `resolveResume` can relocate a transcript stranded under a stale cwd slug;
  * without it (e.g. the purge-only cleanup path) relocation is skipped.
  */
-export function createSessionsStore(
-  dataDir: string,
-  cwd?: string,
-): SessionsStore {
-  const baseDir = claudeBaseDir(dataDir);
-  const filePath = claudeSessionsFile(dataDir);
-  const projectsDir = claudeProjectsDir();
+export function createSessionsStore(input: {
+  configDir: string;
+  sessionsFile: string;
+  cwd?: string;
+}): SessionsStore {
+  const baseDir = dirname(input.sessionsFile);
+  const filePath = input.sessionsFile;
+  const projectsDir = join(input.configDir, "projects");
+  const { cwd } = input;
   const currentSlugDir = cwd
     ? join(projectsDir, sdkProjectSlug(cwd))
     : undefined;
@@ -167,12 +169,17 @@ function locateTranscript(
   if (!existsSync(projectsDir)) return undefined;
   const file = `${sessionId}.jsonl`;
   const top = join(projectsDir, file);
-  if (existsSync(top)) return top;
+  const candidates = existsSync(top) ? [top] : [];
   for (const entry of readdirSync(projectsDir)) {
     const nested = join(projectsDir, entry, file);
-    if (existsSync(nested)) return nested;
+    if (existsSync(nested)) candidates.push(nested);
   }
-  return undefined;
+  return candidates
+    .map((path) => ({ path, mtimeMs: statSync(path).mtimeMs }))
+    .sort(
+      (left, right) =>
+        right.mtimeMs - left.mtimeMs || left.path.localeCompare(right.path),
+    )[0]?.path;
 }
 
 /**

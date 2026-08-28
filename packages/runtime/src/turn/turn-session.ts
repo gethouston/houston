@@ -23,7 +23,8 @@ import {
   newUsedTokenCapture,
   runWithUsedTokenCapture,
 } from "../auth/used-token";
-import { createPiBackend } from "../backends/pi/backend";
+import type { ClaudeBackendDeps } from "../backends/claude/backend";
+import type { HarnessBackend } from "../backends/types";
 import { config } from "../config";
 import { framePrompt, type MessageAuthor } from "../session/attribution";
 import {
@@ -36,12 +37,13 @@ import {
   planReadyFallback,
   runWithInteractionCapture,
 } from "../session/interaction";
+import {
+  renderReplayPreamble,
+  replayCharBudget,
+} from "../session/replay-transcript";
+import { SYSTEM_PROMPT } from "../session/resource-loader";
 import { turnCodeExecutionMode } from "../session/tool-selection";
-import { makeAskUserTool } from "../session/tools/ask-user";
-import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
-import { makePlanReadyTool } from "../session/tools/plan-ready";
-import { makePoolBashTool } from "../session/tools/pool-bash";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { ProvidedContext } from "../session/workspace-context";
@@ -50,8 +52,15 @@ import {
   appendUserMessageAt,
   loadConversation,
 } from "../store/conversation-file";
+import {
+  createTurnBackend,
+  resolveTurnClaudeResume,
+  type TurnBackendDeps,
+  TurnBackendProviderError,
+} from "./turn-backend";
+import { readTurnHarness, writeTurnHarness } from "./turn-harness-state";
 import { createTurnModelRuntime } from "./turn-runtime";
-import { buildTurnHostTools, buildTurnToolSelection } from "./turn-toolset";
+import { buildTurnToolSelection } from "./turn-toolset";
 import type { TurnGrantScope } from "./types";
 
 /**
@@ -82,7 +91,7 @@ export interface TurnModelPin {
 }
 
 /** Everything one pi turn needs (the per-turn server assembles it per request). */
-export interface PiTurnRequest {
+export interface TurnSessionRequest {
   conversationId: string;
   text: string;
   provider: string;
@@ -125,14 +134,21 @@ export interface PiTurnRequest {
   sandbox?: { call: SandboxFetch };
 }
 
-export interface PiTurnDirectories {
+export interface TurnDirectories {
   workspaceDir: string;
   dataDir: string;
+  turnRoot: string;
 }
 
-export async function runPiTurn(
-  directories: PiTurnDirectories,
-  turn: PiTurnRequest,
+export interface RunTurnDeps {
+  claudeSdk?: ClaudeBackendDeps["sdk"];
+  createBackend?: (provider: string, deps: TurnBackendDeps) => HarnessBackend;
+}
+
+export async function runTurn(
+  directories: TurnDirectories,
+  turn: TurnSessionRequest,
+  deps: RunTurnDeps = {},
 ): Promise<TurnOutcome> {
   const {
     conversationId,
@@ -151,8 +167,10 @@ export async function runPiTurn(
   const { workspaceDir, dataDir } = directories;
   const conversationsDir = join(dataDir, "conversations");
 
+  const canonicalMessages =
+    loadConversation(conversationsDir, conversationId)?.messages ?? [];
   const priorAuthors = author
-    ? (loadConversation(conversationsDir, conversationId)?.messages ?? [])
+    ? canonicalMessages
         .filter((message) => message.role === "user")
         .map((message) => message.author)
     : [];
@@ -241,39 +259,43 @@ export async function runPiTurn(
       pin?.effort ??
       (m.reasoning === true ? DEFAULT_REASONING_EFFORT : undefined);
     const thinkingLevel = toThinkingLevel(effort);
-    // Per-request pi backend rooted at the throwaway dirs. Same factory the
-    // long-lived server uses (backends/pi) — here nothing survives the request:
-    // auth, registry, tools, and session are all per-turn. Bash reaches a turn
-    // only on a single-use worker (turnCodeExecutionMode); a shared multi-turn
-    // worker never sees it.
-    const backend = createPiBackend({
-      workspaceDir,
-      dataDir,
+    const backend = (deps.createBackend ?? createTurnBackend)(provider, {
+      directories,
+      turn,
       modelRuntime,
-      tools: toolSelection.toolNames,
-      customTools: [
-        ...makeClampedFileTools(workspaceDir, {
-          sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
-        }),
-        // ask_user is available in every mode (holds no credential); its name is
-        // already in toolSelection.toolNames.
-        makeAskUserTool(),
-        // plan_ready is registered always but name-gated to Plan mode by
-        // toolNamesForMode (harmless in execute/auto — pi exposes it only when
-        // its name is in the mode's allowlist).
-        makePlanReadyTool(),
-        ...(codeSandbox ? [codeSandbox] : []),
-        ...buildTurnHostTools(turn),
-        // When local bash is enabled (single-use pool worker), shadow pi's
-        // built-in bash with one whose child env is scrubbed to a non-secret
-        // allowlist — pi's default copies process.env, which here carries the
-        // pool worker token and store secrets. Same shadow-by-name mechanism
-        // as the clamped file tools.
-        ...(toolSelection.toolNames.includes("bash")
-          ? [makePoolBashTool(workspaceDir)]
-          : []),
-      ],
+      toolSelection,
+      codeSandbox,
+      systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
+      sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
+      claudeSdk: deps.claudeSdk,
     });
+    const harness = backend.id === "anthropic" ? "claude" : "pi";
+    const priorHarness = readTurnHarness(dataDir, conversationId);
+    const switchedHarness =
+      priorHarness !== undefined && priorHarness !== harness;
+    writeTurnHarness(dataDir, conversationId, harness);
+    const claudeResume =
+      harness === "claude" && !switchedHarness
+        ? resolveTurnClaudeResume(directories, conversationId)
+        : undefined;
+    const replay =
+      canonicalMessages.length > 0 &&
+      (switchedHarness || (harness === "claude" && !claudeResume))
+        ? renderReplayPreamble(
+            canonicalMessages,
+            turnId,
+            replayCharBudget(model.contextWindow),
+          )
+        : null;
+    const retryReplay =
+      harness === "claude" && canonicalMessages.length > 0
+        ? (replay ??
+          renderReplayPreamble(
+            canonicalMessages,
+            turnId,
+            replayCharBudget(model.contextWindow),
+          ))
+        : null;
     const session = await backend.createSession({
       conversationId,
       model,
@@ -288,6 +310,10 @@ export async function runPiTurn(
       // only blocking tool present (integrations are off), so an auto turn here
       // simply drops it.
       ...(mode ? { mode } : {}),
+      ...(switchedHarness ? { fresh: true } : {}),
+      ...(retryReplay?.text
+        ? { freshRetryPromptPrefix: retryReplay.text }
+        : {}),
     });
 
     // Snapshot the hydrated workspace so the turn's created/modified files can
@@ -310,7 +336,9 @@ export async function runPiTurn(
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
         if (t) t.isError = wire.data.isError;
-      } else if (wire.type === "provider_error") providerError = wire.data;
+      } else if (wire.type === "provider_error") {
+        providerError = wire.data;
+      }
       emit(wire);
     });
     const onAbort = () => void session.abort();
@@ -324,7 +352,9 @@ export async function runPiTurn(
       // (pi/wire.ts) reads THIS turn's seeded token when it reports.
       await runWithInteractionCapture(interaction, () =>
         runWithUsedTokenCapture(usedTokens, () =>
-          session.prompt(framePrompt(text, author, priorAuthors)),
+          session.prompt(
+            (replay?.text ?? "") + framePrompt(text, author, priorAuthors),
+          ),
         ),
       );
     } finally {
@@ -417,11 +447,14 @@ export async function runPiTurn(
     // survives a reload; returning `{}` keeps the per-turn server from
     // stacking a second, generic error frame on top of it.
     if (!providerError) {
-      const thrown = classifyProviderError({
-        provider,
-        model: pin?.model ?? null,
-        message,
-      });
+      const thrown =
+        err instanceof TurnBackendProviderError
+          ? err.providerError
+          : classifyProviderError({
+              provider,
+              model: pin?.model ?? null,
+              message,
+            });
       // The streamed path logged when it classified; a THROWN failure is
       // invisible to Sentry unless this catch logs it too (HOU-1156;
       // mirrors exec-turn).
@@ -472,3 +505,9 @@ export async function runPiTurn(
     return { error: message };
   }
 }
+
+/** Injectable pooled-turn execution contract used by the HTTP server. */
+export type TurnRunner = (
+  directories: TurnDirectories,
+  turn: TurnSessionRequest,
+) => Promise<TurnOutcome>;
