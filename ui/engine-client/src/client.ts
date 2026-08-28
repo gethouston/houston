@@ -538,7 +538,9 @@ export class HoustonClient {
    * the workspace record, so every client of this engine shares the value.
    */
   setWorkspaceLocale(id: string, locale: string | null): Promise<Workspace> {
-    return this.request("PATCH", `/workspaces/${this.seg(id)}/locale`, {
+    // The host's workspace-settings route is `PATCH /workspaces/:id` (locale is
+    // the one mutable field); a `/locale` suffix 404s, so the pick never lands.
+    return this.request("PATCH", `/workspaces/${this.seg(id)}`, {
       locale,
     });
   }

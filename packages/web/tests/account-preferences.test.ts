@@ -185,3 +185,23 @@ test("locale, legal_acceptance and the migration flag are account keys", async (
     "http://host/v1/preferences/migration_reconnect_dismissed",
   ]);
 });
+
+// PRODUCT-1564: the Settings language pick goes through `setWorkspaceLocale`.
+// The adapter used to return a synthetic workspace WITHOUT persisting anything,
+// so the language reverted to the engine's stored preference on the next boot.
+// The pick must land on the account `locale` preference — the key the boot
+// path (`useLocalePreference`) reads back.
+test("setWorkspaceLocale persists the pick as the account locale preference", async () => {
+  stubFetch(json(200, { value: "pt" }));
+
+  const ws = await client(true).setWorkspaceLocale("default", "pt");
+
+  expect(ws.locale).toBe("pt");
+  expect(calls.filter((c) => c.url.includes("/v1/preferences/"))).toEqual([
+    {
+      url: "http://host/v1/preferences/locale",
+      method: "PUT",
+      body: JSON.stringify({ value: "pt" }),
+    },
+  ]);
+});
