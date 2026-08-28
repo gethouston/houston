@@ -2,6 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { ABOUT_ME_VIEW_ID } from "../src/components/about-me/id.ts";
 import { ACADEMY_VIEW_ID } from "../src/components/academy/id.ts";
+import { AGENTS_HOME_VIEW_ID } from "../src/components/agents-home/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../src/components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../src/components/skills-view/id.ts";
@@ -32,6 +33,8 @@ describe("isTopLevelView", () => {
       INBOX_VIEW_ID,
       ABOUT_ME_VIEW_ID,
       ACADEMY_VIEW_ID,
+      // The mobile Agents tab's root screen.
+      AGENTS_HOME_VIEW_ID,
       SETTINGS_VIEW_ID,
       AI_HUB_VIEW_ID,
       INTEGRATIONS_VIEW_ID,
@@ -45,13 +48,13 @@ describe("isTopLevelView", () => {
     }
   });
 
-  it("is exactly those ten, and no settings section doubles as one", () => {
+  it("is exactly those eleven, and no settings section doubles as one", () => {
     // A Settings section is reached THROUGH `settings`, so no section id may
     // also resolve as a top-level view. Checking the live section list (rather
     // than retired string literals) keeps this failing if a future section is
     // wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 10);
+    strictEqual(TOP_LEVEL_VIEWS.size, 11);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }
@@ -283,6 +286,9 @@ describe("blockedTopLevelView", () => {
       INBOX_VIEW_ID,
       ABOUT_ME_VIEW_ID,
       ACADEMY_VIEW_ID,
+      // The phone's landing screen: a gate that could strand a user off it
+      // would strand them off the app.
+      AGENTS_HOME_VIEW_ID,
       SETTINGS_VIEW_ID,
       STORE_VIEW_ID,
       TEAM_VIEW_ID,

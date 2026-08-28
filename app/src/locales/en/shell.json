@@ -388,6 +388,22 @@
     "workspace": "Workspace",
     "yourTeams": "Your teams"
   },
+  "agentsHome": {
+    "title": "Agents",
+    "filterPlaceholder": "Filter agents",
+    "filterEmpty": "No agents match your search",
+    "noMissionsPreview": "No tasks yet",
+    "archived_one": "Archived ({{count}})",
+    "archived_other": "Archived ({{count}})",
+    "empty": {
+      "title": "No agents yet",
+      "description": "Create an agent to get started. Everything they work on shows up here."
+    },
+    "noMissions": {
+      "title": "No tasks yet",
+      "description": "Start a task with the compose button and it will show up here."
+    }
+  },
   "tabBar": {
     "agents": "Agents",
     "label": "Main navigation",

@@ -12,8 +12,9 @@
  *
  * Determinism rules for this suite live in ../README.md. In short: fixed
  * viewport, `animations: "disabled"` (config-wide), a small
- * `maxDiffPixelRatio`, and — because these screens carry no live clock or
- * streaming region — no masks are needed here.
+ * `maxDiffPixelRatio`. The board screens carry no live clock, so they need no
+ * masks; the phone screens (Agents home, the per-agent missions drill) render
+ * relative times against the wall clock and mask those spans.
  */
 import { expect, test } from "../support/fixtures";
 import { navRow } from "../support/team-nav";
@@ -45,15 +46,27 @@ test("board home — narrow", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 900 });
   await page.goto("/");
 
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  // Below the breakpoint boot lands on the Agents home; this baseline guards
+  // the BOARD's narrow layout, so open it through its tab.
+  await page
+    .getByTestId("mobile-tab-bar")
+    .getByRole("button", { name: "Tasks" })
+    .click();
+  await expect(
+    page
+      .locator("[data-screen-active='true']")
+      .getByText("Plan a trip to Tokyo"),
+  ).toBeVisible();
 
   await expect(page).toHaveScreenshot("board-narrow.png", { fullPage: true });
 });
 
 /**
  * Phone-width shell, both themes: the mobile chrome (top bar with hamburger +
- * compose, bottom tab bar with the needs-you badge) is a first-class surface
- * now, so it gets its own baselines at a phone viewport.
+ * compose, bottom tab bar with the needs-you badge) around the Agents home —
+ * the phone's landing screen. The rows carry a live relative-time label
+ * (the seed's timestamps are fixed but the wall clock is not), so those spans
+ * are masked rather than left to drift the baseline.
  */
 for (const theme of THEMES) {
   test(`mobile shell — ${theme}`, async ({ page }) => {
@@ -66,6 +79,32 @@ for (const theme of THEMES) {
 
     await expect(page).toHaveScreenshot(`mobile-shell-${theme}.png`, {
       fullPage: true,
+      mask: [page.locator("[data-relative-time]")],
+    });
+  });
+}
+
+/**
+ * The per-agent missions screen (PR 4 of the responsiveness overhaul): the
+ * drill one tap below the Agents home — back bar, agent masthead, and the
+ * board's sections as a phone list. Same relative-time mask as above.
+ */
+for (const theme of THEMES) {
+  test(`mobile agent missions — ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+
+    await page.getByTestId("agents-home-row").click();
+    const missions = page.getByTestId("agent-missions-screen");
+    await expect(missions.getByText("Plan a trip to Tokyo")).toBeVisible();
+    // Park the pointer: the drill click leaves it hovering a mission row, and
+    // a hover fill does not belong in the resting baseline.
+    await page.mouse.move(0, 0);
+    await pinTheme(page, theme);
+
+    await expect(page).toHaveScreenshot(`mobile-agent-missions-${theme}.png`, {
+      fullPage: true,
+      mask: [page.locator("[data-relative-time]")],
     });
   });
 }

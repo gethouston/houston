@@ -3,6 +3,22 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v71 - 2026-08-28
+
+The Agents tab gets its real home. The phone now lands on an Agents home
+screen: one two-line cell per agent, sorted by who needs attention first
+(missions waiting on the user, then running work, then recency), each cell
+carrying the same needs-you chip and running ring the rail draws, a preview of
+the most recently moved mission with its relative time, and a name filter for
+long rosters. Tapping an agent drills into a per-agent missions list -- the
+board's own sections (Needs you, Running, Done) as a phone list, with the
+archive folded behind a trailing count row -- and tapping a mission opens its
+chat full-screen, every step a navigation-stack level the hardware back button
+pops in order. Both screens read the same conversation sweep and per-agent
+summaries every existing badge surface reads, so nothing on them can disagree
+with the numbers that led the user there. Empty states are honest: no agents
+yet, no missions yet, and a filter that matched nobody each say so.
+
 ## v70 - 2026-08-28
 
 The phone gets a real shell. Below 768px a bottom tab bar holds the app's three

@@ -11,7 +11,7 @@ import {
 } from "../lib/nav-stack.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
-import { INBOX_VIEW_ID } from "../lib/top-level-views.ts";
+import { AGENTS_HOME_VIEW_ID, INBOX_VIEW_ID } from "../lib/top-level-views.ts";
 
 export interface ToastItem {
   id: string;
@@ -69,6 +69,12 @@ interface UIState {
   teamAgentFocus: boolean;
   /** Whether the team screen is inside the drilled Team Settings level. */
   teamSettingsFocus: boolean;
+  /**
+   * The agent the mobile Agents home screen is drilled into (`null` = the
+   * agent list). Part of every nav entry so the drill-in is a real place the
+   * back button pops; set only through {@link UIState.openAgentsHome}.
+   */
+  agentsHomeAgentId: string | null;
   activityPanelId: string | null;
   activityPanelForceOpen: boolean;
   claudeAvailable: boolean | null;
@@ -254,6 +260,20 @@ interface UIState {
       /** `reset` for the mobile tab bar; default `push`. */ nav?: NavMode;
     },
   ) => void;
+  /**
+   * Navigate to the mobile Agents home: the agent list (`null`) or one agent's
+   * missions screen. ONE call sets the view and the drill level together, so a
+   * caller can never land on the screen with a stale drill: the tab bar resets
+   * to the list, tapping an agent pushes its missions, its back bar retreats.
+   */
+  openAgentsHome: (
+    agentId: string | null,
+    opts?: {
+      /** `reset` for the mobile tab bar, `retreat` for the back bar; default
+       *  `push`. */
+      nav?: NavMode;
+    },
+  ) => void;
   setActivityPanelId: (
     id: string | null,
     options?: { forceOpen?: boolean },
@@ -359,6 +379,7 @@ const initialUIState = {
   teamAgentFilter: null,
   teamAgentFocus: false,
   teamSettingsFocus: false,
+  agentsHomeAgentId: null,
   // The single-entry boot stack; its root mirrors the initial view fields
   // above (pinned by app/tests/ui-store-nav.test.ts).
   ...initialNavState(),
@@ -430,6 +451,14 @@ export const useUIStore = create<UIState>()(
           navigated(
             s,
             { viewMode: "settings", settingsSection },
+            opts?.nav ?? "push",
+          ),
+        ),
+      openAgentsHome: (agentsHomeAgentId, opts) =>
+        set((s) =>
+          navigated(
+            s,
+            { viewMode: AGENTS_HOME_VIEW_ID, agentsHomeAgentId },
             opts?.nav ?? "push",
           ),
         ),

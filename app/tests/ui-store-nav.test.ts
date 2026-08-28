@@ -178,6 +178,35 @@ describe("navBack / navApplyHistory", () => {
     assert.equal(now.settingsSection, null);
   });
 
+  it("agents home drill-in pushes; the back bar's retreat pops it", () => {
+    // PRODUCT-1559: tapping an agent on the mobile Agents home pushes its
+    // missions screen as a real nav level, so hardware back pops the drill.
+    const s = useUIStore.getState();
+    s.openAgentsHome(null, { nav: "replace" });
+    s.openAgentsHome("agent-1");
+    let now = useUIStore.getState();
+    assert.equal(now.navIndex, 1);
+    assert.equal(now.agentsHomeAgentId, "agent-1");
+    assert.equal(now.navStack[1].agentsHomeAgentId, "agent-1");
+
+    useUIStore.getState().openAgentsHome(null, { nav: "retreat" });
+    now = useUIStore.getState();
+    assert.equal(now.navIndex, 0);
+    assert.equal(now.agentsHomeAgentId, null);
+  });
+
+  it("the Agents tab reset lands on the list, out of any drill", () => {
+    const s = useUIStore.getState();
+    s.openAgentsHome(null, { nav: "replace" });
+    s.openAgentsHome("agent-1");
+    useUIStore.getState().openAgentsHome(null, { nav: "reset" });
+    const now = useUIStore.getState();
+    assert.equal(now.navStack.length, 1);
+    assert.equal(now.navIndex, 0);
+    assert.equal(now.viewMode, "agents-home");
+    assert.equal(now.agentsHomeAgentId, null);
+  });
+
   it("reset returns the stack to the single boot entry", () => {
     const s = useUIStore.getState();
     s.setViewMode("skills");

@@ -284,3 +284,9 @@ components:
   mobile-tab-bar:
     status: implemented
     ref: "app/src/components/shell/mobile-tab-bar.tsx (tabs + NeedsYouChip badge over the agent activity rollup), rules in app/src/lib/mobile-tabs.ts with the tap side in app/src/lib/open-mobile-tab.ts (nav-stack reset mode); the compose control is app/src/components/shell/mobile-top-bar.tsx over lib/new-mission.ts"
+  agents-home:
+    status: implemented
+    ref: "app/src/components/agents-home/ (AgentsHomeView switching AgentsHomeList / AgentMissionsScreen on the ui store's agentsHomeAgentId nav level), rows over AgentSidebarIcon + NeedsYouChip, pure rules in agents-home-model.ts, tab root wiring in app/src/lib/open-mobile-tab.ts and the phone boot landing in use-workspace-view-guards.ts"
+  agent-missions-list:
+    status: implemented
+    ref: "app/src/components/agents-home/agent-missions-screen.tsx (BackBarScreen + sectioned AgentMissionRow lists over agentMissionSections, the board's missionColumnIdForStatus mapping), chat push via lib/open-agent.ts openAgentBoard + the published activityPanelId"

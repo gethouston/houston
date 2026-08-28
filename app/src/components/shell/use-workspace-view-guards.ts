@@ -1,3 +1,4 @@
+import { useIsMobile } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTeams } from "../../hooks/use-teams";
 import { analytics } from "../../lib/analytics";
@@ -52,6 +53,11 @@ export function useWorkspaceViewGuards(gates: {
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const openTeamView = useUIStore((s) => s.openTeamView);
+  const openAgentsHome = useUIStore((s) => s.openAgentsHome);
+  // A structural fork, not a layout tweak: the PHONE's landing screen is the
+  // Agents home (the tab bar's landing tab), the desktop's is the home team's
+  // board. Width-based like every mobile decision.
+  const isMobile = useIsMobile();
   const activeTeamId = useUIStore((s) => s.activeTeamId);
   const workspaceId = useWorkspaceStore((s) => s.current?.id);
   const teams = useTeams();
@@ -71,9 +77,13 @@ export function useWorkspaceViewGuards(gates: {
     if (step.action === "open-home-team" && team !== null) {
       // A REDIRECT, not a place the user chose: replacing keeps the transient
       // boot Inbox off the nav stack, so browser back can't land on it.
-      openTeamView(team.id, "mission-control", { nav: "replace" });
+      // Same trigger on both breakpoints (the first team resolving is the
+      // "workspace is ready" signal), different landing: the phone opens on
+      // the Agents home, the desktop on the home team's board.
+      if (isMobile) openAgentsHome(null, { nav: "replace" });
+      else openTeamView(team.id, "mission-control", { nav: "replace" });
     }
-  }, [openTeamView, teams, viewMode, workspaceId]);
+  }, [isMobile, openAgentsHome, openTeamView, teams, viewMode, workspaceId]);
 
   useEffect(() => {
     // `homeTeam` directly rather than `openHome()`: this hook already holds the

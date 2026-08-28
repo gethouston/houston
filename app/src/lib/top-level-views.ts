@@ -33,6 +33,7 @@
  */
 import { ABOUT_ME_VIEW_ID } from "../components/about-me/id.ts";
 import { ACADEMY_VIEW_ID } from "../components/academy/id.ts";
+import { AGENTS_HOME_VIEW_ID } from "../components/agents-home/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
@@ -42,6 +43,7 @@ import { TEAM_VIEW_ID, type TeamSectionId } from "./teams-model.ts";
 export {
   ABOUT_ME_VIEW_ID,
   ACADEMY_VIEW_ID,
+  AGENTS_HOME_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
   ORGANIZATION_VIEW_ID,
   SKILLS_VIEW_ID,
@@ -57,6 +59,7 @@ export type TopLevelViewId =
   | typeof INBOX_VIEW_ID
   | typeof ABOUT_ME_VIEW_ID
   | typeof ACADEMY_VIEW_ID
+  | typeof AGENTS_HOME_VIEW_ID
   | typeof SETTINGS_VIEW_ID
   | typeof AI_HUB_VIEW_ID
   | typeof INTEGRATIONS_VIEW_ID
@@ -69,6 +72,7 @@ export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   INBOX_VIEW_ID,
   ABOUT_ME_VIEW_ID,
   ACADEMY_VIEW_ID,
+  AGENTS_HOME_VIEW_ID,
   SETTINGS_VIEW_ID,
   AI_HUB_VIEW_ID,
   INTEGRATIONS_VIEW_ID,

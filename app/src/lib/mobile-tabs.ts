@@ -21,9 +21,10 @@ export type MobileTabId = "agents" | "mission-control" | "settings";
 /**
  * Which tab the current location belongs to. Settings is its own screen; a
  * team board NOT narrowed to one agent is Mission Control; everything else is
- * Agents — the landing tab hosts the agent-focused board (until the dedicated
- * Agents home screen lands) and absorbs the drawer's long tail (Inbox, Store,
- * Skills, a team's Routines/Files, ...), so no location leaves the bar dark.
+ * Agents — the landing tab roots on the Agents home screen (the agent list
+ * and its per-agent drill-ins) and absorbs the drawer's long tail (Inbox,
+ * Store, Skills, a team's Routines/Files, ...), so no location leaves the bar
+ * dark.
  */
 export function activeMobileTab(ui: {
   viewMode: string;

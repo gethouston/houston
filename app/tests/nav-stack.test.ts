@@ -22,6 +22,7 @@ const at = (viewMode: string, panelOpen = false): NavSourceFields => ({
   teamAgentFilter: null,
   teamAgentFocus: false,
   teamSettingsFocus: false,
+  agentsHomeAgentId: null,
   missionPanelOpen: panelOpen,
 });
 

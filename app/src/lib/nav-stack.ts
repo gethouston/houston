@@ -29,6 +29,12 @@ export interface NavEntry {
   teamAgentFocus: boolean;
   teamSettingsFocus: boolean;
   /**
+   * The agent the mobile Agents home is drilled into (`null` = the agent
+   * list). Meaningful only while `viewMode` is the Agents home; it still
+   * snapshots on every entry so back/forward restore the drill level.
+   */
+  agentsHomeAgentId: string | null;
+  /**
    * Whether the shell detail panel (the chat) is open over the view. A panel
    * level can be POPPED (back closes the chat) but not re-entered: the panel
    * is derived from a surface's live selection, which a popped entry no longer
@@ -71,6 +77,7 @@ export interface NavSourceFields {
   teamAgentFilter: string | null;
   teamAgentFocus: boolean;
   teamSettingsFocus: boolean;
+  agentsHomeAgentId: string | null;
   missionPanelOpen: boolean;
 }
 
@@ -83,6 +90,7 @@ export function navEntryOf(s: NavSourceFields): NavEntry {
     teamAgentFilter: s.teamAgentFilter,
     teamAgentFocus: s.teamAgentFocus,
     teamSettingsFocus: s.teamSettingsFocus,
+    agentsHomeAgentId: s.agentsHomeAgentId,
     panelOpen: s.missionPanelOpen,
   };
 }
@@ -96,6 +104,7 @@ export function sameNavEntry(a: NavEntry, b: NavEntry): boolean {
     a.teamAgentFilter === b.teamAgentFilter &&
     a.teamAgentFocus === b.teamAgentFocus &&
     a.teamSettingsFocus === b.teamSettingsFocus &&
+    a.agentsHomeAgentId === b.agentsHomeAgentId &&
     a.panelOpen === b.panelOpen
   );
 }
@@ -127,6 +136,7 @@ export function initialNavState(): NavState {
         teamAgentFilter: null,
         teamAgentFocus: false,
         teamSettingsFocus: false,
+        agentsHomeAgentId: null,
         missionPanelOpen: false,
       }),
     ],
