@@ -1,6 +1,6 @@
 import { appVersionHeader } from "../app-version";
 import { HoustonEngineError, SIGNED_OUT_ERROR } from "../client/errors";
-import { refreshLiveToken } from "../session-refresh";
+import { hasSessionRefresher, refreshLiveToken } from "../session-refresh";
 import { transientRetryFetch } from "./transient-retry";
 
 /**
@@ -68,8 +68,11 @@ const signedOutResponse = () =>
  * A `fetch` for gateway calls that keeps auth invisible across cloud restarts
  * (HOU-687): the bearer is read LIVE per attempt (never a pinned copy), and a
  * 401 triggers one single-flight session refresh and one replay with the fresh
- * token. A 401 that survives the refresh is returned as-is — a real sign-out
- * must surface, not spin. A refresh beaten TRANSIENTLY by the network (a
+ * token. A 401 that survives the refresh is returned as-is — a fresh bearer
+ * the gateway rejects is a real bug that must surface, not spin. A refresh
+ * that answers NULL in hosted mode means the session is terminally gone, and
+ * resolves to the same quiet synthetic signed-out 401 as the no-bearer case:
+ * signed-out is an expected state and the sign-in screen is its surface. A refresh beaten TRANSIENTLY by the network (a
  * sleep-wake reconnect still settling — HOU-1106) throws the transport-shaped
  * TypeError `refreshLiveToken` mints, exactly as if the request itself had
  * dropped: `transientRetryFetch` re-attempts reads (re-running the refresh
@@ -116,7 +119,21 @@ export function gatewayAuthFetch(
     const res = await send(bearer);
     if (res.status !== 401) return res;
     const fresh = await refreshLiveToken();
-    if (!fresh) return res;
+    // An installed refresher answering null in hosted mode is its terminal
+    // verdict: the session is gone (HOU-1106's three-valued contract) — the
+    // same expected lifecycle state as the no-bearer branch above. Answer with
+    // the quiet synthetic instead of the gateway's raw 401 so the burst of
+    // live queries caught holding the stale bearer doesn't file a Sentry
+    // report per query while the sign-in screen mounts (HOUSTON-APP-4WR).
+    // With NO refresher installed null only means "nobody to ask" (static
+    // tokens, tests, the pre-mount boot window), so the original 401 stands.
+    // A 401 that survives a SUCCESSFUL refresh also returns as-is below — a
+    // fresh bearer the gateway rejects is a real bug and must stay loud.
+    if (!fresh) {
+      return inControlPlaneMode() && hasSessionRefresher()
+        ? signedOutResponse()
+        : res;
+    }
     return send(fresh);
   };
 }

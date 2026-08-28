@@ -151,8 +151,20 @@ test("report_bug with no token yet still reaches the gateway after a refresh", a
   expect(calls.map((c) => bearer(c.init))).toEqual(["Bearer minted"]);
 });
 
-test("report_bug surfaces the gateway's reason when the refresh cannot save it", async () => {
+test("report_bug fails as quiet signed-out when the refresher declares the session gone", async () => {
+  // Refresher installed and answering null = terminal sign-out: the sign-in
+  // screen is the surface, so the failure carries the recognized signed_out
+  // marker instead of the gateway's raw reason (HOUSTON-APP-4WR).
   setCloudWindow({ token: "stale", refresh: async () => null });
+  stubFetch(json(401, { error: "session expired" }));
+
+  await expect(invoke("report_bug", { payload: {} })).rejects.toThrow(
+    "signed_out",
+  );
+});
+
+test("report_bug surfaces the gateway's reason when there is no refresher to consult", async () => {
+  setCloudWindow({ token: "stale" });
   stubFetch(json(401, { error: "session expired" }));
 
   await expect(invoke("report_bug", { payload: {} })).rejects.toThrow(
