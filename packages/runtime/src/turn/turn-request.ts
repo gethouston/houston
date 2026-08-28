@@ -10,6 +10,7 @@ export function turnSessionRequest(
   emit: (frame: WireFrame) => void,
   signal: AbortSignal,
   sandbox?: { call: SandboxFetch },
+  timings?: Record<string, number>,
 ): TurnSessionRequest {
   return {
     conversationId: turn.conversationId,
@@ -31,6 +32,7 @@ export function turnSessionRequest(
     author: turn.actingAs,
     ...(turn.grant ? { grant: { scopes: turn.grant.scopes } } : {}),
     ...(sandbox ? { sandbox } : {}),
+    ...(timings ? { timings } : {}),
     // Either context field present means "use these" (each defaults to ""),
     // mirroring the long-lived server's message-send contract.
     ...(turn.workspaceContext !== undefined || turn.userContext !== undefined

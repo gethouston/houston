@@ -132,6 +132,9 @@ export interface TurnSessionRequest {
   grant?: { scopes: TurnGrantScope[] };
   /** Turn-local routing closure; it owns all grant-bearing calls. */
   sandbox?: { call: SandboxFetch };
+  /** Shared phase-mark sink; the terminal frame reports it (values are
+   *  performance.now() marks, converted to deltas at emission). */
+  timings?: Record<string, number>;
 }
 
 export interface TurnDirectories {
@@ -315,6 +318,7 @@ export async function runTurn(
         ? { freshRetryPromptPrefix: retryReplay.text }
         : {}),
     });
+    if (turn.timings) turn.timings.t_backend_session = performance.now();
 
     // Snapshot the hydrated workspace so the turn's created/modified files can
     // be surfaced as a `file_changes` frame. The per-turn root is exclusive to
@@ -330,6 +334,10 @@ export async function runTurn(
     }
 
     const unsub = session.subscribe((wire: WireEvent) => {
+      // First provider-originated event = the honest first-token bound. Set
+      // once; the terminal frame reports it as a delta.
+      if (turn.timings && turn.timings.t_first_model_event === undefined)
+        turn.timings.t_first_model_event = performance.now();
       if (wire.type === "text") assistantText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
       else if (wire.type === "tool_start") tools.push({ name: wire.data.name });

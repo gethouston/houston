@@ -9,6 +9,18 @@ import type { TurnOutcome } from "./turn-session";
  * rides the error frame too: a provider failure after a durable tool write
  * still changed what other tabs show.
  */
+/** performance.now() marks → whole-ms deltas from the earliest mark. */
+function timingDeltas(
+  marks: Record<string, number> | undefined,
+): Record<string, number> | undefined {
+  const entries = Object.entries(marks ?? {});
+  if (entries.length === 0) return undefined;
+  const base = Math.min(...entries.map(([, v]) => v));
+  return Object.fromEntries(
+    entries.map(([k, v]) => [k.replace(/^t_/, ""), Math.round(v - base)]),
+  );
+}
+
 export function turnTerminalFrame(
   outcome: TurnOutcome,
   turnId: string,
@@ -16,8 +28,11 @@ export function turnTerminalFrame(
   transcriptSkipped?: "route_absent",
   activityDocSkipped?: "route_absent",
   changed: readonly string[] = [],
+  timings?: Record<string, number>,
 ): WireFrame {
+  const timingsMs = timingDeltas(timings);
   const fields = {
+    ...(timingsMs ? { timingsMs } : {}),
     ...(changed.length > 0 ? { changed } : {}),
     ...(poolWritesOutOfScope > 0 ? { poolWritesOutOfScope } : {}),
     ...(transcriptSkipped ? { transcriptSkipped } : {}),
