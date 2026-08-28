@@ -73,6 +73,7 @@ const { subscribe } = await import("./bus");
 const { createSessionsStore } = await import(
   "../backends/claude/sessions-store"
 );
+const { serverClaudeLayout } = await import("../backends/claude/paths");
 
 afterAll(() => vi.restoreAllMocks());
 
@@ -134,14 +135,16 @@ test("disposeConversation with deleteSessions purges the anthropic SDK session m
   // A conversation that ran on the Claude backend has a sessions.json mapping;
   // deleting the conversation must drop it too, not just pi's transcript dir.
   const dataDir = process.env.HOUSTON_DATA_DIR as string;
-  const store = createSessionsStore(dataDir);
+  const store = createSessionsStore(serverClaudeLayout(dataDir));
   store.setSessionId("conv-anthropic", "sess-xyz");
   expect(store.getSessionId("conv-anthropic")).toBe("sess-xyz");
 
   await disposeConversation("conv-anthropic", { deleteSessions: true });
 
   expect(
-    createSessionsStore(dataDir).getSessionId("conv-anthropic"),
+    createSessionsStore(serverClaudeLayout(dataDir)).getSessionId(
+      "conv-anthropic",
+    ),
   ).toBeUndefined();
 });
 

@@ -12,7 +12,7 @@ import {
 } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 /**
  * Lazy hot-set on pool ops: a sleeping agent's Files tab and one-file reads
@@ -31,7 +31,7 @@ async function listen(server: Server): Promise<string> {
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
-const noopTurn: typeof runPiTurn = async () => ({});
+const noopTurn: TurnRunner = async () => ({});
 const PREFIX = "ws/w1/agent-1";
 
 function countingStore(root: string): ObjectStore & { downloads: string[] } {

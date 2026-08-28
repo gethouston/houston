@@ -155,10 +155,22 @@ export function claimedTurnIncludes(
   const runs = turnRoutineRunsKey(workspaceRel);
   return (relativePath) =>
     relativePath === conversation ||
-    relativePath.startsWith(`${session}/`) ||
+    turnSessionScopeIncludes(session, relativePath) ||
     relativePath === activity ||
     relativePath === runs ||
     agentScopeIncludes(relativePath, workspaceRel);
+}
+
+/** Keep ordinary session state, but only durable files from the Claude CLI. */
+export function turnSessionScopeIncludes(
+  sessionRel: string,
+  relativePath: string,
+): boolean {
+  if (!relativePath.startsWith(`${sessionRel}/`)) return false;
+  const claudePrefix = `${sessionRel}/claude/`;
+  if (!relativePath.startsWith(claudePrefix)) return true;
+  const claudeRel = relativePath.slice(claudePrefix.length);
+  return claudeRel === "sessions.json" || claudeRel.startsWith("projects/");
 }
 
 /** Store-relative mission-board object granted to a claimed turn. */

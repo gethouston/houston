@@ -1,23 +1,23 @@
 import type { WireFrame } from "@houston/runtime-client";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
-import type { PiTurnRequest } from "./turn-session";
+import type { TurnSessionRequest } from "./turn-session";
 import type { TurnRequest } from "./types";
 
-/** Project the accepted envelope onto the pi turn the session runs. */
-export function piTurnRequest(
+/** Project the accepted envelope onto the provider-agnostic turn session. */
+export function turnSessionRequest(
   turn: TurnRequest,
   turnId: string,
   emit: (frame: WireFrame) => void,
   signal: AbortSignal,
   sandbox?: { call: SandboxFetch },
-): PiTurnRequest {
+): TurnSessionRequest {
   return {
     conversationId: turn.conversationId,
     text: turn.text,
     // The turn's PIN outranks the attached credential: a dispatcher that
     // serves a different provider's credential must fail as the PINNED
     // provider's auth error, never silently run (and bill) the turn on a
-    // provider the user did not pick (PRODUCT-1515). Legacy dispatches carry
+    // provider the user did not pick. Legacy dispatches carry
     // no pin, so the credential's provider stays the selection there.
     provider: turn.provider || turn.credential?.provider || "",
     emit,

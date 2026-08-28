@@ -8,7 +8,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { claudeProjectsDir } from "./paths";
+import { claudeProjectsDir, serverClaudeLayout } from "./paths";
 import { createSessionsStore } from "./sessions-store";
 
 // The transcript `projects` tree is SHARED (under CLAUDE_CONFIG_DIR =
@@ -30,6 +30,13 @@ function dataDir(): string {
   return mkdtempSync(join(tmpdir(), "claude-data-"));
 }
 
+function sessionsStore(dataDir: string, cwd?: string) {
+  return createSessionsStore({
+    ...serverClaudeLayout(dataDir),
+    ...(cwd ? { cwd } : {}),
+  });
+}
+
 /** Write a fake SDK transcript for `sessionId` under the SHARED projects dir. */
 function writeTranscript(sessionId: string): void {
   const projects = join(claudeProjectsDir(), "proj");
@@ -39,20 +46,20 @@ function writeTranscript(sessionId: string): void {
 
 test("set / get round-trips and persists across store instances", () => {
   const dir = dataDir();
-  createSessionsStore(dir).setSessionId("c1", "sess-1");
-  expect(createSessionsStore(dir).getSessionId("c1")).toBe("sess-1");
+  sessionsStore(dir).setSessionId("c1", "sess-1");
+  expect(sessionsStore(dir).getSessionId("c1")).toBe("sess-1");
 });
 
 test("the sessions file is written with mode 0600", () => {
   const dir = dataDir();
-  createSessionsStore(dir).setSessionId("c1", "sess-1");
+  sessionsStore(dir).setSessionId("c1", "sess-1");
   const mode = statSync(join(dir, "backends", "claude", "sessions.json")).mode;
   expect(mode & 0o777).toBe(0o600);
 });
 
 test("remove forgets a mapping", () => {
   const dir = dataDir();
-  const store = createSessionsStore(dir);
+  const store = sessionsStore(dir);
   store.setSessionId("c1", "sess-1");
   store.remove("c1");
   expect(store.getSessionId("c1")).toBeUndefined();
@@ -60,20 +67,20 @@ test("remove forgets a mapping", () => {
 
 test("resolveResume returns the id when its transcript exists", () => {
   const dir = dataDir();
-  const store = createSessionsStore(dir);
+  const store = sessionsStore(dir);
   store.setSessionId("c1", "sess-1");
   writeTranscript("sess-1");
   expect(store.resolveResume("c1")).toBe("sess-1");
 });
 
 test("resolveResume with no mapping returns undefined", () => {
-  expect(createSessionsStore(dataDir()).resolveResume("nope")).toBeUndefined();
+  expect(sessionsStore(dataDir()).resolveResume("nope")).toBeUndefined();
 });
 
 test("a missing transcript warns, drops the mapping, and starts fresh", () => {
   const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const dir = dataDir();
-  const store = createSessionsStore(dir);
+  const store = sessionsStore(dir);
   store.setSessionId("c1", "sess-gone");
   // No transcript on disk → resume is impossible.
   expect(store.resolveResume("c1")).toBeUndefined();
@@ -84,7 +91,7 @@ test("a missing transcript warns, drops the mapping, and starts fresh", () => {
 
 test("purge drops the mapping AND deletes the transcript", () => {
   const dir = dataDir();
-  const store = createSessionsStore(dir);
+  const store = sessionsStore(dir);
   store.setSessionId("c1", "sess-1");
   writeTranscript("sess-1");
   const transcript = join(claudeProjectsDir(), "proj", "sess-1.jsonl");
@@ -99,14 +106,14 @@ test("purge drops the mapping AND deletes the transcript", () => {
 test("purge is a no-op for a conversation that never ran on this backend", () => {
   const dir = dataDir();
   // No mapping, no transcript, no config dir at all → must not throw.
-  expect(() => createSessionsStore(dir).purge("never")).not.toThrow();
+  expect(() => sessionsStore(dir).purge("never")).not.toThrow();
 });
 
 test("a corrupt sessions.json degrades to empty rather than throwing", () => {
   const dir = dataDir();
   mkdirSync(join(dir, "backends", "claude"), { recursive: true });
   writeFileSync(join(dir, "backends", "claude", "sessions.json"), "{not json");
-  expect(createSessionsStore(dir).getSessionId("c1")).toBeUndefined();
+  expect(sessionsStore(dir).getSessionId("c1")).toBeUndefined();
 });
 
 test("a transcript stranded under a stale cwd slug is relocated so the SDK can resume it (HOU-892)", () => {
@@ -115,7 +122,7 @@ test("a transcript stranded under a stale cwd slug is relocated so the SDK can r
   // must move it into the CURRENT cwd's slug dir — preserving the conversation —
   // rather than declaring it resumable and letting the SDK reject the id.
   const cwd = "/ws/Personal/new name";
-  const store = createSessionsStore(dataDir(), cwd);
+  const store = sessionsStore(dataDir(), cwd);
   store.setSessionId("c1", "sess-1");
   writeTranscript("sess-1"); // lands under the unrelated "proj" slug dir
 
@@ -133,7 +140,7 @@ test("a transcript stranded under a stale cwd slug is relocated so the SDK can r
 
 test("a transcript already under the current cwd slug is returned without moving", () => {
   const cwd = "/ws/Personal/agent";
-  const store = createSessionsStore(dataDir(), cwd);
+  const store = sessionsStore(dataDir(), cwd);
   store.setSessionId("c1", "sess-1");
   const slugDir = join(claudeProjectsDir(), "-ws-Personal-agent");
   mkdirSync(slugDir, { recursive: true });
@@ -144,7 +151,7 @@ test("a transcript already under the current cwd slug is returned without moving
 });
 
 test("without a cwd (purge-only store) resolveResume never relocates", () => {
-  const store = createSessionsStore(dataDir());
+  const store = sessionsStore(dataDir());
   store.setSessionId("c1", "sess-1");
   writeTranscript("sess-1");
   expect(store.resolveResume("c1")).toBe("sess-1");
@@ -157,8 +164,8 @@ test("without a cwd (purge-only store) resolveResume never relocates", () => {
 test("two agents' transcripts under the shared projects dir don't collide", () => {
   // Different per-agent data dirs, DIFFERENT session ids → each resolves only
   // its own transcript even though the projects tree is shared.
-  const a = createSessionsStore(dataDir());
-  const b = createSessionsStore(dataDir());
+  const a = sessionsStore(dataDir());
+  const b = sessionsStore(dataDir());
   a.setSessionId("c", "sess-a");
   b.setSessionId("c", "sess-b");
   writeTranscript("sess-a");

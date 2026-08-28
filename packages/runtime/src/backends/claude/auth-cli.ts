@@ -78,7 +78,9 @@ export function readProbeOutcome(
  * `readProbeOutcome`.
  */
 export function spawnStatusProbe(): Promise<ProbeAnswer> {
-  const env = buildClaudeEnv(claudeLoginConfigDir(), undefined);
+  const env = buildClaudeEnv(undefined, {
+    configDir: claudeLoginConfigDir(),
+  });
   return new Promise<ProbeAnswer>((resolve, reject) => {
     execFile(
       claudeBinary(),
@@ -102,7 +104,9 @@ export function spawnStatusProbe(): Promise<ProbeAnswer> {
  * is no bundled binary to log out with, and nothing was ever cached through it.
  */
 export function spawnClaudeLogout(): Promise<void> {
-  const env = buildClaudeEnv(claudeLoginConfigDir(), undefined);
+  const env = buildClaudeEnv(undefined, {
+    configDir: claudeLoginConfigDir(),
+  });
   return new Promise<void>((resolve, reject) => {
     execFile(
       claudeBinary(),

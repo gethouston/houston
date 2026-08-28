@@ -75,11 +75,10 @@ export async function oneShotWithClaude(
   const pathToClaudeCodeExecutable = resolveClaudeExecutable();
   const options: Options = {
     cwd: p.workspaceDir,
-    env: buildClaudeEnv(
-      claudeLoginConfigDir(),
-      token,
-      anthropicCredentialStorageDir(p.dataDir),
-    ),
+    env: buildClaudeEnv(token, {
+      configDir: claudeLoginConfigDir(),
+      credentialStorageDir: anthropicCredentialStorageDir(p.dataDir),
+    }),
     ...(pathToClaudeCodeExecutable ? { pathToClaudeCodeExecutable } : {}),
     settingSources: [],
     allowedTools: [],

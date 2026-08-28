@@ -16,7 +16,7 @@ import {
 } from "../auth/credential-health";
 import { currentActingContext } from "../session/acting-context";
 import { createTurnServer } from "./server";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 /**
  * The per-turn server contract, end to end against a real (local) object
@@ -39,8 +39,8 @@ function seed(rel: string, content: string) {
 
 // A fake pi turn: proves it sees the hydrated workspace + injected credential,
 // mutates the workspace, emits frames (stamped with the server-minted turnId,
-// like the real runPiTurn).
-const fakeTurn: typeof runPiTurn = async (layout, turn) => {
+// like the real runTurn).
+const fakeTurn: TurnRunner = async (layout, turn) => {
   const { text, provider, emit, turnId } = turn;
   const notes = await readFile(join(layout.workspaceDir, "notes.txt"), "utf8");
   const auth = await readFile(join(layout.dataDir, "auth.json"), "utf8");
@@ -131,7 +131,7 @@ test("one agent's auth failure survives another agent's clean turn", async () =>
   resetAuthFailures();
   let agentAFailureSurvived = false;
   let actingIdentityLeaked = false;
-  const probe: typeof runPiTurn = async (_root, turn) => {
+  const probe: TurnRunner = async (_root, turn) => {
     const acting = currentActingContext();
     actingIdentityLeaked ||= !!(acting?.actingAs || acting?.actingUser);
     if (turn.text === "fail") noteAuthFailure(turn.provider, "dead-token");
@@ -216,9 +216,9 @@ test("a sync failure surfaces as the turn's error — never a quiet done", async
 });
 
 test("a routine's model/effort pin reaches the pi turn", async () => {
-  // Capture the pin the server forwards to runPiTurn.
+  // Capture the pin the server forwards to runTurn.
   let seen: { model?: string | null; effort?: string | null } | undefined;
-  const capture: typeof runPiTurn = async (_root, turn) => {
+  const capture: TurnRunner = async (_root, turn) => {
     seen = turn.pin;
     turn.emit({
       type: "user",
@@ -250,7 +250,7 @@ test("a turn's pinned provider outranks the attached credential's (PRODUCT-1515)
   // the PINNED provider's auth error, never silently run the turn on the
   // credential's provider.
   let seen: string | undefined;
-  const capture: typeof runPiTurn = async (_root, turn) => {
+  const capture: TurnRunner = async (_root, turn) => {
     seen = turn.provider;
     turn.emit({
       type: "user",

@@ -78,6 +78,8 @@ export interface HoustonMcpInput {
    * + `integration_execute` are built; absent → only `ask_user` is.
    */
   integrations?: IntegrationToolOptions;
+  /** An already grant-scoped tool set for a disposable turn runtime. */
+  tools?: BridgedPiTool[];
   /**
    * The turn's execution mode, applied as the SAME tool filter the pi path uses
    * (`toolNamesForMode`): "plan" keeps `ask_user` + `plan_ready` (the acting
@@ -101,7 +103,7 @@ export interface HoustonMcpInput {
  * `unknown` so heterogeneous tools share one adapter, and the SDK-validated args
  * are handed straight through.
  */
-interface BridgedPiTool {
+export interface BridgedPiTool {
   name: string;
   description: string;
   parameters: TSchema;
@@ -120,6 +122,8 @@ interface BridgedPiTool {
  * is safe. Cast once here rather than threading a real context the SDK path has
  * no way to supply.
  */
+// SAFETY: every tool admitted to this bridge ignores ExtensionContext and gets
+// its request scope from AsyncLocalStorage, as documented on BridgedPiTool.
 const NOOP_CTX = {} as ExtensionContext;
 
 /**
@@ -136,36 +140,42 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
   // is handed, so we filter the tool OBJECTS to the mode's allowed names. The
   // variance between a concrete pi `ToolDefinition<S>` and the widened adapter
   // shape is bridged by one documented assertion at this single boundary.
-  const built = [
-    makeAskUserTool(),
-    // plan_ready is in the built set but name-gated by `toolNamesForMode`: it
-    // survives only on a plan turn (filtered out of execute/auto below).
-    makePlanReadyTool(),
-    // suggest_reusable is the inverse gating: name-kept in execute/auto, filtered
-    // out of plan by `toolNamesForMode`.
-    makeSuggestReusableTool(),
-    makeSuggestActionsTool(),
-    // save_routine reaches the host with the SAME sandbox token the integration
-    // tools use (present ⟺ host reachable). It reaches execute/auto but never
-    // plan — the same reach as suggest_reusable, applied by `toolNamesForMode`.
-    ...(input.integrations ? [makeSaveRoutineTool(input.integrations)] : []),
-    // save_learning reaches the host with the SAME sandbox token, and has the
-    // same reach as save_routine: execute/auto, never plan.
-    ...(input.integrations ? [makeSaveLearningTool(input.integrations)] : []),
-    // The mission-board tools (PRODUCT-1244) ride the same host-reachability
-    // gate and the same execute/auto reach; read_mission is in-process but is
-    // useless without list_missions, so it shares the gate.
-    ...(input.integrations
-      ? [...makeMissionTools(input.integrations), makeReadMissionTool()]
-      : []),
-    // find_skills + install_skill reach the host with the SAME sandbox token,
-    // and have the same reach as save_routine: execute/auto, never plan.
-    ...(input.integrations ? makeSkillDirectoryTools(input.integrations) : []),
-    ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
-    ...(input.integrations
-      ? makeCustomIntegrationTools(input.integrations)
-      : []),
-  ] as unknown as BridgedPiTool[];
+  const built =
+    input.tools ??
+    ([
+      makeAskUserTool(),
+      // plan_ready is in the built set but name-gated by `toolNamesForMode`: it
+      // survives only on a plan turn (filtered out of execute/auto below).
+      makePlanReadyTool(),
+      // suggest_reusable is the inverse gating: name-kept in execute/auto, filtered
+      // out of plan by `toolNamesForMode`.
+      makeSuggestReusableTool(),
+      makeSuggestActionsTool(),
+      // save_routine reaches the host with the SAME sandbox token the integration
+      // tools use (present ⟺ host reachable). It reaches execute/auto but never
+      // plan — the same reach as suggest_reusable, applied by `toolNamesForMode`.
+      ...(input.integrations ? [makeSaveRoutineTool(input.integrations)] : []),
+      // save_learning reaches the host with the SAME sandbox token, and has the
+      // same reach as save_routine: execute/auto, never plan.
+      ...(input.integrations ? [makeSaveLearningTool(input.integrations)] : []),
+      // The mission-board tools ride the same host-reachability
+      // gate and the same execute/auto reach; read_mission is in-process but is
+      // useless without list_missions, so it shares the gate.
+      ...(input.integrations
+        ? [...makeMissionTools(input.integrations), makeReadMissionTool()]
+        : []),
+      // find_skills + install_skill reach the host with the SAME sandbox token,
+      // and have the same reach as save_routine: execute/auto, never plan.
+      ...(input.integrations
+        ? makeSkillDirectoryTools(input.integrations)
+        : []),
+      ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
+      ...(input.integrations
+        ? makeCustomIntegrationTools(input.integrations)
+        : []),
+      // SAFETY: Houston's tool implementations satisfy BridgedPiTool at runtime;
+      // the assertion only widens their heterogeneous TypeBox parameter types.
+    ] as unknown as BridgedPiTool[]);
   const allowed = new Set(
     toolNamesForMode(
       input.mode,

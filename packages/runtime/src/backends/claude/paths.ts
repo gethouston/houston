@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { anthropicCredentialStorageDir } from "./scope-guard";
 
 /**
  * The on-disk layout for the Claude Agent SDK backend, in ONE place so every
@@ -76,4 +77,25 @@ export function claudeBaseDir(dataDir: string): string {
 /** The conversationId → SDK session_id map file (per agent). */
 export function claudeSessionsFile(dataDir: string): string {
   return join(claudeBaseDir(dataDir), "sessions.json");
+}
+
+/** Explicit filesystem locations consumed by the Claude backend. */
+export interface ClaudeLayout {
+  configDir: string;
+  sessionsFile: string;
+  credentialStorageDir?: string;
+  homeDir?: string;
+}
+
+/** The established shared-login layout for the long-lived runtime. */
+export function serverClaudeLayout(dataDir: string): ClaudeLayout {
+  return {
+    configDir: claudeLoginConfigDir(),
+    sessionsFile: claudeSessionsFile(dataDir),
+    // Evaluated inside the prompt's acting-context scope, not when the
+    // long-lived backend is registered at module load.
+    get credentialStorageDir() {
+      return anthropicCredentialStorageDir(dataDir);
+    },
+  };
 }

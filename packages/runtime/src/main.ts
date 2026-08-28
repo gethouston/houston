@@ -116,6 +116,14 @@ async function start(): Promise<Server> {
     // restart guard into a silent no-op and surface only as burned claims.
     // Only the not-yet-spent path needs this (a spent pod never serves again).
     if (config.poolSingleUse && !spent) assertMarkerWritable();
+    if (config.poolSingleUse && !spent) {
+      const { probeClaudeWorkerBinary } = await import("./turn/claude-worker");
+      try {
+        probeClaudeWorkerBinary();
+      } catch (error) {
+        logger.error("Claude Agent SDK worker binary probe failed:", error);
+      }
+    }
     const registrationConfig = await loadWorkerRegistrationConfig();
     const admission = new AdmissionLimiter(turnConcurrency());
     workerRegistration =

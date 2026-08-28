@@ -8,7 +8,6 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { claudeBaseDir, claudeProjectsDir, claudeSessionsFile } from "./paths";
 
 // NOTE on isolation: `sessions.json` (the conversationId → session_id map) lives
 // per-agent under `dataDir`, but the transcript `projects` tree is SHARED (it
@@ -58,13 +57,15 @@ export interface SessionsStore {
  * `resolveResume` can relocate a transcript stranded under a stale cwd slug;
  * without it (e.g. the purge-only cleanup path) relocation is skipped.
  */
-export function createSessionsStore(
-  dataDir: string,
-  cwd?: string,
-): SessionsStore {
-  const baseDir = claudeBaseDir(dataDir);
-  const filePath = claudeSessionsFile(dataDir);
-  const projectsDir = claudeProjectsDir();
+export function createSessionsStore(input: {
+  configDir: string;
+  sessionsFile: string;
+  cwd?: string;
+}): SessionsStore {
+  const baseDir = dirname(input.sessionsFile);
+  const filePath = input.sessionsFile;
+  const projectsDir = join(input.configDir, "projects");
+  const { cwd } = input;
   const currentSlugDir = cwd
     ? join(projectsDir, sdkProjectSlug(cwd))
     : undefined;

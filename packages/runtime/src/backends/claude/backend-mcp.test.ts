@@ -7,6 +7,7 @@ import type { ToolSelection } from "../../session/tool-selection";
 import { httpSandboxFetch } from "../../session/tools/sandbox-fetch";
 import type { ResolvedModel } from "../types";
 import { createClaudeBackend } from "./backend";
+import { serverClaudeLayout } from "./paths";
 
 /**
  * Verify the Claude backend WIRES the in-process MCP server into the SDK options:
@@ -56,7 +57,7 @@ async function runTurn(
   const root = mkdtempSync(join(tmpdir(), "houston-mcp-test-"));
   const backend = createClaudeBackend({
     workspaceDir: root,
-    dataDir: join(root, "data"),
+    layout: serverClaudeLayout(join(root, "data")),
     readToken: () => undefined,
     toolSelection,
     systemPrompt: "system",

@@ -11,7 +11,7 @@ import {
   type ClaudeToken,
   createClaudeBackend,
 } from "./backend";
-import { claudeLoginConfigDir } from "./paths";
+import { claudeLoginConfigDir, serverClaudeLayout } from "./paths";
 
 // Capture the deps the backend hands a session WITHOUT running the SDK: the
 // whole point of the scope guard is that a refused turn never builds an env at
@@ -56,7 +56,7 @@ const oauth: ClaudeToken = { kind: "oauth-token", value: "sk-ant-oat01-x" };
 const apiKey: ClaudeToken = { kind: "api-key", value: "sk-ant-api03-x" };
 
 test("buildClaudeEnv pins the isolated config dir", () => {
-  const env = buildClaudeEnv("/data/cfg", oauth);
+  const env = buildClaudeEnv(oauth, { configDir: "/data/cfg" });
   expect(env.CLAUDE_CONFIG_DIR).toBe("/data/cfg");
 });
 
@@ -65,7 +65,7 @@ test("an OAuth token scrubs a stale ambient ANTHROPIC_API_KEY", () => {
   // OAuth subscription token. The subprocess must carry ONLY the OAuth token.
   process.env.ANTHROPIC_API_KEY = "stale-host-key";
   process.env.ANTHROPIC_AUTH_TOKEN = "stale-alias";
-  const env = buildClaudeEnv("/cfg", oauth);
+  const env = buildClaudeEnv(oauth, { configDir: "/cfg" });
   expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBe("sk-ant-oat01-x");
   expect(env.ANTHROPIC_API_KEY).toBeUndefined();
   expect(env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
@@ -74,7 +74,7 @@ test("an OAuth token scrubs a stale ambient ANTHROPIC_API_KEY", () => {
 test("an API key scrubs a stale ambient OAuth token", () => {
   process.env.CLAUDE_CODE_OAUTH_TOKEN = "stale-oauth";
   process.env.ANTHROPIC_AUTH_TOKEN = "stale-alias";
-  const env = buildClaudeEnv("/cfg", apiKey);
+  const env = buildClaudeEnv(apiKey, { configDir: "/cfg" });
   expect(env.ANTHROPIC_API_KEY).toBe("sk-ant-api03-x");
   expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
   expect(env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
@@ -84,14 +84,14 @@ test("no connected token clears every ambient credential var", () => {
   process.env.ANTHROPIC_API_KEY = "stale-host-key";
   process.env.CLAUDE_CODE_OAUTH_TOKEN = "stale-oauth";
   process.env.ANTHROPIC_AUTH_TOKEN = "stale-alias";
-  const env = buildClaudeEnv("/cfg", undefined);
+  const env = buildClaudeEnv(undefined, { configDir: "/cfg" });
   expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
   expect(env.ANTHROPIC_API_KEY).toBeUndefined();
   expect(env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
 });
 
 test("operational ambient env (PATH) is preserved", () => {
-  const env = buildClaudeEnv("/cfg", oauth);
+  const env = buildClaudeEnv(oauth, { configDir: "/cfg" });
   expect(env.PATH).toBe(process.env.PATH);
 });
 
@@ -104,7 +104,7 @@ test("the Windows Git Bash override reaches the subprocess", () => {
   process.env.CLAUDE_CODE_GIT_BASH_PATH =
     "C:\\Program Files\\Git\\bin\\bash.exe";
   try {
-    const env = buildClaudeEnv("/cfg", oauth);
+    const env = buildClaudeEnv(oauth, { configDir: "/cfg" });
     expect(env.CLAUDE_CODE_GIT_BASH_PATH).toBe(
       "C:\\Program Files\\Git\\bin\\bash.exe",
     );
@@ -127,7 +127,7 @@ test("the username (USER/LOGNAME) reaches the subprocess", () => {
   process.env.USER = "jane";
   process.env.LOGNAME = "jane";
   try {
-    const env = buildClaudeEnv("/cfg", oauth);
+    const env = buildClaudeEnv(oauth, { configDir: "/cfg" });
     expect(env.USER).toBe("jane");
     expect(env.LOGNAME).toBe("jane");
   } finally {
@@ -156,7 +156,7 @@ test("Houston host secrets never reach the subprocess env", () => {
   );
   Object.assign(process.env, secrets);
   try {
-    const env = buildClaudeEnv("/cfg", oauth);
+    const env = buildClaudeEnv(oauth, { configDir: "/cfg" });
     for (const key of Object.keys(secrets)) {
       expect(env[key]).toBeUndefined();
     }
@@ -200,7 +200,7 @@ function backendDeps(readToken: ClaudeBackendDeps["readToken"]) {
   const workspaceDir = mkdtempSync(join(tmpdir(), "claude-backend-scope-"));
   return {
     workspaceDir,
-    dataDir: workspaceDir,
+    layout: serverClaudeLayout(workspaceDir),
     readToken,
     toolSelection: { toolNames: [], includeRunCode: false },
     systemPrompt: "houston",
@@ -283,7 +283,9 @@ test("browser-login path: shared config dir, NO token env (SDK reads the cached 
   const prevHome = process.env.HOUSTON_HOME;
   process.env.HOUSTON_HOME = "/home/x/.houston";
   try {
-    const env = buildClaudeEnv(claudeLoginConfigDir(), undefined);
+    const env = buildClaudeEnv(undefined, {
+      configDir: claudeLoginConfigDir(),
+    });
     expect(env.CLAUDE_CONFIG_DIR).toBe("/home/x/.houston/claude-login");
     expect(env.CLAUDE_CODE_OAUTH_TOKEN).toBeUndefined();
     expect(env.ANTHROPIC_API_KEY).toBeUndefined();

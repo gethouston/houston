@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { expect, test } from "vitest";
-import { prepareTurnFilesystem } from "./turn-filesystem";
+import { claimedTurnIncludes, prepareTurnFilesystem } from "./turn-filesystem";
 import { ownConversationOnly } from "./turn-hot-set";
 
 test("route-op excludes skip the runtime tree wherever the agent sits", async () => {
@@ -182,4 +182,18 @@ test("the eager path reports the store's generation capability even when the fil
     claimed: true,
   });
   expect(plain.generationAware).toBe(false);
+});
+
+test("a claim syncs only durable Claude conversation state", () => {
+  const include = claimedTurnIncludes("data", "workspace", "c1");
+  const claude = "data/sessions/c1/claude";
+
+  expect(include(`${claude}/projects/slug/session.jsonl`)).toBe(true);
+  expect(include(`${claude}/sessions.json`)).toBe(true);
+  expect(include(`${claude}/statsig/cache.json`)).toBe(false);
+  expect(include(`${claude}/history.jsonl`)).toBe(false);
+  expect(include(`${claude}/.credentials.json`)).toBe(false);
+  expect(include("data/sessions/c2/claude/projects/slug/session.jsonl")).toBe(
+    false,
+  );
 });

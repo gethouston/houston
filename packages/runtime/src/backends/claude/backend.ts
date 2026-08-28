@@ -1,4 +1,7 @@
-import type { Options } from "@anthropic-ai/claude-agent-sdk";
+import type {
+  createSdkMcpServer,
+  Options,
+} from "@anthropic-ai/claude-agent-sdk";
 import type { ToolSelection } from "../../session/tool-selection";
 import type { IntegrationToolOptions } from "../../session/tools/integrations";
 import type {
@@ -8,13 +11,14 @@ import type {
 } from "../types";
 import { resolveClaudeExecutable } from "./binary-path";
 import { buildClaudeEnv } from "./claude-env";
-import { buildHoustonMcpServer, HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
-import { toSdkModel } from "./model";
-import { claudeLoginConfigDir } from "./paths";
 import {
-  anthropicCredentialStorageDir,
-  assertAnthropicScopeCredential,
-} from "./scope-guard";
+  type BridgedPiTool,
+  buildHoustonMcpServer,
+  HOUSTON_MCP_SERVER_NAME,
+} from "./custom-tools";
+import { toSdkModel } from "./model";
+import type { ClaudeLayout } from "./paths";
+import { assertAnthropicScopeCredential } from "./scope-guard";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
@@ -36,7 +40,7 @@ export type ClaudeToken =
 /** Everything the Claude backend needs to open a session. */
 export interface ClaudeBackendDeps {
   workspaceDir: string;
-  dataDir: string;
+  layout: ClaudeLayout;
   /** The current Anthropic credential, or undefined when none is connected. */
   readToken: () => ClaudeToken | undefined;
   /** Houston's active tool selection (its code-execution mode gates Bash). */
@@ -53,6 +57,13 @@ export interface ClaudeBackendDeps {
    * → only `ask_user` (which holds no credential and makes no network call).
    */
   integrations?: IntegrationToolOptions;
+  /** Prebuilt turn tools replace the long-lived server's default set. */
+  tools?: BridgedPiTool[];
+  /** External SDK adapter for tests that must not spawn a process. */
+  sdk?: {
+    query: ClaudeQuery;
+    createSdkMcpServer: typeof createSdkMcpServer;
+  };
 }
 
 /** Thrown when the optional Claude Agent SDK is not present in this build. */
@@ -108,7 +119,8 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       let query: ClaudeQuery;
       let houstonMcp: ReturnType<typeof buildHoustonMcpServer>;
       try {
-        const sdk = await import("@anthropic-ai/claude-agent-sdk");
+        const sdk =
+          deps.sdk ?? (await import("@anthropic-ai/claude-agent-sdk"));
         query = sdk.query as ClaudeQuery;
         // Build the in-process MCP server that exposes Houston's custom tools to
         // the subprocess. Built here (not at module load) so the optional SDK's
@@ -116,6 +128,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         houstonMcp = buildHoustonMcpServer({
           createSdkMcpServer: sdk.createSdkMcpServer,
           integrations: deps.integrations,
+          tools: deps.tools,
           // The mode does the tool filtering (via `toolNamesForMode`), mirroring
           // the pi path: plan withholds the acting integration tools and keeps
           // only `ask_user`; auto is the inverse — it drops the blocking tools
@@ -145,14 +158,13 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         const fresh = deps.readToken();
         assertAnthropicScopeCredential(fresh);
         return {
-          env: buildClaudeEnv(
-            claudeLoginConfigDir(),
-            fresh,
-            // Personal scope: the CLI's credential store moves off the shared
-            // dir, so a mid-turn 401 cannot recover onto the team credential.
-            // Team scope: undefined, i.e. unchanged (see `./scope-guard`).
-            anthropicCredentialStorageDir(deps.dataDir),
-          ),
+          env: buildClaudeEnv(fresh, {
+            configDir: deps.layout.configDir,
+            // A disposable turn supplies this directly. The long-lived layout
+            // resolves it lazily inside the prompt's acting-context scope.
+            credentialStorageDir: deps.layout.credentialStorageDir,
+            homeDir: deps.layout.homeDir,
+          }),
           accessDigest: fresh?.accessDigest,
         };
       };
@@ -186,10 +198,11 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         permissionMode: "default",
       };
 
-      const sessionsStore = createSessionsStore(
-        deps.dataDir,
-        deps.workspaceDir,
-      );
+      const sessionsStore = createSessionsStore({
+        configDir: deps.layout.configDir,
+        sessionsFile: deps.layout.sessionsFile,
+        cwd: deps.workspaceDir,
+      });
       // A cross-backend rebuild (opts.fresh) must NOT resume a stale SDK
       // session from before the conversation left this backend: the history
       // arrives as a transcript replay on the first prompt (HOU-951), and the

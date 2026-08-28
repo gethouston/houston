@@ -7,7 +7,7 @@ import { LocalWorkspaceStore } from "@houston/host/src/store/local";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test } from "vitest";
 import { createTurnServer } from "./server";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 const servers: Server[] = [];
 afterEach(() => {
@@ -20,7 +20,7 @@ async function listen(server: Server): Promise<string> {
   return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
-const noopTurn: typeof runPiTurn = async () => ({});
+const noopTurn: TurnRunner = async () => ({});
 
 /** An agent seeded through the host's own store (the pod's real layout). */
 async function seedAgent(): Promise<{

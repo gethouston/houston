@@ -42,3 +42,14 @@ test("a user project's own conversations folder is never mistaken for the runtim
     ),
   ).toBe(true);
 });
+
+test("hydrates the active conversation's Claude subtree only", () => {
+  const admit = ownConversationOnly("c1");
+  expect(admit(`${standing}/sessions/c1/claude/projects/slug/s.jsonl`)).toBe(
+    true,
+  );
+  expect(admit(`${standing}/sessions/c1/claude/sessions.json`)).toBe(true);
+  expect(admit(`${standing}/sessions/c2/claude/projects/slug/s.jsonl`)).toBe(
+    false,
+  );
+});

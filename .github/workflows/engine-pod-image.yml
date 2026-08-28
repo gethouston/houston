@@ -149,6 +149,8 @@ jobs:
             -f selfhost/Dockerfile \
             -t "$SHA_TAG" -t "$POC_TAG" \
             .
+          docker run --rm --entrypoint sh "$SHA_TAG" -c \
+            'set -- /app/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk-linux-x64@*/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude; test -x "$1"'
           docker push "$SHA_TAG"
           docker push "$POC_TAG"
           # Resolve the immutable digest of the pushed image for the roll below.

@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test, vi } from "vitest";
 import { createTurnServer } from "./server";
-import type { runPiTurn } from "./turn-session";
+import type { TurnRunner } from "./turn-session";
 
 const servers: Server[] = [];
 afterEach(() => {
@@ -19,7 +19,7 @@ async function run(files: Record<string, string>, maxHydrateBytes?: number) {
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, value);
   }
-  const runTurn = vi.fn<typeof runPiTurn>();
+  const runTurn = vi.fn<TurnRunner>();
   const server = createTurnServer({
     store: new LocalDirStore(storeRoot),
     token: "",
