@@ -93,6 +93,14 @@ test("team create + type name + reorder agents inside the default team", async (
   expect(await rowY(sidebar, "Beta")).toBeGreaterThan(
     await rowY(sidebar, "Houston"),
   );
+  // Arm the write listener BEFORE the drop: the reload below must not race
+  // the layout PUT, or it re-reads the pre-drag order from the server.
+  const layoutWrite = page.waitForResponse(
+    (r) =>
+      r.url().includes("/sidebar-layout") &&
+      r.request().method() === "PUT" &&
+      r.ok(),
+  );
   await dragOnto(
     page,
     sidebar.getByText("Beta", { exact: true }),
@@ -106,6 +114,7 @@ test("team create + type name + reorder agents inside the default team", async (
         (await rowY(sidebar, "Beta")) < (await rowY(sidebar, "Houston")),
     )
     .toBe(true);
+  await layoutWrite;
 
   // Every gesture above is written back with
   // `PUT /v1/workspaces/:id/sidebar-layout`. A reload throws away all the
@@ -115,9 +124,13 @@ test("team create + type name + reorder agents inside the default team", async (
   await expect(page.getByText("Your teams")).toBeVisible();
   await expect(header).toHaveCount(1);
   await expect(sidebar.getByText("Work")).toBeVisible();
-  expect(await rowY(sidebar, "Beta")).toBeLessThan(
-    await rowY(sidebar, "Houston"),
-  );
+  // Same poll after reload: the server layout applies a beat after first paint.
+  await expect
+    .poll(
+      async () =>
+        (await rowY(sidebar, "Beta")) < (await rowY(sidebar, "Houston")),
+    )
+    .toBe(true);
 });
 
 test("an agent dragged onto ANOTHER team is refused and stays put", async ({
