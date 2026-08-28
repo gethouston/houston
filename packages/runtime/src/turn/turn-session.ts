@@ -1,67 +1,36 @@
 import { join } from "node:path";
-import type { TurnMode } from "@houston/protocol";
 import type {
-  ChatMessage,
-  PendingInteraction,
   ProviderError,
   TokenUsage,
   ToolCallRecord,
   WireEvent,
   WireFrame,
 } from "@houston/runtime-client";
-import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
-import { classifyProviderError } from "../ai/provider-error";
-import { logProviderError } from "../ai/provider-error-log";
-import { readAuthFile } from "../auth/auth-file";
-import {
-  clearProviderMarks,
-  noteAuthFailure,
-  noteQuotaExhausted,
-} from "../auth/credential-health";
-import { reportRevokedServedToken } from "../auth/report-revoked";
 import {
   newUsedTokenCapture,
   runWithUsedTokenCapture,
 } from "../auth/used-token";
-import type { ClaudeBackendDeps } from "../backends/claude/backend";
-import type { HarnessBackend } from "../backends/types";
-import { config } from "../config";
-import { framePrompt, type MessageAuthor } from "../session/attribution";
-import {
-  diffSnapshots,
-  type FileSnapshot,
-  snapshotWorkspace,
-} from "../session/file-changes";
+import { framePrompt } from "../session/attribution";
 import {
   newInteractionHolder,
-  planReadyFallback,
   runWithInteractionCapture,
 } from "../session/interaction";
 import {
-  renderReplayPreamble,
-  replayCharBudget,
-} from "../session/replay-transcript";
-import { SYSTEM_PROMPT } from "../session/resource-loader";
-import { turnCodeExecutionMode } from "../session/tool-selection";
-import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
-import { makeRunCodeTool } from "../session/tools/run-code";
-import type { SandboxFetch } from "../session/tools/sandbox-fetch";
-import type { ProvidedContext } from "../session/workspace-context";
-import {
-  appendAssistantMessageAt,
   appendUserMessageAt,
   loadConversation,
 } from "../store/conversation-file";
+import { openTurnBackendSession } from "./turn-session-backend";
+import { handleTurnSessionFailure } from "./turn-session-failure";
+import type { RunTurnDeps } from "./turn-session-startup";
 import {
-  createTurnBackend,
-  resolveTurnClaudeResume,
-  type TurnBackendDeps,
-  TurnBackendProviderError,
-} from "./turn-backend";
-import { readTurnHarness, writeTurnHarness } from "./turn-harness-state";
-import { createTurnModelRuntime } from "./turn-runtime";
-import { buildTurnToolSelection } from "./turn-toolset";
-import type { TurnGrantScope } from "./types";
+  captureWorkspaceSnapshot,
+  finishSuccessfulTurn,
+} from "./turn-session-success";
+import type {
+  TurnDirectories,
+  TurnOutcome,
+  TurnSessionRequest,
+} from "./turn-session-types";
 
 /**
  * One pi turn against resolved hydrated directories. Unlike chat.ts (one
@@ -74,79 +43,14 @@ import type { TurnGrantScope } from "./types";
  * client could see `done` before its files are durable).
  */
 
-export interface TurnOutcome {
-  error?: string;
-  /**
-   * What the model ended the turn waiting on the user for (ask_user), if
-   * anything. The per-turn SERVER carries it on the clean terminal `done` frame
-   * it sends after sync-back, never on an error.
-   */
-  pendingInteraction?: PendingInteraction;
-}
-
-/** Per-turn model/effort pin (a routine's, when it pinned them). Absent = inherit. */
-export interface TurnModelPin {
-  model?: string | null;
-  effort?: string | null;
-}
-
-/** Everything one pi turn needs (the per-turn server assembles it per request). */
-export interface TurnSessionRequest {
-  conversationId: string;
-  text: string;
-  provider: string;
-  /** Receives every non-terminal wire frame, already stamped with `turnId`. */
-  emit: (e: WireFrame) => void;
-  signal: AbortSignal | undefined;
-  nonce?: string;
-  pin?: TurnModelPin;
-  /**
-   * The turn's execution mode ("plan" = read-only + planning overlay). Absent =
-   * execute. Threaded into the pi session's tool allowlist + system prompt via
-   * `createSession`, identical to the long-lived server path.
-   */
-  mode?: TurnMode;
-  /**
-   * The turn's wire identity, minted by the per-turn SERVER (which also stamps
-   * it on the terminal frame it sends after sync-back) — stamped here on every
-   * emitted frame and persisted on both stored messages.
-   */
-  turnId: string;
-  /**
-   * Presentation-only bubble text, when it must differ from `text` (the real
-   * prompt the model runs on). Persisted alongside the user message so a
-   * history reload renders `displayText ?? content`. Absent when they match.
-   */
-  displayText?: string;
-  /**
-   * The teammates the message @mentions (HOU-944). Structure only — the names
-   * are already plain text inside `text`. Persisted beside the user message and
-   * echoed on the `user` frame. Absent when the message mentions nobody.
-   */
-  mentions?: ChatMessage["mentions"];
-  /** Human author supplied by the trusted pool dispatcher. */
-  author?: MessageAuthor;
-  /** Gateway-provided workspace/user context for the session prompt. */
-  context?: ProvidedContext;
-  /** Non-secret capability scopes copied from the parsed turn grant. */
-  grant?: { scopes: TurnGrantScope[] };
-  /** Turn-local routing closure; it owns all grant-bearing calls. */
-  sandbox?: { call: SandboxFetch };
-  /** Shared phase-mark sink; the terminal frame reports it (values are
-   *  performance.now() marks, converted to deltas at emission). */
-  timings?: Record<string, number>;
-}
-
-export interface TurnDirectories {
-  workspaceDir: string;
-  dataDir: string;
-  turnRoot: string;
-}
-
-export interface RunTurnDeps {
-  claudeSdk?: ClaudeBackendDeps["sdk"];
-  createBackend?: (provider: string, deps: TurnBackendDeps) => HarnessBackend;
-}
+export type { RunTurnDeps } from "./turn-session-startup";
+export type {
+  TurnDirectories,
+  TurnModelPin,
+  TurnOutcome,
+  TurnRunner,
+  TurnSessionRequest,
+} from "./turn-session-types";
 
 export async function runTurn(
   directories: TurnDirectories,
@@ -209,129 +113,18 @@ export async function runTurn(
    */
   const usedTokens = newUsedTokenCapture();
   try {
-    // Per-turn model/auth runtime over the hydrated throwaway data dir. The
-    // default file-backed credential store reads the hydrated auth.json; the
-    // local (openai-compatible) provider registers from the dir's own
-    // custom-endpoint config so its model can dispatch (pi 0.82 streams
-    // strictly by registered provider id).
-    const { modelRuntime, model } = await createTurnModelRuntime(
-      dataDir,
-      provider,
-      pin?.model,
-    );
-
-    const toolSelection = buildTurnToolSelection(
-      turn,
-      turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
-    );
-    const codeSandbox = toolSelection.includeRunCode
-      ? makeRunCodeTool({
-          baseUrl: config.codeSandboxUrl,
-          token: config.codeSandboxToken,
-          workspaceDir,
-          limits: {
-            maxConcurrent: config.runCodeMaxConcurrent,
-            maxPerMinute: config.runCodePerMinute,
-          },
-          idToken: makeIdTokenProvider(config.codeSandboxUrl),
-        })
-      : null;
-
-    // Seed the used-token capture with the credential this turn will run on
-    // (see the declaration above). OAuth access only — an api_key has no
-    // revocation semantics the report may act on.
-    const turnCred = readAuthFile(join(dataDir, "auth.json"))[provider];
-    if (turnCred?.type === "oauth" && turnCred.access)
-      usedTokens.record(provider, turnCred.access);
-    // Ground-truth diagnostic: provider + model + the model's actual API base URL
-    // (opencode.ai/zen/go/v1 = OpenCode Go, openai/chatgpt = Codex). Unambiguous,
-    // unlike asking the model itself.
-    const m = model as unknown as {
-      id?: string;
-      baseUrl?: string;
-      reasoning?: boolean;
-    };
-    console.log(
-      `[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`,
-    );
-    // Effort → pi's thinking level. The turn's pin (the host bakes the agent's
-    // saved effort into it) wins; if none and the model can reason, default to
-    // medium so a "thinking" model actually reasons (pi enables reasoning only
-    // when a level is set). pi clamps to what the model supports.
-    const effort =
-      pin?.effort ??
-      (m.reasoning === true ? DEFAULT_REASONING_EFFORT : undefined);
-    const thinkingLevel = toThinkingLevel(effort);
-    const backend = (deps.createBackend ?? createTurnBackend)(provider, {
+    const { replay, session } = await openTurnBackendSession({
       directories,
       turn,
-      modelRuntime,
-      toolSelection,
-      codeSandbox,
-      systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
-      sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
-      claudeSdk: deps.claudeSdk,
+      deps,
+      canonicalMessages,
+      usedTokens,
     });
-    const harness = backend.id === "anthropic" ? "claude" : "pi";
-    const priorHarness = readTurnHarness(dataDir, conversationId);
-    const switchedHarness =
-      priorHarness !== undefined && priorHarness !== harness;
-    writeTurnHarness(dataDir, conversationId, harness);
-    const claudeResume =
-      harness === "claude" && !switchedHarness
-        ? resolveTurnClaudeResume(directories, conversationId)
-        : undefined;
-    const replay =
-      canonicalMessages.length > 0 &&
-      (switchedHarness || (harness === "claude" && !claudeResume))
-        ? renderReplayPreamble(
-            canonicalMessages,
-            turnId,
-            replayCharBudget(model.contextWindow),
-          )
-        : null;
-    const retryReplay =
-      harness === "claude" && canonicalMessages.length > 0
-        ? (replay ??
-          renderReplayPreamble(
-            canonicalMessages,
-            turnId,
-            replayCharBudget(model.contextWindow),
-          ))
-        : null;
-    const session = await backend.createSession({
-      conversationId,
-      model,
-      ...(thinkingLevel ? { thinkingLevel } : {}),
-      // Hosted turn context rides the envelope; the loader overlays it exactly
-      // as the long-lived server path does for a message-send body.
-      ...(turn.context ? { context: turn.context } : {}),
-      // The turn's mode clamps this pi session's tools + overlays its prompt,
-      // exactly as the long-lived server path does (createPiBackend applies
-      // `toolNamesForMode` + the loader overlay from `opts.mode`): plan →
-      // read-only, auto → no blocking tools. In cloud turn mode ask_user is the
-      // only blocking tool present (integrations are off), so an auto turn here
-      // simply drops it.
-      ...(mode ? { mode } : {}),
-      ...(switchedHarness ? { fresh: true } : {}),
-      ...(retryReplay?.text
-        ? { freshRetryPromptPrefix: retryReplay.text }
-        : {}),
-    });
-    if (turn.timings) turn.timings.t_backend_session = performance.now();
 
     // Snapshot the hydrated workspace so the turn's created/modified files can
     // be surfaced as a `file_changes` frame. The per-turn root is exclusive to
     // this request, so the diff is attributable by construction. Best-effort.
-    let beforeFiles: FileSnapshot | null = null;
-    try {
-      beforeFiles = snapshotWorkspace(workspaceDir);
-    } catch (err) {
-      console.warn(
-        "[turn] file snapshot failed:",
-        err instanceof Error ? err.message : String(err),
-      );
-    }
+    const beforeFiles = captureWorkspaceSnapshot(workspaceDir);
 
     const unsub = session.subscribe((wire: WireEvent) => {
       // First provider-originated event = the honest first-token bound. Set
@@ -369,153 +162,37 @@ export async function runTurn(
       signal?.removeEventListener("abort", onAbort);
       unsub();
     }
-    // Diff what this turn created/modified; skipped on a failed turn (a
-    // provider error means the model never finished). Emitted BEFORE the
-    // caller's terminal frame, mirroring the long-lived runtime's order.
-    let fileChanges: { created: string[]; modified: string[] } | undefined;
-    if (beforeFiles && !providerError) {
-      try {
-        const changes = diffSnapshots(
-          beforeFiles,
-          snapshotWorkspace(workspaceDir),
-        );
-        if (changes.created.length || changes.modified.length)
-          fileChanges = changes;
-      } catch (err) {
-        console.warn(
-          "[turn] file diff failed:",
-          err instanceof Error ? err.message : String(err),
-        );
-      }
-    }
-    // Persist the turn's assistant message with any typed provider error so the
-    // inline card survives a reload of this cloud conversation. The provider_error
-    // frame was already streamed to the client (which settles on it), so this
-    // returns no `outcome.error` — the per-turn server's trailing terminal is a
-    // no-op for the already-settled client, and reporting an error here would make
-    // it send a SECOND, generic error frame on top of the typed card.
-    // Mirrors exec-turn's plan-mode backstop: a clean plan turn with visible
-    // assistant output but no recorded interaction still owes the user an
-    // approval card (models occasionally write the plan and skip plan_ready).
-    const pendingInteraction =
-      !providerError &&
-      mode === "plan" &&
-      assistantText.trim() &&
-      !interaction.pending
-        ? planReadyFallback()
-        : interaction.pending;
-    appendAssistantMessageAt(conversationsDir, conversationId, assistantText, {
+    return finishSuccessfulTurn({
+      beforeFiles,
+      providerError,
+      workspaceDir,
+      mode,
+      assistantText,
+      interaction,
+      conversationsDir,
+      conversationId,
       tools,
       usage,
-      providerError,
-      fileChanges,
-      // Same clean-only condition as the returned outcome (below): persist the
-      // pending question only when the turn ended without a provider error, so
-      // a reload of this cloud conversation settles to `needs_you`, not a false
-      // `done`. Mirrors exec-turn — only the clean turn carries it.
-      pendingInteraction: providerError ? undefined : pendingInteraction,
+      provider,
       turnId,
+      emit,
     });
-    if (fileChanges) emit({ type: "file_changes", data: fileChanges });
-    // A completed turn proves this provider's credential works — heal any
-    // stale turn-failure mark (auth/credential-health.ts; mirrors exec-turn).
-    if (!providerError) clearProviderMarks(provider);
-    // Carry the pending question only on a clean turn — never alongside a
-    // provider error (mirrors exec-turn: only the clean `done` carries it).
-    return providerError ? {} : { pendingInteraction };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    // The caller's cancel usually resolves prompt() clean (pi routes an abort
-    // down the usage path), but one landing mid-request RAISES the AbortError
-    // instead. Same user action either way — not a provider failure and not
-    // an outcome error: persist what streamed and end the turn quietly.
-    if (
-      !providerError &&
-      (signal?.aborted || (err instanceof Error && err.name === "AbortError"))
-    ) {
-      if (assistantText)
-        appendAssistantMessageAt(
-          conversationsDir,
-          conversationId,
-          assistantText,
-          {
-            tools,
-            usage,
-            turnId,
-          },
-        );
-      return {};
-    }
-    // Classify the throw before reporting a generic outcome error: pi RAISES
-    // a missing/expired credential at prompt time ("No API key found for
-    // <provider>. Use /login …"), before any stream exists, so this catch is
-    // the only place it can become the typed reconnect card (HOU-718 —
-    // mirrors exec-turn). The typed error is emitted as a provider_error
-    // frame (the terminal the client settles on) and persisted so the card
-    // survives a reload; returning `{}` keeps the per-turn server from
-    // stacking a second, generic error frame on top of it.
-    if (!providerError) {
-      const thrown =
-        err instanceof TurnBackendProviderError
-          ? err.providerError
-          : classifyProviderError({
-              provider,
-              model: pin?.model ?? null,
-              message,
-            });
-      // The streamed path logged when it classified; a THROWN failure is
-      // invisible to Sentry unless this catch logs it too (HOU-1156;
-      // mirrors exec-turn).
-      logProviderError(thrown, { model: pin?.model ?? null });
-      // Prompt-time credential guard: pi raised BEFORE recording the user
-      // message in its session store, so the reconnect retry must re-deliver
-      // the text (mirrors exec-turn).
-      if (
-        thrown.kind === "unauthenticated" &&
-        !assistantText &&
-        tools.length === 0
-      )
-        thrown.undelivered_prompt = text;
-      // A thrown auth failure never crossed the backends' streamed-error
-      // seams — feed it into the status surface (auth/credential-health.ts;
-      // mirrors exec-turn).
-      if (thrown.kind === "unauthenticated") {
-        noteAuthFailure(thrown.provider);
-        // A REVOKED served token is invisible to the control plane (HOU-952).
-        // Named by the seeded at-failure token; a throw before the seed (a
-        // bad model resolution) recorded nothing and the reporter skips
-        // (PRODUCT-1319).
-        reportRevokedServedToken(thrown, usedTokens.digestFor(thrown.provider));
-      }
-      // The account ran out of credits: a valid credential with nothing left,
-      // so the status surface must say so instead of "Connected" (mirrors
-      // exec-turn).
-      if (thrown.kind === "quota_exhausted")
-        noteQuotaExhausted(thrown.provider, thrown.resets_at);
-      if (thrown.kind !== "unknown") {
-        appendAssistantMessageAt(
-          conversationsDir,
-          conversationId,
-          assistantText,
-          { tools, usage, providerError: thrown, turnId },
-        );
-        emit({ type: "provider_error", data: thrown });
-        return {};
-      }
-    }
-    if (assistantText || providerError)
-      appendAssistantMessageAt(
-        conversationsDir,
-        conversationId,
-        assistantText,
-        { tools, usage, providerError, turnId },
-      );
-    return { error: message };
+  } catch (error) {
+    return handleTurnSessionFailure({
+      error,
+      signal,
+      providerError,
+      assistantText,
+      tools,
+      usage,
+      conversationsDir,
+      conversationId,
+      turnId,
+      provider,
+      model: pin?.model,
+      text,
+      usedTokens,
+      emit,
+    });
   }
 }
-
-/** Injectable pooled-turn execution contract used by the HTTP server. */
-export type TurnRunner = (
-  directories: TurnDirectories,
-  turn: TurnSessionRequest,
-) => Promise<TurnOutcome>;

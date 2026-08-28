@@ -12,7 +12,13 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { excluded, type HydrateLimitError, hydrate, syncBack } from "./hydrate";
+import {
+  excluded,
+  type HydrateLimitError,
+  hydrate,
+  startHydrate,
+  syncBack,
+} from "./hydrate";
 import type { ObjectMetadata } from "./object-manifest";
 import {
   LocalDirStore,
@@ -652,6 +658,46 @@ test("hydrate materializes many files faithfully under concurrency", async () =>
       `content-${i}`,
     );
   }
+});
+
+test("startHydrate lands priority files before background hydration resolves", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, {
+    "data/settings.json": "settings",
+    "workspace/late.txt": "late",
+  });
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const gated: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: (prefix) => store.manifest(prefix),
+    download: async (key, destination) => {
+      if (key.endsWith("workspace/late.txt")) await gate;
+      await store.download(key, destination);
+    },
+    upload: (source, key, options) => store.upload(source, key, options),
+    delete: (key, options) => store.delete(key, options),
+  };
+
+  const started = await startHydrate(gated, PREFIX, work, {
+    priority: (rel) => rel === "data/settings.json",
+  });
+
+  expect(readFileSync(join(work, "data", "settings.json"), "utf8")).toBe(
+    "settings",
+  );
+  expect(existsSync(join(work, "workspace", "late.txt"))).toBe(false);
+  release();
+  await started.done;
+  expect(readFileSync(join(work, "workspace", "late.txt"), "utf8")).toBe(
+    "late",
+  );
+  expect([...started.manifest.keys()].sort()).toEqual([
+    "data/settings.json",
+    "workspace/late.txt",
+  ]);
 });
 
 test("a non-finite concurrency override still hydrates everything", async () => {

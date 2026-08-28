@@ -1,23 +1,29 @@
 import { mkdir } from "node:fs/promises";
-import { join, posix } from "node:path";
-import { docKey } from "@houston/domain";
+import { join } from "node:path";
 import { MAX_UPLOAD_BYTES } from "@houston/host/src/turn/files-import";
 import { FsVfs, LazyStoreVfs, type Vfs } from "@houston/host/src/vfs";
 import {
   DEFAULT_EXCLUDES,
   HydrateLimitError,
   type HydrateManifest,
-  hydrate,
   type ObjectStore,
-  syncBack,
+  startHydrate,
 } from "@houston/runtime-client/object-sync";
-import { agentScopeIncludes } from "./turn-agent-scope";
 import {
   layoutSkeleton,
   resolveTurnLayout,
   type TurnLayout,
   TurnSetupError,
 } from "./turn-layout";
+import { turnRuntimeInputIncludes } from "./turn-runtime";
+
+export {
+  claimedTurnIncludes,
+  turnActivityKey,
+  turnRoutineRunsKey,
+  turnSessionScopeIncludes,
+} from "./turn-filesystem-scope";
+export { syncTurnFilesystem } from "./turn-filesystem-sync";
 
 /** Maximum hydrated bytes accepted by a pooled turn. */
 export const TURN_HYDRATE_MAX_BYTES = 2 * 1024 * 1024 * 1024;
@@ -39,6 +45,17 @@ export interface TurnFilesystem extends TurnLayout {
   generationAware: boolean;
   /** Tool-call-time CAS writes already durable before the final sync pass. */
   immediateWrites: Set<string>;
+}
+
+export interface TurnFilesystemPreparation {
+  filesystem: TurnFilesystem;
+  hydrated: Promise<TurnFilesystem>;
+}
+
+function hydrationError(error: unknown): unknown {
+  return error instanceof HydrateLimitError
+    ? new TurnSetupError("hydrate_over_cap", error.message)
+    : error;
 }
 
 /**
@@ -67,6 +84,21 @@ export async function prepareTurnFilesystem(opts: {
    */
   lazy?: boolean;
 }): Promise<TurnFilesystem> {
+  return (await startTurnFilesystem(opts)).hydrated;
+}
+
+/** Resolve the listed layout, then hydrate runtime inputs before the bulk tree. */
+export async function startTurnFilesystem(opts: {
+  store: ObjectStore;
+  prefix: string;
+  root: string;
+  claimed: boolean;
+  maxBytes?: number;
+  excludes?: string[];
+  filter?: (rel: string) => boolean;
+  lazy?: boolean;
+  timings?: Record<string, number>;
+}): Promise<TurnFilesystemPreparation> {
   const storeRoot = join(opts.root, "store");
   await mkdir(storeRoot, { recursive: true });
   const excludes = opts.excludes
@@ -76,6 +108,7 @@ export async function prepareTurnFilesystem(opts: {
     opts.maxBytes ?? (opts.claimed ? TURN_HYDRATE_MAX_BYTES : undefined);
   if (opts.lazy && opts.store.manifest) {
     const objects = await opts.store.manifest(opts.prefix);
+    if (opts.timings) opts.timings.t_listing = performance.now();
     const manifest: HydrateManifest = new Map();
     const vfs = new LazyStoreVfs({
       store: opts.store,
@@ -88,153 +121,57 @@ export async function prepareTurnFilesystem(opts: {
       maxBytes: maxBytes ?? TURN_HYDRATE_MAX_BYTES,
     });
     await layoutSkeleton(storeRoot, vfs.remoteKeys);
-    return {
-      ...(await resolveTurnLayout(storeRoot, { allowEmpty: !opts.claimed })),
+    const layout = await resolveTurnLayout(storeRoot, {
+      allowEmpty: !opts.claimed,
+    });
+    if (opts.timings) opts.timings.t_layout = performance.now();
+    const filesystem: TurnFilesystem = {
+      ...layout,
       storeRoot,
       manifest,
       vfs,
       listedObjects: objects.length,
       generationAware: vfs.generationAware,
-      immediateWrites: new Set(),
+      immediateWrites: new Set<string>(),
     };
+    return { filesystem, hydrated: Promise.resolve(filesystem) };
   }
-  let manifest: HydrateManifest;
-  let listed = { rels: [] as string[], generationAware: false };
+  let layout: TurnLayout | undefined;
   try {
-    manifest = await hydrate(opts.store, opts.prefix, storeRoot, {
+    const started = await startHydrate(opts.store, opts.prefix, storeRoot, {
       ...(maxBytes !== undefined ? { maxBytes } : {}),
       excludes,
       ...(opts.filter ? { filter: opts.filter } : {}),
-      onListed: (listing) => {
-        listed = listing;
+      priority: (rel) =>
+        layout !== undefined && turnRuntimeInputIncludes(layout.dataRel, rel),
+      onListed: async (listing) => {
+        if (opts.timings) opts.timings.t_listing = performance.now();
+        await layoutSkeleton(storeRoot, listing.rels);
+        layout = await resolveTurnLayout(storeRoot, {
+          allowEmpty: !opts.claimed,
+        });
+        if (opts.timings) opts.timings.t_layout = performance.now();
       },
     });
-    // The layout must resolve from what the STORE holds, not from what the
-    // filter admitted: a turn whose agent has nothing but other
-    // conversations' history still targets an existing agent.
-    await layoutSkeleton(storeRoot, listed.rels);
+    if (!layout) throw new Error("turn layout did not resolve from listing");
+    if (opts.timings) opts.timings.t_startup_files = performance.now();
+    const filesystem: TurnFilesystem = {
+      ...layout,
+      storeRoot,
+      manifest: started.manifest,
+      vfs: new FsVfs(storeRoot),
+      listedObjects: started.listed.rels.length,
+      generationAware: started.listed.generationAware,
+      immediateWrites: new Set(),
+    };
+    const hydrated = started.done.then(
+      () => filesystem,
+      (error: unknown) => {
+        throw hydrationError(error);
+      },
+    );
+    return { filesystem, hydrated };
   } catch (error) {
-    if (!(error instanceof HydrateLimitError)) throw error;
-    throw new TurnSetupError("hydrate_over_cap", error.message);
+    throw hydrationError(error);
   }
-  return {
-    ...(await resolveTurnLayout(storeRoot, { allowEmpty: !opts.claimed })),
-    storeRoot,
-    manifest,
-    vfs: new FsVfs(storeRoot),
-    listedObjects: listed.rels.length,
-    generationAware: listed.generationAware,
-    immediateWrites: new Set(),
-  };
-}
-
-/**
- * Build a claimed turn's write scope: its own conversation, session, the two
- * granted docs, and the agent's workspace FILES. Workspace files are the
- * turn's deliverable — a spreadsheet the agent built, a document it edited
- * (via the clamped file tools or, on a single-use worker, bash) must survive
- * sync-back or the work silently vanishes. Everything else under `.houston/`
- * stays out of scope: runtime data, docs, and credentials belong to their own
- * writers, and two concurrent conversations of one agent must not clobber
- * them from here. Concurrent workspace-file writes from two conversations of
- * the same agent are last-writer-wins per object, same as the standing host's
- * store-sync daemon.
- */
-export function claimedTurnIncludes(
-  dataRel: string,
-  workspaceRel: string,
-  conversationId: string,
-): (relativePath: string) => boolean {
-  const conversation = posix.join(
-    dataRel,
-    "conversations",
-    `${encodeURIComponent(conversationId)}.json`,
-  );
-  const session = posix.join(dataRel, "sessions", conversationId);
-  const activity = turnActivityKey(workspaceRel);
-  const runs = turnRoutineRunsKey(workspaceRel);
-  return (relativePath) =>
-    relativePath === conversation ||
-    turnSessionScopeIncludes(session, relativePath) ||
-    relativePath === activity ||
-    relativePath === runs ||
-    agentScopeIncludes(relativePath, workspaceRel);
-}
-
-/** Keep ordinary session state, but only durable files from the Claude CLI. */
-export function turnSessionScopeIncludes(
-  sessionRel: string,
-  relativePath: string,
-): boolean {
-  if (!relativePath.startsWith(`${sessionRel}/`)) return false;
-  if (relativePath === `${sessionRel}/harness.json`) return true;
-  const claudePrefix = `${sessionRel}/claude/`;
-  if (!relativePath.startsWith(claudePrefix)) return true;
-  const claudeRel = relativePath.slice(claudePrefix.length);
-  return claudeRel === "sessions.json" || claudeRel.startsWith("projects/");
-}
-
-/** Store-relative mission-board object granted to a claimed turn. */
-export const turnActivityKey = (workspaceRel: string): string =>
-  docKey(workspaceRel, "activity");
-
-/** Store-relative routine-runs object granted to a claimed turn. */
-export const turnRoutineRunsKey = (workspaceRel: string): string =>
-  docKey(workspaceRel, "routine_runs");
-
-/** Sync a turn, limiting a claimed writer to its granted turn-owned files. */
-export async function syncTurnFilesystem(opts: {
-  store: ObjectStore;
-  prefix: string;
-  filesystem: TurnFilesystem;
-  conversationId: string;
-  claimed: boolean;
-}): Promise<{
-  uploaded: string[];
-  deleted: string[];
-  outOfScope: number;
-  skipped: { key: string; reason: string }[];
-  conflicts: { key: string; reason: string }[];
-}> {
-  const result = await syncBack(
-    opts.store,
-    opts.prefix,
-    opts.filesystem.storeRoot,
-    opts.filesystem.manifest,
-    {
-      generations: opts.filesystem.generationAware,
-      // A single-use worker has no later retry — its temp tree is wiped after
-      // the turn. A failed/oversized workspace-file upload must NOT then delete
-      // the durable object it was replacing, so hold the delete pass whenever
-      // any write was skipped or conflicted (turn durability surfaces it).
-      holdDeletesOnFailure: opts.claimed,
-      ...(opts.claimed
-        ? {
-            include: claimedTurnIncludes(
-              opts.filesystem.dataRel,
-              opts.filesystem.workspaceRel,
-              opts.conversationId,
-            ),
-          }
-        : {}),
-    },
-  );
-  if (result.outOfScope > 0) {
-    // Attributed: on a shared worker an unattributed count is unactionable.
-    console.info(
-      `[turn] pool_writes_out_of_scope=${result.outOfScope} prefix=${opts.prefix || opts.filesystem.dataRel} conversation=${opts.conversationId}`,
-    );
-  }
-  if (result.skipped.length > 0 || result.conflicts.length > 0) {
-    console.warn(
-      `[turn] pool_sync_incomplete skipped=${result.skipped.length} conflicts=${result.conflicts.length} conversation=${opts.conversationId}`,
-    );
-  }
-  return {
-    uploaded: result.uploaded,
-    deleted: result.deleted,
-    outOfScope: result.outOfScope,
-    skipped: result.skipped,
-    conflicts: result.conflicts,
-  };
 }

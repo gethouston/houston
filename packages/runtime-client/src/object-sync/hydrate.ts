@@ -1,7 +1,10 @@
-import { rm, stat } from "node:fs/promises";
-import { basename, join, sep } from "node:path";
-import { fileSha256 } from "./file-hash";
-import { ObjectNotFoundError, type ObjectStore } from "./object-store";
+import { basename, sep } from "node:path";
+import {
+  downloadHydrationEntries,
+  type HydrateDownloadState,
+  type HydrateEntry,
+} from "./hydrate-download";
+import type { ObjectStore } from "./object-store";
 
 /**
  * Durable engine state is materialized into a local cache, then synchronized
@@ -80,7 +83,12 @@ export interface HydrateOptions {
   /** Every admitted path BEFORE `filter` (the store's view of the tree) and
    *  whether the listing carried generations (the CAS capability, which a
    *  filtered manifest can no longer answer on its own). */
-  onListed?: (listing: { rels: string[]; generationAware: boolean }) => void;
+  onListed?: (listing: {
+    rels: string[];
+    generationAware: boolean;
+  }) => void | Promise<void>;
+  /** Download these admitted objects before the remaining hydration starts. */
+  priority?: (rel: string) => boolean;
 }
 
 /** The hydrated prefix exceeded the caller's aggregate byte cap. */
@@ -98,13 +106,20 @@ export class HydrateLimitError extends Error {
 
 const DEFAULT_HYDRATE_CONCURRENCY = 16;
 
-/** Download everything under `prefix` into `destDir`. Returns the manifest. */
-export async function hydrate(
+export interface StartedHydration {
+  manifest: HydrateManifest;
+  listed: { rels: string[]; generationAware: boolean };
+  /** Resolves only after every non-priority object has landed. */
+  done: Promise<void>;
+}
+
+/** List once, hydrate priority inputs, then start the remaining downloads. */
+export async function startHydrate(
   store: ObjectStore,
   prefix: string,
   destDir: string,
   opts: HydrateOptions = {},
-): Promise<HydrateManifest> {
+): Promise<StartedHydration> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   const maxBytes = opts.maxBytes ?? 512 * 1024 * 1024;
   // Guard against a non-finite override (NaN sizes the worker array to ZERO,
@@ -117,13 +132,13 @@ export async function hydrate(
       : DEFAULT_HYDRATE_CONCURRENCY;
   const manifest: HydrateManifest = new Map();
   const objects = store.manifest ? await store.manifest(prefix) : undefined;
-  const listed =
+  const storeObjects =
     objects ??
     (await store.list(prefix)).map((key) => ({ key, generation: undefined }));
-  const entries: { generation?: string; key: string; rel: string }[] = [];
+  const entries: HydrateEntry[] = [];
   const admitted: string[] = [];
   let generationAware = false;
-  for (const object of listed) {
+  for (const object of storeObjects) {
     const { key } = object;
     const rel = prefix ? key.slice(prefix.length + 1) : key;
     if (!rel || excluded(rel, excludes)) continue;
@@ -132,57 +147,41 @@ export async function hydrate(
     if (opts.filter && !opts.filter(rel)) continue;
     entries.push({ key, rel, generation: object.generation });
   }
-  opts.onListed?.({ rels: admitted, generationAware });
-  // Workers pull from a shared cursor. The first failure (download error or
-  // the size cap) parks every worker before it takes new work, and only that
-  // first error is thrown — workers themselves never reject, so a second
-  // failure can never become an unhandled rejection behind Promise.all.
-  let total = 0;
-  let next = 0;
-  let failed = false;
-  let firstError: unknown;
-  const worker = async () => {
-    // The cap check also gates NEW downloads (not only completed ones), so an
-    // over-cap workspace overshoots by at most the in-flight batch — the
-    // pooled analogue of the sequential loop's one-object overshoot.
-    while (!failed && total <= maxBytes) {
-      const entry = entries[next++];
-      if (!entry) return;
-      const { generation, key, rel } = entry;
-      try {
-        const dest = join(destDir, ...rel.split("/"));
-        await store.download(key, dest);
-        // Size from stat, hash streamed for large files: wake-hydrating a
-        // multi-GiB object must not buffer it in heap just to digest it.
-        const { size } = await stat(dest);
-        total += size;
-        if (total > maxBytes) {
-          throw new HydrateLimitError(maxBytes, total);
-        }
-        manifest.set(rel, { hash: await fileSha256(dest, size), generation });
-      } catch (err) {
-        // Vanished between the listing and its download: another writer
-        // deleted it. The object is simply not part of this hydration —
-        // failing the whole (boot-gating) pass over it would wedge the pod.
-        // A half-opened destination must not survive outside the manifest:
-        // sync-back would read it as a fresh local write of an empty file.
-        if (err instanceof ObjectNotFoundError) {
-          await rm(join(destDir, ...rel.split("/")), { force: true });
-          continue;
-        }
-        if (!failed) {
-          failed = true;
-          firstError = err;
-        }
-        return;
-      }
-    }
-  };
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, entries.length) }, worker),
-  );
-  if (failed) throw firstError;
-  return manifest;
+  const listed = { rels: admitted, generationAware };
+  await opts.onListed?.(listed);
+  const priority = opts.priority
+    ? entries.filter((entry) => opts.priority?.(entry.rel))
+    : [];
+  const remaining = opts.priority
+    ? entries.filter((entry) => !opts.priority?.(entry.rel))
+    : entries;
+  const state: HydrateDownloadState = { total: 0, failed: false };
+  const download = (batch: HydrateEntry[]) =>
+    downloadHydrationEntries({
+      store,
+      destDir,
+      entries: batch,
+      manifest,
+      maxBytes,
+      concurrency,
+      state,
+      limitError: (observedBytes) =>
+        new HydrateLimitError(maxBytes, observedBytes),
+    });
+  await download(priority);
+  return { manifest, listed, done: download(remaining) };
+}
+
+/** Download everything under `prefix` into `destDir`. Returns the manifest. */
+export async function hydrate(
+  store: ObjectStore,
+  prefix: string,
+  destDir: string,
+  opts: HydrateOptions = {},
+): Promise<HydrateManifest> {
+  const started = await startHydrate(store, prefix, destDir, opts);
+  await started.done;
+  return started.manifest;
 }
 
 export type { SyncBackOptions, SyncResult } from "./sync-back";

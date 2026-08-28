@@ -196,7 +196,14 @@ test("an unclaimed turn retains full sync-back", async () => {
   expect(done.type).toBe("done");
   expect(done.data.changed).toEqual(["ConversationsChanged", "FilesChanged"]);
   // Every real turn now reports its phase marks as whole-ms deltas.
-  expect(done.data.timingsMs).toMatchObject({ tmpdir: expect.any(Number) });
+  expect(done.data.timingsMs).toMatchObject({
+    tmpdir: expect.any(Number),
+    listing: expect.any(Number),
+    layout: expect.any(Number),
+    startup_files: expect.any(Number),
+    cred_written: expect.any(Number),
+    hydrated: expect.any(Number),
+  });
 });
 
 test("shadow resolves a standing layout and reports hydrated objects", async () => {

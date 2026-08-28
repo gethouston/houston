@@ -1,32 +1,28 @@
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireFrame } from "@houston/runtime-client";
 import { applyServedAzureEndpoint } from "../ai/azure-openai";
 import { applyServedCredential } from "../auth/auth-file";
-import { runWithActingContext } from "../session/acting-context";
-import { releaseConversation, runWithConversationScope } from "../session/bus";
 import { openSSE } from "../transport/sse";
 import { startClaimHeartbeat } from "./claim-heartbeat";
+import { executeReadyTurn } from "./execute-ready-turn";
+import { executeShadowTurn } from "./execute-shadow-turn";
 import type { TurnServerDeps } from "./server-types";
-import { finishTurnDurability } from "./turn-durability";
-import { prepareTurnFilesystem } from "./turn-filesystem";
+import { cleanupTurn } from "./turn-cleanup";
+import { startTurnFilesystem } from "./turn-filesystem";
 import { ownConversationOnly } from "./turn-hot-set";
 import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
 import { turnSessionRequest } from "./turn-request";
-import {
-  prepareRoutineTurn,
-  type RoutinePhase,
-  RoutineTurnError,
-  settleRoutineTurn,
-} from "./turn-routine";
-import { createTurnModelRuntime } from "./turn-runtime";
 import { makeTurnSandboxFetch } from "./turn-sandbox";
-import { runTurn, type TurnOutcome } from "./turn-session";
+import {
+  startTurnSession,
+  type TurnSessionStartupTask,
+} from "./turn-session-startup";
 import { poolIdentity, resolveTurnStore } from "./turn-store";
-import { turnSetupErrorFrame, turnTerminalFrame } from "./turn-terminal";
+import { turnSetupErrorFrame } from "./turn-terminal";
 import { createTurnTranscript } from "./turn-transcript";
 import type { TurnRequest } from "./types";
 
@@ -72,7 +68,7 @@ export async function executeTurn(
               : {}),
           })
         : null;
-    const filesystem = await prepareTurnFilesystem({
+    const preparation = await startTurnFilesystem({
       store: resolved.store,
       prefix: resolved.prefix,
       root,
@@ -87,8 +83,13 @@ export async function executeTurn(
       ...(turn.claim
         ? { filter: ownConversationOnly(turn.conversationId) }
         : {}),
+      timings,
     });
-    timings.t_hydrated = performance.now();
+    const filesystem = preparation.filesystem;
+    const hydrated = preparation.hydrated.then((result) => {
+      timings.t_hydrated = performance.now();
+      return result;
+    });
     const { dataDir } = filesystem;
     if (turn.grant && turn.hostToken) {
       const identity = poolIdentity(turn.gcsPrefix);
@@ -120,6 +121,26 @@ export async function executeTurn(
     }
     timings.t_cred_written = performance.now();
 
+    let sendFrame: ((frame: WireFrame) => void) | undefined;
+    const earlyEmit = (frame: WireFrame) => sendFrame?.(frame);
+    let startup: TurnSessionStartupTask | undefined;
+    if (turn.credential && !turn.routine && !turn.shadow && !deps.runTurn) {
+      startup = startTurnSession(
+        { ...filesystem, turnRoot: root },
+        turnSessionRequest(
+          turn,
+          turnId,
+          earlyEmit,
+          abort.signal,
+          turnSandbox ? { call: turnSandbox.call } : undefined,
+          timings,
+        ),
+        deps.turnSessionDeps,
+      );
+    }
+
+    await hydrated;
+
     const sse = openSSE(res);
     closeSse = sse.close;
     timings.t_sse_open = performance.now();
@@ -136,199 +157,42 @@ export async function executeTurn(
       // the turn. Errors are remembered and surfaced at durability time.
       if (frame.type === "user") void transcript?.publishUser();
     };
+    sendFrame = emit;
 
-    if (turn.shadow) {
-      try {
-        if (!turn.credential) throw new Error("shadow turn needs a credential");
-        await createTurnModelRuntime(
-          dataDir,
-          turn.provider || turn.credential.provider,
-          turn.model,
-          timings,
-        );
-        emit({
-          type: "shadow",
-          data: { ...timings, hydratedObjects: filesystem.manifest.size },
-          turnId,
-          // SAFETY: shadow is an internal turn-server control frame. It uses
-          // the WireFrame transport without entering the public protocol.
-        } as unknown as WireFrame);
-        emit({ type: "done", data: null, turnId });
-      } catch (error) {
-        emit({
-          type: "error",
-          data: {
-            message: error instanceof Error ? error.message : String(error),
-          },
-          turnId,
-        });
-      }
-    } else {
-      let outcome: TurnOutcome;
-      // A routine fire derives its prompt and pins from the agent's own
-      // routine file (the prompt authority), records the running row, and
-      // gates double-fires — the worker-side twin of the host's
-      // fireRoutineRun. Typed failures terminate the turn with a machine
-      // code the dispatcher settles the fire from.
-      let routinePhase: RoutinePhase | null = null;
-      let effectiveTurn = turn;
-      if (turn.routine) {
-        try {
-          routinePhase = await prepareRoutineTurn(
-            filesystem.workspaceDir,
-            turn,
-            turnId,
-            new Date().toISOString(),
-          );
-          effectiveTurn = {
-            ...turn,
-            text: routinePhase.text,
-            // The routine's pinned provider is the routine's own statement of
-            // what it runs on — it must outrank the dispatcher-attached
-            // credential's provider, or a mismatched serve silently moves the
-            // fire onto a provider the routine never picked (PRODUCT-1515).
-            ...(routinePhase.provider
-              ? { provider: routinePhase.provider }
-              : {}),
-            ...(routinePhase.model ? { model: routinePhase.model } : {}),
-            ...(routinePhase.effort ? { effort: routinePhase.effort } : {}),
-            mode: "auto",
-          };
-        } catch (error) {
-          const code =
-            error instanceof RoutineTurnError ? error.code : "routine_error";
-          emit({
-            type: "error",
-            data: {
-              message: error instanceof Error ? error.message : String(error),
-              code,
-            },
-            turnId,
-          } as WireFrame);
-          await turnLog?.flush();
-          return;
-        }
-      }
-      if (!turn.credential) {
-        emit({
-          type: "user",
-          data: {
-            content: turn.text,
-            ts: Date.now(),
-            nonce: turn.nonce,
-            mentions: turn.mentions,
-          },
-          turnId,
-        });
-        outcome = {
-          error: "No provider connected. Connect your subscription first.",
-        };
-      } else {
-        const run = deps.runTurn ?? runTurn;
-        try {
-          outcome = await runWithConversationScope(scope, () =>
-            runWithActingContext(
-              {
-                credentialScopeKey: `u:turn:${turn.workspaceId}:${turn.agentId}`,
-                authPath,
-                ...(turn.actingAs ? { actingUser: turn.actingAs.userId } : {}),
-              },
-              () =>
-                run(
-                  { ...filesystem, turnRoot: root },
-                  turnSessionRequest(
-                    effectiveTurn,
-                    turnId,
-                    emit,
-                    abort.signal,
-                    turnSandbox ? { call: turnSandbox.call } : undefined,
-                    timings,
-                  ),
-                ),
-            ),
-          );
-        } catch (error) {
-          outcome = {
-            error: error instanceof Error ? error.message : String(error),
-          };
-        }
-      }
-
-      if (routinePhase) {
-        // The run row must leave "running" and land in the tree BEFORE the
-        // claimed sync-back uploads it — never a stuck row, never silent.
-        try {
-          await settleRoutineTurn({
-            workspaceDir: filesystem.workspaceDir,
-            phase: routinePhase,
-            conversationId: turn.conversationId,
-            ...(outcome.error ? { turnError: outcome.error } : {}),
-            nowIso: new Date().toISOString(),
-            newId: () => crypto.randomUUID(),
-          });
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          outcome = {
-            ...outcome,
-            error: outcome.error
-              ? `${outcome.error}; routine settle failed: ${message}`
-              : `routine settle failed: ${message}`,
-          };
-        }
-      }
-
-      timings.t_run_done = performance.now();
-      const durable = await finishTurnDurability({
+    if (turn.shadow)
+      await executeShadowTurn({ turn, turnId, filesystem, timings, emit });
+    else
+      await executeReadyTurn({
         deps,
-        turn: { ...turn, turnId },
+        turn,
+        turnId,
+        root,
+        scope,
+        authPath,
+        signal: abort.signal,
         filesystem,
         resolved,
         heartbeat,
-        outcome,
+        sandbox: turnSandbox,
+        startup,
+        timings,
+        emit,
+        turnLog,
         transcript,
-        ...(turnSandbox ? { views: turnSandbox.views() } : {}),
       });
-      outcome = durable.outcome;
-      timings.t_durable = performance.now();
-      emit(
-        turnTerminalFrame(
-          outcome,
-          turnId,
-          durable.poolWritesOutOfScope,
-          durable.transcriptSkipped,
-          durable.activityDocSkipped,
-          durable.changed,
-          timings,
-        ),
-      );
-      await turnLog?.flush();
-    }
   } catch (error) {
     if (!(error instanceof TurnSetupError)) throw error;
     const sse = openSSE(res);
     closeSse = sse.close;
     sse.send(turnSetupErrorFrame(error, turnId));
   } finally {
-    try {
-      await turnSandbox?.dispose().catch((error: unknown) => {
-        const detail =
-          error instanceof Error
-            ? `${error.name}: ${error.message}`
-            : typeof error;
-        console.error(`[turn] sandbox dispose failed (${detail})`);
-      });
-    } finally {
-      try {
-        await heartbeat?.stop();
-      } finally {
-        releaseConversation(scope, turn.conversationId);
-        try {
-          await rm(root, { recursive: true, force: true });
-        } finally {
-          closeSse?.();
-        }
-      }
-    }
+    await cleanupTurn({
+      root,
+      scope,
+      conversationId: turn.conversationId,
+      heartbeat,
+      sandbox: turnSandbox,
+      closeSse,
+    });
   }
 }

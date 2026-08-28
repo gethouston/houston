@@ -1,6 +1,7 @@
 import type { WireFrame } from "@houston/runtime-client";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { TurnSessionRequest } from "./turn-session";
+import type { TurnSessionStartupTask } from "./turn-session-startup";
 import type { TurnRequest } from "./types";
 
 /** Project the accepted envelope onto the provider-agnostic turn session. */
@@ -11,6 +12,7 @@ export function turnSessionRequest(
   signal: AbortSignal,
   sandbox?: { call: SandboxFetch },
   timings?: Record<string, number>,
+  startup?: TurnSessionStartupTask,
 ): TurnSessionRequest {
   return {
     conversationId: turn.conversationId,
@@ -33,6 +35,7 @@ export function turnSessionRequest(
     ...(turn.grant ? { grant: { scopes: turn.grant.scopes } } : {}),
     ...(sandbox ? { sandbox } : {}),
     ...(timings ? { timings } : {}),
+    ...(startup ? { startup } : {}),
     // Either context field present means "use these" (each defaults to ""),
     // mirroring the long-lived server's message-send contract.
     ...(turn.workspaceContext !== undefined || turn.userContext !== undefined

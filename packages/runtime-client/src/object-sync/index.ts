@@ -4,6 +4,7 @@ export { HttpObjectStore } from "./http-store";
 export type {
   HydrateManifest,
   HydrateOptions,
+  StartedHydration,
   SyncBackOptions,
   SyncResult,
 } from "./hydrate";
@@ -12,6 +13,7 @@ export {
   excluded,
   HydrateLimitError,
   hydrate,
+  startHydrate,
   syncBack,
 } from "./hydrate";
 export type {
