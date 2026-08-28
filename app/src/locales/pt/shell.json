@@ -31,6 +31,7 @@
     "myAccounts": "Minhas contas",
     "needsYouCount_one": "{{count}} assunto precisa de você",
     "needsYouCount_other": "{{count}} assuntos precisam de você",
+    "newMission": "Nova tarefa",
     "newTeam": "Nova equipe",
     "openMenu": "Abrir menu",
     "reportProblem": "Relatar um problema",
@@ -386,6 +387,12 @@
     },
     "workspace": "Espaço de trabalho",
     "yourTeams": "Suas equipes"
+  },
+  "tabBar": {
+    "agents": "Agentes",
+    "label": "Navegação principal",
+    "missionControl": "Tarefas",
+    "settings": "Configurações"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Teste nativo do Sentry acionado",

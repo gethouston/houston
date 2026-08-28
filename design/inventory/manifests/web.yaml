@@ -281,3 +281,6 @@ components:
   team-screen:
     status: implemented
     ref: "app/src/components/team-view/ (TeamView switching TeamMissionControl over @houston-ai/board MissionBoard, TeamRoutines over @houston-ai/routines RoutinesGrid, TeamFiles over the shared AgentFilesSurface, TeamSettings), with AgentReadsFailed naming any agent whose read failed"
+  mobile-tab-bar:
+    status: implemented
+    ref: "app/src/components/shell/mobile-tab-bar.tsx (tabs + NeedsYouChip badge over the agent activity rollup), rules in app/src/lib/mobile-tabs.ts with the tap side in app/src/lib/open-mobile-tab.ts (nav-stack reset mode); the compose control is app/src/components/shell/mobile-top-bar.tsx over lib/new-mission.ts"

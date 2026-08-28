@@ -54,8 +54,13 @@ export interface NavState {
  *   history retreats with the UI; anywhere else it replaces, because a close
  *   is not a new place and pushing it would make browser-back "reopen" what
  *   the user just dismissed.
+ * - `reset`: a tab switch (the mobile tab bar). The stack REBUILDS to the
+ *   destination as its only entry — native tab semantics: changing tabs
+ *   abandons the old tab's trail rather than stacking on top of it. The
+ *   history mirror echoes a rebuild as `replaceState`, and the browser's now
+ *   meaningless deeper entries decay onto the fresh root via the clamp.
  */
-export type NavMode = "push" | "replace" | "retreat";
+export type NavMode = "push" | "replace" | "retreat" | "reset";
 
 /** The store fields a {@link NavEntry} snapshots. */
 export interface NavSourceFields {
@@ -142,6 +147,14 @@ export function navigated<P extends object>(
 ): P | (P & NavState) {
   const resulting = navEntryOf({ ...s, ...partial });
   const current = s.navStack[s.navIndex];
+  if (mode === "reset") {
+    // Before the re-click check: landing on the current location must STILL
+    // rebuild when older entries sit beneath it, or the abandoned trail would
+    // stay walkable. Only a stack that already is the bare root is a no-op.
+    if (s.navStack.length === 1 && sameNavEntry(resulting, current))
+      return partial;
+    return { ...partial, navStack: [resulting], navIndex: 0 };
+  }
   if (sameNavEntry(resulting, current)) return partial;
   if (mode === "push") {
     return {
