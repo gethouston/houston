@@ -14,6 +14,9 @@ const SEARCH_RETRY_DELAY_MS = 3_000;
 const SEARCH_FRESH_TTL_MS = 10 * 60_000;
 const SEARCH_STALE_TTL_MS = 24 * 60 * 60_000;
 const SEARCH_MIN_INTERVAL_MS = 750;
+/** Upper bound on one skills.sh round-trip. A wedged upstream must surface as
+ *  the typed offline error, never hang the host route (or a test) open. */
+const SEARCH_REQUEST_TIMEOUT_MS = 10_000;
 
 /**
  * Seed query for the "popular" feed. skills.sh has no dedicated popular
@@ -37,6 +40,7 @@ export interface CommunityDirectoryOptions {
   sleep?: (ms: number) => Promise<void>;
   retryDelayMs?: number;
   minIntervalMs?: number;
+  requestTimeoutMs?: number;
   freshTtlMs?: number;
   staleTtlMs?: number;
   popularFreshTtlMs?: number;
@@ -58,6 +62,7 @@ export class CommunityDirectory {
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly retryDelayMs: number;
   private readonly minIntervalMs: number;
+  private readonly requestTimeoutMs: number;
   private readonly freshTtlMs: number;
   private readonly staleTtlMs: number;
   private readonly popularFreshTtlMs: number;
@@ -74,6 +79,7 @@ export class CommunityDirectory {
     this.sleep = opts.sleep ?? realSleep;
     this.retryDelayMs = opts.retryDelayMs ?? SEARCH_RETRY_DELAY_MS;
     this.minIntervalMs = opts.minIntervalMs ?? SEARCH_MIN_INTERVAL_MS;
+    this.requestTimeoutMs = opts.requestTimeoutMs ?? SEARCH_REQUEST_TIMEOUT_MS;
     this.freshTtlMs = opts.freshTtlMs ?? SEARCH_FRESH_TTL_MS;
     this.staleTtlMs = opts.staleTtlMs ?? SEARCH_STALE_TTL_MS;
     this.popularFreshTtlMs = opts.popularFreshTtlMs ?? POPULAR_FRESH_TTL_MS;
@@ -110,14 +116,15 @@ export class CommunityDirectory {
     }
   }
 
-  async popular(): Promise<CommunitySkill[]> {
+  /** Popular feed with shared cache/spacing and optional request-scoped I/O. */
+  async popular(opts: CommunitySearchOptions = {}): Promise<CommunitySkill[]> {
     const fresh = this.popularEntry;
     if (fresh && this.now() - fresh.fetchedAt <= this.popularFreshTtlMs)
       return fresh.skills.slice(0, POPULAR_LIMIT);
 
     await this.waitForRequestSlot();
     try {
-      const skills = await this.fetchSearch(POPULAR_SEED);
+      const skills = await this.fetchSearch(POPULAR_SEED, opts.fetchImpl);
       this.popularEntry = { skills, fetchedAt: this.now() };
       return skills.slice(0, POPULAR_LIMIT);
     } catch (err) {
@@ -150,7 +157,10 @@ export class CommunityDirectory {
       try {
         res = await (fetchOverride ?? this.fetchImpl)(
           `${this.endpoint}?q=${encodeURIComponent(query)}`,
-          { headers: { "User-Agent": "houston-skills/1.0" } },
+          {
+            headers: { "User-Agent": "houston-skills/1.0" },
+            signal: AbortSignal.timeout(this.requestTimeoutMs),
+          },
         );
       } catch (err) {
         throw new SkillRemoteError(

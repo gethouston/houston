@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { MemoryVfs } from "../vfs";
 import { CommunityDirectory } from "./community";
 import { fetchSkillMdAtPath, listSkillsFromRepo } from "./github";
@@ -397,4 +397,39 @@ test("installCommunitySkill surfaces skill_not_in_repo when nothing matches", as
     "ghost",
   ).catch((e) => e);
   expect((err as SkillRemoteError).kind).toBe("skill_not_in_repo");
+});
+
+test("a wedged skills.sh surfaces the typed offline error instead of hanging", async () => {
+  const hanging: typeof fetch = (_input, init) =>
+    new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () =>
+        reject(init.signal?.reason ?? new Error("aborted")),
+      );
+    });
+  const dir = new CommunityDirectory({
+    fetchImpl: hanging,
+    requestTimeoutMs: 20,
+    minIntervalMs: 0,
+  });
+  const err = await dir.search("research").catch((e) => e);
+  expect((err as SkillRemoteError).kind).toBe("offline");
+});
+
+test("popular threads a request-scoped fetch and never touches global fetch", async () => {
+  const seen: string[] = [];
+  const injected: typeof fetch = async (input) => {
+    seen.push(String(input));
+    return new Response(JSON.stringify({ skills: [] }));
+  };
+  const globalSpy = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("global fetch must not be used"));
+  try {
+    const dir = new CommunityDirectory({ minIntervalMs: 0 });
+    await dir.popular({ fetchImpl: injected });
+    expect(seen.length).toBe(1);
+    expect(globalSpy).not.toHaveBeenCalled();
+  } finally {
+    globalSpy.mockRestore();
+  }
 });
