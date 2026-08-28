@@ -16,9 +16,13 @@ export interface ObjectStore {
   manifest?(
     prefix?: string,
   ): Promise<import("./object-manifest").ObjectMetadata[]>;
-  download(key: string, destFile: string): Promise<void>;
+  download(key: string, destFile: string, opts?: ReadOptions): Promise<void>;
   /** Download one object and return metadata from the same read response. */
-  downloadVersioned?(key: string, destFile: string): Promise<ReadResult>;
+  downloadVersioned?(
+    key: string,
+    destFile: string,
+    opts?: ReadOptions,
+  ): Promise<ReadResult>;
   upload(
     srcFile: string,
     key: string,
@@ -26,6 +30,10 @@ export interface ObjectStore {
     // biome-ignore lint/suspicious/noConfusingVoidType: additive port widening must accept existing void-returning stores.
   ): Promise<WriteResult | void>;
   delete(key: string, opts?: WriteOptions): Promise<void>;
+}
+
+export interface ReadOptions {
+  signal?: AbortSignal;
 }
 
 export interface WriteOptions {
@@ -148,12 +156,17 @@ export class LocalDirStore implements ObjectStore {
     return out;
   }
 
-  async download(key: string, destFile: string): Promise<void> {
+  async download(
+    key: string,
+    destFile: string,
+    opts?: ReadOptions,
+  ): Promise<void> {
     await mkdir(dirname(destFile), { recursive: true });
     try {
       await pipeline(
         createReadStream(this.fileFor(key)),
         createWriteStream(destFile),
+        ...(opts?.signal ? [{ signal: opts.signal }] : []),
       );
     } catch (error) {
       // Same taxonomy as the HTTP store's 404: a listed file deleted before

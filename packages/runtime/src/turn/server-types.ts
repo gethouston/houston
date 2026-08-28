@@ -1,7 +1,9 @@
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import type { AdmissionLimiter } from "./admission";
 import type { applyOp } from "./op-apply";
+import type { TurnCredentialWriter } from "./turn-credential";
 import type { TurnRunner } from "./turn-session";
+import type { RunTurnDeps } from "./turn-session-startup";
 
 /** Injectable dependencies and pool controls for the per-turn HTTP server. */
 export interface TurnServerDeps {
@@ -9,6 +11,13 @@ export interface TurnServerDeps {
   /** App-layer token; empty means open local development. */
   token: string;
   runTurn?: TurnRunner;
+  /** Test seams and optional preloaded SDK input for pooled-turn setup. */
+  turnSessionDeps?: RunTurnDeps;
+  /** Test seam for a synchronous credential filesystem failure. */
+  writeTurnCredential?: TurnCredentialWriter;
+  /** Test seam for ordering root removal after hydration settlement. */
+  removeTurnRoot?: (root: string) => Promise<void>;
+  hydrationSettleTimeoutMs?: number;
   /** Test seam for the worker op executor. */
   runOp?: typeof applyOp;
   concurrency?: number;

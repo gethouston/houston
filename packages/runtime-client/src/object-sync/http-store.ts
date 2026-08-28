@@ -1,10 +1,11 @@
-import { downloadFile } from "./http-store-download";
 import { objectStoreResponseError } from "./http-store-errors";
 import type { HttpObjectStoreOptions } from "./http-store-options";
-import { uploadFile } from "./http-store-upload";
-import { type ObjectMetadata, parseObjectManifest } from "./object-manifest";
+import { downloadHttpObject, readHttpManifest } from "./http-store-read";
+import { uploadHttpObject } from "./http-store-write";
+import type { ObjectMetadata } from "./object-manifest";
 import type {
   ObjectStore,
+  ReadOptions,
   ReadResult,
   WriteOptions,
   WriteResult,
@@ -53,29 +54,41 @@ export class HttpObjectStore implements ObjectStore {
 
   async manifest(prefix = ""): Promise<ObjectMetadata[]> {
     const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : "";
-    const res = await this.fetch(`${this.baseUrl}/manifest${query}`, {
-      headers: this.authHeaders(),
-    });
-    this.captureFence(res);
-    if (!res.ok) throw await objectStoreResponseError(res, "GET", "manifest");
-    return parseObjectManifest(
-      await res.json(),
-      "object store GET manifest",
-    ).filter((object) => !prefix || object.key.startsWith(prefix));
+    return readHttpManifest(
+      () =>
+        this.fetch(`${this.baseUrl}/manifest${query}`, {
+          headers: this.authHeaders(),
+        }),
+      (response) => this.captureFence(response),
+      prefix,
+    );
   }
 
-  async download(key: string, destFile: string): Promise<void> {
-    await this.downloadVersioned(key, destFile);
+  async download(
+    key: string,
+    destFile: string,
+    opts?: ReadOptions,
+  ): Promise<void> {
+    await this.downloadVersioned(key, destFile, opts);
   }
 
   /** Download one object and preserve the generation from its GET response. */
-  async downloadVersioned(key: string, destFile: string): Promise<ReadResult> {
-    const res = await this.fetch(this.objectUrl(key), {
-      headers: this.authHeaders(),
-    });
-    this.captureFence(res);
-    if (!res.ok) throw await objectStoreResponseError(res, "GET", key);
-    return downloadFile(res, key, destFile);
+  async downloadVersioned(
+    key: string,
+    destFile: string,
+    opts?: ReadOptions,
+  ): Promise<ReadResult> {
+    return downloadHttpObject(
+      () =>
+        this.fetch(this.objectUrl(key), {
+          headers: this.authHeaders(),
+          signal: opts?.signal,
+        }),
+      (response) => this.captureFence(response),
+      key,
+      destFile,
+      opts?.signal,
+    );
   }
 
   async upload(
@@ -90,32 +103,15 @@ export class HttpObjectStore implements ObjectStore {
     // writer is rejected by its token. Generation-guarded writes cannot retry
     // because a lost success is indistinguishable from a failed attempt.
     const retryable = !this.guardedWrite(opts);
-    const res = await uploadFile(
-      this.fetch.bind(this),
+    return uploadHttpObject({
+      fetchRequest: this.fetch.bind(this),
       url,
       srcFile,
+      key,
       headers,
       retryable,
-    );
-    this.captureFence(res);
-    if (!res.ok) throw await objectStoreResponseError(res, "PUT", key);
-    const body: unknown = await res.json();
-    const metadata = parseObjectManifest(
-      { objects: [body] },
-      `object store PUT ${key}`,
-    )[0];
-    if (!metadata) {
-      throw new Error(`object store PUT ${key} returned a malformed body`);
-    }
-    // "0" from the header means the backend has no generations (dir) — the
-    // same normalization parseObjectManifest applies to the manifest body.
-    const headerGeneration = res.headers.get("X-Houston-Generation");
-    const generation =
-      metadata.generation ??
-      (headerGeneration && headerGeneration !== "0"
-        ? headerGeneration
-        : undefined);
-    return generation === undefined ? undefined : { generation };
+      capture: (response) => this.captureFence(response),
+    });
   }
 
   async delete(key: string, opts?: WriteOptions): Promise<void> {

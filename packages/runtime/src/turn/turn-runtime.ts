@@ -10,6 +10,27 @@ import {
 } from "../ai/qwen-dashscope";
 import { resolveTurnModel } from "./turn-model";
 
+const TURN_RUNTIME_INPUTS = new Set([
+  "azure-endpoint.json",
+  "custom-endpoint.json",
+  "models.json",
+  "qwen-region.json",
+  "settings.json",
+  "xiaomi-endpoint.json",
+]);
+
+/** Files that model construction reads before the full tree is hydrated. */
+export function turnRuntimeInputIncludes(
+  dataRel: string,
+  relativePath: string,
+): boolean {
+  const prefix = `${dataRel}/`;
+  return (
+    relativePath.startsWith(prefix) &&
+    TURN_RUNTIME_INPUTS.has(relativePath.slice(prefix.length))
+  );
+}
+
 /** Build and resolve the isolated model runtime for one hydrated turn root. */
 export async function createTurnModelRuntime(
   dataDir: string,

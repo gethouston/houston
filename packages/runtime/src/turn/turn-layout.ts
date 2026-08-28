@@ -3,15 +3,19 @@ import { mkdir, readdir } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
 /** Stable internal codes for failures before provider execution. */
-export type TurnSetupCode = "hydrate_over_cap" | "layout_unexpected";
+export type TurnSetupCode =
+  | "credential_write_failed"
+  | "hydrate_over_cap"
+  | "layout_unexpected";
 
 /** A setup failure the internal turn stream exposes as a stable code. */
 export class TurnSetupError extends Error {
   constructor(
     readonly code: TurnSetupCode,
     message: string,
+    options?: ErrorOptions,
   ) {
-    super(message);
+    super(message, options);
     this.name = "TurnSetupError";
   }
 }

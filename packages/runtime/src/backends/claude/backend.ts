@@ -1,79 +1,27 @@
-import type {
-  createSdkMcpServer,
-  Options,
-} from "@anthropic-ai/claude-agent-sdk";
-import type { ToolSelection } from "../../session/tool-selection";
-import type { IntegrationToolOptions } from "../../session/tools/integrations";
+import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type {
   CreateSessionOptions,
   HarnessBackend,
   HarnessSession,
 } from "../types";
+import type { ClaudeBackendDeps } from "./backend-types";
 import { resolveClaudeExecutable } from "./binary-path";
 import { buildClaudeEnv } from "./claude-env";
-import {
-  type BridgedPiTool,
-  buildHoustonMcpServer,
-  HOUSTON_MCP_SERVER_NAME,
-} from "./custom-tools";
+import { buildHoustonMcpServer, HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 import { toSdkModel } from "./model";
-import type { ClaudeLayout } from "./paths";
 import { assertAnthropicScopeCredential } from "./scope-guard";
+import {
+  ClaudeBackendUnavailableError,
+  loadedClaudeSdk,
+  preloadClaudeSdk,
+} from "./sdk-loader";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
 import { buildToolPolicy, makeCanUseTool } from "./tool-policy";
 
-/**
- * A resolved Anthropic credential: an OAuth token or a pasted API key.
- * `accessDigest` is set ONLY when the value came from an OAUTH-typed store
- * entry's access token (read-token.ts): it is what a revoked-token report
- * names, captured at spawn preparation — the env is rebuilt from a fresh read
- * at every prompt (PRODUCT-1355), so the digest travels WITH that read; still
- * never re-digested at failure time, which would name whatever a re-serve
- * stored since, not the token the failed turn ran on (PRODUCT-1319).
- */
-export type ClaudeToken =
-  | { kind: "oauth-token"; value: string; accessDigest?: string }
-  | { kind: "api-key"; value: string; accessDigest?: string };
-
-/** Everything the Claude backend needs to open a session. */
-export interface ClaudeBackendDeps {
-  workspaceDir: string;
-  layout: ClaudeLayout;
-  /** The current Anthropic credential, or undefined when none is connected. */
-  readToken: () => ClaudeToken | undefined;
-  /** Houston's active tool selection (its code-execution mode gates Bash). */
-  toolSelection: ToolSelection;
-  /** Houston's product system prompt (full-replace, not the claude_code preset). */
-  systemPrompt: string;
-  /** Extra roots available to read-only file tools, never Edit/Write/Bash. */
-  sharedRoots?: string[];
-  /**
-   * Integration proxy config when this runtime can reach its host with a sandbox
-   * token — the SAME gate the pi path applies (`config.controlPlaneUrl &&
-   * config.sandboxToken`). Present → the in-process MCP server also exposes
-   * `request_connection` + `integration_search` + `integration_execute`; absent
-   * → only `ask_user` (which holds no credential and makes no network call).
-   */
-  integrations?: IntegrationToolOptions;
-  /** Prebuilt turn tools replace the long-lived server's default set. */
-  tools?: BridgedPiTool[];
-  /** External SDK adapter for tests that must not spawn a process. */
-  sdk?: {
-    query: ClaudeQuery;
-    createSdkMcpServer: typeof createSdkMcpServer;
-  };
-}
-
-/** Thrown when the optional Claude Agent SDK is not present in this build. */
-export class ClaudeBackendUnavailableError extends Error {
-  constructor(cause?: unknown) {
-    super("Claude backend unavailable in this build");
-    this.name = "ClaudeBackendUnavailableError";
-    if (cause !== undefined) this.cause = cause;
-  }
-}
+export type { ClaudeBackendDeps, ClaudeToken } from "./backend-types";
+export { ClaudeBackendUnavailableError } from "./sdk-loader";
 
 /**
  * Build the Claude Agent SDK `HarnessBackend` for the `anthropic` provider.
@@ -120,7 +68,8 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       let houstonMcp: ReturnType<typeof buildHoustonMcpServer>;
       try {
         const sdk =
-          deps.sdk ?? (await import("@anthropic-ai/claude-agent-sdk"));
+          deps.sdk ??
+          (await loadedClaudeSdk(deps.sdkLoad ?? preloadClaudeSdk()));
         query = sdk.query as ClaudeQuery;
         // Build the in-process MCP server that exposes Houston's custom tools to
         // the subprocess. Built here (not at module load) so the optional SDK's

@@ -33,6 +33,7 @@ export interface TurnBackendDeps {
   systemPrompt: string;
   sharedRoots?: string[];
   claudeSdk?: ClaudeBackendDeps["sdk"];
+  claudeSdkLoad?: ClaudeBackendDeps["sdkLoad"];
 }
 
 /** Claude directories split between durable conversation state and turn state. */
@@ -102,6 +103,7 @@ export function createTurnBackend(
       // accepts; only their heterogeneous schema generics need widening.
       tools: commonTools as unknown as BridgedPiTool[],
       sdk: deps.claudeSdk,
+      sdkLoad: deps.claudeSdkLoad,
     });
     return {
       id: backend.id,
