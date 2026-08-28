@@ -14,6 +14,11 @@ const TURN_RUNTIME_INPUTS = new Set([
   "azure-endpoint.json",
   "custom-endpoint.json",
   "models.json",
+  // Read by pi, not by this repo: ModelRuntime.create's offline refresh loads
+  // stored dynamic models through its FileModelsStore at
+  // dirname(modelsPath)/models-store.json. Left to the bulk pass, that read
+  // races an in-flight download and can parse a partial file.
+  "models-store.json",
   "qwen-region.json",
   "settings.json",
   "xiaomi-endpoint.json",
