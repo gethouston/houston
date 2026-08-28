@@ -1,4 +1,5 @@
 import {
+  AGENTS_HOME_VIEW_ID,
   AI_HUB_VIEW_ID,
   INBOX_VIEW_ID,
   SETTINGS_VIEW_ID,
@@ -6,6 +7,7 @@ import {
 } from "../../lib/top-level-views";
 import { ABOUT_ME_VIEW_ID, AboutMeView } from "../about-me";
 import { ACADEMY_VIEW_ID, AcademyView } from "../academy";
+import { AgentsHomeView } from "../agents-home/agents-home-view";
 import { AiHubView } from "../ai-hub/ai-hub-view";
 import { InboxView } from "../inbox/inbox-view";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
@@ -40,6 +42,9 @@ export function topLevelScreenViews(gates: {
 }): KeepAliveView[] {
   return [
     { id: INBOX_VIEW_ID, enabled: true, content: <InboxView /> },
+    // The mobile Agents tab's root. Ungated: it is the phone's landing screen,
+    // so it must exist before anything else resolves — like the Inbox.
+    { id: AGENTS_HOME_VIEW_ID, enabled: true, content: <AgentsHomeView /> },
     { id: ABOUT_ME_VIEW_ID, enabled: true, content: <AboutMeView /> },
     { id: ACADEMY_VIEW_ID, enabled: true, content: <AcademyView /> },
     { id: AI_HUB_VIEW_ID, enabled: gates.showAiModels, content: <AiHubView /> },

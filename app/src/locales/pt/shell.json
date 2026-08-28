@@ -388,6 +388,22 @@
     "workspace": "Espaço de trabalho",
     "yourTeams": "Suas equipes"
   },
+  "agentsHome": {
+    "title": "Agentes",
+    "filterPlaceholder": "Filtrar agentes",
+    "filterEmpty": "Nenhum agente corresponde à sua busca",
+    "noMissionsPreview": "Ainda não há tarefas",
+    "archived_one": "Arquivadas ({{count}})",
+    "archived_other": "Arquivadas ({{count}})",
+    "empty": {
+      "title": "Ainda não há agentes",
+      "description": "Crie um agente para começar. Tudo em que eles trabalharem aparecerá aqui."
+    },
+    "noMissions": {
+      "title": "Ainda não há tarefas",
+      "description": "Comece uma tarefa com o botão de compor e ela aparecerá aqui."
+    }
+  },
   "tabBar": {
     "agents": "Agentes",
     "label": "Navegação principal",

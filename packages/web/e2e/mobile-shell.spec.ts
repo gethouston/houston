@@ -46,7 +46,12 @@ test("opens a mission's chat covering the full content width", async ({
 }) => {
   await page.goto("/");
 
-  await page.getByText("Plan a trip to Tokyo").click();
+  // The phone lands on the Agents home: drill agent → mission to the chat.
+  await page.getByTestId("agents-home-row").click();
+  await page
+    .getByTestId("agent-missions-screen")
+    .getByText("Plan a trip to Tokyo")
+    .click();
   await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 
   const panel = page.getByTestId("mission-panel");
@@ -56,10 +61,14 @@ test("opens a mission's chat covering the full content width", async ({
   // Full width minus the 8px gutter frame on each side (not a 45% split).
   expect(box?.width ?? 0).toBeGreaterThanOrEqual(360);
 
-  // The panel's own close button returns to the board.
+  // The panel's own close button returns to the board underneath.
   await page.getByRole("button", { name: "Close panel" }).click();
   await expect(panel).toBeHidden();
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(
+    page
+      .locator("[data-screen-active='true']")
+      .getByText("Plan a trip to Tokyo"),
+  ).toBeVisible();
 });
 
 test("the hamburger stays hidden on a desktop viewport", async ({ page }) => {

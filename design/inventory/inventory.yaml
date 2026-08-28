@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 70
+version: 71
 
 components:
   - id: agent-avatar
@@ -1562,3 +1562,67 @@ components:
       its meaning ("N issues need you") rather than a bare number. Targets are
       at least 44px tall.
     since: 70
+
+  - id: agents-home
+    title: Agents home
+    purpose: >-
+      The phone's landing screen and the Agents tab's root: every agent as a
+      two-line cell, sorted by who needs attention.
+    anatomy: [title, name-filter, agent-cell, agent-avatar, running-ring,
+      needs-you-chip, preview-line, relative-time, empty-state]
+    states: [list, filtering, filter-empty, no-agents, previews-loading]
+    variants: []
+    behavior: >-
+      One cell per agent, attention-sorted: agents with missions waiting on
+      the user first, then agents with running work, then everyone else, and
+      inside each band the most recently active agent leads. The cell's first
+      line is the agent's name beside the same needs-you count chip the rail
+      rows and the Tasks tab badge wear (one badge shape, one number, never a
+      recount); its avatar wears the same running ring the rail draws. The
+      second line previews the most recently moved mission's title with the
+      movement's relative time flushed right, so the list reads like a chat
+      list: who moved, and how long ago. A name filter under the title narrows
+      the list as the user types and owns its own empty line when nobody
+      matches; with no agents at all the screen says so instead of rendering a
+      hollow list. Counts and previews read the same conversation sweep and
+      per-agent summaries every other badge surface reads, repainting through
+      the ordinary event invalidation, never a fetch path of their own.
+      Tapping a cell adopts the agent as current and pushes its missions
+      screen onto the navigation stack, so back pops out of the drill.
+    a11y: >-
+      The screen's title is its h1; the filter is a labelled search input;
+      each cell is one real button at least 56px tall named by the agent, with
+      the chip and the running ring carrying their own accessible labels ("N
+      issues need you", "N issues running") rather than bare numbers.
+    since: 71
+
+  - id: agent-missions-list
+    title: Per-agent missions list
+    purpose: >-
+      One agent's missions as a sectioned phone list, pushed from the Agents
+      home; the drill level between the agent list and a mission's chat.
+    anatomy: [back-bar, agent-masthead, section-header, mission-row,
+      relative-time, archived-toggle, empty-state]
+    states: [sectioned, archived-collapsed, archived-expanded, no-missions]
+    variants: []
+    behavior: >-
+      A back bar returns to the Agents home (a navigation-stack retreat, so
+      the hardware back button does the same thing), under a masthead naming
+      the agent with its avatar and running ring. The missions split into the
+      board's own sections -- Needs you, Running, Done, by the exact status
+      mapping the board's columns use, an errored mission sitting in Needs you
+      -- each newest movement first, and an empty section vanishes rather
+      than rendering hollow. The archive folds behind a trailing row naming
+      its count; expanding it lists the archived missions inline. Tapping any
+      mission performs the same navigation a notification performs: the agent
+      becomes current, its board opens, and the mission's chat opens over it
+      full-screen, with the archive surface swapped in when the mission turns
+      out archived. An agent with no missions at all gets the honest empty
+      state pointing at the compose control. Rows read the same conversation
+      sweep the boards read and live-update through the same invalidation.
+    a11y: >-
+      The back control is a labelled button naming the level above; the agent
+      masthead is the screen's h1; section headers are real headings; every
+      mission row is one button named by the mission's title; the archived
+      toggle is a button carrying aria-expanded.
+    since: 71

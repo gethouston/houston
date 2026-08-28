@@ -129,3 +129,7 @@ components:
     status: not-started
   mobile-tab-bar:
     status: not-started
+  agents-home:
+    status: not-started
+  agent-missions-list:
+    status: not-started

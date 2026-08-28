@@ -388,6 +388,22 @@
     "workspace": "Espacio de trabajo",
     "yourTeams": "Tus equipos"
   },
+  "agentsHome": {
+    "title": "Agentes",
+    "filterPlaceholder": "Filtrar agentes",
+    "filterEmpty": "Ningún agente coincide con tu búsqueda",
+    "noMissionsPreview": "Aún no hay tareas",
+    "archived_one": "Archivadas ({{count}})",
+    "archived_other": "Archivadas ({{count}})",
+    "empty": {
+      "title": "Aún no hay agentes",
+      "description": "Crea un agente para empezar. Todo en lo que trabajen aparecerá aquí."
+    },
+    "noMissions": {
+      "title": "Aún no hay tareas",
+      "description": "Comienza una tarea con el botón de redactar y aparecerá aquí."
+    }
+  },
   "tabBar": {
     "agents": "Agentes",
     "label": "Navegación principal",

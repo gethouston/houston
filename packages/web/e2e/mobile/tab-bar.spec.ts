@@ -13,9 +13,9 @@ test("the three tabs navigate and mark the active tab", async ({ page }) => {
   const tabBar = page.getByTestId("mobile-tab-bar");
   await expect(tabBar).toBeVisible();
 
-  // Boot lands on the home team's board: the Tasks tab is the active one.
-  await expect(screen(page)).toHaveAttribute("data-screen", "team");
-  await expect(tabBar.getByRole("button", { name: "Tasks" })).toHaveAttribute(
+  // Boot lands on the Agents home — the phone's landing tab.
+  await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
+  await expect(tabBar.getByRole("button", { name: "Agents" })).toHaveAttribute(
     "aria-current",
     "page",
   );
@@ -28,20 +28,21 @@ test("the three tabs navigate and mark the active tab", async ({ page }) => {
     tabBar.getByRole("button", { name: "Settings" }),
   ).toHaveAttribute("aria-current", "page");
 
-  // Agents re-hosts the current agent's board (the agent-focused team view).
-  await tabBar.getByRole("button", { name: "Agents" }).tap();
-  await expect(screen(page)).toHaveAttribute("data-screen", "team");
-  await expect(tabBar.getByRole("button", { name: "Agents" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-
   await tabBar.getByRole("button", { name: "Tasks" }).tap();
+  await expect(screen(page)).toHaveAttribute("data-screen", "team");
   await expect(tabBar.getByRole("button", { name: "Tasks" })).toHaveAttribute(
     "aria-current",
     "page",
   );
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
+
+  // Agents roots back on the home list.
+  await tabBar.getByRole("button", { name: "Agents" }).tap();
+  await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
+  await expect(tabBar.getByRole("button", { name: "Agents" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
 });
 
 test("a tab switch resets the stack: back stays on the new tab", async ({
@@ -50,11 +51,12 @@ test("a tab switch resets the stack: back stays on the new tab", async ({
   await page.goto("/");
 
   // Drill into the full-screen chat on the Tasks tab...
-  await page.getByText("Plan a trip to Tokyo").tap();
+  const tabBar = page.getByTestId("mobile-tab-bar");
+  await tabBar.getByRole("button", { name: "Tasks" }).tap();
+  await screen(page).getByText("Plan a trip to Tokyo").tap();
   await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 
   // ...switch tabs: the chat closes and the old tab's trail is abandoned.
-  const tabBar = page.getByTestId("mobile-tab-bar");
   await tabBar.getByRole("button", { name: "Settings" }).tap();
   await expect(screen(page)).toHaveAttribute("data-screen", "settings");
   await expect(page.getByTestId("mission-panel")).toBeHidden();
@@ -64,6 +66,23 @@ test("a tab switch resets the stack: back stays on the new tab", async ({
   await page.goBack();
   await expect(screen(page)).toHaveAttribute("data-screen", "settings");
   await expect(page.getByTestId("mission-panel")).toBeHidden();
+});
+
+test("re-tapping the Agents tab pops a drilled agent back to the list", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page.getByTestId("agents-home-row").tap();
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+
+  // The active tab's own root: re-tapping abandons the drill.
+  await page
+    .getByTestId("mobile-tab-bar")
+    .getByRole("button", { name: "Agents" })
+    .tap();
+  await expect(page.getByTestId("agents-home")).toBeVisible();
+  await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
 });
 
 test("the top bar compose button starts a new task", async ({ page }) => {

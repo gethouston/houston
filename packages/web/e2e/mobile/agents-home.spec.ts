@@ -1,0 +1,94 @@
+import { expect, test } from "../support/fixtures";
+import { screen } from "../support/team-nav";
+
+/**
+ * The phone's Agents home (PR 4 of the responsiveness overhaul): the landing
+ * screen. An attention-sorted agent list with a last-activity preview and the
+ * needs-you chip, a name filter, and the drill chain — agent → its missions
+ * (sectioned) → the mission's chat — every push a nav-stack level the browser
+ * back button pops in order.
+ */
+
+test("boot lands on the Agents home with previews and the needs-you chip", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
+  const row = page.getByTestId("agents-home-row");
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText("Houston");
+  // The preview line is the most recently moved mission's title.
+  await expect(row).toContainText("Plan a trip to Tokyo");
+  // The seeded needs-you mission shows as the row's chip — the same count the
+  // Tasks tab badge carries.
+  await expect(row.getByText("1", { exact: true })).toBeVisible();
+});
+
+test("the name filter narrows the list and owns its empty state", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const filter = page.getByTestId("agents-home-filter");
+  await filter.fill("hou");
+  await expect(page.getByTestId("agents-home-row")).toHaveCount(1);
+
+  await filter.fill("zzz");
+  await expect(page.getByTestId("agents-home-row")).toHaveCount(0);
+  await expect(page.getByText("No agents match your search")).toBeVisible();
+
+  await filter.fill("");
+  await expect(page.getByTestId("agents-home-row")).toHaveCount(1);
+});
+
+test("agent → missions → chat pushes; back pops the trail in order", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  // Drill into the agent: its missions screen, sectioned the way the board is.
+  await page.getByTestId("agents-home-row").tap();
+  const missions = page.getByTestId("agent-missions-screen");
+  await expect(missions).toBeVisible();
+  await expect(missions.getByText("Needs you")).toBeVisible();
+  await expect(missions.getByText("Done")).toBeVisible();
+
+  // Tap a mission: the same three-step nav a notification performs — the
+  // agent's board opens with the chat over it, full-screen on the phone.
+  await missions.getByText("Plan a trip to Tokyo").tap();
+  const panel = page.getByTestId("mission-panel");
+  await expect(panel).toBeVisible();
+  await expect(panel.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
+
+  // Back pops the chat, leaving the agent's board.
+  await page.goBack();
+  await expect(panel).toBeHidden();
+  await expect(screen(page)).toHaveAttribute("data-screen", "team");
+
+  // Back again restores the drilled missions screen...
+  await page.goBack();
+  await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+
+  // ...and one more lands on the home list.
+  await page.goBack();
+  await expect(page.getByTestId("agents-home")).toBeVisible();
+  await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
+});
+
+test("an agent with only active work shows no archived row; sections hide when empty", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  await page.getByTestId("agents-home-row").tap();
+  const missions = page.getByTestId("agent-missions-screen");
+  // The seed holds a needs-you and a done mission: no Running section, no
+  // archived toggle — empty sections vanish rather than render hollow.
+  await expect(missions.getByText("Needs you")).toBeVisible();
+  await expect(missions.getByText("Running")).toHaveCount(0);
+  await expect(page.getByTestId("agent-missions-archived-toggle")).toHaveCount(
+    0,
+  );
+});

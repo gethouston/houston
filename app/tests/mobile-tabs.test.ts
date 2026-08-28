@@ -40,6 +40,10 @@ describe("activeMobileTab", () => {
     assert.equal(activeMobileTab(at("team", "settings")), "agents");
   });
 
+  it("the Agents home screen is the Agents tab's own root", () => {
+    assert.equal(activeMobileTab(at("agents-home")), "agents");
+  });
+
   it("the drawer's long tail lands on the Agents landing tab", () => {
     for (const view of ["inbox", "store", "skills", "integrations", "academy"])
       assert.equal(activeMobileTab(at(view)), "agents");
