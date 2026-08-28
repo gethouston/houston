@@ -14,9 +14,15 @@ import { build } from "esbuild";
 //    photon_rs_bg.wasm with __dirname — bundled, that resolves nowhere and
 //    every image an agent reads silently degrades to "[Image omitted…]".
 //    Lazily imported; resolves from the image's node_modules.
+//  - @earendil-works/pi-coding-agent: its provider registry lazy-loads
+//    per-provider auth/stream chunks with a RUNTIME-COMPUTED relative
+//    import specifier esbuild cannot rewrite. Inlined, that import resolves
+//    beside the bundle ("/app/dist/runtime/openai-codex.js") and every pi
+//    OAuth derivation for a chunked provider dies at turn time. External,
+//    pi resolves its own chunks from its package directory as designed.
 //  - *.node native addons load via the filesystem by design.
 const externalImport =
-  /^@anthropic-ai\/claude-agent-sdk(?:\/|$)|^@silvia-odwyer\/photon-node(?:\/|$)|\.node$/;
+  /^@anthropic-ai\/claude-agent-sdk(?:\/|$)|^@silvia-odwyer\/photon-node(?:\/|$)|^@earendil-works\/pi-coding-agent(?:\/|$)|\.node$/;
 
 const externalNodeModules = {
   name: "external-unbundleables",
@@ -67,9 +73,13 @@ await Promise.all([
 {
   const { readFileSync } = await import("node:fs");
   const emitted = readFileSync("dist/runtime/main.mjs", "utf8");
+  // photon-node is no longer asserted here: it is imported only from within
+  // pi, which is itself external — its specifier lives in pi's package files,
+  // not this bundle. The resolve filter above still forces it external if any
+  // bundled module ever imports it directly.
   for (const specifier of [
     "@anthropic-ai/claude-agent-sdk",
-    "@silvia-odwyer/photon-node",
+    "@earendil-works/pi-coding-agent",
   ]) {
     if (!emitted.includes(`"${specifier}"`)) {
       throw new Error(
