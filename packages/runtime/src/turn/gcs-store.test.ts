@@ -1,9 +1,8 @@
 import type { Storage } from "@google-cloud/storage";
 import { expect, test, vi } from "vitest";
 import { GcsStore } from "./gcs-store";
-import { ownConversationOnly } from "./turn-hot-set";
 
-test("GCS update timestamps select exactly one Claude transcript", async () => {
+test("GCS manifests propagate update timestamps without breaking pagination", async () => {
   const prefix = "ws/w1/agent-1";
   const session =
     "workspaces/Personal/Bob/.houston/runtime/sessions/c1/claude/projects";
@@ -35,15 +34,17 @@ test("GCS update timestamps select exactly one Claude transcript", async () => {
     bucket: () => ({ getFiles }),
   } as unknown as Storage;
   const manifest = await new GcsStore("turns", storage).manifest(prefix);
-  const listing = manifest.map(({ key, updated }) => ({
-    rel: key.slice(prefix.length + 1),
-    ...(updated ? { updated } : {}),
-  }));
-  const admit = ownConversationOnly("c1");
 
-  expect(
-    listing.filter(({ rel }) => admit(rel, listing)).map(({ rel }) => rel),
-  ).toEqual([newer]);
+  expect(manifest.map(({ key, updated }) => ({ key, updated }))).toEqual([
+    {
+      key: `${prefix}/${newer}`,
+      updated: "2026-08-21T12:00:00.000Z",
+    },
+    {
+      key: `${prefix}/${older}`,
+      updated: "2026-08-20T12:00:00.000Z",
+    },
+  ]);
   expect(getFiles).toHaveBeenCalledWith({
     prefix: `${prefix}/`,
     fields: expect.stringContaining("updated"),

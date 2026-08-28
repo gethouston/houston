@@ -34,20 +34,20 @@ export interface HydrateOptions {
    * 133-object workspace measured 10.5 s sequential vs 0.4 s at 16.
    */
   concurrency?: number;
-  /**
-   * Per-object admission on top of `excludes`: only objects the predicate
-   * accepts are downloaded. Lets a caller hydrate a hot-set (one
-   * conversation's files, not every conversation's) without a glob per id.
-   */
-  filter?: (rel: string, listing: readonly HydrateListedObject[]) => boolean;
-  /** Every admitted path BEFORE `filter` (the store's view of the tree) and
+  /** Admit objects after priorities land using the listing and hydrated root. */
+  filter?: (
+    rel: string,
+    listing: readonly HydrateListedObject[],
+    hydratedRoot: string,
+  ) => boolean;
+  /** Every non-excluded path before `filter` (the store's view of the tree) and
    *  whether the listing carried generations (the CAS capability, which a
    *  filtered manifest can no longer answer on its own). */
   onListed?: (listing: {
     rels: string[];
     generationAware: boolean;
   }) => void | Promise<void>;
-  /** Download these admitted objects before the remaining hydration starts. */
+  /** Download these candidates before filtering the non-priority objects. */
   priority?: (rel: string) => boolean;
 }
 
@@ -125,20 +125,15 @@ export async function startHydrate(
     rel,
     ...(updated ? { updated } : {}),
   }));
-  const entries = opts.filter
-    ? candidates.filter((entry) => opts.filter?.(entry.rel, filterListing))
-    : candidates;
   const listed = {
     rels: candidates.map(({ rel }) => rel),
     generationAware,
   };
   await opts.onListed?.(listed);
-  const priority = opts.priority
-    ? entries.filter((entry) => opts.priority?.(entry.rel))
+  const priorityCandidates = opts.priority
+    ? candidates.filter((entry) => opts.priority?.(entry.rel))
     : [];
-  const remaining = opts.priority
-    ? entries.filter((entry) => !opts.priority?.(entry.rel))
-    : entries;
+  const priorityRels = new Set(priorityCandidates.map(({ rel }) => rel));
   const controller = new AbortController();
   const state: HydrateDownloadState = {
     total: 0,
@@ -163,11 +158,25 @@ export async function startHydrate(
       limitError: (observedBytes) =>
         new HydrateLimitError(maxBytes, observedBytes),
     });
+  const filter = opts.filter;
+  const priority = filter
+    ? priorityCandidates.filter((entry) =>
+        filter(entry.rel, filterListing, destDir),
+      )
+    : priorityCandidates;
   await download(priority);
+  const remainingCandidates = candidates.filter(
+    ({ rel }) => !priorityRels.has(rel),
+  );
+  const remaining = filter
+    ? remainingCandidates.filter((entry) =>
+        filter(entry.rel, filterListing, destDir),
+      )
+    : remainingCandidates;
   return {
     manifest,
     listed,
-    skippedObjects: candidates.length - entries.length,
+    skippedObjects: candidates.length - priority.length - remaining.length,
     done: download(remaining),
     abort: () => state.fail(new Error("hydration aborted before cleanup")),
   };

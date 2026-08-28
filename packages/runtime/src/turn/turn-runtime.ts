@@ -31,6 +31,20 @@ export function turnRuntimeInputIncludes(
   );
 }
 
+/** Inputs that must land before hot-set admission and model startup. */
+export function turnHydrationPriorityIncludes(
+  dataRel: string | undefined,
+  relativePath: string,
+  needsClaudePointer: boolean,
+): boolean {
+  if (needsClaudePointer && relativePath.endsWith("/claude/sessions.json")) {
+    return true;
+  }
+  return (
+    dataRel !== undefined && turnRuntimeInputIncludes(dataRel, relativePath)
+  );
+}
+
 /** Build and resolve the isolated model runtime for one hydrated turn root. */
 export async function createTurnModelRuntime(
   dataDir: string,

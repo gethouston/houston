@@ -115,9 +115,14 @@ test("a claimed turn's filter leaves other conversations' history out of the hyd
   );
   for (const id of ["c1", "c2"]) {
     mkdirSync(join(runtime, "sessions", id), { recursive: true });
+    mkdirSync(join(runtime, "sessions", id, "claude"), { recursive: true });
     mkdirSync(join(runtime, "conversations"), { recursive: true });
     writeFileSync(join(runtime, "conversations", `${id}.json`), "{}");
     writeFileSync(join(runtime, "sessions", id, "s.jsonl"), "");
+    writeFileSync(
+      join(runtime, "sessions", id, "claude", "sessions.json"),
+      "{}",
+    );
   }
   writeFileSync(join(runtime, "settings.json"), "{}");
   const fs = await prepareTurnFilesystem({
@@ -130,12 +135,13 @@ test("a claimed turn's filter leaves other conversations' history out of the hyd
   const keys = [...fs.manifest.keys()].sort();
   expect(keys).toEqual([
     "workspaces/Personal/Bob/.houston/runtime/conversations/c1.json",
+    "workspaces/Personal/Bob/.houston/runtime/sessions/c1/claude/sessions.json",
     "workspaces/Personal/Bob/.houston/runtime/sessions/c1/s.jsonl",
     "workspaces/Personal/Bob/.houston/runtime/settings.json",
   ]);
 });
 
-test("a claimed turn hydrates one session tail and leaves skipped objects untouched", async () => {
+test("a claimed turn hydrates live session tails and leaves skips untouched", async () => {
   const storeRoot = mkdtempSync(join(tmpdir(), "session-diet-store-"));
   const prefix = "ws/w1/agent-1";
   const agentRel = "workspaces/Personal/Bob";
@@ -152,7 +158,8 @@ test("a claimed turn hydrates one session tail and leaves skipped objects untouc
   seed(`${runtimeRel}/settings.json`, "{}");
   seed(`${runtimeRel}/conversations/c1.json`, "{}");
   const piOld = `${sessionRel}/2026-08-20T19-00-01-250Z_old.jsonl`;
-  const piNew = `${sessionRel}/2026-08-21T19-00-01-250Z_new.jsonl`;
+  const piReadable = `${sessionRel}/2026-08-21T19-00-01-250Z_readable.jsonl`;
+  const piCorrupt = `${sessionRel}/2026-08-22T19-00-01-250Z_torn.jsonl`;
   const piSession = (id: string) =>
     `${JSON.stringify({
       type: "session",
@@ -162,7 +169,8 @@ test("a claimed turn hydrates one session tail and leaves skipped objects untouc
       cwd: "/previous/turn/workspace",
     })}\n`;
   seed(piOld, piSession("old"));
-  const piNewFile = seed(piNew, piSession("new"));
+  const piReadableFile = seed(piReadable, piSession("readable"));
+  seed(piCorrupt, "not json\n");
   const unexpectedSibling = `${sessionRel}/session.lock`;
   seed(unexpectedSibling, "stale lock");
   seed(`${sessionRel}/harness.json`, '{"backend":"claude"}');
@@ -172,9 +180,11 @@ test("a claimed turn hydrates one session tail and leaves skipped objects untouc
   const claudeOldFile = seed(claudeOld, "old claude");
   const claudeNewFile = seed(claudeNew, "new claude");
   seed(`${sessionRel}/claude/statsig/cache.json`, "cache");
-  utimesSync(piNewFile, new Date(1_000), new Date(1_000));
-  utimesSync(claudeOldFile, new Date(1_000), new Date(1_000));
-  utimesSync(claudeNewFile, new Date(2_000), new Date(2_000));
+  utimesSync(piReadableFile, new Date(1_000), new Date(1_000));
+  // The relocated stale session uploaded after the fresh retry. Its newer
+  // store timestamp must not outrank the sessions.json pointer.
+  utimesSync(claudeOldFile, new Date(2_000), new Date(2_000));
+  utimesSync(claudeNewFile, new Date(1_000), new Date(1_000));
 
   const inner = new LocalDirStore(storeRoot);
   const uploads: string[] = [];
@@ -200,7 +210,8 @@ test("a claimed turn hydrates one session tail and leaves skipped objects untouc
     filter: ownConversationOnly("c1"),
   });
 
-  expect([...fs.manifest.keys()]).toContain(piNew);
+  expect([...fs.manifest.keys()]).toContain(piReadable);
+  expect([...fs.manifest.keys()]).toContain(piCorrupt);
   expect([...fs.manifest.keys()]).toContain(claudeNew);
   expect([...fs.manifest.keys()]).not.toContain(piOld);
   expect([...fs.manifest.keys()]).not.toContain(claudeOld);
@@ -216,7 +227,7 @@ test("a claimed turn hydrates one session tail and leaves skipped objects untouc
       join(fs.dataDir, "sessions", "c1"),
       false,
     ).getSessionFile(),
-  ).toBe(join(fs.storeRoot, ...piNew.split("/")));
+  ).toBe(join(fs.storeRoot, ...piReadable.split("/")));
 
   const configDir = join(fs.dataDir, "sessions", "c1", "claude");
   const sessions = createSessionsStore({

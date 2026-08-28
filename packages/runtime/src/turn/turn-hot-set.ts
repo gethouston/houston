@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { HydrateListedObject } from "@houston/runtime-client/object-sync";
 
 function runtimeIndex(segments: string[]): number {
@@ -11,41 +13,57 @@ function runtimeIndex(segments: string[]): number {
   return -1;
 }
 
-function newestByName(paths: string[]): string | undefined {
-  return paths.toSorted().at(-1);
-}
-
-function newestClaudeTranscript(
+function mappedClaudeTranscript(
+  hydratedRoot: string,
+  sessionsRel: string,
+  conversationId: string,
   listing: readonly HydrateListedObject[],
-  prefix: string,
-): string | undefined {
-  const candidates = listing.filter(
-    ({ rel }) => rel.startsWith(`${prefix}/`) && rel.endsWith(".jsonl"),
-  );
-  // UUID filenames carry no chronology. Legacy/list-only stores may provide no
-  // `updated`, so incomplete metadata must fail open to continuity.
-  if (candidates.some(({ updated }) => !updated)) return undefined;
-  return candidates
-    .toSorted(
-      (left, right) =>
-        (left.updated as string).localeCompare(right.updated as string) ||
-        left.rel.localeCompare(right.rel),
-    )
-    .at(-1)?.rel;
+): string | null {
+  const pointerRel = `${sessionsRel}/claude/sessions.json`;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(
+      readFileSync(join(hydratedRoot, ...pointerRel.split("/")), "utf8"),
+    );
+  } catch {
+    return null;
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return null;
+  }
+  // SAFETY: JSON.parse returned a non-null, non-array object; values remain
+  // unknown until the conversation's entry is refined below.
+  const sessionId = (parsed as Record<string, unknown>)[conversationId];
+  if (typeof sessionId !== "string" || !sessionId) return null;
+  const file = `${sessionId}.jsonl`;
+  const prefix = `${sessionsRel}/claude/projects/`;
+  return listing.some(
+    ({ rel }) => rel.startsWith(prefix) && rel.endsWith(`/${file}`),
+  )
+    ? file
+    : null;
 }
 
 /**
  * Hot-set admission for one conversation: its canonical conversation,
- * harness markers, and newest backend session tails. Other conversations and
- * older session files never need to hydrate for a claimed turn.
+ * harness markers, the two newest Pi tails, and the Claude transcript named by
+ * sessions.json. Other conversations and older session files stay remote.
  * Matches both layouts: `workspaces/<ws>/<agent>/.houston/runtime/…` and
  * the per-turn `data/…`.
+ *
+ * Claimed stores provide manifests. The only list-only claimed fallback is
+ * poolOnlyFallbackStore, whose list call fails before this filter can run.
  */
 export function ownConversationOnly(
   conversationId: string,
-): (rel: string, listing?: readonly HydrateListedObject[]) => boolean {
+): (
+  rel: string,
+  listing: readonly HydrateListedObject[],
+  hydratedRoot: string,
+) => boolean {
   const file = `${encodeURIComponent(conversationId)}.json`;
-  return (rel, listing = []) => {
+  let claudeSelection: { file: string | null } | undefined;
+  return (rel, listing, hydratedRoot) => {
     const segments = rel.split("/");
     const runtimeAt = runtimeIndex(segments);
     if (runtimeAt === -1) return true;
@@ -71,16 +89,24 @@ export function ownConversationOnly(
               candidate.endsWith(".jsonl")
             );
           });
-        return listing.length === 0 || rel === newestByName(sessions);
+        return sessions.toSorted().slice(-2).includes(rel);
       }
       const claudeRel = tail.join("/");
       if (claudeRel === "claude/sessions.json") return true;
       if (claudeRel.startsWith("claude/projects/")) {
-        const newest = newestClaudeTranscript(
-          listing,
-          `${sessionRel}/claude/projects`,
+        if (!rel.endsWith(".jsonl")) return false;
+        claudeSelection ??= {
+          file: mappedClaudeTranscript(
+            hydratedRoot,
+            sessionRel,
+            conversationId,
+            listing,
+          ),
+        };
+        return (
+          claudeSelection.file === null ||
+          rel.endsWith(`/${claudeSelection.file}`)
         );
-        return listing.length === 0 || newest === undefined || rel === newest;
       }
       // Pi's SessionManager writes and discovers only direct `*.jsonl` files;
       // backend.ts enforces the same resume filter, and turn-harness-state.ts

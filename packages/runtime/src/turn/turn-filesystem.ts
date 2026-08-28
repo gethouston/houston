@@ -16,7 +16,7 @@ import {
   type TurnLayout,
   TurnSetupError,
 } from "./turn-layout";
-import { turnRuntimeInputIncludes } from "./turn-runtime";
+import { turnHydrationPriorityIncludes } from "./turn-runtime";
 
 export {
   claimedTurnIncludes,
@@ -60,12 +60,8 @@ export interface TurnFilesystemPreparation {
   abortHydration: () => void;
 }
 
-/**
- * Hydrate an isolated store tree and resolve the layout it contains. Only a
- * CLAIMED (pool) turn gets the pool's 2 GiB cap; an unclaimed turn keeps
- * hydrate's own default so a deployment without the pool env behaves exactly
- * as before.
- */
+/** Hydrate an isolated store tree and resolve its layout. Claimed turns use
+ *  the pool's 2 GiB cap; unclaimed turns keep hydrate's default. */
 export async function prepareTurnFilesystem(opts: {
   store: ObjectStore;
   prefix: string;
@@ -75,7 +71,6 @@ export async function prepareTurnFilesystem(opts: {
   /** Extra hydrate excludes (on top of the defaults), e.g. the runtime tree
    *  for an op that never reads conversations. */
   excludes?: string[];
-  /** Per-object hot-set admission on top of the excludes. */
   filter?: HydrateOptions["filter"];
   /**
    * Download nothing up front: list the store, lay out the agent's
@@ -151,7 +146,11 @@ export async function startTurnFilesystem(opts: {
       excludes,
       ...(opts.filter ? { filter: opts.filter } : {}),
       priority: (rel) =>
-        layout !== undefined && turnRuntimeInputIncludes(layout.dataRel, rel),
+        turnHydrationPriorityIncludes(
+          layout?.dataRel,
+          rel,
+          opts.filter !== undefined,
+        ),
       onListed: async (listing) => {
         if (opts.timings) opts.timings.t_listing = performance.now();
         await layoutSkeleton(storeRoot, listing.rels);

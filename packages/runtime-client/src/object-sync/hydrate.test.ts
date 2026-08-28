@@ -682,10 +682,11 @@ test("hydrate materializes many files faithfully under concurrency", async () =>
   }
 });
 
-test("startHydrate lands priority files before background hydration resolves", async () => {
+test("startHydrate lands priority files before filtering the bulk", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, {
-    "data/settings.json": "settings",
+    "data/settings.json": "workspace/late.txt",
+    "workspace/drop.txt": "drop",
     "workspace/late.txt": "late",
   });
   let release: () => void = () => undefined;
@@ -705,11 +706,16 @@ test("startHydrate lands priority files before background hydration resolves", a
 
   const started = await startHydrate(gated, PREFIX, work, {
     priority: (rel) => rel === "data/settings.json",
+    filter: (rel, _listing, hydratedRoot) =>
+      rel === "data/settings.json" ||
+      rel === readFileSync(join(hydratedRoot, "data", "settings.json"), "utf8"),
   });
 
   expect(readFileSync(join(work, "data", "settings.json"), "utf8")).toBe(
-    "settings",
+    "workspace/late.txt",
   );
+  expect(started.skippedObjects).toBe(1);
+  expect(existsSync(join(work, "workspace", "drop.txt"))).toBe(false);
   expect(existsSync(join(work, "workspace", "late.txt"))).toBe(false);
   release();
   await started.done;
