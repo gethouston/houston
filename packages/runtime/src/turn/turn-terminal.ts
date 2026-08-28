@@ -29,6 +29,7 @@ export function turnTerminalFrame(
   activityDocSkipped?: "route_absent",
   changed: readonly string[] = [],
   timings?: Record<string, number>,
+  hydration?: { hydratedObjects: number; skippedObjects: number },
 ): WireFrame {
   const timingsMs = timingDeltas(timings);
   const fields = {
@@ -37,6 +38,7 @@ export function turnTerminalFrame(
     ...(poolWritesOutOfScope > 0 ? { poolWritesOutOfScope } : {}),
     ...(transcriptSkipped ? { transcriptSkipped } : {}),
     ...(activityDocSkipped ? { activityDocSkipped } : {}),
+    ...hydration,
   };
   const diagnostic = Object.keys(fields).length > 0 ? fields : undefined;
   if (outcome.error) {

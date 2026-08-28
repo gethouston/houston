@@ -168,6 +168,10 @@ export async function executeReadyTurn(input: {
       durable.activityDocSkipped,
       durable.changed,
       input.timings,
+      {
+        hydratedObjects: input.filesystem.manifest.size,
+        skippedObjects: input.filesystem.skippedObjects,
+      },
     ),
   );
   await input.turnLog?.flush();

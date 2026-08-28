@@ -353,6 +353,32 @@ test("pi to anthropic to pi flips fresh with replay while unchanged pi resumes",
   );
 });
 
+test("an unreadable newest pi session starts fresh with canonical replay", async () => {
+  const dirs = await directories();
+  seedConversation(dirs.dataDir);
+  const sessionDir = join(dirs.dataDir, "sessions", "c1");
+  await mkdir(sessionDir, { recursive: true });
+  await writeFile(
+    join(sessionDir, "2026-08-28T12-00-00-000Z_broken.jsonl"),
+    "not json\n",
+  );
+  const piCalls: BackendCall[] = [];
+
+  await runProviderTurn(
+    dirs,
+    "openai-codex",
+    3,
+    sdk(scriptedQuery(() => undefined)),
+    recordingPiBackend(piCalls),
+  );
+
+  expect(piCalls[0]?.options.fresh).toBe(true);
+  expect(piCalls[0]?.prompts[0]).toContain(
+    "[Continuing an existing conversation.",
+  );
+  expect(piCalls[0]?.prompts[0]).toContain("User: Remember the blue lantern.");
+});
+
 test("a corrupt harness marker degrades to unknown instead of failing the turn", async () => {
   const { readTurnHarness, turnHarnessFile, writeTurnHarness } = await import(
     "./turn-harness-state"

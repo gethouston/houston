@@ -5,6 +5,7 @@ import { FsVfs, LazyStoreVfs, type Vfs } from "@houston/host/src/vfs";
 import {
   DEFAULT_EXCLUDES,
   type HydrateManifest,
+  type HydrateOptions,
   type ObjectStore,
   startHydrate,
 } from "@houston/runtime-client/object-sync";
@@ -40,6 +41,7 @@ export interface TurnFilesystem extends TurnLayout {
   vfs: Vfs;
   /** Remote objects the lazy listing knows about (diagnostics). */
   listedObjects: number;
+  skippedObjects: number;
   /** The store's generation capability as the LISTING showed it. A filtered
    *  or lazy manifest may be empty and cannot answer this on its own. */
   generationAware: boolean;
@@ -74,7 +76,7 @@ export async function prepareTurnFilesystem(opts: {
    *  for an op that never reads conversations. */
   excludes?: string[];
   /** Per-object hot-set admission on top of the excludes. */
-  filter?: (rel: string) => boolean;
+  filter?: HydrateOptions["filter"];
   /**
    * Download nothing up front: list the store, lay out the agent's
    * directory skeleton, and serve reads through a store-backed vfs that
@@ -95,7 +97,7 @@ export async function startTurnFilesystem(opts: {
   claimed: boolean;
   maxBytes?: number;
   excludes?: string[];
-  filter?: (rel: string) => boolean;
+  filter?: HydrateOptions["filter"];
   lazy?: boolean;
   timings?: Record<string, number>;
 }): Promise<TurnFilesystemPreparation> {
@@ -131,6 +133,7 @@ export async function startTurnFilesystem(opts: {
       manifest,
       vfs,
       listedObjects: objects.length,
+      skippedObjects: 0,
       generationAware: vfs.generationAware,
       immediateWrites: new Set<string>(),
     };
@@ -171,6 +174,7 @@ export async function startTurnFilesystem(opts: {
       manifest: started.manifest,
       vfs: new FsVfs(storeRoot),
       listedObjects: started.listed.rels.length,
+      skippedObjects: started.skippedObjects,
       generationAware: started.listed.generationAware,
       immediateWrites: new Set(),
     };

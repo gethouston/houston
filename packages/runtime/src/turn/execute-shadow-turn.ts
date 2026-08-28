@@ -25,6 +25,7 @@ export async function executeShadowTurn(input: {
       data: {
         ...input.timings,
         hydratedObjects: input.filesystem.manifest.size,
+        skippedObjects: input.filesystem.skippedObjects,
       },
       turnId: input.turnId,
     } as unknown as WireFrame);

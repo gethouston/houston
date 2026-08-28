@@ -645,6 +645,28 @@ test("missing prefix hydrates to an empty manifest", async () => {
   expect((await hydrate(store, "ws/none/agent-x", work)).size).toBe(0);
 });
 
+test("startHydrate exposes the complete listing and counts filtered objects", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, {
+    "workspace/keep.txt": "keep",
+    "workspace/skip.txt": "skip",
+  });
+  let listed: string[] = [];
+
+  const started = await startHydrate(store, PREFIX, work, {
+    filter: (rel, listing) => {
+      listed = listing.map((object) => object.rel);
+      return rel.endsWith("keep.txt");
+    },
+  });
+  await started.done;
+
+  expect(listed.sort()).toEqual(["workspace/keep.txt", "workspace/skip.txt"]);
+  expect(started.skippedObjects).toBe(1);
+  expect([...started.manifest.keys()]).toEqual(["workspace/keep.txt"]);
+  expect(existsSync(join(work, "workspace", "skip.txt"))).toBe(false);
+});
+
 test("hydrate materializes many files faithfully under concurrency", async () => {
   const { storeRoot, store, work } = setup();
   const files: Record<string, string> = {};

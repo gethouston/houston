@@ -3,6 +3,7 @@ import type { ChatMessage } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { readAuthFile } from "../auth/auth-file";
 import type { newUsedTokenCapture } from "../auth/used-token";
+import { hasUnreadablePiSessionTail } from "../backends/pi/backend";
 import {
   renderReplayPreamble,
   replayCharBudget,
@@ -50,6 +51,13 @@ export async function openTurnBackendSession(input: {
   const priorHarness = readTurnHarness(directories.dataDir, conversationId);
   const switchedHarness =
     priorHarness !== undefined && priorHarness !== harness;
+  const unreadablePiResume =
+    harness === "pi" &&
+    input.canonicalMessages.length > 0 &&
+    hasUnreadablePiSessionTail(
+      join(directories.dataDir, "sessions", conversationId),
+    );
+  const freshSession = switchedHarness || unreadablePiResume;
   writeTurnHarness(directories.dataDir, conversationId, harness);
   const claudeResume =
     harness === "claude" && !switchedHarness
@@ -57,7 +65,7 @@ export async function openTurnBackendSession(input: {
       : undefined;
   const replay =
     input.canonicalMessages.length > 0 &&
-    (switchedHarness || (harness === "claude" && !claudeResume))
+    (freshSession || (harness === "claude" && !claudeResume))
       ? renderReplayPreamble(
           input.canonicalMessages,
           turnId,
@@ -79,7 +87,7 @@ export async function openTurnBackendSession(input: {
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(turn.context ? { context: turn.context } : {}),
     ...(turn.mode ? { mode: turn.mode } : {}),
-    ...(switchedHarness ? { fresh: true } : {}),
+    ...(freshSession ? { fresh: true } : {}),
     ...(retryReplay?.text ? { freshRetryPromptPrefix: retryReplay.text } : {}),
   });
   if (turn.timings) turn.timings.t_backend_session = performance.now();

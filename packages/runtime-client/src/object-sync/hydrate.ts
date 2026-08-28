@@ -39,7 +39,7 @@ export interface HydrateOptions {
    * accepts are downloaded. Lets a caller hydrate a hot-set (one
    * conversation's files, not every conversation's) without a glob per id.
    */
-  filter?: (rel: string) => boolean;
+  filter?: (rel: string, listing: readonly HydrateListedObject[]) => boolean;
   /** Every admitted path BEFORE `filter` (the store's view of the tree) and
    *  whether the listing carried generations (the CAS capability, which a
    *  filtered manifest can no longer answer on its own). */
@@ -49,6 +49,12 @@ export interface HydrateOptions {
   }) => void | Promise<void>;
   /** Download these admitted objects before the remaining hydration starts. */
   priority?: (rel: string) => boolean;
+}
+
+/** Store-listing fields available to a caller's hot-set selector. */
+export interface HydrateListedObject {
+  rel: string;
+  updated?: string;
 }
 
 /** The hydrated prefix exceeded the caller's aggregate byte cap. */
@@ -69,6 +75,8 @@ const DEFAULT_HYDRATE_CONCURRENCY = 16;
 export interface StartedHydration {
   manifest: HydrateManifest;
   listed: { rels: string[]; generationAware: boolean };
+  /** Listed objects rejected by the caller's filter. */
+  skippedObjects: number;
   /** Resolves only after every non-priority object has landed. */
   done: Promise<void>;
   /** Stop admitting downloads and cancel adapters that support AbortSignal. */
@@ -97,19 +105,33 @@ export async function startHydrate(
   const storeObjects =
     objects ??
     (await store.list(prefix)).map((key) => ({ key, generation: undefined }));
-  const entries: HydrateEntry[] = [];
-  const admitted: string[] = [];
+  const candidates: (HydrateEntry & { updated?: string })[] = [];
   let generationAware = false;
   for (const object of storeObjects) {
     const { key } = object;
     const rel = prefix ? key.slice(prefix.length + 1) : key;
     if (!rel || excluded(rel, excludes)) continue;
-    admitted.push(rel);
     if (object.generation !== undefined) generationAware = true;
-    if (opts.filter && !opts.filter(rel)) continue;
-    entries.push({ key, rel, generation: object.generation });
+    candidates.push({
+      key,
+      rel,
+      generation: object.generation,
+      ...("updated" in object && object.updated
+        ? { updated: object.updated }
+        : {}),
+    });
   }
-  const listed = { rels: admitted, generationAware };
+  const filterListing = candidates.map(({ rel, updated }) => ({
+    rel,
+    ...(updated ? { updated } : {}),
+  }));
+  const entries = opts.filter
+    ? candidates.filter((entry) => opts.filter?.(entry.rel, filterListing))
+    : candidates;
+  const listed = {
+    rels: candidates.map(({ rel }) => rel),
+    generationAware,
+  };
   await opts.onListed?.(listed);
   const priority = opts.priority
     ? entries.filter((entry) => opts.priority?.(entry.rel))
@@ -145,6 +167,7 @@ export async function startHydrate(
   return {
     manifest,
     listed,
+    skippedObjects: candidates.length - entries.length,
     done: download(remaining),
     abort: () => state.fail(new Error("hydration aborted before cleanup")),
   };

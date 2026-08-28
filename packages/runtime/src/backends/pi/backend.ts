@@ -93,6 +93,19 @@ function newestSessionFile(sessionDir: string): string | null {
   return null;
 }
 
+/** Whether a present hydrated Pi tail is corrupt and cannot be resumed. */
+export function hasUnreadablePiSessionTail(sessionDir: string): boolean {
+  let hasSessionFile = false;
+  try {
+    hasSessionFile = readdirSync(sessionDir).some((file) =>
+      file.endsWith(".jsonl"),
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  return hasSessionFile && newestSessionFile(sessionDir) === null;
+}
+
 function isReadableSession(file: string): boolean {
   // Bounded: only the header line matters, and session files grow to MBs.
   const buffer = Buffer.alloc(64 * 1024);
