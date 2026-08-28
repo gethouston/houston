@@ -59,6 +59,7 @@ export function failSkill(res: ServerResponse, err: unknown): void {
 export async function communitySearchAction(
   req: IncomingMessage,
   res: ServerResponse,
+  fetchImpl?: typeof fetch,
 ): Promise<void> {
   const body = await readJson(req);
   if (typeof body.query !== "string") {
@@ -66,7 +67,7 @@ export async function communitySearchAction(
     return;
   }
   try {
-    json(res, 200, await directory.search(body.query));
+    json(res, 200, await directory.search(body.query, { fetchImpl }));
   } catch (err) {
     failSkill(res, err);
   }
@@ -74,9 +75,10 @@ export async function communitySearchAction(
 
 export async function communityPopularAction(
   res: ServerResponse,
+  fetchImpl?: typeof fetch,
 ): Promise<void> {
   try {
-    json(res, 200, await directory.popular());
+    json(res, 200, await directory.popular({ fetchImpl }));
   } catch (err) {
     failSkill(res, err);
   }
@@ -139,8 +141,10 @@ export async function handleSkillsDirectory(
     return true;
   }
   const route = m[1];
-  if (route === "community/search") await communitySearchAction(req, res);
-  else if (route === "community/popular") await communityPopularAction(res);
+  if (route === "community/search")
+    await communitySearchAction(req, res, deps.fetchImpl);
+  else if (route === "community/popular")
+    await communityPopularAction(res, deps.fetchImpl);
   else if (route === "community/preview")
     await communityPreviewAction(req, res, deps.fetchImpl ?? fetch);
   else await repoListAction(req, res, deps.fetchImpl ?? fetch);

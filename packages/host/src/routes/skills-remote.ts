@@ -50,11 +50,11 @@ export async function handleSkillsRemote(
   const fetchImpl = deps.fetchImpl ?? fetch;
 
   if (family === "community" && action === "search") {
-    await communitySearchAction(req, res);
+    await communitySearchAction(req, res, fetchImpl);
     return true;
   }
   if (family === "community" && action === "popular") {
-    await communityPopularAction(res);
+    await communityPopularAction(res, fetchImpl);
     return true;
   }
   if (family === "community" && action === "preview") {
