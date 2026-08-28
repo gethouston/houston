@@ -30,6 +30,8 @@
     "timeout": "Dejamos de revisar por ahora. Cuando termines de iniciar sesión, conecta {{app}} de nuevo.",
     "unavailableTitle": "Aún no se puede conectar {{app}}",
     "unavailable": "El equipo de Houston todavía necesita terminar de configurar esta app. Vuelve a intentarlo pronto.",
+    "noAuthTitle": "Ya puedes usar {{app}}",
+    "noAuth": "Esta app funciona sin cuenta, así que no hay nada que conectar.",
     "failedTitle": "No se pudo conectar {{app}}",
     "failed": "Algo salió mal al iniciar sesión. Inténtalo de nuevo."
   },

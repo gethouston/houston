@@ -41,11 +41,20 @@ export function normalizeToolkitSlug(slug: string): string {
   return slug.trim().toLowerCase();
 }
 
-/** Does the user hold an ACTIVE connection to this toolkit? */
+/**
+ * Does the user hold an ACTIVE connection to this toolkit? A no-auth catalog
+ * toolkit counts as connected outright: it holds no accounts and its tools
+ * already work, so the search results the agent saw stamp it connected too
+ * (`composio-search.ts`) — a Connect button for it could only end in the
+ * host's `toolkit_no_auth` 400 (HOUSTON-APP-4Z1: agent-authored cards for the
+ * no-auth "composio" toolkit itself).
+ */
 export function isToolkitConnected(
   connections: IntegrationConnection[] | undefined,
   toolkit: string,
+  catalogEntry?: IntegrationToolkit,
 ): boolean {
+  if (catalogEntry?.noAuth) return true;
   const slug = normalizeToolkitSlug(toolkit);
   return (connections ?? []).some(
     (c) => c.status === "active" && normalizeToolkitSlug(c.toolkit) === slug,

@@ -68,6 +68,22 @@ describe("isToolkitConnected", () => {
   it("treats missing data as not connected", () => {
     strictEqual(isToolkitConnected(undefined, "gmail"), false);
   });
+
+  it("counts a no-auth catalog toolkit as connected despite no connection row", () => {
+    // HOUSTON-APP-4Z1: "composio" is a real no-auth toolkit the agent offered
+    // connect cards for. It can never hold a connection row, so without the
+    // catalog signal the card shows a Connect that only ends in the host's
+    // toolkit_no_auth 400.
+    const noAuth = { slug: "composio", name: "Composio", noAuth: true };
+    strictEqual(isToolkitConnected([], "composio", noAuth), true);
+    strictEqual(isToolkitConnected(undefined, "composio", noAuth), true);
+  });
+
+  it("an ordinary catalog entry changes nothing", () => {
+    const gmail = { slug: "gmail", name: "Gmail" };
+    strictEqual(isToolkitConnected(connections, "gmail", gmail), true);
+    strictEqual(isToolkitConnected([], "gmail", gmail), false);
+  });
 });
 
 describe("findCatalogToolkit", () => {
