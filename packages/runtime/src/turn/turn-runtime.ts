@@ -13,7 +13,6 @@ import { resolveTurnModel } from "./turn-model";
 const TURN_RUNTIME_INPUTS = new Set([
   "azure-endpoint.json",
   "custom-endpoint.json",
-  "models-store.json",
   "models.json",
   "qwen-region.json",
   "settings.json",

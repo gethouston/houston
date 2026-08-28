@@ -12,6 +12,7 @@ export async function downloadFile(
   response: Response,
   key: string,
   destFile: string,
+  signal?: AbortSignal,
 ): Promise<ReadResult> {
   if (!response.body) {
     throw new Error(`object store GET ${key} returned no response body`);
@@ -22,6 +23,7 @@ export async function downloadFile(
     await pipeline(
       Readable.fromWeb(response.body as NodeReadableStream),
       createWriteStream(tempFile),
+      ...(signal ? [{ signal }] : []),
     );
     await rename(tempFile, destFile);
   } catch (error) {

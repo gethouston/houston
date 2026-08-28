@@ -14,6 +14,7 @@ export interface HydrateDownloadState {
   total: number;
   failed: boolean;
   firstError?: unknown;
+  fail: (error: unknown) => void;
 }
 
 /** Download one hydration batch while sharing the cap and failure latch. */
@@ -25,6 +26,7 @@ export async function downloadHydrationEntries(opts: {
   maxBytes: number;
   concurrency: number;
   state: HydrateDownloadState;
+  signal: AbortSignal;
   limitError: (observedBytes: number) => Error;
 }): Promise<void> {
   let next = 0;
@@ -35,7 +37,8 @@ export async function downloadHydrationEntries(opts: {
       const { generation, key, rel } = entry;
       try {
         const dest = join(opts.destDir, ...rel.split("/"));
-        await opts.store.download(key, dest);
+        await opts.store.download(key, dest, { signal: opts.signal });
+        if (opts.signal.aborted) return;
         const { size } = await stat(dest);
         opts.state.total += size;
         if (opts.state.total > opts.maxBytes) {
@@ -46,14 +49,11 @@ export async function downloadHydrationEntries(opts: {
           generation,
         });
       } catch (error) {
-        if (error instanceof ObjectNotFoundError) {
+        if (!opts.signal.aborted && error instanceof ObjectNotFoundError) {
           await rm(join(opts.destDir, ...rel.split("/")), { force: true });
           continue;
         }
-        if (!opts.state.failed) {
-          opts.state.failed = true;
-          opts.state.firstError = error;
-        }
+        opts.state.fail(error);
         return;
       }
     }

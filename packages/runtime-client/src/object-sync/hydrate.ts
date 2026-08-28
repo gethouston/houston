@@ -1,10 +1,12 @@
-import { basename, sep } from "node:path";
 import {
   downloadHydrationEntries,
   type HydrateDownloadState,
   type HydrateEntry,
 } from "./hydrate-download";
+import { DEFAULT_EXCLUDES, excluded } from "./hydrate-excludes";
 import type { ObjectStore } from "./object-store";
+
+export { DEFAULT_EXCLUDES, excluded } from "./hydrate-excludes";
 
 /**
  * Durable engine state is materialized into a local cache, then synchronized
@@ -20,48 +22,6 @@ export interface HydrateManifestEntry {
 
 /** Relative path to the hydrated bytes and their optional remote generation. */
 export type HydrateManifest = Map<string, HydrateManifestEntry>;
-
-export const DEFAULT_EXCLUDES = ["data/auth.json"];
-
-const norm = (rel: string) => rel.split(sep).join("/");
-
-function segmentGlobMatches(pattern: string, path: string): boolean {
-  const subtree = pattern.endsWith("/");
-  const want = (subtree ? pattern.slice(0, -1) : pattern).split("/");
-  const have = path.split("/");
-  if (subtree ? have.length < want.length : have.length !== want.length) {
-    return false;
-  }
-  return want.every((seg, i) => seg === "*" || seg === have[i]);
-}
-
-export function excluded(rel: string, excludes: string[]): boolean {
-  const normalized = norm(rel);
-  if (normalized.endsWith(".tmp")) return true;
-  if (normalized.endsWith(".houston/runtime/auth.json")) return true;
-  // Per-member credential files. Their directory's depth differs per deployment
-  // (`<agent>/.houston/runtime/auth-users/` on a standing pod, `data/auth-users/`
-  // in the per-turn layout), so it must be matched by SEGMENT the same way
-  // auth.json is matched by suffix — a root-relative pattern misses the real
-  // key. Unconditional, not caller-configurable: this is credential material,
-  // and one member's tokens reaching the shared store leaks them to the space.
-  if (normalized.split("/").includes("auth-users")) return true;
-  return excludes.some((exclude) => {
-    const pattern = norm(exclude);
-    if (pattern.includes("*")) {
-      // Segment glob: `*` matches exactly one path segment; a trailing `/`
-      // names a subtree. `workspaces/*/*/.houston/runtime/` is the agent's
-      // own runtime dir at its fixed depth — never a user project's.
-      return segmentGlobMatches(pattern, normalized);
-    }
-    if (pattern.endsWith("/")) {
-      const subtree = pattern.slice(0, -1);
-      return normalized === subtree || normalized.startsWith(pattern);
-    }
-    if (!pattern.includes("/")) return basename(normalized) === pattern;
-    return normalized === pattern;
-  });
-}
 
 export interface HydrateOptions {
   /** Reject prefixes whose total size exceeds this (default 512 MiB). */
@@ -111,6 +71,8 @@ export interface StartedHydration {
   listed: { rels: string[]; generationAware: boolean };
   /** Resolves only after every non-priority object has landed. */
   done: Promise<void>;
+  /** Stop admitting downloads and cancel adapters that support AbortSignal. */
+  abort: () => void;
 }
 
 /** List once, hydrate priority inputs, then start the remaining downloads. */
@@ -155,7 +117,17 @@ export async function startHydrate(
   const remaining = opts.priority
     ? entries.filter((entry) => !opts.priority?.(entry.rel))
     : entries;
-  const state: HydrateDownloadState = { total: 0, failed: false };
+  const controller = new AbortController();
+  const state: HydrateDownloadState = {
+    total: 0,
+    failed: false,
+    fail(error) {
+      if (this.failed) return;
+      this.failed = true;
+      this.firstError = error;
+      controller.abort(error);
+    },
+  };
   const download = (batch: HydrateEntry[]) =>
     downloadHydrationEntries({
       store,
@@ -165,11 +137,17 @@ export async function startHydrate(
       maxBytes,
       concurrency,
       state,
+      signal: controller.signal,
       limitError: (observedBytes) =>
         new HydrateLimitError(maxBytes, observedBytes),
     });
   await download(priority);
-  return { manifest, listed, done: download(remaining) };
+  return {
+    manifest,
+    listed,
+    done: download(remaining),
+    abort: () => state.fail(new Error("hydration aborted before cleanup")),
+  };
 }
 
 /** Download everything under `prefix` into `destDir`. Returns the manifest. */

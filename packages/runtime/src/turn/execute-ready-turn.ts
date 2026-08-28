@@ -89,7 +89,6 @@ export async function executeReadyTurn(input: {
       error: "No provider connected. Connect your subscription first.",
     };
   } else {
-    const run = input.deps.runTurn ?? runTurn;
     try {
       outcome = await runWithConversationScope(input.scope, () =>
         runWithActingContext(
@@ -100,19 +99,24 @@ export async function executeReadyTurn(input: {
               ? { actingUser: input.turn.actingAs.userId }
               : {}),
           },
-          () =>
-            run(
-              { ...input.filesystem, turnRoot: input.root },
-              turnSessionRequest(
-                effectiveTurn,
-                input.turnId,
-                input.emit,
-                input.signal,
-                input.sandbox ? { call: input.sandbox.call } : undefined,
-                input.timings,
-                input.startup,
-              ),
-            ),
+          () => {
+            const directories = {
+              ...input.filesystem,
+              turnRoot: input.root,
+            };
+            const request = turnSessionRequest(
+              effectiveTurn,
+              input.turnId,
+              input.emit,
+              input.signal,
+              input.sandbox ? { call: input.sandbox.call } : undefined,
+              input.timings,
+              input.startup,
+            );
+            return input.deps.runTurn
+              ? input.deps.runTurn(directories, request)
+              : runTurn(directories, request, input.deps.turnSessionDeps);
+          },
         ),
       );
     } catch (error) {

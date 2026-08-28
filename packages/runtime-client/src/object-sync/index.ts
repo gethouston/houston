@@ -22,6 +22,7 @@ export type {
 } from "./object-manifest";
 export type {
   ObjectStore,
+  ReadOptions,
   ReadResult,
   WriteOptions,
   WriteResult,

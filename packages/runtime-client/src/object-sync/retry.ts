@@ -65,8 +65,10 @@ export async function fetchWithRetry(
       const res = await fetchImpl(url, attemptInit);
       if (lastAttempt || !(await isTransientResponse(res))) return res;
     } catch (err) {
+      if (init?.signal?.aborted) throw err;
       if (lastAttempt) throw err;
     }
+    if (init?.signal?.aborted) throw init.signal.reason;
     await sleep(delays[attempt] ?? 0);
   }
 }

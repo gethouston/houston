@@ -71,6 +71,39 @@ test("round-trips objects through the agent-scoped HTTP API", async () => {
   expect(await store.list("")).toEqual([]);
 });
 
+test("download forwards cancellation to the HTTP request", async () => {
+  let requestSignal: AbortSignal | null | undefined;
+  const store = new HttpObjectStore({
+    baseUrl: "https://store.test",
+    token: "pod-token",
+    retryDelaysMs: [],
+    fetchImpl: async (_input, init) => {
+      requestSignal = init?.signal;
+      await new Promise<void>((_resolve, reject) => {
+        init?.signal?.addEventListener(
+          "abort",
+          () => reject(init.signal?.reason),
+          { once: true },
+        );
+      });
+      throw new Error("unreachable");
+    },
+  });
+  const controller = new AbortController();
+  const destination = join(
+    mkdtempSync(join(tmpdir(), "http-abort-")),
+    "download.txt",
+  );
+
+  const downloading = store.download("file.txt", destination, {
+    signal: controller.signal,
+  });
+  controller.abort(new Error("stop hydration"));
+
+  await expect(downloading).rejects.toThrow("stop hydration");
+  expect(requestSignal).toBe(controller.signal);
+});
+
 test("PUTs shared objects with the pod agent binding", async () => {
   const dir = mkdtempSync(join(tmpdir(), "http-shared-object-store-"));
   const source = join(dir, "SKILL.md");

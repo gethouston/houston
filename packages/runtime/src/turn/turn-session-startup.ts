@@ -57,6 +57,7 @@ async function prepareTurnSession(
     turn.pin?.model,
     turn.timings,
   );
+  if (sdkLoad) await sdkLoad;
   const toolSelection = buildTurnToolSelection(
     turn,
     turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
@@ -94,4 +95,18 @@ export async function finishTurnSessionStartup(
   const result = await task;
   if (!result.ok) throw result.error;
   return result.startup;
+}
+
+/** Report setup work that failed after hydration had already doomed the turn. */
+export async function reportAbandonedTurnStartup(
+  task: TurnSessionStartupTask | undefined,
+): Promise<void> {
+  if (!task) return;
+  const result = await task;
+  if (result.ok) return;
+  const detail =
+    result.error instanceof Error
+      ? `${result.error.name}: ${result.error.message}`
+      : String(result.error);
+  console.error(`[turn] overlapped startup failed after hydration (${detail})`);
 }

@@ -700,6 +700,35 @@ test("startHydrate lands priority files before background hydration resolves", a
   ]);
 });
 
+test("startHydrate aborts in-flight downloads before settlement", async () => {
+  const { storeRoot, store, work } = setup();
+  seed(storeRoot, PREFIX, { "workspace/late.txt": "late" });
+  let downloadSignal: AbortSignal | undefined;
+  const gated: ObjectStore = {
+    list: (prefix) => store.list(prefix),
+    manifest: (prefix) => store.manifest(prefix),
+    download: async (_key, _destination, options) => {
+      downloadSignal = options?.signal;
+      await new Promise<void>((_resolve, reject) => {
+        options?.signal?.addEventListener(
+          "abort",
+          () => reject(options.signal?.reason),
+          { once: true },
+        );
+      });
+    },
+    upload: (source, key, options) => store.upload(source, key, options),
+    delete: (key, options) => store.delete(key, options),
+  };
+
+  const started = await startHydrate(gated, PREFIX, work);
+  started.abort();
+
+  await expect(started.done).rejects.toThrow("hydration aborted");
+  expect(downloadSignal?.aborted).toBe(true);
+  expect(existsSync(join(work, "workspace", "late.txt"))).toBe(false);
+});
+
 test("a non-finite concurrency override still hydrates everything", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/a.txt": "a", "workspace/b.txt": "b" });

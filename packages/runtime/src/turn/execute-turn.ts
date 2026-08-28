@@ -3,21 +3,25 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireFrame } from "@houston/runtime-client";
-import { applyServedAzureEndpoint } from "../ai/azure-openai";
-import { applyServedCredential } from "../auth/auth-file";
 import { openSSE } from "../transport/sse";
 import { startClaimHeartbeat } from "./claim-heartbeat";
 import { executeReadyTurn } from "./execute-ready-turn";
 import { executeShadowTurn } from "./execute-shadow-turn";
 import type { TurnServerDeps } from "./server-types";
 import { cleanupTurn } from "./turn-cleanup";
-import { startTurnFilesystem } from "./turn-filesystem";
+import { writeTurnCredential } from "./turn-credential";
+import {
+  startTurnFilesystem,
+  type TurnFilesystemPreparation,
+} from "./turn-filesystem";
 import { ownConversationOnly } from "./turn-hot-set";
 import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
 import { turnSessionRequest } from "./turn-request";
-import { makeTurnSandboxFetch } from "./turn-sandbox";
+import type { makeTurnSandboxFetch } from "./turn-sandbox";
+import { createTurnSandbox } from "./turn-sandbox-startup";
 import {
+  reportAbandonedTurnStartup,
   startTurnSession,
   type TurnSessionStartupTask,
 } from "./turn-session-startup";
@@ -50,8 +54,12 @@ export async function executeTurn(
   const turnId = turn.turnId ?? crypto.randomUUID();
   let heartbeat: ReturnType<typeof startClaimHeartbeat> | null = null;
   let turnSandbox: ReturnType<typeof makeTurnSandboxFetch> | null = null;
+  let preparation: TurnFilesystemPreparation | undefined;
+  let startup: TurnSessionStartupTask | undefined;
   let closeSse: (() => void) | undefined;
   try {
+    const sandboxIdentity =
+      turn.grant && turn.hostToken ? poolIdentity(turn.gcsPrefix) : undefined;
     const resolved = resolveTurnStore(turn, deps.store, {
       poolStoreUrl: deps.poolStoreUrl,
       fetchImpl: deps.fetchImpl,
@@ -68,7 +76,7 @@ export async function executeTurn(
               : {}),
           })
         : null;
-    const preparation = await startTurnFilesystem({
+    preparation = await startTurnFilesystem({
       store: resolved.store,
       prefix: resolved.prefix,
       root,
@@ -86,44 +94,27 @@ export async function executeTurn(
       timings,
     });
     const filesystem = preparation.filesystem;
-    const hydrated = preparation.hydrated.then((result) => {
-      timings.t_hydrated = performance.now();
-      return result;
-    });
     const { dataDir } = filesystem;
-    if (turn.grant && turn.hostToken) {
-      const identity = poolIdentity(turn.gcsPrefix);
-      turnSandbox = makeTurnSandboxFetch({
-        grant: turn.grant,
-        hostToken: turn.hostToken,
-        store: resolved.store,
-        prefix: resolved.prefix,
-        filesystem,
-        workspaceId: turn.workspaceId,
-        conversationId: turn.conversationId,
-        ...(turn.actingAs ? { actingAs: turn.actingAs } : {}),
-        orgSlug: identity.org,
-        agentSlug: identity.agent,
-        ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
-      });
-    }
+    turnSandbox = createTurnSandbox({
+      deps,
+      turn,
+      identity: sandboxIdentity,
+      resolved,
+      filesystem,
+    });
     const authPath = join(dataDir, "auth.json");
     if (turn.credential) {
-      applyServedCredential(authPath, turn.credential);
-      // Azure's per-resource endpoint rides the served credential; land it in
-      // THIS turn's hydrated root so model resolution finds a base URL even
-      // when this agent never ran the connect itself (PRODUCT-1532).
-      applyServedAzureEndpoint(
-        turn.credential.provider,
-        turn.credential.enterpriseUrl,
+      writeTurnCredential(
+        authPath,
+        turn.credential,
         dataDir,
+        deps.writeTurnCredential,
       );
     }
     timings.t_cred_written = performance.now();
 
     let sendFrame: ((frame: WireFrame) => void) | undefined;
     const earlyEmit = (frame: WireFrame) => sendFrame?.(frame);
-    let startup: TurnSessionStartupTask | undefined;
     if (turn.credential && !turn.routine && !turn.shadow && !deps.runTurn) {
       startup = startTurnSession(
         { ...filesystem, turnRoot: root },
@@ -139,7 +130,13 @@ export async function executeTurn(
       );
     }
 
-    await hydrated;
+    try {
+      await preparation.hydrated;
+      timings.t_hydrated = performance.now();
+    } catch (error) {
+      await reportAbandonedTurnStartup(startup);
+      throw error;
+    }
 
     const sse = openSSE(res);
     closeSse = sse.close;
@@ -192,6 +189,9 @@ export async function executeTurn(
       conversationId: turn.conversationId,
       heartbeat,
       sandbox: turnSandbox,
+      hydration: preparation,
+      hydrationSettleTimeoutMs: deps.hydrationSettleTimeoutMs,
+      removeRoot: deps.removeTurnRoot,
       closeSse,
     });
   }

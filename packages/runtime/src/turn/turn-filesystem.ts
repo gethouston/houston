@@ -4,11 +4,11 @@ import { MAX_UPLOAD_BYTES } from "@houston/host/src/turn/files-import";
 import { FsVfs, LazyStoreVfs, type Vfs } from "@houston/host/src/vfs";
 import {
   DEFAULT_EXCLUDES,
-  HydrateLimitError,
   type HydrateManifest,
   type ObjectStore,
   startHydrate,
 } from "@houston/runtime-client/object-sync";
+import { turnHydrationError } from "./turn-hydration-error";
 import {
   layoutSkeleton,
   resolveTurnLayout,
@@ -50,12 +50,12 @@ export interface TurnFilesystem extends TurnLayout {
 export interface TurnFilesystemPreparation {
   filesystem: TurnFilesystem;
   hydrated: Promise<TurnFilesystem>;
-}
-
-function hydrationError(error: unknown): unknown {
-  return error instanceof HydrateLimitError
-    ? new TurnSetupError("hydrate_over_cap", error.message)
-    : error;
+  /** Attached immediately so a later synchronous setup failure cannot leave
+   *  the rejecting hydration promise unobserved. */
+  settled: Promise<
+    { ok: true; filesystem: TurnFilesystem } | { ok: false; error: unknown }
+  >;
+  abortHydration: () => void;
 }
 
 /**
@@ -134,7 +134,12 @@ export async function startTurnFilesystem(opts: {
       generationAware: vfs.generationAware,
       immediateWrites: new Set<string>(),
     };
-    return { filesystem, hydrated: Promise.resolve(filesystem) };
+    return {
+      filesystem,
+      hydrated: Promise.resolve(filesystem),
+      settled: Promise.resolve({ ok: true, filesystem }),
+      abortHydration: () => undefined,
+    };
   }
   let layout: TurnLayout | undefined;
   try {
@@ -153,7 +158,12 @@ export async function startTurnFilesystem(opts: {
         if (opts.timings) opts.timings.t_layout = performance.now();
       },
     });
-    if (!layout) throw new Error("turn layout did not resolve from listing");
+    if (!layout) {
+      throw new TurnSetupError(
+        "layout_unexpected",
+        "turn layout did not resolve from the store listing",
+      );
+    }
     if (opts.timings) opts.timings.t_startup_files = performance.now();
     const filesystem: TurnFilesystem = {
       ...layout,
@@ -167,11 +177,20 @@ export async function startTurnFilesystem(opts: {
     const hydrated = started.done.then(
       () => filesystem,
       (error: unknown) => {
-        throw hydrationError(error);
+        throw turnHydrationError(error);
       },
     );
-    return { filesystem, hydrated };
+    const settled = hydrated.then(
+      (result) => ({ ok: true as const, filesystem: result }),
+      (error: unknown) => ({ ok: false as const, error }),
+    );
+    return {
+      filesystem,
+      hydrated,
+      settled,
+      abortHydration: started.abort,
+    };
   } catch (error) {
-    throw hydrationError(error);
+    throw turnHydrationError(error);
   }
 }
