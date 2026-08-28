@@ -1,5 +1,11 @@
-import { posix } from "node:path";
 import type { Vfs } from "../vfs";
+import {
+  extOf,
+  FilePathError,
+  fileKey,
+  safeRel,
+  workspaceRel,
+} from "./files-path";
 
 /**
  * Pure workspace file operations behind the Files tab — shared by the HTTP
@@ -7,6 +13,9 @@ import type { Vfs } from "../vfs";
  * (`files-archive.ts`). Layout-blind: `root` is the agent's workspace root in
  * the vfs (cloud `<prefix>/workspace`, local `<Workspace>/<Agent>`).
  */
+
+// Path validation is part of this module's public surface (handler, tests).
+export * from "./files-path";
 
 export const FOLDER_KEEP = ".keep"; // marker that lets an empty folder show up in a listing
 
@@ -20,51 +29,6 @@ export interface ProjectFile {
   date_modified?: number;
   date_created?: number;
 }
-
-export class FilePathError extends Error {
-  constructor(rel: string) {
-    super(`invalid workspace path: ${rel}`);
-    this.name = "FilePathError";
-  }
-}
-
-/** A file operation that failed with a specific HTTP status (409 conflict, 413 too large, …). */
-export class FileOpError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "FileOpError";
-  }
-}
-
-/** Normalize a UI-supplied relative path; require it to stay inside the workspace and clear of internal dot-dirs. */
-export function safeRel(rel: string): string {
-  const cleaned = rel.replace(/\\/g, "/");
-  // Absolute (POSIX or Windows-drive) paths are anomalous — reject, don't silently clamp.
-  if (cleaned.startsWith("/") || /^[A-Za-z]:/.test(cleaned))
-    throw new FilePathError(rel);
-  const norm = posix.normalize(cleaned);
-  if (
-    norm === "" ||
-    norm === "." ||
-    norm.startsWith("..") ||
-    norm.split("/").includes("..")
-  ) {
-    throw new FilePathError(rel);
-  }
-  // Internal Houston state lives in top-level dot-dirs (.houston, .agents). The
-  // Files tab must never read or write there.
-  if (norm.split("/")[0]?.startsWith(".")) throw new FilePathError(rel);
-  return norm;
-}
-
-export const fileKey = (root: string, rel: string) => `${root}/${rel}`;
-export const extOf = (name: string) => {
-  const dot = name.lastIndexOf(".");
-  return dot > 0 ? name.slice(dot + 1) : "";
-};
 
 /**
  * List every file under the agent's workspace, plus a synthesized entry for
@@ -131,13 +95,14 @@ export async function listWorkspace(
   });
 }
 
-/** Read one workspace file. Text comes back as `content`; binary as base64. */
+/** Read one workspace file. Text comes back as `content`; binary as base64.
+ * Chat-driven, so `workspaceRel`: agents link files by absolute path. */
 export async function readWorkspaceFile(
   vfs: Vfs,
   root: string,
   rel: string,
 ): Promise<{ content: string; base64: boolean } | null> {
-  const buf = await vfs.readBytes(fileKey(root, safeRel(rel)));
+  const buf = await vfs.readBytes(fileKey(root, workspaceRel(root, rel)));
   if (buf === null) return null;
   // Treat a buffer as text only if it round-trips through UTF-8 without
   // replacement chars (so a .pptx comes back as base64 for download, not garbage).
