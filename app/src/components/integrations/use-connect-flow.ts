@@ -7,7 +7,10 @@ import { logAndReportError } from "../../lib/error-report";
 import { osFocusWindow } from "../../lib/os-bridge";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
-import { isToolkitOauthUnavailableError } from "../../lib/toolkit-oauth-unavailable";
+import {
+  isToolkitNoAuthError,
+  isToolkitOauthUnavailableError,
+} from "../../lib/toolkit-connect-refusals";
 import {
   connectFlowRegistry,
   useConnectFlowStore,
@@ -132,11 +135,14 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
         // agent's effective allowlist on connect (Teams v2). Undefined on the
         // account-level Integrations page.
         //
-        // An OAuth-unavailable refusal (the toolkit only signs in via OAuth
-        // and Houston has no app registered for it yet — HOU-1110, highlevel)
-        // is a Houston-side setup gap, not a crash: the engine call is
-        // silenced for it, so THIS is its one surface — friendly copy, plus an
-        // analytics event so demand for the missing app stays visible.
+        // The host's typed connect refusals are expected states, not crashes,
+        // and the engine call is silenced for them — so THIS is their one
+        // surface. An OAuth-unavailable refusal (the toolkit only signs in via
+        // OAuth and Houston has no app registered for it yet — HOU-1110,
+        // highlevel) gets friendly copy plus an analytics event so demand for
+        // the missing app stays visible. A no-auth refusal (the app never
+        // needed an account; an agent-authored card offered it anyway —
+        // HOUSTON-APP-4Z1, "composio") tells the user they are already set.
         mintLink: async (slug) => {
           try {
             return await tauriIntegrations.connect(
@@ -145,7 +151,13 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
               agentId,
             );
           } catch (err) {
-            if (isToolkitOauthUnavailableError(err)) {
+            if (isToolkitNoAuthError(err)) {
+              addToast({
+                title: t("connectResult.noAuthTitle", { app: appName(slug) }),
+                description: t("connectResult.noAuth"),
+                variant: "info",
+              });
+            } else if (isToolkitOauthUnavailableError(err)) {
               analytics.track("integration_connect_unavailable", {
                 integration_slug: slug,
               });

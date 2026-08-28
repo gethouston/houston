@@ -1,6 +1,9 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { isToolkitOauthUnavailableError } from "../src/lib/toolkit-oauth-unavailable.ts";
+import {
+  isToolkitNoAuthError,
+  isToolkitOauthUnavailableError,
+} from "../src/lib/toolkit-connect-refusals.ts";
 
 // The two adapter error shapes the connect flow can catch: the cloud control
 // plane throws with a PARSED JSON body (HoustonEngineError), the local
@@ -80,5 +83,34 @@ describe("isToolkitOauthUnavailableError", () => {
       isToolkitOauthUnavailableError("toolkit_oauth_unavailable"),
       false,
     );
+  });
+});
+
+// HOUSTON-APP-4Z1: connecting a no-auth toolkit ("composio" itself) 400s with
+// this typed code — an expected state the flow explains, never a bug report.
+describe("isToolkitNoAuthError", () => {
+  it("matches the typed code on both adapter error shapes", () => {
+    strictEqual(
+      isToolkitNoAuthError(cloudError({ error: "…", code: "toolkit_no_auth" })),
+      true,
+    );
+    strictEqual(
+      isToolkitNoAuthError(
+        localError(JSON.stringify({ error: "…", code: "toolkit_no_auth" })),
+      ),
+      true,
+    );
+  });
+
+  it("rejects other typed codes and refusal-free errors", () => {
+    strictEqual(
+      isToolkitNoAuthError(
+        cloudError({ error: "…", code: "toolkit_oauth_unavailable" }),
+      ),
+      false,
+    );
+    strictEqual(isToolkitNoAuthError(localError("<html>")), false);
+    strictEqual(isToolkitNoAuthError(new Error("x")), false);
+    strictEqual(isToolkitNoAuthError(null), false);
   });
 });

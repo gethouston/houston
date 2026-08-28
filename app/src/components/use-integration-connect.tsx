@@ -80,8 +80,16 @@ export function useIntegrationConnect({
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, ready);
 
   const slug = normalizeToolkitSlug(toolkit);
-  const isConnected = isToolkitConnected(connections.data, toolkit);
-  const resolved = appDisplay(slug, findCatalogToolkit(catalog.data, toolkit));
+  // The catalog entry rides along so a no-auth toolkit reads connected — it
+  // has no connection row to ever match, so without it the card offers a
+  // Connect that can only die on the host's `toolkit_no_auth` 400.
+  const catalogEntry = findCatalogToolkit(catalog.data, toolkit);
+  const isConnected = isToolkitConnected(
+    connections.data,
+    toolkit,
+    catalogEntry,
+  );
+  const resolved = appDisplay(slug, catalogEntry);
   const app: AppDisplay = {
     ...resolved,
     // The name needs no patching here: `appDisplay` prettifies a catalog miss
