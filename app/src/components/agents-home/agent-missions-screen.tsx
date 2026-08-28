@@ -8,6 +8,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
+import { openMissionChat } from "../../lib/mission-chat";
 import { openAgentBoard } from "../../lib/open-agent";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -27,11 +28,12 @@ import {
  * status mapping) with the archive folded behind a trailing row. Reads the
  * same one-sweep query the boards read; no fetch path of its own.
  *
- * Tapping a mission performs the SAME three-step navigation a notification
- * does (make the agent current, push its board, publish the mission id): the
- * board consumes the published id, opens the chat panel full-screen, and
- * swaps to its archive surface when the id turns out archived — so this
- * screen never re-implements the chat, and back pops through the stack.
+ * Tapping an ACTIVE mission pushes its chat as a first-class nav level
+ * (`lib/mission-chat.ts`) — the same push a board card performs — so back
+ * pops straight from the chat to this screen. An ARCHIVED mission has no
+ * chat-screen surface, so its rows keep the notification three-step (make
+ * the agent current, push its board, publish the mission id): the board's
+ * surface router swaps in its archive and opens the panel over it.
  */
 export function AgentMissionsScreen({ agent }: { agent: Agent }) {
   const { t } = useTranslation(["shell", "dashboard"]);
@@ -47,6 +49,9 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
   );
 
   const openMission = (mission: AgentHomeConversation) => {
+    openMissionChat(agent, mission.id);
+  };
+  const openArchivedMission = (mission: AgentHomeConversation) => {
     useAgentStore.getState().setCurrent(agent);
     openAgentBoard(agent.id);
     useUIStore.getState().setActivityPanelId(mission.id, { forceOpen: true });
@@ -140,7 +145,7 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
                         <li key={mission.id}>
                           <AgentMissionRow
                             mission={mission}
-                            onOpen={openMission}
+                            onOpen={openArchivedMission}
                           />
                         </li>
                       ))}

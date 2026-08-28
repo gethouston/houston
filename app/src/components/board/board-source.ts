@@ -186,8 +186,13 @@ export interface BoardSource {
   selectedRunning: boolean;
 
   // ── Slots rendered by the component ───────────────────────────────────────
-  /** Toolbar rendered above the board (filters, search, New mission). */
+  /** Toolbar rendered above the board (filters, search, New mission).
+   *  Desktop-only: the component hides it below md, where
+   *  {@link BoardSource.mobileControls} takes over. */
   toolbar?: ReactNode;
+  /** The phone board's control row (sticky search, agent filter, archived,
+   *  compose), rendered above the paged board below md only. */
+  mobileControls?: ReactNode;
   /** Dialogs mounted alongside the board (agent picker, attachment rejection,
    *  skill picker). */
   dialogs?: ReactNode;

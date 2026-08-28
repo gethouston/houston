@@ -388,6 +388,9 @@
     "workspace": "Workspace",
     "yourTeams": "Your teams"
   },
+  "missionChat": {
+    "back": "Back"
+  },
   "agentsHome": {
     "title": "Agents",
     "filterPlaceholder": "Filter agents",

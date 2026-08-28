@@ -75,6 +75,15 @@ interface UIState {
    * back button pops; set only through {@link UIState.openAgentsHome}.
    */
   agentsHomeAgentId: string | null;
+  /**
+   * The phone's pushed mission-chat screen (`lib/nav-stack.ts` documents the
+   * pair's semantics): the owning agent, and the open mission or `null` for an
+   * empty draft chat. Set only through {@link UIState.openMissionChat} /
+   * {@link UIState.closeMissionChat}; every OTHER navigation write clears the
+   * pair, so navigating under an open chat closes it.
+   */
+  chatAgentId: string | null;
+  chatMissionId: string | null;
   activityPanelId: string | null;
   activityPanelForceOpen: boolean;
   claudeAvailable: boolean | null;
@@ -87,6 +96,10 @@ interface UIState {
   editTeamIdentityId: string | null;
   /** "Your agent is still being created" write-blocked notice (HOU-693). */
   agentWarmingNoticeOpen: boolean;
+  /** Whether the phone's compose agent-picker sheet is open (the mobile
+   *  new-mission flow: pick an agent, push its empty draft chat). Ephemeral
+   *  dialog flag, never persisted. */
+  newMissionSheetOpen: boolean;
   /** Callback registered by whichever mission board is on the glass (the
    *  global one or a team's) to open its new-mission flow. */
   onStartMission: (() => void) | null;
@@ -274,6 +287,20 @@ interface UIState {
       nav?: NavMode;
     },
   ) => void;
+  /**
+   * Push the phone's mission-chat screen for `agentId`, on `missionId`'s chat
+   * (`null` = an empty draft chat, the compose flow). ONE call sets both ids
+   * so the screen can never open half-addressed. `replace` is for the draft
+   * chat adopting its just-created mission's id: same screen, now named, and
+   * back must not revisit the blank draft.
+   */
+  openMissionChat: (
+    agentId: string,
+    missionId: string | null,
+    opts?: { nav?: NavMode },
+  ) => void;
+  /** Pop the pushed mission-chat screen (its back affordance). */
+  closeMissionChat: () => void;
   setActivityPanelId: (
     id: string | null,
     options?: { forceOpen?: boolean },
@@ -285,6 +312,7 @@ interface UIState {
   setCreateAgentDialogOpen: (open: boolean, teamId?: string | null) => void;
   setEditTeamIdentityId: (teamId: string | null) => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
+  setNewMissionSheetOpen: (open: boolean) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
   /** Claim (`open`) or release the shell detail panel for one surface. */
   setMissionPanelOwner: (ownerId: string, open: boolean) => void;
@@ -345,6 +373,7 @@ const initialUIState = {
   createAgentTeamId: null,
   editTeamIdentityId: null,
   agentWarmingNoticeOpen: false,
+  newMissionSheetOpen: false,
   onStartMission: null,
   missionPanelOpen: false,
   missionPanelOwners: [],
@@ -380,10 +409,17 @@ const initialUIState = {
   teamAgentFocus: false,
   teamSettingsFocus: false,
   agentsHomeAgentId: null,
+  chatAgentId: null,
+  chatMissionId: null,
   // The single-entry boot stack; its root mirrors the initial view fields
   // above (pinned by app/tests/ui-store-nav.test.ts).
   ...initialNavState(),
 } satisfies Partial<UIState>;
+
+/** Every navigation that is not the chat itself closes the pushed chat: the
+ *  chat renders over ANY view, so a stale pair would keep it glued over the
+ *  next screen. Spread into each nav-aware action's write. */
+const noChat = { chatAgentId: null, chatMissionId: null };
 
 let toastCounter = 0;
 // Live dismiss timers by toast id, so a coalesced repeat can RESTART its
@@ -414,7 +450,7 @@ export const useUIStore = create<UIState>()(
         }
       },
       setViewMode: (viewMode, opts) =>
-        set((s) => navigated(s, { viewMode }, opts?.nav ?? "push")),
+        set((s) => navigated(s, { viewMode, ...noChat }, opts?.nav ?? "push")),
       openTeamView: (activeTeamId, teamSection, opts) => {
         const teamAgentFilter = opts?.agentFilter ?? null;
         const teamAgentFocus =
@@ -430,6 +466,7 @@ export const useUIStore = create<UIState>()(
               teamAgentFocus,
               teamSettingsFocus:
                 !teamAgentFocus && opts?.teamSettingsFocus === true,
+              ...noChat,
             },
             opts?.nav ?? "push",
           ),
@@ -450,7 +487,7 @@ export const useUIStore = create<UIState>()(
         set((s) =>
           navigated(
             s,
-            { viewMode: "settings", settingsSection },
+            { viewMode: "settings", settingsSection, ...noChat },
             opts?.nav ?? "push",
           ),
         ),
@@ -458,10 +495,16 @@ export const useUIStore = create<UIState>()(
         set((s) =>
           navigated(
             s,
-            { viewMode: AGENTS_HOME_VIEW_ID, agentsHomeAgentId },
+            { viewMode: AGENTS_HOME_VIEW_ID, agentsHomeAgentId, ...noChat },
             opts?.nav ?? "push",
           ),
         ),
+      openMissionChat: (chatAgentId, chatMissionId, opts) =>
+        set((s) =>
+          navigated(s, { chatAgentId, chatMissionId }, opts?.nav ?? "push"),
+        ),
+      closeMissionChat: () =>
+        set((s) => navigated(s, { ...noChat }, "retreat")),
       setActivityPanelId: (activityPanelId, options) =>
         set({
           activityPanelId,
@@ -534,6 +577,8 @@ export const useUIStore = create<UIState>()(
 
       setAgentWarmingNoticeOpen: (agentWarmingNoticeOpen) =>
         set({ agentWarmingNoticeOpen }),
+      setNewMissionSheetOpen: (newMissionSheetOpen) =>
+        set({ newMissionSheetOpen }),
 
       setOnStartMission: (onStartMission) => set({ onStartMission }),
       setMissionPanelOwner: (ownerId, open) =>

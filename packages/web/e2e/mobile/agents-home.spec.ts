@@ -5,8 +5,8 @@ import { screen } from "../support/team-nav";
  * The phone's Agents home (PR 4 of the responsiveness overhaul): the landing
  * screen. An attention-sorted agent list with a last-activity preview and the
  * needs-you chip, a name filter, and the drill chain — agent → its missions
- * (sectioned) → the mission's chat — every push a nav-stack level the browser
- * back button pops in order.
+ * (sectioned) → the mission's pushed chat screen — every push a nav-stack
+ * level the browser back button pops in order.
  */
 
 test("boot lands on the Agents home with previews and the needs-you chip", async ({
@@ -54,20 +54,16 @@ test("agent → missions → chat pushes; back pops the trail in order", async (
   await expect(missions.getByText("Needs you")).toBeVisible();
   await expect(missions.getByText("Done")).toBeVisible();
 
-  // Tap a mission: the same three-step nav a notification performs — the
-  // agent's board opens with the chat over it, full-screen on the phone.
+  // Tap a mission: its chat pushes as a first-class nav level — no board in
+  // between — with the same "Task:" line the desktop panel header carries.
   await missions.getByText("Plan a trip to Tokyo").tap();
-  const panel = page.getByTestId("mission-panel");
-  await expect(panel).toBeVisible();
-  await expect(panel.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
+  const chat = page.getByTestId("mission-chat-screen");
+  await expect(chat).toBeVisible();
+  await expect(chat.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 
-  // Back pops the chat, leaving the agent's board.
+  // Back pops the chat, landing straight on the missions screen it came from.
   await page.goBack();
-  await expect(panel).toBeHidden();
-  await expect(screen(page)).toHaveAttribute("data-screen", "team");
-
-  // Back again restores the drilled missions screen...
-  await page.goBack();
+  await expect(chat).toHaveCount(0);
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
   await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
 

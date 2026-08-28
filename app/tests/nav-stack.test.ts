@@ -23,6 +23,8 @@ const at = (viewMode: string, panelOpen = false): NavSourceFields => ({
   teamAgentFocus: false,
   teamSettingsFocus: false,
   agentsHomeAgentId: null,
+  chatAgentId: null,
+  chatMissionId: null,
   missionPanelOpen: panelOpen,
 });
 
@@ -160,6 +162,63 @@ describe("navigated reset", () => {
     const s = state(at("inbox"), initialNavState());
     const out = navigated(s, { viewMode: "inbox" }, "reset");
     assert.equal("navStack" in out, false);
+  });
+});
+
+describe("mission-chat entries (PRODUCT-1560)", () => {
+  it("a chat push keeps the underlying view fields in the entry", () => {
+    const s = state(at("agents-home"), {
+      navStack: [navEntryOf(at("agents-home"))],
+      navIndex: 0,
+    });
+    const out = navigated(
+      s,
+      { chatAgentId: "agent-1", chatMissionId: "m-1" },
+      "push",
+    );
+    assert.ok("navStack" in out);
+    assert.equal(out.navStack[1].viewMode, "agents-home");
+    assert.equal(out.navStack[1].chatAgentId, "agent-1");
+    assert.equal(out.navStack[1].chatMissionId, "m-1");
+  });
+
+  it("closing the chat retreats onto the chat-less entry beneath", () => {
+    const base = navEntryOf(at("agents-home"));
+    const chat = navEntryOf({
+      ...at("agents-home"),
+      chatAgentId: "agent-1",
+      chatMissionId: "m-1",
+    });
+    const s = state(
+      { ...at("agents-home"), chatAgentId: "agent-1", chatMissionId: "m-1" },
+      { navStack: [base, chat], navIndex: 1 },
+    );
+    const out = navigated(
+      s,
+      { chatAgentId: null, chatMissionId: null },
+      "retreat",
+    );
+    assert.ok("navStack" in out);
+    assert.equal(out.navIndex, 0);
+  });
+
+  it("the draft chat adopting its created mission replaces in place", () => {
+    const base = navEntryOf(at("agents-home"));
+    const draft = navEntryOf({
+      ...at("agents-home"),
+      chatAgentId: "agent-1",
+    });
+    const s = state(
+      { ...at("agents-home"), chatAgentId: "agent-1" },
+      { navStack: [base, draft], navIndex: 1 },
+    );
+    const out = navigated(s, { chatMissionId: "m-9" }, "replace");
+    assert.ok("navStack" in out);
+    assert.equal(out.navIndex, 1);
+    assert.equal(out.navStack.length, 2);
+    assert.equal(out.navStack[1].chatMissionId, "m-9");
+    // Back from the named chat lands under the draft, never on it.
+    assert.equal(out.navStack[0].chatAgentId, null);
   });
 });
 

@@ -1,38 +1,35 @@
-import { AIBoard, type MessageMention } from "@houston-ai/board";
+import { AIBoard } from "@houston-ai/board";
+import { useIsMobile } from "@houston-ai/core";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
-import { childMissionsOf, parentMissionOf } from "../../lib/child-missions";
+import { openMissionChatForPath } from "../../lib/mission-chat";
 import { perfSpans } from "../../lib/perf-spans";
-import { modelAcceptsImages } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
-import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import {
   buildMissionBoardColumns,
   MISSION_APPROVE_STATUSES,
   MISSION_ARCHIVE_STATUSES,
 } from "../mission-board-columns";
-import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
-import { useAgentChatPanel } from "../use-agent-chat-panel";
-import { useQueuedMessageLabels } from "../use-queued-message-labels";
 import type { BoardSource } from "./board-source";
-import { panelTaskLabel } from "./panel-task-label";
-import { useBoardDrafts } from "./use-board-drafts";
+import { useBoardChatWiring } from "./use-board-chat-wiring";
 import { useBoardKeyboard } from "./use-board-keyboard";
-import { useBoardLabels } from "./use-board-labels";
 import { useBoardSelectionUI } from "./use-board-selection-ui";
-import { useBoardSendQueue } from "./use-board-send-queue";
 
 /**
  * The one board every mission surface renders (Mission Control and each team
- * board, which is the same source narrowed by a scope). It owns every shared
- * concern — columns,
- * the multi-select UI, the `useAgentChatPanel` integration, the message
- * queue, draft persistence, keyboard navigation, run-in-terminal actions, and
- * the full AIBoard prop spread — and pulls the divergent pieces (data, active
- * agent, new-mission flow, bulk routing, toolbar, dialogs) from `source`.
+ * board, which is the same source narrowed by a scope). It owns the
+ * board-shaped concerns — columns, the multi-select UI, keyboard navigation,
+ * the shell panel portal, and the AIBoard prop spread — and pulls the chat
+ * half from the shared {@link useBoardChatWiring} (the same wiring the
+ * phone's pushed mission-chat screen binds) and the divergent pieces (data,
+ * active agent, new-mission flow, bulk routing, toolbar, dialogs) from
+ * `source`.
+ *
+ * Below md a card tap is a STRUCTURAL fork: it pushes the mission-chat
+ * screen (`lib/mission-chat.ts`) instead of selecting into the side panel —
+ * chat is a place on the phone, not a panel.
  */
 export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
@@ -43,11 +40,10 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   // must stop portaling its panel, or two screens stack their panels into the
   // one shared slot and the chat renders "split in half" (HOU-1165).
   const isActive = useIsActiveView();
+  const isMobile = useIsMobile();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
-  const addToast = useUIStore((s) => s.addToast);
-  const queuedLabels = useQueuedMessageLabels();
-  const { cardLabels, composerLabels } = useBoardLabels();
-  const { drafts, onDraftChange } = useBoardDrafts(source.draftScope);
+
+  const wiring = useBoardChatWiring(source);
 
   // Columns: base layout (single source of truth for status→section) plus the
   // Done "archive all" / Needs-you "select all" header actions when the source
@@ -60,24 +56,15 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           needsYou: t("dashboard:columns.needsYou"),
           done: t("dashboard:columns.done"),
           newMission: t("dashboard:empty.newMission"),
+          empty: {
+            running: t("dashboard:pager.emptyRunning"),
+            needsYou: t("dashboard:pager.emptyNeedsYou"),
+            done: t("dashboard:pager.emptyDone"),
+          },
         },
         source.openNewMission,
       ),
     [t, source.openNewMission],
-  );
-  // The panel's own task line, composed here rather than left to `ui/`'s
-  // i18n-agnostic English fallback (`panelTaskLabel`).
-  const panelLabel = useMemo(
-    () =>
-      panelTaskLabel(
-        {
-          task: (title) => t("board:panel.taskLabel", { title }),
-          newTask: t("board:panel.newTask"),
-        },
-        source.selectedId,
-        source.allItems.find((item) => item.id === source.selectedId)?.title,
-      ),
-    [t, source.selectedId, source.allItems],
   );
   const closeOpenChat = useCallback(
     () => source.setSelectedId(null),
@@ -89,53 +76,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     selection: source.selection,
     openChatId: source.selectedId,
     onCloseOpenChat: closeOpenChat,
-  });
-
-  // Per-agent chat panel features (skills, model selector, tool/link
-  // renderers) scoped to the active agent — already the shared source of
-  // truth for both views.
-  // The missions the OPEN chat started (PRODUCT-1244): read off the board's own
-  // items, so they stay live through the same invalidation the cards use.
-  const childMissions = useMemo(
-    () =>
-      childMissionsOf(source.allItems, source.selectedSessionKey, {
-        running: t("dashboard:columns.running"),
-        needsYou: t("dashboard:columns.needsYou"),
-        done: t("dashboard:columns.done"),
-      }),
-    [source.allItems, source.selectedSessionKey, t],
-  );
-  // The inverse: when the OPEN chat is itself agent-started, the mission it
-  // was started from — the "Go to main mission" bar's target.
-  const parentMission = useMemo(
-    () => parentMissionOf(source.allItems, source.selectedSessionKey),
-    [source.allItems, source.selectedSessionKey],
-  );
-  const panel = useAgentChatPanel({
-    agent: source.activeAgent,
-    selectedSessionKey: source.selectedSessionKey,
-    onSelectSession: source.onSelectSession,
-    draftScope: source.draftScope,
-    childMissions,
-    parentMission,
-    // Opening a child (or the parent) is the board's ordinary selection: the
-    // panel swaps to that mission's chat, exactly as clicking its card would.
-    onOpenChildMission: source.setSelectedId,
-  });
-  const overrides = useMemo(
-    () => ({
-      providerOverride: panel.effectiveProvider,
-      modelOverride: panel.effectiveModel,
-      modeOverride: panel.turnMode,
-    }),
-    [panel.effectiveProvider, panel.effectiveModel, panel.turnMode],
-  );
-
-  const sendQueue = useBoardSendQueue({
-    selectedSessionKey: source.selectedSessionKey,
-    selectedAgentPath: source.selectedAgentPath,
-    overrides,
-    sendMessageNow: source.sendMessageNow,
   });
 
   const { handleCloserReady } = useBoardKeyboard({
@@ -157,122 +97,62 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     onAutoOpenEmpty: source.onAutoOpenEmpty,
   });
 
-  const handleCreateConversation = useCallback(
-    (text: string, files: File[], mentions?: MessageMention[]) =>
-      source.createConversation({ text, files, ...overrides, mentions }),
-    [source.createConversation, overrides],
+  const handleSelect = useCallback(
+    (id: string | null) => {
+      // Card-open perf mark (HOU-1011): completed when the opened
+      // conversation's messages paint (use-agent-board-data).
+      if (id) perfSpans.cardClicked();
+      // The phone fork: a card tap pushes the first-class chat screen. A card
+      // whose agent left the roster falls through to the panel selection.
+      if (isMobile && id) {
+        const item =
+          source.items.find((i) => i.id === id) ??
+          source.allItems.find((i) => i.id === id);
+        const agentPath = item?.metadata?.agentPath as string | undefined;
+        if (openMissionChatForPath(agentPath, id)) return;
+      }
+      source.setSelectedId(id);
+    },
+    [isMobile, source.items, source.allItems, source.setSelectedId],
   );
-  const handleNotice = useCallback(
-    (message: string) => addToast({ title: message }),
-    [addToast],
-  );
-  const handleOpenLink = useOpenAgentHref(
-    source.activeAgent?.folderPath ?? null,
-  );
-
-  const attachmentValidation = useAttachmentRejectionDialog({
-    modelAcceptsImages: modelAcceptsImages(
-      panel.effectiveProvider,
-      panel.effectiveModel,
-    ),
-  });
 
   return (
     <>
-      {source.toolbar}
+      {/* Desktop layer only: below md the mobile controls own this space. The
+          wide strip form portals into the team strip and escapes the wrapper,
+          which is exactly right — the strip itself is desktop chrome. The
+          mobile controls MOUNT only below the breakpoint (a structural fork,
+          like the card tap): their "All agents" / "Archived" texts would trip
+          strict text lookups as hidden desktop DOM. */}
+      {source.toolbar && (
+        <div className="hidden md:contents">{source.toolbar}</div>
+      )}
+      {isMobile && source.mobileControls}
       <div className="flex-1 min-h-0">
         <AIBoard
           items={source.items}
           columns={columns}
           selectedId={source.selectedId}
           highlightedId={source.highlightedId}
-          onSelect={(id) => {
-            // Card-open perf mark (HOU-1011): completed when the opened
-            // conversation's messages paint (use-agent-board-data).
-            if (id) perfSpans.cardClicked();
-            source.setSelectedId(id);
-          }}
-          feedItems={source.feedItems}
-          isLoading={source.loading}
+          onSelect={handleSelect}
           onDelete={source.onDelete}
           onApprove={source.onApprove}
           approveStatuses={MISSION_APPROVE_STATUSES}
           onArchive={source.onArchive}
           archiveStatuses={MISSION_ARCHIVE_STATUSES}
           onRename={source.onRename}
-          onCreateConversation={handleCreateConversation}
-          onSendMessage={sendQueue.handleSendMessage}
-          sessionKeyFor={source.sessionKeyFor}
-          queuedMessages={sendQueue.queuedMessages}
-          onRemoveQueuedMessage={sendQueue.onRemoveQueuedMessage}
-          queuedLabels={queuedLabels}
-          onLoadHistory={source.loadHistory}
-          onLoadOlderMessages={source.onLoadOlderMessages}
-          hasOlderMessages={source.hasOlderMessages}
           onNewPanelOpenerReady={source.registerOpener}
           onPanelCloserReady={handleCloserReady}
           emptyState={source.emptyState}
           panelContainer={panelContainer}
           onPanelOpenChange={setPanelOpen}
-          onStopSession={source.stopSession}
-          drafts={drafts}
-          onDraftChange={onDraftChange}
-          onNotice={handleNotice}
-          composerLabels={composerLabels}
-          currentUserId={panel.currentUserId}
-          authorLabels={panel.authorLabels}
-          showSenders={panel.showSenders}
-          agentLabel={panel.agentLabel}
-          renderSenderAvatar={panel.renderSenderAvatar}
-          senderNameClass={panel.senderNameClass}
-          {...panel.mentionProps}
-          dictation={panel.dictation}
-          prepareAttachments={attachmentValidation.prepareAttachments}
-          onAttachmentRejections={attachmentValidation.onAttachmentRejections}
-          onOpenLink={handleOpenLink}
-          thinkingIndicator={panel.thinkingIndicator}
-          panelAgentName={source.panelAgentName}
-          panelMissionLabel={panelLabel}
-          panelAvatar={
-            <AgentPanelAvatar
-              color={source.activeAgent?.color}
-              running={source.selectedRunning}
-            />
-          }
-          cardLabels={cardLabels}
           onItemMove={source.onItemMove}
           canDropItem={source.canDropItem}
           {...(selectionProps ?? {})}
-          chatEmptyState={panel.chatEmptyState}
-          composerHeader={panel.composerHeader}
-          composerOverride={panel.composerOverride}
-          composerOverrideMode={panel.composerOverrideMode}
-          canSendEmpty={panel.canSendEmpty}
-          onComposerSubmit={panel.onComposerSubmit}
-          footer={panel.footer}
-          attachMenu={panel.attachMenu}
-          renderUserMessage={panel.renderUserMessage}
-          onEditMessage={panel.onEditMessage}
-          canEditMessage={panel.canEditMessage}
-          editMessageLabel={panel.editMessageLabel}
-          enableMessageCopy={panel.enableMessageCopy}
-          canCopyMessage={panel.canCopyMessage}
-          copyMessageLabel={panel.copyMessageLabel}
-          messageEditing={panel.messageEditing}
-          renderLink={panel.renderLink}
-          renderSystemMessage={panel.renderSystemMessage}
-          conversationMap={panel.conversationMap}
-          mapFeedItems={panel.mapFeedItems}
-          afterMessages={panel.afterMessages}
-          isSpecialTool={panel.isSpecialTool}
-          renderToolResult={panel.renderToolResult}
-          processLabels={panel.processLabels}
-          getThinkingMessage={panel.getThinkingMessage}
-          renderTurnSummary={panel.renderTurnSummary}
+          {...wiring.chatProps}
         />
       </div>
-      {panel.pickerDialog}
-      {attachmentValidation.dialog}
+      {wiring.dialogs}
       {source.dialogs}
     </>
   );

@@ -11,6 +11,7 @@ import {
   filteredScopeAgent,
   missionControlDraftScope,
 } from "./mission-control-scope.ts";
+import { MobileBoardControls } from "./mobile-board-controls";
 import { useCrossAgentSelection } from "./use-cross-agent-selection";
 import { useMcActions } from "./use-mc-actions";
 import { useMcNewMission } from "./use-mc-new-mission";
@@ -126,6 +127,20 @@ export function useMissionControlSource(
     agentPathForId,
   });
 
+  // The phone board's own control row (search, archived, compose, agent
+  // chips), rendered by the component below md while the desktop toolbar
+  // hides. Built here because the search state lives here.
+  const mobileControls = (
+    <MobileBoardControls
+      search={missionSearch.query}
+      isSearchingText={missionSearch.isSearchingText}
+      onSearchChange={missionSearch.setQuery}
+      agents={scopedAgents}
+      filterPath={filterPath}
+      modeToggle={modeToggle}
+    />
+  );
+
   const toolbar = (
     // One row or two is the STRIP's call, not this hook's: it is the only
     // thing that knows how much room the three zones actually have.
@@ -193,6 +208,7 @@ export function useMissionControlSource(
     panelAgentName: activeAgent?.name ?? selectedItem?.subtitle,
     selectedRunning: selectedItem?.status === "running",
     toolbar,
+    mobileControls,
     dialogs: newMission.dialogs,
   };
 }

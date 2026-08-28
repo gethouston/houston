@@ -64,4 +64,9 @@ export interface KanbanColumn {
    *  "archive all" icon button). Fully owned by the consumer so any
    *  confirm dialog / i18n stays out of the library. */
   headerAction?: React.ReactNode;
+  /** Phone-only hint centered in the column when it holds no cards ("Nothing
+   *  running yet"). On the paged phone board an empty column is a whole empty
+   *  page, so it says so; desktop keeps its bare column. English default falls
+   *  to nothing — the consumer passes translated copy. */
+  emptyLabel?: string;
 }

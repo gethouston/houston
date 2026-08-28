@@ -35,6 +35,18 @@ export interface NavEntry {
    */
   agentsHomeAgentId: string | null;
   /**
+   * The phone's pushed mission-chat screen (chat as a first-class nav level,
+   * not the desktop side panel): the OWNING agent, plus the open mission —
+   * `chatMissionId` null while `chatAgentId` is set means an empty draft chat
+   * (the compose flow, no mission created yet). Both null = no chat pushed.
+   * Unlike `agentsHomeAgentId` the chat renders over ANY view, so every other
+   * navigation write clears the pair — navigating underneath an open chat
+   * closes it. Unlike `panelOpen` a chat entry IS re-enterable: the two ids
+   * fully name the screen, so forward restores it.
+   */
+  chatAgentId: string | null;
+  chatMissionId: string | null;
+  /**
    * Whether the shell detail panel (the chat) is open over the view. A panel
    * level can be POPPED (back closes the chat) but not re-entered: the panel
    * is derived from a surface's live selection, which a popped entry no longer
@@ -78,6 +90,8 @@ export interface NavSourceFields {
   teamAgentFocus: boolean;
   teamSettingsFocus: boolean;
   agentsHomeAgentId: string | null;
+  chatAgentId: string | null;
+  chatMissionId: string | null;
   missionPanelOpen: boolean;
 }
 
@@ -91,6 +105,8 @@ export function navEntryOf(s: NavSourceFields): NavEntry {
     teamAgentFocus: s.teamAgentFocus,
     teamSettingsFocus: s.teamSettingsFocus,
     agentsHomeAgentId: s.agentsHomeAgentId,
+    chatAgentId: s.chatAgentId,
+    chatMissionId: s.chatMissionId,
     panelOpen: s.missionPanelOpen,
   };
 }
@@ -105,6 +121,8 @@ export function sameNavEntry(a: NavEntry, b: NavEntry): boolean {
     a.teamAgentFocus === b.teamAgentFocus &&
     a.teamSettingsFocus === b.teamSettingsFocus &&
     a.agentsHomeAgentId === b.agentsHomeAgentId &&
+    a.chatAgentId === b.chatAgentId &&
+    a.chatMissionId === b.chatMissionId &&
     a.panelOpen === b.panelOpen
   );
 }
@@ -137,6 +155,8 @@ export function initialNavState(): NavState {
         teamAgentFocus: false,
         teamSettingsFocus: false,
         agentsHomeAgentId: null,
+        chatAgentId: null,
+        chatMissionId: null,
         missionPanelOpen: false,
       }),
     ],

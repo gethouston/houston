@@ -8,6 +8,8 @@ import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { LessonRunner } from "../academy/lessons/lesson-runner";
 import { CommandPalette } from "../command-palette";
+import { MissionChatScreen } from "../mission-chat/mission-chat-screen";
+import { MobileNewMissionSheet } from "../mobile-new-mission-sheet";
 import { InAppOnboarding } from "../onboarding/in-app-onboarding";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
@@ -67,6 +69,13 @@ export function WorkspaceShell({
   useKeyboardShortcuts();
 
   const isMobile = useIsMobile();
+  // The phone's pushed chat screen (PRODUCT-1555 arc): chat is a PLACE below
+  // md — full-screen over the content, both mobile bars hidden while it is
+  // up (a push, not a tab; the back affordances are the way out). Desktop
+  // ignores the pair entirely.
+  const chatAgentId = useUIStore((s) => s.chatAgentId);
+  const mobileChatOpen = isMobile && chatAgentId !== null;
+  const mobileBarsHidden = mobileChatOpen || (isMobile && missionPanelOpen);
 
   return (
     <DetailPanelProvider value={panelContainer}>
@@ -91,8 +100,10 @@ export function WorkspaceShell({
         )}
         <div className="flex min-h-0 flex-1">
           <Sidebar>
-            {/* Hamburger row for the mobile drawer; CSS-hidden at md+. */}
-            <MobileTopBar />
+            {/* Hamburger row for the mobile drawer; CSS-hidden at md+, gone
+                entirely while the chat screen is pushed (the chat's own back
+                bar is the header then). */}
+            {!mobileBarsHidden && <MobileTopBar />}
             {/* Transparent row: the window gutter shows in the gap-2 between
               the cards (and around them). main + the mission panel are each
               their OWN rounded frosted "screen" card, so the rounding reads
@@ -129,13 +140,21 @@ export function WorkspaceShell({
                   style={isMobile ? undefined : { width: "45%", minWidth: 380 }}
                 />
               )}
+              {mobileChatOpen && (
+                <div className="absolute inset-0 z-40 overflow-hidden rounded-2xl bg-background canvas-screen">
+                  <MissionChatScreen />
+                </div>
+              )}
             </div>
           </Sidebar>
         </div>
-        {/* Bottom tab bar (Agents / Tasks / Settings); CSS-hidden at md+.
-            Below the content row so the full-screen mission panel overlay
-            never covers it — the tabs stay reachable over an open chat. */}
-        <MobileTabBar />
+        {/* Bottom tab bar (Agents / Tasks / Settings); CSS-hidden at md+ and
+            gone while a chat is up on the phone (pushed screen or the
+            board's full-screen panel): chat is a push, not a tab, so the
+            back affordances are the way out and the composer gets the full
+            height above the keyboard. */}
+        {!mobileBarsHidden && <MobileTabBar />}
+        <MobileNewMissionSheet />
         <CreateAgentDialog />
         <AgentWarmingDialog />
         <ExportAgentWizard />

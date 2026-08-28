@@ -214,6 +214,14 @@ export interface AIBoardProps {
    */
   panelContainer?: HTMLElement | null;
   /**
+   * Chat-only presentation: render ONLY the detail panel, filling the host
+   * (no columns, no portal, no split). For a full-screen pushed chat (the
+   * phone's mission-chat screen) where the board itself is another screen.
+   * With no `selectedId` the panel is the new-conversation composer, so a
+   * draft chat can create its mission on first send.
+   */
+  panelOnly?: boolean;
+  /**
    * Skip the automatic composer focus when a selection hydrates. The board
    * bumps the composer focus token so keyboard users can type immediately —
    * but when the panel is a side companion of a form (the routine editor's
@@ -367,6 +375,7 @@ export function AIBoard({
   actions,
   panelActions,
   panelContainer,
+  panelOnly,
   disableComposerAutoFocus,
   hidePanelClose,
   drafts,
@@ -557,6 +566,10 @@ export function AIBoard({
   // the first send the created activity isn't in `items` yet, but its feed
   // (seeded with the optimistic user message) must render immediately.
   const activeSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
+  // Chat-only hosts have no "New conversation" button: an unselected panel IS
+  // the new-conversation composer, so the create path stays reachable.
+  const effectiveNewPanelOpen =
+    newPanelOpen || (panelOnly === true && !selectedId);
   // The session key currently visible in the detail panel's ChatPanel.
   const activeDraftKey = activeSessionKey ?? "new-conversation";
   const rawActiveFeed = activeSessionKey
@@ -603,7 +616,7 @@ export function AIBoard({
           // never fall through and create a duplicate conversation.
           await onSendMessage(activeSessionKey, text, files, mentions);
           onDraftChange?.(activeDraftKey, "");
-        } else if (newPanelOpen && onCreateConversation) {
+        } else if (effectiveNewPanelOpen && onCreateConversation) {
           const activityId = await onCreateConversation(text, files, mentions);
           onDraftChange?.(activeDraftKey, "");
           // Select the new activity so the feed renders. The freshly-created
@@ -624,7 +637,7 @@ export function AIBoard({
       activeDraftKey,
       onDraftChange,
       onSendMessage,
-      newPanelOpen,
+      effectiveNewPanelOpen,
       onCreateConversation,
       setSelectedId,
     ],
@@ -645,7 +658,7 @@ export function AIBoard({
 
   const { showPanel, panelItem } = resolvePanelState({
     selectedId,
-    newPanelOpen,
+    newPanelOpen: effectiveNewPanelOpen,
     selectedItem,
     lastResolved: lastResolvedRef.current,
   });
@@ -919,6 +932,11 @@ export function AIBoard({
       </div>
     </KanbanDetailPanel>
   );
+
+  // Chat-only host: the panel IS the whole surface — no columns, no portal.
+  if (panelOnly) {
+    return <div className="flex h-full min-h-0 flex-col">{detailPanel}</div>;
+  }
 
   if (!showPanel) {
     return <div className="h-full overflow-hidden">{board}</div>;

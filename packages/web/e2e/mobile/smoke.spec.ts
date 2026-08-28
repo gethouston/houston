@@ -39,6 +39,6 @@ test("touch drives the UI: drilling into a mission opens its chat", async ({
     .tap();
   await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 
-  await page.getByRole("button", { name: "Close panel" }).tap();
-  await expect(page.getByTestId("mission-panel")).toBeHidden();
+  await page.getByTestId("mission-chat-back").tap();
+  await expect(page.getByTestId("mission-chat-screen")).toHaveCount(0);
 });
