@@ -149,7 +149,7 @@ components:
 
   mission-board:
     status: implemented
-    ref: "@houston-ai/board KanbanBoard / AIBoard / KanbanColumn"
+    ref: "@houston-ai/board KanbanBoard / AIBoard / KanbanColumn, phone pager in kanban-pager.tsx (segmented control synced to the snap-scrolling pages) with the phone control row in app/src/components/board/mobile-board-controls.tsx"
 
   mentions-inbox:
     status: partial
@@ -289,4 +289,10 @@ components:
     ref: "app/src/components/agents-home/ (AgentsHomeView switching AgentsHomeList / AgentMissionsScreen on the ui store's agentsHomeAgentId nav level), rows over AgentSidebarIcon + NeedsYouChip, pure rules in agents-home-model.ts, tab root wiring in app/src/lib/open-mobile-tab.ts and the phone boot landing in use-workspace-view-guards.ts"
   agent-missions-list:
     status: implemented
-    ref: "app/src/components/agents-home/agent-missions-screen.tsx (BackBarScreen + sectioned AgentMissionRow lists over agentMissionSections, the board's missionColumnIdForStatus mapping), chat push via lib/open-agent.ts openAgentBoard + the published activityPanelId"
+    ref: "app/src/components/agents-home/agent-missions-screen.tsx (BackBarScreen + sectioned AgentMissionRow lists over agentMissionSections, the board's missionColumnIdForStatus mapping); active rows push the chat via lib/mission-chat.ts, archived rows keep lib/open-agent.ts openAgentBoard + the published activityPanelId"
+  mission-chat-screen:
+    status: implemented
+    ref: "app/src/components/mission-chat/ (MissionChatScreen over useMissionChatSource + the shared board/use-board-chat-wiring.tsx, rendered through @houston-ai/board AIBoard panelOnly), nav level chatAgentId/chatMissionId in lib/nav-stack.ts + stores/ui.ts openMissionChat, keyboard inset via hooks/use-visual-viewport-inset.ts, shell mount + bar hiding in shell/workspace-shell.tsx"
+  new-mission-sheet:
+    status: implemented
+    ref: "app/src/components/mobile-new-mission-sheet.tsx (@houston-ai/core Sheet side=bottom over the agent roster), opened by lib/new-mission.ts startNewMission's phone fork (ui store newMissionSheetOpen), picking pushes the draft chat via lib/mission-chat.ts"

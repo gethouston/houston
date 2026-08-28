@@ -5,6 +5,9 @@ interface MissionBoardColumnLabels {
   needsYou: string;
   done: string;
   newMission: string;
+  /** Phone-only empty-page hints (the paged phone board): one per column.
+   *  Optional so callers that never render below md keep their signature. */
+  empty?: { running: string; needsYou: string; done: string };
 }
 
 /** Status → board section mapping. Single source of truth shared by the
@@ -42,13 +45,20 @@ export function buildMissionBoardColumns(
       statuses: [...COLUMN_STATUSES.running],
       onAdd: onNewMission,
       addLabel: labels.newMission,
+      emptyLabel: labels.empty?.running,
     },
     {
       id: "needs_you",
       label: labels.needsYou,
       statuses: [...COLUMN_STATUSES.needs_you],
+      emptyLabel: labels.empty?.needsYou,
     },
-    { id: "done", label: labels.done, statuses: [...COLUMN_STATUSES.done] },
+    {
+      id: "done",
+      label: labels.done,
+      statuses: [...COLUMN_STATUSES.done],
+      emptyLabel: labels.empty?.done,
+    },
   ];
 }
 

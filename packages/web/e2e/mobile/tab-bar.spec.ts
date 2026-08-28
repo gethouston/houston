@@ -45,27 +45,44 @@ test("the three tabs navigate and mark the active tab", async ({ page }) => {
   );
 });
 
+test("the bar hides under a pushed chat and returns when it pops", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  // Drill into the pushed chat from a Tasks-tab card: chat is a push, not a
+  // tab, so the bar leaves the screen to the chat and its back affordance.
+  const tabBar = page.getByTestId("mobile-tab-bar");
+  await tabBar.getByRole("button", { name: "Tasks" }).tap();
+  await screen(page).getByText("Plan a trip to Tokyo").tap();
+  await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
+  await expect(tabBar).toHaveCount(0);
+
+  // Back pops the chat; the bar is the constant way around again.
+  await page.goBack();
+  await expect(page.getByTestId("mission-chat-screen")).toHaveCount(0);
+  await expect(page.getByTestId("mobile-tab-bar")).toBeVisible();
+  await expect(screen(page)).toHaveAttribute("data-screen", "team");
+});
+
 test("a tab switch resets the stack: back stays on the new tab", async ({
   page,
 }) => {
   await page.goto("/");
 
-  // Drill into the full-screen chat on the Tasks tab...
-  const tabBar = page.getByTestId("mobile-tab-bar");
-  await tabBar.getByRole("button", { name: "Tasks" }).tap();
-  await screen(page).getByText("Plan a trip to Tokyo").tap();
-  await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
+  // Drill somewhere on the Agents tab...
+  await page.getByTestId("agents-home-row").tap();
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
 
-  // ...switch tabs: the chat closes and the old tab's trail is abandoned.
+  // ...switch tabs: the old tab's trail is abandoned.
+  const tabBar = page.getByTestId("mobile-tab-bar");
   await tabBar.getByRole("button", { name: "Settings" }).tap();
   await expect(screen(page)).toHaveAttribute("data-screen", "settings");
-  await expect(page.getByTestId("mission-panel")).toBeHidden();
 
   // Browser back walks a decayed pre-switch entry: it clamps onto the fresh
-  // root instead of reopening the chat the user navigated away from.
+  // root instead of re-entering the drill the user navigated away from.
   await page.goBack();
   await expect(screen(page)).toHaveAttribute("data-screen", "settings");
-  await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
 test("re-tapping the Agents tab pops a drilled agent back to the list", async ({
@@ -85,13 +102,20 @@ test("re-tapping the Agents tab pops a drilled agent back to the list", async ({
   await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
 });
 
-test("the top bar compose button starts a new task", async ({ page }) => {
+test("the top bar compose button pushes an empty draft chat", async ({
+  page,
+}) => {
   await page.goto("/");
 
   await page
     .getByTestId("mobile-top-bar")
     .getByRole("button", { name: "New task" })
     .tap();
-  // One connected agent: the flow skips the picker and opens the draft chat.
-  await expect(page.getByTestId("mission-panel")).toBeVisible();
+  // One connected agent: the flow skips the picker sheet and pushes the
+  // draft chat, composer ready for the first message.
+  const chat = page.getByTestId("mission-chat-screen");
+  await expect(chat).toBeVisible();
+  await expect(
+    chat.getByPlaceholder("What should the agent work on?"),
+  ).toBeVisible();
 });

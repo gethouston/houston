@@ -207,6 +207,68 @@ describe("navBack / navApplyHistory", () => {
     assert.equal(now.agentsHomeAgentId, null);
   });
 
+  it("openMissionChat pushes a chat level; closeMissionChat pops it", () => {
+    // PRODUCT-1560: the phone chat is a first-class nav level over any view.
+    const s = useUIStore.getState();
+    s.openAgentsHome(null, { nav: "replace" });
+    s.openAgentsHome("agent-1");
+    s.openMissionChat("agent-1", "m-1");
+    let now = useUIStore.getState();
+    assert.equal(now.navIndex, 2);
+    assert.equal(now.chatAgentId, "agent-1");
+    assert.equal(now.chatMissionId, "m-1");
+    // The chat pushed OVER the missions screen: the view fields underneath
+    // ride along, so back lands exactly where the user was.
+    assert.equal(now.navStack[2].viewMode, "agents-home");
+    assert.equal(now.navStack[2].agentsHomeAgentId, "agent-1");
+
+    useUIStore.getState().closeMissionChat();
+    now = useUIStore.getState();
+    assert.equal(now.navIndex, 1);
+    assert.equal(now.chatAgentId, null);
+    assert.equal(now.chatMissionId, null);
+    assert.equal(now.agentsHomeAgentId, "agent-1");
+  });
+
+  it("the draft chat adopts its created mission by replacing in place", () => {
+    const s = useUIStore.getState();
+    s.openAgentsHome(null, { nav: "replace" });
+    s.openMissionChat("agent-1", null);
+    useUIStore.getState().openMissionChat("agent-1", "m-9", {
+      nav: "replace",
+    });
+    const now = useUIStore.getState();
+    assert.equal(now.navIndex, 1);
+    assert.equal(now.navStack.length, 2);
+    assert.equal(now.chatMissionId, "m-9");
+    // Back must land under the draft, never re-open the blank composer.
+    assert.equal(now.navStack[0].chatAgentId, null);
+  });
+
+  it("any other navigation closes the pushed chat", () => {
+    const s = useUIStore.getState();
+    s.openAgentsHome(null, { nav: "replace" });
+    s.openMissionChat("agent-1", "m-1");
+    // A tab reset while a chat is pushed: the chat must not survive onto the
+    // new tab's root.
+    useUIStore.getState().openSettings(null, { nav: "reset" });
+    const now = useUIStore.getState();
+    assert.equal(now.chatAgentId, null);
+    assert.equal(now.chatMissionId, null);
+    assert.equal(now.navStack.length, 1);
+    assert.equal(now.navStack[0].chatAgentId, null);
+  });
+
+  it("navBack out of a chat entry restores the chat-less fields", () => {
+    const s = useUIStore.getState();
+    s.openAgentsHome(null, { nav: "replace" });
+    s.openMissionChat("agent-1", "m-1");
+    useUIStore.getState().navBack();
+    const now = useUIStore.getState();
+    assert.equal(now.chatAgentId, null);
+    assert.equal(now.viewMode, "agents-home");
+  });
+
   it("reset returns the stack to the single boot entry", () => {
     const s = useUIStore.getState();
     s.setViewMode("skills");

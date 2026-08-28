@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 71
+version: 72
 
 components:
   - id: agent-avatar
@@ -728,9 +728,11 @@ components:
         empty-column-state,
         bulk-action-bar,
         mentions-pill,
+        segmented-pager,
+        mobile-control-row,
       ]
     states: [populated, empty, loading, dragging]
-    variants: [multi-column-board, single-column-list]
+    variants: [multi-column-board, single-column-list, phone-pager]
     behavior: >-
       Columns map to mission statuses; cards move between columns on approve/drag.
       Bulk-action bar appears when cards are multi-selected.
@@ -741,11 +743,24 @@ components:
       mentions -- a mention of the reader newer than their read cursor, not
       ambient mission movement -- clamped to "99+". Multiplayer only: single
       player gets no mentions chrome at all.
+      Below the one breakpoint the SAME board is a pager, not a squeezed
+      kanban: each column is one full-width page the user swipes between, a
+      segmented control above the pages names the three sections with their
+      live counts and stays in sync both ways (swiping moves the highlight,
+      tapping a segment scrolls its page in), and a page with no cards says so
+      in words instead of standing hollow. Above the pages sits the phone's
+      own control row: the search field, the section's archived toggle, the
+      compose control, and -- when the board spans several agents -- an agent
+      filter bar defaulting to "All agents" that reads and writes the same
+      agent pin the desktop breadcrumb does. Tapping a card on the phone
+      pushes the mission-chat-screen instead of opening the side panel.
     a11y: >-
       list/grid semantics per column; column headers labeled; DnD has
       non-pointer fallback; the mentions pill names its mode and repeats its
       outstanding count in its accessible name, so the number is never
-      visual-only.
+      visual-only. Phone pager segments are real buttons carrying aria-current
+      on the active page and the page's count in text, never color alone; the
+      agent filter chips carry aria-pressed.
     since: 1
 
   - id: mentions-inbox
@@ -1554,8 +1569,13 @@ components:
       landing tab -- so the bar is never dark. The Tasks tab carries the same
       needs-you count badge the rail's rows wear, the cross-agent sum of
       missions waiting on the user, and shows nothing at zero. The bar pads
-      itself against the phone's home indicator and stays visible over the
-      full-screen chat, so the tabs remain the constant way out.
+      itself against the phone's home indicator. While a chat is up -- the
+      pushed mission-chat-screen, or the board's full-screen panel -- the bar
+      hides: chat is a push, not a tab, so its own back affordance and the
+      hardware back button are the way out, and the composer gets the full
+      height above the on-screen keyboard. Any navigation underneath (a tab
+      root, a notification jump) closes the chat and brings the bar straight
+      back.
     a11y: >-
       A nav landmark with an accessible name; each tab is a real button
       carrying aria-current on the active one, and the count badge announces
@@ -1613,11 +1633,13 @@ components:
       mapping the board's columns use, an errored mission sitting in Needs you
       -- each newest movement first, and an empty section vanishes rather
       than rendering hollow. The archive folds behind a trailing row naming
-      its count; expanding it lists the archived missions inline. Tapping any
-      mission performs the same navigation a notification performs: the agent
-      becomes current, its board opens, and the mission's chat opens over it
-      full-screen, with the archive surface swapped in when the mission turns
-      out archived. An agent with no missions at all gets the honest empty
+      its count; expanding it lists the archived missions inline. Tapping an
+      active mission pushes its mission-chat-screen as the next
+      navigation-stack level, the same push a board card performs, so back
+      pops straight from the chat to this list. An archived mission has no
+      chat screen: its rows keep the notification navigation (the agent
+      becomes current, its board opens with the archive surface swapped in,
+      and the chat opens over it). An agent with no missions at all gets the honest empty
       state pointing at the compose control. Rows read the same conversation
       sweep the boards read and live-update through the same invalidation.
     a11y: >-
@@ -1626,3 +1648,59 @@ components:
       mission row is one button named by the mission's title; the archived
       toggle is a button carrying aria-expanded.
     since: 71
+
+  - id: mission-chat-screen
+    title: Mission chat screen
+    purpose: >-
+      The phone's full-screen chat, pushed as a first-class navigation level
+      from a board card, an Agents-home mission row, or the compose flow.
+    anatomy: [back-chevron, agent-avatar, agent-name, mission-line,
+      message-log, composer]
+    states: [conversation, draft, running, loading-history]
+    variants: []
+    behavior: >-
+      Chat is a PLACE on the phone, never a panel: opening a mission pushes
+      this screen onto the navigation stack over whatever screen the user was
+      on, and its back chevron and the hardware back button pop the same
+      level, landing exactly where the push happened. Both mobile bars hide
+      while it is up. The chat itself is the one shared chat the desktop
+      panel renders -- same message log, composer, queued follow-ups, drafts,
+      child-mission links and per-agent features, driven by the same shared
+      view-models -- so the two surfaces cannot drift. A draft chat (the
+      compose flow) opens the screen with no mission and creates one on the
+      first send, replacing itself in place so back never revisits the blank
+      composer; opening a child or parent mission from the chat pushes that
+      mission's screen. Deleting or archiving the open mission closes the
+      screen. The composer stays above the on-screen keyboard (the screen
+      pads itself by the visual viewport's occluded bottom), pads against the
+      home indicator, and the log keeps its stick-to-bottom anchoring when
+      the keyboard opens or closes. Navigating anywhere underneath closes the
+      chat.
+    a11y: >-
+      The back control is a labelled button; the header names the agent and
+      the mission in text; the log is a live region the way the shared chat
+      already marks it; the composer input is at least 16px so the phone
+      never zooms it.
+    since: 72
+
+  - id: new-mission-sheet
+    title: New mission compose sheet
+    purpose: >-
+      The phone's compose flow: a bottom sheet asking which agent should run
+      the new task, leading into an empty draft chat.
+    anatomy: [sheet, title, description, agent-row, agent-avatar]
+    states: [open, closed]
+    variants: []
+    behavior: >-
+      Opened by the compose control (the top bar's and the board control
+      row's, one rule). With several agents it lists one row per agent;
+      picking one dismisses the sheet and pushes that agent's empty draft
+      mission-chat-screen. With exactly one agent the question is skipped and
+      the draft chat pushes directly; with none the app falls back to its one
+      shared home navigation. The sheet pads against the home indicator and
+      dismisses on scrim tap or swipe-down without navigating.
+    a11y: >-
+      A modal dialog with its title as the accessible name; each agent row is
+      one real button named by the agent, at least 44px tall; dismissal is
+      reachable by the sheet's own close affordance, never scrim-only.
+    since: 72

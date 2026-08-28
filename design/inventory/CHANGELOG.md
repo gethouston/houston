@@ -3,6 +3,28 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v72 - 2026-08-28
+
+The board gets its phone presentation and chat becomes a place. Below the one
+breakpoint the mission board is a swipeable pager: each status column is one
+full-width page, a segmented control above them names the three sections with
+live counts and stays in sync with the swipe both ways, an empty page says so
+in words, and a phone control row holds the search field, the archived
+toggle, the compose control and -- on multi-agent boards -- an agent filter
+bar defaulting to "All agents" that writes the same pin the desktop
+breadcrumb does. Tapping a card no longer opens the desktop side panel over a
+squeezed board: it pushes a new mission-chat-screen, a first-class
+navigation level rendered full-screen with its own back chevron, the same
+shared chat the desktop panel renders. Agents-home mission rows push the same
+screen, so back pops from the chat straight to the list that opened it. Both
+mobile bars hide while a chat is up (chat is a push, not a tab), the mobile
+tab bar's contract changing accordingly. Composing on the phone is a bottom
+sheet naming the agent roster; picking an agent pushes an empty draft chat
+that creates its mission on first send and replaces itself in place so back
+never lands on a blank composer. The composer stays above the on-screen
+keyboard by the visual viewport's occluded bottom and pads against the home
+indicator.
+
 ## v71 - 2026-08-28
 
 The Agents tab gets its real home. The phone now lands on an Agents home

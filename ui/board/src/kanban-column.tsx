@@ -29,6 +29,9 @@ export interface KanbanColumnProps {
   cardLabels?: KanbanCardLabels;
   /** Node rendered on the right of the column header (e.g. archive-all). */
   headerAction?: React.ReactNode;
+  /** Phone-only centered hint when the column holds no cards (an empty page
+   *  on the paged phone board must say so). See `KanbanColumn.emptyLabel`. */
+  emptyLabel?: string;
   /** Enable per-card multi-select checkboxes. */
   selectable?: boolean;
   /** Ids currently in the multi-select set. */
@@ -77,6 +80,7 @@ export function KanbanColumn({
   isOver = false,
   draggingId = null,
   columnId,
+  emptyLabel,
 }: KanbanColumnProps) {
   const anySelected = (selectedIds?.size ?? 0) > 0;
 
@@ -85,9 +89,10 @@ export function KanbanColumn({
       // Name must match board-drag-dom's COLUMN_ID_ATTR (drop hit-testing).
       data-kanban-column={columnId}
       className={cn(
-        // Below md the board becomes one column per swipe: each column snaps
-        // to the center of the horizontally-scrolling board container.
-        "min-w-[180px] max-md:min-w-[80vw] max-md:snap-center flex-1 flex flex-col h-full min-h-0 rounded-xl bg-chip transition-[box-shadow,background-color] duration-150",
+        // Phone layer: the board is a pager — each column is one full-width
+        // page snapping into the horizontally-scrolling board container.
+        // Desktop (md+) restores the classic multi-column layout.
+        "min-w-full snap-center md:min-w-[180px] md:snap-align-none flex-1 flex flex-col h-full min-h-0 rounded-xl bg-chip transition-[box-shadow,background-color] duration-150",
         // Valid drop target during a drag: a faint inset ring hints "drop here".
         // The column the pointer is over gets a stronger ring + tint.
         isDropTarget &&
@@ -116,6 +121,14 @@ export function KanbanColumn({
       {/* Cards. `pt-1` so the selected ring on the first card isn't
           clipped by the scroll container's top edge. */}
       <div className="flex-1 px-1.5 pt-1 pb-1.5 space-y-1.5 overflow-y-auto">
+        {/* An empty PAGE on the phone pager says so; desktop keeps its bare
+            column (the board only passes `emptyLabel` below the breakpoint —
+            the whole-board empty state covers the truly empty board). */}
+        {items.length === 0 && emptyLabel && (
+          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-ink-muted">
+            {emptyLabel}
+          </div>
+        )}
         {/* Cards mount/unmount with NO enter/exit animation: switching agents
             swaps the whole item set, and any fade would cross-blend the
             previous agent's cards with the next one's (HOU-858). `layout`

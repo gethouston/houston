@@ -1,8 +1,10 @@
 import { useAgentStore } from "../stores/agents.ts";
 import { useUIStore } from "../stores/ui.ts";
 import { openHome } from "./home-nav.ts";
+import { openMissionChat } from "./mission-chat.ts";
 import { openAgentBoard } from "./open-agent.ts";
 import { isMissionBoardView } from "./top-level-views.ts";
+import { isMobileViewport } from "./viewport.ts";
 
 /**
  * Start a new mission from ANYWHERE: the ⌘N shortcut and the mobile top bar's
@@ -31,6 +33,23 @@ import { isMissionBoardView } from "./top-level-views.ts";
  * affordance that silently fails.
  */
 export function startNewMission(): void {
+  // The phone fork, before any board handler: composing on the phone is the
+  // agent picker sheet into an empty draft CHAT push (`lib/mission-chat.ts`),
+  // never the desktop board's side composer. One agent skips the question.
+  if (isMobileViewport()) {
+    const { agents } = useAgentStore.getState();
+    if (agents.length === 1) {
+      openMissionChat(agents[0], null);
+      return;
+    }
+    if (agents.length > 1) {
+      useUIStore.getState().setNewMissionSheetOpen(true);
+      return;
+    }
+    // No agents: the one teamless fallback every nav shares.
+    openHome();
+    return;
+  }
   const ui = useUIStore.getState();
   const fire = () => useUIStore.getState().onStartMission?.();
   if (isMissionBoardView(ui.viewMode) && ui.onStartMission) {

@@ -57,6 +57,9 @@ test("board home — narrow", async ({ page }) => {
       .locator("[data-screen-active='true']")
       .getByText("Plan a trip to Tokyo"),
   ).toBeVisible();
+  // The phone chrome (pager + control row) mounts on the isMobile signal a
+  // beat after first paint — anchor on it so the baseline never half-renders.
+  await expect(page.getByTestId("board-pager")).toBeVisible();
 
   await expect(page).toHaveScreenshot("board-narrow.png", { fullPage: true });
 });
@@ -80,6 +83,61 @@ for (const theme of THEMES) {
     await expect(page).toHaveScreenshot(`mobile-shell-${theme}.png`, {
       fullPage: true,
       mask: [page.locator("[data-relative-time]")],
+    });
+  });
+}
+
+/**
+ * The phone board pager (PR 5 of the responsiveness overhaul): the Tasks tab
+ * at phone width — segmented control over one full-width column page, the
+ * sticky control row (search, archived, compose), the empty Running page's
+ * hint. The board's cards carry no live clock, so no masks.
+ */
+for (const theme of THEMES) {
+  test(`mobile board pager — ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+
+    await page
+      .getByTestId("mobile-tab-bar")
+      .getByRole("button", { name: "Tasks" })
+      .click();
+    await expect(page.getByTestId("board-pager")).toBeVisible();
+    await expect(page.getByText("Nothing is running right now.")).toBeVisible();
+    await page.mouse.move(0, 0);
+    await pinTheme(page, theme);
+
+    await expect(page).toHaveScreenshot(`mobile-board-pager-${theme}.png`, {
+      fullPage: true,
+    });
+  });
+}
+
+/**
+ * The pushed mission-chat screen (PR 5): a board card's chat as a full-screen
+ * nav level — back chevron header, message log, composer — with both mobile
+ * bars hidden. Nothing on the screen carries a live clock, and the screens
+ * kept alive BEHIND the opaque overlay don't paint, so no masks (a page-wide
+ * relative-time mask would stamp boxes over the covered screens' rows).
+ */
+for (const theme of THEMES) {
+  test(`mobile mission chat — ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+
+    await page.getByTestId("agents-home-row").click();
+    await page
+      .getByTestId("agent-missions-screen")
+      .getByText("Plan a trip to Tokyo")
+      .click();
+    const chat = page.getByTestId("mission-chat-screen");
+    await expect(chat.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
+    await expect(chat.getByPlaceholder("Send a follow-up...")).toBeVisible();
+    await page.mouse.move(0, 0);
+    await pinTheme(page, theme);
+
+    await expect(page).toHaveScreenshot(`mobile-mission-chat-${theme}.png`, {
+      fullPage: true,
     });
   });
 }

@@ -46,7 +46,8 @@ test("opens a mission's chat covering the full content width", async ({
 }) => {
   await page.goto("/");
 
-  // The phone lands on the Agents home: drill agent → mission to the chat.
+  // The phone lands on the Agents home: drill agent → mission to the chat,
+  // pushed as its own full-screen level (PRODUCT-1555 arc).
   await page.getByTestId("agents-home-row").click();
   await page
     .getByTestId("agent-missions-screen")
@@ -54,16 +55,16 @@ test("opens a mission's chat covering the full content width", async ({
     .click();
   await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 
-  const panel = page.getByTestId("mission-panel");
-  await expect(panel).toBeVisible();
-  const box = await panel.boundingBox();
+  const chat = page.getByTestId("mission-chat-screen");
+  await expect(chat).toBeVisible();
+  const box = await chat.boundingBox();
   expect(box).not.toBeNull();
   // Full width minus the 8px gutter frame on each side (not a 45% split).
   expect(box?.width ?? 0).toBeGreaterThanOrEqual(360);
 
-  // The panel's own close button returns to the board underneath.
-  await page.getByRole("button", { name: "Close panel" }).click();
-  await expect(panel).toBeHidden();
+  // The chat's back chevron pops the push, landing where it came from.
+  await page.getByTestId("mission-chat-back").click();
+  await expect(chat).toHaveCount(0);
   await expect(
     page
       .locator("[data-screen-active='true']")

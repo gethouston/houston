@@ -42,6 +42,11 @@
     "needsYou": "Precisa de você",
     "done": "Pronto"
   },
+  "pager": {
+    "emptyRunning": "Nada está em execução agora.",
+    "emptyNeedsYou": "Nada precisa de você agora.",
+    "emptyDone": "Nada foi concluído ainda."
+  },
   "empty": {
     "boardTitle": "Ainda sem conversas",
     "boardDescription": "Comece uma conversa nova para delegar trabalho a um agente.",
