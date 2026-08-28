@@ -1,34 +1,18 @@
-import { randomUUID } from "node:crypto";
-import { createWriteStream } from "node:fs";
-import { mkdir, rename, rm } from "node:fs/promises";
-import { dirname } from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+import { downloadFile } from "./http-store-download";
 import { objectStoreResponseError } from "./http-store-errors";
+import type { HttpObjectStoreOptions } from "./http-store-options";
 import { uploadFile } from "./http-store-upload";
 import { type ObjectMetadata, parseObjectManifest } from "./object-manifest";
-import type { ObjectStore, WriteOptions, WriteResult } from "./object-store";
+import type {
+  ObjectStore,
+  ReadResult,
+  WriteOptions,
+  WriteResult,
+} from "./object-store";
 import { type FetchRetryOptions, fetchWithRetry } from "./retry";
 
+export type { HttpObjectStoreOptions } from "./http-store-options";
 export { STREAM_UPLOAD_THRESHOLD_BYTES } from "./http-store-upload";
-
-export interface HttpObjectStoreOptions {
-  /** Full agent-scoped base URL ending in `/v1/pod/store/<org>/<agent>`. */
-  baseUrl: string;
-  token: string;
-  /** Shared routes additionally bind the pod token to its own agent slug. */
-  agentSlug?: string;
-  fetchImpl?: typeof fetch;
-  /** One delay per retry of a transient failure; override to speed up tests. */
-  retryDelaysMs?: number[];
-  /** Stable for this engine boot and sent only after a fencing token is seen. */
-  bootId?: string;
-  /** Mutable lease token shared by every agent-prefix request in this boot. */
-  fence?: { token?: string };
-  /** Per-conversation mutation authority for a pooled worker turn. */
-  claim?: { token: string; bootId: string; conversationId: string };
-}
 
 export class HttpObjectStore implements ObjectStore {
   private readonly baseUrl: string;
@@ -81,27 +65,17 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async download(key: string, destFile: string): Promise<void> {
+    await this.downloadVersioned(key, destFile);
+  }
+
+  /** Download one object and preserve the generation from its GET response. */
+  async downloadVersioned(key: string, destFile: string): Promise<ReadResult> {
     const res = await this.fetch(this.objectUrl(key), {
       headers: this.authHeaders(),
     });
     this.captureFence(res);
     if (!res.ok) throw await objectStoreResponseError(res, "GET", key);
-    if (!res.body) {
-      throw new Error(`object store GET ${key} returned no response body`);
-    }
-
-    await mkdir(dirname(destFile), { recursive: true });
-    const tempFile = `${destFile}.${randomUUID()}.tmp`;
-    try {
-      await pipeline(
-        Readable.fromWeb(res.body as NodeReadableStream),
-        createWriteStream(tempFile),
-      );
-      await rename(tempFile, destFile);
-    } catch (err) {
-      await rm(tempFile, { force: true });
-      throw err;
-    }
+    return downloadFile(res, key, destFile);
   }
 
   async upload(

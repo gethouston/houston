@@ -1,4 +1,5 @@
 import type { WireFrame } from "@houston/runtime-client";
+import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { PiTurnRequest } from "./turn-session";
 import type { TurnRequest } from "./types";
 
@@ -8,6 +9,7 @@ export function piTurnRequest(
   turnId: string,
   emit: (frame: WireFrame) => void,
   signal: AbortSignal,
+  sandbox?: { call: SandboxFetch },
 ): PiTurnRequest {
   return {
     conversationId: turn.conversationId,
@@ -27,6 +29,8 @@ export function piTurnRequest(
     displayText: turn.displayText,
     mentions: turn.mentions,
     author: turn.actingAs,
+    ...(turn.grant ? { grant: { scopes: turn.grant.scopes } } : {}),
+    ...(sandbox ? { sandbox } : {}),
     // Either context field present means "use these" (each defaults to ""),
     // mirroring the long-lived server's message-send contract.
     ...(turn.workspaceContext !== undefined || turn.userContext !== undefined

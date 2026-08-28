@@ -26,6 +26,7 @@ import { makeMissionTools } from "./tools/missions";
 import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeReadMissionTool } from "./tools/read-mission";
 import { makeRunCodeTool } from "./tools/run-code";
+import { httpSandboxFetch } from "./tools/sandbox-fetch";
 import { makeSaveLearningTool } from "./tools/save-learning";
 import { makeSaveRoutineTool } from "./tools/save-routine";
 import { makeSuggestActionsTool } from "./tools/suggest-actions";
@@ -78,76 +79,55 @@ const suggestReusableTool = makeSuggestReusableTool();
 // of the two. See conversation-cache-tools.test.ts, which pins that parity.
 const suggestActionsTool = makeSuggestActionsTool();
 
+const sandboxCall =
+  config.controlPlaneUrl && config.sandboxToken
+    ? httpSandboxFetch(config.controlPlaneUrl, config.sandboxToken)
+    : null;
+const hostReachable = sandboxCall !== null;
+
 // Integration tools (Composio, platform mode): available whenever this runtime
 // can reach its host with a sandbox token (server mode — local desktop +
 // standing pods). They hold no credential; they proxy to /sandbox/integrations
 // and the host (or its cloud gateway) acts as the user's Composio user_id.
-const integrationTools =
-  config.controlPlaneUrl && config.sandboxToken
-    ? makeIntegrationTools({
-        baseUrl: config.controlPlaneUrl,
-        sandboxToken: config.sandboxToken,
-      })
-    : [];
+const integrationTools = sandboxCall
+  ? makeIntegrationTools({ call: sandboxCall })
+  : [];
 
 // Custom-integration setup tools (HOU-550): same reachability gate and trust
 // posture — they proxy to /sandbox/integrations/custom/* and hold no secret.
-const customIntegrationTools =
-  config.controlPlaneUrl && config.sandboxToken
-    ? makeCustomIntegrationTools({
-        baseUrl: config.controlPlaneUrl,
-        sandboxToken: config.sandboxToken,
-      })
-    : [];
-
-// Whether this runtime can reach its host with a sandbox token (server mode:
-// local desktop + standing pods). Gates the host-proxying tools below.
-const hostReachable = Boolean(config.controlPlaneUrl && config.sandboxToken);
+const customIntegrationTools = sandboxCall
+  ? makeCustomIntegrationTools({ call: sandboxCall })
+  : [];
 
 // The merge-safe scheduled-task write tool: proxies to /sandbox/routines/save so
 // the agent never overwrites routines.json wholesale. Same reachability gate as
 // the integration tools, but NOT tied to a Composio key — scheduled tasks exist
 // on every deployment.
-const saveRoutineTool = hostReachable
-  ? makeSaveRoutineTool({
-      baseUrl: config.controlPlaneUrl,
-      sandboxToken: config.sandboxToken,
-    })
+const saveRoutineTool = sandboxCall
+  ? makeSaveRoutineTool({ call: sandboxCall })
   : null;
 
 // The merge-safe memory write tool: proxies to /sandbox/learnings/save so the
 // agent never rewrites learnings.json wholesale AND the host can stamp the
 // learning's provenance (who taught it, which mission it came from) from the
 // turn's acting identity + conversation id. Same reachability gate as above.
-const saveLearningTool = hostReachable
-  ? makeSaveLearningTool({
-      baseUrl: config.controlPlaneUrl,
-      sandboxToken: config.sandboxToken,
-    })
+const saveLearningTool = sandboxCall
+  ? makeSaveLearningTool({ call: sandboxCall })
   : null;
 
 // The mission-board tools (PRODUCT-1244): start_mission / list_missions /
 // update_mission_status proxy to /sandbox/missions/* with the same trust
 // posture as save_routine; read_mission reads this runtime's own transcript
 // store in-process. All four ride the host-reachability gate together.
-const missionTools = hostReachable
-  ? [
-      ...makeMissionTools({
-        baseUrl: config.controlPlaneUrl,
-        sandboxToken: config.sandboxToken,
-      }),
-      makeReadMissionTool(),
-    ]
+const missionTools = sandboxCall
+  ? [...makeMissionTools({ call: sandboxCall }), makeReadMissionTool()]
   : [];
 
 // The open-skills-directory tools: proxy to /sandbox/skills/* so the agent can
 // answer "is there a skill for X?" itself and add the one the user picks. Same
 // reachability gate as above — the directory lives behind the host.
-const skillDirectoryTools = hostReachable
-  ? makeSkillDirectoryTools({
-      baseUrl: config.controlPlaneUrl,
-      sandboxToken: config.sandboxToken,
-    })
+const skillDirectoryTools = sandboxCall
+  ? makeSkillDirectoryTools({ call: sandboxCall })
   : [];
 
 const toolSelection = buildToolSelection({
@@ -224,13 +204,7 @@ registerBackend(
     // SAME integrations gate as the pi path above: present only when this
     // runtime can reach its host with a sandbox token, so the Claude backend's
     // in-process MCP server exposes the identical integration tool set.
-    integrations:
-      config.controlPlaneUrl && config.sandboxToken
-        ? {
-            baseUrl: config.controlPlaneUrl,
-            sandboxToken: config.sandboxToken,
-          }
-        : undefined,
+    integrations: sandboxCall ? { call: sandboxCall } : undefined,
   }),
 );
 

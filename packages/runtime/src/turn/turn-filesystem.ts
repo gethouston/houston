@@ -11,6 +11,7 @@ import {
   type ObjectStore,
   syncBack,
 } from "@houston/runtime-client/object-sync";
+import { agentScopeIncludes } from "./turn-agent-scope";
 import {
   layoutSkeleton,
   resolveTurnLayout,
@@ -36,6 +37,8 @@ export interface TurnFilesystem extends TurnLayout {
   /** The store's generation capability as the LISTING showed it. A filtered
    *  or lazy manifest may be empty and cannot answer this on its own. */
   generationAware: boolean;
+  /** Tool-call-time CAS writes already durable before the final sync pass. */
+  immediateWrites: Set<string>;
 }
 
 /**
@@ -92,6 +95,7 @@ export async function prepareTurnFilesystem(opts: {
       vfs,
       listedObjects: objects.length,
       generationAware: vfs.generationAware,
+      immediateWrites: new Set(),
     };
   }
   let manifest: HydrateManifest;
@@ -120,6 +124,7 @@ export async function prepareTurnFilesystem(opts: {
     vfs: new FsVfs(storeRoot),
     listedObjects: listed.rels.length,
     generationAware: listed.generationAware,
+    immediateWrites: new Set(),
   };
 }
 
@@ -148,16 +153,12 @@ export function claimedTurnIncludes(
   const session = posix.join(dataRel, "sessions", conversationId);
   const activity = turnActivityKey(workspaceRel);
   const runs = turnRoutineRunsKey(workspaceRel);
-  const workspaceFiles = `${workspaceRel}/`;
-  const internal = posix.join(workspaceRel, ".houston");
   return (relativePath) =>
     relativePath === conversation ||
     relativePath.startsWith(`${session}/`) ||
     relativePath === activity ||
     relativePath === runs ||
-    (relativePath.startsWith(workspaceFiles) &&
-      relativePath !== internal &&
-      !relativePath.startsWith(`${internal}/`));
+    agentScopeIncludes(relativePath, workspaceRel);
 }
 
 /** Store-relative mission-board object granted to a claimed turn. */

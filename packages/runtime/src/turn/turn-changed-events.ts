@@ -2,6 +2,7 @@ import { agentFileEventType } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 
 type AgentEventType = Extract<HoustonEvent, { agentPath: string }>["type"];
+type TurnChangedEventType = AgentEventType | "CustomIntegrationsChanged";
 
 /**
  * The domain events a pool turn's durable writes imply, derived from the
@@ -23,12 +24,14 @@ type AgentEventType = Extract<HoustonEvent, { agentPath: string }>["type"];
 export function changedEventTypes(
   layout: { workspaceRel: string; dataRel: string },
   keys: readonly string[],
-): AgentEventType[] {
+): TurnChangedEventType[] {
   const workspacePrefix = `${layout.workspaceRel}/`;
   const dataPrefix = `${layout.dataRel}/`;
-  const out = new Set<AgentEventType>();
+  const out = new Set<TurnChangedEventType>();
   for (const key of keys) {
-    if (key.startsWith(workspacePrefix)) {
+    if (key === "custom-integrations.json") {
+      out.add("CustomIntegrationsChanged");
+    } else if (key.startsWith(workspacePrefix)) {
       const type = agentFileEventType(key.slice(workspacePrefix.length));
       if (type) out.add(type);
     } else if (

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import { expect, test, vi } from "vitest";
 import type { ToolSelection } from "../../session/tool-selection";
+import { httpSandboxFetch } from "../../session/tools/sandbox-fetch";
 import type { ResolvedModel } from "../types";
 import { createClaudeBackend } from "./backend";
 
@@ -46,8 +47,7 @@ const model: ResolvedModel = {
 
 async function runTurn(
   integrations?: {
-    baseUrl: string;
-    sandboxToken: string;
+    call: ReturnType<typeof httpSandboxFetch>;
   },
   mode?: "execute" | "plan" | "auto",
 ): Promise<Options> {
@@ -75,8 +75,7 @@ async function runTurn(
 
 test("backend options carry the houston MCP server and its allowlist", async () => {
   const options = await runTurn({
-    baseUrl: "http://host.local",
-    sandboxToken: "tok",
+    call: httpSandboxFetch("http://host.local", "tok"),
   });
   expect(options.mcpServers?.houston).toBeDefined();
   expect(h.capturedMcp?.name).toBe("houston");
@@ -108,7 +107,7 @@ test("plan mode builds the MCP server WITHOUT integrations — ask_user + plan_r
   // tools (they act on the user's connected apps), leaving ask_user plus the
   // plan-only plan_ready presentation tool.
   const options = await runTurn(
-    { baseUrl: "http://host.local", sandboxToken: "tok" },
+    { call: httpSandboxFetch("http://host.local", "tok") },
     "plan",
   );
   expect(options.mcpServers?.houston).toBeDefined();
@@ -130,7 +129,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
   // HOU-853) but drops ask_user so the agent never waits on the user's
   // judgment.
   const options = await runTurn(
-    { baseUrl: "http://host.local", sandboxToken: "tok" },
+    { call: httpSandboxFetch("http://host.local", "tok") },
     "auto",
   );
   expect(options.mcpServers?.houston).toBeDefined();

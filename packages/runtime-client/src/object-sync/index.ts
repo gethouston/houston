@@ -18,7 +18,12 @@ export type {
   ManifestObjectStore,
   ObjectMetadata,
 } from "./object-manifest";
-export type { ObjectStore, WriteOptions, WriteResult } from "./object-store";
+export type {
+  ObjectStore,
+  ReadResult,
+  WriteOptions,
+  WriteResult,
+} from "./object-store";
 export {
   LocalDirStore,
   ObjectNotFoundError,
@@ -36,3 +41,4 @@ export type {
 } from "./shared-mirror";
 export { probeSharedMirror, syncSharedMirror } from "./shared-mirror";
 export type { SharedMirrorFileState } from "./shared-mirror-files";
+export { mergeDocumentBodies } from "./sync-back-doc-merge";

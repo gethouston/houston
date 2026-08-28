@@ -1,7 +1,7 @@
 import { normalizeTurnMode, parseMentions } from "@houston/protocol";
 import type { ServedCredential } from "../auth/auth-file";
 import { assertRoutineEventBounds } from "./parse-routine-events";
-import type { TurnRequest } from "./types";
+import type { TurnGrant, TurnGrantScope, TurnRequest } from "./types";
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const PREFIX = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
@@ -27,6 +27,52 @@ function exactKeys(
 
 function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
+}
+
+const GRANT_SCOPES: readonly TurnGrantScope[] = [
+  "integrations",
+  "agent-writes",
+];
+
+function parseGrant(value: unknown): TurnGrant {
+  const grant = record(value, "grant");
+  exactKeys(grant, ["url", "token", "expires", "scopes"], "grant");
+  if (
+    !nonEmpty(grant.url) ||
+    !nonEmpty(grant.token) ||
+    typeof grant.expires !== "number" ||
+    !Number.isSafeInteger(grant.expires) ||
+    grant.expires <= 0 ||
+    !Array.isArray(grant.scopes)
+  ) {
+    throw new Error("invalid 'grant'");
+  }
+  let origin: URL;
+  try {
+    origin = new URL(grant.url);
+  } catch {
+    throw new Error("invalid 'grant'");
+  }
+  if (
+    (origin.protocol !== "http:" && origin.protocol !== "https:") ||
+    origin.username !== "" ||
+    origin.password !== "" ||
+    origin.pathname !== "/" ||
+    origin.search !== "" ||
+    origin.hash !== ""
+  ) {
+    throw new Error("invalid 'grant'");
+  }
+  return {
+    url: origin.origin,
+    token: grant.token,
+    expires: grant.expires,
+    scopes: grant.scopes.filter(
+      (scope): scope is TurnGrantScope =>
+        typeof scope === "string" &&
+        GRANT_SCOPES.includes(scope as TurnGrantScope),
+    ),
+  };
 }
 
 /** Validate an untyped body into a TurnRequest. Throws with the real reason. */
@@ -133,6 +179,11 @@ export function parseTurnRequest(body: unknown): TurnRequest {
   if (Boolean(claim) !== Boolean(b.hostToken)) {
     throw new Error("claim and hostToken must be configured together");
   }
+  const grant = b.grant === undefined ? undefined : parseGrant(b.grant);
+  if (grant && !claim) throw new Error("grant requires a claim");
+  if (grant && b.shadow === true) {
+    throw new Error("shadow turn cannot carry a grant");
+  }
   let routine: TurnRequest["routine"];
   if (b.routine !== undefined) {
     const parsed = record(b.routine, "routine");
@@ -202,5 +253,6 @@ export function parseTurnRequest(body: unknown): TurnRequest {
       typeof b.turnlogSeqStart === "number" ? b.turnlogSeqStart : undefined,
     routine,
     claim,
+    grant,
   };
 }

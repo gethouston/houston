@@ -32,6 +32,16 @@ test("creating a second task keeps the first (merge-safe, not a wholesale write)
   expect(new Set(items.map((r) => r.id)).size).toBe(2);
 });
 
+test("a caller-supplied id makes a retried create idempotent", async () => {
+  const vfs = new MemoryVfs();
+  const opts = { ...OPTS, id: "stable-id" };
+  await createRoutineChecked(vfs, ROOT, WS, daily("A"), opts);
+  await createRoutineChecked(vfs, ROOT, WS, daily("A"), opts);
+
+  const { items } = await loadRoutines(vfs, ROOT);
+  expect(items.map((routine) => routine.id)).toEqual(["stable-id"]);
+});
+
 test("updating by id changes that task in place and touches no other", async () => {
   const vfs = new MemoryVfs();
   const a = await createRoutineChecked(vfs, ROOT, WS, daily("A"), OPTS);

@@ -6,6 +6,7 @@ import {
   StoreConflictError,
   type WriteOptions,
 } from "./object-store";
+import { mergeSyncBackDocument } from "./sync-back-doc-merge";
 
 /** Lazily fetched remote generations shared across one sync pass. */
 export type RefreshManifest = () =>
@@ -50,6 +51,7 @@ export async function uploadChangedObject(opts: {
   store: ObjectStore;
   abs: string;
   key: string;
+  relativePath: string;
   hash: string;
   previous?: HydrateManifestEntry;
   generationAware: boolean;
@@ -93,11 +95,20 @@ export async function uploadChangedObject(opts: {
       };
     }
     try {
+      const mergedHash = await mergeSyncBackDocument({
+        store: opts.store,
+        abs: opts.abs,
+        key: opts.key,
+        relativePath: opts.relativePath,
+      });
       const result = await opts.store.upload(opts.abs, opts.key, {
         ifGenerationMatch: retryGeneration,
       });
       return {
-        entry: { hash: opts.hash, generation: result?.generation },
+        entry: {
+          hash: mergedHash ?? opts.hash,
+          generation: result?.generation,
+        },
         uploaded: true,
       };
     } catch (retryError) {

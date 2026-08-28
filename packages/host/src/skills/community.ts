@@ -42,6 +42,12 @@ export interface CommunityDirectoryOptions {
   popularFreshTtlMs?: number;
 }
 
+/** Per-request overrides that preserve process-wide cache and rate spacing. */
+export interface CommunitySearchOptions {
+  fetchImpl?: typeof fetch;
+  signal?: AbortSignal | null;
+}
+
 const realSleep = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
@@ -73,7 +79,11 @@ export class CommunityDirectory {
     this.popularFreshTtlMs = opts.popularFreshTtlMs ?? POPULAR_FRESH_TTL_MS;
   }
 
-  async search(query: string): Promise<CommunitySkill[]> {
+  /** Search with shared cache/spacing and optional request-scoped I/O. */
+  async search(
+    query: string,
+    opts: CommunitySearchOptions = {},
+  ): Promise<CommunitySkill[]> {
     const trimmed = query.trim();
     if ([...trimmed].length < 2) return [];
     const key = trimmed.toLowerCase();
@@ -84,10 +94,11 @@ export class CommunityDirectory {
 
     await this.waitForRequestSlot();
     try {
-      const skills = await this.fetchSearch(trimmed);
+      const skills = await this.fetchSearch(trimmed, opts.fetchImpl);
       this.entries.set(key, { skills, fetchedAt: this.now() });
       return skills;
     } catch (err) {
+      if (opts.signal?.aborted) throw opts.signal.reason ?? err;
       const stale = this.entries.get(key);
       if (stale && this.now() - stale.fetchedAt <= this.staleTtlMs) {
         console.warn(
@@ -130,11 +141,14 @@ export class CommunityDirectory {
   }
 
   /** One search round-trip. Retries once after a delay on HTTP 429. */
-  private async fetchSearch(query: string): Promise<CommunitySkill[]> {
+  private async fetchSearch(
+    query: string,
+    fetchOverride?: typeof fetch,
+  ): Promise<CommunitySkill[]> {
     for (let attempt = 0; ; attempt++) {
       let res: Response;
       try {
-        res = await this.fetchImpl(
+        res = await (fetchOverride ?? this.fetchImpl)(
           `${this.endpoint}?q=${encodeURIComponent(query)}`,
           { headers: { "User-Agent": "houston-skills/1.0" } },
         );

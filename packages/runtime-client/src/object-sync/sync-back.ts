@@ -141,6 +141,7 @@ export async function syncBack(
       store,
       abs,
       key,
+      relativePath: rel,
       hash,
       previous,
       generationAware,

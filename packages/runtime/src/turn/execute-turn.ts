@@ -23,8 +23,9 @@ import {
   settleRoutineTurn,
 } from "./turn-routine";
 import { createTurnModelRuntime } from "./turn-runtime";
+import { makeTurnSandboxFetch } from "./turn-sandbox";
 import { runPiTurn, type TurnOutcome } from "./turn-session";
-import { resolveTurnStore } from "./turn-store";
+import { poolIdentity, resolveTurnStore } from "./turn-store";
 import { turnSetupErrorFrame, turnTerminalFrame } from "./turn-terminal";
 import { createTurnTranscript } from "./turn-transcript";
 import type { TurnRequest } from "./types";
@@ -48,6 +49,7 @@ export async function executeTurn(
   if (!turn.claim) req.on("close", () => abort.abort());
   const turnId = turn.turnId ?? crypto.randomUUID();
   let heartbeat: ReturnType<typeof startClaimHeartbeat> | null = null;
+  let turnSandbox: ReturnType<typeof makeTurnSandboxFetch> | null = null;
   let closeSse: (() => void) | undefined;
   try {
     const resolved = resolveTurnStore(turn, deps.store, {
@@ -84,6 +86,22 @@ export async function executeTurn(
     });
     timings.t_hydrated = performance.now();
     const { dataDir } = filesystem;
+    if (turn.grant && turn.hostToken) {
+      const identity = poolIdentity(turn.gcsPrefix);
+      turnSandbox = makeTurnSandboxFetch({
+        grant: turn.grant,
+        hostToken: turn.hostToken,
+        store: resolved.store,
+        prefix: resolved.prefix,
+        filesystem,
+        workspaceId: turn.workspaceId,
+        conversationId: turn.conversationId,
+        ...(turn.actingAs ? { actingAs: turn.actingAs } : {}),
+        orgSlug: identity.org,
+        agentSlug: identity.agent,
+        ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+      });
+    }
     const authPath = join(dataDir, "auth.json");
     if (turn.credential) {
       applyServedCredential(authPath, turn.credential);
@@ -214,7 +232,13 @@ export async function executeTurn(
               () =>
                 run(
                   filesystem,
-                  piTurnRequest(effectiveTurn, turnId, emit, abort.signal),
+                  piTurnRequest(
+                    effectiveTurn,
+                    turnId,
+                    emit,
+                    abort.signal,
+                    turnSandbox ? { call: turnSandbox.call } : undefined,
+                  ),
                 ),
             ),
           );
@@ -257,6 +281,7 @@ export async function executeTurn(
         heartbeat,
         outcome,
         transcript,
+        ...(turnSandbox ? { views: turnSandbox.views() } : {}),
       });
       outcome = durable.outcome;
       emit(
@@ -278,13 +303,23 @@ export async function executeTurn(
     sse.send(turnSetupErrorFrame(error, turnId));
   } finally {
     try {
-      await heartbeat?.stop();
+      await turnSandbox?.dispose().catch((error: unknown) => {
+        const detail =
+          error instanceof Error
+            ? `${error.name}: ${error.message}`
+            : typeof error;
+        console.error(`[turn] sandbox dispose failed (${detail})`);
+      });
     } finally {
-      releaseConversation(scope, turn.conversationId);
       try {
-        await rm(root, { recursive: true, force: true });
+        await heartbeat?.stop();
       } finally {
-        closeSse?.();
+        releaseConversation(scope, turn.conversationId);
+        try {
+          await rm(root, { recursive: true, force: true });
+        } finally {
+          closeSse?.();
+        }
       }
     }
   }

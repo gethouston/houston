@@ -131,13 +131,15 @@ test.each([
       "utf8",
     ),
   ).toBe('[{"id":"a1","title":"Plan","status":"running"}]');
-  // Workspace files are the turn's deliverable: they sync. `.houston/`
-  // internals beyond the explicit grants stay out of scope.
+  // Agent-owned files sync, including structured docs; only runtime state stays
+  // conversation-scoped.
   expect(keys).toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
+  // The schema sidecar is .houston-internal and NOT turn-owned: the store's
+  // turn-claim scope rejects it, so the sync must not attempt it.
   expect(keys).not.toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
   );
-  expect(keys).not.toContain(
+  expect(keys).toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/routines/routines.json`,
   );
   // The landed writes name the events other tabs need: the conversation, the
@@ -147,12 +149,18 @@ test.each([
   expect(emitted.at(-1)).toMatchObject({
     type: "done",
     data: {
-      poolWritesOutOfScope: 2,
-      changed: ["ActivityChanged", "ConversationsChanged", "FilesChanged"],
+      changed: [
+        "ActivityChanged",
+        "ConversationsChanged",
+        "FilesChanged",
+        "RoutinesChanged",
+      ],
     },
   });
+  // The out-of-scope schema write is skipped AND logged — silent to the user,
+  // never to us.
   expect(log).toHaveBeenCalledWith(
-    "[turn] pool_writes_out_of_scope=2 prefix=ws/w1/agent-1 conversation=c1",
+    expect.stringContaining("pool_writes_out_of_scope=1"),
   );
   log.mockRestore();
 });

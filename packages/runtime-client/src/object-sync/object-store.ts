@@ -17,6 +17,8 @@ export interface ObjectStore {
     prefix?: string,
   ): Promise<import("./object-manifest").ObjectMetadata[]>;
   download(key: string, destFile: string): Promise<void>;
+  /** Download one object and return metadata from the same read response. */
+  downloadVersioned?(key: string, destFile: string): Promise<ReadResult>;
   upload(
     srcFile: string,
     key: string,
@@ -29,6 +31,11 @@ export interface ObjectStore {
 export interface WriteOptions {
   /** `0` means create-only. */
   ifGenerationMatch?: string;
+}
+
+/** Metadata captured atomically with an object download. */
+export interface ReadResult {
+  generation?: string;
 }
 
 export interface WriteResult {

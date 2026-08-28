@@ -11,6 +11,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterAll, expect, test } from "vitest";
+import { poolBashEnv } from "../session/tools/pool-bash";
+import type { runPiTurn } from "./turn-session";
 
 const scratch = mkdtempSync(join(tmpdir(), "houston-pool-leaks-"));
 process.env.HOUSTON_MODE = "turn";
@@ -224,4 +226,101 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
   expect(await store.list("ws/w1")).not.toContainEqual(
     expect.stringMatching(/auth\.json$/),
   );
+});
+
+function treeText(root: string): string {
+  const values: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else values.push(readFileSync(path, "utf8"));
+    }
+  };
+  walk(root);
+  return values.join("\n");
+}
+
+test("a granted turn keeps every operational secret out of pi, tools, bash, and the hydrated tree", async () => {
+  const secrets = {
+    grant: "grant-secret-never-persist",
+    host: "host-secret-never-persist",
+    worker: "worker-secret-never-persist",
+    storeUrl: "https://store.internal.test",
+  };
+  const childEnv = poolBashEnv({
+    PATH: process.env.PATH,
+    HOUSTON_POOL_WORKER_TOKEN: secrets.worker,
+    HOUSTON_POOL_STORE_URL: secrets.storeUrl,
+    HOUSTON_HOST_TOKEN: secrets.host,
+    HOUSTON_TURN_GRANT: secrets.grant,
+  });
+  for (const secret of Object.values(secrets)) {
+    expect(JSON.stringify(childEnv)).not.toContain(secret);
+  }
+  expect(Object.values(process.env)).not.toContain(secrets.grant);
+  expect(Object.values(process.env)).not.toContain(secrets.host);
+
+  let observed = false;
+  const runTurn: typeof runPiTurn = async (filesystem, turn) => {
+    const serialized = JSON.stringify(turn);
+    expect(serialized).not.toContain(secrets.grant);
+    expect(serialized).not.toContain(secrets.host);
+    const toolResponse = await turn.sandbox?.call(
+      "/sandbox/integrations/search",
+      { method: "POST", body: JSON.stringify({ query: "email" }) },
+    );
+    expect(await toolResponse?.text()).not.toMatch(
+      new RegExp(Object.values(secrets).join("|")),
+    );
+    const hydrated = treeText(join(filesystem.workspaceDir, "../../.."));
+    for (const secret of Object.values(secrets)) {
+      expect(hydrated).not.toContain(secret);
+    }
+    observed = true;
+    return {};
+  };
+  const granted = createTurnServer({
+    store,
+    token: "",
+    runTurn,
+    fetchImpl: async (input) =>
+      String(input).includes("/heartbeat")
+        ? new Response(null, { status: 204 })
+        : Response.json({ error: "expired" }, { status: 401 }),
+  });
+  const url = await listen(granted);
+  const response = await fetch(`${url}/turn`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      workspaceId: "w1",
+      agentId: "agent-s",
+      conversationId: "granted-cid",
+      text: "hello",
+      gcsPrefix: "ws/w1/agent-s",
+      credential: {
+        provider: "openai-compatible",
+        access: "model-access",
+        expires: Date.now() + 60_000,
+        kind: "api_key",
+      },
+      hostToken: secrets.host,
+      claim: {
+        id: "claim-granted",
+        bootId: "boot-granted",
+        token: "claim-secret-never-persist",
+        heartbeatUrl: "https://gateway.test/heartbeat",
+      },
+      grant: {
+        url: "https://gateway.test",
+        token: secrets.grant,
+        expires: 2_000_000_000,
+        scopes: ["integrations", "agent-writes"],
+      },
+    }),
+  });
+  expect(response.status).toBe(200);
+  await response.text();
+  expect(observed).toBe(true);
 });

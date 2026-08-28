@@ -39,10 +39,17 @@ async function claimedTurn(docPutStatus: number) {
     ".houston/activity/activity.json",
     '[{"id":"a1","title":"Plan","status":"running"}]',
   );
-  const fetchImpl = (async (_url: unknown, init?: RequestInit) =>
-    init?.method === "PUT"
+  const requests: Array<{ url: string; method: string; body?: string }> = [];
+  const fetchImpl = (async (url: unknown, init?: RequestInit) => {
+    requests.push({
+      url: String(url),
+      method: init?.method ?? "GET",
+      ...(typeof init?.body === "string" ? { body: init.body } : {}),
+    });
+    return init?.method === "PUT"
       ? new Response("{}", { status: docPutStatus })
-      : Response.json({ revision: 1 })) as typeof fetch;
+      : Response.json({ revision: 1 });
+  }) as typeof fetch;
   const deps = {
     poolStoreUrl: "https://store.example",
     fetchImpl,
@@ -61,11 +68,16 @@ async function claimedTurn(docPutStatus: number) {
     turn,
     filesystem,
     resolved: { store, prefix: "ws/w1/agent-1" },
+    requests,
   };
 }
 
 test("a durable turn names the conversation and board as changed", async () => {
   const { deps, turn, filesystem, resolved } = await claimedTurn(200);
+  filesystem.immediateWrites.add(
+    `${workspaceRel}/.houston/routines/routines.json`,
+  );
+  filesystem.immediateWrites.add("custom-integrations.json");
   const result = await finishTurnDurability({
     deps,
     turn,
@@ -76,7 +88,12 @@ test("a durable turn names the conversation and board as changed", async () => {
     transcript: null,
   });
   expect(result.outcome).toEqual({});
-  expect(result.changed).toEqual(["ActivityChanged", "ConversationsChanged"]);
+  expect(result.changed).toEqual([
+    "ActivityChanged",
+    "ConversationsChanged",
+    "CustomIntegrationsChanged",
+    "RoutinesChanged",
+  ]);
 });
 
 test("a family whose doc projection failed is not announced", async () => {
@@ -94,4 +111,48 @@ test("a family whose doc projection failed is not announced", async () => {
   });
   expect(result.outcome.error).toMatch(/board doc publish failed/);
   expect(result.changed).toEqual(["ConversationsChanged"]);
+});
+
+test("turn tool mutations publish the skills and custom definition views", async () => {
+  const { deps, turn, filesystem, resolved, requests } = await claimedTurn(200);
+  filesystem.immediateWrites.add(
+    `${workspaceRel}/.agents/skills/example/SKILL.md`,
+  );
+  filesystem.immediateWrites.add("custom-integrations.json");
+  const result = await finishTurnDurability({
+    deps,
+    turn,
+    filesystem,
+    resolved,
+    heartbeat: null,
+    outcome: {},
+    transcript: null,
+    views: {
+      skills: { items: [{ name: "example" }], diagnostics: [] },
+      customDefinitions: { items: [{ slug: "example" }] },
+    },
+  });
+
+  const viewPuts = requests.filter(
+    (request) =>
+      request.method === "PUT" &&
+      /\/(skills|custom_definitions)$/.test(request.url),
+  );
+  expect(viewPuts).toEqual([
+    {
+      url: "https://store.example/v1/pod/docs/w1/agent-1/skills",
+      method: "PUT",
+      body: JSON.stringify({
+        doc: { items: [{ name: "example" }], diagnostics: [] },
+      }),
+    },
+    {
+      url: "https://store.example/v1/pod/docs/w1/agent-1/custom_definitions",
+      method: "PUT",
+      body: JSON.stringify({ doc: { items: [{ slug: "example" }] } }),
+    },
+  ]);
+  expect(result.changed).toEqual(
+    expect.arrayContaining(["SkillsChanged", "CustomIntegrationsChanged"]),
+  );
 });

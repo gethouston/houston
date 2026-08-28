@@ -12,12 +12,14 @@ import {
   turnActivityKey,
   turnRoutineRunsKey,
 } from "./turn-filesystem";
+import type { TurnSandboxViews } from "./turn-sandbox";
 import type { TurnOutcome } from "./turn-session";
 import type { ResolvedTurnStore } from "./turn-store";
 import type {
   TranscriptPublishResult,
   TurnTranscript,
 } from "./turn-transcript";
+import { publishTurnSandboxViews } from "./turn-view-publish";
 import type { TurnRequest } from "./types";
 
 interface TurnDurabilityOptions {
@@ -29,6 +31,7 @@ interface TurnDurabilityOptions {
   outcome: TurnOutcome;
   /** The turn's transcript publisher (created at turn start; null = none). */
   transcript: TurnTranscript | null;
+  views?: TurnSandboxViews;
 }
 
 export interface TurnDurabilityResult {
@@ -77,6 +80,7 @@ export async function finishTurnDurability(
     changed = changedEventTypes(opts.filesystem, [
       ...uploaded,
       ...synced.deleted,
+      ...opts.filesystem.immediateWrites,
     ]);
   } catch (error) {
     // A fenced object write means the claim was adopted mid-sync: report it
@@ -128,6 +132,15 @@ export async function finishTurnDurability(
       `transcript publish failed: ${published.error}`,
     );
     without("ConversationsChanged");
+  }
+  for (const family of await publishTurnSandboxViews(
+    opts.deps,
+    opts.turn,
+    opts.views,
+  )) {
+    without(
+      family === "skills" ? "SkillsChanged" : "CustomIntegrationsChanged",
+    );
   }
 
   const activityChanged = uploaded.includes(
