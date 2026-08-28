@@ -92,10 +92,18 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Deleting a team needs the hosted gateway.");
       await deleteOrg(this.ctx.cp, slug);
     }
+    // Persist the language pick as the account-level `locale` preference. The
+    // workspace id is ignored on purpose: the personal row is the synthetic
+    // "default" (no server workspace behind the gateway to PATCH), and on the
+    // host the workspace PATCH writes the same `locale` preference key this PUT
+    // does — one preference either way. Writing it here (instead of the old
+    // return-only stub) is what makes the pick survive a restart: the boot path
+    // reads `/v1/preferences/locale` (PRODUCT-1564).
     async setWorkspaceLocale(
       _id: string,
       locale: string | null,
     ): Promise<Workspace> {
+      await this.ctx.sdk.preferences.set("locale", locale);
       const { provider, model } = await this.ctx.activeOld();
       return { ...syntheticWorkspace(provider, model), locale };
     }
