@@ -5,6 +5,7 @@ import {
   readFileSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
@@ -168,12 +169,17 @@ function locateTranscript(
   if (!existsSync(projectsDir)) return undefined;
   const file = `${sessionId}.jsonl`;
   const top = join(projectsDir, file);
-  if (existsSync(top)) return top;
+  const candidates = existsSync(top) ? [top] : [];
   for (const entry of readdirSync(projectsDir)) {
     const nested = join(projectsDir, entry, file);
-    if (existsSync(nested)) return nested;
+    if (existsSync(nested)) candidates.push(nested);
   }
-  return undefined;
+  return candidates
+    .map((path) => ({ path, mtimeMs: statSync(path).mtimeMs }))
+    .sort(
+      (left, right) =>
+        right.mtimeMs - left.mtimeMs || left.path.localeCompare(right.path),
+    )[0]?.path;
 }
 
 /**

@@ -14,6 +14,7 @@ import type { HoustonEvent } from "@houston/protocol";
 import { syncBack } from "@houston/runtime-client/object-sync";
 import { startClaimHeartbeat } from "./claim-heartbeat";
 import { applyOp, type OpResult } from "./op-apply";
+import { WorkerOpDeclinedError } from "./op-provider-guard";
 import { opTranscriptMirror } from "./op-transcript";
 import { parseOpRequest } from "./parse-op-request";
 import type { TurnServerDeps } from "./server-types";
@@ -124,7 +125,11 @@ export async function executeOp(
               ? { excludes: CREDENTIAL_OP_EXCLUDES }
               : {}),
     });
-    const result = await applyOp(op, filesystem, deps.fetchImpl);
+    const result = await (deps.runOp ?? applyOp)(
+      op,
+      filesystem,
+      deps.fetchImpl,
+    );
     if (result.agentMissing || result.decline) {
       // Not this worker's agent (legacy layout / stale envelope), or a case
       // the worker cannot serve: decline so the gateway takes its fallback,
@@ -233,6 +238,11 @@ export async function executeOp(
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (error instanceof WorkerOpDeclinedError) {
+      console.warn(`[op] declined kind=${op.op.kind}: ${message}`);
+      if (!res.headersSent) json(res, 200, { ok: true, decline: true });
+      return;
+    }
     // Loud: a 500 here is the gateway's "worker_500" with no other trace.
     console.error(
       `[op] failed kind=${op.op.kind} ${op.op.kind === "route" ? `${op.op.method} ${op.op.rest}` : ""}: ${message}`,

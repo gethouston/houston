@@ -217,6 +217,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         sessionsStore,
         model: toSdkModel(opts.model.id),
         thinkingLevel: opts.thinkingLevel,
+        freshRetryPromptPrefix: opts.freshRetryPromptPrefix,
         refreshAuth,
         // WHICH token the subprocess env carries, for the revoked-token
         // report (PRODUCT-1319) — updated by refreshAuth on every prompt so it

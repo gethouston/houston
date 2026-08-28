@@ -10,6 +10,7 @@ import {
 import { applyAnonymizeOp } from "./op-anonymize";
 import { applyApiKeyConnect, credentialOpFiles } from "./op-credential";
 import { applyEndpointConnect } from "./op-endpoint";
+import { assertWorkerOpProvider } from "./op-provider-guard";
 import { applyRouteOp } from "./op-route";
 import { conversationScope, engineAgentId } from "./op-scope";
 import {
@@ -184,6 +185,7 @@ export async function applyOp(
         dataDir,
         op.credential.provider,
       );
+      assertWorkerOpProvider(model.provider);
       const title = await generateTitle({
         cwd: workspaceDir,
         model,

@@ -2,7 +2,9 @@ import {
   existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
@@ -148,6 +150,32 @@ test("a transcript already under the current cwd slug is returned without moving
 
   expect(store.resolveResume("c1")).toBe("sess-1");
   expect(existsSync(join(slugDir, "sess-1.jsonl"))).toBe(true);
+});
+
+test("duplicate transcripts relocate the newest copy by mtime", () => {
+  const cwd = "/ws/Personal/current";
+  const store = sessionsStore(dataDir(), cwd);
+  store.setSessionId("c1", "sess-1");
+  const oldDir = join(claudeProjectsDir(), "a-old");
+  const newDir = join(claudeProjectsDir(), "z-new");
+  mkdirSync(oldDir, { recursive: true });
+  mkdirSync(newDir, { recursive: true });
+  const oldCopy = join(oldDir, "sess-1.jsonl");
+  const newCopy = join(newDir, "sess-1.jsonl");
+  writeFileSync(oldCopy, "old");
+  writeFileSync(newCopy, "new");
+  utimesSync(oldCopy, new Date(1_000), new Date(1_000));
+  utimesSync(newCopy, new Date(2_000), new Date(2_000));
+
+  expect(store.resolveResume("c1")).toBe("sess-1");
+
+  const current = join(
+    claudeProjectsDir(),
+    "-ws-Personal-current",
+    "sess-1.jsonl",
+  );
+  expect(readFileSync(current, "utf8")).toBe("new");
+  expect(existsSync(oldCopy)).toBe(true);
 });
 
 test("without a cwd (purge-only store) resolveResume never relocates", () => {

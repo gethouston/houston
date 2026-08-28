@@ -167,6 +167,7 @@ export function turnSessionScopeIncludes(
   relativePath: string,
 ): boolean {
   if (!relativePath.startsWith(`${sessionRel}/`)) return false;
+  if (relativePath === `${sessionRel}/harness.json`) return true;
   const claudePrefix = `${sessionRel}/claude/`;
   if (!relativePath.startsWith(claudePrefix)) return true;
   const claudeRel = relativePath.slice(claudePrefix.length);

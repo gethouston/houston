@@ -9,7 +9,6 @@ import { runWithActingContext } from "../session/acting-context";
 import { releaseConversation, runWithConversationScope } from "../session/bus";
 import { openSSE } from "../transport/sse";
 import { startClaimHeartbeat } from "./claim-heartbeat";
-import { warmClaudeWorker } from "./claude-worker";
 import type { TurnServerDeps } from "./server-types";
 import { finishTurnDurability } from "./turn-durability";
 import { prepareTurnFilesystem } from "./turn-filesystem";
@@ -147,11 +146,6 @@ export async function executeTurn(
           turn.model,
           timings,
         );
-        if (
-          deps.singleUse &&
-          (turn.provider || turn.credential.provider) === "anthropic"
-        )
-          await warmClaudeWorker(root);
         emit({
           type: "shadow",
           data: { ...timings, hydratedObjects: filesystem.manifest.size },

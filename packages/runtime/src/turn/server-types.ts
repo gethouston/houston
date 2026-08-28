@@ -1,5 +1,6 @@
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import type { AdmissionLimiter } from "./admission";
+import type { applyOp } from "./op-apply";
 import type { TurnRunner } from "./turn-session";
 
 /** Injectable dependencies and pool controls for the per-turn HTTP server. */
@@ -8,6 +9,8 @@ export interface TurnServerDeps {
   /** App-layer token; empty means open local development. */
   token: string;
   runTurn?: TurnRunner;
+  /** Test seam for the worker op executor. */
+  runOp?: typeof applyOp;
   concurrency?: number;
   admission?: AdmissionLimiter;
   isDraining?: () => boolean;

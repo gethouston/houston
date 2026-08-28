@@ -116,14 +116,6 @@ async function start(): Promise<Server> {
     // restart guard into a silent no-op and surface only as burned claims.
     // Only the not-yet-spent path needs this (a spent pod never serves again).
     if (config.poolSingleUse && !spent) assertMarkerWritable();
-    if (config.poolSingleUse && !spent) {
-      const { probeClaudeWorkerBinary } = await import("./turn/claude-worker");
-      try {
-        probeClaudeWorkerBinary();
-      } catch (error) {
-        logger.error("Claude Agent SDK worker binary probe failed:", error);
-      }
-    }
     const registrationConfig = await loadWorkerRegistrationConfig();
     const admission = new AdmissionLimiter(turnConcurrency());
     workerRegistration =
@@ -157,6 +149,13 @@ async function start(): Promise<Server> {
     // registering would silently reopen that cross-tenant window — see the cloud
     // pool_workers boot_id clear (internal/store/poolworkers.go).
     await workerRegistration?.start();
+    const { startClaudeWorkerBoot } = await import("./turn/claude-worker");
+    startClaudeWorkerBoot({
+      profile: config.poolSingleUse && !spent ? "single-use" : "multi-turn",
+      root: config.dataDir,
+      report: (error) =>
+        logger.error("Claude Agent SDK worker boot task failed:", error),
+    });
     try {
       await new Promise<void>((resolve, reject) => {
         const failed = (error: Error) => reject(error);

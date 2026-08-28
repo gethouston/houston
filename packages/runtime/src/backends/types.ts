@@ -93,6 +93,11 @@ export interface CreateSessionOptions {
    * said on the other backend in between.
    */
   fresh?: boolean;
+  /**
+   * Canonical history to prepend only if a backend-native resume is rejected
+   * and the backend retries the current prompt as a fresh session.
+   */
+  freshRetryPromptPrefix?: string;
 }
 
 /** A pluggable turn-execution backend for a provider. */

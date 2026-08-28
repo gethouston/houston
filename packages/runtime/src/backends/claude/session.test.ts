@@ -100,6 +100,7 @@ function make(deps: {
   store?: SessionsStore;
   model?: string;
   refreshAuth?: () => { env: Record<string, string>; accessDigest?: string };
+  freshRetryPromptPrefix?: string;
 }): ClaudeSession {
   return new ClaudeSession({
     query: deps.query,
@@ -108,6 +109,7 @@ function make(deps: {
     sessionsStore: deps.store ?? fakeStore(),
     model: deps.model ?? "claude-sonnet-4-6",
     refreshAuth: deps.refreshAuth ?? (() => ({ env: {} })),
+    freshRetryPromptPrefix: deps.freshRetryPromptPrefix,
   });
 }
 
@@ -310,6 +312,32 @@ test("a resume the SDK rejects as unknown retries fresh: mapping dropped, no pha
   expect(events.some((e) => e.type === "provider_error")).toBe(false);
   expect(events.some((e) => e.type === "text")).toBe(true);
   expect(store.setCalls).toContainEqual(["c1", "sess-new"]);
+});
+
+test("a dangling-resume retry prefixes the fresh prompt with canonical history", async () => {
+  const prompts: string[] = [];
+  let call = 0;
+  const query: ClaudeQuery = (params) => {
+    prompts.push(params.prompt);
+    call++;
+    if (call === 1)
+      return throwingQuery(
+        new Error("No conversation found with session ID: sess-gone"),
+      )(params);
+    return arrayQuery([usageMsg("sess-new")])(params);
+  };
+  const session = make({
+    query,
+    store: fakeStore("sess-gone"),
+    freshRetryPromptPrefix: "[canonical replay]\n",
+  });
+
+  await session.prompt("current prompt");
+
+  expect(prompts).toEqual([
+    "current prompt",
+    "[canonical replay]\ncurrent prompt",
+  ]);
 });
 
 test("the same SDK error WITHOUT a resume surfaces normally (no retry loop)", async () => {

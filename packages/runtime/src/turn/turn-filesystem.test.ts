@@ -190,6 +190,7 @@ test("a claim syncs only durable Claude conversation state", () => {
 
   expect(include(`${claude}/projects/slug/session.jsonl`)).toBe(true);
   expect(include(`${claude}/sessions.json`)).toBe(true);
+  expect(include("data/sessions/c1/harness.json")).toBe(true);
   expect(include(`${claude}/statsig/cache.json`)).toBe(false);
   expect(include(`${claude}/history.jsonl`)).toBe(false);
   expect(include(`${claude}/.credentials.json`)).toBe(false);

@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { LocalWorkspaceStore } from "@houston/host/src/store/local";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterEach, expect, test } from "vitest";
+import { WorkerOpDeclinedError } from "./op-provider-guard";
 import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
@@ -205,6 +206,32 @@ test("an invalid op is rejected before any hydration", async () => {
   );
   expect(status).toBe(400);
   expect(String(json.error)).toContain("not a read op route");
+});
+
+test("a typed worker-op decline soft-fails to the standing pod", async () => {
+  const { storeRoot, agentId } = await seedAgent();
+  const base = await listen(
+    createTurnServer({
+      store: new LocalDirStore(storeRoot),
+      token: "",
+      runTurn: noopTurn,
+      runOp: async () => {
+        throw new WorkerOpDeclinedError("standing pod required");
+      },
+    }),
+  );
+
+  const { status, json } = await postOp(
+    base,
+    opBody(agentId, await heartbeatOK(), {
+      kind: "settings",
+      action: "put",
+      input: { activeProvider: "anthropic" },
+    }),
+  );
+
+  expect(status).toBe(200);
+  expect(json).toMatchObject({ ok: true, decline: true });
 });
 
 test("a files list runs as a READ op: no sync-back, runtime tree not hydrated", async () => {

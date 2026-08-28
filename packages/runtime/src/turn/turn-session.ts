@@ -24,6 +24,7 @@ import {
   runWithUsedTokenCapture,
 } from "../auth/used-token";
 import type { ClaudeBackendDeps } from "../backends/claude/backend";
+import type { HarnessBackend } from "../backends/types";
 import { config } from "../config";
 import { framePrompt, type MessageAuthor } from "../session/attribution";
 import {
@@ -54,8 +55,10 @@ import {
 import {
   createTurnBackend,
   resolveTurnClaudeResume,
+  type TurnBackendDeps,
   TurnBackendProviderError,
 } from "./turn-backend";
+import { readTurnHarness, writeTurnHarness } from "./turn-harness-state";
 import { createTurnModelRuntime } from "./turn-runtime";
 import { buildTurnToolSelection } from "./turn-toolset";
 import type { TurnGrantScope } from "./types";
@@ -137,10 +140,15 @@ export interface TurnDirectories {
   turnRoot: string;
 }
 
+export interface RunTurnDeps {
+  claudeSdk?: ClaudeBackendDeps["sdk"];
+  createBackend?: (provider: string, deps: TurnBackendDeps) => HarnessBackend;
+}
+
 export async function runTurn(
   directories: TurnDirectories,
   turn: TurnSessionRequest,
-  deps: { claudeSdk?: ClaudeBackendDeps["sdk"] } = {},
+  deps: RunTurnDeps = {},
 ): Promise<TurnOutcome> {
   const {
     conversationId,
@@ -251,7 +259,7 @@ export async function runTurn(
       pin?.effort ??
       (m.reasoning === true ? DEFAULT_REASONING_EFFORT : undefined);
     const thinkingLevel = toThinkingLevel(effort);
-    const backend = createTurnBackend(provider, {
+    const backend = (deps.createBackend ?? createTurnBackend)(provider, {
       directories,
       turn,
       modelRuntime,
@@ -261,14 +269,32 @@ export async function runTurn(
       sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
       claudeSdk: deps.claudeSdk,
     });
+    const harness = backend.id === "anthropic" ? "claude" : "pi";
+    const priorHarness = readTurnHarness(dataDir, conversationId);
+    const switchedHarness =
+      priorHarness !== undefined && priorHarness !== harness;
+    writeTurnHarness(dataDir, conversationId, harness);
+    const claudeResume =
+      harness === "claude" && !switchedHarness
+        ? resolveTurnClaudeResume(directories, conversationId)
+        : undefined;
     const replay =
-      provider === "anthropic" &&
-      resolveTurnClaudeResume(directories, conversationId) === undefined
+      canonicalMessages.length > 0 &&
+      (switchedHarness || (harness === "claude" && !claudeResume))
         ? renderReplayPreamble(
             canonicalMessages,
             turnId,
             replayCharBudget(model.contextWindow),
           )
+        : null;
+    const retryReplay =
+      harness === "claude" && canonicalMessages.length > 0
+        ? (replay ??
+          renderReplayPreamble(
+            canonicalMessages,
+            turnId,
+            replayCharBudget(model.contextWindow),
+          ))
         : null;
     const session = await backend.createSession({
       conversationId,
@@ -284,6 +310,10 @@ export async function runTurn(
       // only blocking tool present (integrations are off), so an auto turn here
       // simply drops it.
       ...(mode ? { mode } : {}),
+      ...(switchedHarness ? { fresh: true } : {}),
+      ...(retryReplay?.text
+        ? { freshRetryPromptPrefix: retryReplay.text }
+        : {}),
     });
 
     // Snapshot the hydrated workspace so the turn's created/modified files can

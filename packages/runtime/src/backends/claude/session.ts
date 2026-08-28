@@ -37,6 +37,8 @@ export interface ClaudeSessionDeps {
   /** Initial SDK model string. */
   model: string;
   thinkingLevel?: ThinkingLevel;
+  /** Canonical history used only when a rejected resume must retry fresh. */
+  freshRetryPromptPrefix?: string;
   /**
    * Re-read the stored credential and rebuild the subprocess env from it.
    * Called at the start of EVERY prompt (PRODUCT-1355): each `query()` spawns
@@ -141,7 +143,11 @@ export class ClaudeSession implements HarnessSession {
     console.warn(
       `[claude] resume for conversation ${this.deps.conversationId} was rejected by the SDK; starting a fresh session`,
     );
-    await this.runAttempt(text, undefined, auth.env);
+    await this.runAttempt(
+      `${this.deps.freshRetryPromptPrefix ?? ""}${text}`,
+      undefined,
+      auth.env,
+    );
   }
 
   /**
