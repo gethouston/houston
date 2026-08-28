@@ -352,3 +352,21 @@ test("pi to anthropic to pi flips fresh with replay while unchanged pi resumes",
     "[Continuing an existing conversation.",
   );
 });
+
+test("a corrupt harness marker degrades to unknown instead of failing the turn", async () => {
+  const { readTurnHarness, turnHarnessFile, writeTurnHarness } = await import(
+    "./turn-harness-state"
+  );
+  const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { dirname, join } = await import("node:path");
+  const dataDir = mkdtempSync(join(tmpdir(), "harness-marker-"));
+  const file = turnHarnessFile(dataDir, "c1");
+  mkdirSync(dirname(file), { recursive: true });
+  writeFileSync(file, "{not json");
+  expect(readTurnHarness(dataDir, "c1")).toBeUndefined();
+  writeFileSync(file, JSON.stringify({ backend: "spacex" }));
+  expect(readTurnHarness(dataDir, "c1")).toBeUndefined();
+  writeTurnHarness(dataDir, "c1", "claude");
+  expect(readTurnHarness(dataDir, "c1")).toBe("claude");
+});

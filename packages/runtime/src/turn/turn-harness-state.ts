@@ -23,12 +23,22 @@ export function readTurnHarness(
 ): TurnHarness | undefined {
   const file = turnHarnessFile(dataDir, conversationId);
   if (!existsSync(file)) return undefined;
-  const parsed = JSON.parse(readFileSync(file, "utf8")) as {
-    backend?: unknown;
-  };
-  if (parsed.backend === "claude" || parsed.backend === "pi")
-    return parsed.backend;
-  throw new Error(`Invalid pooled-turn harness marker: ${file}`);
+  // A corrupt marker (partial sync, prior crash) must degrade to "unknown" —
+  // the conversation then takes the pre-marker resume path — never fail the
+  // turn. Logged so the corruption is visible to us.
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as {
+      backend?: unknown;
+    };
+    if (parsed.backend === "claude" || parsed.backend === "pi")
+      return parsed.backend;
+    throw new Error(`unrecognized backend ${String(parsed.backend)}`);
+  } catch (error) {
+    console.error(
+      `[turn] harness marker unreadable, treating as unknown (${file}): ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return undefined;
+  }
 }
 
 export function writeTurnHarness(
