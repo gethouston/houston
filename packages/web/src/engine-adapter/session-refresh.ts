@@ -12,7 +12,8 @@
  *
  * The refresher's answer is three-valued, and the distinction is load-bearing
  * (HOU-1106): a token means refreshed, null means the session is terminally
- * gone (a real sign-out — the caller lets its 401 surface), and a TRANSIENT
+ * gone (a real sign-out — the transport answers with the quiet signed-out 401,
+ * since the sign-in screen is that state's surface), and a TRANSIENT
  * failure — the identity service unreachable while a sleep-wake reconnect
  * settles — THROWS. Both installers already speak this contract: the desktop's
  * `refreshNow()` rethrows `IdentityError("network")` precisely so callers
@@ -48,15 +49,27 @@ const isTransientRefreshFailure = (err: unknown): boolean => {
 };
 
 /**
+ * Whether a session refresher is installed at all. Callers use this to read a
+ * null refresh correctly: WITH a refresher, null is its terminal verdict (the
+ * session is gone — signed-out is the state); WITHOUT one, null only means
+ * "nobody to ask" (static-token hosts, tests, the pre-mount boot window) and
+ * says nothing about the session.
+ */
+export function hasSessionRefresher(): boolean {
+  return typeof window !== "undefined" && !!window.__HOUSTON_SESSION_REFRESH__;
+}
+
+/**
  * Force-refresh the hosted session. Resolves the new access token; resolves
  * null when there is no refresher or the session is terminally gone (a real
- * sign-out — the caller lets its 401 surface); THROWS a transport-shaped
- * `TypeError` when the refresher failed transiently. The message starts with
- * "Load failed" on purpose: that is the prefix the app's connectivity
- * classifier (`isNetworkTransportError`, HOU-1085) keys on, so a refresh
- * beaten by a settling reconnect surfaces as the one deduped connectivity
- * notice — never as an auth error or a Sentry report. Concurrent callers
- * share one refresh; a caller arriving after it settles starts a new one.
+ * sign-out — the caller answers with the quiet signed-out 401); THROWS a
+ * transport-shaped `TypeError` when the refresher failed transiently. The
+ * message starts with "Load failed" on purpose: that is the prefix the app's
+ * connectivity classifier (`isNetworkTransportError`, HOU-1085) keys on, so a
+ * refresh beaten by a settling reconnect surfaces as the one deduped
+ * connectivity notice — never as an auth error or a Sentry report. Concurrent
+ * callers share one refresh; a caller arriving after it settles starts a new
+ * one.
  */
 export function refreshLiveToken(): Promise<string | null> {
   const refresh =
@@ -70,6 +83,11 @@ export function refreshLiveToken(): Promise<string | null> {
         if (isTransientRefreshFailure(err)) {
           throw new TypeError("Load failed (session refresh)", { cause: err });
         }
+        // Terminal verdict (a revoked/expired refresh token, or a refresher
+        // bug). The caller answers with the quiet signed-out 401, so this
+        // warn is the failure's only trace — a breadcrumb on whatever fires
+        // next, naming WHY the session was declared gone.
+        console.warn("[session-refresh] terminal refresh failure:", err);
         return null;
       })
       .finally(() => {

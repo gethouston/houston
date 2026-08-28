@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { isHoustonEngineError } from "../src/engine-adapter/client/errors";
+import {
+  isHoustonEngineError,
+  isSignedOutEngineError,
+} from "../src/engine-adapter/client/errors";
 import { cpFetch } from "../src/engine-adapter/cp/fetch";
 
 // HOU-1106 (Sentry HOUSTON-APP-515): a sleep-wake reconnect leaves every live
@@ -37,8 +40,14 @@ function stubGateway(): { bearers: (string | null)[] } {
   return { bearers };
 }
 
-function installRefresher(impl: () => Promise<string | null>): void {
-  vi.stubGlobal("window", { __HOUSTON_SESSION_REFRESH__: vi.fn(impl) });
+function installRefresher(
+  impl: () => Promise<string | null>,
+  opts?: { controlPlane?: boolean },
+): void {
+  vi.stubGlobal("window", {
+    __HOUSTON_SESSION_REFRESH__: vi.fn(impl),
+    ...(opts?.controlPlane ? { __HOUSTON_CP__: true } : {}),
+  });
 }
 
 beforeEach(() => {
@@ -108,7 +117,7 @@ test("firebase network-request-failed is transient too", async () => {
   expect(await pending).toBeInstanceOf(TypeError);
 });
 
-test("terminal refresh (null) still surfaces the real 401 — a sign-out must not hide", async () => {
+test("terminal refresh (null) outside hosted mode surfaces the real 401", async () => {
   stubGateway();
   installRefresher(() => Promise.resolve(null));
   const pending = cpFetch(CFG, "/agents/a/skills").then(
@@ -121,6 +130,27 @@ test("terminal refresh (null) still surfaces the real 401 — a sign-out must no
   const err = await pending;
   expect(isHoustonEngineError(err)).toBe(true);
   expect((err as { status: number }).status).toBe(401);
+  expect(isSignedOutEngineError(err)).toBe(false);
+});
+
+test("terminal refresh (null) in hosted mode is the quiet signed-out 401 (HOUSTON-APP-4WR)", async () => {
+  // A real sign-out catches every live query holding the stale bearer: each
+  // gets a gateway 401, refreshes (single-flight), and learns the session is
+  // gone. That must fail the queries as signed-out — the state the error-toast
+  // layer recognizes and never reports — not as one Sentry event per query.
+  const gw = stubGateway();
+  installRefresher(() => Promise.resolve(null), { controlPlane: true });
+  const pending = cpFetch(CFG, "/agents/a/skills").then(
+    () => {
+      throw new Error("expected rejection");
+    },
+    (err: unknown) => err,
+  );
+  await vi.advanceTimersByTimeAsync(5_000);
+  const err = await pending;
+  expect(isSignedOutEngineError(err)).toBe(true);
+  // No replay was attempted with a dead session: one gateway round trip only.
+  expect(gw.bearers).toEqual(["Bearer stale"]);
 });
 
 test("an unexpected refresher bug is treated as terminal, not connectivity", async () => {
