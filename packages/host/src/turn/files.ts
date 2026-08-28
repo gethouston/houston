@@ -22,6 +22,7 @@ import {
   readWorkspaceFile,
   renameWorkspaceFile,
   safeRel,
+  workspaceRel,
 } from "./files-ops";
 
 /**
@@ -116,7 +117,9 @@ export async function handleFiles(
       return true;
     }
     if (method === "GET" && rest === "files/download") {
-      const rel = safeRel(query.get("path") ?? "");
+      // Chat-driven (file cards, prose links), so `workspaceRel`: agents link
+      // files by the absolute path of their own working directory.
+      const rel = workspaceRel(root, query.get("path") ?? "");
       const buf = await vfs.readBytes(fileKey(root, rel));
       if (buf === null) {
         json(res, 404, { error: "file not found" });
