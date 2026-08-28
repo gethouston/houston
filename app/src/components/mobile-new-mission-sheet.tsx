@@ -23,7 +23,12 @@ export function MobileNewMissionSheet() {
   const { t } = useTranslation("dashboard");
   const open = useUIStore((s) => s.newMissionSheetOpen);
   const setOpen = useUIStore((s) => s.setNewMissionSheetOpen);
-  const agents = useAgentStore((s) => s.agents);
+  const scopeIds = useUIStore((s) => s.newMissionSheetAgentIds);
+  const roster = useAgentStore((s) => s.agents);
+  // A board's compose scopes the question to the board's own agents; the top
+  // bar's compose asks over everyone.
+  const agents =
+    scopeIds === null ? roster : roster.filter((a) => scopeIds.includes(a.id));
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

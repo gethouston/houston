@@ -41,8 +41,13 @@ export function useMissionChatSource(
 
   const setSelectedId = useCallback(
     (id: string | null) => {
+      // Only while THIS chat is still the open one: AIBoard's create path
+      // resolves asynchronously, and a selection landing after the user
+      // already navigated away must not yank them back into the chat.
+      const ui = useUIStore.getState();
+      if (ui.chatAgentId !== agent.id || ui.chatMissionId !== missionId) return;
       if (id === null) {
-        useUIStore.getState().closeMissionChat();
+        ui.closeMissionChat();
         return;
       }
       if (id !== missionId) {

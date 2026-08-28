@@ -100,6 +100,9 @@ interface UIState {
    *  new-mission flow: pick an agent, push its empty draft chat). Ephemeral
    *  dialog flag, never persisted. */
   newMissionSheetOpen: boolean;
+  /** The sheet's roster, as agent ids: a board's compose scopes it to the
+   *  board's own agents; `null` = the full roster (the top bar's compose). */
+  newMissionSheetAgentIds: string[] | null;
   /** Callback registered by whichever mission board is on the glass (the
    *  global one or a team's) to open its new-mission flow. */
   onStartMission: (() => void) | null;
@@ -312,7 +315,7 @@ interface UIState {
   setCreateAgentDialogOpen: (open: boolean, teamId?: string | null) => void;
   setEditTeamIdentityId: (teamId: string | null) => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
-  setNewMissionSheetOpen: (open: boolean) => void;
+  setNewMissionSheetOpen: (open: boolean, agentIds?: string[]) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
   /** Claim (`open`) or release the shell detail panel for one surface. */
   setMissionPanelOwner: (ownerId: string, open: boolean) => void;
@@ -374,6 +377,7 @@ const initialUIState = {
   editTeamIdentityId: null,
   agentWarmingNoticeOpen: false,
   newMissionSheetOpen: false,
+  newMissionSheetAgentIds: null,
   onStartMission: null,
   missionPanelOpen: false,
   missionPanelOwners: [],
@@ -577,8 +581,13 @@ export const useUIStore = create<UIState>()(
 
       setAgentWarmingNoticeOpen: (agentWarmingNoticeOpen) =>
         set({ agentWarmingNoticeOpen }),
-      setNewMissionSheetOpen: (newMissionSheetOpen) =>
-        set({ newMissionSheetOpen }),
+      setNewMissionSheetOpen: (newMissionSheetOpen, agentIds) =>
+        set({
+          newMissionSheetOpen,
+          newMissionSheetAgentIds: newMissionSheetOpen
+            ? (agentIds ?? null)
+            : null,
+        }),
 
       setOnStartMission: (onStartMission) => set({ onStartMission }),
       setMissionPanelOwner: (ownerId, open) =>
@@ -593,9 +602,15 @@ export const useUIStore = create<UIState>()(
           const partial = { missionPanelOwners, missionPanelOpen };
           // Only the panel's open/shut TRANSITIONS are navigation (a second
           // claim on an open panel is not a move): opening pushes a level the
-          // back button can pop, the last release retreats it.
+          // back button can pop, the last release retreats it. Opening also
+          // closes any pushed chat — the two chat surfaces must never
+          // coexist, and a resize dance could otherwise stack them.
           if (missionPanelOpen === s.missionPanelOpen) return partial;
-          return navigated(s, partial, missionPanelOpen ? "push" : "retreat");
+          return navigated(
+            s,
+            missionPanelOpen ? { ...partial, ...noChat } : partial,
+            missionPanelOpen ? "push" : "retreat",
+          );
         }),
       closeMissionPanel: () =>
         set((s) => {

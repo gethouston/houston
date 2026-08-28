@@ -2,6 +2,7 @@ import { CatalogSearchField, cn } from "@houston-ai/core";
 import { SquarePen } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { openMissionChat } from "../../lib/mission-chat";
 import { startNewMission } from "../../lib/new-mission";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
@@ -38,6 +39,24 @@ export function MobileBoardControls({
   const { t } = useTranslation(["dashboard", "shell"]);
   const setTeamAgentFilter = useUIStore((s) => s.setTeamAgentFilter);
 
+  // THIS board's compose scopes the "which agent?" question to the board's
+  // own agents (the desktop button asks the same scoped question); the empty
+  // board falls back to the one shared rule.
+  const compose = () => {
+    if (agents.length === 1) {
+      openMissionChat(agents[0], null);
+      return;
+    }
+    if (agents.length > 1) {
+      useUIStore.getState().setNewMissionSheetOpen(
+        true,
+        agents.map((a) => a.id),
+      );
+      return;
+    }
+    startNewMission();
+  };
+
   return (
     <div
       data-testid="mobile-board-controls"
@@ -60,7 +79,7 @@ export function MobileBoardControls({
         <button
           type="button"
           aria-label={t("shell:sidebar.newMission")}
-          onClick={startNewMission}
+          onClick={compose}
           className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors active:scale-95 hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
         >
           <SquarePen className="size-5" />
@@ -89,7 +108,10 @@ export function MobileBoardControls({
               key={agent.id}
               type="button"
               aria-pressed={filterPath === agent.folderPath}
-              onClick={() => setTeamAgentFilter(agent.folderPath)}
+              // The pin stores the agent ID (the scope translates id→path,
+              // `use-team-board-scope.ts`); the SELECTED state compares the
+              // resolved path, which is what `filterPath` carries.
+              onClick={() => setTeamAgentFilter(agent.id)}
               className={cn(
                 chipClass,
                 filterPath === agent.folderPath
