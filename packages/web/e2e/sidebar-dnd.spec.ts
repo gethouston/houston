@@ -23,19 +23,20 @@ async function center(loc: Locator) {
   return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
 }
 
-/** Drag `source` onto `target`, re-reading the target's live position as the
- *  list reflows during the drag (a fixed pre-drag coordinate would miss). */
+/** Drag `source` onto `target`. The target's position is read ONCE, after the
+ *  drag has activated (so any lift-time reflow is in) and never again: the
+ *  sortable list live-reorders on every hover, so re-reading the target
+ *  mid-drag chases it into its swapped slot and swaps it right back —
+ *  dnd-kit then reports the item dropped over ITSELF (flaky order). */
 async function dragOnto(page: Page, source: Locator, target: Locator) {
   const s = await center(source);
   await page.mouse.move(s.x, s.y);
   await page.mouse.down();
   await page.waitForTimeout(60);
   await page.mouse.move(s.x, s.y + 10, { steps: 5 }); // cross activation
-  for (let i = 0; i < 3; i++) {
-    const t = await center(target);
-    await page.mouse.move(t.x, t.y, { steps: 8 });
-    await page.waitForTimeout(60);
-  }
+  const t = await center(target);
+  await page.mouse.move(t.x, t.y, { steps: 8 });
+  await page.waitForTimeout(120); // let the hover's live-reorder commit
   await page.mouse.up();
   await page.waitForTimeout(300); // drop-animation + overlay unmount
 }
@@ -97,9 +98,14 @@ test("team create + type name + reorder agents inside the default team", async (
     sidebar.getByText("Beta", { exact: true }),
     sidebar.getByText("Houston", { exact: true }),
   );
-  expect(await rowY(sidebar, "Beta")).toBeLessThan(
-    await rowY(sidebar, "Houston"),
-  );
+  // Poll: the committed order re-renders from the layout write-back, a beat
+  // after the drop animation ends.
+  await expect
+    .poll(
+      async () =>
+        (await rowY(sidebar, "Beta")) < (await rowY(sidebar, "Houston")),
+    )
+    .toBe(true);
 
   // Every gesture above is written back with
   // `PUT /v1/workspaces/:id/sidebar-layout`. A reload throws away all the
