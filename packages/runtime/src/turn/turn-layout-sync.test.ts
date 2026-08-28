@@ -134,7 +134,9 @@ test.each([
   // Agent-owned files sync, including structured docs; only runtime state stays
   // conversation-scoped.
   expect(keys).toContain(`ws/w1/agent-1/${workspaceRel}/result.txt`);
-  expect(keys).toContain(
+  // The schema sidecar is .houston-internal and NOT turn-owned: the store's
+  // turn-claim scope rejects it, so the sync must not attempt it.
+  expect(keys).not.toContain(
     `ws/w1/agent-1/${workspaceRel}/.houston/activity/activity.schema.json`,
   );
   expect(keys).toContain(
@@ -155,7 +157,11 @@ test.each([
       ],
     },
   });
-  expect(log).not.toHaveBeenCalled();
+  // The out-of-scope schema write is skipped AND logged — silent to the user,
+  // never to us.
+  expect(log).toHaveBeenCalledWith(
+    expect.stringContaining("pool_writes_out_of_scope=1"),
+  );
   log.mockRestore();
 });
 

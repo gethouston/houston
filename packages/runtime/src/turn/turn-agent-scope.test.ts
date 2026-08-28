@@ -16,6 +16,8 @@ test.each([
 test.each([
   `${ROOT}/.houston/runtime/settings.json`,
   `${ROOT}/.houston/runtime/conversations/c1.json`,
+  `${ROOT}/.houston/docs/activity/activity.json`,
+  `${ROOT}/.houston/routines/other.json`,
   "workspaces/Personal/Alice/notes.md",
 ])("agent scope excludes %s", (path) => {
   expect(agentScopeIncludes(path, ROOT)).toBe(false);
