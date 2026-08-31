@@ -17,14 +17,18 @@ import { ApiKeyVerifyError } from "./verify-errors";
 type Probe = (model: ReturnType<typeof safeGetModel>) => Promise<string | null>;
 
 /**
- * Models served to every NVIDIA account we have evidence from — small, fast,
- * non-reasoning rows so the extra probes stay well inside the dialog's
- * patience. The first is also the runtime's NVIDIA default model
- * (`UNCURATED_DEFAULT_MODEL`) and the classifier's suggested fallback.
+ * Models served to every NVIDIA account we have evidence from. The retired
+ * llama-3.x rows (the old small non-reasoning probes) left pi's catalog in
+ * 0.84.4; of the families our partially-gated live key was served (llama /
+ * gpt-oss / minimax), gpt-oss survives — both sizes, MoE-fast — with
+ * minimax-m3 as a second family so a gpt-oss-wide gate still can't produce a
+ * false `key_restricted`. The first is also the runtime's NVIDIA default
+ * model (`UNCURATED_DEFAULT_MODEL`) and the classifier's suggested fallback.
  */
 const NVIDIA_VERIFY_FALLBACKS = [
-  "meta/llama-3.3-70b-instruct",
-  "meta/llama-3.1-8b-instruct",
+  "openai/gpt-oss-120b",
+  "openai/gpt-oss-20b",
+  "minimaxai/minimax-m3",
 ];
 
 export function nvidiaGated(providerId: string, message: string): boolean {
