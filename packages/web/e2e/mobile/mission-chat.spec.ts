@@ -47,7 +47,11 @@ test("a follow-up sent from the pushed chat round-trips", async ({ page }) => {
   await composer.press("Enter");
 
   // The user's bubble and the fake host's echoed reply both land in the log.
-  await expect(chat.getByText("Also check the trains")).toBeVisible();
+  // Exact match: the reply quotes the sent text, so a substring locator races
+  // the echo into a strict-mode violation when the reply lands first.
+  await expect(
+    chat.getByText("Also check the trains", { exact: true }),
+  ).toBeVisible();
   await expect(chat.getByText(/Roger that\. You said:/)).toBeVisible({
     timeout: 15_000,
   });
