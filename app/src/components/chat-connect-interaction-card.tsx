@@ -9,7 +9,8 @@ import { Check, CornerDownLeft, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ChatStepDeclineButton } from "./chat-step-decline-button";
 import { AppLogo } from "./integrations";
-import { useIntegrationConnect } from "./use-integration-connect";
+import { CuratedConnectDialog } from "./integrations/curated-connect-dialog";
+import { useChatConnect } from "./use-chat-connect";
 import { useInteractionStepKeys } from "./use-interaction-step-keys";
 
 interface ChatConnectInteractionCardProps extends StepChrome {
@@ -86,7 +87,14 @@ export function ChatConnectInteractionCard({
   // fresh card whose already-connected self-report would otherwise re-fire,
   // bouncing the user off the step they walked Back to. On a revisit the pager's
   // forward chevron is the way onward.
-  const { app, isConnected, connecting, startConnect } = useIntegrationConnect({
+  const {
+    app,
+    isConnected,
+    connecting,
+    startConnect,
+    curatedDialog,
+    closeCuratedDialog,
+  } = useChatConnect({
     toolkit,
     agentId,
     onConnected,
@@ -137,70 +145,79 @@ export function ChatConnectInteractionCard({
   );
 
   return (
-    <InteractionModal
-      contentKey={stepId}
-      collapseLabel={collapseLabel}
-      collapsedHint={reasonLine}
-      disabled={disabled}
-      dismissLabel={dismissLabel}
-      expandLabel={expandLabel}
-      onDismiss={onDismiss}
-      onOpenChange={onOpenChange}
-      open={open}
-      pager={pager}
-      // Title: the app icon beside the required connect action.
-      title={
-        <InteractionModalTitle
-          className="flex-1 truncate"
-          icon={<AppLogo className="shrink-0" display={app} size="sm" />}
-        >
-          {t("interaction.connectTitle", { app: app.name })}
-        </InteractionModalTitle>
-      }
-      body={
-        <>
-          {isConnected ? (
-            <span className="inline-flex items-center gap-1 font-medium text-emerald-600 text-sm dark:text-emerald-400">
-              <Check className="size-3.5" />
-              {t("composio.connected")}
-            </span>
-          ) : (
-            <p className="text-balance text-ink text-sm leading-snug">
-              {reasonLine}
-            </p>
-          )}
-          {connecting && (
-            <p className="mt-1.5 text-ink-muted text-xs">
-              {t("composio.waitingToConnect")}
-            </p>
-          )}
-        </>
-      }
-      footer={
-        showConnect ? (
+    <>
+      {/* A curated toolkit's Connect opens the two-option dialog (sign-in /
+          API key) instead of the generic OAuth hand-off. */}
+      <CuratedConnectDialog
+        agentId={agentId}
+        curated={curatedDialog}
+        onClose={closeCuratedDialog}
+      />
+      <InteractionModal
+        contentKey={stepId}
+        collapseLabel={collapseLabel}
+        collapsedHint={reasonLine}
+        disabled={disabled}
+        dismissLabel={dismissLabel}
+        expandLabel={expandLabel}
+        onDismiss={onDismiss}
+        onOpenChange={onOpenChange}
+        open={open}
+        pager={pager}
+        // Title: the app icon beside the required connect action.
+        title={
+          <InteractionModalTitle
+            className="flex-1 truncate"
+            icon={<AppLogo className="shrink-0" display={app} size="sm" />}
+          >
+            {t("interaction.connectTitle", { app: app.name })}
+          </InteractionModalTitle>
+        }
+        body={
           <>
-            {showNotNow && (
-              <ChatStepDeclineButton
-                disabled={connecting}
-                escLabel={t("interaction.esc")}
-                label={t("interaction.skip")}
-                onClick={() => onSkip(toolkit, app.name)}
-              />
+            {isConnected ? (
+              <span className="inline-flex items-center gap-1 font-medium text-emerald-600 text-sm dark:text-emerald-400">
+                <Check className="size-3.5" />
+                {t("composio.connected")}
+              </span>
+            ) : (
+              <p className="text-balance text-ink text-sm leading-snug">
+                {reasonLine}
+              </p>
             )}
-            {connectButton}
+            {connecting && (
+              <p className="mt-1.5 text-ink-muted text-xs">
+                {t("composio.waitingToConnect")}
+              </p>
+            )}
           </>
-        ) : undefined
-      }
-      trailing={
-        showConnect ? (
-          <InlineTextRow
-            disabled={connecting}
-            onSubmit={(text) => onSkip(toolkit, app.name, text)}
-            placeholder={t("interaction.declinePlaceholder")}
-            sendLabel={t("questionCard.send")}
-          />
-        ) : undefined
-      }
-    />
+        }
+        footer={
+          showConnect ? (
+            <>
+              {showNotNow && (
+                <ChatStepDeclineButton
+                  disabled={connecting}
+                  escLabel={t("interaction.esc")}
+                  label={t("interaction.skip")}
+                  onClick={() => onSkip(toolkit, app.name)}
+                />
+              )}
+              {connectButton}
+            </>
+          ) : undefined
+        }
+        trailing={
+          showConnect ? (
+            <InlineTextRow
+              disabled={connecting}
+              onSubmit={(text) => onSkip(toolkit, app.name, text)}
+              placeholder={t("interaction.declinePlaceholder")}
+              sendLabel={t("questionCard.send")}
+            />
+          ) : undefined
+        }
+      />
+    </>
   );
 }
