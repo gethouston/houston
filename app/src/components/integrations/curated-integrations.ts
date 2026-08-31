@@ -21,9 +21,6 @@ export interface CuratedIntegration {
   endpoint: string;
   /** The BRAND site — feeds the host's icon derivation on the installed row. */
   website: string;
-  /** Explicit catalog logo: the brand domain often differs from `<slug>.com`,
-   *  so the generic favicon fallback would fetch the wrong site's icon. */
-  logoUrl: string;
   categories: readonly string[];
   /** Which connect options the service itself offers, lead option first. */
   authModes: readonly ["oauth", "credential"];
@@ -40,7 +37,6 @@ const CROMA: CuratedIntegration = {
   name: "Croma",
   endpoint: "https://api.croma.run/mcp",
   website: "https://usecroma.com",
-  logoUrl: "https://www.google.com/s2/favicons?domain=usecroma.com&sz=128",
   categories: ["legal"],
   authModes: ["oauth", "credential"],
   signUpUrl: "https://platform.usecroma.com/sign-up",
@@ -61,18 +57,20 @@ export function curatedIntegrationOf(
  * The curated entries as browse-catalog toolkits, EXCLUDING any the user
  * already added (their row lives in the Installed strip, in whatever state) —
  * mirroring how a connected Composio app leaves "Available". `describe`
- * resolves the translated blurb where `t()` lives, keeping this module pure.
+ * resolves the translated blurb where `t()` lives and `logoOf` the bundled
+ * brand asset (`curated-logos.ts`, Vite-only), keeping this module pure.
  */
 export function curatedToolkits(
   custom: readonly CustomIntegrationView[],
   describe: (integration: CuratedIntegration) => string,
+  logoOf: (slug: string) => string,
 ): IntegrationToolkit[] {
   const added = new Set(custom.map((item) => item.slug));
   return CURATED_INTEGRATIONS.filter((c) => !added.has(c.slug)).map((c) => ({
     slug: c.slug,
     name: c.name,
     description: describe(c),
-    logoUrl: c.logoUrl,
+    logoUrl: logoOf(c.slug),
     categories: [...c.categories],
   }));
 }
@@ -97,14 +95,4 @@ export function curatedAddInput(
     slug: curated.slug,
     replace: true,
   };
-}
-
-/**
- * Where the connect dialog starts: the sign-in / key fork, unless this
- * deployment cannot run the browser sign-in at all
- * (`capabilities.customIntegrationOAuth` absent) — then the key form is the
- * only option and the fork would be a dead end.
- */
-export function initialCuratedStep(oauthSupported: boolean): "choose" | "key" {
-  return oauthSupported ? "choose" : "key";
 }

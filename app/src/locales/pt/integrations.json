@@ -220,6 +220,7 @@
     },
     "connect": {
       "title": "Conectar {{name}}",
+      "recommendedBadge": "Recomendado",
       "signInTitle": "Entrar com {{name}}",
       "signInDesc": "O jeito mais fácil: seu navegador abre e você entra na sua conta do {{name}}. Sem chave para copiar.",
       "keyTitle": "Usar uma chave de API",

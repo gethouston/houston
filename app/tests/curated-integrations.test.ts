@@ -6,10 +6,10 @@ import {
   curatedAddInput,
   curatedIntegrationOf,
   curatedToolkits,
-  initialCuratedStep,
 } from "../src/components/integrations/curated-integrations.ts";
 
 const describeOf = (c: { slug: string }) => `about ${c.slug}`;
+const logoOf = (slug: string) => `bundled:${slug}`;
 
 const addedCroma: CustomIntegrationView = {
   slug: "croma",
@@ -29,9 +29,6 @@ describe("curated catalog data", () => {
       for (const url of [c.endpoint, c.website, c.signUpUrl, c.apiKeysUrl]) {
         match(url, /^https:\/\//);
       }
-      // The explicit logo exists because the favicon fallback would guess
-      // `<slug>.com`, which is NOT the brand domain for these services.
-      match(c.logoUrl, /^https:\/\//);
       ok(c.categories.length > 0);
     }
   });
@@ -44,17 +41,17 @@ describe("curated catalog data", () => {
 
 describe("curatedToolkits", () => {
   it("lists every entry as a browse toolkit with the resolved blurb", () => {
-    const toolkits = curatedToolkits([], describeOf);
+    const toolkits = curatedToolkits([], describeOf, logoOf);
     const croma = toolkits.find((t) => t.slug === "croma");
     ok(croma);
     strictEqual(croma.name, "Croma");
     strictEqual(croma.description, "about croma");
-    ok(croma.logoUrl);
+    strictEqual(croma.logoUrl, "bundled:croma");
     deepStrictEqual(croma.categories, ["legal"]);
   });
 
   it("excludes entries the user already added, in any state", () => {
-    const toolkits = curatedToolkits([addedCroma], describeOf);
+    const toolkits = curatedToolkits([addedCroma], describeOf, logoOf);
     strictEqual(
       toolkits.find((t) => t.slug === "croma"),
       undefined,
@@ -78,12 +75,5 @@ describe("curatedAddInput", () => {
         replace: true,
       });
     }
-  });
-});
-
-describe("initialCuratedStep", () => {
-  it("forks only where the browser sign-in can actually run", () => {
-    strictEqual(initialCuratedStep(true), "choose");
-    strictEqual(initialCuratedStep(false), "key");
   });
 });

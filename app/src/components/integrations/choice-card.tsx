@@ -1,18 +1,20 @@
+import { Badge } from "@houston-ai/core";
 import type { ReactNode } from "react";
 
 /**
  * One fork option in a chooser dialog (the custom-add fork, the curated
  * connect fork). The `lead` emphasis marks the recommended path: a filled
  * chip surface + ink glyph, a clear step above its quiet sibling — the weight
- * carries the recommendation, no badge and no colour (content stays
- * near-monochrome). Both cards are always visible: nothing here is gated on
- * hover.
+ * carries the recommendation (content stays near-monochrome); an optional
+ * `badge` can also say it out loud ("Recommended"). Both cards are always
+ * visible: nothing here is gated on hover.
  */
 export function ChoiceCard({
   icon,
   title,
   description,
   emphasis = "quiet",
+  badge,
   disabled = false,
   onClick,
 }: {
@@ -20,6 +22,8 @@ export function ChoiceCard({
   title: string;
   description: string;
   emphasis?: "lead" | "quiet";
+  /** Small chip beside the title (e.g. the translated "Recommended"). */
+  badge?: string;
   disabled?: boolean;
   onClick: () => void;
 }) {
@@ -37,7 +41,14 @@ export function ChoiceCard({
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-ink">{title}</span>
+        <span className="flex items-center gap-2 text-sm font-medium text-ink">
+          <span className="min-w-0 truncate">{title}</span>
+          {badge && (
+            <Badge variant="secondary" className="shrink-0">
+              {badge}
+            </Badge>
+          )}
+        </span>
         <span className="mt-0.5 block text-[13px] text-ink-muted">
           {description}
         </span>

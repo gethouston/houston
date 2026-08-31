@@ -14,7 +14,6 @@ import {
   useStartCustomOAuth,
   useSubmitCustomCredential,
 } from "../../hooks/queries";
-import { useCapabilities } from "../../hooks/use-capabilities";
 import { tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { AppLogo } from "./app-logo";
@@ -22,8 +21,8 @@ import { ChoiceCard } from "./choice-card";
 import {
   type CuratedIntegration,
   curatedAddInput,
-  initialCuratedStep,
 } from "./curated-integrations";
+import { curatedLogoUrl } from "./curated-logos";
 import { CustomCredentialForm } from "./custom-credential-form";
 
 /**
@@ -81,15 +80,12 @@ function CuratedConnectBody({
 }) {
   const { t } = useTranslation("integrations");
   const addToast = useUIStore((s) => s.addToast);
-  const { capabilities } = useCapabilities();
-  // The host enforces this gate authoritatively at add time; hiding the
-  // sign-in option here just keeps the dead path out of sight.
-  const oauthSupported = capabilities?.customIntegrationOAuth === true;
-  // Derived, not frozen: capabilities may still be resolving on first open,
-  // and the sign-in fork must appear the moment the deployment turns out to
-  // support it — unless the user already picked a step.
-  const [chosen, setChosen] = useState<"choose" | "key" | null>(null);
-  const step = chosen ?? initialCuratedStep(oauthSupported);
+  // Both options ALWAYS show, sign-in leading: the fork is the product
+  // promise. A deployment that cannot run the browser sign-in rejects at the
+  // host (`oauth_unsupported`) and the wrapper toasts the honest reason —
+  // better than silently hiding the recommended path behind a capability
+  // read that may still be resolving.
+  const [step, setStep] = useState<"choose" | "key">("choose");
 
   const add = useAddCustomIntegration(agentId);
   const signIn = useStartCustomOAuth(agentId);
@@ -148,7 +144,7 @@ function CuratedConnectBody({
               toolkit: curated.slug,
               name,
               description: "",
-              logoUrl: curated.logoUrl,
+              logoUrl: curatedLogoUrl(curated.slug),
             }}
             size="lg"
             className="rounded-lg"
@@ -165,6 +161,7 @@ function CuratedConnectBody({
             title={t("curated.connect.signInTitle", { name })}
             description={t("curated.connect.signInDesc", { name })}
             emphasis="lead"
+            badge={t("curated.connect.recommendedBadge")}
             disabled={busy}
             onClick={startSignIn}
           />
@@ -173,7 +170,7 @@ function CuratedConnectBody({
             title={t("curated.connect.keyTitle")}
             description={t("curated.connect.keyDesc", { name })}
             disabled={busy}
-            onClick={() => setChosen("key")}
+            onClick={() => setStep("key")}
           />
         </div>
       ) : (
@@ -197,18 +194,16 @@ function CuratedConnectBody({
             submittingLabel={t("custom.keyDialog.saving")}
             autoFocus
           />
-          {oauthSupported && (
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="self-start"
-              disabled={busy}
-              onClick={() => setChosen("choose")}
-            >
-              {t("curated.connect.back")}
-            </Button>
-          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="self-start"
+            disabled={busy}
+            onClick={() => setStep("choose")}
+          >
+            {t("curated.connect.back")}
+          </Button>
         </div>
       )}
 

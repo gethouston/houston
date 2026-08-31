@@ -13,6 +13,7 @@ import {
   useIntegrationsGate,
 } from "../integrations";
 import { curatedToolkits } from "../integrations/curated-integrations";
+import { curatedLogoUrl } from "../integrations/curated-logos";
 import {
   PageHeaderTools,
   PageHeaderToolsProvider,
@@ -35,8 +36,10 @@ export function IntegrationsView() {
   // then their row lives in the Installed strip via the custom list instead.
   const curated = useMemo(
     () =>
-      curatedToolkits(Array.isArray(custom.items) ? custom.items : [], (c) =>
-        t(c.descriptionKey),
+      curatedToolkits(
+        Array.isArray(custom.items) ? custom.items : [],
+        (c) => t(c.descriptionKey),
+        curatedLogoUrl,
       ),
     [custom.items, t],
   );
