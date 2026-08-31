@@ -2,6 +2,7 @@ import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { WireEvent } from "@houston/runtime-client";
 import { beforeEach, expect, test, vi } from "vitest";
 import { createStreamTranslator, normalizeUsage } from "./translate";
+import { repairInvalidUnicodeEscapes } from "./translate-support";
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -194,6 +195,45 @@ test("tool_use: accumulated input_json_delta parses into tool_start args at stop
       data: { name: "Read", args: { file_path: "a.txt" } },
     },
   ]);
+});
+
+test("a model-garbled \\u escape is repaired instead of dropping the whole tool input", () => {
+  // Real payload shape from prod: Claude streamed `\u22co` — `o` is not hex —
+  // and the parse failure dropped every suggested action for the user.
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const err = vi.spyOn(console, "error").mockImplementation(() => {});
+  const { events } = collect([
+    toolStart(0, "t1", "mcp__houston__suggest_actions"),
+    jsonDelta(0, '{"actions": [{"label": "Quitar tambi\\u00e9n \\u22co'),
+    jsonDelta(0, 'ALIANZA\\u22cb"}]}'),
+    blockStop(0),
+  ]);
+  expect(events).toEqual([
+    {
+      type: "tool_start",
+      data: {
+        name: "mcp__houston__suggest_actions",
+        // é and ⋋ are valid and kept; the bad \u22c→ becomes U+FFFD.
+        args: { actions: [{ label: "Quitar también �oALIANZA⋋" }] },
+      },
+    },
+  ]);
+  expect(warn).toHaveBeenCalled();
+  expect(err).not.toHaveBeenCalled();
+});
+
+test("repairInvalidUnicodeEscapes touches only true, malformed escapes", () => {
+  // Valid escapes and literal backslash-u text pass through untouched.
+  expect(repairInvalidUnicodeEscapes('{"a":"\\u00e9 \\\\u22co"}')).toBe(
+    '{"a":"\\u00e9 \\\\u22co"}',
+  );
+  // Truncated escape at end of string, and adjacent malformed escapes.
+  expect(repairInvalidUnicodeEscapes('"\\u12')).toBe('"\\ufffd');
+  expect(repairInvalidUnicodeEscapes('"\\uZZ\\uZZ"')).toBe(
+    '"\\ufffdZZ\\ufffdZZ"',
+  );
+  // Malformed escape at position 0 (the ^ alternative).
+  expect(repairInvalidUnicodeEscapes("\\uxy")).toBe("\\ufffdxy");
 });
 
 test("tool_start with unparseable JSON emits args:{} and logs (never a silent drop)", () => {
