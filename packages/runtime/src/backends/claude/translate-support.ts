@@ -42,12 +42,39 @@ export interface ToolBlock {
   input: unknown;
 }
 
+/**
+ * The model occasionally garbles a `\uXXXX` escape in streamed tool input
+ * (e.g. `\u22co` — `o` is not hex), which fails JSON.parse for the WHOLE
+ * payload and loses every argument. Rewrite any escape with fewer than 4 hex
+ * digits to U+FFFD so the rest of the input survives. Only true escapes
+ * match: the leading group asserts an even backslash run before `\u`, so a
+ * literal `\\u` in the text is left alone.
+ */
+export function repairInvalidUnicodeEscapes(json: string): string {
+  return json.replace(
+    /((?:^|[^\\])(?:\\\\)*)\\u([0-9a-fA-F]{0,3})(?![0-9a-fA-F])/g,
+    "$1\\ufffd",
+  );
+}
+
 /** Parse a completed tool call's accumulated input; never drops silently. */
 export function parseArgs(tb: ToolBlock): unknown {
   if (!tb.json) return tb.input ?? {};
   try {
     return JSON.parse(tb.json);
   } catch (err) {
+    const repaired = repairInvalidUnicodeEscapes(tb.json);
+    if (repaired !== tb.json) {
+      try {
+        const parsed = JSON.parse(repaired);
+        console.warn(
+          `[claude] repaired invalid \\u escape(s) in tool "${tb.name}" input JSON`,
+        );
+        return parsed;
+      } catch {
+        // Still unparseable — fall through to the loud report below.
+      }
+    }
     console.error(
       `[claude] failed to parse tool "${tb.name}" input JSON: ${
         err instanceof Error ? err.message : String(err)
