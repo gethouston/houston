@@ -220,5 +220,8 @@
     "errors": {
       "failed": "Não foi possível copiar o agente"
     }
+  },
+  "rowMenu": {
+    "label": "Opções de {{name}}"
   }
 }

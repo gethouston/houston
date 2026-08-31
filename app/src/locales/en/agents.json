@@ -220,5 +220,8 @@
     "errors": {
       "failed": "We couldn't copy the agent"
     }
+  },
+  "rowMenu": {
+    "label": "Options for {{name}}"
   }
 }

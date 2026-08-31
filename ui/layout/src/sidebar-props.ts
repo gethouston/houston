@@ -11,6 +11,15 @@ export interface SidebarItem {
   icon?: ReactNode;
   /** Optional right-aligned slot for row badges or status indicators. */
   trailing?: ReactNode;
+  /**
+   * Optional control OUTSIDE the row button, after `trailing` — a "..." menu
+   * trigger. The HOST owns what it opens; the library only places it (a button
+   * may not nest inside a button, so it renders as the row's sibling). Wear
+   * `sidebarRowAffordanceClasses` on the trigger so it matches the rail's
+   * other small controls. Omitted from the collapsed rail's hover flyout,
+   * which is too transient a surface to anchor a menu to.
+   */
+  affordance?: ReactNode;
 }
 
 export interface SidebarNavItemEntry {
