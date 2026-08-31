@@ -289,6 +289,10 @@ export type ModelUnavailableReason =
   | "preview_gated"
   | "deprecated"
   | "region_restricted"
+  // Azure OpenAI's DeploymentNotFound: the resource has no deployment named
+  // after the model, so only deploying it (or picking an already-deployed
+  // model) helps.
+  | "not_deployed"
   | "unknown";
 
 export type AuthFailureCause =

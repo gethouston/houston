@@ -552,6 +552,7 @@
     "modelUnavailable": {
       "title": "Model not available",
       "body": "{{model}} is not available on your {{provider}} account.",
+      "bodyNotDeployed": "{{model}} is not deployed on your {{provider}} resource. Deploy it there with the exact name \"{{model}}\", or pick a model you already deployed.",
       "switchToFallback": "Switch to {{model}}",
       "pickAnother": "Pick another model"
     },
