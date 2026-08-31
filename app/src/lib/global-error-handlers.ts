@@ -4,7 +4,12 @@ import {
   isBenignAbortRejection,
   isBenignLockRejection,
 } from "./benign-rejections";
-import { showConnectivityErrorToast, showErrorToast } from "./error-toast";
+import { isEngineWakingError } from "./engine-waking-error";
+import {
+  showConnectivityErrorToast,
+  showEngineWakingToast,
+  showErrorToast,
+} from "./error-toast";
 import { isNetworkTransportError } from "./network-transport-error";
 
 /**
@@ -83,6 +88,21 @@ export function installGlobalErrorHandlers(): void {
       event.preventDefault();
       console.error("[global:unhandledrejection] connectivity drop:", message);
       showConnectivityErrorToast("unhandled_rejection", message);
+      return;
+    }
+    // A gateway "the agent's pod is not there right now" answer whose rejected
+    // promise nobody caught (HOUSTON-APP-51C: the mission-approve write hitting
+    // a pod mid engine-roll). The engine-call layer classifies the same failure
+    // as a waking state and shows the deduped waking toast, but `call` rethrows
+    // and card handlers deliberately don't catch — so it landed here, the last
+    // ungated surface, and was re-captured as `unhandled_rejection: engine
+    // proxy failed (engine error 502)`. Same policy as tauri.ts: one waking
+    // notice, no Sentry capture — nothing in Houston broke, the write succeeds
+    // on retry once the pod listens again.
+    if (isEngineWakingError(event.reason)) {
+      event.preventDefault();
+      console.error("[global:unhandledrejection] engine waking:", message);
+      showEngineWakingToast("unhandled_rejection", message);
       return;
     }
     console.error("[global:unhandledrejection]", message, event.reason);

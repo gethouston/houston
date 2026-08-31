@@ -1,4 +1,5 @@
 import { classifyAnalyticsError } from "./analytics";
+import { isEngineWakingError } from "./engine-waking-error";
 import i18n from "./i18n";
 import { isNetworkTransportError } from "./network-transport-error";
 import { captureException as sentryCapture } from "./sentry";
@@ -16,13 +17,16 @@ import {
  * silently invisible to crash reporting. Returns immediately; flush failures
  * are logged, never thrown.
  *
- * The one class that is NOT captured: transport-level network failures
- * (device offline / host unreachable — HOU-1085). Those are an expected
- * environment state, not a Houston bug; the engine-call layer classifies the
- * same failure as connectivity and declines to capture, and this layer
- * re-capturing it is what kept the `<command>: Failed to fetch (gateway…)`
- * Sentry family alive after HOU-1085 (HOUSTON-APP-4PQ, PRODUCT-1383). The raw
- * diagnostic still reaches the frontend log via the caller's `console.error`.
+ * Two classes are NOT captured, both expected environment states the
+ * engine-call layer already classifies and declines, where this layer
+ * re-capturing kept a Sentry family alive:
+ *  - transport-level network failures (device offline / host unreachable —
+ *    HOU-1085; HOUSTON-APP-4PQ, PRODUCT-1383 was this layer's leak);
+ *  - gateway waking answers (engine pod provisioning / restarting under a
+ *    roll — HOU-1114, PRODUCT-1403; same one-layer-left failure mode as
+ *    HOUSTON-APP-51C in the global rejection handler).
+ * The raw diagnostic still reaches the frontend log via the caller's
+ * `console.error`.
  */
 export function reportError(
   command: string,
@@ -30,6 +34,7 @@ export function reportError(
   originalError?: unknown,
 ): void {
   if (isNetworkTransportError(originalError)) return;
+  if (isEngineWakingError(originalError)) return;
   markReportedToSentry(originalError);
   const error = createSentryReportError(command, message, originalError);
   void sentryCapture(error, {
