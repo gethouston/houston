@@ -182,3 +182,100 @@ describe("isEngineWakingError (SDK agent-write shape)", () => {
     );
   });
 });
+
+/** The shape `@houston/runtime-client` throws (`EngineError`): the message is
+ *  `engine request failed (<status>): <body>` and `body` carries the raw
+ *  response text. Structural stand-in, same as above. */
+function runtimeEngineError(status: number, body: string): Error {
+  const err = new Error(
+    `engine request failed (${status}): ${body}`,
+  ) as Error & {
+    status: number;
+    body: string;
+  };
+  err.name = "EngineError";
+  err.status = status;
+  err.body = body;
+  return err;
+}
+
+// PRODUCT-1612 / HOUSTON-APP-4VN: first-run provider login runs in the hidden
+// setup runtime through `@houston/runtime-client`, whose error carries the raw
+// gateway body in `body` — the wake answers must classify quiet on this third
+// shape too (a setup pod still provisioning showed the red bug pair + Sentry).
+describe("isEngineWakingError (runtime-client shape)", () => {
+  it("matches the setup-pod wake 503 body (PRODUCT-1612)", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(
+          503,
+          '{"detail":"setup pod unreachable","error":"engine unavailable"}',
+        ),
+      ),
+      true,
+    );
+  });
+
+  it("matches the agent wake 503 body", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(
+          503,
+          '{"detail":"agent is waking","error":"engine unavailable"}',
+        ),
+      ),
+      true,
+    );
+  });
+
+  it("matches the proxy-failed 502 body", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(
+          502,
+          '{"detail":"dial tcp: connection refused","error":"engine proxy failed"}',
+        ),
+      ),
+      true,
+    );
+  });
+
+  it("never matches other reasons or statuses", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(503, '{"error":"setup pod unreachable"}'),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(502, '{"error":"agent pod unusable"}'),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(500, '{"error":"engine unavailable"}'),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(runtimeEngineError(409, '{"error":"name taken"}')),
+      false,
+    );
+  });
+
+  it("never matches non-JSON or missing bodies", () => {
+    strictEqual(
+      isEngineWakingError(runtimeEngineError(503, "<html>Bad Gateway</html>")),
+      false,
+    );
+    strictEqual(isEngineWakingError(runtimeEngineError(503, "")), false);
+    const bodyless = new Error("engine request failed (503): ") as Error & {
+      status: number;
+    };
+    bodyless.name = "EngineError";
+    bodyless.status = 503;
+    strictEqual(isEngineWakingError(bodyless), false);
+  });
+});

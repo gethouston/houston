@@ -21,15 +21,15 @@
 //    again seconds later (PRODUCT-1403 / HOUSTON-APP-4WQ).
 //
 // Keyed on the exact (status, gateway reason) pairs, NOT on bare 502/503:
-// other bodies on the same statuses ("setup pod unreachable", provider quota
-// pages, self-host proxies) carry different reasons and must keep surfacing as
-// real errors. The read transport
-// (`packages/web/src/engine-adapter/cp/transient-retry.ts`) parses the same
-// two answers on the wire and gives them the cold-start retry budget first;
-// this classifier decides how the ones that outlive that budget surface.
+// other bodies on the same statuses (provider quota pages, self-host proxies)
+// carry different reasons and must keep surfacing as real errors. The read
+// transport (`packages/web/src/engine-adapter/cp/transient-retry.ts`) parses
+// the same two answers on the wire and gives them the cold-start retry budget
+// first; this classifier decides how the ones that outlive that budget
+// surface.
 //
-// Two client stacks reach the gateway, minting different error shapes (same
-// split as `agent-name-conflict.ts`):
+// Three client stacks reach the gateway, minting different error shapes (same
+// split as `agent-name-conflict.ts`, plus the runtime client):
 //
 //  - `HoustonEngineError` (legacy adapter): message is
 //    `"<reason> (engine error <status>)"`, reason verbatim — prefix-matched.
@@ -38,6 +38,13 @@
 //    it. Renaming an asleep agent answered the same wake 503 but escaped this
 //    classifier into the red toast + Sentry pipeline because only the legacy
 //    shape was matched (HOUSTON-APP-536).
+//  - `EngineError` (`@houston/runtime-client` — the per-agent runtime and the
+//    pre-agent setup-runtime clients): carries the raw response text in
+//    `body`, so the reason is parsed the same way. First-run provider login
+//    against a setup pod still provisioning answered
+//    `503 {"error":"engine unavailable","detail":"setup pod unreachable"}` but
+//    escaped into the red toast + Sentry pipeline because this shape wasn't
+//    matched (PRODUCT-1612 / HOUSTON-APP-4VN).
 //
 // The SDK write branch additionally treats `502 {"error":"agent pod
 // unusable"}` as a wake: on the gateway's agent-write routes that reason is
@@ -54,13 +61,13 @@ const ENGINE_UNAVAILABLE_503 = "engine unavailable";
 const ENGINE_PROXY_FAILED_502 = "engine proxy failed";
 const AGENT_POD_UNUSABLE_502 = "agent pod unusable";
 
-/** The gateway `error` reason out of an `AgentsHttpError` message, which
- *  carries the response body verbatim; null when the body isn't gateway JSON
+/** The gateway `error` reason out of a raw response body (an `AgentsHttpError`
+ *  message or an `EngineError` `body`); null when it isn't gateway JSON
  *  (an HTML error page, the synthetic `agents request failed: <status>`). */
-function gatewayReason(message: string): string | null {
-  if (!message.startsWith("{")) return null;
+function gatewayReason(body: string): string | null {
+  if (!body.startsWith("{")) return null;
   try {
-    const reason = (JSON.parse(message) as { error?: unknown } | null)?.error;
+    const reason = (JSON.parse(body) as { error?: unknown } | null)?.error;
     return typeof reason === "string" ? reason : null;
   } catch {
     return null;
@@ -89,6 +96,14 @@ export function isEngineWakingError(err: unknown): boolean {
       (status === 502 &&
         (reason === ENGINE_PROXY_FAILED_502 ||
           reason === AGENT_POD_UNUSABLE_502))
+    );
+  }
+  if (err.name === "EngineError") {
+    const body = (err as { body?: unknown }).body;
+    const reason = typeof body === "string" ? gatewayReason(body) : null;
+    return (
+      (status === 503 && reason === ENGINE_UNAVAILABLE_503) ||
+      (status === 502 && reason === ENGINE_PROXY_FAILED_502)
     );
   }
   return false;
