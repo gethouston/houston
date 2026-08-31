@@ -9,6 +9,10 @@ pub struct DictationModelStatus {
     pub ready: bool,
     pub model_id: String,
     pub size_bytes: u64,
+    /// False when this machine's CPU cannot execute the bundled whisper-cli
+    /// (pre-AVX2 x86-64 on Windows/Linux — see [`super::cpu`]). The frontend
+    /// then explains instead of offering the model download.
+    pub cpu_supported: bool,
 }
 
 /// A single progress tick emitted on the `dictation-model-progress` channel
@@ -42,11 +46,13 @@ mod tests {
             ready: true,
             model_id: "ggml-small-q5_1".to_string(),
             size_bytes: 42,
+            cpu_supported: true,
         })
         .unwrap();
         assert!(json.contains("\"ready\":true"));
         assert!(json.contains("\"modelId\":\"ggml-small-q5_1\""));
         assert!(json.contains("\"sizeBytes\":42"));
+        assert!(json.contains("\"cpuSupported\":true"));
     }
 
     #[test]

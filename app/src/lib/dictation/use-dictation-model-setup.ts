@@ -9,7 +9,8 @@
  * is being captured yet.
  */
 import { useCallback, useMemo, useState } from "react";
-import { showErrorToast } from "../error-toast";
+import { useTranslation } from "react-i18next";
+import { showErrorToast, showExpectedStateToast } from "../error-toast";
 import { osDictationModelStatus } from "../os-bridge";
 import { downloadDictationModel } from "./model-download";
 import {
@@ -46,6 +47,7 @@ export interface UseDictationModelSetupResult {
 export function useDictationModelSetup(
   onReady: () => void,
 ): UseDictationModelSetupResult {
+  const { t } = useTranslation("chat");
   const [open, setOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [progressPct, setProgressPct] = useState(0);
@@ -63,6 +65,15 @@ export function useDictationModelSetup(
   const ensureReady = useCallback(async () => {
     try {
       const status = await osDictationModelStatus();
+      // Expected machine limit (pre-AVX2 CPU can't run the sidecar): explain
+      // BEFORE offering the 181 MB download that could never be used.
+      if (!status.cpuSupported) {
+        showExpectedStateToast(
+          t("composer.dictation.unsupportedTitle"),
+          t("composer.dictation.unsupportedBody"),
+        );
+        return;
+      }
       if (status.ready) {
         onReady();
         return;
@@ -72,7 +83,7 @@ export function useDictationModelSetup(
     } catch (err) {
       showErrorToast("dictation_model_status", errorText(err), err);
     }
-  }, [onReady]);
+  }, [onReady, t]);
 
   const confirm = useCallback(async () => {
     setDownloading(true);

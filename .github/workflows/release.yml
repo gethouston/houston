@@ -1391,9 +1391,11 @@ jobs:
       # Build the whisper.cpp dictation sidecar (whisper-cli, MIT) for the matrix
       # target BEFORE tauri build. build.rs::stage_whisper_sidecar copies
       # target/whisper/whisper-cli-<target>.exe to the externalBin name
-      # binaries/whisper-cli-<target>.exe (same pattern as frpc). CPU-only portable
-      # (GGML_NATIVE=OFF), self-contained (static). The `test -x` gate FAILS the
-      # release rather than shipping the loud-fail placeholder.
+      # binaries/whisper-cli-<target>.exe (same pattern as frpc). CPU-only,
+      # self-contained (static), pinned to the AVX2 (Haswell 2013+) baseline on
+      # x86-64 — older CPUs are gated in-app (dictation/cpu.rs), never crashed.
+      # The `test -x` gate FAILS the release rather than shipping the loud-fail
+      # placeholder.
       - name: Build whisper-cli dictation sidecar (${{ matrix.target }})
         shell: bash
         run: |

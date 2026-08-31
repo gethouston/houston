@@ -16,7 +16,7 @@ use std::time::{Duration, Instant};
 use tauri::ipc::{InvokeBody, Request};
 use tauri::{AppHandle, Manager};
 
-use super::{model, wav};
+use super::{cpu, model, wav};
 use crate::child_guard;
 
 /// Monotonic suffix so concurrent transcriptions never collide on a temp path.
@@ -33,6 +33,14 @@ pub async fn transcribe_audio(app: AppHandle, request: Request<'_>) -> Result<St
             .get("x-dictation-lang")
             .and_then(|v| v.to_str().ok()),
     );
+
+    // Gate BEFORE spawning: on a pre-AVX2 x86-64 the sidecar dies with an
+    // illegal instruction (0xc000001d on Windows). Exact string — the
+    // frontend maps it to translated "this computer can't run voice typing"
+    // copy with no bug report: nothing in Houston broke.
+    if !cpu::cpu_supported() {
+        return Err("dictation-unsupported-cpu".into());
+    }
 
     let model_path = model::model_path(&app)?;
     if std::fs::metadata(&model_path).is_err() {

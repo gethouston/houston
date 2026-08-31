@@ -190,8 +190,29 @@ case "$OS" in
     )
     ;;
   windows | linux)
-    # CPU-only, portable across CPUs (no -march=native), self-contained.
+    # CPU-only, self-contained. GGML_NATIVE=OFF stops -march=native, but it
+    # does NOT make a native x86-64 configure portable: ggml then defaults the
+    # whole SSE4.2/AVX/AVX2/BMI2/FMA/F16C family ON (INS_ENB), so this binary
+    # REQUIRES a Haswell-era (2013+) CPU and dies with an illegal instruction
+    # (0xc000001d on Windows) on anything older. That baseline is deliberate —
+    # AVX2 is a large speedup for ggml's CPU kernels and, unlike macOS/Metal,
+    # the CPU path is the only path here — so pin the flags explicitly to keep
+    # a whisper.cpp bump from silently raising it (e.g. to AVX-512), and keep
+    # them in sync with the pre-flight gate in
+    # app/src-tauri/src/dictation/cpu.rs, which shows older CPUs honest
+    # "not available on this computer" copy instead of a crash.
     CMAKE_FLAGS+=(-DGGML_NATIVE=OFF)
+    if [ "$ARCH" = "x86_64" ]; then
+      CMAKE_FLAGS+=(
+        -DGGML_SSE42=ON
+        -DGGML_AVX=ON
+        -DGGML_AVX2=ON
+        -DGGML_BMI2=ON
+        -DGGML_FMA=ON
+        -DGGML_F16C=ON
+        -DGGML_AVX512=OFF
+      )
+    fi
     # Statically link the MSVC C/C++ runtime. BUILD_SHARED_LIBS=OFF only
     # covers whisper/ggml themselves — MSVC still defaults to /MD, leaving the
     # shipped exe dependent on MSVCP140.dll/VCRUNTIME140.dll, which machines

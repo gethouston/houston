@@ -13,7 +13,15 @@ export interface DictationModelStatus {
   ready: boolean;
   modelId: string;
   sizeBytes: number;
+  /** False when this machine's CPU cannot run the bundled whisper-cli
+   *  (pre-AVX2 x86-64 on Windows/Linux): explain, never offer the download. */
+  cpuSupported: boolean;
 }
+
+/** Exact reject string `transcribe_audio` returns on a CPU that cannot run
+ *  the sidecar (mirrors `dictation/whisper.rs`). An expected machine limit,
+ *  not a bug: mapped to translated copy, never a Sentry report. */
+export const DICTATION_UNSUPPORTED_CPU = "dictation-unsupported-cpu";
 
 /** A single progress tick on the `dictation-model-progress` event, mirroring
  *  `ModelProgress` in the Rust shell (`download_dictation_model`). */

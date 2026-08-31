@@ -28,7 +28,9 @@
       "setupProgress": "Baixando... {{pct}}%",
       "micDenied": "O Houston precisa de acesso ao microfone. Permita nas configurações do sistema e tente novamente.",
       "noMic": "Nenhum microfone foi encontrado.",
-      "failed": "A digitação por voz não funcionou desta vez. Tente novamente."
+      "failed": "A digitação por voz não funcionou desta vez. Tente novamente.",
+      "unsupportedTitle": "O ditado por voz não está disponível neste computador",
+      "unsupportedBody": "O processador deste computador é muito antigo para o ditado por voz. Todo o resto continua funcionando normalmente."
     }
   },
   "mentions": {

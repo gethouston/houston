@@ -12,11 +12,12 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui";
 import { analytics } from "../analytics";
-import { showErrorToast } from "../error-toast";
+import { showErrorToast, showExpectedStateToast } from "../error-toast";
 import { osTranscribeAudio } from "../os-bridge";
 import { dictationReducer, INITIAL_DICTATION_STATE } from "./dictation-reducer";
 import { type DictationRecording, startDictationRecording } from "./recorder";
 import {
+  DICTATION_UNSUPPORTED_CPU,
   type DictationLangHint,
   dictationErrorText as errorText,
 } from "./types";
@@ -97,6 +98,14 @@ export function useDictation({
         dispatch({ type: "transcribeSettled" });
         if (errorText(err) === "model-not-ready") {
           void reopen();
+        } else if (errorText(err) === DICTATION_UNSUPPORTED_CPU) {
+          // Expected machine limit (the CPU can't run the sidecar — normally
+          // caught by ensureReady, this covers a model downloaded before the
+          // gate existed): explain, no bug report.
+          showExpectedStateToast(
+            t("composer.dictation.unsupportedTitle"),
+            t("composer.dictation.unsupportedBody"),
+          );
         } else {
           // Report-only path first, then authored copy: the user spoke and
           // pressed stop, so a silent drop reads as "it sent nothing"
