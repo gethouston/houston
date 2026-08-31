@@ -30,9 +30,12 @@ export function resolveAgentSettingsSection(
     );
     if (first !== undefined) return first;
   }
-  // The Context group is unconditional on the settings page, so its rail is
-  // never empty; the default names the first section rather than pretending an
-  // empty rail is possible.
+  // No request means the user opened the page to ADMINISTER the agent, so the
+  // default is the Settings section (present on every rail this page builds)
+  // rather than the first tab. Deep links keep naming their own section. The
+  // trailing fallback covers only a rail built elsewhere without `manage` —
+  // the Context group is unconditional, so an empty rail stays impossible.
+  if (sections.includes("manage")) return "manage";
   return sections[0] ?? "job-description";
 }
 

@@ -202,5 +202,22 @@
       "openFailedTitle": "Não foi possível abrir o arquivo"
     },
     "modifiedToday": "Hoje"
+  },
+  "copyAgent": {
+    "row": "Copiar agente",
+    "rowDescription": "Crie uma cópia em uma das suas equipes. As conversas não são copiadas.",
+    "title": "Copiar {{name}}",
+    "body": "A cópia começa com a mesma descrição do cargo, skills, rotinas, aprendizados e cor. As conversas ficam com o original e nunca são copiadas.",
+    "nameLabel": "Nome da cópia",
+    "teamLabel": "Equipe da cópia",
+    "confirm": "Criar cópia",
+    "copySuffix": "cópia",
+    "toasts": {
+      "createdTitle": "Cópia criada",
+      "createdDescription": "{{name}} está pronto."
+    },
+    "errors": {
+      "failed": "Não foi possível copiar o agente"
+    }
   }
 }

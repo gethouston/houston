@@ -65,6 +65,23 @@ describe("targetToSection", () => {
 });
 
 describe("agent settings selection", () => {
+  it("opens on Settings when nothing was requested", () => {
+    // No request means the user came to administer the agent, so the page
+    // opens on the manage section on every rail this page builds.
+    strictEqual(
+      resolveAgentSettingsSection(agentSettingsSections(TEAMS), undefined),
+      "manage",
+    );
+    strictEqual(
+      resolveAgentSettingsSection(agentSettingsSections(caps()), undefined),
+      "manage",
+    );
+    strictEqual(
+      resolveAgentSettingsSection(agentSettingsSections(null), undefined),
+      "manage",
+    );
+  });
+
   it("keeps visible requests and falls back within their semantic group", () => {
     strictEqual(
       resolveAgentSettingsSection(agentSettingsSections(TEAMS), "integrations"),

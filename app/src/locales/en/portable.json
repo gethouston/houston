@@ -11,7 +11,8 @@
       "noInstructions": "This agent has no instructions yet.",
       "skillsLabel": "Skills",
       "routinesLabel": "Routines",
-      "learningsLabel": "Learnings"
+      "learningsLabel": "Learnings",
+      "privacyNote": "Only what you pick here is shared: the job description, skills, routines and learnings. Conversations, files and connected accounts always stay private."
     },
     "step2": {
       "title": "Want to anonymize first?",
@@ -50,7 +51,8 @@
     },
     "review": {
       "title": "Ready to share",
-      "body": "Send {{name}} as a file, or publish it to the Agent Store for anyone to install."
+      "body": "Send {{name}} as a file, or publish it to the Agent Store for anyone to install.",
+      "privacyNote": "Sharing covers the items above and nothing else. Conversations stay private, and you can remove a published listing anytime."
     },
     "actions": {
       "back": "Back",

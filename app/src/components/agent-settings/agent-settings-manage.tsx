@@ -1,16 +1,26 @@
-import { Building2, Palette, Trash2, UsersRound } from "lucide-react";
+import {
+  Building2,
+  Copy,
+  Palette,
+  Store,
+  Trash2,
+  UsersRound,
+} from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentActions } from "../../hooks/use-agent-actions";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
+import { isIdentityConfigured } from "../../lib/identity";
 import { hasAgentTeams } from "../../lib/org-roles";
 import { type TeamView, teamOfAgent } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
+import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
+import { AgentCopyDialog } from "../agent-actions/agent-copy-action";
 import { AgentDeleteDialog } from "../agent-actions/agent-delete-action";
 import { AgentIdentityDialog } from "../agent-actions/agent-identity-dialog";
 import {
@@ -21,6 +31,7 @@ import {
   type AgentIdentityPatch,
   useAgentIdentitySave,
 } from "../agent-actions/use-agent-identity-save";
+import { useCopyAgent } from "../agent-actions/use-copy-agent";
 import { SettingsCard, SettingsRow } from "../settings/settings-row";
 import { useSidebarOverlayLayout } from "../shell/use-sidebar-overlay-layout";
 import { moveTargetTeams } from "../team-view/move-agent-model";
@@ -47,10 +58,13 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
   });
   const saveIdentity = useAgentIdentitySave(agent, t);
   const moveAgent = useMoveAgentTeam();
+  const copyAgent = useCopyAgent();
+  const setShareAgentId = useUIStore((state) => state.setShareAgentId);
   const [identityOpen, setIdentityOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [pendingTeam, setPendingTeam] = useState<TeamView | null>(null);
   const [organizationOpen, setOrganizationOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   // Both writes reject AFTER `call()` has toasted the failure and reported it
@@ -100,6 +114,20 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
           />
         )}
         <SettingsRow
+          icon={Copy}
+          title={t("agents:copyAgent.row")}
+          description={t("agents:copyAgent.rowDescription")}
+          onClick={() => setCopyOpen(true)}
+        />
+        {isIdentityConfigured() && (
+          <SettingsRow
+            icon={Store}
+            title={t("teams:agentSettings.manage.publish")}
+            description={t("teams:agentSettings.manage.publishDescription")}
+            onClick={() => setShareAgentId(agent.id)}
+          />
+        )}
+        <SettingsRow
           icon={Trash2}
           title={t("teams:agentSettings.manage.delete")}
           destructive
@@ -142,6 +170,15 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
         surface="inviteTeam"
         open={organizationOpen}
         onOpenChange={setOrganizationOpen}
+      />
+      <AgentCopyDialog
+        agent={agent}
+        open={copyOpen}
+        onOpenChange={setCopyOpen}
+        teams={teams}
+        currentTeamId={currentTeam?.id ?? null}
+        existingNames={agents.map((entry) => entry.name)}
+        onCopy={(name, team) => copyAgent({ agent, name, team })}
       />
       <AgentDeleteDialog
         open={deleting}

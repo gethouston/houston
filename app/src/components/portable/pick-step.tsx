@@ -43,6 +43,9 @@ export function PickStep({
         <p className="mt-3 text-base text-muted-foreground">
           {t("export.step1.body")}
         </p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t("export.step1.privacyNote")}
+        </p>
       </header>
 
       <Section title={t("export.step1.instructionsLabel")}>
