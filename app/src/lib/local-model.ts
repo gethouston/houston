@@ -205,3 +205,16 @@ export function sessionOwnsBridge(
   if (savedTarget) return true;
   return status != null && status.status !== "offline";
 }
+
+/**
+ * Gate the pill's Reconnect action on a fresh `saved_bridge_target` probe. A
+ * confirmed-absent descriptor (`null`) means an explicit disconnect deleted it
+ * after the pill rendered — the pill itself is stale, so heal the UI instead
+ * of firing a reconnect that can only fail. A failed probe (`undefined`) must
+ * NOT block: proceed and let the reconnect surface the real reason.
+ */
+export function reconnectBlockedByMissingDescriptor(
+  probed: SavedBridgeTarget | null | undefined,
+): boolean {
+  return probed === null;
+}

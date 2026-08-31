@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listenOsEvent } from "../lib/events";
 import type { BridgeStatus, SavedBridgeTarget } from "../lib/local-model";
-import { sessionOwnsBridge } from "../lib/local-model";
+import {
+  reconnectBlockedByMissingDescriptor,
+  sessionOwnsBridge,
+} from "../lib/local-model";
 import { reconnectLocalModel } from "../lib/local-model-connect";
 import {
   osIsTauri,
@@ -74,7 +77,19 @@ export function useLocalBridgeStatus(enabled = true): LocalBridgeStatus {
         console.error("[local-bridge] saved target read failed", err),
       );
     const off = listenOsEvent<BridgeStatus>("local-bridge-status", (s) => {
-      if (mounted.current) setStatus(s);
+      if (!mounted.current) return;
+      setStatus(s);
+      // The descriptor's lifecycle rides status transitions (an explicit stop
+      // deletes it before emitting offline; a start persists it) — re-probe so
+      // a disconnect retires the pill instead of leaving a stale Reconnect
+      // that can only fail.
+      osSavedBridgeTarget()
+        .then((tgt) => {
+          if (mounted.current) setSavedTarget(tgt);
+        })
+        .catch((err) =>
+          console.error("[local-bridge] saved target re-read failed", err),
+        );
     });
     return () => {
       mounted.current = false;
@@ -85,13 +100,22 @@ export function useLocalBridgeStatus(enabled = true): LocalBridgeStatus {
   const reconnect = useCallback(() => {
     if (!enabled || !osIsTauri() || reconnecting) return;
     setReconnecting(true);
-    reconnectLocalModel()
-      .catch(() => {
+    void (async () => {
+      // Precheck the descriptor: a disconnect (this window or another) may
+      // have deleted it after this pill rendered, and reconnecting then can
+      // only fail. Confirmed-gone means the pill itself is stale — heal the
+      // UI, don't toast an error nobody can act on.
+      const probed = await osSavedBridgeTarget().catch(() => undefined);
+      if (reconnectBlockedByMissingDescriptor(probed)) {
+        if (mounted.current) setSavedTarget(null);
+        return;
+      }
+      await reconnectLocalModel().catch(() => {
         // reconnectLocalModel already toasted the real reason (Report-bug).
-      })
-      .finally(() => {
-        if (mounted.current) setReconnecting(false);
       });
+    })().finally(() => {
+      if (mounted.current) setReconnecting(false);
+    });
   }, [enabled, reconnecting]);
 
   return {
