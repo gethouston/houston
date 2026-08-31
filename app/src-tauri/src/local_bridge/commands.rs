@@ -130,8 +130,12 @@ pub async fn stop_local_bridge(app: AppHandle) -> Result<(), String> {
     // Same serializer: a stop must not race a concurrent start/reconnect, or it
     // could tear down a bridge the other op is mid-way through standing up.
     let _op = BRIDGE_OP.lock().await;
-    stop_internal(&app)?;
-    state::delete()
+    // Delete BEFORE tearing down: stop_internal emits the offline status event,
+    // and the frontend re-probes `saved_bridge_target` on that event to retire
+    // the tunnel pill — emitting first would let the probe still see the
+    // descriptor and leave a stale Reconnect affordance.
+    state::delete()?;
+    stop_internal(&app)
 }
 
 /// Current bridge status. Also delivered live via the `local-bridge-status`

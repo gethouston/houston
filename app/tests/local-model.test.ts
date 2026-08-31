@@ -8,6 +8,7 @@ import {
   type DetectedServer,
   defaultEndpointName,
   defaultModelFor,
+  reconnectBlockedByMissingDescriptor,
   reconnectBridgeArgs,
   type SavedBridgeTarget,
   sessionOwnsBridge,
@@ -219,5 +220,25 @@ describe("sessionOwnsBridge (tunnel-vs-direct pill rule)", () => {
   it("is direct (no pill) with no saved target and no active bridge", () => {
     strictEqual(sessionOwnsBridge(null, null), false);
     strictEqual(sessionOwnsBridge(null, { status: "offline" }), false);
+  });
+});
+
+describe("reconnectBlockedByMissingDescriptor (stale-pill reconnect guard)", () => {
+  const target: SavedBridgeTarget = {
+    targetBaseUrl: "http://localhost:1234",
+    transport: "wss",
+    appName: "LM Studio",
+  };
+
+  it("blocks when the probe confirms the descriptor is gone", () => {
+    strictEqual(reconnectBlockedByMissingDescriptor(null), true);
+  });
+
+  it("proceeds when a descriptor exists", () => {
+    strictEqual(reconnectBlockedByMissingDescriptor(target), false);
+  });
+
+  it("proceeds when the probe itself failed — never block on a flaky read", () => {
+    strictEqual(reconnectBlockedByMissingDescriptor(undefined), false);
   });
 });
