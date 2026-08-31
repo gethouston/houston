@@ -116,8 +116,10 @@ export const COPILOT_NO_ACCESS_ERROR =
 /**
  * Collapse a provider login failure to a stable sentinel where the raw
  * message is unfit for the failure toast; every other message passes through
- * verbatim (beta policy: the real reason, never a generic swallow). The raw
- * text is still logged by the caller for the bug-report log tail.
+ * verbatim (beta policy: the real reason, never a generic swallow). A
+ * pass-through message is still logged raw by the caller for the bug-report
+ * log tail; a collapsed one is an expected business state whose raw body
+ * carries the user's GitHub handle, so the caller logs a fixed line instead.
  */
 export function loginFailureMessage(provider: ProviderId, raw: string): string {
   if (
@@ -463,6 +465,17 @@ export async function startLogin(
       state.status = "error";
       const raw = e instanceof Error ? e.message : String(e);
       state.error = loginFailureMessage(provider, raw);
+      // WARN, not error, for the no-Copilot-subscription refusal: a GitHub
+      // account without Copilot is expected user behavior (the toast tells
+      // them how to enable it), not a Houston failure — and the raw 403 body
+      // carries the user's GitHub handle, which must never reach the crash
+      // feed. Same policy as the abandoned-login expiry above.
+      if (state.error === COPILOT_NO_ACCESS_ERROR) {
+        console.warn(
+          `[oauth:${provider}] login refused: 403 no_copilot_access — account has no Copilot subscription`,
+        );
+        return;
+      }
       console.error(`[oauth:${provider}] failed:`, raw);
     });
 

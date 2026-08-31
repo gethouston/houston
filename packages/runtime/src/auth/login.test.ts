@@ -367,6 +367,11 @@ test("github-copilot: a no-Copilot-subscription 403 surfaces the sentinel in aut
   // The user authorized the device flow, then GitHub's token exchange answered
   // 403 no_copilot_access. The raw JSON (with the user's GitHub handle) used to
   // land verbatim in the failure toast; status must now carry the sentinel.
+  // The refusal is also an EXPECTED business state: it must log as a WARN
+  // breadcrumb without the handle, never a console.error that mints a Sentry
+  // error event per subscription-less user (Sentry issue 7623743057).
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   const piLogin = stubPiLogin((interaction) => {
     interaction.notify({
       type: "device_code",
@@ -384,8 +389,17 @@ test("github-copilot: a no-Copilot-subscription 403 surfaces the sentinel in aut
     );
     expect(row?.login?.status).toBe("error");
     expect(row?.login?.error).toBe(COPILOT_NO_ACCESS_ERROR);
+
+    const logged = (calls: unknown[][]) =>
+      calls.map((args) => args.join(" ")).join("\n");
+    expect(logged(warnSpy.mock.calls)).toContain("no_copilot_access");
+    expect(logged(errorSpy.mock.calls)).not.toContain("no_copilot_access");
+    // The GitHub handle from the raw body never reaches any log line.
+    expect(logged(warnSpy.mock.calls)).not.toContain("octocat");
   } finally {
     piLogin.mockRestore();
+    warnSpy.mockRestore();
+    errorSpy.mockRestore();
     cancelLogin("github-copilot");
   }
 });
