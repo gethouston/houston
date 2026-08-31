@@ -113,8 +113,9 @@ test("uncurated providers with a hand-picked default skip pi's dead first row (P
   expect(m.provider).toBe("moonshotai");
   expect(m.id).toBe("kimi-k3");
   // NVIDIA (HOU-890) rides the same table — the turn path used to ignore it
-  // and default to the per-account-gated first row.
-  expect(providerDefaultModel("nvidia")).toBe("meta/llama-3.3-70b-instruct");
+  // and default to the per-account-gated first row. gpt-oss-120b since pi
+  // 0.84.4 retired the llama-3.x rows.
+  expect(providerDefaultModel("nvidia")).toBe("openai/gpt-oss-120b");
 });
 
 test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {

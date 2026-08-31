@@ -221,11 +221,14 @@ function saveSettings(s: Settings) {
  * Uncurated providers whose alphabetically-first catalog model is a bad
  * default — the id the key VERIFIER probes and the first chat runs on, so a
  * dead first row breaks connect itself:
- * - NVIDIA serves each hosted model per ACCOUNT (HOU-890): the catalog's
- *   first row (google/gemma-3-12b-it) answers `404 Function not found for
- *   account` for many accounts; meta/llama-3.3-70b-instruct is served to
- *   every account we have evidence from (keep in sync with the classifier's
- *   NVIDIA_BROAD_FALLBACK and the verifier's NVIDIA_VERIFY_FALLBACKS).
+ * - NVIDIA serves each hosted model per ACCOUNT (HOU-890): alphabetical
+ *   first rows (gemma, deepseek) answer `404 Function not found for account`
+ *   for many accounts. NVIDIA retired the previously-pinned llama-3.x NIM
+ *   rows (dropped from pi's catalog in 0.84.4); openai/gpt-oss-120b is the
+ *   strongest survivor of the models our partially-gated live key was served
+ *   (llama / gpt-oss / minimax — see isNvidiaFunctionGated). Keep in sync
+ *   with the classifier's NVIDIA_BROAD_FALLBACK and the verifier's
+ *   NVIDIA_VERIFY_FALLBACKS.
  * - Moonshot AI RETIRED the whole kimi-k2 preview series on 2026-05-25
  *   (platform.kimi.ai/docs/models: kimi-k2-0711-preview, -0905-preview,
  *   -turbo-preview, -thinking, -thinking-turbo), but pi-ai's baked catalog
@@ -241,7 +244,7 @@ function saveSettings(s: Settings) {
  *   (auto-select on connect reads THAT); keep them in sync.
  */
 const UNCURATED_DEFAULT_MODEL: Record<string, string> = {
-  nvidia: "meta/llama-3.3-70b-instruct",
+  nvidia: "openai/gpt-oss-120b",
   moonshotai: "kimi-k3",
   // pi's azure catalog is alphabetical, so "first model" would be gpt-4 —
   // a 2023 model as the connect-time default. Start on the current

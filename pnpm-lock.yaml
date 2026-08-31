@@ -9,9 +9,9 @@ overrides:
   teeny-request>uuid: ^11.1.1
 
 patchedDependencies:
-  '@earendil-works/pi-ai@0.84.3':
+  '@earendil-works/pi-ai@0.84.4':
     hash: 646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38
-    path: patches/@earendil-works__pi-ai@0.84.3.patch
+    path: patches/@earendil-works__pi-ai@0.84.4.patch
   '@executor-js/sdk@1.5.37':
     hash: 7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597
     path: patches/@executor-js__sdk@1.5.37.patch
@@ -439,11 +439,11 @@ importers:
   packages/host:
     dependencies:
       '@earendil-works/pi-ai':
-        specifier: 0.84.3
-        version: 0.84.3(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
+        specifier: 0.84.4
+        version: 0.84.4(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
       '@earendil-works/pi-coding-agent':
-        specifier: 0.84.3
-        version: 0.84.3(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
+        specifier: 0.84.4
+        version: 0.84.4(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
       '@executor-js/plugin-mcp':
         specifier: 1.5.37
         version: 1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
@@ -525,11 +525,11 @@ importers:
   packages/runtime:
     dependencies:
       '@earendil-works/pi-ai':
-        specifier: 0.84.3
-        version: 0.84.3(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
+        specifier: 0.84.4
+        version: 0.84.4(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
       '@earendil-works/pi-coding-agent':
-        specifier: 0.84.3
-        version: 0.84.3(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
+        specifier: 0.84.4
+        version: 0.84.4(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
       '@google-cloud/storage':
         specifier: 7.21.0
         version: 7.21.0
@@ -1544,34 +1544,34 @@ packages:
     peerDependencies:
       react: '>=16.8.0'
 
-  '@earendil-works/pi-agent-core@0.84.3':
-    resolution: {integrity: sha512-VURr+xBRl3RxYcw3kT9Pn3yfi6LbRoCJgHF7h1mAblMjtLNV/MfG/RyF0uJizBAM886AEakSiw3j9c/aSngppg==}
+  '@earendil-works/pi-agent-core@0.84.4':
+    resolution: {integrity: sha512-HyUnjaOXj6oN/6SNcr8A1J/ElRQA50FtIE0XUTSKAQVqmdlb9qdojOyUQwF/jULE5+yOEtGuVgi/N1RnBiNG+g==}
     engines: {node: '>=22.19.0'}
 
-  '@earendil-works/pi-ai@0.84.3':
-    resolution: {integrity: sha512-M0YUV8vNO3y2WwWSyY8ijKJV5W4gkSUixuvk+Z00ZBjsyMfsdXfITsHEwP1UIf09YRWXT6oGn0GlCamt+P32XQ==}
-    engines: {node: '>=22.19.0'}
-    hasBin: true
-
-  '@earendil-works/pi-client@0.84.3':
-    resolution: {integrity: sha512-zfErYane+390W0xpBJ/FWCp6aktPpkpcIcXUeZiAziWLoxE80ZNQALRyOSa/gGS5V+1OkNnMYxRxbzN0zUvnOA==}
-    engines: {node: '>=22.19.0'}
-
-  '@earendil-works/pi-coding-agent@0.84.3':
-    resolution: {integrity: sha512-Yr2p9PubrbFZmYEPYI+C8KmZP9xlFuLDnAG64RtU0ZDgrdiXYWa+y7WGyJO5OlqPliOkVCMd9IzVszO3/t0D0w==}
+  '@earendil-works/pi-ai@0.84.4':
+    resolution: {integrity: sha512-AClAZxf5+c4RRu44NJPS6wyQy+Nmq+Mzyyrdvm4ZVMNuixelO02RZX4G4Aq1F145Yzp43wnM5S+hLlSI7ypfVw==}
     engines: {node: '>=22.19.0'}
     hasBin: true
 
-  '@earendil-works/pi-protocol@0.84.3':
-    resolution: {integrity: sha512-9a4g6WhLOvRqvsIOFaWxg/2gdrbY4Thclwj5ipLUPAWChfsDJ/8XdPc2sRhSOkD6EsxpEFJz3xppcfwI6EcZDg==}
+  '@earendil-works/pi-client@0.84.4':
+    resolution: {integrity: sha512-q398WY/3ZQHTizk7IKxApzqFV0xt4yM9LkSkwyqeLK5Bj5RwRjOWxESt26z4LgNp4O+8hqhqFPf/8fj4H5rE4A==}
     engines: {node: '>=22.19.0'}
 
-  '@earendil-works/pi-telemetry@0.84.3':
-    resolution: {integrity: sha512-sgEkWoKrvSGaKn+YfLLFZmn+/A7B/w62eLwTD57nI+C9to8ITlFFVbgC2OtwvPnT3NFGHdCd53qhBEMIlptD1g==}
+  '@earendil-works/pi-coding-agent@0.84.4':
+    resolution: {integrity: sha512-jmOlrqUmvhh/siNWFRXjYLJzhKFIHNsAQaysRwzQPQFnPAaV/vhqHsLH/MBsIISA1Rjj7WTUFR3nJrpXoLx39w==}
+    engines: {node: '>=22.19.0'}
+    hasBin: true
+
+  '@earendil-works/pi-protocol@0.84.4':
+    resolution: {integrity: sha512-acyE9ozxkMiWiz/xyWpU0O9vwnYv0hyG889Vniv6Sg9c9zfsX+8MePnDNphBacY2Fvm1rxdsGmiVDSZl9yuDFA==}
     engines: {node: '>=22.19.0'}
 
-  '@earendil-works/pi-tui@0.84.3':
-    resolution: {integrity: sha512-fS6OEQKEEALnKa6Uw8LcgZZ+9CWck7f3MQSCETQp6leUgIFwMEDtKmOUnL9nsYm+RIPmy7OmplVxYRbV6hiaFg==}
+  '@earendil-works/pi-telemetry@0.84.4':
+    resolution: {integrity: sha512-8e2CuxM+ht+hedQXTZmi5JVl6/xDK9RpSDL2+MbITevKYQhMZ/z6lJOTFgox3HQyGxO8mOZEtYGVeQNaD4OzqA==}
+    engines: {node: '>=22.19.0'}
+
+  '@earendil-works/pi-tui@0.84.4':
+    resolution: {integrity: sha512-nPUnwDkLtupPXnZQYrCwPFcuTydCDqTY6ZbFqhsL4S4kVq0AT418kPa/6uXwtaCD+MjBNBltb7ScTYX65yeE1w==}
     engines: {node: '>=22.19.0'}
 
   '@effect/platform-node-shared@4.0.0-beta.97':
@@ -8446,10 +8446,10 @@ snapshots:
       react: 19.2.7
       tslib: 2.8.1
 
-  '@earendil-works/pi-agent-core@0.84.3(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)':
+  '@earendil-works/pi-agent-core@0.84.4(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)':
     dependencies:
-      '@earendil-works/pi-ai': 0.84.3(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
-      '@earendil-works/pi-telemetry': 0.84.3
+      '@earendil-works/pi-ai': 0.84.4(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
+      '@earendil-works/pi-telemetry': 0.84.4
       diff: 8.0.4
       ignore: 7.0.5
       typebox: 1.3.7
@@ -8462,11 +8462,11 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-ai@0.84.3(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)':
+  '@earendil-works/pi-ai@0.84.4(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)':
     dependencies:
       '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)
       '@aws-sdk/client-bedrock-runtime': 3.1048.0
-      '@earendil-works/pi-telemetry': 0.84.3
+      '@earendil-works/pi-telemetry': 0.84.4
       '@google/genai': 1.52.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))
       '@smithy/node-http-handler': 4.7.3
       http-proxy-agent: 7.0.2
@@ -8482,17 +8482,17 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-client@0.84.3':
+  '@earendil-works/pi-client@0.84.4':
     dependencies:
-      '@earendil-works/pi-protocol': 0.84.3
+      '@earendil-works/pi-protocol': 0.84.4
 
-  '@earendil-works/pi-coding-agent@0.84.3(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)':
+  '@earendil-works/pi-coding-agent@0.84.4(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)':
     dependencies:
-      '@earendil-works/pi-agent-core': 0.84.3(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
-      '@earendil-works/pi-ai': 0.84.3(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
-      '@earendil-works/pi-client': 0.84.3
-      '@earendil-works/pi-protocol': 0.84.3
-      '@earendil-works/pi-tui': 0.84.3
+      '@earendil-works/pi-agent-core': 0.84.4(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
+      '@earendil-works/pi-ai': 0.84.4(patch_hash=646b7c9cdfab689a7d3cb69da6c19c02b36e00c4240b0e930a0199e2f73b8b38)(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@4.4.3))(ws@8.21.0)(zod@4.4.3)
+      '@earendil-works/pi-client': 0.84.4
+      '@earendil-works/pi-protocol': 0.84.4
+      '@earendil-works/pi-tui': 0.84.4
       '@silvia-odwyer/photon-node': 0.3.4
       chalk: 5.6.2
       cross-spawn: 7.0.6
@@ -8518,13 +8518,13 @@ snapshots:
       - ws
       - zod
 
-  '@earendil-works/pi-protocol@0.84.3':
+  '@earendil-works/pi-protocol@0.84.4':
     dependencies:
       typebox: 1.3.7
 
-  '@earendil-works/pi-telemetry@0.84.3': {}
+  '@earendil-works/pi-telemetry@0.84.4': {}
 
-  '@earendil-works/pi-tui@0.84.3':
+  '@earendil-works/pi-tui@0.84.4':
     dependencies:
       get-east-asian-width: 1.6.0
       marked: 18.0.5

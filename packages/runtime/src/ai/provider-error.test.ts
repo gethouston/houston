@@ -954,7 +954,7 @@ test("NVIDIA body-less 410 (per-account model gate) → model_unavailable with t
   });
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable")
-    expect(err.suggested_fallback).toBe("meta/llama-3.3-70b-instruct");
+    expect(err.suggested_fallback).toBe("openai/gpt-oss-120b");
 });
 
 test("NVIDIA body-less 404 (same gate, NVIDIA's newer status) → model_unavailable (HOU-890)", () => {
@@ -982,7 +982,7 @@ test("NVIDIA 404 'Not found for account' body → model_unavailable (HOU-890)", 
 test("NVIDIA gate on the broad fallback itself offers no fallback", () => {
   const err = classifyProviderError({
     provider: "nvidia",
-    model: "meta/llama-3.3-70b-instruct",
+    model: "openai/gpt-oss-120b",
     message: "404 status code (no body)",
   });
   expect(err.kind).toBe("model_unavailable");
