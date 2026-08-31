@@ -435,6 +435,13 @@ test("Azure missing-deployment 404 → model_unavailable, never unknown (PRODUCT
       "Azure OpenAI API error (404 DeploymentNotFound): The API deployment for this resource does not exist. If you created the deployment within the last 5 minutes, please wait a moment and try again.",
   });
   expect(err.kind).toBe("model_unavailable");
+  // The reason drives the card body (PRODUCT-1600): "pick another model" is a
+  // dead end on Azure — every not-deployed pick fails identically — so the
+  // card must say "deploy it under the model's exact name" instead. No
+  // fallback either: we cannot know which deployments the resource has.
+  if (err.kind !== "model_unavailable") throw new Error("unreachable");
+  expect(err.reason).toBe("not_deployed");
+  expect(err.suggested_fallback).toBeNull();
 });
 
 test("Bedrock bare-foundation-id on-demand rejection → model_unavailable, never unknown (PRODUCT-1477)", () => {

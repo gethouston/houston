@@ -547,6 +547,7 @@
     "modelUnavailable": {
       "title": "Modelo não disponível",
       "body": "O modelo {{model}} não está disponível na sua conta {{provider}}.",
+      "bodyNotDeployed": "O modelo {{model}} não está implantado no seu recurso do {{provider}}. Implante-o lá com o nome exato \"{{model}}\" ou escolha um modelo que você já implantou.",
       "switchToFallback": "Trocar para {{model}}",
       "pickAnother": "Escolher outro modelo"
     },

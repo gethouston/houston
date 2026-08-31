@@ -735,13 +735,23 @@ function isModelUnavailable(lower: string): boolean {
 }
 
 /**
- * The card copy keys off the message either way; the tag exists for the
- * frontend union. Only region gating is identifiable from real payloads today
- * (opencode.ai's RegionError / "hosted in China" opt-in body).
+ * Two reasons are identifiable from real payloads and change what the card
+ * says. Azure's DeploymentNotFound (patterns above) means the RESOURCE has no
+ * deployment named after the model — pi calls the deployment named exactly
+ * like the model id, so "pick another model" is a dead end (every not-deployed
+ * pick fails identically, PRODUCT-1600) and the card must say "deploy it"
+ * instead. Region gating is opencode.ai's RegionError / "hosted in China"
+ * opt-in body. Everything else stays `unknown`; there the actionable detail is
+ * the `suggested_fallback`, not this tag.
  */
 function modelUnavailableReason(
   lower: string,
-): "region_restricted" | "unknown" {
+): "not_deployed" | "region_restricted" | "unknown" {
+  if (
+    lower.includes("deploymentnotfound") ||
+    lower.includes("deployment for this resource does not exist")
+  )
+    return "not_deployed";
   return lower.includes("regionerror") || lower.includes("hosted in china")
     ? "region_restricted"
     : "unknown";

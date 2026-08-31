@@ -115,17 +115,22 @@ export function ModelUnavailableCard({
   // admin to fix a plan that is theirs. No credential context (desktop,
   // self-host, personal space, routine) keeps the body byte-identical.
   const personal = credentialScopeOf(error.credential) === "personal";
+  // `not_deployed` (Azure) outranks the personal-plan wording: the model is
+  // missing from the RESOURCE, not from a plan, and picking another model
+  // fails the same way until the user deploys one under the model's exact
+  // name (PRODUCT-1600).
+  const bodyKey =
+    error.reason === "not_deployed"
+      ? "providerError.modelUnavailable.bodyNotDeployed"
+      : personal
+        ? "providerError.credential.modelUnavailableBody"
+        : "providerError.modelUnavailable.body";
   return (
     <div className="w-full px-1 py-2">
       <RowCard
         media={<AlertTriangleIcon className="size-5" />}
         title={t("providerError.modelUnavailable.title")}
-        description={t(
-          personal
-            ? "providerError.credential.modelUnavailableBody"
-            : "providerError.modelUnavailable.body",
-          { provider, model: error.model },
-        )}
+        description={t(bodyKey, { provider, model: error.model })}
         // Same `undefined`-not-a-fragment rule as the card above.
         action={
           (fallback && onApplyModel) || onSwitchModel ? (

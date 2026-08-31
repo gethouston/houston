@@ -41,6 +41,11 @@ export type ModelUnavailableReason =
   | "preview_gated"
   | "deprecated"
   | "region_restricted"
+  // Azure OpenAI's DeploymentNotFound: the RESOURCE has no deployment named
+  // after the model. Switching models cannot help until the user deploys one
+  // (deployment name must equal the model id), so the card must say "deploy
+  // it", not "pick another".
+  | "not_deployed"
   | "unknown";
 
 /**
