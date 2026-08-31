@@ -100,6 +100,38 @@ describe("historyToFeed", () => {
     });
   });
 
+  it("replays the provider-error card AFTER the turn's work, mirroring the live settle (PRODUCT-1578)", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "go", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "got halfway",
+        thinking: "planning",
+        tools: [{ name: "shell" }],
+        ts: 2,
+        turnId: "t-1",
+        providerError: {
+          kind: "rate_limited",
+          provider: "anthropic",
+          model: null,
+          retry_after_seconds: null,
+          message: "slow down",
+        },
+      },
+    ]);
+    const types = feed.map((f) => f.feed_type);
+    // The card is the turn's LAST frame — a reload must show the failure at
+    // the bottom of the turn, never above its mission log and streamed text.
+    expect(types).toEqual([
+      "user_message",
+      "thinking",
+      "tool_call",
+      "tool_result",
+      "assistant_text",
+      "provider_error",
+    ]);
+  });
+
   it("replays tool calls and preserves a multiplayer author on user messages", () => {
     const feed = historyToFeed([
       {
