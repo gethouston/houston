@@ -209,6 +209,7 @@
     "title": "Copiar {{name}}",
     "body": "A cópia começa com a mesma descrição do cargo, skills, rotinas, aprendizados e cor. As conversas ficam com o original e nunca são copiadas.",
     "nameLabel": "Nome da cópia",
+    "nameTaken": "Já existe um agente chamado {{name}}. Os nomes de agentes são compartilhados entre todas as suas equipes, então dê à cópia um nome próprio.",
     "teamLabel": "Equipe da cópia",
     "confirm": "Criar cópia",
     "copySuffix": "cópia",

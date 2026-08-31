@@ -67,7 +67,7 @@ export function AgentCopyDialog({
   const issue = agentNameIssue(name, [...existingNames]);
   const issueText =
     issue === "taken"
-      ? t("agents:toasts.nameConflict", { name: name.trim() })
+      ? t("agents:copyAgent.nameTaken", { name: name.trim() })
       : issue === "tooLong"
         ? t("agents:nameErrors.tooLong", { max: AGENT_NAME_MAX_LENGTH })
         : issue === "invalidChars"

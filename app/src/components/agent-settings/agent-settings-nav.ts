@@ -66,10 +66,12 @@ export function agentAccessSections(
 }
 
 /**
- * The full settings-page cluster: what the agent IS (job description), what it
- * can DO (skills), what it has LEARNED, then who may reach it (the access
- * sections) and how it is managed. Skills has no org gate at all (it is the
- * per-agent Skills surface every deployment ships).
+ * The full settings-page cluster: how the agent is MANAGED first (the page's
+ * one door is administering it, so Settings leads the rail and is the landing
+ * section), then what the agent IS (job description), what it can DO (skills),
+ * what it has LEARNED, and who may reach it (the access sections). Skills has
+ * no org gate at all (it is the per-agent Skills surface every deployment
+ * ships).
  *
  * There is no per-caller gate here, because the PAGE carries it: its one door
  * is the agent's own Settings section, which only an agent-manager is offered
@@ -79,11 +81,11 @@ export function agentSettingsSections(
   caps: Capabilities | null | undefined,
 ): AgentSettingsSection[] {
   return [
+    "manage",
     "job-description",
     "skills",
     "learnings",
     ...agentAccessSections(caps),
-    "manage",
   ];
 }
 

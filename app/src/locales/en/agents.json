@@ -209,6 +209,7 @@
     "title": "Copy {{name}}",
     "body": "The copy starts with the same job description, skills, routines, learnings and color. Conversations stay with the original and are never copied.",
     "nameLabel": "Name for the copy",
+    "nameTaken": "An agent named {{name}} already exists. Agent names are shared across all your teams, so give the copy its own name.",
     "teamLabel": "Team for the copy",
     "confirm": "Create copy",
     "copySuffix": "copy",
