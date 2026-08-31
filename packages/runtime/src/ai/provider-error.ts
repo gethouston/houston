@@ -662,6 +662,20 @@ function isServerError(lower: string, status: number | null): boolean {
     // these keep the verdict when the body is truncated (HOU-1156).
     lower.includes("got status: unavailable") ||
     lower.includes("experiencing high demand") ||
+    // Gemini's malformed-generation finish reasons — MALFORMED_FUNCTION_CALL
+    // (the model emitted an unparseable tool call) and MALFORMED_RESPONSE (a
+    // newer value the SDK enum doesn't even carry yet) — arrive flattened as
+    // `Provider stopped with: <REASON>` (older pi: `Unhandled stop reason:
+    // <REASON>`) with no status and no body. The MODEL broke mid-generation,
+    // server-side and transient — Google's own guidance is retry — so the
+    // Retry card is the honest one, never the report-bug `unknown` firing a
+    // Sentry error per turn (PRODUCT-1601). Matched on the reason tokens, NOT
+    // the `Provider stopped with:` prefix: Gemini's policy stops (SAFETY,
+    // RECITATION, BLOCKLIST, …) ride the same prefix and are refusals, not
+    // outages — they must keep falling through to `unknown`, like
+    // `content_filter` above.
+    lower.includes("malformed_function_call") ||
+    lower.includes("malformed_response") ||
     // Codex (ChatGPT OAuth) rides a WebSocket transport; when that socket dies
     // mid-turn pi-ai flattens it to `WebSocket closed <code>` — no status, no
     // body (HOU-848: codes 1006 abnormal closure, 1000 server closed mid-turn,
