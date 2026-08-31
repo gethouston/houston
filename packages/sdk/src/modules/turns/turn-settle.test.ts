@@ -6,6 +6,7 @@ import {
   finishErr,
   finishOk,
   newTurnState,
+  settleProviderErrorCard,
   type TurnState,
 } from "./turn-settle";
 
@@ -213,6 +214,59 @@ test("a persisted providerError for our turn settles as the typed card", () => {
   );
   expect(s.settled).toBe(true);
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(true);
+});
+
+// ── The card is the transcript's LAST word (PRODUCT-1578) ─────────────────────
+// A turn that streamed work before failing must finalize that work and put the
+// typed card BELOW it — a card above a bubble still marked streaming read as
+// "the agent is still going" with the failure buried mid-transcript.
+
+test("a live provider-error settle finalizes the streamed reply BEFORE the card", () => {
+  const { items, output } = recorder();
+  const s = newTurnState("Houston/Bo", "activity", output);
+  s.delivered = true;
+  s.text = "partial reply";
+  s.thinking = "some reasoning";
+  settleProviderErrorCard(s, {
+    kind: "rate_limited",
+    provider: "anthropic",
+    model: null,
+    retry_after_seconds: null,
+    message: "slow down",
+  });
+  expect(items.map((i) => i.feed_type)).toEqual([
+    "thinking",
+    "assistant_text",
+    "provider_error",
+    "final_result",
+  ]);
+  expect(items[1].data).toBe("partial reply");
+});
+
+test("a history settle of a failed turn adopts the persisted partial reply below-the-card too", () => {
+  const providerError = {
+    kind: "rate_limited",
+    provider: "anthropic",
+    message: "slow down",
+  } as ChatMessage["providerError"];
+  const { items } = run(
+    [
+      { role: "user", content: "hi", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "got halfway",
+        ts: 2,
+        turnId: "t-1",
+        providerError,
+      },
+    ],
+    "t-1",
+  );
+  const textAt = items.findIndex((i) => i.feed_type === "assistant_text");
+  const cardAt = items.findIndex((i) => i.feed_type === "provider_error");
+  expect(textAt).toBeGreaterThanOrEqual(0);
+  expect(items[textAt].data).toBe("got halfway");
+  expect(cardAt).toBeGreaterThan(textAt);
 });
 
 test("a persisted stopped reply settles needs_you with the standard stop line, not a plain finish", () => {

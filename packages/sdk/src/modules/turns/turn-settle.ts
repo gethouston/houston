@@ -202,6 +202,15 @@ export function settleProviderErrorCard(
   s: TurnState,
   err: ProviderError & { failed_prompt?: string },
 ): void {
+  // Finalize whatever streamed before the failure (mirrors finishOk): the
+  // partial reply must stop rendering as "still streaming", and the card must
+  // land BELOW it — the terminal card is the last thing in the transcript, so
+  // the user sees the turn is over (PRODUCT-1578). Skipped once settled: an
+  // extra late provider_error frame only refreshes the card.
+  if (!s.settled) {
+    if (s.thinking) push(s, { feed_type: "thinking", data: s.thinking });
+    if (s.text) push(s, { feed_type: "assistant_text", data: s.text });
+  }
   // A card for a refused SEND (the not-connected path, `!delivered` — the prompt
   // never left) fails the optimistic bubble; a mid-turn typed provider error is
   // `delivered` (frames arrived first), so the flag is omitted and the bubble

@@ -123,19 +123,6 @@ export function historyToFeed(
         ...turn,
       });
     }
-    // A persisted provider failure: replay the typed card so the inline
-    // reconnect / rate-limit surface survives a reload.
-    if (m.providerError) {
-      out.push({
-        feed_type: "provider_error",
-        data: {
-          ...m.providerError,
-          provider: mapProvider(m.providerError.provider),
-        },
-        ts,
-        ...turn,
-      });
-    }
     // Replay the turn's reasoning BEFORE its tool calls — the live VM keeps a
     // single thinking entry positioned where the first thinking block streamed
     // (ahead of the tools), so a reload renders the mission log in the same
@@ -168,6 +155,22 @@ export function historyToFeed(
     // the chat attaches it to this turn's assistant message on reload.
     if (m.fileChanges) {
       out.push({ feed_type: "file_changes", data: m.fileChanges, ts, ...turn });
+    }
+    // A persisted provider failure: replay the typed card so the inline
+    // reconnect / rate-limit surface survives a reload. AFTER the turn's
+    // thinking/tools/content — the live settle pushes the card last, and a
+    // reseed that reordered it above the streamed work read as "the agent is
+    // still going" with the failure buried mid-transcript.
+    if (m.providerError) {
+      out.push({
+        feed_type: "provider_error",
+        data: {
+          ...m.providerError,
+          provider: mapProvider(m.providerError.provider),
+        },
+        ts,
+        ...turn,
+      });
     }
     // A turn the user interrupted persisted `stopped`: replay the standard
     // "Stopped by user" system line so the transcript reads identically after a

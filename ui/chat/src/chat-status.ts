@@ -32,6 +32,14 @@ export function deriveStatus(
   if (last?.feed_type === "assistant_text_streaming") {
     return "streaming";
   }
+  // A typed provider error is a TERMINAL settle — the agent cannot continue
+  // (out of usage, rate-limited, logged out). Whatever a stale `isLoading`
+  // flag says (a lost terminal frame can leave the VM's running flag up until
+  // the idle reconcile), the honest state is "the turn is over": no rotating
+  // thinking phrases under a card that says the work stopped (PRODUCT-1578).
+  // The card's trailing invisible final_result (and any session-error echo)
+  // is skipped when locating the transcript's last visible event.
+  if (endsOnProviderError(items)) return "ready";
   // Active turn → indicator visible. Covers:
   //   - brand-new chat with no items yet
   //   - user just sent (last == user_message)
@@ -49,4 +57,20 @@ export function deriveStatus(
     return "submitted";
   }
   return "ready";
+}
+
+/**
+ * Whether the feed's last VISIBLE event is a terminal `provider_error` card.
+ * `final_result` (the settle's invisible frame) and `system_message` (the
+ * session-status echo a failed turn can trail) are skipped; anything else —
+ * a user message, streaming content, a tool row — means the conversation
+ * moved past the failure.
+ */
+function endsOnProviderError(items: FeedItem[]): boolean {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const type = items[i].feed_type;
+    if (type === "final_result" || type === "system_message") continue;
+    return type === "provider_error";
+  }
+  return false;
 }

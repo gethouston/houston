@@ -84,6 +84,11 @@ function adoptReply(
     onAdoptTurnId?.(reply.turnId);
   }
   if (reply.providerError) {
+    // Adopt the persisted partial reply (same guards as the clean path below)
+    // so the settle finalizes what streamed before the failure and the card
+    // lands below it — never above a bubble still marked streaming.
+    if (reply.content) s.text = reply.content;
+    if (reply.thinking && !s.thinking) s.thinking = reply.thinking;
     settleProviderErrorCard(s, reply.providerError);
     return;
   }
