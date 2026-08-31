@@ -666,6 +666,58 @@ test("'Provider finish_reason: network_error' → provider_internal too", () => 
   expect(err.kind).toBe("provider_internal");
 });
 
+// Gemini ends a turn with finishReason MALFORMED_FUNCTION_CALL /
+// MALFORMED_RESPONSE when the MODEL's own generation broke (an unparseable
+// tool call, a garbled response); pi-ai flattens both to `Provider stopped
+// with: <REASON>` — no status, no body (PRODUCT-1601's verbatim reports).
+// Server-side and transient — Google's guidance is retry — so they must read
+// as provider_internal (Retry card), never the report-bug `unknown` firing a
+// Sentry error per turn.
+test("google 'Provider stopped with: MALFORMED_RESPONSE' → provider_internal, not unknown (PRODUCT-1601)", () => {
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.5-flash-lite",
+    message: "Provider stopped with: MALFORMED_RESPONSE",
+  });
+  expect(err).toEqual({
+    kind: "provider_internal",
+    provider: "google",
+    http_status: null,
+    message: "Provider stopped with: MALFORMED_RESPONSE",
+  });
+});
+
+test("google 'Provider stopped with: MALFORMED_FUNCTION_CALL' → provider_internal too", () => {
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.6-flash",
+    message: "Provider stopped with: MALFORMED_FUNCTION_CALL",
+  });
+  expect(err.kind).toBe("provider_internal");
+});
+
+test("older pi's 'Unhandled stop reason: MALFORMED_RESPONSE' phrasing classifies the same", () => {
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.5-flash",
+    message: "Unhandled stop reason: MALFORMED_RESPONSE",
+  });
+  expect(err.kind).toBe("provider_internal");
+});
+
+// Gemini's policy stops ride the same `Provider stopped with:` prefix but are
+// refusals, not outages — retry does not help and the Retry card would lie.
+// They must keep falling through to `unknown` (the report-bug card), like
+// OpenAI's `content_filter`.
+test("google 'Provider stopped with: SAFETY' stays unknown — a refusal, not an outage", () => {
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-3.6-flash",
+    message: "Provider stopped with: SAFETY",
+  });
+  expect(err.kind).toBe("unknown");
+});
+
 // Codex's WebSocket transport dying mid-turn arrives as the bare string
 // `WebSocket closed <code>` — no status, no body (HOU-848's verbatim report;
 // 584 Sentry events across 137 users read as `unknown`). HOU-1156 first
