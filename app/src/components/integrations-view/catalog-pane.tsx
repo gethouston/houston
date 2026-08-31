@@ -32,6 +32,7 @@ export function CatalogPane({
   connectFlow,
   onConnected,
   onRemove,
+  onCuratedConnect,
   children,
 }: {
   catalog: IntegrationToolkit[];
@@ -49,6 +50,8 @@ export function CatalogPane({
   onConnected?: (toolkit: string) => void;
   /** Disconnect an app's half-made connection (the app modal's Remove). */
   onRemove: (toolkit: string) => void;
+  /** Curated entry pressed — the surface opens its dedicated connect dialog. */
+  onCuratedConnect?: (slug: string) => void;
   /** Surface-specific sections above the catalog. */
   children?: ReactNode;
 }) {
@@ -68,6 +71,7 @@ export function CatalogPane({
           query={query}
           category={category}
           onRemove={onRemove}
+          onCuratedConnect={onCuratedConnect}
         />
       )}
     </div>

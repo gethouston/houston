@@ -38,12 +38,21 @@ export interface ConnectedApps {
  * in the Permissions view), so there is no per-agent grant plumbing here. Kept
  * out of the view so the JSX stays a thin render of these values.
  */
-export function useConnectedApps(): ConnectedApps {
+export function useConnectedApps(
+  /** Hand-curated entries (non-Composio, e.g. Croma) merged into the browse
+   *  catalog so they list, search, and filter exactly like provider apps. The
+   *  caller derives them (they depend on the custom-integration list + `t()`);
+   *  connecting one routes through `onCuratedConnect`, never the provider. */
+  curatedExtras: IntegrationToolkit[] = [],
+): ConnectedApps {
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, true);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
 
   const connData = connections.data ?? [];
-  const catalogData = catalog.data ?? [];
+  const catalogData = useMemo(
+    () => [...(catalog.data ?? []), ...curatedExtras],
+    [catalog.data, curatedExtras],
+  );
   const bySlug = useMemo(
     () => new Map(catalogData.map((tk) => [tk.slug, tk])),
     [catalogData],

@@ -2248,6 +2248,11 @@ export type AddCustomIntegrationInput =
       website?: string;
       auth: "none" | "credential";
       slug?: string;
+      /** Same-slug, same-kind adds become an in-place replace instead of a
+       *  409 — the idempotent "ensure this definition exists" form (the
+       *  curated catalog's connect). A stored credential survives only when
+       *  the host proves the service origin is unchanged. */
+      replace?: boolean;
     }
   | {
       kind: "mcp";
@@ -2258,6 +2263,8 @@ export type AddCustomIntegrationInput =
        *  flow — the add lands `pending` until the user presses Sign in. */
       auth: "none" | "credential" | "oauth";
       slug?: string;
+      /** See the openapi arm — the idempotent ensure-exists form. */
+      replace?: boolean;
     };
 
 /** What the host lists: the definition plus its live compiled state. */

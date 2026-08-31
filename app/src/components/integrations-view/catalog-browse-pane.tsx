@@ -18,6 +18,7 @@ export function CatalogBrowsePane({
   isLoading,
   connectFlow,
   onRemove,
+  onCuratedConnect,
   children,
 }: {
   catalog: IntegrationToolkit[];
@@ -29,6 +30,8 @@ export function CatalogBrowsePane({
   isLoading: boolean;
   connectFlow: ConnectFlow;
   onRemove: (toolkit: string, connectionId?: string) => void;
+  /** Curated entry pressed — the surface opens its dedicated connect dialog. */
+  onCuratedConnect?: (slug: string) => void;
   children?: ReactNode;
 }) {
   return (
@@ -50,6 +53,7 @@ export function CatalogBrowsePane({
         })
       }
       onRemove={onRemove}
+      onCuratedConnect={onCuratedConnect}
     >
       {children}
     </CatalogPane>

@@ -27,6 +27,7 @@ export {
   SECTION_PREVIEW_CAP,
 } from "./browse-sections";
 export { CATEGORY_PRIORITY } from "./category-priority";
+export { ChoiceCard } from "./choice-card";
 export { ConnectFlowInline, hasConnectState } from "./connect-flow-inline";
 export { ConnectNoticeLine } from "./connect-notice-line";
 export {
@@ -47,6 +48,15 @@ export {
   type ConnectionStatus,
   ConnectionStatusBadge,
 } from "./connection-status-badge";
+export { CuratedConnectDialog } from "./curated-connect-dialog";
+export {
+  CURATED_INTEGRATIONS,
+  type CuratedIntegration,
+  curatedAddInput,
+  curatedIntegrationOf,
+  curatedToolkits,
+  initialCuratedStep,
+} from "./curated-integrations";
 export {
   CustomIntegrationDialogs,
   type CustomSelection,

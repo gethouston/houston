@@ -5,6 +5,7 @@ import type {
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ConnectFlow } from "../integrations";
+import { curatedIntegrationOf } from "../integrations/curated-integrations";
 import { HighLevelConnectGuidance } from "../integrations/highlevel-connect-guidance";
 import { AppInfoDialog } from "./app-info-dialog";
 import { CatalogCategorySection } from "./catalog-category-section";
@@ -46,6 +47,7 @@ export function CategoryCatalog({
   query,
   category,
   onRemove,
+  onCuratedConnect,
 }: {
   catalog: IntegrationToolkit[];
   connections: IntegrationConnection[];
@@ -59,6 +61,9 @@ export function CategoryCatalog({
   category: string;
   /** Disconnect a broken connection (the modal's Remove). */
   onRemove: (toolkit: string) => void;
+  /** A curated (non-Composio) entry's connect — the surface opens its own
+   *  connect dialog; the generic OAuth hand-off would 400 on these slugs. */
+  onCuratedConnect?: (slug: string) => void;
 }) {
   const { t } = useTranslation("integrations");
   const { visible, owners, broken, expand } = useCatalogSections({
@@ -89,6 +94,10 @@ export function CategoryCatalog({
   };
 
   const requestConnect = (toolkit: string, origin: string) => {
+    if (onCuratedConnect && curatedIntegrationOf(toolkit)) {
+      onCuratedConnect(toolkit);
+      return;
+    }
     if (toolkit === "highlevel") {
       setHighLevelRequest({ toolkit, origin });
       return;

@@ -212,5 +212,22 @@
     "oauth": {
       "openedToast": "Conclua o login em {{name}} no seu navegador"
     }
+  },
+  "curated": {
+    "croma": {
+      "description": "Registros oficiais do governo da Colômbia, do Peru e do México: consulte processos judiciais, empresas, veículos e pessoas, com respostas baseadas em fontes oficiais.",
+      "keyHelp": "Faça login no seu espaço de trabalho do Croma e copie uma chave de API (ela começa com croma_live_). As chaves pertencem ao espaço de trabalho da sua organização, não a uma conta pessoal."
+    },
+    "connect": {
+      "title": "Conectar {{name}}",
+      "signInTitle": "Entrar com {{name}}",
+      "signInDesc": "O jeito mais fácil: seu navegador abre e você entra na sua conta do {{name}}. Sem chave para copiar.",
+      "keyTitle": "Usar uma chave de API",
+      "keyDesc": "Cole uma chave da sua conta do {{name}}.",
+      "openKeys": "Abrir o {{name}} para obter uma chave",
+      "back": "Voltar",
+      "newTo": "Novo no {{name}}? Crie sua conta primeiro e depois volte aqui para conectar.",
+      "createAccount": "Criar uma conta do {{name}}"
+    }
   }
 }
