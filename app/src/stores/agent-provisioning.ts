@@ -29,7 +29,9 @@ import { getEngine, isCoLocatedEngine, whenEngineReady } from "../lib/engine";
 import { reportError } from "../lib/error-report";
 import { showErrorToast } from "../lib/error-toast";
 import i18n from "../lib/i18n";
+import { logger } from "../lib/logger";
 import { queryClient } from "../lib/query-client";
+import { healStaleRosterFromError } from "../lib/roster-heal";
 import {
   buildWarmingSend,
   flushWarmingSends,
@@ -267,6 +269,20 @@ function startProbe(entry: ProvisioningEntry): void {
           ),
         )
         .finally(() => store.clearProvisioning(id, entry));
+    },
+    onGone: (id, err) => {
+      // The server no longer knows this agent (deleted/unshared elsewhere
+      // while the entry — possibly rehydrated from the localStorage mirror —
+      // still tracked it, HOUSTON-APP-4ZF). Flushing would only fan the same
+      // "agent not found" 404 into every queued write; the honest surface is
+      // the roster without the agent. Silent by the agent-gone contract
+      // (`lib/agent-gone.ts`): log, heal the roster so the ghost disappears,
+      // drop the entry and its queue.
+      logger.warn(
+        `[agent-provisioning] agent gone during warm-up, dropping entry: ${id}`,
+      );
+      healStaleRosterFromError(err);
+      store.clearProvisioning(id, entry);
     },
     onTimeout: (id, error) => {
       // A newer mark (rename, or a fresh create reusing the id) already

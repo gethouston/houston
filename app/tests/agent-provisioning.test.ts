@@ -6,6 +6,7 @@ import {
   PROVISIONING_TTL_MS,
   ProvisioningTimeoutError,
   parsePersistedProvisioning,
+  probeSaysAgentGone,
   probeSaysStillStarting,
   runProvisioningProbe,
   warmingFlushRefetchKeys,
@@ -88,11 +89,22 @@ describe("probeSaysStillStarting", () => {
   });
 
   it("treats any definitive HTTP answer as the engine having responded", () => {
-    // 404: probe file (or the agent itself) is gone — either way something
-    // answered for this agent, so "being created" is over.
     strictEqual(probeSaysStillStarting(httpError(404)), false);
     strictEqual(probeSaysStillStarting(httpError(401)), false);
     strictEqual(probeSaysStillStarting(httpError(500)), false);
+  });
+});
+
+describe("probeSaysAgentGone (HOUSTON-APP-4ZF)", () => {
+  it("a 404 means the server no longer knows the agent — a missing probe file answers 200-empty", () => {
+    strictEqual(probeSaysAgentGone(httpError(404)), true);
+  });
+
+  it("everything else is not agent-gone", () => {
+    strictEqual(probeSaysAgentGone(httpError(401)), false);
+    strictEqual(probeSaysAgentGone(httpError(503)), false);
+    strictEqual(probeSaysAgentGone(new TypeError("fetch failed")), false);
+    strictEqual(probeSaysAgentGone(undefined), false);
   });
 });
 
@@ -213,8 +225,9 @@ describe("runProvisioningProbe", () => {
   const HELD = Symbol("held");
 
   function harness(readResults: Array<unknown | Error>) {
-    const calls = { ready: 0, timeout: 0, sleeps: 0, reads: 0 };
+    const calls = { ready: 0, gone: 0, timeout: 0, sleeps: 0, reads: 0 };
     let timeoutError: ProvisioningTimeoutError | undefined;
+    let goneError: unknown;
     let marked = true;
     let clock = 1;
     // The whole-probe TTL deadline is the one sleep longer than a retry
@@ -233,6 +246,11 @@ describe("runProvisioningProbe", () => {
       isMarked: () => marked,
       onReady: () => {
         calls.ready++;
+        marked = false;
+      },
+      onGone: (_id: string, err: unknown) => {
+        calls.gone++;
+        goneError = err;
         marked = false;
       },
       onTimeout: (_id: string, error: ProvisioningTimeoutError) => {
@@ -258,13 +276,24 @@ describe("runProvisioningProbe", () => {
       },
       fireDeadline: () => fireDeadline(),
     };
-    return { deps, calls, timeoutError: () => timeoutError };
+    return {
+      deps,
+      calls,
+      timeoutError: () => timeoutError,
+      goneError: () => goneError,
+    };
   }
 
   it("clears the moment the engine answers", async () => {
     const { deps, calls } = harness(["ok"]);
     await runProvisioningProbe(entry, deps);
-    deepStrictEqual(calls, { ready: 1, timeout: 0, sleeps: 0, reads: 1 });
+    deepStrictEqual(calls, {
+      ready: 1,
+      gone: 0,
+      timeout: 0,
+      sleeps: 0,
+      reads: 1,
+    });
   });
 
   it("retries through warm-up failures, then clears", async () => {
@@ -274,13 +303,40 @@ describe("runProvisioningProbe", () => {
       "ok",
     ]);
     await runProvisioningProbe(entry, deps);
-    deepStrictEqual(calls, { ready: 1, timeout: 0, sleeps: 2, reads: 3 });
+    deepStrictEqual(calls, {
+      ready: 1,
+      gone: 0,
+      timeout: 0,
+      sleeps: 2,
+      reads: 3,
+    });
   });
 
   it("treats a definitive HTTP failure as ready (engine responded)", async () => {
-    const { deps, calls } = harness([httpError(404)]);
+    const { deps, calls } = harness([httpError(401)]);
     await runProvisioningProbe(entry, deps);
-    deepStrictEqual(calls, { ready: 1, timeout: 0, sleeps: 0, reads: 1 });
+    deepStrictEqual(calls, {
+      ready: 1,
+      gone: 0,
+      timeout: 0,
+      sleeps: 0,
+      reads: 1,
+    });
+  });
+
+  it("resolves gone — never ready — when the server no longer knows the agent (HOUSTON-APP-4ZF)", async () => {
+    const err = httpError(404);
+    const { deps, calls, goneError } = harness([err]);
+    await runProvisioningProbe(entry, deps);
+    // Ready would flush the queued sends into the same 404.
+    deepStrictEqual(calls, {
+      ready: 0,
+      gone: 1,
+      timeout: 0,
+      sleeps: 0,
+      reads: 1,
+    });
+    strictEqual(goneError(), err);
   });
 
   it("times out with the last failure once the TTL elapses", async () => {
@@ -292,7 +348,13 @@ describe("runProvisioningProbe", () => {
       return p;
     };
     await runProvisioningProbe(entry, deps);
-    deepStrictEqual(calls, { ready: 0, timeout: 1, sleeps: 1, reads: 1 });
+    deepStrictEqual(calls, {
+      ready: 0,
+      gone: 0,
+      timeout: 1,
+      sleeps: 1,
+      reads: 1,
+    });
     const err = timeoutError();
     ok(err instanceof ProvisioningTimeoutError);
     strictEqual((err.cause as { status?: number }).status, 503);
@@ -308,7 +370,13 @@ describe("runProvisioningProbe", () => {
     await Promise.resolve();
     deps.fireDeadline();
     await probe;
-    deepStrictEqual(calls, { ready: 0, timeout: 1, sleeps: 0, reads: 1 });
+    deepStrictEqual(calls, {
+      ready: 0,
+      gone: 0,
+      timeout: 1,
+      sleeps: 0,
+      reads: 1,
+    });
     // No attempt ever failed, so there is no "last error" — the timeout must
     // still be a real, descriptive Error rather than a forwarded `undefined`
     // (that bare value is what Sentry used to receive).
@@ -328,6 +396,12 @@ describe("runProvisioningProbe", () => {
       return p;
     };
     await runProvisioningProbe(entry, deps);
-    deepStrictEqual(calls, { ready: 0, timeout: 0, sleeps: 1, reads: 1 });
+    deepStrictEqual(calls, {
+      ready: 0,
+      gone: 0,
+      timeout: 0,
+      sleeps: 1,
+      reads: 1,
+    });
   });
 });

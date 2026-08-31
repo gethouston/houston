@@ -19,6 +19,7 @@ import {
 } from "@houston-ai/engine-client";
 import { getConversationFeed } from "../hooks/use-conversation-vm";
 import { actingUser } from "./acting-user";
+import { isAgentGoneError } from "./agent-gone";
 import type {
   PendingWarmingSend,
   ProvisioningEntry,
@@ -28,6 +29,7 @@ import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import { refreshMissionTitle } from "./mission-title";
+import { healStaleRosterFromError } from "./roster-heal";
 import { tauriActivity, tauriChat, tauriProvider } from "./tauri";
 import { verifyWarmingSendPin } from "./warming-send-pin";
 
@@ -185,7 +187,18 @@ export async function flushWarmingSends(
         if (Object.keys(patch).length > 0) {
           await getEngine().updateActivity(entry.agentPath, created.id, patch);
         }
-      } catch {
+      } catch (e) {
+        // The agent vanished between the readiness probe and this write
+        // (deleted/unshared elsewhere, HOUSTON-APP-4ZF): every remaining send
+        // is doomed to the same "agent not found" 404. Abort the flush and
+        // heal the roster instead of toasting a state the user can't act on
+        // — the probe's own gone-check catches this before the flush ever
+        // starts; this guards the in-flight race.
+        if (isAgentGoneError(e)) {
+          logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
+          healStaleRosterFromError(e);
+          return;
+        }
         showErrorToast(
           "warming_sends_row",
           "mission row create/update failed",
@@ -259,6 +272,13 @@ export async function flushWarmingSends(
         });
       }
     } catch (e) {
+      // Same in-flight race as the row create above: an agent-gone refusal
+      // dooms every remaining send, so stop instead of hammering 404s.
+      if (isAgentGoneError(e)) {
+        logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
+        healStaleRosterFromError(e);
+        return;
+      }
       // tauriChat.send already toasted the real reason; keep flushing the
       // rest — one refused turn must not strand the queue.
       logger.error(`[warming-sends] deferred send failed: ${e}`);
