@@ -69,6 +69,10 @@ function waitForAgentReady(agentId: string, agentPath: string): Promise<void> {
       readFile: (path, rel) => getEngine().readAgentFile(path, rel),
       isMarked: () => true, // the wizard task is the probe's whole lifetime
       onReady: () => resolve(),
+      // The agent the wizard JUST created answered "agent not found" — the
+      // creation didn't stick. A real failure here, not a stale roster: fail
+      // the step so the wizard surfaces it and Retry re-creates.
+      onGone: (_id, err) => reject(err),
       onTimeout: (_id, lastError) =>
         reject(lastError ?? new Error("the new assistant never became ready")),
       sleep: (ms) => new Promise<void>((r) => setTimeout(r, ms)),

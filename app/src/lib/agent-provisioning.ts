@@ -19,9 +19,10 @@ import { queryKeys } from "./query-keys.ts";
 
 /**
  * Small, always-present, side-effect-free per-agent read. This is the typed
- * config doc path (`data/config.ts` / `readAgentJson("config")`) — if that
- * layout ever moves, update this constant with it, or every probe resolves
- * "ready" instantly off the 404 and the provisioning state never shows.
+ * config doc path (`data/config.ts` / `readAgentJson("config")`). A missing
+ * file answers 200 with empty content (`routes/agent-file.ts`), so the
+ * probe's verdict keys on reachability alone — the only 404 an agent-scoped
+ * read can produce is "agent not found" (see {@link probeSaysAgentGone}).
  */
 export const PROVISIONING_PROBE_FILE = ".houston/config/config.json";
 
@@ -175,16 +176,36 @@ export function warmingReadsAnswerEmpty(entry: ProvisioningEntry): boolean {
 /**
  * True when a failed probe means "the engine isn't answering yet, keep
  * waiting": a gateway 502/503/504 (still warming / rolling deploy) or a
- * transport-level failure with no HTTP verdict at all. Any definitive HTTP
- * answer — 200, 404 (file or agent gone), 401 — proves something responded
- * for this agent, so the "being created" state is over either way; if what
- * responded is broken, the user's own requests surface the real error.
+ * transport-level failure with no HTTP verdict at all. Any other definitive
+ * HTTP answer — 200, 401, 500 — proves something responded for this agent, so
+ * the "being created" state is over either way; if what responded is broken,
+ * the user's own requests surface the real error. A 404 is NOT "responded":
+ * see {@link probeSaysAgentGone}.
  */
 export function probeSaysStillStarting(err: unknown): boolean {
   if (!err || typeof err !== "object") return true;
   const status = (err as { status?: unknown }).status;
   if (typeof status !== "number") return true;
   return status === 502 || status === 503 || status === 504;
+}
+
+/**
+ * True when a failed probe means "the server no longer knows this agent"
+ * (HOUSTON-APP-4ZF). The probe read has exactly one 404 path: the
+ * gateway/host resolves the agent id before anything else and answers
+ * `404 { error: "agent not found" }` when it doesn't — a missing probe FILE
+ * answers 200 with empty content (`routes/agent-file.ts`), never 404. So a
+ * 404 here is the write-path twin of `isAgentGoneError`: the LOCAL ROSTER IS
+ * STALE (the agent was deleted or unshared elsewhere while a warming entry —
+ * possibly rehydrated from the localStorage mirror after a relaunch — still
+ * tracked it). Treating it as "ready" flushed the queued sends into the same
+ * 404 (`create_activity: agent not found` in Sentry, a red mission-row toast)
+ * for a state the user can't act on; the honest surface is a healed roster
+ * and a silently dropped entry.
+ */
+export function probeSaysAgentGone(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  return (err as { status?: unknown }).status === 404;
 }
 
 /** Parse the persisted map, dropping expired and malformed entries. */
@@ -262,6 +283,9 @@ export interface ProbeDeps {
   isMarked: (agentId: string) => boolean;
   /** Engine answered (with anything) — the agent is reachable. */
   onReady: (agentId: string) => void;
+  /** The server no longer knows the agent ({@link probeSaysAgentGone}):
+   *  drop the entry and heal the roster instead of flushing. */
+  onGone: (agentId: string, err: unknown) => void;
   /** TTL elapsed without the engine ever answering. */
   onTimeout: (agentId: string, error: ProvisioningTimeoutError) => void;
   sleep: (ms: number) => Promise<void>;
@@ -337,6 +361,7 @@ export async function runProvisioningProbe(
         () => "ready" as const,
         (err) => {
           lastError = err;
+          if (probeSaysAgentGone(err)) return "gone" as const;
           return probeSaysStillStarting(err)
             ? ("still-starting" as const)
             : ("ready" as const);
@@ -348,6 +373,10 @@ export async function runProvisioningProbe(
         entry.agentId,
         new ProvisioningTimeoutError(attempts, lastError),
       );
+      return;
+    }
+    if (outcome === "gone") {
+      deps.onGone(entry.agentId, lastError);
       return;
     }
     if (outcome === "ready") {

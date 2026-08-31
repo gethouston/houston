@@ -1420,7 +1420,11 @@ export const tauriActivity = {
       "create_activity",
       () => getEngine().createActivity(agentPath, input),
       undefined,
-      { toast: false },
+      // Agent-gone silenced (HOUSTON-APP-4ZF): a warming flush or mission
+      // create can race an agent deleted/unshared elsewhere — an expected
+      // roster-stale state, not a Houston bug. Both callers catch it: the
+      // flush heals + aborts, the mission path keeps its own toast.
+      { toast: false, silence: isAgentGoneError },
     ),
   update: (
     agentPath: string,
