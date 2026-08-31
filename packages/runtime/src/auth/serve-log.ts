@@ -26,11 +26,32 @@ const SWEEP_KEY = "*";
  */
 const EXPECTED_DETAIL = /dead credential/;
 
+/**
+ * The NETWORK PATH failing, not Houston: the gateway echoing an upstream
+ * fetch failure through a 500 body, a gateway-tier 502/503/504, a reset or
+ * refused socket, a stalled connect. At fleet scale these are routine — every
+ * cloud release briefly answers the awake fleet this way — so even the
+ * once-per-transition error minted dozens of Sentry events per blip, one per
+ * pod, for a state the next sync heals on its own (PRODUCT-1602, the
+ * HOUSTON-APP-4YV regression). Connectivity failures are warnings here; a
+ * sweep failing uniformly (logServeSweepFailure) stays the error-level
+ * outage signal.
+ */
+const CONNECTIVITY_DETAIL =
+  /fetch failed|gateway error|operation was aborted|credential gateway GET .* failed|^50[234]: |\(cause: (?:ECONN|ETIMEDOUT|EAI_AGAIN|EPIPE|ENETUNREACH|EHOSTUNREACH|UND_ERR_)/;
+
 export function logServeProbeFailure(provider: string, detail: string): void {
   if (EXPECTED_DETAIL.test(detail)) {
     lastFailureDetail.set(provider, detail);
     console.warn(
       `[serve] credential ${provider} dead centrally (user reconnect required): ${detail}`,
+    );
+    return;
+  }
+  if (CONNECTIVITY_DETAIL.test(detail)) {
+    lastFailureDetail.set(provider, detail);
+    console.warn(
+      `[serve] credential ${provider} unreachable (connectivity, next sync retries): ${detail}`,
     );
     return;
   }
@@ -79,7 +100,11 @@ export function logServeProbeFailures(
   }
   for (const [detail, ids] of byDetail) {
     const lone = ids.length === 1 ? ids[0] : undefined;
-    if (lone !== undefined || EXPECTED_DETAIL.test(detail)) {
+    if (
+      lone !== undefined ||
+      EXPECTED_DETAIL.test(detail) ||
+      CONNECTIVITY_DETAIL.test(detail)
+    ) {
       for (const id of ids) logServeProbeFailure(id, detail);
       continue;
     }

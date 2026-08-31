@@ -20,30 +20,30 @@ beforeEach(() => {
 });
 
 test("the first failure logs an error; identical repeats demote to warnings", () => {
-  logServeProbeFailure("anthropic", "502: credential expired");
-  logServeProbeFailure("anthropic", "502: credential expired");
-  logServeProbeFailure("anthropic", "502: credential expired");
+  logServeProbeFailure("anthropic", "500: credential row corrupt");
+  logServeProbeFailure("anthropic", "500: credential row corrupt");
+  logServeProbeFailure("anthropic", "500: credential row corrupt");
   expect(error).toHaveBeenCalledOnce();
   expect(warn).toHaveBeenCalledTimes(2);
 });
 
 test("a CHANGED failure detail logs a fresh error", () => {
-  logServeProbeFailure("anthropic", "502: credential expired");
-  logServeProbeFailure("anthropic", "fetch failed");
+  logServeProbeFailure("anthropic", "500: credential row corrupt");
+  logServeProbeFailure("anthropic", "500: malformed served payload");
   expect(error).toHaveBeenCalledTimes(2);
 });
 
 test("failures dedup per provider, not globally", () => {
-  logServeProbeFailure("anthropic", "502: credential expired");
-  logServeProbeFailure("openai-codex", "502: credential expired");
+  logServeProbeFailure("anthropic", "500: credential row corrupt");
+  logServeProbeFailure("openai-codex", "500: credential row corrupt");
   expect(error).toHaveBeenCalledTimes(2);
 });
 
 test("recovery logs once and re-arms the error for the next incident", () => {
-  logServeProbeFailure("anthropic", "502: credential expired");
+  logServeProbeFailure("anthropic", "500: credential row corrupt");
   noteServeProbeOk("anthropic");
   expect(info).toHaveBeenCalledWith("[serve] credential anthropic recovered");
-  logServeProbeFailure("anthropic", "502: credential expired");
+  logServeProbeFailure("anthropic", "500: credential row corrupt");
   expect(error).toHaveBeenCalledTimes(2);
 });
 
@@ -67,7 +67,7 @@ test("a uniformly failed sweep is ONE incident: one error, warnings on repeat, o
 });
 
 test("probes failing ALIKE in one sweep are ONE incident, not one per provider (PRODUCT-1423)", () => {
-  const blip = '500: {"error":"fetch failed"}';
+  const blip = '500: {"error":"credential row corrupt"}';
   logServeProbeFailures([
     { id: "google", detail: blip },
     { id: "openrouter", detail: blip },
@@ -89,7 +89,7 @@ test("probes failing ALIKE in one sweep are ONE incident, not one per provider (
 });
 
 test("a group with any NEWLY failing member logs a fresh error, and recovery re-arms it", () => {
-  const blip = '500: {"error":"fetch failed"}';
+  const blip = '500: {"error":"credential row corrupt"}';
   logServeProbeFailures([
     { id: "google", detail: blip },
     { id: "openrouter", detail: blip },
@@ -110,23 +110,23 @@ test("a group with any NEWLY failing member logs a fresh error, and recovery re-
 
 test("distinct failure details stay distinct incidents; a lone failure keeps the per-provider path", () => {
   logServeProbeFailures([
-    { id: "google", detail: '500: {"error":"fetch failed"}' },
-    { id: "openrouter", detail: '500: {"error":"fetch failed"}' },
-    { id: "anthropic", detail: "502: credential expired" },
+    { id: "google", detail: '500: {"error":"credential row corrupt"}' },
+    { id: "openrouter", detail: '500: {"error":"credential row corrupt"}' },
+    { id: "anthropic", detail: "500: served key rejected" },
   ]);
   expect(error).toHaveBeenCalledTimes(2);
   expect(error).toHaveBeenCalledWith(
-    "[serve] credential anthropic: 502: credential expired",
+    "[serve] credential anthropic: 500: served key rejected",
   );
   // The grouped entry point and the per-provider path share one transition
   // map: the lone failure's identical repeat is the same incident.
-  logServeProbeFailure("anthropic", "502: credential expired");
+  logServeProbeFailure("anthropic", "500: served key rejected");
   expect(error).toHaveBeenCalledTimes(2);
 });
 
 test("the sweep incident is tracked apart from per-provider failures", () => {
   logServeSweepFailure(41, "fetch failed (cause: ECONNREFUSED)");
-  logServeProbeFailure("anthropic", "fetch failed (cause: ECONNREFUSED)");
+  logServeProbeFailure("anthropic", "500: credential row corrupt");
   expect(error).toHaveBeenCalledTimes(2);
   noteServeProbeOk("anthropic");
   expect(info).toHaveBeenCalledWith("[serve] credential anthropic recovered");
@@ -157,4 +157,37 @@ test("a dead-credential group in a sweep stays at warning level per provider", (
   ]);
   expect(error).not.toHaveBeenCalled();
   expect(warn).toHaveBeenCalledTimes(2);
+});
+
+test("connectivity-class failures NEVER log an error (PRODUCT-1602)", () => {
+  const connectivity = [
+    '500: {"error":"fetch failed"}',
+    "fetch failed (cause: ECONNRESET)",
+    "The operation was aborted due to timeout",
+    "502: Bad Gateway",
+    '500: {"error":"credential gateway GET <provider> failed (500): {\\"error\\":\\"gateway error\\"}"}',
+    "fetch failed (cause: UND_ERR_CONNECT_TIMEOUT)",
+  ];
+  for (const detail of connectivity) logServeProbeFailure("openrouter", detail);
+  expect(error).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledTimes(connectivity.length);
+  // Recovery still re-arms the transition map like any other failure class.
+  noteServeProbeOk("openrouter");
+  expect(info).toHaveBeenCalledWith("[serve] credential openrouter recovered");
+});
+
+test("a connectivity group in a sweep stays at warning level per provider (PRODUCT-1602)", () => {
+  const detail = '500: {"error":"fetch failed"}';
+  logServeProbeFailures([
+    { id: "google", detail },
+    { id: "openrouter", detail },
+    { id: "opencode-go", detail },
+  ]);
+  expect(error).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledTimes(3);
+});
+
+test("a NON-connectivity 500 keeps the error path", () => {
+  logServeProbeFailure("openrouter", "500: served key rejected");
+  expect(error).toHaveBeenCalledOnce();
 });

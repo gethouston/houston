@@ -781,7 +781,7 @@ test("one transient probe failure retries, the provider still applies, and no ER
   }
 });
 
-test("a probe that fails both attempts logs ONE error with the cause code and removes nothing", async () => {
+test("a probe that fails both attempts warns with the cause code and removes nothing", async () => {
   resetServeProbeLog();
   const { fetchImpl, calls } = flakyCodexFetch(() => true);
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
@@ -815,23 +815,30 @@ test("a probe that fails both attempts logs ONE error with the cause code and re
         expires: 1,
       });
       expect(readServedProvidersAt(manifestPath)).toEqual(["openai-codex"]);
-      // Exactly one ERROR (a persistent failure must still alert), carrying
-      // the nested cause code that `err.message` alone loses.
-      const serveErrors = errors.mock.calls.filter((c) =>
-        String(c[0]).includes("[serve] credential"),
-      );
-      expect(serveErrors.length).toBe(1);
-      expect(String(serveErrors[0]?.[0])).toContain("ECONNRESET");
+      // A socket reset is a connectivity failure — a WARN breadcrumb carrying
+      // the nested cause code that `err.message` alone loses, never a Sentry
+      // error (PRODUCT-1602).
+      expect(
+        errors.mock.calls.filter((c) =>
+          String(c[0]).includes("[serve] credential"),
+        ),
+      ).toEqual([]);
+      expect(
+        warns.mock.calls.some(
+          (c) =>
+            String(c[0]).includes("credential openai-codex unreachable") &&
+            String(c[0]).includes("ECONNRESET"),
+        ),
+      ).toBe(true);
 
-      // The next sync re-attempts the probe; the identical repeat stays a
-      // WARN (serve-log dedup), not a second Sentry event.
+      // The next sync re-attempts the probe and stays warning-level too.
       expect(await syncServedCredential()).toEqual([]);
       expect(calls()).toBe(4);
       expect(
         errors.mock.calls.filter((c) =>
           String(c[0]).includes("[serve] credential"),
-        ).length,
-      ).toBe(1);
+        ),
+      ).toEqual([]);
     });
   } finally {
     errors.mockRestore();
@@ -901,11 +908,13 @@ test("a sweep where EVERY probe is refused logs ONE error, not one per provider 
   }
 }, 30_000);
 
-test("probes caught by ONE gateway blip mid-sweep log ONE error, not one per provider (PRODUCT-1423)", async () => {
+test("probes caught by ONE gateway blip mid-sweep are warnings, never Sentry errors (PRODUCT-1602)", async () => {
   // A control-plane restart seen through the gateway: the probes in flight
   // during the window get `500: {"error":"fetch failed"}` while the rest of
-  // the sweep answers normally. Not uniform, so the PRODUCT-1399 collapse
-  // never fired — HOUSTON-APP-4YV got one Sentry event per caught provider.
+  // the sweep answers normally. A connectivity blip is not a Houston
+  // incident — every release roll answers the whole awake fleet this way, so
+  // even the collapsed once-per-transition error (PRODUCT-1423) minted one
+  // Sentry event per pod per blip.
   resetServeProbeLog();
   const blipped = new Set(["google", "openrouter", "opencode-go"]);
   const fetchImpl = (async (input: RequestInfo | URL) => {
@@ -925,19 +934,19 @@ test("probes caught by ONE gateway blip mid-sweep log ONE error, not one per pro
   try {
     await withServeMode(fetchImpl, async () => {
       expect(await syncServedCredential()).toEqual([]);
-      // ONE event naming every caught provider (in catalog order) and the
-      // shared gateway detail.
-      expect(serveErrors()).toHaveLength(1);
-      const line = serveErrors()[0] ?? "";
-      expect(line).toMatch(/^\[serve\] credential probes for /);
-      for (const id of blipped) expect(line).toContain(id);
-      expect(line).toContain('failed alike: 500: {"error":"fetch failed"}');
-      // The persistent repeat stays a WARN breadcrumb, never a second event.
+      expect(serveErrors()).toHaveLength(0);
+      // Each caught provider leaves a warning breadcrumb with the detail.
+      for (const id of blipped)
+        expect(
+          warns.mock.calls.some(
+            (c) =>
+              String(c[0]).includes(`credential ${id} unreachable`) &&
+              String(c[0]).includes('500: {"error":"fetch failed"}'),
+          ),
+        ).toBe(true);
+      // The persistent repeat stays warning-level too.
       expect(await syncServedCredential()).toEqual([]);
-      expect(serveErrors()).toHaveLength(1);
-      expect(
-        warns.mock.calls.some((c) => String(c[0]).includes("still failing")),
-      ).toBe(true);
+      expect(serveErrors()).toHaveLength(0);
     });
   } finally {
     errors.mockRestore();
@@ -992,10 +1001,11 @@ test("a full-sweep gateway outage whose bodies echo each provider id logs ONE er
   }
 }, 30_000);
 
-test("mid-sweep gateway 500s with echoed provider ids collapse to one group (PRODUCT-1443)", async () => {
+test("mid-sweep gateway 500s with echoed provider ids stay warnings (PRODUCT-1443 / PRODUCT-1602)", async () => {
   // The partial-sweep sibling: only the probes caught by the blip fail, each
-  // with its own id echoed in the body — same detail once normalized, so the
-  // PRODUCT-1423 group collapse fires instead of one event per provider.
+  // with its own id echoed in the body. Normalized (PRODUCT-1443) they share
+  // one detail; as a gateway-echo connectivity failure that detail is
+  // warning-only (PRODUCT-1602).
   resetServeProbeLog();
   const blipped = new Set(["google", "openrouter", "opencode-go"]);
   const fetchImpl = (async (input: RequestInfo | URL) => {
@@ -1018,13 +1028,19 @@ test("mid-sweep gateway 500s with echoed provider ids collapse to one group (PRO
   try {
     await withServeMode(fetchImpl, async () => {
       expect(await syncServedCredential()).toEqual([]);
-      expect(serveErrors()).toHaveLength(1);
-      const line = serveErrors()[0] ?? "";
-      expect(line).toMatch(/^\[serve\] credential probes for /);
-      for (const id of blipped) expect(line).toContain(id);
-      expect(line).toContain(
-        'failed alike: 500: {"error":"credential gateway GET <provider> failed (500): ',
-      );
+      expect(serveErrors()).toHaveLength(0);
+      // The warning carries the NORMALIZED detail — the echoed id replaced —
+      // so the still-failing dedup compares byte-identical strings.
+      for (const id of blipped)
+        expect(
+          warns.mock.calls.some(
+            (c) =>
+              String(c[0]).includes(`credential ${id} unreachable`) &&
+              String(c[0]).includes(
+                "credential gateway GET <provider> failed (500): ",
+              ),
+          ),
+        ).toBe(true);
     });
   } finally {
     errors.mockRestore();
