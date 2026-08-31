@@ -135,7 +135,10 @@ pub async fn start_claude_login(
     // to the runtime's paste flow.
     if let Some(reason) = cpu::unsupported_reason() {
         let error = format!("Claude sign-in helper cannot run: {reason}");
-        tracing::error!("[claude-login] {error}");
+        // WARN, not error: an unsupported CPU is an environmental fact with a
+        // designed degrade path (paste flow), not something in Houston
+        // breaking — same reasoning as the signal-death arm in `runner`.
+        tracing::warn!("[claude-login] {error}");
         app.emit(
             EVENT_DONE,
             serde_json::json!({ "success": false, "error": error, "helperUnavailable": true }),

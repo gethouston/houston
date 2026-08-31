@@ -110,13 +110,23 @@ where
             let code = status
                 .code()
                 .map(|c| c.to_string())
-                .unwrap_or_else(|| "signal".to_string());
+                .unwrap_or_else(|| signal_label(&status));
             let mut error = format!("Claude sign-in failed (exit {code})");
             if !tail.trim().is_empty() {
                 error.push_str(": ");
                 error.push_str(tail.trim());
             }
-            tracing::error!("[claude-login] {error}");
+            if helper_unavailable {
+                // WARN, not error: a signal death means this machine cannot run
+                // the helper (SIGILL on pre-AVX2, OOM kill, hardened kernel) and
+                // the frontend already degrades to the paste flow. A Sentry
+                // event per attempt from the same broken machines is noise
+                // (HOUSTON-APP-543 kept regressing on it); the breadcrumb +
+                // backend.log line keeps the diagnosis trail.
+                tracing::warn!("[claude-login] {error}");
+            } else {
+                tracing::error!("[claude-login] {error}");
+            }
             emit(
                 EVENT_DONE,
                 json!({ "success": false, "error": error, "helperUnavailable": helper_unavailable }),
@@ -217,6 +227,24 @@ where
             }
         }
     }
+}
+
+/// Diagnostic label for a signal death: "signal <n>" on Unix (which signal
+/// separates SIGILL/pre-AVX2 from OOM kills and sandbox denials in triage),
+/// bare "signal" where the number is unavailable.
+fn signal_label(status: &ExitStatus) -> String {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        if let Some(sig) = status.signal() {
+            return format!("signal {sig}");
+        }
+    }
+    // Windows ExitStatus::code() is always Some, so this arm is unreachable
+    // there in practice; keep the fn total for any future target.
+    #[cfg(not(unix))]
+    let _ = status;
+    "signal".to_string()
 }
 
 /// Read the next stdout line, or hang forever when there is no pipe. The `None`
@@ -346,7 +374,9 @@ mod tests {
         assert_eq!(done.1["success"], json!(false));
         assert_eq!(done.1["helperUnavailable"], json!(true));
         let error = done.1["error"].as_str().expect("error string");
-        assert!(error.contains("exit signal"), "error was: {error}");
+        // The message names the concrete signal (SIGILL = 4) so triage can
+        // tell an illegal instruction from an OOM kill without the machine.
+        assert!(error.contains("exit signal 4"), "error was: {error}");
 
         std::fs::remove_dir_all(&dir).expect("cleanup");
     }
