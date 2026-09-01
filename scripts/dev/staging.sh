@@ -60,6 +60,9 @@ export VITE_HOSTED_ENGINE_URL="$VITE_CONTROL_PLANE_URL"
 export VITE_NEW_ENGINE_URL= VITE_NEW_ENGINE_TOKEN=
 # Agent store follows the same gateway unless .env.staging overrides it.
 export VITE_AGENTSTORE_GATEWAY_URL="${VITE_AGENTSTORE_GATEWAY_URL:-$VITE_CONTROL_PLANE_URL}"
+# The store SITE (browse/"view listing" links) — without this the client falls
+# back to the prod catalog site, where staging-published agents 404.
+export VITE_AGENTSTORE_SITE_URL="${VITE_AGENTSTORE_SITE_URL:-https://staging-agents.gethouston.ai}"
 
 # Build identity: a hosted build identifies as `<package.json version>+cloud`
 # via X-Houston-App-Version. Nothing server-side acts on it anymore (the
