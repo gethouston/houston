@@ -410,11 +410,15 @@ export async function openAgentScreen(
   );
 }
 
-/** Open one focused agent's settings, optionally drilled to a section. */
+/**
+ * Open one focused agent's settings, drilled to a section. Pass `null` to
+ * stay on whatever the page lands on by itself (the Settings section — the
+ * default lens for a page opened to administer the agent).
+ */
 export async function openAgentSettings(
   page: Page,
   agentName: string,
-  section: AgentSettingsSection = "Job description",
+  section: AgentSettingsSection | null = "Job description",
 ): Promise<void> {
   await openAgentScreen(page, agentName);
   // The agent screen wears the same strip as the team screen, so its Settings
@@ -422,7 +426,7 @@ export async function openAgentSettings(
   if (!(await clickVisibleTeamSection(page, "Team Settings"))) {
     throw new Error(`Cannot open ${agentName}'s settings`);
   }
-  if (section !== "Job description") {
+  if (section !== null) {
     await openAgentSettingsSection(page, section);
   }
 }

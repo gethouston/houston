@@ -24,11 +24,12 @@ export function AgentDetailHeader({
 }) {
   const { t } = useTranslation(["teams", "agents"]);
   // The BACK CHIP carries the agent's identity (avatar + name), so the first
-  // lozenge is a plain "Job description" tab. It keeps the heading: the
-  // drilled level's first lens carries the h1, exactly as Admin's does.
+  // lozenge is a plain section tab. It keeps the heading: the drilled level's
+  // first lens carries the h1, exactly as Admin's does — whatever section the
+  // nav model puts first.
   const items = sections.map((id) => ({
     id,
-    heading: id === "job-description",
+    heading: id === sections[0],
     label: t(SECTION_TITLES[id]),
     dataAttrs: { "data-agent-section-tab": id },
   }));

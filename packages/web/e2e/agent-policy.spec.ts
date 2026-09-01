@@ -79,8 +79,8 @@ async function armOrg(request: APIRequestContext): Promise<void> {
  */
 async function openFinance(page: Page): Promise<void> {
   await page.goto("/");
-  // Straight to People with access: the page itself lands on Job description
-  // (the identity lozenge), but the policy assertions below all live here.
+  // Straight to People with access: the page itself lands on Settings (the
+  // manage section), but the policy assertions below all live here.
   await openAgentSettings(page, "Finance Bot", "People");
 }
 
@@ -95,7 +95,7 @@ test("the team's agent list drills into seven settings lozenges", async ({
   await expect(
     page.locator('[data-agent-section-body="integrations"]'),
   ).toBeVisible();
-  await openAgentSettings(page, "Finance Bot");
+  await openAgentSettings(page, "Finance Bot", null);
 
   // Seven top lozenges replace the old grouped rail.
   await expect(page.getByRole("tab", { name: "People" })).toHaveCount(0);
@@ -110,9 +110,40 @@ test("the team's agent list drills into seven settings lozenges", async ({
   ] as const) {
     await expect(agentSectionTab(page, section)).toBeVisible();
   }
-  // The drill-in lands on the FIRST section: the identity lozenge IS the Job
-  // description tab, so the screen opens on who this agent is and what it does.
-  await expect(page.getByLabel("Job description")).toBeVisible();
+  // The drill-in lands on Settings: the page's one door is administering the
+  // agent, so it opens on the manage section rather than the first lozenge.
+  await expect(
+    page.locator('[data-agent-section-body="manage"]'),
+  ).toBeVisible();
+  // The manage card carries the copy door alongside identity, move and delete.
+  await expect(page.getByRole("button", { name: /Copy agent/ })).toBeVisible();
+});
+
+test("Copy agent opens pre-named with the first free name and refuses a taken one", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, OWNER_CAPS);
+  await armOrg(request);
+  await page.goto("/");
+  await openAgentSettings(page, "Finance Bot", null);
+  await page.getByRole("button", { name: /Copy agent/ }).click();
+
+  // Names are unique per workspace (not per team), so the dialog opens on the
+  // first free "<name> copy" instead of a name the create would 409 on.
+  const nameField = page.locator("#agent-copy-name");
+  await expect(nameField).toHaveValue("Finance Bot copy");
+  await expect(page.getByRole("button", { name: "Create copy" })).toBeEnabled();
+
+  // Typing a taken name (copying next to the original keeps the original's
+  // name taken) names the conflict inline and disables the create.
+  await nameField.fill("Finance Bot");
+  await expect(
+    page.getByText("An agent named Finance Bot already exists"),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Create copy" }),
+  ).toBeDisabled();
 });
 
 test("People section: every member has a row, and a Can use -> No access change round-trips", async ({

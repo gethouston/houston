@@ -8,20 +8,19 @@ export interface SidebarItemRowProps {
 }
 
 /**
- * One agent in the rail: its avatar in the shared glyph column, its name, and
- * whatever quiet signal it is carrying in the trailing slot.
+ * One agent in the rail: its avatar in the shared glyph column, its name,
+ * whatever quiet signal it is carrying in the trailing slot, and the host's
+ * optional "..." affordance beside the button.
  *
  * It is a {@link SidebarRowButton} like every other line in the rail — the
  * avatar is simply what goes in the glyph box. That is the whole point of the
  * primitive: an agent row and the block header above it are the same object, so
  * a block reads as one ladder instead of a header with a foreign list under it.
  *
- * **It carries no "..." menu, and cannot be renamed or deleted from here.** An
- * agent is edited where it is configured — its focused agent screen — and
- * nowhere else, so the rail keeps ONE door onto settings instead of a second
- * one on the surface with the least room to explain what it is about to do.
- * The row reserves no column beside the button either: the full width of the
- * rail belongs to the agent's name.
+ * The affordance is DATA, not behaviour: the host builds the trigger and the
+ * menu it opens (`item.affordance`), and this row only places it in the shared
+ * affordance slot. The library itself still knows nothing about renaming,
+ * copying or deleting an agent.
  *
  * The one thing it still adds over a plain row: it is a drag handle. The
  * listeners live on the sortable wrapper, so the row only has to wear the
@@ -41,6 +40,7 @@ export function SidebarItemRow({
       draggable
       onActivate={() => onSelect(item.id)}
       trailing={item.trailing}
+      affordance={item.affordance}
     />
   );
 }

@@ -1,6 +1,7 @@
 import type { SidebarItem } from "@houston-ai/layout";
 import type { Agent } from "../../lib/types";
 import type { AgentActivitySummary } from "./agent-activity-summary-model";
+import { AgentRowMenu } from "./agent-row-menu";
 import { AgentSidebarIcon, NeedsYouChip } from "./agent-sidebar-status";
 
 /** Everything an agent row needs beyond the agents themselves. */
@@ -16,7 +17,9 @@ interface BuildAgentSidebarItemsArgs extends AgentItemArgs {
 
 /**
  * The rail's agent rows carry their actionable needs-you count on the right
- * edge. The unread dot stays absent.
+ * edge, then the row's "..." menu in the affordance slot beside the button
+ * (Copy / Publish / Delete — the same surfaces the agent's Settings section
+ * opens). The unread dot stays absent.
  *
  * What survives is the one thing a row can say without asking to be read: the
  * running ring around the avatar (motion, not a number).
@@ -57,6 +60,7 @@ export function buildAgentSidebarItems({
             ),
           }
         : {}),
+      affordance: <AgentRowMenu agent={agent} />,
     };
   });
 }

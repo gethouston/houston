@@ -321,18 +321,23 @@ describe("sidebar row anatomy", () => {
     ok(cls.includes("data-[state=open]:"));
   });
 
-  it("gives an AGENT row NO control beside its button", () => {
-    // An agent is renamed, recoloured, moved and deleted on its focused agent
-    // screen. The row neither renders a control for any of that nor reserves a
-    // column for one, so the agent's name gets the rail's full width.
+  it("lets the HOST fill an agent row's affordance slot, and owns none itself", () => {
+    // The row's "..." is DATA: the host builds the trigger and the menu it
+    // opens (`item.affordance`); the library only places it beside the button.
+    // The library itself still knows nothing about renaming, copying or
+    // deleting an agent — no menu component, no action callbacks.
     const row = source("sidebar-item-row.tsx");
-    strictEqual(/affordance=/.test(row), false, "no affordance slot");
+    ok(/affordance=\{item\.affordance\}/.test(row), "slot is item-driven");
     strictEqual(row.includes("sidebarRowAffordanceGutter"), false, "no gutter");
     strictEqual(row.includes("DropdownMenu"), false, "host owns the menu");
-    strictEqual(
-      source("sidebar-props.ts").includes("affordance"),
-      false,
-      "SidebarItem has no affordance for a host to fill",
+    ok(
+      source("sidebar-props.ts").includes("affordance?: ReactNode"),
+      "SidebarItem offers the affordance for a host to fill",
+    );
+    // The collapsed rail's hover flyout is too transient to anchor a menu to.
+    ok(
+      source("sidebar-collapsed-item.tsx").includes("affordance: undefined"),
+      "flyout strips the affordance",
     );
     for (const gone of ["onStartRename", "onDeleteItem", "menuContent"]) {
       strictEqual(source("sidebar-row-context.ts").includes(gone), false, gone);

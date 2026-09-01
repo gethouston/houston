@@ -122,6 +122,9 @@ export type AnalyticsEventName =
   | "agent_shared"
   | "agent_published"
   | "agent_imported"
+  // A workspace-internal duplicate created from the agent's Settings section
+  // (`agent_slug` is the SOURCE agent).
+  | "agent_copied"
   // Fired when an agent's self-setup mission auto-starts after it is
   // created/imported. Carries `source` (created vs imported).
   | "agent_onboarding_started"

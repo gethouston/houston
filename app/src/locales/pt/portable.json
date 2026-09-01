@@ -11,7 +11,8 @@
       "noInstructions": "Este agente ainda não tem instruções.",
       "skillsLabel": "Habilidades",
       "routinesLabel": "Rotinas",
-      "learningsLabel": "Aprendizados"
+      "learningsLabel": "Aprendizados",
+      "privacyNote": "Só é compartilhado o que você escolhe aqui: a descrição do cargo, as skills, as rotinas e os aprendizados. As conversas, os arquivos e as contas conectadas sempre continuam privados."
     },
     "step2": {
       "title": "Quer anonimizar antes?",
@@ -50,7 +51,8 @@
     },
     "review": {
       "title": "Pronto para compartilhar",
-      "body": "Envie {{name}} como arquivo, ou publique na Agent Store para qualquer pessoa instalar."
+      "body": "Envie {{name}} como arquivo, ou publique na Agent Store para qualquer pessoa instalar.",
+      "privacyNote": "O compartilhamento cobre os itens acima e nada mais. As conversas continuam privadas, e você pode remover uma publicação quando quiser."
     },
     "actions": {
       "back": "Voltar",

@@ -270,12 +270,13 @@ test("an agent row opens its focused screen and settings page", async ({
   await expect(
     screen(page).locator("[data-agent-section-tab='people']"),
   ).toBeVisible();
-  // Identity lives on the back chip now; the first lens carries the heading.
+  // Identity lives on the back chip now; the first lens carries the heading,
+  // and Settings leads the rail.
   await expect(
     screen(page).locator("[data-agent-settings-back]"),
   ).toContainText("Kai");
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Job description" }),
+    screen(page).getByRole("heading", { level: 1, name: "Settings" }),
   ).toBeVisible();
   // ...and the chip goes back to the agent's own screen.
   await screen(page).locator("[data-agent-settings-back]").click();

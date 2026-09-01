@@ -62,6 +62,8 @@
       "chooseTeam": "Choose a team",
       "moveOrganization": "Move to another organization",
       "moveOrganizationDescription": "Move this agent into an organization so a team can work with it.",
+      "publish": "Publish to the Agent Store",
+      "publishDescription": "Share this agent so anyone can install it. Conversations stay private.",
       "delete": "Delete agent"
     },
     "people": {

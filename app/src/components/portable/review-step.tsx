@@ -47,6 +47,10 @@ export function ReviewStep({
           value={anonymized ? t("export.step3.yes") : t("export.step3.no")}
         />
       </dl>
+
+      <p className="text-sm text-muted-foreground">
+        {t("export.review.privacyNote")}
+      </p>
     </div>
   );
 }

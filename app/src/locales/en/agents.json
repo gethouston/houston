@@ -202,5 +202,26 @@
       "openFailedTitle": "Couldn’t open the file"
     },
     "modifiedToday": "Today"
+  },
+  "copyAgent": {
+    "row": "Copy agent",
+    "rowDescription": "Create a duplicate in one of your teams. Conversations are not copied.",
+    "title": "Copy {{name}}",
+    "body": "The copy starts with the same job description, skills, routines, learnings and color. Conversations stay with the original and are never copied.",
+    "nameLabel": "Name for the copy",
+    "nameTaken": "An agent named {{name}} already exists. Agent names are shared across all your teams, so give the copy its own name.",
+    "teamLabel": "Team for the copy",
+    "confirm": "Create copy",
+    "copySuffix": "copy",
+    "toasts": {
+      "createdTitle": "Copy created",
+      "createdDescription": "{{name}} is ready."
+    },
+    "errors": {
+      "failed": "We couldn't copy the agent"
+    }
+  },
+  "rowMenu": {
+    "label": "Options for {{name}}"
   }
 }

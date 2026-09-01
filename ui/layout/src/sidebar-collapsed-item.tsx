@@ -52,7 +52,13 @@ export function SidebarCollapsedItem({
         sideOffset={8}
         className="w-56 p-1"
       >
-        <SidebarItemRow item={item} isActive={isActive} onSelect={onSelect} />
+        {/* The flyout is a transient hover surface: a menu anchored inside it
+            would close with it. The affordance stays on the expanded rail. */}
+        <SidebarItemRow
+          item={{ ...item, affordance: undefined }}
+          isActive={isActive}
+          onSelect={onSelect}
+        />
       </HoverCardContent>
     </HoverCard>
   );
