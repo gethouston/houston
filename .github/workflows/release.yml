@@ -485,6 +485,9 @@ jobs:
       # steps aside and publish rides the engine base, while store-catalog reads
       # this value for browse.
       VITE_AGENTSTORE_GATEWAY_URL: ${{ matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
+      # The store SITE base for browse/"view listing" links (falls back to the
+      # prod catalog site when unset — staging-published agents would 404 there).
+      VITE_AGENTSTORE_SITE_URL: ${{ matrix.flavor == 'staging' && 'https://staging-agents.gethouston.ai' || 'https://agents.gethouston.ai' }}
       VITE_CLIENT_METRICS_GATEWAY_URL: ${{ matrix.flavor == 'staging' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
     steps:
       - name: Checkout
