@@ -95,9 +95,11 @@ export function CustomIntegrationRow({
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
             {/* The same presence dot the catalog's installed rows wear —
-                connected state must read without opening the detail card. */}
+                connected state must read without opening the detail card. No
+                srLabel: the status line below already SAYS "Connected", and a
+                second (visually hidden) copy doubled the announcement. */}
             {integration.state.status === "active" && (
-              <StatusDot status="active" srLabel={t("custom.status.active")} />
+              <StatusDot status="active" />
             )}
             <span className="min-w-0 truncate">{integration.name}</span>
             <span className="shrink-0 rounded-full bg-chip-subtle px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
