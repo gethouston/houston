@@ -42,6 +42,7 @@ export {
   InstallsPanel,
   toInstallsDayBars,
 } from "./components/installs-panel";
+export { IntegrationMark } from "./components/integration-mark";
 export type { OwnedAgentCardLabels } from "./components/owned-agent-card";
 export {
   OWNED_AGENT_CARD_LABELS,

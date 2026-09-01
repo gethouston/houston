@@ -2,9 +2,10 @@
 
 import { cn } from "@houston-ai/core";
 import { Plus, Sparkle } from "lucide-react";
-import { integrationLogoUrl, resolveIntegrationLabels } from "../integrations";
+import { resolveIntegrationLabels } from "../integrations";
 import type { StoreAgentRow, StoreLinkComponent } from "../types";
 import { AgentTile } from "./agent-tile";
+import { IntegrationMark } from "./integration-mark";
 
 const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
 const compactNumber = new Intl.NumberFormat("en", { notation: "compact" });
@@ -144,11 +145,10 @@ export function IntegrationLogos({
       )}
     >
       {logos.map(({ slug, label }) => (
-        <img
+        <IntegrationMark
           key={slug}
-          src={integrationLogoUrl(slug)}
-          alt={label}
-          title={label}
+          slug={slug}
+          label={label}
           className="size-4"
         />
       ))}

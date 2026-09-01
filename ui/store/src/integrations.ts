@@ -55,6 +55,10 @@ const DOMAIN_BY_SLUG = new Map([
   ["TWITTER", "x.com"],
   ["LINEAR", "linear.app"],
   ["QUICKBOOKS", "quickbooks.intuit.com"],
+  // Houston's curated integrations: the brand domain is NOT `<slug>.com` —
+  // croma.com is an unrelated electronics retailer whose green-C favicon
+  // shipped on the store's Croma marks until this entry existed.
+  ["CROMA", "usecroma.com"],
 ]);
 
 export function humanizeIntegrationSlug(slug: string) {
@@ -85,6 +89,12 @@ export function listStoreIntegrations(): CatalogIntegration[] {
 }
 
 export function integrationLogoUrl(slug: string) {
-  const domain = DOMAIN_BY_SLUG.get(slug) ?? `${slug.toLowerCase()}.com`;
+  // Case-insensitive: Composio slugs arrive uppercase ("GMAIL"), Houston's
+  // custom/curated slugs lowercase ("croma") — both must hit the same row.
+  // The guess drops separators too: "ONE_DRIVE" must become onedrive.com,
+  // not the invalid hostname one_drive.com the favicon service 404s.
+  const domain =
+    DOMAIN_BY_SLUG.get(slug.toUpperCase()) ??
+    `${slug.toLowerCase().replace(/[^a-z0-9-]/g, "")}.com`;
   return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 }

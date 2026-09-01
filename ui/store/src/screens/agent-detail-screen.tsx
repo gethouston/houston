@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import type { AgentCardLabels } from "../components/agent-card";
 import { AgentDetailLayout } from "../components/agent-detail-layout";
 import { AgentGrid } from "../components/grids";
-import { integrationLogoUrl, resolveIntegrationLabels } from "../integrations";
+import { IntegrationMark } from "../components/integration-mark";
+import { resolveIntegrationLabels } from "../integrations";
 import type {
   StoreAgentRow,
   StoreLinkComponent,
@@ -81,7 +82,7 @@ export function AgentDetailScreen({
           <ul className="flex flex-wrap gap-x-8 gap-y-4">
             {integrations.map(({ slug, label }) => (
               <li key={slug} className="flex items-center gap-2.5">
-                <img src={integrationLogoUrl(slug)} alt="" className="size-5" />
+                <IntegrationMark slug={slug} label={label} className="size-5" />
                 <span className="text-[15px] text-ink-muted">{label}</span>
               </li>
             ))}
