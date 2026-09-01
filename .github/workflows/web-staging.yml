@@ -88,6 +88,11 @@ jobs:
           # published agents into the real prod catalog and folded QA timings into
           # the prod Prometheus histograms. Same secret as the gateway above.
           VITE_AGENTSTORE_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL_STAGING }}
+          # The store SITE (not API) base for browse/"view listing" links
+          # (web/src/engine-adapter/store-gateway.ts). Falls back to the prod
+          # catalog site when unset, which 404s for staging-published agents.
+          # Public hostname, so a literal — no secret needed.
+          VITE_AGENTSTORE_SITE_URL: https://staging-agents.gethouston.ai
           VITE_CLIENT_METRICS_GATEWAY_URL: ${{ secrets.HOSTED_ENGINE_URL_STAGING }}
           FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
