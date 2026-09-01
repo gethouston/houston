@@ -145,3 +145,14 @@ describe("custom brand fallbacks (HOU-1049)", () => {
     strictEqual(prettifyCustomSlug("my_api"), "My Api");
   });
 });
+
+describe("fallbackLogo", () => {
+  it("guesses <slug>.com for unknown toolkits", () => {
+    strictEqual(fallbackLogo("slack").includes("domain=slack.com"), true);
+  });
+
+  it("resolves a curated slug's real brand domain, never <slug>.com", () => {
+    // croma.com is an unrelated retailer; the curated entry knows the brand.
+    strictEqual(fallbackLogo("croma").includes("domain=usecroma.com"), true);
+  });
+});
