@@ -1,6 +1,7 @@
 import { cn } from "@houston-ai/core";
 import { useState } from "react";
 import type { AppDisplay } from "./app-display";
+import { curatedLogoUrl } from "./curated-logos";
 
 const SIZES = {
   xs: "size-4",
@@ -56,7 +57,12 @@ export function AppLogo({
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const box = cn(SIZES[size], "shrink-0 rounded-lg", className);
 
-  if (!display.logoUrl || failedUrl === display.logoUrl) {
+  // A curated slug's brand mark ships IN the bundle — every surface that
+  // renders through this component gets it with zero network, instead of a
+  // favicon-proxy round-trip that can fail (and once left Croma a letter).
+  const logoUrl = curatedLogoUrl(display.toolkit) || display.logoUrl;
+
+  if (!logoUrl || failedUrl === logoUrl) {
     return (
       <span className={cn(box, "flex items-center justify-center bg-input")}>
         <span className={cn("font-semibold text-ink-muted", LETTER_SIZE[size])}>
@@ -67,12 +73,12 @@ export function AppLogo({
   }
   return (
     <img
-      src={display.logoUrl}
+      src={logoUrl}
       alt={display.name}
       loading="lazy"
       decoding="async"
       className={cn(box, "object-contain")}
-      onError={() => setFailedUrl(display.logoUrl)}
+      onError={() => setFailedUrl(logoUrl)}
     />
   );
 }

@@ -3,6 +3,7 @@ import type {
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
 import { groupAccounts } from "./connected-apps-model.ts";
+import { curatedIntegrationOf } from "./curated-integrations.ts";
 
 /**
  * Resolving a toolkit slug to a real display name / logo / description (with
@@ -87,7 +88,12 @@ export function connectionRows(
 }
 
 export function fallbackLogo(toolkit: string): string {
-  return `https://www.google.com/s2/favicons?domain=${toolkit}.com&sz=128`;
+  // A curated slug's brand lives on its OWN domain — croma.com is an
+  // unrelated retailer whose green-C favicon shipped on every catalog-miss
+  // surface (skill chips, chat rows) until this looked the entry up.
+  const curated = curatedIntegrationOf(toolkit);
+  const domain = curated ? new URL(curated.website).hostname : `${toolkit}.com`;
+  return `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
 }
 
 /**
