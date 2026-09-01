@@ -19,7 +19,8 @@ enum ModelData {
       .init("claude-sonnet-4-6", "Sonnet 4.6", "Best balance of speed and quality.", [.low, .medium, .high, .max]),
       .init("claude-opus-5", "Opus 5", "Newest Opus. Deeper reasoning and stronger autonomous work.", [.low, .medium, .high, .xhigh, .max]),
       .init("claude-opus-4-8", "Opus 4.8", "Previous Opus. Strong alignment and agentic coding.", [.low, .medium, .high, .xhigh, .max]),
-      .init("claude-fable-5", "Fable 5", "Most capable model. Costs 2x more credits than Opus 5.", [.low, .medium, .high, .xhigh, .max]),
+      .init("claude-fable-5-1", "Fable 5.1", "Newest Fable. Most capable model, costs 2x more credits than Opus 5.", [.low, .medium, .high, .xhigh, .max]),
+      .init("claude-fable-5", "Fable 5", "Previous Fable. Costs 2x more credits than Opus 5.", [.low, .medium, .high, .xhigh, .max]),
       .init("claude-opus-4-7", "Opus 4.7", "Older Opus. Strong coding autonomy and complex reasoning.", [.low, .medium, .high, .xhigh, .max]),
     ],
     "github-copilot": [
