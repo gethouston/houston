@@ -1,4 +1,5 @@
 import { CatalogShell } from "@houston-ai/core";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDisconnectIntegration } from "../../hooks/queries";
 import {
@@ -11,6 +12,8 @@ import {
   useConnectFlow,
   useConnectionSelection,
 } from "../integrations";
+import { CuratedConnectDialog } from "../integrations/curated-connect-dialog";
+import { curatedIntegrationOf } from "../integrations/curated-integrations";
 import { PageHeaderTools } from "../shell/page-header/page-header-tools";
 import { CatalogBrowsePane } from "./catalog-browse-pane";
 import { CatalogControls } from "./catalog-controls";
@@ -36,6 +39,8 @@ export function IntegrationsReady({
   const connectFlow = useConnectFlow({});
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const selection = useConnectionSelection(apps);
+  // The curated connect dialog's subject (a slug from the browse catalog).
+  const [curatedSlug, setCuratedSlug] = useState<string | null>(null);
   const {
     query,
     setQuery,
@@ -123,6 +128,7 @@ export function IntegrationsReady({
                       isLoading={apps.isLoading}
                       connectFlow={connectFlow}
                       onRemove={(toolkit) => disconnect.mutate({ toolkit })}
+                      onCuratedConnect={setCuratedSlug}
                     />
                   ),
                 },
@@ -148,6 +154,16 @@ export function IntegrationsReady({
         onRemove={(toolkit, connectionId) =>
           disconnect.mutate({ toolkit, connectionId })
         }
+      />
+
+      <CuratedConnectDialog
+        curated={
+          curatedSlug === null
+            ? null
+            : (curatedIntegrationOf(curatedSlug) ?? null)
+        }
+        agentId={custom.transportAgentId}
+        onClose={() => setCuratedSlug(null)}
       />
     </>
   );

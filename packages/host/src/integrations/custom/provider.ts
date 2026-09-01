@@ -106,7 +106,7 @@ export class CustomIntegrationProvider implements IntegrationProvider {
     _acting?: ActingContext,
     app?: string,
   ): Promise<ProviderSearchResult> {
-    const [defs, { executor }] = await Promise.all([
+    const [defs, { executor, states }] = await Promise.all([
       this.store.list(),
       this.host.ensure(),
     ]);
@@ -122,7 +122,11 @@ export class CustomIntegrationProvider implements IntegrationProvider {
           description: t.description,
           inputSchema: t.inputSchema,
         })),
-      defs.map((d) => ({ slug: d.slug, name: d.name })),
+      defs.map((d) => ({
+        slug: d.slug,
+        name: d.name,
+        active: states.get(d.slug)?.status === "active",
+      })),
       app,
     );
   }

@@ -212,5 +212,23 @@
     "oauth": {
       "openedToast": "Finish signing in to {{name}} in your browser"
     }
+  },
+  "curated": {
+    "croma": {
+      "description": "Official government records from Colombia, Peru and Mexico: look up court cases, companies, vehicles and people, with answers backed by official sources.",
+      "keyHelp": "Sign in to your Croma workspace and copy an API key (it starts with croma_live_). Keys belong to your organization's workspace, not a personal account."
+    },
+    "connect": {
+      "title": "Connect {{name}}",
+      "recommendedBadge": "Recommended",
+      "signInTitle": "Sign in with {{name}}",
+      "signInDesc": "The easiest way: your browser opens and you sign in to your {{name}} account. No key to copy.",
+      "keyTitle": "Use an API key instead",
+      "keyDesc": "Paste a key from your {{name}} account.",
+      "openKeys": "Open {{name}} to get a key",
+      "back": "Back",
+      "newTo": "New to {{name}}? Create your account first, then come back here to connect.",
+      "createAccount": "Create a {{name}} account"
+    }
   }
 }

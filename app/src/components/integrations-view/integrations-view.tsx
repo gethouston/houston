@@ -1,4 +1,5 @@
 import { CATALOG_PLANE_MAX_W, CatalogGrid, cn } from "@houston-ai/core";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AddCustomButton,
@@ -11,6 +12,8 @@ import {
   useCustomIntegrationsSurface,
   useIntegrationsGate,
 } from "../integrations";
+import { curatedToolkits } from "../integrations/curated-integrations";
+import { curatedLogoUrl } from "../integrations/curated-logos";
 import {
   PageHeaderTools,
   PageHeaderToolsProvider,
@@ -28,8 +31,19 @@ import { useCatalogSurface } from "./use-catalog-surface";
 export function IntegrationsView() {
   const { t } = useTranslation("integrations");
   const gate = useIntegrationsGate();
-  const apps = useConnectedApps();
   const custom = useCustomIntegrationsSurface();
+  // Curated entries (Croma…) join the browse catalog unless already added —
+  // then their row lives in the Installed strip via the custom list instead.
+  const curated = useMemo(
+    () =>
+      curatedToolkits(
+        Array.isArray(custom.items) ? custom.items : [],
+        (c) => t(c.descriptionKey),
+        curatedLogoUrl,
+      ),
+    [custom.items, t],
+  );
+  const apps = useConnectedApps(curated);
   const surface = useCatalogSurface({
     active: apps.activeRows,
     catalog: apps.catalogData,

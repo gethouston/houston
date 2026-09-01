@@ -7,51 +7,10 @@ import {
 } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { MessageCircle, Wrench } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChoiceCard } from "./choice-card";
 import { CustomAddForm } from "./custom-add-form";
-
-/**
- * One fork option. The `lead` emphasis marks the recommended path: a filled
- * chip surface + ink glyph, a clear step above its quiet sibling — the weight
- * carries the recommendation, no badge and no colour (content stays
- * near-monochrome). Both cards are always visible: nothing here is gated on
- * hover.
- */
-function ChoiceCard({
-  icon,
-  title,
-  description,
-  emphasis = "quiet",
-  onClick,
-}: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-  emphasis?: "lead" | "quiet";
-  onClick: () => void;
-}) {
-  const lead = emphasis === "lead";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex w-full items-start gap-3 rounded-xl border border-line px-4 py-3 text-left transition-[background-color,transform] duration-200 hover:bg-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-focus active:scale-[0.99] ${
-        lead ? "bg-chip" : ""
-      }`}
-    >
-      <span className={`mt-0.5 ${lead ? "text-ink" : "text-ink-muted"}`}>
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-medium text-ink">{title}</span>
-        <span className="mt-0.5 block text-[13px] text-ink-muted">
-          {description}
-        </span>
-      </span>
-    </button>
-  );
-}
 
 /**
  * The "Add custom integration" dialog (HOU-980): a two-way fork, then the

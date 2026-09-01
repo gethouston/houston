@@ -1,6 +1,7 @@
 import type { ProviderSearchResult } from "../provider";
 import { resolveScopeRows } from "../scope-resolve";
 import type { ToolMatch } from "../types";
+import { curatedMatches, curatedScoped } from "./curated";
 
 /** The subset of an executor tool row that scoring needs. */
 export interface CustomToolRow {
@@ -14,6 +15,10 @@ export interface CustomToolRow {
 export interface CustomDefRow {
   slug: string;
   name: string;
+  /** Compiled and connected. A pending/errored def still surfaces (the model
+   *  learns the slug) but as NOT CONNECTED, so the model offers the connect
+   *  hand-off instead of trying to run tools that do not exist. */
+  active: boolean;
 }
 
 const MAX_MATCHES = 20;
@@ -30,8 +35,8 @@ const appRow = (d: CustomDefRow): ToolMatch => ({
   action: "",
   toolkit: d.slug,
   description: `${d.name} (custom integration)`,
-  connected: true,
-  status: "connected",
+  connected: d.active,
+  status: d.active ? "connected" : "connectable",
 });
 
 /** Score tools against a plain-language query: token hits on the tool
@@ -76,9 +81,17 @@ export function searchCustomTools(
   defs: CustomDefRow[],
   app?: string,
 ): ProviderSearchResult {
+  const added = new Set(defs.map((d) => d.slug));
   if (app) {
     const scopedDefs = resolveScopeRows(defs, app);
-    if (scopedDefs.length === 0) return { items: [], scope: "unresolved" };
+    if (scopedDefs.length === 0) {
+      // A scope naming a curated, not-yet-added app resolves to its
+      // connectable row — "unresolved" would trigger the unscoped retry and
+      // bury the one app the model asked about under other apps' matches.
+      const curated = curatedScoped(app, added);
+      if (curated.length > 0) return { items: curated, scope: "resolved" };
+      return { items: [], scope: "unresolved" };
+    }
     const slugs = new Set(scopedDefs.map((d) => d.slug));
     const scopedTools = tools.filter((t) => slugs.has(t.integration));
     const nameOf = new Map(
@@ -110,6 +123,9 @@ export function searchCustomTools(
       matches.push(appRow(def));
     }
   }
+  // Curated, not-yet-added entries surface as CONNECTABLE app rows, so the
+  // model offers request_connection for them like any unconnected app.
+  matches.push(...curatedMatches(tokens, added));
   return { items: matches };
 }
 

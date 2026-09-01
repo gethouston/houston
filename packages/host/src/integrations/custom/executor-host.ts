@@ -10,7 +10,11 @@ import { authMethodsOf, TOKEN_VARIABLE } from "./auth-methods";
 import { fallbackAuthTemplate } from "./fallback-auth";
 import { guardedFetch, guardedHttpClientLayer } from "./fetch-guard";
 import type { CustomSecretStore } from "./secrets";
-import { HOUSTON_PROVIDER_KEY, houstonCredentialProvider } from "./secrets";
+import {
+  HOUSTON_PROVIDER_KEY,
+  houstonCredentialProvider,
+  resolveCredentialValue,
+} from "./secrets";
 import type {
   CustomAuthMethod,
   CustomCredentialRef,
@@ -240,43 +244,115 @@ export class CustomExecutorHost {
         };
       }
       await this.connect(executor, def.slug, def.credential);
-      const toolCount = await this.toolCount(executor, def.slug);
-      // `mcp.addServer` only records config — an unreachable server would
-      // otherwise read as a healthy integration with zero tools. Zero tools on
-      // an MCP def triggers a live probe to tell "no tools" from "no server";
-      // a probe that reaches an auth wall still proves the server is there.
-      if (def.kind === "mcp" && toolCount === 0) {
-        const probe = await executor.mcp
-          .probeEndpoint({
-            endpoint: def.endpoint,
-            ...(def.headers ? { headers: def.headers } : {}),
-          })
-          .catch(() => null);
-        if (!probe || (!probe.connected && !probe.requiresAuthentication)) {
-          return {
-            status: "error",
-            message: `the MCP server at ${def.endpoint} is not reachable`,
-          };
-        }
-        // An auth wall on a def added WITHOUT a credential can never produce
-        // tools — reporting it "active, 0 actions" would bury the real
-        // problem (the reviewed OAuth-only case: the server wants its own
-        // sign-in, which Houston cannot connect to yet).
-        if (probe.requiresAuthentication && def.auth === "none") {
-          return {
-            status: "error",
-            message: probe.requiresOAuth
-              ? `the MCP server at ${def.endpoint} only signs in with its own account flow, which Houston cannot connect to yet`
-              : `the MCP server at ${def.endpoint} requires an API key or token - add it again as a service that needs a key`,
-          };
-        }
-      }
-      return { status: "active", toolCount };
+      return await this.connectedState(executor, def);
     } catch (err) {
       return {
         status: "error",
         message: err instanceof Error ? err.message : String(err),
       };
+    }
+  }
+
+  /**
+   * The state of a definition whose connection was just (re)attached — shared
+   * by the boot/replace compile and the post-sign-in path so both judge zero
+   * tools the same way. `mcp.addServer` only records config, so an
+   * unreachable server would otherwise read as a healthy integration with
+   * zero tools: a zero-tool MCP def triggers a live probe to tell "no tools"
+   * from "no server", and an auth wall then indicts the CREDENTIAL — the
+   * executor's tool sync swallows a 401 into an empty catalog (verified live
+   * with Croma), so "active, 0 actions" was exactly how a rejected or
+   * unresolvable token used to present. Never again: a rejected credential
+   * lands `pending` (the Sign in / Enter key affordance returns), an
+   * uncheckable one lands `error` with the honest reason.
+   */
+  async connectedState(
+    executor: CustomExecutor,
+    def: CustomIntegrationDef,
+  ): Promise<CustomIntegrationState> {
+    const toolCount = await this.toolCount(executor, def.slug);
+    if (def.kind === "mcp" && toolCount === 0) {
+      const probe = await executor.mcp
+        .probeEndpoint({
+          endpoint: def.endpoint,
+          ...(def.headers ? { headers: def.headers } : {}),
+        })
+        .catch(() => null);
+      if (!probe || (!probe.connected && !probe.requiresAuthentication)) {
+        return {
+          status: "error",
+          message: `the MCP server at ${def.endpoint} is not reachable`,
+        };
+      }
+      // An auth wall on a def added WITHOUT a credential can never produce
+      // tools — reporting it "active, 0 actions" would bury the real
+      // problem (the reviewed OAuth-only case: the server wants its own
+      // sign-in, which Houston cannot connect to yet).
+      if (probe.requiresAuthentication && def.auth === "none") {
+        return {
+          status: "error",
+          message: probe.requiresOAuth
+            ? `the MCP server at ${def.endpoint} only signs in with its own account flow, which Houston cannot connect to yet`
+            : `the MCP server at ${def.endpoint} requires an API key or token - add it again as a service that needs a key`,
+        };
+      }
+      if (probe.requiresAuthentication && def.credential) {
+        const verdict = await this.credentialVerdict(
+          executor,
+          def.slug,
+          def.credential,
+        );
+        if (verdict === "rejected") {
+          return {
+            status: "pending",
+            authMethods: await this.authMethods(executor, def.slug),
+          };
+        }
+        if (verdict === "unavailable") {
+          return {
+            status: "error",
+            message: `the saved sign-in for ${def.name} cannot be checked right now - try again in a moment`,
+          };
+        }
+      }
+    }
+    return { status: "active", toolCount };
+  }
+
+  /**
+   * Whether the stored credential still opens the service: resolve each
+   * secret to the value a request would carry (bundles to their CURRENT
+   * access token) and run the service's own validation probe. `rejected` =
+   * the service turned that value away (or a secret vanished) — the user
+   * must sign in / re-enter the key; `unavailable` = the verdict itself
+   * could not be obtained (secret store or probe unreachable), which must
+   * never be read as a bad credential.
+   */
+  private async credentialVerdict(
+    executor: CustomExecutor,
+    slug: string,
+    credential: CustomCredentialRef,
+  ): Promise<"ok" | "rejected" | "unavailable"> {
+    try {
+      const values: Record<string, string> = {};
+      for (const [variable, id] of Object.entries(credential.secretIds)) {
+        const value = await resolveCredentialValue(this.secrets, id);
+        if (value === null) return "rejected";
+        values[variable] = value;
+      }
+      const verdict = await executor.connections.validate({
+        owner: OWNER,
+        integration: slug,
+        template: credential.template,
+        values,
+      });
+      return verdict.status === "expired" || verdict.status === "degraded"
+        ? "rejected"
+        : "ok";
+    } catch {
+      // Classified, not swallowed: the caller renders this as the honest
+      // "cannot be checked right now" error state.
+      return "unavailable";
     }
   }
 

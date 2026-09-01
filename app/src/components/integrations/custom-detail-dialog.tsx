@@ -9,6 +9,7 @@ import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { KeyRound, LogIn } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./app-logo";
+import { customIntegrationLogoUrl } from "./curated-logos";
 import {
   customAuthMethod,
   customKindBadgeKey,
@@ -96,7 +97,10 @@ export function CustomDetailDialog({
             toolkit: integration.slug,
             name: integration.name,
             description: "",
-            logoUrl: integration.iconUrl ?? "",
+            logoUrl: customIntegrationLogoUrl(
+              integration.slug,
+              integration.iconUrl,
+            ),
           }}
           size="xl"
           className="rounded-xl"

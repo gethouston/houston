@@ -240,15 +240,27 @@ export const HOUSTON_PROVIDER_KEY = "houston";
  * live token on every request and rotation never needs a rewire. Plain API
  * keys pass through untouched.
  */
+/**
+ * Resolve one stored credential to the value a request would carry: a bundle
+ * to its CURRENT access token (refreshing first when needed), a plain key to
+ * itself, a missing id to null. The provider below resolves through this, and
+ * the compile-time credential health check reuses it so both judge the SAME
+ * value.
+ */
+export async function resolveCredentialValue(
+  store: CustomSecretStore,
+  id: string,
+): Promise<string | null> {
+  const raw = await store.get(id);
+  if (raw === null) return null;
+  const bundle = parseBundle(raw);
+  return bundle ? resolveOAuthValue(store, id, raw, bundle) : raw;
+}
+
 export function houstonCredentialProvider(
   store: CustomSecretStore,
 ): CredentialProvider {
-  const resolve = async (id: string): Promise<string | null> => {
-    const raw = await store.get(id);
-    if (raw === null) return null;
-    const bundle = parseBundle(raw);
-    return bundle ? resolveOAuthValue(store, id, raw, bundle) : raw;
-  };
+  const resolve = (id: string) => resolveCredentialValue(store, id);
   return {
     // The key is a branded string on the executor side; ours is a constant.
     key: HOUSTON_PROVIDER_KEY as CredentialProvider["key"],

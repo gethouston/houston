@@ -15,8 +15,8 @@ import {
  */
 
 const defs: CustomDefRow[] = [
-  { slug: "acme", name: "Acme" },
-  { slug: "beta", name: "Beta" },
+  { slug: "acme", name: "Acme", active: true },
+  { slug: "beta", name: "Beta", active: true },
 ];
 
 const pingTools: CustomToolRow[] = [
@@ -89,8 +89,8 @@ test("a scope matching no custom integration reports unresolved (another provide
 
 test("an EXACT scope match excludes loose substring siblings (Acme vs Acme Staging)", () => {
   const twinDefs: CustomDefRow[] = [
-    { slug: "acme", name: "Acme" },
-    { slug: "acme_staging", name: "Acme Staging" },
+    { slug: "acme", name: "Acme", active: true },
+    { slug: "acme_staging", name: "Acme Staging", active: true },
   ];
   const twinTools: CustomToolRow[] = [
     ...pingTools.filter((t) => t.integration === "acme"),
@@ -114,7 +114,10 @@ test("an EXACT scope match excludes loose substring siblings (Acme vs Acme Stagi
 test("an EXACT scope match resolves even a 1-2 char integration name", () => {
   // The length guard exists for the loose tier only — a user's own "HR"
   // integration must resolve when named exactly, never false-not-found.
-  const hrDefs: CustomDefRow[] = [{ slug: "hr", name: "HR" }, ...defs];
+  const hrDefs: CustomDefRow[] = [
+    { slug: "hr", name: "HR", active: true },
+    ...defs,
+  ];
   const hrTools: CustomToolRow[] = [
     {
       address: "tools.hr.org.default.sick_day",
@@ -134,8 +137,8 @@ test("a loose scope matching SEVERAL integrations resolves only the closest one"
   // Same rule as the Composio resolver (shared scope-resolve.ts): "hub" must
   // never hard-scope to two unrelated integrations at once.
   const hubDefs: CustomDefRow[] = [
-    { slug: "acme_hub", name: "Acme Hub" },
-    { slug: "hubspot_clone", name: "HubSpot Clone" },
+    { slug: "acme_hub", name: "Acme Hub", active: true },
+    { slug: "hubspot_clone", name: "HubSpot Clone", active: true },
   ];
   const out = searchCustomTools("anything", [], hubDefs, "hub");
   expect(out.scope).toBe("resolved");
@@ -164,7 +167,7 @@ test("results are capped at 20 even when every tool scores", () => {
     description: "does a thing",
   }));
   const { items } = searchCustomTools("thing", manyTools, [
-    { slug: "gen", name: "Gen" },
+    { slug: "gen", name: "Gen", active: true },
   ]);
   expect(items).toHaveLength(20);
 });
@@ -183,8 +186,8 @@ test('a toolkit-level entry (action: "") is emitted for a def the query names bu
     },
   ];
   const { items } = searchCustomTools("emptyapp", tools, [
-    { slug: "acme", name: "Acme" },
-    { slug: "empty", name: "EmptyApp" },
+    { slug: "acme", name: "Acme", active: true },
+    { slug: "empty", name: "EmptyApp", active: true },
   ]);
   expect(items).toEqual([
     {

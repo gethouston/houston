@@ -4,7 +4,8 @@ import { RowCard } from "./cards/row-card";
 import { RowCardButton } from "./cards/row-card-button";
 import type { ConnectCardView } from "./integration-connect-card-state";
 import { AppLogo } from "./integrations";
-import { useIntegrationConnect } from "./use-integration-connect";
+import { CuratedConnectDialog } from "./integrations/curated-connect-dialog";
+import { useChatConnect } from "./use-chat-connect";
 
 interface IntegrationConnectCardProps {
   /** The raw `#houston_toolkit=<slug>` fragment from the agent's link. */
@@ -35,25 +36,39 @@ export function IntegrationConnectCard({
   onConnected,
 }: IntegrationConnectCardProps) {
   const { t } = useTranslation("chat");
-  const { app, isConnected, view, startConnect } = useIntegrationConnect({
+  const {
+    app,
+    isConnected,
+    view,
+    startConnect,
+    curatedDialog,
+    closeCuratedDialog,
+  } = useChatConnect({
     toolkit,
     agentId,
     onConnected,
   });
 
   return (
-    <RowCard
-      inline
-      truncate
-      media={<AppLogo display={app} />}
-      title={app.name}
-      description={
-        isConnected
-          ? t("composio.alreadyConnected")
-          : app.description || t("composio.integration")
-      }
-      action={<ConnectStatusSlot view={view} onConnect={startConnect} />}
-    />
+    <>
+      <CuratedConnectDialog
+        agentId={agentId}
+        curated={curatedDialog}
+        onClose={closeCuratedDialog}
+      />
+      <RowCard
+        inline
+        truncate
+        media={<AppLogo display={app} />}
+        title={app.name}
+        description={
+          isConnected
+            ? t("composio.alreadyConnected")
+            : app.description || t("composio.integration")
+        }
+        action={<ConnectStatusSlot view={view} onConnect={startConnect} />}
+      />
+    </>
   );
 }
 

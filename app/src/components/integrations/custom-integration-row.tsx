@@ -1,8 +1,9 @@
-import { Button } from "@houston-ai/core";
+import { Button, StatusDot } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { KeyRound, LogIn, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./app-logo";
+import { customIntegrationLogoUrl } from "./curated-logos";
 import { customKindBadgeKey } from "./custom-integrations-model";
 
 interface CustomIntegrationRowProps {
@@ -84,12 +85,22 @@ export function CustomIntegrationRow({
             toolkit: integration.slug,
             name: integration.name,
             description: "",
-            logoUrl: integration.iconUrl ?? "",
+            logoUrl: customIntegrationLogoUrl(
+              integration.slug,
+              integration.iconUrl,
+            ),
           }}
           size="lg"
         />
         <span className="min-w-0 flex-1">
           <span className="flex min-w-0 items-center gap-2 text-[13px] font-medium text-ink">
+            {/* The same presence dot the catalog's installed rows wear —
+                connected state must read without opening the detail card. No
+                srLabel: the status line below already SAYS "Connected", and a
+                second (visually hidden) copy doubled the announcement. */}
+            {integration.state.status === "active" && (
+              <StatusDot status="active" />
+            )}
             <span className="min-w-0 truncate">{integration.name}</span>
             <span className="shrink-0 rounded-full bg-chip-subtle px-1.5 py-0.5 text-[10px] font-medium text-ink-muted">
               {t(customKindBadgeKey(integration.kind))}

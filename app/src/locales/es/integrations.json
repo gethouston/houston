@@ -212,5 +212,23 @@
     "oauth": {
       "openedToast": "Termina de iniciar sesión en {{name}} en tu navegador"
     }
+  },
+  "curated": {
+    "croma": {
+      "description": "Registros oficiales del gobierno de Colombia, Perú y México: consulta procesos judiciales, empresas, vehículos y personas, con respuestas basadas en fuentes oficiales.",
+      "keyHelp": "Inicia sesión en tu espacio de trabajo de Croma y copia una clave de API (empieza con croma_live_). Las claves pertenecen al espacio de trabajo de tu organización, no a una cuenta personal."
+    },
+    "connect": {
+      "title": "Conectar {{name}}",
+      "recommendedBadge": "Recomendado",
+      "signInTitle": "Iniciar sesión con {{name}}",
+      "signInDesc": "La forma más fácil: se abre tu navegador e inicias sesión en tu cuenta de {{name}}. Sin claves que copiar.",
+      "keyTitle": "Usar una clave de API",
+      "keyDesc": "Pega una clave de tu cuenta de {{name}}.",
+      "openKeys": "Abrir {{name}} para obtener una clave",
+      "back": "Atrás",
+      "newTo": "¿Nuevo en {{name}}? Crea tu cuenta primero y luego vuelve aquí para conectar.",
+      "createAccount": "Crear una cuenta de {{name}}"
+    }
   }
 }
