@@ -195,10 +195,8 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
     const content = msg.message?.content;
     const text = Array.isArray(content)
       ? content
-          .filter(
-            (b): b is { type: "text"; text: string } => b?.type === "text",
-          )
-          .map((b) => b.text)
+          .filter((b) => b?.type === "text")
+          .map((b) => ("text" in b && typeof b.text === "string" ? b.text : ""))
           .join("")
       : "";
     return [

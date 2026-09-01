@@ -59,7 +59,7 @@ export function assertAnthropicScopeCredential(
  *
  * The SDK's `getOAuthToken` callback is NOT a usable guard for this. Three
  * independent reasons, all read out of the Claude Code build the pinned SDK
- * spawns (2.1.201, bundled in `@anthropic-ai/claude-agent-sdk` 0.3.201):
+ * spawns (2.1.257, bundled in `@anthropic-ai/claude-agent-sdk` 0.3.257):
  *  1. the CLI only registers the callback when `CLAUDE_CODE_ENTRYPOINT` is one of
  *     `claude-desktop` / `local-agent` / `claude-vscode`; the SDK pins ours to
  *     `sdk-ts`, so it is never wired up;
