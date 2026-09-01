@@ -114,10 +114,10 @@ export async function completeOAuthOp(
   const updated: CustomIntegrationDef = { ...def, auth: "oauth", credential };
   await deps.store.put(updated);
   await deps.host.reconnect(executor, def.slug, credential);
-  const liveState = {
-    status: "active" as const,
-    toolCount: await deps.host.toolCount(executor, def.slug),
-  };
+  // The SAME zero-tool judge the compile path uses: a sign-in whose fresh
+  // token the server still turns away must land pending/error, not celebrate
+  // as "Connected, 0 actions".
+  const liveState = await deps.host.connectedState(executor, updated);
   states.set(def.slug, liveState);
   deps.onChanged();
   return viewOf(updated, liveState, methods);

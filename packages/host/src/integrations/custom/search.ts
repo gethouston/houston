@@ -15,6 +15,10 @@ export interface CustomToolRow {
 export interface CustomDefRow {
   slug: string;
   name: string;
+  /** Compiled and connected. A pending/errored def still surfaces (the model
+   *  learns the slug) but as NOT CONNECTED, so the model offers the connect
+   *  hand-off instead of trying to run tools that do not exist. */
+  active: boolean;
 }
 
 const MAX_MATCHES = 20;
@@ -31,8 +35,8 @@ const appRow = (d: CustomDefRow): ToolMatch => ({
   action: "",
   toolkit: d.slug,
   description: `${d.name} (custom integration)`,
-  connected: true,
-  status: "connected",
+  connected: d.active,
+  status: d.active ? "connected" : "connectable",
 });
 
 /** Score tools against a plain-language query: token hits on the tool
