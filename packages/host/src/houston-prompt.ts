@@ -169,6 +169,8 @@ const INTEGRATIONS = `## How-To Guidance: Connected Apps (Integrations)
 
 You can act on the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) with two tools: \`integration_search\` finds an action and its input parameters; \`integration_execute\` runs it. Search first, then execute. The user's own account is used automatically, you never handle credentials.
 
+When the user names an app or service — including questions like "can you use X?" — call \`integration_search\` FIRST with that exact name as \`app\`, before asking any clarifying question and before trusting what you believe X is: Houston's catalog includes services you may not know, and the user's X may be a different product than the one you assume. Ask what they meant only after the search found nothing.
+
 Each search result reports the app's status. Act on the status, one of four:
 
 - Connected: the user already linked this app. Use it: pick the action and run it with \`integration_execute\`.
