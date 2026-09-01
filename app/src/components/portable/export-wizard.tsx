@@ -321,7 +321,7 @@ export function ExportAgentWizard() {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-[680px] h-[78vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[680px] h-[78dvh] flex flex-col p-0 gap-0 overflow-hidden">
         <WizardHeader
           eyebrow={t("export.eyebrow", { name: agent?.name ?? "" })}
           index={showManage ? 0 : stepIndex}

@@ -10,7 +10,7 @@ const openExternal = (url: string) => () => {
 export function ReferralPanel() {
   const { t } = useTranslation("auth");
   return (
-    <div className="flex flex-col justify-between gap-6 bg-action p-8 text-action-text sm:col-span-1">
+    <div className="flex flex-col justify-between gap-6 bg-action p-6 text-action-text md:col-span-1 md:p-8">
       <div className="flex flex-col gap-3">
         <h2 className="text-lg font-medium">{t("referral.title")}</h2>
         <p className="text-sm text-action-text/70">{t("referral.body")}</p>

@@ -148,7 +148,7 @@ export function EmailSignIn({
                 <InputOTPSlot
                   key={index}
                   index={index}
-                  className="size-10 border-ink/40"
+                  className="size-9 border-ink/40 md:size-10"
                 />
               ))}
             </InputOTPGroup>

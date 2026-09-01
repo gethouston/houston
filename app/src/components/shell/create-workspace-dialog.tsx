@@ -218,7 +218,7 @@ export function CreateAgentDialog() {
           // geometry, so they read as one flow.
           step === 1
             ? "sm:max-w-sm p-0 gap-0 overflow-hidden"
-            : "sm:max-w-[900px] h-[85vh] flex flex-col p-0 gap-0 overflow-hidden"
+            : "sm:max-w-[900px] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
         }
       >
         {step === 1 ? (

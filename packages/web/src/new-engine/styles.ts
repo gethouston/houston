@@ -60,7 +60,7 @@ export const ui: Record<string, CSSProperties> = {
   // Action button on a dark surface (the Connect card): mirrors the app's
   // dark-theme `action` fill.
   button: {
-    height: 42,
+    height: 44,
     borderRadius: 10,
     border: "none",
     background: "#f5f5f5",
@@ -91,13 +91,14 @@ export const ui: Record<string, CSSProperties> = {
     color: "#bdbdbd",
   },
   input: {
-    height: 40,
+    height: 44,
     padding: "0 12px",
     borderRadius: 9,
     border: "1px solid rgba(255,255,255,0.12)",
     background: "#0d0d0d",
     color: "#f5f5f5",
-    fontSize: 14,
+    // 16px keeps iOS Safari from zooming the page on focus (phone Connect).
+    fontSize: 16,
     outline: "none",
   },
   // Renders only inside the dark Connect card — dark-surface red, both themes.

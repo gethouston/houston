@@ -104,7 +104,7 @@ export function TeamMoveFlow({
         if (next || isTeamMoveDismissable(state)) onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {t("moveTeam.title", { team: source.name })}

@@ -22,7 +22,7 @@
     "surfaces": [
       "ui/layout (internal)"
     ],
-    "fileCount": 4
+    "fileCount": 3
   },
   "agents-split-view": {
     "surfaces": [
@@ -142,6 +142,12 @@
     ],
     "fileCount": 3
   },
+  "core-accordion": {
+    "surfaces": [
+      "Your teams"
+    ],
+    "fileCount": 1
+  },
   "core-alert": {
     "surfaces": [
       "Store website",
@@ -152,9 +158,10 @@
   },
   "core-alert-dialog": {
     "surfaces": [
+      "Integrations",
       "Onboarding"
     ],
-    "fileCount": 1
+    "fileCount": 2
   },
   "core-async-button": {
     "surfaces": [
@@ -168,7 +175,7 @@
       "Settings",
       "app/src/components"
     ],
-    "fileCount": 20
+    "fileCount": 21
   },
   "core-avatar": {
     "surfaces": [
@@ -193,7 +200,6 @@
       "Store website",
       "Web app",
       "Your Agents",
-      "app/src/components",
       "ui/board (library)",
       "ui/events (library)",
       "ui/store (library)"
@@ -230,7 +236,7 @@
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 158
+    "fileCount": 169
   },
   "core-button-group": {
     "surfaces": [
@@ -250,12 +256,11 @@
       "AI Models",
       "Agent surfaces",
       "Integrations",
-      "Permissions",
       "Skills",
       "Your teams",
       "app/src/components"
     ],
-    "fileCount": 16
+    "fileCount": 14
   },
   "core-catalog-detail-dialog": {
     "surfaces": [
@@ -268,12 +273,11 @@
       "AI Models",
       "Agent surfaces",
       "Integrations",
-      "Permissions",
       "Skills",
       "app/src/components",
       "ui/skills (library)"
     ],
-    "fileCount": 12
+    "fileCount": 11
   },
   "core-catalog-search-field": {
     "surfaces": [
@@ -285,7 +289,7 @@
       "ui/agent (library)",
       "ui/store (library)"
     ],
-    "fileCount": 11
+    "fileCount": 12
   },
   "core-catalog-shell": {
     "surfaces": [
@@ -324,7 +328,6 @@
       "Routines",
       "Settings",
       "Skills",
-      "Your teams",
       "app/src/components",
       "ui/board (library)",
       "ui/chat (library)",
@@ -332,7 +335,7 @@
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 24
+    "fileCount": 26
   },
   "core-dialog": {
     "surfaces": [
@@ -356,7 +359,7 @@
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 52
+    "fileCount": 57
   },
   "core-dropdown-menu": {
     "surfaces": [
@@ -376,7 +379,7 @@
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 27
+    "fileCount": 26
   },
   "core-empty": {
     "surfaces": [
@@ -395,7 +398,7 @@
       "ui/routines (library)",
       "ui/skills (library)"
     ],
-    "fileCount": 20
+    "fileCount": 23
   },
   "core-highlighted-text": {
     "surfaces": [
@@ -419,7 +422,7 @@
       "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 23
+    "fileCount": 25
   },
   "core-hover-card": {
     "surfaces": [
@@ -443,12 +446,11 @@
       "Sign in",
       "Store website",
       "Store website (admin)",
-      "Your teams",
       "app/src/components",
       "ui/review (library)",
       "ui/store (library)"
     ],
-    "fileCount": 34
+    "fileCount": 35
   },
   "core-input-group": {
     "surfaces": [
@@ -524,9 +526,10 @@
   },
   "core-sheet": {
     "surfaces": [
-      "App shell"
+      "App shell",
+      "app/src/components"
     ],
-    "fileCount": 1
+    "fileCount": 2
   },
   "core-skeleton": {
     "surfaces": [
@@ -540,7 +543,7 @@
       "ui/agent (library)",
       "ui/store (library)"
     ],
-    "fileCount": 11
+    "fileCount": 14
   },
   "core-spinner": {
     "surfaces": [
@@ -562,7 +565,7 @@
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 46
+    "fileCount": 45
   },
   "core-status-badge": {
     "surfaces": [
@@ -570,7 +573,7 @@
       "Integrations",
       "ui/skills (library)"
     ],
-    "fileCount": 6
+    "fileCount": 7
   },
   "core-switch": {
     "surfaces": [
@@ -620,7 +623,7 @@
       "ui/layout (library)",
       "ui/routines (library)"
     ],
-    "fileCount": 16
+    "fileCount": 17
   },
   "core-verified-badge": {
     "surfaces": [
@@ -701,7 +704,7 @@
     "surfaces": [
       "Skills"
     ],
-    "fileCount": 2
+    "fileCount": 1
   },
   "skills-marketplace-grid": {
     "surfaces": [

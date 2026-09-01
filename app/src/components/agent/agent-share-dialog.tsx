@@ -79,7 +79,7 @@ export function AgentShareDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("share.title", { name: agent.name })}</DialogTitle>
           <DialogDescription>{t("share.subtitle")}</DialogDescription>

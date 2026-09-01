@@ -53,8 +53,22 @@ e2e/
     tour-nav.ts     # arm the guided tour from the footer's help control
     sidebar-create.ts # the rail band's ONE "+" menu: new agent / new team
     global-setup.ts # warms the vite dev server once before the suite (see CI below)
+  mobile/           # phone-project specs (see Mobile below)
   *.spec.ts         # the tests
 ```
+
+**Mobile.** The `mobile` Playwright project (Pixel 7: 412px logical width,
+touch, mobile UA) runs ONLY `e2e/mobile/` — phone coverage is written into
+that directory deliberately, spec by spec, rather than re-running the desktop
+suite at a width it was never written for. It rides the default `test:e2e`
+run (and therefore the CI shards): this is the standing gate that keeps the
+phone layout from rotting. The tier-1 set walks the core journey — sign-in
+(`mobile/sign-in.spec.ts`, against the identity-ON server via
+`test.use({ baseURL: AUTH_WEB_URL })`), boot + overflow smoke, Agents home,
+mission chat push, hardware back, board pager + tab bar, and Routines
+(`mobile/routines.spec.ts`: list → a routine's own screen). Specs `.tap()`
+rather than `.click()` and assert zero horizontal overflow
+(`document.documentElement.scrollWidth - clientWidth <= 0`).
 
 The host itself (`@houston/fake-host`): `startFakeHost`/`stop`, the `/v1/*` +
 `/agents/*` surface, the `StreamChannel` + `serveResumableStream` chat stream,
@@ -237,12 +251,16 @@ pnpm --filter houston-web test:visual          # compare against committed basel
 pnpm --filter houston-web test:visual:update   # re-record baselines (intentional change)
 ```
 
-**Covered** (`toHaveScreenshot`, full-page, fixed 1280×800 viewport):
+**Covered** (`toHaveScreenshot`, full-page; 1280×800 by default, phone shots
+set a 390×844 viewport per test):
 
 | Screen | Themes | Spec |
 | --- | --- | --- |
 | Mission board (home: the first team's) | light + dark, and one 640px narrow run | `shell.visual.spec.ts` |
+| Phone shell (Agents home + bars), board pager, mission chat, agent missions | light + dark each | `shell.visual.spec.ts` |
+| Phone Routines list + a routine's own screen | light + dark each | `routines.visual.spec.ts` |
 | Chat conversation (settled reply) | light + dark | `chat.visual.spec.ts` |
+| Chat markdown | light + dark | `chat-markdown.visual.spec.ts` |
 | First-run language gate | one (the flow pins `data-theme="light"` itself) | `onboarding.visual.spec.ts` |
 
 Theme is pinned by setting `data-theme` on `<html>` before the app mounts

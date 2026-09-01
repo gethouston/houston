@@ -135,17 +135,17 @@ export function SignInScreen() {
 
   return (
     <FirstRunScreen>
-      <div className="flex items-center gap-2 px-8 pt-14 pb-6 text-ink">
+      <div className="flex items-center gap-2 px-6 pt-14 pb-6 text-ink md:px-8">
         <HoustonLogo size={24} />
         <span className="text-lg font-semibold tracking-tight">Houston</span>
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-6">
+      <div className="flex flex-1 items-center justify-center px-4 md:px-6">
         {/* A plain white card, hairline + soft shadow, floating on the grey
             first-run background. The FirstRunScreen wrapper pins light, so the
             login reads the same bright way in both app themes. */}
-        <div className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)] sm:grid-cols-3">
-          <div className="flex flex-col gap-5 bg-card p-8 sm:col-span-2">
+        <div className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)] md:grid-cols-3">
+          <div className="flex flex-col gap-5 bg-card p-6 md:col-span-2 md:p-8">
             <h1 className="text-lg font-medium">{tAuth("title")}</h1>
 
             {showContinue && lastSignIn && continueTitle && (

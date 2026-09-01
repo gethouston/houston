@@ -22,7 +22,7 @@ export function SurveyPillGrid<T extends string>({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid w-full max-w-xl grid-cols-3 gap-2.5">
+    <div className="grid w-full max-w-xl grid-cols-2 gap-2.5 md:grid-cols-3">
       {options.map((option) => (
         <SurveyPill
           key={option.id}

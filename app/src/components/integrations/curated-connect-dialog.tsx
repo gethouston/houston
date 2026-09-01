@@ -57,7 +57,7 @@ export function CuratedConnectDialog({
     >
       {curated && (
         // Remount per entry so step/field state never leaks across opens.
-        <DialogContent key={curated.slug} className="max-w-md">
+        <DialogContent key={curated.slug} className="sm:max-w-md">
           <CuratedConnectBody
             curated={curated}
             agentId={agentId}

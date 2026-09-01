@@ -121,8 +121,11 @@ export default defineConfig({
     },
     {
       // The GCIP SignInScreen spec, driven against the identity-ON server below.
+      // The phone twin (e2e/mobile/sign-in.spec.ts) belongs to the `mobile`
+      // project — it points itself at the identity-ON server via baseURL.
       name: "auth",
       testMatch: "**/sign-in.spec.ts",
+      testIgnore: ["**/mobile/**"],
       use: {
         ...devices["Desktop Chrome"],
         baseURL: AUTH_WEB_URL,

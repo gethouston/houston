@@ -133,7 +133,10 @@ describe("survey screen wiring", () => {
   const footer = read("../src/components/onboarding/survey-footer.tsx");
 
   it("keeps the segmentation screen's pill presentation", () => {
-    assert.match(grid, /grid w-full max-w-xl grid-cols-3 gap-2\.5/);
+    assert.match(
+      grid,
+      /grid w-full max-w-xl grid-cols-2 gap-2\.5 md:grid-cols-3/,
+    );
     assert.match(grid, /aria-pressed=\{selected\}/);
   });
 

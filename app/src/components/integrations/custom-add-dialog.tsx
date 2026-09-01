@@ -53,7 +53,7 @@ export function CustomAddDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("custom.add.title")}</DialogTitle>
           <DialogDescription>{t("custom.description")}</DialogDescription>

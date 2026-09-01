@@ -66,7 +66,7 @@ export function SetupCard({
           background — no glass, no backdrop-blur. */}
       <div
         key={title}
-        className="setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-line bg-card p-8 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
+        className="setup-step-in relative z-10 flex h-[680px] max-h-[88dvh] w-full max-w-2xl flex-col rounded-2xl border border-line bg-card p-8 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (

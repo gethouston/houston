@@ -37,7 +37,7 @@ export function DiffCard({
           {accepted ? t("export.step2.keep") : t("export.step2.skip")}
         </button>
       </header>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Pane
           label={t("export.step2.before")}
           body={before}
@@ -83,7 +83,7 @@ export function RoutineDiffCard({
       </header>
       <div className="space-y-3">
         {fieldDiffs.map((d) => (
-          <div key={d.field} className="grid grid-cols-2 gap-3">
+          <div key={d.field} className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <Pane
               label={`${d.field} · ${t("export.step2.before")}`}
               body={d.before}

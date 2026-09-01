@@ -55,7 +55,7 @@ export function ModalShell({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "grid max-h-[84vh] min-h-[60vh] w-[min(620px,calc(100vw-2.5rem))] max-w-none grid-rows-[auto_1fr_auto] gap-0 overflow-hidden rounded-2xl border-0 bg-dialog p-0 ht-shadow-modal ai-hub-modal-surface sm:max-w-none",
+          "grid max-h-[84dvh] min-h-[60dvh] w-[min(620px,calc(100vw-2.5rem))] max-w-none grid-rows-[auto_1fr_auto] gap-0 overflow-hidden rounded-2xl border-0 bg-dialog p-0 ht-shadow-modal ai-hub-modal-surface sm:max-w-none",
           className,
         )}
       >

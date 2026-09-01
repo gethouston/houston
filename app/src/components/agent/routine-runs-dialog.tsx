@@ -68,11 +68,11 @@ export function RoutineRunsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t("details.runsTitle")}</DialogTitle>
         </DialogHeader>
-        <div className="max-h-[60vh] min-h-0 overflow-y-auto">
+        <div className="max-h-[60dvh] min-h-0 overflow-y-auto">
           {runsLoading ? (
             <p className="flex items-center gap-2 px-1 py-2 text-sm text-ink-muted">
               <Loader2 aria-hidden className="size-4 animate-spin" />

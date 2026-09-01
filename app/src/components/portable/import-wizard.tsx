@@ -349,7 +349,7 @@ export function ImportAgentWizard() {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-[680px] h-[78vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[680px] h-[78dvh] flex flex-col p-0 gap-0 overflow-hidden">
         <header className="shrink-0 px-8 pt-6 pb-2 flex items-center gap-4">
           <p className="text-xs text-ink-muted">{t("import.eyebrow")}</p>
           <ProgressDots index={stepIndex} total={steps.length} />

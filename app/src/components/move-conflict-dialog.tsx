@@ -31,7 +31,7 @@ export function MoveConflictDialog({
   const { t } = useTranslation("agents");
   return (
     <Dialog open={name !== null} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {t("files.conflict.title", { name: name ?? "" })}

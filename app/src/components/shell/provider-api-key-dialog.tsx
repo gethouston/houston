@@ -152,7 +152,7 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {t("apiKey.title", { name: provider.name })}

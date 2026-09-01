@@ -84,7 +84,7 @@ export function ProviderCopilotConnectDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("copilot.title")}</DialogTitle>
           <DialogDescription>{t("copilot.description")}</DialogDescription>

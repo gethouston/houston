@@ -82,7 +82,7 @@ export function FilePreviewBody({
           alt={fileName}
           className={cn(
             "mx-auto max-w-full object-contain",
-            fullPage ? "max-h-full" : "max-h-[58vh]",
+            fullPage ? "max-h-full" : "max-h-[58dvh]",
           )}
         />
       );
@@ -91,7 +91,7 @@ export function FilePreviewBody({
         <iframe
           src={loaded.url}
           title={fileName}
-          className={cn("w-full border-0", fullPage ? "h-full" : "h-[58vh]")}
+          className={cn("w-full border-0", fullPage ? "h-full" : "h-[58dvh]")}
         />
       );
     case "html":
@@ -108,7 +108,7 @@ export function FilePreviewBody({
           sandbox="allow-scripts"
           className={cn(
             "w-full border-0 bg-white",
-            fullPage ? "h-full" : "h-[58vh]",
+            fullPage ? "h-full" : "h-[58dvh]",
           )}
         />
       );

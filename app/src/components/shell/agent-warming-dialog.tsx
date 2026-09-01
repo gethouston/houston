@@ -42,7 +42,7 @@ export function AgentWarmingDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="sm:max-w-sm">
         <div className="flex flex-col items-center gap-5 py-4 text-center">
           <HoustonAvatar diameter={72} running />
           <div className="flex flex-col gap-2">
