@@ -3,6 +3,12 @@ import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
+import {
+  type AppStatus,
+  renderSearchItems,
+  statusOf,
+  type ToolMatch,
+} from "./integrations-render";
 import { searchEmptyText, searchLeadNote } from "./integrations-search-notes";
 import type { SandboxFetch } from "./sandbox-fetch";
 
@@ -161,58 +167,6 @@ export interface IntegrationToolOptions {
 }
 
 /**
- * The app-level status the host reports per search result (mirrors the host's
- * IntegrationAppStatus). It, not the raw `connected` boolean, drives which of
- * four speech acts the model performs — so a real-but-unconnected app is offered
- * for connection, an admin-blocked app sends the user to their admin, and only a
- * genuinely empty result means "no such app".
- */
-type AppStatus = "connected" | "connectable" | "blocked" | "unknown";
-
-interface ToolMatch {
-  /** Empty ("") marks a toolkit-level entry: the app itself, no runnable action. */
-  action: string;
-  toolkit: string;
-  description: string;
-  inputParams?: unknown;
-  /** Host-reported: does the user have this action's app connected? */
-  connected?: boolean;
-  /** Host-reported app status; absent only from an older host (derive it). */
-  status?: AppStatus;
-  /** Host-reported: the user's connected accounts for this app, present only
-   *  when there is MORE than one — the model targets one via execute's
-   *  `account`, or asks the user which to use. */
-  accounts?: { id: string; label?: string }[];
-}
-
-/** Prefer the explicit status; fall back to the legacy connected boolean. */
-function statusOf(m: ToolMatch): AppStatus {
-  if (m.status) return m.status;
-  return m.connected === false ? "connectable" : "connected";
-}
-
-/** The per-status tag shown after an app/action name in the rendered list. */
-const STATUS_TAG: Record<AppStatus, string> = {
-  connected: "",
-  connectable: ", NOT CONNECTED",
-  blocked: ", TURNED OFF",
-  unknown: ", not a known app",
-};
-
-/** One rendered line: an action row, or a toolkit-level row (empty action). */
-function renderMatch(m: ToolMatch, status: AppStatus): string {
-  const tag = STATUS_TAG[status];
-  if (m.action === "") {
-    // A toolkit-level entry: the app itself, so the model learns the slug.
-    return `- ${m.toolkit} (app${tag}): ${m.description}`;
-  }
-  const schema = m.inputParams
-    ? `\n  params: ${JSON.stringify(m.inputParams)}`
-    : "";
-  return `- ${m.action} (${m.toolkit}${tag}): ${m.description}${schema}`;
-}
-
-/**
  * The instruction appended to search results (and connection-shaped execute
  * failures) that teaches the model the in-chat connect hand-off: call the
  * `request_connection` tool, which records the pending connection so Houston
@@ -232,10 +186,23 @@ const REQUEST_CONNECTION_GUIDANCE =
  */
 const MAX_RESULT_CHARS = 256 * 1024;
 
+/**
+ * Search results get a MUCH tighter ceiling than execute data: they are a
+ * pick-list, and past ~24 KB they stop fitting the backend's tool-result
+ * budget at all (the 67 KB Croma search spilled to a file and rotted the
+ * turn). renderSearchItems' own budgets keep typical results a few KB; this
+ * is the backstop.
+ */
+const MAX_SEARCH_RESULT_CHARS = 24 * 1024;
+
 /** Bound a tool-result text; the marker tells the model how to recover. */
-function boundResultText(text: string, guidance: string): string {
-  if (text.length <= MAX_RESULT_CHARS) return text;
-  return `${text.slice(0, MAX_RESULT_CHARS)}\n[result truncated: it exceeded the ${Math.floor(MAX_RESULT_CHARS / 1024)} KB tool-result limit and is cut off mid-document. ${guidance}]`;
+function boundResultText(
+  text: string,
+  guidance: string,
+  maxChars: number = MAX_RESULT_CHARS,
+): string {
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}\n[result truncated: it exceeded the ${Math.floor(maxChars / 1024)} KB tool-result limit and is cut off mid-document. ${guidance}]`;
 }
 interface ActionResult {
   successful: boolean;
@@ -412,7 +379,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           details: { matches: 0, actions: [] as string[] },
         };
       }
-      const list = items.map((m) => renderMatch(m, statusOf(m))).join("\n");
+      const list = renderSearchItems(items);
       // Results that are NOT certainly the named app's (an unscoped retry, or
       // a provider that ignored the scope) lead with a note saying so — or
       // the model would present another app's action as the named app's.
@@ -466,6 +433,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
             text: boundResultText(
               fallbackNote + parts.join("\n\n"),
               "Search again with a more specific query to see the actions that were cut off.",
+              MAX_SEARCH_RESULT_CHARS,
             ),
           },
         ],
