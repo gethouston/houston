@@ -10,6 +10,7 @@
 //! staged by Tauri's `externalBin` and resolved via [`crate::child_guard`],
 //! sharing the same orphan-prevention discipline as the engine/frpc sidecars.
 
+mod cpu;
 mod model;
 mod types;
 mod verify;

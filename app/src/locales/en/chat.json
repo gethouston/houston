@@ -28,7 +28,9 @@
       "setupProgress": "Downloading... {{pct}}%",
       "micDenied": "Houston needs microphone access. Allow it in system settings, then try again.",
       "noMic": "No microphone was found.",
-      "failed": "Voice typing didn't work this time. Please try again."
+      "failed": "Voice typing didn't work this time. Please try again.",
+      "unsupportedTitle": "Voice typing isn't available on this computer",
+      "unsupportedBody": "This computer's processor is too old for voice typing. Everything else keeps working normally."
     }
   },
   "mentions": {

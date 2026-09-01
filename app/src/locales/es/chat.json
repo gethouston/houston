@@ -28,7 +28,9 @@
       "setupProgress": "Descargando... {{pct}}%",
       "micDenied": "Houston necesita acceso al micrófono. Permítelo en la configuración del sistema y vuelve a intentarlo.",
       "noMic": "No se encontró ningún micrófono.",
-      "failed": "El dictado por voz no funcionó esta vez. Inténtalo de nuevo."
+      "failed": "El dictado por voz no funcionó esta vez. Inténtalo de nuevo.",
+      "unsupportedTitle": "El dictado por voz no está disponible en esta computadora",
+      "unsupportedBody": "El procesador de esta computadora es demasiado antiguo para el dictado por voz. Todo lo demás sigue funcionando con normalidad."
     }
   },
   "mentions": {

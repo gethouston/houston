@@ -54,6 +54,7 @@ pub async fn dictation_model_status(app: AppHandle) -> Result<DictationModelStat
         ready: is_ready(&path),
         model_id: MODEL_ID.to_string(),
         size_bytes: MODEL_SIZE_BYTES,
+        cpu_supported: super::cpu::cpu_supported(),
     })
 }
 
