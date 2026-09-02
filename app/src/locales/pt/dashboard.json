@@ -54,8 +54,7 @@
   },
   "errors": {
     "noAgentForMission": "Escolha um agente antes de iniciar uma tarefa.",
-    "partialMissionLoad": "Algumas tarefas não puderam carregar. Estamos tentando novamente.",
-    "stopSession": "Não foi possível parar a tarefa: {{error}}"
+    "partialMissionLoad": "Algumas tarefas não puderam carregar. Estamos tentando novamente."
   },
   "agentPicker": {
     "title": "Qual agente deve fazer isso?",
