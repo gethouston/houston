@@ -123,3 +123,38 @@ test("a non-positive or non-finite timeout disables the watchdog entirely", () =
   }
   expect(stalls).toBe(0);
 });
+
+test("touch resets the clock without a wire event — a tool call's streamed input keeps the turn alive", () => {
+  vi.useFakeTimers();
+  let stalls = 0;
+  const wd = createStallWatchdog({ timeoutMs: 1000, onStall: () => stalls++ });
+
+  wd.arm();
+  // The model is writing a large tool input: the backend's liveness channel
+  // ticks (toolcall_delta / input_json_delta) while the wire stream is silent.
+  for (let i = 0; i < 5; i++) {
+    vi.advanceTimersByTime(900);
+    wd.touch();
+  }
+  expect(stalls).toBe(0);
+  // Then genuinely silent → trips.
+  vi.advanceTimersByTime(1000);
+  expect(stalls).toBe(1);
+});
+
+test("touch never re-arms the clock while a tool is running", () => {
+  vi.useFakeTimers();
+  let stalls = 0;
+  const wd = createStallWatchdog({ timeoutMs: 1000, onStall: () => stalls++ });
+
+  wd.arm();
+  wd.onEvent(toolStart("bash"));
+  // Liveness ticks during a tool run (the SDK still streams status) must not
+  // start a clock the tool exemption is supposed to hold off.
+  wd.touch();
+  vi.advanceTimersByTime(60_000);
+  expect(stalls).toBe(0);
+  wd.onEvent(toolEnd("bash"));
+  vi.advanceTimersByTime(1000);
+  expect(stalls).toBe(1);
+});

@@ -26,6 +26,16 @@ export class PiSession implements HarnessSession {
     });
   }
 
+  /**
+   * Every pi `AgentSessionEvent`, untranslated. The `toWire` mapping drops
+   * `toolcall_delta` (a tool call's streamed input), so a turn spent writing a
+   * big file emits nothing on `subscribe` for its whole generation; this is
+   * the channel that still ticks then.
+   */
+  subscribeLiveness(listener: () => void): () => void {
+    return this.session.subscribe(() => listener());
+  }
+
   prompt(text: string): Promise<void> {
     return this.session.prompt(text);
   }

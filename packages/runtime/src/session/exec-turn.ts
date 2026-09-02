@@ -206,7 +206,14 @@ export async function execTurn(
   // must attach to the final session, not the one we entered with). Undefined
   // until then; the finally guards on it.
   let unsub: (() => void) | undefined;
+  // The backend's raw liveness feed, alongside the wire subscription. The wire
+  // stream alone starves the watchdog: a tool call's input streams as deltas
+  // that map to no WireEvent, so a model writing a large file (a 60 KB bash
+  // heredoc, 30k+ output tokens) was wire-silent past the stall window and got
+  // aborted mid-generation as "stopped responding" (PRODUCT-1632, Bedrock).
+  let unsubLiveness: (() => void) | undefined;
   const subscribeSession = () => {
+    unsubLiveness = conv.session.subscribeLiveness?.(() => watchdog.touch());
     unsub = conv.session.subscribe((wire: WireEvent) => {
       if (wire.type === "text") assistantText += wire.data;
       else if (wire.type === "thinking") thinkingText += wire.data;
@@ -778,6 +785,7 @@ export async function execTurn(
     // Undefined only if resolveModel/switchBackendIfNeeded threw before we
     // subscribed (a bad pin) — nothing to tear down in that case.
     unsub?.();
+    unsubLiveness?.();
     // PRODUCT-1355 (layer 3): a turn that died on a REVOKED token leaves a
     // Claude session whose next spawn would 401 identically — evict it so the
     // user's next attempt after reconnecting rebuilds on the fresh credential.

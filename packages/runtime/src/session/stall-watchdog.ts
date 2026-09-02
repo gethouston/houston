@@ -25,6 +25,13 @@ export interface StallWatchdog {
   arm(): void;
   /** Feed one wire event: resets the idle clock, tracks tool depth. */
   onEvent(event: WireEvent): void;
+  /**
+   * Proof of life with no wire event behind it: resets the idle clock only.
+   * Fed by the backend's liveness channel (`HarnessSession.subscribeLiveness`)
+   * — a tool call's streamed input reaches the wire as nothing until the call
+   * completes, so a model writing a large file would otherwise look dead.
+   */
+  touch(): void;
   /** Stop watching + clear any pending timer (call in a `finally`). Idempotent. */
   disarm(): void;
 }
@@ -61,6 +68,9 @@ export function createStallWatchdog(opts: {
     onEvent(event) {
       if (event.type === "tool_start") toolDepth++;
       else if (event.type === "tool_end" && toolDepth > 0) toolDepth--;
+      reset();
+    },
+    touch() {
       reset();
     },
     disarm() {

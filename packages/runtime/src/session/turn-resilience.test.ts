@@ -94,6 +94,49 @@ class StallSession implements HarnessSession {
   }
 }
 
+/** A session whose model spends longer than the stall window streaming a tool
+ *  call's INPUT — pure toolcall_delta traffic, which maps to no WireEvent — and
+ *  then answers. Only the liveness channel ticks during that stretch. */
+class ToolInputSession implements HarnessSession {
+  aborted = false;
+  private listeners = new Set<(e: WireEvent) => void>();
+  private liveness = new Set<() => void>();
+  subscribe(l: (e: WireEvent) => void): () => void {
+    this.listeners.add(l);
+    return () => {
+      this.listeners.delete(l);
+    };
+  }
+  subscribeLiveness(l: () => void): () => void {
+    this.liveness.add(l);
+    return () => {
+      this.liveness.delete(l);
+    };
+  }
+  async prompt(): Promise<void> {
+    // Three stall windows of tool-input deltas, each tick well inside the
+    // window: the wire stays silent the whole time.
+    for (let i = 0; i < 6; i++) {
+      await new Promise<void>((r) => setTimeout(r, STALL_MS / 2));
+      for (const l of this.liveness) l();
+    }
+    for (const l of this.listeners) l({ type: "text", data: "written" });
+  }
+  async abort(): Promise<void> {
+    this.aborted = true;
+  }
+  dispose(): void {
+    this.listeners.clear();
+    this.liveness.clear();
+  }
+  async setModel(): Promise<void> {}
+  async compact(): Promise<void> {}
+  setThinkingLevel(): void {}
+  getContextUsage(): { tokens: number | null } {
+    return { tokens: 100 };
+  }
+}
+
 /** A trivial session that answers instantly — stands in for a healthy backend so
  *  runTurn can build a conversation without a network. */
 class QuietSession implements HarnessSession {
@@ -175,6 +218,30 @@ test("a turn whose provider goes silent is aborted at the stall window and surfa
   expect(pe?.data.kind).toBe("provider_internal");
   // No false success: the empty turn must NOT settle as done.
   expect(events.some((e) => e.type === "done")).toBe(false);
+});
+
+test("a turn streaming a long tool input (wire-silent, liveness ticking) is never aborted as stalled (PRODUCT-1632)", async () => {
+  vi.useFakeTimers();
+  state.model = OPENAI;
+  const session = new ToolInputSession();
+  const conv = convWith(session);
+
+  const events: WireEvent[] = [];
+  const unsub = subscribe("conv-tool-input", (e) => events.push(e));
+  const done = execTurn(conv, "conv-tool-input", "turn-1", "write it", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  // Well past the stall window — 3x — with only tool-input deltas flowing.
+  await vi.advanceTimersByTimeAsync(STALL_MS * 3 + 1);
+  await done;
+  unsub();
+
+  expect(session.aborted).toBe(false);
+  expect(events.some((e) => e.type === "provider_error")).toBe(false);
+  expect(events.some((e) => e.type === "text")).toBe(true);
+  expect(events.some((e) => e.type === "done")).toBe(true);
 });
 
 test("a turn both stalled AND stopped settles as a user stop, never a synthesized provider error", async () => {
