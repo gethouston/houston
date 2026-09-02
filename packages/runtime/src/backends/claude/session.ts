@@ -87,6 +87,7 @@ const DANGLING_RESUME_RE = /No conversation found with session ID/i;
  */
 export class ClaudeSession implements HarnessSession {
   private readonly listeners = new Set<(e: WireEvent) => void>();
+  private readonly livenessListeners = new Set<() => void>();
   private disposed = false;
   private aborting = false;
   private abortController: AbortController | undefined;
@@ -118,8 +119,24 @@ export class ClaudeSession implements HarnessSession {
     };
   }
 
+  /**
+   * Every SDK message the query yields, before translation. `translate` drops
+   * `input_json_delta` (a tool call's streamed input) until the block closes,
+   * so a long file write is wire-silent; the liveness channel still ticks.
+   */
+  subscribeLiveness(listener: () => void): () => void {
+    this.livenessListeners.add(listener);
+    return () => {
+      this.livenessListeners.delete(listener);
+    };
+  }
+
   private emit(e: WireEvent): void {
     for (const l of this.listeners) l(e);
+  }
+
+  private tickLiveness(): void {
+    for (const l of this.livenessListeners) l();
   }
 
   async prompt(text: string): Promise<void> {
@@ -196,6 +213,7 @@ export class ClaudeSession implements HarnessSession {
     try {
       for await (const msg of this.deps.query({ prompt: text, options })) {
         if (this.aborting) break;
+        this.tickLiveness();
         if (hasSessionId(msg)) capturedSessionId = msg.session_id;
         for (const wire of translator.translate(msg)) {
           if (wire.type === "provider_error") {

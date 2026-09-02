@@ -41,6 +41,18 @@ export interface ResolvedModel {
 export interface HarnessSession {
   /** Subscribe to this session's wire events. Returns an unsubscribe fn. */
   subscribe(listener: (e: WireEvent) => void): () => void;
+  /**
+   * Subscribe to the backend's RAW liveness: fired for every event the harness
+   * receives from the model stream, including the ones the wire dialect drops.
+   * The wire stream is not a liveness signal — a tool call's input streams as
+   * partial-JSON deltas that map to NO WireEvent (the tool only surfaces as
+   * `tool_start` once its input is complete), so a model writing a large file
+   * is wire-silent for minutes while very much alive. The stall watchdog
+   * (session/stall-watchdog.ts) listens here so it never aborts such a turn.
+   * Optional so test fakes stay minimal; a backend without it leaves the
+   * watchdog on wire events alone.
+   */
+  subscribeLiveness?(listener: () => void): () => void;
   /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
   /** Abort the in-flight turn (the user's Stop), then settle. */

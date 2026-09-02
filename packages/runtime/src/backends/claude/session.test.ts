@@ -428,3 +428,40 @@ test("getContextUsage is undefined before a turn, then reflects the last usage",
   await session.prompt("go");
   expect(session.getContextUsage()).toEqual({ tokens: 100 });
 });
+
+function toolInputDeltaMsg(partialJson: string, sessionId = "s"): SDKMessage {
+  return {
+    type: "stream_event",
+    event: {
+      type: "content_block_delta",
+      index: 1,
+      delta: { type: "input_json_delta", partial_json: partialJson },
+    },
+    session_id: sessionId,
+    parent_tool_use_id: null,
+  } as unknown as SDKMessage;
+}
+
+test("subscribeLiveness ticks per SDK message, including tool-input deltas the wire drops (PRODUCT-1632)", async () => {
+  const session = make({
+    query: arrayQuery([
+      toolInputDeltaMsg('{"command":"cat > /tmp/brain.py'),
+      toolInputDeltaMsg(" << 'PYEOF'"),
+      textMsg("ok"),
+    ]),
+  });
+  const wire: WireEvent[] = [];
+  let ticks = 0;
+  session.subscribe((e) => wire.push(e));
+  const unsub = session.subscribeLiveness(() => ticks++);
+
+  await session.prompt("write it");
+
+  // Two input deltas produced no wire frame at all; the text delta produced one.
+  expect(wire).toEqual([{ type: "text", data: "ok" }]);
+  expect(ticks).toBe(3);
+
+  unsub();
+  await session.prompt("again");
+  expect(ticks).toBe(3);
+});

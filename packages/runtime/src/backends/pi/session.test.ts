@@ -272,3 +272,36 @@ test("dispose is idempotent: the underlying session is torn down once", () => {
 
   expect(stub.disposeCount).toBe(1);
 });
+
+function toolcallDelta(delta: string): AgentSessionEvent {
+  return {
+    type: "message_update",
+    message: assistantMessage(usage({})),
+    assistantMessageEvent: { type: "toolcall_delta", contentIndex: 0, delta },
+  } as unknown as AgentSessionEvent;
+}
+
+test("subscribeLiveness ticks on a toolcall_delta that subscribe drops (PRODUCT-1632)", () => {
+  const { stub, session } = make();
+  const wire: WireEvent[] = [];
+  let ticks = 0;
+  session.subscribe((e) => wire.push(e));
+  const unsub = session.subscribeLiveness(() => ticks++);
+
+  // A model streaming a big tool input: pure toolcall_delta traffic. The wire
+  // dialect has no frame for it — so the wire is silent — but the model is
+  // alive, and the liveness channel must say so.
+  stub.emit(toolcallDelta('{"command":"cat > /tmp/brain.py'));
+  stub.emit(toolcallDelta(" << 'PYEOF'"));
+  expect(wire).toEqual([]);
+  expect(ticks).toBe(2);
+
+  // A wire-visible event ticks liveness too (it is every raw event).
+  stub.emit(textDelta("done"));
+  expect(wire).toEqual([{ type: "text", data: "done" }]);
+  expect(ticks).toBe(3);
+
+  unsub();
+  stub.emit(toolcallDelta("}"));
+  expect(ticks).toBe(3);
+});
