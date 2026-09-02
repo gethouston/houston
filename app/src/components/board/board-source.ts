@@ -161,6 +161,10 @@ export interface BoardSource {
   openerReady: boolean;
   /** What the toolbar / empty-state "New mission" button triggers. */
   openNewMission: () => void;
+  /** The phone's compose for THIS board (`phone-compose.ts`): the Running
+   *  page's leading "+" below md, scoped to the board's own agents and landing
+   *  in a pushed chat, never the desktop side composer. */
+  composeOnPhone: () => void;
   /** Auto-open the new-mission panel when the in-scope board is empty. */
   onAutoOpenEmpty: () => void;
   /** Identity of the current empty scope (agent path / filter) so the
@@ -190,8 +194,8 @@ export interface BoardSource {
    *  Desktop-only: the component hides it below md, where
    *  {@link BoardSource.mobileControls} takes over. */
   toolbar?: ReactNode;
-  /** The phone board's control row (sticky search, agent filter, archived,
-   *  compose), rendered above the paged board below md only. */
+  /** The phone board's control row (sticky search, agent filter, archived),
+   *  rendered above the paged board below md only. */
   mobileControls?: ReactNode;
   /** Dialogs mounted alongside the board (agent picker, attachment rejection,
    *  skill picker). */

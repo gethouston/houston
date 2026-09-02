@@ -6,7 +6,7 @@ import { tourSelector } from "../shell/workspace-tour-steps.ts";
  *
  * Below md the shell is a different tree, not a narrower one: the sidebar rail
  * lives in a drawer behind the top bar's hamburger, the board's New task is
- * the phone board's own compose control, and composing is a pushed chat
+ * the Running page's leading "+", and composing is a pushed chat
  * screen rather than the board's side panel. A step that names a desktop
  * control by selector alone points at nothing there — and with nothing to
  * ring, the veil's blockers cover the whole screen, the hamburger included.
@@ -43,8 +43,8 @@ const MISSION_CHAT = '[data-testid="mission-chat-screen"]';
 /**
  * The send step's selector. The New task control is scoped to the ACTIVE
  * screen (kept-alive views keep their own), and the spotlight itself takes
- * the visible match, so the desktop button hidden beside the phone's compose
- * never wins. In email mode the composer arrives prewritten and locked, and
+ * the visible match, so the desktop toolbar button hidden on the phone never
+ * wins. In email mode the composer arrives prewritten and locked, and
  * the hole narrows to the send button alone.
  */
 export function sendMissionSelector(

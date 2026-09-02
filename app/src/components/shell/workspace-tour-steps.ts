@@ -8,10 +8,11 @@
  * (the space switcher), `sidebar-rail.tsx` (`newAgent`), `sidebar-footer.tsx`
  * (`nav-settings`), `sidebar-help-menu.tsx` (`appTour`, the help control the
  * in-app setup is started from), `@houston-ai/layout`'s sidebar (`agents`),
- * `workspace-shell.tsx` (`main`), `new-mission-button.tsx` and the phone
- * board's `mobile-board-controls.tsx` (`newMission`, one per breakpoint — the
- * spotlight takes the visible one), and `mobile-top-bar.tsx` (`mobileMenu`,
- * the hamburger the phone's drawer-hosted rows are reached through).
+ * `workspace-shell.tsx` (`main`), `new-mission-button.tsx` and, below md, the
+ * phone board's Running page "+" (`mission-board.tsx` hands it to the column;
+ * `newMission`, one per breakpoint — the spotlight takes the visible one),
+ * and `mobile-top-bar.tsx` (`mobileMenu`, the hamburger the phone's
+ * drawer-hosted rows are reached through).
  *
  * The vocabulary is shared: the in-app onboarding spotlights these anchors
  * (`in-app-onboarding.tsx`) and the e2e specs address the shell by them.

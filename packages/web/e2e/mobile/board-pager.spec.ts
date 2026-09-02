@@ -5,8 +5,10 @@ import { screen } from "../support/team-nav";
 /**
  * The phone board pager (PR 5 of the responsiveness overhaul): below 768px
  * the Tasks board is one full-width column per swipe with a segmented
- * control on top, a sticky control row (search, archived, compose), honest
- * empty pages, and card taps that push the chat screen.
+ * control on top, a sticky control row (search, archived), honest empty
+ * pages led by the board's own "+", and card taps that push the chat screen.
+ * The team's identity lozenge rides the top bar beside the drawer control,
+ * so the screen card opens on the control row.
  */
 
 const AGENT = "houston-assistant";
@@ -29,9 +31,25 @@ test("the board pages between columns via the segmented control", async ({
     "aria-current",
     "true",
   );
-  await expect(
-    screen(page).getByText("Nothing is running right now."),
-  ).toBeInViewport();
+  const hint = screen(page).getByText("Nothing is running right now.");
+  await expect(hint).toBeInViewport();
+
+  // The pager is the ONE place a section is named: the paged column draws no
+  // header of its own, so "Running" appears once on the screen.
+  await expect(screen(page).getByText("Running", { exact: true })).toHaveCount(
+    1,
+  );
+
+  // The page's "+" LEADS the page, above the empty hint, never below the fold.
+  const add = screen(page)
+    .getByTestId("board-columns")
+    .getByRole("button", { name: "New task" });
+  await expect(add).toBeInViewport();
+  const [addBox, hintBox] = await Promise.all([
+    add.boundingBox(),
+    hint.boundingBox(),
+  ]);
+  expect(addBox && hintBox && addBox.y + addBox.height <= hintBox.y).toBe(true);
 
   // Tapping a segment scrolls its page in and moves the highlight.
   await pager.locator("[data-board-page='needs_you']").tap();
@@ -73,6 +91,22 @@ test("the sticky control row searches the board and reaches the archive", async 
   // One seeded agent: no filter bar (a single-agent board has nothing to ask).
   await expect(
     screen(page).getByTestId("mobile-board-agent-filter"),
+  ).toHaveCount(0);
+  // ONE compose in the chrome: the top bar's. The control row carries none.
+  await expect(controls.getByRole("button", { name: "New task" })).toHaveCount(
+    0,
+  );
+  await expect(
+    page
+      .getByTestId("mobile-top-bar")
+      .getByRole("button", { name: "New task" }),
+  ).toBeVisible();
+  // The team's identity lozenge rides the top bar, not the screen card.
+  await expect(
+    page.getByTestId("mobile-top-bar").locator("[data-team-section-switcher]"),
+  ).toBeVisible();
+  await expect(
+    screen(page).locator("[data-team-section-switcher]"),
   ).toHaveCount(0);
 
   // Search narrows the pages' cards and their counts.

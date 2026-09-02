@@ -60,13 +60,17 @@ export interface KanbanColumn {
   onAdd?: () => void;
   /** Accessible label for the add button. */
   addLabel?: string;
+  /** Extra attributes spread onto the add button (a consumer's guided-tour
+   *  anchor, a test id). The library never reads them. */
+  addAttrs?: Record<string, string>;
   /** Node rendered on the right of the column header (e.g. an
    *  "archive all" icon button). Fully owned by the consumer so any
    *  confirm dialog / i18n stays out of the library. */
   headerAction?: React.ReactNode;
   /** Phone-only hint centered in the column when it holds no cards ("Nothing
    *  running yet"). On the paged phone board an empty column is a whole empty
-   *  page, so it says so; desktop keeps its bare column. English default falls
-   *  to nothing — the consumer passes translated copy. */
+   *  page, so it says so, under the page's leading "+"; desktop keeps its bare
+   *  column. English default falls to nothing — the consumer passes translated
+   *  copy. */
   emptyLabel?: string;
 }

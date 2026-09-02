@@ -13,6 +13,10 @@ import { currentDeployEnvironment } from "./deploy-environment";
  * informational — `pointer-events-none` means it can never intercept a click on
  * the real UI beneath it, and it sits below the toast layer (z-50) so transient
  * toasts always win.
+ *
+ * On the phone the top bar's middle is the screen's title, so the pill steps
+ * out of the way: icon only, tucked beside the compose control, level with
+ * the row. Desktop keeps the labelled pill centered at the top.
  */
 export function PreviewBadge() {
   const { t } = useTranslation("common");
@@ -20,13 +24,13 @@ export function PreviewBadge() {
   if (currentDeployEnvironment() !== "preview") return null;
 
   return (
-    <div className="pointer-events-none fixed top-2 left-1/2 z-40 -translate-x-1/2 select-none">
+    <div className="pointer-events-none fixed top-6 right-16 z-40 select-none md:top-2 md:right-auto md:left-1/2 md:-translate-x-1/2">
       <Badge
         variant="outline"
         className="gap-1.5 border-line/70 bg-input/80 text-ink-muted shadow-sm backdrop-blur-sm"
       >
         <FlaskConical aria-hidden="true" />
-        {t("env.preview")}
+        <span className="sr-only md:not-sr-only">{t("env.preview")}</span>
       </Badge>
     </div>
   );

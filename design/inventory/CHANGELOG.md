@@ -3,6 +3,18 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v73 - 2026-09-02
+
+The phone board loses its second chrome row. Below the one breakpoint every
+page header's identity cluster (the team lozenge, a drilled back chip) rides
+the phone top bar between the drawer control and the compose control, so the
+screen card opens straight on the board's control row. That row drops its
+compose: the top bar's compose and the Running page's own "+" are the phone's
+two, and the "+" now LEADS its page, above the cards or the empty hint, and
+composes the phone way (a pushed draft chat scoped to the board's agents).
+The pager becomes the one place a section is named -- a paged column draws no
+header and sits flat on the screen instead of in a tinted column.
+
 ## v72 - 2026-08-28
 
 The board gets its phone presentation and chat becomes a place. Below the one

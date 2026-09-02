@@ -149,7 +149,7 @@ components:
 
   mission-board:
     status: implemented
-    ref: "@houston-ai/board KanbanBoard / AIBoard / KanbanColumn, phone pager in kanban-pager.tsx (segmented control synced to the snap-scrolling pages) with the phone control row in app/src/components/board/mobile-board-controls.tsx"
+    ref: "@houston-ai/board KanbanBoard / AIBoard / KanbanColumn (paged form: no header, leading +), phone pager in kanban-pager.tsx (segmented control synced to the snap-scrolling pages) with the phone control row in app/src/components/board/mobile-board-controls.tsx and the phone compose in board/phone-compose.ts"
 
   mentions-inbox:
     status: partial

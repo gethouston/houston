@@ -12,6 +12,7 @@ import {
   missionControlDraftScope,
 } from "./mission-control-scope.ts";
 import { MobileBoardControls } from "./mobile-board-controls";
+import { composeOnPhone } from "./phone-compose";
 import { useCrossAgentSelection } from "./use-cross-agent-selection";
 import { useMcActions } from "./use-mc-actions";
 import { useMcNewMission } from "./use-mc-new-mission";
@@ -127,9 +128,9 @@ export function useMissionControlSource(
     agentPathForId,
   });
 
-  // The phone board's own control row (search, archived, compose, agent
-  // chips), rendered by the component below md while the desktop toolbar
-  // hides. Built here because the search state lives here.
+  // The phone board's own control row (search, archived, agent chips),
+  // rendered by the component below md while the desktop toolbar hides. Built
+  // here because the search state lives here.
   const mobileControls = (
     <MobileBoardControls
       search={missionSearch.query}
@@ -139,6 +140,13 @@ export function useMissionControlSource(
       filterPath={filterPath}
       modeToggle={modeToggle}
     />
+  );
+
+  // A board narrowed to one agent has already answered "whose task?", the
+  // same rule the desktop button follows (`newMissionTarget`).
+  const composeHere = useCallback(
+    () => composeOnPhone(pinnedAgent ? [pinnedAgent] : scopedAgents),
+    [pinnedAgent, scopedAgents],
   );
 
   const toolbar = (
@@ -199,6 +207,7 @@ export function useMissionControlSource(
     registerOpener: newMission.registerOpener,
     openerReady: newMission.openerReady,
     openNewMission: newMission.openNewMission,
+    composeOnPhone: composeHere,
     onAutoOpenEmpty: newMission.onAutoOpenEmpty,
     autoOpenKey: `${filterPath || "all"}:${filterUserId ?? "everyone"}`,
     autoOpenItemCount: personFilteredItems.length,

@@ -118,6 +118,7 @@ export function useMissionChatSource(
     registerOpener: noop,
     openerReady: true,
     openNewMission: noop,
+    composeOnPhone: noop,
     onAutoOpenEmpty: noop,
     autoOpenKey: "mission-chat",
     autoOpenItemCount: mc.items.length,

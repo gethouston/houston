@@ -37,6 +37,9 @@ export const MISSION_ARCHIVE_STATUSES = [...COLUMN_STATUSES.done];
 export function buildMissionBoardColumns(
   labels: MissionBoardColumnLabels,
   onNewMission: () => void,
+  /** Attributes for the Running column's "+" (the phone board hands it the
+   *  guided tour's New task anchor; desktop's anchor is the toolbar button). */
+  addAttrs?: Record<string, string>,
 ): KanbanColumnConfig[] {
   return [
     {
@@ -45,6 +48,7 @@ export function buildMissionBoardColumns(
       statuses: [...COLUMN_STATUSES.running],
       onAdd: onNewMission,
       addLabel: labels.newMission,
+      addAttrs,
       emptyLabel: labels.empty?.running,
     },
     {

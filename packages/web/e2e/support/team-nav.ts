@@ -76,6 +76,19 @@ export function screen(page: Page): Locator {
 }
 
 /**
+ * Where the screen on the glass draws its HEADER cluster.
+ *
+ * Desktop draws it inside the screen. Below the breakpoint the active screen
+ * portals the cluster into the phone top bar's title slot, beside the drawer
+ * control — outside `[data-screen-active]`. Only the active screen may claim
+ * that slot, so a header lookup through the union is as strict as one through
+ * the screen alone.
+ */
+export function headerChrome(page: Page): Locator {
+  return screen(page).or(page.getByTestId("mobile-top-bar"));
+}
+
+/**
  * Narrow a set of rail rows to the one(s) saying "you are here".
  *
  * Every row in the rail is now a root element carrying the row's identity (its
@@ -117,14 +130,14 @@ const TEAM_SETTINGS_TAB_IDS: Readonly<Record<TeamSettingsTab, string>> = {
 };
 
 export function teamSettingsTab(page: Page, tab: TeamSettingsTab): Locator {
-  return screen(page).locator(
+  return headerChrome(page).locator(
     `[data-team-settings-tab='${TEAM_SETTINGS_TAB_IDS[tab]}']`,
   );
 }
 
 /** The compact replacement for the Team Settings lozenge cluster. */
 function teamSettingsSwitcher(page: Page): Locator {
-  return screen(page).locator("[data-team-settings-switcher]");
+  return headerChrome(page).locator("[data-team-settings-switcher]");
 }
 
 /**
@@ -171,12 +184,12 @@ export async function returnToActiveTasks(page: Page): Promise<void> {
 
 /** The team screen's lozenge cluster, on the open team. */
 export function teamTabs(page: Page): Locator {
-  return screen(page).locator("[data-team-section-tab]");
+  return headerChrome(page).locator("[data-team-section-tab]");
 }
 
 /** One lozenge of the open team, by section. */
 export function teamTab(page: Page, section: TeamSection): Locator {
-  return screen(page).locator(
+  return headerChrome(page).locator(
     `[data-team-section-tab='${TEAM_SECTION_TAB_IDS[section]}']`,
   );
 }
@@ -197,7 +210,7 @@ function currentTeamRow(page: Page): Locator {
 
 /** The compact replacement for the full team-section lozenge cluster. */
 function teamSectionSwitcher(page: Page): Locator {
-  return screen(page).locator("[data-team-section-switcher]");
+  return headerChrome(page).locator("[data-team-section-switcher]");
 }
 
 /** Assert the selected section in either the full strip or compact menu. */
@@ -372,7 +385,7 @@ export function agentSectionTab(
   page: Page,
   section: AgentSettingsSection,
 ): Locator {
-  return screen(page).locator(
+  return headerChrome(page).locator(
     `[data-agent-section-tab='${AGENT_SECTION_IDS[section]}']`,
   );
 }
@@ -405,7 +418,7 @@ export async function openAgentScreen(
   agentName: string,
 ): Promise<void> {
   await agentRow(page, agentName).click();
-  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
+  await expect(headerChrome(page).locator("[data-agent-screen]")).toContainText(
     agentName,
   );
 }
@@ -447,7 +460,7 @@ export async function openAgentSettingsSection(
     await tab.click();
     return;
   }
-  await screen(page).locator("[data-agent-section-switcher]").click();
+  await headerChrome(page).locator("[data-agent-section-switcher]").click();
   await page
     .locator(
       `[role='menuitemcheckbox'][data-agent-section-tab='${AGENT_SECTION_IDS[section]}']`,
