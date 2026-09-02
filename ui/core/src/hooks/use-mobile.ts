@@ -8,6 +8,16 @@ import * as React from "react";
    (see ui/core/tests/breakpoint-sync.test.ts). */
 const MOBILE_BREAKPOINT = breakpointPx.mobile;
 
+/**
+ * The same edge, read synchronously. For one-shot decisions made inside an
+ * effect or handler (e.g. "would focusing this input raise a phone keyboard
+ * right now?") where the hook's post-mount state would still read `false` on
+ * the very render that decides.
+ */
+export function isMobileViewport(): boolean {
+  return typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT;
+}
+
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(
     undefined,

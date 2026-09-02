@@ -2357,38 +2357,46 @@ export function useAgentChatPanel({
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;
+    // The pills wrap on a phone (four of them plus the ring overrun a 375px
+    // composer); the context ring stays pinned to the first row's right edge.
+    // Desktop is one row, unchanged.
     return () => (
-      <div className="flex items-center gap-2 w-full">
-        <button
-          type="button"
-          onClick={() => setPickerOpen(true)}
-          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted hover:text-ink hover:bg-hover transition-colors"
-        >
-          <Play className="size-3 fill-current" />
-          {t("composerSkill.browse")}
-        </button>
-        <ChatModeSelector
-          mode={turnMode}
-          onSelect={handleModeSelect}
-          agent={agent}
-        />
-        <ChatModelSelector
-          provider={displayModelPin.provider}
-          model={displayModelPin.model}
-          onSelect={selectModel}
-          open={modelPickerOpen}
-          onOpenChange={setModelPickerOpen}
-          agent={agent}
-          allowedModels={allowedModels}
-        />
-        <ChatEffortSelector
-          provider={displayModelPin.provider}
-          model={displayModelPin.model}
-          effort={displayModelPin.effort}
-          onSelect={selectEffort}
-          agent={agent}
-        />
-        <div className="ml-auto">
+      <div
+        data-testid="composer-toolbar"
+        className="flex w-full items-start gap-2"
+      >
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 md:gap-2">
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-colors"
+          >
+            <Play className="size-3 fill-current" />
+            {t("composerSkill.browse")}
+          </button>
+          <ChatModeSelector
+            mode={turnMode}
+            onSelect={handleModeSelect}
+            agent={agent}
+          />
+          <ChatModelSelector
+            provider={displayModelPin.provider}
+            model={displayModelPin.model}
+            onSelect={selectModel}
+            open={modelPickerOpen}
+            onOpenChange={setModelPickerOpen}
+            agent={agent}
+            allowedModels={allowedModels}
+          />
+          <ChatEffortSelector
+            provider={displayModelPin.provider}
+            model={displayModelPin.model}
+            effort={displayModelPin.effort}
+            onSelect={selectEffort}
+            agent={agent}
+          />
+        </div>
+        <div className="shrink-0">
           <ContextIndicator
             usage={contextUsage}
             contextWindow={contextWindow}
