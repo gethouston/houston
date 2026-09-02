@@ -1,3 +1,5 @@
+import { isEngineWakingError } from "@houston/app/lib/engine-waking-error";
+import { isNetworkTransportError } from "@houston/app/lib/network-transport-error";
 import type {
   BoardStatus,
   FeedOutput,
@@ -40,7 +42,8 @@ function remapProvider(item: unknown): unknown {
  * Build a bus-backed FeedOutput. `setActivityStatus` is the board-card persist
  * seam (localStorage in standalone web, the control plane in cloud); a failure
  * surfaces in the feed as a system message rather than hanging the card in
- * "running".
+ * "running" — except the two quiet classes, which are expected environment
+ * states the surfacing layer already covers (see `persistBoardStatus`).
  */
 export function createBusFeedOutput(
   setActivityStatus: (
@@ -80,6 +83,17 @@ export function createBusFeedOutput(
           pendingInteraction ?? null,
         );
       } catch (e) {
+        // A send into an asleep mission starts the turn on the client, and the
+        // turn-start persist ("running") lands on a pod still cold-starting:
+        // the gateway answers its waking 502/503. Nothing is broken and there
+        // is nothing to "try again" — the waking notice already covers the
+        // state and the settle re-persists the status once the pod is up — so
+        // that answer (and a plain connectivity drop) must not put a line in
+        // the transcript. Same quiet classes as `tauri.ts` / `reportError`.
+        if (isEngineWakingError(e) || isNetworkTransportError(e)) {
+          console.warn("[feed-output] board status update deferred:", e);
+          return;
+        }
         // The raw cause is dev speak — log it, show product voice (HOU-721).
         console.error("[feed-output] board status update failed:", e);
         emitEvent("FeedItem", {

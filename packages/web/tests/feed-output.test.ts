@@ -128,3 +128,66 @@ test("a failing board persist surfaces in the feed, not silently", async () => {
   });
   expect(surfaced).toBe(true);
 });
+
+/** The shape `HoustonEngineError` mints for a gateway answer (structural
+ *  stand-in, matching app/tests/engine-waking-error.test.ts). */
+function engineError(status: number, reason: string): Error {
+  const err = new Error(`${reason} (engine error ${status})`) as Error & {
+    status: number;
+  };
+  err.name = "HoustonEngineError";
+  err.status = status;
+  return err;
+}
+
+function systemMessages(events: BusEvent[]): unknown[] {
+  return events
+    .filter(
+      (e) =>
+        e.type === "FeedItem" && e.data?.item?.feed_type === "system_message",
+    )
+    .map((e) => e.data?.item?.data);
+}
+
+// PRODUCT-1638: the turn-start persist on an asleep pod answers the gateway's
+// waking 502/503. That is not a failure the user can act on — the waking
+// notice already covers it and the settle re-persists — so it must not push
+// "Couldn't update the board status" into the transcript.
+test("a waking 502/503 on the board persist stays out of the feed", async () => {
+  const { events, stop } = collect();
+  const out = createBusFeedOutput(async (_a, _s, status) => {
+    if (status === "running") throw engineError(502, "engine proxy failed");
+    throw engineError(503, "engine unavailable");
+  });
+  await out.persistBoardStatus("Houston/Bo", "c1", "running");
+  await out.persistBoardStatus("Houston/Bo", "c1", "needs_you");
+  stop();
+
+  expect(systemMessages(events)).toEqual([]);
+});
+
+// A plain connectivity drop (device offline / host unreachable) is the same
+// quiet class: the connectivity surface already owns it.
+test("a transport failure on the board persist stays out of the feed", async () => {
+  const { events, stop } = collect();
+  const out = createBusFeedOutput(async () => {
+    throw new TypeError("Load failed");
+  });
+  await out.persistBoardStatus("Houston/Bo", "c1", "running");
+  stop();
+
+  expect(systemMessages(events)).toEqual([]);
+});
+
+// Other gateway answers on the same statuses are real failures and keep the
+// existing system message — a false quiet here silently drops a report.
+test("a non-waking 502 on the board persist still surfaces in the feed", async () => {
+  const { events, stop } = collect();
+  const out = createBusFeedOutput(async () => {
+    throw engineError(502, "agent pod unusable");
+  });
+  await out.persistBoardStatus("Houston/Bo", "c1", "running");
+  stop();
+
+  expect(systemMessages(events)).toHaveLength(1);
+});
