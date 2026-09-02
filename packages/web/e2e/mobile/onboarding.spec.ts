@@ -137,3 +137,51 @@ test("the disclaimer's accept button fits inside the phone card", async ({
   await accept.tap();
   await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
 });
+
+test.describe("short phone viewport", () => {
+  // A small phone under Safari's chrome: the card's 88dvh frame is shorter
+  // than the survey column, which then has to scroll rather than overflow
+  // the frame at both ends (the logo above the card, Continue below it).
+  test.use({ viewport: { width: 375, height: 600 } });
+
+  test("the survey scrolls inside its card instead of overflowing it", async ({
+    page,
+    request,
+  }) => {
+    await resetToFirstRun(request);
+    await page.goto("/");
+    const heading = page.getByRole("heading", {
+      name: "What best describes your work?",
+    });
+    await expect(heading).toBeVisible();
+
+    const scroll = page.getByTestId("survey-scroll");
+    const [frame, top] = await Promise.all([
+      scroll.boundingBox(),
+      heading.boundingBox(),
+    ]);
+    if (!frame || !top) throw new Error("survey card did not lay out");
+    expect(top.y).toBeGreaterThanOrEqual(frame.y);
+    expect(
+      await scroll.evaluate((el) => el.scrollHeight > el.clientHeight),
+    ).toBe(true);
+
+    // Continue is reachable by scrolling, and advances — and the next
+    // question opens at ITS top, not at the scroll position Continue left.
+    await page.getByRole("button", { name: "Operations" }).tap();
+    const next = page.getByRole("button", { name: "Continue" });
+    await next.scrollIntoViewIfNeeded();
+    await next.tap();
+    const industry = page.getByRole("heading", {
+      name: "What industry do you work in?",
+    });
+    await expect(industry).toBeVisible();
+    const [frame2, top2] = await Promise.all([
+      scroll.boundingBox(),
+      industry.boundingBox(),
+    ]);
+    if (!frame2 || !top2) throw new Error("industry step did not lay out");
+    expect(top2.y).toBeGreaterThanOrEqual(frame2.y);
+    expect(await scroll.evaluate((el) => el.scrollTop)).toBe(0);
+  });
+});

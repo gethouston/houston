@@ -41,6 +41,14 @@ const PROBLEM_ID = "onboarding-survey-problem";
  * Mounted twice over a user's life: as the first-run intro ahead of the
  * create-your-assistant flow, and as an in-app prompt that fills the gaps for
  * anyone who only ever answered the job question.
+ *
+ * The card is a fixed frame (`SetupCard`), so the column SCROLLS when it is
+ * taller than the frame — a short phone viewport under browser chrome. It is
+ * centered by auto margins rather than `justify-center`, which would keep
+ * centering an overflowing column and push the logo above the card's top
+ * edge and Continue below its bottom, out of reach. Keyed by step so each
+ * question opens at its top: Continue sits at the bottom of the scroll, and
+ * the next question would otherwise inherit that position, headline hidden.
  */
 export function OnboardingSurveyScreen({
   mode,
@@ -69,60 +77,66 @@ export function OnboardingSurveyScreen({
     <FirstRunScreen>
       <SetupCard>
         <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col items-center justify-center text-center",
-            framed ? "gap-6" : "gap-8",
-          )}
+          key={flow.step}
+          data-testid="survey-scroll"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         >
-          <SurveyHeader
-            framed={framed}
-            heading={
-              framed
-                ? {
-                    title: t("onboardingSurvey.completion.title"),
-                    subtitle: t("onboardingSurvey.completion.subtitle"),
-                  }
-                : copy.question
-            }
-            question={copy.question}
-            steps={flow.plan}
-            current={flow.index}
-          />
+          <div
+            className={cn(
+              "m-auto flex w-full flex-col items-center text-center",
+              framed ? "gap-6" : "gap-6 md:gap-8",
+            )}
+          >
+            <SurveyHeader
+              framed={framed}
+              heading={
+                framed
+                  ? {
+                      title: t("onboardingSurvey.completion.title"),
+                      subtitle: t("onboardingSurvey.completion.subtitle"),
+                    }
+                  : copy.question
+              }
+              question={copy.question}
+              steps={flow.plan}
+              current={flow.index}
+            />
 
-          <SurveyAnswer
-            step={flow.step}
-            copy={copy}
-            segment={flow.segment}
-            industry={flow.industry}
-            goal={flow.goal}
-            otherText={flow.otherText}
-            onSegment={flow.chooseSegment}
-            onIndustry={flow.chooseIndustry}
-            onOther={flow.writeOther}
-            onGoal={flow.writeGoal}
-            disabled={flow.saving}
-            errorId={invalid ? PROBLEM_ID : null}
-          />
+            <SurveyAnswer
+              step={flow.step}
+              copy={copy}
+              segment={flow.segment}
+              industry={flow.industry}
+              goal={flow.goal}
+              otherText={flow.otherText}
+              onSegment={flow.chooseSegment}
+              onIndustry={flow.chooseIndustry}
+              onOther={flow.writeOther}
+              onGoal={flow.writeGoal}
+              disabled={flow.saving}
+              errorId={invalid ? PROBLEM_ID : null}
+            />
 
-          {invalid && (
-            <p id={PROBLEM_ID} className="text-xs text-danger" role="alert">
-              {invalid}
-            </p>
-          )}
+            {invalid && (
+              <p id={PROBLEM_ID} className="text-xs text-danger" role="alert">
+                {invalid}
+              </p>
+            )}
 
-          {flow.error && (
-            <p className="text-xs text-danger" role="alert">
-              {flow.error}
-            </p>
-          )}
+            {flow.error && (
+              <p className="text-xs text-danger" role="alert">
+                {flow.error}
+              </p>
+            )}
 
-          <SurveyFooter
-            saving={flow.saving}
-            canContinue={flow.canContinue}
-            onBack={flow.canGoBack ? flow.back : null}
-            onContinue={flow.submit}
-            onDismiss={framed ? (onDismiss ?? null) : null}
-          />
+            <SurveyFooter
+              saving={flow.saving}
+              canContinue={flow.canContinue}
+              onBack={flow.canGoBack ? flow.back : null}
+              onContinue={flow.submit}
+              onDismiss={framed ? (onDismiss ?? null) : null}
+            />
+          </div>
         </div>
       </SetupCard>
     </FirstRunScreen>
