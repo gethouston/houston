@@ -9,6 +9,10 @@
         "body": "Tus agentes necesitan una IA para trabajar. Te muestro dónde conectarla.",
         "cta": "Muéstrame"
       },
+      "openMenu": {
+        "title": "Abre el menú",
+        "hint": "Toca el botón de menú arriba a la izquierda"
+      },
       "openAiHub": {
         "title": "Haz clic en Modelos de IA"
       },

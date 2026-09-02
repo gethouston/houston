@@ -125,6 +125,7 @@ export function useInAppOnboarding() {
   return {
     step,
     userPanelOpen: send.userPanelOpen,
+    userChatOpen: send.userChatOpen,
     emailStuck: send.emailStuck,
     integrationsOn: signals.integrationsOn,
     canCreateAgents: signals.canCreateAgents,

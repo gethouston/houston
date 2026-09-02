@@ -1,0 +1,139 @@
+import type { Locator, Page } from "@playwright/test";
+import { expect, test } from "../support/fixtures";
+import { completeSurvey, resetToFirstRun } from "../support/onboarding";
+
+/**
+ * First-run on a phone, end to end: the survey, then the game-style in-app
+ * setup over the REAL phone shell. Below md the rail lives in a drawer and
+ * composing is a pushed chat, so the sidebar-row steps ring the hamburger
+ * first and then the row inside the open drawer, and the send step follows
+ * the compose tap into the draft chat. Every advance is app state — the hub
+ * opening, a provider confirmed, the roster growing, a mission row landing —
+ * never a Next button. This is the tier-1 gate that keeps the phone from
+ * dead-ending a new user in a mandatory setup they cannot finish.
+ */
+
+/** The narration card's one action. */
+function centerCta(page: Page, title: string): Locator {
+  return page.getByRole("dialog", { name: title }).getByRole("button");
+}
+
+/** A drawer-row step on the phone: hamburger → the row inside the drawer. */
+async function tapDrawerRow(page: Page, rowTitle: string, target: string) {
+  await expect(
+    page.getByRole("dialog", { name: "Open the menu" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Open menu" }).tap();
+  // The open Sheet is a modal, so Radix marks everything outside it
+  // `aria-hidden` — the coach chip included — hence `includeHidden` for the
+  // in-drawer beat (the a11y shape the in-dialog coaching has always had).
+  await expect(
+    page.getByRole("dialog", { name: rowTitle, includeHidden: true }),
+  ).toBeVisible();
+  await page.locator(`[data-tour-target='${target}']`).tap();
+}
+
+test("the guided setup completes on a phone: drawer rows, provider connect, first agent, first task", async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  await resetToFirstRun(request);
+  await page.goto("/");
+  await completeSurvey(page);
+
+  await expect(
+    page.getByRole("heading", { name: "Welcome to Houston!" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Start setup" }).tap();
+  await page.getByRole("button", { name: "Show me" }).tap();
+
+  // AI Models is a drawer row on the phone.
+  await tapDrawerRow(page, "Click AI Models", "nav-ai-hub");
+  await expect(
+    page.getByRole("heading", { name: "AI Providers" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Pick the AI you already use." }),
+  ).toBeVisible();
+
+  // Connect on the real hub (the api-key path; the fake host accepts any key).
+  const search = page.getByPlaceholder("Search AI models and providers");
+  await search.tap();
+  await search.fill("openrouter");
+  await page.getByRole("button", { name: "Connect OpenRouter" }).tap();
+  await page.getByPlaceholder("Paste your API key").fill("sk-or-e2e-phone");
+  await page.getByRole("button", { name: "Connect", exact: true }).tap();
+  await centerCta(page, "Your AI is connected!").tap();
+  await centerCta(page, "Create your first agent").tap();
+
+  // New agent is a drawer row too; the dialog coaching is unchanged.
+  await tapDrawerRow(page, "Click New agent", "newAgent");
+  // In-dialog coaching sits outside the modal (aria-hidden), as on desktop.
+  await expect(page.getByText("Click Create new")).toBeVisible();
+  await page.getByRole("button", { name: "Create new", exact: true }).tap();
+  await page
+    .getByPlaceholder("e.g. Product manager, Sales, Jerry")
+    .fill("Aurora");
+  await page.getByRole("button", { name: "Create Agent" }).tap();
+  await centerCta(page, "Agent created!").tap();
+  await centerCta(page, "Give it work").tap();
+
+  // New task is the phone board's own compose control; the tap pushes the
+  // draft chat and the ring follows it there.
+  await expect(
+    page.getByRole("dialog", { name: "Click New task" }),
+  ).toBeVisible();
+  // Two anchors share the name on the phone board (the CSS-hidden desktop
+  // button beside the phone's compose); the spotlight rings the visible one.
+  await page
+    .locator("[data-screen-active='true'] [data-tour-target='newMission']")
+    .filter({ visible: true })
+    .tap();
+  await expect(
+    page.getByRole("dialog", { name: "Tell it what you need." }),
+  ).toBeVisible();
+  const composer = page
+    .getByTestId("mission-chat-screen")
+    .getByPlaceholder("What should the agent work on?");
+  await composer.fill("Say hello");
+  await composer.press("Enter");
+
+  // The finale, then the Academy reveal closes the run and lands there.
+  await centerCta(page, "Task sent!").tap();
+  await centerCta(page, "Chapter 1 complete!").tap();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
+
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test("the disclaimer's accept button fits inside the phone card", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    localStorage.removeItem("houston.pref.legal_acceptance");
+  });
+  await page.goto("/");
+
+  const accept = page.getByRole("button", {
+    name: "I understand and want to continue",
+  });
+  await expect(accept).toBeVisible();
+  const card = page.locator(".setup-step-in");
+  const [button, frame] = await Promise.all([
+    accept.boundingBox(),
+    card.boundingBox(),
+  ]);
+  if (!button || !frame) throw new Error("disclaimer card did not lay out");
+  expect(button.x + button.width).toBeLessThanOrEqual(frame.x + frame.width);
+  expect(button.x).toBeGreaterThanOrEqual(frame.x);
+
+  await accept.tap();
+  await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
+});

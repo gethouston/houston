@@ -11,7 +11,8 @@ export { OptionCard } from "./option-card";
  * and each onboarding step read as a single coherent flow rather than a pile of
  * mismatched screens. Modeled on the Discord server-onboarding pattern: a
  * centered card with a small step eyebrow, one clear question, the content, and
- * a Back / helper / Next footer.
+ * a Back / helper / Next footer (stacked with Next on top below md, where a
+ * long Next label would otherwise run off the card).
  *
  * Always a plain white card ({@link https://…|`bg-card`}) that floats on the
  * calm grey {@link FirstRunScreen} background: a hairline `border-line` and a
@@ -82,13 +83,13 @@ export function SetupCard({
         <div className="mt-6 flex min-h-0 flex-1 flex-col">{children}</div>
 
         {(onBack || onNext || helper) && (
-          <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="mt-6 flex flex-col-reverse gap-3 md:mt-8 md:flex-row md:items-center md:justify-between md:gap-4">
             <div className="shrink-0">
               {onBack && (
                 <Button
                   type="button"
                   variant="secondary"
-                  className="rounded-full"
+                  className="w-full rounded-full md:w-auto"
                   onClick={onBack}
                 >
                   <ArrowLeft className="size-4" />
@@ -97,7 +98,7 @@ export function SetupCard({
               )}
             </div>
             {helper && (
-              <p className="flex-1 text-right text-xs text-ink-muted">
+              <p className="text-center text-xs text-ink-muted md:flex-1 md:text-right">
                 {helper}
               </p>
             )}
@@ -105,7 +106,7 @@ export function SetupCard({
               {onNext && (
                 <Button
                   type="button"
-                  className="rounded-full"
+                  className="w-full rounded-full md:w-auto"
                   onClick={onNext}
                   disabled={nextDisabled || nextLoading}
                 >

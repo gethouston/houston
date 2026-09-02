@@ -10,6 +10,7 @@ import {
   TutorialSpotlight,
   tutorialSelector,
 } from "../tutorial";
+import { DrawerSpotlight } from "./in-app-drawer-spotlight";
 import { InAppOnboardingAgentSteps } from "./in-app-onboarding-agent-steps";
 import { useInAppOnboarding } from "./use-in-app-onboarding";
 import { useSetupChecklist } from "./use-setup-checklist";
@@ -68,7 +69,7 @@ export function InAppOnboarding() {
       );
     case "openAiHub":
       return (
-        <TutorialSpotlight
+        <DrawerSpotlight
           selector={tourSelector("nav-ai-hub")}
           title={t("inApp.steps.openAiHub.title")}
         />
@@ -112,7 +113,7 @@ export function InAppOnboarding() {
       );
     case "openIntegrations":
       return (
-        <TutorialSpotlight
+        <DrawerSpotlight
           selector={tourSelector("nav-integrations")}
           title={t("inApp.steps.openIntegrations.title")}
         />
