@@ -1,7 +1,7 @@
 import { classifyAnalyticsError } from "./analytics";
-import { isEngineWakingError } from "./engine-waking-error";
 import i18n from "./i18n";
-import { isNetworkTransportError } from "./network-transport-error";
+import { classifyQuietError } from "./quiet-error-class";
+import { reportQuietError } from "./quiet-error-report";
 import { captureException as sentryCapture } from "./sentry";
 import { createSentryReportError } from "./sentry-report-error";
 import {
@@ -17,24 +17,29 @@ import {
  * silently invisible to crash reporting. Returns immediately; flush failures
  * are logged, never thrown.
  *
- * Two classes are NOT captured, both expected environment states the
- * engine-call layer already classifies and declines, where this layer
- * re-capturing kept a Sentry family alive:
+ * Two classes take the LOW-NOISE path instead of a per-event capture, both
+ * expected environment states the engine-call layer already classifies:
  *  - transport-level network failures (device offline / host unreachable —
  *    HOU-1085; HOUSTON-APP-4PQ, PRODUCT-1383 was this layer's leak);
  *  - gateway waking answers (engine pod provisioning / restarting under a
  *    roll — HOU-1114, PRODUCT-1403; same one-layer-left failure mode as
  *    HOUSTON-APP-51C in the global rejection handler).
- * The raw diagnostic still reaches the frontend log via the caller's
- * `console.error`.
+ * Declining them outright (the PRODUCT-1446 policy) kept deploy-day bursts
+ * from filing hundreds of issues, but it also meant a raw gateway body a user
+ * never saw existed only in their local log (PRODUCT-1640). They now capture
+ * as a burst-collapsed warning in ONE fingerprinted issue per class, via
+ * `reportQuietError`, which can never file a new issue per event.
  */
 export function reportError(
   command: string,
   message: string,
   originalError?: unknown,
 ): void {
-  if (isNetworkTransportError(originalError)) return;
-  if (isEngineWakingError(originalError)) return;
+  const quiet = classifyQuietError(originalError);
+  if (quiet) {
+    reportQuietError(quiet, command, message, originalError);
+    return;
+  }
   markReportedToSentry(originalError);
   const error = createSentryReportError(command, message, originalError);
   void sentryCapture(error, {

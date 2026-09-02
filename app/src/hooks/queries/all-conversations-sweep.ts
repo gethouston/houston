@@ -117,12 +117,14 @@ function surfacePartialSweep(
       showEngineWakingToast(
         "list_all_conversations_partial",
         `missions ${still} for ${failedAgents.length} waking agent(s): ${named}`,
+        reason,
       );
       return;
     case "connectivity":
       showConnectivityErrorToast(
         "list_all_conversations_partial",
         `missions ${still} for ${failedAgents.length} agent(s) while offline: ${named}`,
+        reason,
       );
       return;
     case "error":

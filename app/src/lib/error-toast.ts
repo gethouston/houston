@@ -3,6 +3,7 @@ import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { createBurstGate } from "./error-burst";
 import i18n from "./i18n";
+import { reportQuietError } from "./quiet-error-report";
 import {
   captureException as sentryCapture,
   sentrySuppressedInDev,
@@ -41,17 +42,20 @@ export function showExpectedStateToast(
  * Surface a transport-level network failure (device offline, host unreachable
  * — HOU-1085) as ONE informational connectivity toast. A connectivity drop
  * fails every live query at once, so the toast dedupes on its (constant)
- * displayed body: the burst reads as one problem. No Sentry capture and no
- * green "report sent" toast — nothing in Houston broke and there is nothing
- * for us to fix; the raw diagnostic still reaches the frontend log via the
- * caller's `logger.error` plus the `[toast:…]` line here. The analytics event
- * fires only past the dedupe, mirroring `showErrorToast`.
+ * displayed body: the burst reads as one problem. No green "report sent"
+ * toast — nothing in Houston broke and there is nothing for us to fix — but
+ * the drop still reaches Sentry as a burst-collapsed warning in the single
+ * fingerprinted `offline` issue (PRODUCT-1640), so its raw diagnostic is
+ * findable beyond the caller's `logger.error` and the `[toast:…]` line here.
+ * The analytics event fires only past the dedupe, mirroring `showErrorToast`.
  */
 export function showConnectivityErrorToast(
   command: string,
   message: string,
+  originalError?: unknown,
 ): void {
   console.error(`[toast:${command}] ${message}`);
+  reportQuietError("offline", command, message, originalError);
   const description = i18n.t("shell:errorToast.offlineDescription");
   if (!errorBurst.isFirst(description, Date.now())) return;
   analytics.track("app_error_shown", {
@@ -117,14 +121,22 @@ export function showUpdateCheckStuckToast(
  * toast. The agent's engine pod is provisioning (a just-installed store
  * agent), cold-starting, or restarting under a roll; every per-agent call fails the
  * same way until it wakes, so the toast dedupes on its constant displayed body
- * and the burst reads as one state, not a storm. No Sentry capture and no
- * green "report sent" toast: nothing in Houston broke and the request
- * self-heals on retry; the raw diagnostic still reaches the frontend log via
- * the caller's `logger.error` plus the `[toast:…]` line here. The analytics
- * event fires only past the dedupe, mirroring `showErrorToast`.
+ * and the burst reads as one state, not a storm. No green "report sent"
+ * toast: nothing in Houston broke and the request self-heals on retry. The
+ * answer still reaches Sentry as a burst-collapsed warning in the single
+ * fingerprinted `engine_waking` issue, carrying the raw gateway body, and
+ * feeds the per-agent stuck-wake escalation (PRODUCT-1640) — `context` is the
+ * engine-call context, whose `agentPath` / `agentId` keys that tracker. The
+ * analytics event fires only past the dedupe, mirroring `showErrorToast`.
  */
-export function showEngineWakingToast(command: string, message: string): void {
+export function showEngineWakingToast(
+  command: string,
+  message: string,
+  originalError?: unknown,
+  context?: Record<string, unknown>,
+): void {
   console.error(`[toast:${command}] ${message}`);
+  reportQuietError("engine_waking", command, message, originalError, context);
   const description = i18n.t("shell:errorToast.engineWakingDescription");
   if (!errorBurst.isFirst(description, Date.now())) return;
   analytics.track("app_error_shown", {
