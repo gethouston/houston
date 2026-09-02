@@ -6,6 +6,11 @@ import {
   TutorialSpotlight,
   tutorialSelector,
 } from "../tutorial";
+import { DrawerSpotlight } from "./in-app-drawer-spotlight";
+import {
+  sendMissionSelector,
+  sendMissionSurface,
+} from "./in-app-mobile-targets";
 import type { useInAppOnboarding } from "./use-in-app-onboarding";
 import { useNamingPhase } from "./use-naming-phase";
 import { useSetupChecklist } from "./use-setup-checklist";
@@ -41,7 +46,7 @@ export function InAppOnboardingAgentSteps({
       );
     case "createAgent":
       return (
-        <TutorialSpotlight
+        <DrawerSpotlight
           selector={tourSelector("newAgent")}
           title={t("inApp.steps.createAgent.title")}
           hint={t("inApp.steps.createAgent.hint")}
@@ -98,25 +103,24 @@ export function InAppOnboardingAgentSteps({
           checklist={checklist}
         />
       );
-    case "sendMission":
-      // The hole follows the user's own progress: the New task button first;
-      // the moment THEIR click opens the composer panel (`userPanelOpen` — a
-      // lingering panel is closed first, so the lesson's click is never
-      // skipped), the panel. In email mode the composer arrives prewritten
-      // and locked, and the hole narrows to the SEND BUTTON alone — the rest
-      // of the panel (close, composer, pickers) stays blocked, and the cues
-      // point at exactly the control to press.
+    case "sendMission": {
+      // The hole follows the user's own progress: the New task control
+      // first; the moment THEIR tap opens a composer (the desktop board's
+      // panel, or the phone's pushed draft chat — a lingering one is closed
+      // first, so the lesson's click is never skipped), that surface. In
+      // email mode the composer arrives prewritten and locked, and the hole
+      // narrows to the SEND BUTTON alone — the rest stays blocked, and the
+      // cues point at exactly the control to press.
+      const surface = sendMissionSurface({
+        panelOpen: o.userPanelOpen,
+        chatOpen: o.userChatOpen,
+      });
+      const composing = surface !== "button";
       return (
         <TutorialSpotlight
-          selector={
-            o.userPanelOpen
-              ? o.emailMode
-                ? '[data-testid="mission-panel"] button[type="submit"]'
-                : '[data-testid="mission-panel"]'
-              : `[data-screen-active='true'] ${tourSelector("newMission")}`
-          }
+          selector={sendMissionSelector(surface, o.emailMode)}
           title={
-            o.userPanelOpen
+            composing
               ? t(
                   o.emailMode
                     ? "inApp.steps.sendMission.sendTitle"
@@ -125,7 +129,7 @@ export function InAppOnboardingAgentSteps({
               : t("inApp.steps.sendMission.title")
           }
           hint={
-            o.userPanelOpen
+            composing
               ? t(
                   o.emailMode
                     ? "inApp.steps.sendMission.sendHint"
@@ -139,13 +143,17 @@ export function InAppOnboardingAgentSteps({
           }
         />
       );
+    }
     case "emailSending":
       // Watch-only: the agent is working, nothing to click. If it errors or
       // takes too long, the addendum offers the way onward (the task WAS
       // sent) — a watch beat must never be a dead end.
       return (
         <TutorialSpotlight
-          selector='[data-testid="mission-panel"]'
+          selector={sendMissionSelector(
+            o.userChatOpen ? "chat" : "panel",
+            false,
+          )}
           title={t("inApp.steps.emailSending.title")}
           hint={t("inApp.steps.emailSending.hint")}
           aside={o.emailStuck ? t("inApp.steps.emailSending.stuck") : undefined}

@@ -11,13 +11,19 @@ export { OptionCard } from "./option-card";
  * and each onboarding step read as a single coherent flow rather than a pile of
  * mismatched screens. Modeled on the Discord server-onboarding pattern: a
  * centered card with a small step eyebrow, one clear question, the content, and
- * a Back / helper / Next footer.
+ * a Back / helper / Next footer (stacked with Next on top below md, where a
+ * long Next label would otherwise run off the card).
  *
  * Always a plain white card ({@link https://…|`bg-card`}) that floats on the
  * calm grey {@link FirstRunScreen} background: a hairline `border-line` and a
  * soft shadow lift it off the gutter, no glass, no backdrop-blur. The
  * FirstRunScreen wrapper pins `data-theme="light"`, so the card reads the same
  * bright light way in both app themes.
+ *
+ * Below md the card IS the screen: full-bleed, full-height, no frame and no
+ * gutter, with the phone's own padding (the floating 680px card wasted a
+ * third of a phone viewport and shrank the questions into it). The safe-area
+ * insets pad the wrapper, inert on desktop and un-notched phones.
  *
  * Houston-monochrome: selection uses the near-black foreground, never a
  * decorative accent (design-system color restraint).
@@ -57,7 +63,7 @@ export function SetupCard({
   nextLoading,
 }: SetupCardProps) {
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6">
+    <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden pt-safe pb-safe md:px-6">
       {/* Fixed height + flex-1 content so the card stays the SAME size across
           every step and the footer never jumps as content changes. Keyed by
           title so React remounts (and the CSS entrance replays) on each step
@@ -66,7 +72,7 @@ export function SetupCard({
           background — no glass, no backdrop-blur. */}
       <div
         key={title}
-        className="setup-step-in relative z-10 flex h-[680px] max-h-[88dvh] w-full max-w-2xl flex-col rounded-2xl border border-line bg-card p-8 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
+        className="setup-step-in relative z-10 flex min-h-0 w-full flex-1 flex-col bg-card p-5 text-ink md:h-[680px] md:max-h-[88dvh] md:max-w-2xl md:flex-initial md:rounded-2xl md:border md:border-line md:p-8 md:shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (
@@ -82,13 +88,13 @@ export function SetupCard({
         <div className="mt-6 flex min-h-0 flex-1 flex-col">{children}</div>
 
         {(onBack || onNext || helper) && (
-          <div className="mt-8 flex items-center justify-between gap-4">
+          <div className="mt-6 flex flex-col-reverse gap-3 md:mt-8 md:flex-row md:items-center md:justify-between md:gap-4">
             <div className="shrink-0">
               {onBack && (
                 <Button
                   type="button"
                   variant="secondary"
-                  className="rounded-full"
+                  className="w-full rounded-full md:w-auto"
                   onClick={onBack}
                 >
                   <ArrowLeft className="size-4" />
@@ -97,7 +103,7 @@ export function SetupCard({
               )}
             </div>
             {helper && (
-              <p className="flex-1 text-right text-xs text-ink-muted">
+              <p className="text-center text-xs text-ink-muted md:flex-1 md:text-right">
                 {helper}
               </p>
             )}
@@ -105,7 +111,7 @@ export function SetupCard({
               {onNext && (
                 <Button
                   type="button"
-                  className="rounded-full"
+                  className="w-full rounded-full md:w-auto"
                   onClick={onNext}
                   disabled={nextDisabled || nextLoading}
                 >

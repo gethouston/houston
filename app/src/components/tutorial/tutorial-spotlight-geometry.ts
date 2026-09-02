@@ -70,6 +70,19 @@ function placeBeside(
   return null;
 }
 
+/**
+ * The first VISIBLE element a selector matches. Some anchors exist twice in
+ * the tree — a desktop control CSS-hidden on the phone beside the phone's
+ * own — and `querySelector` would hand back the hidden one first, leaving the
+ * hole shut over a control the user can see.
+ */
+function firstVisible(selector: string): Element | null {
+  for (const el of document.querySelectorAll(selector)) {
+    if (el.getBoundingClientRect().width > 0) return el;
+  }
+  return null;
+}
+
 const sameRect = (a: Rect | null, b: Rect | null) =>
   a === b ||
   (a !== null &&
@@ -165,7 +178,7 @@ export function useSpotlightRects(
         : null;
     };
     const measure = () => {
-      const next = toRect(document.querySelector(selector), PAD);
+      const next = toRect(firstVisible(selector), PAD);
       setHole((prev) => (sameRect(prev, next) ? prev : next));
       // The Radix dialog content (`data-state` excludes the coach chip, which
       // is a bare role="dialog").

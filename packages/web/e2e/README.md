@@ -66,7 +66,10 @@ phone layout from rotting. The tier-1 set walks the core journey — sign-in
 (`mobile/sign-in.spec.ts`, against the identity-ON server via
 `test.use({ baseURL: AUTH_WEB_URL })`), boot + overflow smoke, Agents home,
 mission chat push, hardware back, board pager + tab bar, and Routines
-(`mobile/routines.spec.ts`: list → a routine's own screen). Specs `.tap()`
+(`mobile/routines.spec.ts`: list → a routine's own screen), and first-run
+(`mobile/onboarding.spec.ts`: the survey, then the whole in-app setup over
+the phone shell — drawer rows, provider connect, first agent, first task).
+Specs `.tap()`
 rather than `.click()` and assert zero horizontal overflow
 (`document.documentElement.scrollWidth - clientWidth <= 0`).
 

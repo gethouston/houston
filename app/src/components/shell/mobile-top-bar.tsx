@@ -2,6 +2,7 @@ import { Menu, SquarePen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { startNewMission } from "../../lib/new-mission";
 import { useUIStore } from "../../stores/ui";
+import { tourAnchor } from "./workspace-tour-steps";
 
 const iconButtonClass =
   "flex size-10 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus";
@@ -27,6 +28,7 @@ export function MobileTopBar() {
     >
       <button
         type="button"
+        {...tourAnchor("mobileMenu")}
         aria-label={t("sidebar.openMenu")}
         onClick={() => setMobileSidebarOpen(true)}
         className={iconButtonClass}

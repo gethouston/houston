@@ -18,7 +18,9 @@ const EMAIL_WAIT_PATIENCE_MS = 120_000;
  *
  * - Panel: the taught mechanic is the New task CLICK, so a lingering chat
  *   panel is closed (through the board's registered closer, bounded) before
- *   panel-opens count as the user's own.
+ *   panel-opens count as the user's own. The phone's pushed chat screen is
+ *   the same surface in its phone shape: a lingering one is popped, and the
+ *   user's own compose push counts like a panel open.
  * - Baseline: mission ids snapshot only once the cross-agent sweep has
  *   SETTLED for the current roster — an empty in-flight sweep would make
  *   every pre-existing mission read as "just sent".
@@ -37,6 +39,7 @@ export function useSendMissionDiscipline(args: {
   const { active, watching, missionRows, missionRowsSettled, emailAgentPath } =
     args;
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
+  const chatOpen = useUIStore((s) => s.chatAgentId !== null);
   const [panelReady, setPanelReady] = useState(false);
   const [awaitingBaseline, setAwaitingBaseline] = useState(false);
   const [baselineIds, setBaselineIds] = useState<Set<string> | null>(null);
@@ -45,13 +48,15 @@ export function useSendMissionDiscipline(args: {
   // Close any lingering panel, bounded; then panel-opens are the user's.
   useEffect(() => {
     if (!active || panelReady) return;
-    if (!missionPanelOpen) {
+    if (!missionPanelOpen && !chatOpen) {
       setPanelReady(true);
       return;
     }
     let attempts = 0;
     const close = () => {
-      useUIStore.getState().onPanelClose?.();
+      const ui = useUIStore.getState();
+      if (ui.chatAgentId !== null) ui.closeMissionChat();
+      ui.onPanelClose?.();
       attempts += 1;
       if (attempts >= CLOSE_ATTEMPTS_MAX) {
         window.clearInterval(id);
@@ -61,7 +66,7 @@ export function useSendMissionDiscipline(args: {
     close();
     const id = window.setInterval(close, 300);
     return () => window.clearInterval(id);
-  }, [active, panelReady, missionPanelOpen]);
+  }, [active, panelReady, missionPanelOpen, chatOpen]);
 
   // Baseline only from a settled sweep.
   useEffect(() => {
@@ -103,6 +108,7 @@ export function useSendMissionDiscipline(args: {
 
   return {
     userPanelOpen: panelReady && missionPanelOpen,
+    userChatOpen: panelReady && chatOpen,
     missionSent: newMissionRow !== undefined,
     emailSent,
     emailStuck,

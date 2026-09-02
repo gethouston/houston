@@ -6,6 +6,7 @@ import { openMissionChat } from "../../lib/mission-chat";
 import { startNewMission } from "../../lib/new-mission";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
+import { tourAnchor } from "../shell/workspace-tour-steps";
 
 const chipClass =
   "shrink-0 rounded-full px-3 py-1.5 text-sm font-medium transition-colors active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
@@ -78,6 +79,7 @@ export function MobileBoardControls({
         {modeToggle}
         <button
           type="button"
+          {...tourAnchor("newMission")}
           aria-label={t("shell:sidebar.newMission")}
           onClick={compose}
           className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors active:scale-95 hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
