@@ -14,8 +14,12 @@ import {
  * calls, the shared store's setters, and the toast.
  */
 
-/** One toolkit's LIVE hand-off phase: minting the link vs. polling the OAuth. */
-export type ConnectStep = "starting" | "waiting";
+/**
+ * One toolkit's LIVE hand-off phase: minting the link, polling the OAuth with
+ * the provider page open, or polling while the browser REFUSED to open that
+ * page (a popup blocker) and the row is asking the user to open it.
+ */
+export type ConnectStep = "starting" | "waiting" | "blocked";
 
 /**
  * What a settled flow leaves on the row it started from, so the feedback lands
@@ -45,8 +49,12 @@ export interface ConnectRunDeps {
   mintLink: (
     toolkit: string,
   ) => Promise<{ redirectUrl: string; connectionId: string }>;
-  /** Hand the user off to their browser. */
-  openUrl: (url: string) => Promise<void>;
+  /**
+   * Hand the user off to their browser. Resolves `false` when the browser
+   * refused to open the page (a popup blocker on web): the poll still runs,
+   * but the row must say the page is NOT open and offer a click that opens it.
+   */
+  openUrl: (url: string) => Promise<boolean>;
   /** One connection-status read. */
   readConnection: (connectionId: string) => Promise<IntegrationConnection>;
   /** Publish the live phase for this slug (`null` clears it). */
@@ -85,7 +93,9 @@ export interface ConnectRunDeps {
  *
  * Phases are published as they happen — `starting` covers ONLY the link mint
  * (the browser has not opened yet, so no surface may claim it has), `waiting`
- * begins the moment the browser is open. Every outcome the engine call cannot
+ * begins the moment the browser is open, and `blocked` replaces it when the
+ * browser refused the open, so the row never claims a tab the user never saw
+ * (PRODUCT-1625). Every outcome the engine call cannot
  * see is surfaced: a landed connection, a provider-side failure, and an
  * abandoned OAuth. A cancel is silent by design.
  *
@@ -113,8 +123,8 @@ export async function runConnectFlow(
       if (entry.cancelled) {
         outcome = "cancelled";
       } else {
-        await deps.openUrl(redirectUrl);
-        deps.setStep(toolkit, "waiting");
+        const opened = await deps.openUrl(redirectUrl);
+        deps.setStep(toolkit, opened ? "waiting" : "blocked");
         outcome = await pollConnectionUntilActive({
           poll: () => deps.readConnection(connectionId),
           sleep: deps.wait,

@@ -75,9 +75,16 @@ export function osPickDirectory(): Promise<string | null> {
   return invoke<string | null>("pick_directory");
 }
 
-/** Open a URL in the user's default browser. */
-export function osOpenUrl(url: string): Promise<void> {
-  return invoke<void>("open_url", { url });
+/**
+ * Open a URL in the user's default browser. Resolves `false` when the browser
+ * REFUSED the open — the web build's popup blocker after an async hop — so a
+ * caller can offer an explicit click instead of claiming a tab it never
+ * opened. The desktop shell hands the URL to the OS and always resolves
+ * `true` (a failure rejects).
+ */
+export async function osOpenUrl(url: string): Promise<boolean> {
+  const opened = await invoke<boolean | undefined>("open_url", { url });
+  return opened !== false;
 }
 
 /** The outcome of asking the shell to bind a loopback listener. */

@@ -105,8 +105,16 @@ export async function invoke<T = unknown>(
     // ── Implemented with a browser-native equivalent ────────────────────
     case "open_url": {
       const url = typeof args?.url === "string" ? args.url : "";
-      if (url) window.open(url, "_blank", "noopener,noreferrer");
-      return undefined as T;
+      if (!url) return false as T;
+      // Returns whether the browser TOOK the URL. A null handle is the popup
+      // blocker refusing the open (Safari/Firefox after an async hop) — the
+      // caller turns that into an explicit "open it yourself" click. No
+      // `noopener` feature: it makes window.open return null unconditionally,
+      // so the opener link is severed on the handle instead, which gives the
+      // same tabnabbing protection.
+      const tab = window.open(url, "_blank");
+      if (tab) tab.opener = null;
+      return (tab !== null) as T;
     }
     case "show_session_notification": {
       const title = typeof args?.title === "string" ? args.title : "Houston";

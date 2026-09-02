@@ -1,7 +1,8 @@
-import { AsyncButton, Button, cn, Spinner } from "@houston-ai/core";
+import { cn, Spinner } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { ConnectFlow } from "./connect-flow-registry";
 import { ConnectNoticeLine, NoticeLine } from "./connect-notice-line";
+import { WaitingBlock } from "./connect-waiting-block";
 
 /**
  * How the block dresses itself.
@@ -35,12 +36,15 @@ export function hasConnectState(
  * surface: there is no page-level banner, so nothing the user is reading ever
  * jumps to make room for feedback about a row far above it.
  *
- * The four phases it can show, each a calm single block that grows in place:
+ * The phases it can show, each a calm single block that grows in place:
  *  - `starting` — the hosted link is still being minted, so the copy says only
  *    that the browser is OPENING. Claiming "we opened {app}" here was a lie the
  *    user could catch, and it is what the phase gate below prevents;
  *  - `waiting`  — the browser IS open: the waiting copy plus the three ways
  *    back (check now, reopen the same page, cancel this one flow);
+ *  - `blocked`  — the browser REFUSED to open the page (a popup blocker on
+ *    web): the copy says so and the primary action opens it, from a click the
+ *    blocker honors;
  *  - `connected` / `failed` / `stopped` — the settled outcome, held for a few
  *    seconds so the row confirms in place instead of silently snapping back.
  *    The words are deliberately short: the toast carries the full sentence (it
@@ -82,12 +86,13 @@ export function ConnectFlowInline({
       aria-live="polite"
       className={cn("text-[13px]", className)}
     >
-      {step === "waiting" ? (
+      {step === "waiting" || step === "blocked" ? (
         <WaitingBlock
           appName={appName}
           toolkit={toolkit}
           connectFlow={connectFlow}
           variant={variant}
+          blocked={step === "blocked"}
         />
       ) : step === "starting" ? (
         <NoticeLine
@@ -102,83 +107,6 @@ export function ConnectFlowInline({
       ) : notice ? (
         <ConnectNoticeLine appName={appName} notice={notice} />
       ) : null}
-    </div>
-  );
-}
-
-/**
- * The waiting step's compact expansion: the browser hand-off explained, plus
- * the three recovery actions. As a `panel` it wears a quiet input-surface box
- * for the surfaces that host it alone; as `bare` it is already inside the
- * catalog row's own card and brings no frame and no spinner of its own.
- */
-function WaitingBlock({
-  appName,
-  toolkit,
-  connectFlow,
-  variant,
-}: {
-  appName: string;
-  toolkit: string;
-  connectFlow: ConnectFlow;
-  variant: ConnectFlowVariant;
-}) {
-  const { t } = useTranslation("integrations");
-  const copy = (
-    <>
-      <p className="font-medium text-ink">
-        {t("waiting.title", { app: appName })}
-      </p>
-      {/* The body names the app too: it was shipping the raw "{{app}}"
-          placeholder, because the old panel never passed the value in. */}
-      <p className="mt-0.5 text-ink-muted text-xs">
-        {t("waiting.body", { app: appName })}
-      </p>
-    </>
-  );
-  return (
-    <div
-      className={
-        variant === "panel"
-          ? "rounded-xl border border-line bg-input p-3"
-          : undefined
-      }
-    >
-      {variant === "panel" ? (
-        <div className="flex items-start gap-2.5">
-          <Spinner className="mt-0.5 size-4 text-ink-muted" />
-          <div className="min-w-0 flex-1">{copy}</div>
-        </div>
-      ) : (
-        copy
-      )}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {/* Waking the poll is synchronous — nothing to await, so nothing for an
-            AsyncButton's in-flight guard to hold. */}
-        <Button
-          size="xs"
-          type="button"
-          onClick={() => connectFlow.checkNow(toolkit)}
-        >
-          {t("waiting.check")}
-        </Button>
-        <AsyncButton
-          size="xs"
-          variant="outline"
-          spinner={false}
-          onClick={() => connectFlow.reopen(toolkit)}
-        >
-          {t("waiting.reopen")}
-        </AsyncButton>
-        <Button
-          size="xs"
-          variant="ghost"
-          type="button"
-          onClick={() => connectFlow.cancel(toolkit)}
-        >
-          {t("waiting.cancel")}
-        </Button>
-      </div>
     </div>
   );
 }

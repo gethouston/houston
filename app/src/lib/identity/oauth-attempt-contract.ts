@@ -96,8 +96,12 @@ export interface AwaitCallbackParams {
   authorizeUrl: string;
   /** Subscribe to the `auth://deep-link` callback payload. */
   listen: DeepLinkListen;
-  /** Open the authorize URL in the system browser. */
-  openUrl: (url: string) => Promise<void>;
+  /**
+   * Open the authorize URL in the system browser. Desktop-only flows (the
+   * loopback listener is native), where the OS open never silently refuses;
+   * the shared opener's popup-blocker verdict is irrelevant here and ignored.
+   */
+  openUrl: (url: string) => Promise<unknown>;
   /** Called once the browser has opened (frees the sign-in buttons). */
   onBrowserOpened?: () => void;
   /**
