@@ -176,15 +176,22 @@ const REQUEST_CONNECTION_GUIDANCE =
   "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). Houston shows the user a one-click connect card in place of the chat input, then automatically sends you a message once the connection is live so you can continue - do not ask the user to confirm.";
 
 /**
- * Ceiling for one integration tool result, aligned with the code sandbox's
- * output limit (code-sandbox DEFAULT_LIMITS.maxOutputBytes). App APIs return
- * unbounded documents — a single GMAIL_FETCH_EMAILS with include_payload can
- * exceed 1 MB of JSON, which alone overflows a model's context window and
- * terminally errors the turn (every event-trigger run on a newsletter inbox
- * died this way, HOU-893). Truncate with an instructive marker instead: the
- * model re-runs the action with tighter parameters rather than the turn dying.
+ * Ceiling for one integration EXECUTE result. App APIs return unbounded
+ * documents — a single GMAIL_FETCH_EMAILS with include_payload can exceed 1 MB
+ * of JSON, which alone overflows a model's context window and terminally
+ * errors the turn (every event-trigger run on a newsletter inbox died this
+ * way, HOU-893). Truncate with an instructive marker instead: the model
+ * re-runs the action with tighter parameters rather than the turn dying.
+ *
+ * 64 KB (~16k tokens), down from the original 256 KB: every result lands in
+ * the conversation permanently and is RE-SENT on every subsequent request, so
+ * one 256 KB dump (~65k tokens) kept burning a quarter of a model window per
+ * turn for the rest of the chat — the dominant driver of subscription-limit
+ * exhaustion on ChatGPT/Codex accounts. Fleet data: p99 of real execute
+ * results is ~29 KB; only the pathological full-payload dumps exceed 64 KB,
+ * and those are exactly the ones the recovery marker exists for.
  */
-const MAX_RESULT_CHARS = 256 * 1024;
+const MAX_RESULT_CHARS = 64 * 1024;
 
 /**
  * Search results get a MUCH tighter ceiling than execute data: they are a

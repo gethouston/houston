@@ -311,7 +311,9 @@ test("a giant execute result is truncated with recovery guidance, never fed whol
     params: { include_payload: true },
   });
   const text = (out.content[0] as { text: string }).text;
-  expect(text.length).toBeLessThan(300 * 1024);
+  // 64 KB budget + the recovery marker: a bloated result must never re-bill
+  // tens of thousands of context tokens on every later request in the chat.
+  expect(text.length).toBeLessThan(66 * 1024);
   expect(text).toContain("[result truncated");
   expect(text).toContain("Re-run the action with tighter parameters");
 });
