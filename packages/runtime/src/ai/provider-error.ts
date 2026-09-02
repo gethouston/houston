@@ -169,6 +169,13 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // on the apostrophe-free phrase: AWS spells "isn't" with U+2019, which the
   // "is not supported" pattern above can never hit (PRODUCT-1477).
   "on-demand throughput",
+  // Bedrock's off-region inference-profile rejection — 400 `The provided
+  // model identifier is invalid.` for a profile id that exists only in
+  // another region's endpoint (`au.anthropic.claude-opus-5` from the US
+  // endpoint). Bedrock checks the key before the model id, so the credential
+  // is fine and only THIS id is uninvokable — the switch-model card, never
+  // the report-bug card plus a Sentry error per attempt (PRODUCT-1641).
+  "provided model identifier is invalid",
   // GitHub Copilot's newer 400 body — `The requested model is not available
   // for integrator "vscode-chat". Available models: […]` — same plan-doesn't-
   // serve-this-model failure as its older `model_not_supported` code (HOU-977).
@@ -347,6 +354,16 @@ const MOONSHOT_BROAD_FALLBACK = "kimi-k2.6";
  * (PRODUCT-1517).
  */
 const XIAOMI_BROAD_FALLBACK = "mimo-v2.5-pro";
+
+/**
+ * The Bedrock model offered as the one-click switch target when a pick is one
+ * Bedrock cannot invoke (a bare `anthropic.*` foundation id, an off-region
+ * profile): the `global.` cross-region profile works from every endpoint and
+ * is the id verified live on a plain Bedrock API key (PRODUCT-1641). Twin of
+ * the runtime's `config.bedrockModel` default, duplicated on purpose like
+ * COPILOT_BASE_FALLBACK so this classifier stays pure.
+ */
+const BEDROCK_BROAD_FALLBACK = "global.anthropic.claude-sonnet-4-6";
 
 /**
  * The OpenAI-compatible (custom endpoint) provider id — duplicated from
@@ -562,7 +579,9 @@ function broadFallback(provider: string, model: string): string | null {
         ? MOONSHOT_BROAD_FALLBACK
         : provider === "xiaomi"
           ? XIAOMI_BROAD_FALLBACK
-          : null;
+          : provider === "amazon-bedrock"
+            ? BEDROCK_BROAD_FALLBACK
+            : null;
   return fallback && fallback !== model ? fallback : null;
 }
 

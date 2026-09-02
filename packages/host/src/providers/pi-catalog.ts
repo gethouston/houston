@@ -22,6 +22,7 @@ import type {
   CatalogProvider,
   ProviderCatalog,
 } from "@houston/protocol";
+import { BEDROCK_PROVIDER_ID, invokableBedrockModels } from "./bedrock-catalog";
 import { piOAuthProviders } from "./pi-oauth";
 import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
@@ -141,6 +142,10 @@ function providerDisplayName(
  * runs the same local-profile host/runtime as desktop and its egress reaches
  * every provider's public :443 endpoint, so a hosted user sees the full catalog
  * too. Deterministic — no clock, no IO.
+ *
+ * The one per-provider shaping is Bedrock, whose pi-ai list is mostly ids
+ * Bedrock itself refuses (see ./bedrock-catalog); the catalog is the RUNNABLE
+ * set, so those never reach a picker.
  */
 export function buildProviderCatalog(): ProviderCatalog {
   const oauthProviders = piOAuthProviders();
@@ -155,7 +160,11 @@ export function buildProviderCatalog(): ProviderCatalog {
     catalog.push(
       piProviderToCatalog(
         id,
-        id === "minimax" ? withMinimaxTokenPlan(models) : models,
+        id === "minimax"
+          ? withMinimaxTokenPlan(models)
+          : id === BEDROCK_PROVIDER_ID
+            ? invokableBedrockModels(models)
+            : models,
         oauthIds.has(id),
         providerDisplayName(id, oauthNames),
       ),

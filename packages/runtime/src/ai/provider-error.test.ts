@@ -457,6 +457,42 @@ test("Bedrock bare-foundation-id on-demand rejection → model_unavailable, neve
       "Validation error: Invocation of model ID anthropic.claude-sonnet-4-6 with on-demand throughput isn\u2019t supported. Retry your request with the ID or ARN of an inference profile that contains this model.",
   });
   expect(err.kind).toBe("model_unavailable");
+  // The switch-model card names the id that works on a plain Bedrock key.
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBe("global.anthropic.claude-sonnet-4-6");
+});
+
+test("Bedrock off-region profile 'provided model identifier is invalid' → model_unavailable + global fallback (PRODUCT-1641)", () => {
+  // Verbatim from a user's pod picking `au.anthropic.claude-opus-5` — an
+  // inference profile that exists only in the AU endpoint. Classified
+  // `unknown` before: the report-bug card and a Sentry error per attempt for
+  // a valid key whose only problem was the pick.
+  const message = "Validation error: The provided model identifier is invalid.";
+  const err = classifyProviderError({
+    provider: "amazon-bedrock",
+    model: "au.anthropic.claude-opus-5",
+    message,
+    status: 400,
+  });
+  expect(err).toEqual({
+    kind: "model_unavailable",
+    provider: "amazon-bedrock",
+    model: "au.anthropic.claude-opus-5",
+    reason: "unknown",
+    suggested_fallback: "global.anthropic.claude-sonnet-4-6",
+    message,
+  });
+});
+
+test("Bedrock's own fallback never self-suggests", () => {
+  const err = classifyProviderError({
+    provider: "amazon-bedrock",
+    model: "global.anthropic.claude-sonnet-4-6",
+    message: "Validation error: The provided model identifier is invalid.",
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBeNull();
 });
 
 test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilot provider", () => {
