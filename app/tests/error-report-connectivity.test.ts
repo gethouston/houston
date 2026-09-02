@@ -10,6 +10,11 @@ import { describe, it } from "node:test";
 // 859 events / 171 users of pure "user was offline" noise, plus a red
 // "sign out failed" toast stacked on the connectivity toast.
 //
+// PRODUCT-1640 flipped the Sentry half: the gate no longer DECLINES capture,
+// it routes the class to the low-noise fingerprinted capture
+// (`reportQuietError`), so an offline drop's raw diagnostic is findable in ONE
+// `offline` issue while the red toast and per-event issues stay gone.
+//
 // Asserted against the source rather than by calling the functions: both
 // modules pull i18n / analytics / the tauri barrel, none of which load under
 // this suite's `--experimental-strip-types` runner (same constraint and same
@@ -18,23 +23,44 @@ import { describe, it } from "node:test";
 const read = (rel: string): string =>
   readFileSync(join(import.meta.dirname, rel), "utf8");
 
-describe("reportError declines connectivity failures (HOU-1085 policy)", () => {
+describe("reportError routes connectivity failures to the quiet capture", () => {
   const source = read("../src/lib/error-report.ts");
 
-  it("gates the Sentry capture on isNetworkTransportError", () => {
+  it("gates the per-event Sentry capture on classifyQuietError", () => {
     ok(
-      source.includes('from "./network-transport-error"'),
-      "error-report.ts must import the connectivity classifier",
+      source.includes('from "./quiet-error-class"'),
+      "error-report.ts must import the quiet classifier",
     );
     const body = source.slice(source.indexOf("export function reportError("));
-    const guard = body.indexOf(
-      "if (isNetworkTransportError(originalError)) return;",
-    );
+    const guard = body.indexOf("classifyQuietError(originalError)");
     const capture = body.indexOf("sentryCapture");
-    ok(guard !== -1, "reportError must decline network transport errors");
+    ok(guard !== -1, "reportError must classify quiet errors");
     ok(
       capture === -1 || guard < capture,
-      "the connectivity guard must run before the Sentry capture",
+      "the quiet guard must run before the per-event Sentry capture",
+    );
+    ok(
+      !body.includes("isNetworkTransportError(originalError)) return"),
+      "an offline drop must never be declined outright again (PRODUCT-1640)",
+    );
+  });
+});
+
+describe("the connectivity toast captures low-noise", () => {
+  const source = read("../src/lib/error-toast.ts");
+
+  it("showConnectivityErrorToast reports the quiet class before the dedupe", () => {
+    const body = source.slice(
+      source.indexOf("export function showConnectivityErrorToast("),
+    );
+    const report = body.indexOf(
+      'reportQuietError("offline", command, message, originalError)',
+    );
+    const dedupe = body.indexOf("errorBurst.isFirst(");
+    ok(report !== -1, "the connectivity toast must capture the quiet class");
+    ok(
+      dedupe === -1 || report < dedupe,
+      "the capture must run before the toast dedupe, which drops repeats",
     );
   });
 });
@@ -59,8 +85,11 @@ describe("global rejection handler declines connectivity failures", () => {
     const redToast = body.indexOf("showErrorToast(");
     ok(guard !== -1, "the rejection handler must gate on connectivity");
     ok(
-      body.indexOf("showConnectivityErrorToast(", guard) !== -1,
-      "the connectivity branch must surface the deduped connectivity toast",
+      body.indexOf(
+        'showConnectivityErrorToast("unhandled_rejection", message, event.reason)',
+        guard,
+      ) !== -1,
+      "the connectivity branch must surface the deduped connectivity toast WITH the rejection, so the toast layer can capture it low-noise",
     );
     ok(
       capture === -1 || guard < capture,

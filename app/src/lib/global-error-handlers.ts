@@ -79,7 +79,8 @@ export function installGlobalErrorHandlers(): void {
     // A transport-level network failure whose rejected promise nobody caught
     // (PRODUCT-1392: the `/v1/events` global stream dropping on device
     // offline / sleep-wake). Same HOU-1085 policy as the engine-call and
-    // caller-toast layers — ONE deduped connectivity toast, no Sentry capture:
+    // caller-toast layers — ONE deduped connectivity toast, and only the
+    // low-noise fingerprinted `offline` warning in Sentry (PRODUCT-1640):
     // nothing in Houston broke. This handler was the last ungated surface, and
     // it kept the `unhandled_rejection: Load failed` Sentry family alive after
     // both other layers were gated. console.error (patched) so the drop still
@@ -87,7 +88,7 @@ export function installGlobalErrorHandlers(): void {
     if (isNetworkTransportError(event.reason)) {
       event.preventDefault();
       console.error("[global:unhandledrejection] connectivity drop:", message);
-      showConnectivityErrorToast("unhandled_rejection", message);
+      showConnectivityErrorToast("unhandled_rejection", message, event.reason);
       return;
     }
     // A gateway "the agent's pod is not there right now" answer whose rejected
@@ -97,12 +98,13 @@ export function installGlobalErrorHandlers(): void {
     // and card handlers deliberately don't catch — so it landed here, the last
     // ungated surface, and was re-captured as `unhandled_rejection: engine
     // proxy failed (engine error 502)`. Same policy as tauri.ts: one waking
-    // notice, no Sentry capture — nothing in Houston broke, the write succeeds
-    // on retry once the pod listens again.
+    // notice and only the low-noise fingerprinted `engine_waking` warning in
+    // Sentry (PRODUCT-1640) — nothing in Houston broke, the write succeeds on
+    // retry once the pod listens again.
     if (isEngineWakingError(event.reason)) {
       event.preventDefault();
       console.error("[global:unhandledrejection] engine waking:", message);
-      showEngineWakingToast("unhandled_rejection", message);
+      showEngineWakingToast("unhandled_rejection", message, event.reason);
       return;
     }
     console.error("[global:unhandledrejection]", message, event.reason);

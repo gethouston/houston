@@ -1,3 +1,4 @@
+import { wakingStuckTracker } from "@houston/app/lib/waking-stuck-tracker";
 import { appVersionHeader } from "../app-version";
 import { HoustonEngineError, SIGNED_OUT_ERROR } from "../client/errors";
 import { hasSessionRefresher, refreshLiveToken } from "../session-refresh";
@@ -31,6 +32,17 @@ export interface ControlPlaneConfig {
 
 /** The per-agent route prefix the control plane proxies to a pod. */
 export const agentPath = (id: string) => `/agents/${encodeURIComponent(id)}`;
+
+/** Inverse of {@link agentPath}: the agent a route is scoped to, or null. */
+export function agentIdOfPath(path: string): string | null {
+  const match = /^\/agents\/([^/?#]+)/.exec(path);
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
 
 /**
  * The current control-plane bearer: the live Supabase access token off the
@@ -160,10 +172,16 @@ export async function cpFetch(
       ...init?.headers,
     },
   });
+  const agentId = agentIdOfPath(path);
   if (!res.ok) {
     // Surface the real failure (auth, not-found, server) — never swallow.
     const body = await res.json().catch(() => ({}));
-    throw new HoustonEngineError(res.status, body);
+    const err = new HoustonEngineError(res.status, body);
+    if (agentId) err.agentId = agentId;
+    throw err;
   }
+  // A per-agent call landing is the one signal that ends a stuck-wake episode
+  // (PRODUCT-1640): the pod answered, whatever it was doing before.
+  if (agentId) wakingStuckTracker.noteSuccess(agentId);
   return res;
 }

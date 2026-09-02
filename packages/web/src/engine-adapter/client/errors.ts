@@ -8,6 +8,10 @@
 export class HoustonEngineError extends Error {
   public status: number;
   public body: unknown;
+  /** The agent a per-agent gateway route (`/agents/:id/*`) was scoped to,
+   *  stamped by `cpFetch`; absent for every other route. The error-surfacing
+   *  layer keys its per-agent stuck-wake tracker on it (PRODUCT-1640). */
+  public agentId?: string;
 
   constructor(status: number, body: unknown) {
     // Carry the host's own explanation into the message: the v3 host answers

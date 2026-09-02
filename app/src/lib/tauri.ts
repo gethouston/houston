@@ -261,11 +261,12 @@ async function surfaceError(
   // drop fails EVERY live gateway query at once with WebKit's "Load failed";
   // that burst must read as one connectivity notice, not a storm of red bug
   // toasts and a pile of un-actionable Sentry issues. The toast dedupes on its
-  // constant body; no Sentry capture — nothing in Houston broke, and the raw
-  // diagnostic is already in the log tail above.
+  // constant body; Sentry gets one burst-collapsed warning in the fixed
+  // `offline` issue (PRODUCT-1640) — nothing in Houston broke, but the raw
+  // diagnostic must stay findable beyond the log tail above.
   if (isNetworkTransportError(err)) {
     const { showConnectivityErrorToast } = await import("./error-toast");
-    showConnectivityErrorToast(label, message);
+    showConnectivityErrorToast(label, message, err);
     return;
   }
 
@@ -275,11 +276,13 @@ async function surfaceError(
   // bug pair while the agent was in fact starting fine) — or its "engine proxy
   // failed" 502, the pod restarting under an engine roll (PRODUCT-1403). The
   // request succeeds once the pod listens again; surface it as one deduped
-  // "waking up" notice, no Sentry. The raw diagnostic is already in the log
-  // tail above.
+  // "waking up" notice. Sentry gets one burst-collapsed warning in the fixed
+  // `engine_waking` issue carrying the raw gateway body, and the answer feeds
+  // the per-agent stuck-wake escalation (PRODUCT-1640) — `context` supplies
+  // the agent for the `call()` sites that pass one.
   if (isEngineWakingError(err)) {
     const { showEngineWakingToast } = await import("./error-toast");
-    showEngineWakingToast(label, message);
+    showEngineWakingToast(label, message, err, context);
     return;
   }
 
