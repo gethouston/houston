@@ -152,3 +152,34 @@ test("the agent row owns Download all in browser builds", async ({ page }) => {
     page.getByRole("menuitem", { name: "Download all" }),
   ).toBeVisible();
 });
+
+// `saveBlob` hands the browser a synthetic `<a download href="blob:…">` click.
+// The app-level anchor safety net used to intercept it, which cancelled the
+// download and window.open'd the blob into a fresh tab instead. Pin the whole
+// contract: the click yields a real browser download with the file's bytes,
+// and no extra page opens.
+test("Download in the file preview saves the bytes and never opens a tab", async ({
+  page,
+  context,
+}) => {
+  await openFiles(page);
+
+  const extraPages: unknown[] = [];
+  context.on("page", (p) => extraPages.push(p));
+
+  await row(page, "sales.csv").getByText("sales.csv").click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("a,b")).toBeVisible();
+
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    dialog.getByRole("button", { name: "Download" }).click(),
+  ]);
+  // Headless Chromium names blob downloads with a GUID — assert bytes, not
+  // suggestedFilename().
+  const stream = await download.createReadStream();
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) chunks.push(chunk as Buffer);
+  expect(Buffer.concat(chunks).toString()).toBe("a,b\n1,2\n");
+  expect(extraPages).toHaveLength(0);
+});
