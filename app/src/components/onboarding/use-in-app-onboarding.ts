@@ -9,10 +9,10 @@ import {
   isMissionBoardSurface,
 } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
-import type { InAppStep } from "./in-app-onboarding-flow";
 import { useGuidedEmailTask } from "./use-guided-email-task";
 import { useInAppAdvance } from "./use-in-app-advance";
 import { useInAppOnboardingSignals } from "./use-in-app-signals";
+import { useInAppStep } from "./use-in-app-step";
 import { useSendMissionDiscipline } from "./use-send-mission-discipline";
 import { useSetupChapterAward } from "./use-setup-chapter-award";
 
@@ -28,8 +28,9 @@ import { useSetupChapterAward } from "./use-setup-chapter-award";
  * Durable lifecycle: a FIRST-RUN arming marks `onboarding_pending` (see
  * `ArmInAppOnboarding`) so a quit mid-flow resumes the setup on the next
  * boot — the agent's creation flips the zero-agent first-run signal, so the
- * pending flag is the only resume contract. Every finish clears it and
- * stamps `onboarding_completed`.
+ * pending flag is the only resume contract. The step itself is mirrored on
+ * the device ({@link useInAppStep}) so that re-entry lands where the run was.
+ * Every finish clears both and stamps `onboarding_completed`.
  */
 export function useInAppOnboarding() {
   const { t } = useTranslation("setup");
@@ -37,7 +38,7 @@ export function useInAppOnboarding() {
   const firstRun = useUIStore((s) => s.inAppOnboardingFirstRun);
   const viewMode = useUIStore((s) => s.viewMode);
   const createDialogOpen = useUIStore((s) => s.createAgentDialogOpen);
-  const [step, setStep] = useState<InAppStep>("welcome");
+  const [step, setStep, clearResumeStep] = useInAppStep(firstRun);
   const signals = useInAppOnboardingSignals();
   const email = useGuidedEmailTask();
   const send = useSendMissionDiscipline({
@@ -113,6 +114,7 @@ export function useInAppOnboarding() {
     const source = firstRun ? "in_app" : "in_app_replay";
     analytics.track("onboarding_completed", { source });
     awardSetupChapter(source);
+    clearResumeStep();
     void clearPending();
     void markCompleted();
     setActive(false);

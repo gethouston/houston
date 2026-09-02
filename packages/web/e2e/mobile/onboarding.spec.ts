@@ -191,3 +191,46 @@ test.describe("short phone viewport", () => {
     expect(await scroll.evaluate((el) => el.scrollTop)).toBe(0);
   });
 });
+
+test("a reload mid-setup resumes the sequence, not the welcome beat", async ({
+  page,
+  request,
+}) => {
+  // Phones evict a background tab: leaving to fetch a sign-in code and
+  // coming back reloads the app. The run must re-enter at the connect
+  // sequence (its sidebar beat, which self-advances on the hub), never at
+  // "Start setup" with the work so far forgotten.
+  await resetToFirstRun(request);
+  await page.goto("/");
+  await completeSurvey(page);
+  await page.getByRole("button", { name: "Start setup" }).tap();
+  await page.getByRole("button", { name: "Show me" }).tap();
+  await tapDrawerRow(page, "Click AI Models", "nav-ai-hub");
+  await expect(
+    page.getByRole("dialog", { name: "Pick the AI you already use." }),
+  ).toBeVisible();
+
+  await page.reload();
+
+  await expect(
+    page.getByRole("dialog", { name: "Open the menu" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Welcome to Houston!" }),
+  ).toHaveCount(0);
+  await tapDrawerRow(page, "Click AI Models", "nav-ai-hub");
+  await expect(
+    page.getByRole("dialog", { name: "Pick the AI you already use." }),
+  ).toBeVisible();
+
+  // The connect itself still lands, and the run carries on from there.
+  const search = page.getByPlaceholder("Search AI models and providers");
+  await search.tap();
+  await search.fill("openrouter");
+  await page.getByRole("button", { name: "Connect OpenRouter" }).tap();
+  await page.getByPlaceholder("Paste your API key").fill("sk-or-e2e-resume");
+  await page.getByRole("button", { name: "Connect", exact: true }).tap();
+  await expect(
+    page.getByRole("dialog", { name: "Your AI is connected!" }),
+  ).toBeVisible();
+});
