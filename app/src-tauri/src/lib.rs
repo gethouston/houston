@@ -16,6 +16,7 @@ mod loopback_util;
 mod notification;
 mod notification_settings;
 mod oauth_loopback;
+mod sentry_filter;
 mod shell_env;
 mod store_deep_link;
 mod window_focus;

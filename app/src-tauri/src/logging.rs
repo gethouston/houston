@@ -15,11 +15,10 @@ static GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 ///   - `sentry_tracing::layer()` → INFO+ events become Sentry breadcrumbs;
 ///     ERROR events become standalone Sentry events. No-op if `sentry::init`
 ///     hasn't been called (e.g. empty SENTRY_DSN), so safe to always include.
-///     Exception: `tauri_plugin_updater` ERRORs stay breadcrumbs — the plugin
-///     logs one on every failed background update poll (machine offline,
-///     GitHub down, transient non-2xx from the release manifest), and the
-///     frontend already owns that failure (5-min poll retry, install-error
-///     card), so a standalone Sentry event per poll is noise.
+///     Which records are demoted (updater polls, OS trust-store rejections)
+///     lives in `crate::sentry_filter`; it hooks `event_mapper` rather than
+///     `event_filter` because `log`-bridged records carry the static target
+///     `"log"` in their metadata and only the mapper can see the real one.
 ///
 /// Result: when a Rust panic or explicit `tracing::error!` lands in Sentry,
 /// the last ~100 INFO/WARN log lines auto-attach as breadcrumbs — the
@@ -30,7 +29,7 @@ static GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 /// may contain file paths (e.g. `binary.display()`) and agent names. This
 /// is a conscious tradeoff — debug value > privacy for crash data on a
 /// beta product. Revisit if leak surface becomes a real concern; sanitize
-/// via `sentry_tracing::layer().event_mapper(...)` at that point.
+/// inside `crate::sentry_filter::map_event` at that point.
 ///
 /// Call once at app startup, before any other code runs.
 pub fn init(data_dir: &Path) {
@@ -57,33 +56,8 @@ pub fn init(data_dir: &Path) {
     tracing_subscriber::registry()
         .with(filter)
         .with(fmt_layer)
-        .with(sentry_tracing::layer().event_filter(|metadata| {
-            if demote_error_to_breadcrumb(metadata.target()) {
-                sentry_tracing::EventFilter::Breadcrumb
-            } else {
-                sentry_tracing::default_event_filter(metadata)
-            }
-        }))
+        .with(sentry_tracing::layer().event_mapper(crate::sentry_filter::map_event))
         .init();
-}
-
-/// Targets whose ERROR logs must NOT become standalone Sentry events.
-///
-/// `tauri_plugin_updater` fires `log::error!` on every unsuccessful update
-/// check — including the expected ones (offline, GitHub unreachable or
-/// returning a transient non-2xx for the channel manifest). The check
-/// failure is fully handled in the frontend updater hooks, so Sentry only
-/// needs the breadcrumb trail, not an event per 5-minute poll
-/// (Sentry HOUSTON-APP-14).
-///
-/// `rustls_platform_verifier` fires `log::error!` internally whenever the
-/// OS trust store rejects a peer certificate (e.g. a machine behind a
-/// misconfigured corporate MITM proxy whose root even Windows won't chain).
-/// The failing request already returns `Err` and its caller owns surfacing
-/// it, so the verifier's own log line is a duplicate — one Sentry event per
-/// retry from a handful of broken machines (Sentry HOUSTON-APP-PE).
-fn demote_error_to_breadcrumb(target: &str) -> bool {
-    target.starts_with("tauri_plugin_updater") || target.starts_with("rustls_platform_verifier")
 }
 
 fn logs_dir() -> PathBuf {
@@ -174,27 +148,6 @@ fn tail_file(path: &Path, n: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn updater_plugin_errors_are_demoted_to_breadcrumbs() {
-        assert!(demote_error_to_breadcrumb("tauri_plugin_updater::updater"));
-        assert!(demote_error_to_breadcrumb("tauri_plugin_updater"));
-    }
-
-    #[test]
-    fn tls_platform_verifier_errors_are_demoted_to_breadcrumbs() {
-        assert!(demote_error_to_breadcrumb(
-            "rustls_platform_verifier::verification::windows"
-        ));
-        assert!(demote_error_to_breadcrumb("rustls_platform_verifier"));
-    }
-
-    #[test]
-    fn app_errors_still_become_sentry_events() {
-        assert!(!demote_error_to_breadcrumb("houston_app"));
-        assert!(!demote_error_to_breadcrumb("houston_app::engine_supervisor"));
-        assert!(!demote_error_to_breadcrumb("tauri_plugin_sentry"));
-    }
 
     #[test]
     fn latest_log_matching_uses_newest_rotated_backend_log() {
