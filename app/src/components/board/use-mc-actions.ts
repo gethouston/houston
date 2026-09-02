@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { armMissionDoneCelebration } from "../../lib/mission-done-celebration";
 import { canDropMission } from "../../lib/mission-selection";
 import { queryKeys } from "../../lib/query-keys";
+import { showStopFailedToast } from "../../lib/stop-error-toast";
 import { tauriActivity, tauriChat } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
@@ -96,14 +97,9 @@ export function useMcActions({
             queryKey: queryKeys.allConversations(paths),
           });
         })
-        .catch((err) => {
-          addToast({
-            title: t("dashboard:errors.stopSession", { error: String(err) }),
-            variant: "error",
-          });
-        });
+        .catch(showStopFailedToast);
     },
-    [mc.items, qc, paths, addToast, t],
+    [mc.items, qc, paths],
   );
 
   const sessionKeyFor = useCallback(

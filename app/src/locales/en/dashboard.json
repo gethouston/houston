@@ -54,8 +54,7 @@
   },
   "errors": {
     "noAgentForMission": "Pick an agent before starting a task.",
-    "partialMissionLoad": "Some tasks could not load. We are trying again.",
-    "stopSession": "Couldn't stop the task: {{error}}"
+    "partialMissionLoad": "Some tasks could not load. We are trying again."
   },
   "agentPicker": {
     "title": "Which agent should run this?",

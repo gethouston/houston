@@ -12,6 +12,7 @@ import { perfSpans } from "../../lib/perf-spans";
 import { queryKeys } from "../../lib/query-keys";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { showSendFailedToast } from "../../lib/send-error-toast";
+import { showStopFailedToast } from "../../lib/stop-error-toast";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
@@ -259,14 +260,9 @@ export function useAgentBoardSend({
         .then(() => {
           queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
         })
-        .catch((err) => {
-          addToast({
-            title: t("chat:errors.stopSession", { error: String(err) }),
-            variant: "error",
-          });
-        });
+        .catch(showStopFailedToast);
     },
-    [path, queryClient, addToast, t],
+    [path, queryClient],
   );
 
   return { effectiveLoading, createConversation, sendMessageNow, stopSession };
