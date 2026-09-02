@@ -61,20 +61,23 @@ type Harness = {
   authInfos: Array<{ url: string; instructions?: string }>;
   stored: { tokens: string[]; oauth: Array<Record<string, unknown>> };
   cleaned: string[];
+  keychainDiscarded: string[];
   login: Promise<void>;
   paste: (value: string) => void;
 };
 
-/** Drive runAnthropicLogin against a FakeChild with injected fs seams. */
+/** Drive runAnthropicLogin against a FakeChild with injected fs/Keychain seams. */
 function harness(opts?: {
   binary?: string | null;
   credentialFile?: string | null;
+  keychain?: string | null;
   pasteNever?: boolean;
 }): Harness {
   const child = new FakeChild();
   const authInfos: Harness["authInfos"] = [];
   const stored: Harness["stored"] = { tokens: [], oauth: [] };
   const cleaned: string[] = [];
+  const keychainDiscarded: string[] = [];
   let paste!: (value: string) => void;
   const pastePromise = new Promise<string>((r) => {
     paste = r;
@@ -93,12 +96,15 @@ function harness(opts?: {
     cleanupDir: (dir) => void cleaned.push(dir),
     readCredentialFile: () =>
       opts?.credentialFile === undefined ? MINTED : opts.credentialFile,
+    readKeychain: async () => opts?.keychain ?? null,
+    discardKeychain: async (dir) => void keychainDiscarded.push(dir),
   };
   return {
     child,
     authInfos,
     stored,
     cleaned,
+    keychainDiscarded,
     paste,
     login: runAnthropicLogin(cb, deps),
   };
@@ -127,7 +133,37 @@ test("CLI login: URL surfaced, code relayed to stdin, minted oauth stored", asyn
   ]);
   expect(h.stored.tokens).toEqual([]);
   expect(h.cleaned).toEqual(["/tmp/fake-login-dir"]); // the refresh-bearing dir never lingers
+  expect(h.keychainDiscarded).toEqual(["/tmp/fake-login-dir"]);
   expect(h.child.killed).toBe(true);
+});
+
+test("CLI login: no credential file but a Keychain item (macOS host) stores oauth", async () => {
+  const h = harness({ credentialFile: null, keychain: MINTED });
+  h.child.stdout.write(`visit: ${AUTHORIZE_URL}\n`);
+  await tick();
+  h.paste("the-code");
+  await tick();
+  h.child.exit(0);
+  await h.login;
+  expect(h.stored.oauth).toEqual([
+    {
+      access: "sk-ant-oat01-access",
+      refresh: "sk-ant-ort01-refresh",
+      expires: 1755555555555,
+    },
+  ]);
+  // The Keychain copy is a second refresh-token holder — destroyed after the store.
+  expect(h.keychainDiscarded).toEqual(["/tmp/fake-login-dir"]);
+});
+
+test("CLI login: a logout-husk file falls through to the Keychain", async () => {
+  const husk = JSON.stringify({ claudeAiOauth: { accessToken: "" } });
+  const h = harness({ credentialFile: husk, keychain: MINTED });
+  h.child.stdout.write(`visit: ${AUTHORIZE_URL}\n`);
+  await tick();
+  h.child.exit(0);
+  await h.login;
+  expect(h.stored.oauth).toHaveLength(1);
 });
 
 test("CLI login: a co-located listener settles the flow with no code", async () => {
@@ -164,14 +200,15 @@ test("CLI login: nonzero exit after the code fails loud, tokens scrubbed", async
   expect(h.stored.oauth).toEqual([]);
 });
 
-test("CLI login: exit 0 without a readable credential file fails loud", async () => {
-  const h = harness({ credentialFile: null });
+test("CLI login: exit 0 with neither a credential file nor a Keychain item fails loud", async () => {
+  const h = harness({ credentialFile: null, keychain: null });
   h.child.stdout.write(`visit: ${AUTHORIZE_URL}\n`);
   await tick();
   h.paste("the-code");
   await tick();
   h.child.exit(0);
-  await expect(h.login).rejects.toThrow(/no credential file/);
+  await expect(h.login).rejects.toThrow(/no credential was stored/);
+  expect(h.keychainDiscarded).toEqual(["/tmp/fake-login-dir"]);
 });
 
 test("CLI death before the URL falls back to the token paste flow", async () => {
