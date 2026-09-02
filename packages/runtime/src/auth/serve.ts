@@ -21,7 +21,11 @@ import {
   noteServeProbeOk,
   noteServeSweepOk,
 } from "./serve-log";
-import { probeProviders, type ServeProbe } from "./serve-probe";
+import {
+  anthropicServedVerdict,
+  probeProviders,
+  type ServeProbe,
+} from "./serve-probe";
 import { reportDeadServedApiKey, servedApiKeyIsDead } from "./served-key-guard";
 import { forgetServedScope, recordServedScope } from "./served-scope";
 import { authStorage } from "./storage";
@@ -63,6 +67,25 @@ const servedManifestPathFor = () =>
 /** True when the sandbox is wired to serve a central workspace credential. */
 export function serveModeOn(): boolean {
   return !!config.controlPlaneUrl && !!config.sandboxToken;
+}
+
+/**
+ * Whether this host serves anthropic centrally, as the last answering probe
+ * said (`anthropicServedVerdict`): `false` behind a desktop/self-host host,
+ * `true` on a gateway-fronted pod, `undefined` before any probe answered.
+ * The anthropic login reads it to pick where its credential must live
+ * (login.ts, PRODUCT-1644): where nothing ever serves anthropic back, the
+ * shared login dir is the single holder, never a captured central row.
+ */
+let anthropicServed: boolean | undefined;
+
+export function anthropicServedHere(): boolean | undefined {
+  return anthropicServed;
+}
+
+/** Test seam: forget what the probes taught. */
+export function resetAnthropicServedHereForTest(): void {
+  anthropicServed = undefined;
 }
 
 /**
@@ -207,6 +230,8 @@ async function runServedSync(): Promise<string[]> {
   let manifestDirty = false;
   for (const probe of probes) {
     if (probe.state !== "error") noteServeProbeOk(probe.id);
+    const servedVerdict = anthropicServedVerdict(probe);
+    if (servedVerdict !== undefined) anthropicServed = servedVerdict;
     if (probe.state === "served" && servedApiKeyIsDead(probe.cred)) {
       // A served "API key" that can never authenticate (a legacy OAuth token
       // stored as a google key — HOU-1107) must not reach auth.json: applying

@@ -65,6 +65,13 @@ export class ProxyChannel implements RuntimeChannel {
        * `x-houston-acting-user` never rides this header.
        */
       forwardActingHeader: boolean;
+      /**
+       * Whether this host serves anthropic back to its runtimes (gateway-
+       * fronted). Default true. False on the desktop/self-host host, where an
+       * anthropic capture must leave the runtime's shared login dir as the
+       * single holder (capture-credential.ts, PRODUCT-1644).
+       */
+      anthropicServedHere?: boolean;
       /** Managed pod shared-cache freshness gate, invoked only for turn starts. */
       beforeTurn?: (agent: ChannelCtx["agent"]) => Promise<void>;
       /** Detached standing-runtime SSE capture for durable turnlog ingest. */
@@ -439,6 +446,7 @@ export class ProxyChannel implements RuntimeChannel {
       // The connecting MEMBER's own credential (HOU-976): read from their
       // runtime auth file, stored on their row, scrubbed from their file.
       actingAs: ctx.actingAs,
+      anthropicServedHere: this.opts.anthropicServedHere ?? true,
     });
     // A user-driven device-code connect supersedes any provider revocation of
     // the previous credential — automatic serving may resume immediately.

@@ -61,6 +61,17 @@ export async function captureRuntimeCredential(args: {
    * user-initiated (re)connect omits it and overwrites.
    */
   ifAbsent?: boolean;
+  /**
+   * Whether this host serves anthropic back to its runtimes (a gateway-fronted
+   * pod). Default true. On a desktop/self-host host (`routes/credential.ts`
+   * answers anthropic with the not-served-here 404) the runtime's SHARED
+   * login dir is anthropic's single holder and rotator, so an anthropic
+   * capture must neither store a row nothing serves nor scrub the runtime —
+   * that scrub left the connect reading connected for one poll and then
+   * disconnected for good (PRODUCT-1644). The runtime's own status settles
+   * such a capture instead.
+   */
+  anthropicServedHere?: boolean;
 }): Promise<CaptureResult> {
   const {
     endpoint,
@@ -71,6 +82,8 @@ export async function captureRuntimeCredential(args: {
     actingAs,
     ifAbsent,
   } = args;
+  const localAnthropic = (id: string | undefined) =>
+    id === "anthropic" && args.anthropicServedHere === false;
   const params = new URLSearchParams();
   if (provider) params.set("provider", provider);
   if (localOriginOnly) params.set("excludeServed", "1");
@@ -149,7 +162,22 @@ export async function captureRuntimeCredential(args: {
     if (provider && (await settledCentrally(credentials, args))) {
       return { ok: true, provider };
     }
+    // Anthropic on a host that never serves it: the credential lives in the
+    // runtime's shared login dir, never in its auth.json, so there is nothing
+    // to export — the runtime's status (its login-dir probe) is the arbiter.
+    if (localAnthropic(provider) && provider) {
+      return (await runtimeReportsConnected(endpoint, provider, actingAs))
+        ? { ok: true, provider }
+        : { ok: false, status: 400, error: "agent is not connected yet" };
+    }
     return { ok: false, status: 400, error: "agent is not connected yet" };
+  }
+  if (localAnthropic(credential.provider)) {
+    // A refresh-bearing anthropic entry on a host that never serves it (an
+    // older runtime's throwaway-dir login): leave it as the single rotator.
+    // Storing it centrally would seed a second refresh-token holder, and the
+    // scrub would strand the runtime with an access token nothing renews.
+    return { ok: true, provider: credential.provider };
   }
   await credentials.put(
     {
@@ -208,6 +236,47 @@ async function settledCentrally(
   } catch (err) {
     console.warn(
       `[capture] settlement probe for ${args.provider} failed:`,
+      err instanceof Error ? err.message : err,
+    );
+    return false;
+  }
+}
+
+/**
+ * Whether the runtime itself reports `provider` connected (`/auth/status`):
+ * the settlement probe for an anthropic capture on a host that never serves
+ * anthropic, where the credential is in the runtime's login dir and not
+ * exportable. A probe failure is logged and read as "not connected".
+ */
+async function runtimeReportsConnected(
+  endpoint: RuntimeEndpoint,
+  provider: string,
+  actingAs: string | undefined,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${endpoint.baseUrl}/auth/status`, {
+      headers: {
+        Authorization: `Bearer ${endpoint.token}`,
+        ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
+      },
+    });
+    if (!res.ok) {
+      console.warn(
+        `[capture] ${provider} status probe answered ${res.status}; reading it as not connected`,
+      );
+      return false;
+    }
+    const status = (await res.json()) as {
+      providers?: Array<{ provider?: string; configured?: boolean }>;
+    };
+    return (
+      status.providers?.some(
+        (p) => p.provider === provider && p.configured === true,
+      ) ?? false
+    );
+  } catch (err) {
+    console.warn(
+      `[capture] ${provider} status probe failed:`,
       err instanceof Error ? err.message : err,
     );
     return false;

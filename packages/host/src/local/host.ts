@@ -435,6 +435,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // the gateway minted the header, so relaying it is what lets the runtime's
     // integration calls act as the driving user (C2).
     forwardActingHeader: opts.gatewayFronted ?? false,
+    // Anthropic is served back only behind the gateway (routes/credential.ts);
+    // elsewhere the runtime's shared login dir holds it (PRODUCT-1644).
+    anthropicServedHere: opts.gatewayFronted ?? false,
     beforeTurn: sharedMirror ? () => sharedMirror.beforeTurn() : undefined,
     turnLogCapture: standingFrameCapture,
   });
@@ -463,6 +466,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
             // after a recycle was the one resurrection path that survived
             // (PRODUCT-1318).
             ifAbsent: true,
+            anthropicServedHere: opts.gatewayFronted ?? false,
           });
           return result.ok;
         },

@@ -428,3 +428,88 @@ test("an azure api_key capture stores the exported endpoint as enterpriseUrl (PR
     enterpriseUrl: "https://acme.openai.azure.com",
   });
 });
+
+/** A runtime whose export answers `exported` and whose status reports `configured`. */
+function stubAnthropicRuntime(exported: unknown, configured: boolean) {
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      calls.push(url.replace(/^https?:\/\/[^/]+/, ""));
+      if (url.includes("/auth/export")) return Response.json(exported);
+      if (url.includes("/auth/status"))
+        return Response.json({
+          providers: [{ provider: "anthropic", configured }],
+        });
+      if (url.includes("/auth/scrub-refresh"))
+        return Response.json({ ok: true });
+      return new Response("not found", { status: 404 });
+    }),
+  );
+  return calls;
+}
+
+test("anthropic on a host that never serves it: a refresh-bearing entry is left as the runtime's own, unstored and unscrubbed", async () => {
+  const { credentials, puts } = recordingStore();
+  const calls = stubAnthropicRuntime(
+    { provider: "anthropic", access: "AT", refresh: "RT", expires: 123 },
+    true,
+  );
+  const result = await captureRuntimeCredential({
+    endpoint: { baseUrl: "http://rt", token: "t" },
+    credentials,
+    workspaceId: "ws",
+    provider: "anthropic",
+    anthropicServedHere: false,
+  });
+  expect(result).toEqual({ ok: true, provider: "anthropic" });
+  expect(puts).toEqual([]);
+  expect(calls.some((c) => c.includes("/auth/scrub-refresh"))).toBe(false);
+});
+
+test("anthropic on a host that never serves it: nothing exportable settles on the runtime's own status", async () => {
+  const { credentials, puts } = recordingStore();
+  stubAnthropicRuntime({}, true);
+  const connected = await captureRuntimeCredential({
+    endpoint: { baseUrl: "http://rt", token: "t" },
+    credentials,
+    workspaceId: "ws",
+    provider: "anthropic",
+    anthropicServedHere: false,
+  });
+  expect(connected).toEqual({ ok: true, provider: "anthropic" });
+  expect(puts).toEqual([]);
+
+  stubAnthropicRuntime({}, false);
+  const notConnected = await captureRuntimeCredential({
+    endpoint: { baseUrl: "http://rt", token: "t" },
+    credentials,
+    workspaceId: "ws",
+    provider: "anthropic",
+    anthropicServedHere: false,
+  });
+  expect(notConnected).toEqual({
+    ok: false,
+    status: 400,
+    error: "agent is not connected yet",
+  });
+});
+
+test("anthropic behind the gateway keeps the capture chain: stored centrally, then scrubbed", async () => {
+  const { credentials, puts } = recordingStore();
+  const calls = stubAnthropicRuntime(
+    { provider: "anthropic", access: "AT", refresh: "RT", expires: 123 },
+    true,
+  );
+  const result = await captureRuntimeCredential({
+    endpoint: { baseUrl: "http://rt", token: "t" },
+    credentials,
+    workspaceId: "ws",
+    provider: "anthropic",
+    anthropicServedHere: true,
+  });
+  expect(result).toEqual({ ok: true, provider: "anthropic" });
+  expect(puts.map((p) => p.credential.provider)).toEqual(["anthropic"]);
+  expect(calls.some((c) => c.includes("/auth/scrub-refresh"))).toBe(true);
+});

@@ -1,5 +1,6 @@
 import { expect, test, vi } from "vitest";
 import {
+  anthropicServedVerdict,
   describeProbeError,
   normalizeProbeDetail,
   PROBE_CONCURRENCY,
@@ -167,4 +168,46 @@ test("describeProbeError surfaces the nested undici cause code", () => {
   expect(describeProbeError(errnoErr)).toBe("fetch failed (cause: -54)");
   expect(describeProbeError(new Error("plain"))).toBe("plain");
   expect(describeProbeError("not an error")).toBe("not an error");
+});
+
+test("anthropicServedVerdict: the not-served-here marker says this host never serves anthropic", () => {
+  expect(
+    anthropicServedVerdict({
+      id: "anthropic",
+      state: "not-connected",
+      notServedHere: true,
+    }),
+  ).toBe(false);
+});
+
+test("anthropicServedVerdict: a served or plainly not-connected anthropic probe says it does", () => {
+  expect(
+    anthropicServedVerdict({ id: "anthropic", state: "not-connected" }),
+  ).toBe(true);
+  expect(
+    anthropicServedVerdict({
+      id: "anthropic",
+      state: "served",
+      cred: {
+        provider: "anthropic",
+        kind: "oauth",
+        accessToken: "AT",
+        refreshToken: "",
+        expiresAt: 1,
+      } as never,
+    }),
+  ).toBe(true);
+});
+
+test("anthropicServedVerdict: other providers and unanswered probes teach nothing", () => {
+  expect(
+    anthropicServedVerdict({
+      id: "openai-codex",
+      state: "not-connected",
+      notServedHere: true,
+    }),
+  ).toBeUndefined();
+  expect(
+    anthropicServedVerdict({ id: "anthropic", state: "error", detail: "x" }),
+  ).toBeUndefined();
 });
