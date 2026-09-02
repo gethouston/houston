@@ -20,6 +20,11 @@ export { OptionCard } from "./option-card";
  * FirstRunScreen wrapper pins `data-theme="light"`, so the card reads the same
  * bright light way in both app themes.
  *
+ * Below md the card IS the screen: full-bleed, full-height, no frame and no
+ * gutter, with the phone's own padding (the floating 680px card wasted a
+ * third of a phone viewport and shrank the questions into it). The safe-area
+ * insets pad the wrapper, inert on desktop and un-notched phones.
+ *
  * Houston-monochrome: selection uses the near-black foreground, never a
  * decorative accent (design-system color restraint).
  */
@@ -58,7 +63,7 @@ export function SetupCard({
   nextLoading,
 }: SetupCardProps) {
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-6">
+    <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden pt-safe pb-safe md:px-6">
       {/* Fixed height + flex-1 content so the card stays the SAME size across
           every step and the footer never jumps as content changes. Keyed by
           title so React remounts (and the CSS entrance replays) on each step
@@ -67,7 +72,7 @@ export function SetupCard({
           background — no glass, no backdrop-blur. */}
       <div
         key={title}
-        className="setup-step-in relative z-10 flex h-[680px] max-h-[88dvh] w-full max-w-2xl flex-col rounded-2xl border border-line bg-card p-8 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
+        className="setup-step-in relative z-10 flex min-h-0 w-full flex-1 flex-col bg-card p-5 text-ink md:h-[680px] md:max-h-[88dvh] md:max-w-2xl md:flex-initial md:rounded-2xl md:border md:border-line md:p-8 md:shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (

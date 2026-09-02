@@ -13,7 +13,9 @@ import { isMac } from "../../lib/platform";
  * page even for a dark-mode user (that decision stands — the pre-workspace flow
  * is deliberately always light), and so every `--ht-*` token inside resolves to
  * its light value regardless of the app theme. A `z-10` content slot floats on
- * top; children never need to re-declare the stacking.
+ * top; children never need to re-declare the stacking. The slot is `min-h-0`
+ * so a screen taller than a short phone viewport scrolls INSIDE its card
+ * instead of growing the slot past the `h-dvh` frame and off the screen.
  */
 export function FirstRunScreen({
   children,
@@ -41,7 +43,9 @@ export function FirstRunScreen({
           className="absolute inset-x-0 top-0 z-20 h-7"
         />
       )}
-      <div className="relative z-10 flex flex-1 flex-col">{children}</div>
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        {children}
+      </div>
     </div>
   );
 }

@@ -155,6 +155,12 @@ test.describe("short phone viewport", () => {
     });
     await expect(heading).toBeVisible();
 
+    // The card IS the screen on the phone: full width, no floating frame.
+    const card = await page.locator(".setup-step-in").boundingBox();
+    if (!card) throw new Error("survey card did not lay out");
+    expect(card.x).toBe(0);
+    expect(card.width).toBe(375);
+
     const scroll = page.getByTestId("survey-scroll");
     const [frame, top] = await Promise.all([
       scroll.boundingBox(),

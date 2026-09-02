@@ -79,7 +79,9 @@ export function OnboardingSurveyScreen({
         <div
           key={flow.step}
           data-testid="survey-scroll"
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+          // Bled to the card's edge on the phone so the scrollbar rides the
+          // screen edge, not the answers; the padding puts the content back.
+          className="-mx-5 flex min-h-0 flex-1 flex-col overflow-y-auto px-5 md:mx-0 md:px-0"
         >
           <div
             className={cn(
