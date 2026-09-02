@@ -12,6 +12,7 @@
  */
 import { applyBootTheme } from "@houston/app/lib/theme-boot";
 import { createRoot } from "react-dom/client";
+import { applyHostModeGlobals } from "./boot-globals";
 import { currentDeployEnvironment } from "./deploy-environment";
 import {
   type EngineConfig,
@@ -64,15 +65,19 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
   // tree), so they MUST be set before that import — otherwise EngineGate hangs
   // on the "Loading your workspace" splash. CloudApp keeps the token in sync with the
   // live session; the engine adapter reads it live per request.
-  window.__HOUSTON_CP__ = true;
-  window.__HOUSTON_ENGINE__ = { baseUrl: controlPlaneUrl, token: "" };
+  applyHostModeGlobals(window, { baseUrl: controlPlaneUrl, token: "" });
   void import("./cloud-login").then(({ CloudApp }) =>
     createRoot(rootEl).render(<CloudApp controlPlaneUrl={controlPlaneUrl} />),
   );
 } else {
-  // Resolve the engine config before the app graph loads (app/src/lib/engine.ts
-  // reads window.__HOUSTON_ENGINE__ at import): a stored config wins, else a URL
-  // baked via VITE_NEW_ENGINE_URL, else null → the Connect screen prompts.
+  // Self-host: resolve the engine config before the app graph loads
+  // (app/src/lib/engine.ts reads window.__HOUSTON_ENGINE__ at import) — a
+  // stored config wins, else a URL baked via VITE_NEW_ENGINE_URL, else null
+  // → the Connect screen prompts. Host mode is published by the SAME call as
+  // the cloud branch above (PRODUCT-1627): this branch used to inherit the
+  // flag only from an app/src module-load side effect, and an adapter built
+  // before that side effect ran would read empty routines/skills lists with
+  // no error at all.
   const stored = readStoredEngineConfig(NEW_ENGINE_STORAGE_KEY);
   const initial: EngineConfig | null =
     stored ??
@@ -82,7 +87,7 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
           token: env.VITE_NEW_ENGINE_TOKEN ?? "",
         }
       : null);
-  if (initial) window.__HOUSTON_ENGINE__ = initial;
+  applyHostModeGlobals(window, initial);
   void import("./new-engine/root").then(({ NewEngineRoot }) =>
     createRoot(rootEl).render(<NewEngineRoot initialConfig={initial} />),
   );
