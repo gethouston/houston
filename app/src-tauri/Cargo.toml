@@ -39,6 +39,10 @@ sentry = "0.42"
 # Layer is a no-op until sentry::init has run, so safe to register
 # unconditionally in logging.rs even when SENTRY_DSN is empty.
 sentry-tracing = "0.42"
+# `NormalizeEvent`: recovers the real target of `log`-bridged records (Tauri
+# plugins, rustls) inside the Sentry event mapper (src/sentry_filter.rs).
+# Already in the tree via tracing-subscriber's `tracing-log` feature.
+tracing-log = "0.2"
 # keyring v3 backends are OPT-IN per platform. Without a Linux feature the
 # crate silently compiles its in-memory mock on Linux — auth_set_item
 # "succeeds" into a throwaway object and every session evaporates on quit
@@ -123,3 +127,8 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Securit
 # XDG/D-Bus-only — on Windows we use the WinRT toast's `on_activated` callback
 # to catch the click. This is the crate notify-rust uses under the hood.
 tauri-winrt-notification = "0.7"
+
+[dev-dependencies]
+# `log::error!(target: ...)` in sentry_filter tests: drives the real
+# log → tracing bridge the way Tauri plugins and rustls do in production.
+log = "0.4"
