@@ -114,10 +114,10 @@
     "goToMain": "Ir para a missão principal"
   },
   "errors": {
-    "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
+    "sessionStart": "Não foi possível enviar sua mensagem. Tente novamente.",
     "staleAttachmentTitle": "Não conseguimos ler um arquivo anexado",
     "staleAttachmentBody": "Um arquivo que você anexou foi alterado ou excluído do seu dispositivo depois de adicionado. Remova-o da mensagem e anexe-o novamente.",
-    "stopSession": "Não foi possível parar a tarefa: {{error}}",
+    "stopSession": "Não foi possível parar a tarefa. Tente novamente.",
     "modelPersistFailed": "Não foi possível salvar a preferência de modelo",
     "modelNotAllowed": "Este modelo não é permitido para este agente",
     "missionRowFailed": "Não conseguimos salvar esta tarefa no seu quadro. Sua mensagem foi enviada.",

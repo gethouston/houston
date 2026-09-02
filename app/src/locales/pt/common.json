@@ -68,7 +68,7 @@
     "blocked": "As notificações estão bloqueadas. Abra as configurações do sistema para ativá-las.",
     "blockedBrowser": "As notificações estão bloqueadas. Ative-as nas configurações do seu navegador.",
     "openSettings": "Abrir configurações do sistema",
-    "openSettingsFailed": "Não foi possível abrir as configurações do sistema. {{error}}",
-    "requestFailed": "Não foi possível ativar as notificações. {{error}}"
+    "openSettingsFailed": "Não foi possível abrir as configurações do sistema. Tente novamente.",
+    "requestFailed": "Não foi possível ativar as notificações. Tente novamente."
   }
 }

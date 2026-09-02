@@ -2,7 +2,10 @@ import { Switch } from "@houston-ai/core";
 import { Bell } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { genericErrorDescription } from "../../../lib/error-report";
+import {
+  genericErrorDescription,
+  logAndReportError,
+} from "../../../lib/error-report";
 import {
   type NotificationRowState,
   notificationRowState,
@@ -87,10 +90,9 @@ export function NotificationsSection() {
     try {
       await osOpenNotificationSettings();
     } catch (err) {
+      logAndReportError("open_notification_settings", err);
       addToast({
-        title: t("common:notifications.openSettingsFailed", {
-          error: String(err),
-        }),
+        title: t("common:notifications.openSettingsFailed"),
         variant: "error",
       });
     }

@@ -68,7 +68,7 @@
     "delete": "Delete",
     "clear": "Clear selection",
     "cancel": "Cancel",
-    "error": "Couldn't update the selected tasks: {{error}}",
+    "error": "Couldn't update the selected tasks. Please try again.",
     "confirmMove": {
       "title": "Move tasks?",
       "description_one": "Move {{count}} task to {{target}}?",
@@ -97,6 +97,6 @@
     "emptyDescription": "Archived tasks appear here. Reply to one to bring it back."
   },
   "dnd": {
-    "moveError": "Couldn't move the task: {{error}}"
+    "moveError": "Couldn't move the task. Please try again."
   }
 }

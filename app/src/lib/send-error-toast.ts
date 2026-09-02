@@ -1,4 +1,5 @@
 import { useUIStore } from "../stores/ui";
+import { logAndReportError } from "./error-report";
 import { showExpectedStateToast } from "./error-toast";
 import i18n from "./i18n";
 import { isStaleAttachmentError } from "./stale-attachment";
@@ -16,6 +17,10 @@ import { isStaleAttachmentError } from "./stale-attachment";
  * DOMException, which reads as "Houston is broken" and gives no way out.
  * Sentry capture for it is silenced at the `save_attachments` call in
  * `tauri.ts`; the raw diagnostic still reaches the frontend log there.
+ *
+ * Every other failure shows authored copy only: the raw error (an
+ * `EngineError` quoting an HTTP status, a JSON body, a cluster hostname) goes
+ * to the frontend log and Sentry via `logAndReportError`, never into the toast.
  */
 export function showSendFailedToast(err: unknown): void {
   if (isStaleAttachmentError(err)) {
@@ -25,8 +30,9 @@ export function showSendFailedToast(err: unknown): void {
     );
     return;
   }
+  logAndReportError("send_message", err);
   useUIStore.getState().addToast({
-    title: i18n.t("chat:errors.sessionStart", { error: String(err) }),
+    title: i18n.t("chat:errors.sessionStart"),
     variant: "error",
   });
 }

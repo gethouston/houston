@@ -68,7 +68,7 @@
     "delete": "Eliminar",
     "clear": "Quitar selección",
     "cancel": "Cancelar",
-    "error": "No se pudieron actualizar las tareas seleccionadas: {{error}}",
+    "error": "No se pudieron actualizar las tareas seleccionadas. Inténtalo de nuevo.",
     "confirmMove": {
       "title": "¿Mover tareas?",
       "description_one": "¿Mover {{count}} tarea a {{target}}?",
@@ -97,6 +97,6 @@
     "emptyDescription": "Las tareas archivadas aparecen aquí. Responde a una para reactivarla."
   },
   "dnd": {
-    "moveError": "No se pudo mover la tarea: {{error}}"
+    "moveError": "No se pudo mover la tarea. Inténtalo de nuevo."
   }
 }

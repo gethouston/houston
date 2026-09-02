@@ -2,6 +2,7 @@ import type { KanbanItem } from "@houston-ai/board";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { logAndReportError } from "../../lib/error-report";
 import { armMissionDoneCelebration } from "../../lib/mission-done-celebration";
 import { canDropMission } from "../../lib/mission-selection";
 import { queryKeys } from "../../lib/query-keys";
@@ -127,8 +128,9 @@ export function useMcActions({
         qc.invalidateQueries({ queryKey: queryKeys.allConversations(paths) });
         qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
       } catch (err) {
+        logAndReportError("move_mission", err);
         addToast({
-          title: t("board:dnd.moveError", { error: String(err) }),
+          title: t("board:dnd.moveError"),
           variant: "error",
         });
         return;

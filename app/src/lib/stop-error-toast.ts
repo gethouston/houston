@@ -1,5 +1,6 @@
 import { useUIStore } from "../stores/ui";
 import { isEngineWakingError } from "./engine-waking-error";
+import { logAndReportError } from "./error-report";
 import i18n from "./i18n";
 import { isNetworkTransportError } from "./network-transport-error";
 
@@ -19,12 +20,14 @@ import { isNetworkTransportError } from "./network-transport-error";
  * not something a Stop can fix (the held send lands once the pod answers), so
  * the red toast is skipped for them; everything else keeps the actionable
  * "couldn't stop" toast as its only user-visible surface (no-silent-failures
- * rule).
+ * rule). The toast is authored copy only: the raw gateway body (a DNS dial
+ * error naming a pod service) goes to the log and Sentry, never on screen.
  */
 export function showStopFailedToast(err: unknown): void {
   if (isEngineWakingError(err) || isNetworkTransportError(err)) return;
+  logAndReportError("stop_session", err);
   useUIStore.getState().addToast({
-    title: i18n.t("chat:errors.stopSession", { error: String(err) }),
+    title: i18n.t("chat:errors.stopSession"),
     variant: "error",
   });
 }

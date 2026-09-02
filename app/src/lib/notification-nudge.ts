@@ -11,6 +11,7 @@
 
 import type { TFunction } from "i18next";
 import type { ToastItem } from "../stores/ui";
+import { logAndReportError } from "./error-report";
 import { logger } from "./logger";
 import {
   shouldShowCatchNet,
@@ -70,10 +71,9 @@ async function runPermissionCta(deps: NudgeDeps): Promise<void> {
           label: t("common:notifications.openSettings"),
           onClick: () => {
             osOpenNotificationSettings().catch((err) => {
+              logAndReportError("open_notification_settings", err);
               addToast({
-                title: t("common:notifications.openSettingsFailed", {
-                  error: String(err),
-                }),
+                title: t("common:notifications.openSettingsFailed"),
                 variant: "error",
               });
             });
@@ -84,8 +84,9 @@ async function runPermissionCta(deps: NudgeDeps): Promise<void> {
       addToast({ title: t("common:notifications.blockedBrowser") });
     }
   } catch (err) {
+    logAndReportError("request_notification_permission", err);
     addToast({
-      title: t("common:notifications.requestFailed", { error: String(err) }),
+      title: t("common:notifications.requestFailed"),
       variant: "error",
     });
   }
