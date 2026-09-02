@@ -72,6 +72,17 @@ test("the guided setup completes on a phone: drawer rows, provider connect, firs
   // In-dialog coaching sits outside the modal (aria-hidden), as on desktop.
   await expect(page.getByText("Click Create new")).toBeVisible();
   await page.getByRole("button", { name: "Create new", exact: true }).tap();
+  // The color palette wraps inside the phone dialog instead of running off
+  // its right edge (ten swatches outgrow a phone-width card in one row).
+  const naming = page.locator("[data-tutorial-target='createAgentNaming']");
+  const frame = await naming.boundingBox();
+  if (!frame) throw new Error("naming step did not lay out");
+  for (const swatch of await naming.locator("button[type='button']").all()) {
+    const box = await swatch.boundingBox();
+    if (!box) throw new Error("swatch did not lay out");
+    expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
+    expect(box.x).toBeGreaterThanOrEqual(frame.x - 1);
+  }
   await page
     .getByPlaceholder("e.g. Product manager, Sales, Jerry")
     .fill("Aurora");

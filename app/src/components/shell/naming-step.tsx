@@ -65,7 +65,9 @@ export function NamingStep({
   }, [color, onColorChange]);
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 px-6 py-16">
+    // Scrolls when taller than the dialog (a phone, keyboard up), centered by
+    // auto margins so a fitting column still sits in the middle on desktop.
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-10 md:px-6 md:py-16">
       <button
         type="button"
         onClick={onBack}
@@ -76,114 +78,119 @@ export function NamingStep({
 
       <DialogTitle className="sr-only">{t("naming.dialogTitle")}</DialogTitle>
 
-      {/* Avatar preview */}
-      <div className="flex flex-col items-center gap-4 mb-8">
-        <HoustonAvatar color={resolvedColor} diameter={80} />
+      <div className="m-auto flex w-full flex-col items-center">
+        {/* Avatar preview */}
+        <div className="flex flex-col items-center gap-4 mb-8">
+          <HoustonAvatar color={resolvedColor} diameter={80} />
 
-        <div className="text-center">
-          <p className="text-lg font-semibold">{selectedName}</p>
-          <p className="text-sm text-ink-muted mt-1">{t("naming.tagline")}</p>
+          <div className="text-center">
+            <p className="text-lg font-semibold">{selectedName}</p>
+            <p className="text-sm text-ink-muted mt-1">{t("naming.tagline")}</p>
+          </div>
         </div>
-      </div>
 
-      {/* Color palette + form: ONE anchored block, so the tutorial's ring
+        {/* Color palette + form: ONE anchored block, so the tutorial's ring
           wraps exactly what "pick a color and give it a name" means and its
           chip can sit in the modal's side whitespace instead of on the copy. */}
-      <div
-        {...tutorialAnchor("createAgentNaming")}
-        className="flex w-full flex-col items-center"
-      >
-        {/* Color palette */}
-        <div className="flex items-center gap-2 mb-6">
-          {AGENT_COLORS.map((c) => {
-            const swatch = colorValue(c);
-            const isSelected =
-              color === c.id || color === c.light || color === c.dark;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onColorChange(c.id)}
-                className={cn(
-                  "h-7 w-7 rounded-full flex items-center justify-center transition-all duration-150",
-                  isSelected
-                    ? "ring-2 ring-offset-2 ring-ink/30"
-                    : "hover:scale-110",
-                )}
-                style={{ backgroundColor: swatch }}
-              >
-                {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
-              </button>
-            );
-          })}
-        </div>
+        <div
+          {...tutorialAnchor("createAgentNaming")}
+          className="flex w-full flex-col items-center"
+        >
+          {/* Color palette: two rows of five on a phone (ten swatches outgrow
+            the card in one row), the single row at md+. */}
+          <div className="mb-6 grid grid-cols-5 gap-2 md:flex md:items-center">
+            {AGENT_COLORS.map((c) => {
+              const swatch = colorValue(c);
+              const isSelected =
+                color === c.id || color === c.light || color === c.dark;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => onColorChange(c.id)}
+                  className={cn(
+                    "h-7 w-7 rounded-full flex items-center justify-center transition-all duration-150",
+                    isSelected
+                      ? "ring-2 ring-offset-2 ring-ink/30"
+                      : "hover:scale-110",
+                  )}
+                  style={{ backgroundColor: swatch }}
+                >
+                  {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
+                </button>
+              );
+            })}
+          </div>
 
-        <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
-          <Input
-            autoFocus
-            value={name}
-            onChange={(e) => onNameChange(e.target.value)}
-            placeholder={t("naming.namePlaceholder")}
-            className="text-center rounded-full"
-          />
+          <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
+            <Input
+              autoFocus
+              value={name}
+              onChange={(e) => onNameChange(e.target.value)}
+              placeholder={t("naming.namePlaceholder")}
+              className="text-center rounded-full"
+            />
 
-          {/* Link existing project — opt-in via agent features */}
-          {showLinkProject && (
-            <div className="flex flex-col items-center gap-1.5">
-              {existingPath ? (
-                <div className="flex items-center gap-2 text-xs text-ink-muted bg-chip rounded-full px-3 py-1.5">
-                  <FolderOpen className="size-3" />
-                  <span className="truncate max-w-[200px]">
-                    {existingPath.split("/").pop()}
-                  </span>
+            {/* Link existing project — opt-in via agent features */}
+            {showLinkProject && (
+              <div className="flex flex-col items-center gap-1.5">
+                {existingPath ? (
+                  <div className="flex items-center gap-2 text-xs text-ink-muted bg-chip rounded-full px-3 py-1.5">
+                    <FolderOpen className="size-3" />
+                    <span className="truncate max-w-[200px]">
+                      {existingPath.split("/").pop()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onExistingPathChange(null)}
+                      className="text-ink-muted hover:text-ink ml-1"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => onExistingPathChange(null)}
-                    className="text-ink-muted hover:text-ink ml-1"
-                  >
-                    &times;
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const { tauriAgents } = await import("../../lib/tauri");
-                    const picked = await tauriAgents.pickDirectory();
-                    if (picked) {
-                      onExistingPathChange(picked);
-                      if (!name.trim()) {
-                        const folderName =
-                          picked.replace(/\/$/, "").split("/").pop() ?? "";
-                        onNameChange(folderName);
+                    onClick={async () => {
+                      const { tauriAgents } = await import("../../lib/tauri");
+                      const picked = await tauriAgents.pickDirectory();
+                      if (picked) {
+                        onExistingPathChange(picked);
+                        if (!name.trim()) {
+                          const folderName =
+                            picked.replace(/\/$/, "").split("/").pop() ?? "";
+                          onNameChange(folderName);
+                        }
                       }
-                    }
-                  }}
-                  className="text-xs text-ink-muted hover:text-ink transition-colors flex items-center gap-1.5"
-                >
-                  <FolderOpen className="size-3" />
-                  {t("naming.linkExistingProject")}
-                </button>
-              )}
-            </div>
-          )}
-
-          {error && <p className="text-xs text-danger text-center">{error}</p>}
-          <Button
-            type="submit"
-            disabled={!name.trim() || nameInvalid || creating}
-            className="w-full rounded-full"
-          >
-            {creating ? (
-              <>
-                <Spinner className="size-4" />
-                {t("naming.createAgent")}
-              </>
-            ) : (
-              t("naming.createAgent")
+                    }}
+                    className="text-xs text-ink-muted hover:text-ink transition-colors flex items-center gap-1.5"
+                  >
+                    <FolderOpen className="size-3" />
+                    {t("naming.linkExistingProject")}
+                  </button>
+                )}
+              </div>
             )}
-          </Button>
-        </form>
+
+            {error && (
+              <p className="text-xs text-danger text-center">{error}</p>
+            )}
+            <Button
+              type="submit"
+              disabled={!name.trim() || nameInvalid || creating}
+              className="w-full rounded-full"
+            >
+              {creating ? (
+                <>
+                  <Spinner className="size-4" />
+                  {t("naming.createAgent")}
+                </>
+              ) : (
+                t("naming.createAgent")
+              )}
+            </Button>
+          </form>
+        </div>
       </div>
     </div>
   );
