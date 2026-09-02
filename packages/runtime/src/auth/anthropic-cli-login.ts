@@ -1,7 +1,12 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnCli } from "./anthropic-cli-binary";
+import {
+  discardMintedCredential,
+  type MintedCredentialDeps,
+  readMintedCredential,
+} from "./anthropic-cli-credential";
 import type {
   AnthropicLoginCallbacks,
   CliMintedOauth,
@@ -10,8 +15,6 @@ import type {
 import {
   CliUnavailableError,
   extractVisitUrl,
-  parseMintedCredential,
-  readMintedFile,
   scrubTokens,
   wireLines,
 } from "./anthropic-cli-output";
@@ -35,8 +38,10 @@ import {
  *      The callback page cannot reach the CLI's listener from another machine,
  *      so it shows a code the user pastes back (`completeLogin` → stdin here);
  *      a co-located listener may catch it seamlessly — the CLI just exits 0.
- *   3. On exit 0, persist the minted OAuth credential (access+refresh) via
- *      `storeOauth` as a standard pi `oauth` auth.json entry — the EXISTING
+ *   3. On exit 0, read the minted OAuth credential back — the login dir's
+ *      credential file, or on macOS the Keychain item the CLI writes instead
+ *      (anthropic-cli-credential.ts) — and persist it via `storeOauth` as a
+ *      standard pi `oauth` auth.json entry, destroying every other copy. The EXISTING
  *      chain takes over: capture exports it, the gateway stores + rotates it
  *      centrally (the family's ONLY rotator), Gate #2 scrubs the local refresh,
  *      serve keeps it warm. On self-host there is no gateway and pi itself
@@ -46,18 +51,16 @@ import {
  * token flow (kill the child, store an api_key) — the old escape hatch.
  */
 
-export type AnthropicLoginDeps = {
+export type AnthropicLoginDeps = MintedCredentialDeps & {
   /** The spawnable CLI, or null to go straight to the token paste flow. */
   binary: string | null;
   /** Persist a pasted `sk-ant-…` value as pi's `api_key` variant. */
   storeToken: (key: string) => void;
   /** Persist the CLI-minted subscription credential as pi's `oauth` variant. */
   storeOauth: (cred: CliMintedOauth) => void;
-  // Test seams; production uses the real spawn/tmpdir/fs.
+  // Test seams; production uses the real spawn/tmpdir.
   spawnChild?: (binary: string, configDir: string) => LoginChild;
   mkLoginDir?: () => string;
-  cleanupDir?: (dir: string) => void;
-  readCredentialFile?: (dir: string) => string | null;
 };
 
 /**
@@ -93,9 +96,6 @@ async function runAnthropicCliLogin(
   deps: AnthropicLoginDeps,
   binary: string,
 ): Promise<void> {
-  const cleanup =
-    deps.cleanupDir ??
-    ((d: string) => rmSync(d, { recursive: true, force: true }));
   const dir = (
     deps.mkLoginDir ??
     (() => mkdtempSync(join(tmpdir(), "houston-claude-login-")))
@@ -109,13 +109,7 @@ async function runAnthropicCliLogin(
     } catch {
       // Already exited — nothing to kill.
     }
-    try {
-      cleanup(dir);
-    } catch (e) {
-      // The dir holds a refresh-bearing credential copy; a leftover would be
-      // a second-rotator seed. Loud; the tmpdir lifecycle still bounds it.
-      console.error("[oauth:anthropic] could not remove the login dir:", e);
-    }
+    await discardMintedCredential(dir, deps);
   }
 }
 
@@ -188,12 +182,5 @@ async function driveCliLogin(
       `Claude sign-in failed (exit ${code}): ${scrubTokens(tail.join(" | "))}`,
     );
 
-  const raw = (deps.readCredentialFile ?? readMintedFile)(dir);
-  if (raw === null)
-    throw new Error(
-      "Claude sign-in finished but no credential file was written — this " +
-        "platform's CLI likely stores credentials in a system keychain Houston " +
-        "cannot read here; connect from the desktop app instead",
-    );
-  deps.storeOauth(parseMintedCredential(raw));
+  deps.storeOauth(await readMintedCredential(dir, deps));
 }
