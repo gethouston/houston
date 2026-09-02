@@ -626,6 +626,52 @@ test("a resolveModel failure names no provider and never marks or reports one", 
 });
 
 /**
+ * A throw AFTER resolution is classified against the model the turn resolved
+ * onto, not the pin's (which an unpinned chat never has). pi's manual
+ * `compact()` rejects with the summarizer's provider text; NVIDIA's body-less
+ * 410 model gate needs a model to name on the switch-model card, and with
+ * `model: null` it fell through to `unknown` — a Sentry error per compaction
+ * attempt instead of the card (PRODUCT-1636).
+ */
+test("a thrown summarization failure classifies on the RESOLVED model when the turn is unpinned (PRODUCT-1636)", async () => {
+  resolution.run = () => ({
+    provider: "nvidia",
+    id: "meta/llama-3.1-70b-instruct",
+    contextWindow: 128_000,
+    reasoning: false,
+  });
+  const id = "exec-throw-summarization";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv(
+    () => {
+      throw new Error("Summarization failed: 410 status code (no body)");
+    },
+    { provider: "openai" },
+  );
+
+  await execTurn(conv, id, "turn-1", "hey", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+
+  const frame = events.find(
+    (e): e is Extract<WireEvent, { type: "provider_error" }> =>
+      e.type === "provider_error",
+  );
+  expect(frame?.data).toMatchObject({
+    kind: "model_unavailable",
+    provider: "nvidia",
+    model: "meta/llama-3.1-70b-instruct",
+    suggested_fallback: "openai/gpt-oss-120b",
+  });
+  expect(persistedProviderError(id)).toMatchObject({
+    kind: "model_unavailable",
+    model: "meta/llama-3.1-70b-instruct",
+  });
+});
+
+/**
  * ...but a turn that CARRIED a pin is not provider-less: the pin is the user's
  * own statement of what to run on, honest evidence even when the resolution
  * failed (a routine pinned to a provider whose saved model id went stale). The
