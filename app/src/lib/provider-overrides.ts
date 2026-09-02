@@ -213,6 +213,9 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   ]),
   anthropic: new Set([
     "claude-sonnet-5",
+    // Backported into pi's catalog by the fable-5-1 catalog patch
+    // (packages/host/src/providers/fable-5-1-catalog-patch.ts).
+    "claude-fable-5-1",
     "claude-fable-5",
     "claude-opus-5",
     "claude-opus-4-8",
@@ -347,9 +350,14 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         label: "Sonnet 5",
         description: "Newest Sonnet. Stronger agentic coding and tool use.",
       },
+      "claude-fable-5-1": {
+        label: "Fable 5.1",
+        description:
+          "Newest Fable. Most capable model, costs 2x more credits than Opus 5.",
+      },
       "claude-fable-5": {
         label: "Fable 5",
-        description: "Most capable model. Costs 2x more credits than Opus 5.",
+        description: "Previous Fable. Costs 2x more credits than Opus 5.",
       },
       "claude-opus-5": {
         label: "Opus 5",

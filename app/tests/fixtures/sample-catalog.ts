@@ -93,6 +93,7 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     }),
     reasoningModel("claude-opus-5", { contextWindow: 1_000_000 }),
     reasoningModel("claude-opus-4-8", { contextWindow: 1_000_000 }),
+    reasoningModel("claude-fable-5-1", { contextWindow: 1_000_000 }),
     reasoningModel("claude-fable-5", { contextWindow: 1_000_000 }),
     reasoningModel("claude-sonnet-4-6", { contextWindow: 200_000 }),
     reasoningModel("claude-opus-4-7", { contextWindow: 1_000_000 }),

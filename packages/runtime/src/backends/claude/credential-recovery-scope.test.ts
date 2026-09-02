@@ -40,8 +40,8 @@ import { titleWithClaude } from "./title";
 
 /**
  * The CLI's credential-store resolution, transcribed from the Claude Code build
- * the pinned SDK spawns (2.1.201, bundled in `@anthropic-ai/claude-agent-sdk`
- * 0.3.201 — internally `UJ()` for the dir and `oF()` for the macOS Keychain
+ * the pinned SDK spawns (2.1.257, bundled in `@anthropic-ai/claude-agent-sdk`
+ * 0.3.257 — internally `UJ()` for the dir and `oF()` for the macOS Keychain
  * service name, which is hashed from the SAME dir):
  * `CLAUDE_SECURESTORAGE_CONFIG_DIR` wins over `CLAUDE_CONFIG_DIR`, and an EMPTY
  * value means `~/.claude` — the machine user's own credential (trap #2), which is
