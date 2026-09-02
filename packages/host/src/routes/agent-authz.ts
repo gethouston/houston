@@ -1,5 +1,6 @@
-import type { ServerResponse } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Capabilities } from "@houston/protocol";
+import { ACTING_AS_HEADER } from "../auth/acting";
 import type { SharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { canUseAgent } from "../domain/access";
 import type {
@@ -137,3 +138,24 @@ export function channelFor(
 
 export const noChannel = (res: ServerResponse, runtime: WorkspaceRuntime) =>
   json(res, 503, { error: `${runtime} runtime not configured` });
+
+/**
+ * The acting identity a per-agent route may act on (C2/C5) — the ONE gate the
+ * credential routes and the run-now route share, so no route can reopen the
+ * hole by reading the header itself. The gateway is the trust boundary: it
+ * mints `x-houston-acting-as`, and no pod can verify the signature. Off the
+ * gateway (desktop / self-host) clients reach this host directly, so an
+ * inbound header is untrusted client input — honoring it would let any client
+ * file the user's credential into a per-user scope (`auth-users/<hash>.json`)
+ * instead of the workspace's shared `auth.json`, leaving every agent reading
+ * as disconnected. Same stance as the routine actor in agents.ts and as
+ * ProxyChannel's relay (channel/proxy.ts).
+ */
+export function trustedActingAs(
+  deps: AgentRouteDeps,
+  req: IncomingMessage,
+): string | undefined {
+  if (!deps.gatewayFronted) return undefined;
+  const value = req.headers[ACTING_AS_HEADER];
+  return Array.isArray(value) ? value[0] : value;
+}

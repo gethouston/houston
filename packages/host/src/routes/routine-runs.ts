@@ -1,4 +1,4 @@
-import type { ServerResponse } from "node:http";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadRoutines } from "@houston/domain";
 import { cancelRoutineRun } from "../schedule/cancel";
 import { ChannelRoutineFirer } from "../schedule/firer";
@@ -9,6 +9,7 @@ import {
   channelFor,
   DEFAULT_PATHS,
   noChannel,
+  trustedActingAs,
 } from "./agent-authz";
 import { json } from "./http";
 
@@ -22,6 +23,7 @@ export async function handleRoutineRuns(
   userId: string,
   method: string,
   path: string,
+  req: IncomingMessage,
   res: ServerResponse,
 ): Promise<boolean> {
   // Run a routine ON DEMAND: fire it now through the SAME firer + record path
@@ -59,7 +61,21 @@ export async function handleRoutineRuns(
     // ChannelRoutineFirer takes for the scheduler. fireRoutineRun records the
     // run, then fires; a fire failure marks the run errored AND rethrows, so
     // we answer 502 (never 200).
-    const firer = new ChannelRoutineFirer(deps.channels);
+    //
+    // The run acts as the person who pressed the button: on a managed pod the
+    // gateway-minted acting-as token rides along, so the turn resolves THEIR
+    // credential scope — the same identity the gateway's own pool run-now
+    // mints, and the identity the routine screen's connection badge probed.
+    // Without it the firer falls back to the creator's bare sub, which a pod
+    // cannot elevate (HOU-976 D10), so the run landed on the TEAM credential:
+    // in a team space where the presser connected a provider personally, the
+    // badge said "connected" and the run failed "creator has no account
+    // connected". Scheduled fires never had this gap (the control plane
+    // mints the creator's token for them).
+    const firer = new ChannelRoutineFirer(
+      deps.channels,
+      trustedActingAs(deps, req),
+    );
     try {
       const { runId } = await fireRoutineRun(
         {

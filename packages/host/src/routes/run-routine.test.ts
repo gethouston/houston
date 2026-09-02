@@ -30,7 +30,13 @@ const verifier: TokenVerifier = {
 
 /** A channel that records every fireTurn; optionally throws to exercise the error path. */
 class SpyChannel implements RuntimeChannel {
-  fired: { conversationId: string; text: string; pin?: TurnPin }[] = [];
+  fired: {
+    conversationId: string;
+    text: string;
+    pin?: TurnPin;
+    actingUser?: string;
+    actingAs?: string;
+  }[] = [];
   throwMessage: string | null = null;
   async dispatch() {}
   async fireTurn(
@@ -38,8 +44,10 @@ class SpyChannel implements RuntimeChannel {
     conversationId: string,
     text: string,
     pin?: TurnPin,
+    actingUser?: string,
+    actingAs?: string,
   ): Promise<void> {
-    this.fired.push({ conversationId, text, pin });
+    this.fired.push({ conversationId, text, pin, actingUser, actingAs });
     if (this.throwMessage) throw new Error(this.throwMessage);
   }
   async cancelTurn() {
@@ -85,6 +93,13 @@ const auth = (who: string) => ({
   "Content-Type": "application/json",
 });
 
+/** A gateway-minted acting-as header value naming `sub` (payload only; the
+ *  pod never verifies the signature). */
+function actingAs(sub: string): string {
+  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
+  return `acting-v1.${payload}.signature`;
+}
+
 async function makeRoutine(
   over: Partial<{ prompt: string; suppress_when_silent: boolean }> = {},
 ): Promise<Routine> {
@@ -101,7 +116,7 @@ async function makeRoutine(
   return (await created.json()) as Routine;
 }
 
-beforeEach(async () => {
+async function boot(over: Partial<ControlPlaneDeps> = {}): Promise<void> {
   store = new MemoryWorkspaceStore();
   vfs = new MemoryVfs();
   channel = new SpyChannel();
@@ -113,6 +128,7 @@ beforeEach(async () => {
     channels: { gke: channel },
     vfs,
     capabilities: CAPS,
+    ...over,
   };
   if (server) await new Promise<void>((r) => server.close(() => r()));
   server = createControlPlaneServer(deps);
@@ -125,7 +141,9 @@ beforeEach(async () => {
     body: JSON.stringify({ name: "Helper" }),
   });
   agentId = ((await created.json()) as { id: string }).id;
-});
+}
+
+beforeEach(() => boot());
 
 test("fires the routine now: records a running run and calls fireTurn with the prompt", async () => {
   const routine = await makeRoutine({ prompt: "send the weekly digest" });
@@ -284,4 +302,49 @@ test("two simultaneous run-now requests: one fires, one 409s, exactly one run ro
   if (!agent) throw new Error("expected at least one agent to exist");
   const { items } = await loadRoutineRuns(vfs, workspaceRoot(ws, agent));
   expect(items).toHaveLength(1);
+});
+
+test("on a gateway-fronted host the run acts as the presser: the acting-as token reaches the firer", async () => {
+  // A managed pod: the gateway stamps the presser's minted identity on the
+  // proxied request, and the run must resolve THAT credential scope — the one
+  // the routine screen's connection badge probed — not the team's.
+  await boot({ gatewayFronted: true, ownerSub: "owner-1" });
+  const routine = await makeRoutine();
+  const token = actingAs("member-7");
+
+  const res = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}/run`,
+    {
+      method: "POST",
+      headers: { ...auth("alice"), "x-houston-acting-as": token },
+    },
+  );
+  expect(res.status).toBe(200);
+  expect(channel.fired).toHaveLength(1);
+  const fired = channel.fired[0];
+  if (!fired) throw new Error("expected channel.fired[0] to exist");
+  expect(fired.actingAs).toBe(token);
+  // The minted token REPLACES the bare creator sub (ChannelRoutineFirer's
+  // contract): never both, or the runtime would read two identities.
+  expect(fired.actingUser).toBeUndefined();
+});
+
+test("off the gateway an inbound acting-as header is ignored: the run keeps the creator's bare sub", async () => {
+  // Desktop / self-host: clients reach this host directly, so the header is
+  // untrusted client input. The firer's creator fallback stays in force.
+  const routine = await makeRoutine();
+
+  const res = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}/run`,
+    {
+      method: "POST",
+      headers: { ...auth("alice"), "x-houston-acting-as": actingAs("mallory") },
+    },
+  );
+  expect(res.status).toBe(200);
+  const fired = channel.fired[0];
+  if (!fired) throw new Error("expected channel.fired[0] to exist");
+  expect(fired.actingAs).toBeUndefined();
+  expect(fired.actingUser).toBe(routine.created_by);
+  expect(routine.created_by).toBe("alice");
 });

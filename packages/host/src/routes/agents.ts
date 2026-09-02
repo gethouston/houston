@@ -35,6 +35,7 @@ import {
   channelFor,
   DEFAULT_PATHS,
   noChannel,
+  trustedActingAs,
 } from "./agent-authz";
 import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
@@ -57,27 +58,6 @@ import { handleTriggerStatus } from "./trigger-status";
 // The deps bag + authz helpers moved to agent-authz.ts (shared with
 // routine-runs.ts); re-exported so existing importers keep working.
 export type { AgentRouteDeps } from "./agent-authz";
-
-/**
- * The acting identity a credential route may act on (C2/C5) — the ONE gate the
- * credential routes below share, so a fifth route cannot reopen the hole by
- * reading the header itself. The gateway is the trust boundary: it mints
- * `x-houston-acting-as`, and no pod can verify the signature. Off the gateway
- * (desktop / self-host) clients reach this host directly, so an inbound header
- * is untrusted client input — honoring it would let any client file the user's
- * credential into a per-user scope (`auth-users/<hash>.json`) instead of the
- * workspace's shared `auth.json`, leaving every agent reading as disconnected.
- * Same stance as the routine actor below and as ProxyChannel's relay
- * (channel/proxy.ts).
- */
-function trustedActingAs(
-  deps: AgentRouteDeps,
-  req: IncomingMessage,
-): string | undefined {
-  if (!deps.gatewayFronted) return undefined;
-  const value = req.headers[ACTING_AS_HEADER];
-  return Array.isArray(value) ? value[0] : value;
-}
 
 /**
  * The agent as the wire serves it: the record plus the deployment extras — the
@@ -744,7 +724,8 @@ export async function handleAgents(
 
   // Routine-run routes (run-now / cancel) — matched before the generic
   // dispatch below; the runtime has no routine routes. See routine-runs.ts.
-  if (await handleRoutineRuns(deps, userId, method, path, res)) return true;
+  if (await handleRoutineRuns(deps, userId, method, path, req, res))
+    return true;
 
   const activity = path.match(/^\/agents\/([^/]+)\/activity$/);
   if (activity && method === "GET") {
