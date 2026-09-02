@@ -41,9 +41,22 @@ src/
 ```
 
 Host mode covers workspaces, agents, chat, board, skills, routines, files,
-providers, preferences, attachments, portable agents, integrations, and global
-`/v1/events` reactivity. The store/marketplace UI was cut; store calls in the
-adapter return empty data or a harmless warning.
+providers, preferences, attachments, portable agents, integrations, the Agent
+Store, and global `/v1/events` reactivity.
+
+The Agent Store is fully wired here, not stubbed:
+
+- **Browse** — `ui/engine-client/src/store-catalog.ts`. Anonymous, CORS-open
+  catalog reads against the store gateway, so browsing works signed-out.
+- **Install** — `engine-adapter/portable-from-store.ts`. Prefers the host's
+  `/v1/portable/fetch-from-store`; hosted deployments have no local host (the
+  cloud gateway answers 501 for `/v1/portable*`), so the browser falls back to
+  reading the public IR off the store gateway and converting it with the same
+  shared code the host route runs. Either path parks the package in the registry
+  a file upload uses, so the wizard steps downstream are identical.
+- **Publish** — `engine-adapter/portable-store.ts` + `store-gateway.ts`. Posts
+  the agent IR to the gateway `/v1/agentstore` API with the user's own session
+  bearer (no manage tokens), reusing the engine transport's 401-refresh discipline.
 
 ## Optional Env
 
@@ -51,6 +64,10 @@ adapter return empty data or a harmless warning.
 - `VITE_NEW_ENGINE` / `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN` — external
   new-engine mode.
 - `SUPABASE_URL` / `SUPABASE_ANON_KEY` — account sign-in for cloud host mode.
+- `VITE_AGENTSTORE_GATEWAY_URL` — store gateway for the public catalog reads.
+  There is no production fallback: a build without it has no store, loudly.
+- `VITE_AGENTSTORE_SITE_URL` — public store site for "browse the store" links
+  (defaults to the production site).
 - `POSTHOG_KEY` / `POSTHOG_HOST` — analytics.
 - `SENTRY_DSN` — error reporting.
 
