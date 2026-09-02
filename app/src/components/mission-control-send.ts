@@ -75,3 +75,27 @@ export function resolveMissionControlSendOverrides(
     modeOverride: DEFAULT_TURN_MODE,
   };
 }
+
+/**
+ * The follow-up's pin WITHOUT a pod round trip (PRODUCT-1643). Against an
+ * asleep pod the activity read used to ride the whole cold start before the
+ * turn stream could show the user's bubble, so the composer froze for seconds
+ * after Enter. The list is already in the query cache whenever the chat panel
+ * has been open a beat (it mounts the same query), so:
+ *
+ *  - cached and the row is found -> the row's own pin, exactly as before;
+ *  - otherwise -> the composer's effective pick, which the chat panel derives
+ *    from that same row when loaded and from the agent default until then —
+ *    so picker and wire still agree, and nothing awaits the pod.
+ */
+export function resolveFollowUpOverrides(
+  sessionKey: string,
+  cachedActivities: ActivityOverrideSource[] | undefined,
+  composer: SendOverrides,
+): SendOverrides {
+  const fromRow = resolveActivityOverride(sessionKey, cachedActivities);
+  if (fromRow.providerOverride === undefined) {
+    return { ...composer, modeOverride: DEFAULT_TURN_MODE };
+  }
+  return { ...fromRow, modeOverride: DEFAULT_TURN_MODE };
+}

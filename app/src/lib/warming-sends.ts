@@ -31,7 +31,11 @@ import { logger } from "./logger";
 import { refreshMissionTitle } from "./mission-title";
 import { healStaleRosterFromError } from "./roster-heal";
 import { tauriActivity, tauriChat, tauriProvider } from "./tauri";
-import { verifyWarmingSendPin } from "./warming-send-pin";
+import {
+  preferRowPin,
+  type RowPin,
+  verifyWarmingSendPin,
+} from "./warming-send-pin";
 
 /** Prompt builders keyed by send id — in-memory only, lost on reload. */
 const promptBuilders = new Map<string, () => Promise<string> | string>();
@@ -214,14 +218,30 @@ export async function flushWarmingSends(
       (send.sessionKey.startsWith("activity-")
         ? send.sessionKey.slice("activity-".length)
         : undefined);
+    // A parked follow-up (no row of its own) carries the composer's guess at
+    // the mission's pin — the pod answers now, so read the row's stored pin
+    // before verifying it (PRODUCT-1643). A failed read keeps the guess: the
+    // wrapper already reported it, and the message still delivers.
+    let rowPin: RowPin | undefined;
+    if (!send.row) {
+      try {
+        rowPin = (await tauriActivity.list(entry.agentPath)).find(
+          (a) =>
+            (a.session_key ?? `activity-${a.id}`) === send.sessionKey ||
+            a.id === activityId,
+        );
+      } catch (e) {
+        logger.warn(`[warming-sends] mission pin read failed: ${e}`);
+      }
+    }
     const pin = await verifyWarmingSendPin({
       agentId: entry.agentPath,
       activityId,
-      pin: {
+      pin: preferRowPin(rowPin, {
         provider: send.provider,
         model: send.model,
         effort: send.effort,
-      },
+      }),
       probe: async (agentId, provider) => {
         const statuses = await tauriProvider.checkAllStatusesForAgent(agentId, [
           provider,

@@ -7,6 +7,7 @@
 import type { MessageMention } from "@houston-ai/engine-client";
 import { isAgentProvisioning } from "../stores/agent-provisioning";
 import { analytics } from "./analytics";
+import { createMissionNow } from "./create-mission-now";
 import { createMissionWhileWarming } from "./create-mission-warming";
 import { logger } from "./logger";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
@@ -83,6 +84,14 @@ export interface CreateMissionOptions {
   title?: string;
   /** Source text used for async AI title generation. Defaults to `text`. */
   titleText?: string;
+  /**
+   * A composer send (PRODUCT-1643): resolve the moment the turn is on screen —
+   * the board row lands in the background through an id-upsert, so nothing
+   * waits on the pod (asleep or not) before the user sees their message.
+   * Setup flows leave this unset: they patch the row right after create and
+   * need it landed first.
+   */
+  optimistic?: boolean;
 }
 
 export interface CreateMissionResult {
@@ -110,6 +119,7 @@ export async function createMission(
   if (isAgentProvisioning(agent.id)) {
     return createMissionWhileWarming(agent, text, opts);
   }
+  if (opts.optimistic) return createMissionNow(agent, text, opts);
   const titleText = opts.titleText ?? text;
   const title = opts.title ?? fallbackMissionTitle(titleText);
   const description = text;

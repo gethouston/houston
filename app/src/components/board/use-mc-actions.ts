@@ -22,9 +22,9 @@ import type { SendOverrides } from "./board-source";
 /**
  * Mission Control's card/composer actions, routed to the right agent. Create
  * resolves the target agent via {@link planNewMission}; send delegates to
- * `mc.handleSendMessage` (which re-resolves provider/model from the target
- * activity, so composer overrides are intentionally ignored); stop resolves
- * its agent from the session metadata.
+ * `mc.handleSendMessage` (which resolves provider/model from the cached
+ * target activity, falling back to the composer's pick); stop resolves its
+ * agent from the session metadata.
  */
 export function useMcActions({
   mc,
@@ -69,17 +69,17 @@ export function useMcActions({
     [activeAgent, mc.handleCreateConversation, addToast, t],
   );
 
-  // Cross-agent: ignore the composer's provider/model overrides, re-resolve
-  // them from the activity (see useMissionControl). `mentions` are NOT an
-  // override in that sense — they are what this very message said — so they
-  // ride through.
+  // Cross-agent: the composer's provider/model are the chat panel's pick for
+  // the OPEN mission (its row's pin once loaded, the agent default until
+  // then); useMissionControl prefers the cached row's own pin and otherwise
+  // sends what the picker shows — never a pod read before the bubble.
   const sendMessageNow = useCallback(
     (
       sessionKey: string,
       text: string,
       files: File[],
       overrides: SendOverrides,
-    ) => mc.handleSendMessage(sessionKey, text, files, overrides.mentions),
+    ) => mc.handleSendMessage(sessionKey, text, files, overrides),
     [mc.handleSendMessage],
   );
 
