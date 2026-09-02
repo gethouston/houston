@@ -20,6 +20,7 @@ const SEED_SLUGS = [
   "data",
   "education",
   "finance",
+  "legal",
   "customer-support",
   "personal",
   "fun",
@@ -28,7 +29,7 @@ const SEED_SLUGS = [
 
 describe("STORE_CATEGORIES", () => {
   it("matches the seeded store vocabulary exactly and in order", () => {
-    strictEqual(STORE_CATEGORIES.length, 14);
+    strictEqual(STORE_CATEGORIES.length, 15);
     deepStrictEqual([...STORE_CATEGORIES], SEED_SLUGS);
   });
 

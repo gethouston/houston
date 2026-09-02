@@ -27,6 +27,7 @@ export const STORE_CATEGORIES = [
   "data",
   "education",
   "finance",
+  "legal",
   "customer-support",
   "personal",
   "fun",
