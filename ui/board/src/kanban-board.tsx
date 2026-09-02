@@ -110,9 +110,9 @@ export function KanbanBoard({
 
   // Phone pager (below md the board is one full-width column per swipe): the
   // segmented control and the snap container stay in sync both ways. A
-  // structural fork, not CSS hiding: the pager and the per-page empty hints
-  // duplicate the column headers' text, and a hidden desktop copy would trip
-  // every strict text lookup on the board.
+  // structural fork, not CSS hiding: the pager names the sections, so the
+  // paged columns draw no header of their own, and a hidden desktop copy of
+  // either would trip every strict text lookup on the board.
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pager = useBoardPager(scrollRef);
   const isMobile = useIsMobile();
@@ -146,7 +146,7 @@ export function KanbanBoard({
         ref={scrollRef}
         onScroll={pager.handleScroll}
         data-testid="board-columns"
-        className="flex-1 flex gap-3 p-3 min-h-0 overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none"
+        className="flex-1 flex gap-3 p-3 pt-2 md:pt-3 min-h-0 overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none"
       >
         {columnData.map((col) => {
           // `idle | origin | drop-target | forbidden` — see `columnDragRole`. A
@@ -171,8 +171,10 @@ export function KanbanBoard({
               highlightedId={highlightedId}
               onAdd={col.onAdd}
               addLabel={col.addLabel}
+              addAttrs={col.addAttrs}
               headerAction={col.headerAction}
-              emptyLabel={isMobile ? col.emptyLabel : undefined}
+              paged={isMobile}
+              emptyLabel={col.emptyLabel}
               onSelect={onSelect ?? (() => {})}
               onDelete={onDelete}
               onApprove={onApprove}

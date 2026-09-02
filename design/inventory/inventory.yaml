@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 72
+version: 73
 
 components:
   - id: agent-avatar
@@ -748,12 +748,19 @@ components:
       segmented control above the pages names the three sections with their
       live counts and stays in sync both ways (swiping moves the highlight,
       tapping a segment scrolls its page in), and a page with no cards says so
-      in words instead of standing hollow. Above the pages sits the phone's
-      own control row: the search field, the section's archived toggle, the
-      compose control, and -- when the board spans several agents -- an agent
+      in words instead of standing hollow. The pager is the ONE place a
+      section is named on the phone: a page draws no column header of its
+      own, sits flat on the screen rather than in a tinted column, and the
+      Running page LEADS with the board's "+" (above its cards or its empty
+      hint, never under them) -- on the phone that "+" composes the phone
+      way, a pushed draft chat scoped to the board's agents. Above the pages
+      sits the phone's own control row: the search field, the section's
+      archived toggle, and -- when the board spans several agents -- an agent
       filter bar defaulting to "All agents" that reads and writes the same
-      agent pin the desktop breadcrumb does. Tapping a card on the phone
-      pushes the mission-chat-screen instead of opening the side panel.
+      agent pin the desktop breadcrumb does. The control row carries no
+      compose of its own: the shell top bar's compose and the page's "+" are
+      the phone's two. Tapping a card on the phone pushes the
+      mission-chat-screen instead of opening the side panel.
     a11y: >-
       list/grid semantics per column; column headers labeled; DnD has
       non-pointer fallback; the mentions pill names its mode and repeats its
@@ -1529,6 +1536,11 @@ components:
       Settings lists the team's agents with the same plain-language access line
       every agent list shares, and opening one drills into the ONE canonical
       agent settings page rather than a second copy of it.
+      Below the one breakpoint the strip gives its row up: the identity
+      lozenge (and, drilled, the back chip) rides the phone top bar between the
+      drawer control and the compose control, so the screen card opens on the
+      section's own content rather than a second chrome row. Only the screen
+      on the glass claims that slot.
       Where teams are server-owned, Team Settings is also where a team is NAMED
       and where its PEOPLE are, in a members card under the agents: the rows are
       EXPLICIT memberships only, so a card that lists nobody is not a claim that

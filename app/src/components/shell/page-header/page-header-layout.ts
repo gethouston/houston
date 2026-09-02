@@ -35,3 +35,22 @@ export function headerCollapsesTabs(mode: HeaderMode): boolean {
  * whose height follows its contents is not a frame.
  */
 export const HEADER_HEIGHT = "h-12";
+
+export type HeaderHome = "strip" | "top-bar";
+
+/**
+ * Where the header's identity cluster is drawn. Below the breakpoint the
+ * ACTIVE screen's cluster rides the phone top bar, beside the drawer control,
+ * so the screen card opens on its own content instead of a second chrome row.
+ * Only the screen on the glass may claim that slot (kept-alive screens stay
+ * mounted while hidden), and only while the bar itself is mounted.
+ */
+export function headerHome(input: {
+  isMobile: boolean;
+  isActive: boolean;
+  slotMounted: boolean;
+}): HeaderHome {
+  return input.isMobile && input.isActive && input.slotMounted
+    ? "top-bar"
+    : "strip";
+}

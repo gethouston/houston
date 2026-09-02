@@ -90,13 +90,13 @@ test("the guided setup completes on a phone: drawer rows, provider connect, firs
   await centerCta(page, "Agent created!").tap();
   await centerCta(page, "Give it work").tap();
 
-  // New task is the phone board's own compose control; the tap pushes the
+  // New task is the phone board's Running page "+"; the tap pushes the
   // draft chat and the ring follows it there.
   await expect(
     page.getByRole("dialog", { name: "Click New task" }),
   ).toBeVisible();
   // Two anchors share the name on the phone board (the CSS-hidden desktop
-  // button beside the phone's compose); the spotlight rings the visible one.
+  // toolbar button and the page's "+"); the spotlight rings the visible one.
   await page
     .locator("[data-screen-active='true'] [data-tour-target='newMission']")
     .filter({ visible: true })

@@ -67,7 +67,7 @@ export function KanbanPager({
   return (
     <div
       data-testid="board-pager"
-      className="flex shrink-0 gap-1 rounded-full bg-chip p-1 mx-3 mt-3"
+      className="flex shrink-0 gap-1 rounded-full bg-chip p-1 mx-3 mt-2"
     >
       {pages.map((page, index) => (
         <button

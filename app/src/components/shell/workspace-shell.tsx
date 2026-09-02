@@ -18,6 +18,7 @@ import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { KeepAliveViews } from "./keep-alive-views";
+import { MobileHeaderSlotProvider } from "./mobile-header-slot";
 import { MobileTabBar } from "./mobile-tab-bar";
 import { MobileTopBar } from "./mobile-top-bar";
 import { Sidebar } from "./sidebar";
@@ -43,10 +44,17 @@ interface WorkspaceShellProps {
  * and this file is layout plus the dialogs that float over it — the standing
  * view rules live in {@link useWorkspaceViewGuards}.
  */
-export function WorkspaceShell({
-  toasts,
-  onDismissToast,
-}: WorkspaceShellProps) {
+export function WorkspaceShell(props: WorkspaceShellProps) {
+  // The phone top bar's title slot is shared between the bar (inside the
+  // frame) and every screen's page header, so the provider sits above both.
+  return (
+    <MobileHeaderSlotProvider>
+      <WorkspaceShellFrame {...props} />
+    </MobileHeaderSlotProvider>
+  );
+}
+
+function WorkspaceShellFrame({ toasts, onDismissToast }: WorkspaceShellProps) {
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
   const inAppOnboardingActive = useUIStore((s) => s.inAppOnboardingActive);

@@ -12,6 +12,7 @@ import {
 } from "../mission-board-columns";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
+import { tourAnchor } from "../shell/workspace-tour-steps";
 import type { BoardSource } from "./board-source";
 import { useBoardChatWiring } from "./use-board-chat-wiring";
 import { useBoardKeyboard } from "./use-board-keyboard";
@@ -47,7 +48,13 @@ export function MissionBoard({ source }: { source: BoardSource }) {
 
   // Columns: base layout (single source of truth for status→section) plus the
   // Done "archive all" / Needs-you "select all" header actions when the source
-  // supports multi-select.
+  // supports multi-select. The Running page's "+" is the phone's compose below
+  // md (a pushed chat, scoped to this board), the desktop composer above it.
+  // Below md it is also the guided tour's "New task" anchor: the desktop
+  // toolbar button that carries it is hidden there, and the tour scopes the
+  // anchor to the active screen, which the top bar's compose is outside of.
+  const onAdd = isMobile ? source.composeOnPhone : source.openNewMission;
+  const addAttrs = isMobile ? tourAnchor("newMission") : undefined;
   const baseColumns = useMemo(
     () =>
       buildMissionBoardColumns(
@@ -62,9 +69,10 @@ export function MissionBoard({ source }: { source: BoardSource }) {
             done: t("dashboard:pager.emptyDone"),
           },
         },
-        source.openNewMission,
+        onAdd,
+        addAttrs,
       ),
-    [t, source.openNewMission],
+    [t, onAdd, addAttrs],
   );
   const closeOpenChat = useCallback(
     () => source.setSelectedId(null),
