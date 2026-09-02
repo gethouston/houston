@@ -114,10 +114,10 @@
     "goToMain": "Go to main mission"
   },
   "errors": {
-    "sessionStart": "Failed to start session: {{error}}",
+    "sessionStart": "Couldn't send your message. Please try again.",
     "staleAttachmentTitle": "We couldn't read an attached file",
     "staleAttachmentBody": "A file you attached changed or was deleted on your device after you added it. Remove it from your message and attach it again.",
-    "stopSession": "Couldn't stop the task: {{error}}",
+    "stopSession": "Couldn't stop the task. Please try again.",
     "modelPersistFailed": "Failed to save model preference",
     "modelNotAllowed": "This model isn't allowed for this agent",
     "missionRowFailed": "We could not save this task to your board. Your message was still sent.",

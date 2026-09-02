@@ -68,7 +68,7 @@
     "blocked": "Notifications are blocked. Open your system settings to turn them on.",
     "blockedBrowser": "Notifications are blocked. Turn them on in your browser settings.",
     "openSettings": "Open System Settings",
-    "openSettingsFailed": "Could not open system settings. {{error}}",
-    "requestFailed": "Could not turn on notifications. {{error}}"
+    "openSettingsFailed": "Could not open system settings. Please try again.",
+    "requestFailed": "Could not turn on notifications. Please try again."
   }
 }

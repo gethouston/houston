@@ -2,6 +2,7 @@ import type { KanbanColumnConfig, KanbanItem } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { fireMissionDoneConfetti } from "../../lib/confetti";
+import { logAndReportError } from "../../lib/error-report";
 import {
   celebratesMissionDone,
   DONE_STATUS,
@@ -152,8 +153,9 @@ export function useBoardSelectionUI({
         await op();
         return true;
       } catch (err) {
+        logAndReportError("bulk_update_missions", err);
         addToast({
-          title: t("board:bulk.error", { error: String(err) }),
+          title: t("board:bulk.error"),
           variant: "error",
         });
         return false;
