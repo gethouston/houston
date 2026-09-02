@@ -141,6 +141,10 @@ export type AnalyticsEventName =
   // toolkit (HOU-1110) — carries `integration_slug`, so demand for a missing
   // app registration stays visible without a Sentry issue per click.
   | "integration_connect_unavailable"
+  // The web build's browser refused to open the OAuth tab (popup blocker) and
+  // the row fell back to an explicit "open" click — carries `integration_slug`
+  // so a browser that blocks the hand-off shows up in numbers, not Sentry.
+  | "integration_connect_tab_blocked"
   | "integration_disconnected"
   | "custom_integration_started"
   // A custom integration landed via the manual add form (carries

@@ -1,22 +1,16 @@
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
+import { reserveBrowserTab } from "../../lib/browser-tab";
 import { logAndReportError } from "../../lib/error-report";
-import { osFocusWindow } from "../../lib/os-bridge";
+import { osFocusWindow, osIsTauri } from "../../lib/os-bridge";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
-import {
-  isToolkitNoAuthError,
-  isToolkitOauthUnavailableError,
-} from "../../lib/toolkit-connect-refusals";
 import {
   connectFlowRegistry,
   useConnectFlowStore,
 } from "../../stores/connect-flow";
-import { useUIStore } from "../../stores/ui";
-import { prettifyToolkit } from "./app-display";
+import { useConnectAnnounce } from "./connect-announce";
 import {
   beginFlow,
   type ConnectAttempt,
@@ -28,7 +22,8 @@ import {
   wakeFlow,
 } from "./connect-flow-registry";
 import { type ConnectRunDeps, runConnectFlow } from "./connect-flow-run";
-import { createWaker, INTEGRATION_PROVIDER, type PollOutcome } from "./model";
+import { useMintConnectLink } from "./connect-mint-link";
+import { createWaker, INTEGRATION_PROVIDER } from "./model";
 
 // The public flow contract (`ConnectStep`, `ConnectFlow`) lives with the
 // registry and runner it describes; re-exported here so importers are unchanged.
@@ -61,7 +56,6 @@ export type { ConnectNotice, ConnectStep } from "./connect-flow-run";
  */
 export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
   const { agentId } = opts;
-  const { t } = useTranslation("integrations");
   const qc = useQueryClient();
   const states = useConnectFlowStore((s) => s.states);
   const notices = useConnectFlowStore((s) => s.notices);
@@ -69,48 +63,8 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
   const setOrigin = useConnectFlowStore((s) => s.setOrigin);
   const setStep = useConnectFlowStore((s) => s.setStep);
   const setNotice = useConnectFlowStore((s) => s.setNotice);
-  const addToast = useUIStore((s) => s.addToast);
-
-  /** The app's real catalog name for outcome copy, never the machine slug. */
-  const appName = useCallback(
-    (toolkit: string) => {
-      const catalog = qc.getQueryData<IntegrationToolkit[]>(
-        queryKeys.integrationToolkits(INTEGRATION_PROVIDER),
-      );
-      return (
-        catalog?.find((tk) => tk.slug === toolkit)?.name ??
-        prettifyToolkit(toolkit)
-      );
-    },
-    [qc],
-  );
-
-  const announce = useCallback(
-    (toolkit: string, outcome: PollOutcome) => {
-      const app = appName(toolkit);
-      if (outcome === "active") {
-        addToast({
-          title: t("connectResult.connected", { app }),
-          variant: "success",
-        });
-      } else if (outcome === "timeout") {
-        // Walking away from an OAuth is normal behavior, not a crash: a calm,
-        // neutral toast naming the way back, never a red one with a bug report.
-        addToast({
-          title: t("connectResult.timeoutTitle", { app }),
-          description: t("connectResult.timeout", { app }),
-          variant: "info",
-        });
-      } else if (outcome === "error") {
-        addToast({
-          title: t("connectResult.failedTitle", { app }),
-          description: t("connectResult.failed"),
-          variant: "error",
-        });
-      }
-    },
-    [addToast, appName, t],
-  );
+  const { announce } = useConnectAnnounce();
+  const mintLink = useMintConnectLink(agentId);
 
   const connect = useCallback(
     async (toolkit: string, origin: string): Promise<ConnectAttempt> => {
@@ -128,51 +82,28 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
       const entry = beginFlow(connectFlowRegistry, toolkit, waker);
       if (entry === null) return { outcome: null, initiated: false };
       setOrigin(toolkit, origin);
+      // Claim the OAuth tab NOW, still inside the click's user activation: the
+      // link is minted over an async hop, and Safari, Firefox, and Chrome's
+      // strict popup setting refuse a `window.open` issued after it, leaving
+      // the row "waiting" on a page the user never saw (PRODUCT-1625). Desktop
+      // opens URLs natively and never reserves. A refused reservation (a
+      // connect started outside any gesture) falls through to the plain open,
+      // whose own verdict decides between `waiting` and `blocked`.
+      const tab = osIsTauri() ? null : reserveBrowserTab();
 
       const deps: ConnectRunDeps = {
         entry,
-        // Agent context: pass the agent slug so the gateway enforces the
-        // agent's effective allowlist on connect (Teams v2). Undefined on the
-        // account-level Integrations page.
-        //
-        // The host's typed connect refusals are expected states, not crashes,
-        // and the engine call is silenced for them — so THIS is their one
-        // surface. An OAuth-unavailable refusal (the toolkit only signs in via
-        // OAuth and Houston has no app registered for it yet — HOU-1110,
-        // highlevel) gets friendly copy plus an analytics event so demand for
-        // the missing app stays visible. A no-auth refusal (the app never
-        // needed an account; an agent-authored card offered it anyway —
-        // HOUSTON-APP-4Z1, "composio") tells the user they are already set.
-        mintLink: async (slug) => {
-          try {
-            return await tauriIntegrations.connect(
-              INTEGRATION_PROVIDER,
-              slug,
-              agentId,
-            );
-          } catch (err) {
-            if (isToolkitNoAuthError(err)) {
-              addToast({
-                title: t("connectResult.noAuthTitle", { app: appName(slug) }),
-                description: t("connectResult.noAuth"),
-                variant: "info",
-              });
-            } else if (isToolkitOauthUnavailableError(err)) {
-              analytics.track("integration_connect_unavailable", {
-                integration_slug: slug,
-              });
-              addToast({
-                title: t("connectResult.unavailableTitle", {
-                  app: appName(slug),
-                }),
-                description: t("connectResult.unavailable"),
-                variant: "error",
-              });
-            }
-            throw err;
+        mintLink,
+        openUrl: async (url) => {
+          if (tab?.navigate(url)) return true;
+          const opened = await tauriSystem.openUrl(url);
+          if (!opened) {
+            analytics.track("integration_connect_tab_blocked", {
+              integration_slug: toolkit,
+            });
           }
+          return opened;
         },
-        openUrl: (url) => tauriSystem.openUrl(url),
         readConnection: (connectionId) =>
           tauriIntegrations.connection(INTEGRATION_PROVIDER, connectionId),
         setStep,
@@ -185,7 +116,12 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
         // Houston over it (no-op on web, where there is no OS window to raise).
         focus: () => osFocusWindow(),
         announce,
-        release: (slug) => endFlow(connectFlowRegistry, slug),
+        release: (slug) => {
+          // An empty tab whose link never came (mint failed, cancelled while
+          // minting) must not linger; a navigated one is the OAuth page.
+          tab?.discard();
+          endFlow(connectFlowRegistry, slug);
+        },
         wait: (ms) => waker.wait(ms),
         sleep: (ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
         report: logAndReportError,
@@ -195,23 +131,26 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
       entry.promise = run;
       return { outcome: await run, initiated: true };
     },
-    [
-      agentId,
-      announce,
-      appName,
-      addToast,
-      t,
-      qc,
-      setNotice,
-      setOrigin,
-      setStep,
-    ],
+    [announce, mintLink, qc, setNotice, setOrigin, setStep],
   );
 
-  const reopen = useCallback(async (toolkit: string) => {
-    const url = flowRedirectUrl(connectFlowRegistry, toolkit);
-    if (url) await tauriSystem.openUrl(url);
-  }, []);
+  const reopen = useCallback(
+    async (toolkit: string) => {
+      const url = flowRedirectUrl(connectFlowRegistry, toolkit);
+      if (!url) return;
+      const opened = await tauriSystem.openUrl(url);
+      // A reopen IS a click, so it passes the popup blocker that refused the
+      // first open: once the browser takes the URL the row is genuinely
+      // waiting on the provider page. Guarded on the flow still being live so
+      // a reopen racing its own settle never resurrects a finished slug (the
+      // runner releases the slug and clears the step in one synchronous
+      // `finally`).
+      if (opened && flowRedirectUrl(connectFlowRegistry, toolkit) !== null) {
+        setStep(toolkit, "waiting");
+      }
+    },
+    [setStep],
+  );
 
   const checkNow = useCallback((toolkit: string) => {
     wakeFlow(connectFlowRegistry, toolkit);

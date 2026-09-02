@@ -45,7 +45,7 @@ function harness(
     },
     openUrl: () => {
       events.push("open");
-      return Promise.resolve();
+      return Promise.resolve(true);
     },
     readConnection: () =>
       Promise.resolve(conn(statuses[Math.min(poll++, statuses.length - 1)])),
@@ -211,6 +211,28 @@ describe("runConnectFlow — outcomes", () => {
     strictEqual(await runConnectFlow("slack", deps), "cancelled");
     strictEqual(events.includes("open"), false, "no OAuth tab was popped");
     strictEqual(events.includes("step:slack=waiting"), false);
+  });
+});
+
+describe("runConnectFlow — a blocked browser tab", () => {
+  it("publishes 'blocked' instead of 'waiting' and still polls to the outcome", async () => {
+    // The web build's popup blocker refused the open after the async mint
+    // hop (PRODUCT-1625). The row must NOT claim the page is open; the poll
+    // still runs, because the user can open the page from the row itself.
+    const { deps, events } = harness();
+    deps.openUrl = () => {
+      events.push("open:refused");
+      return Promise.resolve(false);
+    };
+    strictEqual(await runConnectFlow("slack", deps), "active");
+    strictEqual(events.includes("step:slack=blocked"), true);
+    strictEqual(events.includes("step:slack=waiting"), false);
+    strictEqual(
+      events.indexOf("open:refused") < events.indexOf("step:slack=blocked"),
+      true,
+      "the verdict comes from the open itself",
+    );
+    strictEqual(events.includes("notice:slack=connected"), true);
   });
 });
 

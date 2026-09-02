@@ -222,8 +222,19 @@ describe("connect surfaces", () => {
     );
     ok(inline.includes('aria-live="polite"'));
     ok(
-      inline.includes("AsyncButton") && inline.includes("Button"),
+      inline.includes('step === "blocked"'),
+      "a browser that refused the tab gets its own honest phase",
+    );
+    const block = read(
+      "../src/components/integrations/connect-waiting-block.tsx",
+    );
+    ok(
+      block.includes("AsyncButton") && block.includes("Button"),
       "actions are core primitives, not hand-rolled buttons",
+    );
+    ok(
+      block.includes("waiting.blockedTitle") && block.includes("waiting.open"),
+      "the blocked phase names the block and offers the open",
     );
   });
 
@@ -243,13 +254,18 @@ describe("connect surfaces", () => {
 
   it("outcomes are announced once, from the flow, with the right severity", () => {
     const hook = read("../src/components/integrations/use-connect-flow.ts");
-    ok(hook.includes("connectResult.connected"), "success is announced");
+    const voice = read("../src/components/integrations/connect-announce.ts");
     ok(
-      hook.includes('variant: "info"'),
+      hook.includes("useConnectAnnounce"),
+      "the flow speaks through ONE voice",
+    );
+    ok(voice.includes("connectResult.connected"), "success is announced");
+    ok(
+      voice.includes('variant: "info"'),
       "an abandoned OAuth is neutral, not an error",
     );
     ok(
-      !hook.includes("showErrorToast"),
+      !hook.includes("showErrorToast") && !voice.includes("showErrorToast"),
       "no branded crash toast + Sentry report for a user walking away",
     );
     const card = read("../src/components/use-integration-connect.tsx");
