@@ -72,7 +72,7 @@ test("the served catalog offers Bedrock only invokable ids", () => {
   const ids = bedrock?.models.map((m) => m.id) ?? [];
   expect(ids.length).toBeGreaterThan(0);
   for (const id of ids) expect(isInvokableBedrockModelId(id), id).toBe(true);
-  // The ids the user confirmed working on a plain Bedrock API key survive.
+  // The curated default and a Nova foundation id survive.
   expect(ids).toContain("global.anthropic.claude-sonnet-4-6");
   expect(ids).toContain("amazon.nova-pro-v1:0");
   // The two ids from the PRODUCT-1641 failure cards are gone.

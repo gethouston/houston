@@ -20,8 +20,7 @@ import type { Api, Model } from "@earendil-works/pi-ai";
  *
  * Kept: `global.` cross-region inference profiles (region-agnostic, and the
  * ids the host/runtime defaults and the frontend overrides already name) and
- * Amazon's own `amazon.` Nova models (on-demand foundation ids, verified live
- * on a user's key alongside `global.anthropic.claude-sonnet-4-6`).
+ * Amazon's own `amazon.` Nova models (on-demand foundation ids).
  */
 const INVOKABLE_BEDROCK_ID_PREFIXES = ["global.", "amazon."] as const;
 

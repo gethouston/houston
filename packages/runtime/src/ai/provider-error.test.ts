@@ -463,7 +463,7 @@ test("Bedrock bare-foundation-id on-demand rejection → model_unavailable, neve
 });
 
 test("Bedrock off-region profile 'provided model identifier is invalid' → model_unavailable + global fallback (PRODUCT-1641)", () => {
-  // Verbatim from a user's pod picking `au.anthropic.claude-opus-5` — an
+  // Verbatim Bedrock 400 for `au.anthropic.claude-opus-5` — an
   // inference profile that exists only in the AU endpoint. Classified
   // `unknown` before: the report-bug card and a Sentry error per attempt for
   // a valid key whose only problem was the pick.

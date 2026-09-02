@@ -358,8 +358,8 @@ const XIAOMI_BROAD_FALLBACK = "mimo-v2.5-pro";
 /**
  * The Bedrock model offered as the one-click switch target when a pick is one
  * Bedrock cannot invoke (a bare `anthropic.*` foundation id, an off-region
- * profile): the `global.` cross-region profile works from every endpoint and
- * is the id verified live on a plain Bedrock API key (PRODUCT-1641). Twin of
+ * profile): the `global.` cross-region profile works from every endpoint
+ * (PRODUCT-1641). Twin of
  * the runtime's `config.bedrockModel` default, duplicated on purpose like
  * COPILOT_BASE_FALLBACK so this classifier stays pure.
  */
