@@ -116,6 +116,8 @@ export function useAgentBoardSend({
             );
             return buildAttachmentPrompt(text, files, saved);
           },
+          // A composer send: the bubble must show before the row lands.
+          optimistic: true,
         },
       );
       // The turn stream pushes the user bubble into the conversation VM

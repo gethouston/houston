@@ -1246,6 +1246,8 @@ export function useAgentChatPanel({
               );
             },
             title: friendlyTitle,
+            // A composer send: the bubble must show before the row lands.
+            optimistic: true,
           },
         );
         queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   type ActivityOverrideSource,
   resolveActivityOverride,
+  resolveFollowUpOverrides,
   resolveMissionControlSendOverrides,
 } from "../src/components/mission-control-send.ts";
 
@@ -145,6 +146,80 @@ describe("resolveMissionControlSendOverrides", () => {
         modelOverride: "claude-opus-4-7",
         modeOverride: "execute",
       },
+    );
+  });
+});
+
+describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
+  const composer = {
+    providerOverride: "openai",
+    modelOverride: "gpt-5.5",
+    modeOverride: "plan" as const,
+  };
+
+  it("prefers the cached row's own pin when the list is cached", () => {
+    deepStrictEqual(
+      resolveFollowUpOverrides(
+        `activity-${opus47Activity.id}`,
+        [opus47Activity, codexActivity],
+        composer,
+      ),
+      {
+        providerOverride: "anthropic",
+        modelOverride: "claude-opus-4-7",
+        modeOverride: "execute",
+      },
+    );
+  });
+
+  it("falls back to the composer's pick when nothing is cached", () => {
+    // Cold open against an asleep pod: the activity read is held for the
+    // whole wake, and awaiting it froze the composer. The picker shows the
+    // agent default meanwhile, so the wire ships exactly that.
+    deepStrictEqual(
+      resolveFollowUpOverrides("activity-anything", undefined, composer),
+      {
+        providerOverride: "openai",
+        modelOverride: "gpt-5.5",
+        modeOverride: "execute",
+      },
+    );
+  });
+
+  it("falls back to the composer's pick when the row is not in the cache", () => {
+    deepStrictEqual(
+      resolveFollowUpOverrides("activity-missing", [opus47Activity], composer),
+      {
+        providerOverride: "openai",
+        modelOverride: "gpt-5.5",
+        modeOverride: "execute",
+      },
+    );
+  });
+
+  it("falls back to the composer's pick when the cached row has no pin", () => {
+    // A row without a stored pin means "the agent default" — which is what
+    // the picker resolved and shows; the wire must agree with the picker.
+    deepStrictEqual(
+      resolveFollowUpOverrides("activity-x", [{ id: "x" }], composer),
+      {
+        providerOverride: "openai",
+        modelOverride: "gpt-5.5",
+        modeOverride: "execute",
+      },
+    );
+  });
+
+  it("always pins Mission Control follow-ups to Ask First", () => {
+    // The composer's mode is not honored here (Mission Control never was);
+    // the row's pin and the composer's fallback both carry execute.
+    deepStrictEqual(
+      resolveFollowUpOverrides(
+        `activity-${legacyOpusActivity.id}`,
+        [legacyOpusActivity],
+        composer,
+      ).modeOverride,
+      "execute",
     );
   });
 });

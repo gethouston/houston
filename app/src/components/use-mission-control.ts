@@ -11,6 +11,7 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import type { Activity } from "../data/activity";
 import { useAllConversations } from "../hooks/queries";
 import { useUserProfiles } from "../hooks/queries/use-user-profiles";
 import { useCapabilities } from "../hooks/use-capabilities";
@@ -43,9 +44,11 @@ import {
 import { DEFAULT_TURN_MODE } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
 import { mergeWarmingRows } from "../lib/warming-board-rows";
+import { useAgentProvisioningStore } from "../stores/agent-provisioning";
+import type { SendOverrides } from "./board/board-source";
 import { agentsByPath, missionCardAgentName } from "./board/mission-card-agent";
 import { useMcOpenConversation } from "./board/use-mc-open-conversation";
-import { resolveMissionControlSendOverrides } from "./mission-control-send";
+import { resolveFollowUpOverrides } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 
 export function useMissionControl(agents: Agent[]) {
@@ -278,34 +281,63 @@ export function useMissionControl(agents: Agent[]) {
       sessionKey: string,
       text: string,
       files: File[],
-      mentions?: MessageMention[],
+      overrides: SendOverrides,
     ) => {
       const entry = sessionMapRef.current[sessionKey];
       if (!entry) return;
       const { agentPath, activityId } = entry;
+      const scopeId = `activity-${activityId}`;
+      // The pod is warming or was detected asleep (HOU-693 / HOU-730): park
+      // the send with the queue the per-agent board uses — the bubble renders
+      // now and the wire send fires when the readiness probe clears. A held
+      // wire send would die with infrastructure timeouts or a reload. The
+      // flush re-reads the mission's own pin once the pod answers, so the
+      // composer's guess below is never final (PRODUCT-1643).
+      const agentId = agentsByFolderPath.get(agentPath)?.id;
+      const queuedWarm = agentId
+        ? useAgentProvisioningStore.getState().queueWarmingSend(agentId, {
+            agentPath,
+            sessionKey,
+            text,
+            buildPrompt:
+              files.length > 0
+                ? async () => {
+                    const saved = await tauriAttachments.save(scopeId, files);
+                    return buildAttachmentPrompt(text, files, saved);
+                  }
+                : undefined,
+            provider: overrides.providerOverride,
+            model: overrides.modelOverride,
+            mode: DEFAULT_TURN_MODE,
+            mentions: overrides.mentions,
+          })
+        : false;
+      if (queuedWarm) {
+        setLoading((prev) => ({ ...prev, [sessionKey]: true }));
+        return;
+      }
       try {
-        const paths = await tauriAttachments.save(
-          `activity-${activityId}`,
-          files,
-        );
+        const paths = await tauriAttachments.save(scopeId, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
-        // Mission Control is cross-agent: the activity's stored provider/model
-        // is the per-activity override that the chat picker is showing. The
-        // engine session router only reads agent config when no override is
-        // sent, so dropping the activity's choice here routes the message to
-        // whatever CLI the agent defaults to (e.g. agent=openai but activity
-        // was created with Opus -> spawns codex instead of claude). Look the
-        // activity up and forward its override pair to keep picker and wire
-        // in agreement.
-        const list = await tauriActivity.list(agentPath);
-        const overrides = resolveMissionControlSendOverrides(sessionKey, list);
+        // Mission Control is cross-agent: the mission's stored provider/model
+        // is the per-activity override the chat picker shows, and the engine
+        // session router only reads agent config when no override is sent —
+        // dropping it would route the message to the agent's default brain.
+        // Resolved from the CACHED activity list (the chat panel mounts that
+        // query), never a pod read: against an asleep pod that read rode the
+        // whole cold start before the bubble could show (PRODUCT-1643).
+        const sendOverrides = resolveFollowUpOverrides(
+          sessionKey,
+          queryClient.getQueryData<Activity[]>(queryKeys.activity(agentPath)),
+          overrides,
+        );
         // The turn stream pushes the user bubble into the conversation VM
         // itself — no app-side optimistic push. If the conversation is
         // mid-turn the adapter holds this send; the queued bubble shows the
         // user's words, not the built prompt.
         await tauriChat.send(agentPath, prompt, sessionKey, {
-          ...overrides,
-          mentions,
+          ...sendOverrides,
+          mentions: overrides.mentions,
           queuedPreview: {
             text,
             attachmentNames: files.map((f) => f.name),
@@ -315,13 +347,13 @@ export function useMissionControl(agents: Agent[]) {
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
         // The send failed BEFORE a turn stream existed (attachment save,
-        // activity lookup, refused start) — nothing wrote to the VM, so
-        // surface it as a toast, same as the create path below.
+        // refused start) — nothing wrote to the VM, so surface it as a
+        // toast, same as the create path below.
         showSendFailedToast(err);
         throw err;
       }
     },
-    [],
+    [agentsByFolderPath, queryClient],
   );
 
   // Blank "New mission" create path for Mission Control. Mirrors the
@@ -370,6 +402,8 @@ export function useMissionControl(agents: Agent[]) {
               );
               return buildAttachmentPrompt(text, files, saved);
             },
+            // A composer send: the bubble must show before the row lands.
+            optimistic: true,
           },
         );
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));

@@ -26,11 +26,8 @@ import type {
   CreateMissionOptions,
   CreateMissionResult,
 } from "./create-mission";
-import { getEngine } from "./engine";
-import { showErrorToast } from "./error-toast";
-import i18n from "./i18n";
-import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
-import { tauriActivity, tauriChat } from "./tauri";
+import { startMissionNow } from "./create-mission-now";
+import { fallbackMissionTitle } from "./mission-title";
 
 export function createMissionWhileWarming(
   agent: CreateMissionAgent,
@@ -76,63 +73,22 @@ export function createMissionWhileWarming(
     });
   if (!queued) {
     // The agent turned ready between the caller's provisioning check and the
-    // queue — the engine answers now: write the row and send like any turn.
-    void (async () => {
-      try {
-        const created = await tauriActivity.createWithId(agent.folderPath, {
-          id: conversationId,
-          title,
-          description,
-          agent: opts.agentMode,
-          provider: opts.providerOverride,
-          model: opts.modelOverride,
-        });
-        if (created.id !== conversationId) {
-          // Version skew: the engine predates client-supplied ids (HOU-693) —
-          // stamp our session key on its row so the card opens this chat.
-          await getEngine().updateActivity(agent.folderPath, created.id, {
-            session_key: sessionKey,
-          });
-        }
-      } catch {
-        showErrorToast(
-          "create_mission_warming",
-          "mission row create/update failed",
-          undefined,
-          { userMessage: i18n.t("chat:errors.missionRowFailed") },
-        );
-      }
-      const prompt = opts.buildPrompt
-        ? await opts.buildPrompt(conversationId)
-        : text;
-      await tauriChat.send(agent.folderPath, prompt, sessionKey, {
-        providerOverride: opts.providerOverride,
-        modelOverride: opts.modelOverride,
-        effortOverride: opts.effortOverride,
-        modeOverride: opts.modeOverride,
-        mentions: opts.mentions,
-      });
-      // The engine answers now, so the AI title pass runs like the normal
-      // path's (createMission fires it right after the first send).
-      if (!opts.title) {
-        void refreshMissionTitle({
-          agentPath: agent.folderPath,
-          activityId: conversationId,
-          text: titleText,
-          provider: opts.providerOverride,
-          model: opts.modelOverride,
-        });
-      }
-    })().catch(() => {
-      // tauriChat.send toasted the real reason already.
+    // queue — the engine answers now: write the row and send like any turn,
+    // awaiting neither (the caller already has the mission's identity).
+    startMissionNow(agent, text, opts, {
+      conversationId,
+      sessionKey,
+      title,
+      description,
+      titleText: opts.title ? undefined : titleText,
+    });
+  } else {
+    analytics.track("mission_created", {
+      agent_mode: opts.agentMode,
+      provider: opts.providerOverride,
+      model: opts.modelOverride,
     });
   }
-
-  analytics.track("mission_created", {
-    agent_mode: opts.agentMode,
-    provider: opts.providerOverride,
-    model: opts.modelOverride,
-  });
 
   return {
     conversationId,
