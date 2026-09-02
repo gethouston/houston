@@ -187,13 +187,26 @@ export default function App() {
   // routes through the same `openUrl`) would otherwise have it opened a SECOND
   // time — two browser tabs for one click (PRODUCT-1231). `defaultPrevented`
   // is precisely the signal "somebody already dealt with this".
+  //
+  // It must also SKIP download anchors and object URLs. `saveBlob` hands a
+  // Blob to browser builds via a synthetic `<a download href="blob:…">` click;
+  // preventing that default kills the download and "opening" a blob: URL just
+  // renders the bytes in a tab (a blob: URL is meaningless to any other
+  // process anyway).
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (e.defaultPrevented) return;
       const anchor = (e.target as HTMLElement).closest("a[href]");
       if (!anchor) return;
+      if (anchor.hasAttribute("download")) return;
       const href = anchor.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("javascript:"))
+      if (
+        !href ||
+        href.startsWith("#") ||
+        href.startsWith("javascript:") ||
+        href.startsWith("blob:") ||
+        href.startsWith("data:")
+      )
         return;
       e.preventDefault();
       tauriSystem.openUrl(href);
