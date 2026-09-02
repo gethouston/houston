@@ -624,7 +624,15 @@ function isRateLimited(lower: string, status: number | null): boolean {
     // Bare "quota" belongs here (per-minute quota bodies are throttling);
     // plan-allowance exhaustion is claimed earlier by `isPlanLimit` (HOU-1154).
     lower.includes("throttl") ||
-    lower.includes("quota")
+    lower.includes("quota") ||
+    // gRPC's canonical throttling status, which maps to HTTP 429 by
+    // definition. NVIDIA NIM surfaces its per-worker concurrency cap as
+    // `ResourceExhausted: Worker local total request limit reached (37/16)`
+    // with no HTTP status and none of the wording above, so it degraded to
+    // `unknown` (PRODUCT-1636). The wait-a-moment card is the honest one.
+    lower.includes("resourceexhausted") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("request limit reached")
   );
 }
 
@@ -676,6 +684,17 @@ function isServerError(lower: string, status: number | null): boolean {
     // `content_filter` above.
     lower.includes("malformed_function_call") ||
     lower.includes("malformed_response") ||
+    // gpt-oss served through an OpenAI-compatible gateway (NVIDIA NIM) speaks
+    // the Harmony format server-side; when the model emits a malformed
+    // message header (`<|start|>final` instead of `<|start|>assistant
+    // <|channel|>final`) the server's Harmony parser rejects its OWN output
+    // with `Unknown role: final`, sent as a mid-stream `{"error":…}` chunk
+    // that the OpenAI SDK raises with no status and pi flattens to the bare
+    // text. Same shape as Gemini's MALFORMED_* above: the model broke
+    // mid-generation, transient, retry helps — never the report-bug
+    // `unknown` (PRODUCT-1636). Matched with the colon so an account /
+    // permission "role" body can never trip it.
+    lower.includes("unknown role:") ||
     // Codex (ChatGPT OAuth) rides a WebSocket transport; when that socket dies
     // mid-turn pi-ai flattens it to `WebSocket closed <code>` — no status, no
     // body (HOU-848: codes 1006 abnormal closure, 1000 server closed mid-turn,
@@ -847,6 +866,17 @@ export function extractHttpStatus(message: string): number | null {
     const n = Number(lead[1]);
     if (n >= 100 && n <= 599) return n;
   }
+  // The OpenAI SDK's body-less flattening — `<status> status code (no body)`
+  // — normally LEADS the message (caught above), but pi's compaction wraps
+  // the same text as `Summarization failed: 410 status code (no body)`, and
+  // the leading match never sees past the prefix. Without this, NVIDIA's
+  // body-less 404/410 model gate (`isNvidiaFunctionGated`) classified fine on
+  // a chat turn and degraded to `unknown` the moment the SAME rejection hit
+  // the summarizer — a Sentry error per compaction attempt on a retired
+  // model, hundreds per user, instead of the switch-model card
+  // (PRODUCT-1636: 222 of the bucket's 230 events).
+  const statusCode = message.match(/\b([1-5]\d{2}) status code\b/);
+  if (statusCode) return Number(statusCode[1]);
   // "api error" is the Claude Agent SDK's canonical failure text ("API Error:
   // 401 OAuth access token has been revoked"). Without it a revoked-token
   // failure surfacing on the SDK's thrown/result seams (message only, no

@@ -246,6 +246,17 @@ export async function execTurn(
    */
   let turnProvider: string | undefined;
   /**
+   * The model id the turn RESOLVED onto — the twin of `turnProvider` for the
+   * catch's classification. A thrown failure after resolution (pi's manual
+   * `compact()` rejecting with "Summarization failed: …" on the active model)
+   * used to be classified with the PIN's model only, which an unpinned chat
+   * never carries: the model-keyed branches (NVIDIA's per-account gate needs a
+   * model to name on the switch-model card) fell through to `unknown`, and
+   * the log line read `model=?` (PRODUCT-1636). Undefined ONLY when
+   * `resolveModel` itself threw, where the pin is the next-best evidence.
+   */
+  let turnModel: string | undefined;
+  /**
    * WHO a failed turn names when `resolveModel` never returned a provider. The
    * turn's PIN is the next-best evidence: it is the user's (or the routine's)
    * own statement of what this turn was to run on, so a routine pinned to
@@ -280,6 +291,7 @@ export async function execTurn(
     // canonical id (resolveModel already applied canonicalPinProvider), so the
     // catch's health mark and revocation report name the row that actually ran.
     turnProvider = model.provider;
+    turnModel = model.id;
     // The turn's execution mode: the pin's, else execute. Never inherited from
     // Settings. Routine fire paths pin auto; an actually unpinned turn is execute.
     // Held in a MUTABLE ref: a mid-turn Mode-pill switch (`POST
@@ -663,6 +675,7 @@ export async function execTurn(
     // terminal surface, same as the streamed path — so the live chat renders
     // the card (and auto-continues after reconnect) instead of raw error
     // text. An unrecognized throw keeps the generic error frame.
+    const attributedModel = turnModel ?? pin?.model ?? null;
     const thrown =
       providerError ??
       classifyProviderError({
@@ -673,14 +686,14 @@ export async function execTurn(
         // the error's own evidence), and it renders the generic "connect an AI
         // provider" card rather than naming a provider this turn never reached.
         provider: attributedProvider(""),
-        model: pin?.model ?? null,
+        model: attributedModel,
         message: errMessage(err),
       });
     // The streamed path logged when it classified; a THROWN failure only
     // becomes visible to Sentry if this catch logs it too — before this,
     // every thrown `unknown` was a card in a user's chat that we never heard
     // about (HOU-1156).
-    if (!providerError) logProviderError(thrown, { model: pin?.model ?? null });
+    if (!providerError) logProviderError(thrown, { model: attributedModel });
     // An auth throw with NOTHING streamed = pi's prompt-time credential guard,
     // which raises BEFORE recording the user message in pi's session store —
     // neither the live context nor a rebuild will ever see it. Carry the text

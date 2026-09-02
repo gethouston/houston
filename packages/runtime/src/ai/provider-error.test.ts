@@ -511,6 +511,10 @@ test("extractHttpStatus reads parenthesized, leading, and labelled forms", () =>
   expect(extractHttpStatus("OpenAI API error (429): boom")).toBe(429);
   expect(extractHttpStatus('401 {"type":"error"}')).toBe(401);
   expect(extractHttpStatus("request failed with status 503")).toBe(503);
+  // The OpenAI SDK's body-less form behind a compaction prefix (PRODUCT-1636).
+  expect(
+    extractHttpStatus("Summarization failed: 410 status code (no body)"),
+  ).toBe(410);
   // The Claude Agent SDK's canonical failure text (PRODUCT-1307).
   expect(
     extractHttpStatus(
@@ -1068,6 +1072,54 @@ test("a body-less 410 from another provider stays unknown", () => {
     message: "410 status code (no body)",
   });
   expect(err.kind).toBe("unknown");
+});
+
+test("NVIDIA body-less 410 wrapped by pi's compaction → model_unavailable, same as the chat turn (PRODUCT-1636)", () => {
+  // Verbatim HOUSTON-APP-57B: the retired llama row 410s on the chat turn
+  // (classified above) AND on pi's manual `compact()` summarization request,
+  // which prefixes the identical text — the leading-status parse never saw
+  // past the prefix, so 222 of the bucket's 230 events read `unknown`.
+  for (const message of [
+    "Summarization failed: 410 status code (no body)",
+    "Turn prefix summarization failed: 410 status code (no body)",
+    "Summarization failed: 404 status code (no body)",
+  ]) {
+    const err = classifyProviderError({
+      provider: "nvidia",
+      model: "meta/llama-3.1-70b-instruct",
+      message,
+    });
+    expect(err.kind).toBe("model_unavailable");
+    if (err.kind === "model_unavailable")
+      expect(err.suggested_fallback).toBe("openai/gpt-oss-120b");
+  }
+});
+
+test("NVIDIA gpt-oss 'Unknown role: final' (server-side Harmony parse of a malformed generation) → provider_internal (PRODUCT-1636)", () => {
+  // Verbatim: NVIDIA NIM's gpt-oss-120b rejected its OWN output's message
+  // header mid-stream; the OpenAI SDK raised the `{"error":…}` chunk with no
+  // status and pi flattened it to the bare text. Transient — retry helps.
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "openai/gpt-oss-120b",
+    message: "Unknown role: final",
+  });
+  expect(err).toMatchObject({
+    kind: "provider_internal",
+    provider: "nvidia",
+    http_status: null,
+  });
+});
+
+test("NVIDIA 'ResourceExhausted: … request limit reached' (gRPC throttling, no HTTP status) → rate_limited (PRODUCT-1636)", () => {
+  const err = classifyProviderError({
+    provider: "nvidia",
+    model: "openai/gpt-oss-120b",
+    message:
+      "ResourceExhausted: Worker local total request limit reached (37/16)",
+  });
+  expect(err.kind).toBe("rate_limited");
+  if (err.kind === "rate_limited") expect(err.retry_after_seconds).toBeNull();
 });
 
 test("Alibaba DashScope free-tier exhaustion → quota_exhausted, never a rate-limit countdown", () => {
