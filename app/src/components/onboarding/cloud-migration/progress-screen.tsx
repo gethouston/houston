@@ -116,7 +116,7 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
                 total: tasks.length,
               })}
             </p>
-            <div className="flex max-h-[44vh] flex-col gap-2 overflow-y-auto">
+            <div className="flex max-h-[44dvh] flex-col gap-2 overflow-y-auto">
               {tasks.map((task) => (
                 <AgentRow
                   key={task.sourceId}

@@ -74,7 +74,7 @@ export function CustomKeyDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("custom.keyDialog.title", { name })}</DialogTitle>
           <DialogDescription>

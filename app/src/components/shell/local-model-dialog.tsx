@@ -87,7 +87,7 @@ export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>

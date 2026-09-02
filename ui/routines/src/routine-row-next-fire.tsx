@@ -33,7 +33,7 @@ export function RoutineRowNextFire({
       : null;
   if (!next) return null;
   return (
-    <span className="hidden whitespace-nowrap text-xs tabular-nums text-ink-muted sm:inline">
+    <span className="hidden whitespace-nowrap text-xs tabular-nums text-ink-muted md:inline">
       {describeNextFire(next, accountTimezone, now, labels, locale).relative}
     </span>
   );

@@ -26,7 +26,7 @@ export function BackBarScreen({
 }) {
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 px-8 pt-8 pb-2">
+      <div className="shrink-0 px-4 pt-8 pb-2 md:px-8">
         <button
           type="button"
           onClick={onBack}

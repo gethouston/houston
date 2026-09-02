@@ -104,7 +104,7 @@ export function UpdateForced({
     >
       {/* `bg-dialog`, not `bg-card`: the modal surface token is SOLID in both
           themes — the card token is glass and bleeds the page through. */}
-      <div className="max-h-[calc(100vh-2rem)] w-[420px] max-w-full overflow-y-auto rounded-2xl border border-line/50 bg-dialog p-6 text-ink shadow-[0_4px_4px_rgba(0,0,0,0.04),0_4px_80px_8px_rgba(0,0,0,0.04),0_0_1px_rgba(0,0,0,0.62)] dark:shadow-[0_4px_4px_rgba(0,0,0,0.1),0_4px_80px_8px_rgba(0,0,0,0.2),0_0_1px_rgba(255,255,255,0.1)]">
+      <div className="max-h-[calc(100dvh-2rem)] w-[420px] max-w-full overflow-y-auto rounded-2xl border border-line/50 bg-dialog p-6 text-ink shadow-[0_4px_4px_rgba(0,0,0,0.04),0_4px_80px_8px_rgba(0,0,0,0.04),0_0_1px_rgba(0,0,0,0.62)] dark:shadow-[0_4px_4px_rgba(0,0,0,0.1),0_4px_80px_8px_rgba(0,0,0,0.2),0_0_1px_rgba(255,255,255,0.1)]">
         <div className="flex items-start gap-3">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-input ring-1 ring-line">
             <img

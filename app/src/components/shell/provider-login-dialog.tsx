@@ -164,7 +164,7 @@ export function ProviderLoginDialog({
         if (!open) onClose();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {t("providerLogin.title", { name: provider.name })}

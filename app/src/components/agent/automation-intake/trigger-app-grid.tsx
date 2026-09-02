@@ -113,7 +113,7 @@ export function TriggerAppGrid({
             />
           ))
         ) : (
-          <p className="px-0.5 py-1 text-ink-muted text-sm sm:col-span-2">
+          <p className="px-0.5 py-1 text-ink-muted text-sm md:col-span-2">
             {nothingConnectable
               ? q
                 ? t("triggerStep.noMatches")
@@ -130,7 +130,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-2">
       <p className="font-medium text-ink-muted text-xs">{title}</p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{children}</div>
+      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">{children}</div>
     </div>
   );
 }

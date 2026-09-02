@@ -43,8 +43,10 @@ export function RoutineScreenHeader({
   };
 
   return (
-    <div className="shrink-0 px-8 pt-6 pb-5">
-      <div className="mx-auto flex w-full max-w-3xl items-center gap-2">
+    <div className="shrink-0 px-4 pt-6 pb-5 md:px-8">
+      {/* Phone: the actions wrap onto their own row under the title (indented
+          past the back glyph); desktop keeps the single row. */}
+      <div className="mx-auto flex w-full max-w-3xl flex-wrap items-center gap-2 md:flex-nowrap">
         <button
           type="button"
           onClick={onBackToList}
@@ -82,21 +84,23 @@ export function RoutineScreenHeader({
             className="h-9 min-w-0 flex-1 text-lg font-medium"
           />
         )}
-        {routine.trigger && (
-          <RoutineActivationChip
-            agentId={agent.id}
-            routineId={routine.id}
-            trigger={routine.trigger}
-          />
-        )}
-        <Button variant="secondary" size="sm" onClick={onOpenRuns}>
-          <History className="size-4" />
-          {t("details.runsTitle")}
-        </Button>
-        <Button variant="secondary" size="sm" onClick={onOpenChat}>
-          <MessageCircle className="size-4" />
-          {t("details.openChat")}
-        </Button>
+        <div className="flex w-full flex-wrap items-center gap-2 pl-9 md:w-auto md:flex-nowrap md:pl-0">
+          {routine.trigger && (
+            <RoutineActivationChip
+              agentId={agent.id}
+              routineId={routine.id}
+              trigger={routine.trigger}
+            />
+          )}
+          <Button variant="secondary" size="sm" onClick={onOpenRuns}>
+            <History className="size-4" />
+            {t("details.runsTitle")}
+          </Button>
+          <Button variant="secondary" size="sm" onClick={onOpenChat}>
+            <MessageCircle className="size-4" />
+            {t("details.openChat")}
+          </Button>
+        </div>
       </div>
     </div>
   );

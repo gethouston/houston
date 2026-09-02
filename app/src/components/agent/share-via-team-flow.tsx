@@ -280,7 +280,7 @@ export function ShareViaTeamFlow({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {t("shareViaTeam.title", { name: agent.name })}

@@ -26,7 +26,7 @@ export function SettingsSectionBody({
 }: SettingsSectionBodyProps) {
   return (
     <BackBarScreen backLabel={backLabel} onBack={onBack}>
-      <div className="mx-auto max-w-xl px-8 pb-10">
+      <div className="mx-auto max-w-xl px-4 pb-10 md:px-8">
         {active === "profile" && <ProfileSection />}
         {/* The API-keys screen is HIDDEN from the index for now (HOU-806: the
             Agents API surface lives in the Routines tab) — its nav row is gone,

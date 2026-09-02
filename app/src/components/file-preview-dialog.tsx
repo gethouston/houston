@@ -59,7 +59,7 @@ export function FilePreviewDialog({
   const openHref = useOpenAgentHref(agentPath || null);
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
   /** Reader-chosen full-viewport mode. A long document is unreadable in a
-   *  60vh window, so the modal can grow and shrink back (PRODUCT-1231). */
+   *  60dvh window, so the modal can grow and shrink back (PRODUCT-1231). */
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
@@ -122,7 +122,7 @@ export function FilePreviewDialog({
       <DialogContent
         className={
           fullPage
-            ? "h-[92vh] max-w-[95vw] sm:max-w-[95vw] grid-rows-[auto_minmax(0,1fr)_auto]"
+            ? "h-[92dvh] max-w-[95vw] sm:max-w-[95vw] grid-rows-[auto_minmax(0,1fr)_auto]"
             : "max-w-3xl"
         }
       >
@@ -176,7 +176,7 @@ export function FilePreviewDialog({
             // the very content the reader expanded to see.
             isDeck && "min-h-0 overflow-hidden",
             !isDeck && "overflow-y-auto overflow-x-hidden",
-            !isDeck && (expanded ? "min-h-0" : "min-h-[200px] max-h-[60vh]"),
+            !isDeck && (expanded ? "min-h-0" : "min-h-[200px] max-h-[60dvh]"),
           )}
         >
           <FilePreviewBody

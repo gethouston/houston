@@ -33,6 +33,7 @@ export function AdminSignIn({ auth }: { auth: AdminAuth }) {
       <div
         style={{
           width: 340,
+          maxWidth: "100%",
           padding: 28,
           borderRadius: 16,
           background: C.panel,

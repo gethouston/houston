@@ -40,7 +40,7 @@ export function CreatorProfileEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
+      <DialogContent className="max-h-[85dvh] sm:max-w-xl overflow-y-auto">
         <DialogHeader className="sr-only">
           <DialogTitle>{t("profile.title")}</DialogTitle>
           <DialogDescription>{t("profile.claimTitle")}</DialogDescription>

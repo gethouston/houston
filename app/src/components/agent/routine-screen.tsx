@@ -93,7 +93,7 @@ export function RoutineScreen({
   }, [escapeActive, onBackToList]);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div data-testid="routine-screen" className="flex min-h-0 flex-1 flex-col">
       <RoutineScreenHeader
         agent={agent}
         routine={routine}
@@ -103,7 +103,7 @@ export function RoutineScreen({
         onRename={(name) => save({ name })}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto px-8 pb-10">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 md:px-8">
         <RoutineScreenSections
           agent={agent}
           routine={routine}

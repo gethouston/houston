@@ -129,7 +129,12 @@ export function RoutineScreenSections({
             />
           </div>
         )}
-        {nextRunText && <p className="text-xs text-ink-muted">{nextRunText}</p>}
+        {nextRunText && (
+          // data-relative-time: a live clock the visual suite masks.
+          <p data-relative-time className="text-xs text-ink-muted">
+            {nextRunText}
+          </p>
+        )}
       </Section>
 
       <Section title={t("details.modelTitle")}>
