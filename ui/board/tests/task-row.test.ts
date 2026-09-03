@@ -17,7 +17,7 @@ describe("taskRowGlyph", () => {
       assert.ok(glyph.Icon, `${status} has no icon`);
       assert.ok(glyph.label.length > 0, `${status} has no label`);
       // Tone is a token utility, never a literal colour.
-      assert.match(glyph.tone, /^text-(danger|warning|ink-muted)$/);
+      assert.match(glyph.tone, /^text-(warning|ink-muted)$/);
     }
   });
 
@@ -41,7 +41,7 @@ describe("taskRowGlyph", () => {
   });
 
   it("gives attention states their own tone, and settled states the muted one", () => {
-    assert.equal(taskRowGlyph("needs_you").tone, "text-danger");
+    assert.equal(taskRowGlyph("needs_you").tone, "text-warning");
     assert.equal(taskRowGlyph("running").tone, "text-warning");
     assert.equal(taskRowGlyph("done").tone, "text-ink-muted");
     assert.equal(taskRowGlyph("archived").tone, "text-ink-muted");

@@ -41,7 +41,9 @@ const GLYPHS: Record<
 > = {
   needs_you: {
     Icon: CircleAlert,
-    tone: "text-danger",
+    // Amber, not red: a task waiting on the user is a prompt, and red reads
+    // as something having gone wrong.
+    tone: "text-warning",
     spin: false,
     fallback: "Needs you",
     key: "needsYou",
