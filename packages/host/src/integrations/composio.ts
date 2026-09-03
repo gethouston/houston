@@ -49,6 +49,9 @@ const DEFAULT_BASE_URL = "https://backend.composio.dev";
  *  for search's name resolution so a hot session does not refetch ~1000 apps. */
 const CATALOG_TTL_MS = 60 * 60 * 1000;
 
+/** Upper bound on catalog pages walked per fetch (1000 toolkits each). */
+const MAX_CATALOG_PAGES = 10;
+
 /**
  * Which Composio TOOL VERSION every /tools read and execute requests. The v3
  * endpoints default to the FROZEN base snapshot (`00000000_00`), not the newest
@@ -121,18 +124,31 @@ export class ComposioProvider implements IntegrationProvider {
   }
 
   private async fetchToolkits(): Promise<Toolkit[]> {
-    const body = await this.http.call<{ items?: RawToolkit[] }>(
-      "/api/v3/toolkits",
-      {
-        query: { limit: "1000" },
-      },
-    );
+    // Composio caps a toolkits page at 1000 whatever `limit` says and the
+    // catalog outgrew that (1502 toolkits, 2026-09): reading only the first
+    // page silently dropped telegram, odoo, quickbooks… so the catalog walks
+    // `next_cursor` until it is null. Seen-cursor + page guards keep a
+    // misbehaving upstream from looping forever.
+    const items: RawToolkit[] = [];
+    const seen = new Set<string>();
+    let cursor: string | undefined;
+    for (let page = 0; page < MAX_CATALOG_PAGES; page++) {
+      const body = await this.http.call<{
+        items?: RawToolkit[];
+        next_cursor?: string | null;
+      }>("/api/v3/toolkits", { query: { limit: "1000", cursor } });
+      items.push(...(body?.items ?? []));
+      const next = body?.next_cursor ?? undefined;
+      if (!next || seen.has(next)) break;
+      seen.add(next);
+      cursor = next;
+    }
     // no_auth toolkits (web search, weather…) stay in the catalog but carry
     // the flag: there is no account to connect (creating an auth config 400s
     // upstream — Auth_Config_NoAuthApp, seen in prod), yet their tools work
     // as-is. The UI renders them "ready to use" instead of connectable, and
     // search stamps their matches `connected` (see composio-search.ts).
-    return (body?.items ?? []).map(mapToolkit);
+    return items.map(mapToolkit);
   }
 
   async listToolkits(): Promise<Toolkit[]> {
