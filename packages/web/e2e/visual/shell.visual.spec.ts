@@ -193,15 +193,16 @@ for (const theme of THEMES) {
 
 /**
  * The phone's More menu: the floating card the nav bar raises, over the Agents
- * home. The screen BEHIND it stays visible through the scrim and its rows
- * carry a live relative-time label, so those spans are masked.
+ * home. The screen BEHIND it stays visible through the scrim, so the boot
+ * anchor is that screen's own row; the relative-time mask is kept for whatever
+ * else the scrim leaves showing.
  */
 for (const theme of THEMES) {
   test(`mobile more menu — ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+    await expect(page.getByTestId("agents-home-row")).toContainText("Houston");
     await navItem(page, "more").click();
     await expect(moreMenu(page)).toBeVisible();
     await expect(

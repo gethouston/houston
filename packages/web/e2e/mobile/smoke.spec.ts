@@ -14,8 +14,8 @@ test("boots to a usable shell on a phone viewport", async ({ page }) => {
   await page.goto("/");
 
   // The phone shell: no rail and no top bar — the floating nav bar is the
-  // whole chrome, over the Agents home (the landing tree's root) with the
-  // seeded mission previewed.
+  // whole chrome, over the Agents home (the landing tree's root), whose rows
+  // are one line per agent.
   await expect(navBar(page)).toBeVisible();
   await expect(page.locator("[data-tour-target='sidebar']")).toHaveCount(0);
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
