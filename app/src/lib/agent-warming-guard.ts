@@ -5,14 +5,18 @@
  * routine, update instructions, install a skill…) would be a held request
  * that dies with infrastructure timeouts or a reload. Instead of letting the
  * button hang for minutes, the guard opens the "your agent is almost ready"
- * dialog and rejects with {@link AgentWarmingError} — which the tauri
- * wrapper's error surface recognizes and does NOT toast or report: the
- * dialog IS the surface.
+ * dialog and rejects with {@link AgentWarmingError} — which the reporting
+ * layer (`error-report.ts`, `error-toast.ts`, the global rejection handler)
+ * recognizes and does NOT toast or report: the dialog IS the surface.
  */
 
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { useUIStore } from "../stores/ui";
 import { warmingReadsAnswerEmpty } from "./agent-provisioning";
+import {
+  AGENT_WARMING_ERROR_NAME,
+  isAgentWarmingRefusal,
+} from "./agent-warming-refusal";
 import i18n from "./i18n";
 
 export interface WarmingWriteOptions {
@@ -25,12 +29,12 @@ export interface WarmingWriteOptions {
 export class AgentWarmingError extends Error {
   constructor() {
     super(i18n.t("shell:agentProvisioning.blockedBody"));
-    this.name = "AgentWarmingError";
+    this.name = AGENT_WARMING_ERROR_NAME;
   }
 }
 
 export function isAgentWarmingError(e: unknown): boolean {
-  return e instanceof AgentWarmingError;
+  return isAgentWarmingRefusal(e);
 }
 
 /** True when this engine route key belongs to a still-warming agent. */

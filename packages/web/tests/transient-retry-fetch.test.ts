@@ -167,6 +167,23 @@ test("the gateway's 5xx vocabulary maps to typed reasons", () => {
   expect(retryDelaysFor("feature-absent")).toEqual([]);
 });
 
+// ── HOUSTON-APP-54Q: the host's runtime-still-starting 503 ──────────────────
+
+test("the host's probe-route 'runtime is still starting' 503 earns the wake budget", () => {
+  // probe-wake.ts answers the read-only probes this way + Retry-After: 2 when
+  // the runtime boot outlasts its 1.5s race; under the handoff budget every
+  // slower cold boot surfaced the probe as a failure.
+  expect(
+    classifyUnavailableBody({
+      error: "the agent's runtime is still starting, try again shortly",
+    }),
+  ).toBe("engine-waking");
+  // The reason is exact: a neighbouring 503 keeps the short patience.
+  expect(
+    classifyUnavailableBody({ error: "the agent's runtime is starting" }),
+  ).toBe("handoff");
+});
+
 // ── PRODUCT-1403: the pod-unreachable 502 ───────────────────────────────────
 
 test("the proxy's engine-proxy-failed 502 is a pod-unreachable read, with the wake budget", () => {

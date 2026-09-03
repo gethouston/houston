@@ -1,3 +1,4 @@
+import { isAgentWarmingRefusal } from "./agent-warming-refusal";
 import { classifyAnalyticsError } from "./analytics";
 import i18n from "./i18n";
 import { classifyQuietError } from "./quiet-error-class";
@@ -35,6 +36,12 @@ export function reportError(
   message: string,
   originalError?: unknown,
 ): void {
+  // The app's own warming-guard refusal: the "almost ready" dialog is already
+  // open and nothing failed, so there is no bug to report (HOUSTON-APP-53K).
+  if (isAgentWarmingRefusal(originalError)) {
+    console.debug(`[report:${command}] write blocked while the agent warms up`);
+    return;
+  }
   const quiet = classifyQuietError(originalError);
   if (quiet) {
     reportQuietError(quiet, command, message, originalError);

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useActivity, useAllConversations } from "../../hooks/queries";
 import { useConnectedProviders } from "../../hooks/use-connected-providers";
 import { readAgentModelOverrides } from "../../lib/agent-model-overrides";
+import { isAgentWarmingError } from "../../lib/agent-warming-guard";
 import { analytics } from "../../lib/analytics";
 import { connectedProviderIds } from "../../lib/connected-providers";
 import { createMission } from "../../lib/create-mission";
@@ -101,6 +102,9 @@ export function useIntegrationChatSetup() {
 
   const toastStartError = useCallback(
     (err: unknown) => {
+      // A write refused while the agent's engine warms up (HOU-693) already
+      // opened the "almost ready" dialog: that is the surface, not a failure.
+      if (isAgentWarmingError(err)) return;
       // The mission never started (createMission rolled the activity back), so
       // a toast is the only surface for the failure.
       addToast({
@@ -199,6 +203,7 @@ export function useIntegrationChatSetup() {
           });
         })
         .catch((err) => {
+          if (isAgentWarmingError(err)) return;
           addToast({
             title: t("custom.setupChat.startError"),
             description: genericErrorDescription(
