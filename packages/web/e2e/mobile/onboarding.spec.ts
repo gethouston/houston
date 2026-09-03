@@ -121,6 +121,10 @@ test("the guided setup completes on a phone: More rows, provider connect, first 
   const composer = page
     .getByTestId("mission-chat-screen")
     .getByPlaceholder("What should the agent work on?");
+  // A real TAP before typing: `fill` skips hit-testing, and a stale spotlight
+  // blocker sitting over the composer once passed this spec while a phone
+  // user could not touch it.
+  await composer.tap();
   await composer.fill("Say hello");
   await composer.press("Enter");
 
