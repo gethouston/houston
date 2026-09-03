@@ -146,6 +146,20 @@ export function gatewayAuthFetch(
         ? signedOutResponse()
         : res;
     }
+    // The refresher handed back the SAME bearer the gateway just rejected: no
+    // real mint happened (securetoken returns the still-cached idToken when it
+    // is asked to refresh twice inside one token's lifetime — no network POST,
+    // no breadcrumb), so replaying would only earn the identical 401. On a
+    // wake-from-sleep burst several parallel queries share one such refresh and
+    // each would surface a raw "invalid or expired token" toast + Sentry report
+    // (HOUSTON-APP-4YD/53R/58P, PRODUCT-1664). Treat it as the same quiet
+    // signed-out lifecycle state as the null branch — a genuinely NEW fresh
+    // bearer the gateway rejects still replays below and stays loud.
+    if (fresh === bearer) {
+      return inControlPlaneMode() && hasSessionRefresher()
+        ? signedOutResponse()
+        : res;
+    }
     return send(fresh);
   };
 }

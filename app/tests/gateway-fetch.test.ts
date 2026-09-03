@@ -122,6 +122,28 @@ describe("gatewayFetch", () => {
     strictEqual(sent.length, 1);
   });
 
+  it("does not replay when the refresh returns the same rejected bearer", async () => {
+    // securetoken hands back the still-cached idToken when refreshed twice
+    // inside one token's lifetime, so the "fresh" bearer equals the one the
+    // gateway just rejected — replaying it only earns the identical 401
+    // (PRODUCT-1664). Surface the original 401 without a doomed second send.
+    const sent: Sent[] = [];
+    let refreshes = 0;
+    const res = await gatewayFetch(
+      deps([new Response(null, { status: 401 })], sent, {
+        token: () => "stale",
+        refresh: async () => {
+          refreshes++;
+          return "stale";
+        },
+      }),
+      "/v1/me",
+    );
+    strictEqual(refreshes, 1);
+    strictEqual(res?.status, 401);
+    strictEqual(sent.length, 1);
+  });
+
   it("sends nothing at all when there is no session", async () => {
     const sent: Sent[] = [];
     strictEqual(
