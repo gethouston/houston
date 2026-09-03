@@ -23,7 +23,8 @@
 import type { Routine } from "@houston-ai/engine-client";
 import { useMemo } from "react";
 import { resolveAgentModelOverrides } from "../lib/agent-model-overrides";
-import { providerForModel } from "../lib/model-labels";
+import type { CeilingResolver } from "../lib/ceiling-pin";
+import { providerForModel, providerOffersModel } from "../lib/model-labels";
 import {
   modelSelectorDecision,
   resolvePersonalModelPin,
@@ -31,6 +32,19 @@ import {
 import type { Agent } from "../lib/types";
 import { useAgentConfig, useAgentModelChoice } from "./queries";
 import { useCapabilities } from "./use-capabilities";
+
+/**
+ * How a ceiling pick resolves for an UNATTENDED run: the catalog only, no
+ * connection set — exactly the gateway's per-turn clamp, which has no
+ * connection knowledge either. Handing it the connected providers would be the
+ * auth-switch the comment above forbids (and would show a pair the fire path
+ * never runs).
+ */
+const GATEWAY_CEILING_RESOLVER: CeilingResolver = {
+  offers: providerOffersModel,
+  providerFor: providerForModel,
+  connected: [],
+};
 
 export interface RoutineModelResolution {
   /** Resolved provider id; `""` while the agent config has not answered yet. */
@@ -90,7 +104,7 @@ export function useRoutineModelResolution(
       allowedModels,
       fallback,
       null,
-      providerForModel,
+      GATEWAY_CEILING_RESOLVER,
     );
     return {
       provider: pin.provider,

@@ -115,6 +115,8 @@ describe("isModelAllowed", () => {
 
 describe("resolvePersonalModelPin", () => {
   const fallback = { provider: "anthropic", model: "claude", effort: "high" };
+  /** A resolver that knows nothing: no catalog, nothing connected. */
+  const blind = { offers: () => false, providerFor: () => null, connected: [] };
 
   it("uses the user's stored choice when present", () => {
     deepStrictEqual(
@@ -123,7 +125,7 @@ describe("resolvePersonalModelPin", () => {
         ["gpt-5.5"],
         fallback,
         null,
-        () => null,
+        blind,
       ),
       { provider: "openai", model: "gpt-5.5", effort: "low" },
     );
@@ -131,11 +133,11 @@ describe("resolvePersonalModelPin", () => {
 
   it("keeps the fallback when there is no ceiling", () => {
     deepStrictEqual(
-      resolvePersonalModelPin(null, null, fallback, null, () => null),
+      resolvePersonalModelPin(null, null, fallback, null, blind),
       fallback,
     );
     deepStrictEqual(
-      resolvePersonalModelPin(undefined, undefined, fallback, null, () => null),
+      resolvePersonalModelPin(undefined, undefined, fallback, null, blind),
       fallback,
     );
   });
@@ -147,7 +149,7 @@ describe("resolvePersonalModelPin", () => {
         ["claude", "gpt-5.5"],
         fallback,
         null,
-        () => null,
+        blind,
       ),
       fallback,
     );
@@ -155,27 +157,44 @@ describe("resolvePersonalModelPin", () => {
 
   it("snaps to the ceiling model's owning provider", () => {
     deepStrictEqual(
+      resolvePersonalModelPin(null, ["gpt-5.5", "gemini"], fallback, null, {
+        ...blind,
+        providerFor: (model) => (model === "gpt-5.5" ? "openai" : null),
+      }),
+      { provider: "openai", model: "gpt-5.5", effort: "high" },
+    );
+  });
+
+  it("snaps to the ceiling id the fallback provider can run, not the first entry (PRODUCT-1657)", () => {
+    // "Claude Opus 5" as the ceiling editor writes it: OpenRouter's id sorts
+    // first. A Claude-connected user stays on Claude.
+    deepStrictEqual(
       resolvePersonalModelPin(
         null,
-        ["gpt-5.5", "gemini"],
+        ["anthropic/claude-opus-5", "claude-opus-5"],
         fallback,
         null,
-        (model) => (model === "gpt-5.5" ? "openai" : null),
+        {
+          offers: (provider, model) =>
+            provider === "anthropic" && model === "claude-opus-5",
+          providerFor: () => "openrouter",
+          connected: ["anthropic"],
+        },
       ),
-      { provider: "openai", model: "gpt-5.5", effort: "high" },
+      { provider: "anthropic", model: "claude-opus-5", effort: "high" },
     );
   });
 
   it("keeps the fallback provider when the snapped model is unknown", () => {
     deepStrictEqual(
-      resolvePersonalModelPin(null, ["unknown"], fallback, null, () => null),
+      resolvePersonalModelPin(null, ["unknown"], fallback, null, blind),
       { provider: "anthropic", model: "unknown", effort: "high" },
     );
   });
 
   it("keeps the fallback for an empty ceiling (no model to snap to)", () => {
     deepStrictEqual(
-      resolvePersonalModelPin(null, [], fallback, null, () => null),
+      resolvePersonalModelPin(null, [], fallback, null, blind),
       fallback,
     );
   });
@@ -187,7 +206,7 @@ describe("resolvePersonalModelPin", () => {
         ["claude", "gpt-5.5"],
         fallback,
         { provider: "anthropic", model: "claude" },
-        () => null,
+        blind,
       ),
       { provider: "anthropic", model: "claude", effort: "low" },
     );
@@ -200,7 +219,7 @@ describe("resolvePersonalModelPin", () => {
         ["gpt-5.5"],
         fallback,
         { provider: "anthropic", model: "claude" },
-        () => null,
+        blind,
       ),
       { provider: "openai", model: "gpt-5.5", effort: "low" },
     );

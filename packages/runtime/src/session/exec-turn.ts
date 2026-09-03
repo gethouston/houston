@@ -12,7 +12,10 @@ import {
   learnCustomContextWindow,
   OPENAI_COMPATIBLE,
 } from "../ai/openai-compatible";
-import { classifyProviderError } from "../ai/provider-error";
+import {
+  classifyProviderError,
+  ModelNotOfferedError,
+} from "../ai/provider-error";
 import { logProviderError } from "../ai/provider-error-log";
 import {
   activeEffort,
@@ -685,6 +688,7 @@ export async function execTurn(
     const attributedModel = turnModel ?? pin?.model ?? null;
     const thrown =
       providerError ??
+      (err instanceof ModelNotOfferedError ? err.providerError : null) ??
       classifyProviderError({
         // The provider the turn RESOLVED onto, never the cached session's last
         // one; else the turn's pin. Empty only when neither exists: "provider

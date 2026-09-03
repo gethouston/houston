@@ -4,7 +4,10 @@ import type {
   ToolCallRecord,
   WireFrame,
 } from "@houston/runtime-client";
-import { classifyProviderError } from "../ai/provider-error";
+import {
+  classifyProviderError,
+  ModelNotOfferedError,
+} from "../ai/provider-error";
 import { logProviderError } from "../ai/provider-error-log";
 import { noteAuthFailure, noteQuotaExhausted } from "../auth/credential-health";
 import { reportRevokedServedToken } from "../auth/report-revoked";
@@ -48,7 +51,8 @@ export function handleTurnSessionFailure(input: {
   }
   if (!input.providerError) {
     const thrown =
-      input.error instanceof TurnBackendProviderError
+      input.error instanceof TurnBackendProviderError ||
+      input.error instanceof ModelNotOfferedError
         ? input.error.providerError
         : classifyProviderError({
             provider: input.provider,

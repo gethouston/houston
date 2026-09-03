@@ -4,6 +4,7 @@ import {
   modelDisplayLabel,
   providerForModel,
   providerModelLabel,
+  providerOffersModel,
 } from "../src/lib/model-labels.ts";
 import {
   getModel,
@@ -52,6 +53,18 @@ describe("providerForModel", () => {
 
   it("is null for a model no provider offers", () => {
     strictEqual(providerForModel("not-a-real-model"), null);
+  });
+});
+
+describe("providerOffersModel", () => {
+  it("is true only for the provider that lists the id", () => {
+    strictEqual(providerOffersModel("anthropic", "claude-opus-5"), true);
+    // OpenRouter's id for the same model is not Anthropic's (PRODUCT-1657).
+    strictEqual(
+      providerOffersModel("anthropic", "anthropic/claude-opus-5"),
+      false,
+    );
+    strictEqual(providerOffersModel("nope", "claude-opus-5"), false);
   });
 });
 

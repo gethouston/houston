@@ -98,7 +98,7 @@ import {
   finalConnectNames,
   finalCredentialNames,
 } from "../lib/interaction-reply";
-import { providerForModel } from "../lib/model-labels";
+import { providerForModel, providerOffersModel } from "../lib/model-labels";
 import {
   isModelAllowed,
   modelSelectorDecision,
@@ -667,6 +667,17 @@ export function useAgentChatPanel({
     agentEffort,
   );
 
+  // What a ceiling pick may run on: the hydrated catalog plus the CONFIRMED
+  // connected accounts, so a ceiling never pins the chat to a provider the user
+  // has not connected (PRODUCT-1657).
+  const ceilingResolver = useMemo(
+    () => ({
+      offers: providerOffersModel,
+      providerFor: providerForModel,
+      connected: authedProviders,
+    }),
+    [authedProviders],
+  );
   const personalDefaultPin = useMemo(
     () =>
       resolvePersonalModelPin(
@@ -678,7 +689,7 @@ export function useAgentChatPanel({
           effort: effectiveEffort,
         },
         null,
-        providerForModel,
+        ceilingResolver,
       ),
     [
       modelChoiceInfo?.choice,
@@ -686,6 +697,7 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
+      ceilingResolver,
     ],
   );
 
@@ -710,7 +722,7 @@ export function useAgentChatPanel({
                   model: activityModel,
                 }
               : null,
-            providerForModel,
+            ceilingResolver,
           )
         : {
             provider: effectiveProvider,
@@ -726,6 +738,7 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
+      ceilingResolver,
     ],
   );
   const displayModelPin = useMemo(

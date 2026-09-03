@@ -22,6 +22,7 @@ import type {
   Capabilities,
 } from "@houston-ai/engine-client";
 import { canEditAgentConfig } from "./agent-access.ts";
+import { type CeilingResolver, pickCeilingPin } from "./ceiling-pin.ts";
 import { decodeModelPickerId } from "./chat-model-picker-ids.ts";
 import { isMultiplayer } from "./org-roles.ts";
 
@@ -109,8 +110,9 @@ export interface ModelPin {
  *     the personal resolution's effort because activities have no effort field;
  *  2. the user's stored `choice` when present;
  *  3. else, when a ceiling exists and the shared `fallback` model is outside it,
- *     the ceiling's first model carried on its catalogued provider (the gateway
- *     forces first-of-ceiling for a member who has not picked yet);
+ *     a ceiling model the user can actually run (`pickCeilingPin`: the
+ *     fallback provider's own id first, then any connected provider's, then
+ *     the first entry on its catalogued provider);
  *  4. else the shared `fallback` (agent / pod default) unchanged.
  */
 export function resolvePersonalModelPin(
@@ -118,7 +120,7 @@ export function resolvePersonalModelPin(
   allowedModels: string[] | null | undefined,
   fallback: ModelPin,
   missionPin: ModelPin | null,
-  resolveProvider: (model: string) => string | null,
+  resolver: CeilingResolver,
 ): ModelPin {
   const personalPin = choice
     ? {
@@ -129,11 +131,7 @@ export function resolvePersonalModelPin(
     : allowedModels != null &&
         allowedModels.length > 0 &&
         !allowedModels.includes(fallback.model)
-      ? {
-          provider: resolveProvider(allowedModels[0]) ?? fallback.provider,
-          model: allowedModels[0],
-          effort: fallback.effort,
-        }
+      ? pickCeilingPin(allowedModels, fallback, resolver)
       : fallback;
   if (missionPin && isModelAllowed(allowedModels, missionPin.model)) {
     return {
