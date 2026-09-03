@@ -105,3 +105,18 @@ test("Routines opens the team's routines section", async ({ page }) => {
       .filter({ hasText: /^Routines$/ }),
   ).toHaveCount(1);
 });
+
+test("the title row's New team control opens the create-team dialog", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await navItem(page, "teams").tap();
+  await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
+
+  // The rail that carries "New team" on the desktop is not rendered on the
+  // phone, so the tree's title row offers the same dialog.
+  await page.getByTestId("teams-home-new-team").tap();
+  await expect(
+    page.getByRole("dialog", { name: "Create a team" }),
+  ).toBeVisible();
+});
