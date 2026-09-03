@@ -213,3 +213,55 @@ describe("planInvalidation — EventStreamReconnected catches the aggregate up",
     strictEqual(plan.focusWindow, undefined);
   });
 });
+
+/**
+ * The hosted event stream is org-wide: the gateway fans in every awake pod
+ * in the space, not just the viewer's assigned agents. An event naming an
+ * agent outside the viewer's roster must not trigger the aggregate patch —
+ * that read is a deterministic `403 not allowed` on every event the agent
+ * emits (HOUSTON-APP-540).
+ */
+describe("planInvalidation — events for agents outside the roster", () => {
+  const OTHER = "Houston/SomeoneElsesAgent";
+  const isKnownAgent = (path: string) => path === PATH;
+
+  it("skips the aggregate patch for an unknown agent", () => {
+    const plan = planInvalidation(
+      { type: "ActivityChanged", data: { agent_path: OTHER } },
+      { isKnownAgent },
+    );
+    deepStrictEqual(plan.patchAllConversations, []);
+  });
+
+  it("still patches a known agent", () => {
+    const plan = planInvalidation(
+      { type: "ConversationsChanged", data: { agent_path: PATH } },
+      { isKnownAgent },
+    );
+    deepStrictEqual(plan.patchAllConversations, [PATH]);
+  });
+
+  it("SessionStatus (completed) for an unknown agent patches nothing", () => {
+    const plan = planInvalidation(
+      {
+        type: "SessionStatus",
+        data: {
+          agent_path: OTHER,
+          session_key: "s",
+          status: "completed",
+          error: null,
+        },
+      },
+      { isKnownAgent },
+    );
+    deepStrictEqual(plan.patchAllConversations, []);
+  });
+
+  it("without a roster predicate every agent is known", () => {
+    const plan = planInvalidation(
+      { type: "ActivityChanged", data: { agent_path: OTHER } },
+      {},
+    );
+    deepStrictEqual(plan.patchAllConversations, [OTHER]);
+  });
+});
