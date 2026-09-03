@@ -219,3 +219,15 @@ export async function probeProviders(
   await Promise.all(workers);
   return results;
 }
+
+/**
+ * What an anthropic probe says about THIS deployment: `false` on the marked
+ * not-served-here 404 (desktop, self-host — the host never serves anthropic
+ * back), `true` on any served / plain not-connected verdict (a gateway-fronted
+ * pod), `undefined` when the probe failed to answer (nothing learned). The
+ * anthropic login keys its credential holder on this (login.ts, PRODUCT-1644).
+ */
+export function anthropicServedVerdict(probe: ServeProbe): boolean | undefined {
+  if (probe.id !== "anthropic" || probe.state === "error") return undefined;
+  return !(probe.state === "not-connected" && probe.notServedHere === true);
+}

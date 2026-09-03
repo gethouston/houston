@@ -44,8 +44,15 @@ import {
  *      standard pi `oauth` auth.json entry, destroying every other copy. The EXISTING
  *      chain takes over: capture exports it, the gateway stores + rotates it
  *      centrally (the family's ONLY rotator), Gate #2 scrubs the local refresh,
- *      serve keeps it warm. On self-host there is no gateway and pi itself
- *      rotates the entry — also a single rotator.
+ *      serve keeps it warm.
+ *
+ * Where the host never serves anthropic back (desktop, self-host — `login.ts`
+ * passes `sharedLoginDir`, PRODUCT-1644) the CLI runs IN the shared login dir
+ * instead: the credential it caches there (Keychain on macOS, the credential
+ * file elsewhere) is what every agent runtime's status probe and the Claude
+ * SDK read, exactly as the desktop's own browser login leaves it. Nothing is
+ * stored in auth.json and nothing is discarded — the capture that follows has
+ * nothing to export, and the host settles it against the runtime's status.
  *
  * A pasted `sk-ant-…` value in the same input still short-circuits to the
  * token flow (kill the child, store an api_key) — the old escape hatch.
@@ -58,6 +65,12 @@ export type AnthropicLoginDeps = MintedCredentialDeps & {
   storeToken: (key: string) => void;
   /** Persist the CLI-minted subscription credential as pi's `oauth` variant. */
   storeOauth: (cred: CliMintedOauth) => void;
+  /**
+   * Run the CLI login IN this dir and leave the credential there (see the
+   * module note): the single holder on a host that never serves anthropic.
+   * Null/absent = the throwaway dir + auth.json + capture chain.
+   */
+  sharedLoginDir?: string | null;
   // Test seams; production uses the real spawn/tmpdir.
   spawnChild?: (binary: string, configDir: string) => LoginChild;
   mkLoginDir?: () => string;
@@ -96,10 +109,13 @@ async function runAnthropicCliLogin(
   deps: AnthropicLoginDeps,
   binary: string,
 ): Promise<void> {
-  const dir = (
-    deps.mkLoginDir ??
-    (() => mkdtempSync(join(tmpdir(), "houston-claude-login-")))
-  )();
+  const shared = deps.sharedLoginDir ?? null;
+  const dir =
+    shared ??
+    (
+      deps.mkLoginDir ??
+      (() => mkdtempSync(join(tmpdir(), "houston-claude-login-")))
+    )();
   const child = (deps.spawnChild ?? spawnCli)(binary, dir);
   try {
     await driveCliLogin(child, cb, deps, dir);
@@ -109,7 +125,8 @@ async function runAnthropicCliLogin(
     } catch {
       // Already exited — nothing to kill.
     }
-    await discardMintedCredential(dir, deps);
+    // The shared dir IS the credential's home; only a throwaway is destroyed.
+    if (!shared) await discardMintedCredential(dir, deps);
   }
 }
 
@@ -182,5 +199,8 @@ async function driveCliLogin(
       `Claude sign-in failed (exit ${code}): ${scrubTokens(tail.join(" | "))}`,
     );
 
-  deps.storeOauth(await readMintedCredential(dir, deps));
+  // Read back either way: a CLI that exited 0 without caching a credential
+  // fails loud here rather than reporting a connect that never happened.
+  const minted = await readMintedCredential(dir, deps);
+  if (!deps.sharedLoginDir) deps.storeOauth(minted);
 }

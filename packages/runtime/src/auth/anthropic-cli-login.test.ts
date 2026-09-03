@@ -62,6 +62,8 @@ type Harness = {
   stored: { tokens: string[]; oauth: Array<Record<string, unknown>> };
   cleaned: string[];
   keychainDiscarded: string[];
+  /** The CLAUDE_CONFIG_DIR each spawn was pointed at. */
+  spawnDirs: string[];
   login: Promise<void>;
   paste: (value: string) => void;
 };
@@ -72,12 +74,14 @@ function harness(opts?: {
   credentialFile?: string | null;
   keychain?: string | null;
   pasteNever?: boolean;
+  sharedLoginDir?: string;
 }): Harness {
   const child = new FakeChild();
   const authInfos: Harness["authInfos"] = [];
   const stored: Harness["stored"] = { tokens: [], oauth: [] };
   const cleaned: string[] = [];
   const keychainDiscarded: string[] = [];
+  const spawnDirs: string[] = [];
   let paste!: (value: string) => void;
   const pastePromise = new Promise<string>((r) => {
     paste = r;
@@ -91,7 +95,11 @@ function harness(opts?: {
     binary: opts?.binary === undefined ? "/bundle/claude" : opts.binary,
     storeToken: (key) => void stored.tokens.push(key),
     storeOauth: (cred) => void stored.oauth.push({ ...cred }),
-    spawnChild: () => child,
+    spawnChild: (_binary, dir) => {
+      spawnDirs.push(dir);
+      return child;
+    },
+    sharedLoginDir: opts?.sharedLoginDir ?? null,
     mkLoginDir: () => "/tmp/fake-login-dir",
     cleanupDir: (dir) => void cleaned.push(dir),
     readCredentialFile: () =>
@@ -105,6 +113,7 @@ function harness(opts?: {
     stored,
     cleaned,
     keychainDiscarded,
+    spawnDirs,
     paste,
     login: runAnthropicLogin(cb, deps),
   };
@@ -135,6 +144,39 @@ test("CLI login: URL surfaced, code relayed to stdin, minted oauth stored", asyn
   expect(h.cleaned).toEqual(["/tmp/fake-login-dir"]); // the refresh-bearing dir never lingers
   expect(h.keychainDiscarded).toEqual(["/tmp/fake-login-dir"]);
   expect(h.child.killed).toBe(true);
+});
+
+test("CLI login in the shared dir (a host that never serves anthropic): the dir is the holder, nothing stored or discarded", async () => {
+  const h = harness({ sharedLoginDir: "/houston-home/claude-login" });
+  h.child.stdout.write(`visit: ${AUTHORIZE_URL}\n`);
+  await tick();
+  expect(h.spawnDirs).toEqual(["/houston-home/claude-login"]);
+  h.paste("the-verification-code");
+  await tick();
+  h.child.exit(0);
+  await h.login;
+  // The credential stays where the CLI cached it — every agent runtime's
+  // status probe and the Claude SDK read that dir — so auth.json gets no
+  // entry to capture, and neither the dir nor its Keychain item is destroyed.
+  expect(h.stored.oauth).toEqual([]);
+  expect(h.stored.tokens).toEqual([]);
+  expect(h.cleaned).toEqual([]);
+  expect(h.keychainDiscarded).toEqual([]);
+});
+
+test("CLI login in the shared dir: exit 0 with nothing cached still fails loud", async () => {
+  const h = harness({
+    sharedLoginDir: "/houston-home/claude-login",
+    credentialFile: null,
+    keychain: null,
+  });
+  h.child.stdout.write(`visit: ${AUTHORIZE_URL}\n`);
+  await tick();
+  h.paste("the-verification-code");
+  await tick();
+  h.child.exit(0);
+  await expect(h.login).rejects.toThrow(/no credential was stored/);
+  expect(h.cleaned).toEqual([]);
 });
 
 test("CLI login: no credential file but a Keychain item (macOS host) stores oauth", async () => {
