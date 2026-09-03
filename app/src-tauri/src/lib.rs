@@ -2,6 +2,10 @@ mod appimage_env;
 mod auth;
 mod bug_report;
 mod child_guard;
+// Only the Windows shell repair consumes it; the pure path logic stays
+// compiled (and tested) on every host.
+#[cfg_attr(not(windows), allow(dead_code))]
+mod git_bash;
 mod claude_login;
 mod codex_oauth_loopback;
 mod commands;

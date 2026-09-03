@@ -24,13 +24,16 @@
 //! Two Tauri events carry the flow to the webview:
 //!   * `claude-login://url`  — payload is the authorize URL `String` (emitted at
 //!     most once, when the CLI prints its `visit:` line).
-//!   * `claude-login://done` — payload
-//!     `{ success: bool, error: string | null, helperUnavailable?: bool }`.
+//!   * `claude-login://done` — payload `{ success: bool, error: string | null,
+//!     helperUnavailable?: bool, shellUnavailable?: bool }`.
 //!     A `null` error on `success: false` is a benign CANCEL (the frontend
 //!     treats it as a silent dismissal, not a failure to toast).
 //!     `helperUnavailable: true` means the helper binary cannot run on this
 //!     machine at all (pre-AVX2 CPU, signal death) — the frontend degrades a
 //!     remote-engine login to the runtime's paste flow instead of toasting.
+//!     `shellUnavailable: true` means the CLI started but refused its Windows
+//!     shell gate (no runnable Git Bash / PowerShell; [`shell_gate`]) — same
+//!     degrade path, and a co-located engine gets install-Git copy.
 //!
 //! Cancel + child kill run through `ClaudeLoginState`; the background task that
 //! owns the child polls a shared cancel flag and tears the child down when set.
@@ -38,6 +41,7 @@
 //! Split across submodules to stay under the 200-line file limit:
 //!   * [`resolve`] — binary/config-dir resolution, command building, URL parse.
 //!   * [`runner`] — the spawn/stream/wait state machine (`run_login_child`).
+//!   * [`shell_gate`] — classify the CLI's Windows shell-gate refusal.
 //!   * [`credential`] — extract the cached credential to PUSH to a remote pod.
 
 // `pub(crate)` so `generate_handler!` in `lib.rs` can name the command at its
@@ -50,6 +54,7 @@ pub(crate) mod credential;
 pub(crate) mod discard;
 mod resolve;
 mod runner;
+mod shell_gate;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};

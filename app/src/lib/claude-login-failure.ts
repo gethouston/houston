@@ -10,8 +10,12 @@
  *     browser login can only reproduce it, so a remote engine degrades to the
  *     runtime's paste flow (which needs no local helper) and a co-located one
  *     gets a translated explanation.
- *   * anything else — a real login failure (declined, timed out, shell gate);
- *     toast the reason verbatim.
+ *   * `shellUnavailable: true` — the helper ran but the Claude CLI refused
+ *     its Windows shell gate (no runnable Git Bash / PowerShell;
+ *     HOUSTON-APP-4ZP). A missing prerequisite, not a login failure: same
+ *     paste-flow degrade on a remote engine, install-Git copy co-located.
+ *   * anything else — a real login failure (declined, timed out); toast the
+ *     reason verbatim.
  */
 
 /** Payload of the native `claude-login://done` event. */
@@ -20,6 +24,8 @@ export interface ClaudeLoginDone {
   error: string | null;
   /** The helper binary cannot run on this machine at all. */
   helperUnavailable?: boolean;
+  /** The CLI refused its Windows shell gate: no runnable Git Bash / PowerShell. */
+  shellUnavailable?: boolean;
 }
 
 export type ClaudeLoginFailureRoute =
@@ -29,6 +35,8 @@ export type ClaudeLoginFailureRoute =
   | { kind: "paste-fallback"; reason: string }
   /** Co-located engine + unrunnable helper: translated explanation. */
   | { kind: "helper-unsupported" }
+  /** Co-located engine + CLI shell gate: install Git for Windows copy. */
+  | { kind: "shell-unavailable" }
   /** A real login failure: surface the helper's reason. */
   | { kind: "error"; error: string };
 
@@ -40,6 +48,11 @@ export function classifyClaudeLoginFailure(
     return remoteEngine
       ? { kind: "paste-fallback", reason: done.error ?? "helper unavailable" }
       : { kind: "helper-unsupported" };
+  }
+  if (done.shellUnavailable) {
+    return remoteEngine
+      ? { kind: "paste-fallback", reason: done.error ?? "shell unavailable" }
+      : { kind: "shell-unavailable" };
   }
   if (done.error === null) return { kind: "silent" };
   return { kind: "error", error: done.error };

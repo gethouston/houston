@@ -33,6 +33,54 @@ describe("classifyClaudeLoginFailure", () => {
     );
   });
 
+  it("routes the CLI shell gate on a remote engine to the paste flow", () => {
+    // HOUSTON-APP-4ZP: the CLI refused to start for want of Git Bash /
+    // PowerShell. The runtime's paste flow needs no local shell either.
+    deepStrictEqual(
+      classifyClaudeLoginFailure(
+        {
+          success: false,
+          error:
+            "Claude sign-in failed (exit 1): unable to find CLAUDE_CODE_GIT_BASH_PATH",
+          shellUnavailable: true,
+        },
+        true,
+      ),
+      {
+        kind: "paste-fallback",
+        reason:
+          "Claude sign-in failed (exit 1): unable to find CLAUDE_CODE_GIT_BASH_PATH",
+      },
+    );
+  });
+
+  it("explains the CLI shell gate on a co-located engine with install copy", () => {
+    deepStrictEqual(
+      classifyClaudeLoginFailure(
+        { success: false, error: "shell gate", shellUnavailable: true },
+        false,
+      ),
+      { kind: "shell-unavailable" },
+    );
+  });
+
+  it("lets an unrunnable helper outrank the shell gate", () => {
+    // Both flags set is contradictory (the CLI never ran); the helper verdict
+    // is the more fundamental one and keeps its surface.
+    deepStrictEqual(
+      classifyClaudeLoginFailure(
+        {
+          success: false,
+          error: "helper died",
+          helperUnavailable: true,
+          shellUnavailable: true,
+        },
+        false,
+      ),
+      { kind: "helper-unsupported" },
+    );
+  });
+
   it("keeps a cancel silent", () => {
     deepStrictEqual(
       classifyClaudeLoginFailure({ success: false, error: null }, true),
