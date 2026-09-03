@@ -8,15 +8,16 @@ import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
 /**
- * Where a click in the rail takes the user. Both destinations close the mobile
- * drawer on the way out, so the screen they asked for is immediately visible.
+ * Where a click in the rail takes the user. Both destinations close the
+ * phone's More menu on the way out, so the screen they asked for is
+ * immediately visible.
  */
 export function useSidebarNavigation(args: {
   /** Every team the caller can see — an agent's own team is looked up here. */
   teams: TeamView[];
-  closeMobileSidebar: () => void;
+  closeMobileMenu: () => void;
 }) {
-  const { teams, closeMobileSidebar } = args;
+  const { teams, closeMobileMenu } = args;
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
@@ -29,7 +30,7 @@ export function useSidebarNavigation(args: {
     if (wsId === currentWorkspace?.id) return;
     const ws = workspaces.find((s) => s.id === wsId);
     if (!ws) return;
-    closeMobileSidebar();
+    closeMobileMenu();
     setCurrentWorkspace(ws);
     await loadAgents(ws.id);
   };
@@ -56,7 +57,7 @@ export function useSidebarNavigation(args: {
       "mission-control",
       { agentFilter: agent.id, agentFocus: true },
     );
-    closeMobileSidebar();
+    closeMobileMenu();
   };
 
   return { switchWorkspace, selectAgent };

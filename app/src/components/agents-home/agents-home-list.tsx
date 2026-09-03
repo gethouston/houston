@@ -6,13 +6,16 @@ import {
   Input,
   Skeleton,
 } from "@houston-ai/core";
+import { UserRoundPlus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
+import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHero } from "../shell/page-shell";
 import { useAgentActivitySummaries } from "../shell/use-agent-activity-summaries";
+import { tourAnchor } from "../shell/workspace-tour-steps";
 import { AgentHomeRowCell } from "./agent-home-row";
 import {
   type AgentHomeRow,
@@ -35,6 +38,7 @@ export function AgentsHomeList() {
   const { t } = useTranslation("shell");
   const agents = useAgentStore((s) => s.agents);
   const openAgentsHome = useUIStore((s) => s.openAgentsHome);
+  const { canCreate } = useCanCreateAgents();
   const [query, setQuery] = useState("");
 
   const rosterPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
@@ -62,7 +66,15 @@ export function AgentsHomeList() {
   return (
     <div data-testid="agents-home" className="flex h-full flex-col">
       <PageContainer className="shrink-0 pt-6">
-        <PageHero title={t("agentsHome.title")} className="mb-4 px-3" />
+        <PageHero
+          title={t("agentsHome.title")}
+          className="mb-4 px-3"
+          trailing={
+            canCreate ? (
+              <NewAgentButton label={t("sidebar.addAgent")} />
+            ) : undefined
+          }
+        />
         {agents.length > 0 && (
           <div className="mb-2 px-3">
             <Input
@@ -108,6 +120,26 @@ export function AgentsHomeList() {
         )}
       </PageContainer>
     </div>
+  );
+}
+
+/**
+ * The phone's create-agent control. The desktop reaches the same dialog from
+ * the rail's own `newAgent` anchor; the rail is not rendered below md, so this
+ * carries the anchor there and the spotlight takes whichever is visible.
+ */
+function NewAgentButton({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      data-testid="agents-home-new-agent"
+      {...tourAnchor("newAgent")}
+      onClick={() => useUIStore.getState().setCreateAgentDialogOpen(true)}
+      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-chip text-ink transition-colors active:scale-[0.96] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ht-hairline"
+    >
+      <UserRoundPlus className="size-5" />
+    </button>
   );
 }
 

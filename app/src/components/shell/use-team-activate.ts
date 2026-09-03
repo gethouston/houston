@@ -32,7 +32,7 @@ export function useTeamActivate({
   collapsedLookup,
   teamAgentFilter,
   selectedAgentId,
-  closeMobileSidebar,
+  closeMobileMenu,
 }: {
   /** `useTeams()` — every team the rail draws, in display order. */
   teams: TeamView[];
@@ -47,7 +47,7 @@ export function useTeamActivate({
    *  null. The fifth arm turns on this and not on the stored pin: a pin nothing
    *  on screen is narrowing by must not swallow the click. */
   selectedAgentId: string | null;
-  closeMobileSidebar: () => void;
+  closeMobileMenu: () => void;
 }): TeamActivateHandlers {
   const openTeamView = useUIStore((s) => s.openTeamView);
   const setTeamAgentFilter = useUIStore((s) => s.setTeamAgentFilter);
@@ -77,7 +77,7 @@ export function useTeamActivate({
             .filter((other) => !other.isDefault)
             .map((other) => other.id),
         });
-        closeMobileSidebar();
+        closeMobileMenu();
         break;
       case "open":
         // Coming back to Tasks INSIDE this team, so the agent pin rides along:
@@ -85,14 +85,14 @@ export function useTeamActivate({
         openTeamView(team.id, TEAM_HOME_SECTION, {
           agentFilter: teamAgentFilter,
         });
-        closeMobileSidebar();
+        closeMobileMenu();
         break;
       case "clear-pin":
         // The team's name IS its "all agents" row. Widening back to the whole
         // team is a screen change, so the mobile drawer gets out of the way;
         // the fold is untouched, because the user asked about the BOARD.
         setTeamAgentFilter(null);
-        closeMobileSidebar();
+        closeMobileMenu();
         break;
       case "collapse":
       case "expand":

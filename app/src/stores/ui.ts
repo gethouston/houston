@@ -127,9 +127,12 @@ interface UIState {
    * releasing can never clobber the surface the user just navigated to.
    */
   missionPanelOwners: string[];
-  /** Whether the mobile (<768px) sidebar drawer is open. Session-only, never
-   *  persisted: a drawer restored open after a reload is a trap on a phone. */
-  mobileSidebarOpen: boolean;
+  /** Whether the phone's "More" menu is open (the floating card the nav bar
+   *  raises: the workspace switcher, the long tail of destinations, help).
+   *  Session-only, never persisted: a menu restored open after a reload is a
+   *  trap on a phone. It is deliberately NOT a nav entry — a menu the back
+   *  button could pop would be a place, which it is not. */
+  mobileMoreOpen: boolean;
   /**
    * One-shot nav target for a routine chat with no board card (session-
    * finished notification click, #401): the OWNING agent plus the activity id
@@ -335,7 +338,7 @@ interface UIState {
   setMissionPanelOwner: (ownerId: string, open: boolean) => void;
   /** Release every claim — the "get me out of this panel" escape hatch. */
   closeMissionPanel: () => void;
-  setMobileSidebarOpen: (open: boolean) => void;
+  setMobileMoreOpen: (open: boolean) => void;
   setPendingRoutineChat: (
     target: { agentId: string; activityId: string } | null,
   ) => void;
@@ -395,7 +398,7 @@ const initialUIState = {
   onStartMission: null,
   missionPanelOpen: false,
   missionPanelOwners: [],
-  mobileSidebarOpen: false,
+  mobileMoreOpen: false,
   pendingRoutineChat: null,
   pendingSkillChatActivityId: null,
   integrationSetupChatAgentId: null,
@@ -643,7 +646,7 @@ export const useUIStore = create<UIState>()(
             ? navigated(s, partial, "retreat")
             : partial;
         }),
-      setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
+      setMobileMoreOpen: (mobileMoreOpen) => set({ mobileMoreOpen }),
       setPendingRoutineChat: (pendingRoutineChat) =>
         set({ pendingRoutineChat }),
       setPendingSkillChatActivityId: (pendingSkillChatActivityId) =>

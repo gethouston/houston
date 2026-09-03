@@ -27,13 +27,11 @@
     "help": "Help",
     "inbox": "Inbox",
     "integrations": "Integrations",
-    "mobileNavTitle": "Navigation",
     "myAccounts": "My accounts",
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "newMission": "New task",
     "newTeam": "New team",
-    "openMenu": "Open menu",
     "reportProblem": "Report a problem",
     "runningCount_one": "{{count}} issue running",
     "runningCount_other": "{{count}} issues running",
@@ -415,8 +413,8 @@
   "tabBar": {
     "agents": "Agents",
     "label": "Main navigation",
-    "missionControl": "Tasks",
-    "settings": "Settings"
+    "more": "More",
+    "teams": "Teams"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Native Sentry smoke triggered",
@@ -668,5 +666,9 @@
       "panelEscape": "Leave chat, then close",
       "cheatsheet": "Show this sheet"
     }
+  },
+  "moreMenu": {
+    "help": "Help",
+    "title": "More"
   }
 }

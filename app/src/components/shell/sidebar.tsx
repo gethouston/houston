@@ -10,7 +10,6 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { CreateAgentTeamDialog } from "./create-agent-team-dialog";
 import { EditTeamIdentityDialog } from "./edit-team-identity-dialog";
 import { SidebarDialogs } from "./sidebar-dialogs";
-import { MobileSidebarSheet } from "./sidebar-mobile";
 import { SidebarRail, type SidebarRailModel } from "./sidebar-rail";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { useSidebarAutoCollapse } from "./use-sidebar-auto-collapse";
@@ -48,13 +47,13 @@ export function Sidebar({ children }: { children: ReactNode }) {
     (s) => s.toggleTeamsSectionCollapsed,
   );
 
-  // Below md the fixed rail becomes a Sheet drawer (opened by MobileTopBar's
-  // hamburger). Selecting anything that navigates closes the drawer so the
-  // content is immediately visible.
+  // Below md the rail is not rendered at all: the phone navigates through the
+  // floating nav bar and its More menu (`mobile-nav-bar.tsx`). Selecting
+  // anything that navigates still closes that menu, so the content is
+  // immediately visible.
   const isMobile = useIsMobile();
-  const mobileSidebarOpen = useUIStore((s) => s.mobileSidebarOpen);
-  const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
-  const closeMobileSidebar = () => setMobileSidebarOpen(false);
+  const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
+  const closeMobileMenu = () => setMobileMoreOpen(false);
 
   const { capabilities } = useCapabilities();
   const serverBacked = hasAgentTeams(capabilities);
@@ -78,15 +77,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
     serverBacked,
     canCreateAgents,
     summaries: activitySummaries,
-    closeMobileSidebar,
+    closeMobileMenu,
   });
-  const { navSections, activeNavId } = useSidebarNavItems(
-    t,
-    closeMobileSidebar,
-  );
+  const { navSections, activeNavId } = useSidebarNavItems(t, closeMobileMenu);
   const { switchWorkspace, selectAgent } = useSidebarNavigation({
     teams,
-    closeMobileSidebar,
+    closeMobileMenu,
   });
 
   const model: SidebarRailModel = {
@@ -115,22 +111,24 @@ export function Sidebar({ children }: { children: ReactNode }) {
     onAddAgentToTeam: canCreateAgents
       ? (teamId) => {
           setDialogOpen(true, teamId);
-          closeMobileSidebar();
+          closeMobileMenu();
         }
       : undefined,
     onAddAgent: canCreateAgents
       ? () => {
           setDialogOpen(true);
-          closeMobileSidebar();
+          closeMobileMenu();
         }
       : undefined,
   };
 
-  /* Gutter around the floating "screen" (Arc canvas). The small padding lets
-     the window background show as a frame on all four sides; the screen
-     itself is workspace-shell.tsx's rounded bg-input panel. */
+  /* Gutter around the floating "screen" (Arc canvas). On the desktop the small
+     padding lets the window background show as a frame on all four sides; the
+     screen itself is workspace-shell.tsx's rounded panel. The PHONE has no
+     frame at all — one flat background edge to edge — so the padding is a
+     desktop layer. */
   const gutter = (
-    <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col p-2">
+    <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden p-0 md:p-2">
       {children}
     </div>
   );
@@ -152,18 +150,9 @@ export function Sidebar({ children }: { children: ReactNode }) {
         renameGroup={teamActions.renameGroup}
         setIdentity={teamActions.setIdentity}
       />
-      <div className="flex h-full flex-1 min-w-0">
-        {/* Mobile: the same AppSidebar element, hosted in a drawer; the
-            content column takes the full width. Desktop: the fixed rail. */}
-        {isMobile && (
-          <MobileSidebarSheet
-            open={mobileSidebarOpen}
-            onOpenChange={setMobileSidebarOpen}
-            title={t("shell:sidebar.mobileNavTitle")}
-          >
-            <SidebarRail model={model} t={t} mobile />
-          </MobileSidebarSheet>
-        )}
+      <div className="flex h-full min-w-0 flex-1">
+        {/* Phone: no rail at all, the content column takes the full width.
+            Desktop: the fixed rail. */}
         {isMobile ? (
           gutter
         ) : (

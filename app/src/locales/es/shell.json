@@ -27,13 +27,11 @@
     "help": "Ayuda",
     "inbox": "Bandeja de entrada",
     "integrations": "Integraciones",
-    "mobileNavTitle": "Navegación",
     "myAccounts": "Mis cuentas",
     "needsYouCount_one": "{{count}} asunto necesita tu atención",
     "needsYouCount_other": "{{count}} asuntos necesitan tu atención",
     "newMission": "Nueva tarea",
     "newTeam": "Nuevo equipo",
-    "openMenu": "Abrir menú",
     "reportProblem": "Reportar un problema",
     "runningCount_one": "{{count}} asunto en curso",
     "runningCount_other": "{{count}} asuntos en curso",
@@ -415,8 +413,8 @@
   "tabBar": {
     "agents": "Agentes",
     "label": "Navegación principal",
-    "missionControl": "Tareas",
-    "settings": "Configuración"
+    "more": "Más",
+    "teams": "Equipos"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Prueba nativa de Sentry activada",
@@ -668,5 +666,9 @@
       "panelEscape": "Salir del chat y luego cerrar",
       "cheatsheet": "Mostrar esta hoja"
     }
+  },
+  "moreMenu": {
+    "help": "Ayuda",
+    "title": "Más"
   }
 }

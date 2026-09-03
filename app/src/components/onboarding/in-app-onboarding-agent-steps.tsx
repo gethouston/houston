@@ -6,7 +6,7 @@ import {
   TutorialSpotlight,
   tutorialSelector,
 } from "../tutorial";
-import { DrawerSpotlight } from "./in-app-drawer-spotlight";
+import { MobileSpotlight } from "./in-app-mobile-spotlight";
 import {
   sendMissionSelector,
   sendMissionSurface,
@@ -46,7 +46,8 @@ export function InAppOnboardingAgentSteps({
       );
     case "createAgent":
       return (
-        <DrawerSpotlight
+        <MobileSpotlight
+          home="agents"
           selector={tourSelector("newAgent")}
           title={t("inApp.steps.createAgent.title")}
           hint={t("inApp.steps.createAgent.hint")}

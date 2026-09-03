@@ -30,6 +30,8 @@ export * from "./components/error-boundary";
 // because BOTH the Files surfaces and chat prose name files, and a file has to
 // look like the same file in both (PRODUCT-1231).
 export * from "./components/file-type-icons";
+export * from "./components/floating-nav-bar";
+export * from "./components/floating-nav-bar-styles";
 export * from "./components/highlighted-text";
 export * from "./components/houston-avatar";
 export * from "./components/hover-card";

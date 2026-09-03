@@ -18,9 +18,8 @@ import { AgentWarmingDialog } from "./agent-warming-dialog";
 import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { KeepAliveViews } from "./keep-alive-views";
-import { MobileHeaderSlotProvider } from "./mobile-header-slot";
-import { MobileTabBar } from "./mobile-tab-bar";
-import { MobileTopBar } from "./mobile-top-bar";
+import { MobileMoreMenu } from "./mobile-more-menu";
+import { MobileNavBar } from "./mobile-nav-bar";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
 import { topLevelScreenViews } from "./top-level-screen-views";
@@ -44,17 +43,10 @@ interface WorkspaceShellProps {
  * and this file is layout plus the dialogs that float over it — the standing
  * view rules live in {@link useWorkspaceViewGuards}.
  */
-export function WorkspaceShell(props: WorkspaceShellProps) {
-  // The phone top bar's title slot is shared between the bar (inside the
-  // frame) and every screen's page header, so the provider sits above both.
-  return (
-    <MobileHeaderSlotProvider>
-      <WorkspaceShellFrame {...props} />
-    </MobileHeaderSlotProvider>
-  );
-}
-
-function WorkspaceShellFrame({ toasts, onDismissToast }: WorkspaceShellProps) {
+export function WorkspaceShell({
+  toasts,
+  onDismissToast,
+}: WorkspaceShellProps) {
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
   const inAppOnboardingActive = useUIStore((s) => s.inAppOnboardingActive);
@@ -95,7 +87,10 @@ function WorkspaceShellFrame({ toasts, onDismissToast }: WorkspaceShellProps) {
           The shell stays fully interactive under the in-app onboarding: the
           user must click the real controls, so that overlay does its own
           selective blocking. */}
-      <div className="flex h-dvh flex-col bg-transparent text-ink">
+      {/* The PHONE is one flat background edge to edge: no gutter frame, no
+          floating screen card. The desktop keeps the Arc canvas, where the
+          transparent frame lets the window background read through. */}
+      <div className="flex h-dvh flex-col bg-background text-ink md:bg-transparent">
         {/* Seamless title bar (macOS titleBarStyle: Overlay). The strip is
             transparent, so it's the window-background colour in both themes —
             the traffic lights float over the app's own background with no
@@ -108,19 +103,16 @@ function WorkspaceShellFrame({ toasts, onDismissToast }: WorkspaceShellProps) {
         )}
         <div className="flex min-h-0 flex-1">
           <Sidebar>
-            {/* Hamburger row for the mobile drawer; CSS-hidden at md+, gone
-                entirely while the chat screen is pushed (the chat's own back
-                bar is the header then). */}
-            {!mobileBarsHidden && <MobileTopBar />}
-            {/* Transparent row: the window gutter shows in the gap-2 between
-              the cards (and around them). main + the mission panel are each
-              their OWN rounded frosted "screen" card, so the rounding reads
-              against the gutter. `relative` anchors the mobile full-screen
-              mission panel overlay. */}
-            <div className="relative flex min-w-0 flex-1 overflow-hidden gap-2">
+            {/* Transparent row: on the desktop the window gutter shows in the
+              gap-2 between the cards (and around them), and main + the mission
+              panel are each their OWN rounded "screen" card so the rounding
+              reads against it. The phone has no gutter, so no gap and no
+              rounding. `relative` anchors the phone's full-screen mission
+              panel overlay. */}
+            <div className="relative flex min-w-0 flex-1 gap-0 overflow-hidden md:gap-2">
               <main
                 {...tourAnchor("main")}
-                className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-2xl bg-background canvas-screen"
+                className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-background canvas-screen md:rounded-2xl"
               >
                 <TeamStatusBanner />
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -139,7 +131,7 @@ function WorkspaceShellFrame({ toasts, onDismissToast }: WorkspaceShellProps) {
                   ref={setPanelContainer}
                   data-testid="mission-panel"
                   className={cn(
-                    "h-full overflow-hidden rounded-2xl bg-background canvas-screen",
+                    "h-full overflow-hidden rounded-none bg-background canvas-screen md:rounded-2xl",
                     // Mobile: the panel takes the whole content area (the
                     // board stays mounted underneath); its own close button
                     // returns to the board.
@@ -149,19 +141,20 @@ function WorkspaceShellFrame({ toasts, onDismissToast }: WorkspaceShellProps) {
                 />
               )}
               {mobileChatOpen && (
-                <div className="absolute inset-0 z-40 overflow-hidden rounded-2xl bg-background canvas-screen">
+                <div className="absolute inset-0 z-40 overflow-hidden rounded-none bg-background canvas-screen md:rounded-2xl">
                   <MissionChatScreen />
                 </div>
               )}
             </div>
           </Sidebar>
         </div>
-        {/* Bottom tab bar (Agents / Tasks / Settings); CSS-hidden at md+ and
-            gone while a chat is up on the phone (pushed screen or the
-            board's full-screen panel): chat is a push, not a tab, so the
+        {/* The floating nav bar (Agents / Teams / More + compose); CSS-hidden
+            at md+ and gone while a chat is up on the phone (pushed screen or
+            the board's full-screen panel): chat is a push, not a tab, so the
             back affordances are the way out and the composer gets the full
             height above the keyboard. */}
-        {!mobileBarsHidden && <MobileTabBar />}
+        {!mobileBarsHidden && <MobileNavBar />}
+        <MobileMoreMenu />
         <MobileNewMissionSheet />
         <CreateAgentDialog />
         <AgentWarmingDialog />

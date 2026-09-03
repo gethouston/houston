@@ -11,8 +11,10 @@
  * `workspace-shell.tsx` (`main`), `new-mission-button.tsx` and, below md, the
  * phone board's Running page "+" (`mission-board.tsx` hands it to the column;
  * `newMission`, one per breakpoint — the spotlight takes the visible one),
- * and `mobile-top-bar.tsx` (`mobileMenu`, the hamburger the phone's
- * drawer-hosted rows are reached through).
+ * `agents-home-list.tsx` (`newAgent` again, the phone's own create control),
+ * and `mobile-nav-bar.tsx` (`mobileMenu`, the More button the phone's long
+ * tail of destinations is reached through, and `mobileAgentsTab`, the item
+ * that opens the Agents home).
  *
  * The vocabulary is shared: the in-app onboarding spotlights these anchors
  * (`in-app-onboarding.tsx`) and the e2e specs address the shell by them.
@@ -31,6 +33,7 @@ export const TOUR_TARGETS = [
   "nav-agent-store",
   "appTour",
   "mobileMenu",
+  "mobileAgentsTab",
 ] as const;
 
 export type TourTarget = (typeof TOUR_TARGETS)[number];

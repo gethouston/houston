@@ -1,27 +1,45 @@
+import { AGENTS_HOME_VIEW_ID } from "../../lib/top-level-views.ts";
 import { tourSelector } from "../shell/workspace-tour-steps.ts";
 
 /**
  * Where the in-app onboarding's spot steps point on the PHONE, kept pure so
  * the fork unit-tests without React (`app/tests/in-app-mobile-targets.test.ts`).
  *
- * Below md the shell is a different tree, not a narrower one: the sidebar rail
- * lives in a drawer behind the top bar's hamburger, the board's New task is
- * the Running page's leading "+", and composing is a pushed chat
+ * Below md the shell is a different tree, not a narrower one: there is no
+ * sidebar rail at all (the long tail of destinations is the nav bar's More
+ * menu, creating an agent is a control on the Agents home), the board's New
+ * task is the Running page's leading "+", and composing is a pushed chat
  * screen rather than the board's side panel. A step that names a desktop
  * control by selector alone points at nothing there — and with nothing to
- * ring, the veil's blockers cover the whole screen, the hamburger included.
+ * ring, the veil's blockers cover the whole screen, the way in included.
  */
 
-/** A sidebar-row step's three shapes: the rail on the glass (desktop), the
- *  hamburger while the drawer is shut, the row inside the open drawer. */
-export type DrawerSpotPhase = "rail" | "openMenu" | "inDrawer";
+/** Where a step's control lives on the phone. */
+export type MobileSpotHome = "more" | "agents";
 
-export function drawerSpotPhase(args: {
+/**
+ * A step's shapes: the rail on the glass (desktop), the way IN while the
+ * control is out of reach, and the control itself once it is reachable —
+ * inside the More menu (a dialog, so `inDialog`) or plainly on the Agents
+ * home screen.
+ */
+export type MobileSpotPhase =
+  | "rail"
+  | "openMenu"
+  | "inMenu"
+  | "openAgents"
+  | "onScreen";
+
+export function mobileSpotPhase(args: {
   isMobile: boolean;
-  drawerOpen: boolean;
-}): DrawerSpotPhase {
+  home: MobileSpotHome;
+  /** Whether the nav bar's More menu is up. */
+  menuOpen: boolean;
+  viewMode: string;
+}): MobileSpotPhase {
   if (!args.isMobile) return "rail";
-  return args.drawerOpen ? "inDrawer" : "openMenu";
+  if (args.home === "more") return args.menuOpen ? "inMenu" : "openMenu";
+  return args.viewMode === AGENTS_HOME_VIEW_ID ? "onScreen" : "openAgents";
 }
 
 /** What the send step is ringing: the New task control, the desktop board's

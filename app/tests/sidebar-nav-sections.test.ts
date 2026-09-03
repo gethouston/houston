@@ -174,7 +174,7 @@ describe("Settings left the nav for the footer", () => {
   it("keeps the tour's Settings anchor resolving, and opens the INDEX", () => {
     assert.ok(FOOTER.includes('dataAttrs={tourAnchor("nav-settings")}'));
     assert.ok(FOOTER.includes("openSettings(null)"));
-    assert.ok(FOOTER.includes("setMobileSidebarOpen(false)"));
+    assert.ok(FOOTER.includes("setMobileMoreOpen(false)"));
     assert.ok(FOOTER.includes("active={viewMode === SETTINGS_VIEW_ID}"));
   });
 

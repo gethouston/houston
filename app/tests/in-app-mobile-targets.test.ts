@@ -1,25 +1,49 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  drawerSpotPhase,
+  mobileSpotPhase,
   sendMissionSelector,
   sendMissionSurface,
 } from "../src/components/onboarding/in-app-mobile-targets.ts";
 
-test("a sidebar-row step is the plain rail spotlight on desktop, drawer state notwithstanding", () => {
-  assert.equal(drawerSpotPhase({ isMobile: false, drawerOpen: false }), "rail");
-  assert.equal(drawerSpotPhase({ isMobile: false, drawerOpen: true }), "rail");
+test("every step is the plain rail spotlight on desktop, phone state notwithstanding", () => {
+  for (const home of ["more", "agents"] as const)
+    for (const menuOpen of [false, true])
+      assert.equal(
+        mobileSpotPhase({
+          isMobile: false,
+          home,
+          menuOpen,
+          viewMode: "inbox",
+        }),
+        "rail",
+      );
 });
 
-test("on the phone the step rings the hamburger while the drawer is shut, then the row inside it", () => {
-  assert.equal(
-    drawerSpotPhase({ isMobile: true, drawerOpen: false }),
-    "openMenu",
-  );
-  assert.equal(
-    drawerSpotPhase({ isMobile: true, drawerOpen: true }),
-    "inDrawer",
-  );
+test("a More-menu step rings the More button while the menu is shut, then the row inside it", () => {
+  const spot = (menuOpen: boolean) =>
+    mobileSpotPhase({
+      isMobile: true,
+      home: "more",
+      menuOpen,
+      viewMode: "inbox",
+    });
+  assert.equal(spot(false), "openMenu");
+  assert.equal(spot(true), "inMenu");
+});
+
+test("an Agents-home step rings the Agents item until that screen is on the glass", () => {
+  const spot = (viewMode: string) =>
+    mobileSpotPhase({
+      isMobile: true,
+      home: "agents",
+      menuOpen: false,
+      viewMode,
+    });
+  assert.equal(spot("inbox"), "openAgents");
+  assert.equal(spot("team"), "openAgents");
+  // On the screen the control is plainly there: no dialog, so no `inDialog`.
+  assert.equal(spot("agents-home"), "onScreen");
 });
 
 test("the send step rings the New task control until the user's own composer is up", () => {

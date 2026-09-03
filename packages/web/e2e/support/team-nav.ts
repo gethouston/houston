@@ -78,14 +78,12 @@ export function screen(page: Page): Locator {
 /**
  * Where the screen on the glass draws its HEADER cluster.
  *
- * Desktop draws it inside the screen. Below the breakpoint the active screen
- * portals the cluster into the phone top bar's title slot, beside the drawer
- * control — outside `[data-screen-active]`. Only the active screen may claim
- * that slot, so a header lookup through the union is as strict as one through
- * the screen alone.
+ * ONE home at every width now: the strip inside the screen. The phone used to
+ * portal the cluster into a top bar; that bar retired with the hamburger it
+ * carried. Kept as its own helper so the specs keep saying what they mean.
  */
 export function headerChrome(page: Page): Locator {
-  return screen(page).or(page.getByTestId("mobile-top-bar"));
+  return screen(page);
 }
 
 /**

@@ -45,7 +45,7 @@ export function SidebarFooter(props: { collapsed: boolean }) {
   const { t } = useTranslation("shell");
   const viewMode = useUIStore((s) => s.viewMode);
   const openSettings = useUIStore((s) => s.openSettings);
-  const setMobileSidebarOpen = useUIStore((s) => s.setMobileSidebarOpen);
+  const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
   const runGuidedSetup = useRunGuidedSetup();
   return (
     <div className="flex flex-col">
@@ -69,7 +69,7 @@ export function SidebarFooter(props: { collapsed: boolean }) {
               // section is already open, leaving the user staring at the
               // section they wanted to leave.
               openSettings(null);
-              setMobileSidebarOpen(false);
+              setMobileMoreOpen(false);
             }}
           />
         </div>
@@ -81,14 +81,14 @@ export function SidebarFooter(props: { collapsed: boolean }) {
             reportProblem: t("sidebar.reportProblem"),
           }}
           onGuideMe={() => {
-            setMobileSidebarOpen(false);
+            setMobileMoreOpen(false);
             runGuidedSetup();
           }}
           onReportProblem={() => {
             // The one bug-report surface, reached from the place a user is
             // standing when something goes wrong rather than duplicated here.
             openSettings("reportBug");
-            setMobileSidebarOpen(false);
+            setMobileMoreOpen(false);
           }}
         />
       </div>

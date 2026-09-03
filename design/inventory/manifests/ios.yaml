@@ -325,7 +325,11 @@ components:
     status: not-started
   team-screen:
     status: not-started
-  mobile-tab-bar:
+  mobile-nav-bar:
+    status: not-started
+  mobile-more-menu:
+    status: not-started
+  teams-home:
     status: not-started
   agents-home:
     status: not-started

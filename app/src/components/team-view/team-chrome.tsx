@@ -1,4 +1,8 @@
-import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import {
+  HoustonAvatar,
+  resolveAgentColor,
+  useIsMobile,
+} from "@houston-ai/core";
 import { ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { teamDisplayName } from "../../lib/team-display";
@@ -19,6 +23,7 @@ import { PageHeaderTabs } from "../shell/page-header/page-header-tabs";
 import { usePageHeaderMode } from "../shell/page-header/page-header-tools";
 import { TeamGlyph } from "../shell/team-glyph";
 import { teamPinnedAgent } from "./team-agent-choice";
+import { TeamMobileHeader } from "./team-mobile-header";
 import { teamSectionTabs } from "./team-section-tabs-model";
 
 /**
@@ -71,6 +76,13 @@ export function TeamChrome({
   const openTeamView = useUIStore((s) => s.openTeamView);
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
   const setTeamAgentFilter = useUIStore((s) => s.setTeamAgentFilter);
+  const isMobile = useIsMobile();
+
+  // Below the breakpoint a team's section is a DRILLED screen pushed from the
+  // Teams tree, so it wears a titled back header instead of this strip — a
+  // genuinely different tree, which is what `useIsMobile()` is for. The tree
+  // already chose the section, so the phone gets no switcher.
+  if (isMobile) return <TeamMobileHeader team={team} section={section} />;
 
   // Through the RULE, never the store directly: the pin persists everywhere,
   // but the lozenge may only show it where the section is actually narrowed by
