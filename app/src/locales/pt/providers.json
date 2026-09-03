@@ -23,7 +23,9 @@
     "signOutFailed": "Não foi possível sair de {{provider}}",
     "signInSucceeded": "Conectado a {{provider}}",
     "cancelFailed": "Não foi possível cancelar o login de {{provider}}",
-    "catalogLoadFailed": "Não foi possível carregar seus modelos de IA disponíveis. A lista pode estar incompleta até isso funcionar."
+    "catalogLoadFailed": "Não foi possível carregar seus modelos de IA disponíveis. A lista pode estar incompleta até isso funcionar.",
+    "orgAdminRequiredTitle": "Peça a um administrador para conectar isso",
+    "orgAdminRequiredBody": "Só um proprietário ou administrador pode conectar a IA da organização. Peça a um deles para configurar, ou para adicionar você a um agente para conectar sua própria conta."
   },
   "providerLogin": {
     "title": "Termine de entrar em {{name}}",
@@ -95,7 +97,8 @@
     "errorKeyRestricted": "Esta chave está bloqueada pelas configurações da sua conta {{name}}. Crie uma chave nova sem restrições usando o botão acima e cole aqui.",
     "errorNvidiaAccountGated": "Sua chave é válida, mas a NVIDIA não está servindo modelos de chat para a sua conta neste momento. Confira se sua chave é uma Personal Key de org.ngc.nvidia.com com \"Public API Endpoints\" em Services Included. Se ainda falhar, peça ao suporte da NVIDIA para habilitar o acesso aos modelos na sua conta.",
     "errorBedrockInvalidKey": "A Amazon Bedrock não aceitou esta chave. Confira se você colou o valor da chave (começa com \"ABSK\") e não o nome da lista (\"BedrockAPIKey-...\"). A AWS mostra o valor só uma vez, então gere uma chave nova se você não o tiver mais.",
-    "errorProviderUnavailable": "Não conseguimos acessar {{name}} para verificar sua chave, então nada foi salvo. Tente de novo em instantes."
+    "errorProviderUnavailable": "Não conseguimos acessar {{name}} para verificar sua chave, então nada foi salvo. Tente de novo em instantes.",
+    "errorOrgAdminRequired": "Só um proprietário ou administrador pode conectar a IA da organização. Peça a um deles para configurar, ou para adicionar você a um agente para conectar sua própria chave."
   },
   "copilot": {
     "title": "Conectar GitHub Copilot",

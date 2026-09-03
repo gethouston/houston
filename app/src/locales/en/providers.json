@@ -23,7 +23,9 @@
     "signOutFailed": "Couldn't sign out of {{provider}}",
     "signInSucceeded": "Signed in to {{provider}}",
     "cancelFailed": "Couldn't cancel {{provider}} sign-in",
-    "catalogLoadFailed": "Couldn't load your available AI models. The list may be incomplete until this succeeds."
+    "catalogLoadFailed": "Couldn't load your available AI models. The list may be incomplete until this succeeds.",
+    "orgAdminRequiredTitle": "Ask an admin to connect this",
+    "orgAdminRequiredBody": "Only an owner or admin can connect AI for the organization. Ask one of them to set it up, or to add you to an agent so you can connect your own account."
   },
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
@@ -95,7 +97,8 @@
     "errorKeyRestricted": "This key is blocked by settings in your {{name}} account. Create a new key without restrictions using the button above, then paste it here.",
     "errorNvidiaAccountGated": "Your key is valid, but NVIDIA isn't serving any chat models to your account right now. Make sure your key is a Personal Key from org.ngc.nvidia.com with \"Public API Endpoints\" under Services Included. If it still fails, ask NVIDIA support to enable model access for your account.",
     "errorBedrockInvalidKey": "Amazon Bedrock didn't accept this key. Make sure you pasted the key value (it starts with \"ABSK\"), not its name from the list (\"BedrockAPIKey-...\"). AWS shows the value only once, so generate a new key if you no longer have it.",
-    "errorProviderUnavailable": "We couldn't reach {{name}} to check your key, so nothing was saved. Please try again in a moment."
+    "errorProviderUnavailable": "We couldn't reach {{name}} to check your key, so nothing was saved. Please try again in a moment.",
+    "errorOrgAdminRequired": "Only an owner or admin can connect AI for the organization. Ask one of them to set it up, or to add you to an agent so you can connect your own key."
   },
   "copilot": {
     "title": "Connect GitHub Copilot",

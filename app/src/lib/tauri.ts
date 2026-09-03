@@ -62,6 +62,7 @@ import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { isNetworkTransportError } from "./network-transport-error";
 import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error";
+import { isOrgAdminRequiredError } from "./org-admin-required-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
@@ -262,6 +263,24 @@ async function surfaceError(
     showExpectedStateToast(
       i18n.t("shell:errorToast.noAgentTitle"),
       i18n.t("shell:errorToast.noAgentDescription"),
+    );
+    return;
+  }
+
+  // Expected business state, not a bug: a plain member tried the org-level
+  // (pre-agent, setup-runtime) provider connect, which the gateway reserves for
+  // owners and admins (403 "only an org owner or admin can connect…"). The
+  // member has no agent of their own to connect through, so tell them to ask
+  // an admin — never the red bug pair, and no Sentry (HOUSTON-APP-597 / -55X).
+  // Runs ahead of the `toast: false` gate on purpose: the OAuth launch callers
+  // that own their own failure toast skip it for this class, so this info
+  // toast is the one surface. The api-key dialog silences it instead and
+  // renders the same copy inline.
+  if (isOrgAdminRequiredError(err)) {
+    const { showExpectedStateToast } = await import("./error-toast");
+    showExpectedStateToast(
+      i18n.t("providers:toast.orgAdminRequiredTitle"),
+      i18n.t("providers:toast.orgAdminRequiredBody"),
     );
     return;
   }
@@ -1900,8 +1919,11 @@ export const tauriProvider = {
       // The connect dialog surfaces the failure inline with the engine's typed
       // reason (bad key / restricted key / provider outage) — a red bug toast
       // on top double-surfaces a user-fixable state. Capture stays on so
-      // verification failures keep reaching Sentry.
-      { toast: false },
+      // verification failures keep reaching Sentry. The gateway's owner/admin
+      // refusal of a member's org-level connect is an expected state the
+      // dialog explains inline too, so it is silenced here (no toast, no
+      // Sentry) rather than routed to the surfacing layer's info toast.
+      { toast: false, silence: isOrgAdminRequiredError },
     ),
   /**
    * Connect an OpenAI-compatible (local / BYO model) server: a base URL + model
