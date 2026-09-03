@@ -14,6 +14,7 @@ import {
 } from "../src/lib/ai-hub/catalog-merge.ts";
 import { piCatalogToCandidates } from "../src/lib/ai-hub/catalog-pi.ts";
 import type { RawModel } from "../src/lib/ai-hub/catalog-snapshot.ts";
+import { isModelVisible } from "../src/lib/provider-overrides.ts";
 
 /** Compact CatalogModelEntry builder with sane defaults. */
 function entry(
@@ -231,5 +232,39 @@ describe("snapshot enrichment is gated to pi-existing models", () => {
     strictEqual(m.toolCall, false);
     strictEqual(m.releaseDate, undefined);
     strictEqual(m.offers.length, 1);
+  });
+});
+
+describe("OpenRouter rolling aliases never surface (PRODUCT-1657)", () => {
+  // `~anthropic/claude-opus-latest` ("Anthropic: Claude Opus Latest") is a
+  // duplicate of a concrete model under a name that reads as Anthropic's own.
+  // In the ceiling editor it became a separate Anthropic-lab model offered ONLY
+  // by OpenRouter, so a Claude user who allowed it got a ceiling nothing they
+  // connected could run. Hidden everywhere the visibility gate applies; still
+  // runnable on the wire for an existing pin.
+  const catalog: ProviderCatalog = [
+    provider("openrouter", "apiKey", [
+      entry("anthropic/claude-opus-5", { name: "Claude Opus 5" }),
+      entry("~anthropic/claude-opus-latest", {
+        name: "Anthropic: Claude Opus Latest",
+      }),
+    ]),
+  ];
+  const candidates = piCatalogToCandidates(catalog);
+
+  it("hides the alias and keeps the concrete id", () => {
+    strictEqual(
+      isModelVisible("openrouter", "~anthropic/claude-opus-latest"),
+      false,
+    );
+    strictEqual(isModelVisible("openrouter", "anthropic/claude-opus-5"), true);
+    deepStrictEqual(
+      candidates.map((c) => c.raw.id),
+      ["anthropic/claude-opus-5"],
+    );
+  });
+
+  it("only gates OpenRouter: a tilde id elsewhere is untouched", () => {
+    strictEqual(isModelVisible("groq", "~anything"), true);
   });
 });

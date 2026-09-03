@@ -246,8 +246,22 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   ]),
 };
 
+/**
+ * OpenRouter's rolling aliases (`~anthropic/claude-opus-latest`, named
+ * "Anthropic: Claude Opus Latest") duplicate a concrete model under a name that
+ * reads as the lab's own. In the hub / ceiling editor they surfaced as a
+ * separate Anthropic-lab model offered ONLY by OpenRouter, so a Claude user who
+ * allowed "Claude Opus Latest" got a ceiling nothing they connected could run
+ * (PRODUCT-1657). Presentation-only, like `VISIBLE_MODELS`: an existing pin to
+ * one stays runnable on the wire.
+ */
+function isOpenRouterAlias(providerId: string, modelId: string): boolean {
+  return providerId === "openrouter" && modelId.startsWith("~");
+}
+
 /** Whether `modelId` may surface for `providerId` (a Houston display id). */
 export function isModelVisible(providerId: string, modelId: string): boolean {
+  if (isOpenRouterAlias(providerId, modelId)) return false;
   const visible = VISIBLE_MODELS[providerId];
   return !visible || visible.has(modelId);
 }

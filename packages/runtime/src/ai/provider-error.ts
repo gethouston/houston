@@ -401,6 +401,35 @@ function localServedFallback(message: string): string | null {
 }
 
 /**
+ * A PINNED model id the provider does not offer, thrown by `safeGetModel`
+ * before any request is made. A pin is never auto-corrected (a routine or a
+ * managed-cloud ceiling chose it on purpose), but the failure must still be a
+ * typed `model_unavailable` card with the provider's default as the one-click
+ * switch target: classified from its message alone it degraded to `unknown`
+ * (report-bug card + a Sentry error per turn), which is what a ceiling that
+ * forced OpenRouter's `anthropic/claude-opus-5` onto Anthropic produced for 15
+ * users (PRODUCT-1657). The message keeps its long-standing shape — unattended
+ * readers (a routine's reconcile) parse it off the persisted assistant message.
+ */
+export class ModelNotOfferedError extends Error {
+  readonly providerError: ProviderError;
+
+  constructor(provider: string, model: string, fallback: string | null) {
+    const message = `${provider} model "${model}" is not available`;
+    super(message);
+    this.name = "ModelNotOfferedError";
+    this.providerError = stampCredentialScope({
+      kind: "model_unavailable",
+      provider,
+      model,
+      reason: "unknown",
+      suggested_fallback: fallback && fallback !== model ? fallback : null,
+      message,
+    });
+  }
+}
+
+/**
  * Map a failed model request to a typed `ProviderError`, then stamp WHOSE
  * credential ran the turn (`stampCredentialScope`).
  *

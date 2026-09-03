@@ -11,6 +11,7 @@ import {
   registerCustomProviderIfConfigured,
   setCustomEndpointConfig,
 } from "./openai-compatible";
+import { ModelNotOfferedError } from "./provider-error";
 import {
   isProvider,
   PROVIDERS,
@@ -170,6 +171,25 @@ test("safeGetModel keeps a valid saved id but falls back on a stale one", () => 
   expect(() => safeGetModel("anthropic", "claude-2.1", true)).toThrow(
     'anthropic model "claude-2.1" is not available',
   );
+  // …and the throw is TYPED: the chat renders a switch-model card with the
+  // provider's default as the one-click target, not the report-bug card
+  // (PRODUCT-1657: a managed-cloud ceiling forced OpenRouter's
+  // `anthropic/claude-opus-5` onto Anthropic for 15 users).
+  let thrown: unknown;
+  try {
+    safeGetModel("anthropic", "anthropic/claude-opus-5", true);
+  } catch (err) {
+    thrown = err;
+  }
+  expect(thrown).toBeInstanceOf(ModelNotOfferedError);
+  expect((thrown as ModelNotOfferedError).providerError).toEqual({
+    kind: "model_unavailable",
+    provider: "anthropic",
+    model: "anthropic/claude-opus-5",
+    reason: "unknown",
+    suggested_fallback: providerDefaultModel("anthropic"),
+    message: 'anthropic model "anthropic/claude-opus-5" is not available',
+  });
 });
 
 test("resolveModel honors a pinned provider regardless of the active one (never auth-gated)", () => {
