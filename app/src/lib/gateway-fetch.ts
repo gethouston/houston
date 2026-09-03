@@ -116,6 +116,13 @@ export async function gatewayFetch(
   const res = await send(bearer);
   if (res.status !== 401) return res;
   const fresh = await refreshGatewayBearer(() => deps.refresh());
+  // A refresh that hands back the SAME bearer the gateway just rejected is not
+  // a real mint (securetoken returns the still-cached idToken when refreshed
+  // twice inside one token's lifetime): replaying it earns the identical 401.
+  // Treat it as signed-out (null) so callers stay quiet instead of surfacing a
+  // raw expired-token error, matching the canonical `cp/fetch` twin
+  // (PRODUCT-1664). A genuinely new bearer the gateway rejects still replays.
+  if (fresh === bearer) return res;
   return fresh ? await send(fresh) : res;
 }
 

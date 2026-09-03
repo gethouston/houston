@@ -28,6 +28,7 @@ afterEach(() => {
 function setEngineWindow(opts: {
   token: string;
   refresh?: () => Promise<string | null>;
+  controlPlane?: boolean;
 }): void {
   Object.defineProperty(globalThis, "window", {
     configurable: true,
@@ -37,8 +38,16 @@ function setEngineWindow(opts: {
         token: opts.token,
       },
       __HOUSTON_SESSION_REFRESH__: opts.refresh,
+      __HOUSTON_CP__: opts.controlPlane === true,
     },
   });
+}
+
+/** The `error` field of a JSON Response body, or null. `signedOutResponse`
+ *  mints `{ error: "signed_out" }`, which the toast layer suppresses. */
+async function errorFieldOf(res: Response): Promise<string | null> {
+  const body = (await res.clone().json()) as { error?: string };
+  return body.error ?? null;
 }
 
 function json(status: number, body: unknown = {}): Response {
@@ -96,6 +105,39 @@ test("a 401 whose refresh fails (real sign-out) surfaces as-is", async () => {
 
   expect(res.status).toBe(401);
   expect(calls).toHaveLength(1);
+});
+
+test("a refresh that returns the SAME rejected bearer stays quiet, never replays", async () => {
+  // On a wake-from-sleep burst, securetoken hands back the still-cached idToken
+  // when refreshed twice inside one token's lifetime — no network mint (no
+  // breadcrumb) — so the "fresh" bearer equals the one the gateway just
+  // rejected. Replaying it earns the identical 401 and a raw expired-token
+  // toast storm (HOUSTON-APP-4YD/53R/58P, PRODUCT-1664). Treat it as the quiet
+  // synthetic signed-out state instead, and never send the doomed replay.
+  const refresh = vi.fn(async () => "stale");
+  setEngineWindow({ token: "stale", refresh, controlPlane: true });
+  const calls = stubFetch(json(401));
+
+  const res = await gatewayAuthFetch(CFG.token)("https://gateway.example/x");
+
+  expect(res.status).toBe(401);
+  expect(await errorFieldOf(res)).toBe("signed_out");
+  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(calls).toHaveLength(1); // only the original attempt — no replay
+});
+
+test("a genuinely NEW fresh bearer the gateway still rejects stays LOUD", async () => {
+  // The narrow same-bearer carve-out must not swallow a real bug: a token the
+  // refresher actually minted anew, rejected on replay, is surfaced raw.
+  const refresh = vi.fn(async () => "fresh");
+  setEngineWindow({ token: "stale", refresh, controlPlane: true });
+  const calls = stubFetch(json(401), json(401));
+
+  const res = await gatewayAuthFetch(CFG.token)("https://gateway.example/x");
+
+  expect(res.status).toBe(401);
+  expect(await errorFieldOf(res)).toBe(null); // the gateway's raw 401, not signed_out
+  expect(calls.map(bearerOf)).toEqual(["Bearer stale", "Bearer fresh"]);
 });
 
 test("concurrent 401s share one refresh (single-flight)", async () => {
