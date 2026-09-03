@@ -1,13 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { parseClaudeOAuthEnvelope } from "@houston/protocol";
-import { RevokedRefillBlockedError } from "../credentials/revocation-tombstones";
 import type { Agent, UserId, WorkspaceRuntime } from "../domain/types";
-import {
-  ApiKeyRejectedError,
-  type RuntimeChannel,
-  type WorkspaceStore,
-} from "../ports";
-import { json, readJson } from "./http";
+import type { RuntimeChannel, WorkspaceStore } from "../ports";
+import { json } from "./http";
+import { handleSetupCredential } from "./setup-runtime-credentials";
 
 /**
  * User-level provider connection for FIRST-RUN, before any agent exists.
@@ -25,10 +20,14 @@ import { json, readJson } from "./http";
  *    agent runtime from — the agent created right after first-run is already
  *    connected.
  *  - Only the connect surface is exposed (providers, auth status, login,
- *    login/complete, capture, api-key, claude-oauth). Everything else the
- *    runtime serves (chat, files, settings) stays agent-scoped; notably
- *    `auth/export` is NOT reachable here — capture pulls it host-side and
- *    scrubs, so a refresh token never crosses to a client.
+ *    login/complete, cancel, logout, capture, forget, api-key, claude-oauth —
+ *    the credential routes live in `setup-runtime-credentials.ts`). Everything
+ *    else the runtime serves (chat, files, settings) stays agent-scoped;
+ *    notably `auth/export` is NOT reachable here — capture pulls it host-side
+ *    and scrubs, so a refresh token never crosses to a client.
+ *
+ * The hosted gateway mirrors this allowlist verbatim in front of the org's
+ * setup pod: a route added here is dead on cloud until it is allowed there too.
  *
  * Returns true when the request was handled.
  */
@@ -48,8 +47,11 @@ function allowedRest(method: string, rest: string): boolean {
     // login/cancel is part of the connect surface: the reconnect card's every
     // press goes cancel → launch (the runtime keeps one login slot per
     // provider), so blocking cancel 404s the chain and the login never
-    // launches (HOU-676).
-    return /^auth\/[^/]+\/login(\/(complete|cancel))?$/.test(rest);
+    // launches (HOU-676). logout is the sign-out half of the same surface: a
+    // space with no agent signs out here, clearing this runtime's own auth
+    // copy right after `credential/forget` drops the central one
+    // (PRODUCT-1662).
+    return /^auth\/[^/]+\/(login(\/(complete|cancel))?|logout)$/.test(rest);
   }
   return false;
 }
@@ -84,89 +86,7 @@ export async function handleSetupRuntime(
   }
   const ctx = { workspace: ws, agent };
 
-  // Connect-once capture: store the setup runtime's fresh credential for the
-  // WHOLE personal workspace and scrub its refresh token — identical to the
-  // per-agent `/agents/:id/credential/capture`, minus the agent.
-  if (rest === "credential/capture" && method === "POST") {
-    const body = (await readJson(req).catch(() => ({}))) as {
-      provider?: unknown;
-    };
-    const provider =
-      typeof body.provider === "string" ? body.provider : undefined;
-    const result = await channel.captureCredential(ctx, provider);
-    if (result.ok) json(res, 200, { ok: true, provider: result.provider });
-    else
-      json(res, result.status, {
-        error: result.error,
-        ...(result.detail ? { detail: result.detail } : {}),
-      });
-    return true;
-  }
-
-  // API-key provider connect (no OAuth dance): store centrally + push into the
-  // setup runtime so `auth/status` reads connected immediately.
-  if (rest === "credential/api-key" && method === "POST") {
-    const { provider, apiKey, endpoint } = await readJson(req);
-    if (!provider || typeof provider !== "string") {
-      json(res, 400, { error: "missing 'provider'" });
-      return true;
-    }
-    if (!apiKey || typeof apiKey !== "string") {
-      json(res, 400, { error: "missing 'apiKey'" });
-      return true;
-    }
-    try {
-      await channel.saveApiKeyCredential(
-        ctx,
-        provider,
-        apiKey,
-        typeof endpoint === "string" && endpoint.trim()
-          ? endpoint.trim()
-          : undefined,
-      );
-      json(res, 200, { ok: true });
-    } catch (err) {
-      // Mirror the per-agent route: the runtime's typed verification reason
-      // rides the body so the connect dialog can show actionable copy.
-      json(res, 502, {
-        error: err instanceof Error ? err.message : String(err),
-        ...(err instanceof ApiKeyRejectedError && err.reason
-          ? { reason: err.reason }
-          : {}),
-      });
-    }
-    return true;
-  }
-
-  // Claude-subscription connect pre-agent: the desktop's browser login mints
-  // the OAuth credential locally, and with NO agent selected yet (first-run
-  // onboarding, the cloud-migration wizard) it lands here — the setup
-  // runtime's workspace-central store serves every agent created or migrated
-  // after. Mirrors the per-agent `/agents/:id/credential/claude-oauth`: the
-  // envelope is validated (a malformed push is a clean 400, never a false
-  // success) so the desktop can fall back to the paste flow.
-  if (rest === "credential/claude-oauth" && method === "POST") {
-    const parsed = parseClaudeOAuthEnvelope(
-      await readJson(req).catch(() => ({})),
-    );
-    if (!parsed.ok) {
-      json(res, 400, { error: parsed.error });
-      return true;
-    }
-    try {
-      await channel.saveClaudeOAuthCredential(ctx, parsed.value, {
-        // Fill-only for a cached-snapshot reconcile (HOU-855) — mirrors the
-        // per-agent claude-oauth route.
-        ifAbsent: url.searchParams.get("if_absent") === "1",
-      });
-      json(res, 200, { ok: true });
-    } catch (err) {
-      // 409, not 502: the fill was refused on purpose (the credential was
-      // just provider-revoked — HOUSTON-APP-530), not lost to a broken hop.
-      json(res, err instanceof RevokedRefillBlockedError ? 409 : 502, {
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
+  if (await handleSetupCredential(channel, ctx, method, rest, url, req, res)) {
     return true;
   }
 

@@ -7,7 +7,10 @@ import { isHoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { connectApiKey } from "./provider-api-key";
 import { pushClaudeCredential } from "./provider-claude-push";
-import { requireProviderAgentId } from "./provider-routing";
+import {
+  requireProviderAgentId,
+  requireProviderRouting,
+} from "./provider-routing";
 
 export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProviderCredentials extends Base {
@@ -28,8 +31,22 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
         // no in-flight turn can re-serve it, then clear the runtime's local copy.
         // SPACE-VALIDATED id (HOU-979): the raw pref can still name the
         // previous space's agent, and forgetting a credential through a foreign
-        // agent's route is a cross-space write.
-        const agentId = requireProviderAgentId(this.ctx);
+        // agent's route is a cross-space write. Refuse only while the list is
+        // still loading; a settled space with NO agent signs out through the
+        // hidden setup runtime, the mirror of how it connected (PRODUCT-1662):
+        // the credential is workspace-central, so no agent is needed to forget
+        // it, and the setup runtime's own auth copy is cleared alongside.
+        requireProviderRouting(this.ctx);
+        const agentId = this.ctx.providerAgentId();
+        if (!agentId) {
+          for (const target of targets) {
+            await controlPlane.forgetSetupCredential(this.ctx.cp, target);
+            await controlPlane
+              .setupRuntimeClientFor(this.ctx.cp)
+              .logout(target);
+          }
+          return;
+        }
         for (const target of targets) {
           await controlPlane.forgetCredential(this.ctx.cp, agentId, target);
           await controlPlane
@@ -76,7 +93,11 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
      */
     async setProviderCustomEndpoint(endpoint: CustomEndpoint): Promise<void> {
       if (this.ctx.cp) {
-        // Space-validated, like every other provider write (HOU-979).
+        // Space-validated, like every other provider write (HOU-979). Unlike
+        // the credential writes this one has NO pre-agent path: the endpoint
+        // is per-runtime state and the setup runtime dies with the first
+        // agent's creation, so a zero-agent space is the typed expected
+        // state the app turns into "create an agent first" (PRODUCT-1662).
         const agentId = requireProviderAgentId(this.ctx);
         await controlPlane.setCustomEndpoint(this.ctx.cp, agentId, endpoint);
         await controlPlane

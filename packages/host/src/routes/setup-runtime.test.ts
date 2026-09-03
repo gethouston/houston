@@ -41,6 +41,7 @@ class FakeChannel implements RuntimeChannel {
   captured: { ctx: ChannelCtx; provider?: string }[] = [];
   apiKeys: { ctx: ChannelCtx; provider: string; apiKey: string }[] = [];
   claudeOAuth: { ctx: ChannelCtx; accessToken: string }[] = [];
+  forgotten: { ctx: ChannelCtx; provider: string }[] = [];
   claudeOAuthError: Error | null = null;
   captureResult: CaptureResult = { ok: true, provider: "openai-codex" };
 
@@ -97,7 +98,9 @@ class FakeChannel implements RuntimeChannel {
     if (this.claudeOAuthError) throw this.claudeOAuthError;
     this.claudeOAuth.push({ ctx, accessToken: cred.accessToken });
   }
-  async forgetCredential(): Promise<void> {}
+  async forgetCredential(ctx: ChannelCtx, provider: string): Promise<void> {
+    this.forgotten.push({ ctx, provider });
+  }
 }
 
 async function setup(opts: { withChannel?: boolean } = {}) {
@@ -245,6 +248,54 @@ test("credential/api-key stores through the channel and validates its body", asy
       body: JSON.stringify({ provider: "opencode" }),
     });
     expect(missing.status).toBe(400);
+  } finally {
+    stop();
+  }
+});
+
+test("credential/forget + auth/:provider/logout: a space with no agent signs out through the setup runtime (PRODUCT-1662)", async () => {
+  const { base, ws, channel, stop } = await setup();
+  try {
+    // The central credential is forgotten on the PERSONAL workspace — the same
+    // scope the setup-runtime connect captured it into.
+    const forget = await fetch(`${base}/setup-runtime/credential/forget`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({ provider: "anthropic" }),
+    });
+    expect(forget.status).toBe(200);
+    expect(await forget.json()).toEqual({ ok: true });
+    expect(channel.forgotten).toEqual([
+      {
+        ctx: expect.objectContaining({
+          workspace: expect.objectContaining({ id: ws.id }),
+          agent: expect.objectContaining({ workspaceId: ws.id }),
+        }),
+        provider: "anthropic",
+      },
+    ]);
+
+    // …and the runtime's own auth copy is cleared through the allowlisted
+    // logout, so `auth/status` stops reading connected.
+    const logout = await fetch(`${base}/setup-runtime/auth/anthropic/logout`, {
+      method: "POST",
+      headers: auth,
+    });
+    expect(logout.status).toBe(200);
+    expect(channel.dispatched).toEqual([
+      expect.objectContaining({
+        method: "POST",
+        rest: "auth/anthropic/logout",
+      }),
+    ]);
+
+    const missing = await fetch(`${base}/setup-runtime/credential/forget`, {
+      method: "POST",
+      headers: auth,
+      body: JSON.stringify({}),
+    });
+    expect(missing.status).toBe(400);
+    expect(channel.forgotten).toHaveLength(1);
   } finally {
     stop();
   }
