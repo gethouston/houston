@@ -75,8 +75,14 @@ export function useAgentInvalidation() {
       // QueryClient + stores. See `agent-invalidation-plan.ts` for the rules
       // (e.g. why ActivityChanged also invalidates the per-agent conversations
       // query the board's face stack is derived from).
+      const roster = useAgentStore.getState().agents;
       const plan = planInvalidation(p, {
         workspaceId: useWorkspaceStore.getState().current?.id,
+        // The aggregate is patched only for agents in THIS viewer's roster:
+        // the hosted stream names every awake agent in the space, and a read
+        // of one the viewer is not assigned to is a 403 every time.
+        isKnownAgent: (agentPath) =>
+          roster.some((a) => a.folderPath === agentPath),
         // Consumed (one-shot) ONLY for the event type it gates, so an
         // unrelated event can never burn a pending OAuth's return marker.
         customOAuthReturn:

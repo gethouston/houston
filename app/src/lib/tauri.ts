@@ -29,7 +29,11 @@ import type {
 } from "@houston-ai/engine-client";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
-import { isAgentGoneError, partitionAgentGoneReads } from "./agent-gone";
+import {
+  isAgentGoneError,
+  isStaleRosterReadError,
+  partitionStaleRosterReads,
+} from "./agent-gone";
 import { isAgentNameConflictError } from "./agent-name-conflict";
 import {
   blockWriteWhileWarming,
@@ -144,12 +148,12 @@ async function call<T>(
  * writes never route through here.
  */
 function passiveAgentRead<T>(label: string, fn: () => Promise<T>): Promise<T> {
-  return call<T>(label, fn, undefined, { silence: isAgentGoneError }).catch(
-    (err) => {
-      healStaleRosterFromError(err);
-      throw err;
-    },
-  );
+  return call<T>(label, fn, undefined, {
+    silence: isStaleRosterReadError,
+  }).catch((err) => {
+    healStaleRosterFromError(err);
+    throw err;
+  });
 }
 
 /**
@@ -1250,26 +1254,28 @@ export const tauriConversations = {
     //
     // A PASSIVE read like every other roster-driven one (`passiveAgentRead`):
     // an agent the server no longer knows (`404 agent not found` — the local
-    // roster is stale after a space switch or a delete on another device) is
-    // not a failed read of OUR agent. Its 404 is silenced and the roster
-    // heals; in a partial sweep the gone agents leave `failedAgents` (nothing
-    // to re-sweep, nothing to report — HOUSTON-APP-4WR / 58R / 55E), and a
-    // sweep where EVERY agent is gone rejects quietly (the caller's surface
-    // silences it too) so the cache keeps the last real rows for the roster
-    // reload that follows. Every real failure keeps its loud path.
+    // roster is stale after a space switch or a delete on another device) or
+    // one this viewer may not read (`403 not allowed` — unassigned on another
+    // device, HOUSTON-APP-5AV / 5AT) is not a failed read of OUR agent. The
+    // error is silenced and the roster heals; in a partial sweep the stale
+    // agents leave `failedAgents` (nothing to re-sweep, nothing to report —
+    // HOUSTON-APP-4WR / 58R / 55E), and a sweep where EVERY agent is stale
+    // rejects quietly (the caller's surface silences it too) so the cache
+    // keeps the last real rows for the roster reload that follows. Every
+    // real failure keeps its loud path.
     return call<AllConversationsSweep>(
       "list_all_conversations",
       async () => {
         const { conversations, failedAgents } =
           await getEngine().listAllConversations(reachable);
-        const { gone, failed } = partitionAgentGoneReads(failedAgents);
-        if (gone.length > 0) {
+        const { stale, failed } = partitionStaleRosterReads(failedAgents);
+        if (stale.length > 0) {
           logger.warn(
-            `[engine:list_all_conversations] ${gone.length} agent(s) gone from the roster: ${gone
-              .map((g) => g.agentPath)
+            `[engine:list_all_conversations] ${stale.length} agent(s) gone from the roster or not readable by this viewer: ${stale
+              .map((g) => `${g.agentPath} (${String(g.reason)})`)
               .join(", ")}`,
           );
-          healStaleRosterFromError(gone[0].reason);
+          healStaleRosterFromError(stale[0].reason);
         }
         return {
           items: conversations.map(conversationToRaw),
@@ -1277,7 +1283,7 @@ export const tauriConversations = {
         };
       },
       undefined,
-      { silence: isAgentGoneError, ...options },
+      { silence: isStaleRosterReadError, ...options },
     ).catch((err) => {
       healStaleRosterFromError(err);
       throw err;

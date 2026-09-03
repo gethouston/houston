@@ -34,6 +34,17 @@ export interface InvalidationContext {
    * which must never pull the window to the front.
    */
   customOAuthReturn?: boolean;
+  /**
+   * Whether an agent path is in the viewer's CURRENT roster. The hosted
+   * event stream is org-wide (the gateway fans in every awake pod in the
+   * space, not just the viewer's assigned agents), so an agent-scoped event
+   * can name an agent this viewer is not allowed to read — and the aggregate
+   * patch it would trigger is a deterministic `403 not allowed` on every
+   * event that agent emits (HOUSTON-APP-540). An agent outside the roster
+   * has no slice in the aggregate to patch, so the read is skipped, not
+   * attempted. Absent means "every agent is known" (single-user hosts).
+   */
+  isKnownAgent?: (agentPath: string) => boolean;
 }
 
 const empty = (): InvalidationPlan => ({
@@ -188,5 +199,9 @@ export function planInvalidation(
       break;
   }
 
+  if (ctx.isKnownAgent) {
+    const known = ctx.isKnownAgent;
+    plan.patchAllConversations = plan.patchAllConversations.filter(known);
+  }
   return plan;
 }

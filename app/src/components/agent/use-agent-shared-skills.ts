@@ -2,7 +2,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useStaleRosterHeal } from "../../hooks/use-stale-roster-heal";
-import { agentRosterSettled, isAgentGoneError } from "../../lib/agent-gone";
+import {
+  agentRosterSettled,
+  isStaleRosterReadError,
+} from "../../lib/agent-gone";
 import { analytics } from "../../lib/analytics";
 import { logger } from "../../lib/logger";
 import { queryKeys } from "../../lib/query-keys";
@@ -54,20 +57,21 @@ export function useAgentSharedSkills(agentPath: string): {
   // the roster having settled for the current space: a space switch wipes the
   // cache and would refire this query for the PREVIOUS space's agent under the
   // new org — a guaranteed `404 agent not found` (HOUSTON-APP-544). A genuine
-  // 404 (agent deleted/unshared elsewhere) is silenced — an expected stale-
-  // roster state, surfaced by the heal below — never a red bug toast.
+  // 404 (agent deleted elsewhere) or 403 (unassigned elsewhere) is silenced —
+  // an expected stale-roster state, surfaced by the heal below — never a red
+  // bug toast.
   const rosterSettled = useAgentStore(agentRosterSettled);
   const manifest = useQuery({
     queryKey: queryKeys.skillsManifest(agentPath),
     queryFn: () =>
-      tauriSkillsManifest.get(agentPath, { silence: isAgentGoneError }),
+      tauriSkillsManifest.get(agentPath, { silence: isStaleRosterReadError }),
     enabled: advertised && rosterSettled,
     staleTime: Number.POSITIVE_INFINITY,
     refetchOnWindowFocus: false,
   });
-  // Inline surfacing for the silenced 404: reload the roster so the ghost
+  // Inline surfacing for the silenced 404/403: reload the roster so the ghost
   // agent (and this whole surface with it) disappears on its own.
-  useStaleRosterHeal(isAgentGoneError(manifest.error));
+  useStaleRosterHeal(isStaleRosterReadError(manifest.error));
 
   // The gateway advertises `capabilities.sharedSkills` unconditionally, even
   // where no skill store is actually bound — so the store's own answer is the
