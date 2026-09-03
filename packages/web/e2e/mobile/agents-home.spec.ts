@@ -21,8 +21,16 @@ test("boot lands on the Agents home with previews and the needs-you chip", async
   // The preview line is the most recently moved mission's title.
   await expect(row).toContainText("Plan a trip to Tokyo");
   // The seeded needs-you mission shows as the row's chip — the same count the
-  // Tasks tab badge carries.
+  // nav bar's Agents badge carries.
   await expect(row.getByText("1", { exact: true })).toBeVisible();
+
+  // The rail is not rendered on the phone, so the create control rides the
+  // list's own title row — carrying the rail's `newAgent` tour anchor, which
+  // is what lets the guided setup ring the same step on both breakpoints.
+  const newAgent = screen(page).getByTestId("agents-home-new-agent");
+  await expect(newAgent).toBeVisible();
+  await expect(newAgent).toHaveAttribute("aria-label", "New agent");
+  await expect(newAgent).toHaveAttribute("data-tour-target", "newAgent");
 });
 
 test("the name filter narrows the list and owns its empty state", async ({

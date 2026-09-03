@@ -1,4 +1,5 @@
 import { expect, test } from "../support/fixtures";
+import { navBar } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
 /**
@@ -12,9 +13,11 @@ import { screen } from "../support/team-nav";
 test("boots to a usable shell on a phone viewport", async ({ page }) => {
   await page.goto("/");
 
-  // The phone shell: sidebar collapsed behind the hamburger, the Agents home
-  // (the landing tab's root) on screen with the seeded mission previewed.
-  await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
+  // The phone shell: no rail and no top bar — the floating nav bar is the
+  // whole chrome, over the Agents home (the landing tree's root) with the
+  // seeded mission previewed.
+  await expect(navBar(page)).toBeVisible();
+  await expect(page.locator("[data-tour-target='sidebar']")).toHaveCount(0);
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
   await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
 

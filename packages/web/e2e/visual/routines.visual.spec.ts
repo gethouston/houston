@@ -1,14 +1,15 @@
 /**
- * Visual-regression baselines for the routines screens at phone width
- * (PR 6 of the responsiveness overhaul): the team's merged Routines list and
- * a routine's own screen. Deterministic under the fake host — one seeded
- * routine with a fixed cron whose row summary ("Runs every day at 9:00 AM")
- * never moves; the routine screen's next-run line reads the wall clock, so
- * that span is masked (`data-relative-time`).
+ * Visual-regression baselines for the routines screens at phone width: the
+ * team's merged Routines list (reached through the Teams tree, so the screen
+ * wears the drilled back chip) and a routine's own screen. Deterministic under
+ * the fake host — one seeded routine with a fixed cron whose row summary
+ * ("Runs every day at 9:00 AM") never moves; the routine screen's next-run line
+ * reads the wall clock, so that span is masked (`data-relative-time`).
  */
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "../support/fixtures";
-import { openTeamSection, screen } from "../support/team-nav";
+import { openPhoneTeamSection } from "../support/mobile-nav";
+import { screen } from "../support/team-nav";
 import { pinTheme, THEMES } from "./support";
 
 // The list footer names the account timezone, auto-seeded from the browser's
@@ -33,11 +34,7 @@ for (const theme of THEMES) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await page
-      .getByTestId("mobile-tab-bar")
-      .getByRole("button", { name: "Tasks" })
-      .click();
-    await openTeamSection(page, "Routines");
+    await openPhoneTeamSection(page, "routines", "click");
     await expect(
       screen(page)
         .getByTestId("routine-row")
@@ -56,11 +53,7 @@ for (const theme of THEMES) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await page
-      .getByTestId("mobile-tab-bar")
-      .getByRole("button", { name: "Tasks" })
-      .click();
-    await openTeamSection(page, "Routines");
+    await openPhoneTeamSection(page, "routines", "click");
     // The title, not the row center — the center is the schedule-summary
     // button, which opens its own editor popover.
     await screen(page)

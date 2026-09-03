@@ -50,6 +50,8 @@ e2e/
     team-nav.ts     # the rail (top-level rows + the Inbox) + the screen ON THE
                     # GLASS; open a team's section, and an agent's settings page
                     # through it ("focused agent screen", the ONE door onto agent policy)
+    mobile-nav.ts   # the PHONE chrome: the floating nav bar, its More menu,
+                    # and the Teams tree (the phone's only section switcher)
     tour-nav.ts     # arm the guided tour from the footer's help control
     sidebar-create.ts # the rail band's ONE "+" menu: new agent / new team
     global-setup.ts # warms the vite dev server once before the suite (see CI below)
@@ -65,13 +67,22 @@ run (and therefore the CI shards): this is the standing gate that keeps the
 phone layout from rotting. The tier-1 set walks the core journey — sign-in
 (`mobile/sign-in.spec.ts`, against the identity-ON server via
 `test.use({ baseURL: AUTH_WEB_URL })`), boot + overflow smoke, Agents home,
-mission chat push, hardware back, board pager + tab bar, and Routines
+mission chat push, hardware back, the nav bar (`mobile/nav-bar.spec.ts`) and
+its More menu (`mobile/more-menu.spec.ts`), the Teams tree
+(`mobile/teams-home.spec.ts`), board pager, and Routines
 (`mobile/routines.spec.ts`: list → a routine's own screen), and first-run
 (`mobile/onboarding.spec.ts`: the survey, then the whole in-app setup over
-the phone shell — drawer rows, provider connect, first agent, first task).
+the phone shell — More-menu rows, provider connect, first agent, first task).
 Specs `.tap()`
 rather than `.click()` and assert zero horizontal overflow
 (`document.documentElement.scrollWidth - clientWidth <= 0`).
+
+The phone chrome is addressed through `support/mobile-nav.ts`: the floating
+nav bar (`mobile-nav-bar`, items by `data-tab`), its More card
+(`mobile-more-menu`, rows by the RAIL's `data-tour-target`), the compose
+button, and `openPhoneTeamSection` — the Teams tree is the phone's only
+section switcher, so a team's Tasks/Routines/Files are reached through it and
+never through `openTeamSection` (the desktop strip, absent below md).
 
 The host itself (`@houston/fake-host`): `startFakeHost`/`stop`, the `/v1/*` +
 `/agents/*` surface, the `StreamChannel` + `serveResumableStream` chat stream,
@@ -260,7 +271,7 @@ set a 390×844 viewport per test):
 | Screen | Themes | Spec |
 | --- | --- | --- |
 | Mission board (home: the first team's) | light + dark, and one 640px narrow run | `shell.visual.spec.ts` |
-| Phone shell (Agents home + bars), board pager, mission chat, agent missions | light + dark each | `shell.visual.spec.ts` |
+| Phone shell (Agents home + nav bar), Teams tree, More menu, board pager, mission chat, agent missions | light + dark each | `shell.visual.spec.ts` |
 | Phone Routines list + a routine's own screen | light + dark each | `routines.visual.spec.ts` |
 | Chat conversation (settled reply) | light + dark | `chat.visual.spec.ts` |
 | Chat markdown | light + dark | `chat-markdown.visual.spec.ts` |

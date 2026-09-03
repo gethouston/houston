@@ -17,7 +17,13 @@
  * relative times against the wall clock and mask those spans.
  */
 import { expect, test } from "../support/fixtures";
-import { navRow } from "../support/team-nav";
+import {
+  moreMenu,
+  navBar,
+  navItem,
+  openPhoneTeamSection,
+} from "../support/mobile-nav";
+import { navRow, screen } from "../support/team-nav";
 import { pinTheme, THEMES } from "./support";
 
 for (const theme of THEMES) {
@@ -47,16 +53,9 @@ test("board home — narrow", async ({ page }) => {
   await page.goto("/");
 
   // Below the breakpoint boot lands on the Agents home; this baseline guards
-  // the BOARD's narrow layout, so open it through its tab.
-  await page
-    .getByTestId("mobile-tab-bar")
-    .getByRole("button", { name: "Tasks" })
-    .click();
-  await expect(
-    page
-      .locator("[data-screen-active='true']")
-      .getByText("Plan a trip to Tokyo"),
-  ).toBeVisible();
+  // the BOARD's narrow layout, so open it through the Teams tree.
+  await openPhoneTeamSection(page, "mission-control", "click");
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
   // The phone chrome (pager + control row) mounts on the isMobile signal a
   // beat after first paint — anchor on it so the baseline never half-renders.
   await expect(page.getByTestId("board-pager")).toBeVisible();
@@ -65,11 +64,11 @@ test("board home — narrow", async ({ page }) => {
 });
 
 /**
- * Phone-width shell, both themes: the mobile chrome (top bar with hamburger +
- * compose, bottom tab bar with the needs-you badge) around the Agents home —
- * the phone's landing screen. The rows carry a live relative-time label
- * (the seed's timestamps are fixed but the wall clock is not), so those spans
- * are masked rather than left to drift the baseline.
+ * Phone-width shell, both themes: the mobile chrome (the floating nav bar with
+ * its needs-you badge and compose button) over the Agents home — the phone's
+ * landing screen, on the one flat background. The rows carry a live
+ * relative-time label (the seed's timestamps are fixed but the wall clock is
+ * not), so those spans are masked rather than left to drift the baseline.
  */
 for (const theme of THEMES) {
   test(`mobile shell — ${theme}`, async ({ page }) => {
@@ -77,7 +76,7 @@ for (const theme of THEMES) {
     await page.goto("/");
 
     await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-    await expect(page.getByTestId("mobile-tab-bar")).toBeVisible();
+    await expect(navBar(page)).toBeVisible();
     await pinTheme(page, theme);
 
     await expect(page).toHaveScreenshot(`mobile-shell-${theme}.png`, {
@@ -88,20 +87,17 @@ for (const theme of THEMES) {
 }
 
 /**
- * The phone board pager (PR 5 of the responsiveness overhaul): the Tasks tab
- * at phone width — segmented control over one full-width column page, the
- * sticky control row (search, archived, compose), the empty Running page's
- * hint. The board's cards carry no live clock, so no masks.
+ * The phone board pager: a team's Tasks screen at phone width — the drilled
+ * back chip and title, the segmented control over one full-width column page,
+ * the sticky control row (search, archived), the empty Running page's hint.
+ * The board's cards carry no live clock, so no masks.
  */
 for (const theme of THEMES) {
   test(`mobile board pager — ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await page
-      .getByTestId("mobile-tab-bar")
-      .getByRole("button", { name: "Tasks" })
-      .click();
+    await openPhoneTeamSection(page, "mission-control", "click");
     await expect(page.getByTestId("board-pager")).toBeVisible();
     await expect(page.getByText("Nothing is running right now.")).toBeVisible();
     await page.mouse.move(0, 0);
@@ -161,6 +157,58 @@ for (const theme of THEMES) {
     await pinTheme(page, theme);
 
     await expect(page).toHaveScreenshot(`mobile-agent-missions-${theme}.png`, {
+      fullPage: true,
+      mask: [page.locator("[data-relative-time]")],
+    });
+  });
+}
+
+/**
+ * The phone's Teams tab root: every team as a tree row with its sections
+ * indented under a guide line — flat, gutterless "plane" rows on the one
+ * background. Nothing here renders a clock, but the mask is kept so a section
+ * row that grows one later cannot silently start drifting the baseline.
+ */
+for (const theme of THEMES) {
+  test(`mobile teams home — ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+
+    await navItem(page, "teams").click();
+    await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
+    await expect(
+      screen(page).getByTestId("teams-home-section").first(),
+    ).toBeVisible();
+    await page.mouse.move(0, 0);
+    await pinTheme(page, theme);
+
+    await expect(page).toHaveScreenshot(`mobile-teams-home-${theme}.png`, {
+      fullPage: true,
+      mask: [page.locator("[data-relative-time]")],
+    });
+  });
+}
+
+/**
+ * The phone's More menu: the floating card the nav bar raises, over the Agents
+ * home. The screen BEHIND it stays visible through the scrim and its rows
+ * carry a live relative-time label, so those spans are masked.
+ */
+for (const theme of THEMES) {
+  test(`mobile more menu — ${theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/");
+
+    await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+    await navItem(page, "more").click();
+    await expect(moreMenu(page)).toBeVisible();
+    await expect(
+      moreMenu(page).getByRole("button", { name: "Inbox" }),
+    ).toBeVisible();
+    await page.mouse.move(0, 0);
+    await pinTheme(page, theme);
+
+    await expect(page).toHaveScreenshot(`mobile-more-menu-${theme}.png`, {
       fullPage: true,
       mask: [page.locator("[data-relative-time]")],
     });

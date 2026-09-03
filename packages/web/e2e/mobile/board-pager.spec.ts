@@ -1,14 +1,17 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "../support/fixtures";
+import { newTaskButton, openPhoneTeamSection } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
 /**
- * The phone board pager (PR 5 of the responsiveness overhaul): below 768px
- * the Tasks board is one full-width column per swipe with a segmented
- * control on top, a sticky control row (search, archived), honest empty
- * pages led by the board's own "+", and card taps that push the chat screen.
- * The team's identity lozenge rides the top bar beside the drawer control,
- * so the screen card opens on the control row.
+ * The phone board pager: below 768px a team's Tasks board is one full-width
+ * column per swipe with a segmented control on top, a sticky control row
+ * (search, archived), honest empty pages led by the board's own "+", and card
+ * taps that push the chat screen.
+ *
+ * The board is reached the way the phone reaches every team section now — the
+ * Teams tree, one row per section — and the screen it pushes carries a back
+ * chip rather than a section switcher.
  */
 
 const AGENT = "houston-assistant";
@@ -17,11 +20,7 @@ test("the board pages between columns via the segmented control", async ({
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByTestId("mobile-tab-bar")
-    .getByRole("button", { name: "Tasks" })
-    .tap();
-  await expect(screen(page)).toHaveAttribute("data-screen", "team");
+  await openPhoneTeamSection(page, "mission-control");
 
   const pager = screen(page).getByTestId("board-pager");
   await expect(pager).toBeVisible();
@@ -62,10 +61,7 @@ test("the board pages between columns via the segmented control", async ({
 
 test("swiping the columns moves the segmented highlight", async ({ page }) => {
   await page.goto("/");
-  await page
-    .getByTestId("mobile-tab-bar")
-    .getByRole("button", { name: "Tasks" })
-    .tap();
+  await openPhoneTeamSection(page, "mission-control");
 
   // A swipe is a horizontal scroll of the snap container: land on the last
   // page and the segment highlight must follow.
@@ -81,10 +77,7 @@ test("the sticky control row searches the board and reaches the archive", async 
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByTestId("mobile-tab-bar")
-    .getByRole("button", { name: "Tasks" })
-    .tap();
+  await openPhoneTeamSection(page, "mission-control");
 
   const controls = screen(page).getByTestId("mobile-board-controls");
   await expect(controls).toBeVisible();
@@ -92,22 +85,18 @@ test("the sticky control row searches the board and reaches the archive", async 
   await expect(
     screen(page).getByTestId("mobile-board-agent-filter"),
   ).toHaveCount(0);
-  // ONE compose in the chrome: the top bar's. The control row carries none.
+  // ONE compose in the chrome: the nav bar's. The control row carries none.
   await expect(controls.getByRole("button", { name: "New task" })).toHaveCount(
     0,
   );
-  await expect(
-    page
-      .getByTestId("mobile-top-bar")
-      .getByRole("button", { name: "New task" }),
-  ).toBeVisible();
-  // The team's identity lozenge rides the top bar, not the screen card.
-  await expect(
-    page.getByTestId("mobile-top-bar").locator("[data-team-section-switcher]"),
-  ).toBeVisible();
+  await expect(newTaskButton(page)).toBeVisible();
+  // No section switcher anywhere on the phone team screen — the Teams tree one
+  // level up chose the section, and the screen retreats to it by chip.
+  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(0);
   await expect(
     screen(page).locator("[data-team-section-switcher]"),
   ).toHaveCount(0);
+  await expect(screen(page).getByTestId("team-mobile-back")).toBeVisible();
 
   // Search narrows the pages' cards and their counts.
   await controls.getByRole("searchbox").fill("launch email");
@@ -134,10 +123,7 @@ test("a running mission fills the Running page with a live count", async ({
     data: { id: "act-running", title: "Checking emails", status: "running" },
   });
   await page.goto("/");
-  await page
-    .getByTestId("mobile-tab-bar")
-    .getByRole("button", { name: "Tasks" })
-    .tap();
+  await openPhoneTeamSection(page, "mission-control");
 
   const pager = screen(page).getByTestId("board-pager");
   await expect(pager.locator("[data-board-page='running']")).toContainText(
