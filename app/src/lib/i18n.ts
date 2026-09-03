@@ -83,6 +83,7 @@ import shellPt from "../locales/pt/shell.json";
 import skillsPt from "../locales/pt/skills.json";
 import storePt from "../locales/pt/store.json";
 import teamsPt from "../locales/pt/teams.json";
+import { bindDocumentLanguage } from "./document-language";
 import {
   activeWorkspaceLocale,
   isSupported,
@@ -220,6 +221,8 @@ const initialLng =
     typeof navigator !== "undefined" ? navigator.language : null,
   ) ??
   "en";
+
+bindDocumentLanguage(i18n);
 
 void i18n
   .use(LanguageDetector)

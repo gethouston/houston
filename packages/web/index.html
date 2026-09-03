@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" translate="no">
   <head>
     <meta charset="UTF-8" />
     <!-- viewport-fit=cover lets the document extend under the notch / home
@@ -11,6 +11,16 @@
          The guard script flips it pre-paint; app/src/lib/theme-boot.ts keeps
          it in sync with every later theme change. -->
     <meta name="theme-color" content="#fcfcfc" />
+    <!-- Houston ships its own es/pt UI, so browser page translation (Chrome,
+         Safari, Edge) only corrupts it: the translator wraps every text node
+         in <font> elements, and React's next commit throws NotFoundError from
+         removeChild/insertBefore and loses the whole screen to the crash card.
+         `translate="no"` on <html> is the standard opt-out; the google meta
+         is the older spelling some translators still key on. Chat replies
+         are covered too: a streaming reply re-renders constantly, so it is
+         the surface a translator breaks first. app/src/lib/foreign-dom-guard.ts
+         is the safety net for translators that ignore both. -->
+    <meta name="google" content="notranslate" />
     <title>Houston</title>
     <!-- Pre-JS frame. The app's CSS arrives with the app bundle, so the FIRST
          painted frame is whatever this document says — before any module runs.

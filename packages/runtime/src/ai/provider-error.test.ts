@@ -3,6 +3,7 @@ import {
   classifyProviderError,
   extractHttpStatus,
   extractRetryAfterSeconds,
+  ModelNotOfferedError,
 } from "./provider-error";
 
 // Fixtures are verbatim-shaped provider failure strings: the Anthropic SDK
@@ -1515,4 +1516,31 @@ test("Azure missing base URL → unauthenticated / no_credentials (PRODUCT-1532)
     message: "base URL is required",
   });
   expect(other.kind).toBe("unknown");
+});
+
+test("ModelNotOfferedError: a pinned id the provider lacks is a typed model_unavailable (PRODUCT-1657)", () => {
+  const err = new ModelNotOfferedError(
+    "anthropic",
+    "anthropic/claude-opus-5",
+    "claude-sonnet-5",
+  );
+  expect(err.message).toBe(
+    'anthropic model "anthropic/claude-opus-5" is not available',
+  );
+  expect(err.providerError).toEqual({
+    kind: "model_unavailable",
+    provider: "anthropic",
+    model: "anthropic/claude-opus-5",
+    reason: "unknown",
+    suggested_fallback: "claude-sonnet-5",
+    message: 'anthropic model "anthropic/claude-opus-5" is not available',
+  });
+  // No switch target when the default IS the failing model.
+  const same = new ModelNotOfferedError(
+    "anthropic",
+    "claude-sonnet-5",
+    "claude-sonnet-5",
+  );
+  if (same.providerError.kind === "model_unavailable")
+    expect(same.providerError.suggested_fallback).toBeNull();
 });

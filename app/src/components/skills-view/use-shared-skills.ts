@@ -1,7 +1,10 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useStaleRosterHeal } from "../../hooks/use-stale-roster-heal";
-import { agentRosterSettled, isAgentGoneError } from "../../lib/agent-gone";
+import {
+  agentRosterSettled,
+  isStaleRosterReadError,
+} from "../../lib/agent-gone";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriSharedSkills, tauriSkillsManifest } from "../../lib/tauri";
 import type { Agent, SkillSummary } from "../../lib/types";
@@ -39,7 +42,7 @@ export function useSharedSkills(args: {
   });
 
   // Gated on the roster having settled for the current space, and with the
-  // agent-gone 404 silenced — same contract as the per-agent hook
+  // agent-gone 404 / not-readable 403 silenced — same contract as the per-agent hook
   // (`use-agent-shared-skills`): a space switch or a stale roster must not
   // turn this fan-out into a storm of red "agent not found" toasts
   // (HOUSTON-APP-544). A gone agent's row simply carries no manifest, and the
@@ -52,7 +55,7 @@ export function useSharedSkills(args: {
             queryKey: queryKeys.skillsManifest(agent.folderPath),
             queryFn: () =>
               tauriSkillsManifest.get(agent.folderPath, {
-                silence: isAgentGoneError,
+                silence: isStaleRosterReadError,
               }),
             staleTime: Number.POSITIVE_INFINITY,
             refetchOnWindowFocus: false,
@@ -61,7 +64,7 @@ export function useSharedSkills(args: {
     combine: (results) => ({
       manifests: results.map((r) => r.data?.enabled),
       manifestsLoading: results.some((r) => r.isLoading),
-      agentGone: results.some((r) => isAgentGoneError(r.error)),
+      agentGone: results.some((r) => isStaleRosterReadError(r.error)),
     }),
   });
   useStaleRosterHeal(agentGone);

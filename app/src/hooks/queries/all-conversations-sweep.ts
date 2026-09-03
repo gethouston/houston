@@ -10,7 +10,7 @@
 
 import type { FailedAgentRead } from "@houston-ai/engine-client";
 import type { QueryClient } from "@tanstack/react-query";
-import { isAgentGoneError } from "../../lib/agent-gone";
+import { isStaleRosterReadError } from "../../lib/agent-gone";
 import {
   NO_SWEEP_RECOVERY,
   type PartialSweepSurface,
@@ -168,13 +168,14 @@ export async function sweepWithRetry(agentPaths: string[]) {
       const next = planSweepAttempt(attempt, isTransientEngineError(err));
       if (next.surface) {
         // Same silence as the engine layer's (`tauriConversations.listAll`):
-        // a sweep where EVERY agent answered "agent not found" is a stale
-        // roster mid-heal, not a bug — logged, no toast, no report.
+        // a sweep where EVERY agent answered "agent not found" or "not
+        // allowed" is a stale roster mid-heal, not a bug — logged, no toast,
+        // no report.
         await surfaceEngineError(
           "list_all_conversations",
           err,
           { agentCount: agentPaths.length, attempts: attempt + 1 },
-          { silence: isAgentGoneError },
+          { silence: isStaleRosterReadError },
         );
         throw err;
       }

@@ -91,6 +91,43 @@ test("listToolkits maps the catalog and sends the platform key", async () => {
   expect(calls[0]?.path).toBe("/api/v3/toolkits?limit=1000");
 });
 
+test("listToolkits walks every catalog page: Composio caps a page at 1000 and the catalog is bigger", async () => {
+  // Prod 2026-09: 1502 toolkits, `limit=1000` still returns 1000 + next_cursor.
+  // Reading page 1 alone silently dropped telegram, odoo, quickbooks, typeform.
+  const { provider, calls } = harness((url) => {
+    if (url.pathname !== "/api/v3/toolkits") return { status: 404 };
+    const cursor = url.searchParams.get("cursor");
+    if (cursor === null) {
+      return { body: { items: [{ slug: "gmail" }], next_cursor: "Mi0xMDAw" } };
+    }
+    if (cursor === "Mi0xMDAw") {
+      return {
+        body: {
+          items: [{ slug: "telegram" }, { slug: "odoo" }],
+          next_cursor: null,
+        },
+      };
+    }
+    return { status: 400 };
+  });
+  const toolkits = await provider.listToolkits();
+  expect(toolkits.map((t) => t.slug)).toEqual(["gmail", "telegram", "odoo"]);
+  expect(calls.map((c) => c.path)).toEqual([
+    "/api/v3/toolkits?limit=1000",
+    "/api/v3/toolkits?limit=1000&cursor=Mi0xMDAw",
+  ]);
+});
+
+test("listToolkits stops on a cursor it has already followed instead of looping forever", async () => {
+  const { provider, calls } = harness((url) => {
+    if (url.pathname !== "/api/v3/toolkits") return { status: 404 };
+    return { body: { items: [{ slug: "gmail" }], next_cursor: "same" } };
+  });
+  const toolkits = await provider.listToolkits();
+  expect(toolkits).toHaveLength(2);
+  expect(calls).toHaveLength(2);
+});
+
 test("listToolkits keeps no_auth toolkits, flagged — ready to use, never connectable", async () => {
   // Composio's catalog includes toolkits with no auth at all (web search,
   // hackernews…). A Connect button on those can only produce the

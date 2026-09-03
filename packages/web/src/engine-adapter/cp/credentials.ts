@@ -171,6 +171,23 @@ export async function captureSetupCredential(
   });
 }
 
+/**
+ * Connect-once logout on the setup runtime — `forgetCredential`, agentless. A
+ * space with NO agent (first-run before the assistant exists, a failed first
+ * create, a deleted last agent) still holds the workspace-central credential
+ * the user connected; the setup runtime is the one runtime that can forget it
+ * (PRODUCT-1662).
+ */
+export async function forgetSetupCredential(
+  cfg: ControlPlaneConfig,
+  provider: string,
+): Promise<void> {
+  await cpFetch(cfg, `/setup-runtime/credential/forget`, {
+    method: "POST",
+    body: JSON.stringify({ provider }),
+  });
+}
+
 /** API-key connect on the setup runtime — `setApiKey`, agentless. */
 export async function setSetupApiKey(
   cfg: ControlPlaneConfig,

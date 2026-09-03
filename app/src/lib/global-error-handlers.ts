@@ -10,6 +10,7 @@ import {
   showEngineWakingToast,
   showErrorToast,
 } from "./error-toast";
+import { installForeignDomSafetyNet } from "./foreign-dom-report";
 import { isNetworkTransportError } from "./network-transport-error";
 
 /**
@@ -28,6 +29,10 @@ import { isNetworkTransportError } from "./network-transport-error";
  * out of both the log file and the user's face.
  */
 export function installGlobalErrorHandlers(): void {
+  // The DOM safety net belongs with the error handlers: it is what keeps a
+  // page rewritten by a browser translator (or a translating extension) from
+  // ever reaching the crash boundary below, and both app entries must get it.
+  installForeignDomSafetyNet();
   window.onerror = (_event, _source, _line, _col, error) => {
     const message = error?.message ?? String(_event);
     console.error("[global:error]", message, error);

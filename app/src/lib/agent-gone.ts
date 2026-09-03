@@ -30,6 +30,34 @@ export function isAgentGoneError(err: unknown): boolean {
   return (err as { status?: unknown }).status === 404;
 }
 
+/**
+ * An agent-scoped READ answered "this viewer may not use this agent"
+ * (HOUSTON-APP-540 / 5AV / 5AT / 55C). The hosted gateway's proxy gate answers
+ * `403 { error: "not allowed", code: "not_assigned" }` for every agent-scoped
+ * route the caller is not assigned to, and a passive read reaches one in two
+ * expected ways: the roster is stale (unassigned on another device, and the
+ * `AgentsChanged` reload has not landed yet), or the event stream named an
+ * agent outside the viewer's roster (the fan-in is org-wide, not per
+ * assignee). Neither is a Houston bug — the honest surface is the roster
+ * without the agent — so a 403 on a passive read is silenced and heals the
+ * roster exactly like {@link isAgentGoneError}. Same structural `.status`
+ * key: the gateway's 403 body carries its code at the top level, which the
+ * engine-client's `.code` getter (`body.error.code`) never sees.
+ */
+export function isAgentUnreadableError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  return (err as { status?: unknown }).status === 403;
+}
+
+/**
+ * The passive-read silence + heal classifier: the agent is gone (404) or not
+ * readable by this viewer (403). Both mean the LOCAL ROSTER is not the
+ * server's — nothing to re-sweep, nothing to report, only a roster to reload.
+ */
+export function isStaleRosterReadError(err: unknown): boolean {
+  return isAgentGoneError(err) || isAgentUnreadableError(err);
+}
+
 /** The agent-store signals the query gate reads. */
 export interface AgentRosterSignals {
   /** True once `loadAgents` has settled at least once (even on failure). */
@@ -86,12 +114,13 @@ export function makeRosterHealer(
 
 /**
  * The engine-call-layer trigger: classify a failed passive read and, when the
- * agent is gone, fire the roster heal for the current workspace — the same
+ * roster is stale about the agent (gone, or not readable by this viewer),
+ * fire the roster heal for the current workspace — the same
  * classify→heal contract `useStaleRosterHeal` gives the query surfaces, for
  * reads whose surfaces don't observe the error (HOUSTON-APP-4W3 family).
  * Factory form so the wiring is unit-testable: `heal` is the ONE shared
  * healer (`lib/roster-heal.ts`) and `currentWorkspaceId` reads the workspace
- * store. Anything but an agent-gone error is a no-op — surfacing stays with
+ * store. Anything but a stale-roster error is a no-op — surfacing stays with
  * the caller.
  */
 export function makeAgentGoneHealTrigger(
@@ -99,26 +128,29 @@ export function makeAgentGoneHealTrigger(
   currentWorkspaceId: () => string | null,
 ): (err: unknown) => void {
   return (err) => {
-    if (!isAgentGoneError(err)) return;
+    if (!isStaleRosterReadError(err)) return;
     void heal(currentWorkspaceId(), true);
   };
 }
 
 /**
- * Split a cross-agent sweep's failed reads into the agents the server no
- * longer knows (roster stale — see {@link isAgentGoneError}) and the real
- * failures. A gone agent's read is not "missions unread": there is nothing to
- * re-sweep or report, only a roster to heal, so the sweep's recovery layer
+ * Split a cross-agent sweep's failed reads into the agents the local roster
+ * is wrong about (gone, or not readable by this viewer — see
+ * {@link isStaleRosterReadError}) and the real failures. A stale-roster read
+ * is not "missions unread": there is nothing to re-sweep or report, only a
+ * roster to heal, so the sweep's recovery layer
  * (`hooks/queries/all-conversations-sweep.ts`) must never see it as a partial
  * failure — that made every stale roster a red toast, a Sentry report, and
- * three doomed re-sweeps (HOUSTON-APP-4WR / 58R / 55E).
+ * three doomed re-sweeps (HOUSTON-APP-4WR / 58R / 55E), and every unassigned
+ * agent a deterministic 403 on every sweep, escalating to
+ * `list_all_conversations_stuck` (HOUSTON-APP-5AV / 5AT).
  */
-export function partitionAgentGoneReads<T extends { reason: unknown }>(
+export function partitionStaleRosterReads<T extends { reason: unknown }>(
   failed: readonly T[],
-): { gone: T[]; failed: T[] } {
-  const gone: T[] = [];
+): { stale: T[]; failed: T[] } {
+  const stale: T[] = [];
   const rest: T[] = [];
   for (const read of failed)
-    (isAgentGoneError(read.reason) ? gone : rest).push(read);
-  return { gone, failed: rest };
+    (isStaleRosterReadError(read.reason) ? stale : rest).push(read);
+  return { stale, failed: rest };
 }

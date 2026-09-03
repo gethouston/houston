@@ -38,6 +38,11 @@ export function providerForModel(model: string): string | null {
   );
 }
 
+/** Whether the catalogued `provider` offers `model` (hydrated catalog lookup). */
+export function providerOffersModel(provider: string, model: string): boolean {
+  return getModel(provider, model) !== undefined;
+}
+
 /**
  * The RESOLVED pair as one line — "Claude · Opus 5". Shown wherever a surface
  * must name the account AND the model it will run on (the routine screen: a

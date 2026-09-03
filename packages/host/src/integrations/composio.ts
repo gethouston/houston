@@ -1,4 +1,5 @@
 import { resolveAuthConfig } from "./composio-auth-config";
+import { fetchAllRawToolkits } from "./composio-catalog";
 import { ComposioHttp } from "./composio-http";
 import { extractIdentity, IDENTITY_PROBES } from "./composio-identity";
 import { searchComposio } from "./composio-search";
@@ -10,7 +11,6 @@ import {
   type RawConnection,
   type RawExecute,
   type RawTool,
-  type RawToolkit,
 } from "./composio-wire";
 import type {
   ActingContext,
@@ -121,18 +121,12 @@ export class ComposioProvider implements IntegrationProvider {
   }
 
   private async fetchToolkits(): Promise<Toolkit[]> {
-    const body = await this.http.call<{ items?: RawToolkit[] }>(
-      "/api/v3/toolkits",
-      {
-        query: { limit: "1000" },
-      },
-    );
     // no_auth toolkits (web search, weather…) stay in the catalog but carry
     // the flag: there is no account to connect (creating an auth config 400s
     // upstream — Auth_Config_NoAuthApp, seen in prod), yet their tools work
     // as-is. The UI renders them "ready to use" instead of connectable, and
     // search stamps their matches `connected` (see composio-search.ts).
-    return (body?.items ?? []).map(mapToolkit);
+    return (await fetchAllRawToolkits(this.http)).map(mapToolkit);
   }
 
   async listToolkits(): Promise<Toolkit[]> {

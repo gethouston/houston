@@ -35,6 +35,7 @@ import {
   piModelIds,
   piProviderIds,
 } from "./pi-catalog";
+import { ModelNotOfferedError } from "./provider-error";
 import { QWEN_PROVIDER_ID, qwenModel } from "./qwen-dashscope";
 import {
   withXiaomiBaseUrl,
@@ -517,7 +518,12 @@ export function safeGetModel(
     // still be validated here: returning undefined would crash the turn
     // downstream with a raw `Cannot read properties of undefined` TypeError.
     const m = lookup(mp);
-    if (!m) throw new Error(`${provider} model "${modelId}" is not available`);
+    if (!m)
+      throw new ModelNotOfferedError(
+        provider,
+        modelId,
+        providerDefaultModel(provider),
+      );
     return m;
   }
   const offered = safeModelIds(provider as ProviderId);

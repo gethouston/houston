@@ -3,9 +3,11 @@ import { describe, it } from "node:test";
 import {
   agentRosterSettled,
   isAgentGoneError,
+  isAgentUnreadableError,
+  isStaleRosterReadError,
   makeAgentGoneHealTrigger,
   makeRosterHealer,
-  partitionAgentGoneReads,
+  partitionStaleRosterReads,
 } from "../src/lib/agent-gone.ts";
 
 describe("isAgentGoneError", () => {
@@ -36,6 +38,36 @@ describe("isAgentGoneError", () => {
     assert.equal(isAgentGoneError("agent not found"), false);
     assert.equal(isAgentGoneError(new Error("boom")), false);
     assert.equal(isAgentGoneError({ status: "404" }), false);
+  });
+});
+
+describe("isAgentUnreadableError", () => {
+  it("matches the gateway proxy's not-assigned 403", () => {
+    // Structural shape of HoustonEngineError(403, {error, code}) — the
+    // gateway's `code` sits at the top level of the body, not under `error`.
+    const err = Object.assign(new Error("not allowed (engine error 403)"), {
+      status: 403,
+      body: { error: "not allowed", code: "not_assigned" },
+    });
+    assert.equal(isAgentUnreadableError(err), true);
+    assert.equal(isStaleRosterReadError(err), true);
+  });
+
+  it("never matches the agent-gone 404 or any loud status", () => {
+    assert.equal(isAgentUnreadableError({ status: 404 }), false);
+    assert.equal(isAgentUnreadableError({ status: 401 }), false);
+    assert.equal(isAgentUnreadableError({ status: 500 }), false);
+    assert.equal(isAgentUnreadableError({ status: 503 }), false);
+    assert.equal(isAgentUnreadableError(new Error("boom")), false);
+    assert.equal(isAgentUnreadableError(undefined), false);
+  });
+
+  it("isStaleRosterReadError is exactly gone-or-unreadable", () => {
+    assert.equal(isStaleRosterReadError({ status: 404 }), true);
+    assert.equal(isStaleRosterReadError({ status: 403 }), true);
+    assert.equal(isStaleRosterReadError({ status: 401 }), false);
+    assert.equal(isStaleRosterReadError({ status: 502 }), false);
+    assert.equal(isStaleRosterReadError(null), false);
   });
 });
 
@@ -138,6 +170,23 @@ describe("makeAgentGoneHealTrigger", () => {
     assert.deepEqual(calls, [["ws-1", true]]);
   });
 
+  it("fires the heal on a not-readable 403 too — the roster is stale", () => {
+    const calls: Array<[string | null, boolean]> = [];
+    const trigger = makeAgentGoneHealTrigger(
+      async (ws, stale) => {
+        calls.push([ws, stale]);
+        return true;
+      },
+      () => "ws-1",
+    );
+    trigger(
+      Object.assign(new Error("not allowed (engine error 403)"), {
+        status: 403,
+      }),
+    );
+    assert.deepEqual(calls, [["ws-1", true]]);
+  });
+
   it("ignores every other failure — surfacing stays with the caller", () => {
     let calls = 0;
     const trigger = makeAgentGoneHealTrigger(
@@ -167,11 +216,18 @@ describe("makeAgentGoneHealTrigger", () => {
   });
 });
 
-describe("partitionAgentGoneReads", () => {
+describe("partitionStaleRosterReads", () => {
   const gone = (agentPath: string) => ({
     agentPath,
     reason: Object.assign(new Error("agent not found (engine error 404)"), {
       status: 404,
+    }),
+  });
+  const unreadable = (agentPath: string) => ({
+    agentPath,
+    reason: Object.assign(new Error("not allowed (engine error 403)"), {
+      status: 403,
+      body: { error: "not allowed", code: "not_assigned" },
     }),
   });
   const waking = (agentPath: string) => ({
@@ -182,8 +238,37 @@ describe("partitionAgentGoneReads", () => {
   });
 
   it("splits a stale roster's 404s from the real failures", () => {
-    const { gone: g, failed } = partitionAgentGoneReads([
+    const { stale: g, failed } = partitionStaleRosterReads([
       gone("a"),
+      waking("b"),
+      gone("c"),
+    ]);
+    assert.deepEqual(
+      g.map((r) => r.agentPath),
+      ["a", "c"],
+    );
+    assert.deepEqual(
+      failed.map((r) => r.agentPath),
+      ["b"],
+    );
+  });
+
+  it("keeps an unassigned agent's 403 out of the partial-sweep surface", () => {
+    // HOUSTON-APP-5AV / 5AT: one agent the viewer may not read, among 200
+    // siblings that answered. The sweep's failed list holds only the 403 —
+    // it is stale-roster, so `failed` is empty and the recovery layer sees a
+    // COMPLETE sweep: no toast, no Sentry report, no re-sweep escalation.
+    const { stale: g, failed } = partitionStaleRosterReads([unreadable("z")]);
+    assert.deepEqual(
+      g.map((r) => r.agentPath),
+      ["z"],
+    );
+    assert.deepEqual(failed, []);
+  });
+
+  it("a mixed sweep still reports the real failure beside the 403", () => {
+    const { stale: g, failed } = partitionStaleRosterReads([
+      unreadable("a"),
       waking("b"),
       gone("c"),
     ]);
@@ -199,7 +284,7 @@ describe("partitionAgentGoneReads", () => {
 
   it("leaves a sweep with no gone agents untouched", () => {
     const reads = [waking("a"), waking("b")];
-    const { gone: g, failed } = partitionAgentGoneReads(reads);
+    const { stale: g, failed } = partitionStaleRosterReads(reads);
     assert.deepEqual(g, []);
     assert.deepEqual(failed, reads);
   });
@@ -207,12 +292,15 @@ describe("partitionAgentGoneReads", () => {
   it("classifies an all-gone sweep as nothing to re-sweep", () => {
     // The space-switch shape (HOUSTON-APP-4WR): every agent of the previous
     // space's roster answers 404 under the new org.
-    const { gone: g, failed } = partitionAgentGoneReads([gone("a"), gone("b")]);
+    const { stale: g, failed } = partitionStaleRosterReads([
+      gone("a"),
+      gone("b"),
+    ]);
     assert.equal(g.length, 2);
     assert.deepEqual(failed, []);
   });
 
   it("is empty-safe", () => {
-    assert.deepEqual(partitionAgentGoneReads([]), { gone: [], failed: [] });
+    assert.deepEqual(partitionStaleRosterReads([]), { stale: [], failed: [] });
   });
 });
