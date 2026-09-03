@@ -23,8 +23,9 @@ import { tourAnchor } from "./workspace-tour-steps";
  * team headers roll up, never a second badge shape invented for the bar.
  *
  * More is a MENU, not a destination, so tapping it opens the card over the
- * shell instead of navigating; it reads as active while that card is up as
- * well as while the location behind it belongs to neither tree.
+ * shell instead of navigating; it lights while that card is up (announced as
+ * expanded, so the screen behind the card stays the one current page) as well
+ * as while the location behind it belongs to neither tree.
  */
 export function MobileNavBar() {
   const { t } = useTranslation(["shell", "dashboard"]);
@@ -67,7 +68,8 @@ export function MobileNavBar() {
       id: "more",
       label: t("shell:tabBar.more"),
       icon: <Ellipsis className="size-5" />,
-      active: active === "more" || moreOpen,
+      active: active === "more",
+      expanded: moreOpen,
       dataAttrs: { ...tourAnchor("mobileMenu"), "data-tab": "more" },
       onSelect: () => setMoreOpen(true),
     },

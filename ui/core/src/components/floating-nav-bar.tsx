@@ -14,6 +14,10 @@ export interface FloatingNavBarItem {
   label: string;
   icon: ReactNode;
   active?: boolean;
+  /** For an item that opens a MENU rather than a place: lit like an active
+   *  item while the menu is up, but announced as expanded, never as the
+   *  current page — the screen behind the menu keeps that. */
+  expanded?: boolean;
   /** Count chip drawn over the icon's top-right corner. */
   badge?: ReactNode;
   /** Extra DOM attributes (e.g. `data-tour-target`) on the rendered button. */
@@ -70,13 +74,14 @@ export function FloatingNavBar({
       <div className="flex items-center gap-2 px-4 pb-3">
         <div className={FLOATING_NAV_PILL_CLASSES}>
           {items.map((item) => {
-            const active = item.active === true;
+            const active = item.active === true || item.expanded === true;
             return (
               <button
                 key={item.id}
                 type="button"
                 aria-label={item.label}
-                aria-current={active ? "page" : undefined}
+                aria-current={item.active ? "page" : undefined}
+                aria-expanded={item.expanded}
                 onClick={item.onSelect}
                 className={floatingNavItemClasses(active)}
                 {...item.dataAttrs}
