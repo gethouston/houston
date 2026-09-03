@@ -1,5 +1,3 @@
-import { isEngineWakingError } from "@houston/app/lib/engine-waking-error";
-import { isNetworkTransportError } from "@houston/app/lib/network-transport-error";
 import type {
   BoardStatus,
   FeedOutput,
@@ -7,6 +5,8 @@ import type {
   SessionStatusValue,
 } from "@houston/sdk";
 import { emitEvent } from "./bus";
+import { isEngineWakingError } from "./engine-waking-error";
+import { isNetworkTransportError } from "./network-transport-error";
 import { toOldProvider } from "./synthetic";
 
 /**

@@ -229,6 +229,13 @@ jobs:
       - name: Unit tests (app)
         run: pnpm --filter houston-app test
 
+      # The desktop bundle resolves the engine adapter through a Vite alias
+      # that cannot see `@houston/app/*`. Only this build catches an adapter
+      # import the web build resolves fine (every Tauri release build failed on
+      # one while PR CI stayed green).
+      - name: Desktop bundle (typecheck + vite build)
+        run: pnpm --filter houston-app build
+
   ios:
     name: iOS (xcodegen + xcodebuild test)
     needs: changes

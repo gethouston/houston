@@ -1,7 +1,7 @@
-import { wakingStuckTracker } from "@houston/app/lib/waking-stuck-tracker";
 import { appVersionHeader } from "../app-version";
 import { HoustonEngineError, SIGNED_OUT_ERROR } from "../client/errors";
 import { hasSessionRefresher, refreshLiveToken } from "../session-refresh";
+import { wakingStuckTracker } from "../waking-stuck-tracker";
 import { transientRetryFetch } from "./transient-retry";
 
 /**
