@@ -1,5 +1,9 @@
-import { FloatingNavBar, type FloatingNavBarItem } from "@houston-ai/core";
-import { Bot, Ellipsis, SquarePen, Users } from "lucide-react";
+import {
+  FloatingNavBar,
+  type FloatingNavBarItem,
+  HoustonHelmet,
+} from "@houston-ai/core";
+import { Ellipsis, SquarePen, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { activeMobileTab } from "../../lib/mobile-tabs";
 import { startNewMission } from "../../lib/new-mission";
@@ -44,7 +48,9 @@ export function MobileNavBar() {
     {
       id: "agents",
       label: t("shell:tabBar.agents"),
-      icon: <Bot className="size-5" />,
+      // The helmet is what an agent looks like everywhere else in Houston;
+      // `currentColor` so it takes the item's ink like the Lucide glyphs.
+      icon: <HoustonHelmet size={20} color="currentColor" />,
       active: active === "agents",
       badge:
         needsYouCount > 0 ? (
