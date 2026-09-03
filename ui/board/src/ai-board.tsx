@@ -12,6 +12,7 @@ import {
   hasConversationMoments,
   resolveConversationMapLabels,
 } from "@houston-ai/chat";
+import { isMobileViewport } from "@houston-ai/core";
 import { SplitView } from "@houston-ai/layout";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -512,7 +513,10 @@ export function AIBoard({
     if (!selectedId) return;
     hydrateSession(selectedId);
     setNewPanelOpen(false);
-    if (!disableComposerAutoFocus) {
+    // Never on the phone: a programmatic focus raises the on-screen keyboard
+    // over the chat the user just opened to read. There the keyboard follows
+    // their own tap on the composer.
+    if (!disableComposerAutoFocus && !isMobileViewport()) {
       setComposerFocusToken((prev) => (prev ?? 0) + 1);
     }
   }, [selectedId, hydrateSession, disableComposerAutoFocus]);

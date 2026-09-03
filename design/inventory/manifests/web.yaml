@@ -77,7 +77,7 @@ components:
 
   composer:
     status: implemented
-    ref: "@houston-ai/chat ChatInput / ai-elements/prompt-input"
+    ref: "@houston-ai/chat ChatInput / ai-elements/prompt-input; phone pickers open through @houston-ai/core ResponsivePopover (bottom sheet below the breakpoint)"
 
   mention-autocomplete:
     status: implemented

@@ -140,7 +140,9 @@ export function ChatInput({
   useDictationHotkeys(dictation);
 
   return (
-    <div className="shrink-0 px-4 pb-6 pt-2">
+    // The phone keeps the composer tight to what sits below it (the home
+    // indicator's safe area, or the keyboard); desktop keeps its air.
+    <div className="shrink-0 px-4 pb-2 pt-2 md:pb-6">
       <div
         className={cn(
           "max-w-3xl mx-auto relative transition-opacity",

@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 73
+version: 74
 
 components:
   - id: agent-avatar
@@ -298,14 +298,23 @@ components:
     purpose: The signature message-input surface -- text, attachments, send/stop.
     anatomy: [leading-attach, textarea, footer-slot, queued-list, trailing-send-stop]
     states: [ready, submitted, streaming, has-attachments, drag-over, disabled, replaced-by-override]
-    variants: [single-line, multiline-expanded]
+    variants: [single-line, multiline-expanded, phone]
     behavior: >-
       Send is gated on non-empty text/attachments; while streaming the trailing
       button becomes Stop. Queued messages show when sending mid-turn. A host
       surface may pass an override card that renders above the input (default)
       or replaces it outright while present (replaced-by-override) when that
       card is the only intended action, e.g. onboarding's one-button offer.
-    a11y: labeled textarea; send/stop button state-labeled; drop zone announced.
+      The footer slot's pickers (mode, model, effort, context) sit in ONE row
+      at both breakpoints. Below the one breakpoint (phone) the row keeps
+      only its two named pills (mode, model) plus the effort gauge and the
+      context ring; Skills moves into the attach menu; each picker opens as a
+      bottom sheet rather than an anchored popover, and the context ring
+      opens on tap (a hover card never does on touch). The composer stays
+      tight to the keyboard: nothing but the safe area (or the keyboard's own
+      inset) sits below its row, and opening a chat never focuses the
+      textarea on the phone.
+    a11y: labeled textarea; send/stop button state-labeled; drop zone announced; phone pickers are titled dialogs.
     since: 1
 
   - id: mention-autocomplete

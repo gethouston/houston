@@ -41,6 +41,7 @@ export * from "./components/model-picker";
 export * from "./components/popover";
 export * from "./components/progress";
 export * from "./components/resizable";
+export * from "./components/responsive-popover";
 export * from "./components/scroll-area";
 export * from "./components/search-clear-button";
 export * from "./components/select";

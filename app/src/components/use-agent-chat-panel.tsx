@@ -2357,12 +2357,19 @@ export function useAgentChatPanel({
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;
+    // ONE row at both breakpoints. A phone composer has no room for five
+    // labelled pills, so there the Skills entry lives in the composer's "+"
+    // menu (see `attachMenu`), the effort pill is its gauge icon alone, and
+    // the pickers drop their chevrons. Desktop is unchanged.
     return () => (
-      <div className="flex items-center gap-2 w-full">
+      <div
+        data-testid="composer-toolbar"
+        className="flex w-full items-center gap-1 md:gap-2"
+      >
         <button
           type="button"
           onClick={() => setPickerOpen(true)}
-          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted hover:text-ink hover:bg-hover transition-colors"
+          className="hidden md:inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-colors"
         >
           <Play className="size-3 fill-current" />
           {t("composerSkill.browse")}
@@ -2412,8 +2419,20 @@ export function useAgentChatPanel({
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
-    return ({ openFilePicker, openFolderPicker }) => (
+    return ({ openFilePicker, openFolderPicker, close }) => (
       <div className="flex flex-col gap-0.5">
+        {/* Phone only: the toolbar has no room for the Skills pill there. */}
+        <button
+          type="button"
+          onClick={() => {
+            close();
+            setPickerOpen(true);
+          }}
+          className="flex md:hidden items-center gap-2 px-2 py-1.5 rounded-md text-sm text-ink hover:bg-hover transition-colors"
+        >
+          <Play className="size-4 text-ink-muted" />
+          {t("composerSkill.browse")}
+        </button>
         <button
           type="button"
           onClick={() => {

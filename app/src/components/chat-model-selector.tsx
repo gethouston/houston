@@ -1,8 +1,8 @@
 import {
   ModelPicker,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
+  ResponsivePopover,
+  ResponsivePopoverContent,
+  ResponsivePopoverTrigger,
 } from "@houston-ai/core";
 import type { Agent } from "@houston-ai/engine-client";
 import { ChevronDown, Lock } from "lucide-react";
@@ -149,22 +149,24 @@ export function ChatModelSelector({
           <span>{label}</span>
         </div>
       ) : (
-        <Popover open={picker.isOpen} onOpenChange={picker.setOpen}>
-          <PopoverTrigger asChild>
+        <ResponsivePopover open={picker.isOpen} onOpenChange={picker.setOpen}>
+          <ResponsivePopoverTrigger asChild>
             <button
               type="button"
               className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus"
             >
               {glyph}
               <span>{label}</span>
-              <ChevronDown className="size-3 opacity-60" />
+              <ChevronDown className="hidden md:block size-3 opacity-60" />
             </button>
-          </PopoverTrigger>
+          </ResponsivePopoverTrigger>
           {/* `p-0` on the shared popover chrome, the same dropdown surface as
-              FilterCombobox; the picker fills it edge to edge. Auto-focus is
-              prevented both ways: the picker places focus itself (input or
-              cmdk root, per screen), and closing must not yank focus back. */}
-          <PopoverContent
+              FilterCombobox; the picker fills it edge to edge (on the phone, a
+              bottom sheet). Auto-focus is prevented both ways: the picker
+              places focus itself (input or cmdk root, per screen), and closing
+              must not yank focus back. */}
+          <ResponsivePopoverContent
+            title={t("modelSelector.selectModel")}
             align="start"
             className="w-[320px] p-0"
             onOpenAutoFocus={(e) => e.preventDefault()}
@@ -195,8 +197,8 @@ export function ChatModelSelector({
                 ) : undefined
               }
             />
-          </PopoverContent>
-        </Popover>
+          </ResponsivePopoverContent>
+        </ResponsivePopover>
       )}
     </fieldset>
   );

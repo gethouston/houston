@@ -101,14 +101,16 @@ export function ChatEffortSelector({
         e.stopPropagation();
         if (nextLevel) onSelect(nextLevel);
       }}
-      className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-ink-muted hover:text-ink hover:bg-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus"
+      className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-colors outline-none focus-visible:ring-1 focus-visible:ring-focus"
     >
       {/* Always render the full effort spectrum (filled to the active level)
           so the gauge looks identical across models — a 2-level model no longer
           renders as a lone short + tall bar. Cycling still uses the model's own
           `levels` above. */}
       <EffortIcon levels={EFFORT_ORDER} active={current} className="size-3.5" />
-      <span>{activeLabel}</span>
+      {/* The gauge alone on a phone: the bars already read the level, and the
+          row has no room for the word. The aria-label keeps the value. */}
+      <span className="hidden md:inline">{activeLabel}</span>
     </button>
   );
 }

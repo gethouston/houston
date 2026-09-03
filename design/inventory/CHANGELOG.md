@@ -3,6 +3,17 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v74 - 2026-09-03
+
+The phone composer fits the phone. Its footer row keeps one line below the
+one breakpoint: the mode and model pills stay named, effort is its gauge
+icon, the context ring stays pinned right, and Skills moves into the attach
+menu. Each of those pickers opens as a bottom sheet instead of a popover
+anchored to a 28px pill (which went edge to edge and landed on the composer),
+and the context ring opens on tap. Nothing but the safe area or the keyboard
+inset sits under the row, and opening a chat no longer focuses the textarea,
+so the keyboard waits for the user's own tap.
+
 ## v73 - 2026-09-02
 
 The phone board loses its second chrome row. Below the one breakpoint every
