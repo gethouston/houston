@@ -83,8 +83,12 @@ export function FloatingNavBar({
               >
                 <span className="relative flex items-center justify-center">
                   {item.icon}
-                  {item.badge && (
-                    <span className="-top-3 -right-5 absolute">
+                  {/* Inactive: the chip rides the glyph's corner, the way a
+                      tab badge does. Active: the label follows the glyph, so
+                      the chip moves to the END of the row instead of landing
+                      on the word. */}
+                  {item.badge && !active && (
+                    <span className="-top-2.5 -right-4 absolute">
                       {item.badge}
                     </span>
                   )}
@@ -92,6 +96,7 @@ export function FloatingNavBar({
                 {active && (
                   <span className="font-weight-510 text-sm">{item.label}</span>
                 )}
+                {active && item.badge}
               </button>
             );
           })}
