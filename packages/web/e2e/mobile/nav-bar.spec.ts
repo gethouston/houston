@@ -37,7 +37,10 @@ test("the three items navigate and mark the active one", async ({ page }) => {
 
   // More is a menu, not a place: it opens the card over the shell.
   await openMoreMenu(page);
-  await expect(navItem(page, "more")).toHaveAttribute("aria-current", "page");
+  // While the card is up the More item lights as EXPANDED; the screen behind
+  // it (Teams) stays the one current page.
+  await expect(navItem(page, "more")).toHaveAttribute("aria-expanded", "true");
+  await expect(navItem(page, "teams")).toHaveAttribute("aria-current", "page");
 
   // Picking a destination from the menu closes it and lands on that screen —
   // and every screen outside the two trees lights More.
