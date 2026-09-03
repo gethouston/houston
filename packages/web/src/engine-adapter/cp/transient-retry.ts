@@ -63,6 +63,15 @@ const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 const ENGINE_UNAVAILABLE = "engine unavailable";
 const AGENT_IS_WAKING = "agent is waking";
 const ENGINE_PROXY_FAILED = "engine proxy failed";
+/**
+ * The HOST's own word, not the gateway's (`packages/host/src/channel/
+ * probe-wake.ts`): the read-only probe routes (`/providers`, `/providers/usage`,
+ * `/auth/status`) race the agent runtime's boot against a short deadline and
+ * answer this + `Retry-After: 2` instead of holding the socket for the whole
+ * cold boot. The boot keeps running; a retry meets a live runtime.
+ */
+const RUNTIME_STILL_STARTING =
+  "the agent's runtime is still starting, try again shortly";
 export const SHARED_SKILLS_UNCONFIGURED = "shared skills not configured";
 
 /** Why a read got no answer — the typed form of the gateway's 5xx body. */
@@ -117,6 +126,11 @@ export function classifyUnavailableBody(body: unknown): UnavailableReason {
     return "engine-waking";
   }
   if (b?.error === ENGINE_PROXY_FAILED) return "pod-unreachable";
+  // An explicit "ask me again" from a runtime mid-boot. Under the handoff
+  // budget (~2s) every cold boot slower than that surfaced the probe's 503 as
+  // a failure of the provider picker (HOUSTON-APP-54Q); it earns the wake
+  // budget, which is sized for exactly this boot.
+  if (b?.error === RUNTIME_STILL_STARTING) return "engine-waking";
   return "handoff";
 }
 

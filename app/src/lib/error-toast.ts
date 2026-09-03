@@ -1,5 +1,6 @@
 import { isSignedOutEngineError } from "@houston-ai/engine-client";
 import { useUIStore } from "../stores/ui";
+import { isAgentWarmingRefusal } from "./agent-warming-refusal";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { createBurstGate } from "./error-burst";
 import i18n from "./i18n";
@@ -190,6 +191,12 @@ export function showErrorToast(
   // the transport only mints the synthetic body when no session exists at all.
   if (isSignedOutEngineError(originalError)) {
     console.warn(`[toast:${command}] suppressed: signed-out engine call`);
+    return;
+  }
+  // The app's own warming-guard refusal (HOU-693): the "almost ready" dialog
+  // is the surface and nothing failed — no capture either (HOUSTON-APP-53K).
+  if (isAgentWarmingRefusal(originalError)) {
+    console.debug(`[toast:${command}] write blocked while the agent warms up`);
     return;
   }
 

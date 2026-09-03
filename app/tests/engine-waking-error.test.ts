@@ -279,3 +279,125 @@ describe("isEngineWakingError (runtime-client shape)", () => {
     strictEqual(isEngineWakingError(bodyless), false);
   });
 });
+
+// PRODUCT-1666: the HOST's own "not there yet" answer — probe-wake.ts answers
+// the read-only probe routes `503 {"error":"the agent's runtime is still
+// starting, try again shortly"}` while the runtime boots. Same waking state as
+// the gateway's "engine unavailable", a different reason string; it escaped
+// into the red toast + Sentry pipeline on every shape (HOUSTON-APP-54Q).
+const STILL_STARTING =
+  "the agent's runtime is still starting, try again shortly";
+
+describe("isEngineWakingError (runtime still starting)", () => {
+  it("matches on the runtime-client shape, where it was observed", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(503, `{"error":"${STILL_STARTING}"}`),
+      ),
+      true,
+    );
+  });
+
+  it("matches on the legacy and SDK shapes too", () => {
+    strictEqual(isEngineWakingError(engineError(503, STILL_STARTING)), true);
+    strictEqual(
+      isEngineWakingError(
+        agentsHttpError(503, `{"error":"${STILL_STARTING}"}`),
+      ),
+      true,
+    );
+  });
+
+  it("is a 503 reason only, matched exactly", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(502, `{"error":"${STILL_STARTING}"}`),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(503, '{"error":"the agent\'s runtime is starting"}'),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(engineError(503, "the agent's runtime")),
+      false,
+    );
+  });
+});
+
+/** The shape the SDK activity-write path throws (`ActivitiesHttpError`): the
+ *  same raw-body-as-message contract as `AgentsHttpError`. */
+function activitiesHttpError(status: number, body: string): Error {
+  const err = new Error(body) as Error & { status: number };
+  err.name = "ActivitiesHttpError";
+  err.status = status;
+  return err;
+}
+
+// HOUSTON-APP-51X: a mission created against a pod mid-roll answered the
+// proxy-failed 502 through the SDK activities module, which carries the body
+// exactly like the agents module but was not in the classifier's name list.
+describe("isEngineWakingError (SDK activity-write shape)", () => {
+  it("matches the proxy-failed 502 body", () => {
+    strictEqual(
+      isEngineWakingError(
+        activitiesHttpError(
+          502,
+          '{"detail":"Post http://agent-x:4318/agents/A/activities: dial tcp: lookup agent-x: no such host","error":"engine proxy failed"}',
+        ),
+      ),
+      true,
+    );
+  });
+
+  it("matches the wake 503 bodies", () => {
+    strictEqual(
+      isEngineWakingError(
+        activitiesHttpError(
+          503,
+          '{"detail":"agent is waking","error":"engine unavailable"}',
+        ),
+      ),
+      true,
+    );
+    strictEqual(
+      isEngineWakingError(
+        activitiesHttpError(503, `{"error":"${STILL_STARTING}"}`),
+      ),
+      true,
+    );
+  });
+
+  it("never matches other reasons, statuses or non-JSON bodies", () => {
+    strictEqual(
+      isEngineWakingError(
+        activitiesHttpError(404, '{"error":"agent not found"}'),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(
+        activitiesHttpError(500, '{"error":"engine unavailable"}'),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(
+        activitiesHttpError(503, "activities request failed: 503"),
+      ),
+      false,
+    );
+  });
+
+  it("rejects an unknown error name carrying a waking body", () => {
+    const err = new Error('{"error":"engine unavailable"}') as Error & {
+      status: number;
+    };
+    err.name = "MissionsHttpError";
+    err.status = 503;
+    strictEqual(isEngineWakingError(err), false);
+  });
+});

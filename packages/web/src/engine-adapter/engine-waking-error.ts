@@ -35,16 +35,29 @@
 // first; this classifier decides how the ones that outlive that budget
 // surface.
 //
-// Three client stacks reach the gateway, minting different error shapes (same
+// A third "not there yet" answer comes from the HOST itself, not the gateway:
+// `503 {"error":"the agent's runtime is still starting, try again shortly"}`
+// (`packages/host/src/channel/probe-wake.ts`). The read-only probe routes
+// (`/providers`, `/providers/usage`, `/auth/status`) race the agent runtime's
+// boot against a short deadline and answer this plus `Retry-After: 2` rather
+// than hold the socket for the whole cold boot. The boot keeps running; the
+// retry meets a live runtime. Same waking state, a different reason string,
+// and it escaped into the red toast + Sentry pipeline because only the two
+// gateway reasons were matched (HOUSTON-APP-54Q).
+//
+// Four client stacks reach the host, minting different error shapes (same
 // split as `agent-name-conflict.ts`, plus the runtime client):
 //
 //  - `HoustonEngineError` (legacy adapter): message is
 //    `"<reason> (engine error <status>)"`, reason verbatim — prefix-matched.
-//  - `AgentsHttpError` (the SDK agent-write path: rename/create/delete):
-//    message is the gateway's RAW JSON body, so the reason is parsed out of
-//    it. Renaming an asleep agent answered the same wake 503 but escaped this
-//    classifier into the red toast + Sentry pipeline because only the legacy
-//    shape was matched (HOUSTON-APP-536).
+//  - `AgentsHttpError` (the SDK agent-write path: rename/create/delete) and
+//    `ActivitiesHttpError` (the SDK activity-write path: mission create /
+//    delete): the message is the gateway's RAW JSON body, so the reason is
+//    parsed out of it. Renaming an asleep agent answered the same wake 503 but
+//    escaped this classifier into the red toast + Sentry pipeline because only
+//    the legacy shape was matched (HOUSTON-APP-536); a mission created against
+//    a pod mid-roll did the same through the activities module, which carries
+//    the body identically but wasn't in the name list (HOUSTON-APP-51X).
 //  - `EngineError` (`@houston/runtime-client` — the per-agent runtime and the
 //    pre-agent setup-runtime clients): carries the raw response text in
 //    `body`, so the reason is parsed the same way. First-run provider login
@@ -65,10 +78,19 @@
 // from the dispatch path, where a wedged pod is a bug we want reported.
 
 const ENGINE_UNAVAILABLE_503 = "engine unavailable";
+const RUNTIME_STILL_STARTING_503 =
+  "the agent's runtime is still starting, try again shortly";
 const ENGINE_PROXY_FAILED_502 = "engine proxy failed";
 const AGENT_POD_UNUSABLE_502 = "agent pod unusable";
 
-/** The gateway `error` reason out of a raw response body (an `AgentsHttpError`
+/** The SDK's per-module HTTP errors. Each carries the raw response body as its
+ *  message, so they share one branch; a new SDK module's error joins here. */
+const SDK_HTTP_ERROR_NAMES = new Set([
+  "AgentsHttpError",
+  "ActivitiesHttpError",
+]);
+
+/** The gateway `error` reason out of a raw response body (an SDK http error's
  *  message or an `EngineError` `body`); null when it isn't gateway JSON
  *  (an HTML error page, the synthetic `agents request failed: <status>`). */
 function gatewayReason(body: string): string | null {
@@ -81,37 +103,44 @@ function gatewayReason(body: string): string | null {
   }
 }
 
+/** The (status, reason) pairs every shape reads as "not there yet". */
+function isWakingAnswer(
+  status: unknown,
+  matches: (reason: string) => boolean,
+): boolean {
+  if (status === 503) {
+    return (
+      matches(ENGINE_UNAVAILABLE_503) || matches(RUNTIME_STILL_STARTING_503)
+    );
+  }
+  return status === 502 && matches(ENGINE_PROXY_FAILED_502);
+}
+
 /**
- * A gateway "the agent's pod is not there right now" answer: the pod is
- * warming up, restarting, or otherwise not accepting connections, and the same
- * request succeeds once it does. Matched structurally (name + status + reason)
- * so this stays dependency-free.
+ * A "the agent's pod is not there right now" answer: the pod or its runtime
+ * is warming up, restarting, or otherwise not accepting connections, and the
+ * same request succeeds once it does. Matched structurally (name + status +
+ * reason) so this stays dependency-free.
  */
 export function isEngineWakingError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
   const status = (err as { status?: unknown }).status;
   if (err.name === "HoustonEngineError") {
-    return (
-      (status === 503 && err.message.startsWith(ENGINE_UNAVAILABLE_503)) ||
-      (status === 502 && err.message.startsWith(ENGINE_PROXY_FAILED_502))
-    );
+    return isWakingAnswer(status, (reason) => err.message.startsWith(reason));
   }
-  if (err.name === "AgentsHttpError") {
+  if (SDK_HTTP_ERROR_NAMES.has(err.name)) {
     const reason = gatewayReason(err.message);
+    if (reason === null) return false;
     return (
-      (status === 503 && reason === ENGINE_UNAVAILABLE_503) ||
-      (status === 502 &&
-        (reason === ENGINE_PROXY_FAILED_502 ||
-          reason === AGENT_POD_UNUSABLE_502))
+      isWakingAnswer(status, (r) => reason === r) ||
+      (status === 502 && reason === AGENT_POD_UNUSABLE_502)
     );
   }
   if (err.name === "EngineError") {
     const body = (err as { body?: unknown }).body;
     const reason = typeof body === "string" ? gatewayReason(body) : null;
-    return (
-      (status === 503 && reason === ENGINE_UNAVAILABLE_503) ||
-      (status === 502 && reason === ENGINE_PROXY_FAILED_502)
-    );
+    if (reason === null) return false;
+    return isWakingAnswer(status, (r) => reason === r);
   }
   return false;
 }

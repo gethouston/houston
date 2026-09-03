@@ -42,6 +42,33 @@ describe("classifyQuietError", () => {
     );
     strictEqual(classifyQuietError(new TypeError("x is not a function")), null);
   });
+
+  // PRODUCT-1666: the three shapes that escaped the waking class.
+  it("names the waking class for the still-starting 503 and the activities shape", () => {
+    strictEqual(
+      classifyQuietError(
+        named(
+          "EngineError",
+          'engine request failed (503): {"error":"the agent\'s runtime is still starting, try again shortly"}',
+          {
+            status: 503,
+            body: '{"error":"the agent\'s runtime is still starting, try again shortly"}',
+          },
+        ),
+      ),
+      "engine_waking",
+    );
+    strictEqual(
+      classifyQuietError(
+        named(
+          "ActivitiesHttpError",
+          `{"detail":"Post ...: ${dial}","error":"engine proxy failed"}`,
+          { status: 502 },
+        ),
+      ),
+      "engine_waking",
+    );
+  });
 });
 
 describe("quietErrorDetails", () => {
