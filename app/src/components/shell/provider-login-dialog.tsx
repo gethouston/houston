@@ -11,6 +11,7 @@ import { Copy, ExternalLink, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { genericErrorDescription } from "../../lib/error-report";
+import { isProviderLoginSessionLostError } from "../../lib/provider-login-session-lost";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
@@ -152,7 +153,14 @@ export function ProviderLoginDialog({
       // sees the CLI actually finish the exchange. The parent listens for
       // that event and calls `onClose`.
     } catch (err) {
-      setError(genericErrorDescription("provider_login_submit_code", err));
+      // The runtime dropped this login before the code arrived (the dialog
+      // outlived the abandoned-login timer, or the app restarted mid
+      // sign-in): an expected state with authored copy, not a bug report.
+      setError(
+        isProviderLoginSessionLostError(err)
+          ? t("providerLogin.sessionExpired", { name: provider.name })
+          : genericErrorDescription("provider_login_submit_code", err),
+      );
       setSubmitting(false);
     }
   };
