@@ -50,16 +50,20 @@ test("the toolbar is one row that fits inside the phone viewport", async ({
   const width = page.viewportSize()?.width ?? 0;
   const buttons = await toolbar.getByRole("button").all();
   expect(buttons.length).toBeGreaterThanOrEqual(3);
-  const tops = new Set<number>();
+  const tops: number[] = [];
+  const bottoms: number[] = [];
   for (const button of buttons) {
     const box = await button.boundingBox();
     expect(box).not.toBeNull();
     if (!box) continue;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width);
-    tops.add(Math.round(box.y + box.height / 2));
+    tops.push(box.y);
+    bottoms.push(box.y + box.height);
   }
-  expect(tops.size).toBe(1);
+  // One row: no control starts below the bottom of any other (sub-pixel font
+  // differences across platforms shift centers, never rows).
+  expect(Math.max(...tops)).toBeLessThan(Math.min(...bottoms));
 
   // Skills leaves the phone toolbar for the composer's "+" menu.
   await expect(toolbar.getByRole("button", { name: "Skills" })).toBeHidden();

@@ -1,6 +1,6 @@
 import { AIBoard } from "@houston-ai/board";
 import { ChevronLeft } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useVisualViewportInset } from "../../hooks/use-visual-viewport-inset";
 import type { Agent } from "../../lib/types";
@@ -48,10 +48,12 @@ function MissionChatHost({ agent }: { agent: Agent }) {
   const agents = useAgentStore((s) => s.agents);
   const source = useMissionChatSource(agents, agent, missionId);
   const wiring = useBoardChatWiring(source);
-  const keyboardInset = useVisualViewportInset();
+  const screenRef = useRef<HTMLDivElement>(null);
+  const keyboardInset = useVisualViewportInset(screenRef);
 
   return (
     <div
+      ref={screenRef}
       data-testid="mission-chat-screen"
       className="flex h-full min-h-0 flex-col pb-safe"
       style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
