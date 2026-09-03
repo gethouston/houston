@@ -2,6 +2,7 @@ import { afterEach, expect, test } from "vitest";
 import {
   captureCredential,
   forgetCredential,
+  forgetSetupCredential,
   pushClaudeOAuthCredential,
   setApiKey,
   setCustomEndpoint,
@@ -59,12 +60,14 @@ test("every credential write sends a bare, query-less URL", async () => {
     baseUrl: "http://localhost:1234/v1",
     model: "local",
   });
+  await forgetSetupCredential(cfg, "anthropic");
   expect(urls).toEqual([
     "http://gw.test/agents/agent-1/credential/capture",
     "http://gw.test/agents/agent-1/credential/claude-oauth",
     "http://gw.test/agents/agent-1/credential/forget",
     "http://gw.test/agents/agent-1/credential/api-key",
     "http://gw.test/agents/agent-1/provider/openai-compatible",
+    "http://gw.test/setup-runtime/credential/forget",
   ]);
   for (const url of urls) {
     expect(url).not.toContain("?");

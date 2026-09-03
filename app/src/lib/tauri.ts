@@ -61,6 +61,7 @@ import i18n from "./i18n";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { isNetworkTransportError } from "./network-transport-error";
+import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
@@ -248,6 +249,19 @@ async function surfaceError(
     showExpectedStateToast(
       i18n.t("teams:people.lastOwner.title"),
       i18n.t("teams:people.lastOwner.body"),
+    );
+    return;
+  }
+
+  // Expected business state, not a bug: a provider write that only an agent's
+  // runtime can hold (a local model endpoint) in a space with no agent yet
+  // (PRODUCT-1662). The remedy is the user's: create an agent, then connect.
+  // Plain guidance, never the red bug pair.
+  if (isNoAgentForProviderWriteError(err)) {
+    const { showExpectedStateToast } = await import("./error-toast");
+    showExpectedStateToast(
+      i18n.t("shell:errorToast.noAgentTitle"),
+      i18n.t("shell:errorToast.noAgentDescription"),
     );
     return;
   }

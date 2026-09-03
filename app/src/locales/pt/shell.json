@@ -424,7 +424,9 @@
     "engineWakingTitle": "Houston, seu agente está acordando",
     "engineWakingDescription": "Ele estará pronto em um momento. Tente novamente em breve.",
     "updateStuckTitle": "Houston, as atualizações não estão chegando",
-    "updateStuckDescription": "Não conseguimos verificar atualizações. Sua rede pode estar bloqueando. Você sempre pode baixar a versão mais recente em gethouston.ai."
+    "updateStuckDescription": "Não conseguimos verificar atualizações. Sua rede pode estar bloqueando. Você sempre pode baixar a versão mais recente em gethouston.ai.",
+    "noAgentTitle": "Houston, você precisa de um agente primeiro",
+    "noAgentDescription": "Crie um agente e depois conecte pelas configurações dele. Esta conexão fica em um agente."
   },
   "agentDelete": {
     "title": "Excluir o agente?",

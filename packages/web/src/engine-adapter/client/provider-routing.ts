@@ -1,3 +1,4 @@
+import { NoAgentForProviderWriteError } from "../no-agent-provider-write-error";
 import type { AdapterContext } from "./context";
 
 /**
@@ -42,14 +43,22 @@ export function requireProviderRouting(ctx: AdapterContext): void {
 }
 
 /**
- * The agent id every provider WRITE must target: the space-validated
+ * The agent id a provider write that ONLY an agent's runtime can hold must
+ * target (the custom OpenAI-compatible endpoint): the space-validated
  * `ctx.providerAgentId()`, never the raw pref. `ctx.requireAgentId()` is
  * deliberately not this — it means "the agent the user has open", for routes
  * (project files, per-agent prefs) where another agent would be the wrong data.
+ *
+ * Two distinct refusals, because they mean different things to the user:
+ * a `pending` list is "still loading, try again" (a moment), while a settled
+ * list with no agent is the typed `NoAgentForProviderWriteError` ("create an
+ * agent first") — an expected state the app surfaces as plain guidance, not a
+ * bug (PRODUCT-1662). Credential writes (connect, sign-out) must NOT use this:
+ * they are workspace-central and route pre-agent through the setup runtime.
  */
 export function requireProviderAgentId(ctx: AdapterContext): string {
   requireProviderRouting(ctx);
   const id = ctx.providerAgentId();
-  if (!id) throw new Error("Open an agent first, then connect its account.");
+  if (!id) throw new NoAgentForProviderWriteError();
   return id;
 }
