@@ -7,12 +7,12 @@ import { useTranslation } from "react-i18next";
 import type { TeamSectionId, TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
+import { MobileDrilledHeader } from "../shell/mobile-drilled-header";
 import { PageHeader } from "../shell/page-header/page-header";
 import { headerCollapsesTabs } from "../shell/page-header/page-header-layout";
 import { PageHeaderSwitcher } from "../shell/page-header/page-header-switcher";
 import { PageHeaderTabs } from "../shell/page-header/page-header-tabs";
 import { usePageHeaderMode } from "../shell/page-header/page-header-tools";
-import { MobileDrilledHeader } from "./mobile-drilled-header";
 
 const LABEL_KEYS = {
   routines: "teamView.tabs.routines",

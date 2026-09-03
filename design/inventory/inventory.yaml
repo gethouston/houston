@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 75
+version: 76
 
 components:
   - id: agent-avatar
@@ -1671,68 +1671,121 @@ components:
   - id: agents-home
     title: Agents home
     purpose: >-
-      The phone's landing screen and the Agents tab's root: every agent as a
-      two-line cell, sorted by who needs attention.
-    anatomy: [title, name-filter, agent-cell, agent-avatar, running-ring,
-      needs-you-chip, preview-line, relative-time, empty-state]
-    states: [list, filtering, filter-empty, no-agents, previews-loading]
-    variants: []
+      The phone's landing screen and the Agents tab's root: every agent as one
+      line, grouped under the team it belongs to.
+    anatomy: [title, new-agent-control, team-row, team-glyph, guide-line,
+      agent-row, agent-avatar, running-ring, needs-you-chip, empty-state]
+    states: [tree, flat, loading, no-agents]
+    variants: [grouped, flat]
     behavior: >-
-      One cell per agent, attention-sorted: agents with missions waiting on
-      the user first, then agents with running work, then everyone else, and
-      inside each band the most recently active agent leads. The cell's first
-      line is the agent's name beside the same needs-you count chip the rail
-      rows and the Tasks tab badge wear (one badge shape, one number, never a
-      recount); its avatar wears the same running ring the rail draws. The
-      second line previews the most recently moved mission's title with the
-      movement's relative time flushed right, so the list reads like a chat
-      list: who moved, and how long ago. A name filter under the title narrows
-      the list as the user types and owns its own empty line when nobody
-      matches; with no agents at all the screen says so instead of rendering a
-      hollow list. Counts and previews read the same conversation sweep and
-      per-agent summaries every other badge surface reads, repainting through
-      the ordinary event invalidation, never a fetch path of their own.
-      Tapping a cell adopts the agent as current and pushes its missions
-      screen onto the navigation stack, so back pops out of the drill.
+      A tree, the mirror of the teams-home tree: each team that HAS agents is a
+      bold, NON-tappable row (its glyph and name) with its agents indented
+      under a guide line, teams in rail order and a team with no agents
+      skipped rather than drawn hollow. When the workspace has only its
+      virtual default team the grouping collapses and the rows sit FLAT, since
+      one header repeated on every screen names nothing. Inside a team the
+      agents keep the attention sort: agents with tasks waiting on the user
+      first, then agents with running work, then everyone else, most recently
+      active leading each band. An agent row is ONE line -- the agent's name
+      beside the same needs-you count chip the rail rows and the nav bar wear
+      (one badge shape, one number, never a recount), its avatar wearing the
+      same running ring the rail draws. No task preview and no timestamp: the
+      agent's task list is one tap away and would otherwise be quoted twice.
+      There is no name filter; the tree is the finder. A trailing control in
+      the title row creates an agent (where the caller may). With no agents at
+      all the screen says so instead of rendering a hollow list. Counts read
+      the same conversation sweep and per-agent summaries every other badge
+      surface reads, repainting through the ordinary event invalidation, never
+      a fetch path of their own. Tapping a row adopts the agent as current and
+      pushes its task list onto the navigation stack, so back pops out of the
+      drill.
     a11y: >-
-      The screen's title is its h1; the filter is a labelled search input;
-      each cell is one real button at least 56px tall named by the agent, with
-      the chip and the running ring carrying their own accessible labels ("N
-      issues need you", "N issues running") rather than bare numbers.
+      The screen's title is its h1 and each team row is a real heading that
+      names the group its agents are listed in; each agent row is one button
+      at least 48px tall named by the agent, with the chip and the running ring
+      carrying their own accessible labels ("N issues need you", "N issues
+      running") rather than bare numbers; the create control is a labelled
+      button.
     since: 71
 
   - id: agent-missions-list
-    title: Per-agent missions list
+    title: Per-agent task list
     purpose: >-
-      One agent's missions as a sectioned phone list, pushed from the Agents
-      home; the drill level between the agent list and a mission's chat.
-    anatomy: [back-bar, agent-masthead, section-header, mission-row,
-      relative-time, archived-toggle, empty-state]
-    states: [sectioned, archived-collapsed, archived-expanded, no-missions]
+      One agent's tasks as a filterable, sectioned phone list, pushed from the
+      Agents home; the drill level between the agent tree and a task's chat.
+    anatomy: [drilled-header, back-chip, agent-avatar, task-count, overflow-menu,
+      status-segments, inline-search, task-group, task-row, archived-group,
+      empty-state]
+    states: [sectioned, filtered, searching, search-empty, filter-empty,
+      archived-collapsed, archived-expanded, no-tasks]
     variants: []
     behavior: >-
-      A back bar returns to the Agents home (a navigation-stack retreat, so
-      the hardware back button does the same thing), under a masthead naming
-      the agent with its avatar and running ring. The missions split into the
-      board's own sections -- Needs you, Running, Done, by the exact status
-      mapping the board's columns use, an errored mission sitting in Needs you
-      -- each newest movement first, and an empty section vanishes rather
-      than rendering hollow. The archive folds behind a trailing row naming
-      its count; expanding it lists the archived missions inline. Tapping an
-      active mission pushes its mission-chat-screen as the next
-      navigation-stack level, the same push a board card performs, so back
-      pops straight from the chat to this list. An archived mission has no
+      The drilled phone header names the agent (avatar with its running ring)
+      over its live task count and carries a back chip to the Agents home (a
+      navigation-stack retreat, so the hardware back button does the same
+      thing) plus one "..." menu. A segmented control under it narrows the
+      list -- All, Needs you (with its count), Running, Done -- and the body
+      draws the board's own sections in that order, by the exact status
+      mapping the board's columns use (an errored task sitting in Needs you),
+      each newest movement first, each band vanishing rather than rendering
+      hollow. Rows are the shared task-row: status glyph, title, the task's
+      own description as a second line when it has one, and the movement's
+      relative time trailing. The "..." menu holds the two things the screen
+      will not spend a permanent row on: Search reveals an inline field that
+      narrows the rows by title as the user types (Escape or its own control
+      closes it), and Archived resets the segments to All, expands the
+      archive and scrolls it into view. The archive is a collapsible group at
+      the bottom, present only under All: it is the list's basement, not a
+      status. Tapping an active task pushes its mission-chat-screen as the
+      next navigation-stack level, the same push a board card performs, so
+      back pops straight from the chat to this list. An archived task has no
       chat screen: its rows keep the notification navigation (the agent
       becomes current, its board opens with the archive surface swapped in,
-      and the chat opens over it). An agent with no missions at all gets the honest empty
-      state pointing at the compose control. Rows read the same conversation
-      sweep the boards read and live-update through the same invalidation.
+      and the chat opens over it). An agent with no tasks at all gets the
+      honest empty state pointing at the compose control; a segment or a
+      search that matches nothing says so in words. Rows read the same
+      conversation sweep the boards read and live-update through the same
+      invalidation.
     a11y: >-
-      The back control is a labelled button naming the level above; the agent
-      masthead is the screen's h1; section headers are real headings; every
-      mission row is one button named by the mission's title; the archived
-      toggle is a button carrying aria-expanded.
+      The back chip is a labelled button naming the level above; the agent is
+      the screen's h1 with the task count under it; the segments are a labelled
+      tablist whose buttons carry aria-selected; section headings are real
+      headings; every task row is one button named by its title with its status
+      glyph carrying the state's own label; the archived toggle carries
+      aria-expanded; the overflow control and the search field are both
+      labelled.
     since: 71
+
+  - id: task-row
+    title: Task row
+    purpose: >-
+      One task as a phone list row, plus the named band it sits in: the shared
+      shape behind every task list outside the board.
+    anatomy: [status-glyph, title, preview-line, trailing-slot, group-heading,
+      group-count, group-chevron]
+    states: [needs-you, running, done, archived, with-preview, without-preview,
+      group-open, group-collapsed]
+    variants: [row, group]
+    behavior: >-
+      The row's leading glyph is the ONLY thing that names a task's state --
+      an alert mark for needs you, a spinning ring for running (the one state
+      that moves, and only when the platform allows motion), a check for done,
+      a box for archived -- because the lists that use it already group by
+      section and a second badge would repeat the heading. The title sits over
+      an optional preview line, shown only when the task actually has a
+      description, and a trailing slot carries whatever the surface flushes
+      right (typically the movement's relative time). The whole row is one
+      target: a phone row has no room for a second, and nothing on it waits
+      for a hover. A hairline separates rows and drops on the last of a stack.
+      The group is a muted heading with its count flush right; a collapsible
+      group (the archive) is a chevron button whose rows render only while it
+      is open.
+    a11y: >-
+      Each row is one button at least 48px tall named by its title; the status
+      glyph carries the state's own accessible name rather than colour alone; a
+      collapsible group's heading is a button carrying aria-expanded, and a
+      count may be given spoken words instead of a bare digit.
+    since: 76
 
   - id: mission-chat-screen
     title: Mission chat screen

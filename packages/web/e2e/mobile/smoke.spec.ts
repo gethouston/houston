@@ -19,7 +19,7 @@ test("boots to a usable shell on a phone viewport", async ({ page }) => {
   await expect(navBar(page)).toBeVisible();
   await expect(page.locator("[data-tour-target='sidebar']")).toHaveCount(0);
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(page.getByTestId("agents-home-row")).toContainText("Houston");
 
   // Nothing forces the document wider than the phone viewport.
   const overflow = await page.evaluate(

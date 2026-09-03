@@ -59,7 +59,9 @@ test("the More menu carries the rail's destinations and closes on navigation", a
 
 test("keeps the document free of horizontal overflow", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  // The Agents home's rows are one line each (no task preview), so the boot
+  // anchor is the agent row itself.
+  await expect(page.getByTestId("agents-home-row")).toBeVisible();
 
   const overflow = await page.evaluate(
     () =>

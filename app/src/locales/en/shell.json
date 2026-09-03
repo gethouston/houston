@@ -391,11 +391,22 @@
   },
   "agentsHome": {
     "title": "Agents",
-    "filterPlaceholder": "Filter agents",
-    "filterEmpty": "No agents match your search",
-    "noMissionsPreview": "No tasks yet",
-    "archived_one": "Archived ({{count}})",
-    "archived_other": "Archived ({{count}})",
+    "taskCount_one": "{{count}} task",
+    "taskCount_other": "{{count}} tasks",
+    "archived": "Archived",
+    "searchPlaceholder": "Search tasks",
+    "searchClose": "Close search",
+    "searchEmpty": "No tasks match your search",
+    "filterEmpty": "No tasks in this view",
+    "filter": {
+      "all": "All",
+      "label": "Filter tasks"
+    },
+    "menu": {
+      "label": "More actions",
+      "search": "Search",
+      "archived": "Archived"
+    },
     "empty": {
       "title": "No agents yet",
       "description": "Create an agent to get started. Everything they work on shows up here."

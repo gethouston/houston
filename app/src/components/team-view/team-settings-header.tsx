@@ -4,9 +4,9 @@ import { useTranslation } from "react-i18next";
 import { teamDisplayName } from "../../lib/team-display";
 import type { TeamSectionId, TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
+import { MobileDrilledHeader } from "../shell/mobile-drilled-header";
 import { DrilledHeader } from "../shell/page-header/drilled-header";
 import { TeamGlyph } from "../shell/team-glyph";
-import { MobileDrilledHeader } from "./mobile-drilled-header";
 
 const IDS = ["context", "agents", "people", "settings"] as const;
 type TeamSettingsSection = (typeof IDS)[number];

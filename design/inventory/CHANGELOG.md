@@ -3,6 +3,23 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v76 - 2026-09-03
+
+The phone's two lists become one grammar. The Agents home is a tree that
+mirrors the Teams tree: each team that has agents is a bold, non-tappable row
+with its agents indented under a guide line, and a workspace with only its
+default team keeps the rows flat. An agent row is one line -- name, running
+ring, needs-you chip -- with no task preview, no timestamp and no name filter,
+since the agent's own list is one tap below. That list gains the drilled phone
+header (back chip to the Agents home, the agent, its live task count) and two
+controls: a segmented All / Needs you / Running / Done filter, and a "..."
+menu holding the inline title search and the archive, which resets the
+segments, expands the archived group and scrolls to it. Its rows are the new
+shared `task-row`: a status glyph (alert / spinning ring / check / box), the
+title over the task's own description, and the movement's relative time
+trailing, grouped by a `task-list-group` heading with its count. The archive is
+a collapsible group at the bottom of the unfiltered list.
+
 ## v75 - 2026-09-03
 
 The phone shell becomes a floating pill. Below the one breakpoint the top bar

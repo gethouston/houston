@@ -3,56 +3,55 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Input,
   Skeleton,
 } from "@houston-ai/core";
 import { UserRoundPlus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
+import { useTeams } from "../../hooks/use-teams";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHero } from "../shell/page-shell";
 import { useAgentActivitySummaries } from "../shell/use-agent-activity-summaries";
 import { tourAnchor } from "../shell/workspace-tour-steps";
-import { AgentHomeRowCell } from "./agent-home-row";
 import {
   type AgentHomeRow,
   agentHomeRows,
-  filterAgentRows,
+  agentTreeSections,
 } from "./agents-home-model";
+import { AgentsTree } from "./agents-home-tree";
 
 /**
- * The mobile Agents home list: every agent as a two-line cell, attention-
- * sorted (needs-you first, then running, then recency), with a name filter
- * under the title. Reads the same one-sweep `all-conversations` query and the
- * same per-agent summaries every other badge surface reads — no fetch path of
- * its own — so the rows repaint through the ordinary event invalidation.
+ * The mobile Agents home: every agent as one line, grouped under the team it
+ * belongs to. Reads the same one-sweep `all-conversations` query and the same
+ * per-agent summaries every other badge surface reads — no fetch path of its
+ * own — so the rows repaint through the ordinary event invalidation.
  *
- * Tapping an agent adopts it as current (the same subject-acquisition the
- * drawer's agent rows perform) and pushes its missions screen on the nav
- * stack.
+ * No name filter: the tree is the finder. Grouping by team is what keeps a
+ * long roster scannable, and a search field above a list this short would take
+ * the screen's first row to save a scroll.
+ *
+ * Tapping an agent adopts it as current (the same subject-acquisition the rail's
+ * agent rows perform) and pushes its task list on the nav stack.
  */
 export function AgentsHomeList() {
   const { t } = useTranslation("shell");
   const agents = useAgentStore((s) => s.agents);
+  const teams = useTeams();
   const openAgentsHome = useUIStore((s) => s.openAgentsHome);
   const { canCreate } = useCanCreateAgents();
-  const [query, setQuery] = useState("");
 
   const rosterPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: conversations } = useAllConversations(rosterPaths);
   const summaries = useAgentActivitySummaries(agents);
-  const previewsLoaded = conversations !== undefined;
+  const swept = conversations !== undefined;
 
-  const rows = useMemo(
-    () => agentHomeRows(agents, conversations, summaries),
-    [agents, conversations, summaries],
-  );
-  const visibleRows = useMemo(
-    () => filterAgentRows(rows, query),
-    [rows, query],
+  const sections = useMemo(
+    () =>
+      agentTreeSections(teams, agentHomeRows(agents, conversations, summaries)),
+    [agents, conversations, summaries, teams],
   );
 
   const openRow = (row: AgentHomeRow) => {
@@ -75,19 +74,6 @@ export function AgentsHomeList() {
             ) : undefined
           }
         />
-        {agents.length > 0 && (
-          <div className="mb-2 px-3">
-            <Input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("agentsHome.filterPlaceholder")}
-              aria-label={t("agentsHome.filterPlaceholder")}
-              data-testid="agents-home-filter"
-              className="text-base"
-            />
-          </div>
-        )}
       </PageContainer>
       <PageContainer className="min-h-0 flex-1 overflow-y-auto pb-6">
         {agents.length === 0 ? (
@@ -99,22 +85,12 @@ export function AgentsHomeList() {
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
-        ) : visibleRows.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-ink-muted">
-            {t("agentsHome.filterEmpty")}
-          </p>
-        ) : previewsLoaded ? (
-          <ul>
-            {visibleRows.map((row) => (
-              <li key={row.agent.id}>
-                <AgentHomeRowCell row={row} onOpen={openRow} />
-              </li>
-            ))}
-          </ul>
+        ) : swept ? (
+          <AgentsTree sections={sections} onOpen={openRow} />
         ) : (
           <div aria-hidden>
-            {visibleRows.map((row) => (
-              <AgentsHomeRowSkeleton key={row.agent.id} />
+            {agents.map((agent) => (
+              <AgentsHomeRowSkeleton key={agent.id} />
             ))}
           </div>
         )}
@@ -143,16 +119,13 @@ function NewAgentButton({ label }: { label: string }) {
   );
 }
 
-/** Placeholder mirroring {@link AgentHomeRowCell}'s tracks while the sweep has
- *  no data at all yet, so the list never claims agents have no work. */
+/** Placeholder mirroring {@link AgentHomeRowCell}'s one-line track while the
+ *  sweep has no data at all yet, so the list never claims agents are idle. */
 function AgentsHomeRowSkeleton() {
   return (
-    <div className="flex min-h-14 w-full items-center gap-3 px-3 py-2">
+    <div className="flex min-h-12 w-full items-center gap-3 px-3">
       <Skeleton className="size-6 shrink-0 rounded-full" />
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <Skeleton className="h-3.5 w-1/3" />
-        <Skeleton className="h-3 w-1/2" />
-      </div>
+      <Skeleton className="h-4 w-1/3" />
     </div>
   );
 }

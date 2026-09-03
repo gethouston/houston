@@ -64,18 +64,18 @@ test("board home — narrow", async ({ page }) => {
 });
 
 /**
- * Phone-width shell, both themes: the mobile chrome (the floating nav bar with
- * its needs-you badge and compose button) over the Agents home — the phone's
- * landing screen, on the one flat background. The rows carry a live
- * relative-time label (the seed's timestamps are fixed but the wall clock is
- * not), so those spans are masked rather than left to drift the baseline.
+ * Phone-width shell, both themes: the floating nav pill (Agents, Teams, More
+ * plus the new-task control, with the needs-you badge) around the Agents home
+ * — the phone's landing screen, one line per agent under its team. Nothing on
+ * it carries a live clock any more, but the mask stays cheap and guards the
+ * screens that do.
  */
 for (const theme of THEMES) {
   test(`mobile shell — ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+    await expect(page.getByTestId("agents-home-row")).toContainText("Houston");
     await expect(navBar(page)).toBeVisible();
     await pinTheme(page, theme);
 
@@ -139,9 +139,11 @@ for (const theme of THEMES) {
 }
 
 /**
- * The per-agent missions screen (PR 4 of the responsiveness overhaul): the
- * drill one tap below the Agents home — back bar, agent masthead, and the
- * board's sections as a phone list. Same relative-time mask as above.
+ * The per-agent task list: the drill one tap below the Agents home — the
+ * drilled header (back chip, agent, task count, the "…" menu), the status
+ * segments, and the board's sections as bands of shared task rows. The rows
+ * carry a live relative time (the seed's timestamps are fixed but the wall
+ * clock is not), so those spans are masked rather than left to drift.
  */
 for (const theme of THEMES) {
   test(`mobile agent missions — ${theme}`, async ({ page }) => {

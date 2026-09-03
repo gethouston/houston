@@ -26,6 +26,7 @@ export function MobileDrilledHeader({
   glyph,
   title,
   subtitle,
+  trailing,
   testId,
 }: {
   /** The destination, spoken: the screen this chip retreats to. */
@@ -36,6 +37,10 @@ export function MobileDrilledHeader({
   title: string;
   /** The section on screen, under the subject. */
   subtitle: string;
+  /** The row's own end: a screen's single overflow control, when it has one.
+   *  Deliberately one slot — a drilled phone header has room for the title or
+   *  for a toolbar, never both. */
+  trailing?: ReactNode;
   testId: string;
 }) {
   return (
@@ -56,6 +61,7 @@ export function MobileDrilledHeader({
         </h1>
         <p className="mt-0.5 truncate text-sm text-ink-muted">{subtitle}</p>
       </div>
+      {trailing ? <div className="shrink-0">{trailing}</div> : null}
     </div>
   );
 }

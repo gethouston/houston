@@ -47,6 +47,19 @@ export type {
 } from "./kanban-people-tone";
 export { personNameToneClass, personToneClass } from "./kanban-people-tone";
 export type {
+  TaskListGroupLabels,
+  TaskListGroupProps,
+} from "./task-list-group";
+export { TaskListGroup } from "./task-list-group";
+export type { TaskRowProps } from "./task-row";
+export { TaskRow } from "./task-row";
+export type {
+  TaskRowGlyph,
+  TaskRowLabels,
+  TaskRowStatus,
+} from "./task-row-styles";
+export { taskRowGlyph } from "./task-row-styles";
+export type {
   BoardSearchSnippet,
   ConversationEntry,
   KanbanColumn as KanbanColumnConfig,
