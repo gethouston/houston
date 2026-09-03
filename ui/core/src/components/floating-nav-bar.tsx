@@ -84,7 +84,7 @@ export function FloatingNavBar({
                 <span className="relative flex items-center justify-center">
                   {item.icon}
                   {item.badge && (
-                    <span className="-top-2 -right-3 absolute">
+                    <span className="-top-3 -right-5 absolute">
                       {item.badge}
                     </span>
                   )}
