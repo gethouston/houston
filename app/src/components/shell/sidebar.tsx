@@ -33,9 +33,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
 
   const agents = useAgentStore((s) => s.agents);
   const [createWsOpen, setCreateWsOpen] = useState(false);
-  const [createTeamOpen, setCreateTeamOpen] = useState(false);
 
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
+  // Store-owned so the phone's Teams home (which has no rail) opens the same
+  // dialog this component mounts.
+  const createTeamOpen = useUIStore((s) => s.createTeamDialogOpen);
+  const setCreateTeamOpen = useUIStore((s) => s.setCreateTeamDialogOpen);
   const { canCreate: canCreateAgents } = useCanCreateAgents();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);

@@ -95,6 +95,9 @@ interface UIState {
   authRequired: string | null;
   toasts: ToastItem[];
   createAgentDialogOpen: boolean;
+  /** The "New team" dialog. Shared state rather than the rail's own: the
+   *  phone has no rail, so its Teams home opens the same dialog. */
+  createTeamDialogOpen: boolean;
   createAgentTeamId: string | null;
   /** The team whose "Change icon & name" dialog is open, or null for none. */
   editTeamIdentityId: string | null;
@@ -329,6 +332,7 @@ interface UIState {
   setAuthRequired: (provider: string | null) => void;
   addToast: (toast: Omit<ToastItem, "id">) => void;
   dismissToast: (id: string) => void;
+  setCreateTeamDialogOpen: (open: boolean) => void;
   setCreateAgentDialogOpen: (open: boolean, teamId?: string | null) => void;
   setEditTeamIdentityId: (teamId: string | null) => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
@@ -390,6 +394,7 @@ const initialUIState = {
   authRequired: null,
   toasts: [],
   createAgentDialogOpen: false,
+  createTeamDialogOpen: false,
   createAgentTeamId: null,
   editTeamIdentityId: null,
   agentWarmingNoticeOpen: false,
@@ -595,6 +600,8 @@ export const useUIStore = create<UIState>()(
           return { toasts: s.toasts.filter((t) => t.id !== id) };
         }),
 
+      setCreateTeamDialogOpen: (createTeamDialogOpen) =>
+        set({ createTeamDialogOpen }),
       setCreateAgentDialogOpen: (createAgentDialogOpen, teamId = null) =>
         set({
           createAgentDialogOpen,

@@ -1,10 +1,13 @@
 import { Skeleton } from "@houston-ai/core";
+import { Plus } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
-import { hasSpaces } from "../../lib/org-roles";
+import { hasAgentTeams, hasSpaces } from "../../lib/org-roles";
+import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHero } from "../shell/page-shell";
 import { teamTreeRows } from "./teams-home-model";
 import { TeamTreeBlock } from "./teams-home-tree";
@@ -28,6 +31,11 @@ export function TeamsHomeView() {
   const { capabilities } = useCapabilities();
   const personalSpace = usePersonalSpace();
   const spacesHost = hasSpaces(capabilities);
+  // The rail's own rule for its "New team" action (use-server-team-actions):
+  // a server-teams host always offers it, a local one to whoever may create
+  // agents.
+  const { canCreate: canCreateAgents } = useCanCreateAgents();
+  const canCreateTeam = hasAgentTeams(capabilities) || canCreateAgents;
   const rows = useMemo(
     () => teamTreeRows(teams, capabilities, { personalSpace, spacesHost }),
     [capabilities, personalSpace, spacesHost, teams],
@@ -36,7 +44,15 @@ export function TeamsHomeView() {
   return (
     <div data-testid="teams-home" className="flex h-full flex-col">
       <PageContainer className="shrink-0 pt-6">
-        <PageHero title={t("teamsHome.title")} className="mb-4 px-3" />
+        <PageHero
+          title={t("teamsHome.title")}
+          className="mb-4 px-3"
+          trailing={
+            canCreateTeam ? (
+              <NewTeamButton label={t("teamsHome.newTeam")} />
+            ) : undefined
+          }
+        />
       </PageContainer>
       <PageContainer className="min-h-0 flex-1 overflow-y-auto pb-6">
         {rows.length === 0 ? (
@@ -74,5 +90,22 @@ function TeamsTreeSkeleton() {
         ))}
       </div>
     </div>
+  );
+}
+
+/** The phone's create-team control, the twin of the Agents home's New agent
+ *  chip: the rail that carries "New team" on the desktop is not rendered
+ *  below md, so the tree's title row offers it instead. */
+function NewTeamButton({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      data-testid="teams-home-new-team"
+      onClick={() => useUIStore.getState().setCreateTeamDialogOpen(true)}
+      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-chip text-ink transition-colors active:scale-[0.96] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ht-hairline"
+    >
+      <Plus className="size-5" />
+    </button>
   );
 }
