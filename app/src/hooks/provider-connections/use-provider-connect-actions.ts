@@ -1,6 +1,7 @@
 import { type Dispatch, type SetStateAction, useCallback } from "react";
 import { genericErrorDescription } from "../../lib/error-report";
 import { isNetworkTransportError } from "../../lib/network-transport-error";
+import { isOrgAdminRequiredError } from "../../lib/org-admin-required-error";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import type {
@@ -73,8 +74,10 @@ export function useProviderConnectActions({
         // A device-offline transport drop was already surfaced by the
         // engine-call layer as the one deduped connectivity toast (HOU-1085);
         // the authored red toast on top would double-surface an environment
-        // state (HOUSTON-APP-4PQ, PRODUCT-1383).
-        if (!isNetworkTransportError(err)) {
+        // state (HOUSTON-APP-4PQ, PRODUCT-1383). Same for the gateway's
+        // owner/admin refusal of a member's org-level connect: the engine-call
+        // layer already showed the "ask an admin" info toast.
+        if (!isNetworkTransportError(err) && !isOrgAdminRequiredError(err)) {
           addToast({
             title: t("toast.signInFailed", { provider: provider.name }),
             description: genericErrorDescription("provider_sign_in", err),

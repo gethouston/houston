@@ -117,8 +117,12 @@ describe("provider connect actions do not double-surface connectivity", () => {
       "the hook must import the connectivity classifier",
     );
     const toasts = source.split("addToast({").length - 1;
-    const guards =
-      source.split("if (!isNetworkTransportError(err))").length - 1;
+    // A guard may carry further expected-state classifiers after the
+    // connectivity one (`&& !isOrgAdminRequiredError(err)`), so match the
+    // connectivity check as the leading condition rather than the whole `if`.
+    const guards = (
+      source.match(/if \(\s*!isNetworkTransportError\(err\)/g) ?? []
+    ).length;
     ok(toasts > 0, "expected authored failure toasts in the hook");
     ok(
       guards === toasts,

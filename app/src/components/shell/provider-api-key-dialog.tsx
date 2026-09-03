@@ -14,6 +14,7 @@ import {
   type ApiKeyConnectReason,
   apiKeyConnectReason,
 } from "../../lib/api-key-connect-error";
+import { isOrgAdminRequiredError } from "../../lib/org-admin-required-error";
 import { API_KEY_ENDPOINT_PROVIDERS } from "../../lib/provider-overrides";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
@@ -132,7 +133,12 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       // every provider-QA failure into an undiagnosable "failed to connect".
       // Sentry capture already happened in the tauri call wrapper.
       const reason = apiKeyConnectReason(err);
-      if (reason) {
+      if (isOrgAdminRequiredError(err)) {
+        // A plain member on the org-level (pre-agent) connect: the gateway
+        // reserves it for owners/admins. Expected state, explained inline —
+        // `setApiKey` silences it so nothing else surfaces.
+        setError(t("apiKey.errorOrgAdminRequired"));
+      } else if (reason) {
         setError(
           t(reasonCopyKey(provider.id, reason), { name: provider.name }),
         );
