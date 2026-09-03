@@ -37,26 +37,35 @@ test("opening a chat leaves the composer unfocused (no keyboard)", async ({
   await expect(composer).not.toBeFocused();
 });
 
-test("every toolbar control fits inside the phone viewport", async ({
+test("the toolbar is one row that fits inside the phone viewport", async ({
   page,
 }) => {
   const chat = await openTokyoChat(page);
   const toolbar = chat.getByTestId("composer-toolbar");
   await expect(toolbar).toBeVisible();
-  await expect(toolbar.getByRole("button", { name: "Skills" })).toBeVisible();
   const ring = toolbar.getByRole("button", { name: "Context usage" });
   await expect(ring).toBeVisible();
 
+  // Every visible control sits inside the viewport, on the same row.
   const width = page.viewportSize()?.width ?? 0;
   const buttons = await toolbar.getByRole("button").all();
   expect(buttons.length).toBeGreaterThanOrEqual(3);
+  const tops = new Set<number>();
   for (const button of buttons) {
     const box = await button.boundingBox();
     expect(box).not.toBeNull();
     if (!box) continue;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(width);
+    tops.add(Math.round(box.y + box.height / 2));
   }
+  expect(tops.size).toBe(1);
+
+  // Skills leaves the phone toolbar for the composer's "+" menu.
+  await expect(toolbar.getByRole("button", { name: "Skills" })).toBeHidden();
+  await chat.getByRole("button", { name: "Attach" }).tap();
+  await expect(page.getByRole("button", { name: "Skills" })).toBeVisible();
+  await page.keyboard.press("Escape");
   // Nothing forces the document wider than the phone.
   const overflow = await page.evaluate(
     () =>

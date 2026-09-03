@@ -157,7 +157,7 @@ export function ChatModelSelector({
             >
               {glyph}
               <span>{label}</span>
-              <ChevronDown className="size-3 opacity-60" />
+              <ChevronDown className="hidden md:block size-3 opacity-60" />
             </button>
           </PopoverTrigger>
           {/* `p-0` on the shared popover chrome, the same dropdown surface as

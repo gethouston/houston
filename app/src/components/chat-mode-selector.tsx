@@ -92,7 +92,7 @@ export function ChatModeSelector({
           >
             <ActiveIcon className="size-3.5" />
             <span>{labels[mode]}</span>
-            <ChevronDown className="size-3 opacity-60" />
+            <ChevronDown className="hidden md:block size-3 opacity-60" />
           </button>
         </DropdownMenuTrigger>
         {/* Match the model picker card: rounded-2xl, hairline border, soft

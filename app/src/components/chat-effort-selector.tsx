@@ -108,7 +108,9 @@ export function ChatEffortSelector({
           renders as a lone short + tall bar. Cycling still uses the model's own
           `levels` above. */}
       <EffortIcon levels={EFFORT_ORDER} active={current} className="size-3.5" />
-      <span>{activeLabel}</span>
+      {/* The gauge alone on a phone: the bars already read the level, and the
+          row has no room for the word. The aria-label keeps the value. */}
+      <span className="hidden md:inline">{activeLabel}</span>
     </button>
   );
 }

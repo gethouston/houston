@@ -2357,46 +2357,45 @@ export function useAgentChatPanel({
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;
-    // The pills wrap on a phone (four of them plus the ring overrun a 375px
-    // composer); the context ring stays pinned to the first row's right edge.
-    // Desktop is one row, unchanged.
+    // ONE row at both breakpoints. A phone composer has no room for five
+    // labelled pills, so there the Skills entry lives in the composer's "+"
+    // menu (see `attachMenu`), the effort pill is its gauge icon alone, and
+    // the pickers drop their chevrons. Desktop is unchanged.
     return () => (
       <div
         data-testid="composer-toolbar"
-        className="flex w-full items-start gap-2"
+        className="flex w-full items-center gap-1 md:gap-2"
       >
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 md:gap-2">
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-colors"
-          >
-            <Play className="size-3 fill-current" />
-            {t("composerSkill.browse")}
-          </button>
-          <ChatModeSelector
-            mode={turnMode}
-            onSelect={handleModeSelect}
-            agent={agent}
-          />
-          <ChatModelSelector
-            provider={displayModelPin.provider}
-            model={displayModelPin.model}
-            onSelect={selectModel}
-            open={modelPickerOpen}
-            onOpenChange={setModelPickerOpen}
-            agent={agent}
-            allowedModels={allowedModels}
-          />
-          <ChatEffortSelector
-            provider={displayModelPin.provider}
-            model={displayModelPin.model}
-            effort={displayModelPin.effort}
-            onSelect={selectEffort}
-            agent={agent}
-          />
-        </div>
-        <div className="shrink-0">
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="hidden md:inline-flex items-center gap-1 h-7 px-2.5 rounded-full text-xs font-medium text-ink-muted whitespace-nowrap hover:text-ink hover:bg-hover transition-colors"
+        >
+          <Play className="size-3 fill-current" />
+          {t("composerSkill.browse")}
+        </button>
+        <ChatModeSelector
+          mode={turnMode}
+          onSelect={handleModeSelect}
+          agent={agent}
+        />
+        <ChatModelSelector
+          provider={displayModelPin.provider}
+          model={displayModelPin.model}
+          onSelect={selectModel}
+          open={modelPickerOpen}
+          onOpenChange={setModelPickerOpen}
+          agent={agent}
+          allowedModels={allowedModels}
+        />
+        <ChatEffortSelector
+          provider={displayModelPin.provider}
+          model={displayModelPin.model}
+          effort={displayModelPin.effort}
+          onSelect={selectEffort}
+          agent={agent}
+        />
+        <div className="ml-auto">
           <ContextIndicator
             usage={contextUsage}
             contextWindow={contextWindow}
@@ -2420,8 +2419,20 @@ export function useAgentChatPanel({
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
-    return ({ openFilePicker, openFolderPicker }) => (
+    return ({ openFilePicker, openFolderPicker, close }) => (
       <div className="flex flex-col gap-0.5">
+        {/* Phone only: the toolbar has no room for the Skills pill there. */}
+        <button
+          type="button"
+          onClick={() => {
+            close();
+            setPickerOpen(true);
+          }}
+          className="flex md:hidden items-center gap-2 px-2 py-1.5 rounded-md text-sm text-ink hover:bg-hover transition-colors"
+        >
+          <Play className="size-4 text-ink-muted" />
+          {t("composerSkill.browse")}
+        </button>
         <button
           type="button"
           onClick={() => {
