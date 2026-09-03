@@ -4,8 +4,9 @@
  * A small footer control showing how full the model's context window is for
  * the current conversation. The trigger is a ring gauge (a
  * donut whose arc fills with the occupied fraction and turns red near the
- * limit) plus the bare percentage; hovering reveals the detail (tapping, on
- * the phone: a hover card never opens for a touch pointer). The caller
+ * limit) plus the bare percentage; hovering reveals the detail (on the phone
+ * a tap opens it as a bottom sheet: a hover card never opens for a touch
+ * pointer). The caller
  * resolves `usage` (latest turn) and `contextWindow` (a self-correcting
  * estimate; see `sessionContextUsage` + `effectiveContextWindow` in
  * `lib/context-usage.ts` and `getContextWindowConfig` in `lib/providers.ts`).
@@ -21,10 +22,10 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
   Progress,
+  ResponsivePopover,
+  ResponsivePopoverContent,
+  ResponsivePopoverTrigger,
   useIsMobile,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
@@ -113,11 +114,8 @@ export function ContextIndicator({
       <ContextRing percent={percent} />
     </button>
   );
-  const cardClassName = "flex w-64 flex-col gap-2 rounded-2xl";
   const detail = (
     <>
-      <p className="text-sm font-medium leading-none">{t("card.title")}</p>
-
       {!usage ? (
         <p className="text-sm text-ink-muted">{t("card.empty")}</p>
       ) : windowTokens != null ? (
@@ -151,22 +149,26 @@ export function ContextIndicator({
   );
 
   // Structural fork, not a layout tweak: a hover card is dead to a touch
-  // pointer, so the phone gets a tap-to-open popover around the same detail.
+  // pointer, so the phone gets a tap-to-open sheet around the same detail.
   if (isMobile) {
     return (
-      <Popover>
-        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <PopoverContent align="end" className={cardClassName}>
-          {detail}
-        </PopoverContent>
-      </Popover>
+      <ResponsivePopover>
+        <ResponsivePopoverTrigger asChild>{trigger}</ResponsivePopoverTrigger>
+        <ResponsivePopoverContent title={t("card.title")}>
+          <div className="flex flex-col gap-2 px-4 pb-4">{detail}</div>
+        </ResponsivePopoverContent>
+      </ResponsivePopover>
     );
   }
 
   return (
     <HoverCard openDelay={150} closeDelay={100}>
       <HoverCardTrigger asChild>{trigger}</HoverCardTrigger>
-      <HoverCardContent align="end" className={cardClassName}>
+      <HoverCardContent
+        align="end"
+        className="flex w-64 flex-col gap-2 rounded-2xl"
+      >
+        <p className="text-sm font-medium leading-none">{t("card.title")}</p>
         {detail}
       </HoverCardContent>
     </HoverCard>

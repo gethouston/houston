@@ -78,3 +78,40 @@ test("the toolbar is one row that fits inside the phone viewport", async ({
   await ring.tap();
   await expect(page.getByText("Context", { exact: true })).toBeVisible();
 });
+
+test("the pickers open as full-width bottom sheets", async ({ page }) => {
+  const chat = await openTokyoChat(page);
+  const toolbar = chat.getByTestId("composer-toolbar");
+  const { width, height } = page.viewportSize() ?? { width: 0, height: 0 };
+
+  // Each picker's sheet spans the phone's width and sits on its bottom edge.
+  const pickers: [RegExp, string][] = [
+    [/^Mode:/, "Mode"],
+    [/^Context usage$/, "Context"],
+  ];
+  for (const [pill, title] of pickers) {
+    await toolbar.getByRole("button", { name: pill }).tap();
+    const sheet = page.getByRole("dialog", { name: title });
+    await expect(sheet).toBeVisible();
+    const box = await sheet.boundingBox();
+    expect(box).not.toBeNull();
+    if (box) {
+      expect(Math.round(box.x)).toBe(0);
+      expect(Math.round(box.width)).toBe(width);
+      expect(Math.round(box.y + box.height)).toBe(height);
+    }
+    await page.keyboard.press("Escape");
+    await expect(sheet).toBeHidden();
+  }
+
+  // Picking a mode from the sheet applies it and closes the sheet.
+  await toolbar.getByRole("button", { name: /^Mode:/ }).tap();
+  await page
+    .getByRole("dialog", { name: "Mode" })
+    .getByRole("button", { name: /Planner/ })
+    .tap();
+  await expect(page.getByRole("dialog", { name: "Mode" })).toBeHidden();
+  await expect(
+    toolbar.getByRole("button", { name: /^Mode: Planner/ }),
+  ).toBeVisible();
+});

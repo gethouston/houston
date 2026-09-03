@@ -7,6 +7,11 @@ import { useEffect, useState } from "react";
  * `dvh` when the keyboard opens, so a full-height chat screen pads its bottom
  * by this to keep the composer above the keys; the message log's
  * stick-to-bottom re-anchors on the resulting resize.
+ *
+ * Measured against `pageTop` (document scroll + visual offset), not
+ * `offsetTop`: a browser that reveals the focused composer by scrolling the
+ * document itself would otherwise leave that scroll as a gap between the
+ * composer and the keys.
  */
 export function useVisualViewportInset(): number {
   const [inset, setInset] = useState(0);
@@ -15,8 +20,7 @@ export function useVisualViewportInset(): number {
     const viewport = window.visualViewport;
     if (!viewport) return;
     const update = () => {
-      const occluded =
-        window.innerHeight - viewport.height - viewport.offsetTop;
+      const occluded = window.innerHeight - viewport.height - viewport.pageTop;
       setInset(Math.max(0, Math.round(occluded)));
     };
     update();
