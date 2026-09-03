@@ -407,6 +407,11 @@
       "description": "Comienza una tarea con el botón de redactar y aparecerá aquí."
     }
   },
+  "teamsHome": {
+    "title": "Equipos",
+    "tree": "Equipos y sus secciones",
+    "newTeam": "Nuevo equipo"
+  },
   "tabBar": {
     "agents": "Agentes",
     "label": "Navegación principal",

@@ -407,6 +407,11 @@
       "description": "Start a task with the compose button and it will show up here."
     }
   },
+  "teamsHome": {
+    "title": "Teams",
+    "tree": "Teams and their sections",
+    "newTeam": "New team"
+  },
   "tabBar": {
     "agents": "Agents",
     "label": "Main navigation",

@@ -11,7 +11,11 @@ import {
 } from "../lib/nav-stack.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
-import { AGENTS_HOME_VIEW_ID, INBOX_VIEW_ID } from "../lib/top-level-views.ts";
+import {
+  AGENTS_HOME_VIEW_ID,
+  INBOX_VIEW_ID,
+  TEAMS_HOME_VIEW_ID,
+} from "../lib/top-level-views.ts";
 
 export interface ToastItem {
   id: string;
@@ -291,6 +295,16 @@ interface UIState {
     },
   ) => void;
   /**
+   * Navigate to the phone's Teams home: the tree of every team and its
+   * sections, the Teams tab's root. A team's section is one push below it
+   * (`openTeamView`), so its back chip retreats here.
+   */
+  openTeamsHome: (opts?: {
+    /** `reset` for the mobile nav bar, `retreat` for a back chip; default
+     *  `push`. */
+    nav?: NavMode;
+  }) => void;
+  /**
    * Push the phone's mission-chat screen for `agentId`, on `missionId`'s chat
    * (`null` = an empty draft chat, the compose flow). ONE call sets both ids
    * so the screen can never open half-addressed. `replace` is for the draft
@@ -500,6 +514,14 @@ export const useUIStore = create<UIState>()(
           navigated(
             s,
             { viewMode: AGENTS_HOME_VIEW_ID, agentsHomeAgentId, ...noChat },
+            opts?.nav ?? "push",
+          ),
+        ),
+      openTeamsHome: (opts) =>
+        set((s) =>
+          navigated(
+            s,
+            { viewMode: TEAMS_HOME_VIEW_ID, ...noChat },
             opts?.nav ?? "push",
           ),
         ),

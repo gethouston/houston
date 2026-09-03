@@ -407,6 +407,11 @@
       "description": "Comece uma tarefa com o botão de compor e ela aparecerá aqui."
     }
   },
+  "teamsHome": {
+    "title": "Equipes",
+    "tree": "Equipes e suas seções",
+    "newTeam": "Nova equipe"
+  },
   "tabBar": {
     "agents": "Agentes",
     "label": "Navegação principal",
