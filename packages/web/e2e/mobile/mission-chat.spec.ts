@@ -4,20 +4,16 @@ import { screen } from "../support/team-nav";
 
 /**
  * The phone's pushed mission-chat screen (PR 5 of the responsiveness
- * overhaul): a board card pushes the chat as a first-class nav level, the
+ * overhaul): a task row pushes the chat as a first-class nav level, the
  * send round-trip works on the phone viewport, and the compose flow's draft
  * chat creates its mission on first send.
  */
 
-test("card tap pushes the chat; back returns to the board", async ({
+test("a team task row pushes the chat; back returns to the list", async ({
   page,
 }) => {
   await page.goto("/");
   await openPhoneTeamSection(page, "mission-control");
-  await screen(page)
-    .getByTestId("board-pager")
-    .locator("[data-board-page='needs_you']")
-    .tap();
   await screen(page).getByText("Plan a trip to Tokyo").tap();
 
   const chat = page.getByTestId("mission-chat-screen");

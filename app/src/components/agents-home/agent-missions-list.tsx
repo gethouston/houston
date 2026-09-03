@@ -7,11 +7,13 @@ import {
 } from "@houston-ai/core";
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
+import type {
+  TaskListFilterId,
+  TaskListSectionId,
+} from "../board/task-list-model";
 import { formatRelativeTime } from "../organization/org-time";
 import {
   type AgentMissionSections,
-  type MissionFilterId,
-  type MissionSectionId,
   missionListSections,
   searchMissions,
 } from "./agent-missions-model";
@@ -21,13 +23,13 @@ const SECTION_LABEL_KEYS = {
   needsYou: "dashboard:columns.needsYou",
   running: "dashboard:columns.running",
   done: "dashboard:columns.done",
-} as const satisfies Record<MissionSectionId, string>;
+} as const satisfies Record<TaskListSectionId, string>;
 
 const SECTION_STATUS = {
   needsYou: "needs_you",
   running: "running",
   done: "done",
-} as const satisfies Record<MissionSectionId, TaskRowStatus>;
+} as const satisfies Record<TaskListSectionId, TaskRowStatus>;
 
 /**
  * One agent's tasks: the board's sections as bands of shared task rows, with
@@ -49,7 +51,7 @@ export function AgentMissionsList({
   onOpenArchived,
 }: {
   sections: AgentMissionSections;
-  filter: MissionFilterId;
+  filter: TaskListFilterId;
   query: string;
   archivedOpen: boolean;
   archivedRef: RefObject<HTMLDivElement | null>;
@@ -65,7 +67,7 @@ export function AgentMissionsList({
     needsYou: t("dashboard:columns.needsYou"),
     running: t("dashboard:columns.running"),
     done: t("dashboard:columns.done"),
-    archived: t("shell:agentsHome.archived"),
+    archived: t("shell:taskList.archived"),
   };
   const row = (
     mission: AgentHomeConversation,
@@ -105,9 +107,9 @@ export function AgentMissionsList({
     return (
       <Empty className="border-0">
         <EmptyHeader>
-          <EmptyTitle>{t("shell:agentsHome.noMissions.title")}</EmptyTitle>
+          <EmptyTitle>{t("shell:taskList.noTasks.title")}</EmptyTitle>
           <EmptyDescription>
-            {t("shell:agentsHome.noMissions.description")}
+            {t("shell:taskList.noTasks.description")}
           </EmptyDescription>
         </EmptyHeader>
       </Empty>
@@ -116,8 +118,8 @@ export function AgentMissionsList({
     return (
       <p className="px-4 py-4 text-sm text-ink-muted">
         {query.trim() === ""
-          ? t("shell:agentsHome.filterEmpty")
-          : t("shell:agentsHome.searchEmpty")}
+          ? t("shell:taskList.filterEmpty")
+          : t("shell:taskList.searchEmpty")}
       </p>
     );
 
@@ -137,7 +139,7 @@ export function AgentMissionsList({
       {archived.length > 0 && (
         <div ref={archivedRef}>
           <TaskListGroup
-            heading={t("shell:agentsHome.archived")}
+            heading={t("shell:taskList.archived")}
             count={archived.length}
             collapsible
             open={archivedOpen}

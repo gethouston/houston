@@ -149,7 +149,7 @@ components:
 
   mission-board:
     status: implemented
-    ref: "@houston-ai/board KanbanBoard / AIBoard / KanbanColumn (paged form: no header, leading +), phone pager in kanban-pager.tsx (segmented control synced to the snap-scrolling pages) with the phone control row in app/src/components/board/mobile-board-controls.tsx and the phone compose in board/phone-compose.ts"
+    ref: "@houston-ai/board KanbanBoard / AIBoard / KanbanColumn, desktop-only: app/src/components/board/mission-board.tsx forks below md to board/team-task-list.tsx instead"
 
   mentions-inbox:
     status: partial
@@ -280,10 +280,10 @@ components:
     ref: "@houston-ai/layout AppSidebar (SidebarBand + SidebarAddRow, both over SidebarRowButton), with app/src/components/shell/sidebar-create-dialog.tsx wearing sidebarRowAffordanceClasses and passed as sectionAction from app/src/components/shell/sidebar-rail.tsx (a modal of create-choice-tile.tsx squares)"
   team-screen:
     status: implemented
-    ref: "app/src/components/team-view/ (TeamView switching TeamMissionControl over @houston-ai/board MissionBoard, TeamRoutines over @houston-ai/routines RoutinesGrid, TeamFiles over the shared AgentFilesSurface, TeamSettings), with AgentReadsFailed naming any agent whose read failed"
+    ref: "app/src/components/team-view/ (TeamView switching TeamMissionControl over @houston-ai/board MissionBoard, TeamRoutines over @houston-ai/routines RoutinesGrid, TeamFiles over the shared AgentFilesSurface, TeamSettings), with AgentReadsFailed naming any agent whose read failed; the phone Tasks list is board/team-task-list.tsx + team-task-row.tsx over the pure board/task-list-model.ts, its header menu team-view/team-tasks-menu.tsx, the two halves sharing board/task-list-chrome.tsx"
   mobile-nav-bar:
     status: implemented
-    ref: "app/src/components/shell/mobile-nav-bar.tsx binding @houston-ai/core FloatingNavBar (items + NeedsYouChip badge over the agent activity rollup), rules in app/src/lib/mobile-tabs.ts with the tap side in app/src/lib/open-mobile-tab.ts (nav-stack reset mode); the new-task control runs lib/new-mission.ts startNewMission over lib/new-mission-scope.ts"
+    ref: "app/src/components/shell/mobile-nav-bar.tsx binding @houston-ai/core FloatingNavBar (items + NeedsYouChip badge over the agent activity rollup), rules in app/src/lib/mobile-tabs.ts with the tap side in app/src/lib/open-mobile-tab.ts (nav-stack reset mode); the new-task control runs lib/new-mission.ts startNewMission over lib/new-mission-scope.ts and carries the guided setup's newMission tour anchor (onboarding/in-app-mobile-targets.ts)"
   mobile-more-menu:
     status: implemented
     ref: "app/src/components/shell/mobile-more-menu.tsx (@houston-ai/core Sheet restyled as a floating card, ui store mobileMoreOpen) over the pure mobile-more-items.ts model, rows from sidebar-nav-sections.tsx buildSidebarNavItems so the destinations and tour anchors are the rail's own"
@@ -295,10 +295,10 @@ components:
     ref: "app/src/components/agents-home/ (AgentsHomeView switching AgentsHomeList / AgentMissionsScreen on the ui store's agentsHomeAgentId nav level), tree in agents-home-tree.tsx over the pure agentHomeRows + agentTreeSections in agents-home-model.ts, rows over AgentSidebarIcon + NeedsYouChip, tab root wiring in app/src/lib/open-mobile-tab.ts and the phone boot landing in use-workspace-view-guards.ts"
   agent-missions-list:
     status: implemented
-    ref: "app/src/components/agents-home/agent-missions-screen.tsx (shell/mobile-drilled-header.tsx + agent-missions-filter.tsx segments + agent-missions-menu.tsx overflow + agent-missions-search.tsx) over agent-missions-list.tsx, drawing @houston-ai/board TaskListGroup/TaskRow from the pure agent-missions-model.ts (the board's missionColumnIdForStatus mapping); active rows push the chat via lib/mission-chat.ts, archived rows keep lib/open-agent.ts openAgentBoard + the published activityPanelId"
+    ref: "app/src/components/agents-home/agent-missions-screen.tsx (shell/mobile-drilled-header.tsx + the shared board/task-list-filter.tsx segments, board/task-list-menu.tsx chip behind agent-missions-menu.tsx, board/task-list-search.tsx) over agent-missions-list.tsx, drawing @houston-ai/board TaskListGroup/TaskRow from the pure agent-missions-model.ts over board/task-list-model.ts (the board's missionColumnIdForStatus mapping); active rows push the chat via lib/mission-chat.ts, archived rows keep lib/open-agent.ts openAgentBoard + the published activityPanelId"
   task-row:
     status: implemented
-    ref: "@houston-ai/board task-row.tsx + task-list-group.tsx over the pure task-row-styles.ts status mapping; bound today by app/src/components/agents-home/agent-missions-list.tsx"
+    ref: "@houston-ai/board task-row.tsx + task-list-group.tsx over the pure task-row-styles.ts status mapping; bound by app/src/components/agents-home/agent-missions-list.tsx and app/src/components/board/team-task-list.tsx"
   mission-chat-screen:
     status: implemented
     ref: "app/src/components/mission-chat/ (MissionChatScreen over useMissionChatSource + the shared board/use-board-chat-wiring.tsx, rendered through @houston-ai/board AIBoard panelOnly), nav level chatAgentId/chatMissionId in lib/nav-stack.ts + stores/ui.ts openMissionChat, keyboard inset via hooks/use-visual-viewport-inset.ts, shell mount + bar hiding in shell/workspace-shell.tsx"

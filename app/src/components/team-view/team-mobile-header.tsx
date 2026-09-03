@@ -1,9 +1,13 @@
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { teamDisplayName } from "../../lib/team-display";
+import { canConfigureTeam } from "../../lib/team-permissions";
 import type { TeamSectionId, TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
+import { useTaskListChrome } from "../board/task-list-chrome";
 import { MobileDrilledHeader } from "../shell/mobile-drilled-header";
 import { TeamGlyph } from "../shell/team-glyph";
+import { TeamTasksMenu } from "./team-tasks-menu";
 
 /**
  * A team section's phone header. The team's own screen is DRILLED on the
@@ -37,6 +41,12 @@ export function TeamMobileHeader({
 }) {
   const { t } = useTranslation(["teams", "shell"]);
   const openTeamsHome = useUIStore((s) => s.openTeamsHome);
+  const { capabilities } = useCapabilities();
+  // Only the Tasks section has a list under this header, and only a mounted
+  // list publishes its archive — so a section with nothing to overflow (or an
+  // empty team, or the archive itself) draws no chip at all rather than a
+  // menu whose items would do nothing.
+  const hasTaskList = useTaskListChrome().showArchive !== null;
   return (
     <MobileDrilledHeader
       backLabel={t("shell:teamsHome.title")}
@@ -44,6 +54,14 @@ export function TeamMobileHeader({
       glyph={<TeamGlyph team={team} className="size-5 shrink-0" />}
       title={teamDisplayName(team, t("teamView.defaultName"))}
       subtitle={t(TEAM_SECTION_TITLE_KEYS[section])}
+      trailing={
+        section === "mission-control" && hasTaskList ? (
+          <TeamTasksMenu
+            team={team}
+            canConfigure={canConfigureTeam(capabilities, team)}
+          />
+        ) : undefined
+      }
       testId="team-mobile-back"
     />
   );

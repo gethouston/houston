@@ -1,9 +1,7 @@
-import { useIsMobile } from "@houston-ai/core";
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { columnDragRole, defaultCanDropItem } from "./dnd";
 import type { KanbanCardLabels } from "./kanban-card";
 import { KanbanColumn } from "./kanban-column";
-import { KanbanPager, useBoardPager } from "./kanban-pager";
 import type { KanbanColumn as KanbanColumnType, KanbanItem } from "./types";
 import { useBoardDrag } from "./use-board-drag";
 
@@ -108,15 +106,6 @@ export function KanbanBoard({
     });
   }, [columns, items]);
 
-  // Phone pager (below md the board is one full-width column per swipe): the
-  // segmented control and the snap container stay in sync both ways. A
-  // structural fork, not CSS hiding: the pager names the sections, so the
-  // paged columns draw no header of their own, and a hidden desktop copy of
-  // either would trip every strict text lookup on the board.
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const pager = useBoardPager(scrollRef);
-  const isMobile = useIsMobile();
-
   if (items.length === 0 && emptyState) {
     return (
       <div className="flex-1 flex items-center justify-center px-8">
@@ -126,83 +115,66 @@ export function KanbanBoard({
   }
 
   return (
-    <>
-      {isMobile && (
-        <KanbanPager
-          pages={columnData.map((col) => ({
-            id: col.id,
-            label: col.label,
-            count: col.items.length,
-          }))}
-          activeIndex={pager.activeIndex}
-          onSelect={pager.scrollToPage}
-        />
-      )}
-      {/* The drag is delegated: handlers live on the container and resolve the
-        dragged card / target column from the DOM (data attributes). The cursor
-        itself is driven by `body` classes (see use-board-drag), not here. */}
-      <div
-        {...dragHandlers}
-        ref={scrollRef}
-        onScroll={pager.handleScroll}
-        data-testid="board-columns"
-        className="flex-1 flex gap-3 p-3 pt-2 md:pt-3 min-h-0 overflow-x-auto overflow-y-hidden snap-x snap-mandatory md:snap-none"
-      >
-        {columnData.map((col) => {
-          // `idle | origin | drop-target | forbidden` — see `columnDragRole`. A
-          // drop target shows the faint "drop here" ring; the column under the
-          // pointer (`hoverColumnId`) gets the stronger highlight.
-          const role = draggingItem
-            ? columnDragRole(
-                draggingItem,
-                col,
-                resolveCanDrop(draggingItem, col.id),
-              )
-            : "idle";
-          const isDropTarget = role === "drop-target";
-          const isOver = isDropTarget && hoverColumnId === col.id;
-          return (
-            <KanbanColumn
-              key={col.id}
-              columnId={col.id}
-              label={col.label}
-              items={col.items}
-              selectedId={selectedId}
-              highlightedId={highlightedId}
-              onAdd={col.onAdd}
-              addLabel={col.addLabel}
-              addAttrs={col.addAttrs}
-              headerAction={col.headerAction}
-              paged={isMobile}
-              emptyLabel={col.emptyLabel}
-              onSelect={onSelect ?? (() => {})}
-              onDelete={onDelete}
-              onApprove={onApprove}
-              onArchive={onArchive}
-              onRename={onRename}
-              renderCard={renderCard}
-              runningStatuses={runningStatuses}
-              approveStatuses={approveStatuses}
-              archiveStatuses={archiveStatuses}
-              errorStatuses={errorStatuses}
-              actions={actions}
-              avatar={avatar}
-              cardLabels={cardLabels}
-              selectable={
-                selectable &&
-                (selectionLockColumnId == null ||
-                  selectionLockColumnId === col.id)
-              }
-              selectedIds={selectedIds}
-              onToggleSelect={onToggleSelect}
-              dndEnabled={dndEnabled}
-              isDropTarget={isDropTarget}
-              isOver={isOver}
-              draggingId={draggingId}
-            />
-          );
-        })}
-      </div>
-    </>
+    // The drag is delegated: handlers live on the container and resolve the
+    // dragged card / target column from the DOM (data attributes). The cursor
+    // itself is driven by `body` classes (see use-board-drag), not here.
+    <div
+      {...dragHandlers}
+      data-testid="board-columns"
+      className="flex-1 flex gap-3 p-3 min-h-0 overflow-x-auto overflow-y-hidden"
+    >
+      {columnData.map((col) => {
+        // `idle | origin | drop-target | forbidden` — see `columnDragRole`. A
+        // drop target shows the faint "drop here" ring; the column under the
+        // pointer (`hoverColumnId`) gets the stronger highlight.
+        const role = draggingItem
+          ? columnDragRole(
+              draggingItem,
+              col,
+              resolveCanDrop(draggingItem, col.id),
+            )
+          : "idle";
+        const isDropTarget = role === "drop-target";
+        const isOver = isDropTarget && hoverColumnId === col.id;
+        return (
+          <KanbanColumn
+            key={col.id}
+            columnId={col.id}
+            label={col.label}
+            items={col.items}
+            selectedId={selectedId}
+            highlightedId={highlightedId}
+            onAdd={col.onAdd}
+            addLabel={col.addLabel}
+            addAttrs={col.addAttrs}
+            headerAction={col.headerAction}
+            onSelect={onSelect ?? (() => {})}
+            onDelete={onDelete}
+            onApprove={onApprove}
+            onArchive={onArchive}
+            onRename={onRename}
+            renderCard={renderCard}
+            runningStatuses={runningStatuses}
+            approveStatuses={approveStatuses}
+            archiveStatuses={archiveStatuses}
+            errorStatuses={errorStatuses}
+            actions={actions}
+            avatar={avatar}
+            cardLabels={cardLabels}
+            selectable={
+              selectable &&
+              (selectionLockColumnId == null ||
+                selectionLockColumnId === col.id)
+            }
+            selectedIds={selectedIds}
+            onToggleSelect={onToggleSelect}
+            dndEnabled={dndEnabled}
+            isDropTarget={isDropTarget}
+            isOver={isOver}
+            draggingId={draggingId}
+          />
+        );
+      })}
+    </div>
   );
 }

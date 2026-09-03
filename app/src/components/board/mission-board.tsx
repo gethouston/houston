@@ -2,7 +2,6 @@ import { AIBoard } from "@houston-ai/board";
 import { useIsMobile } from "@houston-ai/core";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { openMissionChatForPath } from "../../lib/mission-chat";
 import { perfSpans } from "../../lib/perf-spans";
 import { useUIStore } from "../../stores/ui";
 import {
@@ -12,8 +11,8 @@ import {
 } from "../mission-board-columns";
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
-import { tourAnchor } from "../shell/workspace-tour-steps";
 import type { BoardSource } from "./board-source";
+import { TeamTaskList } from "./team-task-list";
 import { useBoardChatWiring } from "./use-board-chat-wiring";
 import { useBoardKeyboard } from "./use-board-keyboard";
 import { useBoardSelectionUI } from "./use-board-selection-ui";
@@ -28,9 +27,13 @@ import { useBoardSelectionUI } from "./use-board-selection-ui";
  * active agent, new-mission flow, bulk routing, toolbar, dialogs) from
  * `source`.
  *
- * Below md a card tap is a STRUCTURAL fork: it pushes the mission-chat
- * screen (`lib/mission-chat.ts`) instead of selecting into the side panel —
- * chat is a place on the phone, not a panel.
+ * Below md the kanban is not rendered at all: a phone gets
+ * {@link TeamTaskList}, one scrolling list of the same missions grouped by
+ * the same sections. A STRUCTURAL fork, not a narrower board — the desktop
+ * board's columns, drag-and-drop, multi-select and side panel have no phone
+ * form, and a card tap there is a pushed chat screen rather than a selection.
+ * The dialogs stay mounted on both, because the flows behind them (the agent
+ * picker, attachment rejections) belong to the source, not to the layout.
  */
 export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
@@ -48,13 +51,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
 
   // Columns: base layout (single source of truth for status→section) plus the
   // Done "archive all" / Needs-you "select all" header actions when the source
-  // supports multi-select. The Running page's "+" is the phone's compose below
-  // md (a pushed chat, scoped to this board), the desktop composer above it.
-  // Below md it is also the guided tour's "New task" anchor: the desktop
-  // toolbar button that carries it is hidden there, and the tour scopes the
-  // anchor to the active screen, which the top bar's compose is outside of.
-  const onAdd = isMobile ? source.composeOnPhone : source.openNewMission;
-  const addAttrs = isMobile ? tourAnchor("newMission") : undefined;
+  // supports multi-select.
   const baseColumns = useMemo(
     () =>
       buildMissionBoardColumns(
@@ -63,16 +60,10 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           needsYou: t("dashboard:columns.needsYou"),
           done: t("dashboard:columns.done"),
           newMission: t("dashboard:empty.newMission"),
-          empty: {
-            running: t("dashboard:pager.emptyRunning"),
-            needsYou: t("dashboard:pager.emptyNeedsYou"),
-            done: t("dashboard:pager.emptyDone"),
-          },
         },
-        onAdd,
-        addAttrs,
+        source.openNewMission,
       ),
-    [t, onAdd, addAttrs],
+    [t, source.openNewMission],
   );
   const closeOpenChat = useCallback(
     () => source.setSelectedId(null),
@@ -110,32 +101,24 @@ export function MissionBoard({ source }: { source: BoardSource }) {
       // Card-open perf mark (HOU-1011): completed when the opened
       // conversation's messages paint (use-agent-board-data).
       if (id) perfSpans.cardClicked();
-      // The phone fork: a card tap pushes the first-class chat screen. A card
-      // whose agent left the roster falls through to the panel selection.
-      if (isMobile && id) {
-        const item =
-          source.items.find((i) => i.id === id) ??
-          source.allItems.find((i) => i.id === id);
-        const agentPath = item?.metadata?.agentPath as string | undefined;
-        if (openMissionChatForPath(agentPath, id)) return;
-      }
       source.setSelectedId(id);
     },
-    [isMobile, source.items, source.allItems, source.setSelectedId],
+    [source.setSelectedId],
   );
+
+  if (isMobile) {
+    return (
+      <>
+        <TeamTaskList source={source} />
+        {wiring.dialogs}
+        {source.dialogs}
+      </>
+    );
+  }
 
   return (
     <>
-      {/* Desktop layer only: below md the mobile controls own this space. The
-          wide strip form portals into the team strip and escapes the wrapper,
-          which is exactly right — the strip itself is desktop chrome. The
-          mobile controls MOUNT only below the breakpoint (a structural fork,
-          like the card tap): their "All agents" / "Archived" texts would trip
-          strict text lookups as hidden desktop DOM. */}
-      {source.toolbar && (
-        <div className="hidden md:contents">{source.toolbar}</div>
-      )}
-      {isMobile && source.mobileControls}
+      {source.toolbar}
       <div className="flex-1 min-h-0">
         <AIBoard
           items={source.items}

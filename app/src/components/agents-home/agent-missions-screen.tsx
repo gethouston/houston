@@ -6,16 +6,14 @@ import { openAgentBoard } from "../../lib/open-agent";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { TaskListFilter } from "../board/task-list-filter";
+import type { TaskListFilterId } from "../board/task-list-model";
+import { TaskListSearch } from "../board/task-list-search";
 import { AgentSidebarIcon } from "../shell/agent-sidebar-status";
 import { MobileDrilledHeader } from "../shell/mobile-drilled-header";
-import { AgentMissionsFilter } from "./agent-missions-filter";
 import { AgentMissionsList } from "./agent-missions-list";
 import { AgentMissionsMenu } from "./agent-missions-menu";
-import {
-  agentMissionSections,
-  type MissionFilterId,
-} from "./agent-missions-model";
-import { AgentMissionsSearch } from "./agent-missions-search";
+import { agentMissionSections } from "./agent-missions-model";
 import type { AgentHomeConversation } from "./agents-home-model";
 
 /**
@@ -35,7 +33,7 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
   const { t } = useTranslation(["shell", "dashboard"]);
   const openAgentsHome = useUIStore((s) => s.openAgentsHome);
   const agents = useAgentStore((s) => s.agents);
-  const [filter, setFilter] = useState<MissionFilterId>("all");
+  const [filter, setFilter] = useState<TaskListFilterId>("all");
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [archivedOpen, setArchivedOpen] = useState(false);
@@ -101,16 +99,18 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
         }
         testId="agent-missions-back"
       />
-      <AgentMissionsFilter
+      <TaskListFilter
         active={filter}
         needsYouCount={sections.needsYou.length}
         onSelect={setFilter}
+        testId="agent-missions-filter"
       />
       {searchOpen && (
-        <AgentMissionsSearch
+        <TaskListSearch
           query={query}
           onQuery={setQuery}
           onClose={closeSearch}
+          testId="agent-missions-search"
         />
       )}
       <div className="min-h-0 flex-1 overflow-y-auto pb-6">

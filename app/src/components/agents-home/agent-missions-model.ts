@@ -1,5 +1,10 @@
 import { isSetupChatMode } from "../../lib/integration-chat-setup.ts";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection.ts";
+import {
+  type TaskListFilterId,
+  type TaskListSectionId,
+  taskListSectionsFor,
+} from "../board/task-list-model.ts";
 import { missionColumnIdForStatus } from "../mission-board-columns.ts";
 import {
   type AgentHomeConversation,
@@ -58,30 +63,14 @@ export function agentMissionSections(
   return sections;
 }
 
-/** The segmented control's positions. "all" is the resting one. */
-export type MissionFilterId = "all" | "needs_you" | "running" | "done";
-
-/** Render order, and the order the segments are drawn in. */
-export const MISSION_FILTER_IDS = [
-  "all",
-  "needs_you",
-  "running",
-  "done",
-] as const satisfies readonly MissionFilterId[];
-
-/** The bands the body draws, in order. The archive is NOT one of them: it is
- *  its own collapsed drawer at the bottom of the unfiltered list. */
-export type MissionSectionId = "needsYou" | "running" | "done";
-
-const SECTION_FOR_FILTER: Record<
-  Exclude<MissionFilterId, "all">,
-  MissionSectionId
-> = { needs_you: "needsYou", running: "running", done: "done" };
-
-const SECTION_ORDER = ["needsYou", "running", "done"] as const;
-
+/**
+ * The bands the body draws, and what the shared segmented control narrows them
+ * to, are the phone task list's own rules ({@link taskListSectionsFor}): one
+ * grammar for an agent's list and a team's, so a task never sits in a
+ * different band depending on which screen found it.
+ */
 export interface MissionListSection {
-  id: MissionSectionId;
+  id: TaskListSectionId;
   missions: AgentHomeConversation[];
 }
 
@@ -95,6 +84,12 @@ export function searchMissions(
   return missions.filter((m) => m.title.toLocaleLowerCase().includes(needle));
 }
 
+const SECTION_KEY = {
+  needsYou: "needsYou",
+  running: "running",
+  done: "done",
+} as const satisfies Record<TaskListSectionId, keyof AgentMissionSections>;
+
 /**
  * The bands to draw: the segment's own section (or all three), searched, with
  * the empty ones dropped — an empty band vanishes rather than rendering a
@@ -102,13 +97,11 @@ export function searchMissions(
  */
 export function missionListSections(
   sections: AgentMissionSections,
-  filter: MissionFilterId,
+  filter: TaskListFilterId,
   query: string,
 ): MissionListSection[] {
-  const wanted =
-    filter === "all" ? SECTION_ORDER : [SECTION_FOR_FILTER[filter]];
-  return wanted.flatMap((id) => {
-    const missions = searchMissions(sections[id], query);
+  return taskListSectionsFor(filter).flatMap((id) => {
+    const missions = searchMissions(sections[SECTION_KEY[id]], query);
     return missions.length === 0 ? [] : [{ id, missions }];
   });
 }

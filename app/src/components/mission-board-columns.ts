@@ -5,9 +5,6 @@ interface MissionBoardColumnLabels {
   needsYou: string;
   done: string;
   newMission: string;
-  /** Phone-only empty-page hints (the paged phone board): one per column.
-   *  Optional so callers that never render below md keep their signature. */
-  empty?: { running: string; needsYou: string; done: string };
 }
 
 /** Status → board section mapping. Single source of truth shared by the
@@ -37,9 +34,6 @@ export const MISSION_ARCHIVE_STATUSES = [...COLUMN_STATUSES.done];
 export function buildMissionBoardColumns(
   labels: MissionBoardColumnLabels,
   onNewMission: () => void,
-  /** Attributes for the Running column's "+" (the phone board hands it the
-   *  guided tour's New task anchor; desktop's anchor is the toolbar button). */
-  addAttrs?: Record<string, string>,
 ): KanbanColumnConfig[] {
   return [
     {
@@ -48,20 +42,16 @@ export function buildMissionBoardColumns(
       statuses: [...COLUMN_STATUSES.running],
       onAdd: onNewMission,
       addLabel: labels.newMission,
-      addAttrs,
-      emptyLabel: labels.empty?.running,
     },
     {
       id: "needs_you",
       label: labels.needsYou,
       statuses: [...COLUMN_STATUSES.needs_you],
-      emptyLabel: labels.empty?.needsYou,
     },
     {
       id: "done",
       label: labels.done,
       statuses: [...COLUMN_STATUSES.done],
-      emptyLabel: labels.empty?.done,
     },
   ];
 }

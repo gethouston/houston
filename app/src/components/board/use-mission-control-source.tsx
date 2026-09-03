@@ -11,8 +11,6 @@ import {
   filteredScopeAgent,
   missionControlDraftScope,
 } from "./mission-control-scope.ts";
-import { MobileBoardControls } from "./mobile-board-controls";
-import { composeOnPhone } from "./phone-compose";
 import { useCrossAgentSelection } from "./use-cross-agent-selection";
 import { useMcActions } from "./use-mc-actions";
 import { useMcNewMission } from "./use-mc-new-mission";
@@ -128,27 +126,6 @@ export function useMissionControlSource(
     agentPathForId,
   });
 
-  // The phone board's own control row (search, archived, agent chips),
-  // rendered by the component below md while the desktop toolbar hides. Built
-  // here because the search state lives here.
-  const mobileControls = (
-    <MobileBoardControls
-      search={missionSearch.query}
-      isSearchingText={missionSearch.isSearchingText}
-      onSearchChange={missionSearch.setQuery}
-      agents={scopedAgents}
-      filterPath={filterPath}
-      modeToggle={modeToggle}
-    />
-  );
-
-  // A board narrowed to one agent has already answered "whose task?", the
-  // same rule the desktop button follows (`newMissionTarget`).
-  const composeHere = useCallback(
-    () => composeOnPhone(pinnedAgent ? [pinnedAgent] : scopedAgents),
-    [pinnedAgent, scopedAgents],
-  );
-
   const toolbar = (
     // One row or two is the STRIP's call, not this hook's: it is the only
     // thing that knows how much room the three zones actually have.
@@ -207,17 +184,20 @@ export function useMissionControlSource(
     registerOpener: newMission.registerOpener,
     openerReady: newMission.openerReady,
     openNewMission: newMission.openNewMission,
-    composeOnPhone: composeHere,
     onAutoOpenEmpty: newMission.onAutoOpenEmpty,
     autoOpenKey: `${filterPath || "all"}:${filterUserId ?? "everyone"}`,
     autoOpenItemCount: personFilteredItems.length,
     autoOpenBlocked: newMission.agentPickerOpen,
+    search: {
+      query: missionSearch.query,
+      setQuery: missionSearch.setQuery,
+      isSearchingText: missionSearch.isSearchingText,
+    },
     hasSearchQuery: missionSearch.hasQuery,
     emptyState: missionSearch.emptyState,
     panelAgentName: activeAgent?.name ?? selectedItem?.subtitle,
     selectedRunning: selectedItem?.status === "running",
     toolbar,
-    mobileControls,
     dialogs: newMission.dialogs,
   };
 }

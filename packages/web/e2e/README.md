@@ -69,7 +69,8 @@ phone layout from rotting. The tier-1 set walks the core journey — sign-in
 `test.use({ baseURL: AUTH_WEB_URL })`), boot + overflow smoke, Agents home,
 mission chat push, hardware back, the nav bar (`mobile/nav-bar.spec.ts`) and
 its More menu (`mobile/more-menu.spec.ts`), the Teams tree
-(`mobile/teams-home.spec.ts`), board pager, and Routines
+(`mobile/teams-home.spec.ts`), a team's task list
+(`mobile/team-tasks.spec.ts`), and Routines
 (`mobile/routines.spec.ts`: list → a routine's own screen), and first-run
 (`mobile/onboarding.spec.ts`: the survey, then the whole in-app setup over
 the phone shell — More-menu rows, provider connect, first agent, first task).
@@ -270,8 +271,8 @@ set a 390×844 viewport per test):
 
 | Screen | Themes | Spec |
 | --- | --- | --- |
-| Mission board (home: the first team's) | light + dark, and one 640px narrow run | `shell.visual.spec.ts` |
-| Phone shell (Agents home + nav bar), Teams tree, More menu, board pager, mission chat, agent missions | light + dark each | `shell.visual.spec.ts` |
+| Mission board (home: the first team's) | light + dark; the 640px narrow run is already the phone task list | `shell.visual.spec.ts` |
+| Phone shell (Agents home + nav bar), Teams tree, More menu, team tasks, mission chat, agent missions | light + dark each | `shell.visual.spec.ts` |
 | Phone Routines list + a routine's own screen | light + dark each | `routines.visual.spec.ts` |
 | Chat conversation (settled reply) | light + dark | `chat.visual.spec.ts` |
 | Chat markdown | light + dark | `chat-markdown.visual.spec.ts` |

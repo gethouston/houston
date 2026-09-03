@@ -7,8 +7,8 @@ import { tourSelector } from "../shell/workspace-tour-steps.ts";
  *
  * Below md the shell is a different tree, not a narrower one: there is no
  * sidebar rail at all (the long tail of destinations is the nav bar's More
- * menu, creating an agent is a control on the Agents home), the board's New
- * task is the Running page's leading "+", and composing is a pushed chat
+ * menu, creating an agent is a control on the Agents home), New task is the
+ * round control beside the nav pill, and composing is a pushed chat
  * screen rather than the board's side panel. A step that names a desktop
  * control by selector alone points at nothing there — and with nothing to
  * ring, the veil's blockers cover the whole screen, the way in included.
@@ -57,20 +57,30 @@ export function sendMissionSurface(args: {
 
 const MISSION_PANEL = '[data-testid="mission-panel"]';
 const MISSION_CHAT = '[data-testid="mission-chat-screen"]';
+const NAV_BAR = "[data-testid='mobile-nav-bar']";
 
 /**
- * The send step's selector. The New task control is scoped to the ACTIVE
- * screen (kept-alive views keep their own), and the spotlight itself takes
- * the visible match, so the desktop toolbar button hidden on the phone never
- * wins. In email mode the composer arrives prewritten and locked, and
- * the hole narrows to the send button alone.
+ * The send step's selector.
+ *
+ * The New task control lives in a different place on each breakpoint, so the
+ * selector does too. On DESKTOP it is a toolbar button inside a screen, and
+ * kept-alive views each keep their own — hence the scope to the active one.
+ * On the PHONE it is the round control beside the nav bar, which sits OUTSIDE
+ * every screen: scoping it to the active screen would find nothing and the
+ * veil would cover the way in.
+ *
+ * In email mode the composer arrives prewritten and locked, and the hole
+ * narrows to the send button alone.
  */
 export function sendMissionSelector(
   surface: SendMissionSurface,
   emailMode: boolean,
+  isMobile: boolean,
 ): string {
   if (surface === "button")
-    return `[data-screen-active='true'] ${tourSelector("newMission")}`;
+    return isMobile
+      ? `${NAV_BAR} ${tourSelector("newMission")}`
+      : `[data-screen-active='true'] ${tourSelector("newMission")}`;
   const root = surface === "chat" ? MISSION_CHAT : MISSION_PANEL;
   return emailMode ? `${root} button[type="submit"]` : root;
 }

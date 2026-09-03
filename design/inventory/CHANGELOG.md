@@ -3,6 +3,21 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v77 - 2026-09-03
+
+The phone loses the board pager. Below the one breakpoint a team's Tasks
+section is a LIST, the same grammar the per-agent list got in v76: the board's
+missions grouped Needs you / Running / Done as bands of shared `task-row`s,
+under the SAME segmented All / Needs you / Running / Done control (one
+component now, bound by both lists), each row trailing its owning agent's
+helmet because a team's list mixes agents. The segmented pager, the swipe-paged
+columns, the empty-page hints, the phone control row and its "All agents" chip
+bar are all gone; the `mission-board` is desktop-only chrome from here. Search
+moves behind the drilled header's "..." menu and drives the same query the
+desktop toolbar types into; the menu also holds Archived and, for a caller who
+may configure the team, Team settings. The phone's one New task control is the
+nav bar's, which is now also the guided setup's anchor for that step.
+
 ## v76 - 2026-09-03
 
 The phone's two lists become one grammar. The Agents home is a tree that
