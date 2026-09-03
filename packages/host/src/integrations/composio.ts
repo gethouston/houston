@@ -1,4 +1,5 @@
 import { resolveAuthConfig } from "./composio-auth-config";
+import { fetchAllRawToolkits } from "./composio-catalog";
 import { ComposioHttp } from "./composio-http";
 import { extractIdentity, IDENTITY_PROBES } from "./composio-identity";
 import { searchComposio } from "./composio-search";
@@ -10,7 +11,6 @@ import {
   type RawConnection,
   type RawExecute,
   type RawTool,
-  type RawToolkit,
 } from "./composio-wire";
 import type {
   ActingContext,
@@ -48,9 +48,6 @@ const DEFAULT_BASE_URL = "https://backend.composio.dev";
 /** The toolkits catalog is large-ish and changes rarely — cache it per process
  *  for search's name resolution so a hot session does not refetch ~1000 apps. */
 const CATALOG_TTL_MS = 60 * 60 * 1000;
-
-/** Upper bound on catalog pages walked per fetch (1000 toolkits each). */
-const MAX_CATALOG_PAGES = 10;
 
 /**
  * Which Composio TOOL VERSION every /tools read and execute requests. The v3
@@ -124,31 +121,12 @@ export class ComposioProvider implements IntegrationProvider {
   }
 
   private async fetchToolkits(): Promise<Toolkit[]> {
-    // Composio caps a toolkits page at 1000 whatever `limit` says and the
-    // catalog outgrew that (1502 toolkits, 2026-09): reading only the first
-    // page silently dropped telegram, odoo, quickbooks… so the catalog walks
-    // `next_cursor` until it is null. Seen-cursor + page guards keep a
-    // misbehaving upstream from looping forever.
-    const items: RawToolkit[] = [];
-    const seen = new Set<string>();
-    let cursor: string | undefined;
-    for (let page = 0; page < MAX_CATALOG_PAGES; page++) {
-      const body = await this.http.call<{
-        items?: RawToolkit[];
-        next_cursor?: string | null;
-      }>("/api/v3/toolkits", { query: { limit: "1000", cursor } });
-      items.push(...(body?.items ?? []));
-      const next = body?.next_cursor ?? undefined;
-      if (!next || seen.has(next)) break;
-      seen.add(next);
-      cursor = next;
-    }
     // no_auth toolkits (web search, weather…) stay in the catalog but carry
     // the flag: there is no account to connect (creating an auth config 400s
     // upstream — Auth_Config_NoAuthApp, seen in prod), yet their tools work
     // as-is. The UI renders them "ready to use" instead of connectable, and
     // search stamps their matches `connected` (see composio-search.ts).
-    return items.map(mapToolkit);
+    return (await fetchAllRawToolkits(this.http)).map(mapToolkit);
   }
 
   async listToolkits(): Promise<Toolkit[]> {
