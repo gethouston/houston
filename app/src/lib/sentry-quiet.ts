@@ -11,6 +11,15 @@ import * as Sentry from "@sentry/browser";
  * adds events to that issue and never files a new one. The raw gateway body
  * rides as `extra`, where Sentry's event search can still find it.
  *
+ * The fingerprint only holds if no server-side fingerprinting rule matches
+ * first: a matched rule REPLACES the client fingerprint (the SDK's value
+ * survives only as `_fingerprint_info.client_fingerprint`). The project's
+ * `value:"Load failed*"` / `value:"Failed to fetch*"` rules did exactly that
+ * to every offline capture, re-flipping the old transport-drop issues to
+ * regressed. The project now pins `tags.quiet_class:<class> -> <class>` ABOVE
+ * those rules, so `quiet_class` must stay a tag on every quiet capture and
+ * its value must equal the fingerprint constant.
+ *
  * No-op until `initSentry` ran (dev builds without the send-in-dev opt-in,
  * forks with no DSN), same as every other capture.
  */
