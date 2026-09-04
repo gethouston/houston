@@ -59,8 +59,8 @@ test("board home — narrow", async ({ page }) => {
   await openPhoneTeamSection(page, "mission-control", "click");
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
   // The phone list mounts on the isMobile signal a beat after first paint —
-  // anchor on its segmented control so the baseline never half-renders.
-  await expect(page.getByTestId("team-task-filter").first()).toBeVisible();
+  // anchor on its status filter so the baseline never half-renders.
+  await expect(page.getByTestId("team-task-filter-trigger")).toBeVisible();
 
   await expect(page).toHaveScreenshot("board-narrow.png", { fullPage: true });
 });
@@ -100,7 +100,7 @@ for (const theme of THEMES) {
     await page.goto("/");
 
     await openPhoneTeamSection(page, "mission-control", "click");
-    await expect(page.getByTestId("team-task-filter").first()).toBeVisible();
+    await expect(page.getByTestId("team-task-filter-trigger")).toBeVisible();
     await expect(page.getByText("Draft the launch email")).toBeVisible();
     await page.mouse.move(0, 0);
     await pinTheme(page, theme);

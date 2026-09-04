@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 79
+version: 80
 
 components:
   - id: agent-avatar
@@ -1492,7 +1492,7 @@ components:
       The full-window surface behind a team block's destination rows: one
       team's missions, what its agents do on their own, what they keep, and the
       agents that belong to it.
-    anatomy: [board-toolbar, team-title, agent-filter, mission-board, phone-task-list, phone-status-segments, phone-overflow-menu, phone-inline-search, phone-settings-tabs, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in, members-card]
+    anatomy: [board-toolbar, team-title, agent-filter, mission-board, phone-task-list, phone-status-filter, phone-overflow-menu, phone-inline-search, phone-settings-tabs, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in, members-card]
     states: [mission-control, mission-control-filtered, phone-task-list, phone-task-list-filtered, phone-task-list-searching, archived, routines, files, empty, partially-unavailable, settings, settings-agent-detail, settings-members]
     variants: [named-team, default-team]
     behavior: >-
@@ -1536,8 +1536,9 @@ components:
       row under that header, a tab replacing the navigation entry rather
       than pushing one. Tasks there is a LIST, not the
       board -- the same missions the columns hold, grouped Needs you /
-      Running / Done as bands of shared task-rows under the same segmented
-      All / Needs you / Running / Done control the per-agent list wears, each
+      Running / Done as bands of shared task-rows under the same All / Needs
+      you / Running / Done status filter (a pill dropping a radio menu) the
+      per-agent list wears, each
       row trailing its OWNING agent's helmet (a team's list mixes agents, and
       the band already says how fresh the task is). There is no pager, no
       agent chip bar and no compose on the screen: the nav bar's one New task
@@ -1726,8 +1727,8 @@ components:
       One agent's tasks as a filterable, sectioned phone list, pushed from the
       Agents home; the drill level between the agent tree and a task's chat.
     anatomy: [drilled-header, back-chip, agent-avatar, task-count, overflow-menu,
-      status-segments, inline-search, task-group, task-row, archived-group,
-      empty-state]
+      status-filter, inline-search, task-group, task-row, avatar, preview-line,
+      relative-time, status-tag, archived-group, empty-state]
     states: [sectioned, filtered, searching, search-empty, filter-empty,
       archived-collapsed, archived-expanded, no-tasks]
     variants: []
@@ -1735,37 +1736,41 @@ components:
       The drilled phone header names the agent (avatar with its running ring)
       over its live task count and carries a back chip to the Agents home (a
       navigation-stack retreat, so the hardware back button does the same
-      thing) plus one "..." menu. A segmented control under it narrows the
-      list -- All, Needs you (with its count), Running, Done -- and the body
-      draws the board's own sections in that order, by the exact status
+      thing) plus one "..." menu. A status filter under it -- a pill naming
+      the current choice ("All" by default) that drops a radio menu of All,
+      Needs you (with its count), Running, Done -- narrows the list, and the
+      body draws the board's own sections in that order, by the exact status
       mapping the board's columns use (an errored task sitting in Needs you),
       each newest movement first, each band vanishing rather than rendering
-      hollow. Rows are the shared task-row: status glyph, title, the task's
-      own description as a second line when it has one, and the movement's
-      relative time trailing. The "..." menu holds the two things the screen
-      will not spend a permanent row on: Search reveals an inline field that
-      narrows the rows by title as the user types (Escape or its own control
-      closes it), and Archived resets the segments to All, expands the
-      archive and scrolls it into view. The archive is a collapsible group at
-      the bottom, present only under All: it is the list's basement, not a
-      status. Tapping an active task pushes its mission-chat-screen as the
-      next navigation-stack level, the same push a board card performs, so
-      back pops straight from the chat to this list. An archived task has no
-      chat screen: its rows keep the notification navigation (the agent
-      becomes current, its board opens with the archive surface swapped in,
-      and the chat opens over it). An agent with no tasks at all gets the
-      honest empty state pointing at the compose control; a segment or a
-      search that matches nothing says so in words. Rows read the same
-      conversation sweep the boards read and live-update through the same
-      invalidation.
+      hollow. Rows are in the chat-list grammar of the Agents home: the
+      agent's LARGE avatar on the left (its running ring while that task
+      runs), the task's title with the movement's relative time trailing, a
+      preview line under it ("Typing" while running, else the task's own
+      description), and a small status tag beneath (Needs you / Running /
+      Done / Archived) in the status's own tone. The "..." menu holds the two
+      things the screen will not spend a permanent row on: Search reveals an
+      inline field that narrows the rows by title as the user types (Escape
+      or its own control closes it), and Archived resets the filter to All,
+      expands the archive and scrolls it into view. The archive is a
+      collapsible group at the bottom, present only under All: it is the
+      list's basement, not a status. Tapping an active task pushes its
+      mission-chat-screen as the next navigation-stack level, the same push a
+      board card performs, so back pops straight from the chat to this list.
+      An archived task has no chat screen: its rows keep the notification
+      navigation (the agent becomes current, its board opens with the archive
+      surface swapped in, and the chat opens over it). An agent with no tasks
+      at all gets the honest empty state pointing at the compose control; a
+      filter or a search that matches nothing says so in words. Rows read the
+      same conversation sweep the boards read and live-update through the
+      same invalidation.
     a11y: >-
       The back chip is a labelled button naming the level above; the agent is
-      the screen's h1 with the task count under it; the segments are a labelled
-      tablist whose buttons carry aria-selected; section headings are real
-      headings; every task row is one button named by its title with its status
-      glyph carrying the state's own label; the archived toggle carries
-      aria-expanded; the overflow control and the search field are both
-      labelled.
+      the screen's h1 with the task count under it; the filter is a labelled
+      button opening a radio menu whose items carry aria-checked; section
+      headings are real headings; every task row is one button named by its
+      title with the status tag carrying the state's own word; the archived
+      toggle carries aria-expanded; the overflow control and the search field
+      are both labelled.
     since: 71
 
   - id: task-row

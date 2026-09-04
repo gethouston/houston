@@ -1,4 +1,4 @@
-import { TaskListGroup, TaskRow, type TaskRowStatus } from "@houston-ai/board";
+import { TaskListGroup, type TaskRowStatus } from "@houston-ai/board";
 import {
   Empty,
   EmptyDescription,
@@ -11,7 +11,7 @@ import type {
   TaskListFilterId,
   TaskListSectionId,
 } from "../board/task-list-model";
-import { formatRelativeTime } from "../organization/org-time";
+import { AgentMissionRow } from "./agent-mission-row";
 import {
   type AgentMissionSections,
   missionListSections,
@@ -32,8 +32,9 @@ const SECTION_STATUS = {
 } as const satisfies Record<TaskListSectionId, TaskRowStatus>;
 
 /**
- * One agent's tasks: the board's sections as bands of shared task rows, with
- * the archive folded at the bottom.
+ * One agent's tasks: the board's sections as bands of chat-list rows (the
+ * agent's avatar, the title, the preview, a status tag), with the archive
+ * folded at the bottom.
  *
  * The archive only exists under "All": it is the list's basement, and offering
  * it under a status segment would answer a question the segment did not ask —
@@ -42,6 +43,7 @@ const SECTION_STATUS = {
  */
 export function AgentMissionsList({
   sections,
+  agentColor,
   filter,
   query,
   archivedOpen,
@@ -51,6 +53,8 @@ export function AgentMissionsList({
   onOpenArchived,
 }: {
   sections: AgentMissionSections;
+  /** The owning agent's stored colour id, worn by every row's avatar. */
+  agentColor?: string;
   filter: TaskListFilterId;
   query: string;
   archivedOpen: boolean;
@@ -59,50 +63,23 @@ export function AgentMissionsList({
   onOpen: (mission: AgentHomeConversation) => void;
   onOpenArchived: (mission: AgentHomeConversation) => void;
 }) {
-  const { t, i18n } = useTranslation(["shell", "dashboard"]);
+  const { t } = useTranslation(["shell", "dashboard"]);
   const groups = missionListSections(sections, filter, query);
   const archived =
     filter === "all" ? searchMissions(sections.archived, query) : [];
-  const labels = {
-    needsYou: t("dashboard:columns.needsYou"),
-    running: t("dashboard:columns.running"),
-    done: t("dashboard:columns.done"),
-    archived: t("shell:taskList.archived"),
-  };
   const row = (
     mission: AgentHomeConversation,
     status: TaskRowStatus,
     open: (mission: AgentHomeConversation) => void,
-  ) => {
-    const atMs = mission.updated_at
-      ? Date.parse(mission.updated_at)
-      : Number.NaN;
-    return (
-      <TaskRow
-        key={mission.id}
-        status={status}
-        title={mission.title}
-        // A running task reads "Typing", as its agent's row does: the one live
-        // state the list has, ahead of the standing description.
-        preview={
-          status === "running"
-            ? t("shell:agentsHome.typing")
-            : mission.description
-        }
-        labels={labels}
-        dataAttrs={{ "data-testid": "agent-mission-row" }}
-        onSelect={() => open(mission)}
-        trailing={
-          Number.isNaN(atMs) ? undefined : (
-            // data-relative-time: a live clock the visual suite masks.
-            <span data-relative-time>
-              {formatRelativeTime(atMs, i18n.language)}
-            </span>
-          )
-        }
-      />
-    );
-  };
+  ) => (
+    <AgentMissionRow
+      key={mission.id}
+      mission={mission}
+      status={status}
+      color={agentColor}
+      onOpen={open}
+    />
+  );
 
   const total =
     sections.needsYou.length +
@@ -137,9 +114,11 @@ export function AgentMissionsList({
           heading={t(SECTION_LABEL_KEYS[group.id])}
           count={group.missions.length}
         >
-          {group.missions.map((mission) =>
-            row(mission, SECTION_STATUS[group.id], onOpen),
-          )}
+          <ul>
+            {group.missions.map((mission) =>
+              row(mission, SECTION_STATUS[group.id], onOpen),
+            )}
+          </ul>
         </TaskListGroup>
       ))}
       {archived.length > 0 && (
@@ -152,9 +131,11 @@ export function AgentMissionsList({
             onToggle={onToggleArchived}
             dataAttrs={{ "data-testid": "agent-missions-archived-toggle" }}
           >
-            {archived.map((mission) =>
-              row(mission, "archived", onOpenArchived),
-            )}
+            <ul>
+              {archived.map((mission) =>
+                row(mission, "archived", onOpenArchived),
+              )}
+            </ul>
           </TaskListGroup>
         </div>
       )}

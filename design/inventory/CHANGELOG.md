@@ -3,6 +3,16 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v80 - 2026-09-04
+
+The per-agent task list takes the Agents home's chat-list grammar: every row
+wears the agent's large avatar (its running ring while that task runs), the
+title with the relative time trailing, the preview line, and a small status
+tag beneath (Needs you / Running / Done / Archived) in the status's own tone,
+in place of the status glyph. The phone task lists' segmented status control
+(agent's and team's alike) becomes a status filter: a pill naming the current
+choice, "All" by default, dropping a radio menu of the four choices.
+
 ## v79 - 2026-09-04
 
 The Agents home row's preview line says "Typing" while the agent has a task

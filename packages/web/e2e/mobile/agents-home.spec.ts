@@ -180,17 +180,39 @@ test("the back chip retreats to the Agents home", async ({ page }) => {
   await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
 });
 
-test("the segmented control leaves one band standing", async ({ page }) => {
+test("the status filter leaves one band standing", async ({ page }) => {
   await page.goto("/");
 
   await page.getByTestId("agents-home-row").tap();
   const missions = page.getByTestId("agent-missions-screen");
-  const segment = (filter: string) =>
+  // The filter is a pill dropping a radio menu: open it, pick a choice.
+  const segment = (filter: string) => ({
+    tap: async () => {
+      await missions.getByTestId("agent-missions-filter-trigger").tap();
+      await page
+        .locator(
+          `[data-testid='agent-missions-filter'][data-filter='${filter}']`,
+        )
+        .click();
+    },
+  });
+  // Every row wears the agent's avatar and a status tag, chat-list style.
+  await expect(
+    missions
+      .getByTestId("agent-mission-row")
+      .first()
+      .getByTestId("agent-avatar-stack"),
+  ).toBeVisible();
+  await expect(
     missions.locator(
-      `[data-testid='agent-missions-filter'][data-filter='${filter}']`,
-    );
+      "[data-testid='agent-mission-status'][data-status='needs_you']",
+    ),
+  ).toHaveText("Needs you");
 
   await segment("done").tap();
+  await expect(
+    missions.getByTestId("agent-missions-filter-trigger"),
+  ).toHaveText(/Done/);
   await expect(missions.getByRole("heading", { name: "Done" })).toBeVisible();
   await expect(
     missions.getByRole("heading", { name: "Needs you" }),
