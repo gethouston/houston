@@ -18,6 +18,7 @@
  */
 import { expect, test } from "../support/fixtures";
 import {
+  awaitAgentsHome,
   moreMenu,
   navBar,
   navItem,
@@ -77,7 +78,7 @@ for (const theme of THEMES) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await expect(page.getByTestId("agents-home-row")).toContainText("Houston");
+    await expect(await awaitAgentsHome(page)).toContainText("Houston");
     await expect(navBar(page)).toBeVisible();
     await pinTheme(page, theme);
 
@@ -123,7 +124,7 @@ for (const theme of THEMES) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await page.getByTestId("agents-home-row").click();
+    await (await awaitAgentsHome(page)).click();
     await page
       .getByTestId("agent-missions-screen")
       .getByText("Plan a trip to Tokyo")
@@ -152,7 +153,7 @@ for (const theme of THEMES) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await page.getByTestId("agents-home-row").click();
+    await (await awaitAgentsHome(page)).click();
     const missions = page.getByTestId("agent-missions-screen");
     await expect(missions.getByText("Plan a trip to Tokyo")).toBeVisible();
     // Park the pointer: the drill click leaves it hovering a mission row, and
@@ -204,7 +205,7 @@ for (const theme of THEMES) {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
-    await expect(page.getByTestId("agents-home-row")).toContainText("Houston");
+    await expect(await awaitAgentsHome(page)).toContainText("Houston");
     await navItem(page, "more").click();
     await expect(moreMenu(page)).toBeVisible();
     await expect(
