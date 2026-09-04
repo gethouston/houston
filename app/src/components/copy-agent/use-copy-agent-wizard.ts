@@ -49,6 +49,7 @@ export function useCopyAgentWizard(args: {
   // Chats are opt-IN: a conversation can hold personal details the new agent
   // has no business knowing, so unlike every other item they start off.
   const [copyChats, setCopyChats] = useState(false);
+  const [chatCount, setChatCount] = useState(0);
 
   // Only agents whose content the caller may read: a "user"-access agent's
   // portable preview is refused by the gateway, so it never appears here.
@@ -69,11 +70,17 @@ export function useCopyAgentWizard(args: {
   const pick = async (agent: Agent) => {
     setLoadingId(agent.id);
     try {
-      const next = await getEngine().portablePreview(agent.folderPath);
+      // The chats count rides along so the know screen can say how many
+      // conversations the switch would bring (and hide it when there are none).
+      const [next, conversations] = await Promise.all([
+        getEngine().portablePreview(agent.folderPath),
+        getEngine().listConversations(agent.folderPath),
+      ]);
       setSource(agent);
       setPreview(next);
       setSelection(fullCopySelection(next));
       setCopyChats(false);
+      setChatCount(conversations.length);
       setName(
         suggestCopyName(
           agent.name,
@@ -125,6 +132,7 @@ export function useCopyAgentWizard(args: {
     setSelection,
     copyChats,
     setCopyChats,
+    chatCount,
     steps,
     stepIndex,
     step,

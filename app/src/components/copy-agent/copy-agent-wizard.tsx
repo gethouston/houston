@@ -87,6 +87,7 @@ export function CopyAgentWizard(props: {
           <InstructionsStep
             {...stepProps}
             copyChats={w.copyChats}
+            chatCount={w.chatCount}
             onCopyChatsChange={w.setCopyChats}
           />
         )}

@@ -240,8 +240,10 @@
         "learningsLabel": "Aprendizados",
         "learningsBody": "Anotações que o agente fez enquanto trabalhava. As pessoais podem ficar de fora.",
         "chatsLabel": "Chats",
-        "chatsRow": "Tarefas e suas conversas",
-        "chatsBody": "Cada tarefa do quadro e o chat por trás dela, como estão hoje em {{name}}. Começa desativado, porque chats podem ter dados pessoais."
+        "chatsRow": "Conversas",
+        "chatsCount_one": "{{count}} conversa que {{name}} teve até agora",
+        "chatsCount_other": "{{count}} conversas que {{name}} teve até agora",
+        "noChats": "{{name}} ainda não tem conversas."
       },
       "routines": {
         "title": "Quais rotinas vão junto?",

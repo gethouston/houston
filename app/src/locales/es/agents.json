@@ -240,8 +240,10 @@
         "learningsLabel": "Aprendizajes",
         "learningsBody": "Notas que el agente fue tomando mientras trabajaba. Las personales pueden quedarse fuera.",
         "chatsLabel": "Chats",
-        "chatsRow": "Tareas y sus conversaciones",
-        "chatsBody": "Cada tarea del tablero y el chat que hay detrás, tal como están hoy en {{name}}. Empieza desactivado, porque los chats pueden tener datos personales."
+        "chatsRow": "Conversaciones",
+        "chatsCount_one": "{{count}} conversación que {{name}} ha tenido hasta ahora",
+        "chatsCount_other": "{{count}} conversaciones que {{name}} ha tenido hasta ahora",
+        "noChats": "{{name}} todavía no tiene conversaciones."
       },
       "routines": {
         "title": "¿Qué rutinas se llevan?",

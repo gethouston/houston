@@ -240,8 +240,10 @@
         "learningsLabel": "Learnings",
         "learningsBody": "Notes the agent picked up while working. Personal ones can stay behind.",
         "chatsLabel": "Chats",
-        "chatsRow": "Tasks and their conversations",
-        "chatsBody": "Every task on the board and the chat behind it, as they are today in {{name}}. Off to start, since chats can hold personal details."
+        "chatsRow": "Conversations",
+        "chatsCount_one": "{{count}} conversation {{name}} has had so far",
+        "chatsCount_other": "{{count}} conversations {{name}} has had so far",
+        "noChats": "{{name}} has no conversations yet."
       },
       "routines": {
         "title": "Which routines should come along?",

@@ -32,9 +32,11 @@ export function InstructionsStep({
   selection,
   setSelection,
   copyChats,
+  chatCount,
   onCopyChatsChange,
 }: ContentStepProps & {
   copyChats: boolean;
+  chatCount: number;
   onCopyChatsChange: (next: boolean) => void;
 }) {
   const { t } = useTranslation("agents");
@@ -89,17 +91,24 @@ export function InstructionsStep({
       )}
 
       <section>
-        <h2 className="mb-1 text-sm font-medium">
+        <h2 className="mb-3 text-sm font-medium">
           {t("copyAgent.wizard.instructions.chatsLabel")}
         </h2>
-        <p className="mb-2 text-xs text-ink-muted">
-          {t("copyAgent.wizard.instructions.chatsBody", { name: sourceName })}
-        </p>
-        <PickSwitchRow
-          checked={copyChats}
-          onChange={() => onCopyChatsChange(!copyChats)}
-          title={t("copyAgent.wizard.instructions.chatsRow")}
-        />
+        {chatCount > 0 ? (
+          <PickSwitchRow
+            checked={copyChats}
+            onChange={() => onCopyChatsChange(!copyChats)}
+            title={t("copyAgent.wizard.instructions.chatsRow")}
+            subtitle={t("copyAgent.wizard.instructions.chatsCount", {
+              count: chatCount,
+              name: sourceName,
+            })}
+          />
+        ) : (
+          <p className="text-sm text-ink-muted">
+            {t("copyAgent.wizard.instructions.noChats", { name: sourceName })}
+          </p>
+        )}
       </section>
     </div>
   );

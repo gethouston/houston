@@ -46,7 +46,7 @@ test("copies an agent, leaving chosen items behind and bringing the chats", asyn
   await rowSwitch(page, COPY_SOURCE.learnings[1]).click();
   await expect(rowSwitch(page, COPY_SOURCE.learnings[1])).not.toBeChecked();
   // Chats start OFF; bring them this time.
-  const chats = rowSwitch(page, "Tasks and their conversations");
+  const chats = rowSwitch(page, "Conversations");
   await expect(chats).not.toBeChecked();
   await chats.click();
   await expect(chats).toBeChecked();
@@ -125,9 +125,7 @@ test("a bare source skips the list screens; chats stay behind by default", async
   await expect(
     dialog.getByText("Houston has no job description yet."),
   ).toBeVisible();
-  await expect(
-    rowSwitch(page, "Tasks and their conversations"),
-  ).not.toBeChecked();
+  await expect(rowSwitch(page, "Conversations")).not.toBeChecked();
   await next(page);
   await expect(dialog.getByText("Based on Houston")).toBeVisible();
   await dialog.getByRole("button", { name: "Create Agent" }).click();
