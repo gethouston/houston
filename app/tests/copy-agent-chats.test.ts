@@ -1,9 +1,10 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type {
   ConversationEntry,
   MigrationImportResult,
 } from "@houston-ai/engine-client";
+import { strToU8, unzipSync, zipSync } from "fflate";
 import {
   ACTIVITY_PATH,
   batchPaths,
@@ -51,32 +52,58 @@ describe("batchPaths", () => {
 });
 
 describe("copyAgentChats", () => {
-  it("exports every batch from the source and imports it into the target", async () => {
+  it("exports every batch, re-ids it, and imports it into the target", async () => {
     const calls: string[] = [];
+    const imported: string[][] = [];
     const engine: ChatCopyEngine = {
       async listConversations(agentPath) {
         calls.push(`list:${agentPath}`);
         return Array.from(
           { length: 30 },
-          (_, i) => ({ session_key: `c${i}` }) as ConversationEntry,
+          (_, i) =>
+            ({
+              id: `t${i}`,
+              session_key: `activity-t${i}`,
+            }) as ConversationEntry,
         );
       },
       async migrationExport(agentPath, paths) {
         calls.push(`export:${agentPath}:${paths.length}`);
-        return new ArrayBuffer(paths.length);
+        // The archive a host would build for these paths: one entry each.
+        const files: Record<string, Uint8Array> = {};
+        for (const rel of paths) {
+          files[rel] = strToU8(
+            rel.endsWith("activity.json")
+              ? JSON.stringify([{ id: "t0", title: "T0", status: "done" }])
+              : JSON.stringify({ id: rel.slice(rel.lastIndexOf("/") + 1, -5) }),
+          );
+        }
+        const zip = zipSync(files);
+        return zip.buffer.slice(
+          zip.byteOffset,
+          zip.byteOffset + zip.byteLength,
+        ) as ArrayBuffer;
       },
       async migrationImport(agentPath, bytes) {
-        calls.push(`import:${agentPath}:${bytes.byteLength}`);
+        const names = Object.keys(unzipSync(new Uint8Array(bytes)));
+        imported.push(names);
+        calls.push(`import:${agentPath}:${names.length}`);
         const result: MigrationImportResult = {
-          written: bytes.byteLength,
+          written: names.length,
           skipped: 0,
-          rejected: bytes.byteLength === 6 ? [{ path: "x", reason: "r" }] : [],
+          rejected: names.length === 6 ? [{ path: "x", reason: "r" }] : [],
           sessionsRebuilt: true,
         };
         return result;
       },
     };
-    const outcome = await copyAgentChats(engine, "src", "dst");
+    let n = 0;
+    const outcome = await copyAgentChats(
+      engine,
+      "src",
+      "dst",
+      () => `new${n++}`,
+    );
     // 31 paths (board + 30 transcripts) in batches of 25: 25 then 6.
     deepStrictEqual(calls, [
       "list:src",
@@ -88,5 +115,9 @@ describe("copyAgentChats", () => {
     strictEqual(outcome.conversations, 30);
     strictEqual(outcome.written, 31);
     deepStrictEqual(outcome.rejected, [{ path: "x", reason: "r" }]);
+    // Nothing lands under a source id: every transcript wears its new key.
+    const all = imported.flat();
+    ok(all.includes(".houston/runtime/conversations/activity-new0.json"));
+    ok(!all.some((rel) => rel.includes("activity-t")));
   });
 });

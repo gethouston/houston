@@ -99,6 +99,26 @@ test("copies an agent, leaving chosen items behind and bringing the chats", asyn
   await expect(page.getByText("Chats copied")).toBeVisible();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(screen(page).getByText("Draft the launch email")).toBeVisible();
+
+  // Under FRESH ids: a task id and its chat key are global in the app, so a
+  // verbatim copy would resolve the copy's chats to the source agent.
+  const agents = (await (
+    await request.get(`${FAKE_HOST_URL}/agents`)
+  ).json()) as {
+    id: string;
+    name: string;
+  }[];
+  const copy = agents.find((a) => a.name === "Houston copy");
+  expect(copy).toBeTruthy();
+  const rows = (await (
+    await request.get(`${FAKE_HOST_URL}/agents/${copy?.id}/activities`)
+  ).json()) as { items: { id: string; title: string }[] };
+  expect(rows.items.map((r) => r.title).sort()).toEqual([
+    "Draft the launch email",
+    "Plan a trip to Tokyo",
+  ]);
+  expect(rows.items.map((r) => r.id)).not.toContain("act-1");
+  expect(rows.items.map((r) => r.id)).not.toContain("act-2");
 });
 
 /**

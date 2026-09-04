@@ -2,6 +2,14 @@ import type {
   ConversationEntry,
   MigrationImportResult,
 } from "@houston-ai/engine-client";
+import {
+  ACTIVITY_PATH,
+  planChatIdMap,
+  remapChatArchive,
+  transcriptPath,
+} from "./copy-chat-remap.ts";
+
+export { ACTIVITY_PATH, transcriptPath };
 
 /**
  * "Copy an agent" with chats: move the source's tasks and their conversations
@@ -12,18 +20,9 @@ import type {
  * argument so a test can hand it a fake.
  */
 
-/** The board file every task row lives in. */
-export const ACTIVITY_PATH = ".houston/activity/activity.json";
-const TRANSCRIPTS_DIR = ".houston/runtime/conversations";
-
 /** Conversations per export/import round trip. Transcripts are small JSON
  *  and compress well; this keeps a chatty agent far under the import cap. */
 export const CHAT_COPY_BATCH = 25;
-
-/** The transcript file of one conversation, as the runtime names it. */
-export function transcriptPath(sessionKey: string): string {
-  return `${TRANSCRIPTS_DIR}/${encodeURIComponent(sessionKey)}.json`;
-}
 
 /**
  * Everything the chats copy carries: the board file, then one transcript per
@@ -62,14 +61,18 @@ export interface ChatCopyOutcome {
 }
 
 /**
- * Copy every conversation of `source` into `target`, batch by batch. The
- * target is brand new, so nothing is overwritten and a batch that lands
- * twice is a no-op (the import route skips existing files).
+ * Copy every conversation of `source` into `target`, batch by batch. Each
+ * archive is rewritten with fresh task and conversation ids before it lands
+ * (see `copy-chat-remap.ts`); the map is planned once so a transcript in a
+ * later batch matches the board row that went in the first. The target is
+ * brand new, so nothing is overwritten and a batch that lands twice is a
+ * no-op (the import route skips existing files).
  */
 export async function copyAgentChats(
   engine: ChatCopyEngine,
   source: string,
   target: string,
+  mint: () => string = () => crypto.randomUUID(),
 ): Promise<ChatCopyOutcome> {
   const conversations = await engine.listConversations(source);
   const outcome: ChatCopyOutcome = {
@@ -77,12 +80,20 @@ export async function copyAgentChats(
     written: 0,
     rejected: [],
   };
+  const map = planChatIdMap(conversations, mint);
   for (const batch of batchPaths(
     chatCopyPaths(conversations),
     CHAT_COPY_BATCH,
   )) {
     const zip = await engine.migrationExport(source, batch);
-    const result = await engine.migrationImport(target, zip);
+    const remapped = remapChatArchive(new Uint8Array(zip), map, mint);
+    const result = await engine.migrationImport(
+      target,
+      remapped.buffer.slice(
+        remapped.byteOffset,
+        remapped.byteOffset + remapped.byteLength,
+      ) as ArrayBuffer,
+    );
     outcome.written += result.written;
     outcome.rejected.push(...result.rejected);
   }
