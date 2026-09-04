@@ -1,4 +1,5 @@
 import { cn, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import type { ReactNode } from "react";
 
 /** The front avatar's diameter: the phone list's large, WhatsApp-sized mark. */
 const FRONT_DIAMETER = 52;
@@ -14,9 +15,8 @@ const BACK_DIAMETER = 46;
  * taps; an agent with at most one task wears a single mark, because a stack
  * over one conversation would promise a list that is not there.
  *
- * The back cards are the same helmet in the same colour, SOLID, each ringed
- * in the screen's background so the three read as separate cards where they
- * overlap (a faded card reads as a ghost, not a card behind). Decorative: the row's text names the agent and counts its
+ * The back cards are the same helmet in the same colour, each on its own
+ * opaque disc so the three read as separate solid cards where they overlap. Decorative: the row's text names the agent and counts its
  * work, so the whole mark is hidden from assistive tech.
  *
  * The running ring rides the front card only, through `HoustonAvatar`'s own
@@ -49,27 +49,49 @@ export function AgentAvatarStack({
       {stacked && (
         <>
           <span className="absolute inset-0 flex -translate-x-3 -rotate-[14deg] items-center justify-center">
-            <HoustonAvatar
-              color={resolved}
-              diameter={BACK_DIAMETER}
-              className="ring-2 ring-background"
-            />
+            <Card>
+              <HoustonAvatar color={resolved} diameter={BACK_DIAMETER} />
+            </Card>
           </span>
           <span className="absolute inset-0 flex -translate-x-1.5 -rotate-[7deg] items-center justify-center">
-            <HoustonAvatar
-              color={resolved}
-              diameter={BACK_DIAMETER}
-              className="ring-2 ring-background"
-            />
+            <Card>
+              <HoustonAvatar color={resolved} diameter={BACK_DIAMETER} />
+            </Card>
           </span>
         </>
       )}
-      <HoustonAvatar
-        color={resolved}
-        diameter={FRONT_DIAMETER}
-        running={running}
-        className={cn("relative", stacked && "ring-2 ring-background")}
-      />
+      <Card className="relative">
+        <HoustonAvatar
+          color={resolved}
+          diameter={FRONT_DIAMETER}
+          running={running}
+        />
+      </Card>
+    </span>
+  );
+}
+
+/**
+ * An OPAQUE disc under each card. The avatar's own tint is a translucent mix
+ * over the chip surface, so on its own a card behind shows through the one in
+ * front and the fan reads as a ghost; the screen's background underneath, plus
+ * a hairline of it as the card's edge, is what makes each card solid.
+ */
+function Card({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "flex rounded-full bg-background ring-2 ring-background",
+        className,
+      )}
+    >
+      {children}
     </span>
   );
 }

@@ -106,8 +106,12 @@ export function AgentsHomeList() {
         ) : swept ? (
           <ul>
             {rows.map((row) => (
-              // `group`: the row's inset divider drops on the LAST row.
-              <li key={row.agent.id} className="group">
+              // The divider is the list's: one hairline under each row but the
+              // last, inset the same distance from both screen edges.
+              <li
+                key={row.agent.id}
+                className="mx-4 border-b border-line last:border-b-0"
+              >
                 <AgentHomeRowCell row={row} onOpen={openRow} />
               </li>
             ))}
@@ -148,9 +152,9 @@ function NewAgentButton({ label }: { label: string }) {
  *  sweep has no data at all yet, so the list never claims agents are idle. */
 function AgentsHomeRowSkeleton() {
   return (
-    <div className="flex w-full items-center gap-3 pl-4">
+    <div className="mx-4 flex items-center gap-3 border-b border-line last:border-b-0">
       <Skeleton className="size-[52px] shrink-0 rounded-full" />
-      <div className="mr-4 flex min-h-[4.5rem] flex-1 flex-col justify-center gap-2 border-b border-line">
+      <div className="flex min-h-[4.5rem] flex-1 flex-col justify-center gap-2">
         <Skeleton className="h-4 w-1/3" />
         <Skeleton className="h-3.5 w-2/3" />
       </div>

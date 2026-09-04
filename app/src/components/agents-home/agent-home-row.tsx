@@ -14,10 +14,8 @@ import type { AgentHomeRow } from "./agents-home-model";
  *
  * The preview is the latest TASK, not a message: an agent is a thread of
  * many conversations, and the one line a row has room for is the thing that
- * moved last. The divider between rows is inset at BOTH ends: past the avatar
- * on the left, so the avatars read as one column, and short of the screen
- * edge on the right, so the list reads as rows on one plane rather than a
- * ruled sheet.
+ * moved last. The divider between rows is the LIST's (one hairline per row,
+ * inset the same distance from both screen edges), so this cell draws none.
  */
 export function AgentHomeRowCell({
   row,
@@ -32,14 +30,14 @@ export function AgentHomeRowCell({
       type="button"
       data-testid="agents-home-row"
       onClick={() => onOpen(row)}
-      className="flex w-full items-center gap-3 pl-4 pr-0 text-left transition-colors hover:bg-hover active:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+      className="flex w-full items-center gap-3 text-left transition-colors hover:bg-hover active:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
     >
       <AgentAvatarStack
         color={row.agent.color}
         running={row.runningCount > 0}
         stacked={row.taskCount > 1}
       />
-      <span className="flex min-h-[4.5rem] min-w-0 flex-1 mr-4 flex-col justify-center gap-0.5 border-b border-line group-last:border-b-0">
+      <span className="flex min-h-[4.5rem] min-w-0 flex-1 flex-col justify-center gap-0.5">
         <span className="flex items-baseline gap-2">
           <span className="min-w-0 flex-1 truncate text-base font-weight-510 text-ink">
             {row.agent.name}
