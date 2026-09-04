@@ -113,7 +113,22 @@ export function IntegrationsReady({
               custom={shown.custom}
               onOpen={selection.openConn}
               customSelection={custom.selection}
-              onCustomSignIn={(slug) => custom.signIn.mutate(slug)}
+              // A curated row's Sign in reopens the chooser: after an
+              // abandoned or refused browser sign-in the user must still be
+              // able to pick the provider connect or the token, not only
+              // retry the same page.
+              onCustomSignIn={(slug) =>
+                curatedIntegrationOf(slug)
+                  ? setCuratedRequest({
+                      slug,
+                      providerConnect: () =>
+                        void connectFlow.connect(
+                          slug,
+                          `integrations:installed:${slug}`,
+                        ),
+                    })
+                  : custom.signIn.mutate(slug)
+              }
               searching={filtering}
             />
           ) : undefined

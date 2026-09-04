@@ -84,6 +84,33 @@ test("the custom provider's bare connect row is dropped when another provider of
   ]);
 });
 
+test("a curated alias scope reaches other providers as the real slug", async () => {
+  const composio = new FakeIntegrationProvider({
+    id: "composio",
+    actions: [
+      {
+        action: "HIGHLEVEL_CREATE_CONTACT",
+        toolkit: "highlevel",
+        description: "Create a contact",
+      },
+      { action: "GMAIL_SEND_EMAIL", toolkit: "gmail", description: "Send" },
+    ],
+  });
+  const started = await composio.connect("user", "highlevel");
+  composio.completeConnection("user", started.connectionId);
+  const result = await searchIntegrations({
+    registry: new IntegrationRegistry([composio]),
+    userId: "user",
+    query: "contact",
+    app: "leadconnector",
+  });
+  expect(result.items.map((item) => item.action)).toEqual([
+    "HIGHLEVEL_CREATE_CONTACT",
+  ]);
+  expect(result.items[0]?.connected).toBe(true);
+  expect(composio.lastApp).toBe("highlevel");
+});
+
 test("execute routes tools-prefixed actions to custom", async () => {
   const custom = new FakeIntegrationProvider({ id: "custom" });
   const composio = new FakeIntegrationProvider({ id: "composio" });

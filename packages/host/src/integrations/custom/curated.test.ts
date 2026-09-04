@@ -120,6 +120,16 @@ test("an alias keeps resolving after the app is added — to the definition, not
     "leadconnector",
   );
   expect(neighbour.items.map((m) => m.toolkit)).toEqual(["highlevel"]);
+  // Nor by a loose substring of the CANONICAL slug ("Level" ⊂ highlevel).
+  const level = searchCustomTools(
+    "create a contact",
+    [{ ...tool, integration: "level", address: "level.contacts" }],
+    [{ slug: "level", name: "Level", active: true }],
+    "ghl",
+  );
+  expect(level.items).toMatchObject([
+    { toolkit: "highlevel", status: "connectable" },
+  ]);
   // A non-alias scope passes through untouched.
   expect(curatedCanonicalScope("notion")).toBe("notion");
   expect(curatedCanonicalScope("")).toBe("");

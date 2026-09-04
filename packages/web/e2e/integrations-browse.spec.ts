@@ -240,16 +240,24 @@ test("HighLevel connects through one dialog: the MCP sign-in leads, Composio wit
   await expect(
     dialog.getByRole("heading", { name: "Connect HighLevel" }),
   ).toBeVisible();
-  const options = dialog.getByRole("button", { name: /HighLevel/ });
-  const viaMcp = options.nth(0);
-  await expect(viaMcp).toContainText("Log in with LeadConnector (MCP)");
+  // The three options, in this order: MCP sign-in, Composio, token. Named
+  // one by one — a /HighLevel/ role query would also catch the footer's
+  // "Create a HighLevel account" link.
+  const viaMcp = dialog.getByRole("button", {
+    name: /Log in with LeadConnector \(MCP\)/,
+  });
   await expect(viaMcp).toContainText("Recommended");
-  const viaComposio = options.nth(1);
-  await expect(viaComposio).toContainText("Connect HighLevel with Composio");
+  const viaComposio = dialog.getByRole("button", {
+    name: /Connect HighLevel with Composio/,
+  });
   await expect(viaComposio).toContainText("Agency View to Sub-Account View");
-  // The token is the third option, under HighLevel's own name for it.
-  await expect(options.nth(2)).toContainText("Use a private integration token");
-  await expect(options).toHaveCount(3);
+  await expect(
+    dialog.getByRole("button", { name: /Use a private integration token/ }),
+  ).toBeVisible();
+  const order = await dialog
+    .locator("button.rounded-xl")
+    .evaluateAll((nodes) => nodes.map((n) => n.textContent?.slice(0, 12)));
+  expect(order).toEqual(["Log in with ", "Connect High", "Use a privat"]);
   await expect(page.getByText("Finish connecting HighLevel")).toHaveCount(0);
 
   // The Composio option is the plain hand-off for THIS row: the same

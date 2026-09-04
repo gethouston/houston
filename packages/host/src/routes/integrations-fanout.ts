@@ -1,3 +1,4 @@
+import { curatedCanonicalScope } from "../integrations/custom/curated";
 import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
 import type { ActingContext } from "../integrations/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
@@ -47,12 +48,23 @@ export async function searchIntegrations(
   // that provider's connect leading. The custom provider's bare "connect
   // me" row for it (no action, not connected) is then a duplicate offer and
   // is dropped; its compiled tools and every other provider's rows stay.
+  // A curated alias ("leadconnector") names a slug other providers may
+  // carry under the real name only; they get the canonical slug, while the
+  // custom provider keeps the raw scope and ranks its own exact matches
+  // first (custom/search.ts).
   const fanOut = async (scope: string | undefined) => {
     const settled = await Promise.allSettled(
       providerIds.map((id) =>
         input.registry
           .get(id)
-          .search(input.userId, input.query, input.acting, scope),
+          .search(
+            input.userId,
+            input.query,
+            input.acting,
+            scope !== undefined && id !== "custom"
+              ? curatedCanonicalScope(scope)
+              : scope,
+          ),
       ),
     );
     const offeredElsewhere = new Set(
