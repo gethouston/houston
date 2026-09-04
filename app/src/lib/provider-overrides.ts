@@ -213,8 +213,6 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   ]),
   anthropic: new Set([
     "claude-sonnet-5",
-    // Backported into pi's catalog by the fable-5-1 catalog patch
-    // (packages/host/src/providers/fable-5-1-catalog-patch.ts).
     "claude-fable-5-1",
     "claude-fable-5",
     "claude-opus-5",
@@ -225,6 +223,8 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
   // 3.1 line is represented by Flash Lite here.
   google: new Set([
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
@@ -404,15 +404,21 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://github.com/features/copilot",
     auth: "oauth",
     copilotConnect: true,
-    // Base model that works on EVERY Copilot plan incl. Free (HOU-578).
-    defaultModel: "gpt-4.1",
+    // The cheapest model served on every Copilot plan (HOU-578). GitHub retired
+    // gpt-4.1, the old base model, on 2026-06-01 (pi dropped it in 0.85.0);
+    // under usage-based billing every model spends AI credits, so the default
+    // is the lowest-cost row rather than a "free" one. Twin of the runtime's
+    // `config.githubCopilotModel` and `COPILOT_BASE_FALLBACK`.
+    defaultModel: "gpt-5-mini",
     models: {
-      "gpt-4.1": {
-        label: "GPT-4.1",
-        description: "Available on every plan, including Copilot Free.",
+      "gpt-5-mini": {
+        label: "GPT-5 Mini",
+        description: "Fast and lightweight. Cheapest on every Copilot plan.",
       },
-      "claude-sonnet-4.6": {
-        label: "Claude Sonnet 4.6",
+      // Sonnet 4.6 retired on Copilot 2026-09-01 (all but annual individual
+      // plans); Sonnet 5 is GitHub's named replacement.
+      "claude-sonnet-5": {
+        label: "Claude Sonnet 5",
         description: "Best balance of speed and quality. Needs Copilot Pro.",
       },
       "claude-opus-4.8": {
@@ -427,10 +433,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "gpt-5.5": {
         label: "GPT-5.5",
         description: "OpenAI's frontier model. Needs Copilot Pro.",
-      },
-      "gpt-5-mini": {
-        label: "GPT-5 Mini",
-        description: "OpenAI's fast, lightweight model. Needs Copilot Pro.",
       },
       "gemini-3.6-flash": {
         label: "Gemini 3.6 Flash",
@@ -562,15 +564,30 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Free tier on your Google account",
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
-    defaultModel: "gemini-3.5-flash",
+    // 3.8 Flash (GA 2026-09-02): 1M context, 64K output, and at $0.75/$3.75
+    // per MTok (intro through 2026-12-31, then $1.50/$7.50) it undercuts 3.5
+    // Flash's $1.50/$9 while scoring higher. Twin of the runtime's
+    // `config.geminiModel` and the host's google `defaultModel`. Effort rows
+    // for 3.7/3.8 derive to low/medium/high; Google rejects `minimal` on both
+    // (the carried pi-ai patch floors the no-effort path at LOW).
+    defaultModel: "gemini-3.8-flash",
     models: {
+      "gemini-3.8-flash": {
+        label: "Gemini 3.8 Flash",
+        description: "Google's newest Flash. Best for agents and coding.",
+      },
+      "gemini-3.7-flash": {
+        label: "Gemini 3.7 Flash",
+        description: "Strong coding workhorse. Same price as 3.8.",
+      },
       "gemini-3.6-flash": {
         label: "Gemini 3.6 Flash",
-        description: "Google's newest Flash. Stronger agents, cheaper output.",
+        description:
+          "Previous Flash generation. Stronger agents, cheaper output.",
       },
       "gemini-3.5-flash": {
         label: "Gemini 3.5 Flash",
-        description: "Fast and capable. Best default.",
+        description: "Fast and capable.",
       },
       "gemini-3.5-flash-lite": {
         label: "Gemini 3.5 Flash Lite",

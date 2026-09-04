@@ -140,6 +140,8 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     reasoningModel("deepseek-v4-pro", { contextWindow: 1_000_000 }),
   ]),
   provider("google", "apiKey", [
+    reasoningModel("gemini-3.8-flash", { contextWindow: 1_048_576 }),
+    reasoningModel("gemini-3.7-flash", { contextWindow: 1_048_576 }),
     reasoningModel("gemini-3.5-flash", { contextWindow: 1_048_576 }),
     reasoningModel("gemini-3.1-flash-lite", { contextWindow: 1_048_576 }),
     m("gemma-4-26b-a4b-it", { contextWindow: 131_072 }),

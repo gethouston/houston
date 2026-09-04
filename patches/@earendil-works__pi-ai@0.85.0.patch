@@ -1,0 +1,74 @@
+diff --git a/dist/api/google-generative-ai.js b/dist/api/google-generative-ai.js
+index e5db9352c61629ab16158b78ee3a6bbd96bf1a9b..e14c9397a8f611f66afd0f20f0701f4a91b252ca 100644
+--- a/dist/api/google-generative-ai.js
++++ b/dist/api/google-generative-ai.js
+@@ -337,6 +337,13 @@ function isGemini3FlashModel(model) {
+     const id = model.id.toLowerCase();
+     return /gemini-3(?:\.\d+)?-flash/.test(id) || id === "gemini-flash-latest" || id === "gemini-flash-lite-latest";
+ }
++// Gemini 3.7 Flash and later reject `thinkingLevel: MINIMAL` outright ("minimal
++// thinking level is not supported ... and will return an error", ai.google.dev
++// latest-model, 2026-09); their floor is LOW. Flash-Lite rows keep MINIMAL.
++// Unfixed upstream as of 0.85.0.
++function isMinimalRejectingFlashModel(model) {
++    return /^gemini-3\.(?:[7-9]|\d{2,})-flash$/.test(model.id.toLowerCase());
++}
+ function getDisabledThinkingConfig(model) {
+     // Google docs: Gemini 3.1 Pro cannot disable thinking, and Gemini 3 Flash / Flash-Lite
+     // do not support full thinking-off either. For Gemini 3 models, use the lowest supported
+@@ -344,6 +351,9 @@ function getDisabledThinkingConfig(model) {
+     if (isGemini3ProModel(model)) {
+         return { thinkingLevel: "LOW" };
+     }
++    if (isMinimalRejectingFlashModel(model)) {
++        return { thinkingLevel: "LOW" };
++    }
+     if (isGemini3FlashModel(model)) {
+         return { thinkingLevel: "MINIMAL" };
+     }
+@@ -374,6 +384,9 @@ function getThinkingLevel(effort, model) {
+                 return "HIGH";
+         }
+     }
++    if (isMinimalRejectingFlashModel(model) && effort === "minimal") {
++        return "LOW";
++    }
+     switch (effort) {
+         case "minimal":
+             return "MINIMAL";
+diff --git a/dist/api/google-shared.js b/dist/api/google-shared.js
+index 4214c050965c3bdb3564b623d54130d2f8608b1f..de52e98530b1800a655123ea14d8c81012995c40 100644
+--- a/dist/api/google-shared.js
++++ b/dist/api/google-shared.js
+@@ -353,8 +353,10 @@ export function mapStopReason(reason) {
+         case FinishReason.NO_IMAGE:
+             return "error";
+         default: {
+-            const _exhaustive = reason;
+-            throw new Error(`Unhandled stop reason: ${_exhaustive}`);
++            // Gemini adds FinishReason values faster than the SDK enum ships
++            // (MALFORMED_RESPONSE, observed 2026-08): an unknown reason is an
++            // error stop, never a crash of the whole turn pipeline.
++            return "error";
+         }
+     }
+ }
+diff --git a/dist/utils/retry.js b/dist/utils/retry.js
+index ce8c4cbc3bdbbfa2e8e59070cdcdee12a6bb7177..e82876f34eb20f66532a69f3f4c09d3335d10835 100644
+--- a/dist/utils/retry.js
++++ b/dist/utils/retry.js
+@@ -74,6 +74,14 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
+     "please retry your request",
+     // gRPC based providers (e.g. NVIDIA NIM)
+     "ResourceExhausted",
++    // Gemini finish reasons for a generation the MODEL itself broke (an
++    // unparseable tool call, a garbled response). Surfaced as `Provider stopped
++    // with: <REASON>` with no HTTP status; transient and server-side, Google's
++    // own guidance is to retry the same request. Matched on the reason tokens
++    // only: policy stops (SAFETY, RECITATION, BLOCKLIST) share the prefix and
++    // are refusals a retry cannot fix.
++    "MALFORMED_FUNCTION_CALL",
++    "MALFORMED_RESPONSE",
+ ]);
+ class RetrySleepAbortError extends Error {
+     constructor() {

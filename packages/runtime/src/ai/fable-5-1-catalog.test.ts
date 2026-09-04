@@ -1,9 +1,14 @@
 import { getModel } from "@earendil-works/pi-ai/compat";
 import { expect, test } from "vitest";
-import "./fable-5-1-catalog-patch";
 import { piModelIds } from "./pi-catalog";
 
-test("Claude Fable 5.1 is injected into the anthropic catalog", () => {
+/**
+ * Claude Fable 5.1 ships natively in pi-ai's baked Anthropic catalog as of
+ * 0.85.0; Houston carried a local backport patch against 0.84.4, deleted with
+ * that bump. The guard stays: a pi bump that dropped or reshaped its entry
+ * would silently strip the headline model from the runnable set.
+ */
+test("Claude Fable 5.1 is in pi's anthropic catalog", () => {
   const m = getModel(
     "anthropic",
     "claude-fable-5-1" as Parameters<typeof getModel>[1],
@@ -20,12 +25,4 @@ test("Claude Fable 5.1 is injected into the anthropic catalog", () => {
     cacheWrite: 12.5,
   });
   expect(piModelIds("anthropic")).toContain("claude-fable-5-1");
-});
-
-test("the patch is idempotent (re-import cannot duplicate the entry)", async () => {
-  const { ensureAnthropicFable51 } = await import("./fable-5-1-catalog-patch");
-  ensureAnthropicFable51();
-  ensureAnthropicFable51();
-  const ids = piModelIds("anthropic").filter((id) => id === "claude-fable-5-1");
-  expect(ids).toHaveLength(1);
 });

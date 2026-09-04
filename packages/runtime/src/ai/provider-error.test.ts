@@ -331,7 +331,7 @@ test("unclassifiable error → unknown, preserving the raw text", () => {
   });
 });
 
-test("GitHub Copilot model_not_supported → model_unavailable + gpt-4.1 fallback (HOU-578)", () => {
+test("GitHub Copilot model_not_supported → model_unavailable + gpt-5-mini fallback (HOU-578)", () => {
   // The verbatim 400 a Copilot Free account answers a premium model with: the
   // model exists in the catalog but the plan doesn't serve it. Must NOT read as
   // auth (credential is fine) or rate/quota (nothing to wait out) — the fix is a
@@ -348,7 +348,7 @@ test("GitHub Copilot model_not_supported → model_unavailable + gpt-4.1 fallbac
     provider: "github-copilot",
     model: "claude-sonnet-4.6",
     reason: "unknown",
-    suggested_fallback: "gpt-4.1",
+    suggested_fallback: "gpt-5-mini",
     message,
   });
 });
@@ -389,7 +389,7 @@ test("Xiaomi fallback model itself unsupported → no self-referential fallback"
     expect(err.suggested_fallback).toBeNull();
 });
 
-test("Copilot 'not available for integrator' 400 → model_unavailable + gpt-4.1 fallback (HOU-977)", () => {
+test("Copilot 'not available for integrator' 400 → model_unavailable + gpt-5-mini fallback (HOU-977)", () => {
   // Copilot's NEWER wording for the same plan-doesn't-serve-this-model failure:
   // no `model_not_supported` code, just prose naming the integrator and the
   // plan's model list. Fell through to `unknown` (generic card + auto bug
@@ -406,7 +406,7 @@ test("Copilot 'not available for integrator' 400 → model_unavailable + gpt-4.1
     provider: "github-copilot",
     model: "gpt-5.6-sol",
     reason: "unknown",
-    suggested_fallback: "gpt-4.1",
+    suggested_fallback: "gpt-5-mini",
     message,
   });
 });
@@ -512,11 +512,11 @@ test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilo
 });
 
 test("Copilot's own base model never self-suggests as the fallback", () => {
-  // gpt-4.1 is the fallback target; if it were ever the failing model, offering
+  // gpt-5-mini is the fallback target; if it were ever the failing model, offering
   // it back would be a no-op loop — suppress it.
   const err = classifyProviderError({
     provider: "github-copilot",
-    model: "gpt-4.1",
+    model: "gpt-5-mini",
     message: '400 {"error":{"code":"model_not_supported"}}',
   });
   expect(err.kind).toBe("model_unavailable");
@@ -1054,7 +1054,7 @@ test("NVIDIA body-less 410 (per-account model gate) → model_unavailable with t
   });
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable")
-    expect(err.suggested_fallback).toBe("openai/gpt-oss-120b");
+    expect(err.suggested_fallback).toBe("openai/gpt-oss-20b");
 });
 
 test("NVIDIA body-less 404 (same gate, NVIDIA's newer status) → model_unavailable (HOU-890)", () => {
@@ -1082,7 +1082,7 @@ test("NVIDIA 404 'Not found for account' body → model_unavailable (HOU-890)", 
 test("NVIDIA gate on the broad fallback itself offers no fallback", () => {
   const err = classifyProviderError({
     provider: "nvidia",
-    model: "openai/gpt-oss-120b",
+    model: "openai/gpt-oss-20b",
     message: "404 status code (no body)",
   });
   expect(err.kind).toBe("model_unavailable");
@@ -1128,7 +1128,7 @@ test("NVIDIA body-less 410 wrapped by pi's compaction → model_unavailable, sam
     });
     expect(err.kind).toBe("model_unavailable");
     if (err.kind === "model_unavailable")
-      expect(err.suggested_fallback).toBe("openai/gpt-oss-120b");
+      expect(err.suggested_fallback).toBe("openai/gpt-oss-20b");
   }
 });
 

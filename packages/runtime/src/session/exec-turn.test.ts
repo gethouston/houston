@@ -663,7 +663,7 @@ test("a thrown summarization failure classifies on the RESOLVED model when the t
     kind: "model_unavailable",
     provider: "nvidia",
     model: "meta/llama-3.1-70b-instruct",
-    suggested_fallback: "openai/gpt-oss-120b",
+    suggested_fallback: "openai/gpt-oss-20b",
   });
   expect(persistedProviderError(id)).toMatchObject({
     kind: "model_unavailable",

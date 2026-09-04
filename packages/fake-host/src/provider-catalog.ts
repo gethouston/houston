@@ -43,7 +43,7 @@ export const CATALOG: ProviderSpec[] = [
     name: "GitHub Copilot",
     connect: "oauth",
     loginKind: "device_code",
-    models: ["gpt-4.1", "claude-sonnet-4-6"],
+    models: ["gpt-5-mini", "claude-sonnet-5"],
   },
   {
     id: "openrouter",

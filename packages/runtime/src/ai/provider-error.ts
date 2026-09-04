@@ -284,13 +284,13 @@ const PLAN_LIMIT_PATTERNS = [
 ];
 
 /**
- * A GitHub Copilot model EVERY Copilot plan (incl. Copilot Free) serves, offered
- * as the concrete switch target on a `model_unavailable` card. Copilot's premium
- * models (Claude, GPT-5.x) require Copilot Pro; its base models (gpt-4.1 / gpt-4o)
- * are always available. Kept in sync with `config.githubCopilotModel`'s default
- * (duplicated, not imported, so this classifier stays pure + unit-testable).
+ * The cheapest GitHub Copilot model every plan serves, offered as the concrete
+ * switch target on a `model_unavailable` card. The old base models (gpt-4.1 /
+ * gpt-4o) were retired by GitHub in 2026; gpt-5-mini is the lowest-cost row
+ * left. Kept in sync with `config.githubCopilotModel`'s default (duplicated,
+ * not imported, so this classifier stays pure + unit-testable).
  */
-const COPILOT_BASE_FALLBACK = "gpt-4.1";
+const COPILOT_BASE_FALLBACK = "gpt-5-mini";
 
 /** Longest excerpt we keep for the `unknown` card / bug report. */
 const EXCERPT_MAX = 300;
@@ -329,12 +329,12 @@ export function isNvidiaFunctionGated(
 /**
  * The NVIDIA model offered as the one-click switch target on a gated model's
  * `model_unavailable` card — served to every account we have evidence from
- * (including the partially-gated one above; llama, the previous pick, was
- * retired from pi's NVIDIA catalog in 0.84.4). Duplicated from the runtime's
+ * (including the partially-gated one above; llama, then gpt-oss-120b, the
+ * previous picks, were retired from pi's NVIDIA catalog in 0.84.4 / 0.85.0). Duplicated from the runtime's
  * NVIDIA default on purpose, like COPILOT_BASE_FALLBACK, so this classifier
  * stays pure.
  */
-const NVIDIA_BROAD_FALLBACK = "openai/gpt-oss-120b";
+const NVIDIA_BROAD_FALLBACK = "openai/gpt-oss-20b";
 
 /**
  * The Moonshot model offered as the one-click switch target when a pinned
