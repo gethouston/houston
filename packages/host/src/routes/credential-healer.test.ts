@@ -1,5 +1,6 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { RevocationTombstones } from "../credentials/revocation-tombstones";
+import { LauncherClosedError } from "../ports";
 import {
   type CredentialHeal,
   CredentialServeHealer,
@@ -145,4 +146,85 @@ test("no acting identity keeps the single shared slot (desktop, self-host)", asy
   expect(await healer.attempt(args)).toBe(false);
 
   expect(seen).toEqual([undefined]);
+});
+
+test("a launcher refusal mid-shutdown rethrows its closed shape without a Sentry error (PRODUCT-1672)", async () => {
+  // ensureAwake throws LauncherClosedError once stop() latched the launcher.
+  // That is the drain, not a fault: the route must answer the waking shape,
+  // and nothing may reach console.error (every console.error is a Sentry
+  // event on a managed pod).
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const healer = new CredentialServeHealer(async () => {
+    throw new LauncherClosedError();
+  });
+  await expect(
+    healer.attempt({ workspaceId: "ws", agentId: "ws/agent", provider: "xai" }),
+  ).rejects.toBeInstanceOf(LauncherClosedError);
+  expect(errors).not.toHaveBeenCalled();
+  errors.mockRestore();
+});
+
+test("a heal that dies once the host is draining is the drain, not a fault", async () => {
+  // The runtime was killed under the export fetch: undici's bare "fetch
+  // failed". With the host draining that is the same shutdown.
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  let draining = false;
+  const healer = new CredentialServeHealer(
+    async () => {
+      draining = true;
+      throw new TypeError("fetch failed");
+    },
+    undefined,
+    undefined,
+    () => draining,
+  );
+  await expect(
+    healer.attempt({ workspaceId: "ws", agentId: "ws/agent", provider: "xai" }),
+  ).rejects.toBeInstanceOf(LauncherClosedError);
+  expect(errors).not.toHaveBeenCalled();
+  errors.mockRestore();
+});
+
+test("a draining host refuses the heal before it starts and spends no cooldown", async () => {
+  const { seen, heal } = recorder();
+  let now = 1_700_000_000_000;
+  let draining = true;
+  const healer = new CredentialServeHealer(
+    heal,
+    () => now,
+    undefined,
+    () => draining,
+  );
+  const args = { workspaceId: "ws", agentId: "ws/agent", provider: "xai" };
+  await expect(healer.attempt(args)).rejects.toBeInstanceOf(
+    LauncherClosedError,
+  );
+  expect(seen).toEqual([]);
+  // The refusal must not have burned the cooldown: a host that stops draining
+  // (tests, a cancelled shutdown) heals on the very next miss.
+  draining = false;
+  now += 1_000;
+  expect(await healer.attempt(args)).toBe(true);
+  expect(seen).toEqual([undefined]);
+});
+
+test("a heal that fails on a live host stays a loud error and names the cause", async () => {
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const healer = new CredentialServeHealer(async () => {
+    throw new TypeError("fetch failed", {
+      cause: Object.assign(new Error("connect ECONNREFUSED"), {
+        code: "ECONNREFUSED",
+      }),
+    });
+  });
+  expect(
+    await healer.attempt({
+      workspaceId: "ws",
+      agentId: "ws/agent",
+      provider: "xai",
+    }),
+  ).toBe(false);
+  expect(errors).toHaveBeenCalledTimes(1);
+  expect(errors.mock.calls[0]?.[1]).toBe("fetch failed (cause: ECONNREFUSED)");
+  errors.mockRestore();
 });

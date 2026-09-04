@@ -13,6 +13,7 @@ import type {
   RuntimeLauncher,
   TokenVerifier,
 } from "./ports";
+import { CredentialServeHealer } from "./routes/credential-healer";
 import {
   type ControlPlaneDeps,
   createControlPlaneServer,
@@ -744,4 +745,32 @@ test("the credential endpoint rejects a bad sandbox token (401) and an unconnect
       })
     ).status,
   ).toBe(404);
+});
+
+test("a serve miss while the host drains answers 503 + Retry-After, never a marked 404 (PRODUCT-1672)", async () => {
+  // A roll kills the runtimes while their serve sync is in flight: the healer
+  // refuses (its runtime is gone) and the route must answer the waking shape
+  // the client retries against the replacement pod — not the store's
+  // authoritative "not connected", and not a 500.
+  const credentialHealer = new CredentialServeHealer(
+    async () => true,
+    undefined,
+    undefined,
+    () => true,
+  );
+  const { base: b, close } = await startServer({
+    ...baseDeps(),
+    credentialHealer,
+  });
+  try {
+    const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
+    const r = await fetch(`${b}/sandbox/credential?provider=xai`, {
+      headers: { Authorization: `Bearer sbx:${aliceWs.id}` },
+    });
+    expect(r.status).toBe(503);
+    expect(r.headers.get("retry-after")).toBe("2");
+    expect(r.headers.get("x-houston-not-connected")).toBeNull();
+  } finally {
+    await close();
+  }
 });
