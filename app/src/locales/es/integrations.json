@@ -218,7 +218,10 @@
       "signInTitle": "Iniciar sesión con LeadConnector (MCP)",
       "signInDesc": "La conexión oficial de HighLevel. Elige la subcuenta que usarán tus agentes y aprueba.",
       "providerTitle": "Conectar HighLevel con Composio",
-      "providerDesc": "Todas las funciones de HighLevel. Cuando se abra HighLevel, cambia de Agency View a Sub-Account View y aprueba."
+      "providerDesc": "Todas las funciones de HighLevel. Cuando se abra HighLevel, cambia de Agency View a Sub-Account View y aprueba.",
+      "keyTitle": "Usar un token de integración privada",
+      "keyDesc": "Pega un token creado en tu subcuenta de HighLevel.",
+      "keyHelp": "En HighLevel, abre la subcuenta que quieres conectar, ve a Configuración (Settings), luego a Integraciones privadas (Private Integrations) y crea un token con los permisos que necesitan tus agentes. Pégalo aquí (empieza con pit-)."
     },
     "connect": {
       "title": "Conectar {{name}}",

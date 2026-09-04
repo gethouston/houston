@@ -247,10 +247,9 @@ test("HighLevel connects through one dialog: the MCP sign-in leads, Composio wit
   const viaComposio = options.nth(1);
   await expect(viaComposio).toContainText("Connect HighLevel with Composio");
   await expect(viaComposio).toContainText("Agency View to Sub-Account View");
-  // No token option for HighLevel: two sign-ins were the whole choice.
-  await expect(
-    dialog.getByRole("button", { name: /Use an API key instead/ }),
-  ).toHaveCount(0);
+  // The token is the third option, under HighLevel's own name for it.
+  await expect(options.nth(2)).toContainText("Use a private integration token");
+  await expect(options).toHaveCount(3);
   await expect(page.getByText("Finish connecting HighLevel")).toHaveCount(0);
 
   // The Composio option is the plain hand-off for THIS row: the same

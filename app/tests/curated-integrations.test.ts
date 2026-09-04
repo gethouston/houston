@@ -41,6 +41,8 @@ describe("curated catalog data", () => {
       const keys = [
         c.descriptionKey,
         c.keyHelpKey,
+        c.keyTitleKey,
+        c.keyDescKey,
         c.signInTitleKey,
         c.signInDescKey,
         c.providerTitleKey,
@@ -64,7 +66,7 @@ describe("curated catalog data", () => {
     strictEqual(curatedIntegrationOf("gmail"), undefined);
   });
 
-  it("points HighLevel at the client-agnostic LeadConnector endpoint, sign-in only", () => {
+  it("points HighLevel at the client-agnostic LeadConnector endpoint, with a token fallback", () => {
     const highlevel = curatedIntegrationOf("highlevel");
     ok(highlevel);
     // The per-client `/mcp/<client>/v2` family refuses to register unknown
@@ -74,7 +76,8 @@ describe("curated catalog data", () => {
       highlevel.endpoint,
       "https://services.leadconnectorhq.com/mcp/",
     );
-    deepStrictEqual(highlevel.authModes, ["oauth"]);
+    deepStrictEqual(highlevel.authModes, ["oauth", "credential"]);
+    ok(highlevel.keyHelpKey);
     ok(highlevel.providerTitleKey);
     ok(highlevel.signInTitleKey);
     deepStrictEqual(highlevel.categories, ["crm", "marketing"]);

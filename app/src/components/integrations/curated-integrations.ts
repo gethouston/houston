@@ -36,6 +36,10 @@ export interface CuratedIntegration {
   descriptionKey: CuratedCopyKey<"description">;
   /** Required when `authModes` offers `credential` (pinned by the app test). */
   keyHelpKey?: CuratedCopyKey<"keyHelp">;
+  /** Per-service wording for the key option when the service does not call
+   *  it an API key (HighLevel: a "private integration token"). */
+  keyTitleKey?: CuratedCopyKey<"keyTitle">;
+  keyDescKey?: CuratedCopyKey<"keyDesc">;
   /** Per-service wording for the MCP sign-in option, when the generic
    *  "Sign in with {{name}}" would not tell it apart from the provider's own
    *  connect (HighLevel's consent page says "LeadConnector"). */
@@ -78,9 +82,11 @@ const CROMA: CuratedIntegration = {
  * family the docs recommend: that family's OAuth registration only admits
  * clients HighLevel has allow-listed (`unrecognized_client` for anything
  * else, verified live), while `/mcp/` registers any client. Trailing slash
- * matters — it is the resource the server's OAuth metadata names. Browser
- * sign-in only: a Private Integration Token also works, but two token paths
- * next to two sign-ins was one option too many for the card.
+ * matters — it is the resource the server's OAuth metadata names. The
+ * Private Integration Token stays as the third option because HighLevel's
+ * own consent page currently refuses eight scopes its MCP app requests
+ * (their bug, not steerable from our side), which sinks the browser sign-in
+ * on at least some sub-accounts — the token is the path that works.
  */
 const HIGHLEVEL: CuratedIntegration = {
   slug: "highlevel",
@@ -88,10 +94,13 @@ const HIGHLEVEL: CuratedIntegration = {
   endpoint: "https://services.leadconnectorhq.com/mcp/",
   website: "https://www.gohighlevel.com",
   categories: ["crm", "marketing"],
-  authModes: ["oauth"],
+  authModes: ["oauth", "credential"],
   signUpUrl: "https://www.gohighlevel.com/signup",
   apiKeysUrl: "https://app.gohighlevel.com",
   descriptionKey: "curated.highlevel.description",
+  keyHelpKey: "curated.highlevel.keyHelp",
+  keyTitleKey: "curated.highlevel.keyTitle",
+  keyDescKey: "curated.highlevel.keyDesc",
   signInTitleKey: "curated.highlevel.signInTitle",
   signInDescKey: "curated.highlevel.signInDesc",
   providerTitleKey: "curated.highlevel.providerTitle",

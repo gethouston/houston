@@ -68,8 +68,16 @@ export function CuratedConnectOptions({
       {offersKey && (
         <ChoiceCard
           icon={<KeyRound className="size-5" />}
-          title={t("curated.connect.keyTitle")}
-          description={t("curated.connect.keyDesc", { name })}
+          title={
+            curated.keyTitleKey
+              ? t(curated.keyTitleKey)
+              : t("curated.connect.keyTitle")
+          }
+          description={
+            curated.keyDescKey
+              ? t(curated.keyDescKey)
+              : t("curated.connect.keyDesc", { name })
+          }
           disabled={busy}
           onClick={onKey}
         />
