@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { analytics } from "../../lib/analytics";
+import { copyAgentChats } from "../../lib/copy-agent-chats";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-report";
 import { showExpectedStateToast } from "../../lib/error-toast";
@@ -27,7 +28,10 @@ import { fullPortableSelection } from "./copy-agent-model";
  *
  * `selection` narrows what the package carries (the create dialog's "Copy an
  * agent" wizard lets the user leave items behind); absent, the copy is
- * faithful. `color` defaults to the source's.
+ * faithful. `color` defaults to the source's. `copyChats` moves the source's
+ * tasks and conversations over afterwards through the agent-scoped migration
+ * routes, in the background: on the hosted profile the copy's pod is still
+ * cold-starting, and holding the dialog for that would freeze it.
  *
  * Resolves `true` when the copy exists (the dialog closes on it); failures
  * toast here and resolve `false` so the dialog stays open for a retry.
@@ -38,6 +42,7 @@ export function useCopyAgent(): (args: {
   team: TeamView | null;
   color?: string;
   selection?: PortableExportSelection;
+  copyChats?: boolean;
   /** Which door the copy came through, for analytics. */
   via?: "settings" | "create_dialog";
 }) => Promise<boolean> {
@@ -47,7 +52,15 @@ export function useCopyAgent(): (args: {
   const workspaceName = useWorkspaceStore((s) => s.current?.name);
   const moveAgent = useMoveAgentTeam();
 
-  return async ({ agent, name, team, color, selection, via = "settings" }) => {
+  return async ({
+    agent,
+    name,
+    team,
+    color,
+    selection,
+    copyChats = false,
+    via = "settings",
+  }) => {
     try {
       const engine = getEngine();
       const packaged =
@@ -83,6 +96,31 @@ export function useCopyAgent(): (args: {
         }),
       });
       openAgentBoard(installed.agent.id);
+      if (copyChats) {
+        void (async () => {
+          try {
+            const outcome = await copyAgentChats(
+              engine,
+              agent.folderPath,
+              installed.agentPath,
+            );
+            addToast({
+              variant: "success",
+              title: t("copyAgent.toasts.chatsCopiedTitle"),
+              description: t("copyAgent.toasts.chatsCopiedDescription", {
+                count: outcome.conversations,
+                name: installed.agentName,
+              }),
+            });
+          } catch (err) {
+            addToast({
+              variant: "error",
+              title: t("copyAgent.errors.chatsFailed"),
+              description: genericErrorDescription("agent_copy_chats", err),
+            });
+          }
+        })();
+      }
       // The model pin dispatches to the copy's engine — on the hosted profile a
       // pod still cold-starting — so it finishes in the background like the
       // other create doors (HOU-649); the wrappers toast their own failures.

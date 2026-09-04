@@ -46,6 +46,9 @@ export function useCopyAgentWizard(args: {
   const [name, setName] = useState("");
   const [color, setColor] = useState<string | undefined>(undefined);
   const [creating, setCreating] = useState(false);
+  // Chats are opt-IN: a conversation can hold personal details the new agent
+  // has no business knowing, so unlike every other item they start off.
+  const [copyChats, setCopyChats] = useState(false);
 
   // Only agents whose content the caller may read: a "user"-access agent's
   // portable preview is refused by the gateway, so it never appears here.
@@ -70,6 +73,7 @@ export function useCopyAgentWizard(args: {
       setSource(agent);
       setPreview(next);
       setSelection(fullCopySelection(next));
+      setCopyChats(false);
       setName(
         suggestCopyName(
           agent.name,
@@ -105,6 +109,7 @@ export function useCopyAgentWizard(args: {
       team,
       color,
       selection: toCopySelection(selection),
+      copyChats,
       via: "create_dialog",
     });
     setCreating(false);
@@ -118,6 +123,8 @@ export function useCopyAgentWizard(args: {
     preview,
     selection,
     setSelection,
+    copyChats,
+    setCopyChats,
     steps,
     stepIndex,
     step,

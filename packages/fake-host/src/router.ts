@@ -36,6 +36,10 @@ async function parseBody(
   req: Request,
 ): Promise<Record<string, unknown> | undefined> {
   if (req.method === "GET" || req.method === "HEAD") return undefined;
+  // A binary upload (the migration import's zip) keeps its body stream for
+  // the route: `req.json()` would consume it and leave nothing to unpack.
+  if (req.headers.get("content-type")?.includes("application/zip"))
+    return undefined;
   return (await req.json().catch(() => undefined)) as
     | Record<string, unknown>
     | undefined;

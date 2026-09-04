@@ -215,10 +215,14 @@
     "copySuffix": "copia",
     "toasts": {
       "createdTitle": "Copia creada",
-      "createdDescription": "{{name}} está listo."
+      "createdDescription": "{{name}} está listo.",
+      "chatsCopiedTitle": "Chats copiados",
+      "chatsCopiedDescription_one": "{{count}} conversación ahora también vive con {{name}}.",
+      "chatsCopiedDescription_other": "{{count}} conversaciones ahora también viven con {{name}}."
     },
     "errors": {
-      "failed": "No pudimos copiar el agente"
+      "failed": "No pudimos copiar el agente",
+      "chatsFailed": "No pudimos copiar los chats"
     },
     "wizard": {
       "eyebrow": "Copiar un agente",
@@ -234,7 +238,10 @@
         "instructionsRow": "Descripción del puesto y reglas",
         "noInstructions": "{{name}} todavía no tiene descripción del puesto.",
         "learningsLabel": "Aprendizajes",
-        "learningsBody": "Notas que el agente fue tomando mientras trabajaba. Las personales pueden quedarse fuera."
+        "learningsBody": "Notas que el agente fue tomando mientras trabajaba. Las personales pueden quedarse fuera.",
+        "chatsLabel": "Chats",
+        "chatsRow": "Tareas y sus conversaciones",
+        "chatsBody": "Cada tarea del tablero y el chat que hay detrás, tal como están hoy en {{name}}. Empieza desactivado, porque los chats pueden tener datos personales."
       },
       "routines": {
         "title": "¿Qué rutinas se llevan?",

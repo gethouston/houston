@@ -17,20 +17,17 @@ export type CopyWizardStep =
   | "name";
 
 /**
- * The screens the wizard walks, for a chosen source. Content screens exist
- * only when the source has something to show on them: a bare agent goes
- * straight from the source list to naming, and no screen ever renders empty.
- * The instructions screen carries the job description AND the learnings, the
- * two things a non-technical user reads as "what the agent knows".
+ * The screens the wizard walks, for a chosen source. The "what should the
+ * copy know" screen always shows: it carries the job description, the
+ * learnings and the chats switch, and the chats choice exists for every
+ * source. The routines and skills screens exist only when the source has
+ * some, so no screen ever renders an empty list.
  */
 export function copyWizardSteps(
   preview: PortableInventoryPreview | null,
 ): CopyWizardStep[] {
   if (!preview) return ["source"];
-  const steps: CopyWizardStep[] = ["source"];
-  if (preview.claudeMd !== null || preview.learnings.length > 0) {
-    steps.push("instructions");
-  }
+  const steps: CopyWizardStep[] = ["source", "instructions"];
   if (preview.routines.length > 0) steps.push("routines");
   if (preview.skills.length > 0) steps.push("skills");
   steps.push("name");

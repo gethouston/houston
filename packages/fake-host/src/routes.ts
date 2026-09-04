@@ -19,6 +19,7 @@ import type { ProviderId } from "@houston/runtime-client";
 import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
 import { handleWorkspaceFiles } from "./routes-files";
+import { handleMigrationRoutes } from "./routes-migration";
 import { handlePortableRoutes } from "./routes-portable";
 import * as state from "./state";
 
@@ -48,7 +49,7 @@ export function handleAgents(
   rest: string[],
   req: Request,
   body: Record<string, unknown> | undefined,
-): Response {
+): Response | Promise<Response> {
   // /agents
   if (rest.length === 0) {
     if (method === "GET") return json(state.listAgents());
@@ -313,6 +314,11 @@ export function handleAgents(
       // Share / copy: the export inventory and the packaged `.houstonagent`,
       // both from this agent's own state (routes-portable.ts).
       return handlePortableRoutes(method, id, rest[2], body);
+
+    case "migration":
+      // The chats leg of "Copy an agent": zip the board + transcripts out of
+      // one agent, unpack them into another (routes-migration.ts).
+      return handleMigrationRoutes(method, id, rest[2], req, body);
 
     default:
       console.warn(

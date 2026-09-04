@@ -76,6 +76,7 @@ import type {
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
+  MigrationImportResult,
   MyAgent,
   NewActivity,
   NewRoutine,
@@ -2656,6 +2657,49 @@ export class HoustonClient {
   }
   importInstall(req: PortableInstallRequest): Promise<PortableInstalledAgent> {
     return this.request("POST", "/store/imports/install", req);
+  }
+
+  // ---------- agent data migration (agent-scoped, HOU-719 routes) ----------
+  //
+  // The same export/import pair the desktop→cloud migration uses, reachable on
+  // any host for any agent the caller manages: "Copy an agent" moves the
+  // source's chats into the copy through it. Paths are agent-root relative
+  // and must sit inside the host's migration scope.
+
+  async migrationExport(
+    agentPath: string,
+    paths: string[],
+  ): Promise<ArrayBuffer> {
+    const res = await this.send(
+      () => ({
+        url: `${this.baseUrl}/v1/agents/${encodeURIComponent(agentPath)}/migration/export`,
+        init: {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            ...this.orgHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ paths }),
+        },
+      }),
+      true, // read-only POST: zips and returns, writes nothing
+    );
+    if (!res.ok) throw await this.toError(res);
+    return await res.arrayBuffer();
+  }
+  migrationImport(
+    agentPath: string,
+    bytes: ArrayBuffer,
+    opts?: { overwrite?: boolean },
+  ): Promise<MigrationImportResult> {
+    const query = opts?.overwrite ? "?overwrite=1" : "";
+    return this.rawRequest(
+      "POST",
+      `/agents/${encodeURIComponent(agentPath)}/migration/import${query}`,
+      bytes,
+      "application/zip",
+    );
   }
 
   // ---------- Agent Store publication (account-based, no manage tokens) ----------

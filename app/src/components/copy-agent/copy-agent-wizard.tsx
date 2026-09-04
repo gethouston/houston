@@ -84,12 +84,18 @@ export function CopyAgentWizard(props: {
           />
         )}
         {stepProps && w.step === "instructions" && (
-          <InstructionsStep {...stepProps} />
+          <InstructionsStep
+            {...stepProps}
+            copyChats={w.copyChats}
+            onCopyChatsChange={w.setCopyChats}
+          />
         )}
         {stepProps && w.step === "routines" && <RoutinesStep {...stepProps} />}
         {stepProps && w.step === "skills" && <SkillsStep {...stepProps} />}
       </div>
-      <footer className="flex shrink-0 items-center justify-between px-5 py-4 pb-safe md:px-8">
+      {/* Design padding stacked on the safe-area inset: `pb-safe` alone
+          would REPLACE the bottom padding with an inset that is 0 on desktop. */}
+      <footer className="flex shrink-0 items-center justify-between px-5 pt-4 pb-[calc(env(safe-area-inset-bottom)+theme(spacing.4))] md:px-8 md:pb-[calc(env(safe-area-inset-bottom)+theme(spacing.6))]">
         <button
           type="button"
           onClick={w.back}

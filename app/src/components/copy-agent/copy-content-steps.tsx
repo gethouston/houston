@@ -21,15 +21,22 @@ function usePickLabels() {
 }
 
 /**
- * "What should the copy know?": the job description as one switch, then the
- * learnings one by one. Both default ON; the user opts things out.
+ * "What should the copy know?": the job description as one switch, the
+ * learnings one by one (both ON to start), and the chats as one switch that
+ * starts OFF: a conversation can hold personal details, so bringing them is a
+ * deliberate choice.
  */
 export function InstructionsStep({
   sourceName,
   preview,
   selection,
   setSelection,
-}: ContentStepProps) {
+  copyChats,
+  onCopyChatsChange,
+}: ContentStepProps & {
+  copyChats: boolean;
+  onCopyChatsChange: (next: boolean) => void;
+}) {
   const { t } = useTranslation("agents");
   const labels = usePickLabels();
   return (
@@ -80,6 +87,20 @@ export function InstructionsStep({
           compact
         />
       )}
+
+      <section>
+        <h2 className="mb-1 text-sm font-medium">
+          {t("copyAgent.wizard.instructions.chatsLabel")}
+        </h2>
+        <p className="mb-2 text-xs text-ink-muted">
+          {t("copyAgent.wizard.instructions.chatsBody", { name: sourceName })}
+        </p>
+        <PickSwitchRow
+          checked={copyChats}
+          onChange={() => onCopyChatsChange(!copyChats)}
+          title={t("copyAgent.wizard.instructions.chatsRow")}
+        />
+      </section>
     </div>
   );
 }

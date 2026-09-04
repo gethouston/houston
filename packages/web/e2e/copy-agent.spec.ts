@@ -8,16 +8,18 @@ import {
   seedCopySource,
 } from "./support/copy-agent";
 import { expect, test } from "./support/fixtures";
-import { rail } from "./support/team-nav";
+import { rail, screen } from "./support/team-nav";
 
 /**
  * "Copy an agent": the create dialog's third door. Pick one of your agents,
  * then decide, item by item, what the new agent keeps: job description and
- * learnings, routines, skills, everything ON to start. The copy is the
- * portable pipeline (preview, package, install) fed that selection, so the
- * fake host records what the package carried and the spec asserts it.
+ * learnings, routines, skills, everything ON to start, and the chats, OFF to
+ * start. The copy is the portable pipeline (preview, package, install) fed
+ * that selection, so the fake host records what the package carried and the
+ * spec asserts it; the chats ride the agent-scoped migration routes afterwards
+ * and land on the copy's board.
  */
-test("copies an agent, leaving chosen items behind", async ({
+test("copies an agent, leaving chosen items behind and bringing the chats", async ({
   page,
   request,
 }) => {
@@ -43,6 +45,11 @@ test("copies an agent, leaving chosen items behind", async ({
   }
   await rowSwitch(page, COPY_SOURCE.learnings[1]).click();
   await expect(rowSwitch(page, COPY_SOURCE.learnings[1])).not.toBeChecked();
+  // Chats start OFF; bring them this time.
+  const chats = rowSwitch(page, "Tasks and their conversations");
+  await expect(chats).not.toBeChecked();
+  await chats.click();
+  await expect(chats).toBeChecked();
   await next(page);
 
   // Routines, then skills. Keep the routine, drop the skill with "Clear".
@@ -81,14 +88,21 @@ test("copies an agent, leaving chosen items behind", async ({
     routineIds: [routineId],
     learningIds: ["learn-1"],
   });
+
+  // The chats followed in the background: the source's tasks are on the
+  // copy's board (the landing screen), and the toast says so.
+  await expect(page.getByText("Chats copied")).toBeVisible();
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(screen(page).getByText("Draft the launch email")).toBeVisible();
 });
 
 /**
- * A source with nothing to pick from goes straight from the list to its name:
- * no screen ever renders empty. Back from the source list returns to the
+ * A source with no routines or skills skips those screens; the "know" screen
+ * always shows since the chats choice exists for every source. Left OFF, the
+ * copy's board starts empty. Back from the source list returns to the
  * dialog's chooser.
  */
-test("a bare source skips the content screens; back returns to the chooser", async ({
+test("a bare source skips the list screens; chats stay behind by default", async ({
   page,
 }) => {
   await page.goto("/");
@@ -111,6 +125,15 @@ test("a bare source skips the content screens; back returns to the chooser", asy
   await expect(
     dialog.getByText("Houston has no job description yet."),
   ).toBeVisible();
+  await expect(
+    rowSwitch(page, "Tasks and their conversations"),
+  ).not.toBeChecked();
   await next(page);
   await expect(dialog.getByText("Based on Houston")).toBeVisible();
+  await dialog.getByRole("button", { name: "Create Agent" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(
+    rail(page).getByText("Houston copy", { exact: true }),
+  ).toBeVisible();
+  await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
 });

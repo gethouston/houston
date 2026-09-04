@@ -19,6 +19,7 @@ import {
   unpackAgent,
 } from "@houston/domain";
 import type {
+  MigrationImportResult,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableExportRequest,
@@ -182,4 +183,38 @@ export async function install(
     requiredIntegrations: [],
     agent,
   };
+}
+
+/** Zip the requested in-scope paths of one agent (the migration export route). */
+export async function migrationExport(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  paths: string[],
+): Promise<ArrayBuffer> {
+  const res = await hostFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/migration/export`,
+    { method: "POST", body: JSON.stringify({ paths }) },
+  );
+  return await res.arrayBuffer();
+}
+
+/** Unpack one zip chunk into an agent (the migration import route). */
+export async function migrationImport(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  bytes: ArrayBuffer,
+  opts?: { overwrite?: boolean },
+): Promise<MigrationImportResult> {
+  const query = opts?.overwrite ? "?overwrite=1" : "";
+  const res = await hostFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/migration/import${query}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/zip" },
+      body: bytes,
+    },
+  );
+  return (await res.json()) as MigrationImportResult;
 }

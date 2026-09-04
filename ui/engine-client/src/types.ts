@@ -1960,6 +1960,15 @@ export interface PortableManifestSummary {
   formatVersion: number;
 }
 
+/** One import request's outcome on the agent-scoped migration route. */
+export interface MigrationImportResult {
+  written: number;
+  skipped: number;
+  rejected: { path: string; reason: string }[];
+  /** False when the deployment has no on-disk agent dir to anchor chat sessions. */
+  sessionsRebuilt: boolean;
+}
+
 export interface PortableUploadPreviewResponse {
   packageId: string;
   manifest: PortableManifestSummary;

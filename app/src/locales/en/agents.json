@@ -215,10 +215,14 @@
     "copySuffix": "copy",
     "toasts": {
       "createdTitle": "Copy created",
-      "createdDescription": "{{name}} is ready."
+      "createdDescription": "{{name}} is ready.",
+      "chatsCopiedTitle": "Chats copied",
+      "chatsCopiedDescription_one": "{{count}} conversation now lives with {{name}} too.",
+      "chatsCopiedDescription_other": "{{count}} conversations now live with {{name}} too."
     },
     "errors": {
-      "failed": "We couldn't copy the agent"
+      "failed": "We couldn't copy the agent",
+      "chatsFailed": "We couldn't copy the chats"
     },
     "wizard": {
       "eyebrow": "Copy an agent",
@@ -234,7 +238,10 @@
         "instructionsRow": "Job description and rules",
         "noInstructions": "{{name}} has no job description yet.",
         "learningsLabel": "Learnings",
-        "learningsBody": "Notes the agent picked up while working. Personal ones can stay behind."
+        "learningsBody": "Notes the agent picked up while working. Personal ones can stay behind.",
+        "chatsLabel": "Chats",
+        "chatsRow": "Tasks and their conversations",
+        "chatsBody": "Every task on the board and the chat behind it, as they are today in {{name}}. Off to start, since chats can hold personal details."
       },
       "routines": {
         "title": "Which routines should come along?",

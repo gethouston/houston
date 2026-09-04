@@ -215,10 +215,14 @@
     "copySuffix": "cópia",
     "toasts": {
       "createdTitle": "Cópia criada",
-      "createdDescription": "{{name}} está pronto."
+      "createdDescription": "{{name}} está pronto.",
+      "chatsCopiedTitle": "Chats copiados",
+      "chatsCopiedDescription_one": "{{count}} conversa agora também vive com {{name}}.",
+      "chatsCopiedDescription_other": "{{count}} conversas agora também vivem com {{name}}."
     },
     "errors": {
-      "failed": "Não foi possível copiar o agente"
+      "failed": "Não foi possível copiar o agente",
+      "chatsFailed": "Não foi possível copiar os chats"
     },
     "wizard": {
       "eyebrow": "Copiar um agente",
@@ -234,7 +238,10 @@
         "instructionsRow": "Descrição do cargo e regras",
         "noInstructions": "{{name}} ainda não tem descrição do cargo.",
         "learningsLabel": "Aprendizados",
-        "learningsBody": "Anotações que o agente fez enquanto trabalhava. As pessoais podem ficar de fora."
+        "learningsBody": "Anotações que o agente fez enquanto trabalhava. As pessoais podem ficar de fora.",
+        "chatsLabel": "Chats",
+        "chatsRow": "Tarefas e suas conversas",
+        "chatsBody": "Cada tarefa do quadro e o chat por trás dela, como estão hoje em {{name}}. Começa desativado, porque chats podem ter dados pessoais."
       },
       "routines": {
         "title": "Quais rotinas vão junto?",

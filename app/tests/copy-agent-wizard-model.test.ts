@@ -46,7 +46,7 @@ describe("copyWizardSteps", () => {
     ]);
   });
 
-  it("skips screens the source has nothing for", () => {
+  it("skips the list screens the source has nothing for", () => {
     deepStrictEqual(
       copyWizardSteps({
         claudeMd: null,
@@ -54,27 +54,17 @@ describe("copyWizardSteps", () => {
         routines: [routine("r1")],
         learnings: [],
       }),
-      ["source", "routines", "name"],
+      ["source", "instructions", "routines", "name"],
     );
-    // A bare agent goes straight from the list to its name.
+  });
+
+  it("always shows the know screen: the chats choice exists for every source", () => {
     deepStrictEqual(
       copyWizardSteps({
         claudeMd: null,
         skills: [],
         routines: [],
         learnings: [],
-      }),
-      ["source", "name"],
-    );
-  });
-
-  it("shows the instructions screen for learnings alone", () => {
-    deepStrictEqual(
-      copyWizardSteps({
-        claudeMd: null,
-        skills: [],
-        routines: [],
-        learnings: [learning("l1")],
       }),
       ["source", "instructions", "name"],
     );
