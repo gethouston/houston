@@ -37,6 +37,14 @@ export const config = {
     join(env.HOUSTON_HOME || join(homedir(), ".houston-ts"), "data"),
   host,
   port: Number(env.HOUSTON_PORT || 4317),
+  /**
+   * How long a shutdown signal lets in-flight turns finish before the process
+   * exits anyway. The host sets it from its own drain budget (a managed pod's
+   * termination grace, minus the time its final store sync needs); the
+   * desktop keeps the short default, where the app that owned this runtime is
+   * already gone. Idle runtimes exit at once regardless.
+   */
+  shutdownDrainMs: Math.max(0, Number(env.HOUSTON_RUNTIME_DRAIN_MS || 3000)),
   /** Default Anthropic model (Claude Pro/Max subscription). */
   model: env.HOUSTON_MODEL || "claude-sonnet-5",
   /** Default Codex model (ChatGPT subscription — the cloud's only provider). */

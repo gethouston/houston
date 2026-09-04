@@ -1,35 +1,47 @@
-import { useTranslation } from "react-i18next";
 import { useUpdateChecker } from "../../hooks/use-update-checker";
-import { selectUpdateNotes } from "../../lib/update-details";
-import { UpdateForced } from "./update-forced";
-import { useUpdateForcedPreview } from "./update-forced-preview";
+import { updatePresentation } from "../../lib/update-policy";
+import { UpdateLaunchOverlay } from "./update-launch-overlay";
+import { UpdatePill } from "./update-pill";
+import { useUpdatePreview } from "./update-preview";
 
 /**
- * Mounts the update policy and renders the blocking surface when an update was
- * found: UpdateForced (auto-install at launch, countdown mid-session). Updates
- * are forced — there is no dismissible "later" card.
+ * Mounts the update policy and renders its one surface, chosen by where the
+ * release was found: the launch overlay for a launch-check find (install
+ * already running), the restart pill for a mid-session find once the
+ * download has landed. A background download in flight, or one that failed
+ * and will retry on the next check, shows nothing at all.
  */
 export function UpdateChecker() {
-  const { i18n } = useTranslation("shell");
-  const { status, forcedMode, installAndRelaunch, relaunchInstalledApp } =
+  const { status, installAndRelaunch, relaunchInstalledApp } =
     useUpdateChecker();
 
   // Dev-only console harness (`__HOUSTON_UPDATE_PREVIEW__`); null in prod.
-  const preview = useUpdateForcedPreview();
-  if (preview) return <UpdateForced {...preview} />;
+  const preview = useUpdatePreview();
+  if (preview) return preview;
 
-  if (status.state === "idle" || !forcedMode) return null;
+  if (status.state === "idle" || status.state === "available") return null;
 
-  // The release ships en/es/pt notes in one updater string; pick the one for
-  // the active UI language (which already honors the workspace locale override).
-  const notes = selectUpdateNotes(status.info.body, i18n.language);
+  if (updatePresentation(status.info.origin) === "launch") {
+    return (
+      <UpdateLaunchOverlay
+        status={status}
+        onRetry={() => void installAndRelaunch("user")}
+        onRelaunch={() => void relaunchInstalledApp()}
+      />
+    );
+  }
+
+  if (
+    status.state === "downloading" ||
+    (status.state === "error" && status.phase === "download")
+  ) {
+    return null;
+  }
 
   return (
-    <UpdateForced
-      mode={forcedMode}
+    <UpdatePill
       status={status}
-      notes={notes}
-      onInstall={(source) => void installAndRelaunch(source)}
+      onInstall={() => void installAndRelaunch("user")}
       onRelaunch={() => void relaunchInstalledApp()}
     />
   );

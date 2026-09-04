@@ -6,6 +6,7 @@ import {
   runWithActingContext,
 } from "../session/acting-context";
 import { anyTurnRunning } from "../session/bus";
+import { isDraining } from "../session/drain";
 import { handleAnonymizeRoute } from "./anonymize-route";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
@@ -31,7 +32,9 @@ async function handle(ctx: RouteContext) {
     return;
   }
   if (ctx.method === "GET" && ctx.path === "/busy") {
-    json(ctx.res, 200, { busy: anyTurnRunning() });
+    // A draining runtime reads busy until it exits: the host's activity
+    // probe must never call a pod idle while a turn is still finishing.
+    json(ctx.res, 200, { busy: anyTurnRunning() || isDraining() });
     return;
   }
   if (ctx.method === "GET" && ctx.path === "/version") {

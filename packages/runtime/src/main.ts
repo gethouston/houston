@@ -2,6 +2,8 @@ import type { Server } from "node:http";
 import { initEngineSentry } from "@houston/runtime-client/sentry";
 import { config } from "./config";
 import { installRuntimeLogging } from "./observability/logging";
+import { anyTurnRunning } from "./session/bus";
+import { beginDrain } from "./session/drain";
 import {
   beginWorkerShutdown,
   type WorkerRegistration,
@@ -217,9 +219,44 @@ async function exitNow() {
   process.exit(0);
 }
 
+// How often the drain re-checks for a still-running turn, and the beat it
+// waits after the last one ends so its terminal frame reaches the host before
+// the listener goes away.
+const DRAIN_POLL_MS = 250;
+const DRAIN_SETTLE_MS = 500;
+
+/**
+ * Wait for every in-flight turn to finish, bounded by the configured drain
+ * budget, then exit. An idle runtime leaves at once; a busy one keeps its
+ * turn alive until the turn ends or the budget runs out (the pod's
+ * termination grace, or the host's SIGKILL escalation, is the hard stop).
+ */
+function drainTurnsThenExit(): void {
+  const deadline = Date.now() + config.shutdownDrainMs;
+  const tick = () => {
+    if (anyTurnRunning() && Date.now() < deadline) {
+      setTimeout(tick, DRAIN_POLL_MS).unref();
+      return;
+    }
+    if (anyTurnRunning()) {
+      logger.warn(
+        "runtime drain deadline reached with a turn still running; exiting",
+        {
+          drainMs: config.shutdownDrainMs,
+        },
+      );
+    }
+    setTimeout(() => {
+      void exitNow();
+    }, DRAIN_SETTLE_MS).unref();
+  };
+  tick();
+}
+
 function shutdown(signal: string) {
   if (shuttingDown) return;
   shuttingDown = true;
+  beginDrain();
   logger.info("runtime shutdown requested", { signal });
   workerDrain = beginWorkerShutdown(signal, workerRegistration);
   shadowDrain = drainTranscriptShadow();
@@ -228,11 +265,10 @@ function shutdown(signal: string) {
   });
   // A registered pool worker keeps serving its in-flight turn until the
   // response ends (sync-back + terminal frame); the pod's termination grace is
-  // the hard deadline there. Every other runtime keeps the short forced exit.
+  // the hard deadline there. Every other runtime drains the turns it holds
+  // and refuses new ones (session/drain.ts) within its own budget.
   if (!workerRegistration) {
-    setTimeout(() => {
-      void exitNow();
-    }, 3000).unref();
+    drainTurnsThenExit();
   } else if (signal === "single-use") {
     // A single-use worker shuts itself down after its one turn's response has
     // already ended (settled() runs in the turn's finally). Unlike SIGTERM it

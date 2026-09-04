@@ -28,12 +28,13 @@ import {
   parseFeedbackPayload,
 } from "./feedback";
 import type { WorkspacePaths } from "./paths";
-import type {
-  CredentialStore,
-  CredentialVault,
-  RuntimeChannel,
-  TokenVerifier,
-  WorkspaceStore,
+import {
+  type CredentialStore,
+  type CredentialVault,
+  LauncherClosedError,
+  type RuntimeChannel,
+  type TokenVerifier,
+  type WorkspaceStore,
 } from "./ports";
 import { handleAccount } from "./routes/account";
 import {
@@ -509,18 +510,31 @@ export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
     }
     handle(counted, req, res).catch((err) => {
       // An over-cap body maps to 413 (Payload Too Large) with its own clean
-      // message; everything else is a 500. Close the connection on 413: capping
-      // the body leaves unread bytes on the socket that would poison keep-alive.
+      // message; a host mid-shutdown refusing to wake a runtime answers the
+      // gateway's waking shape (503 + Retry-After) so the client re-sends
+      // against the replacement instead of rendering a bug; everything else
+      // is a 500. Close the connection on 413: capping the body leaves unread
+      // bytes on the socket that would poison keep-alive.
       const tooLarge = err instanceof BodyTooLargeError;
+      const closed = err instanceof LauncherClosedError;
       const message = err instanceof Error ? err.message : String(err);
       try {
         if (!res.headersSent) {
-          json(
-            res,
-            tooLarge ? 413 : 500,
-            { error: message },
-            tooLarge ? { Connection: "close" } : {},
-          );
+          if (closed) {
+            json(
+              res,
+              503,
+              { error: "engine unavailable", detail: message },
+              { "Retry-After": "2" },
+            );
+          } else {
+            json(
+              res,
+              tooLarge ? 413 : 500,
+              { error: message },
+              tooLarge ? { Connection: "close" } : {},
+            );
+          }
         } else if (!res.writableEnded) res.end();
       } catch {
         // The socket was already torn down while aborting the oversized body —

@@ -167,6 +167,7 @@ export {
   type FeedOutput,
   type HistoryWindowVM,
   historyToFeed,
+  isEngineWakingRejection,
   isNotConnectedError,
   isStoppedByUser,
   MultiplexFeedOutput,

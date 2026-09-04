@@ -19,7 +19,26 @@ export interface StreamTuning {
    * proof the turn finished. Tests shrink it to fire quickly.
    */
   presettledPollMs?: number;
+  /**
+   * The waits between re-sends of a message the engine refused as "not here,
+   * not now" (see {@link SEND_WAKE_RETRY_DELAYS_MS}). Tests shrink them.
+   */
+  sendWakeRetryDelaysMs?: readonly number[];
 }
+
+/**
+ * A send that meets a pod mid-restart (an engine roll draining the old pod,
+ * the replacement still booting) is refused with a waking 503/502. The
+ * message is not lost and nothing is wrong: re-send the SAME message (same
+ * nonce, so a late acceptance can never double it) on this ladder while the
+ * user's bubble stays pending. About three minutes end to end — longer than
+ * a cold boot, shorter than the drain of a long turn on a shared agent, after
+ * which the refusal surfaces like any other rejected send.
+ */
+export const SEND_WAKE_RETRY_DELAYS_MS: readonly number[] = [
+  2_000, 3_000, 5_000, 5_000, 10_000, 10_000, 15_000, 15_000, 30_000, 30_000,
+  30_000, 30_000,
+];
 
 /**
  * Consecutive frameless connection attempts before a subscription gives up:

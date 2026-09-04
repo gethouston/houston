@@ -202,11 +202,12 @@ export type AnalyticsEventName =
   | "org_invite_accepted"
   | "org_invite_declined"
   // Update lifecycle (closes the symbolication-coverage feedback loop).
-  // Updates are forced: update_forced marks the blocking surface appearing
-  // (`source`: launch | countdown) and update_accepted the install starting
-  // (`source`: user | countdown | launch — click vs timer vs launch-auto).
+  // update_offered: the check found a release; update_downloaded: it landed
+  // in the updater's buffer (`source`: launch | poll, which check found it);
+  // update_accepted: the install starting (`source`: user | launch, the
+  // restart pill's click vs the silent launch-time install).
   | "update_offered"
-  | "update_forced"
+  | "update_downloaded"
   | "update_accepted"
   // The check itself keeps failing: after UPDATE_CHECK_STUCK_THRESHOLD
   // consecutive failures the client counts as stuck — it may never see an

@@ -19,6 +19,7 @@ const read = (rel: string) =>
 const NAV = read("../src/components/shell/sidebar-nav-sections.tsx");
 const HOOK = read("../src/components/shell/use-sidebar-nav-items.tsx");
 const FOOTER = read("../src/components/shell/sidebar-footer.tsx");
+const SHELL = read("../src/components/shell/workspace-shell.tsx");
 const HELP = read("../src/components/shell/sidebar-help-menu.tsx");
 const GUIDED_SETUP = read("../src/hooks/use-run-guided-setup.ts");
 const VIEWS = read("../src/lib/top-level-views.ts");
@@ -199,10 +200,11 @@ describe("Settings left the nav for the footer", () => {
     // menu may survive in the footer.
     assert.ok(!FOOTER.includes("UserMenu"));
     assert.ok(!FOOTER.includes("user-menu"));
-    // What remains below Settings is ambient status, not a destination.
-    assert.ok(
-      FOOTER.indexOf("<SidebarNavItem") < FOOTER.indexOf("<UpdateChecker"),
-    );
+    // Nothing sits below Settings any more: the update surfaces (launch
+    // overlay, restart pill) are window chrome mounted by the shell, not a
+    // rail row.
+    assert.ok(!FOOTER.includes("<UpdateChecker"));
+    assert.ok(SHELL.includes("<UpdateChecker />"));
   });
 });
 

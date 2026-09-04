@@ -8,6 +8,7 @@ import {
   runTurn,
   setLiveTurnMode,
 } from "../session/chat";
+import { isDraining } from "../session/drain";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import { truncateConversationTurn } from "../session/truncate-turn";
 import {
@@ -119,6 +120,25 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "POST" && action === "messages") {
+    // Shutting down: the turns already running finish, new ones do not start
+    // here. The answer is the gateway's own waking shape, byte for byte —
+    // every client reads `503 {"error":"engine unavailable"}` as "the pod is
+    // not there right now", re-sends the same message on its wake ladder,
+    // and never shows an error. A new reason string would be a red toast on
+    // every shipped client.
+    if (isDraining()) {
+      res.writeHead(503, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Retry-After": "2",
+      });
+      res.end(
+        JSON.stringify({
+          error: "engine unavailable",
+          detail: "the agent is restarting",
+        }),
+      );
+      return true;
+    }
     await handleStartTurn(ctx, id);
     return true;
   }
