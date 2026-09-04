@@ -150,7 +150,7 @@ function AgentsHomeRowSkeleton() {
   return (
     <div className="flex w-full items-center gap-3 pl-4">
       <Skeleton className="size-[52px] shrink-0 rounded-full" />
-      <div className="flex min-h-[4.5rem] flex-1 flex-col justify-center gap-2 border-b border-line pr-4">
+      <div className="mr-4 flex min-h-[4.5rem] flex-1 flex-col justify-center gap-2 border-b border-line">
         <Skeleton className="h-4 w-1/3" />
         <Skeleton className="h-3.5 w-2/3" />
       </div>

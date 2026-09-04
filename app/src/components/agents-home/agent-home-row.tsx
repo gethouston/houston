@@ -14,8 +14,10 @@ import type { AgentHomeRow } from "./agents-home-model";
  *
  * The preview is the latest TASK, not a message: an agent is a thread of
  * many conversations, and the one line a row has room for is the thing that
- * moved last. The divider between rows is inset past the avatar, the way a
- * chat list draws it, so the avatars read as one column.
+ * moved last. The divider between rows is inset at BOTH ends: past the avatar
+ * on the left, so the avatars read as one column, and short of the screen
+ * edge on the right, so the list reads as rows on one plane rather than a
+ * ruled sheet.
  */
 export function AgentHomeRowCell({
   row,
@@ -37,7 +39,7 @@ export function AgentHomeRowCell({
         running={row.runningCount > 0}
         stacked={row.taskCount > 1}
       />
-      <span className="flex min-h-[4.5rem] min-w-0 flex-1 flex-col justify-center gap-0.5 border-b border-line pr-4 group-last:border-b-0">
+      <span className="flex min-h-[4.5rem] min-w-0 flex-1 mr-4 flex-col justify-center gap-0.5 border-b border-line group-last:border-b-0">
         <span className="flex items-baseline gap-2">
           <span className="min-w-0 flex-1 truncate text-base font-weight-510 text-ink">
             {row.agent.name}

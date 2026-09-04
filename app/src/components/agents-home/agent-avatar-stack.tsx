@@ -14,9 +14,9 @@ const BACK_DIAMETER = 46;
  * taps; an agent with at most one task wears a single mark, because a stack
  * over one conversation would promise a list that is not there.
  *
- * The back cards are the same helmet in the same colour, faded, each ringed in
- * the screen's background so the three stay legible as separate cards where
- * they overlap. Decorative: the row's text names the agent and counts its
+ * The back cards are the same helmet in the same colour, SOLID, each ringed
+ * in the screen's background so the three read as separate cards where they
+ * overlap (a faded card reads as a ghost, not a card behind). Decorative: the row's text names the agent and counts its
  * work, so the whole mark is hidden from assistive tech.
  *
  * The running ring rides the front card only, through `HoustonAvatar`'s own
@@ -48,14 +48,14 @@ export function AgentAvatarStack({
     >
       {stacked && (
         <>
-          <span className="absolute inset-0 flex -translate-x-3 -rotate-[14deg] items-center justify-center opacity-60">
+          <span className="absolute inset-0 flex -translate-x-3 -rotate-[14deg] items-center justify-center">
             <HoustonAvatar
               color={resolved}
               diameter={BACK_DIAMETER}
               className="ring-2 ring-background"
             />
           </span>
-          <span className="absolute inset-0 flex -translate-x-1.5 -rotate-[7deg] items-center justify-center opacity-85">
+          <span className="absolute inset-0 flex -translate-x-1.5 -rotate-[7deg] items-center justify-center">
             <HoustonAvatar
               color={resolved}
               diameter={BACK_DIAMETER}
