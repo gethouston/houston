@@ -1,10 +1,8 @@
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
-/** The classic column's header: the section's name and its live count, with
- *  the consumer's action (archive all, select all) pinned to the right. The
- *  phone pager draws no header (the pager names the section), so the paged
- *  column skips this and places the action alone. */
+/** The column's header: the section's name and its live count, with the
+ *  consumer's action (archive all, select all) pinned to the right. */
 export function KanbanColumnHeader({
   label,
   count,
@@ -33,8 +31,8 @@ export function KanbanColumnHeader({
   );
 }
 
-/** The column's "+" bar: trails the cards on desktop, leads the page on the
- *  phone pager. Label is the accessible name only; the bar stays a glyph. */
+/** The column's "+" bar, trailing the cards. Label is the accessible name
+ *  only; the bar stays a glyph. */
 export function KanbanColumnAdd({
   label,
   attrs,

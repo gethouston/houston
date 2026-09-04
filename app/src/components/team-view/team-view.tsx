@@ -13,6 +13,7 @@ import {
   visibleTeamSettingsSections,
 } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
+import { TaskListChromeProvider } from "../board/task-list-chrome";
 import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
 import { AgentChrome } from "./agent-chrome";
 import { AgentSettingsPane } from "./agent-settings-pane";
@@ -100,34 +101,39 @@ export function TeamView() {
   );
 
   return (
-    <PageHeaderToolsProvider thresholds={TEAM_STRIP_THRESHOLDS}>
-      <div className="flex h-full flex-col overflow-hidden">
-        {settingsFocused ? (
-          <TeamSettingsHeader
-            team={team}
-            sections={sections}
-            active={section}
-            canCreateAgent={canCreate}
-          />
-        ) : focused ? (
-          section !== "settings" && (
-            <AgentChrome
+    // The phone task list's chrome is split between the header (its "…" menu)
+    // and the body (the search field, the archive), so the little they share
+    // is held above both.
+    <TaskListChromeProvider key={team.id}>
+      <PageHeaderToolsProvider thresholds={TEAM_STRIP_THRESHOLDS}>
+        <div className="flex h-full flex-col overflow-hidden">
+          {settingsFocused ? (
+            <TeamSettingsHeader
               team={team}
-              agent={agent}
               sections={sections}
-              section={section}
+              active={section}
+              canCreateAgent={canCreate}
             />
-          )
-        ) : (
-          <TeamChrome team={team} sections={sections} section={section} />
-        )}
-        <div
-          className="min-h-0 flex-1"
-          key={`${team.id}:${agent?.id ?? "team"}`}
-        >
-          {body}
+          ) : focused ? (
+            section !== "settings" && (
+              <AgentChrome
+                team={team}
+                agent={agent}
+                sections={sections}
+                section={section}
+              />
+            )
+          ) : (
+            <TeamChrome team={team} sections={sections} section={section} />
+          )}
+          <div
+            className="min-h-0 flex-1"
+            key={`${team.id}:${agent?.id ?? "team"}`}
+          >
+            {body}
+          </div>
         </div>
-      </div>
-    </PageHeaderToolsProvider>
+      </PageHeaderToolsProvider>
+    </TaskListChromeProvider>
   );
 }

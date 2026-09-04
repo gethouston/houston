@@ -42,11 +42,6 @@
     "needsYou": "Needs you",
     "done": "Done"
   },
-  "pager": {
-    "emptyRunning": "Nothing is running right now.",
-    "emptyNeedsYou": "Nothing needs you right now.",
-    "emptyDone": "Nothing is done yet."
-  },
   "empty": {
     "boardTitle": "No conversations yet",
     "boardDescription": "Start a new conversation to delegate work to an agent.",

@@ -6,6 +6,7 @@ import { useAllConversations } from "../../hooks/queries";
 import type { BoardSurface } from "../../lib/board-surface-nav";
 import type { TeamView } from "../../lib/teams-model";
 import { useAgentStore } from "../../stores/agents";
+import { useRegisterTaskListArchive } from "../board/task-list-chrome";
 import { useBoardSurfaceOnNav } from "../board/use-board-surface-on-nav";
 import { TeamArchived } from "./team-archived";
 import { TeamMissionEmpty } from "./team-empty";
@@ -17,9 +18,10 @@ import { useTeamBoardScope } from "./use-team-board-scope";
  * when the team holds no agents.
  *
  * The ARCHIVE is a MODE of this section (`team-archived.tsx`), reached by the
- * board toolbar's "Archived" button and left by the archive's own "Back to
- * tasks". The flag lives here, above both boards, so exactly one of them is
- * mounted and neither has to say which of two things it is.
+ * board toolbar's "Archived" button on desktop and by the drilled header's
+ * "…" menu on the phone, and left by the archive's own "Back to tasks". The
+ * flag lives here, above both boards, so exactly one of them is mounted and
+ * neither has to say which of two things it is.
  *
  * The FULL workspace roster goes to the board (so it reads the single warm
  * `all-conversations` query, per the one-sweep rule) and the shared
@@ -57,6 +59,15 @@ export function TeamMissionControl({
     setArchived(true);
   }, []);
   useBoardSurfaceOnNav({ rows: rawConversations, show });
+
+  // The phone header's "…" menu opens this archive; it lives a level up, so
+  // the switch is published rather than passed. Withdrawn where there is
+  // nothing to open — an agent-less team, or the archive already on screen,
+  // which carries its own "Back to tasks".
+  const showArchive = useCallback(() => setArchived(true), []);
+  useRegisterTaskListArchive(
+    team.agents.length === 0 || archived ? null : showArchive,
+  );
 
   if (team.agents.length === 0) return <TeamMissionEmpty team={team} />;
 

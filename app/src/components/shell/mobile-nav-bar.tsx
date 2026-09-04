@@ -90,6 +90,10 @@ export function MobileNavBar() {
       action={{
         label: t("shell:sidebar.newMission"),
         icon: <SquarePen className="size-5" />,
+        // The phone's ONE New task control, so it is also the guided setup's
+        // anchor here: the desktop toolbar button that carries the anchor is
+        // hidden below md, and no screen owns a compose of its own any more.
+        dataAttrs: tourAnchor("newMission"),
         // The compose reads its subject off where the user is standing: a
         // drilled agent, a team's roster, or the shared fallback.
         onSelect: () =>

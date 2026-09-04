@@ -1,3 +1,4 @@
+import { useIsMobile } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { HoustonLogo } from "../shell/experience-card";
 import { tourSelector } from "../shell/workspace-tour-steps.ts";
@@ -29,6 +30,7 @@ export function InAppOnboardingAgentSteps({
   o: ReturnType<typeof useInAppOnboarding>;
 }) {
   const { t } = useTranslation("setup");
+  const isMobile = useIsMobile();
   const checklist = useSetupChecklist(o);
   const namingPhase = useNamingPhase(o.step === "createAgentDialog");
 
@@ -119,7 +121,7 @@ export function InAppOnboardingAgentSteps({
       const composing = surface !== "button";
       return (
         <TutorialSpotlight
-          selector={sendMissionSelector(surface, o.emailMode)}
+          selector={sendMissionSelector(surface, o.emailMode, isMobile)}
           title={
             composing
               ? t(
@@ -154,6 +156,7 @@ export function InAppOnboardingAgentSteps({
           selector={sendMissionSelector(
             o.userChatOpen ? "chat" : "panel",
             false,
+            isMobile,
           )}
           title={t("inApp.steps.emailSending.title")}
           hint={t("inApp.steps.emailSending.hint")}

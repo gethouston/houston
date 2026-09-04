@@ -393,6 +393,12 @@
     "title": "Agents",
     "taskCount_one": "{{count}} task",
     "taskCount_other": "{{count}} tasks",
+    "empty": {
+      "title": "No agents yet",
+      "description": "Create an agent to get started. Everything they work on shows up here."
+    }
+  },
+  "taskList": {
     "archived": "Archived",
     "searchPlaceholder": "Search tasks",
     "searchClose": "Close search",
@@ -407,11 +413,7 @@
       "search": "Search",
       "archived": "Archived"
     },
-    "empty": {
-      "title": "No agents yet",
-      "description": "Create an agent to get started. Everything they work on shows up here."
-    },
-    "noMissions": {
+    "noTasks": {
       "title": "No tasks yet",
       "description": "Start a task with the compose button and it will show up here."
     }

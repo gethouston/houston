@@ -161,10 +161,6 @@ export interface BoardSource {
   openerReady: boolean;
   /** What the toolbar / empty-state "New mission" button triggers. */
   openNewMission: () => void;
-  /** The phone's compose for THIS board (`phone-compose.ts`): the Running
-   *  page's leading "+" below md, scoped to the board's own agents and landing
-   *  in a pushed chat, never the desktop side composer. */
-  composeOnPhone: () => void;
   /** Auto-open the new-mission panel when the in-scope board is empty. */
   onAutoOpenEmpty: () => void;
   /** Identity of the current empty scope (agent path / filter) so the
@@ -176,6 +172,15 @@ export interface BoardSource {
   autoOpenBlocked: boolean;
 
   // ── Search ────────────────────────────────────────────────────────────────
+  /** The board's text query, as a control. The desktop toolbar and the phone
+   *  list's inline field drive the SAME query, so a search is one act however
+   *  it was typed. */
+  search: {
+    query: string;
+    setQuery: (query: string) => void;
+    /** A transcript scan is still running behind the current query. */
+    isSearchingText: boolean;
+  };
   hasSearchQuery: boolean;
   /** Rendered as AIBoard's empty state when (and only when) a search returned
    *  nothing. Built by the source because the label namespaces differ. */
@@ -191,12 +196,9 @@ export interface BoardSource {
 
   // ── Slots rendered by the component ───────────────────────────────────────
   /** Toolbar rendered above the board (filters, search, New mission).
-   *  Desktop-only: the component hides it below md, where
-   *  {@link BoardSource.mobileControls} takes over. */
+   *  Desktop-only: below md the board itself is replaced by the phone task
+   *  list, which carries its own chrome. */
   toolbar?: ReactNode;
-  /** The phone board's control row (sticky search, agent filter, archived),
-   *  rendered above the paged board below md only. */
-  mobileControls?: ReactNode;
   /** Dialogs mounted alongside the board (agent picker, attachment rejection,
    *  skill picker). */
   dialogs?: ReactNode;

@@ -43,22 +43,24 @@ for (const theme of THEMES) {
 }
 
 /**
- * Narrow-width run for the board — the responsive layout is the one most worth
- * guarding against drift (the sidebar collapse / column reflow). Light only:
- * the theme axis is already covered full-width above, and one narrow baseline
- * keeps the matrix lean.
+ * Narrow-width run for the board's screen — the responsive layout is the one
+ * most worth guarding against drift. At 640px this is already the phone side
+ * of the one breakpoint, so what it guards is the team Tasks LIST at a width
+ * the phone baselines below do not cover. Light only: the theme axis is
+ * already covered full-width above, and one narrow baseline keeps the matrix
+ * lean.
  */
 test("board home — narrow", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 900 });
   await page.goto("/");
 
   // Below the breakpoint boot lands on the Agents home; this baseline guards
-  // the BOARD's narrow layout, so open it through the Teams tree.
+  // the team Tasks screen's narrow layout, so open it through the Teams tree.
   await openPhoneTeamSection(page, "mission-control", "click");
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
-  // The phone chrome (pager + control row) mounts on the isMobile signal a
-  // beat after first paint — anchor on it so the baseline never half-renders.
-  await expect(page.getByTestId("board-pager")).toBeVisible();
+  // The phone list mounts on the isMobile signal a beat after first paint —
+  // anchor on its segmented control so the baseline never half-renders.
+  await expect(page.getByTestId("team-task-filter").first()).toBeVisible();
 
   await expect(page).toHaveScreenshot("board-narrow.png", { fullPage: true });
 });
@@ -87,23 +89,23 @@ for (const theme of THEMES) {
 }
 
 /**
- * The phone board pager: a team's Tasks screen at phone width — the drilled
- * back chip and title, the segmented control over one full-width column page,
- * the sticky control row (search, archived), the empty Running page's hint.
- * The board's cards carry no live clock, so no masks.
+ * The phone team Tasks list: a team's Tasks screen at phone width — the
+ * drilled back chip, title and "…" chip, the status segments, and the board's
+ * sections as bands of shared task rows carrying their owning agent's helmet.
+ * These rows trail an avatar rather than a clock, so no masks.
  */
 for (const theme of THEMES) {
-  test(`mobile board pager — ${theme}`, async ({ page }) => {
+  test(`mobile team tasks — ${theme}`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
     await openPhoneTeamSection(page, "mission-control", "click");
-    await expect(page.getByTestId("board-pager")).toBeVisible();
-    await expect(page.getByText("Nothing is running right now.")).toBeVisible();
+    await expect(page.getByTestId("team-task-filter").first()).toBeVisible();
+    await expect(page.getByText("Draft the launch email")).toBeVisible();
     await page.mouse.move(0, 0);
     await pinTheme(page, theme);
 
-    await expect(page).toHaveScreenshot(`mobile-board-pager-${theme}.png`, {
+    await expect(page).toHaveScreenshot(`mobile-team-tasks-${theme}.png`, {
       fullPage: true,
     });
   });

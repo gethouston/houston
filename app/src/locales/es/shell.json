@@ -393,6 +393,12 @@
     "title": "Agentes",
     "taskCount_one": "{{count}} tarea",
     "taskCount_other": "{{count}} tareas",
+    "empty": {
+      "title": "Aún no hay agentes",
+      "description": "Crea un agente para empezar. Todo en lo que trabajen aparecerá aquí."
+    }
+  },
+  "taskList": {
     "archived": "Archivadas",
     "searchPlaceholder": "Buscar tareas",
     "searchClose": "Cerrar la búsqueda",
@@ -407,11 +413,7 @@
       "search": "Buscar",
       "archived": "Archivadas"
     },
-    "empty": {
-      "title": "Aún no hay agentes",
-      "description": "Crea un agente para empezar. Todo en lo que trabajen aparecerá aquí."
-    },
-    "noMissions": {
+    "noTasks": {
       "title": "Aún no hay tareas",
       "description": "Comienza una tarea con el botón de redactar y aparecerá aquí."
     }

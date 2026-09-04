@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 76
+version: 77
 
 components:
   - id: agent-avatar
@@ -737,11 +737,9 @@ components:
         empty-column-state,
         bulk-action-bar,
         mentions-pill,
-        segmented-pager,
-        mobile-control-row,
       ]
     states: [populated, empty, loading, dragging]
-    variants: [multi-column-board, single-column-list, phone-pager]
+    variants: [multi-column-board, single-column-list]
     behavior: >-
       Columns map to mission statuses; cards move between columns on approve/drag.
       Bulk-action bar appears when cards are multi-selected.
@@ -752,31 +750,17 @@ components:
       mentions -- a mention of the reader newer than their read cursor, not
       ambient mission movement -- clamped to "99+". Multiplayer only: single
       player gets no mentions chrome at all.
-      Below the one breakpoint the SAME board is a pager, not a squeezed
-      kanban: each column is one full-width page the user swipes between, a
-      segmented control above the pages names the three sections with their
-      live counts and stays in sync both ways (swiping moves the highlight,
-      tapping a segment scrolls its page in), and a page with no cards says so
-      in words instead of standing hollow. The pager is the ONE place a
-      section is named on the phone: a page draws no column header of its
-      own, sits flat on the screen rather than in a tinted column, and the
-      Running page LEADS with the board's "+" (above its cards or its empty
-      hint, never under them) -- on the phone that "+" composes the phone
-      way, a pushed draft chat scoped to the board's agents. Above the pages
-      sits the phone's own control row: the search field, the section's
-      archived toggle, and -- when the board spans several agents -- an agent
-      filter bar defaulting to "All agents" that reads and writes the same
-      agent pin the desktop breadcrumb does. The control row carries no
-      compose of its own: the shell top bar's compose and the page's "+" are
-      the phone's two. Tapping a card on the phone pushes the
-      mission-chat-screen instead of opening the side panel.
+      The board is DESKTOP-ONLY. Below the one breakpoint it is not squeezed,
+      paged or hidden -- it is replaced by the team-screen's phone task list,
+      a single scrolling list of the same missions grouped by the same
+      sections. Columns, drag-and-drop, multi-select and the side panel have
+      no phone form at all, and there a task opens as a pushed
+      mission-chat-screen rather than a selection.
     a11y: >-
       list/grid semantics per column; column headers labeled; DnD has
       non-pointer fallback; the mentions pill names its mode and repeats its
       outstanding count in its accessible name, so the number is never
-      visual-only. Phone pager segments are real buttons carrying aria-current
-      on the active page and the page's count in text, never color alone; the
-      agent filter chips carry aria-pressed.
+      visual-only.
     since: 1
 
   - id: mentions-inbox
@@ -1508,8 +1492,8 @@ components:
       The full-window surface behind a team block's destination rows: one
       team's missions, what its agents do on their own, what they keep, and the
       agents that belong to it.
-    anatomy: [board-toolbar, team-title, agent-filter, mission-board, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in, members-card]
-    states: [mission-control, mission-control-filtered, archived, routines, files, empty, partially-unavailable, settings, settings-agent-detail, settings-members]
+    anatomy: [board-toolbar, team-title, agent-filter, mission-board, phone-task-list, phone-status-segments, phone-overflow-menu, phone-inline-search, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in, members-card]
+    states: [mission-control, mission-control-filtered, phone-task-list, phone-task-list-filtered, phone-task-list-searching, archived, routines, files, empty, partially-unavailable, settings, settings-agent-detail, settings-members]
     variants: [named-team, default-team]
     behavior: >-
       ONE screen serves every team: which team and which of its sections are
@@ -1545,11 +1529,23 @@ components:
       Settings lists the team's agents with the same plain-language access line
       every agent list shares, and opening one drills into the ONE canonical
       agent settings page rather than a second copy of it.
-      Below the one breakpoint the strip gives its row up: the identity
-      lozenge (and, drilled, the back chip) rides the phone top bar between the
-      drawer control and the compose control, so the screen card opens on the
-      section's own content rather than a second chrome row. Only the screen
-      on the glass claims that slot.
+      Below the one breakpoint the strip is gone: the Teams tree chose the
+      section a level up, so the screen wears the drilled phone header (back
+      chip, team, the section's name) instead. Tasks there is a LIST, not the
+      board -- the same missions the columns hold, grouped Needs you /
+      Running / Done as bands of shared task-rows under the same segmented
+      All / Needs you / Running / Done control the per-agent list wears, each
+      row trailing its OWNING agent's helmet (a team's list mixes agents, and
+      the band already says how fresh the task is). There is no pager, no
+      agent chip bar and no compose on the screen: the nav bar's one New task
+      control composes, and the team-wide agent pin stays a desktop affair.
+      The header's "..." menu holds the three things the screen will not
+      spend a row on -- Search (an inline field that narrows the same query
+      the desktop toolbar types into), Archived (which swaps in the archive,
+      with its own way back) and Team settings, offered only to a caller who
+      may actually configure the team. A segment or a search that matches
+      nothing says so in words; a team with no tasks at all gets the honest
+      empty state. Tapping a row pushes the mission-chat-screen.
       Where teams are server-owned, Team Settings is also where a team is NAMED
       and where its PEOPLE are, in a members card under the agents: the rows are
       EXPLICIT memberships only, so a card that lists nobody is not a claim that
@@ -1565,7 +1561,10 @@ components:
       The board's team name is the screen's h1; the filter menu names the agent
       it is pinned to; the settings drill-in is framed by a labelled back
       control naming the team it returns to; every members-card control names
-      the person it acts on.
+      the person it acts on. On the phone the team is the h1 with the
+      section under it, the status segments are a labelled tablist, the "..."
+      chip and the inline search field are both labelled, and a task row
+      names its owning agent in text rather than by helmet colour alone.
     since: 55
 
   - id: mobile-nav-bar
@@ -1595,7 +1594,10 @@ components:
       right of the pill starts a new task, scoped to where the user stands:
       inside an agent's list it opens that agent's draft chat, on a team
       screen it asks among that team's agents, anywhere else it asks among
-      everyone (new-mission-sheet). While a chat is up (the pushed
+      everyone (new-mission-sheet). It is the phone's ONLY New task control --
+      no screen carries one of its own -- so it is also what the guided setup
+      rings for that step, and it sits outside every screen rather than
+      inside the active one. While a chat is up (the pushed
       mission-chat-screen or the board's full-screen panel) the whole bar
       hides: chat is a push, not a tab, and the composer takes the full
       height above the keyboard. There is no top bar and no drawer on the
@@ -1760,7 +1762,8 @@ components:
     title: Task row
     purpose: >-
       One task as a phone list row, plus the named band it sits in: the shared
-      shape behind every task list outside the board.
+      shape behind every task list outside the board -- an agent's list and a
+      team's Tasks screen alike.
     anatomy: [status-glyph, title, preview-line, trailing-slot, group-heading,
       group-count, group-chevron]
     states: [needs-you, running, done, archived, with-preview, without-preview,
@@ -1774,7 +1777,9 @@ components:
       section and a second badge would repeat the heading. The title sits over
       an optional preview line, shown only when the task actually has a
       description, and a trailing slot carries whatever the surface flushes
-      right (typically the movement's relative time). The whole row is one
+      right: the movement's relative time on an agent's own list, the owning
+      agent's helmet on a team's, where several agents share the list. The
+      whole row is one
       target: a phone row has no room for a second, and nothing on it waits
       for a hover. A hairline separates rows and drops on the last of a stack.
       The group is a muted heading with its count flush right; a collapsible

@@ -62,32 +62,49 @@ test("the send step rings the New task control until the user's own composer is 
   );
 });
 
-test("the New task selector is scoped to the active screen so kept-alive views never win", () => {
+test("the desktop New task selector is scoped to the active screen so kept-alive views never win", () => {
   assert.equal(
-    sendMissionSelector("button", false),
+    sendMissionSelector("button", false, false),
     "[data-screen-active='true'] [data-tour-target='newMission']",
   );
   assert.equal(
-    sendMissionSelector("button", true),
+    sendMissionSelector("button", true, false),
     "[data-screen-active='true'] [data-tour-target='newMission']",
   );
 });
 
+test("the phone New task selector points at the nav bar, which is outside every screen", () => {
+  // Scoping it to the active screen would find nothing: the compose control
+  // sits beside the nav pill, below the screens, so the veil would cover it.
+  assert.equal(
+    sendMissionSelector("button", false, true),
+    "[data-testid='mobile-nav-bar'] [data-tour-target='newMission']",
+  );
+  assert.equal(
+    sendMissionSelector("button", true, true),
+    "[data-testid='mobile-nav-bar'] [data-tour-target='newMission']",
+  );
+});
+
 test("a composer surface is ringed whole, or its send button alone in email mode", () => {
-  assert.equal(
-    sendMissionSelector("panel", false),
-    '[data-testid="mission-panel"]',
-  );
-  assert.equal(
-    sendMissionSelector("panel", true),
-    '[data-testid="mission-panel"] button[type="submit"]',
-  );
-  assert.equal(
-    sendMissionSelector("chat", false),
-    '[data-testid="mission-chat-screen"]',
-  );
-  assert.equal(
-    sendMissionSelector("chat", true),
-    '[data-testid="mission-chat-screen"] button[type="submit"]',
-  );
+  // A composer surface is the same node on either breakpoint, so the fork
+  // does not reach it.
+  for (const isMobile of [false, true]) {
+    assert.equal(
+      sendMissionSelector("panel", false, isMobile),
+      '[data-testid="mission-panel"]',
+    );
+    assert.equal(
+      sendMissionSelector("panel", true, isMobile),
+      '[data-testid="mission-panel"] button[type="submit"]',
+    );
+    assert.equal(
+      sendMissionSelector("chat", false, isMobile),
+      '[data-testid="mission-chat-screen"]',
+    );
+    assert.equal(
+      sendMissionSelector("chat", true, isMobile),
+      '[data-testid="mission-chat-screen"] button[type="submit"]',
+    );
+  }
 });

@@ -175,10 +175,15 @@ export async function signInAsViewer(
   await page.locator('input[data-slot="input-otp"]').fill(OTP_CODE);
 
   // The shell is up once its header actions are (the same anchor chat.spec.ts
-  // uses to open a mission).
-  await expect(page.locator('[data-tour-target="newMission"]')).toBeVisible({
-    timeout: opts?.shellTimeout ?? 20_000,
-  });
+  // uses to open a mission). Both breakpoints carry a New task control and
+  // both are always in the DOM (the phone bar is CSS-hidden at md+), so this
+  // waits for whichever one this viewport actually shows.
+  await expect(
+    page
+      .locator('[data-tour-target="newMission"]')
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible({ timeout: opts?.shellTimeout ?? 20_000 });
 }
 
 /** The identity-ON server this helper drives. Re-exported so a spec's
