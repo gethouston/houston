@@ -53,3 +53,22 @@ index 4214c050965c3bdb3564b623d54130d2f8608b1f..de52e98530b1800a655123ea14d8c810
          }
      }
  }
+diff --git a/dist/utils/retry.js b/dist/utils/retry.js
+index ce8c4cbc3bdbbfa2e8e59070cdcdee12a6bb7177..e82876f34eb20f66532a69f3f4c09d3335d10835 100644
+--- a/dist/utils/retry.js
++++ b/dist/utils/retry.js
+@@ -74,6 +74,14 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
+     "please retry your request",
+     // gRPC based providers (e.g. NVIDIA NIM)
+     "ResourceExhausted",
++    // Gemini finish reasons for a generation the MODEL itself broke (an
++    // unparseable tool call, a garbled response). Surfaced as `Provider stopped
++    // with: <REASON>` with no HTTP status; transient and server-side, Google's
++    // own guidance is to retry the same request. Matched on the reason tokens
++    // only: policy stops (SAFETY, RECITATION, BLOCKLIST) share the prefix and
++    // are refusals a retry cannot fix.
++    "MALFORMED_FUNCTION_CALL",
++    "MALFORMED_RESPONSE",
+ ]);
+ class RetrySleepAbortError extends Error {
+     constructor() {

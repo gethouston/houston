@@ -11,7 +11,19 @@
  * exactly what they target).
  */
 
-export type EndpointCheck = { ok: true } | { ok: false; reason: string };
+/**
+ * Which egress rule a base URL broke. Sent as the 400's `code` so the client
+ * can render translated, rule-specific guidance instead of the English
+ * `reason` (and classify the rejection as an expected state, not a bug).
+ */
+export type CloudEgressRejectionCode =
+  | "endpoint_not_https"
+  | "endpoint_custom_port"
+  | "endpoint_private_host";
+
+export type EndpointCheck =
+  | { ok: true }
+  | { ok: false; code: CloudEgressRejectionCode; reason: string };
 
 /** The one throughline every rejection reason opens with. */
 const CLOUD_ONLY =
@@ -23,9 +35,20 @@ const CLOUD_ONLY =
  * public-:443-HTTPS-only constraints. Call ONLY on the managed cloud profile.
  */
 export function checkPublicHttpsEndpoint(url: URL): EndpointCheck {
+  // A private host is checked FIRST: `http://localhost:11434` breaks all three
+  // rules, and "the cloud can't reach your computer" is the one the user has
+  // to act on. Reporting the scheme would send them to https://localhost.
+  if (isBlockedHostname(url.hostname)) {
+    return {
+      ok: false,
+      code: "endpoint_private_host",
+      reason: `${CLOUD_ONLY} "${url.hostname}" is a private, loopback, or link-local address the cloud can't reach; host your server on a public domain instead.`,
+    };
+  }
   if (url.protocol !== "https:") {
     return {
       ok: false,
+      code: "endpoint_not_https",
       reason: `${CLOUD_ONLY} Use an https:// address (a tunnel or a directly hosted server).`,
     };
   }
@@ -34,13 +57,8 @@ export function checkPublicHttpsEndpoint(url: URL): EndpointCheck {
   if (url.port !== "") {
     return {
       ok: false,
+      code: "endpoint_custom_port",
       reason: `${CLOUD_ONLY} Remove the custom port ":${url.port}" from the address.`,
-    };
-  }
-  if (isBlockedHostname(url.hostname)) {
-    return {
-      ok: false,
-      reason: `${CLOUD_ONLY} "${url.hostname}" is a private, loopback, or link-local address the cloud can't reach; host your server on a public domain instead.`,
     };
   }
   return { ok: true };

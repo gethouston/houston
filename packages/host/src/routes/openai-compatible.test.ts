@@ -336,21 +336,29 @@ test("managed cloud rejects localhost with an actionable 400, never forwarded", 
     model: "llama3.1",
   });
   expect(res.status).toBe(400);
-  const { error } = (await res.json()) as { error: string };
+  const { error, code } = (await res.json()) as {
+    error: string;
+    code: string;
+  };
   expect(error).toMatch(/public HTTPS endpoints on port 443/);
+  // The typed code is what the client keys its translated copy on; without
+  // it the manual-connect form falls back to generic "something went wrong".
+  // localhost breaks every rule; the private host is the one worth reporting.
+  expect(code).toBe("endpoint_private_host");
   expect(channel.saved).toHaveLength(0);
 });
 
 test.each([
-  ["plain http", "http://api.example.com/v1"],
-  ["a non-443 port", "https://api.example.com:8443/v1"],
-  ["a private IPv4", "https://192.168.1.10/v1"],
-  ["the metadata IP", "https://169.254.169.254/v1"],
-  ["an IPv6 loopback", "https://[::1]/v1"],
-])("managed cloud rejects %s (400, never forwarded)", async (_label, baseUrl) => {
+  ["plain http", "http://api.example.com/v1", "endpoint_not_https"],
+  ["a non-443 port", "https://api.example.com:8443/v1", "endpoint_custom_port"],
+  ["a private IPv4", "https://192.168.1.10/v1", "endpoint_private_host"],
+  ["the metadata IP", "https://169.254.169.254/v1", "endpoint_private_host"],
+  ["an IPv6 loopback", "https://[::1]/v1", "endpoint_private_host"],
+])("managed cloud rejects %s (400 with a typed code, never forwarded)", async (_label, baseUrl, expectedCode) => {
   const { base, agentId, channel } = await setup(MANAGED_CLOUD_CAPS, true);
   const res = await connect(base, agentId, { baseUrl, model: "m" });
   expect(res.status).toBe(400);
+  expect(((await res.json()) as { code: string }).code).toBe(expectedCode);
   expect(channel.saved).toHaveLength(0);
 });
 
