@@ -82,7 +82,13 @@ export function AgentMissionsList({
         key={mission.id}
         status={status}
         title={mission.title}
-        preview={mission.description}
+        // A running task reads "Typing", as its agent's row does: the one live
+        // state the list has, ahead of the standing description.
+        preview={
+          status === "running"
+            ? t("shell:agentsHome.typing")
+            : mission.description
+        }
         labels={labels}
         dataAttrs={{ "data-testid": "agent-mission-row" }}
         onSelect={() => open(mission)}

@@ -79,7 +79,7 @@ function PreviewLine({ row }: { row: AgentHomeRow }) {
       className={cn(
         "min-w-0 flex-1 truncate text-sm",
         preview.kind === "typing"
-          ? "font-weight-510 text-success-text"
+          ? "font-weight-510 text-success"
           : "text-ink-muted",
       )}
     >
