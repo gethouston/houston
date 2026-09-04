@@ -132,35 +132,39 @@ export interface StreamTurnOptions {
  * explicitly so two owners never share a map and cross-abort each other.
  */
 /**
- * Send, and re-send on a waking refusal (the pod is restarting or booting)
- * along the delay ladder; any other outcome resolves or rejects at once. The
- * caller's abort ends the wait early (a stop mid-wait rejects as the abort).
+ * After a waking refusal (the pod is restarting or booting), re-send along
+ * the delay ladder until the engine accepts; any other refusal, an exhausted
+ * ladder, or the caller's abort rejects with the last refusal. Entered only
+ * from the catch of the first, direct send, so the accepted-first-time path
+ * keeps its exact timing.
  */
-async function sendUntilAccepted(
+async function resendWhileWaking(
   send: () => Promise<void>,
+  refusal: unknown,
   delaysMs: readonly number[],
   signal: AbortSignal,
 ): Promise<void> {
-  for (let attempt = 0; ; attempt++) {
+  let last = refusal;
+  for (const delay of delaysMs) {
+    if (!isEngineWakingRejection(last) || signal.aborted) throw last;
+    await new Promise<void>((resolve) => {
+      const timer = setTimeout(done, delay);
+      function done() {
+        signal.removeEventListener("abort", done);
+        clearTimeout(timer);
+        resolve();
+      }
+      signal.addEventListener("abort", done, { once: true });
+    });
+    if (signal.aborted) throw last;
     try {
       await send();
       return;
     } catch (e) {
-      const delay = delaysMs[attempt];
-      if (delay === undefined || !isEngineWakingRejection(e) || signal.aborted)
-        throw e;
-      await new Promise<void>((resolve) => {
-        const timer = setTimeout(done, delay);
-        function done() {
-          signal.removeEventListener("abort", done);
-          clearTimeout(timer);
-          resolve();
-        }
-        signal.addEventListener("abort", done, { once: true });
-      });
-      if (signal.aborted) throw e;
+      last = e;
     }
   }
+  throw last;
 }
 
 export async function streamTurn(
@@ -317,17 +321,23 @@ export async function streamTurn(
     streaming.catch(() => {});
     if (!sent) {
       try {
-        await sendUntilAccepted(
-          () =>
-            engine.sendMessage(sessionKey, prompt, {
-              nonce,
-              ...opts.pin,
-              displayText: opts.displayText,
-              mentions,
-            }),
-          opts.tuning?.sendWakeRetryDelaysMs ?? SEND_WAKE_RETRY_DELAYS_MS,
-          ac.signal,
-        );
+        const send = () =>
+          engine.sendMessage(sessionKey, prompt, {
+            nonce,
+            ...opts.pin,
+            displayText: opts.displayText,
+            mentions,
+          });
+        try {
+          await send();
+        } catch (refusal) {
+          await resendWhileWaking(
+            send,
+            refusal,
+            opts.tuning?.sendWakeRetryDelaysMs ?? SEND_WAKE_RETRY_DELAYS_MS,
+            ac.signal,
+          );
+        }
         sink.sendAccepted();
       } catch (e) {
         // A definitive failure (engine verdict / our abort) settles below.
