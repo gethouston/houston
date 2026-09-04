@@ -194,6 +194,9 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // model only when the user DEPLOYED it under that name, so a short current
   // list also keeps the "deployment named after the model id" rule legible.
   "azure-openai-responses": new Set([
+    // Backported into pi's catalog by the gpt-6-astra catalog patch
+    // (packages/host/src/providers/gpt-6-astra-catalog-patch.ts).
+    "gpt-6-astra",
     "gpt-5.5",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
@@ -203,6 +206,9 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.4-mini",
   ]),
   openai: new Set([
+    // Backported into pi's catalog by the gpt-6-astra catalog patch
+    // (packages/host/src/providers/gpt-6-astra-catalog-patch.ts).
+    "gpt-6-astra",
     "gpt-5.5",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
@@ -321,13 +327,18 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     auth: "oauth",
     defaultModel: "gpt-5.5",
     models: {
+      "gpt-6-astra": {
+        label: "GPT-6 Astra",
+        description:
+          "Newest and most capable. Uses your allowance 2.5x faster than Sol.",
+      },
       "gpt-5.5": {
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
       },
       "gpt-5.6-sol": {
         label: "GPT-5.6 Sol",
-        description: "OpenAI's newest frontier model.",
+        description: "Previous frontier model. Strong for complex work.",
       },
       "gpt-5.6-terra": {
         label: "GPT-5.6 Terra",

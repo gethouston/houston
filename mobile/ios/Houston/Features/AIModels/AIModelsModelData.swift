@@ -9,6 +9,7 @@ import Foundation
 enum ModelData {
   static let models: [String: [ModelMeta]] = [
     "openai": [
+      .init("gpt-6-astra", "GPT-6 Astra", "Newest and most capable. Uses your allowance 2.5x faster than Sol.", [.low, .medium, .high, .xhigh, .max]),
       .init("gpt-5.5", "GPT-5.5", "OpenAI's frontier model.", [.low, .medium, .high, .xhigh]),
       .init("gpt-5.4", "GPT-5.4", "Strong model for everyday coding.", [.low, .medium, .high, .xhigh]),
       .init("gpt-5.4-mini", "GPT-5.4-Mini", "Small, fast, and cost-efficient for simpler tasks.", [.low, .medium, .high, .xhigh]),

@@ -128,6 +128,7 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
+    "gpt-6-astra",
   ]),
   // `MiniMax-M3[1m]` is the token/coding-plan SKU: hand-built on the minimax
   // provider (not in pi's catalog), so it must be a VALID id here or the migration

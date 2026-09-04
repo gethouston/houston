@@ -13,6 +13,10 @@ import {
   getModels,
   getProviders,
 } from "@earendil-works/pi-ai/compat";
+// Side effect: backport GPT-6 Astra, which pi-ai 0.85.0 predates (it shipped
+// 2026-09-03). Delete with the pi bump that ships it natively — as the 0.85.0
+// bump did for the Fable 5.1 patch.
+import "./gpt-6-astra-catalog-patch";
 import type {
   CatalogModelEntry,
   CatalogProvider,

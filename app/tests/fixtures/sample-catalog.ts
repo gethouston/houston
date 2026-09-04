@@ -73,6 +73,7 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     "openai-codex",
     "oauth",
     [
+      reasoningModel("gpt-6-astra", { contextWindow: 272_000, vision: true }),
       reasoningModel("gpt-5.5", { contextWindow: 272_000 }),
       reasoningModel("gpt-5.6-sol", { contextWindow: 372_000, vision: true }),
       reasoningModel("gpt-5.6-terra", { contextWindow: 372_000, vision: true }),
