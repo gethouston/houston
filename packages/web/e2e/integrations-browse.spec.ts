@@ -242,13 +242,11 @@ test("HighLevel connects through one dialog: the MCP sign-in leads, Composio wit
   ).toBeVisible();
   const options = dialog.getByRole("button", { name: /HighLevel/ });
   const viaMcp = options.nth(0);
-  await expect(viaMcp).toContainText("Log in with HighLevel LeadConnector");
+  await expect(viaMcp).toContainText("Log in with LeadConnector (MCP)");
   await expect(viaMcp).toContainText("Recommended");
   const viaComposio = options.nth(1);
   await expect(viaComposio).toContainText("Connect HighLevel with Composio");
-  await expect(viaComposio).toContainText(
-    "switch Agency View to Sub-Account View",
-  );
+  await expect(viaComposio).toContainText("Agency View to Sub-Account View");
   // No token option for HighLevel: two sign-ins were the whole choice.
   await expect(
     dialog.getByRole("button", { name: /Use an API key instead/ }),

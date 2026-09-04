@@ -103,14 +103,7 @@ export async function beginCustomOAuth(
   }
   const metadata = info.authorizationServerMetadata;
   const resource = info.resourceMetadata?.resource;
-  // Ask for everything the server advertises, minus what its consent page
-  // is known to refuse (`oauthScopeExclusions`): one refused scope fails the
-  // whole sign-in on the service's page, where Houston cannot recover it.
-  const excluded = new Set(def.oauthScopeExclusions ?? []);
-  const scope =
-    info.resourceMetadata?.scopes_supported
-      ?.filter((name) => !excluded.has(name))
-      .join(" ") || undefined;
+  const scope = info.resourceMetadata?.scopes_supported?.join(" ");
 
   let client = existing?.client;
   if (!client?.redirect_uris?.includes(redirectUri)) {

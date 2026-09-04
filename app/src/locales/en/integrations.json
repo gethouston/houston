@@ -214,11 +214,11 @@
       "keyHelp": "Sign in to your Croma workspace and copy an API key (it starts with croma_live_). Keys belong to your organization's workspace, not a personal account."
     },
     "highlevel": {
-      "description": "Your HighLevel (GoHighLevel) CRM: contacts, conversations, pipelines and opportunities, calendars, invoices and payments, social posts and blogs. Each connection works with one sub-account.",
-      "signInTitle": "Log in with HighLevel LeadConnector (MCP)",
-      "signInDesc": "HighLevel's official connection. Your browser opens a page labeled LeadConnector, HighLevel's technical name. Choose the sub-account your agents should work with and approve.",
+      "description": "Your HighLevel (GoHighLevel) CRM: contacts, conversations, pipelines, calendars, invoices and social posts. One sub-account per connection.",
+      "signInTitle": "Log in with LeadConnector (MCP)",
+      "signInDesc": "HighLevel's official connection. Pick the sub-account your agents will use and approve.",
       "providerTitle": "Connect HighLevel with Composio",
-      "providerDesc": "Connects through Composio, with every HighLevel feature. When HighLevel opens, use the dropdown next to Houston to switch Agency View to Sub-Account View, then approve."
+      "providerDesc": "Every HighLevel feature. When HighLevel opens, switch Agency View to Sub-Account View and approve."
     },
     "connect": {
       "title": "Connect {{name}}",

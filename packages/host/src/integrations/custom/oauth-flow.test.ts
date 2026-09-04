@@ -138,35 +138,6 @@ describe("beginCustomOAuth", () => {
     expect(attempt.resource).toBe("https://mcp.example.com");
   });
 
-  it("asks for every advertised scope minus the definition's exclusions", async () => {
-    const { fetchFn, calls } = fakeAuthServer();
-    const redirect = "http://127.0.0.1:1/cb";
-    const all = await beginCustomOAuth(DEF, redirect, null, { fetchFn });
-    expect(new URL(all.authorizeUrl).searchParams.get("scope")).toBe(
-      "mcp.read mcp.write",
-    );
-    // HighLevel's case: a scope the server lists but its consent page
-    // refuses, which would fail the whole sign-in on that page.
-    const { authorizeUrl } = await beginCustomOAuth(
-      { ...DEF, oauthScopeExclusions: ["mcp.write", "not.advertised"] },
-      redirect,
-      null,
-      { fetchFn },
-    );
-    expect(new URL(authorizeUrl).searchParams.get("scope")).toBe("mcp.read");
-    // Registration asked for the same reduced scope.
-    const registration = calls.filter((c) => c.url === `${AS}/register`).at(-1);
-    expect(registration?.body).toContain('"scope":"mcp.read"');
-    // Excluding everything sends no scope at all rather than an empty one.
-    const { authorizeUrl: none } = await beginCustomOAuth(
-      { ...DEF, oauthScopeExclusions: ["mcp.read", "mcp.write"] },
-      redirect,
-      null,
-      { fetchFn },
-    );
-    expect(new URL(none).searchParams.has("scope")).toBe(false);
-  });
-
   it("a state prefix rides inside the state (gateway pod routing)", async () => {
     const { fetchFn } = fakeAuthServer();
     const { state, authorizeUrl } = await beginCustomOAuth(

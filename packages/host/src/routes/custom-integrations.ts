@@ -88,22 +88,6 @@ export function customTargetOf(rest: string): CustomTarget | null {
  *  never produces one because it builds the body from typed fields). Shared
  *  with the USER add route in custom-integrations-user.ts, so both surfaces
  *  accept the exact same body. */
-/** Scope names are short opaque tokens; a bounded, deduped list of them is
- *  all the OAuth flow ever subtracts. Absent means none. */
-function parseScopeExclusions(raw: unknown): string[] | string {
-  if (raw === undefined) return [];
-  if (!Array.isArray(raw)) return "'oauthScopeExclusions' must be a list";
-  const scopes = new Set<string>();
-  for (const entry of raw) {
-    if (typeof entry !== "string" || !entry.trim() || entry.length > 128) {
-      return "'oauthScopeExclusions' entries must be short scope names";
-    }
-    scopes.add(entry.trim());
-  }
-  if (scopes.size > 64) return "'oauthScopeExclusions' lists too many scopes";
-  return [...scopes];
-}
-
 export function parseAddInput(
   body: Record<string, unknown>,
 ): AddCustomIntegrationInput | string {
@@ -147,15 +131,10 @@ export function parseAddInput(
   if (body.kind === "mcp") {
     const endpoint = typeof body.endpoint === "string" ? body.endpoint : "";
     if (!endpoint) return "missing 'endpoint' (the MCP server URL)";
-    const oauthScopeExclusions = parseScopeExclusions(
-      body.oauthScopeExclusions,
-    );
-    if (typeof oauthScopeExclusions === "string") return oauthScopeExclusions;
     return {
       kind: "mcp",
       name,
       endpoint,
-      ...(oauthScopeExclusions.length ? { oauthScopeExclusions } : {}),
       ...(website ? { website } : {}),
       auth,
       ...(slug ? { slug } : {}),
