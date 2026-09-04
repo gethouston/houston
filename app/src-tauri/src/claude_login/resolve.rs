@@ -69,9 +69,7 @@ pub(super) fn build_login_command(bin: &Path, config_dir: &Path) -> Command {
         .kill_on_drop(true);
     // The CLI's Windows startup gate needs a resolvable shell (Git Bash or
     // PowerShell); repair the child env so it can't miss (HOUSTON-APP-4YP).
-    for (key, value) in crate::shell_env::claude_shell_env() {
-        cmd.env(key, value);
-    }
+    crate::shell_env::apply_claude_shell_env(cmd.as_std_mut());
     // Spawn from the user's home dir, NOT the inherited cwd: the CLI's shell
     // probe discards which() hits inside its own cwd, so an inherited
     // `C:\Windows\System32` (autostart / deep-link launches) silently filters

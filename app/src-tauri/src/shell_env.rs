@@ -12,7 +12,12 @@
 //!
 //! 1. If a Git for Windows `bash.exe` exists at a standard install location,
 //!    point `CLAUDE_CODE_GIT_BASH_PATH` at it (the CLI's documented escape
-//!    hatch; an inherited value that resolves is left alone).
+//!    hatch; an inherited value that names a usable bash is left alone). An
+//!    inherited value that does NOT — the WSL app-execution alias under
+//!    `WindowsApps`, a reparse-point stub, a missing file — is REMOVED from
+//!    the child when no standard install replaces it: forwarding it makes the
+//!    CLI refuse to start outright (HOUSTON-APP-4ZP), whereas without the var
+//!    the CLI's own probe still finds PowerShell (see `git_bash`).
 //! 2. Append the built-in PowerShell dir (and `System32`, which `where`-style
 //!    lookups need) to the child's PATH when missing, so the CLI's
 //!    `powershell` fallback can never miss.
@@ -42,9 +47,20 @@ pub fn claude_spawn_cwd() -> Option<PathBuf> {
     home.is_dir().then_some(home)
 }
 
-/// Env pairs to merge into a child that will execute the Claude Code CLI.
-/// Empty on non-Windows and on Windows machines that need no repair.
-pub fn claude_shell_env() -> Vec<(String, OsString)> {
+/// One env repair for a child that will execute the Claude Code CLI. Only
+/// the Windows module constructs these (hence allowed-unused elsewhere).
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(not(windows), allow(dead_code))]
+pub enum EnvRepair {
+    /// Set (or override) `key` to `value`.
+    Set(&'static str, OsString),
+    /// Strip an inherited `key` the child must not see.
+    Unset(&'static str),
+}
+
+/// Env repairs for a child that will execute the Claude Code CLI. Empty on
+/// non-Windows and on Windows machines that need no repair.
+pub fn claude_shell_env() -> Vec<EnvRepair> {
     #[cfg(not(windows))]
     {
         Vec::new()
@@ -52,6 +68,21 @@ pub fn claude_shell_env() -> Vec<(String, OsString)> {
     #[cfg(windows)]
     {
         windows::claude_shell_env()
+    }
+}
+
+/// Apply [`claude_shell_env`] to a command. Callers that layer their own env
+/// pairs on top apply this FIRST so an explicit value still wins.
+pub fn apply_claude_shell_env(cmd: &mut std::process::Command) {
+    for repair in claude_shell_env() {
+        match repair {
+            EnvRepair::Set(key, value) => {
+                cmd.env(key, value);
+            }
+            EnvRepair::Unset(key) => {
+                cmd.env_remove(key);
+            }
+        }
     }
 }
 
@@ -87,36 +118,48 @@ fn append_missing_dirs(path: &str, dirs: &[String]) -> Option<String> {
 
 #[cfg(windows)]
 mod windows {
-    use super::append_missing_dirs;
+    use super::{append_missing_dirs, EnvRepair};
+    use crate::git_bash::is_usable_git_bash_override;
     use std::ffi::OsString;
     use std::path::PathBuf;
 
     /// The CLI's documented override for a bash that is not on PATH.
     const GIT_BASH_ENV: &str = "CLAUDE_CODE_GIT_BASH_PATH";
 
-    pub(super) fn claude_shell_env() -> Vec<(String, OsString)> {
+    pub(super) fn claude_shell_env() -> Vec<EnvRepair> {
         let mut env = Vec::new();
-        if let Some(bash) = resolve_git_bash() {
-            env.push((GIT_BASH_ENV.to_string(), bash.into_os_string()));
-        }
+        env.extend(git_bash_repair());
         if let Some(path) = hardened_path() {
-            env.push(("PATH".to_string(), OsString::from(path)));
+            env.push(EnvRepair::Set("PATH", OsString::from(path)));
         }
         env
     }
 
-    /// Find a Git for Windows `bash.exe`. An inherited `GIT_BASH_ENV` that
-    /// points at a real file wins (respect the user's override — the child
-    /// inherits it, nothing to add). A stale override, or none, falls through
-    /// to the standard machine- and user-scope install locations. No PATH
-    /// scan: `C:\Windows\System32\bash.exe` is WSL, not Git Bash, and would
-    /// wedge the CLI.
-    fn resolve_git_bash() -> Option<PathBuf> {
-        if let Ok(existing) = std::env::var(GIT_BASH_ENV) {
-            if PathBuf::from(&existing).is_file() {
-                return None;
-            }
+    /// The `GIT_BASH_ENV` repair. An inherited value naming a usable bash wins
+    /// (respect the user's override — the child inherits it, nothing to do).
+    /// Otherwise a Git for Windows `bash.exe` at a standard machine- or
+    /// user-scope install location is set; and when none exists, a STALE
+    /// inherited value is stripped rather than forwarded — the CLI exits 1 on
+    /// an override it cannot run, but auto-detects PowerShell without one
+    /// (HOUSTON-APP-4ZP: the WSL alias under `WindowsApps`). No PATH scan:
+    /// `System32\bash.exe` is WSL, not Git Bash, and would wedge the CLI.
+    fn git_bash_repair() -> Option<EnvRepair> {
+        let inherited = std::env::var(GIT_BASH_ENV).ok();
+        if inherited.as_deref().is_some_and(is_usable_git_bash_override) {
+            return None;
         }
+        match standard_git_bash() {
+            Some(bash) => Some(EnvRepair::Set(GIT_BASH_ENV, bash.into_os_string())),
+            None => inherited.map(|stale| {
+                tracing::warn!(
+                    "[shell-env] ignoring inherited {GIT_BASH_ENV}={stale:?}: not a runnable Git Bash"
+                );
+                EnvRepair::Unset(GIT_BASH_ENV)
+            }),
+        }
+    }
+
+    fn standard_git_bash() -> Option<PathBuf> {
         let roots = [
             std::env::var("ProgramFiles").ok(),
             std::env::var("ProgramFiles(x86)").ok(),
@@ -198,6 +241,9 @@ mod tests {
     #[test]
     fn claude_shell_env_is_inert_off_windows() {
         assert!(claude_shell_env().is_empty());
+        let mut cmd = std::process::Command::new("true");
+        apply_claude_shell_env(&mut cmd);
+        assert_eq!(cmd.get_envs().count(), 0);
     }
 
     #[test]

@@ -17,6 +17,7 @@ use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader, Lines};
 use tokio::process::{Child, ChildStdout};
 
 use super::resolve::{build_login_command, extract_visit_url};
+use super::shell_gate::is_shell_gate_failure;
 use super::{EVENT_DONE, EVENT_URL};
 
 /// Give up on the login if the CLI never returns (user closed the consent tab,
@@ -111,25 +112,36 @@ where
                 .code()
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| signal_label(&status));
+            // The CLI ran but refused its Windows shell gate: the machine
+            // lacks a runnable Git Bash / PowerShell (HOUSTON-APP-4ZP). Same
+            // degrade path as an unrunnable helper; the frontend shows
+            // install-Git copy instead of the raw CLI text.
+            let shell_unavailable = is_shell_gate_failure(&tail);
             let mut error = format!("Claude sign-in failed (exit {code})");
             if !tail.trim().is_empty() {
                 error.push_str(": ");
                 error.push_str(tail.trim());
             }
-            if helper_unavailable {
+            if helper_unavailable || shell_unavailable {
                 // WARN, not error: a signal death means this machine cannot run
-                // the helper (SIGILL on pre-AVX2, OOM kill, hardened kernel) and
-                // the frontend already degrades to the paste flow. A Sentry
-                // event per attempt from the same broken machines is noise
-                // (HOUSTON-APP-543 kept regressing on it); the breadcrumb +
-                // backend.log line keeps the diagnosis trail.
+                // the helper (SIGILL on pre-AVX2, OOM kill, hardened kernel),
+                // a shell-gate refusal means it lacks a prerequisite, and the
+                // frontend already degrades both. A Sentry event per attempt
+                // from the same machines is noise (HOUSTON-APP-543 and -4ZP
+                // kept regressing on it); the breadcrumb + backend.log line
+                // keeps the diagnosis trail.
                 tracing::warn!("[claude-login] {error}");
             } else {
                 tracing::error!("[claude-login] {error}");
             }
             emit(
                 EVENT_DONE,
-                json!({ "success": false, "error": error, "helperUnavailable": helper_unavailable }),
+                json!({
+                    "success": false,
+                    "error": error,
+                    "helperUnavailable": helper_unavailable,
+                    "shellUnavailable": shell_unavailable,
+                }),
             );
         }
         Ok(LoginOutcome::Exited(Err(e))) => {
@@ -412,6 +424,38 @@ mod tests {
         );
         // A plain non-zero exit (e.g. a declined authorization) is NOT a
         // helper-can't-run condition — it must never reroute to the paste flow.
+        assert_eq!(done.1["helperUnavailable"], json!(false));
+        assert_eq!(done.1["shellUnavailable"], json!(false));
+
+        std::fs::remove_dir_all(&dir).expect("cleanup");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn run_login_flags_the_cli_shell_gate_as_shell_unavailable() {
+        // The CLI's Windows shell-gate refusal (HOUSTON-APP-4ZP) is a missing
+        // prerequisite, not a login failure: the payload must carry the flag
+        // so the frontend shows install-Git copy (or the paste flow on a
+        // remote engine) instead of the raw CLI text, while the helper itself
+        // stays "runnable".
+        let dir = unique_tmp_dir("shell-gate");
+        let script = write_fake_claude(
+            &dir,
+            "claude",
+            "#!/bin/sh\n\
+             echo 'Claude Code was unable to find CLAUDE_CODE_GIT_BASH_PATH path \"C:\\x\\bash.exe\"' 1>&2\n\
+             exit 1\n",
+        );
+        let config_dir = dir.join("config");
+
+        let (events, emit) = collect();
+        run_login(&script, &config_dir, Arc::new(AtomicBool::new(false)), emit).await;
+
+        let got = events.lock().expect("events lock");
+        let done = got.last().expect("done event");
+        assert_eq!(done.0, EVENT_DONE);
+        assert_eq!(done.1["success"], json!(false));
+        assert_eq!(done.1["shellUnavailable"], json!(true));
         assert_eq!(done.1["helperUnavailable"], json!(false));
 
         std::fs::remove_dir_all(&dir).expect("cleanup");

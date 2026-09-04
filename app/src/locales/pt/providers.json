@@ -147,7 +147,8 @@
     "handoffFailed": "Você entrou no Claude, mas o Houston teve um problema do nosso lado ao concluir a conexão. Tente novamente em instantes ou reporte um erro se continuar acontecendo.",
     "autoFailedTitle": "Não foi possível concluir a conexão automaticamente",
     "autoFailedBody": "Cole uma chave de API da Anthropic para terminar de conectar.",
-    "helperUnsupported": "O processador deste computador é muito antigo para executar o assistente de login do Claude, então não é possível conectar uma assinatura do Claude nesta máquina."
+    "helperUnsupported": "O processador deste computador é muito antigo para executar o assistente de login do Claude, então não é possível conectar uma assinatura do Claude nesta máquina.",
+    "shellUnavailable": "O login do Claude precisa do Git para Windows neste computador. Instale-o em git-scm.com e tente conectar novamente."
   },
   "localModel": {
     "title": "Conecte um modelo local",

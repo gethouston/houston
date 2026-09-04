@@ -147,7 +147,8 @@
     "handoffFailed": "Iniciaste sesión en Claude, pero Houston tuvo un problema de nuestro lado al terminar la conexión. Inténtalo de nuevo en un momento o reporta un error si sigue pasando.",
     "autoFailedTitle": "No se pudo completar la conexión automáticamente",
     "autoFailedBody": "Pega una clave de API de Anthropic para terminar de conectar.",
-    "helperUnsupported": "El procesador de este computador es demasiado antiguo para ejecutar el asistente de inicio de sesión de Claude, así que no se puede conectar una suscripción de Claude en esta máquina."
+    "helperUnsupported": "El procesador de este computador es demasiado antiguo para ejecutar el asistente de inicio de sesión de Claude, así que no se puede conectar una suscripción de Claude en esta máquina.",
+    "shellUnavailable": "El inicio de sesión de Claude necesita Git para Windows en este computador. Instálalo desde git-scm.com y vuelve a intentar conectarte."
   },
   "localModel": {
     "title": "Conecta un modelo local",

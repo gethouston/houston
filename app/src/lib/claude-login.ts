@@ -189,6 +189,13 @@ export async function beginClaudeBrowserLogin(
                 i18n.t("providers:claudeLogin.helperUnsupported"),
               );
               break;
+            case "shell-unavailable":
+              announce(
+                frontendProviderId,
+                false,
+                i18n.t("providers:claudeLogin.shellUnavailable"),
+              );
+              break;
             default:
               announce(frontendProviderId, false, error);
           }
