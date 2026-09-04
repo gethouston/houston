@@ -36,6 +36,7 @@ import {
 import { resolveClaudeCliBinary } from "./anthropic-cli-binary";
 import { runAnthropicLogin } from "./anthropic-cli-login";
 import { preflightCodexCallbackPort } from "./codex-port-preflight";
+import { clearProviderMarks } from "./credential-health";
 import {
   anthropicServedHere,
   serveModeOn,
@@ -466,6 +467,12 @@ export async function startLogin(
   void login
     .then(() => {
       clearLoginExpiry(state);
+      // A completed login IS a new credential, whether or not the fingerprint
+      // can see it: on macOS the Claude CLI lands the credential in the
+      // Keychain, which the fingerprint never reads, so a stale "this
+      // credential failed" mark would outlive the re-login and keep reporting
+      // the provider disconnected right after the user signed in.
+      clearProviderMarks(provider);
       state.status = "complete";
       console.log(`[oauth:${provider}] login complete`);
     })
