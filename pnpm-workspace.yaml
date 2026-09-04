@@ -21,5 +21,14 @@ overrides:
   "gaxios>uuid": "^11.1.1"
   "teeny-request>uuid": "^11.1.1"
 patchedDependencies:
-  '@earendil-works/pi-ai@0.84.4': patches/@earendil-works__pi-ai@0.84.4.patch
+  '@earendil-works/pi-ai@0.85.0': patches/@earendil-works__pi-ai@0.85.0.patch
   '@executor-js/sdk@1.5.37': patches/@executor-js__sdk@1.5.37.patch
+# pi-coding-agent 0.85.0's barrel re-exports `main`, whose experimental remote
+# session server imports @earendil-works/pi-server, which the package forgot to
+# declare (its dependencies list stops at pi-tui). Under pnpm's isolated layout
+# that is a hard ERR_MODULE_NOT_FOUND on the first import of the barrel. Drop
+# this extension when a pi release declares the dependency itself.
+packageExtensions:
+  '@earendil-works/pi-coding-agent@0.85.0':
+    dependencies:
+      '@earendil-works/pi-server': '0.85.0'

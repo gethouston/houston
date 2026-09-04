@@ -34,12 +34,6 @@ const pi = (await import(
   getProviders(): string[];
 };
 
-// The catalog Houston actually serves is pi-ai PLUS the host's backport patch
-// (`GET /v1/catalog` imports it), so apply it here before checking for orphans
-// — an override for a backported model (anthropic claude-fable-5-1) is not
-// drift. Delete with the pi bump that ships it natively.
-await import("../../packages/host/src/providers/fable-5-1-catalog-patch.ts");
-
 // Models Houston hand-builds ON a pi provider that pi-ai's catalog does NOT ship,
 // so they are legitimately absent from `getModel` yet still valid to curate. Keyed
 // `${piProvider}/${modelId}`. Today: MiniMax's token/coding-plan SKU, injected by

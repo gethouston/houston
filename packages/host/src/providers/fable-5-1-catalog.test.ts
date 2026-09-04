@@ -1,7 +1,13 @@
 import { expect, test } from "vitest";
-import "./fable-5-1-catalog-patch";
 import { buildProviderCatalog } from "./pi-catalog";
 
+/**
+ * Claude Fable 5.1 ships natively in pi-ai's baked Anthropic catalog as of
+ * 0.85.0; Houston carried a local backport patch against 0.84.4, deleted with
+ * that bump. The guard stays: Fable 5.1 is the headline model, and a pi bump
+ * that dropped or reshaped its entry would silently strip it from
+ * `GET /v1/catalog`.
+ */
 test("GET /v1/catalog advertises Claude Fable 5.1 under anthropic", () => {
   const anthropic = buildProviderCatalog().find((p) => p.id === "anthropic");
   expect(anthropic).toBeDefined();

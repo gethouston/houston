@@ -114,9 +114,9 @@ test("uncurated providers with a hand-picked default skip pi's dead first row (P
   expect(m.provider).toBe("moonshotai");
   expect(m.id).toBe("kimi-k3");
   // NVIDIA (HOU-890) rides the same table — the turn path used to ignore it
-  // and default to the per-account-gated first row. gpt-oss-120b since pi
-  // 0.84.4 retired the llama-3.x rows.
-  expect(providerDefaultModel("nvidia")).toBe("openai/gpt-oss-120b");
+  // and default to the per-account-gated first row. gpt-oss-20b since pi
+  // 0.84.4 retired the llama-3.x rows and 0.85.0 retired gpt-oss-120b.
+  expect(providerDefaultModel("nvidia")).toBe("openai/gpt-oss-20b");
 });
 
 test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {
@@ -321,12 +321,11 @@ test("github-copilot is a registered OAuth provider defaulting to a base model (
   expect(ids).toContain("github-copilot");
   // Subscription OAuth (GitHub device-code flow), not a pasted API key.
   expect(providerAuthMethod("github-copilot")).toBe("oauth");
-  // gpt-4.1 is a BASE model every Copilot plan (incl. Copilot Free) serves, so a
-  // fresh Copilot connect works out of the box; a premium default (claude-*,
-  // gpt-5.x) answers model_not_supported on Free. It also exercises the dotted id
-  // form Copilot's gateway expects (distinct from the native Anthropic provider's
-  // dashed claude-sonnet-4-6).
-  expect(providerDefaultModel("github-copilot")).toBe("gpt-4.1");
+  // gpt-5-mini is the cheapest model every Copilot plan serves, so a fresh
+  // Copilot connect works out of the box; a plan-gated premium default answers
+  // model_not_supported on Free. gpt-4.1, the old base model, was retired by
+  // GitHub on 2026-06-01 and left pi's catalog in 0.85.0.
+  expect(providerDefaultModel("github-copilot")).toBe("gpt-5-mini");
 });
 
 /**

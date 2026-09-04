@@ -8,10 +8,6 @@ import {
   getProviders,
 } from "@earendil-works/pi-ai/compat";
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
-// Side effect: backport Claude Fable 5.1, which pi-ai 0.84.4 predates (it
-// shipped 2026-09-01). Delete with the pi bump that ships it natively — as the
-// 0.82.1 bump did for the Opus 5 patch.
-import "./fable-5-1-catalog-patch";
 import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
 /**

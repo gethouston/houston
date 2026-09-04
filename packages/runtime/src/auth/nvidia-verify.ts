@@ -19,17 +19,13 @@ type Probe = (model: ReturnType<typeof safeGetModel>) => Promise<string | null>;
 /**
  * Models served to every NVIDIA account we have evidence from. The retired
  * llama-3.x rows (the old small non-reasoning probes) left pi's catalog in
- * 0.84.4; of the families our partially-gated live key was served (llama /
- * gpt-oss / minimax), gpt-oss survives — both sizes, MoE-fast — with
- * minimax-m3 as a second family so a gpt-oss-wide gate still can't produce a
- * false `key_restricted`. The first is also the runtime's NVIDIA default
+ * 0.84.4 and gpt-oss-120b in 0.85.0; of the families our partially-gated live
+ * key was served (llama / gpt-oss / minimax), gpt-oss-20b survives (MoE-fast)
+ * with minimax-m3 as a second family so a gpt-oss-wide gate still can't
+ * produce a false `key_restricted`. The first is also the runtime's NVIDIA default
  * model (`UNCURATED_DEFAULT_MODEL`) and the classifier's suggested fallback.
  */
-const NVIDIA_VERIFY_FALLBACKS = [
-  "openai/gpt-oss-120b",
-  "openai/gpt-oss-20b",
-  "minimaxai/minimax-m3",
-];
+const NVIDIA_VERIFY_FALLBACKS = ["openai/gpt-oss-20b", "minimaxai/minimax-m3"];
 
 export function nvidiaGated(providerId: string, message: string): boolean {
   return isNvidiaFunctionGated(

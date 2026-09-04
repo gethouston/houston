@@ -16,11 +16,13 @@ test("GET /v1/catalog advertises Claude Opus 5 under anthropic", () => {
   expect(opus5?.name).toBe("Claude Opus 5");
   expect(opus5?.reasoning).toBe(true);
   expect(opus5?.contextWindow).toBe(1_000_000);
-  // The full effort ladder, same as Opus 4.8 (the partial thinkingLevelMap
-  // extends pi's base set rather than replacing it).
+  // Since pi 0.85.0 Opus 5 is an always-thinking model like Fable: the map
+  // nulls "off", so the ladder matches Fable 5 rather than Opus 4.8 (which
+  // still offers "off").
   expect(opus5?.thinkingLevels).toEqual(
-    anthropic?.models.find((m) => m.id === "claude-opus-4-8")?.thinkingLevels,
+    anthropic?.models.find((m) => m.id === "claude-fable-5")?.thinkingLevels,
   );
+  expect(opus5?.thinkingLevels).not.toContain("off");
   expect(opus5?.thinkingLevels).toContain("xhigh");
   expect(opus5?.thinkingLevels).toContain("max");
 });

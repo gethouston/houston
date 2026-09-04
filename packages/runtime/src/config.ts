@@ -51,16 +51,18 @@ export const config = {
   codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
   /**
    * Default GitHub Copilot model (subscription OAuth). A pi-ai `github-copilot`
-   * model id — note Copilot's ids use dots (`gpt-4.1`), unlike the native
+   * model id — note Copilot's ids use dots (`gpt-5.4`), unlike the native
    * Anthropic provider's dashes (`claude-sonnet-4-6`).
    *
-   * `gpt-4.1` is a BASE model every Copilot plan serves, including Copilot Free.
-   * Premium models (Claude, GPT-5.x) require Copilot Pro and answer
-   * `model_not_supported` on Free — defaulting to one stranded every Free user
-   * (HOU-578). Pro users can still switch up to Claude in the picker. Keep in
-   * sync with `COPILOT_BASE_FALLBACK` in `ai/provider-error.ts`.
+   * `gpt-5-mini` is the cheapest model every Copilot plan serves. The previous
+   * base model, `gpt-4.1`, was retired by GitHub on 2026-06-01 (pi dropped it
+   * from the catalog in 0.85.0). Defaulting to a plan-gated premium model
+   * stranded every Free user on `model_not_supported` (HOU-578), so the default
+   * stays the lowest-cost row; Pro users switch up to Claude in the picker.
+   * Keep in sync with `COPILOT_BASE_FALLBACK` in `ai/provider-error.ts` and
+   * the frontend's `PROVIDER_OVERRIDES["github-copilot"].defaultModel`.
    */
-  githubCopilotModel: env.HOUSTON_GITHUB_COPILOT_MODEL || "gpt-4.1",
+  githubCopilotModel: env.HOUSTON_GITHUB_COPILOT_MODEL || "gpt-5-mini",
   /** Default Google Gemini model (API-key provider). A pi-ai `google` model id. */
   geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3.5-flash",
   /** Default Amazon Bedrock model (API-key provider). A pi-ai `amazon-bedrock`
