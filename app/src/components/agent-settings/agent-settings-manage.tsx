@@ -161,7 +161,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
           if (!open) setPendingTeam(null);
         }}
         onConfirm={() => {
-          if (pendingTeam) moveAgent(agent.id, pendingTeam);
+          if (pendingTeam) void moveAgent(agent.id, pendingTeam);
           setPendingTeam(null);
         }}
       />

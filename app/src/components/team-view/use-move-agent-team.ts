@@ -24,8 +24,17 @@ import { localMoveDest } from "./move-agent-model";
  * position: the agent is appended, which is what an overlay row that does not
  * name it already means (merge rule 3). The stale id left in the old team's row
  * is ignored on read and pruned by rule 7 on the next write.
+ *
+ * Resolves once the move has SETTLED, success or refusal: a caller that
+ * navigates to the agent's new home next (the copy flows) must not resolve
+ * that home before the roster knows it, or it lands on the default team. The
+ * mutation reports its own refusal (toast + rollback), so a settled promise
+ * never rejects and a fire-and-forget caller has nothing to catch.
  */
-export function useMoveAgentTeam(): (agentId: string, team: TeamView) => void {
+export function useMoveAgentTeam(): (
+  agentId: string,
+  team: TeamView,
+) => Promise<void> {
   const { capabilities } = useCapabilities();
   const serverBacked = hasAgentTeams(capabilities);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
@@ -35,8 +44,10 @@ export function useMoveAgentTeam(): (agentId: string, team: TeamView) => void {
   return (agentId, team) => {
     if (!serverBacked) {
       sidebar.moveItem(agentId, localMoveDest(team));
-      return;
+      return Promise.resolve();
     }
-    move.mutate({ agentId, teamId: team.id });
+    return new Promise((resolve) => {
+      move.mutate({ agentId, teamId: team.id }, { onSettled: () => resolve() });
+    });
   };
 }
