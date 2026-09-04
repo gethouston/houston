@@ -4,6 +4,7 @@ import {
   type AgentHomeConversation,
   agentHomeFilterTeam,
   agentHomeHasTeamFilter,
+  agentHomePreview,
   agentHomeRows,
   agentRowsForTeam,
 } from "../src/components/agents-home/agents-home-model.ts";
@@ -193,5 +194,23 @@ describe("the team filter", () => {
       agentRowsForTeam(rows, teams[1]).map((r) => r.agent.id),
       ["a"],
     );
+  });
+});
+
+describe("agentHomePreview", () => {
+  it("says Typing while the agent has running work, ahead of the latest task", () => {
+    assert.deepEqual(agentHomePreview({ runningCount: 1, latestTitle: "X" }), {
+      kind: "typing",
+    });
+  });
+
+  it("quotes the latest task otherwise, and says so when there is none", () => {
+    assert.deepEqual(agentHomePreview({ runningCount: 0, latestTitle: "X" }), {
+      kind: "latest",
+      title: "X",
+    });
+    assert.deepEqual(agentHomePreview({ runningCount: 0, latestTitle: null }), {
+      kind: "none",
+    });
   });
 });

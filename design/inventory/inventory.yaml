@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 78
+version: 79
 
 components:
   - id: agent-avatar
@@ -1691,8 +1691,9 @@ components:
       of three cards (the front one straight, two tilted behind it) when the
       agent holds two or more visible tasks, a single mark otherwise -- then
       the agent's name with the time of its latest movement trailing, and
-      under the name the preview line: the title of the agent's most recently
-      moved task, or "No tasks yet". The same needs-you count chip the rail
+      under the name the preview line: "Typing" while the agent has a task
+      running, else the title of the agent's most recently moved task, or
+      "No tasks yet". The same needs-you count chip the rail
       rows and the nav bar wear sits at the end of the preview line (one
       badge shape, one number, never a recount), and the front card wears the
       same running ring the rail draws. The rows keep the attention sort:

@@ -3,6 +3,12 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v79 - 2026-09-04
+
+The Agents home row's preview line says "Typing" while the agent has a task
+running, ahead of the latest task's title, the way a chat list announces a
+correspondent mid-message.
+
 ## v78 - 2026-09-04
 
 The phone's Agents home becomes a chat list. The team-grouped tree is gone:

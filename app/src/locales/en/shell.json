@@ -398,7 +398,8 @@
       "description": "Create an agent to get started. Everything they work on shows up here."
     },
     "allTeams": "All teams",
-    "noTasks": "No tasks yet"
+    "noTasks": "No tasks yet",
+    "typing": "Typing..."
   },
   "taskList": {
     "archived": "Archived",

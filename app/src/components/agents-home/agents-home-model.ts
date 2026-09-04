@@ -142,3 +142,23 @@ export function agentRowsForTeam(
   const members = new Set(team.agents.map((a) => a.id));
   return rows.filter((row) => members.has(row.agent.id));
 }
+
+/** What the row's preview line says. */
+export type AgentHomePreview =
+  | { kind: "typing" }
+  | { kind: "latest"; title: string }
+  | { kind: "none" };
+
+/**
+ * The preview line's rule: a working agent says so ("Typing", the way a chat
+ * list does), ahead of what it last touched; otherwise the latest task's
+ * title; and an agent with nothing at all says that instead of going blank.
+ */
+export function agentHomePreview(
+  row: Pick<AgentHomeRow, "runningCount" | "latestTitle">,
+): AgentHomePreview {
+  if (row.runningCount > 0) return { kind: "typing" };
+  if (row.latestTitle !== null)
+    return { kind: "latest", title: row.latestTitle };
+  return { kind: "none" };
+}
