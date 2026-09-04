@@ -64,6 +64,7 @@ import { isNetworkTransportError } from "./network-transport-error";
 import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error";
 import { isOrgAdminRequiredError } from "./org-admin-required-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
+import { isProviderLoginSessionLostError } from "./provider-login-session-lost";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
@@ -1875,7 +1876,11 @@ export const tauriProvider = {
       "submit_provider_login_code",
       () => getEngine().submitProviderLoginCode(provider, code),
       undefined,
-      opts,
+      // A code submitted after the runtime dropped the login (the paste
+      // dialog outlived the abandoned-login timer, the app was restarted
+      // mid-sign-in) is user timing, not a bug: the dialog shows authored
+      // "link expired" copy inline, so no red toast and no Sentry here.
+      { silence: isProviderLoginSessionLostError, ...opts },
     ),
   /**
    * Abort an in-flight sign-in the user gave up on (closed the OAuth
