@@ -46,8 +46,14 @@ export function useMoveAgentTeam(): (
       sidebar.moveItem(agentId, localMoveDest(team));
       return Promise.resolve();
     }
-    return new Promise((resolve) => {
-      move.mutate({ agentId, teamId: team.id }, { onSettled: () => resolve() });
-    });
+    // `mutateAsync`, not a per-call `onSettled`: TanStack drops per-call
+    // callbacks once the observer unmounts, so a dialog closed mid-request
+    // would leave the caller awaiting forever. The refusal is already reported
+    // and rolled back by the mutation's own onError, so settling quietly here
+    // hides nothing.
+    return move.mutateAsync({ agentId, teamId: team.id }).then(
+      () => undefined,
+      () => undefined,
+    );
   };
 }

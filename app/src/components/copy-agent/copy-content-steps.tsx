@@ -1,8 +1,8 @@
 import type { PortableInventoryPreview } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import type { WizardSelection } from "../../lib/portable-share";
-import { PickListStep, PickSwitchRow } from "../portable/pick-list-step";
-import { humanize } from "../portable/wizard-parts";
+import { PickListStep } from "../portable/pick-list-step";
+import { humanize, SwitchRow } from "../portable/wizard-parts";
 
 interface ContentStepProps {
   sourceName: string;
@@ -44,7 +44,7 @@ export function InstructionsStep({
   return (
     <div className="space-y-10">
       <header>
-        <h1 className="text-[28px] font-normal leading-tight text-balance">
+        <h1 className="text-2xl font-normal leading-tight text-balance">
           {t("copyAgent.wizard.instructions.title")}
         </h1>
         <p className="mt-3 text-base text-ink-muted">
@@ -57,7 +57,7 @@ export function InstructionsStep({
           {t("copyAgent.wizard.instructions.instructionsLabel")}
         </h2>
         {preview.claudeMd ? (
-          <PickSwitchRow
+          <SwitchRow
             checked={selection.claudeMd}
             onChange={() =>
               setSelection({ ...selection, claudeMd: !selection.claudeMd })
@@ -95,7 +95,7 @@ export function InstructionsStep({
           {t("copyAgent.wizard.instructions.chatsLabel")}
         </h2>
         {chatCount > 0 ? (
-          <PickSwitchRow
+          <SwitchRow
             checked={copyChats}
             onChange={() => onCopyChatsChange(!copyChats)}
             title={t("copyAgent.wizard.instructions.chatsRow")}
@@ -121,6 +121,7 @@ export function RoutinesStep({
   setSelection,
 }: ContentStepProps) {
   const { t } = useTranslation("agents");
+  const labels = usePickLabels();
   return (
     <PickListStep
       title={t("copyAgent.wizard.routines.title")}
@@ -133,7 +134,7 @@ export function RoutinesStep({
         title: routine.name,
         subtitle: routine.promptExcerpt,
       })}
-      labels={usePickLabels()}
+      labels={labels}
     />
   );
 }
@@ -145,6 +146,7 @@ export function SkillsStep({
   setSelection,
 }: ContentStepProps) {
   const { t } = useTranslation("agents");
+  const labels = usePickLabels();
   return (
     <PickListStep
       title={t("copyAgent.wizard.skills.title")}
@@ -157,7 +159,7 @@ export function SkillsStep({
         title: humanize(skill.slug),
         subtitle: skill.description,
       })}
-      labels={usePickLabels()}
+      labels={labels}
     />
   );
 }

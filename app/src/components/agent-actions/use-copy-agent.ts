@@ -2,9 +2,11 @@ import type { PortableExportSelection } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";
+import { isAgentWarmingError } from "../../lib/agent-warming-guard";
 import { analytics } from "../../lib/analytics";
-import { copyAgentChats } from "../../lib/copy-agent-chats";
+import { chatCopyComplete, copyAgentChats } from "../../lib/copy-agent-chats";
 import { getEngine } from "../../lib/engine";
+import { isEngineWakingError } from "../../lib/engine-waking-error";
 import { genericErrorDescription } from "../../lib/error-report";
 import { showExpectedStateToast } from "../../lib/error-toast";
 import { logger } from "../../lib/logger";
@@ -101,11 +103,30 @@ export function useCopyAgent(): (args: {
       if (copyChats) {
         void (async () => {
           try {
+            // The copy's engine may still be waking (a cold pod on the hosted
+            // profile): a waking refusal on the import is waited out, not
+            // reported.
             const outcome = await copyAgentChats(
               engine,
               agent.folderPath,
               installed.agentPath,
+              undefined,
+              (err) => isEngineWakingError(err) || isAgentWarmingError(err),
             );
+            // A rejected file or a board the copy already had (a task was
+            // created in it before the chats arrived) is a partial copy, and
+            // says so; only a complete one gets the success toast.
+            if (!chatCopyComplete(outcome)) {
+              logger.error(
+                `[copy-agent] chats partial: board=${outcome.boardWritten} rejected=${JSON.stringify(outcome.rejected)}`,
+              );
+              addToast({
+                variant: "error",
+                title: t("copyAgent.errors.chatsFailed"),
+                description: t("copyAgent.errors.chatsPartial"),
+              });
+              return;
+            }
             addToast({
               variant: "success",
               title: t("copyAgent.toasts.chatsCopiedTitle"),

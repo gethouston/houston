@@ -10,7 +10,7 @@ const mintFrom = (ids: string[]) => {
 
 const conversations = [
   { id: "a1", session_key: "activity-a1" },
-  { id: "b2", session_key: "sess-b2" },
+  { id: "b2", session_key: "routine-r9" },
 ];
 
 describe("planChatIdMap", () => {
@@ -23,11 +23,12 @@ describe("planChatIdMap", () => {
         ["b2", "n2"],
       ],
     );
+    // A routine chat keeps its key: the copied routine carries the same id.
     deepStrictEqual(
       [...map.session],
       [
         ["activity-a1", "activity-n1"],
-        ["sess-b2", "activity-n2"],
+        ["routine-r9", "routine-r9"],
       ],
     );
   });
@@ -37,8 +38,14 @@ describe("remapChatArchive", () => {
   it("rewrites the board rows, renames transcripts, and leaves the rest alone", () => {
     const map = planChatIdMap(conversations, mintFrom(["n1", "n2"]));
     const board = [
-      { id: "a1", title: "A", status: "done" },
-      { id: "b2", title: "B", status: "done", session_key: "sess-b2" },
+      {
+        id: "a1",
+        title: "A",
+        status: "running",
+        claude_session_id: "native-1",
+        routine_run_id: "run-1",
+      },
+      { id: "b2", title: "B", status: "done", session_key: "routine-r9" },
       // Started by the agent from A's chat: the parent link follows.
       {
         id: "c3",
@@ -52,8 +59,8 @@ describe("remapChatArchive", () => {
       ".houston/runtime/conversations/activity-a1.json": strToU8(
         JSON.stringify({ id: "activity-a1", title: "A", messages: [] }),
       ),
-      ".houston/runtime/conversations/sess-b2.json": strToU8(
-        JSON.stringify({ id: "sess-b2", title: "B", messages: [] }),
+      ".houston/runtime/conversations/routine-r9.json": strToU8(
+        JSON.stringify({ id: "routine-r9", title: "B", messages: [] }),
       ),
       "notes/keep.txt": strToU8("untouched"),
     });
@@ -62,27 +69,31 @@ describe("remapChatArchive", () => {
     deepStrictEqual(Object.keys(out).sort(), [
       ".houston/activity/activity.json",
       ".houston/runtime/conversations/activity-n1.json",
-      ".houston/runtime/conversations/activity-n2.json",
+      ".houston/runtime/conversations/routine-r9.json",
       "notes/keep.txt",
     ]);
     const rows = JSON.parse(
       strFromU8(out[".houston/activity/activity.json"] as Uint8Array),
     ) as Record<string, unknown>[];
     deepStrictEqual(
-      rows.map((r) => [r.id, r.session_key, r.origin_session_key]),
+      rows.map((r) => [r.id, r.session_key, r.origin_session_key, r.status]),
       [
-        ["n1", undefined, undefined],
-        ["n2", "activity-n2", undefined],
-        ["n3", undefined, "activity-n1"],
+        // A running task cannot be running in the copy; it waits for the user.
+        ["n1", undefined, undefined, "needs_you"],
+        ["n2", "routine-r9", undefined, "done"],
+        ["n3", undefined, "activity-n1", "done"],
       ],
     );
+    // Native session and routine-run references name things only the source has.
+    ok(!("claude_session_id" in (rows[0] as object)));
+    ok(!("routine_run_id" in (rows[0] as object)));
     strictEqual(
       JSON.parse(
         strFromU8(
-          out[".houston/runtime/conversations/activity-n2.json"] as Uint8Array,
+          out[".houston/runtime/conversations/activity-n1.json"] as Uint8Array,
         ),
       ).id,
-      "activity-n2",
+      "activity-n1",
     );
     strictEqual(strFromU8(out["notes/keep.txt"] as Uint8Array), "untouched");
     // The row the conversation list never named still got a fresh id, and the

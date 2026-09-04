@@ -28,7 +28,7 @@ export function SourceAgentStep({
   return (
     <div className="space-y-8">
       <header>
-        <h1 className="text-[28px] font-normal leading-tight text-balance">
+        <h1 className="text-2xl font-normal leading-tight text-balance">
           {t("copyAgent.wizard.source.title")}
         </h1>
         <p className="mt-3 text-base text-ink-muted">

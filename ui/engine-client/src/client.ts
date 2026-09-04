@@ -2688,18 +2688,31 @@ export class HoustonClient {
     if (!res.ok) throw await this.toError(res);
     return await res.arrayBuffer();
   }
-  migrationImport(
+  async migrationImport(
     agentPath: string,
     bytes: ArrayBuffer,
     opts?: { overwrite?: boolean },
   ): Promise<MigrationImportResult> {
     const query = opts?.overwrite ? "?overwrite=1" : "";
-    return this.rawRequest(
-      "POST",
-      `/agents/${encodeURIComponent(agentPath)}/migration/import${query}`,
-      bytes,
-      "application/zip",
+    const res = await this.send(
+      () => ({
+        url: `${this.baseUrl}/v1/agents/${encodeURIComponent(agentPath)}/migration/import${query}`,
+        init: {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            ...this.orgHeaders(),
+            "Content-Type": "application/zip",
+          },
+          body: bytes,
+        },
+      }),
+      // Idempotent by design (skip-existing per entry), so a replay against a
+      // host still coming up lands the same files once.
+      true,
     );
+    if (!res.ok) throw await this.toError(res);
+    return (await res.json()) as MigrationImportResult;
   }
 
   // ---------- Agent Store publication (account-based, no manage tokens) ----------

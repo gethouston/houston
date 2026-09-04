@@ -26,6 +26,16 @@ export function transcriptPath(sessionKey: string): string {
   return `${TRANSCRIPT_PREFIX}${encodeURIComponent(sessionKey)}.json`;
 }
 
+/**
+ * The copy's key for a source key. Only the `activity-<id>` family follows
+ * the task's new id; any other family (`routine-<rid>`, setup chats) names
+ * something the copy carries under the SAME id, so the key must stay for the
+ * link to hold.
+ */
+function nextSessionKey(key: string, nextId: string): string {
+  return key.startsWith("activity-") ? `activity-${nextId}` : key;
+}
+
 /** One fresh id per source conversation, decided once so every batch agrees. */
 export function planChatIdMap(
   conversations: readonly Pick<ConversationEntry, "id" | "session_key">[],
@@ -36,15 +46,19 @@ export function planChatIdMap(
     if (map.activity.has(c.id)) continue;
     const next = mint();
     map.activity.set(c.id, next);
-    map.session.set(c.session_key, `activity-${next}`);
+    map.session.set(c.session_key, nextSessionKey(c.session_key, next));
   }
   return map;
 }
 
 interface ActivityRow {
   id: string;
+  status?: string;
   session_key?: string;
   origin_session_key?: string;
+  claude_session_id?: unknown;
+  routine_run_id?: unknown;
+  worktree_path?: unknown;
   [key: string]: unknown;
 }
 
@@ -58,14 +72,25 @@ function remapActivities(text: string, map: ChatIdMap, mint: () => string) {
     if (!id) {
       id = mint();
       map.activity.set(row.id, id);
-      map.session.set(
-        row.session_key ?? `activity-${row.id}`,
-        `activity-${id}`,
-      );
+      const key = row.session_key ?? `activity-${row.id}`;
+      map.session.set(key, nextSessionKey(key, id));
     }
-    const next: ActivityRow = { ...row, id };
+    // Transient state stays behind: no turn is running in the copy, and a
+    // routine run or native session id names something only the source has.
+    const {
+      claude_session_id: _native,
+      routine_run_id: _run,
+      worktree_path: _tree,
+      ...kept
+    } = row;
+    const next: ActivityRow = {
+      ...kept,
+      id,
+      ...(row.status === "running" ? { status: "needs_you" } : {}),
+    };
     if (row.session_key !== undefined) {
-      next.session_key = map.session.get(row.session_key) ?? `activity-${id}`;
+      next.session_key =
+        map.session.get(row.session_key) ?? nextSessionKey(row.session_key, id);
     }
     if (row.origin_session_key !== undefined) {
       const origin = map.session.get(row.origin_session_key);

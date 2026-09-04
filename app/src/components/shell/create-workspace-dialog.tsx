@@ -10,6 +10,7 @@ import { useMoveAgentToTeam } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
+import { isAgentManager } from "../../lib/agent-access";
 import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";
@@ -115,8 +116,11 @@ export function CreateAgentDialog() {
   };
 
   const selectedDef = agentDefs.find((d) => d.config.id === "blank");
-  // Nothing to copy from until the workspace has an agent.
-  const canCopy = existingAgents.length > 0;
+  // Nothing to copy from until the workspace has an agent whose content the
+  // caller may read: the wizard lists only those, so the tile must agree.
+  const canCopy = existingAgents.some((agent) =>
+    isAgentManager(capabilities, agent),
+  );
 
   const handleCreateAgent = async () => {
     const trimmed = name.trim();

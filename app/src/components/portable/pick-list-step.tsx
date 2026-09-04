@@ -1,5 +1,5 @@
-import { Switch } from "@houston-ai/core";
 import type { ReactNode } from "react";
+import { SwitchRow } from "./wizard-parts";
 
 /**
  * One "keep or leave behind" screen: a title, a sentence, select-all / clear,
@@ -58,7 +58,7 @@ export function PickListStep<T>({
         </header>
       ) : (
         <header>
-          <h1 className="text-[28px] font-normal leading-tight text-balance">
+          <h1 className="text-2xl font-normal leading-tight text-balance">
             {title}
           </h1>
           <p className="mt-3 text-base text-ink-muted">{body}</p>
@@ -87,7 +87,7 @@ export function PickListStep<T>({
             const id = getId(item);
             const row = renderRow(item);
             return (
-              <PickSwitchRow
+              <SwitchRow
                 key={id}
                 checked={selected.has(id)}
                 onChange={() => toggle(id)}
@@ -100,45 +100,6 @@ export function PickListStep<T>({
           })}
         </div>
       </div>
-    </div>
-  );
-}
-
-export function PickSwitchRow({
-  checked,
-  onChange,
-  title,
-  subtitle,
-  trailing,
-  flaggedNote,
-}: {
-  checked: boolean;
-  onChange: () => void;
-  title: string;
-  subtitle?: string;
-  trailing?: ReactNode;
-  flaggedNote?: string | null;
-}) {
-  return (
-    <div className="flex items-start gap-4 px-1 py-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-ink">{title}</p>
-        {subtitle && (
-          <p className="mt-0.5 line-clamp-2 text-xs text-ink-muted">
-            {subtitle}
-          </p>
-        )}
-        {flaggedNote && (
-          <p className="mt-1 text-xs text-ink-muted">{flaggedNote}</p>
-        )}
-      </div>
-      {trailing && <div className="mt-0.5 shrink-0">{trailing}</div>}
-      <Switch
-        checked={checked}
-        onCheckedChange={onChange}
-        aria-label={title}
-        className="mt-0.5 shrink-0"
-      />
     </div>
   );
 }

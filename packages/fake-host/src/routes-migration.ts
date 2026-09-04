@@ -56,22 +56,39 @@ function exportZip(agentId: string, paths: string[]): Response {
   });
 }
 
+/** Skip-existing per entry, like the real importer; `?overwrite=1` replaces. */
 async function importZip(agentId: string, req: Request): Promise<Response> {
+  const overwrite = new URL(req.url).searchParams.get("overwrite") === "1";
   const entries = unzipSync(new Uint8Array(await req.arrayBuffer()));
   let written = 0;
+  let skipped = 0;
   for (const [rel, bytes] of Object.entries(entries)) {
     const text = strFromU8(bytes);
     if (rel === ACTIVITY_PATH) {
+      if (
+        !overwrite &&
+        state.state.files.has(fileKey(agentId, ACTIVITY_PATH))
+      ) {
+        skipped++;
+        continue;
+      }
       state.state.files.set(fileKey(agentId, ACTIVITY_PATH), text);
       state.emitDomain("ActivityChanged", agentId);
       written++;
     } else if (rel.startsWith(TRANSCRIPTS)) {
       const transcript = JSON.parse(text) as FakeTranscript;
+      if (
+        !overwrite &&
+        state.state.histories.has(`${agentId}:${transcript.id}`)
+      ) {
+        skipped++;
+        continue;
+      }
       state.seedHistory(agentId, transcript.id, transcript.messages);
       written++;
     }
   }
-  return json({ written, skipped: 0, rejected: [], sessionsRebuilt: true });
+  return json({ written, skipped, rejected: [], sessionsRebuilt: true });
 }
 
 /** Dispatch `/agents/:id/migration/<action>`. */

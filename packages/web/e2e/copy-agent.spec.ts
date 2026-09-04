@@ -201,15 +201,12 @@ test("a copy started from a server team's New agent row lands on that team, focu
   await openCopyWizard(page);
   const dialog = createDialog(page);
   await dialog.getByRole("button", { name: "Houston", exact: true }).click();
-  await expect(dialog.getByText("Based on Houston"))
-    .toBeVisible()
-    .catch(async () => {
-      // Walk past whichever content screens the seed fills.
-      for (let i = 0; i < 4; i++) {
-        if (await dialog.getByText("Based on Houston").isVisible()) break;
-        await next(page);
-      }
-    });
+  // The seed carries learnings but no routines or skills: the know screen,
+  // then the name.
+  await expect(
+    dialog.getByRole("heading", { name: "What should the copy know?" }),
+  ).toBeVisible();
+  await next(page);
   await expect(dialog.getByText("Based on Houston")).toBeVisible();
   await dialog.getByRole("button", { name: "Create Agent" }).click();
   await expect(dialog).toBeHidden();

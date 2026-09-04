@@ -77,12 +77,15 @@ export function SwitchRow({
   title,
   subtitle,
   trailing,
+  flaggedNote,
 }: {
   checked: boolean;
   onChange: () => void;
   title: string;
   subtitle?: string;
   trailing?: React.ReactNode;
+  /** Shown under a row the threat scan flagged. */
+  flaggedNote?: string | null;
 }) {
   return (
     <div className="flex items-start gap-4 px-1 py-3">
@@ -93,11 +96,15 @@ export function SwitchRow({
             {subtitle}
           </p>
         )}
+        {flaggedNote && (
+          <p className="mt-1 text-xs text-muted-foreground">{flaggedNote}</p>
+        )}
       </div>
       {trailing && <div className="shrink-0 mt-0.5">{trailing}</div>}
       <Switch
         checked={checked}
         onCheckedChange={onChange}
+        aria-label={title}
         className="mt-0.5 shrink-0"
       />
     </div>

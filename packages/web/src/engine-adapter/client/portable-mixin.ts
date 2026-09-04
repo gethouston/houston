@@ -9,6 +9,7 @@ import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../../ui/engine-client/src/types";
+import * as migration from "../migration";
 import * as portable from "../portable";
 import { importFromStoreLink } from "../portable-from-store";
 import type { BaseCtor } from "./mixin";
@@ -73,7 +74,7 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<ArrayBuffer> {
       if (!this.ctx.cp)
         throw new Error("Copying agent data needs a connected host.");
-      return portable.migrationExport(this.ctx.cp, agentPath, paths);
+      return migration.migrationExport(this.ctx.cp, agentPath, paths);
     }
     async migrationImport(
       agentPath: string,
@@ -82,7 +83,7 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<MigrationImportResult> {
       if (!this.ctx.cp)
         throw new Error("Copying agent data needs a connected host.");
-      return portable.migrationImport(this.ctx.cp, agentPath, bytes, opts);
+      return migration.migrationImport(this.ctx.cp, agentPath, bytes, opts);
     }
   }
   return Portable;

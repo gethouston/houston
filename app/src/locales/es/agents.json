@@ -222,18 +222,19 @@
     },
     "errors": {
       "failed": "No pudimos copiar el agente",
-      "chatsFailed": "No pudimos copiar los chats"
+      "chatsFailed": "No pudimos copiar los chats",
+      "chatsPartial": "Algunos chats no llegaron. Vuelve a copiar el agente para reintentar."
     },
     "wizard": {
       "eyebrow": "Copiar un agente",
       "source": {
         "title": "¿Qué agente copiamos?",
-        "body": "El nuevo agente empieza igual que el que elijas. En las siguientes pantallas decides qué conserva. Las conversaciones y los archivos se quedan con el original.",
+        "body": "El nuevo agente empieza igual que el que elijas. En las siguientes pantallas decides qué conserva. Los archivos se quedan con el original.",
         "empty": "Todavía no tienes agentes para copiar."
       },
       "instructions": {
         "title": "¿Qué debe saber la copia?",
-        "body": "Todo empieza activado. Desactiva lo que el nuevo agente no deba llevarse.",
+        "body": "Todo empieza activado, salvo las conversaciones. Desactiva lo que el nuevo agente no deba llevarse.",
         "instructionsLabel": "Descripción del puesto",
         "instructionsRow": "Descripción del puesto y reglas",
         "noInstructions": "{{name}} todavía no tiene descripción del puesto.",
