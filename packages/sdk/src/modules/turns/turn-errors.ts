@@ -66,6 +66,28 @@ export function engineVerdictMessage(e: unknown): string | undefined {
  * turn as failed on such an error without independent evidence (see
  * `streamTurn`'s send-verdict window).
  */
+/**
+ * The engine answered the send with "not here, not now": the agent's pod is
+ * waking, restarting (a release roll, a drain), or its runtime is still
+ * booting, and the SAME send succeeds once it is back. Keyed on the exact
+ * (status, reason) pairs the gateway and host mint for that state, never on a
+ * bare 502/503 (a provider quota page on the same status is a real failure).
+ * The web adapter's `isEngineWakingError` reads the same pairs across every
+ * client error shape; this is the one shape the turn stream sees.
+ */
+export function isEngineWakingRejection(e: unknown): boolean {
+  if (!(e instanceof EngineError)) return false;
+  const reason = engineVerdictMessage(e);
+  if (reason === undefined) return false;
+  if (e.status === 503) {
+    return (
+      reason === "engine unavailable" ||
+      reason === "the agent's runtime is still starting, try again shortly"
+    );
+  }
+  return e.status === 502 && reason === "engine proxy failed";
+}
+
 export function isAmbiguousSendFailure(e: unknown): boolean {
   if (e instanceof EngineError) return false;
   if (e instanceof Error && e.name === "AbortError") return false;

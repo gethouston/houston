@@ -8,6 +8,7 @@ import {
   SEND_IN_FLIGHT_MESSAGE,
   SEND_LOST_MESSAGE,
   SEND_VERDICT_MS,
+  SEND_WAKE_RETRY_DELAYS_MS,
   STREAM_FAILURE_BUDGET,
   STREAM_LOST_MESSAGE,
   type StreamRegistry,
@@ -17,6 +18,7 @@ import {
 import {
   engineVerdictMessage,
   isAmbiguousSendFailure,
+  isEngineWakingRejection,
   turnErrorMessage,
 } from "./turn-errors";
 import { TurnSink } from "./turn-sink";
@@ -129,6 +131,38 @@ export interface StreamTurnOptions {
  * `registry` is the caller's stream set (one per SDK / adapter) — passed
  * explicitly so two owners never share a map and cross-abort each other.
  */
+/**
+ * Send, and re-send on a waking refusal (the pod is restarting or booting)
+ * along the delay ladder; any other outcome resolves or rejects at once. The
+ * caller's abort ends the wait early (a stop mid-wait rejects as the abort).
+ */
+async function sendUntilAccepted(
+  send: () => Promise<void>,
+  delaysMs: readonly number[],
+  signal: AbortSignal,
+): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await send();
+      return;
+    } catch (e) {
+      const delay = delaysMs[attempt];
+      if (delay === undefined || !isEngineWakingRejection(e) || signal.aborted)
+        throw e;
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(done, delay);
+        function done() {
+          signal.removeEventListener("abort", done);
+          clearTimeout(timer);
+          resolve();
+        }
+        signal.addEventListener("abort", done, { once: true });
+      });
+      if (signal.aborted) throw e;
+    }
+  }
+}
+
 export async function streamTurn(
   engine: HoustonEngineClient,
   agentPath: string,
@@ -283,12 +317,17 @@ export async function streamTurn(
     streaming.catch(() => {});
     if (!sent) {
       try {
-        await engine.sendMessage(sessionKey, prompt, {
-          nonce,
-          ...opts.pin,
-          displayText: opts.displayText,
-          mentions,
-        });
+        await sendUntilAccepted(
+          () =>
+            engine.sendMessage(sessionKey, prompt, {
+              nonce,
+              ...opts.pin,
+              displayText: opts.displayText,
+              mentions,
+            }),
+          opts.tuning?.sendWakeRetryDelaysMs ?? SEND_WAKE_RETRY_DELAYS_MS,
+          ac.signal,
+        );
         sink.sendAccepted();
       } catch (e) {
         // A definitive failure (engine verdict / our abort) settles below.

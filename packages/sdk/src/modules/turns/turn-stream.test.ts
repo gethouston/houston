@@ -48,7 +48,7 @@ const hang: StreamHandler = (opts) =>
 function fakeEngine(
   handlers: StreamHandler[],
   history: ChatMessage[] = [],
-  opts: { sendError?: unknown } = {},
+  opts: { sendError?: unknown; sendErrors?: unknown[] } = {},
 ) {
   const afters: Array<number | undefined> = [];
   /** The nonce each sendMessage carried — handlers echo it on `user` frames. */
@@ -74,6 +74,8 @@ function fakeEngine(
       nonces.push(messageOpts?.nonce);
       sendOpts.push(messageOpts as Record<string, unknown> | undefined);
       if (opts.sendError !== undefined) throw opts.sendError;
+      // A queue of refusals: each send throws the next one, then sends land.
+      if (opts.sendErrors?.length) throw opts.sendErrors.shift();
     },
     async getHistory() {
       historyCalls.n++;
@@ -2270,4 +2272,109 @@ test("attach after the turn finished: the poll's history settle stamps the bubbl
   const reply = snap.feed.find((f) => f.feed_type === "assistant_text");
   expect(reply?.turnId).toBe("turn-3");
   expect(snap.sessionStatus).toBe("completed");
+});
+
+// A send that meets a pod mid-restart (the old pod draining, the replacement
+// booting) is refused with the gateway's waking 503. The message is not lost:
+// it is re-sent on the wake ladder with the SAME nonce while the bubble stays
+// pending, and the turn then runs as if the first send had landed.
+test("a waking refusal re-sends the same message until the pod is back", async () => {
+  const waking = () =>
+    new EngineError(
+      503,
+      JSON.stringify({
+        error: "engine unavailable",
+        detail: "agent is waking",
+      }),
+    );
+  let sends = () => 0;
+  const { engine, nonces } = fakeEngine(
+    [
+      async (o) => {
+        // The pod is back only once the third send lands; frames before
+        // that would settle the turn under the re-send.
+        o.onEvent(sync(false, "", 0));
+        await waitFor(() => sends() === 3);
+        o.onEvent({ type: "text", data: "Back", seq: 1 });
+        o.onEvent({ type: "done", data: null, seq: 2 });
+      },
+    ],
+    [],
+    { sendErrors: [waking(), waking()] },
+  );
+  sends = () => nonces.length;
+  const { items, board, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-wake",
+    "hi",
+    output,
+    registry,
+    {
+      tuning: { ...fast, sendWakeRetryDelaysMs: [1, 1, 1] },
+    },
+  );
+
+  expect(nonces).toHaveLength(3);
+  expect(new Set(nonces).size).toBe(1); // one message, never doubled
+  expect(items.filter((i) => i.feed_type === "system_message")).toEqual([]);
+  expect(finals(items)).toHaveLength(1);
+  expect(board).toEqual(["running", "needs_you"]);
+});
+
+test("a waking refusal past the ladder settles like any rejected send", async () => {
+  const waking = () =>
+    new EngineError(
+      503,
+      JSON.stringify({
+        error: "engine unavailable",
+        detail: "agent is waking",
+      }),
+    );
+  const { engine, nonces } = fakeEngine([hang], [], {
+    sendErrors: [waking(), waking(), waking()],
+  });
+  const { items, sessionStatuses, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-wake-out",
+    "hi",
+    output,
+    registry,
+    {
+      tuning: { ...fast, sendWakeRetryDelaysMs: [1] },
+    },
+  );
+
+  expect(nonces).toHaveLength(2); // the send, one re-send, then the verdict
+  expect(sessionStatuses.at(-1)).toBe("error");
+  expect(items.map((i) => i.data)).toContain("engine unavailable");
+});
+
+test("a non-waking refusal is never re-sent", async () => {
+  const { engine, nonces } = fakeEngine([hang], [], {
+    sendErrors: [
+      new EngineError(
+        409,
+        JSON.stringify({ error: "A turn is already running" }),
+      ),
+    ],
+  });
+  const { output } = makeOutput();
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-409-once",
+    "hi",
+    output,
+    registry,
+    {
+      tuning: { ...fast, sendWakeRetryDelaysMs: [1, 1] },
+    },
+  );
+  expect(nonces).toHaveLength(1);
 });

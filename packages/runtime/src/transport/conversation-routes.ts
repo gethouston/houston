@@ -121,16 +121,21 @@ export async function handleConversationRoute(
   }
   if (method === "POST" && action === "messages") {
     // Shutting down: the turns already running finish, new ones do not start
-    // here. 503 + Retry-After is the host's own "not here, not now" shape
-    // (its closed launcher answers the same), which clients treat as a wake
-    // in progress and retry against the replacement, never as an error.
+    // here. The answer is the gateway's own waking shape, byte for byte —
+    // every client reads `503 {"error":"engine unavailable"}` as "the pod is
+    // not there right now", re-sends the same message on its wake ladder,
+    // and never shows an error. A new reason string would be a red toast on
+    // every shipped client.
     if (isDraining()) {
       res.writeHead(503, {
         "Content-Type": "application/json; charset=utf-8",
         "Retry-After": "2",
       });
       res.end(
-        JSON.stringify({ error: "the runtime is restarting; retry shortly" }),
+        JSON.stringify({
+          error: "engine unavailable",
+          detail: "the agent is restarting",
+        }),
       );
       return true;
     }
