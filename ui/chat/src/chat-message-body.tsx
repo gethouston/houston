@@ -82,7 +82,7 @@ function mentionTargets({
  * h5/h6 at 14px are the rare exception), all semibold (Streamdown's own
  * weight), with heading margins pulled in from mt-6 to fit a bubble.
  * Descendant selectors (specificity 0,1,1) reliably beat Streamdown's element
- * utilities (0,1,0) — same trick as the app's update-notes card.
+ * utilities (0,1,0).
  */
 const CHAT_MARKDOWN_SCALE = [
   "[&_h1]:text-xl [&_h2]:text-lg [&_:is(h3,h4)]:text-base [&_:is(h5,h6)]:text-sm",

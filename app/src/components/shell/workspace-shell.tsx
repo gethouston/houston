@@ -23,6 +23,7 @@ import { MobileNavBar } from "./mobile-nav-bar";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
 import { topLevelScreenViews } from "./top-level-screen-views";
+import { UpdateChecker } from "./update-checker";
 import { useWorkspaceViewGuards } from "./use-workspace-view-guards";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
@@ -163,6 +164,9 @@ export function WorkspaceShell({
         <CommandPalette />
         <ShortcutCheatsheet />
         <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
+        {/* Window-level chrome, not a sidebar row: the launch overlay covers
+            the shell and the restart pill holds the window's top corner. */}
+        <UpdateChecker />
       </div>
       {inAppOnboardingActive && <InAppOnboarding />}
       {/* The guided setup OWNS the screen while it runs: both surfaces spotlight

@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { analytics } from "../lib/analytics";
+import { useCallback, useEffect, useRef } from "react";
 import { currentAppVersion } from "../lib/app-version";
 import { showUpdateCheckStuckToast } from "../lib/error-toast";
 import {
-  type ForcedUpdateMode,
-  forcedUpdateMode,
   nextCheckFailureStreak,
   shouldRecheckOnFocus,
   UPDATE_CHECK_INTERVAL_MS,
   updateCheckJustStuck,
-} from "../lib/update-force";
+  updatePresentation,
+} from "../lib/update-policy";
 import { useUpdateMachine } from "./use-update-machine";
 
 export type {
@@ -19,23 +17,30 @@ export type {
 } from "./use-update-machine";
 
 /**
- * Update policy: updates are forced. The machine (use-update-machine) knows
- * HOW to install; this hook decides WHEN — a launch check plus a short
- * interval plus a focus re-check — and latches the forced presentation the
- * moment an update is found:
+ * Update policy. The machine (use-update-machine) knows HOW to download and
+ * install; this hook decides WHEN: a launch check plus a short interval plus
+ * a focus re-check, and what a find does:
  *
- * - found by the launch check → install immediately (blocking overlay),
- * - found mid-session → the countdown dialog installs it when the timer runs
- *   out unless the user updates sooner.
+ * - found by the launch check → install and relaunch right away (nothing is
+ *   running yet; the overlay covers the few seconds it takes),
+ * - found mid-session → download silently. The restart pill then waits for
+ *   the user's own click; nothing here ever installs or relaunches on its
+ *   own, so a running turn or a half-typed message can't be killed by an
+ *   update.
  */
 export function useUpdateChecker() {
-  const { status, runCheck, installAndRelaunch, relaunchInstalledApp } =
-    useUpdateMachine();
+  const {
+    status,
+    runCheck,
+    download,
+    installAndRelaunch,
+    relaunchInstalledApp,
+  } = useUpdateMachine();
   const lastCheckAtRef = useRef<number | null>(null);
   // Consecutive check FAILURES. A client that can never reach the release
   // feed would strand on an old build silently (the check is fail-open) —
   // when the streak first hits the stuck threshold, it surfaces itself:
-  // nudge + telemetry, once per streak (PRODUCT-1386).
+  // nudge + telemetry, once per streak.
   const failureStreakRef = useRef(0);
 
   const check = useCallback(async () => {
@@ -54,41 +59,33 @@ export function useUpdateChecker() {
     }
   }, [runCheck]);
 
-  // The forced presentation, latched on the first transition into
-  // "available" and kept for the rest of the run (the process relaunches to
-  // clear it). PROD-only: runCheck never fires in dev (the check effect below
-  // is PROD-gated), and auto-installing the shipped build over a dev bundle
-  // would be hostile — belt and suspenders.
-  const [forcedMode, setForcedMode] = useState<ForcedUpdateMode | null>(null);
-  const forcedModeRef = useRef<ForcedUpdateMode | null>(null);
+  // Every entry into "available" acts once: a launch find installs, a
+  // mid-session find downloads. A failed background download lands in
+  // `error`, the next check finds the release again and this re-runs, so a
+  // blip retries at poll cadence with no loop of its own. PROD-only: the
+  // check effect below never fires in dev, and auto-installing the shipped
+  // build over a dev bundle would be hostile — belt and suspenders.
   useEffect(() => {
     if (!import.meta.env.PROD) return;
-    if (status.state !== "available" || forcedModeRef.current) return;
-    const mode = forcedUpdateMode(status.origin);
-    forcedModeRef.current = mode;
-    setForcedMode(mode);
-    analytics.track("update_forced", {
-      source: mode,
-      from_version: status.info.currentVersion,
-      to_version: status.info.version,
-    });
-    // Launch-time find: the user hasn't started working, install right away.
-    // Mid-session the countdown dialog owns the trigger.
-    if (mode === "launch") void installAndRelaunch("launch");
-  }, [status, installAndRelaunch]);
+    if (status.state !== "available") return;
+    if (updatePresentation(status.info.origin) === "launch") {
+      void installAndRelaunch("launch");
+    } else {
+      void download();
+    }
+  }, [status, download, installAndRelaunch]);
 
   useEffect(() => {
     // The updater pings the production release feed and would offer the
     // shipped build over a local dev build (e.g. `pnpm tauri dev`) — there's
     // nothing sensible to install over a dev bundle, so it just nags. Only
-    // run in packaged production builds. (Matches App.tsx's
-    // `import.meta.env.PROD` gating idiom; on web the updater is shimmed to a
+    // run in packaged production builds. (On web the updater is shimmed to a
     // no-op regardless.)
     if (!import.meta.env.PROD) return;
     void check();
     const interval = setInterval(check, UPDATE_CHECK_INTERVAL_MS);
-    // Returning to the app is the moment a forced update is least disruptive
-    // and most expected — re-check then, throttled against focus bursts.
+    // Returning to the app is a cheap moment to look again, throttled
+    // against focus bursts.
     const onFocus = () => {
       if (shouldRecheckOnFocus(lastCheckAtRef.current, Date.now())) {
         void check();
@@ -101,10 +98,5 @@ export function useUpdateChecker() {
     };
   }, [check]);
 
-  return {
-    status,
-    forcedMode,
-    installAndRelaunch,
-    relaunchInstalledApp,
-  };
+  return { status, installAndRelaunch, relaunchInstalledApp };
 }

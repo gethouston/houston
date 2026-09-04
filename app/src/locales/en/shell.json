@@ -499,27 +499,20 @@
     }
   },
   "updateChecker": {
-    "downloading": "Downloading and installing update...",
-    "downloadingProgress": "Downloading and installing... {{progress}}%",
-    "ready": "Update installed. Relaunch Houston to finish.",
-    "errorInstall": "Houston couldn't install the update. Try again in a moment.",
-    "errorRelaunch": "Update installed, but Houston couldn't relaunch itself. Relaunch manually or try again.",
-    "detailsHeading": "What's new",
-    "noDetails": "This update includes the latest fixes and improvements.",
-    "primaryAction": "Update and relaunch",
-    "installingAction": "Installing update...",
-    "relaunchAction": "Relaunch Houston",
-    "retryAction": "Try again"
-  },
-  "updateForced": {
-    "cardLabel": "Houston update in progress",
+    "launchLabel": "Houston update in progress",
     "launchTitle": "Upgrading Houston",
     "launchDescription": "Houston is updating to version {{version}}. The app will restart in a moment.",
-    "countdownTitle": "Houston, we have an update!",
-    "countdownDescription_one": "Version {{version}} will install in {{count}} second.",
-    "countdownDescription_other": "Version {{version}} will install in {{count}} seconds.",
-    "reassurance": "Your agents keep working in the background, and your chats and settings are saved. You'll pick up right where you left off.",
-    "updateNowAction": "Update now"
+    "downloading": "Downloading update...",
+    "downloadingProgress": "Downloading update... {{progress}}%",
+    "installing": "Installing update...",
+    "errorInstall": "Houston couldn't install the update. Try again in a moment.",
+    "errorRelaunch": "Update installed, but Houston couldn't relaunch itself. Relaunch manually or try again.",
+    "relaunchAction": "Relaunch Houston",
+    "retryAction": "Try again",
+    "retryUpdateAction": "Update failed. Try again",
+    "restartAction": "Restart to update",
+    "restartHint": "Version {{version}} is downloaded. Restart Houston whenever you like to finish updating.",
+    "restarting": "Restarting..."
   },
   "naming": {
     "dialogTitle": "Name your Agent",

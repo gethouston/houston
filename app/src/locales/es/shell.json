@@ -499,27 +499,20 @@
     }
   },
   "updateChecker": {
-    "downloading": "Descargando e instalando la actualización...",
-    "downloadingProgress": "Descargando e instalando... {{progress}}%",
-    "ready": "Actualización instalada. Reinicia Houston para terminar.",
-    "errorInstall": "Houston no pudo instalar la actualización. Intenta otra vez en un momento.",
-    "errorRelaunch": "La actualización se instaló, pero Houston no pudo reiniciarse solo. Reinícialo manualmente o intenta otra vez.",
-    "detailsHeading": "Novedades",
-    "noDetails": "Esta actualización incluye las últimas correcciones y mejoras.",
-    "primaryAction": "Actualizar y reiniciar",
-    "installingAction": "Instalando actualización...",
-    "relaunchAction": "Reiniciar Houston",
-    "retryAction": "Intentar otra vez"
-  },
-  "updateForced": {
-    "cardLabel": "Actualización de Houston en curso",
+    "launchLabel": "Actualización de Houston en curso",
     "launchTitle": "Actualizando Houston",
     "launchDescription": "Houston se está actualizando a la versión {{version}}. La aplicación se reiniciará en un momento.",
-    "countdownTitle": "¡Houston, tenemos una actualización!",
-    "countdownDescription_one": "La versión {{version}} se instalará en {{count}} segundo.",
-    "countdownDescription_other": "La versión {{version}} se instalará en {{count}} segundos.",
-    "reassurance": "Tus agentes siguen trabajando en segundo plano y tus chats y configuraciones quedan guardados. Vas a retomar justo donde lo dejaste.",
-    "updateNowAction": "Actualizar ahora"
+    "downloading": "Descargando la actualización...",
+    "downloadingProgress": "Descargando la actualización... {{progress}}%",
+    "installing": "Instalando la actualización...",
+    "errorInstall": "Houston no pudo instalar la actualización. Intenta otra vez en un momento.",
+    "errorRelaunch": "La actualización se instaló, pero Houston no pudo reiniciarse solo. Reinícialo manualmente o intenta otra vez.",
+    "relaunchAction": "Reiniciar Houston",
+    "retryAction": "Intentar otra vez",
+    "retryUpdateAction": "Falló la actualización. Intentar otra vez",
+    "restartAction": "Reiniciar para actualizar",
+    "restartHint": "La versión {{version}} ya está descargada. Reinicia Houston cuando quieras para terminar de actualizar.",
+    "restarting": "Reiniciando..."
   },
   "naming": {
     "dialogTitle": "Nombra tu agente",

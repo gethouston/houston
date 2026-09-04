@@ -5,12 +5,10 @@ import { useRunGuidedSetup } from "../../hooks/use-run-guided-setup";
 import { SETTINGS_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import { SidebarHelpMenu } from "./sidebar-help-menu";
-import { UpdateChecker } from "./update-checker";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
- * The foot of the rail: Settings, the help control beside it, and the update
- * checker.
+ * The foot of the rail: Settings and the help control beside it.
  *
  * **Settings lives here, not in the "Workspace" band.** That band is what the
  * SPACE is made of, and it is owner territory; Settings belongs to the
@@ -28,8 +26,7 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
  * {@link useRunGuidedSetup}, the same composition the Academy's setup chapter
  * spends, so the guided setup can never start two different ways.
  *
- * Settings is the rail's LAST row, with the update checker below it as ambient
- * status rather than a destination. The avatar menu that used to close the rail
+ * Settings is the rail's LAST row. The avatar menu that used to close the rail
  * is gone: once Settings became a permanent row here, a second control opening
  * "Account settings" was a second door onto the same page. Identity moved INTO
  * that page, where the Settings index now opens on the signed-in person's face,
@@ -92,7 +89,6 @@ export function SidebarFooter(props: { collapsed: boolean }) {
           }}
         />
       </div>
-      <UpdateChecker />
     </div>
   );
 }
