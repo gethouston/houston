@@ -69,7 +69,7 @@ export function useSidebarTeamsModel(args: {
   serverBacked: boolean;
   canCreateAgents: boolean;
   summaries: AgentItemArgs["summaries"];
-  closeMobileSidebar: () => void;
+  closeMobileMenu: () => void;
 }): SidebarTeamsModel {
   const { t, agents, sidebar, serverBacked, canCreateAgents } = args;
   const { capabilities } = useCapabilities();
@@ -147,7 +147,7 @@ export function useSidebarTeamsModel(args: {
     // whether one sits in the store: clearing a pin nothing is narrowing by
     // would read as a broken click.
     selectedAgentId,
-    closeMobileSidebar: args.closeMobileSidebar,
+    closeMobileMenu: args.closeMobileMenu,
   });
 
   const { items, groups, defaultGroup } = buildTeamSidebarLists({

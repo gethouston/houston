@@ -1,4 +1,5 @@
 import { expect, test } from "../support/fixtures";
+import { newTaskButton, openPhoneTeamSection } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
 /**
@@ -12,10 +13,7 @@ test("card tap pushes the chat; back returns to the board", async ({
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByTestId("mobile-tab-bar")
-    .getByRole("button", { name: "Tasks" })
-    .tap();
+  await openPhoneTeamSection(page, "mission-control");
   await screen(page)
     .getByTestId("board-pager")
     .locator("[data-board-page='needs_you']")
@@ -61,10 +59,7 @@ test("the compose draft chat creates its mission on first send", async ({
   page,
 }) => {
   await page.goto("/");
-  await page
-    .getByTestId("mobile-top-bar")
-    .getByRole("button", { name: "New task" })
-    .tap();
+  await newTaskButton(page).tap();
 
   const chat = page.getByTestId("mission-chat-screen");
   const composer = chat.getByPlaceholder("What should the agent work on?");

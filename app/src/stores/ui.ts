@@ -11,7 +11,11 @@ import {
 } from "../lib/nav-stack.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
-import { AGENTS_HOME_VIEW_ID, INBOX_VIEW_ID } from "../lib/top-level-views.ts";
+import {
+  AGENTS_HOME_VIEW_ID,
+  INBOX_VIEW_ID,
+  TEAMS_HOME_VIEW_ID,
+} from "../lib/top-level-views.ts";
 
 export interface ToastItem {
   id: string;
@@ -91,6 +95,9 @@ interface UIState {
   authRequired: string | null;
   toasts: ToastItem[];
   createAgentDialogOpen: boolean;
+  /** The "New team" dialog. Shared state rather than the rail's own: the
+   *  phone has no rail, so its Teams home opens the same dialog. */
+  createTeamDialogOpen: boolean;
   createAgentTeamId: string | null;
   /** The team whose "Change icon & name" dialog is open, or null for none. */
   editTeamIdentityId: string | null;
@@ -123,9 +130,12 @@ interface UIState {
    * releasing can never clobber the surface the user just navigated to.
    */
   missionPanelOwners: string[];
-  /** Whether the mobile (<768px) sidebar drawer is open. Session-only, never
-   *  persisted: a drawer restored open after a reload is a trap on a phone. */
-  mobileSidebarOpen: boolean;
+  /** Whether the phone's "More" menu is open (the floating card the nav bar
+   *  raises: the workspace switcher, the long tail of destinations, help).
+   *  Session-only, never persisted: a menu restored open after a reload is a
+   *  trap on a phone. It is deliberately NOT a nav entry — a menu the back
+   *  button could pop would be a place, which it is not. */
+  mobileMoreOpen: boolean;
   /**
    * One-shot nav target for a routine chat with no board card (session-
    * finished notification click, #401): the OWNING agent plus the activity id
@@ -291,6 +301,16 @@ interface UIState {
     },
   ) => void;
   /**
+   * Navigate to the phone's Teams home: the tree of every team and its
+   * sections, the Teams tab's root. A team's section is one push below it
+   * (`openTeamView`), so its back chip retreats here.
+   */
+  openTeamsHome: (opts?: {
+    /** `reset` for the mobile nav bar, `retreat` for a back chip; default
+     *  `push`. */
+    nav?: NavMode;
+  }) => void;
+  /**
    * Push the phone's mission-chat screen for `agentId`, on `missionId`'s chat
    * (`null` = an empty draft chat, the compose flow). ONE call sets both ids
    * so the screen can never open half-addressed. `replace` is for the draft
@@ -312,6 +332,7 @@ interface UIState {
   setAuthRequired: (provider: string | null) => void;
   addToast: (toast: Omit<ToastItem, "id">) => void;
   dismissToast: (id: string) => void;
+  setCreateTeamDialogOpen: (open: boolean) => void;
   setCreateAgentDialogOpen: (open: boolean, teamId?: string | null) => void;
   setEditTeamIdentityId: (teamId: string | null) => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
@@ -321,7 +342,7 @@ interface UIState {
   setMissionPanelOwner: (ownerId: string, open: boolean) => void;
   /** Release every claim — the "get me out of this panel" escape hatch. */
   closeMissionPanel: () => void;
-  setMobileSidebarOpen: (open: boolean) => void;
+  setMobileMoreOpen: (open: boolean) => void;
   setPendingRoutineChat: (
     target: { agentId: string; activityId: string } | null,
   ) => void;
@@ -373,6 +394,7 @@ const initialUIState = {
   authRequired: null,
   toasts: [],
   createAgentDialogOpen: false,
+  createTeamDialogOpen: false,
   createAgentTeamId: null,
   editTeamIdentityId: null,
   agentWarmingNoticeOpen: false,
@@ -381,7 +403,7 @@ const initialUIState = {
   onStartMission: null,
   missionPanelOpen: false,
   missionPanelOwners: [],
-  mobileSidebarOpen: false,
+  mobileMoreOpen: false,
   pendingRoutineChat: null,
   pendingSkillChatActivityId: null,
   integrationSetupChatAgentId: null,
@@ -503,6 +525,14 @@ export const useUIStore = create<UIState>()(
             opts?.nav ?? "push",
           ),
         ),
+      openTeamsHome: (opts) =>
+        set((s) =>
+          navigated(
+            s,
+            { viewMode: TEAMS_HOME_VIEW_ID, ...noChat },
+            opts?.nav ?? "push",
+          ),
+        ),
       openMissionChat: (chatAgentId, chatMissionId, opts) =>
         set((s) =>
           navigated(s, { chatAgentId, chatMissionId }, opts?.nav ?? "push"),
@@ -570,6 +600,8 @@ export const useUIStore = create<UIState>()(
           return { toasts: s.toasts.filter((t) => t.id !== id) };
         }),
 
+      setCreateTeamDialogOpen: (createTeamDialogOpen) =>
+        set({ createTeamDialogOpen }),
       setCreateAgentDialogOpen: (createAgentDialogOpen, teamId = null) =>
         set({
           createAgentDialogOpen,
@@ -621,7 +653,7 @@ export const useUIStore = create<UIState>()(
             ? navigated(s, partial, "retreat")
             : partial;
         }),
-      setMobileSidebarOpen: (mobileSidebarOpen) => set({ mobileSidebarOpen }),
+      setMobileMoreOpen: (mobileMoreOpen) => set({ mobileMoreOpen }),
       setPendingRoutineChat: (pendingRoutineChat) =>
         set({ pendingRoutineChat }),
       setPendingSkillChatActivityId: (pendingSkillChatActivityId) =>

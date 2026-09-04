@@ -11,7 +11,7 @@
       },
       "openMenu": {
         "title": "Open the menu",
-        "hint": "Tap the menu button, top left"
+        "hint": "Tap More at the bottom"
       },
       "openAiHub": {
         "title": "Click AI Models"
@@ -89,6 +89,10 @@
         "title": "Chapter 1 complete!",
         "body": "You just finished the first chapter of the Houston Academy and earned {{points}} experience.",
         "cta": "Visit the Academy"
+      },
+      "openAgents": {
+        "hint": "Tap Agents at the bottom",
+        "title": "Open Agents"
       }
     },
     "skipStep": "Skip step",

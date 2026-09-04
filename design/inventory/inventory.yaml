@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 74
+version: 75
 
 components:
   - id: agent-avatar
@@ -1568,41 +1568,105 @@ components:
       the person it acts on.
     since: 55
 
-  - id: mobile-tab-bar
-    title: Mobile tab bar
+  - id: mobile-nav-bar
+    title: Mobile nav bar
     purpose: >-
-      The phone shell's bottom bar: the three places the app is, one tap away,
-      below 768px only.
-    anatomy: [tab-row, tab-glyph, tab-label, needs-you-badge]
-    states: [resting, active, with-count]
+      The phone shell's floating bottom pill: Agents, Teams and More, plus a
+      separate round new-task control, below 768px only.
+    anatomy: [pill, nav-item, item-glyph, active-item-label, needs-you-badge,
+      new-task-control]
+    states: [resting, active, with-count, menu-open, hidden-under-chat]
     variants: []
     behavior: >-
-      Three tabs and never a fourth: Agents (the landing tab), the Tasks board,
-      and Settings. Chat is never a tab, a new task starts from the top bar's
-      compose control, and the long tail (store, skills, workspaces) stays in
-      the drawer, so the bar stays three thumb-sized certainties rather than a
-      scrolling menu. Switching tabs RESETS the navigation trail to the tapped
-      tab's root, the way native tab bars do: the old tab's drill-in is
-      abandoned, and the hardware back button afterwards stays on the new tab
-      instead of resurrecting what the user navigated away from. Every location
-      in the app lights exactly one tab -- Settings its own screen, an
-      unnarrowed team board the Tasks tab, and everything else the Agents
-      landing tab -- so the bar is never dark. The Tasks tab carries the same
-      needs-you count badge the rail's rows wear, the cross-agent sum of
-      missions waiting on the user, and shows nothing at zero. The bar pads
-      itself against the phone's home indicator. While a chat is up -- the
-      pushed mission-chat-screen, or the board's full-screen panel -- the bar
-      hides: chat is a push, not a tab, so its own back affordance and the
-      hardware back button are the way out, and the composer gets the full
-      height above the on-screen keyboard. Any navigation underneath (a tab
-      root, a notification jump) closes the chat and brings the bar straight
-      back.
+      A floating pill a little above the bottom edge, padded against the
+      home indicator, with three items and never a fourth: Agents (the
+      landing item, rooting on the agents tree), Teams (rooting on the
+      teams-home tree) and More (which opens the mobile-more-menu rather than
+      navigating). Inactive items are glyph-only; the active item widens into
+      an inner pill carrying its glyph and label, so the bar names exactly one
+      place at a time and is never dark: the Agents home and its drill-ins
+      light Agents, a team screen and the teams tree light Teams, every other
+      screen (Settings, Inbox, the store, integrations, skills, admin, about
+      me, the academy) lights More. Tapping Agents or Teams RESETS the
+      navigation trail to that root the way native tab bars do, so hardware
+      back afterwards stays on the new root. The Agents item wears the same
+      needs-you count badge the rail rows wear, the cross-agent sum of
+      missions waiting on the user, nothing at zero. The round control to the
+      right of the pill starts a new task, scoped to where the user stands:
+      inside an agent's list it opens that agent's draft chat, on a team
+      screen it asks among that team's agents, anywhere else it asks among
+      everyone (new-mission-sheet). While a chat is up (the pushed
+      mission-chat-screen or the board's full-screen panel) the whole bar
+      hides: chat is a push, not a tab, and the composer takes the full
+      height above the keyboard. There is no top bar and no drawer on the
+      phone any more; the bar and the More menu are the whole of the phone's
+      chrome.
     a11y: >-
-      A nav landmark with an accessible name; each tab is a real button
-      carrying aria-current on the active one, and the count badge announces
-      its meaning ("N issues need you") rather than a bare number. Targets are
-      at least 44px tall.
-    since: 70
+      A nav landmark with an accessible name; every item and the new-task
+      control is a real button with an aria-label, the active item carries
+      aria-current, the count badge announces its meaning ("N issues need
+      you") rather than a bare number. Targets are at least 44px tall.
+    since: 75
+
+  - id: mobile-more-menu
+    title: Mobile More menu
+    purpose: >-
+      The phone's long tail behind the nav bar's More item: every destination
+      the desktop rail lists, as a floating card rising from the bar.
+    anatomy: [card, workspace-switcher, settings-control, band-label,
+      destination-row, row-glyph, mention-badge, help-row]
+    states: [closed, open]
+    variants: []
+    behavior: >-
+      A floating rounded card anchored just above the nav bar, dismissed by
+      scrim tap or swipe, never a full-height sheet. Its header is the
+      workspace switcher beside a Settings control; below it the desktop
+      rail's destinations in the rail's own order and bands, one row each,
+      hairlines between bands: the unlabelled lead run (Inbox with its
+      unread-mention badge, About me, Academy, Agent Store), "My accounts"
+      (Integrations, AI Models where the caller may see it) and "Workspace"
+      (Admin, Skills, each behind the same gate the rail applies), then the
+      help pair (Guide me, Report a problem). One list, the rail's own, so a
+      destination cannot exist on the desktop and be unreachable on the
+      phone. Picking a destination closes the card and RESETS the navigation
+      trail to that screen, with the bar's More item lit; opening the card
+      itself is not a navigation and leaves no history entry. The guided
+      setup rings the More item first and then the row inside the open card,
+      exactly as it once rang the hamburger and the drawer row.
+    a11y: >-
+      A modal dialog named "More"; every row is a real button at least 44px
+      tall named by its destination, the mention badge announces its count,
+      and dismissal is reachable by the hardware back and the scrim.
+    since: 75
+
+  - id: teams-home
+    title: Teams home
+    purpose: >-
+      The phone's Teams tab root: every team as a tree row with its sections
+      indented beneath it.
+    anatomy: [title, team-row, team-glyph, guide-line, section-row,
+      section-glyph, skeleton]
+    states: [tree, loading]
+    variants: []
+    behavior: >-
+      One bold, non-tappable row per team (its glyph and name, the virtual
+      default team named after the workspace), and under each, indented
+      beside a thin guide line, one tappable row per section in a fixed
+      order: Tasks, Routines, Context, People, Files, Settings. Tasks,
+      Routines and Files are every member's; Context, People and Settings
+      are the team's configuration level and appear only for a caller who
+      may configure that team, People only where there are people to show.
+      Tapping a section PUSHES that team's screen on that section, so the
+      screen's back chip and hardware back both retreat to this tree; the
+      tree is the one place a team's section is chosen on the phone, so the
+      team screen draws no section switcher there. At least one team row
+      always exists; while the teams are still resolving the tree renders a
+      skeleton of itself rather than an empty claim.
+    a11y: >-
+      The title is the screen's h1; team rows are headings, not buttons;
+      every section row is one real button at least 44px tall named
+      "<section>" within its team's group.
+    since: 75
 
   - id: agents-home
     title: Agents home
@@ -1713,7 +1777,7 @@ components:
     states: [open, closed]
     variants: []
     behavior: >-
-      Opened by the compose control (the top bar's and the board control
+      Opened by the new-task control (the nav bar's and the board control
       row's, one rule). With several agents it lists one row per agent;
       picking one dismisses the sheet and pushes that agent's empty draft
       mission-chat-screen. With exactly one agent the question is skipped and

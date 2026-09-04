@@ -16,6 +16,8 @@ import { SettingsView } from "../settings/settings-view";
 import { SKILLS_VIEW_ID, SkillsView } from "../skills-view";
 import { STORE_VIEW_ID, StoreView } from "../store-view";
 import { TeamView } from "../team-view/team-view";
+import { TEAMS_HOME_VIEW_ID } from "../teams-home/id";
+import { TeamsHomeView } from "../teams-home/teams-home-view";
 import type { KeepAliveView } from "./keep-alive-views";
 
 /**
@@ -45,6 +47,8 @@ export function topLevelScreenViews(gates: {
     // The mobile Agents tab's root. Ungated: it is the phone's landing screen,
     // so it must exist before anything else resolves — like the Inbox.
     { id: AGENTS_HOME_VIEW_ID, enabled: true, content: <AgentsHomeView /> },
+    // The mobile Teams tab's root, ungated for the same reason.
+    { id: TEAMS_HOME_VIEW_ID, enabled: true, content: <TeamsHomeView /> },
     { id: ABOUT_ME_VIEW_ID, enabled: true, content: <AboutMeView /> },
     { id: ACADEMY_VIEW_ID, enabled: true, content: <AcademyView /> },
     { id: AI_HUB_VIEW_ID, enabled: gates.showAiModels, content: <AiHubView /> },

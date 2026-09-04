@@ -38,6 +38,7 @@ import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
 import { STORE_VIEW_ID } from "../components/store-view/id.ts";
+import { TEAMS_HOME_VIEW_ID } from "../components/teams-home/id.ts";
 import { TEAM_VIEW_ID, type TeamSectionId } from "./teams-model.ts";
 
 export {
@@ -49,6 +50,7 @@ export {
   SKILLS_VIEW_ID,
   STORE_VIEW_ID,
   TEAM_VIEW_ID,
+  TEAMS_HOME_VIEW_ID,
 };
 
 export const INBOX_VIEW_ID = "inbox";
@@ -66,7 +68,8 @@ export type TopLevelViewId =
   | typeof ORGANIZATION_VIEW_ID
   | typeof SKILLS_VIEW_ID
   | typeof STORE_VIEW_ID
-  | typeof TEAM_VIEW_ID;
+  | typeof TEAM_VIEW_ID
+  | typeof TEAMS_HOME_VIEW_ID;
 
 export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   INBOX_VIEW_ID,
@@ -80,6 +83,7 @@ export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   SKILLS_VIEW_ID,
   STORE_VIEW_ID,
   TEAM_VIEW_ID,
+  TEAMS_HOME_VIEW_ID,
 ]);
 
 /** Whether a `viewMode` names one of the app's screens. */

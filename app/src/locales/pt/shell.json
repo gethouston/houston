@@ -27,13 +27,11 @@
     "help": "Ajuda",
     "inbox": "Caixa de entrada",
     "integrations": "Integrações",
-    "mobileNavTitle": "Navegação",
     "myAccounts": "Minhas contas",
     "needsYouCount_one": "{{count}} assunto precisa de você",
     "needsYouCount_other": "{{count}} assuntos precisam de você",
     "newMission": "Nova tarefa",
     "newTeam": "Nova equipe",
-    "openMenu": "Abrir menu",
     "reportProblem": "Relatar um problema",
     "runningCount_one": "{{count}} assunto em execução",
     "runningCount_other": "{{count}} assuntos em execução",
@@ -407,11 +405,16 @@
       "description": "Comece uma tarefa com o botão de compor e ela aparecerá aqui."
     }
   },
+  "teamsHome": {
+    "title": "Equipes",
+    "tree": "Equipes e suas seções",
+    "newTeam": "Nova equipe"
+  },
   "tabBar": {
     "agents": "Agentes",
     "label": "Navegação principal",
-    "missionControl": "Tarefas",
-    "settings": "Configurações"
+    "more": "Mais",
+    "teams": "Equipes"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Teste nativo do Sentry acionado",
@@ -665,5 +668,9 @@
       "panelEscape": "Sair do chat e depois fechar",
       "cheatsheet": "Mostrar esta lista"
     }
+  },
+  "moreMenu": {
+    "help": "Ajuda",
+    "title": "Mais"
   }
 }

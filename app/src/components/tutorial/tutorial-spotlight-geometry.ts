@@ -128,15 +128,25 @@ export function placeCard(args: {
 export function blockerPanels(hole: Rect | null, viewport: Viewport): Rect[] {
   if (!hole)
     return [{ top: 0, left: 0, width: viewport.w, height: viewport.h }];
+  // Every size clamped at zero. A target flush with the viewport edge (the
+  // phone's full-bleed chat screen) puts the padded hole at a NEGATIVE
+  // offset, and a negative width or height is invalid CSS: the browser drops
+  // the declaration and the panel silently keeps the size it had on the
+  // previous step, walling off the very control the step asks for.
   return [
-    { top: 0, left: 0, width: viewport.w, height: hole.top },
+    { top: 0, left: 0, width: viewport.w, height: Math.max(0, hole.top) },
     {
       top: hole.top + hole.height,
       left: 0,
       width: viewport.w,
       height: Math.max(0, viewport.h - hole.top - hole.height),
     },
-    { top: hole.top, left: 0, width: hole.left, height: hole.height },
+    {
+      top: hole.top,
+      left: 0,
+      width: Math.max(0, hole.left),
+      height: hole.height,
+    },
     {
       top: hole.top,
       left: hole.left + hole.width,

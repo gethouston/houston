@@ -4,7 +4,6 @@ import {
   HEADER_HEIGHT,
   headerCollapsesTabs,
   headerHoldsTools,
-  headerHome,
   headerMode,
 } from "../src/components/shell/page-header/page-header-layout.ts";
 
@@ -46,36 +45,5 @@ describe("header mode semantics", () => {
 
   it("declares the strip height once", () => {
     assert.equal(HEADER_HEIGHT, "h-12");
-  });
-});
-
-describe("headerHome", () => {
-  it("rides the phone top bar only for the active screen below md", () => {
-    assert.equal(
-      headerHome({ isMobile: true, isActive: true, slotMounted: true }),
-      "top-bar",
-    );
-  });
-
-  it("stays in the strip on desktop regardless of the slot", () => {
-    assert.equal(
-      headerHome({ isMobile: false, isActive: true, slotMounted: true }),
-      "strip",
-    );
-  });
-
-  it("never lets a hidden kept-alive screen claim the slot", () => {
-    assert.equal(
-      headerHome({ isMobile: true, isActive: false, slotMounted: true }),
-      "strip",
-    );
-  });
-
-  it("falls back to the strip while the top bar is unmounted", () => {
-    // A pushed chat hides both mobile bars; the header has nowhere else to go.
-    assert.equal(
-      headerHome({ isMobile: true, isActive: true, slotMounted: false }),
-      "strip",
-    );
   });
 });

@@ -11,7 +11,7 @@
       },
       "openMenu": {
         "title": "Abre el menú",
-        "hint": "Toca el botón de menú arriba a la izquierda"
+        "hint": "Toca Más, abajo"
       },
       "openAiHub": {
         "title": "Haz clic en Modelos de IA"
@@ -89,6 +89,10 @@
         "title": "¡Capítulo 1 completado!",
         "body": "Acabas de terminar el primer capítulo de la Academia Houston y ganaste {{points}} de experiencia.",
         "cta": "Ir a la Academia"
+      },
+      "openAgents": {
+        "hint": "Toca Agentes, abajo",
+        "title": "Abrir Agentes"
       }
     },
     "skipStep": "Omitir paso",

@@ -1,13 +1,13 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "../support/fixtures";
-import { openTeamSection, screen } from "../support/team-nav";
+import { openPhoneTeamSection } from "../support/mobile-nav";
+import { screen } from "../support/team-nav";
 
 /**
  * Routines on a phone (the tier-1 CI gate's last leg): the team's Routines
- * section is reachable from the Tasks tab's team screen, the merged list is
- * usable at a Pixel-7-class width, and a row tap opens the routine's own
- * screen — never a popover — with its actions reachable and nothing forcing
- * a horizontal scroll.
+ * section is reachable from the Teams tree, the merged list is usable at a
+ * Pixel-7-class width, and a row tap opens the routine's own screen — never a
+ * popover — with its actions reachable and nothing forcing a horizontal scroll.
  */
 
 async function seedRoutine(name: string): Promise<void> {
@@ -37,15 +37,9 @@ test("a routine opens as its own screen from the phone team view", async ({
   await seedRoutine("Morning digest");
 
   await page.goto("/");
-  await page
-    .getByTestId("mobile-tab-bar")
-    .getByRole("button", { name: "Tasks" })
-    .tap();
-  await expect(screen(page)).toHaveAttribute("data-screen", "team");
+  // The phone has no section strip: Routines is a row of the Teams tree.
+  await openPhoneTeamSection(page, "routines");
 
-  // The section strip is collapsed at phone width; the helper drives the
-  // compact switcher for us.
-  await openTeamSection(page, "Routines");
   const row = screen(page)
     .getByTestId("routine-row")
     .filter({ hasText: "Morning digest" });

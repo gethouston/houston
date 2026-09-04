@@ -1,13 +1,17 @@
 import { useAgentStore } from "../stores/agents.ts";
 import { useUIStore } from "../stores/ui.ts";
+import { currentTeams } from "./current-teams.ts";
 import { openHome } from "./home-nav.ts";
 import { openMissionChat } from "./mission-chat.ts";
+import type { NewMissionScope } from "./new-mission-scope.ts";
 import { openAgentBoard } from "./open-agent.ts";
+import { teamById } from "./teams-model.ts";
 import { isMissionBoardView } from "./top-level-views.ts";
+import type { Agent } from "./types.ts";
 import { isMobileViewport } from "./viewport.ts";
 
 /**
- * Start a new mission from ANYWHERE: the ⌘N shortcut and the mobile top bar's
+ * Start a new mission from ANYWHERE: the ⌘N shortcut and the phone nav bar's
  * compose button share this one rule, so the two can never land differently.
  *
  * A team view is already showing the cross-agent board that owns the handler
@@ -31,23 +35,20 @@ import { isMobileViewport } from "./viewport.ts";
  * the fallback is home, the first team's Mission Control, whose board
  * registers the same handler. Doing nothing here instead would be an
  * affordance that silently fails.
+ *
+ * `scope` is the phone's context (`lib/new-mission-scope.ts`) and is
+ * deliberately DESKTOP-INERT: the desktop composes into whichever board is on
+ * the glass, which already carries the same context.
  */
-export function startNewMission(): void {
+export function startNewMission(
+  scope: NewMissionScope = { kind: "home" },
+): void {
   // The phone fork, before any board handler: composing on the phone is the
   // agent picker sheet into an empty draft CHAT push (`lib/mission-chat.ts`),
   // never the desktop board's side composer. One agent skips the question.
   if (isMobileViewport()) {
-    const { agents } = useAgentStore.getState();
-    if (agents.length === 1) {
-      openMissionChat(agents[0], null);
-      return;
-    }
-    if (agents.length > 1) {
-      useUIStore.getState().setNewMissionSheetOpen(true);
-      return;
-    }
-    // No agents: the one teamless fallback every nav shares.
-    openHome();
+    if (composeScoped(scope)) return;
+    composeOverWholeRoster();
     return;
   }
   const ui = useUIStore.getState();
@@ -60,4 +61,51 @@ export function startNewMission(): void {
   if (current && agents.length > 0) openAgentBoard(current.id);
   else openHome();
   setTimeout(fire, 50);
+}
+
+/**
+ * The scoped phone compose, or `false` when the scope named nothing usable —
+ * a deleted agent or an emptied team falls through to the roster-wide
+ * question rather than dead-ending on a stale id.
+ */
+function composeScoped(scope: NewMissionScope): boolean {
+  if (scope.kind === "agent") {
+    const agent = useAgentStore
+      .getState()
+      .agents.find((a) => a.id === scope.agentId);
+    if (!agent) return false;
+    openMissionChat(agent, null);
+    return true;
+  }
+  if (scope.kind === "team") {
+    const roster = teamById(currentTeams(), scope.teamId)?.agents ?? [];
+    if (roster.length === 0) return false;
+    askRoster(
+      roster,
+      roster.map((a) => a.id),
+    );
+    return true;
+  }
+  return false;
+}
+
+/** The unscoped compose: the whole workspace roster, or home when it holds
+ *  no agents at all — the one teamless fallback every nav shares. */
+function composeOverWholeRoster(): void {
+  const { agents } = useAgentStore.getState();
+  if (agents.length === 0) {
+    openHome();
+    return;
+  }
+  askRoster(agents, undefined);
+}
+
+/** One agent skips the question; several open the picker sheet, narrowed to
+ *  `scopeIds` when the caller had a shortlist (`undefined` = everyone). */
+function askRoster(roster: Agent[], scopeIds: string[] | undefined): void {
+  if (roster.length === 1) {
+    openMissionChat(roster[0], null);
+    return;
+  }
+  useUIStore.getState().setNewMissionSheetOpen(true, scopeIds);
 }

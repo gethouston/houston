@@ -3,6 +3,25 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v75 - 2026-09-03
+
+The phone shell becomes a floating pill. Below the one breakpoint the top bar
+(hamburger, title slot, compose) and the sidebar drawer are gone; a rounded
+bottom pill holds Agents, Teams and More, with a separate round new-task
+control beside it, and the active item widens to show its label. The phone
+gets one flat background instead of the gutter frame and floating screen
+card. More opens a floating card with every destination the desktop rail
+lists (Inbox, About me, Academy, Agent Store, Integrations, AI Models, Admin,
+Skills, Settings, Guide me, Report a problem) in the rail's bands. Teams roots
+on a new Teams home: a tree of every team with its sections (Tasks, Routines,
+Context, People, Files, Settings) indented beneath it, each a push into the
+team's screen, which on the phone wears a floating back chip and a large
+title instead of the section strip. The Agents home gains a New agent control
+in its title row. The new-task control is scoped to where the user stands
+(an agent's list, a team, or everyone). The guided setup re-anchors on the
+More item, the More rows and the Agents item instead of the hamburger and the
+drawer rows. `mobile-tab-bar` is retired in favour of `mobile-nav-bar`.
+
 ## v74 - 2026-09-03
 
 The phone composer fits the phone. Its footer row keeps one line below the

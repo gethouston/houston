@@ -1,16 +1,18 @@
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
+import { moreRow, navBar, navItem } from "../support/mobile-nav";
 import { completeSurvey, resetToFirstRun } from "../support/onboarding";
 
 /**
  * First-run on a phone, end to end: the survey, then the game-style in-app
- * setup over the REAL phone shell. Below md the rail lives in a drawer and
- * composing is a pushed chat, so the sidebar-row steps ring the hamburger
- * first and then the row inside the open drawer, and the send step follows
- * the compose tap into the draft chat. Every advance is app state — the hub
- * opening, a provider confirmed, the roster growing, a mission row landing —
- * never a Next button. This is the tier-1 gate that keeps the phone from
- * dead-ending a new user in a mandatory setup they cannot finish.
+ * setup over the REAL phone shell. Below md there is no rail: the long tail of
+ * destinations lives behind the nav bar's More menu and creating an agent is a
+ * control on the Agents home, so those steps ring the WAY IN first (More, or
+ * the Agents item) and then the real control once it is reachable; the send
+ * step follows the compose tap into the draft chat. Every advance is app state
+ * — the hub opening, a provider confirmed, the roster growing, a mission row
+ * landing — never a Next button. This is the tier-1 gate that keeps the phone
+ * from dead-ending a new user in a mandatory setup they cannot finish.
  */
 
 /** The narration card's one action. */
@@ -18,22 +20,34 @@ function centerCta(page: Page, title: string): Locator {
   return page.getByRole("dialog", { name: title }).getByRole("button");
 }
 
-/** A drawer-row step on the phone: hamburger → the row inside the drawer. */
-async function tapDrawerRow(page: Page, rowTitle: string, target: string) {
+/** A More-menu step on the phone: the More button → the row inside the card. */
+async function tapMoreRow(page: Page, rowTitle: string, target: string) {
   await expect(
     page.getByRole("dialog", { name: "Open the menu" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Open menu" }).tap();
+  await expect(page.getByText("Tap More at the bottom")).toBeVisible();
+  await navItem(page, "more").tap();
   // The open Sheet is a modal, so Radix marks everything outside it
   // `aria-hidden` — the coach chip included — hence `includeHidden` for the
-  // in-drawer beat (the a11y shape the in-dialog coaching has always had).
+  // in-menu beat (the a11y shape the in-dialog coaching has always had).
   await expect(
     page.getByRole("dialog", { name: rowTitle, includeHidden: true }),
   ).toBeVisible();
-  await page.locator(`[data-tour-target='${target}']`).tap();
+  await moreRow(page, target).tap();
 }
 
-test("the guided setup completes on a phone: drawer rows, provider connect, first agent, first task", async ({
+/** The create-agent step: the Agents item, then the control on its home. */
+async function tapNewAgent(page: Page) {
+  await expect(page.getByRole("dialog", { name: "Open Agents" })).toBeVisible();
+  await expect(page.getByText("Tap Agents at the bottom")).toBeVisible();
+  await navItem(page, "agents").tap();
+  await expect(
+    page.getByRole("dialog", { name: "Click New agent" }),
+  ).toBeVisible();
+  await page.getByTestId("agents-home-new-agent").tap();
+}
+
+test("the guided setup completes on a phone: More rows, provider connect, first agent, first task", async ({
   page,
   request,
 }) => {
@@ -48,8 +62,8 @@ test("the guided setup completes on a phone: drawer rows, provider connect, firs
   await page.getByRole("button", { name: "Start setup" }).tap();
   await page.getByRole("button", { name: "Show me" }).tap();
 
-  // AI Models is a drawer row on the phone.
-  await tapDrawerRow(page, "Click AI Models", "nav-ai-hub");
+  // AI Models is a More-menu row on the phone.
+  await tapMoreRow(page, "Click AI Models", "nav-ai-hub");
   await expect(
     page.getByRole("heading", { name: "AI Providers" }),
   ).toBeVisible();
@@ -67,8 +81,8 @@ test("the guided setup completes on a phone: drawer rows, provider connect, firs
   await centerCta(page, "Your AI is connected!").tap();
   await centerCta(page, "Create your first agent").tap();
 
-  // New agent is a drawer row too; the dialog coaching is unchanged.
-  await tapDrawerRow(page, "Click New agent", "newAgent");
+  // New agent lives on the Agents home; the dialog coaching is unchanged.
+  await tapNewAgent(page);
   // In-dialog coaching sits outside the modal (aria-hidden), as on desktop.
   await expect(page.getByText("Click Create new")).toBeVisible();
   await page.getByRole("button", { name: "Create new", exact: true }).tap();
@@ -107,6 +121,10 @@ test("the guided setup completes on a phone: drawer rows, provider connect, firs
   const composer = page
     .getByTestId("mission-chat-screen")
     .getByPlaceholder("What should the agent work on?");
+  // A real TAP before typing: `fill` skips hit-testing, and a stale spotlight
+  // blocker sitting over the composer once passed this spec while a phone
+  // user could not touch it.
+  await composer.tap();
   await composer.fill("Say hello");
   await composer.press("Enter");
 
@@ -114,7 +132,7 @@ test("the guided setup completes on a phone: drawer rows, provider connect, firs
   await centerCta(page, "Task sent!").tap();
   await centerCta(page, "Chapter 1 complete!").tap();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
+  await expect(navBar(page)).toBeVisible();
 
   const overflow = await page.evaluate(
     () =>
@@ -146,7 +164,7 @@ test("the disclaimer's accept button fits inside the phone card", async ({
   expect(button.x).toBeGreaterThanOrEqual(frame.x);
 
   await accept.tap();
-  await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
+  await expect(navBar(page)).toBeVisible();
 });
 
 test.describe("short phone viewport", () => {
@@ -209,14 +227,14 @@ test("a reload mid-setup resumes the sequence, not the welcome beat", async ({
 }) => {
   // Phones evict a background tab: leaving to fetch a sign-in code and
   // coming back reloads the app. The run must re-enter at the connect
-  // sequence (its sidebar beat, which self-advances on the hub), never at
+  // sequence (its More-menu beat, which self-advances on the hub), never at
   // "Start setup" with the work so far forgotten.
   await resetToFirstRun(request);
   await page.goto("/");
   await completeSurvey(page);
   await page.getByRole("button", { name: "Start setup" }).tap();
   await page.getByRole("button", { name: "Show me" }).tap();
-  await tapDrawerRow(page, "Click AI Models", "nav-ai-hub");
+  await tapMoreRow(page, "Click AI Models", "nav-ai-hub");
   await expect(
     page.getByRole("dialog", { name: "Pick the AI you already use." }),
   ).toBeVisible();
@@ -229,7 +247,7 @@ test("a reload mid-setup resumes the sequence, not the welcome beat", async ({
   await expect(
     page.getByRole("heading", { name: "Welcome to Houston!" }),
   ).toHaveCount(0);
-  await tapDrawerRow(page, "Click AI Models", "nav-ai-hub");
+  await tapMoreRow(page, "Click AI Models", "nav-ai-hub");
   await expect(
     page.getByRole("dialog", { name: "Pick the AI you already use." }),
   ).toBeVisible();
