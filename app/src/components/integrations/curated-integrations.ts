@@ -41,10 +41,14 @@ export interface CuratedIntegration {
    *  connect (HighLevel's consent page says "LeadConnector"). */
   signInTitleKey?: CuratedCopyKey<"signInTitle">;
   signInDescKey?: CuratedCopyKey<"signInDesc">;
-  /** Wording for the provider (Composio) connect option the dialog leads
-   *  with whenever the deployment's catalog carries this slug. */
+  /** Wording for the provider (Composio) connect option the dialog offers
+   *  under the MCP sign-in whenever the deployment's catalog carries this
+   *  slug. */
   providerTitleKey?: CuratedCopyKey<"providerTitle">;
   providerDescKey?: CuratedCopyKey<"providerDesc">;
+  /** Scopes the service advertises but its consent page refuses (one
+   *  refused scope fails the whole sign-in there). */
+  oauthScopeExclusions?: readonly string[];
 }
 
 /** The `curated.<slug>.<leaf>` keys that EXIST in the en locale for a leaf:
@@ -95,6 +99,18 @@ const HIGHLEVEL: CuratedIntegration = {
   signInDescKey: "curated.highlevel.signInDesc",
   providerTitleKey: "curated.highlevel.providerTitle",
   providerDescKey: "curated.highlevel.providerDesc",
+  // Advertised in scopes_supported, refused by the consent page as
+  // "Invalid scope(s)" (verified with a real account, 2026-09-04).
+  oauthScopeExclusions: [
+    "emails/templates.readonly",
+    "emails/templates.write",
+    "emails/campaigns.readonly",
+    "emails/campaigns.write",
+    "emails/stats.readonly",
+    "files.readonly",
+    "socialplanner/comments.readonly",
+    "socialplanner/comments.write",
+  ],
 };
 
 export const CURATED_INTEGRATIONS: readonly CuratedIntegration[] = [
@@ -167,6 +183,9 @@ export function curatedAddInput(
     name: curated.name,
     endpoint: curated.endpoint,
     website: curated.website,
+    ...(curated.oauthScopeExclusions
+      ? { oauthScopeExclusions: [...curated.oauthScopeExclusions] }
+      : {}),
     auth,
     slug: curated.slug,
     replace: true,

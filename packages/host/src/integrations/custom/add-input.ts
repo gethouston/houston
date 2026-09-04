@@ -24,6 +24,7 @@ export type AddCustomIntegrationInput =
       name: string;
       endpoint: string;
       headers?: Record<string, string>;
+      oauthScopeExclusions?: string[];
       website?: string;
       auth: CustomAuthMode;
       slug?: string;
@@ -52,6 +53,9 @@ export function defFromAddInput(
         name: input.name,
         endpoint: input.endpoint,
         ...(input.headers ? { headers: input.headers } : {}),
+        ...(input.oauthScopeExclusions?.length
+          ? { oauthScopeExclusions: input.oauthScopeExclusions }
+          : {}),
         ...(input.website ? { website: input.website } : {}),
         auth: input.auth,
         addedAtMs: Date.now(),

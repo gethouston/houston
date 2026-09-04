@@ -2259,6 +2259,9 @@ export type AddCustomIntegrationInput =
       name: string;
       endpoint: string;
       website?: string;
+      /** Advertised scopes the server's own consent page refuses; the
+       *  sign-in asks for every other advertised scope. */
+      oauthScopeExclusions?: string[];
       /** `oauth` (PRODUCT-1172): the server signs in with its own browser
        *  flow — the add lands `pending` until the user presses Sign in. */
       auth: "none" | "credential" | "oauth";

@@ -215,10 +215,10 @@
     },
     "highlevel": {
       "description": "Your HighLevel (GoHighLevel) CRM: contacts, conversations, pipelines and opportunities, calendars, invoices and payments, social posts and blogs. Each connection works with one sub-account.",
-      "providerTitle": "Connect HighLevel",
-      "providerDesc": "Your browser opens HighLevel. Use the dropdown next to Houston to switch Agency View to Sub-Account View, then approve. Every HighLevel feature is available to your agents.",
-      "signInTitle": "Sign in with HighLevel's own connector",
-      "signInDesc": "HighLevel runs this connection itself. The sign-in page says LeadConnector, HighLevel's technical name, so you are in the right place. Choose the sub-account your agents should work with."
+      "signInTitle": "Log in with HighLevel LeadConnector (MCP)",
+      "signInDesc": "HighLevel's official connection. Your browser opens a page labeled LeadConnector, HighLevel's technical name. Choose the sub-account your agents should work with and approve.",
+      "providerTitle": "Connect HighLevel with Composio",
+      "providerDesc": "Connects through Composio, with every HighLevel feature. When HighLevel opens, use the dropdown next to Houston to switch Agency View to Sub-Account View, then approve."
     },
     "connect": {
       "title": "Connect {{name}}",

@@ -75,6 +75,12 @@ describe("curated catalog data", () => {
       "https://services.leadconnectorhq.com/mcp/",
     );
     deepStrictEqual(highlevel.authModes, ["oauth"]);
+    // The consent page refuses these advertised scopes; the add input
+    // carries them so the host's sign-in leaves them out.
+    ok((highlevel.oauthScopeExclusions?.length ?? 0) > 0);
+    deepStrictEqual(curatedAddInput(highlevel, "oauth").oauthScopeExclusions, [
+      ...(highlevel.oauthScopeExclusions ?? []),
+    ]);
     ok(highlevel.providerTitleKey);
     ok(highlevel.signInTitleKey);
     deepStrictEqual(highlevel.categories, ["crm", "marketing"]);

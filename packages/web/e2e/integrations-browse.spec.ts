@@ -218,7 +218,7 @@ test("a row's + connects INLINE, exactly once, leaving every other row usable", 
   await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
 });
 
-test("HighLevel connects through one dialog: Composio leads with the Sub-Account View guidance, the MCP sign-in is second", async ({
+test("HighLevel connects through one dialog: the MCP sign-in leads, Composio with its Sub-Account View guidance is second", async ({
   page,
   request,
 }) => {
@@ -240,26 +240,24 @@ test("HighLevel connects through one dialog: Composio leads with the Sub-Account
   await expect(
     dialog.getByRole("heading", { name: "Connect HighLevel" }),
   ).toBeVisible();
-  const viaHouston = dialog.getByRole("button", {
-    name: /^Connect HighLevel/,
-  });
-  await expect(viaHouston).toContainText("Recommended");
-  await expect(viaHouston).toContainText(
+  const options = dialog.getByRole("button", { name: /HighLevel/ });
+  const viaMcp = options.nth(0);
+  await expect(viaMcp).toContainText("Log in with HighLevel LeadConnector");
+  await expect(viaMcp).toContainText("Recommended");
+  const viaComposio = options.nth(1);
+  await expect(viaComposio).toContainText("Connect HighLevel with Composio");
+  await expect(viaComposio).toContainText(
     "switch Agency View to Sub-Account View",
   );
-  const viaMcp = dialog.getByRole("button", {
-    name: /Sign in with HighLevel's own connector/,
-  });
-  await expect(viaMcp).toContainText("LeadConnector");
   // No token option for HighLevel: two sign-ins were the whole choice.
   await expect(
     dialog.getByRole("button", { name: /Use an API key instead/ }),
   ).toHaveCount(0);
   await expect(page.getByText("Finish connecting HighLevel")).toHaveCount(0);
 
-  // The lead option is the plain Composio hand-off for THIS row: the same
+  // The Composio option is the plain hand-off for THIS row: the same
   // waiting state, and the same completion (the matching search clears).
-  await viaHouston.click();
+  await viaComposio.click();
   await expect(dialog).toHaveCount(0);
   await expect(page.getByText("Finish connecting HighLevel")).toBeVisible();
   await activatePendingConnection(request, "highlevel");

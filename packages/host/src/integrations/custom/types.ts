@@ -57,6 +57,11 @@ export type CustomIntegrationDef =
       endpoint: string;
       /** Static non-secret headers (e.g. a tenant id); secrets go via credential. */
       headers?: Record<string, string>;
+      /** Scopes the server ADVERTISES (`scopes_supported`) but its consent
+       *  page rejects — HighLevel lists eight its own app refuses, and one
+       *  refused scope fails the whole sign-in. Dropped from the request;
+       *  everything else advertised is still asked for. */
+      oauthScopeExclusions?: string[];
       /** See the openapi arm — the brand domain for the icon. */
       website?: string;
       auth: CustomAuthMode;
