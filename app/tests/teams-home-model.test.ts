@@ -4,6 +4,7 @@ import type { Capabilities } from "@houston-ai/engine-client";
 import {
   TEAM_SECTION_ORDER,
   teamTreeRows,
+  teamTreeTarget,
 } from "../src/components/teams-home/teams-home-model.ts";
 import type { TeamView } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
@@ -11,10 +12,9 @@ import type { Agent } from "../src/lib/types.ts";
 /**
  * The phone's Teams tree. The tree is the ONLY way into a team's sections on a
  * phone, so two properties are the whole test: every row it draws is a section
- * the team view would actually render for this caller, and every row carries
- * the level it came from — a `settingsLevel` row opens with
- * `teamSettingsFocus`, and getting that wrong lands the user on the base level
- * with a section it does not have.
+ * the desktop strip would offer this caller, in the strip's order, and the
+ * Team Settings row lands where the desktop's own door lands (the drilled
+ * level, on Context).
  */
 
 const agent = (id: string): Agent => ({ id, name: id }) as Agent;
@@ -33,29 +33,20 @@ const caps = (over: Partial<Capabilities> = {}): Capabilities =>
 const member = () =>
   caps({ multiplayer: true, role: "user" } as Partial<Capabilities>);
 
-const solo = { personalSpace: false, spacesHost: false };
-
-const ids = (
-  teams: TeamView[],
-  capabilities: Capabilities,
-  space = solo,
-): string[] =>
-  teamTreeRows(teams, capabilities, space)[0].sections.map((s) => s.id);
+const ids = (teams: TeamView[], capabilities: Capabilities): string[] =>
+  teamTreeRows(teams, capabilities)[0].sections.map((s) => s.id);
 
 describe("teamTreeRows", () => {
-  it("draws every section a single-player manager has, in tree order", () => {
-    // No org at all: the solo user manages their own team, and there is nobody
-    // to show under People, so the roster row is the one that stays away.
+  it("draws the desktop strip's sections for a manager, in its order", () => {
     assert.deepEqual(ids([team()], caps()), [
       "mission-control",
       "routines",
-      "context",
       "files",
       "settings",
     ]);
   });
 
-  it("gives a plain member the work sections and no configuration", () => {
+  it("gives a plain member the work sections and no Team Settings door", () => {
     assert.deepEqual(ids([team()], member()), [
       "mission-control",
       "routines",
@@ -63,54 +54,17 @@ describe("teamTreeRows", () => {
     ]);
   });
 
-  it("marks only the drilled level's rows as settings-level", () => {
-    const [row] = teamTreeRows([team()], caps(), solo);
-    const drilled = row.sections
-      .filter((section) => section.settingsLevel)
-      .map((section) => section.id);
-    assert.deepEqual(drilled, ["context", "settings"]);
-    const base = row.sections
-      .filter((section) => !section.settingsLevel)
-      .map((section) => section.id);
-    assert.deepEqual(base, ["mission-control", "routines", "files"]);
-  });
-
-  it("shows People on a server team in a shared space", () => {
-    const shared = team({
+  it("offers the door to a team owner who is not an org admin", () => {
+    const owned = team({
       server: { joined: true, owner: true, memberCount: 3, sortOrder: 0 },
     });
-    assert.deepEqual(ids([shared], member()), [
-      "mission-control",
-      "routines",
-      "context",
-      "people",
-      "files",
-      "settings",
-    ]);
-  });
-
-  it("hides People from a member who cannot configure the team", () => {
-    const shared = team({
-      server: { joined: true, owner: false, memberCount: 3, sortOrder: 0 },
-    });
-    assert.ok(!ids([shared], member()).includes("people"));
-  });
-
-  it("offers the personal space's invite face as People", () => {
-    // A space with one human has no roster, but it does have a door to invite
-    // someone, so the row exists and the tree must not swallow it.
-    const rows = ids([team()], caps(), {
-      personalSpace: true,
-      spacesHost: true,
-    });
-    assert.ok(rows.includes("people"));
+    assert.ok(ids([owned], member()).includes("settings"));
   });
 
   it("draws the virtual default team like any other", () => {
     const rows = teamTreeRows(
       [team(), team({ id: "team:default", isDefault: true, agents: [] })],
       caps(),
-      solo,
     );
     assert.deepEqual(
       rows.map((row) => row.team.id),
@@ -119,14 +73,34 @@ describe("teamTreeRows", () => {
     assert.ok(rows[1].sections.length > 0);
   });
 
-  it("never draws a section outside the pinned order", () => {
-    // `agents` is a settings-level section the tree deliberately drops: the
-    // phone reaches an agent through its own tab.
-    const [row] = teamTreeRows([team()], caps(), solo);
+  it("never draws a drilled-level section as a row of its own", () => {
+    // Context, Agents, People and Settings live behind the Team Settings door,
+    // as they do on the desktop; the tree names the door, not its rooms.
+    const [row] = teamTreeRows([team()], caps());
     for (const section of row.sections) {
       assert.ok(TEAM_SECTION_ORDER.includes(section.id));
     }
     const drawn: string[] = row.sections.map((section) => section.id);
-    assert.ok(!drawn.includes("agents"));
+    for (const hidden of ["context", "people", "agents"]) {
+      assert.ok(!drawn.includes(hidden));
+    }
+  });
+});
+
+describe("teamTreeTarget", () => {
+  it("lands the Team Settings row on the drilled level's first tab", () => {
+    assert.deepEqual(teamTreeTarget({ id: "settings" }), {
+      section: "context",
+      teamSettingsFocus: true,
+    });
+  });
+
+  it("lands every other row on its own base-level section", () => {
+    for (const id of ["mission-control", "routines", "files"] as const) {
+      assert.deepEqual(teamTreeTarget({ id }), {
+        section: id,
+        teamSettingsFocus: false,
+      });
+    }
   });
 });

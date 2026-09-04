@@ -48,7 +48,9 @@ export function TeamTaskRow({
     <TaskRow
       status={SECTION_STATUS[section]}
       title={item.title}
-      preview={item.description}
+      preview={
+        section === "running" ? t("shell:agentsHome.typing") : item.description
+      }
       labels={{
         needsYou: t("dashboard:columns.needsYou"),
         running: t("dashboard:columns.running"),

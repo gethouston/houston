@@ -1,17 +1,21 @@
+import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "../support/fixtures";
 import { screen } from "../support/team-nav";
 
 /**
- * The phone's Agents home: the landing screen. A team-grouped tree of one-line
- * agent rows with the needs-you chip, and the drill chain — agent → its task
- * list (sectioned, segment-filtered, searchable) → the task's pushed chat
- * screen — every push a nav-stack level the browser back button pops in order.
+ * The phone's Agents home: the landing screen. A chat-list of agent rows —
+ * large avatar (fanned into a stack when the agent holds several tasks), the
+ * name, the latest task as the preview line, its time and the needs-you badge
+ * — narrowed by a team selector where the workspace has more than one team,
+ * and the drill chain — agent → its task list (sectioned, segment-filtered,
+ * searchable) → the task's pushed chat screen — every push a nav-stack level
+ * the browser back button pops in order.
  *
- * The seed holds ONE agent in the workspace's default team, which is exactly
- * the flat case: no team header, no indent.
+ * The seed holds ONE agent in the workspace's default team, so the team
+ * selector is absent by default; one spec arms two teams to bring it out.
  */
 
-test("boot lands on the Agents home: one flat line per agent", async ({
+test("boot lands on the Agents home: one chat-list row per agent", async ({
   page,
 }) => {
   await page.goto("/");
@@ -20,9 +24,21 @@ test("boot lands on the Agents home: one flat line per agent", async ({
   const row = page.getByTestId("agents-home-row");
   await expect(row).toHaveCount(1);
   await expect(row).toContainText("Houston");
-  // The seeded needs-you mission shows as the row's chip — the same count the
-  // nav bar's Agents badge carries.
+  // The seeded needs-you mission shows as the row's badge — the same count
+  // the nav bar's Agents badge carries.
   await expect(row.getByText("1", { exact: true })).toBeVisible();
+  // The preview line is the agent's latest task, the way a chat list quotes
+  // the last message; the seed's two tasks share a timestamp, and the first
+  // swept one wins the tie.
+  await expect(row.getByTestId("agents-home-row-preview")).toHaveText(
+    "Plan a trip to Tokyo",
+  );
+  await expect(row.locator("[data-relative-time]")).toBeVisible();
+  // Two tasks inside: the avatar fans out into a stack.
+  await expect(row.getByTestId("agent-avatar-stack")).toHaveAttribute(
+    "data-stacked",
+    "true",
+  );
 
   // The rail is not rendered on the phone, so the create control rides the
   // list's own title row — carrying the rail's `newAgent` tour anchor, which
@@ -31,11 +47,84 @@ test("boot lands on the Agents home: one flat line per agent", async ({
   await expect(newAgent).toBeVisible();
   await expect(newAgent).toHaveAttribute("aria-label", "New agent");
   await expect(newAgent).toHaveAttribute("data-tour-target", "newAgent");
-  // One line: the row identifies the agent and nothing else. No task preview,
-  // no relative time — that list is one tap away.
-  await expect(row).not.toContainText("Plan a trip to Tokyo");
-  // A single (default) team is the flat case: no team header above the rows.
-  await expect(page.getByTestId("agents-home-team")).toHaveCount(0);
+  // A single (default) team: nothing to narrow by, so no team selector.
+  await expect(page.getByTestId("agents-home-team-filter")).toHaveCount(0);
+});
+
+test("the team selector narrows the list to one team's agents", async ({
+  page,
+}) => {
+  // A second agent with no tasks, and two server teams holding one agent each.
+  const scout = (await (
+    await fetch(`${FAKE_HOST_URL}/agents`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Scout" }),
+    })
+  ).json()) as { id: string };
+  await page.request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { multiplayer: true, teams: true, agentTeams: true, role: "owner" },
+  });
+  await page.request.post(`${FAKE_HOST_URL}/__test__/agent-teams`, {
+    data: {
+      teams: [
+        {
+          id: "team-acme",
+          name: "Acme",
+          isDefault: true,
+          sortOrder: 0,
+          agentIds: [scout.id],
+        },
+        {
+          id: "team-design",
+          name: "Design",
+          sortOrder: 1,
+          agentIds: ["houston-assistant"],
+        },
+      ],
+    },
+  });
+
+  await page.goto("/");
+  const rows = page.getByTestId("agents-home-row");
+  // Every team by default: both agents, the one with work leading. An agent
+  // with nothing yet says so on its preview line rather than going blank.
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toContainText("Houston");
+  await expect(rows.nth(1)).toContainText("Scout");
+  await expect(rows.nth(1).getByTestId("agents-home-row-preview")).toHaveText(
+    "No tasks yet",
+  );
+  await expect(rows.nth(1).getByTestId("agent-avatar-stack")).toHaveAttribute(
+    "data-stacked",
+    "false",
+  );
+
+  const filter = page.getByTestId("agents-home-team-filter");
+  await expect(filter).toHaveText("All teams");
+  await filter.tap();
+  await page
+    .locator(
+      "[data-testid='agents-home-team-option'][data-team-id='team-design']",
+    )
+    .click();
+  await expect(filter).toHaveText("Design");
+  await expect(rows).toHaveCount(1);
+  await expect(rows).toContainText("Houston");
+
+  // The choice is a preference, not a nav level: it survives the drill and
+  // back, and back never has to undo it.
+  await rows.tap();
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+  await page.goBack();
+  await expect(filter).toHaveText("Design");
+  await expect(rows).toHaveCount(1);
+
+  await filter.tap();
+  await page
+    .locator("[data-testid='agents-home-team-option'][data-team-id='all']")
+    .click();
+  await expect(rows).toHaveCount(2);
 });
 
 test("agent → tasks → chat pushes; back pops the trail in order", async ({
@@ -91,17 +180,39 @@ test("the back chip retreats to the Agents home", async ({ page }) => {
   await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
 });
 
-test("the segmented control leaves one band standing", async ({ page }) => {
+test("the status filter leaves one band standing", async ({ page }) => {
   await page.goto("/");
 
   await page.getByTestId("agents-home-row").tap();
   const missions = page.getByTestId("agent-missions-screen");
-  const segment = (filter: string) =>
+  // The filter is a pill dropping a radio menu: open it, pick a choice.
+  const segment = (filter: string) => ({
+    tap: async () => {
+      await missions.getByTestId("agent-missions-filter-trigger").tap();
+      await page
+        .locator(
+          `[data-testid='agent-missions-filter'][data-filter='${filter}']`,
+        )
+        .click();
+    },
+  });
+  // Every row wears the agent's avatar and a status tag, chat-list style.
+  await expect(
+    missions
+      .getByTestId("agent-mission-row")
+      .first()
+      .getByTestId("agent-avatar-stack"),
+  ).toBeVisible();
+  await expect(
     missions.locator(
-      `[data-testid='agent-missions-filter'][data-filter='${filter}']`,
-    );
+      "[data-testid='agent-mission-status'][data-status='needs_you']",
+    ),
+  ).toHaveText("Needs you");
 
   await segment("done").tap();
+  await expect(
+    missions.getByTestId("agent-missions-filter-trigger"),
+  ).toHaveText(/Done/);
   await expect(missions.getByRole("heading", { name: "Done" })).toBeVisible();
   await expect(
     missions.getByRole("heading", { name: "Needs you" }),

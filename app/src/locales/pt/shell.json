@@ -396,7 +396,10 @@
     "empty": {
       "title": "Ainda não há agentes",
       "description": "Crie um agente para começar. Tudo em que eles trabalharem aparecerá aqui."
-    }
+    },
+    "allTeams": "Todas as equipes",
+    "noTasks": "Ainda não há tarefas",
+    "typing": "Digitando..."
   },
   "taskList": {
     "archived": "Arquivadas",

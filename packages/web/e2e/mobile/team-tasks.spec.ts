@@ -1,6 +1,10 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "../support/fixtures";
-import { newTaskButton, openPhoneTeamSection } from "../support/mobile-nav";
+import {
+  newTaskButton,
+  openPhoneTeamSection,
+  teamSettingsTab,
+} from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
 /**
@@ -54,28 +58,30 @@ test("the list groups the seeded missions by section, with their status glyphs",
   await expect(newTaskButton(page)).toBeVisible();
 });
 
-test("the segmented control narrows the list to one band", async ({ page }) => {
+test("the status filter narrows the list to one band", async ({ page }) => {
   await page.goto("/");
   await openPhoneTeamSection(page, "mission-control");
 
   const list = screen(page).getByTestId("team-task-list");
-  const segment = (filter: string) =>
-    screen(page).locator(
-      `[data-testid='team-task-filter'][data-filter='${filter}']`,
-    );
-  await expect(segment("all")).toHaveAttribute("aria-selected", "true");
-  // The one seeded needs-you mission is the segment's count.
-  await expect(segment("needs_you")).toContainText("1");
+  const trigger = screen(page).getByTestId("team-task-filter-trigger");
+  const choice = (filter: string) =>
+    page.locator(`[data-testid='team-task-filter'][data-filter='${filter}']`);
+  // "All" by default; the menu's Needs you choice carries the seeded count.
+  await expect(trigger).toHaveAttribute("data-filter", "all");
+  await trigger.tap();
+  await expect(choice("all")).toHaveAttribute("aria-checked", "true");
+  await expect(choice("needs_you")).toContainText("1");
 
-  await segment("done").tap();
-  await expect(segment("done")).toHaveAttribute("aria-selected", "true");
+  await choice("done").click();
+  await expect(trigger).toHaveAttribute("data-filter", "done");
   await expect(list.getByTestId("team-task-row")).toHaveText([
     /Draft the launch email/,
   ]);
   await expect(list.getByRole("heading", { name: "Needs you" })).toHaveCount(0);
 
   // A band with nothing in it says so rather than standing hollow.
-  await segment("running").tap();
+  await trigger.tap();
+  await choice("running").click();
   await expect(list.getByTestId("team-task-row")).toHaveCount(0);
   await expect(list.getByText("No tasks in this view")).toBeVisible();
 });
@@ -121,8 +127,12 @@ test("the header menu reveals search, the archive and Team settings", async ({
   await expect(
     screen(page)
       .locator("p")
-      .filter({ hasText: /^Context$/ }),
+      .filter({ hasText: /^Team Settings$/ }),
   ).toHaveCount(1);
+  await expect(teamSettingsTab(page, "context")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
 });
 
 test("a row tap pushes the chat, and back returns to the list", async ({

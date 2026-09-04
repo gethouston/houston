@@ -4,9 +4,8 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
-import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
-import { hasAgentTeams, hasSpaces } from "../../lib/org-roles";
+import { hasAgentTeams } from "../../lib/org-roles";
 import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHero } from "../shell/page-shell";
 import { teamTreeRows } from "./teams-home-model";
@@ -29,16 +28,14 @@ export function TeamsHomeView() {
   const { t } = useTranslation("shell");
   const teams = useTeams();
   const { capabilities } = useCapabilities();
-  const personalSpace = usePersonalSpace();
-  const spacesHost = hasSpaces(capabilities);
   // The rail's own rule for its "New team" action (use-server-team-actions):
   // a server-teams host always offers it, a local one to whoever may create
   // agents.
   const { canCreate: canCreateAgents } = useCanCreateAgents();
   const canCreateTeam = hasAgentTeams(capabilities) || canCreateAgents;
   const rows = useMemo(
-    () => teamTreeRows(teams, capabilities, { personalSpace, spacesHost }),
-    [capabilities, personalSpace, spacesHost, teams],
+    () => teamTreeRows(teams, capabilities),
+    [capabilities, teams],
   );
 
   return (

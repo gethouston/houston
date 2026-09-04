@@ -116,6 +116,7 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
       <div className="min-h-0 flex-1 overflow-y-auto pb-6">
         <AgentMissionsList
           sections={sections}
+          agentColor={agent.color}
           filter={filter}
           query={query}
           archivedOpen={archivedOpen}

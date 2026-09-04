@@ -5,6 +5,8 @@ import {
   openPhoneTeamSection,
   teamSectionRow,
   teamSectionRows,
+  teamSettingsTab,
+  teamSettingsTabs,
 } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
@@ -14,9 +16,10 @@ import { screen } from "../support/team-nav";
  *
  * The tree is the phone's ONLY section switcher — a team's own screen carries a
  * back chip and a title instead — so what this guards is the round trip: the
- * tree offers the sections the team view would actually render, tapping one
- * PUSHES that screen, and both back affordances (the chip and hardware back)
- * land on the tree the tap came from.
+ * tree offers the sections the desktop strip offers, tapping one PUSHES that
+ * screen, the Team Settings row lands on the drilled level with the desktop's
+ * own tabs, and both back affordances (the chip and hardware back) land on the
+ * tree the tap came from.
  */
 
 async function seedRoutine(name: string): Promise<void> {
@@ -30,7 +33,7 @@ async function seedRoutine(name: string): Promise<void> {
   });
 }
 
-test("the tree lists the seeded team with its sections in order", async ({
+test("the tree lists the seeded team with the desktop's sections in order", async ({
   page,
 }) => {
   await page.goto("/");
@@ -43,15 +46,14 @@ test("the tree lists the seeded team with its sections in order", async ({
   await expect(team).toHaveCount(1);
   await expect(team).toHaveAttribute("data-team-id", /.+/);
 
-  // The seeded caller is single-player, so they manage the team: the shared
-  // sections first, then the ones behind the desktop's Settings door. People is
-  // absent — this deployment has no organization to show.
+  // The seeded caller is single-player, so they manage the team: the strip's
+  // three shared sections, then the Team Settings door — the same four words
+  // the desktop strip carries. Context and People are BEHIND the door.
   await expect(teamSectionRows(page)).toHaveText([
     "Tasks",
     "Routines",
-    "Context",
     "Files",
-    "Settings",
+    "Team Settings",
   ]);
 });
 
@@ -104,6 +106,60 @@ test("Routines opens the team's routines section", async ({ page }) => {
       .locator("p")
       .filter({ hasText: /^Routines$/ }),
   ).toHaveCount(1);
+});
+
+test("Team Settings lands on the drilled level with the desktop's tabs", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await openPhoneTeamSection(page, "settings");
+
+  // The desktop's door opens on Context; the phone's does too, under a header
+  // that names the level. The tabs are the desktop's own, minus People, which
+  // this deployment (no organization) has nobody to show under.
+  await expect(
+    screen(page)
+      .locator("p")
+      .filter({ hasText: /^Team Settings$/ }),
+  ).toHaveCount(1);
+  await expect(teamSettingsTabs(page)).toHaveText([
+    "Context",
+    "Agents",
+    "Settings",
+  ]);
+  await expect(teamSettingsTab(page, "context")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+
+  // A tab swaps the pane in place: the Agents pane lists the seeded agent.
+  await teamSettingsTab(page, "agents").tap();
+  await expect(teamSettingsTab(page, "agents")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(screen(page).getByText("Houston")).toBeVisible();
+
+  await teamSettingsTab(page, "settings").tap();
+  await expect(
+    screen(page).getByRole("button", { name: "Delete team" }),
+  ).toBeVisible();
+
+  // Tabs replaced the entry rather than pushing: ONE hardware back lands on
+  // the tree, not on the previous tab.
+  await page.goBack();
+  await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
+  await expect(teamSectionRow(page, "settings")).toBeVisible();
+});
+
+test("the Team Settings back chip retreats to the tree", async ({ page }) => {
+  await page.goto("/");
+  await openPhoneTeamSection(page, "settings");
+
+  const back = screen(page).getByTestId("team-settings-mobile-back");
+  await expect(back).toHaveAttribute("aria-label", "Teams");
+  await back.tap();
+  await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
 });
 
 test("the title row's New team control opens the create-team dialog", async ({

@@ -2,15 +2,18 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   type AgentHomeConversation,
+  agentHomeFilterTeam,
+  agentHomeHasTeamFilter,
+  agentHomePreview,
   agentHomeRows,
-  agentTreeSections,
+  agentRowsForTeam,
 } from "../src/components/agents-home/agents-home-model.ts";
 import type { TeamView } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
 
-// The mobile Agents home's pure rules: the attention sort and the team tree.
-// Counts come from the shared summaries (never recomputed); the tree is what
-// the phone screen draws, so grouping and order are the whole contract.
+// The mobile Agents home's pure rules: the attention sort, what a row says
+// about its agent (preview, count, time) and the team filter. Counts come
+// from the shared summaries (never recomputed).
 
 const agent = (id: string, name = id) => ({
   id,
@@ -78,24 +81,63 @@ describe("agentHomeRows", () => {
     );
   });
 
-  it("dates the band by real work, never a setup chat or the archive", () => {
+  it("previews the latest task's title and counts the visible ones", () => {
+    const rows = agentHomeRows(
+      [agent("a")],
+      [
+        mission({
+          id: "old",
+          agent_path: "/ws/a",
+          title: "Older task",
+          updated_at: "2026-08-27T09:00:00Z",
+        }),
+        mission({
+          id: "new",
+          agent_path: "/ws/a",
+          title: "Newest task",
+          updated_at: "2026-08-28T09:00:00Z",
+        }),
+      ],
+      { a: summary(0, 1) },
+    );
+    assert.equal(rows[0].latestTitle, "Newest task");
+    assert.equal(rows[0].taskCount, 2);
+    assert.equal(rows[0].lastAt, Date.parse("2026-08-28T09:00:00Z"));
+  });
+
+  it("keeps the first swept row as the preview on an exact time tie", () => {
+    const rows = agentHomeRows(
+      [agent("a")],
+      [
+        mission({ id: "first", agent_path: "/ws/a", title: "First" }),
+        mission({ id: "second", agent_path: "/ws/a", title: "Second" }),
+      ],
+      { a: summary(0, 0) },
+    );
+    assert.equal(rows[0].latestTitle, "First");
+  });
+
+  it("dates and previews by real work, never a setup chat or the archive", () => {
     const rows = agentHomeRows(
       [agent("a")],
       [
         mission({
           id: "new",
           agent_path: "/ws/a",
+          title: "Real work",
           updated_at: "2026-08-27T09:00:00Z",
         }),
         mission({
           id: "arch",
           agent_path: "/ws/a",
+          title: "Archived",
           status: "archived",
           updated_at: "2026-08-28T09:00:00Z",
         }),
         mission({
           id: "setup",
           agent_path: "/ws/a",
+          title: "Setup",
           agent: "houston:routine-setup",
           updated_at: "2026-08-28T10:00:00Z",
         }),
@@ -103,64 +145,72 @@ describe("agentHomeRows", () => {
       { a: summary(0, 1) },
     );
     assert.equal(rows[0].lastAt, Date.parse("2026-08-27T09:00:00Z"));
+    assert.equal(rows[0].latestTitle, "Real work");
+    assert.equal(rows[0].taskCount, 1);
   });
 
   it("an agent with no summary and no rows contributes zeros, not a crash", () => {
     const rows = agentHomeRows([agent("a")], undefined, {});
     assert.equal(rows[0].needsYouCount, 0);
     assert.equal(rows[0].runningCount, 0);
+    assert.equal(rows[0].taskCount, 0);
+    assert.equal(rows[0].latestTitle, null);
     assert.equal(rows[0].lastAt, null);
   });
 });
 
-describe("agentTreeSections", () => {
+describe("the team filter", () => {
   const rows = agentHomeRows([agent("a"), agent("b"), agent("c")], [], {
     a: summary(1, 0),
     b: summary(0, 0),
     c: summary(0, 0),
   });
+  const teams = [team("t1", ["b", "c"]), team("team:default", ["a"])];
 
-  it("stays FLAT when the workspace has only its default team", () => {
-    const sections = agentTreeSections([team("team:default", ["a"])], rows);
-    assert.equal(sections.length, 1);
-    assert.equal(sections[0].team, null);
+  it("is offered only when there is more than one team to choose", () => {
+    assert.equal(agentHomeHasTeamFilter([team("team:default", ["a"])]), false);
+    assert.equal(agentHomeHasTeamFilter(teams), true);
+  });
+
+  it("resolves the chosen team, and a missing one to every team", () => {
+    assert.equal(agentHomeFilterTeam(teams, null), null);
+    assert.equal(agentHomeFilterTeam(teams, "t1")?.id, "t1");
+    assert.equal(agentHomeFilterTeam(teams, "gone"), null);
+  });
+
+  it("shows every agent under no team, in the attention order", () => {
     assert.deepEqual(
-      sections[0].rows.map((r) => r.agent.id),
+      agentRowsForTeam(rows, null).map((r) => r.agent.id),
       ["a", "b", "c"],
     );
   });
 
-  it("groups by team in rail order, keeping the attention order inside", () => {
-    const sections = agentTreeSections(
-      [team("t1", ["b", "c"]), team("team:default", ["a"])],
-      rows,
-    );
+  it("narrows to the team's members, keeping the attention order", () => {
     assert.deepEqual(
-      sections.map((s) => s.team?.id),
-      ["t1", "team:default"],
-    );
-    assert.deepEqual(
-      sections[0].rows.map((r) => r.agent.id),
+      agentRowsForTeam(rows, teams[0]).map((r) => r.agent.id),
       ["b", "c"],
     );
     assert.deepEqual(
-      sections[1].rows.map((r) => r.agent.id),
+      agentRowsForTeam(rows, teams[1]).map((r) => r.agent.id),
       ["a"],
     );
   });
+});
 
-  it("skips a team with no agents rather than drawing an empty header", () => {
-    const sections = agentTreeSections(
-      [team("t1", ["a"]), team("empty", []), team("team:default", ["b", "c"])],
-      rows,
-    );
-    assert.deepEqual(
-      sections.map((s) => s.team?.id),
-      ["t1", "team:default"],
-    );
+describe("agentHomePreview", () => {
+  it("says Typing while the agent has running work, ahead of the latest task", () => {
+    assert.deepEqual(agentHomePreview({ runningCount: 1, latestTitle: "X" }), {
+      kind: "typing",
+    });
   });
 
-  it("answers nothing at all with nothing (the empty state's job)", () => {
-    assert.deepEqual(agentTreeSections([team("t1", ["a"])], []), []);
+  it("quotes the latest task otherwise, and says so when there is none", () => {
+    assert.deepEqual(agentHomePreview({ runningCount: 0, latestTitle: "X" }), {
+      kind: "latest",
+      title: "X",
+    });
+    assert.deepEqual(agentHomePreview({ runningCount: 0, latestTitle: null }), {
+      kind: "none",
+    });
   });
 });

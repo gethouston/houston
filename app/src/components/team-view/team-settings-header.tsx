@@ -7,16 +7,11 @@ import { useUIStore } from "../../stores/ui";
 import { MobileDrilledHeader } from "../shell/mobile-drilled-header";
 import { DrilledHeader } from "../shell/page-header/drilled-header";
 import { TeamGlyph } from "../shell/team-glyph";
-
-const IDS = ["context", "agents", "people", "settings"] as const;
-type TeamSettingsSection = (typeof IDS)[number];
-
-const MOBILE_TITLE_KEYS = {
-  context: "teamView.settingsTabs.context",
-  agents: "teamView.settingsTabs.agents",
-  people: "teamView.settingsTabs.people",
-  settings: "teamView.settingsTabs.settings",
-} as const satisfies Record<TeamSettingsSection, string>;
+import {
+  TEAM_SETTINGS_TAB_IDS as IDS,
+  TeamSettingsMobileTabs,
+  type TeamSettingsTabId as TeamSettingsSection,
+} from "./team-settings-mobile-tabs";
 
 export function TeamSettingsHeader(props: {
   team: TeamView;
@@ -32,23 +27,39 @@ export function TeamSettingsHeader(props: {
   );
   const isMobile = useIsMobile();
   const teamName = teamDisplayName(props.team, t("teamView.defaultName"));
-  // On the phone this level was entered from the Teams tree, one row per
-  // settings section, so it retreats to the tree rather than to the team's
-  // board: back must undo the tap the user actually made.
+  const tabs = IDS.filter((id) => props.sections.includes(id));
+  // On the phone this level was entered from the Teams tree's "Team Settings"
+  // row, so it retreats to the tree rather than to the team's board: back
+  // must undo the tap the user actually made. Its four panes are the same
+  // tabs the desktop's drilled header carries, drawn under the title; a tab
+  // REPLACES the nav entry rather than pushing one, so back never has to walk
+  // through every pane the user looked at.
   if (isMobile) {
-    const active = IDS.find((id) => id === props.active) ?? "context";
+    const active = tabs.find((id) => id === props.active) ?? "context";
     return (
-      <MobileDrilledHeader
-        backLabel={t("shell:teamsHome.title")}
-        onBack={() => openTeamsHome({ nav: "retreat" })}
-        glyph={<TeamGlyph team={props.team} className="size-5 shrink-0" />}
-        title={teamName}
-        subtitle={t(MOBILE_TITLE_KEYS[active])}
-        testId="team-settings-mobile-back"
-      />
+      <>
+        <MobileDrilledHeader
+          backLabel={t("shell:teamsHome.title")}
+          onBack={() => openTeamsHome({ nav: "retreat" })}
+          glyph={<TeamGlyph team={props.team} className="size-5 shrink-0" />}
+          title={teamName}
+          subtitle={t("teamView.tabs.settings")}
+          testId="team-settings-mobile-back"
+        />
+        <TeamSettingsMobileTabs
+          tabs={tabs}
+          active={active}
+          onSelect={(section) =>
+            openTeamView(props.team.id, section, {
+              teamSettingsFocus: true,
+              nav: "replace",
+            })
+          }
+        />
+      </>
     );
   }
-  const items = IDS.filter((id) => props.sections.includes(id)).map((id) => ({
+  const items = tabs.map((id) => ({
     id,
     heading: id === "context",
     label: t(`teamView.settingsTabs.${id}`),

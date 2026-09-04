@@ -80,6 +80,12 @@ interface UIState {
    */
   agentsHomeAgentId: string | null;
   /**
+   * The team the mobile Agents home is narrowed to (`null` = every team). A
+   * plain preference, NOT a nav level: it survives drilling into an agent and
+   * back, and the back button never has to undo a filter choice.
+   */
+  agentsHomeTeamId: string | null;
+  /**
    * The phone's pushed mission-chat screen (`lib/nav-stack.ts` documents the
    * pair's semantics): the owning agent, and the open mission or `null` for an
    * empty draft chat. Set only through {@link UIState.openMissionChat} /
@@ -300,6 +306,7 @@ interface UIState {
       nav?: NavMode;
     },
   ) => void;
+  setAgentsHomeTeamId: (teamId: string | null) => void;
   /**
    * Navigate to the phone's Teams home: the tree of every team and its
    * sections, the Teams tab's root. A team's section is one push below it
@@ -435,6 +442,7 @@ const initialUIState = {
   teamAgentFocus: false,
   teamSettingsFocus: false,
   agentsHomeAgentId: null,
+  agentsHomeTeamId: null,
   chatAgentId: null,
   chatMissionId: null,
   // The single-entry boot stack; its root mirrors the initial view fields
@@ -525,6 +533,7 @@ export const useUIStore = create<UIState>()(
             opts?.nav ?? "push",
           ),
         ),
+      setAgentsHomeTeamId: (agentsHomeTeamId) => set({ agentsHomeTeamId }),
       openTeamsHome: (opts) =>
         set((s) =>
           navigated(

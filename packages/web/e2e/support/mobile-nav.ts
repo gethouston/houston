@@ -30,6 +30,20 @@ export async function press(
   else await locator.click();
 }
 
+/**
+ * The phone's boot landing, painted: the Agents home with its first row on the
+ * glass. The rows wait on the one-sweep conversations query, which on a cold
+ * dev server sits behind the first transform of the whole app chunk; on a CI
+ * runner sharing two workers that has outlasted the default expect window
+ * (the failure screenshot showed the row painted, just late). The BOOT anchor
+ * alone gets the longer wait; everything after it keeps the default.
+ */
+export async function awaitAgentsHome(page: Page): Promise<Locator> {
+  const row = page.getByTestId("agents-home-row").first();
+  await expect(row).toBeVisible({ timeout: 20_000 });
+  return row;
+}
+
 /** The three items of the pill. "More" is a MENU, not a destination. */
 export type MobileTab = "agents" | "teams" | "more";
 
@@ -77,12 +91,12 @@ export async function openMoreMenu(
   return menu;
 }
 
-/** The Teams tree's section rows, named the way the tree stamps them. */
+/** The Teams tree's section rows, named the way the tree stamps them: the
+ *  desktop strip's own four. Context, Agents, People and Settings live behind
+ *  the "settings" row (Team Settings), as tabs of the drilled level. */
 export type PhoneTeamSection =
   | "mission-control"
   | "routines"
-  | "context"
-  | "people"
   | "files"
   | "settings";
 
@@ -94,6 +108,23 @@ export function teamSectionRows(page: Page): Locator {
 export function teamSectionRow(page: Page, section: PhoneTeamSection): Locator {
   return screen(page).locator(
     `[data-testid='teams-home-section'][data-section='${section}']`,
+  );
+}
+
+/** The drilled Team Settings level's tabs on the phone, in desktop order. */
+export type PhoneTeamSettingsTab = "context" | "agents" | "people" | "settings";
+
+/** Every tab of the phone's Team Settings level, in render order. */
+export function teamSettingsTabs(page: Page): Locator {
+  return screen(page).getByTestId("team-settings-mobile-tab");
+}
+
+export function teamSettingsTab(
+  page: Page,
+  tab: PhoneTeamSettingsTab,
+): Locator {
+  return screen(page).locator(
+    `[data-testid='team-settings-mobile-tab'][data-section='${tab}']`,
   );
 }
 
