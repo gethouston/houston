@@ -26,25 +26,44 @@ test("search fan-out keeps healthy provider results", async () => {
   ]);
 });
 
-test("a curated toolkit is OFFERED through custom only; connected rows and a custom outage keep the other provider's rows", async () => {
-  const highlevelRow = {
+test("the custom provider's bare connect row is dropped when another provider offers the app; tools and connected rows stay", async () => {
+  const composioRow = {
     action: "HIGHLEVEL_CREATE_CONTACT",
     toolkit: "highlevel",
     description: "Create a contact",
-    connected: false,
   };
   const composio = new FakeIntegrationProvider({
     id: "composio",
-    actions: [
-      highlevelRow,
-      {
-        action: "GMAIL_SEND_EMAIL",
-        toolkit: "gmail",
-        description: "Email a contact",
-      },
-    ],
+    actions: [composioRow],
   });
-  const custom = new FakeIntegrationProvider({
+  const connectRow = {
+    action: "",
+    toolkit: "highlevel",
+    description: "HighLevel CRM contact tools",
+    connected: false,
+    status: "connectable" as const,
+  };
+  const offering = new FakeIntegrationProvider({
+    id: "custom",
+    actions: [connectRow],
+  });
+  const both = await searchIntegrations({
+    registry: new IntegrationRegistry([composio, offering]),
+    userId: "user",
+    query: "contact",
+  });
+  expect(both.items.map((item) => item.action)).toEqual([
+    "HIGHLEVEL_CREATE_CONTACT",
+  ]);
+  // Custom alone still offers the connect (the only path there is).
+  const alone = await searchIntegrations({
+    registry: new IntegrationRegistry([offering]),
+    userId: "user",
+    query: "contact",
+  });
+  expect(alone.items.map((item) => item.toolkit)).toEqual(["highlevel"]);
+  // A compiled custom tool for the same app is never a duplicate offer.
+  const compiled = new FakeIntegrationProvider({
     id: "custom",
     actions: [
       {
@@ -54,50 +73,15 @@ test("a curated toolkit is OFFERED through custom only; connected rows and a cus
       },
     ],
   });
-  const both = await searchIntegrations({
-    registry: new IntegrationRegistry([composio, custom]),
+  const withTools = await searchIntegrations({
+    registry: new IntegrationRegistry([composio, compiled]),
     userId: "user",
     query: "contact",
   });
-  expect(both.items.map((item) => item.action)).toEqual([
-    "GMAIL_SEND_EMAIL",
+  expect(withTools.items.map((item) => item.action)).toEqual([
+    "HIGHLEVEL_CREATE_CONTACT",
     "tools.highlevel.contacts_create-contact",
   ]);
-  // Without custom registered, Composio's row is the only path and stays.
-  const alone = await searchIntegrations({
-    registry: new IntegrationRegistry([composio]),
-    userId: "user",
-    query: "contact",
-  });
-  expect(alone.items.map((item) => item.action)).toContain(
-    "HIGHLEVEL_CREATE_CONTACT",
-  );
-  // An account already connected through Composio keeps its actions.
-  const connectedComposio = new FakeIntegrationProvider({
-    id: "composio",
-    actions: [highlevelRow],
-  });
-  const started = await connectedComposio.connect("user", "highlevel");
-  connectedComposio.completeConnection("user", started.connectionId);
-  const kept = await searchIntegrations({
-    registry: new IntegrationRegistry([connectedComposio, custom]),
-    userId: "user",
-    query: "contact",
-  });
-  expect(kept.items.map((item) => item.action)).toContain(
-    "HIGHLEVEL_CREATE_CONTACT",
-  );
-  // A custom outage never hides the offer that is up.
-  const down = new FakeIntegrationProvider({ id: "custom" });
-  down.throwSearchExecute = new Error("offline");
-  const outage = await searchIntegrations({
-    registry: new IntegrationRegistry([composio, down]),
-    userId: "user",
-    query: "contact",
-  });
-  expect(outage.items.map((item) => item.action)).toContain(
-    "HIGHLEVEL_CREATE_CONTACT",
-  );
 });
 
 test("execute routes tools-prefixed actions to custom", async () => {

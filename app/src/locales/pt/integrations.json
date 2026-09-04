@@ -77,14 +77,6 @@
     "noResults": "Nenhum app corresponde à busca.",
     "loading": "Carregando apps..."
   },
-  "highlevelGuidance": {
-    "title": "Escolha Sub-Account View no HighLevel",
-    "body": "Quando a página do HighLevel abrir, use o menu ao lado de Houston para mudar de Agency View para Sub-Account View.",
-    "houstonAppName": "Houston",
-    "agencyView": "Agency View",
-    "cancel": "Cancelar",
-    "continue": "Continuar para o HighLevel"
-  },
   "home": {
     "tabs": {
       "label": "Seções de integrações",
@@ -223,8 +215,10 @@
     },
     "highlevel": {
       "description": "Seu CRM HighLevel (GoHighLevel): contatos, conversas, funis e oportunidades, calendários, faturas e pagamentos, posts em redes sociais e blogs. Cada conexão trabalha com uma subconta.",
-      "keyHelp": "No HighLevel, abra a subconta que você quer conectar, vá em Configurações (Settings) e depois em Integrações privadas (Private Integrations), e crie um token com as permissões que seus agentes precisam. Cole o token aqui (ele começa com pit-). O token só acessa essa subconta.",
-      "signInNote": "A página de login mostra o nome LeadConnector. É o nome técnico do HighLevel, então você está no lugar certo. Escolha a subconta com a qual seus agentes devem trabalhar."
+      "providerTitle": "Conectar HighLevel",
+      "providerDesc": "O HighLevel abre no seu navegador. Use o menu ao lado de Houston para mudar de Agency View para Sub-Account View e aprove. Seus agentes terão todas as funções do HighLevel.",
+      "signInTitle": "Entrar com o conector do próprio HighLevel",
+      "signInDesc": "O HighLevel gerencia essa conexão diretamente. A página de login mostra o nome LeadConnector, o nome técnico do HighLevel, então você está no lugar certo. Escolha a subconta com a qual seus agentes devem trabalhar."
     },
     "connect": {
       "title": "Conectar {{name}}",

@@ -88,16 +88,6 @@ export const CURATED_ENTRIES: readonly CuratedEntry[] = [
   },
 ];
 
-/** Whether a toolkit slug is one the curated catalog claims — the custom
- *  provider is then that service's ONLY connect path (see the fan-out). */
-export function isCuratedSlug(
-  slug: string,
-  entries: readonly CuratedEntry[] = CURATED_ENTRIES,
-): boolean {
-  const key = slug.trim().toLowerCase();
-  return entries.some((entry) => entry.slug === key);
-}
-
 const haystackOf = (entry: CuratedEntry): string =>
   [
     entry.slug,

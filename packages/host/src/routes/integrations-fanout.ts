@@ -1,4 +1,3 @@
-import { isCuratedSlug } from "../integrations/custom/curated";
 import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
 import type { ActingContext } from "../integrations/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
@@ -43,17 +42,11 @@ export async function searchIntegrations(
   input: IntegrationSearchInput,
 ): Promise<IntegrationSearchOutput> {
   const providerIds = input.provider ? [input.provider] : input.registry.ids();
-  // A service the curated catalog claims (HighLevel is in Composio's catalog
-  // too) is OFFERED only through the custom provider: another provider's
-  // connectable row would invite a connection the connect card never makes.
-  // Rows for an account the user already connected there stay — their
-  // actions must keep working — and nothing is dropped unless the custom
-  // search actually answered, so a custom outage never hides the one path
-  // that is up.
-  const ownRows = (id: string, items: ToolMatch[]): ToolMatch[] =>
-    id === "custom"
-      ? items
-      : items.filter((item) => item.connected || !isCuratedSlug(item.toolkit));
+  // A curated app that another provider also carries (HighLevel is in
+  // Composio's catalog too) is one app to the user — one connect card, with
+  // that provider's connect leading. The custom provider's bare "connect
+  // me" row for it (no action, not connected) is then a duplicate offer and
+  // is dropped; its compiled tools and every other provider's rows stay.
   const fanOut = async (scope: string | undefined) => {
     const settled = await Promise.allSettled(
       providerIds.map((id) =>
@@ -62,17 +55,25 @@ export async function searchIntegrations(
           .search(input.userId, input.query, input.acting, scope),
       ),
     );
-    const customAnswered = settled.some(
-      (result, index) =>
-        providerIds[index] === "custom" && result.status === "fulfilled",
+    const offeredElsewhere = new Set(
+      settled.flatMap((result, index) =>
+        result.status === "fulfilled" && providerIds[index] !== "custom"
+          ? result.value.items.map((item) => item.toolkit)
+          : [],
+      ),
     );
     const fulfilled = settled.flatMap((result, index) =>
       result.status === "fulfilled"
         ? [
-            customAnswered
+            providerIds[index] === "custom"
               ? {
                   ...result.value,
-                  items: ownRows(providerIds[index] ?? "", result.value.items),
+                  items: result.value.items.filter(
+                    (item) =>
+                      item.action !== "" ||
+                      item.connected ||
+                      !offeredElsewhere.has(item.toolkit),
+                  ),
                 }
               : result.value,
           ]

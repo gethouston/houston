@@ -218,7 +218,7 @@ test("a row's + connects INLINE, exactly once, leaving every other row usable", 
   await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
 });
 
-test("HighLevel asks for Sub-Account View before opening OAuth", async ({
+test("HighLevel connects through one dialog: Composio leads with the Sub-Account View guidance, the MCP sign-in is second", async ({
   page,
   request,
 }) => {
@@ -226,27 +226,44 @@ test("HighLevel asks for Sub-Account View before opening OAuth", async ({
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
+  // Searched first, so the row's completion callback is observable below.
+  const search = page.getByRole("searchbox", { name: "Search integrations" });
+  await search.fill("HighLevel");
+
+  // ONE HighLevel card, even though the curated catalog names the slug too.
+  await expect(
+    page.getByRole("button", { name: "Connect HighLevel" }),
+  ).toHaveCount(1);
   await page.getByRole("button", { name: "Connect HighLevel" }).click();
 
-  const guidance = page.getByRole("alertdialog");
+  const dialog = page.getByRole("dialog");
   await expect(
-    guidance.getByRole("heading", {
-      name: "Choose Sub-Account View in HighLevel",
-    }),
+    dialog.getByRole("heading", { name: "Connect HighLevel" }),
   ).toBeVisible();
+  const viaHouston = dialog.getByRole("button", {
+    name: /^Connect HighLevel/,
+  });
+  await expect(viaHouston).toContainText("Recommended");
+  await expect(viaHouston).toContainText(
+    "switch Agency View to Sub-Account View",
+  );
+  const viaMcp = dialog.getByRole("button", {
+    name: /Sign in with HighLevel's own connector/,
+  });
+  await expect(viaMcp).toContainText("LeadConnector");
+  // No token option for HighLevel: two sign-ins were the whole choice.
   await expect(
-    guidance.getByText("Agency View", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    guidance.getByText(
-      "When the HighLevel page opens, use the dropdown next to Houston to switch Agency View to Sub-Account View.",
-      { exact: true },
-    ),
-  ).toBeVisible();
+    dialog.getByRole("button", { name: /Use an API key instead/ }),
+  ).toHaveCount(0);
   await expect(page.getByText("Finish connecting HighLevel")).toHaveCount(0);
 
-  await guidance.getByRole("button", { name: "Continue to HighLevel" }).click();
+  // The lead option is the plain Composio hand-off for THIS row: the same
+  // waiting state, and the same completion (the matching search clears).
+  await viaHouston.click();
+  await expect(dialog).toHaveCount(0);
   await expect(page.getByText("Finish connecting HighLevel")).toBeVisible();
+  await activatePendingConnection(request, "highlevel");
+  await expect(search).toHaveValue("", { timeout: 15_000 });
 });
 
 test("the owning row becomes ONE card carrying ONE spinner", async ({
