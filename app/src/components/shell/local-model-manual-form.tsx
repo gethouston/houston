@@ -2,6 +2,10 @@ import { Button } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useReasoningToggle } from "../../hooks/use-reasoning-toggle";
+import {
+  classifyCloudEgressRejection,
+  cloudEgressBodyKey,
+} from "../../lib/cloud-egress-blocked-error";
 import { genericErrorDescription } from "../../lib/error-report";
 import { connectManualEndpoint } from "../../lib/local-model-connect";
 import { ReasoningToggle } from "./local-model-dialog-parts";
@@ -76,7 +80,15 @@ export function LocalModelManualForm({
       onConnected?.(trimmedModel);
       onClose();
     } catch (err) {
-      setError(genericErrorDescription("local_model_manual_connect", err));
+      // The cloud host's deliberate "can't reach that address" 400 is an
+      // expected state with a user-side remedy: show the rule it broke, not
+      // the generic copy (which also filed a Sentry issue per attempt).
+      const egress = classifyCloudEgressRejection(err);
+      setError(
+        egress
+          ? t(cloudEgressBodyKey(egress))
+          : genericErrorDescription("local_model_manual_connect", err),
+      );
       setSubmitting(false);
     }
   };

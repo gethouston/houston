@@ -202,12 +202,13 @@ export async function reconnectLocalModel(signal?: AbortSignal): Promise<void> {
 /**
  * The advanced/manual path (and the web fallback where no native bridge exists):
  * register a base URL + model directly, with no tunnel. Mirrors the old manual
- * OpenAI-compatible dialog.
+ * OpenAI-compatible dialog. The form renders every failure inline next to the
+ * address field, so the engine wrapper's toast is off for this call.
  */
 export async function connectManualEndpoint(
   endpoint: CustomEndpoint,
 ): Promise<void> {
-  await tauriProvider.setCustomEndpoint(endpoint);
+  await tauriProvider.setCustomEndpoint(endpoint, "inline");
 }
 
 /**

@@ -46,6 +46,11 @@ import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
 } from "./claude-login";
+import {
+  classifyCloudEgressRejection,
+  cloudEgressBodyKey,
+  isCloudEgressBlockedError,
+} from "./cloud-egress-blocked-error";
 import { cancelCodexLoopback } from "./codex-loopback";
 import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { getEngine, isRemoteEngine } from "./engine";
@@ -121,6 +126,13 @@ export interface EngineCallOptions {
    */
   surface?: boolean;
 }
+
+/**
+ * Who surfaces a `setCustomEndpoint` failure: the wrapper's toast (the guided
+ * connect, whose dialog only shows a calm retry state) or the caller inline
+ * (the manual form, which renders the reason next to the fields).
+ */
+export type CustomEndpointSurface = "toast" | "inline";
 
 /** Wrap an engine call and surface errors as toasts unless caller handles them inline. */
 async function call<T>(
@@ -282,6 +294,23 @@ async function surfaceError(
     showExpectedStateToast(
       i18n.t("providers:toast.orgAdminRequiredTitle"),
       i18n.t("providers:toast.orgAdminRequiredBody"),
+    );
+    return;
+  }
+
+  // Expected business state, not a bug: the managed cloud host refusing a
+  // local-model address its pods can never reach (plain http, a custom port,
+  // localhost / a private network). The remedy is the user's (a public https
+  // address or a tunnel), so surface the rule as plain guidance, never the red
+  // bug pair, and never Sentry (HOUSTON-APP-56A filed one issue per attempt).
+  // The manual-connect form silences this class and renders the same copy
+  // inline; this toast covers every other caller (the guided connect).
+  const egress = classifyCloudEgressRejection(err);
+  if (egress) {
+    const { showExpectedStateToast } = await import("./error-toast");
+    showExpectedStateToast(
+      i18n.t("providers:openaiCompatible.cloudOnly.title"),
+      i18n.t(`providers:${cloudEgressBodyKey(egress)}`),
     );
     return;
   }
@@ -1936,9 +1965,21 @@ export const tauriProvider = {
    * gated by the host's `openaiCompatible` capability — the connect UI shows it
    * only then (see `getVisibleProviders`).
    */
-  setCustomEndpoint: (endpoint: CustomEndpoint) =>
-    call<void>("set_provider_custom_endpoint", () =>
-      getEngine().setProviderCustomEndpoint(endpoint),
+  setCustomEndpoint: (
+    endpoint: CustomEndpoint,
+    surface: CustomEndpointSurface = "toast",
+  ) =>
+    call<void>(
+      "set_provider_custom_endpoint",
+      () => getEngine().setProviderCustomEndpoint(endpoint),
+      undefined,
+      // The manual-connect form owns its failure surface: it renders the
+      // failure inline (generic copy for a real bug, which the wrapper still
+      // captures; rule-specific guidance for the cloud egress rejection, which
+      // is silenced here so the inline copy is the ONE surface, no Sentry).
+      surface === "inline"
+        ? { toast: false, silence: isCloudEgressBlockedError }
+        : undefined,
     ),
   /**
    * Mint a relay credential for the guided "connect a local model" flow: the

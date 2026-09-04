@@ -139,7 +139,14 @@
     "modelRequired": "Enter a model name first.",
     "save": "Connect",
     "saving": "Connecting...",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "cloudOnly": {
+      "title": "The cloud can't reach that address",
+      "notHttps": "Cloud agents can only reach public https:// addresses. Enter an https:// address, or put your server behind a tunnel like cloudflared or ngrok.",
+      "customPort": "Cloud agents can only reach addresses on the standard https port. Remove the port from the address.",
+      "privateHost": "Cloud agents can't reach your computer or your local network directly. Use a public https:// address, or put your server behind a tunnel like cloudflared, ngrok or Tailscale Funnel.",
+      "unspecified": "Cloud agents can only reach public https:// addresses. Use a public https:// address, or put your server behind a tunnel like cloudflared or ngrok."
+    }
   },
   "claudeLogin": {
     "timeout": "Claude sign-in timed out. Please try connecting again.",

@@ -26,7 +26,10 @@ describe("checkPublicHttpsEndpoint — rejects unreachable endpoints", () => {
   test("plain http is rejected (not https)", () => {
     const r = check("http://api.example.com/v1");
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toMatch(/https/i);
+    if (!r.ok) {
+      expect(r.reason).toMatch(/https/i);
+      expect(r.code).toBe("endpoint_not_https");
+    }
   });
 
   test.each([
@@ -36,7 +39,10 @@ describe("checkPublicHttpsEndpoint — rejects unreachable endpoints", () => {
   ])("a non-443 port is rejected (%s)", (url) => {
     const r = check(url);
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.reason).toMatch(/port/i);
+    if (!r.ok) {
+      expect(r.reason).toMatch(/port/i);
+      expect(r.code).toBe("endpoint_custom_port");
+    }
   });
 
   test.each([
@@ -46,7 +52,17 @@ describe("checkPublicHttpsEndpoint — rejects unreachable endpoints", () => {
     "https://printer.local/v1",
     "https://ollama.local/v1",
   ])("a local hostname is rejected (%s)", (url) => {
-    expect(check(url).ok).toBe(false);
+    const r = check(url);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("endpoint_private_host");
+  });
+
+  test("a localhost URL that also breaks scheme and port reports the host", () => {
+    // `http://localhost:11434` (the Ollama default) fails all three rules; the
+    // host is the one the user must act on, so its code wins.
+    const r = check("http://localhost:11434/v1");
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.code).toBe("endpoint_private_host");
   });
 
   test.each([

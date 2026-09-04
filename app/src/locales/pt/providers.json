@@ -139,7 +139,14 @@
     "modelRequired": "Primeiro informe um nome de modelo.",
     "save": "Conectar",
     "saving": "Conectando...",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "cloudOnly": {
+      "title": "A nuvem não consegue acessar esse endereço",
+      "notHttps": "Agentes na nuvem só conseguem acessar endereços https:// públicos. Informe um endereço https:// ou exponha o seu servidor com um túnel como cloudflared ou ngrok.",
+      "customPort": "Agentes na nuvem só conseguem acessar endereços na porta https padrão. Remova a porta do endereço.",
+      "privateHost": "Agentes na nuvem não conseguem acessar diretamente o seu computador nem a sua rede local. Use um endereço https:// público ou exponha o seu servidor com um túnel como cloudflared, ngrok ou Tailscale Funnel.",
+      "unspecified": "Agentes na nuvem só conseguem acessar endereços https:// públicos. Use um endereço https:// público ou exponha o seu servidor com um túnel como cloudflared ou ngrok."
+    }
   },
   "claudeLogin": {
     "timeout": "O login do Claude expirou. Tente conectar novamente.",

@@ -663,7 +663,9 @@ export async function handleAgents(
     if (deps.gatewayFronted && !deps.loopbackEgress) {
       const check = checkPublicHttpsEndpoint(parsedUrl);
       if (!check.ok) {
-        json(res, 400, { error: check.reason });
+        // `code` lets the client translate the rule and treat this as an
+        // expected state; `error` keeps the English sentence for logs.
+        json(res, 400, { error: check.reason, code: check.code });
         return true;
       }
     }
