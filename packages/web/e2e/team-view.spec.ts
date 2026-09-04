@@ -151,6 +151,11 @@ test("a team's Tasks tab opens that team's board, named once and scoped", async 
   await expect(
     screen(page).getByText("No agents in this team yet"),
   ).toBeVisible();
+  // ...and offers the create-an-agent door, which files the new agent into
+  // THIS team rather than the default one.
+  await expect(
+    screen(page).getByTestId("team-empty-create-agent"),
+  ).toBeVisible();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
 });
 

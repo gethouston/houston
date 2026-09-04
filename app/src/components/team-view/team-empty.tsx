@@ -18,10 +18,13 @@ import { useUIStore } from "../../stores/ui";
  * same wherever the user is:
  *
  * - the DEFAULT team (the workspace itself) is empty because the workspace has
- *   no agents yet, so it offers the create-an-agent door;
- * - a NAMED team is empty because nothing was moved into it, and a new agent
- *   would land in the default team — so it says how to fill THIS one instead of
- *   offering a button that would not.
+ *   no agents yet;
+ * - a NAMED team is empty because nothing was moved into it yet.
+ *
+ * Both offer the create-an-agent door, and the named team's door files the new
+ * agent INTO that team (`createAgentTeamId`, the same target the rail's per-team
+ * "+" sets), so the phone, which has no rail, still has a way to put a first
+ * agent in a team it just made.
  *
  * The copy is passed in already resolved: each section words its own promise
  * ("its missions", "its routines", "the files it keeps"), and the branch that
@@ -36,7 +39,7 @@ export function TeamEmpty({
   team: TeamView;
   title: string;
   body: string;
-  /** The create-an-agent label. Offered only on the default team. */
+  /** The create-an-agent label. */
   createLabel: string;
 }) {
   const { canCreate } = useCanCreateAgents();
@@ -51,10 +54,13 @@ export function TeamEmpty({
           <EmptyTitle>{title}</EmptyTitle>
           <EmptyDescription>{body}</EmptyDescription>
         </EmptyHeader>
-        {team.isDefault && canCreate && (
+        {canCreate && (
           <Button
             className="mt-4 rounded-full"
-            onClick={() => setCreateAgentDialogOpen(true)}
+            data-testid="team-empty-create-agent"
+            onClick={() =>
+              setCreateAgentDialogOpen(true, team.isDefault ? null : team.id)
+            }
           >
             <Plus className="h-4 w-4" />
             {createLabel}
