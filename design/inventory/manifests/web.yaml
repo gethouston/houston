@@ -292,10 +292,13 @@ components:
     ref: "app/src/components/teams-home/ (TeamsHomeView over the pure teams-home-model.ts teamTreeRows), section taps push through the ui store's openTeamView; the phone team screen header is app/src/components/team-view/team-mobile-header.tsx"
   agents-home:
     status: implemented
-    ref: "app/src/components/agents-home/ (AgentsHomeView switching AgentsHomeList / AgentMissionsScreen on the ui store's agentsHomeAgentId nav level), rows over AgentSidebarIcon + NeedsYouChip, pure rules in agents-home-model.ts, tab root wiring in app/src/lib/open-mobile-tab.ts and the phone boot landing in use-workspace-view-guards.ts"
+    ref: "app/src/components/agents-home/ (AgentsHomeView switching AgentsHomeList / AgentMissionsScreen on the ui store's agentsHomeAgentId nav level), tree in agents-home-tree.tsx over the pure agentHomeRows + agentTreeSections in agents-home-model.ts, rows over AgentSidebarIcon + NeedsYouChip, tab root wiring in app/src/lib/open-mobile-tab.ts and the phone boot landing in use-workspace-view-guards.ts"
   agent-missions-list:
     status: implemented
-    ref: "app/src/components/agents-home/agent-missions-screen.tsx (BackBarScreen + sectioned AgentMissionRow lists over agentMissionSections, the board's missionColumnIdForStatus mapping); active rows push the chat via lib/mission-chat.ts, archived rows keep lib/open-agent.ts openAgentBoard + the published activityPanelId"
+    ref: "app/src/components/agents-home/agent-missions-screen.tsx (shell/mobile-drilled-header.tsx + agent-missions-filter.tsx segments + agent-missions-menu.tsx overflow + agent-missions-search.tsx) over agent-missions-list.tsx, drawing @houston-ai/board TaskListGroup/TaskRow from the pure agent-missions-model.ts (the board's missionColumnIdForStatus mapping); active rows push the chat via lib/mission-chat.ts, archived rows keep lib/open-agent.ts openAgentBoard + the published activityPanelId"
+  task-row:
+    status: implemented
+    ref: "@houston-ai/board task-row.tsx + task-list-group.tsx over the pure task-row-styles.ts status mapping; bound today by app/src/components/agents-home/agent-missions-list.tsx"
   mission-chat-screen:
     status: implemented
     ref: "app/src/components/mission-chat/ (MissionChatScreen over useMissionChatSource + the shared board/use-board-chat-wiring.tsx, rendered through @houston-ai/board AIBoard panelOnly), nav level chatAgentId/chatMissionId in lib/nav-stack.ts + stores/ui.ts openMissionChat, keyboard inset via hooks/use-visual-viewport-inset.ts, shell mount + bar hiding in shell/workspace-shell.tsx"

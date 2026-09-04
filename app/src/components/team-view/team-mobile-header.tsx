@@ -2,8 +2,8 @@ import { useTranslation } from "react-i18next";
 import { teamDisplayName } from "../../lib/team-display";
 import type { TeamSectionId, TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
+import { MobileDrilledHeader } from "../shell/mobile-drilled-header";
 import { TeamGlyph } from "../shell/team-glyph";
-import { MobileDrilledHeader } from "./mobile-drilled-header";
 
 /**
  * A team section's phone header. The team's own screen is DRILLED on the

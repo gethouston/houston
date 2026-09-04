@@ -3,13 +3,14 @@ import { describe, it } from "node:test";
 import {
   type AgentHomeConversation,
   agentHomeRows,
-  agentMissionSections,
-  filterAgentRows,
+  agentTreeSections,
 } from "../src/components/agents-home/agents-home-model.ts";
+import type { TeamView } from "../src/lib/teams-model.ts";
+import type { Agent } from "../src/lib/types.ts";
 
-// PRODUCT-1559: the mobile Agents home's pure rules — the attention sort, the
-// name filter, and the per-agent section split. Counts come from the shared
-// summaries (never recomputed), previews from the swept rows.
+// The mobile Agents home's pure rules: the attention sort and the team tree.
+// Counts come from the shared summaries (never recomputed); the tree is what
+// the phone screen draws, so grouping and order are the whole contract.
 
 const agent = (id: string, name = id) => ({
   id,
@@ -30,6 +31,13 @@ const mission = (
 const summary = (needsYouCount: number, runningCount: number) => ({
   needsYouCount,
   runningCount,
+});
+
+const team = (id: string, agentIds: string[]): TeamView => ({
+  id,
+  name: id,
+  agents: agentIds.map((agentId) => ({ id: agentId, name: agentId }) as Agent),
+  isDefault: id === "team:default",
 });
 
 describe("agentHomeRows", () => {
@@ -70,119 +78,89 @@ describe("agentHomeRows", () => {
     );
   });
 
-  it("previews the most recently moved mission, never a setup chat or the archive", () => {
+  it("dates the band by real work, never a setup chat or the archive", () => {
     const rows = agentHomeRows(
       [agent("a")],
       [
         mission({
-          id: "old",
-          agent_path: "/ws/a",
-          title: "Old",
-          updated_at: "2026-08-26T09:00:00Z",
-        }),
-        mission({
           id: "new",
           agent_path: "/ws/a",
-          title: "New",
           updated_at: "2026-08-27T09:00:00Z",
         }),
         mission({
           id: "arch",
           agent_path: "/ws/a",
-          title: "Filed",
           status: "archived",
           updated_at: "2026-08-28T09:00:00Z",
         }),
         mission({
           id: "setup",
           agent_path: "/ws/a",
-          title: "Setup",
           agent: "houston:routine-setup",
           updated_at: "2026-08-28T10:00:00Z",
         }),
       ],
       { a: summary(0, 1) },
     );
-    assert.equal(rows[0].lastTitle, "New");
+    assert.equal(rows[0].lastAt, Date.parse("2026-08-27T09:00:00Z"));
   });
 
   it("an agent with no summary and no rows contributes zeros, not a crash", () => {
     const rows = agentHomeRows([agent("a")], undefined, {});
     assert.equal(rows[0].needsYouCount, 0);
-    assert.equal(rows[0].lastTitle, null);
+    assert.equal(rows[0].runningCount, 0);
     assert.equal(rows[0].lastAt, null);
   });
 });
 
-describe("filterAgentRows", () => {
-  it("filters by name, case-insensitively; blank keeps everyone", () => {
-    const rows = agentHomeRows(
-      [agent("a", "Finance"), agent("b", "Recruiting")],
-      [],
-      {},
-    );
-    assert.equal(filterAgentRows(rows, "fin").length, 1);
-    assert.equal(filterAgentRows(rows, "FIN")[0].agent.name, "Finance");
-    assert.equal(filterAgentRows(rows, "  ").length, 2);
-    assert.equal(filterAgentRows(rows, "zzz").length, 0);
+describe("agentTreeSections", () => {
+  const rows = agentHomeRows([agent("a"), agent("b"), agent("c")], [], {
+    a: summary(1, 0),
+    b: summary(0, 0),
+    c: summary(0, 0),
   });
-});
 
-describe("agentMissionSections", () => {
-  it("splits one agent's rows by the board's own status mapping", () => {
-    const sections = agentMissionSections(
-      [
-        mission({ id: "r", agent_path: "/ws/a", status: "running" }),
-        mission({ id: "n", agent_path: "/ws/a", status: "needs_you" }),
-        // An errored mission sits in Needs you, exactly as on the board.
-        mission({ id: "e", agent_path: "/ws/a", status: "error" }),
-        mission({ id: "d", agent_path: "/ws/a", status: "done" }),
-        mission({ id: "arch", agent_path: "/ws/a", status: "archived" }),
-        // Another agent's row never leaks in.
-        mission({ id: "other", agent_path: "/ws/b", status: "running" }),
-        // Setup chats are not missions.
-        mission({
-          id: "setup",
-          agent_path: "/ws/a",
-          agent: "houston:routine-setup",
-        }),
-      ],
-      "/ws/a",
-    );
+  it("stays FLAT when the workspace has only its default team", () => {
+    const sections = agentTreeSections([team("team:default", ["a"])], rows);
+    assert.equal(sections.length, 1);
+    assert.equal(sections[0].team, null);
     assert.deepEqual(
-      sections.running.map((m) => m.id),
-      ["r"],
-    );
-    assert.deepEqual(sections.needsYou.map((m) => m.id).sort(), ["e", "n"]);
-    assert.deepEqual(
-      sections.done.map((m) => m.id),
-      ["d"],
-    );
-    assert.deepEqual(
-      sections.archived.map((m) => m.id),
-      ["arch"],
+      sections[0].rows.map((r) => r.agent.id),
+      ["a", "b", "c"],
     );
   });
 
-  it("orders every section newest movement first", () => {
-    const sections = agentMissionSections(
-      [
-        mission({
-          id: "older",
-          agent_path: "/ws/a",
-          updated_at: "2026-08-26T09:00:00Z",
-        }),
-        mission({
-          id: "newer",
-          agent_path: "/ws/a",
-          updated_at: "2026-08-27T09:00:00Z",
-        }),
-      ],
-      "/ws/a",
+  it("groups by team in rail order, keeping the attention order inside", () => {
+    const sections = agentTreeSections(
+      [team("t1", ["b", "c"]), team("team:default", ["a"])],
+      rows,
     );
     assert.deepEqual(
-      sections.running.map((m) => m.id),
-      ["newer", "older"],
+      sections.map((s) => s.team?.id),
+      ["t1", "team:default"],
     );
+    assert.deepEqual(
+      sections[0].rows.map((r) => r.agent.id),
+      ["b", "c"],
+    );
+    assert.deepEqual(
+      sections[1].rows.map((r) => r.agent.id),
+      ["a"],
+    );
+  });
+
+  it("skips a team with no agents rather than drawing an empty header", () => {
+    const sections = agentTreeSections(
+      [team("t1", ["a"]), team("empty", []), team("team:default", ["b", "c"])],
+      rows,
+    );
+    assert.deepEqual(
+      sections.map((s) => s.team?.id),
+      ["t1", "team:default"],
+    );
+  });
+
+  it("answers nothing at all with nothing (the empty state's job)", () => {
+    assert.deepEqual(agentTreeSections([team("t1", ["a"])], []), []);
   });
 });

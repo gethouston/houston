@@ -391,11 +391,22 @@
   },
   "agentsHome": {
     "title": "Agentes",
-    "filterPlaceholder": "Filtrar agentes",
-    "filterEmpty": "Nenhum agente corresponde à sua busca",
-    "noMissionsPreview": "Ainda não há tarefas",
-    "archived_one": "Arquivadas ({{count}})",
-    "archived_other": "Arquivadas ({{count}})",
+    "taskCount_one": "{{count}} tarefa",
+    "taskCount_other": "{{count}} tarefas",
+    "archived": "Arquivadas",
+    "searchPlaceholder": "Buscar tarefas",
+    "searchClose": "Fechar a busca",
+    "searchEmpty": "Nenhuma tarefa corresponde à sua busca",
+    "filterEmpty": "Nenhuma tarefa nesta visão",
+    "filter": {
+      "all": "Todas",
+      "label": "Filtrar tarefas"
+    },
+    "menu": {
+      "label": "Mais ações",
+      "search": "Buscar",
+      "archived": "Arquivadas"
+    },
     "empty": {
       "title": "Ainda não há agentes",
       "description": "Crie um agente para começar. Tudo em que eles trabalharem aparecerá aqui."

@@ -335,6 +335,8 @@ components:
     status: not-started
   agent-missions-list:
     status: not-started
+  task-row:
+    status: not-started
   mission-chat-screen:
     status: not-started
   new-mission-sheet:

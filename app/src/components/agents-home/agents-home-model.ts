@@ -1,16 +1,17 @@
 import { isSetupChatMode } from "../../lib/integration-chat-setup.ts";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection.ts";
-import { missionColumnIdForStatus } from "../mission-board-columns.ts";
+import type { TeamView } from "../../lib/teams-model.ts";
 import type { AgentActivitySummary } from "../shell/agent-activity-summary-model.ts";
 
 /**
  * The mobile Agents home's pure rules: which agents the list shows, in what
- * order, with what preview line — and how one agent's missions split into the
- * screen's sections. Store-free so `app/tests/agents-home-model.test.ts` pins
- * the sort and the sectioning without rendering anything.
+ * order, and how they group into the phone's team tree. Store-free so
+ * `app/tests/agents-home-model.test.ts` pins the sort and the grouping without
+ * rendering anything. One agent's own task list has its own rules, next door
+ * in `agent-missions-model.ts`.
  *
  * Counts are NOT recomputed here: a row takes the same per-agent summaries the
- * tab bar and the rail badges read (`useAgentActivitySummaries`), so the chip
+ * nav bar and the rail badges read (`useAgentActivitySummaries`), so the chip
  * on a row can never disagree with the badge that led the user to it.
  */
 
@@ -22,10 +23,13 @@ export interface AgentHomeAgent {
   color?: string;
 }
 
-/** A swept conversation row, the preview-relevant bits (`RawConversation`). */
+/** A swept conversation row, the bits the home surfaces read
+ *  (`RawConversation`). */
 export interface AgentHomeConversation {
   id: string;
   title: string;
+  /** The task's own one-line description, when it has one. */
+  description?: string;
   status?: string | null;
   type: "primary" | "activity";
   agent_path: string;
@@ -38,9 +42,8 @@ export interface AgentHomeRow {
   agent: AgentHomeAgent;
   needsYouCount: number;
   runningCount: number;
-  /** The most recently moved mission's title, or null with no missions. */
-  lastTitle: string | null;
-  /** Epoch ms of that movement, or null when unknown. */
+  /** Epoch ms of the most recent movement, or null when unknown. The band's
+   *  tie-break; the row itself shows no time. */
   lastAt: number | null;
 }
 
@@ -52,7 +55,7 @@ function isHomeMission(row: AgentHomeConversation): boolean {
   return row.status !== ARCHIVED_STATUS;
 }
 
-function updatedAtMs(row: AgentHomeConversation): number {
+export function updatedAtMs(row: AgentHomeConversation): number {
   const parsed = row.updated_at ? Date.parse(row.updated_at) : Number.NaN;
   return Number.isNaN(parsed) ? 0 : parsed;
 }
@@ -81,7 +84,6 @@ export function agentHomeRows(
       agent,
       needsYouCount: summaries[agent.id]?.needsYouCount ?? 0,
       runningCount: summaries[agent.id]?.runningCount ?? 0,
-      lastTitle: latest ? latest.title : null,
       lastAt: latest ? updatedAtMs(latest) || null : null,
     };
   });
@@ -95,60 +97,33 @@ export function agentHomeRows(
   );
 }
 
-/** Case-insensitive name filter; a blank query keeps every row. */
-export function filterAgentRows(
-  rows: readonly AgentHomeRow[],
-  query: string,
-): AgentHomeRow[] {
-  const needle = query.trim().toLocaleLowerCase();
-  if (needle === "") return [...rows];
-  return rows.filter((row) =>
-    row.agent.name.toLocaleLowerCase().includes(needle),
-  );
-}
-
-/** One agent's missions, split the way the screen sections them. */
-export interface AgentMissionSections {
-  needsYou: AgentHomeConversation[];
-  running: AgentHomeConversation[];
-  done: AgentHomeConversation[];
-  archived: AgentHomeConversation[];
+/** One band of the Agents tree: a team and the agents that belong to it. */
+export interface AgentTreeSection {
+  /** `null` means a FLAT list — the workspace has only its default team, and
+   *  naming it would be a header that says nothing the user did not choose. */
+  team: TeamView | null;
+  rows: AgentHomeRow[];
 }
 
 /**
- * Section one agent's swept rows, newest movement first in every section.
- * The status→section mapping is the board's own (`missionColumnIdForStatus`),
- * so a mission always sits in the same section here as the column it occupies
- * on the board this screen pushes into.
+ * The Agents home as a tree: every team that HAS agents, in rail order, with
+ * its own agents beneath it in the attention order {@link agentHomeRows}
+ * produced.
+ *
+ * A team with no agents is skipped rather than drawn empty: the tree exists to
+ * find an agent, and a header with nothing under it is a dead row. A single
+ * (default) team collapses the whole grouping away — with one team the header
+ * would be the same word on every screen.
  */
-export function agentMissionSections(
-  conversations: readonly AgentHomeConversation[] | undefined,
-  agentPath: string,
-): AgentMissionSections {
-  const sections: AgentMissionSections = {
-    needsYou: [],
-    running: [],
-    done: [],
-    archived: [],
-  };
-  for (const row of conversations ?? []) {
-    if (row.agent_path !== agentPath) continue;
-    if (row.type !== "activity") continue;
-    if (isSetupChatMode(row.agent)) continue;
-    if (row.status === ARCHIVED_STATUS) {
-      sections.archived.push(row);
-      continue;
-    }
-    const column = missionColumnIdForStatus(row.status ?? "");
-    if (column === "needs_you") sections.needsYou.push(row);
-    else if (column === "running") sections.running.push(row);
-    else if (column === "done") sections.done.push(row);
-  }
-  const byRecency = (a: AgentHomeConversation, b: AgentHomeConversation) =>
-    updatedAtMs(b) - updatedAtMs(a);
-  sections.needsYou.sort(byRecency);
-  sections.running.sort(byRecency);
-  sections.done.sort(byRecency);
-  sections.archived.sort(byRecency);
-  return sections;
+export function agentTreeSections(
+  teams: readonly TeamView[],
+  rows: readonly AgentHomeRow[],
+): AgentTreeSection[] {
+  if (rows.length === 0) return [];
+  if (teams.length <= 1) return [{ team: null, rows: [...rows] }];
+  return teams.flatMap((team) => {
+    const members = new Set(team.agents.map((a) => a.id));
+    const teamRows = rows.filter((row) => members.has(row.agent.id));
+    return teamRows.length === 0 ? [] : [{ team, rows: teamRows }];
+  });
 }
