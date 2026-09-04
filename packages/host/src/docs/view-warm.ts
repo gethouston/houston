@@ -4,13 +4,14 @@ import type { WorkspaceStore } from "../ports";
 import { listAgentIds } from "./project-family";
 import { VIEW_RESTS } from "./view-capture";
 
-// The ladder must OUTLAST the launcher's 60s boot-health budget
+// The warm must OUTLAST the launcher's 60s boot-health budget
 // (launcher/process.ts BOOT_HEALTH_BUDGET_MS): `/providers` probes answer 503
-// while the runtime boots, and on a freshly woken pod the boot competes with
-// store hydration for a capped CPU (observed >35s). 9 attempts × 10s spacing
-// ≈ 85s of coverage — a give-up now means a runtime that blew its own boot
-// budget, not a slow-but-healthy wake (HOUSTON-APP-5AP).
-const ATTEMPTS = 9;
+// while the runtime boots. Under a fleet-synchronised roll a CPU-starved pod
+// can blow that budget outright (hydration alone was seen at >100s), and the
+// warm's next probe re-spawns the runtime — so the window covers a FAILED
+// first boot plus a full second one, not just one slow-but-healthy wake
+// (HOUSTON-APP-5AP).
+const WARM_BUDGET_MS = 180_000;
 const RETRY_DELAY_MS = 10_000;
 const REFRESH_DEBOUNCE_MS = 500;
 
@@ -20,33 +21,51 @@ interface SelfFetch {
   fetchImpl?: typeof fetch;
 }
 
-/** GET one of our own view routes so the server's capture re-publishes it. */
+interface ViewAnswer {
+  /** Last HTTP status, or -1 for a network-level failure. */
+  status: number;
+  /**
+   * The last answer was the probe contract's "not here, not now" (503 +
+   * Retry-After, channel/probe-wake.ts): the runtime is still starting or the
+   * host is mid-shutdown. Nothing about the view itself failed.
+   */
+  notNow: boolean;
+}
+
+/**
+ * GET one of our own view routes so the server's capture re-publishes it.
+ * Retries every RETRY_DELAY_MS until a 200 or until `budgetMs` elapses; a zero
+ * budget is a single attempt.
+ */
 async function fetchView(
   self: SelfFetch,
   agentId: string,
   rest: string,
-  attempts: number,
-): Promise<number> {
+  budgetMs: number,
+): Promise<ViewAnswer> {
   const fetchImpl = self.fetchImpl ?? fetch;
   const url = `http://127.0.0.1:${self.port}/agents/${encodeURIComponent(agentId)}/${rest}`;
-  let lastStatus = 0;
-  for (let attempt = 0; attempt < attempts; attempt++) {
-    if (attempt > 0) {
-      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
-    }
+  const deadline = Date.now() + budgetMs;
+  const answer: ViewAnswer = { status: 0, notNow: false };
+  for (;;) {
     try {
       const response = await fetchImpl(url, {
         headers: { Authorization: `Bearer ${self.token}` },
         signal: AbortSignal.timeout(30_000),
       });
-      lastStatus = response.status;
+      answer.status = response.status;
+      answer.notNow =
+        response.status === 503 && response.headers.has("Retry-After");
       await response.body?.cancel();
       if (response.ok) break;
     } catch {
-      lastStatus = -1; // network-level; retry
+      answer.status = -1; // network-level; retry
+      answer.notNow = false;
     }
+    if (Date.now() + RETRY_DELAY_MS > deadline) break;
+    await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
   }
-  return lastStatus;
+  return answer;
 }
 
 async function singleAgentId(store: WorkspaceStore): Promise<string | null> {
@@ -70,12 +89,28 @@ export function warmViewDocs(
     const only = await singleAgentId(opts.store);
     if (only === null) return;
     for (const rest of Object.keys(VIEW_RESTS)) {
-      const status = await fetchView(opts, only, rest, ATTEMPTS);
-      if (status !== 200) {
-        console.error(
-          `[view-docs] boot warm for ${rest} gave up (last status ${status})`,
+      const { status, notNow } = await fetchView(
+        opts,
+        only,
+        rest,
+        WARM_BUDGET_MS,
+      );
+      if (status === 200) continue;
+      // A runtime still not up after the whole window is the launcher's
+      // failure, and it is already loud there (the eager spawn's "never became
+      // healthy" error). The warm is best-effort on top: the previously
+      // published doc keeps serving asleep readers and the next live read
+      // re-publishes, so a give-up here is a breadcrumb, not a second error
+      // per pod per roll.
+      if (notNow) {
+        console.warn(
+          `[view-docs] boot warm for ${rest} stood down: runtime still starting after ${WARM_BUDGET_MS / 1000}s`,
         );
+        continue;
       }
+      console.error(
+        `[view-docs] boot warm for ${rest} gave up (last status ${status})`,
+      );
     }
   })().catch((error: unknown) => {
     console.error("[view-docs] boot warm failed", error);
@@ -110,7 +145,7 @@ export function refreshViewsOnEvents(
             ? event.agentPath
             : await singleAgentId(opts.store);
         if (agentId === null) return;
-        const status = await fetchView(opts, agentId, rest, 1);
+        const { status } = await fetchView(opts, agentId, rest, 0);
         if (status !== 200) {
           // An agent delete/rename unlinks `.agents/skills/**`, and the FS
           // watcher classifies each unlink as SkillsChanged for the now-gone
