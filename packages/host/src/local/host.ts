@@ -456,6 +456,11 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     beforeTurn: sharedMirror ? () => sharedMirror.beforeTurn() : undefined,
     turnLogCapture: standingFrameCapture,
   });
+  // Raised at the top of stop(): a heal reads the runtime's live credential
+  // and the drain is about to kill that runtime, so the serve route answers
+  // 503 + Retry-After for the rest of the drain instead of erroring per
+  // provider (PRODUCT-1672).
+  let draining = false;
   const credentialHealer = opts.credentials
     ? new CredentialServeHealer(
         async ({ workspaceId, agentId, provider, actingAs }) => {
@@ -485,6 +490,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           });
           return result.ok;
         },
+        undefined,
+        undefined,
+        () => draining,
       )
     : undefined;
 
@@ -1013,6 +1021,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     stop() {
       if (stopPromise) return stopPromise;
       stopPromise = (async () => {
+        draining = true;
         scheduler.stop();
         watcher.stop();
         standingFrameCapture?.stop();
