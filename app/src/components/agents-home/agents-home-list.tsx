@@ -16,22 +16,28 @@ import { useUIStore } from "../../stores/ui";
 import { PageContainer, PageHero } from "../shell/page-shell";
 import { useAgentActivitySummaries } from "../shell/use-agent-activity-summaries";
 import { tourAnchor } from "../shell/workspace-tour-steps";
+import { AgentHomeRowCell } from "./agent-home-row";
 import {
   type AgentHomeRow,
+  agentHomeFilterTeam,
+  agentHomeHasTeamFilter,
   agentHomeRows,
-  agentTreeSections,
+  agentRowsForTeam,
 } from "./agents-home-model";
-import { AgentsTree } from "./agents-home-tree";
+import { AgentsHomeTeamFilter } from "./agents-home-team-filter";
 
 /**
- * The mobile Agents home: every agent as one line, grouped under the team it
- * belongs to. Reads the same one-sweep `all-conversations` query and the same
- * per-agent summaries every other badge surface reads — no fetch path of its
- * own — so the rows repaint through the ordinary event invalidation.
+ * The mobile Agents home: every agent as a chat-list row — a large avatar
+ * (a fanned stack when the agent holds several conversations), the name, the
+ * latest task as the preview line, the time it moved and the needs-you badge.
+ * Reads the same one-sweep `all-conversations` query and the same per-agent
+ * summaries every other badge surface reads — no fetch path of its own — so
+ * the rows repaint through the ordinary event invalidation.
  *
- * No name filter: the tree is the finder. Grouping by team is what keeps a
- * long roster scannable, and a search field above a list this short would take
- * the screen's first row to save a scroll.
+ * One FLAT list, narrowed by a team selector under the title (present only
+ * when the workspace has more than one team): every agent of every team by
+ * default, or one team's. The choice is a store preference, not a nav level,
+ * so drilling into an agent and back finds the filter where it was left.
  *
  * Tapping an agent adopts it as current (the same subject-acquisition the rail's
  * agent rows perform) and pushes its task list on the nav stack.
@@ -41,6 +47,8 @@ export function AgentsHomeList() {
   const agents = useAgentStore((s) => s.agents);
   const teams = useTeams();
   const openAgentsHome = useUIStore((s) => s.openAgentsHome);
+  const teamId = useUIStore((s) => s.agentsHomeTeamId);
+  const setTeamId = useUIStore((s) => s.setAgentsHomeTeamId);
   const { canCreate } = useCanCreateAgents();
 
   const rosterPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
@@ -48,10 +56,11 @@ export function AgentsHomeList() {
   const summaries = useAgentActivitySummaries(agents);
   const swept = conversations !== undefined;
 
-  const sections = useMemo(
+  const team = agentHomeFilterTeam(teams, teamId);
+  const rows = useMemo(
     () =>
-      agentTreeSections(teams, agentHomeRows(agents, conversations, summaries)),
-    [agents, conversations, summaries, teams],
+      agentRowsForTeam(agentHomeRows(agents, conversations, summaries), team),
+    [agents, conversations, summaries, team],
   );
 
   const openRow = (row: AgentHomeRow) => {
@@ -67,15 +76,24 @@ export function AgentsHomeList() {
       <PageContainer className="shrink-0 pt-6">
         <PageHero
           title={t("agentsHome.title")}
-          className="mb-4 px-3"
+          className="mb-3"
           trailing={
             canCreate ? (
               <NewAgentButton label={t("sidebar.addAgent")} />
             ) : undefined
           }
         />
+        {agentHomeHasTeamFilter(teams) && (
+          <div className="mb-2">
+            <AgentsHomeTeamFilter
+              teams={teams}
+              selected={team}
+              onSelect={setTeamId}
+            />
+          </div>
+        )}
       </PageContainer>
-      <PageContainer className="min-h-0 flex-1 overflow-y-auto pb-6">
+      <div className="min-h-0 flex-1 overflow-y-auto pb-6">
         {agents.length === 0 ? (
           <Empty className="border-0">
             <EmptyHeader>
@@ -86,7 +104,14 @@ export function AgentsHomeList() {
             </EmptyHeader>
           </Empty>
         ) : swept ? (
-          <AgentsTree sections={sections} onOpen={openRow} />
+          <ul>
+            {rows.map((row) => (
+              // `group`: the row's inset divider drops on the LAST row.
+              <li key={row.agent.id} className="group">
+                <AgentHomeRowCell row={row} onOpen={openRow} />
+              </li>
+            ))}
+          </ul>
         ) : (
           <div aria-hidden>
             {agents.map((agent) => (
@@ -94,7 +119,7 @@ export function AgentsHomeList() {
             ))}
           </div>
         )}
-      </PageContainer>
+      </div>
     </div>
   );
 }
@@ -119,13 +144,16 @@ function NewAgentButton({ label }: { label: string }) {
   );
 }
 
-/** Placeholder mirroring {@link AgentHomeRowCell}'s one-line track while the
+/** Placeholder mirroring {@link AgentHomeRowCell}'s two-line track while the
  *  sweep has no data at all yet, so the list never claims agents are idle. */
 function AgentsHomeRowSkeleton() {
   return (
-    <div className="flex min-h-12 w-full items-center gap-3 px-3">
-      <Skeleton className="size-6 shrink-0 rounded-full" />
-      <Skeleton className="h-4 w-1/3" />
+    <div className="flex w-full items-center gap-3 pl-4">
+      <Skeleton className="size-[52px] shrink-0 rounded-full" />
+      <div className="flex min-h-[4.5rem] flex-1 flex-col justify-center gap-2 border-b border-line pr-4">
+        <Skeleton className="h-4 w-1/3" />
+        <Skeleton className="h-3.5 w-2/3" />
+      </div>
     </div>
   );
 }

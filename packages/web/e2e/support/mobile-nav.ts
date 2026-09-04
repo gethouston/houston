@@ -77,12 +77,12 @@ export async function openMoreMenu(
   return menu;
 }
 
-/** The Teams tree's section rows, named the way the tree stamps them. */
+/** The Teams tree's section rows, named the way the tree stamps them: the
+ *  desktop strip's own four. Context, Agents, People and Settings live behind
+ *  the "settings" row (Team Settings), as tabs of the drilled level. */
 export type PhoneTeamSection =
   | "mission-control"
   | "routines"
-  | "context"
-  | "people"
   | "files"
   | "settings";
 
@@ -94,6 +94,23 @@ export function teamSectionRows(page: Page): Locator {
 export function teamSectionRow(page: Page, section: PhoneTeamSection): Locator {
   return screen(page).locator(
     `[data-testid='teams-home-section'][data-section='${section}']`,
+  );
+}
+
+/** The drilled Team Settings level's tabs on the phone, in desktop order. */
+export type PhoneTeamSettingsTab = "context" | "agents" | "people" | "settings";
+
+/** Every tab of the phone's Team Settings level, in render order. */
+export function teamSettingsTabs(page: Page): Locator {
+  return screen(page).getByTestId("team-settings-mobile-tab");
+}
+
+export function teamSettingsTab(
+  page: Page,
+  tab: PhoneTeamSettingsTab,
+): Locator {
+  return screen(page).locator(
+    `[data-testid='team-settings-mobile-tab'][data-section='${tab}']`,
   );
 }
 

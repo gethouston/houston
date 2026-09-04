@@ -3,6 +3,22 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v78 - 2026-09-04
+
+The phone's Agents home becomes a chat list. The team-grouped tree is gone:
+every agent is one flat row with a LARGE avatar on the left -- the helmet
+fanned into a stack of three cards when the agent holds two or more tasks, a
+single mark otherwise -- the name with the latest movement's time trailing,
+and a preview line under it quoting the agent's most recently moved task
+(or "No tasks yet"), with the needs-you chip at its end. Where the workspace
+has more than one team, a team selector under the title (a pill dropping a
+menu of every team, "All teams" by default) narrows the list; the choice is a
+preference, not a navigation level. The Teams home tree now draws the desktop
+strip's own four rows -- Tasks, Routines, Files, Team Settings -- and Team
+Settings lands on the drilled level exactly as the desktop's door does, with
+Context / Agents / People / Settings as that level's tabs on the phone instead
+of rows of the tree.
+
 ## v77 - 2026-09-03
 
 The phone loses the board pager. Below the one breakpoint a team's Tasks

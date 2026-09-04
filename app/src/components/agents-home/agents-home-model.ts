@@ -5,10 +5,10 @@ import type { AgentActivitySummary } from "../shell/agent-activity-summary-model
 
 /**
  * The mobile Agents home's pure rules: which agents the list shows, in what
- * order, and how they group into the phone's team tree. Store-free so
- * `app/tests/agents-home-model.test.ts` pins the sort and the grouping without
- * rendering anything. One agent's own task list has its own rules, next door
- * in `agent-missions-model.ts`.
+ * order, what each row says about its agent, and how the team filter narrows
+ * it. Store-free so `app/tests/agents-home-model.test.ts` pins the sort, the
+ * preview and the filter without rendering anything. One agent's own task list
+ * has its own rules, next door in `agent-missions-model.ts`.
  *
  * Counts are NOT recomputed here: a row takes the same per-agent summaries the
  * nav bar and the rail badges read (`useAgentActivitySummaries`), so the chip
@@ -42,8 +42,14 @@ export interface AgentHomeRow {
   agent: AgentHomeAgent;
   needsYouCount: number;
   runningCount: number;
+  /** The agent's visible (live, non-archived) tasks. Two or more is what
+   *  makes the row's avatar a STACK: the agent holds several conversations. */
+  taskCount: number;
+  /** The title of the agent's most recently moved task, the row's preview
+   *  line. `null` when the agent has no visible task. */
+  latestTitle: string | null;
   /** Epoch ms of the most recent movement, or null when unknown. The band's
-   *  tie-break; the row itself shows no time. */
+   *  tie-break and the row's trailing time. */
   lastAt: number | null;
 }
 
@@ -65,6 +71,10 @@ export function updatedAtMs(row: AgentHomeConversation): number {
  * first, then agents with running work, then everyone else — and inside each
  * band the most recently active agent leads, with the agent's name breaking
  * exact ties so the order is stable across refetches.
+ *
+ * The preview is the LATEST task's title: on an exact timestamp tie the first
+ * row in sweep order wins, so two tasks moved in the same second cannot swap
+ * the preview between refetches.
  */
 export function agentHomeRows(
   agents: readonly AgentHomeAgent[],
@@ -72,8 +82,10 @@ export function agentHomeRows(
   summaries: Record<string, AgentActivitySummary>,
 ): AgentHomeRow[] {
   const latestByPath = new Map<string, AgentHomeConversation>();
+  const countByPath = new Map<string, number>();
   for (const row of conversations ?? []) {
     if (!isHomeMission(row)) continue;
+    countByPath.set(row.agent_path, (countByPath.get(row.agent_path) ?? 0) + 1);
     const held = latestByPath.get(row.agent_path);
     if (!held || updatedAtMs(row) > updatedAtMs(held))
       latestByPath.set(row.agent_path, row);
@@ -84,6 +96,8 @@ export function agentHomeRows(
       agent,
       needsYouCount: summaries[agent.id]?.needsYouCount ?? 0,
       runningCount: summaries[agent.id]?.runningCount ?? 0,
+      taskCount: countByPath.get(agent.folderPath) ?? 0,
+      latestTitle: latest?.title ?? null,
       lastAt: latest ? updatedAtMs(latest) || null : null,
     };
   });
@@ -97,33 +111,34 @@ export function agentHomeRows(
   );
 }
 
-/** One band of the Agents tree: a team and the agents that belong to it. */
-export interface AgentTreeSection {
-  /** `null` means a FLAT list — the workspace has only its default team, and
-   *  naming it would be a header that says nothing the user did not choose. */
-  team: TeamView | null;
-  rows: AgentHomeRow[];
+/**
+ * The team the home's filter is standing on: the chosen team, or `null` for
+ * "all teams" — which is also what a chosen id the roster no longer holds
+ * resolves to, so a team deleted under an open filter widens the list back
+ * out instead of emptying it.
+ */
+export function agentHomeFilterTeam(
+  teams: readonly TeamView[],
+  teamId: string | null,
+): TeamView | null {
+  if (teamId === null) return null;
+  return teams.find((team) => team.id === teamId) ?? null;
 }
 
-/**
- * The Agents home as a tree: every team that HAS agents, in rail order, with
- * its own agents beneath it in the attention order {@link agentHomeRows}
- * produced.
- *
- * A team with no agents is skipped rather than drawn empty: the tree exists to
- * find an agent, and a header with nothing under it is a dead row. A single
- * (default) team collapses the whole grouping away — with one team the header
- * would be the same word on every screen.
- */
-export function agentTreeSections(
-  teams: readonly TeamView[],
+/** Whether the home offers the team filter at all: a workspace with only its
+ *  default team has nothing to narrow by, and a control that offers one
+ *  choice is a control that lies. */
+export function agentHomeHasTeamFilter(teams: readonly TeamView[]): boolean {
+  return teams.length > 1;
+}
+
+/** The rows under the filter: every row, or the chosen team's members in the
+ *  attention order {@link agentHomeRows} produced. */
+export function agentRowsForTeam(
   rows: readonly AgentHomeRow[],
-): AgentTreeSection[] {
-  if (rows.length === 0) return [];
-  if (teams.length <= 1) return [{ team: null, rows: [...rows] }];
-  return teams.flatMap((team) => {
-    const members = new Set(team.agents.map((a) => a.id));
-    const teamRows = rows.filter((row) => members.has(row.agent.id));
-    return teamRows.length === 0 ? [] : [{ team, rows: teamRows }];
-  });
+  team: TeamView | null,
+): AgentHomeRow[] {
+  if (team === null) return [...rows];
+  const members = new Set(team.agents.map((a) => a.id));
+  return rows.filter((row) => members.has(row.agent.id));
 }

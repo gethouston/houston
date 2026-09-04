@@ -1,6 +1,10 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "../support/fixtures";
-import { newTaskButton, openPhoneTeamSection } from "../support/mobile-nav";
+import {
+  newTaskButton,
+  openPhoneTeamSection,
+  teamSettingsTab,
+} from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
 /**
@@ -121,8 +125,12 @@ test("the header menu reveals search, the archive and Team settings", async ({
   await expect(
     screen(page)
       .locator("p")
-      .filter({ hasText: /^Context$/ }),
+      .filter({ hasText: /^Team Settings$/ }),
   ).toHaveCount(1);
+  await expect(teamSettingsTab(page, "context")).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
 });
 
 test("a row tap pushes the chat, and back returns to the list", async ({

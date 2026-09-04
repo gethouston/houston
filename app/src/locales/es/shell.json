@@ -396,7 +396,9 @@
     "empty": {
       "title": "Aún no hay agentes",
       "description": "Crea un agente para empezar. Todo en lo que trabajen aparecerá aquí."
-    }
+    },
+    "allTeams": "Todos los equipos",
+    "noTasks": "Aún no hay tareas"
   },
   "taskList": {
     "archived": "Archivadas",

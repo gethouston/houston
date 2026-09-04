@@ -1,20 +1,19 @@
 import {
-  BookOpenText,
   CalendarClock,
   Folder,
   type LucideIcon,
   Settings,
   SquareKanban,
-  UsersRound,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { teamDisplayName } from "../../lib/team-display";
 import { useUIStore } from "../../stores/ui";
 import { TeamGlyph } from "../shell/team-glyph";
-import type {
-  TeamTreeRow,
-  TeamTreeSection,
-  TeamTreeSectionId,
+import {
+  type TeamTreeRow,
+  type TeamTreeSection,
+  type TeamTreeSectionId,
+  teamTreeTarget,
 } from "./teams-home-model";
 
 /**
@@ -30,8 +29,6 @@ import type {
 const SECTION_ICONS: Record<TeamTreeSectionId, LucideIcon> = {
   "mission-control": SquareKanban,
   routines: CalendarClock,
-  context: BookOpenText,
-  people: UsersRound,
   files: Folder,
   settings: Settings,
 };
@@ -39,17 +36,14 @@ const SECTION_ICONS: Record<TeamTreeSectionId, LucideIcon> = {
 /**
  * Literal keys, not a template: `t()` is typed against the locale files, so a
  * section named without a word is a compile error rather than a row reading as
- * its own key. The settings-level rows take the SETTINGS tab words ("Settings",
- * not the desktop door's "Team Settings"), because inside a team's own tree the
- * team is already named one line above.
+ * its own key. The words are the desktop strip's own (`teamView.tabs.*`), so
+ * "Team Settings" reads the same on the phone as in the strip's lozenge.
  */
 const SECTION_LABEL_KEYS = {
   "mission-control": "teamView.tabs.missionControl",
   routines: "teamView.tabs.routines",
-  context: "teamView.settingsTabs.context",
-  people: "teamView.settingsTabs.people",
   files: "teamView.tabs.files",
-  settings: "teamView.settingsTabs.settings",
+  settings: "teamView.tabs.settings",
 } as const satisfies Record<TeamTreeSectionId, string>;
 
 export function TeamTreeBlock({ row }: { row: TeamTreeRow }) {
@@ -57,14 +51,13 @@ export function TeamTreeBlock({ row }: { row: TeamTreeRow }) {
   const openTeamView = useUIStore((s) => s.openTeamView);
   const name = teamDisplayName(row.team, t("teamView.defaultName"));
   const headingId = `teams-home-team-${row.team.id}`;
-  const open = (section: TeamTreeSection) =>
-    openTeamView(
-      row.team.id,
-      section.id,
-      section.settingsLevel
-        ? { teamSettingsFocus: true, nav: "push" }
-        : { nav: "push" },
-    );
+  const open = (section: TeamTreeSection) => {
+    const target = teamTreeTarget(section);
+    openTeamView(row.team.id, target.section, {
+      teamSettingsFocus: target.teamSettingsFocus,
+      nav: "push",
+    });
+  };
 
   return (
     <li className="mb-2">

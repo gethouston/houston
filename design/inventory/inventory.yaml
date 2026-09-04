@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 77
+version: 78
 
 components:
   - id: agent-avatar
@@ -1492,7 +1492,7 @@ components:
       The full-window surface behind a team block's destination rows: one
       team's missions, what its agents do on their own, what they keep, and the
       agents that belong to it.
-    anatomy: [board-toolbar, team-title, agent-filter, mission-board, phone-task-list, phone-status-segments, phone-overflow-menu, phone-inline-search, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in, members-card]
+    anatomy: [board-toolbar, team-title, agent-filter, mission-board, phone-task-list, phone-status-segments, phone-overflow-menu, phone-inline-search, phone-settings-tabs, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in, members-card]
     states: [mission-control, mission-control-filtered, phone-task-list, phone-task-list-filtered, phone-task-list-searching, archived, routines, files, empty, partially-unavailable, settings, settings-agent-detail, settings-members]
     variants: [named-team, default-team]
     behavior: >-
@@ -1531,7 +1531,10 @@ components:
       agent settings page rather than a second copy of it.
       Below the one breakpoint the strip is gone: the Teams tree chose the
       section a level up, so the screen wears the drilled phone header (back
-      chip, team, the section's name) instead. Tasks there is a LIST, not the
+      chip, team, the section's name) instead; the Team Settings level keeps
+      its Context / Agents / People / Settings tabs there too, as a segmented
+      row under that header, a tab replacing the navigation entry rather
+      than pushing one. Tasks there is a LIST, not the
       board -- the same missions the columns hold, grouped Needs you /
       Running / Done as bands of shared task-rows under the same segmented
       All / Needs you / Running / Done control the per-agent list wears, each
@@ -1653,17 +1656,19 @@ components:
     behavior: >-
       One bold, non-tappable row per team (its glyph and name, the virtual
       default team named after the workspace), and under each, indented
-      beside a thin guide line, one tappable row per section in a fixed
-      order: Tasks, Routines, Context, People, Files, Settings. Tasks,
-      Routines and Files are every member's; Context, People and Settings
-      are the team's configuration level and appear only for a caller who
-      may configure that team, People only where there are people to show.
-      Tapping a section PUSHES that team's screen on that section, so the
-      screen's back chip and hardware back both retreat to this tree; the
-      tree is the one place a team's section is chosen on the phone, so the
-      team screen draws no section switcher there. At least one team row
-      always exists; while the teams are still resolving the tree renders a
-      skeleton of itself rather than an empty claim.
+      beside a thin guide line, one tappable row per section in the DESKTOP
+      strip's own order and words: Tasks, Routines, Files, Team Settings.
+      Tasks, Routines and Files are every member's; Team Settings is the
+      door a caller who may configure the team gets, and it lands where the
+      desktop's door lands -- the drilled Team Settings level, on Context,
+      whose Context / Agents / People / Settings panes are the tabs of that
+      level (team-screen), never rows of this tree. Tapping a section PUSHES
+      that team's screen on that section, so the screen's back chip and
+      hardware back both retreat to this tree; the tree is the one place a
+      team's section is chosen on the phone, so the team screen draws no
+      section switcher there. At least one team row always exists; while the
+      teams are still resolving the tree renders a skeleton of itself rather
+      than an empty claim.
     a11y: >-
       The title is the screen's h1; team rows are headings, not buttons;
       every section row is one real button at least 44px tall named
@@ -1673,41 +1678,45 @@ components:
   - id: agents-home
     title: Agents home
     purpose: >-
-      The phone's landing screen and the Agents tab's root: every agent as one
-      line, grouped under the team it belongs to.
-    anatomy: [title, new-agent-control, team-row, team-glyph, guide-line,
-      agent-row, agent-avatar, running-ring, needs-you-chip, empty-state]
-    states: [tree, flat, loading, no-agents]
-    variants: [grouped, flat]
+      The phone's landing screen and the Agents tab's root: every agent as a
+      chat-list row, the whole roster or one team's.
+    anatomy: [title, new-agent-control, team-selector, agent-row,
+      avatar-stack, running-ring, preview-line, relative-time, needs-you-chip,
+      empty-state]
+    states: [list, filtered, loading, no-agents]
+    variants: [all-teams, one-team]
     behavior: >-
-      A tree, the mirror of the teams-home tree: each team that HAS agents is a
-      bold, NON-tappable row (its glyph and name) with its agents indented
-      under a guide line, teams in rail order and a team with no agents
-      skipped rather than drawn hollow. When the workspace has only its
-      virtual default team the grouping collapses and the rows sit FLAT, since
-      one header repeated on every screen names nothing. Inside a team the
-      agents keep the attention sort: agents with tasks waiting on the user
-      first, then agents with running work, then everyone else, most recently
-      active leading each band. An agent row is ONE line -- the agent's name
-      beside the same needs-you count chip the rail rows and the nav bar wear
-      (one badge shape, one number, never a recount), its avatar wearing the
-      same running ring the rail draws. No task preview and no timestamp: the
-      agent's task list is one tap away and would otherwise be quoted twice.
-      There is no name filter; the tree is the finder. A trailing control in
-      the title row creates an agent (where the caller may). With no agents at
-      all the screen says so instead of rendering a hollow list. Counts read
-      the same conversation sweep and per-agent summaries every other badge
-      surface reads, repainting through the ordinary event invalidation, never
-      a fetch path of their own. Tapping a row adopts the agent as current and
-      pushes its task list onto the navigation stack, so back pops out of the
-      drill.
+      One flat list in the grammar of a messaging app's chat list. Each row is
+      a LARGE avatar on the left -- the agent's helmet, fanned out into a stack
+      of three cards (the front one straight, two tilted behind it) when the
+      agent holds two or more visible tasks, a single mark otherwise -- then
+      the agent's name with the time of its latest movement trailing, and
+      under the name the preview line: the title of the agent's most recently
+      moved task, or "No tasks yet". The same needs-you count chip the rail
+      rows and the nav bar wear sits at the end of the preview line (one
+      badge shape, one number, never a recount), and the front card wears the
+      same running ring the rail draws. The rows keep the attention sort:
+      agents with tasks waiting on the user first, then agents with running
+      work, then everyone else, most recently active leading each band. Under
+      the title, where the workspace has more than one team, a team selector
+      (a pill dropping a menu of every team) narrows the list to one team's
+      agents; "All teams" is the default, the choice is a preference rather
+      than a navigation level (it survives the drill into an agent and back),
+      and a chosen team that no longer exists widens the list back out. A
+      trailing control in the title row creates an agent (where the caller
+      may). With no agents at all the screen says so instead of rendering a
+      hollow list. Counts and previews read the same conversation sweep and
+      per-agent summaries every other badge surface reads, repainting through
+      the ordinary event invalidation, never a fetch path of their own.
+      Tapping a row adopts the agent as current and pushes its task list onto
+      the navigation stack, so back pops out of the drill.
     a11y: >-
-      The screen's title is its h1 and each team row is a real heading that
-      names the group its agents are listed in; each agent row is one button
-      at least 48px tall named by the agent, with the chip and the running ring
-      carrying their own accessible labels ("N issues need you", "N issues
-      running") rather than bare numbers; the create control is a labelled
-      button.
+      The screen's title is its h1; each agent row is one button at least 72px
+      tall named by the agent and its preview, with the chip and the running
+      ring carrying their own accessible labels ("N issues need you", "N
+      issues running") and the avatar stack hidden as decoration; the team
+      selector is a button named by the current choice that opens a radio
+      menu; the create control is a labelled button.
     since: 71
 
   - id: agent-missions-list
