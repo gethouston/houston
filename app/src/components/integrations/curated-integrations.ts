@@ -3,6 +3,7 @@ import type {
   CustomIntegrationView,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
+import type en from "../../locales/en/integrations.json";
 
 /**
  * Hand-curated integrations: services we ship in the browse catalog even
@@ -27,10 +28,26 @@ export interface CuratedIntegration {
   /** Where a new user registers, and where an existing user copies a key. */
   signUpUrl: string;
   apiKeysUrl: string;
-  /** Typed i18n keys (integrations namespace) for the per-service copy. */
-  descriptionKey: "curated.croma.description";
-  keyHelpKey: "curated.croma.keyHelp";
+  /** i18n keys (integrations namespace) for the per-service copy, typed
+   *  from the en locale so a key without copy fails to compile. */
+  descriptionKey: CuratedCopyKey<"description">;
+  keyHelpKey: CuratedCopyKey<"keyHelp">;
+  /** Optional note under the sign-in choice, for services whose consent page
+   *  wears a name the user would not recognize (HighLevel's says
+   *  "LeadConnector") — without it a non-technical user closes the browser
+   *  thinking they landed on the wrong site. */
+  signInNoteKey?: CuratedCopyKey<"signInNote">;
 }
+
+/** The `curated.<slug>.<leaf>` keys that EXIST in the en locale for a leaf:
+ *  a curated slug without that copy is simply not assignable. (`t()` itself
+ *  does not reject unknown keys at compile time; this is the guard.) */
+type CuratedCopy = (typeof en)["curated"];
+type CuratedCopyKey<Leaf extends string> = {
+  [Slug in keyof CuratedCopy & string]: Leaf extends keyof CuratedCopy[Slug]
+    ? `curated.${Slug}.${Leaf}`
+    : never;
+}[keyof CuratedCopy & string];
 
 const CROMA: CuratedIntegration = {
   slug: "croma",
@@ -45,7 +62,34 @@ const CROMA: CuratedIntegration = {
   keyHelpKey: "curated.croma.keyHelp",
 };
 
-export const CURATED_INTEGRATIONS: readonly CuratedIntegration[] = [CROMA];
+/**
+ * HighLevel (GoHighLevel) through its official LeadConnector MCP server. The
+ * ORIGINAL `/mcp/` endpoint on purpose, not the per-client `/mcp/{client}/v2`
+ * family the docs recommend: that family's OAuth registration only admits
+ * clients HighLevel has allow-listed (`unrecognized_client` for anything
+ * else, verified live), while `/mcp/` registers any client and serves both
+ * browser sign-in and Private Integration Tokens. Trailing slash matters —
+ * it is the resource the server's OAuth metadata names. Each connection is
+ * one sub-account (location), chosen on the consent page or by the token.
+ */
+const HIGHLEVEL: CuratedIntegration = {
+  slug: "highlevel",
+  name: "HighLevel",
+  endpoint: "https://services.leadconnectorhq.com/mcp/",
+  website: "https://www.gohighlevel.com",
+  categories: ["crm", "marketing"],
+  authModes: ["oauth", "credential"],
+  signUpUrl: "https://www.gohighlevel.com/signup",
+  apiKeysUrl: "https://app.gohighlevel.com",
+  descriptionKey: "curated.highlevel.description",
+  keyHelpKey: "curated.highlevel.keyHelp",
+  signInNoteKey: "curated.highlevel.signInNote",
+};
+
+export const CURATED_INTEGRATIONS: readonly CuratedIntegration[] = [
+  CROMA,
+  HIGHLEVEL,
+];
 
 export function curatedIntegrationOf(
   slug: string,
@@ -73,6 +117,20 @@ export function curatedToolkits(
     logoUrl: logoOf(c.slug),
     categories: [...c.categories],
   }));
+}
+
+/**
+ * The provider (Composio) catalog with every toolkit a curated entry claims
+ * REMOVED — the curated entry is the one way to connect that service, on
+ * every deployment. Composio lists "highlevel" too: without this, a cloud
+ * catalog showed two HighLevel cards under one slug (duplicate React keys,
+ * and a Connect that opened the curated dialog from either), and a Composio
+ * search row could offer a connection the card would never make.
+ */
+export function withoutCuratedDuplicates(
+  catalog: readonly IntegrationToolkit[],
+): IntegrationToolkit[] {
+  return catalog.filter((tk) => curatedIntegrationOf(tk.slug) === undefined);
 }
 
 /**

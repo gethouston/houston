@@ -172,6 +172,9 @@ function CuratedConnectBody({
             disabled={busy}
             onClick={() => setStep("key")}
           />
+          {curated.signInNoteKey && (
+            <p className="text-xs text-ink-muted">{t(curated.signInNoteKey)}</p>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-3">

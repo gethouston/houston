@@ -11,6 +11,7 @@ import type {
   Toolkit,
 } from "../types";
 import { IntegrationUpstreamError } from "../types";
+import { looksLikeAuthFailure } from "./auth-failure";
 import type { CustomExecutorHost } from "./executor-host";
 import { searchCustomTools } from "./search";
 import type { CustomIntegrationStore } from "./store";
@@ -232,11 +233,17 @@ export function unwrapExecutorResult(
       : undefined;
     // A rejected credential is recoverable in-chat: point the model at the
     // secure key-entry hand-off instead of the executor's own recovery text
-    // (which names internal tools this runtime does not expose).
-    const hint =
-      category === "authentication"
-        ? ` The saved key for '${action.split(".")[1] ?? ""}' seems invalid or expired - call request_credential with that toolkit so the user can enter a new one securely.`
-        : "";
+    // (which names internal tools this runtime does not expose). An MCP
+    // server's in-result refusal (`mcp_tool_error`) carries no category, so
+    // its text is read for the same verdict (auth-failure.ts).
+    const rejected =
+      category === "authentication" ||
+      (isRecord(err) &&
+        err.code === "mcp_tool_error" &&
+        looksLikeAuthFailure(message));
+    const hint = rejected
+      ? ` The saved key for '${action.split(".")[1] ?? ""}' seems invalid or expired - call request_credential with that toolkit so the user can enter a new one securely.`
+      : "";
     return { successful: false, error: `${message}${hint}` };
   }
   if (isRecord(data) && data.ok === true && "data" in data) {

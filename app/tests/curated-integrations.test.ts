@@ -6,7 +6,9 @@ import {
   curatedAddInput,
   curatedIntegrationOf,
   curatedToolkits,
+  withoutCuratedDuplicates,
 } from "../src/components/integrations/curated-integrations.ts";
+import en from "../src/locales/en/integrations.json" with { type: "json" };
 
 const describeOf = (c: { slug: string }) => `about ${c.slug}`;
 const logoOf = (slug: string) => `bundled:${slug}`;
@@ -33,9 +35,42 @@ describe("curated catalog data", () => {
     }
   });
 
+  it("every entry's copy keys exist in the en locale (the raw key would render otherwise)", () => {
+    const curated = en.curated as Record<string, Record<string, string>>;
+    for (const c of CURATED_INTEGRATIONS) {
+      const keys = [c.descriptionKey, c.keyHelpKey, c.signInNoteKey].filter(
+        (key): key is NonNullable<typeof key> => key !== undefined,
+      );
+      for (const key of keys) {
+        const [ns, slug, leaf] = key.split(".");
+        strictEqual(ns, "curated");
+        strictEqual(slug, c.slug);
+        ok(
+          typeof curated[slug]?.[leaf ?? ""] === "string",
+          `missing en copy for ${key}`,
+        );
+      }
+    }
+  });
+
   it("looks up an entry by slug", () => {
     strictEqual(curatedIntegrationOf("croma")?.name, "Croma");
+    strictEqual(curatedIntegrationOf("highlevel")?.name, "HighLevel");
     strictEqual(curatedIntegrationOf("gmail"), undefined);
+  });
+
+  it("points HighLevel at the client-agnostic LeadConnector endpoint", () => {
+    const highlevel = curatedIntegrationOf("highlevel");
+    ok(highlevel);
+    // The per-client `/mcp/<client>/v2` family refuses to register unknown
+    // OAuth clients; only the original endpoint signs Houston in. The
+    // trailing slash is the resource its OAuth metadata names.
+    strictEqual(
+      highlevel.endpoint,
+      "https://services.leadconnectorhq.com/mcp/",
+    );
+    strictEqual(highlevel.signInNoteKey, "curated.highlevel.signInNote");
+    deepStrictEqual(highlevel.categories, ["crm", "marketing"]);
   });
 });
 
@@ -56,6 +91,26 @@ describe("curatedToolkits", () => {
       toolkits.find((t) => t.slug === "croma"),
       undefined,
     );
+    // The other entries stay listed — exclusion is per slug, never global.
+    strictEqual(
+      toolkits.find((t) => t.slug === "highlevel")?.name,
+      "HighLevel",
+    );
+  });
+});
+
+describe("withoutCuratedDuplicates", () => {
+  it("drops a provider toolkit whose slug a curated entry claims, keeps the rest", () => {
+    const catalog = [
+      { slug: "gmail", name: "Gmail", description: "", logoUrl: "" },
+      // Composio lists HighLevel too — the curated card is the only one.
+      { slug: "highlevel", name: "Highlevel", description: "", logoUrl: "" },
+    ];
+    deepStrictEqual(
+      withoutCuratedDuplicates(catalog).map((t) => t.slug),
+      ["gmail"],
+    );
+    deepStrictEqual(withoutCuratedDuplicates([]), []);
   });
 });
 

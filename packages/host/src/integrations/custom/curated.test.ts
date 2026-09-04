@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import {
   CURATED_ENTRIES,
   type CuratedEntry,
+  curatedCanonicalScope,
   curatedMatches,
   curatedScoped,
 } from "./curated";
@@ -21,6 +22,13 @@ const entries: readonly CuratedEntry[] = [
     name: "Croma",
     description: "Official government records from Colombia, Peru and Mexico.",
     keywords: ["legal", "expediente"],
+  },
+  {
+    slug: "highlevel",
+    name: "HighLevel",
+    description: "HighLevel (GoHighLevel, GHL) CRM and marketing platform.",
+    keywords: ["crm", "contactos"],
+    aliases: ["gohighlevel", "go high level", "ghl", "leadconnector"],
   },
 ];
 
@@ -56,6 +64,71 @@ test("an explicit app scope resolves a curated entry by slug or name", () => {
   }
   expect(curatedScoped("notion", none, entries)).toEqual([]);
   expect(curatedScoped("croma", new Set(["croma"]), entries)).toEqual([]);
+});
+
+test("an alias resolves as a scope and ranks in search, yielding ONE row", () => {
+  for (const app of [
+    "ghl",
+    "GHL",
+    "GoHighLevel",
+    "go high level",
+    "LeadConnector",
+    "highlevel",
+  ]) {
+    const rows = curatedScoped(app, none, entries);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.toolkit).toBe("highlevel");
+  }
+  expect(curatedScoped("ghl", new Set(["highlevel"]), entries)).toEqual([]);
+  const search = curatedMatches(["ghl"], none, entries);
+  expect(search.map((row) => row.toolkit)).toEqual(["highlevel"]);
+});
+
+test("an alias keeps resolving after the app is added — to the definition, not a stale connectable row", () => {
+  const defs = [{ slug: "highlevel", name: "HighLevel", active: true }];
+  const tool = {
+    address: "highlevel.contacts_create-contact",
+    integration: "highlevel",
+    name: "contacts_create-contact",
+    description: "Create a contact",
+  };
+  const tools = [tool];
+  for (const app of ["ghl", "LeadConnector", "go high level"]) {
+    const result = searchCustomTools("create a contact", tools, defs, app);
+    expect(result.scope).toBe("resolved");
+    expect(result.items.map((m) => m.toolkit)).toEqual(["highlevel"]);
+    expect(result.items[0]?.action).not.toBe("");
+  }
+  // Before the add, the same aliases yield the connectable row.
+  const before = searchCustomTools("create a contact", [], [], "ghl");
+  expect(before.items).toMatchObject([
+    { toolkit: "highlevel", status: "connectable" },
+  ]);
+  // A user's own integration named like an alias keeps its scope.
+  const own = searchCustomTools(
+    "create a contact",
+    [{ ...tool, integration: "ghl", address: "ghl.contacts" }],
+    [{ slug: "ghl", name: "GHL", active: true }, ...defs],
+    "ghl",
+  );
+  expect(own.items.map((m) => m.toolkit)).toEqual(["ghl"]);
+  // An alias is never stolen by an unrelated installed substring neighbour.
+  const neighbour = searchCustomTools(
+    "create a contact",
+    [tool, { ...tool, integration: "lead", address: "lead.contacts" }],
+    [{ slug: "lead", name: "Lead", active: true }, ...defs],
+    "leadconnector",
+  );
+  expect(neighbour.items.map((m) => m.toolkit)).toEqual(["highlevel"]);
+  // A non-alias scope passes through untouched.
+  expect(curatedCanonicalScope("notion")).toBe("notion");
+  expect(curatedCanonicalScope("")).toBe("");
+});
+
+test("the shipped catalog carries HighLevel as an agent-discoverable CRM", () => {
+  const rows = curatedMatches(["crm"], none, CURATED_ENTRIES);
+  expect(rows.map((row) => row.toolkit)).toContain("highlevel");
+  expect(curatedScoped("gohighlevel", none, CURATED_ENTRIES)).toHaveLength(1);
 });
 
 test("searchCustomTools appends the shipped curated rows on the unscoped path", () => {

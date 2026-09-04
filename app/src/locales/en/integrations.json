@@ -221,6 +221,11 @@
       "description": "Official government records from Colombia, Peru and Mexico: look up court cases, companies, vehicles and people, with answers backed by official sources.",
       "keyHelp": "Sign in to your Croma workspace and copy an API key (it starts with croma_live_). Keys belong to your organization's workspace, not a personal account."
     },
+    "highlevel": {
+      "description": "Your HighLevel (GoHighLevel) CRM: contacts, conversations, pipelines and opportunities, calendars, invoices and payments, social posts and blogs. Each connection works with one sub-account.",
+      "keyHelp": "In HighLevel, open the sub-account you want to connect, go to Settings, then Private Integrations, and create a token with the permissions your agents need. Paste it here (it starts with pit-). The token only reaches that sub-account.",
+      "signInNote": "The sign-in page is labeled LeadConnector. That is HighLevel's technical name, so you are in the right place. Choose the sub-account your agents should work with."
+    },
     "connect": {
       "title": "Connect {{name}}",
       "recommendedBadge": "Recommended",

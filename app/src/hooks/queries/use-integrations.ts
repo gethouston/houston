@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { withoutCuratedDuplicates } from "../../components/integrations/curated-integrations";
 import { integrationsSupported } from "../../components/integrations/model";
 import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
@@ -59,6 +60,9 @@ export function useIntegrationToolkits(provider: string, enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.integrationToolkits(provider),
     queryFn: () => tauriIntegrations.toolkits(provider),
+    // Every consumer (browse catalog, automation pickers, inline connect)
+    // sees ONE HighLevel: the curated entry, never Composio's same-slug app.
+    select: withoutCuratedDuplicates,
     enabled: enabled && registered,
     staleTime: 60 * 60 * 1000,
   });

@@ -1,7 +1,11 @@
 import type { ProviderSearchResult } from "../provider";
-import { resolveScopeRows } from "../scope-resolve";
+import { exactScopeRows, resolveScopeRows } from "../scope-resolve";
 import type { ToolMatch } from "../types";
-import { curatedMatches, curatedScoped } from "./curated";
+import {
+  curatedCanonicalScope,
+  curatedMatches,
+  curatedScoped,
+} from "./curated";
 
 /** The subset of an executor tool row that scoring needs. */
 export interface CustomToolRow {
@@ -83,12 +87,19 @@ export function searchCustomTools(
 ): ProviderSearchResult {
   const added = new Set(defs.map((d) => d.slug));
   if (app) {
-    const scopedDefs = resolveScopeRows(defs, app);
+    // Precedence: an installed definition the scope names EXACTLY, then a
+    // curated alias ("ghl", "leadconnector") naming the curated slug whether
+    // or not it is added yet, then the loose substring rules — so a user's
+    // own integration literally named like an alias keeps its scope, while
+    // an alias is never stolen by an unrelated substring neighbour ("lead").
+    const scope =
+      exactScopeRows(defs, app).length > 0 ? app : curatedCanonicalScope(app);
+    const scopedDefs = resolveScopeRows(defs, scope);
     if (scopedDefs.length === 0) {
       // A scope naming a curated, not-yet-added app resolves to its
       // connectable row — "unresolved" would trigger the unscoped retry and
       // bury the one app the model asked about under other apps' matches.
-      const curated = curatedScoped(app, added);
+      const curated = curatedScoped(scope, added);
       if (curated.length > 0) return { items: curated, scope: "resolved" };
       return { items: [], scope: "unresolved" };
     }
