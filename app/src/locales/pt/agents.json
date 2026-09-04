@@ -219,6 +219,40 @@
     },
     "errors": {
       "failed": "Não foi possível copiar o agente"
+    },
+    "wizard": {
+      "eyebrow": "Copiar um agente",
+      "source": {
+        "title": "Qual agente devemos copiar?",
+        "body": "O novo agente começa igual ao que você escolher. Nas próximas telas você decide o que ele mantém. As conversas e os arquivos ficam com o original.",
+        "empty": "Você ainda não tem agentes para copiar."
+      },
+      "instructions": {
+        "title": "O que a cópia deve saber?",
+        "body": "Tudo começa ativado. Desative o que o novo agente não deve levar.",
+        "instructionsLabel": "Descrição do cargo",
+        "instructionsRow": "Descrição do cargo e regras",
+        "noInstructions": "{{name}} ainda não tem descrição do cargo.",
+        "learningsLabel": "Aprendizados",
+        "learningsBody": "Anotações que o agente fez enquanto trabalhava. As pessoais podem ficar de fora."
+      },
+      "routines": {
+        "title": "Quais rotinas vão junto?",
+        "body": "As rotinas rodam no próprio horário. Cada uma que você mantiver é copiada como está em {{name}}, e você pode mudar depois."
+      },
+      "skills": {
+        "title": "Quais skills vão junto?",
+        "body": "Skills são o que {{name}} sabe fazer. Mantenha as que a cópia precisa."
+      },
+      "name": {
+        "heading": "Baseado em {{name}}"
+      },
+      "actions": {
+        "back": "Voltar",
+        "next": "Continuar",
+        "selectAll": "Selecionar tudo",
+        "clearAll": "Limpar"
+      }
     }
   },
   "rowMenu": {

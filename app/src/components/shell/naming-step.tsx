@@ -1,24 +1,25 @@
 import {
   AGENT_COLORS,
   Button,
-  cn,
-  colorValue,
   DialogTitle,
   HoustonAvatar,
   Input,
   resolveAgentColor,
   Spinner,
 } from "@houston-ai/core";
-import { ArrowLeft, Check, FolderOpen } from "lucide-react";
+import { ArrowLeft, FolderOpen } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { localizeCatalogCopy } from "../../agents/catalog-labels";
 import type { AgentDefinition } from "../../lib/types";
 import { tutorialAnchor } from "../tutorial";
+import { AgentColorPalette } from "./agent-color-palette";
 
 interface NamingStepProps {
   selectedAgent: AgentDefinition | undefined;
+  /** Replaces the catalog name above the avatar (the copy path names its source). */
+  heading?: string;
   name: string;
   color: string | undefined;
   error: string | null;
@@ -38,6 +39,7 @@ interface NamingStepProps {
 
 export function NamingStep({
   selectedAgent,
+  heading,
   name,
   color,
   error,
@@ -54,9 +56,11 @@ export function NamingStep({
   const { t } = useTranslation(["shell", "agents"]);
   // Default to white on mount if none selected
   const resolvedColor = resolveAgentColor(color);
-  const selectedName = selectedAgent
-    ? localizeCatalogCopy(selectedAgent.config, t).name
-    : t("naming.newAgentFallback");
+  const selectedName =
+    heading ??
+    (selectedAgent
+      ? localizeCatalogCopy(selectedAgent.config, t).name
+      : t("naming.newAgentFallback"));
 
   useEffect(() => {
     if (!color) {
@@ -96,31 +100,7 @@ export function NamingStep({
           {...tutorialAnchor("createAgentNaming")}
           className="flex w-full flex-col items-center"
         >
-          {/* Color palette: two rows of five on a phone (ten swatches outgrow
-            the card in one row), the single row at md+. */}
-          <div className="mb-6 grid grid-cols-5 gap-2 md:flex md:items-center">
-            {AGENT_COLORS.map((c) => {
-              const swatch = colorValue(c);
-              const isSelected =
-                color === c.id || color === c.light || color === c.dark;
-              return (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => onColorChange(c.id)}
-                  className={cn(
-                    "h-7 w-7 rounded-full flex items-center justify-center transition-all duration-150",
-                    isSelected
-                      ? "ring-2 ring-offset-2 ring-ink/30"
-                      : "hover:scale-110",
-                  )}
-                  style={{ backgroundColor: swatch }}
-                >
-                  {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
-                </button>
-              );
-            })}
-          </div>
+          <AgentColorPalette color={color} onColorChange={onColorChange} />
 
           <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
             <Input

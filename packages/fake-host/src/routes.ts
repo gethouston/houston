@@ -19,6 +19,7 @@ import type { ProviderId } from "@houston/runtime-client";
 import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
 import { handleWorkspaceFiles } from "./routes-files";
+import { handlePortableRoutes } from "./routes-portable";
 import * as state from "./state";
 
 /** Canned repo skills for the Add Skills GitHub tab (list-from-repo). A dozen
@@ -309,17 +310,9 @@ export function handleAgents(
     }
 
     case "portable":
-      // Share-with-a-friend export inventory. An empty (but well-shaped)
-      // preview is enough for the wizard to open; the default `{items: []}`
-      // fallthrough made `preview.skills.map` throw, silently closing it.
-      if (rest[2] === "preview" && method === "GET")
-        return json({
-          claudeMd: null,
-          skills: [],
-          routines: [],
-          learnings: [],
-        });
-      return noContent(405);
+      // Share / copy: the export inventory and the packaged `.houstonagent`,
+      // both from this agent's own state (routes-portable.ts).
+      return handlePortableRoutes(method, id, rest[2], body);
 
     default:
       console.warn(

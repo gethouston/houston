@@ -1,3 +1,4 @@
+import type { PortableExportSelection } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";
@@ -24,6 +25,10 @@ import { fullPortableSelection } from "./copy-agent-model";
  * package installs as an ordinary create-with-seeds, and the one move action
  * files the copy in the chosen team.
  *
+ * `selection` narrows what the package carries (the create dialog's "Copy an
+ * agent" wizard lets the user leave items behind); absent, the copy is
+ * faithful. `color` defaults to the source's.
+ *
  * Resolves `true` when the copy exists (the dialog closes on it); failures
  * toast here and resolve `false` so the dialog stays open for a retry.
  */
@@ -31,6 +36,10 @@ export function useCopyAgent(): (args: {
   agent: Agent;
   name: string;
   team: TeamView | null;
+  color?: string;
+  selection?: PortableExportSelection;
+  /** Which door the copy came through, for analytics. */
+  via?: "settings" | "create_dialog";
 }) => Promise<boolean> {
   const { t } = useTranslation("agents");
   const addToast = useUIStore((s) => s.addToast);
@@ -38,12 +47,14 @@ export function useCopyAgent(): (args: {
   const workspaceName = useWorkspaceStore((s) => s.current?.name);
   const moveAgent = useMoveAgentTeam();
 
-  return async ({ agent, name, team }) => {
+  return async ({ agent, name, team, color, selection, via = "settings" }) => {
     try {
       const engine = getEngine();
-      const preview = await engine.portablePreview(agent.folderPath);
+      const packaged =
+        selection ??
+        fullPortableSelection(await engine.portablePreview(agent.folderPath));
       const bytes = await engine.portablePackage(agent.folderPath, {
-        selection: fullPortableSelection(preview),
+        selection: packaged,
         meta: {
           agentId: agent.configId ?? agent.id,
           agentName: agent.name,
@@ -55,7 +66,7 @@ export function useCopyAgent(): (args: {
         packageId: uploaded.packageId,
         workspaceName: workspaceName ?? "",
         agentName: name.trim(),
-        agentColor: agent.color,
+        agentColor: color ?? agent.color,
         selection: fullPortableSelection(uploaded.preview),
       });
       // Reveal now (the optimistic create/import contract, HOU-710), and file
@@ -63,7 +74,7 @@ export function useCopyAgent(): (args: {
       // destination from the live teams model.
       adoptAgent(toAgent(installed.agent));
       if (team) moveAgent(installed.agent.id, team);
-      analytics.track("agent_copied", { agent_slug: agent.id });
+      analytics.track("agent_copied", { agent_slug: agent.id, source: via });
       addToast({
         variant: "success",
         title: t("copyAgent.toasts.createdTitle"),
