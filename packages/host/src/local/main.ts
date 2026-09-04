@@ -42,6 +42,9 @@ import { runtimeCommand } from "./runtime-command";
  *                             falls back to `node --import tsx <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
  *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
+ *   HOUSTON_SHUTDOWN_DRAIN_MS  managed pod only: how long a shutdown lets
+ *                            in-flight turns finish (termination grace minus
+ *                            the final sync's share); unset = short default
  *   HOUSTON_OAUTH_CALLBACK_BASE_URL  self-host only: the public origin for the
  *                             custom-integration OAuth callback (PRODUCT-1172)
  *   HOUSTON_PASSIVE=1        migration-source mode: no scheduler, no watcher
@@ -230,6 +233,10 @@ const host = buildLocalHost({
   // Active-time reporting rides the same managed-pod gateway quadruple: the
   // env being present IS the switch (desktop/self-host never set it).
   usageReporting: remoteGateway,
+  // A pod's termination grace is what makes a drain worth anything; the
+  // orchestrator that sets the grace sets this alongside it. The desktop
+  // never does: its app is gone by the time the sidecar hears about it.
+  shutdownDrainMs: shutdownDrainMs(),
   durableTurns,
   // Migration-source spawns (HOU-719): serve + migrate on boot, but never fire
   // routines or churn watch events while the cloud app reads the old tree.
@@ -289,6 +296,21 @@ try {
   // Hydration is a boot invariant in store-backed mode. Exit non-zero so the
   // orchestrator retries with a fresh emptyDir; never linger unready or sync it.
   await fatal("[local-host] startup failed:", err);
+}
+
+/** HOUSTON_SHUTDOWN_DRAIN_MS, parsed strictly: a garbled value must not
+ *  silently become a multi-minute (or zero) drain. */
+function shutdownDrainMs(): number | undefined {
+  const raw = process.env.HOUSTON_SHUTDOWN_DRAIN_MS;
+  if (!raw) return undefined;
+  const ms = Number(raw);
+  if (!Number.isFinite(ms) || ms < 0) {
+    console.error(
+      `[local-host] ignoring invalid HOUSTON_SHUTDOWN_DRAIN_MS=${JSON.stringify(raw)}`,
+    );
+    return undefined;
+  }
+  return ms;
 }
 
 let shuttingDown = false;

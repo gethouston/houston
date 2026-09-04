@@ -8,6 +8,7 @@ import {
   runTurn,
   setLiveTurnMode,
 } from "../session/chat";
+import { isDraining } from "../session/drain";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import { truncateConversationTurn } from "../session/truncate-turn";
 import {
@@ -119,6 +120,20 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "POST" && action === "messages") {
+    // Shutting down: the turns already running finish, new ones do not start
+    // here. 503 + Retry-After is the host's own "not here, not now" shape
+    // (its closed launcher answers the same), which clients treat as a wake
+    // in progress and retry against the replacement, never as an error.
+    if (isDraining()) {
+      res.writeHead(503, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Retry-After": "2",
+      });
+      res.end(
+        JSON.stringify({ error: "the runtime is restarting; retry shortly" }),
+      );
+      return true;
+    }
     await handleStartTurn(ctx, id);
     return true;
   }

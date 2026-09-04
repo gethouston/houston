@@ -73,6 +73,9 @@ export const LOCAL_USER = "local-owner";
 // the cloud profile + the dual-profile parity gate).
 export { LOCAL_CAPABILITIES };
 
+/** Headroom past the runtimes' own drain budget for their exit to land. */
+const SHUTDOWN_EXIT_SLACK_MS = 5_000;
+
 export interface LocalHostOptions {
   /** `~/.houston/workspaces` — the desktop tree (FsVfs root + store root). */
   workspacesRoot: string;
@@ -259,6 +262,13 @@ export interface LocalHostOptions {
     agentSlug: string;
     podToken: string;
   };
+  /**
+   * How long `stop()` lets in-flight turns finish before the runtimes are
+   * killed and the final sync runs. Managed pods set it from their
+   * termination grace (leaving the sync its share); absent = the short
+   * desktop default, where the app that owned this host is already gone.
+   */
+  shutdownDrainMs?: number;
   /** Managed durable-turn shadows. Both switches are explicit rollout caps. */
   durableTurns?: {
     gateway: PodGatewayConfig;
@@ -374,6 +384,11 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       env: {
         ...(opts.systemPrompt
           ? { HOUSTON_SYSTEM_PROMPT: opts.systemPrompt }
+          : {}),
+        // The runtime drains its own turns inside the host's budget, so the
+        // host's SIGKILL escalation below is the backstop, not the norm.
+        ...(opts.shutdownDrainMs !== undefined
+          ? { HOUSTON_RUNTIME_DRAIN_MS: String(opts.shutdownDrainMs) }
           : {}),
         // Packaged: runtimeCommand() spawns this same compiled binary, so the
         // child must dispatch into RUNTIME role (sidecar-entry.ts reads this).
@@ -1006,8 +1021,14 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // sampler swallows report failures, so this never blocks a shutdown.
         await usageSampler?.stop();
         // Await actual child exit (bounded): the final sync below must not
-        // walk /data while a runtime is still flushing its last writes.
-        await launcher.shutdownAllAndWait();
+        // walk /data while a runtime is still flushing its last writes. The
+        // runtimes drain their turns within the same budget (they get it as
+        // HOUSTON_RUNTIME_DRAIN_MS); the extra beat here covers their exit.
+        await launcher.shutdownAllAndWait(
+          opts.shutdownDrainMs !== undefined
+            ? opts.shutdownDrainMs + SHUTDOWN_EXIT_SLACK_MS
+            : undefined,
+        );
         await sharedMirror?.stop();
         await syncDaemon?.stop();
         await new Promise<void>((resolve, reject) => {

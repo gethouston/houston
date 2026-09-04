@@ -395,32 +395,50 @@ export class ProcessLauncher implements RuntimeLauncher {
   }
 
   /**
-   * shutdownAll, but resolved only once every child has ACTUALLY exited (or
-   * timeoutMs passes). The store-sync stop path needs this: a final /data sync
-   * taken while a child is still flushing its last conversation write would
-   * persist a torn file as the agent's durable state. Handles without onExit
-   * (test stubs) count as already exited.
+   * shutdownAll, but resolved only once every child has ACTUALLY exited. The
+   * store-sync stop path needs this: a final /data sync taken while a child
+   * is still flushing its last conversation write would persist a torn file
+   * as the agent's durable state.
+   *
+   * SIGTERM lets each runtime DRAIN — finish the turns it holds, refuse new
+   * ones — for up to `timeoutMs` (the host's drain budget: a managed pod's
+   * termination grace minus what the final sync needs; the desktop's short
+   * default). A child still alive past that is SIGKILLed and given
+   * `forceTimeoutMs` more; the sync then proceeds regardless, because the
+   * alternative (kubelet's SIGKILL of the whole pod) loses the sync too.
+   * Handles without onExit (test stubs) count as already exited.
    */
-  async shutdownAllAndWait(timeoutMs = 5_000): Promise<void> {
+  async shutdownAllAndWait(
+    timeoutMs = 5_000,
+    forceTimeoutMs = 2_000,
+  ): Promise<void> {
     // Latch FIRST: from here on ensureAwake refuses (LauncherClosedError)
     // instead of respawning into the drain window below.
     this.closed = true;
-    const waits: Promise<void>[] = [];
+    const draining: { handle: RuntimeHandle; exited: Promise<void> }[] = [];
     for (const r of this.running.values()) {
       const { onExit } = r.handle;
       if (onExit) {
-        waits.push(new Promise<void>((resolve) => onExit(() => resolve())));
+        draining.push({
+          handle: r.handle,
+          exited: new Promise<void>((resolve) => onExit(() => resolve())),
+        });
       }
       r.handle.kill();
     }
     this.running.clear();
-    if (waits.length === 0) return;
-    await Promise.race([
-      Promise.all(waits).then(() => undefined),
-      new Promise<void>((resolve) => {
-        const timer = setTimeout(resolve, timeoutMs);
+    if (draining.length === 0) return;
+    const expire = (ms: number) =>
+      new Promise<boolean>((resolve) => {
+        const timer = setTimeout(() => resolve(false), ms);
         timer.unref?.();
-      }),
-    ]);
+      });
+    const allExited = Promise.all(draining.map((d) => d.exited)).then(
+      () => true,
+    );
+    if (await Promise.race([allExited, expire(timeoutMs)])) return;
+    // Past the drain budget: whatever is still alive gets no more time.
+    for (const d of draining) d.handle.forceKill?.();
+    await Promise.race([allExited, expire(forceTimeoutMs)]);
   }
 }

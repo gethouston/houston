@@ -486,3 +486,61 @@ test("a boot that entered BEFORE shutdown but had not spawned yet is refused, so
   await expect(boot).rejects.toBeInstanceOf(LauncherClosedError);
   expect(spawns).toHaveLength(0); // no child ever spawned past the sweep
 });
+
+// A shutdown lets each runtime drain its turns within the budget; only a
+// child still alive past it is SIGKILLed, and the sync proceeds either way.
+test("shutdownAllAndWait waits out the drain budget, then SIGKILLs a survivor", async () => {
+  const events: string[] = [];
+  let exitCb: (() => void) | undefined;
+  const spawner: RuntimeSpawner = {
+    spawn(spec) {
+      return {
+        port: spec.port,
+        kill: () => events.push("SIGTERM"),
+        forceKill: () => {
+          events.push("SIGKILL");
+          exitCb?.();
+        },
+        onExit: (cb) => {
+          exitCb = cb;
+        },
+      };
+    },
+  };
+  const launcher = new ProcessLauncher(opts(spawner));
+  await launcher.ensureAwake(agent("wedged"));
+
+  const started = Date.now();
+  await launcher.shutdownAllAndWait(50, 1_000);
+  expect(events).toEqual(["SIGTERM", "SIGKILL"]);
+  expect(Date.now() - started).toBeGreaterThanOrEqual(45);
+});
+
+test("shutdownAllAndWait returns as soon as a draining child exits, never escalating", async () => {
+  const events: string[] = [];
+  let exitCb: (() => void) | undefined;
+  const spawner: RuntimeSpawner = {
+    spawn(spec) {
+      return {
+        port: spec.port,
+        kill: () => {
+          events.push("SIGTERM");
+          // The runtime finishes its turn and leaves on its own, well inside
+          // the budget.
+          setTimeout(() => exitCb?.(), 10);
+        },
+        forceKill: () => events.push("SIGKILL"),
+        onExit: (cb) => {
+          exitCb = cb;
+        },
+      };
+    },
+  };
+  const launcher = new ProcessLauncher(opts(spawner));
+  await launcher.ensureAwake(agent("busy"));
+
+  const started = Date.now();
+  await launcher.shutdownAllAndWait(5_000, 1_000);
+  expect(events).toEqual(["SIGTERM"]);
+  expect(Date.now() - started).toBeLessThan(1_000);
+});
