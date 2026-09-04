@@ -115,12 +115,14 @@ export const PROVIDERS: readonly HostProvider[] = [
     // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: [
+      "gemini-3.8-flash",
+      "gemini-3.7-flash",
       "gemini-3.5-flash",
       "gemini-3.1-flash-lite",
       "gemma-4-26b-a4b-it",
       "gemma-4-31b-it",
     ],
-    defaultModel: "gemini-3.5-flash",
+    defaultModel: "gemini-3.8-flash",
   },
   {
     id: "amazon-bedrock",

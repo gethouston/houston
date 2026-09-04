@@ -223,6 +223,8 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
   // 3.1 line is represented by Flash Lite here.
   google: new Set([
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
@@ -562,15 +564,30 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Free tier on your Google account",
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
-    defaultModel: "gemini-3.5-flash",
+    // 3.8 Flash (GA 2026-09-02): 1M context, 64K output, and at $0.75/$3.75
+    // per MTok (intro through 2026-12-31, then $1.50/$7.50) it undercuts 3.5
+    // Flash's $1.50/$9 while scoring higher. Twin of the runtime's
+    // `config.geminiModel` and the host's google `defaultModel`. Effort rows
+    // for 3.7/3.8 derive to low/medium/high; Google rejects `minimal` on both
+    // (the carried pi-ai patch floors the no-effort path at LOW).
+    defaultModel: "gemini-3.8-flash",
     models: {
+      "gemini-3.8-flash": {
+        label: "Gemini 3.8 Flash",
+        description: "Google's newest Flash. Best for agents and coding.",
+      },
+      "gemini-3.7-flash": {
+        label: "Gemini 3.7 Flash",
+        description: "Strong coding workhorse. Same price as 3.8.",
+      },
       "gemini-3.6-flash": {
         label: "Gemini 3.6 Flash",
-        description: "Google's newest Flash. Stronger agents, cheaper output.",
+        description:
+          "Previous Flash generation. Stronger agents, cheaper output.",
       },
       "gemini-3.5-flash": {
         label: "Gemini 3.5 Flash",
-        description: "Fast and capable. Best default.",
+        description: "Fast and capable.",
       },
       "gemini-3.5-flash-lite": {
         label: "Gemini 3.5 Flash Lite",

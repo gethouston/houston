@@ -63,8 +63,14 @@ export const config = {
    * the frontend's `PROVIDER_OVERRIDES["github-copilot"].defaultModel`.
    */
   githubCopilotModel: env.HOUSTON_GITHUB_COPILOT_MODEL || "gpt-5-mini",
-  /** Default Google Gemini model (API-key provider). A pi-ai `google` model id. */
-  geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3.5-flash",
+  /**
+   * Default Google Gemini model (API-key provider). A pi-ai `google` model id.
+   * 3.8 Flash (GA 2026-09-02) is cheaper than 3.5 Flash and scores higher; it
+   * is also the key-verify probe model, which rides the carried pi-ai patch
+   * (3.7+ Flash reject `MINIMAL`, the level pi sends when thinking is off).
+   * Twin of the frontend override's google `defaultModel`.
+   */
+  geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3.8-flash",
   /** Default Amazon Bedrock model (API-key provider). A pi-ai `amazon-bedrock`
    *  model id. MUST be an inference-profile id (`global.` prefix): Bedrock
    *  serves Claude 4.x only through inference profiles, so the bare foundation
