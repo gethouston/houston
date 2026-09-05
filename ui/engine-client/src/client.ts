@@ -76,6 +76,7 @@ import type {
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
+  MigrationImportOptions,
   MigrationImportResult,
   MyAgent,
   NewActivity,
@@ -2691,9 +2692,12 @@ export class HoustonClient {
   async migrationImport(
     agentPath: string,
     bytes: ArrayBuffer,
-    opts?: { overwrite?: boolean },
+    opts?: MigrationImportOptions,
   ): Promise<MigrationImportResult> {
-    const query = opts?.overwrite ? "?overwrite=1" : "";
+    const q = new URLSearchParams();
+    if (opts?.overwrite) q.set("overwrite", "1");
+    if (opts?.sessions === false) q.set("sessions", "0");
+    const query = q.size ? `?${q.toString()}` : "";
     const res = await this.send(
       () => ({
         url: `${this.baseUrl}/v1/agents/${encodeURIComponent(agentPath)}/migration/import${query}`,

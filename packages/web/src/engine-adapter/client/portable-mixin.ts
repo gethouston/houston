@@ -1,4 +1,5 @@
 import type {
+  MigrationImportOptions,
   MigrationImportResult,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
@@ -79,7 +80,7 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     async migrationImport(
       agentPath: string,
       bytes: ArrayBuffer,
-      opts?: { overwrite?: boolean },
+      opts?: MigrationImportOptions,
     ): Promise<MigrationImportResult> {
       if (!this.ctx.cp)
         throw new Error("Copying agent data needs a connected host.");

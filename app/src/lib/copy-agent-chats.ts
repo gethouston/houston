@@ -1,5 +1,6 @@
 import type {
   ConversationEntry,
+  MigrationImportOptions,
   MigrationImportResult,
 } from "@houston-ai/engine-client";
 import {
@@ -64,7 +65,7 @@ export interface ChatCopyEngine {
   migrationImport(
     agentPath: string,
     bytes: ArrayBuffer,
-    opts?: { overwrite?: boolean },
+    opts?: MigrationImportOptions,
   ): Promise<MigrationImportResult>;
 }
 
@@ -142,8 +143,12 @@ export async function copyAgentChats(
     const overwrite =
       batch[0] === ACTIVITY_PATH &&
       (await engine.listConversations(target)).length === 0;
+    // No pi session is rebuilt from the transcripts: each one carries the
+    // replay marker (`copy-chat-remap.ts`), so the copy's FIRST turn in a chat
+    // replays its history into whichever backend runs it, every provider alike.
     const result = await withWakingRetry(
-      () => engine.migrationImport(target, bytes, { overwrite }),
+      () =>
+        engine.migrationImport(target, bytes, { overwrite, sessions: false }),
       shouldRetry,
       retry,
     );

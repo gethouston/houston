@@ -44,3 +44,18 @@ export function consumeSessionReplayAt(dir: string, id: string): boolean {
   saveConversation(dir, conv);
   return true;
 }
+
+/**
+ * Re-arm the replay marker without touching the transcript. exec-turn calls
+ * this when a turn that consumed the marker ended with NO assistant reply on a
+ * backend whose session store keeps nothing from a failed prompt (the Claude
+ * SDK): the replayed history never reached a persisted session, so the next
+ * attempt must carry it in again or the conversation starts blank.
+ */
+export function stampSessionReplayAt(dir: string, id: string): boolean {
+  const conv = loadConversation(dir, id);
+  if (!conv) return false;
+  conv.needsSessionReplay = true;
+  saveConversation(dir, conv);
+  return true;
+}

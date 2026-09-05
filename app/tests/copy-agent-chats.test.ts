@@ -105,6 +105,9 @@ describe("copyAgentChats", () => {
       async migrationImport(agentPath, bytes, opts) {
         const names = Object.keys(unzipSync(new Uint8Array(bytes)));
         imported.push(names);
+        // Every import asks for NO pi session: the transcripts carry the
+        // replay marker instead.
+        strictEqual(opts?.sessions, false);
         calls.push(
           `import:${agentPath}:${names.length}${opts?.overwrite ? ":overwrite" : ""}`,
         );

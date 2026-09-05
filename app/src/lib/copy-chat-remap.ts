@@ -101,16 +101,21 @@ function remapActivities(text: string, map: ChatIdMap, mint: () => string) {
   return JSON.stringify(out, null, 2);
 }
 
+/**
+ * A copied transcript wears the runtime's one-shot replay marker: the copy has
+ * no backend session for it, so its first turn must carry the history in as
+ * a replay preamble (HOU-951), whichever backend the copy runs on. The key
+ * follows the map when it has one, else stays (a routine chat).
+ */
 function remapTranscript(rel: string, text: string, map: ChatIdMap) {
   const key = decodeURIComponent(
     rel.slice(TRANSCRIPT_PREFIX.length, -".json".length),
   );
-  const next = map.session.get(key);
-  if (!next) return { rel, text };
+  const next = map.session.get(key) ?? key;
   const doc = JSON.parse(text) as { id?: string };
   return {
     rel: transcriptPath(next),
-    text: JSON.stringify({ ...doc, id: next }),
+    text: JSON.stringify({ ...doc, id: next, needsSessionReplay: true }),
   };
 }
 

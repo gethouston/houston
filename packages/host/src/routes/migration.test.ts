@@ -413,3 +413,38 @@ test("export from one agent imports into another on the same host, sessions rebu
     board,
   );
 });
+
+test("import with sessions=0 writes the transcript but rebuilds no pi session", async () => {
+  const vfs = new FsVfs(tmp);
+  const agentDir = join(tmp, ROOT, "nosessions");
+  const transcript = JSON.stringify({
+    id: "activity-9",
+    title: "Copied",
+    createdAt: 1,
+    updatedAt: 2,
+    messages: [
+      { role: "user", content: "hi", ts: 1 },
+      { role: "assistant", content: "hello!", ts: 2 },
+    ],
+    needsSessionReplay: true,
+  });
+  const r = await call(
+    vfs,
+    "POST",
+    "migration/import",
+    zipOf({ ".houston/runtime/conversations/activity-9.json": transcript }),
+    { agentDir, url: "/?sessions=0" },
+  );
+  expect(r.status).toBe(200);
+  expect((r.body as { written: number }).written).toBe(1);
+  expect((r.body as { sessionsRebuilt: boolean }).sessionsRebuilt).toBe(false);
+  expect(
+    existsSync(join(agentDir, ".houston", "runtime", "sessions", "activity-9")),
+  ).toBe(false);
+  // The marker rides through verbatim for the runtime's first turn to consume.
+  expect(
+    await vfs.readText(
+      `${ROOT}/.houston/runtime/conversations/activity-9.json`,
+    ),
+  ).toContain('"needsSessionReplay":true');
+});

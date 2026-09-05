@@ -39,6 +39,7 @@ import {
   appendUserMessage,
   consumeSessionReplay,
   getHistory,
+  stampSessionReplay,
 } from "../store/conversations";
 import { type ActingContext, runWithActingContext } from "./acting-context";
 import {
@@ -187,6 +188,11 @@ export async function execTurn(
   // finally's revoked-token eviction (PRODUCT-1355) can read it — the catch's
   // own `typed` is block-scoped. Streamed failures land in `providerError`.
   let thrownTyped: ProviderError | undefined;
+  // Whether THIS turn carried the conversation in as a replay preamble (a
+  // consumed `needsSessionReplay` marker or a cross-backend rebuild). Read at
+  // the end: a turn that replayed and then failed without a reply must re-arm
+  // the marker on a backend that persists nothing from a failed prompt.
+  let replayedHistory = false;
 
   // Stall watchdog: a provider stream that goes silent mid-turn resolves neither
   // success nor error and would hold the workdir lock until the socket dies.
@@ -340,6 +346,7 @@ export async function execTurn(
     // the same turn replays anyway, and a still-set marker would replay a
     // second copy on the turn after.
     const sessionWasReset = consumeSessionReplay(id);
+    replayedHistory = rebuilt || sessionWasReset;
     if (rebuilt) {
       // Cross-backend rebuild: the new backend cannot read the old backend's
       // session store, so the fresh session carries the conversation over via a
@@ -605,6 +612,20 @@ export async function execTurn(
       !interaction.pending
         ? planReadyFallback()
         : interaction.pending;
+    // The replay rode a prompt the model never answered. pi's session store
+    // keeps that prompt (the preamble is already in its history, so the next
+    // turn must NOT replay again); the Claude SDK persists nothing for a failed
+    // prompt, so without the marker the next attempt would start blank — the
+    // rate-limited first turn of a copied chat, then "what was my first
+    // message?" answered as if new.
+    if (
+      replayedHistory &&
+      (providerError || stopped) &&
+      !assistantText.trim() &&
+      conv.backendId !== "pi"
+    ) {
+      stampSessionReplay(id);
+    }
     appendAssistantMessage(id, assistantText, {
       tools,
       thinking: thinkingText || undefined,
@@ -746,6 +767,11 @@ export async function execTurn(
       );
     const typed = thrown.kind !== "unknown" ? thrown : undefined;
     thrownTyped = typed;
+    // The thrown twin of the re-arm above: a replayed turn that died before
+    // any reply leaves the Claude SDK with no persisted prompt to resume.
+    if (replayedHistory && !assistantText.trim() && conv.backendId !== "pi") {
+      stampSessionReplay(id);
+    }
     appendAssistantMessage(id, assistantText, {
       tools,
       thinking: thinkingText || undefined,

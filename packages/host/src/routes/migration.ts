@@ -103,11 +103,16 @@ export async function handleMigration(
       return true;
     }
     const url = new URL(req.url ?? "", "http://local");
+    // `sessions=0`: write the transcripts but rebuild no pi session from them.
+    // A caller that stamps `needsSessionReplay` on the transcripts instead
+    // ("Copy an agent") gets the history replayed into whichever backend the
+    // next turn runs on; a synthesized pi session on top would double it.
+    const synthesize = url.searchParams.get("sessions") !== "0";
     try {
       const { result, events } = await applyMigrationArchive({
         vfs,
         root,
-        agentDir: deps.agentDir,
+        agentDir: synthesize ? deps.agentDir : undefined,
         bytes,
         overwrite: url.searchParams.get("overwrite") === "1",
       });

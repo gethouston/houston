@@ -5,7 +5,10 @@
  * portable routes (`hostFetch`: live bearer + 401 replay + active space pin).
  */
 
-import type { MigrationImportResult } from "../../../../ui/engine-client/src/types";
+import type {
+  MigrationImportOptions,
+  MigrationImportResult,
+} from "../../../../ui/engine-client/src/types";
 import type { ControlPlaneConfig } from "./control-plane";
 import { hostFetch } from "./portable";
 
@@ -28,9 +31,12 @@ export async function migrationImport(
   cfg: ControlPlaneConfig,
   agentId: string,
   bytes: ArrayBuffer,
-  opts?: { overwrite?: boolean },
+  opts?: MigrationImportOptions,
 ): Promise<MigrationImportResult> {
-  const query = opts?.overwrite ? "?overwrite=1" : "";
+  const q = new URLSearchParams();
+  if (opts?.overwrite) q.set("overwrite", "1");
+  if (opts?.sessions === false) q.set("sessions", "0");
+  const query = q.size ? `?${q.toString()}` : "";
   const res = await hostFetch(
     cfg,
     `/agents/${encodeURIComponent(agentId)}/migration/import${query}`,

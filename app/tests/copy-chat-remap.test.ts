@@ -87,13 +87,22 @@ describe("remapChatArchive", () => {
     // Native session and routine-run references name things only the source has.
     ok(!("claude_session_id" in (rows[0] as object)));
     ok(!("routine_run_id" in (rows[0] as object)));
+    const moved = JSON.parse(
+      strFromU8(
+        out[".houston/runtime/conversations/activity-n1.json"] as Uint8Array,
+      ),
+    );
+    strictEqual(moved.id, "activity-n1");
+    // Every copied transcript asks its first turn to replay the history: the
+    // copy has no backend session for it, on any provider.
+    strictEqual(moved.needsSessionReplay, true);
     strictEqual(
       JSON.parse(
         strFromU8(
-          out[".houston/runtime/conversations/activity-n1.json"] as Uint8Array,
+          out[".houston/runtime/conversations/routine-r9.json"] as Uint8Array,
         ),
-      ).id,
-      "activity-n1",
+      ).needsSessionReplay,
+      true,
     );
     strictEqual(strFromU8(out["notes/keep.txt"] as Uint8Array), "untouched");
     // The row the conversation list never named still got a fresh id, and the
