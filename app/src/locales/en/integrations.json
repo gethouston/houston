@@ -77,14 +77,6 @@
     "noResults": "No matching apps found.",
     "loading": "Loading apps..."
   },
-  "highlevelGuidance": {
-    "title": "Choose Sub-Account View in HighLevel",
-    "body": "When the HighLevel page opens, use the dropdown next to Houston to switch Agency View to Sub-Account View.",
-    "houstonAppName": "Houston",
-    "agencyView": "Agency View",
-    "cancel": "Cancel",
-    "continue": "Continue to HighLevel"
-  },
   "home": {
     "tabs": {
       "label": "Integration sections",
@@ -221,6 +213,16 @@
       "description": "Official government records from Colombia, Peru and Mexico: look up court cases, companies, vehicles and people, with answers backed by official sources.",
       "keyHelp": "Sign in to your Croma workspace and copy an API key (it starts with croma_live_). Keys belong to your organization's workspace, not a personal account."
     },
+    "highlevel": {
+      "description": "Your HighLevel (GoHighLevel) CRM: contacts, conversations, pipelines, calendars, invoices and social posts. One sub-account per connection.",
+      "keyTitle": "Connect with a HighLevel token",
+      "keyDesc": "Create a private integration token in your sub-account and paste it here.",
+      "keyHelp": "In HighLevel, open the sub-account you want to connect, go to Settings, then Private Integrations, and create a token with the permissions your agents need (contacts, conversations, opportunities, calendars). Paste it here; it starts with pit-.",
+      "headerLabel": "Sub-account ID",
+      "headerHelp": "Find it in the sub-account under Settings, Business Profile, or in HighLevel's web address after /location/.",
+      "providerTitle": "Connect HighLevel with Composio",
+      "providerDesc": "Every HighLevel feature. When HighLevel opens, switch Agency View to Sub-Account View and approve."
+    },
     "connect": {
       "title": "Connect {{name}}",
       "recommendedBadge": "Recommended",
@@ -231,7 +233,8 @@
       "openKeys": "Open {{name}} to get a key",
       "back": "Back",
       "newTo": "New to {{name}}? Create your account first, then come back here to connect.",
-      "createAccount": "Create a {{name}} account"
+      "createAccount": "Create a {{name}} account",
+      "headerRequired": "Enter the sub-account ID to continue."
     }
   }
 }

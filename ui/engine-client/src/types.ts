@@ -2259,6 +2259,9 @@ export type AddCustomIntegrationInput =
       name: string;
       endpoint: string;
       website?: string;
+      /** Static, NON-secret request headers the server needs on every call
+       *  (HighLevel's `locationId`). Secrets go through the credential save. */
+      headers?: Record<string, string>;
       /** `oauth` (PRODUCT-1172): the server signs in with its own browser
        *  flow — the add lands `pending` until the user presses Sign in. */
       auth: "none" | "credential" | "oauth";

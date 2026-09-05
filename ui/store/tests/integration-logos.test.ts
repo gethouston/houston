@@ -10,6 +10,10 @@ describe("integrationLogoUrl", () => {
     assert.equal(domainOf(integrationLogoUrl("CROMA")), "usecroma.com");
   });
 
+  it("maps HighLevel to gohighlevel.com — highlevel.com is not the CRM", () => {
+    assert.equal(domainOf(integrationLogoUrl("highlevel")), "gohighlevel.com");
+  });
+
   it("resolves the domain map case-insensitively (Houston slugs are lowercase)", () => {
     assert.equal(domainOf(integrationLogoUrl("croma")), "usecroma.com");
     assert.equal(domainOf(integrationLogoUrl("gmail")), "mail.google.com");

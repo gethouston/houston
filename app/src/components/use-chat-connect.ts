@@ -1,14 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { useCustomIntegrationsFor } from "../hooks/queries";
+import {
+  useCustomIntegrationsFor,
+  useIntegrationToolkits,
+} from "../hooks/queries";
 import {
   type ConnectCardView,
   deriveConnectCardView,
+  findCatalogToolkit,
 } from "./integration-connect-card-state";
 import type { AppDisplay } from "./integrations";
 import {
   type CuratedIntegration,
   curatedIntegrationOf,
   curatedLogoUrl,
+  INTEGRATION_PROVIDER,
 } from "./integrations";
 import { useIntegrationConnect } from "./use-integration-connect";
 
@@ -42,6 +47,9 @@ export function useChatConnect({
   startConnect: () => Promise<void>;
   /** The curated dialog's subject — render `CuratedConnectDialog` with it. */
   curatedDialog: CuratedIntegration | null;
+  /** The dialog's provider (Composio) connect, when that catalog has the
+   *  app — the same hand-off a plain Composio card runs. */
+  curatedProviderConnect?: () => void;
   closeCuratedDialog: () => void;
 } {
   const slug = toolkit.trim().toLowerCase();
@@ -51,41 +59,49 @@ export function useChatConnect({
   // Both hooks always mount (hooks are unconditional); the Composio one is
   // inert for a curated slug — never in its connections, so it cannot
   // self-report — and this one is inert for a Composio slug.
+  // One voice for a curated slug: a Composio connect the user drove from the
+  // dialog reports through the provider hook, an MCP sign-in (or an already-
+  // connected step) through the effect below — and `fired` lets whichever
+  // lands first speak, never both. Auto-continue stays with the effect, which
+  // knows both paths' truth.
+  const fired = useRef(false);
+  const speakOnce = (slug: string, appName: string) => {
+    if (fired.current) return;
+    fired.current = true;
+    onConnected?.(slug, appName);
+  };
   const composio = useIntegrationConnect({
     toolkit,
     agentId,
-    onConnected,
-    autoContinueWhenConnected,
+    ...(curated
+      ? { onConnected: speakOnce, autoContinueWhenConnected: false }
+      : { onConnected, autoContinueWhenConnected }),
   });
   const list = useCustomIntegrationsFor(agentId);
   const view = curated
     ? list.data?.find((item) => item.slug === slug)
     : undefined;
-  const curatedConnected = view?.state.status === "active";
+  // Connected through EITHER path: the MCP definition or the provider's own
+  // app (Composio's HighLevel) — both make the agent's tools work.
+  const curatedConnected =
+    view?.state.status === "active" ||
+    (curated !== undefined && composio.isConnected);
+  const providerCatalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
+  const providerHasCurated =
+    curated !== undefined &&
+    findCatalogToolkit(providerCatalog.data, slug) !== undefined;
 
   // Fire the resume nudge once, whenever the curated connection is (or lands)
   // active while this step sits on the live frontier — the browser sign-in
   // completes out-of-band, so the landing arrives as a list refresh, not as a
   // resolution of anything the card awaited.
-  const fired = useRef(false);
   const curatedName = curated?.name;
   useEffect(() => {
-    if (
-      !curatedName ||
-      !autoContinueWhenConnected ||
-      !curatedConnected ||
-      fired.current
-    )
+    if (!curatedName || !autoContinueWhenConnected || !curatedConnected) {
       return;
-    fired.current = true;
-    onConnected?.(slug, curatedName);
-  }, [
-    curatedName,
-    autoContinueWhenConnected,
-    curatedConnected,
-    slug,
-    onConnected,
-  ]);
+    }
+    speakOnce(slug, curatedName);
+  });
 
   if (!curated) {
     return {
@@ -102,10 +118,13 @@ export function useChatConnect({
       logoUrl: curatedLogoUrl(slug),
     },
     isConnected: curatedConnected,
-    connecting: false,
-    view: deriveConnectCardView(curatedConnected, false),
+    connecting: composio.connecting,
+    view: deriveConnectCardView(curatedConnected, composio.connecting),
     startConnect: async () => setDialogOpen(true),
     curatedDialog: dialogOpen && !curatedConnected ? curated : null,
+    ...(providerHasCurated
+      ? { curatedProviderConnect: () => void composio.startConnect() }
+      : {}),
     closeCuratedDialog: () => setDialogOpen(false),
   };
 }

@@ -1,7 +1,10 @@
 import { CatalogShell } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useDisconnectIntegration } from "../../hooks/queries";
+import {
+  useDisconnectIntegration,
+  useIntegrationToolkits,
+} from "../../hooks/queries";
 import {
   AddCustomButton,
   type ConnectedApps,
@@ -39,8 +42,23 @@ export function IntegrationsReady({
   const connectFlow = useConnectFlow({});
   const disconnect = useDisconnectIntegration(INTEGRATION_PROVIDER);
   const selection = useConnectionSelection(apps);
-  // The curated connect dialog's subject (a slug from the browse catalog).
-  const [curatedSlug, setCuratedSlug] = useState<string | null>(null);
+  // The curated connect dialog's subject: the slug pressed and the row's own
+  // provider hand-off, so a Composio pick in the dialog lands on that row and
+  // runs the row's completion (the search-clearing callback included).
+  const [curatedRequest, setCuratedRequest] = useState<{
+    slug: string;
+    providerConnect: () => void;
+  } | null>(null);
+  const curated =
+    curatedRequest === null
+      ? null
+      : (curatedIntegrationOf(curatedRequest.slug) ?? null);
+  // The PROVIDER catalog, not the merged one: a curated extra wears the same
+  // slug on a deployment without Composio, where its connect would 400.
+  const providerCatalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
+  const providerHasCurated =
+    curatedRequest !== null &&
+    (providerCatalog.data ?? []).some((tk) => tk.slug === curatedRequest.slug);
   const {
     query,
     setQuery,
@@ -95,7 +113,22 @@ export function IntegrationsReady({
               custom={shown.custom}
               onOpen={selection.openConn}
               customSelection={custom.selection}
-              onCustomSignIn={(slug) => custom.signIn.mutate(slug)}
+              // A curated row's Sign in reopens the chooser: after an
+              // abandoned or refused browser sign-in the user must still be
+              // able to pick the provider connect or the token, not only
+              // retry the same page.
+              onCustomSignIn={(slug) =>
+                curatedIntegrationOf(slug)
+                  ? setCuratedRequest({
+                      slug,
+                      providerConnect: () =>
+                        void connectFlow.connect(
+                          slug,
+                          `integrations:installed:${slug}`,
+                        ),
+                    })
+                  : custom.signIn.mutate(slug)
+              }
               searching={filtering}
             />
           ) : undefined
@@ -128,7 +161,9 @@ export function IntegrationsReady({
                       isLoading={apps.isLoading}
                       connectFlow={connectFlow}
                       onRemove={(toolkit) => disconnect.mutate({ toolkit })}
-                      onCuratedConnect={setCuratedSlug}
+                      onCuratedConnect={(slug, providerConnect) =>
+                        setCuratedRequest({ slug, providerConnect })
+                      }
                     />
                   ),
                 },
@@ -157,13 +192,12 @@ export function IntegrationsReady({
       />
 
       <CuratedConnectDialog
-        curated={
-          curatedSlug === null
-            ? null
-            : (curatedIntegrationOf(curatedSlug) ?? null)
-        }
+        curated={curated}
         agentId={custom.transportAgentId}
-        onClose={() => setCuratedSlug(null)}
+        providerConnect={
+          providerHasCurated ? curatedRequest?.providerConnect : undefined
+        }
+        onClose={() => setCuratedRequest(null)}
       />
     </>
   );

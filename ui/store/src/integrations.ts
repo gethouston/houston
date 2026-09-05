@@ -59,6 +59,8 @@ const DOMAIN_BY_SLUG = new Map([
   // croma.com is an unrelated electronics retailer whose green-C favicon
   // shipped on the store's Croma marks until this entry existed.
   ["CROMA", "usecroma.com"],
+  // highlevel.com is not HighLevel either; the CRM lives on gohighlevel.com.
+  ["HIGHLEVEL", "gohighlevel.com"],
 ]);
 
 export function humanizeIntegrationSlug(slug: string) {

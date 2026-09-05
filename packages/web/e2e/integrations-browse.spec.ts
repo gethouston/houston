@@ -218,7 +218,7 @@ test("a row's + connects INLINE, exactly once, leaving every other row usable", 
   await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
 });
 
-test("HighLevel asks for Sub-Account View before opening OAuth", async ({
+test("HighLevel connects through one dialog: the token leads and asks for the sub-account id, Composio with its Sub-Account View guidance is second", async ({
   page,
   request,
 }) => {
@@ -226,27 +226,57 @@ test("HighLevel asks for Sub-Account View before opening OAuth", async ({
   await armCapabilities(request, { integrations: ["composio"] });
   await openIntegrationsPage(page);
 
+  // Searched first, so the row's completion callback is observable below.
+  const search = page.getByRole("searchbox", { name: "Search integrations" });
+  await search.fill("HighLevel");
+
+  // ONE HighLevel card, even though the curated catalog names the slug too.
+  await expect(
+    page.getByRole("button", { name: "Connect HighLevel" }),
+  ).toHaveCount(1);
   await page.getByRole("button", { name: "Connect HighLevel" }).click();
 
-  const guidance = page.getByRole("alertdialog");
+  const dialog = page.getByRole("dialog");
   await expect(
-    guidance.getByRole("heading", {
-      name: "Choose Sub-Account View in HighLevel",
-    }),
+    dialog.getByRole("heading", { name: "Connect HighLevel" }),
   ).toBeVisible();
-  await expect(
-    guidance.getByText("Agency View", { exact: true }),
-  ).toBeVisible();
-  await expect(
-    guidance.getByText(
-      "When the HighLevel page opens, use the dropdown next to Houston to switch Agency View to Sub-Account View.",
-      { exact: true },
-    ),
-  ).toBeVisible();
+  // Two options, token first: HighLevel's help center documents the token
+  // path only, and their OAuth consent refuses its own app's scopes today.
+  // Named one by one — a /HighLevel/ role query would also catch the
+  // footer's "Create a HighLevel account" link.
+  const viaToken = dialog.getByRole("button", {
+    name: /Connect with a HighLevel token/,
+  });
+  await expect(viaToken).toContainText("Recommended");
+  const viaComposio = dialog.getByRole("button", {
+    name: /Connect HighLevel with Composio/,
+  });
+  await expect(viaComposio).toContainText("Agency View to Sub-Account View");
+  await expect(dialog.getByRole("button", { name: /Log in/ })).toHaveCount(0);
+  const order = await dialog
+    .locator("button.rounded-xl")
+    .evaluateAll((nodes) => nodes.map((n) => n.textContent?.slice(0, 12)));
+  expect(order).toEqual(["Connect with", "Connect High"]);
   await expect(page.getByText("Finish connecting HighLevel")).toHaveCount(0);
 
-  await guidance.getByRole("button", { name: "Continue to HighLevel" }).click();
+  // The token step asks for the sub-account id next to the token and
+  // refuses to save without it; Back returns to the fork.
+  await viaToken.click();
+  await expect(dialog.getByLabel("Sub-account ID")).toBeVisible();
+  await dialog.getByRole("textbox", { name: /token|key/i }).fill("pit-test");
+  await dialog.getByRole("button", { name: "Save key" }).click();
+  await expect(
+    dialog.getByText("Enter the sub-account ID to continue."),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Back" }).click();
+
+  // The Composio option is the plain hand-off for THIS row: the same
+  // waiting state, and the same completion (the matching search clears).
+  await viaComposio.click();
+  await expect(dialog).toHaveCount(0);
   await expect(page.getByText("Finish connecting HighLevel")).toBeVisible();
+  await activatePendingConnection(request, "highlevel");
+  await expect(search).toHaveValue("", { timeout: 15_000 });
 });
 
 test("the owning row becomes ONE card carrying ONE spinner", async ({
