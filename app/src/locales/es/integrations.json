@@ -215,13 +215,13 @@
     },
     "highlevel": {
       "description": "Tu CRM de HighLevel (GoHighLevel): contactos, conversaciones, embudos, calendarios, facturas y redes sociales. Una subcuenta por conexión.",
-      "signInTitle": "Iniciar sesión con LeadConnector (MCP)",
-      "signInDesc": "La conexión oficial de HighLevel. Elige la subcuenta que usarán tus agentes y aprueba.",
+      "keyTitle": "Conectar con un token de HighLevel",
+      "keyDesc": "Crea un token de integración privada en tu subcuenta y pégalo aquí.",
+      "keyHelp": "En HighLevel, abre la subcuenta que quieres conectar, ve a Configuración (Settings), luego a Integraciones privadas (Private Integrations) y crea un token con los permisos que necesitan tus agentes (contactos, conversaciones, oportunidades, calendarios). Pégalo aquí; empieza con pit-.",
+      "headerLabel": "ID de la subcuenta",
+      "headerHelp": "Lo encuentras en la subcuenta, en Configuración, Perfil del negocio (Business Profile), o en la dirección web de HighLevel después de /location/.",
       "providerTitle": "Conectar HighLevel con Composio",
-      "providerDesc": "Todas las funciones de HighLevel. Cuando se abra HighLevel, cambia de Agency View a Sub-Account View y aprueba.",
-      "keyTitle": "Usar un token de integración privada",
-      "keyDesc": "Pega un token creado en tu subcuenta de HighLevel.",
-      "keyHelp": "En HighLevel, abre la subcuenta que quieres conectar, ve a Configuración (Settings), luego a Integraciones privadas (Private Integrations) y crea un token con los permisos que necesitan tus agentes. Pégalo aquí (empieza con pit-)."
+      "providerDesc": "Todas las funciones de HighLevel. Cuando se abra HighLevel, cambia de Agency View a Sub-Account View y aprueba."
     },
     "connect": {
       "title": "Conectar {{name}}",
@@ -233,7 +233,8 @@
       "openKeys": "Abrir {{name}} para obtener una clave",
       "back": "Atrás",
       "newTo": "¿Nuevo en {{name}}? Crea tu cuenta primero y luego vuelve aquí para conectar.",
-      "createAccount": "Crear una cuenta de {{name}}"
+      "createAccount": "Crear una cuenta de {{name}}",
+      "headerRequired": "Ingresa el ID de la subcuenta para continuar."
     }
   }
 }

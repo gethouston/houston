@@ -43,6 +43,8 @@ describe("curated catalog data", () => {
         c.keyHelpKey,
         c.keyTitleKey,
         c.keyDescKey,
+        c.extraHeader?.labelKey,
+        c.extraHeader?.helpKey,
         c.signInTitleKey,
         c.signInDescKey,
         c.providerTitleKey,
@@ -66,7 +68,7 @@ describe("curated catalog data", () => {
     strictEqual(curatedIntegrationOf("gmail"), undefined);
   });
 
-  it("points HighLevel at the client-agnostic LeadConnector endpoint, with a token fallback", () => {
+  it("points HighLevel at its MCP endpoint, token plus sub-account id", () => {
     const highlevel = curatedIntegrationOf("highlevel");
     ok(highlevel);
     // The per-client `/mcp/<client>/v2` family refuses to register unknown
@@ -76,10 +78,17 @@ describe("curated catalog data", () => {
       highlevel.endpoint,
       "https://services.leadconnectorhq.com/mcp/",
     );
-    deepStrictEqual(highlevel.authModes, ["oauth", "credential"]);
+    // Token only, as HighLevel's help center documents; its sub-account id
+    // rides as a static header next to the token.
+    deepStrictEqual(highlevel.authModes, ["credential"]);
     ok(highlevel.keyHelpKey);
     ok(highlevel.providerTitleKey);
-    ok(highlevel.signInTitleKey);
+    strictEqual(highlevel.extraHeader?.name, "locationId");
+    deepStrictEqual(
+      curatedAddInput(highlevel, "credential", { locationId: "loc_1" }).headers,
+      { locationId: "loc_1" },
+    );
+    strictEqual("headers" in curatedAddInput(highlevel, "credential"), false);
     deepStrictEqual(highlevel.categories, ["crm", "marketing"]);
   });
 

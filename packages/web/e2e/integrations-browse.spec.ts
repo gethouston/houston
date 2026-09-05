@@ -218,7 +218,7 @@ test("a row's + connects INLINE, exactly once, leaving every other row usable", 
   await expect(page.getByText("Finish connecting GitHub")).toHaveCount(1);
 });
 
-test("HighLevel connects through one dialog: the MCP sign-in leads, Composio with its Sub-Account View guidance is second", async ({
+test("HighLevel connects through one dialog: the token leads and asks for the sub-account id, Composio with its Sub-Account View guidance is second", async ({
   page,
   request,
 }) => {
@@ -240,25 +240,35 @@ test("HighLevel connects through one dialog: the MCP sign-in leads, Composio wit
   await expect(
     dialog.getByRole("heading", { name: "Connect HighLevel" }),
   ).toBeVisible();
-  // The three options, in this order: MCP sign-in, Composio, token. Named
-  // one by one — a /HighLevel/ role query would also catch the footer's
-  // "Create a HighLevel account" link.
-  const viaMcp = dialog.getByRole("button", {
-    name: /Log in with LeadConnector \(MCP\)/,
+  // Two options, token first: HighLevel's help center documents the token
+  // path only, and their OAuth consent refuses its own app's scopes today.
+  // Named one by one — a /HighLevel/ role query would also catch the
+  // footer's "Create a HighLevel account" link.
+  const viaToken = dialog.getByRole("button", {
+    name: /Connect with a HighLevel token/,
   });
-  await expect(viaMcp).toContainText("Recommended");
+  await expect(viaToken).toContainText("Recommended");
   const viaComposio = dialog.getByRole("button", {
     name: /Connect HighLevel with Composio/,
   });
   await expect(viaComposio).toContainText("Agency View to Sub-Account View");
-  await expect(
-    dialog.getByRole("button", { name: /Use a private integration token/ }),
-  ).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /Log in/ })).toHaveCount(0);
   const order = await dialog
     .locator("button.rounded-xl")
     .evaluateAll((nodes) => nodes.map((n) => n.textContent?.slice(0, 12)));
-  expect(order).toEqual(["Log in with ", "Connect High", "Use a privat"]);
+  expect(order).toEqual(["Connect with", "Connect High"]);
   await expect(page.getByText("Finish connecting HighLevel")).toHaveCount(0);
+
+  // The token step asks for the sub-account id next to the token and
+  // refuses to save without it; Back returns to the fork.
+  await viaToken.click();
+  await expect(dialog.getByLabel("Sub-account ID")).toBeVisible();
+  await dialog.getByRole("textbox", { name: /token|key/i }).fill("pit-test");
+  await dialog.getByRole("button", { name: "Save key" }).click();
+  await expect(
+    dialog.getByText("Enter the sub-account ID to continue."),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Back" }).click();
 
   // The Composio option is the plain hand-off for THIS row: the same
   // waiting state, and the same completion (the matching search clears).

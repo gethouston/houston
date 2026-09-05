@@ -40,6 +40,14 @@ export interface CuratedIntegration {
    *  it an API key (HighLevel: a "private integration token"). */
   keyTitleKey?: CuratedCopyKey<"keyTitle">;
   keyDescKey?: CuratedCopyKey<"keyDesc">;
+  /** A NON-secret value the server wants as a static header on every call,
+   *  collected next to the key (HighLevel's `locationId`, the sub-account).
+   *  Stored on the definition, never in the vault. */
+  extraHeader?: {
+    name: string;
+    labelKey: CuratedCopyKey<"headerLabel">;
+    helpKey: CuratedCopyKey<"headerHelp">;
+  };
   /** Per-service wording for the MCP sign-in option, when the generic
    *  "Sign in with {{name}}" would not tell it apart from the provider's own
    *  connect (HighLevel's consent page says "LeadConnector"). */
@@ -76,17 +84,15 @@ const CROMA: CuratedIntegration = {
 };
 
 /**
- * HighLevel (GoHighLevel) through its official LeadConnector MCP server,
- * paired with Composio's `highlevel` app on deployments that have it. The
- * ORIGINAL `/mcp/` endpoint on purpose, not the per-client `/mcp/{client}/v2`
- * family the docs recommend: that family's OAuth registration only admits
- * clients HighLevel has allow-listed (`unrecognized_client` for anything
- * else, verified live), while `/mcp/` registers any client. Trailing slash
- * matters — it is the resource the server's OAuth metadata names. The
- * Private Integration Token stays as the third option because HighLevel's
- * own consent page currently refuses eight scopes its MCP app requests
- * (their bug, not steerable from our side), which sinks the browser sign-in
- * on at least some sub-accounts — the token is the path that works.
+ * HighLevel (GoHighLevel) through its official MCP server, paired with
+ * Composio's `highlevel` app on deployments that have it. Token only, as
+ * HighLevel's help center documents: a Private Integration Token created in
+ * the sub-account, plus that sub-account's id as the `locationId` header
+ * on every call. The server also advertises OAuth (the marketplace docs
+ * even recommend it), but its consent page refuses eight of the scopes its
+ * own app requests and the flow dies there — not offered until HighLevel
+ * fixes it. Trailing slash on the endpoint matters: it is the resource the
+ * server names.
  */
 const HIGHLEVEL: CuratedIntegration = {
   slug: "highlevel",
@@ -94,15 +100,18 @@ const HIGHLEVEL: CuratedIntegration = {
   endpoint: "https://services.leadconnectorhq.com/mcp/",
   website: "https://www.gohighlevel.com",
   categories: ["crm", "marketing"],
-  authModes: ["oauth", "credential"],
+  authModes: ["credential"],
   signUpUrl: "https://www.gohighlevel.com/signup",
   apiKeysUrl: "https://app.gohighlevel.com",
   descriptionKey: "curated.highlevel.description",
   keyHelpKey: "curated.highlevel.keyHelp",
   keyTitleKey: "curated.highlevel.keyTitle",
   keyDescKey: "curated.highlevel.keyDesc",
-  signInTitleKey: "curated.highlevel.signInTitle",
-  signInDescKey: "curated.highlevel.signInDesc",
+  extraHeader: {
+    name: "locationId",
+    labelKey: "curated.highlevel.headerLabel",
+    helpKey: "curated.highlevel.headerHelp",
+  },
   providerTitleKey: "curated.highlevel.providerTitle",
   providerDescKey: "curated.highlevel.providerDesc",
 };
@@ -171,12 +180,14 @@ export function withoutAddedCurated(
 export function curatedAddInput(
   curated: CuratedIntegration,
   auth: "oauth" | "credential",
+  headers?: Record<string, string>,
 ): AddCustomIntegrationInput {
   return {
     kind: "mcp",
     name: curated.name,
     endpoint: curated.endpoint,
     website: curated.website,
+    ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
     auth,
     slug: curated.slug,
     replace: true,

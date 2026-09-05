@@ -5,6 +5,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  Input,
 } from "@houston-ai/core";
 import { ExternalLink } from "lucide-react";
 import { useState } from "react";
@@ -92,6 +93,10 @@ function CuratedConnectBody({
   // The options themselves (and which one leads) live in
   // `CuratedConnectOptions`; this body owns the two MCP flows behind them.
   const [step, setStep] = useState<"choose" | "key">("choose");
+  // The non-secret companion value some servers need as a header on every
+  // call (HighLevel's sub-account id). Required whenever the entry asks.
+  const [headerValue, setHeaderValue] = useState("");
+  const [headerMissing, setHeaderMissing] = useState(false);
 
   const add = useAddCustomIntegration(agentId);
   const signIn = useStartCustomOAuth(agentId);
@@ -115,7 +120,13 @@ function CuratedConnectBody({
   };
 
   const saveKey = (values: Record<string, string>) => {
-    add.mutate(curatedAddInput(curated, "credential"), {
+    const extra = curated.extraHeader;
+    if (extra && !headerValue.trim()) {
+      setHeaderMissing(true);
+      return;
+    }
+    const headers = extra ? { [extra.name]: headerValue.trim() } : undefined;
+    add.mutate(curatedAddInput(curated, "credential", headers), {
       onSuccess: () =>
         submit.mutate(
           { slug: curated.slug, values },
@@ -190,6 +201,30 @@ function CuratedConnectBody({
             <ExternalLink className="size-3.5" />
             {t("curated.connect.openKeys", { name })}
           </Button>
+          {curated.extraHeader && (
+            <div className="flex flex-col gap-1.5">
+              <label
+                htmlFor="curated-extra-header"
+                className="text-sm font-medium text-ink"
+              >
+                {t(curated.extraHeader.labelKey)}
+              </label>
+              <Input
+                id="curated-extra-header"
+                value={headerValue}
+                aria-invalid={headerMissing || undefined}
+                onChange={(event) => {
+                  setHeaderValue(event.target.value);
+                  setHeaderMissing(false);
+                }}
+              />
+              <p className="text-xs text-ink-muted">
+                {headerMissing
+                  ? t("curated.connect.headerRequired")
+                  : t(curated.extraHeader.helpKey)}
+              </p>
+            </div>
+          )}
           <CustomCredentialForm
             authMethod={null}
             submitting={busy}
