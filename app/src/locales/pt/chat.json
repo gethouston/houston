@@ -216,8 +216,9 @@
       "hiddenByWorkspace_other": "{{count}} modelos a mais estão desativados no seu espaço de trabalho"
     },
     "modelDescriptions": {
+      "gpt-6-astra": "O mais novo e mais capaz. Consome sua cota 2,5 vezes mais rápido que o Sol.",
       "gpt-5_5": "O modelo mais avançado da OpenAI.",
-      "gpt-5_6-sol": "O modelo mais recente e avançado da OpenAI.",
+      "gpt-5_6-sol": "Modelo de fronteira anterior. Forte em trabalho complexo.",
       "gpt-5_6-terra": "Modelo intermediário equilibrado.",
       "gpt-5_6-luna": "Rápido e econômico para tarefas mais simples.",
       "gpt-5_4": "Modelo forte para programação do dia a dia.",

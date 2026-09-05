@@ -54,6 +54,7 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
+    "gpt-6-astra",
   ]),
   minimax: new Set([
     "MiniMax-M3[1m]",
@@ -89,8 +90,13 @@ test("the real legacy desktop inputs map to valid pi ids with no diagnostic", ()
   assertValid(claude, "anthropic/claude-opus-4-8");
 });
 
-test("the GPT-5.6 family is valid Codex — a lagging table dropped it from wire pins (HOU-1103)", () => {
-  for (const model of ["gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra"]) {
+test("the GPT-5.6 family and GPT-6 Astra are valid Codex — a lagging table dropped them from wire pins (HOU-1103)", () => {
+  for (const model of [
+    "gpt-5.6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-6-astra",
+  ]) {
     const r = migrateProviderModel("openai", model);
     expect(r.provider).toBe("openai-codex");
     expect(r.model).toBe(model);

@@ -43,11 +43,16 @@ test("an unknown model pins verbatim — dropping it let the gateway substitute 
   });
 });
 
-test("the GPT-5.6 family rides the pin intact (HOU-1103 regression)", () => {
+test("the GPT-5.6 family and GPT-6 Astra ride the pin intact (HOU-1103 regression)", () => {
   // These ids shipped in the picker while the domain catalog still ended at
   // gpt-5.5, so every send dropped the model and the gateway swapped the turn
   // onto the user's stored (e.g. Gemini) choice.
-  for (const model of ["gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra"]) {
+  for (const model of [
+    "gpt-5.6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-6-astra",
+  ]) {
     expect(wireTurnPin({ provider: "openai", model })).toEqual({
       provider: "openai-codex",
       model,

@@ -8,6 +8,10 @@ import {
   getProviders,
 } from "@earendil-works/pi-ai/compat";
 import { builtinProviders } from "@earendil-works/pi-ai/providers/all";
+// Side effect: backport GPT-6 Astra, which pi-ai 0.85.0 predates (it shipped
+// 2026-09-03). Delete with the pi bump that ships it natively — as the 0.85.0
+// bump did for the Fable 5.1 patch.
+import "./gpt-6-astra-catalog-patch";
 import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
 /**
