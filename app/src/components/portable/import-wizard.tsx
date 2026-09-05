@@ -26,7 +26,6 @@ import {
   HoustonAvatar,
   Input,
   resolveAgentColor,
-  Switch,
 } from "@houston-ai/core";
 import type {
   PortableScanResponse,
@@ -54,6 +53,7 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { ChatModelSelector } from "../chat-model-selector";
 import { STORE_VIEW_ID } from "../store-view";
 import { InstallFromLinkPanel } from "./install-from-link";
+import { PickListStep } from "./pick-list-step";
 
 type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
 
@@ -232,6 +232,12 @@ export function ImportAgentWizard() {
     [scan],
   );
 
+  const pickLabels = {
+    selectAll: t("import.actions.selectAll"),
+    clearAll: t("import.actions.clearAll"),
+    flagged: t("import.flagged"),
+  };
+
   const handleInstall = async () => {
     if (!uploaded || !currentWorkspace) return;
     if (!name.trim()) {
@@ -396,6 +402,7 @@ export function ImportAgentWizard() {
                   subtitle: humanize(s.slug),
                   flagged: findingsForId("skill", s.slug).length > 0,
                 })}
+                labels={pickLabels}
               />
             </Frame>
           )}
@@ -415,6 +422,7 @@ export function ImportAgentWizard() {
                   subtitle: r.promptExcerpt,
                   flagged: findingsForId("routine", r.id).length > 0,
                 })}
+                labels={pickLabels}
               />
             </Frame>
           )}
@@ -433,6 +441,7 @@ export function ImportAgentWizard() {
                   title: l.text,
                   flagged: findingsForId("learning", l.id).length > 0,
                 })}
+                labels={pickLabels}
               />
             </Frame>
           )}
@@ -672,83 +681,6 @@ function NameStep({
   );
 }
 
-interface PickListStepProps<T> {
-  title: string;
-  body: string;
-  items: T[];
-  selected: Set<string>;
-  setSelected: (s: Set<string>) => void;
-  getId: (item: T) => string;
-  renderRow: (item: T) => {
-    title: string;
-    subtitle?: string;
-    trailing?: React.ReactNode;
-    flagged?: boolean;
-  };
-}
-
-function PickListStep<T>({
-  title,
-  body,
-  items,
-  selected,
-  setSelected,
-  getId,
-  renderRow,
-}: PickListStepProps<T>) {
-  const { t } = useTranslation("portable");
-  const toggle = (id: string) => {
-    const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setSelected(next);
-  };
-
-  return (
-    <div className="space-y-10">
-      <header>
-        <h1 className="text-[28px] font-normal leading-tight">{title}</h1>
-        <p className="mt-3 text-base text-ink-muted">{body}</p>
-      </header>
-
-      <div>
-        <div className="flex justify-end gap-4 mb-2 text-xs text-ink-muted">
-          <button
-            type="button"
-            onClick={() => setSelected(new Set(items.map(getId)))}
-            className="hover:text-ink"
-          >
-            {t("import.actions.selectAll")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelected(new Set())}
-            className="hover:text-ink"
-          >
-            {t("import.actions.clearAll")}
-          </button>
-        </div>
-        <div className="space-y-1">
-          {items.map((item) => {
-            const id = getId(item);
-            const row = renderRow(item);
-            return (
-              <SwitchRow
-                key={id}
-                checked={selected.has(id)}
-                onChange={() => toggle(id)}
-                title={row.title}
-                subtitle={row.subtitle}
-                trailing={row.trailing}
-                flaggedNote={row.flagged ? t("import.flagged") : null}
-              />
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Building blocks ──────────────────────────────────────────────────
 
 function Frame({ children }: { children: React.ReactNode }) {
@@ -798,44 +730,6 @@ function ChoiceCard({
       <p className="text-sm font-medium text-ink">{title}</p>
       <p className="mt-1 text-xs text-ink-muted">{body}</p>
     </button>
-  );
-}
-
-function SwitchRow({
-  checked,
-  onChange,
-  title,
-  subtitle,
-  trailing,
-  flaggedNote,
-}: {
-  checked: boolean;
-  onChange: () => void;
-  title: string;
-  subtitle?: string;
-  trailing?: React.ReactNode;
-  flaggedNote?: string | null;
-}) {
-  return (
-    <div className="flex items-start gap-4 px-1 py-3">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-ink">{title}</p>
-        {subtitle && (
-          <p className="text-xs text-ink-muted line-clamp-2 mt-0.5">
-            {subtitle}
-          </p>
-        )}
-        {flaggedNote && (
-          <p className="text-xs text-ink-muted mt-1">{flaggedNote}</p>
-        )}
-      </div>
-      {trailing && <div className="shrink-0 mt-0.5">{trailing}</div>}
-      <Switch
-        checked={checked}
-        onCheckedChange={onChange}
-        className="mt-0.5 shrink-0"
-      />
-    </div>
   );
 }
 

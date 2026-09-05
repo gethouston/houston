@@ -124,7 +124,7 @@ export function SidebarCreateDialog({
         <DialogHeader>
           <DialogTitle>{labels.title}</DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {direct.map(({ label, icon, run }) => (
             <CreateChoiceTile
               key={label}

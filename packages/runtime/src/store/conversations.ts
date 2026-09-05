@@ -19,6 +19,7 @@ import {
 } from "./conversation-file";
 import {
   consumeSessionReplayAt,
+  stampSessionReplayAt,
   truncateConversationMutationAt,
 } from "./conversation-truncate";
 import { snapshotMessage, type TranscriptShadow } from "./transcript-shadow";
@@ -104,6 +105,7 @@ export function createConversationStore(
       return { removed: result.removed };
     },
     consumeSessionReplay: (id: string) => consumeSessionReplayAt(dir, id),
+    stampSessionReplay: (id: string) => stampSessionReplayAt(dir, id),
   };
 }
 
@@ -168,3 +170,4 @@ export const renameConversation = store.renameConversation;
 export const deleteConversation = store.deleteConversation;
 export const truncateConversation = store.truncateConversation;
 export const consumeSessionReplay = store.consumeSessionReplay;
+export const stampSessionReplay = store.stampSessionReplay;

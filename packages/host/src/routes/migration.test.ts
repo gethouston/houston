@@ -343,3 +343,108 @@ test("imported transcripts re-synthesize pi sessions anchored at agentDir", asyn
   );
   expect((again.body as { skipped: number }).skipped).toBe(1);
 });
+
+// ── agent-to-agent copy ("Copy an agent" with chats) ────────────────────────
+
+test("export from one agent imports into another on the same host, sessions rebuilt", async () => {
+  const vfs = new FsVfs(tmp);
+  const copy: Agent = {
+    id: "Personal/Helper copy",
+    workspaceId: "Personal",
+    name: "Helper copy",
+    createdAt: 0,
+  };
+  const board = JSON.stringify([
+    { id: "act-9", title: "Plan a trip", status: "done", session_key: "s-9" },
+  ]);
+  const transcript = JSON.stringify({
+    id: "s-9",
+    title: "Plan a trip",
+    createdAt: 1,
+    updatedAt: 2,
+    messages: [
+      { role: "user", content: "plan it", ts: 1 },
+      { role: "assistant", content: "done", ts: 2 },
+    ],
+  });
+  await vfs.writeText(`${ROOT}/.houston/activity/activity.json`, board);
+  await vfs.writeText(
+    `${ROOT}/.houston/runtime/conversations/s-9.json`,
+    transcript,
+  );
+  // The paths the app plans: the board file plus one transcript per
+  // conversation, encoded the way the runtime names them.
+  const exported = await call(vfs, "POST", "migration/export", {
+    paths: [
+      ".houston/activity/activity.json",
+      ".houston/runtime/conversations/s-9.json",
+    ],
+  });
+  expect(exported.status).toBe(200);
+
+  const events: HoustonEvent[] = [];
+  const { res, captured } = fakeRes();
+  const copyDir = join(tmp, copy.id);
+  await handleMigration(
+    { vfs, paths, agentDir: copyDir },
+    { workspace: ws, agent: copy },
+    "POST",
+    "migration/import",
+    reqOf(exported.bytes as Buffer),
+    res,
+    (e) => events.push(e),
+  );
+  expect(captured.status).toBe(200);
+  const result = JSON.parse(captured.body?.toString("utf8") ?? "{}");
+  expect(result.written).toBe(2);
+  expect(result.sessionsRebuilt).toBe(true);
+  expect(events.map((e) => e.type).sort()).toEqual([
+    "ActivityChanged",
+    "ConversationsChanged",
+  ]);
+  expect(await vfs.readText(`${copy.id}/.houston/activity/activity.json`)).toBe(
+    board,
+  );
+  expect(
+    existsSync(join(copyDir, ".houston", "runtime", "sessions", "s-9")),
+  ).toBe(true);
+  // The source is untouched.
+  expect(await vfs.readText(`${ROOT}/.houston/activity/activity.json`)).toBe(
+    board,
+  );
+});
+
+test("import with sessions=0 writes the transcript but rebuilds no pi session", async () => {
+  const vfs = new FsVfs(tmp);
+  const agentDir = join(tmp, ROOT, "nosessions");
+  const transcript = JSON.stringify({
+    id: "activity-9",
+    title: "Copied",
+    createdAt: 1,
+    updatedAt: 2,
+    messages: [
+      { role: "user", content: "hi", ts: 1 },
+      { role: "assistant", content: "hello!", ts: 2 },
+    ],
+    needsSessionReplay: true,
+  });
+  const r = await call(
+    vfs,
+    "POST",
+    "migration/import",
+    zipOf({ ".houston/runtime/conversations/activity-9.json": transcript }),
+    { agentDir, url: "/?sessions=0" },
+  );
+  expect(r.status).toBe(200);
+  expect((r.body as { written: number }).written).toBe(1);
+  expect((r.body as { sessionsRebuilt: boolean }).sessionsRebuilt).toBe(false);
+  expect(
+    existsSync(join(agentDir, ".houston", "runtime", "sessions", "activity-9")),
+  ).toBe(false);
+  // The marker rides through verbatim for the runtime's first turn to consume.
+  expect(
+    await vfs.readText(
+      `${ROOT}/.houston/runtime/conversations/activity-9.json`,
+    ),
+  ).toContain('"needsSessionReplay":true');
+});

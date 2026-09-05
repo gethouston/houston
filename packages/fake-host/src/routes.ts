@@ -19,6 +19,8 @@ import type { ProviderId } from "@houston/runtime-client";
 import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
 import { handleWorkspaceFiles } from "./routes-files";
+import { handleMigrationRoutes } from "./routes-migration";
+import { handlePortableRoutes } from "./routes-portable";
 import * as state from "./state";
 
 /** Canned repo skills for the Add Skills GitHub tab (list-from-repo). A dozen
@@ -47,7 +49,7 @@ export function handleAgents(
   rest: string[],
   req: Request,
   body: Record<string, unknown> | undefined,
-): Response {
+): Response | Promise<Response> {
   // /agents
   if (rest.length === 0) {
     if (method === "GET") return json(state.listAgents());
@@ -309,17 +311,14 @@ export function handleAgents(
     }
 
     case "portable":
-      // Share-with-a-friend export inventory. An empty (but well-shaped)
-      // preview is enough for the wizard to open; the default `{items: []}`
-      // fallthrough made `preview.skills.map` throw, silently closing it.
-      if (rest[2] === "preview" && method === "GET")
-        return json({
-          claudeMd: null,
-          skills: [],
-          routines: [],
-          learnings: [],
-        });
-      return noContent(405);
+      // Share / copy: the export inventory and the packaged `.houstonagent`,
+      // both from this agent's own state (routes-portable.ts).
+      return handlePortableRoutes(method, id, rest[2], body);
+
+    case "migration":
+      // The chats leg of "Copy an agent": zip the board + transcripts out of
+      // one agent, unpack them into another (routes-migration.ts).
+      return handleMigrationRoutes(method, id, rest[2], req, body);
 
     default:
       console.warn(

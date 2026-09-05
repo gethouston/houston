@@ -10,6 +10,7 @@ import { useMoveAgentToTeam } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
+import { isAgentManager } from "../../lib/agent-access";
 import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";
@@ -24,10 +25,11 @@ import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { CopyAgentWizard } from "../copy-agent/copy-agent-wizard";
 import { AgentPickerStep } from "./agent-picker-step";
+import type { CreateAgentStep as Step } from "./create-dialog-surface";
+import { createDialogSurface } from "./create-dialog-surface";
 import { NamingStep } from "./naming-step";
-
-type Step = 1 | 2;
 
 export function CreateAgentDialog() {
   const { t } = useTranslation(["shell", "agents"]);
@@ -114,6 +116,11 @@ export function CreateAgentDialog() {
   };
 
   const selectedDef = agentDefs.find((d) => d.config.id === "blank");
+  // Nothing to copy from until the workspace has an agent whose content the
+  // caller may read: the wizard lists only those, so the tile must agree.
+  const canCopy = existingAgents.some((agent) =>
+    isAgentManager(capabilities, agent),
+  );
 
   const handleCreateAgent = async () => {
     const trimmed = name.trim();
@@ -211,23 +218,23 @@ export function CreateAgentDialog() {
         if (!o) handleClose();
       }}
     >
-      <DialogContent
-        className={
-          // Step 1 is two square choice tiles; the same surface width as the
-          // sidebar's create chooser gives both screens identical tile
-          // geometry, so they read as one flow.
-          step === 1
-            ? "sm:max-w-sm p-0 gap-0 overflow-hidden"
-            : "sm:max-w-[900px] h-[85dvh] flex flex-col p-0 gap-0 overflow-hidden"
-        }
-      >
+      <DialogContent className={createDialogSurface(step, canCopy)}>
         {step === 1 ? (
           <>
             <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
               <DialogTitle>{t("newAgent.dialogTitle")}</DialogTitle>
             </DialogHeader>
-            <AgentPickerStep onCreateBlank={() => setStep(2)} />
+            <AgentPickerStep
+              onCreateBlank={() => setStep(2)}
+              onCopyExisting={canCopy ? () => setStep("copy") : undefined}
+            />
           </>
+        ) : step === "copy" ? (
+          <CopyAgentWizard
+            targetTeamId={targetTeamId}
+            onBack={() => setStep(1)}
+            onDone={handleClose}
+          />
         ) : (
           <NamingStep
             selectedAgent={selectedDef}

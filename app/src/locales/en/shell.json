@@ -528,7 +528,8 @@
   "newAgent": {
     "dialogTitle": "New agent",
     "storeCard": "From the store",
-    "createCard": "Create new"
+    "createCard": "Create new",
+    "copyCard": "Copy an agent"
   },
   "engineGate": {
     "starting": "Loading your agents…",

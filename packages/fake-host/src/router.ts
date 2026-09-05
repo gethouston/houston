@@ -23,6 +23,7 @@ import { handleAgents } from "./routes";
 import { handleAgentTeamsRoutes } from "./routes-agent-teams";
 import { handleUserRoutes } from "./routes-integrations";
 import { handleMeRoutes } from "./routes-me";
+import { lastPortableExport, resetPortable } from "./routes-portable";
 import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleSharedSkillsRoutes } from "./routes-shared-skills";
 import { handleSpaceInvitesControl, handleSpacesRoutes } from "./routes-spaces";
@@ -35,6 +36,10 @@ async function parseBody(
   req: Request,
 ): Promise<Record<string, unknown> | undefined> {
   if (req.method === "GET" || req.method === "HEAD") return undefined;
+  // A binary upload (the migration import's zip) keeps its body stream for
+  // the route: `req.json()` would consume it and leave nothing to unpack.
+  if (req.headers.get("content-type")?.includes("application/zip"))
+    return undefined;
   return (await req.json().catch(() => undefined)) as
     | Record<string, unknown>
     | undefined;
@@ -68,8 +73,13 @@ export async function handle(req: Request): Promise<Response> {
   // --- test-control plane (called server-to-server by the harness) ---
   if (path === "/__test__/reset" && method === "POST") {
     clearChatStreams();
+    resetPortable();
     state.reset();
     return json({ ok: true });
+  }
+  // What the last portable export carried — the copy wizard's selection.
+  if (path === "/__test__/portable-export" && method === "GET") {
+    return json({ selection: lastPortableExport() });
   }
   if (path === "/__test__/emit" && method === "POST") {
     const body = await parseBody(req);

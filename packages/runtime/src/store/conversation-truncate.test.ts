@@ -10,6 +10,7 @@ import {
 } from "./conversation-file";
 import {
   consumeSessionReplayAt,
+  stampSessionReplayAt,
   truncateConversationMutationAt,
 } from "./conversation-truncate";
 
@@ -93,4 +94,16 @@ test("consume on an untruncated or unknown conversation is false", () => {
   seedTwoTurns(dir);
   expect(consumeSessionReplayAt(dir, "c1")).toBe(false);
   expect(consumeSessionReplayAt(dir, "ghost")).toBe(false);
+});
+
+test("stampSessionReplayAt re-arms the marker durably, and only for a known conversation", () => {
+  const dir = freshDir();
+  seedTwoTurns(dir);
+  expect(consumeSessionReplayAt(dir, "c1")).toBe(false);
+  expect(stampSessionReplayAt(dir, "c1")).toBe(true);
+  expect(loadConversation(dir, "c1")?.needsSessionReplay).toBe(true);
+  // Consumed once, gone again: the re-arm is the same one-shot marker.
+  expect(consumeSessionReplayAt(dir, "c1")).toBe(true);
+  expect(consumeSessionReplayAt(dir, "c1")).toBe(false);
+  expect(stampSessionReplayAt(dir, "ghost")).toBe(false);
 });

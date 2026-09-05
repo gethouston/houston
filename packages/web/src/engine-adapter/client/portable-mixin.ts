@@ -1,4 +1,6 @@
 import type {
+  MigrationImportOptions,
+  MigrationImportResult,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableExportRequest,
@@ -8,6 +10,7 @@ import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../../ui/engine-client/src/types";
+import * as migration from "../migration";
 import * as portable from "../portable";
 import { importFromStoreLink } from "../portable-from-store";
 import type { BaseCtor } from "./mixin";
@@ -64,6 +67,24 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp)
         throw new Error("Importing an agent needs a connected host.");
       return portable.install(this.ctx.cp, req);
+    }
+    // ---- agent data migration (agent-scoped export/import) — host only ----
+    async migrationExport(
+      agentPath: string,
+      paths: string[],
+    ): Promise<ArrayBuffer> {
+      if (!this.ctx.cp)
+        throw new Error("Copying agent data needs a connected host.");
+      return migration.migrationExport(this.ctx.cp, agentPath, paths);
+    }
+    async migrationImport(
+      agentPath: string,
+      bytes: ArrayBuffer,
+      opts?: MigrationImportOptions,
+    ): Promise<MigrationImportResult> {
+      if (!this.ctx.cp)
+        throw new Error("Copying agent data needs a connected host.");
+      return migration.migrationImport(this.ctx.cp, agentPath, bytes, opts);
     }
   }
   return Portable;

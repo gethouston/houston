@@ -76,6 +76,8 @@ import type {
   IntegrationProviderStatus,
   IntegrationToolkit,
   ListWorktreesRequest,
+  MigrationImportOptions,
+  MigrationImportResult,
   MyAgent,
   NewActivity,
   NewRoutine,
@@ -2656,6 +2658,65 @@ export class HoustonClient {
   }
   importInstall(req: PortableInstallRequest): Promise<PortableInstalledAgent> {
     return this.request("POST", "/store/imports/install", req);
+  }
+
+  // ---------- agent data migration (agent-scoped, HOU-719 routes) ----------
+  //
+  // The same export/import pair the desktop→cloud migration uses, reachable on
+  // any host for any agent the caller manages: "Copy an agent" moves the
+  // source's chats into the copy through it. Paths are agent-root relative
+  // and must sit inside the host's migration scope.
+
+  async migrationExport(
+    agentPath: string,
+    paths: string[],
+  ): Promise<ArrayBuffer> {
+    const res = await this.send(
+      () => ({
+        url: `${this.baseUrl}/v1/agents/${encodeURIComponent(agentPath)}/migration/export`,
+        init: {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            ...this.orgHeaders(),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ paths }),
+        },
+      }),
+      true, // read-only POST: zips and returns, writes nothing
+    );
+    if (!res.ok) throw await this.toError(res);
+    return await res.arrayBuffer();
+  }
+  async migrationImport(
+    agentPath: string,
+    bytes: ArrayBuffer,
+    opts?: MigrationImportOptions,
+  ): Promise<MigrationImportResult> {
+    const q = new URLSearchParams();
+    if (opts?.overwrite) q.set("overwrite", "1");
+    if (opts?.sessions === false) q.set("sessions", "0");
+    const query = q.size ? `?${q.toString()}` : "";
+    const res = await this.send(
+      () => ({
+        url: `${this.baseUrl}/v1/agents/${encodeURIComponent(agentPath)}/migration/import${query}`,
+        init: {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            ...this.orgHeaders(),
+            "Content-Type": "application/zip",
+          },
+          body: bytes,
+        },
+      }),
+      // Idempotent by design (skip-existing per entry), so a replay against a
+      // host still coming up lands the same files once.
+      true,
+    );
+    if (!res.ok) throw await this.toError(res);
+    return (await res.json()) as MigrationImportResult;
   }
 
   // ---------- Agent Store publication (account-based, no manage tokens) ----------

@@ -215,10 +215,54 @@
     "copySuffix": "copy",
     "toasts": {
       "createdTitle": "Copy created",
-      "createdDescription": "{{name}} is ready."
+      "createdDescription": "{{name}} is ready.",
+      "chatsCopiedTitle": "Chats copied",
+      "chatsCopiedDescription_one": "{{count}} conversation now lives with {{name}} too.",
+      "chatsCopiedDescription_other": "{{count}} conversations now live with {{name}} too."
     },
     "errors": {
-      "failed": "We couldn't copy the agent"
+      "failed": "We couldn't copy the agent",
+      "chatsFailed": "We couldn't copy the chats",
+      "chatsPartial": "Some chats did not make it. Copy the agent again to retry."
+    },
+    "wizard": {
+      "eyebrow": "Copy an agent",
+      "source": {
+        "title": "Which agent should we copy?",
+        "body": "The new agent starts out like the one you pick. On the next screens you choose what it keeps. Files stay with the original.",
+        "empty": "You have no agents to copy yet."
+      },
+      "instructions": {
+        "title": "What should the copy know?",
+        "body": "Everything is on to start, except the conversations. Turn off anything the new agent should not carry over.",
+        "instructionsLabel": "Job description",
+        "instructionsRow": "Job description and rules",
+        "noInstructions": "{{name}} has no job description yet.",
+        "learningsLabel": "Learnings",
+        "learningsBody": "Notes the agent picked up while working. Personal ones can stay behind.",
+        "chatsLabel": "Chats",
+        "chatsRow": "Conversations",
+        "chatsCount_one": "{{count}} conversation {{name}} has had so far",
+        "chatsCount_other": "{{count}} conversations {{name}} has had so far",
+        "noChats": "{{name}} has no conversations yet."
+      },
+      "routines": {
+        "title": "Which routines should come along?",
+        "body": "Routines run on their own schedule. Each one you keep is copied as it is in {{name}}, and you can change it later."
+      },
+      "skills": {
+        "title": "Which skills should come along?",
+        "body": "Skills are the things {{name}} knows how to do. Keep the ones the copy needs."
+      },
+      "name": {
+        "heading": "Based on {{name}}"
+      },
+      "actions": {
+        "back": "Back",
+        "next": "Continue",
+        "selectAll": "Select all",
+        "clearAll": "Clear"
+      }
     }
   },
   "rowMenu": {

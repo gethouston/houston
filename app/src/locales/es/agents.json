@@ -215,10 +215,54 @@
     "copySuffix": "copia",
     "toasts": {
       "createdTitle": "Copia creada",
-      "createdDescription": "{{name}} está listo."
+      "createdDescription": "{{name}} está listo.",
+      "chatsCopiedTitle": "Chats copiados",
+      "chatsCopiedDescription_one": "{{count}} conversación ahora también vive con {{name}}.",
+      "chatsCopiedDescription_other": "{{count}} conversaciones ahora también viven con {{name}}."
     },
     "errors": {
-      "failed": "No pudimos copiar el agente"
+      "failed": "No pudimos copiar el agente",
+      "chatsFailed": "No pudimos copiar los chats",
+      "chatsPartial": "Algunos chats no llegaron. Vuelve a copiar el agente para reintentar."
+    },
+    "wizard": {
+      "eyebrow": "Copiar un agente",
+      "source": {
+        "title": "¿Qué agente copiamos?",
+        "body": "El nuevo agente empieza igual que el que elijas. En las siguientes pantallas decides qué conserva. Los archivos se quedan con el original.",
+        "empty": "Todavía no tienes agentes para copiar."
+      },
+      "instructions": {
+        "title": "¿Qué debe saber la copia?",
+        "body": "Todo empieza activado, salvo las conversaciones. Desactiva lo que el nuevo agente no deba llevarse.",
+        "instructionsLabel": "Descripción del puesto",
+        "instructionsRow": "Descripción del puesto y reglas",
+        "noInstructions": "{{name}} todavía no tiene descripción del puesto.",
+        "learningsLabel": "Aprendizajes",
+        "learningsBody": "Notas que el agente fue tomando mientras trabajaba. Las personales pueden quedarse fuera.",
+        "chatsLabel": "Chats",
+        "chatsRow": "Conversaciones",
+        "chatsCount_one": "{{count}} conversación que {{name}} ha tenido hasta ahora",
+        "chatsCount_other": "{{count}} conversaciones que {{name}} ha tenido hasta ahora",
+        "noChats": "{{name}} todavía no tiene conversaciones."
+      },
+      "routines": {
+        "title": "¿Qué rutinas se llevan?",
+        "body": "Las rutinas se ejecutan con su propio horario. Cada una que conserves se copia tal como está en {{name}}, y puedes cambiarla después."
+      },
+      "skills": {
+        "title": "¿Qué skills se llevan?",
+        "body": "Las skills son lo que {{name}} sabe hacer. Conserva las que la copia necesite."
+      },
+      "name": {
+        "heading": "Basado en {{name}}"
+      },
+      "actions": {
+        "back": "Atrás",
+        "next": "Continuar",
+        "selectAll": "Seleccionar todo",
+        "clearAll": "Quitar todo"
+      }
     }
   },
   "rowMenu": {

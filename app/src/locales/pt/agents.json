@@ -215,10 +215,54 @@
     "copySuffix": "cópia",
     "toasts": {
       "createdTitle": "Cópia criada",
-      "createdDescription": "{{name}} está pronto."
+      "createdDescription": "{{name}} está pronto.",
+      "chatsCopiedTitle": "Chats copiados",
+      "chatsCopiedDescription_one": "{{count}} conversa agora também vive com {{name}}.",
+      "chatsCopiedDescription_other": "{{count}} conversas agora também vivem com {{name}}."
     },
     "errors": {
-      "failed": "Não foi possível copiar o agente"
+      "failed": "Não foi possível copiar o agente",
+      "chatsFailed": "Não foi possível copiar os chats",
+      "chatsPartial": "Alguns chats não chegaram. Copie o agente de novo para tentar outra vez."
+    },
+    "wizard": {
+      "eyebrow": "Copiar um agente",
+      "source": {
+        "title": "Qual agente devemos copiar?",
+        "body": "O novo agente começa igual ao que você escolher. Nas próximas telas você decide o que ele mantém. Os arquivos ficam com o original.",
+        "empty": "Você ainda não tem agentes para copiar."
+      },
+      "instructions": {
+        "title": "O que a cópia deve saber?",
+        "body": "Tudo começa ativado, menos as conversas. Desative o que o novo agente não deve levar.",
+        "instructionsLabel": "Descrição do cargo",
+        "instructionsRow": "Descrição do cargo e regras",
+        "noInstructions": "{{name}} ainda não tem descrição do cargo.",
+        "learningsLabel": "Aprendizados",
+        "learningsBody": "Anotações que o agente fez enquanto trabalhava. As pessoais podem ficar de fora.",
+        "chatsLabel": "Chats",
+        "chatsRow": "Conversas",
+        "chatsCount_one": "{{count}} conversa que {{name}} teve até agora",
+        "chatsCount_other": "{{count}} conversas que {{name}} teve até agora",
+        "noChats": "{{name}} ainda não tem conversas."
+      },
+      "routines": {
+        "title": "Quais rotinas vão junto?",
+        "body": "As rotinas rodam no próprio horário. Cada uma que você mantiver é copiada como está em {{name}}, e você pode mudar depois."
+      },
+      "skills": {
+        "title": "Quais skills vão junto?",
+        "body": "Skills são o que {{name}} sabe fazer. Mantenha as que a cópia precisa."
+      },
+      "name": {
+        "heading": "Baseado em {{name}}"
+      },
+      "actions": {
+        "back": "Voltar",
+        "next": "Continuar",
+        "selectAll": "Selecionar tudo",
+        "clearAll": "Limpar"
+      }
     }
   },
   "rowMenu": {
