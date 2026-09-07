@@ -1,6 +1,7 @@
 import { isInteractionStep } from "@houston/protocol";
 import { expect, test } from "vitest";
 import {
+  currentTurnFinish,
   newInteractionHolder,
   recordConnection,
   recordPlanReady,
@@ -360,4 +361,20 @@ test("the holder survives async work inside the capture (ALS propagation)", asyn
       { kind: "connect", id: "c1", toolkit: "gmail" },
     ],
   });
+});
+
+test("every holder carries fresh finish marks that tools reach through THEIR turn only", () => {
+  const holder = newInteractionHolder();
+  expect(holder.finish.closingMessageSeen).toBe(false);
+  expect(holder.finish.turnEndedByTool).toBe(false);
+  holder.finish.noteAssistantMessageStart();
+  holder.finish.noteAssistantText("Done.");
+  expect(runWithInteractionCapture(holder, () => currentTurnFinish())).toBe(
+    holder.finish,
+  );
+  const other = runWithInteractionCapture(newInteractionHolder(), () =>
+    currentTurnFinish(),
+  );
+  expect(other?.closingMessageSeen).toBe(false);
+  expect(currentTurnFinish()).toBeUndefined();
 });

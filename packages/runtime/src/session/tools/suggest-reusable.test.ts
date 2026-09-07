@@ -29,7 +29,7 @@ test("is named suggest_reusable", () => {
   expect(SUGGEST_REUSABLE_TOOL_NAME).toBe("suggest_reusable");
 });
 
-test("records the suggest-reusable step with an r1 id and does NOT end the turn", async () => {
+test("before any visible text it records the r1 step but does NOT end the turn", async () => {
   const holder = newInteractionHolder();
   const out = await runWithInteractionCapture(holder, () =>
     run({
@@ -52,6 +52,29 @@ test("records the suggest-reusable step with an r1 id and does NOT end the turn"
   const text = (out.content[0] as { text: string }).text;
   expect(text).toMatch(/did NOT end your turn/i);
   expect(text).toMatch(/do not repeat/i);
+  expect(out.terminate).toBeUndefined();
+  expect(holder.finish.turnEndedByTool).toBe(false);
+});
+
+test("after the closing message it ends the turn like suggest_actions", async () => {
+  const holder = newInteractionHolder();
+  holder.finish.noteAssistantMessageStart();
+  holder.finish.noteAssistantText("Done.");
+  const out = await runWithInteractionCapture(holder, () =>
+    run({ reusableKind: "routine", title: "Weekly", rationale: "Recurs." }),
+  );
+  expect(holder.pending?.steps[0]).toMatchObject({ kind: "suggest_reusable" });
+  expect(out.terminate).toBe(true);
+  expect(holder.finish.turnEndedByTool).toBe(true);
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toMatch(/This ended your turn/);
+});
+
+test("the description says the call ends the turn next to suggest_actions", () => {
+  const d = suggestReusable.description ?? "";
+  expect(d).toContain("together with suggest_actions");
+  expect(d).toContain("it ends your turn");
+  expect(d).not.toContain("This does not end your turn");
 });
 
 test("carries the routine kind through unchanged", async () => {

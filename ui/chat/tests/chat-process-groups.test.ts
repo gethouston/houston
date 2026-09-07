@@ -116,3 +116,66 @@ describe("empty assistant message suppression", () => {
     strictEqual(Boolean(process), true);
   });
 });
+
+// The clean-finish offer calls (suggest_actions / suggest_reusable) only record
+// the bubbles and the save card above the composer. A block made of nothing
+// else must not read as a "Task log" under an already complete reply.
+describe("offers-only process blocks", () => {
+  const processItem = (
+    messages: ChatMessage[],
+    status: "ready" | "streaming",
+  ) => getChatDisplayItems(messages, status).find((i) => i.kind === "process");
+
+  it("flags a trailing block holding only suggest_actions", () => {
+    const reply = assistant("assistant-1", { content: "All set." });
+    const offer = assistant("assistant-2", {
+      tools: [{ name: "suggest_actions", input: { actions: [] } }],
+    });
+    const item = processItem([user, reply, offer], "ready");
+    strictEqual(item?.kind === "process" && item.offersOnly, true);
+    // The block is still emitted (the turn-end summary keys on its index).
+    strictEqual(item?.kind === "process" && item.sourceIndex, 2);
+  });
+
+  it("flags both offers together, MCP-prefixed or not", () => {
+    const offers = assistant("assistant-2", {
+      tools: [
+        { name: "mcp__houston__suggest_reusable", input: {} },
+        { name: "suggest_actions", input: {} },
+      ],
+    });
+    const item = processItem([user, offers], "streaming");
+    strictEqual(item?.kind === "process" && item.offersOnly, true);
+  });
+
+  it("keeps a block that also ran real work or reasoning", () => {
+    const worked = assistant("assistant-2", {
+      tools: [
+        { name: "read", input: {} },
+        { name: "suggest_actions", input: {} },
+      ],
+    });
+    strictEqual(
+      processItem([user, worked], "ready")?.kind === "process" &&
+        processItem([user, worked], "ready")?.offersOnly,
+      false,
+    );
+    const thought = assistant("assistant-3", {
+      reasoning: { content: "hmm", isStreaming: false },
+      tools: [{ name: "suggest_actions", input: {} }],
+    });
+    const item = processItem([user, thought], "ready");
+    strictEqual(item?.kind === "process" && item.offersOnly, false);
+  });
+
+  it("keeps a block whose earlier segment did real work", () => {
+    const work = assistant("assistant-1", {
+      tools: [{ name: "bash", input: {} }],
+    });
+    const offer = assistant("assistant-2", {
+      tools: [{ name: "suggest_actions", input: {} }],
+    });
+    const item = processItem([user, work, offer], "ready");
+    strictEqual(item?.kind === "process" && item.offersOnly, false);
+  });
+});

@@ -36,6 +36,18 @@ export class PiSession implements HarnessSession {
     return this.session.subscribe(() => listener());
   }
 
+  /**
+   * pi's `message_start` for an ASSISTANT message: one model round-trip
+   * beginning. The same event also announces user, steering, and tool-result
+   * messages, which are not boundaries the finish marks care about.
+   */
+  subscribeAssistantMessageStart(listener: () => void): () => void {
+    return this.session.subscribe((e) => {
+      if (e.type === "message_start" && e.message.role === "assistant")
+        listener();
+    });
+  }
+
   prompt(text: string): Promise<void> {
     return this.session.prompt(text);
   }

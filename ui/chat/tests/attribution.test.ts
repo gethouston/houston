@@ -62,6 +62,7 @@ const processRow = (key: string, sourceIndex: number): ChatDisplayItem => ({
   isActive: false,
   isTrailing: false,
   sourceIndex,
+  offersOnly: false,
 });
 
 describe("distinctAuthorCount", () => {

@@ -126,13 +126,24 @@ export async function runTurn(
     // this request, so the diff is attributable by construction. Best-effort.
     const beforeFiles = captureWorkspaceSnapshot(workspaceDir);
 
+    // A fresh per-turn holder for whatever the model ends up waiting on the user
+    // for (ask_user); established for the prompt's async subtree so the tool
+    // records into it. Read after prompt() resolves, returned on the outcome.
+    // Created before the subscriptions, which feed its finish marks so an
+    // offer tool can tell whether the closing message is already written.
+    const interaction = newInteractionHolder();
+    const unsubMessageStart = session.subscribeAssistantMessageStart?.(() =>
+      interaction.finish.noteAssistantMessageStart(),
+    );
     const unsub = session.subscribe((wire: WireEvent) => {
       // First provider-originated event = the honest first-token bound. Set
       // once; the terminal frame reports it as a delta.
       if (turn.timings && turn.timings.t_first_model_event === undefined)
         turn.timings.t_first_model_event = performance.now();
-      if (wire.type === "text") assistantText += wire.data;
-      else if (wire.type === "usage") usage = wire.data;
+      if (wire.type === "text") {
+        assistantText += wire.data;
+        interaction.finish.noteAssistantText(wire.data);
+      } else if (wire.type === "usage") usage = wire.data;
       else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
@@ -144,10 +155,6 @@ export async function runTurn(
     });
     const onAbort = () => void session.abort();
     signal?.addEventListener("abort", onAbort, { once: true });
-    // A fresh per-turn holder for whatever the model ends up waiting on the user
-    // for (ask_user); established for the prompt's async subtree so the tool
-    // records into it. Read after prompt() resolves, returned on the outcome.
-    const interaction = newInteractionHolder();
     try {
       // The used-token capture spans the prompt so the streamed error path
       // (pi/wire.ts) reads THIS turn's seeded token when it reports.
@@ -161,6 +168,7 @@ export async function runTurn(
     } finally {
       signal?.removeEventListener("abort", onAbort);
       unsub();
+      unsubMessageStart?.();
     }
     return finishSuccessfulTurn({
       beforeFiles,

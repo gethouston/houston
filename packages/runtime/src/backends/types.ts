@@ -53,6 +53,16 @@ export interface HarnessSession {
    * watchdog on wire events alone.
    */
   subscribeLiveness?(listener: () => void): () => void;
+  /**
+   * Subscribe to the START of each assistant message the model streams — a
+   * model round-trip boundary the wire dialect does not carry (a turn's text
+   * and tool frames run together across round-trips). The turn's finish marks
+   * (session/turn-finish.ts) reset on it, so "did the model already write its
+   * closing message" is answered for the message carrying the tool now
+   * executing, never for text from an earlier round-trip. Optional so test
+   * fakes stay minimal; without it no tool can end the turn early.
+   */
+  subscribeAssistantMessageStart?(listener: () => void): () => void;
   /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
   /** Abort the in-flight turn (the user's Stop), then settle. */

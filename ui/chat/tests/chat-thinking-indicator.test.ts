@@ -29,6 +29,7 @@ function process(isActive: boolean): ChatDisplayItem {
     isActive,
     isTrailing: true,
     sourceIndex: 0,
+    offersOnly: false,
   };
 }
 
