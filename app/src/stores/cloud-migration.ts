@@ -21,10 +21,7 @@ import {
   type AgentMigrationProgress,
   initialProgress,
 } from "../lib/cloud-migration-progress";
-import {
-  MigrationStepError,
-  runMigrationTask,
-} from "../lib/cloud-migration-runner";
+import { runMigrationTask } from "../lib/cloud-migration-runner";
 import type { SourceHostHandshake } from "../lib/cloud-migration-transport";
 import { reportError } from "../lib/error-report";
 import {
@@ -33,7 +30,7 @@ import {
   osStopMigrationSourceHost,
 } from "../lib/os-bridge";
 import { useAgentStore } from "./agents";
-import { finishRun } from "./cloud-migration-finish";
+import { finishRun, settleTaskFailure } from "./cloud-migration-finish";
 import { useWorkspaceStore } from "./workspaces";
 
 export type CloudMigrationScreen = "offer" | "progress" | "done";
@@ -104,25 +101,24 @@ export const useCloudMigrationStore = create<CloudMigrationState>(
           getProgress: () => get().progress[task.sourceId],
           patchProgress: (patch) => patchProgress(set, task.sourceId, patch),
           overwrite,
+          isAbandoned: () => get().deferred,
         });
         analytics.track("cloud_migration_agent_done", {
           bytes: task.manifest.totalBytes,
         });
       } catch (err) {
-        const step = err instanceof MigrationStepError ? err.step : "uploading";
-        const message = err instanceof Error ? err.message : String(err);
-        patchProgress(set, task.sourceId, {
-          step: "error",
-          errorStep: step,
-          errorMessage: message,
-        });
-        analytics.track("cloud_migration_agent_failed", { step });
-        reportError("cloud_migration_agent", message, err);
+        settleTaskFailure(
+          (patch) => patchProgress(set, task.sourceId, patch),
+          get().progress[task.sourceId],
+          err,
+          get().deferred,
+        );
       }
     };
 
-    // Shared tail (stop source host, refresh agents, analytics) lives in
-    // `cloud-migration-finish.ts`; it flips the screen through this callback.
+    // Shared tails (per-task failure; stop source host, refresh agents,
+    // analytics) live in `cloud-migration-finish.ts`; the run tail flips the
+    // screen through this callback.
     const finish = () => finishRun(get, () => set(() => ({ screen: "done" })));
 
     const settleIfAllDone = async () => {

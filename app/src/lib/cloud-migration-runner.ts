@@ -2,7 +2,9 @@
  * Per-agent migration runner (HOU-719): drives ONE task through
  * creating → warming → uploading → finalizing, reporting each transition to
  * the store. Throws `MigrationStepError` (carrying the failed step) so the
- * store can park the task in a retryable error state — never a silent skip.
+ * store can park the task in a retryable error state — never a silent skip —
+ * and `MigrationAbandonedError` once the user has deferred the run (see
+ * `cloud-migration-step.ts`).
  */
 
 import { runProvisioningProbe } from "./agent-provisioning";
@@ -10,8 +12,8 @@ import { chunkPaths, type MigrationTask } from "./cloud-migration";
 import type {
   AgentMigrationProgress,
   MigrationCounts,
-  MigrationStep,
 } from "./cloud-migration-progress";
+import { type RunnableStep, runStep } from "./cloud-migration-step";
 import {
   completeAgentMigration,
   exportSourceZip,
@@ -19,15 +21,6 @@ import {
   type SourceHostHandshake,
 } from "./cloud-migration-transport";
 import { getEngine } from "./engine";
-
-export class MigrationStepError extends Error {
-  readonly step: Exclude<MigrationStep, "error">;
-  constructor(step: Exclude<MigrationStep, "error">, cause: unknown) {
-    super(cause instanceof Error ? cause.message : String(cause));
-    this.name = "MigrationStepError";
-    this.step = step;
-  }
-}
 
 /** The cloud agents are created as ordinary personal assistants. */
 const MIGRATED_AGENT_CONFIG_ID = "personal-assistant";
@@ -41,19 +34,9 @@ export interface RunTaskDeps {
   patchProgress: (patch: Partial<AgentMigrationProgress>) => void;
   /** Retry run — imports pass `overwrite=1` to land over a partial attempt. */
   overwrite: boolean;
-}
-
-async function step<T>(
-  name: Exclude<MigrationStep, "error">,
-  work: () => Promise<T>,
-): Promise<T> {
-  try {
-    return await work();
-  } catch (err) {
-    throw err instanceof MigrationStepError
-      ? err
-      : new MigrationStepError(name, err);
-  }
+  /** True once the user chose "Migrate later": no further step may start,
+   *  the source host every export needs is already gone. */
+  isAbandoned: () => boolean;
 }
 
 /**
@@ -86,6 +69,8 @@ export async function runMigrationTask(
   task: MigrationTask,
   deps: RunTaskDeps,
 ): Promise<MigrationCounts> {
+  const step = <T>(name: RunnableStep, work: () => Promise<T>) =>
+    runStep(name, work, deps.isAbandoned);
   // 1. Create the cloud agent — unless a previous attempt already did (the
   //    Retry path must never mint a duplicate).
   let agentId = deps.getProgress().createdAgentId;
