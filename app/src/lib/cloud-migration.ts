@@ -140,11 +140,14 @@ export function buildMigrationPlan(
 }
 
 /**
- * Per-request budget of RAW (pre-zip) bytes. The gateway caps a compressed
- * import request at 64 MB; 48 MB of raw input stays safely under it even for
- * incompressible content.
+ * Per-request budget of RAW (pre-zip) bytes. The binding constraint is TIME,
+ * not the gateway's 64 MB import cap: the cloud ingress closes any request
+ * whose body has not fully arrived within 60 s, with no response, so the
+ * wizard sees a bare transport drop ("Failed to fetch" / "Load failed") and
+ * every retry of that chunk dies the same way. 48 MB chunks needed a 6+ Mbps
+ * uplink to make it; 8 MB clears the deadline on a 2 Mbps home connection.
  */
-export const MAX_CHUNK_RAW_BYTES = 48 * 1024 * 1024;
+export const MAX_CHUNK_RAW_BYTES = 8 * 1024 * 1024;
 
 export interface UploadChunk {
   paths: string[];

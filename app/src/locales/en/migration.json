@@ -1,6 +1,7 @@
 {
   "transport": {
     "notConnected": "We can't reach the cloud right now. Check your connection and try again.",
+    "interrupted": "The upload was interrupted. Check your connection and retry.",
     "signedOut": "Sign in again to keep moving your data."
   },
   "offer": {

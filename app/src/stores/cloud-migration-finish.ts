@@ -11,6 +11,7 @@ import type { MigrationTask } from "../lib/cloud-migration";
 import type { AgentMigrationProgress } from "../lib/cloud-migration-progress";
 import { taskFailureOutcome } from "../lib/cloud-migration-step";
 import { reportError } from "../lib/error-report";
+import i18n from "../lib/i18n";
 import { osStopMigrationSourceHost } from "../lib/os-bridge";
 import { useAgentStore } from "./agents";
 import { useWorkspaceStore } from "./workspaces";
@@ -25,7 +26,9 @@ export interface FinishSnapshot {
  * broken: the source host is already gone, so the failure is the bail-out's
  * own consequence. It goes back to `pending` (the Settings resume re-runs
  * it) with nothing to report. Any other failure parks the row in the
- * retryable `error` state and reaches Sentry.
+ * retryable `error` state and reaches Sentry — a connectivity drop with
+ * authored copy on the row and the quiet connectivity report (the browser's
+ * raw "Failed to fetch" is neither a message for the user nor a bug).
  */
 export function settleTaskFailure(
   patch: (patch: Partial<AgentMigrationProgress>) => void,
@@ -42,10 +45,12 @@ export function settleTaskFailure(
   patch({
     step: "error",
     errorStep: outcome.step,
-    errorMessage: outcome.message,
+    errorMessage: outcome.transport
+      ? i18n.t("migration:transport.interrupted")
+      : outcome.message,
   });
   analytics.track("cloud_migration_agent_failed", { step: outcome.step });
-  reportError("cloud_migration_agent", outcome.message, err);
+  reportError("cloud_migration_agent", outcome.message, outcome.cause);
 }
 
 export async function finishRun(

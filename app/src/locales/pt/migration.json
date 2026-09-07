@@ -1,6 +1,7 @@
 {
   "transport": {
     "notConnected": "Não conseguimos falar com a nuvem agora. Verifique sua conexão e tente de novo.",
+    "interrupted": "O envio foi interrompido. Verifique sua conexão e tente de novo.",
     "signedOut": "Entre na sua conta de novo para continuar movendo seus dados."
   },
   "offer": {
