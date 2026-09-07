@@ -74,6 +74,9 @@ export type AnalyticsEventName =
   | "cloud_migration_started"
   | "cloud_migration_agent_done"
   | "cloud_migration_agent_failed"
+  // The user chose "Migrate later" while this agent's task was in flight, so
+  // the task was abandoned, never failed (`step` is where it stood).
+  | "cloud_migration_agent_deferred"
   | "cloud_migration_completed"
   | "cloud_migration_skipped"
   | "cloud_migration_deferred"
