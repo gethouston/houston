@@ -35,6 +35,7 @@ import {
 } from "../session/acting-context";
 import { resolveClaudeCliBinary } from "./anthropic-cli-binary";
 import { runAnthropicLogin } from "./anthropic-cli-login";
+import { storeAnthropicOauth } from "./anthropic-oauth-store";
 import { preflightCodexCallbackPort } from "./codex-port-preflight";
 import { clearProviderMarks } from "./credential-health";
 import {
@@ -446,13 +447,7 @@ export async function startLogin(
         sharedLoginDir,
         storeToken: (key) =>
           authStorage.set("anthropic", { type: "api_key", key }),
-        storeOauth: (cred) =>
-          authStorage.set("anthropic", {
-            type: "oauth",
-            access: cred.access,
-            refresh: cred.refresh,
-            expires: cred.expires,
-          }),
+        storeOauth: (cred) => storeAnthropicOauth(cred),
       },
     );
     // The shared-dir credential is read by the status probe, whose cached

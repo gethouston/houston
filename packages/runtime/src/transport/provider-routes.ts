@@ -8,6 +8,7 @@ import {
   setSettings,
 } from "../ai/providers";
 import { listProviderUsage } from "../ai/usage";
+import { storeAnthropicOauth } from "../auth/anthropic-oauth-store";
 import { exportCredential } from "../auth/export";
 import {
   assertApiKeyConnectable,
@@ -169,14 +170,28 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
 }
 
 /**
- * Materialize a desktop-pushed Claude subscription OAuth credential (host→pod).
- * Writes the CLI's `<CLAUDE_CONFIG_DIR>/.credentials.json` so the Claude Agent
- * SDK + `claude auth status` read as logged-in. Desktop/self-host keeps the full
- * credential so the SDK self-refreshes; serve mode strips the refresh token so
- * the gateway remains the family's single rotator. The body is the pinned CLI
- * envelope, validated STRICTLY — a malformed push is a clear 400 (the desktop
- * falls back to paste), a write failure a 500. On success the connected signal
- * is warmed so status flips immediately. The token is never logged.
+ * Materialize a desktop-pushed Claude subscription OAuth credential (host→pod)
+ * into BOTH sinks the SDK can read from, so a turn authenticates on every OS:
+ *
+ *  - `<CLAUDE_CONFIG_DIR>/.credentials.json` — the SDK's + `claude auth status`'
+ *    source of truth on Linux (the hosted pod), and what the SDK self-refreshes
+ *    in place there.
+ *  - the pi auth store (`auth.json` `oauth` entry) — resolved into the SDK
+ *    subprocess as `CLAUDE_CODE_OAUTH_TOKEN` (read-token.ts → claude-env.ts).
+ *    This is the ONLY sink that works on a macOS/Windows engine: there the SDK
+ *    reads credentials from the OS keychain scoped to `CLAUDE_CONFIG_DIR`, never
+ *    from the pushed file, so without this the push is invisible and every turn
+ *    401s "Not logged in". The env token also outranks both file and keychain on
+ *    all three OSes, so one code path authenticates uniformly.
+ *
+ * Desktop/self-host keeps the full credential so its holder self-refreshes; serve
+ * mode strips the refresh token from BOTH sinks so the gateway remains the
+ * family's single rotator (the auth.json entry's empty refresh is masked by the
+ * empty-refresh guard, so pi never rotates it, and the per-turn served token
+ * overwrites it anyway). The body is the pinned CLI envelope, validated STRICTLY
+ * — a malformed push is a clear 400 (the desktop falls back to paste), a
+ * materialization failure a 500. On success the connected signal is warmed so
+ * status flips immediately. The token is never logged.
  */
 async function handleClaudeOAuthCredential(ctx: RouteContext) {
   const parsed = parseClaudeOAuthEnvelope(
@@ -186,11 +201,18 @@ async function handleClaudeOAuthCredential(ctx: RouteContext) {
     json(ctx.res, 400, { error: parsed.error });
     return;
   }
+  // ONE serve transform feeds both sinks: full credential off serve mode,
+  // access-only (refresh stripped) on a managed pod.
+  const cred = serveModeOn()
+    ? { ...parsed.value, refreshToken: "" }
+    : parsed.value;
   try {
-    writeClaudeOAuthCredentialFile(
-      claudeLoginConfigDir(),
-      serveModeOn() ? { ...parsed.value, refreshToken: "" } : parsed.value,
-    );
+    writeClaudeOAuthCredentialFile(claudeLoginConfigDir(), cred);
+    storeAnthropicOauth({
+      access: cred.accessToken,
+      refresh: cred.refreshToken ?? "",
+      expires: cred.expiresAt ?? 0,
+    });
   } catch (e) {
     json(ctx.res, 500, {
       error: `could not materialize the Claude credential: ${e instanceof Error ? e.message : String(e)}`,
