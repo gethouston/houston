@@ -72,7 +72,7 @@ export async function setSetupApiKey(
  * create, a deleted last agent) still holds the credential the user connected;
  * the setup runtime is the one runtime that can forget it (PRODUCT-1662).
  *
- * @assistant hidden
+ * @assistant group:providers hidden
  */
 export async function forgetSetupCredential(
   cfg: ControlPlaneConfig,

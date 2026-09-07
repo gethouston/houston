@@ -130,7 +130,9 @@ class ToolInputSession implements HarnessSession {
     this.liveness.clear();
   }
   async setModel(): Promise<void> {}
-  async compact(): Promise<void> {}
+  async compact(): Promise<undefined> {
+    return undefined;
+  }
   setThinkingLevel(): void {}
   getContextUsage(): { tokens: number | null } {
     return { tokens: 100 };

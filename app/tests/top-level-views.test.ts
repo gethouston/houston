@@ -53,13 +53,13 @@ describe("isTopLevelView", () => {
     }
   });
 
-  it("is exactly those twelve, and no settings section doubles as one", () => {
+  it("is exactly those thirteen, and no settings section doubles as one", () => {
     // A Settings section is reached THROUGH `settings`, so no section id may
     // also resolve as a top-level view. Checking the live section list (rather
     // than retired string literals) keeps this failing if a future section is
     // wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 12);
+    strictEqual(TOP_LEVEL_VIEWS.size, 13);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }

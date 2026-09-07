@@ -1,6 +1,6 @@
 import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { useOpenConversationFeed } from "../../hooks/use-open-conversation-feed";
@@ -97,10 +97,12 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
   // keys the composer-autofocus effect on it, so an inline arrow would re-focus
   // the composer on every streamed token.
   const keyForSession = useCallback(() => sessionKey, [sessionKey]);
-  const keyboardInset = useVisualViewportInset();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const keyboardInset = useVisualViewportInset(rootRef);
 
   return (
     <div
+      ref={rootRef}
       data-testid="assistant-chat"
       className="flex h-full min-h-0 flex-col"
       // iOS does not shrink `dvh` when the keyboard opens, so the composer of a

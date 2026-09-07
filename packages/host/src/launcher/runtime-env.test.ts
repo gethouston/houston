@@ -73,10 +73,10 @@ test("shutdownDrainMs becomes HOUSTON_RUNTIME_DRAIN_MS, absent otherwise", () =>
     shutdownDrainMs: 1500,
     assistant: null,
   });
-  assert.equal(withDrain.HOUSTON_RUNTIME_DRAIN_MS, "1500");
+  expect(withDrain.HOUSTON_RUNTIME_DRAIN_MS).toBe("1500");
   const without = runtimeSpawnEnv({
     transcriptDualWrite: false,
     assistant: null,
   });
-  assert.ok(!("HOUSTON_RUNTIME_DRAIN_MS" in without));
+  expect("HOUSTON_RUNTIME_DRAIN_MS" in without).toBe(false);
 });
