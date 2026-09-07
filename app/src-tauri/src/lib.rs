@@ -20,6 +20,7 @@ mod loopback_util;
 mod notification;
 mod notification_settings;
 mod oauth_loopback;
+mod redirection_guard;
 mod sentry_filter;
 mod shell_env;
 mod store_deep_link;
@@ -184,6 +185,12 @@ pub fn run() {
     #[cfg(target_os = "macos")]
     dmg_guard::handle_if_needed();
 
+    // Windows: an instance the MSI updater auto-launched inherits the
+    // Windows Installer Service's Redirection Guard, which breaks every
+    // junction path (file picker included). Relaunch through the shell and
+    // exit BEFORE any plugin registers, so no single-instance mutex is held.
+    redirection_guard::relaunch_if_inherited();
+
     // `houston_dir()` flips to `~/.dev-houston/` in debug builds so
     // `pnpm tauri dev` stays isolated from an installed release of Houston.
     let houston = houston_dir();
@@ -245,6 +252,7 @@ pub fn run() {
     // Logging second so the sentry_tracing layer captures everything from
     // here onwards, including engine subprocess spawn logs and plugin setup.
     logging::init(&houston);
+    redirection_guard::report_after_logging_init();
 
     let mut builder = tauri::Builder::default();
 
