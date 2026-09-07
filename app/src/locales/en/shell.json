@@ -441,7 +441,7 @@
     "offlineTitle": "Houston, connection lost",
     "offlineDescription": "We can't reach Houston right now. Check your internet connection and try again.",
     "engineWakingTitle": "Houston, your agent is waking up",
-    "engineWakingDescription": "It will be ready in a moment. Try again shortly.",
+    "engineWakingDescription": "It usually takes about 20 seconds. You don't need to send your message again.",
     "updateStuckTitle": "Houston, updates can't reach you",
     "updateStuckDescription": "We haven't been able to check for updates. Your network may be blocking them. You can always get the latest version at gethouston.ai.",
     "noAgentTitle": "Houston, you need an agent first",

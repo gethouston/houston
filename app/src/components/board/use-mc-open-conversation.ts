@@ -1,8 +1,12 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useConversationVm } from "../../hooks/use-conversation-vm";
 import { tauriChat } from "../../lib/tauri";
+import {
+  type OpenConversationIdentity,
+  resolveOpenConversation,
+} from "./open-conversation-identity";
 import { useJustCreatedMission } from "./use-just-created-mission";
 
 /**
@@ -10,10 +14,13 @@ import { useJustCreatedMission } from "./use-just-created-mission";
  *
  * Two facts name it — the session key and the agent path — and on a
  * cross-agent board neither is implicit: the selected CARD carries both in its
- * metadata. The one case where the card does not exist yet is a mission created
- * on this board, whose row the sweep has not returned; `useJustCreatedMission`
- * holds its identity for exactly that beat, so the panel that just opened never
- * loses the user's first message.
+ * metadata. Two cases have no card to read. A mission created on this board,
+ * whose row the sweep has not returned: `useJustCreatedMission` holds its
+ * identity for exactly that beat, so the panel that just opened never loses
+ * the user's first message. And a card TRANSIENTLY absent from the list (a
+ * sweep settling with an older snapshot): the identity the same selection
+ * last resolved to keeps the chat painted instead of blanking it
+ * (`resolveOpenConversation`).
  *
  * `AIBoard` only ever reads `feedItems[activeSessionKey]`, so the single-entry
  * map is the whole contract.
@@ -29,14 +36,19 @@ export function useMcOpenConversation(
   const justCreated = useJustCreatedMission(items);
   const created = justCreated.fallbackFor(selectedId);
 
-  const activeSessionKey = selectedItem
-    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
-      `activity-${selectedItem.id}`)
-    : (created?.sessionKey ?? null);
-  const activeAgentPath =
-    (selectedItem?.metadata?.agentPath as string | undefined) ??
-    created?.agentPath ??
-    null;
+  // Render-time write, idempotent per (selectedId, items): only a REAL card
+  // refreshes the remembered identity, so it never carries a fallback forward.
+  const lastResolvedRef = useRef<OpenConversationIdentity | null>(null);
+  const identity = resolveOpenConversation({
+    selectedId,
+    selectedItem,
+    created,
+    lastResolved: lastResolvedRef.current,
+  });
+  if (identity && selectedItem) lastResolvedRef.current = identity;
+
+  const activeSessionKey = identity?.sessionKey ?? null;
+  const activeAgentPath = identity?.agentPath ?? null;
 
   const activeVm = useConversationVm(activeAgentPath, activeSessionKey);
   const feedItems = useMemo<Record<string, FeedItem[]>>(
