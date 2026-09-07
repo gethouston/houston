@@ -513,3 +513,28 @@ test("anthropic behind the gateway keeps the capture chain: stored centrally, th
   expect(puts.map((p) => p.credential.provider)).toEqual(["anthropic"]);
   expect(calls.some((c) => c.includes("/auth/scrub-refresh"))).toBe(true);
 });
+
+test("the runtime export read carries a timeout budget (PRODUCT-1687)", async () => {
+  // A stalled runtime must not hold the heal for undici's 300s headers
+  // timeout: the runtime's own serve probe gives up at 10s.
+  const { credentials } = recordingStore();
+  const inits: (RequestInit | undefined)[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes("/auth/export")) {
+        inits.push(init);
+        return Response.json({});
+      }
+      return new Response("not found", { status: 404 });
+    }),
+  );
+  await captureRuntimeCredential({
+    endpoint: { baseUrl: "http://runtime", token: "runtime-token" },
+    credentials,
+    workspaceId: "workspace",
+    provider: "xai",
+  });
+  expect(inits).toHaveLength(1);
+  expect(inits[0]?.signal).toBeInstanceOf(AbortSignal);
+});
