@@ -191,6 +191,7 @@ test("suggest_actions is MANDATORY on every non-blocking finish, in BOTH mirrors
     "This is mandatory: the user must always leave your turn with something to do next.",
     "Blocking turns are the only exception",
     "2 to 4 follow-ups grounded in what you just did",
+    "That call ends your turn: write the whole closing message before it and nothing after it.",
     "Ending with no follow-ups is not an option.",
   ]) {
     const needle = norm(phrase);

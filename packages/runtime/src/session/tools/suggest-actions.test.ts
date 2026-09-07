@@ -31,14 +31,43 @@ test("the description states the call is required on non-blocking finishes", () 
   expect(d).not.toContain("genuinely cannot name");
 });
 
-test("records action steps and returns the non-ending instruction", async () => {
+test("the description tells the model the call ends the turn, after the closing message", () => {
+  const d = suggestActions.description ?? "";
+  expect(d).toContain("This call ENDS your turn");
+  expect(d).toContain("write the whole closing message first");
+  expect(d).toContain("in the same final message as suggest_reusable");
+  // The retired "then finish normally" contract must not linger.
+  expect(d).not.toContain("then finish normally");
+});
+
+test("after a closing message it records the steps, marks the turn ended, and asks pi to terminate", async () => {
   const holder = newInteractionHolder();
+  holder.finish.noteAssistantMessageStart();
+  holder.finish.noteAssistantText("All set.");
   const out = await runWithInteractionCapture(holder, () => run({ actions }));
   expect(holder.pending).toEqual({
     steps: [{ kind: "suggest_actions", id: "a1", actions }],
   });
+  expect(holder.finish.turnEndedByTool).toBe(true);
+  expect(out.terminate).toBe(true);
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toMatch(/This ended your turn/);
+  expect(text).not.toMatch(/did NOT end/i);
+});
+
+test("before any visible text it records the steps but keeps the turn open and asks for the message", async () => {
+  const holder = newInteractionHolder();
+  holder.finish.noteAssistantMessageStart();
+  holder.finish.noteAssistantText("\n\n");
+  const out = await runWithInteractionCapture(holder, () => run({ actions }));
+  expect(holder.pending).toEqual({
+    steps: [{ kind: "suggest_actions", id: "a1", actions }],
+  });
+  expect(holder.finish.turnEndedByTool).toBe(false);
+  expect(out.terminate).toBeUndefined();
   const text = (out.content[0] as { text: string }).text;
   expect(text).toMatch(/did NOT end your turn/i);
+  expect(text).toMatch(/write your short closing message now/i);
   expect(text).toMatch(/do not repeat/i);
 });
 

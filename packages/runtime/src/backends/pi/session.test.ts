@@ -305,3 +305,25 @@ test("subscribeLiveness ticks on a toolcall_delta that subscribe drops (PRODUCT-
   stub.emit(toolcallDelta("}"));
   expect(ticks).toBe(3);
 });
+
+test("subscribeAssistantMessageStart fires for assistant message_starts only", () => {
+  const { stub, session } = make();
+  let starts = 0;
+  const unsub = session.subscribeAssistantMessageStart(() => starts++);
+  stub.emit({
+    type: "message_start",
+    message: { role: "user", content: "hi", timestamp: 0 },
+  } as unknown as AgentSessionEvent);
+  stub.emit({
+    type: "message_start",
+    message: assistantMessage(usage({})),
+  } as unknown as AgentSessionEvent);
+  stub.emit(textDelta("x"));
+  expect(starts).toBe(1);
+  unsub();
+  stub.emit({
+    type: "message_start",
+    message: assistantMessage(usage({})),
+  } as unknown as AgentSessionEvent);
+  expect(starts).toBe(1);
+});

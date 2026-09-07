@@ -19,6 +19,7 @@ import { type ClaudeQuery, ClaudeSession } from "./session";
 import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
 import { buildToolPolicy, makeCanUseTool } from "./tool-policy";
+import { buildTurnEndHooks } from "./turn-end-hook";
 
 export type { ClaudeBackendDeps, ClaudeToken } from "./backend-types";
 export { ClaudeBackendUnavailableError } from "./sdk-loader";
@@ -134,6 +135,9 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         // BUILT-INS; MCP tools ride alongside and are not filtered by it.
         mcpServers: { [HOUSTON_MCP_SERVER_NAME]: houstonMcp.server },
         allowedTools: houstonMcp.allowedTools,
+        // End the turn after a tool batch in which an offer tool ran after
+        // the closing message — the pi path's `terminate` hint, mirrored.
+        hooks: buildTurnEndHooks(),
         canUseTool: makeCanUseTool(deps.workspaceDir, {
           sharedRoots: deps.sharedRoots,
         }),

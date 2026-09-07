@@ -88,6 +88,7 @@ const DANGLING_RESUME_RE = /No conversation found with session ID/i;
 export class ClaudeSession implements HarnessSession {
   private readonly listeners = new Set<(e: WireEvent) => void>();
   private readonly livenessListeners = new Set<() => void>();
+  private readonly messageStartListeners = new Set<() => void>();
   private disposed = false;
   private aborting = false;
   private abortController: AbortController | undefined;
@@ -128,6 +129,18 @@ export class ClaudeSession implements HarnessSession {
     this.livenessListeners.add(listener);
     return () => {
       this.livenessListeners.delete(listener);
+    };
+  }
+
+  /**
+   * The Messages API `message_start` stream event of the main thread: one
+   * model round-trip beginning (a subagent's stream carries a parent tool id
+   * and is not this conversation's message).
+   */
+  subscribeAssistantMessageStart(listener: () => void): () => void {
+    this.messageStartListeners.add(listener);
+    return () => {
+      this.messageStartListeners.delete(listener);
     };
   }
 
@@ -214,6 +227,8 @@ export class ClaudeSession implements HarnessSession {
       for await (const msg of this.deps.query({ prompt: text, options })) {
         if (this.aborting) break;
         this.tickLiveness();
+        if (isAssistantMessageStart(msg))
+          for (const l of this.messageStartListeners) l();
         if (hasSessionId(msg)) capturedSessionId = msg.session_id;
         for (const wire of translator.translate(msg)) {
           if (wire.type === "provider_error") {
@@ -276,6 +291,8 @@ export class ClaudeSession implements HarnessSession {
     this.disposed = true;
     this.abortController?.abort();
     this.listeners.clear();
+    this.livenessListeners.clear();
+    this.messageStartListeners.clear();
   }
 
   async setModel(model: ResolvedModel): Promise<void> {
@@ -295,6 +312,15 @@ export class ClaudeSession implements HarnessSession {
       ? undefined
       : { tokens: this.contextTokens };
   }
+}
+
+/** A main-thread `message_start` stream event — the start of one API response. */
+function isAssistantMessageStart(msg: SDKMessage): boolean {
+  return (
+    msg.type === "stream_event" &&
+    msg.parent_tool_use_id === null &&
+    msg.event?.type === "message_start"
+  );
 }
 
 function hasSessionId(

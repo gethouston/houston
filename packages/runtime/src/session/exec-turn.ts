@@ -200,6 +200,14 @@ export async function execTurn(
   // error below — see stall-watchdog.ts. Fed every wire event by the
   // subscription; armed/disarmed around the model round-trip only.
   let stalled = false;
+  // A fresh, per-turn holder for whatever the model ends up waiting on the
+  // user for (ask_user / request_connection). Fresh every turn IS the reset;
+  // established for the DURATION of the prompt (like the acting context) so
+  // the tools, running inside this async subtree, record into THIS turn's
+  // holder. Read after prompt() resolves and attached to the clean `done`.
+  // Created before the subscriptions below, which feed its finish marks so
+  // an offer tool can tell whether the closing message is already written.
+  const interaction = newInteractionHolder();
   const watchdog = createStallWatchdog({
     timeoutMs: config.turnStallTimeoutMs,
     onStall: () => {
@@ -221,11 +229,20 @@ export async function execTurn(
   // heredoc, 30k+ output tokens) was wire-silent past the stall window and got
   // aborted mid-generation as "stopped responding" (PRODUCT-1632, Bedrock).
   let unsubLiveness: (() => void) | undefined;
+  // The backend's assistant message-start signal, feeding the turn's finish
+  // marks so an offer tool can tell whether the message carrying it already
+  // holds the closing message (turn-finish.ts).
+  let unsubMessageStart: (() => void) | undefined;
   const subscribeSession = () => {
     unsubLiveness = conv.session.subscribeLiveness?.(() => watchdog.touch());
+    unsubMessageStart = conv.session.subscribeAssistantMessageStart?.(() =>
+      interaction.finish.noteAssistantMessageStart(),
+    );
     unsub = conv.session.subscribe((wire: WireEvent) => {
-      if (wire.type === "text") assistantText += wire.data;
-      else if (wire.type === "thinking") thinkingText += wire.data;
+      if (wire.type === "text") {
+        assistantText += wire.data;
+        interaction.finish.noteAssistantText(wire.data);
+      } else if (wire.type === "thinking") thinkingText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
       else if (wire.type === "tool_start")
         tools.push({ name: wire.data.name, input: wire.data.args });
@@ -505,12 +522,6 @@ export async function execTurn(
     } catch (err) {
       console.warn("[turn] file snapshot failed:", errMessage(err));
     }
-    // A fresh, per-turn holder for whatever the model ends up waiting on the
-    // user for (ask_user / request_connection). Fresh every turn IS the reset;
-    // established for the DURATION of the prompt (like the acting context) so
-    // the tools, running inside this async subtree, record into THIS turn's
-    // holder. Read after prompt() resolves and attached to the clean `done`.
-    const interaction = newInteractionHolder();
     // Hold the turn's acting-as identity (C2) for the DURATION of the prompt so
     // the integration tools' proxy calls (which run inside this async subtree)
     // attach it. Absent → runs plainly (act as owner). The watchdog covers the
@@ -816,6 +827,7 @@ export async function execTurn(
     // subscribed (a bad pin) — nothing to tear down in that case.
     unsub?.();
     unsubLiveness?.();
+    unsubMessageStart?.();
     // PRODUCT-1355 (layer 3): a turn that died on a REVOKED token leaves a
     // Claude session whose next spawn would 401 identically — evict it so the
     // user's next attempt after reconnecting rebuilds on the fresh credential.

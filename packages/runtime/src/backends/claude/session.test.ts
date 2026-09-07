@@ -465,3 +465,39 @@ test("subscribeLiveness ticks per SDK message, including tool-input deltas the w
   await session.prompt("again");
   expect(ticks).toBe(3);
 });
+
+function messageStartMsg(parentToolUseId: string | null): SDKMessage {
+  return {
+    type: "stream_event",
+    event: { type: "message_start", message: {} },
+    session_id: "s",
+    parent_tool_use_id: parentToolUseId,
+  } as unknown as SDKMessage;
+}
+
+test("subscribeAssistantMessageStart fires per main-thread message_start, never for a subagent's", async () => {
+  const session = make({
+    query: arrayQuery([
+      messageStartMsg(null),
+      textMsg("one"),
+      messageStartMsg("toolu_sub"),
+      messageStartMsg(null),
+      textMsg("two"),
+      usageMsg(),
+    ]),
+  });
+  const wire: WireEvent[] = [];
+  let starts = 0;
+  session.subscribe((e) => wire.push(e));
+  const unsub = session.subscribeAssistantMessageStart(() => starts++);
+
+  await session.prompt("go");
+
+  // The boundary rides its own channel: no wire frame for it.
+  expect(wire.map((e) => e.type)).toEqual(["text", "text", "usage"]);
+  expect(starts).toBe(2);
+
+  unsub();
+  await session.prompt("again");
+  expect(starts).toBe(2);
+});

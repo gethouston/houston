@@ -1,6 +1,6 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
-import { recordSuggestReusable } from "../interaction";
+import { currentTurnFinish, recordSuggestReusable } from "../interaction";
 
 /**
  * The reusable-suggestion tool — the model's end-of-task REFLECTION STEP,
@@ -45,9 +45,14 @@ const SuggestReusableParams = Type.Object({
 });
 type SuggestReusableParams = Static<typeof SuggestReusableParams>;
 
-/** The instruction returned to the model after the suggestion is recorded. */
-const SUGGEST_REUSABLE_INSTRUCTION =
-  "Your suggestion was recorded. Houston will show the user a dismissible card offering to save this work. Do not repeat the suggestion in plain text and do not ask about it again. This did NOT end your turn. The task is done, so finish your final message to the user normally.";
+/** The result once the closing message is written: the offer ends the turn
+ *  together with `suggest_actions` (both carry pi's terminate hint). */
+const ENDED_INSTRUCTION =
+  "Your suggestion was recorded. Houston shows the user a dismissible card offering to save this work, under the message you already wrote. This ended your turn.";
+
+/** The result when the model called the tool before writing anything visible. */
+const NEEDS_MESSAGE_INSTRUCTION =
+  "Your suggestion was recorded. Houston will show the user a dismissible card offering to save this work. Do not repeat the suggestion in plain text and do not ask about it again. You called this before writing anything the user can read, so this did NOT end your turn: write your closing message now, with suggest_actions, then end.";
 
 /** The reusable-suggestion tool (execute + auto; never plan). */
 export function makeSuggestReusableTool() {
@@ -55,7 +60,7 @@ export function makeSuggestReusableTool() {
     name: "suggest_reusable",
     label: "Suggest saving as reusable",
     description:
-      "Suggest saving the just-completed work as a reusable Skill, a scheduled Routine, or a Learning to remember. Call this when you finish a task and the work is clearly worth keeping (a genuinely reusable multi-step procedure, work that should recur on a schedule, or a stable fact worth remembering — not a simple or one-off request), right before your final message, INSTEAD OF asking about it in plain text or via ask_user. Houston shows the user a dismissible card offering to save it. Call it at most once per turn, and still finish your final message normally. This does not end your turn.",
+      "Suggest saving the just-completed work as a reusable Skill, a scheduled Routine, or a Learning to remember. Call this when you finish a task and the work is clearly worth keeping (a genuinely reusable multi-step procedure, work that should recur on a schedule, or a stable fact worth remembering — not a simple or one-off request), in your final message after your closing text and together with suggest_actions, INSTEAD OF asking about it in plain text or via ask_user. Houston shows the user a dismissible card offering to save it. Call it at most once per turn. Like suggest_actions it ends your turn, so put nothing after it.",
     promptSnippet:
       "Suggest saving the completed work as a Skill, Routine, or Learning",
     parameters: SuggestReusableParams,
@@ -74,11 +79,21 @@ export function makeSuggestReusableTool() {
         title,
         rationale,
       });
+      const details = { reusableKind: params.reusableKind, title, rationale };
+      // Same finish contract as suggest_actions (see its module comment): the
+      // offer ends the turn once the closing message is written, so the two
+      // offers in one final message end it together on both backends.
+      const finish = currentTurnFinish();
+      if (!finish?.closingMessageSeen)
+        return {
+          content: [{ type: "text" as const, text: NEEDS_MESSAGE_INSTRUCTION }],
+          details,
+        };
+      finish.turnEndedByTool = true;
       return {
-        content: [
-          { type: "text" as const, text: SUGGEST_REUSABLE_INSTRUCTION },
-        ],
-        details: { reusableKind: params.reusableKind, title, rationale },
+        content: [{ type: "text" as const, text: ENDED_INSTRUCTION }],
+        details,
+        terminate: true,
       };
     },
   });

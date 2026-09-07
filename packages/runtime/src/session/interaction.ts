@@ -3,6 +3,7 @@ import type {
   InteractionStep,
   PendingInteraction,
 } from "@houston/runtime-client";
+import { TurnFinishMarks } from "./turn-finish";
 
 /**
  * The interaction sequence THIS turn ended up waiting on the user for: recorded
@@ -71,6 +72,10 @@ export interface InteractionHolder {
   readonly suggestReusable: SuggestReusableStep | undefined;
   /** Optional concrete next-step bubbles for a cleanly completed mission. */
   readonly suggestActions: SuggestActionsStep | undefined;
+  /** The marks the turn's finish is decided on (closing message written, turn
+   *  ended by a tool) — fed by the turn executor from the backend's message
+   *  boundaries and the wire stream's text. */
+  readonly finish: TurnFinishMarks;
   /** The recorded sequence — question steps, then the signin step, then connect
    *  steps — or undefined when the model asked for nothing this turn. Derived:
    *  read after prompt(). */
@@ -85,6 +90,7 @@ class Holder implements InteractionHolder {
   planReady: PlanReadyStep | undefined;
   suggestReusable: SuggestReusableStep | undefined;
   suggestActions: SuggestActionsStep | undefined;
+  readonly finish = new TurnFinishMarks();
 
   get pending(): PendingInteraction | undefined {
     // A plan-ready step is exclusive: the plan-mode overlay tells the model to
@@ -265,4 +271,13 @@ export function recordSuggestActions(input: {
       message: action.message.trim(),
     })),
   };
+}
+
+/**
+ * This turn's finish marks, for the tool now executing (and the Claude
+ * backend's PostToolBatch hook, which runs on the same per-turn scope).
+ * Undefined outside a turn, where nothing can end.
+ */
+export function currentTurnFinish(): TurnFinishMarks | undefined {
+  return store.getStore()?.finish;
 }
