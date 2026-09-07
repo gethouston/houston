@@ -169,7 +169,7 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
     // default provider's model) so the turn still resolves.
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
-    ).toEqual({ activeProvider: "gemini", model: "gpt-5.5" });
+    ).toEqual({ activeProvider: "gemini", model: "gpt-5.6-terra" });
   });
 
   test("skips non-config files, missing provider, and bad JSON", () => {
