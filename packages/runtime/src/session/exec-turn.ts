@@ -57,6 +57,7 @@ import {
   switchModeIfNeeded,
 } from "./conversation-cache";
 import { runWithConversationId } from "./conversation-context";
+import { compactWithFactHarvest } from "./durable-facts-harvest";
 import {
   diffSnapshots,
   type FileSnapshot,
@@ -440,7 +441,9 @@ export async function execTurn(
         );
         let summarized = false;
         if (switchNeedsCompaction(preTokens, targetWindow)) {
-          await conv.session.compact();
+          // Same fact harvest as the autocompact path below: this summary is
+          // just as much of the assistant's history leaving the context.
+          await compactWithFactHarvest(conv.session, id);
           summarized = true;
         }
         providerSwitch = {
@@ -480,7 +483,13 @@ export async function execTurn(
         fill ?? 0,
       );
       if (needsAutocompact(fill, window)) {
-        await conv.session.compact();
+        // For the ASSISTANT's conversation this also asks the summarizer for the
+        // durable facts the summarized stretch revealed and saves them as
+        // memories — the moment those turns stop being visible to the model is
+        // the last moment to keep what they taught (session/durable-facts.ts).
+        // Best-effort: it never fails the turn, and every other conversation
+        // compacts exactly as before.
+        await compactWithFactHarvest(conv.session, id);
         compaction = { trigger: "proactive", pre_tokens: fill };
         // Stream the boundary so the chat draws the divider + resets its
         // window estimate; persisted on the assistant message below so the

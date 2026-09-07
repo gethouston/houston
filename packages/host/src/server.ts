@@ -42,6 +42,11 @@ import {
   handleAgentConfigs,
 } from "./routes/agent-configs";
 import { handleAgents, podActivityStatus } from "./routes/agents";
+import { type AssistantDeps, handleAssistant } from "./routes/assistant";
+import {
+  type AssistantSandboxDeps,
+  handleSandboxAssistant,
+} from "./routes/assistant-sandbox";
 import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
 import type { CredentialServeHealer } from "./routes/credential-healer";
@@ -240,6 +245,20 @@ export interface ControlPlaneDeps {
   metrics?: { render(): Promise<string>; contentType: string };
   /** Managed-store write-fence state; absent on desktop and self-host. */
   storeFenced?: () => boolean;
+  /**
+   * Materialize a synthetic (dot-named) agent's directory — the personal
+   * assistant's home (routes/assistant.ts). Local filesystem profiles only;
+   * absent → `GET /v1/assistant` answers 503 instead of handing out an address
+   * that resolves to nothing.
+   */
+  ensureSyntheticAgentDir?: AssistantDeps["ensureSyntheticAgentDir"];
+  /**
+   * Where this deployment performs user-facing Houston operations, from the
+   * one resolver (`routes/assistant-wiring.ts`): the gateway on a fronted pod,
+   * this host itself when nothing fronts it. Absent → the runtime-facing
+   * dispatcher falls back to reading the configured env pair alone.
+   */
+  assistantGateway?: AssistantSandboxDeps["assistantGateway"];
 }
 
 function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
@@ -361,6 +380,11 @@ async function handle(
   // find_skills / install_skill tools call this to answer "which skill should
   // I use for X?" and to install the answer into its own skills tree.
   if (await handleSandboxSkills(deps, method, path, url, req, res)) return;
+  // Runtime-facing Houston operations (HMAC sandbox token → gateway). The
+  // agent's houston_call tool dispatches here so the runtime never holds the
+  // credential that can act on the user's account; off unless this deployment
+  // set HOUSTON_ASSISTANT_CP_URL + HOUSTON_ASSISTANT_TOKEN.
+  if (await handleSandboxAssistant(deps, method, path, url, req, res)) return;
   // Runtime transcript shadow facade (HMAC sandbox token → pod-auth gateway).
   if (await handleSandboxTranscripts(deps, method, path, url, req, res)) return;
 
@@ -464,6 +488,10 @@ async function handle(
   // runs the OAuth so the user can connect their AI before any agent exists.
   if (await handleSetupRuntime(deps, userId, method, path, url, req, res))
     return;
+  // Personal-assistant discovery: which hidden agent holds it and which
+  // conversation to open. The chat itself rides the ordinary per-agent routes
+  // below — this only hands out the address.
+  if (await handleAssistant(deps, userId, method, path, res)) return;
 
   // Pod trigger delivery (C9) — matched before the generic per-agent dispatch
   // (the runtime has no trigger routes). The Go control plane POSTs external

@@ -92,6 +92,13 @@ COPY --from=bundle-builder /app/dist /app/dist
 RUN ln -s /app/node_modules/.pnpm/node_modules /app/dist/host/node_modules \
  && ln -s /app/node_modules/.pnpm/node_modules /app/dist/runtime/node_modules
 
+# The generated assistant operation catalog (`pnpm gen:assistant-catalog`) — the
+# DATA the host's dispatcher turns into gateway calls and the runtime describes
+# to the agent. It belongs to no package COPYed above, and the bundled
+# entrypoints run from /app/dist/, nowhere near the source tree the default path
+# is relative to, so the location is named outright in the ENV below.
+COPY ui/engine-client/generated/ /app/ui/engine-client/generated/
+
 # The whole ~/.houston equivalent (workspaces + credentials + db) lives here so a
 # single named volume persists everything. Owned by the non-root node user so a
 # mounted volume comes up writable.
@@ -101,6 +108,7 @@ ENV NODE_ENV=production \
     HOUSTON_HOME=/data \
     HOUSTON_HOST_BIND=0.0.0.0 \
     HOUSTON_HOST_PORT=4318 \
+    HOUSTON_ASSISTANT_CATALOG=/app/ui/engine-client/generated/assistant-catalog.json \
     HOUSTON_RUNTIME_COMMAND="node --enable-source-maps /app/dist/runtime/main.mjs"
 # HOUSTON_HOST_TOKEN is deliberately NOT defaulted: an unset token would leave the
 # host open to anyone who can reach the port. docker-compose.yml requires it.

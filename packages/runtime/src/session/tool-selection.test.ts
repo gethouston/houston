@@ -8,6 +8,7 @@ import {
   toolNamesForMode,
   turnCodeExecutionMode,
 } from "./tool-selection";
+import { ASSISTANT_TOOL_NAMES } from "./tools/assistant";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
 import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
@@ -195,6 +196,51 @@ describe("buildToolSelection", () => {
     for (const name of ["find_skills", "install_skill"]) {
       expect(toolNamesForMode("execute", on.toolNames)).toContain(name);
       expect(toolNamesForMode("auto", on.toolNames)).toContain(name);
+      expect(toolNamesForMode("plan", on.toolNames)).not.toContain(name);
+    }
+  });
+});
+
+/**
+ * The assistant family is gated on more than reachability: the deployment has
+ * to have opted in AND a catalog has to have loaded, so `buildToolSelection`
+ * takes the DECISION as one flag rather than re-deriving it here.
+ */
+describe("assistant family gating", () => {
+  const base = { codeExecution: "disabled", integrations: false } as const;
+
+  test("absent by default — a normal agent performs no account operations", () => {
+    const off = buildToolSelection(base);
+    for (const name of ASSISTANT_TOOL_NAMES) {
+      expect(off.toolNames).not.toContain(name);
+    }
+    expect(buildToolSelection({ ...base, assistant: false }).toolNames).toEqual(
+      off.toolNames,
+    );
+  });
+
+  test("the flag adds exactly the tools of the family, and nothing else", () => {
+    const on = buildToolSelection({ ...base, assistant: true });
+    expect(on.toolNames).toEqual([
+      ...CLAMPED_FILE_TOOL_NAMES,
+      "ask_user",
+      "suggest_reusable",
+      SUGGEST_ACTIONS_TOOL_NAME,
+      ...ASSISTANT_TOOL_NAMES,
+    ]);
+    // `houston_recall` (searching the assistant's own conversation) reaches the
+    // model on this flag alone — it is named literally so it cannot fall out of
+    // the family unnoticed by an assertion that spreads the family.
+    expect(on.toolNames).toContain("houston_recall");
+  });
+
+  test("the family reaches execute and auto but never plan", () => {
+    const on = buildToolSelection({ ...base, assistant: true });
+    for (const name of ASSISTANT_TOOL_NAMES) {
+      expect(toolNamesForMode("execute", on.toolNames)).toContain(name);
+      expect(toolNamesForMode(undefined, on.toolNames)).toContain(name);
+      expect(toolNamesForMode("auto", on.toolNames)).toContain(name);
+      // A plan turn that could list operations it cannot perform dead-ends.
       expect(toolNamesForMode("plan", on.toolNames)).not.toContain(name);
     }
   });

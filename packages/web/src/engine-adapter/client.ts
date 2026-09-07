@@ -29,6 +29,7 @@ import { ActivitiesMixin } from "./client/activities-mixin";
 import { AgentFilesMixin } from "./client/agent-files-mixin";
 import { AgentsMixin } from "./client/agents-mixin";
 import { ApiKeysMixin } from "./client/api-keys-mixin";
+import { AssistantMixin } from "./client/assistant-mixin";
 import { HoustonClientBase } from "./client/base";
 import { BootMixin } from "./client/boot-mixin";
 import { ChatHistoryMixin } from "./client/chat-history-mixin";
@@ -57,31 +58,33 @@ import { WorkspacesMixin } from "./client/workspaces-mixin";
  * method-disjoint and all state lives on the shared `ctx`, not on any mixin.
  */
 const Composed = BootMixin(
-  WorkspacesMixin(
-    AgentsMixin(
-      ConfigPrefsMixin(
-        ActivitiesMixin(
-          AgentFilesMixin(
-            ProjectFilesMixin(
-              SharedSkillsMixin(
-                RoutinesSkillsMixin(
-                  MarketplaceMixin(
-                    ChatSendMixin(
-                      ChatHistoryMixin(
-                        ProviderStatusMixin(
-                          ProviderLoginMixin(
-                            ProviderCredentialsMixin(
-                              IntegrationsMixin(
-                                CustomIntegrationsMixin(
-                                  MeProfileMixin(
-                                    OrgsMixin(
-                                      OrgTeamsMixin(
-                                        TeamsMixin(
-                                          ApiKeysMixin(
-                                            StoreMixin(
-                                              PortableMixin(
-                                                LegacyUnsupportedMixin(
-                                                  HoustonClientBase,
+  AssistantMixin(
+    WorkspacesMixin(
+      AgentsMixin(
+        ConfigPrefsMixin(
+          ActivitiesMixin(
+            AgentFilesMixin(
+              ProjectFilesMixin(
+                SharedSkillsMixin(
+                  RoutinesSkillsMixin(
+                    MarketplaceMixin(
+                      ChatSendMixin(
+                        ChatHistoryMixin(
+                          ProviderStatusMixin(
+                            ProviderLoginMixin(
+                              ProviderCredentialsMixin(
+                                IntegrationsMixin(
+                                  CustomIntegrationsMixin(
+                                    MeProfileMixin(
+                                      OrgsMixin(
+                                        OrgTeamsMixin(
+                                          TeamsMixin(
+                                            ApiKeysMixin(
+                                              StoreMixin(
+                                                PortableMixin(
+                                                  LegacyUnsupportedMixin(
+                                                    HoustonClientBase,
+                                                  ),
                                                 ),
                                               ),
                                             ),

@@ -12,10 +12,16 @@
  * carrying the HTTP `status`, which `CommandRegistry.dispatch` surfaces as an
  * `ok: false` result. A `401` additionally fires {@link onUnauthorized} so a
  * lapsed session token becomes a visible `tokenExpired` signal.
+ *
+ * Assistant catalog: `listActivities` and `updateActivity` are annotated on the
+ * control-plane side (`packages/web/src/engine-adapter/cp/board.ts`) and that
+ * copy is the single source of truth — do NOT add a second `@assistant` block
+ * for them here.
  */
 
 import type { Activity, ActivityUpdate, NewActivity } from "@houston/protocol";
 import type { SdkPorts } from "../../ports";
+import { type HttpScope, httpRequest } from "../http";
 import type { ActivitiesWrites } from "./types";
 
 /** A failed `/activities` request. `status` is the upstream HTTP status. */
@@ -41,55 +47,87 @@ export interface ActivitiesHttp {
   remove(agentId: string, id: string): Promise<void>;
 }
 
+export async function listActivities(
+  scope: HttpScope,
+  agentId: string,
+): Promise<Activity[]> {
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/activities`,
+  );
+  return ((await res.json()) as { items: Activity[] }).items;
+}
+
+/**
+ * Creates a mission on an agent's board.
+ *
+ * @assistant group:missions
+ */
+export async function createActivity(
+  scope: HttpScope,
+  agentId: string,
+  input: NewActivity,
+): Promise<Activity> {
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/activities`,
+    { method: "POST", body: JSON.stringify(input) },
+  );
+  return (await res.json()) as Activity;
+}
+
+export async function updateActivity(
+  scope: HttpScope,
+  agentId: string,
+  id: string,
+  update: ActivityUpdate,
+): Promise<Activity> {
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/activities/${encodeURIComponent(id)}`,
+    { method: "PATCH", body: JSON.stringify(update) },
+  );
+  return (await res.json()) as Activity;
+}
+
+/**
+ * Deletes a mission from an agent's board.
+ *
+ * @assistant group:missions confirm
+ */
+export async function deleteActivity(
+  scope: HttpScope,
+  agentId: string,
+  id: string,
+): Promise<void> {
+  await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/activities/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
+}
+
 export function createActivitiesHttp(
   baseUrl: string,
   ports: SdkPorts,
   onUnauthorized: () => void,
 ): ActivitiesHttp {
-  const root = baseUrl.replace(/\/+$/, "");
-  const base = (agentId: string): string =>
-    `${root}/agents/${encodeURIComponent(agentId)}/activities`;
-
-  async function req(path: string, init?: RequestInit): Promise<Response> {
-    const res = await ports.fetch(path, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
-    });
-    if (!res.ok) {
-      if (res.status === 401) onUnauthorized();
-      const body = await res.text().catch(() => "");
-      throw new ActivitiesHttpError(
-        body || `activities request failed: ${res.status}`,
-        res.status,
-      );
-    }
-    return res;
-  }
+  const scope: HttpScope = {
+    baseUrl: baseUrl.replace(/\/+$/, ""),
+    ports,
+    onUnauthorized,
+    fail: (message, status) =>
+      new ActivitiesHttpError(
+        message || `activities request failed: ${status}`,
+        status,
+      ),
+  };
 
   return {
-    async list(agentId) {
-      const res = await req(base(agentId));
-      return ((await res.json()) as { items: Activity[] }).items;
-    },
-    async create(agentId, input) {
-      const res = await req(base(agentId), {
-        method: "POST",
-        body: JSON.stringify(input),
-      });
-      return (await res.json()) as Activity;
-    },
-    async update(agentId, id, update) {
-      const res = await req(`${base(agentId)}/${encodeURIComponent(id)}`, {
-        method: "PATCH",
-        body: JSON.stringify(update),
-      });
-      return (await res.json()) as Activity;
-    },
-    async remove(agentId, id) {
-      await req(`${base(agentId)}/${encodeURIComponent(id)}`, {
-        method: "DELETE",
-      });
-    },
+    list: (agentId) => listActivities(scope, agentId),
+    create: (agentId, input) => createActivity(scope, agentId, input),
+    update: (agentId, id, update) => updateActivity(scope, agentId, id, update),
+    remove: (agentId, id) => deleteActivity(scope, agentId, id),
   };
 }
 

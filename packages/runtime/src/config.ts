@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { assistantCatalogPath } from "@houston/host/src/assistant/catalog-source";
 
 const env = process.env;
 
@@ -146,6 +147,29 @@ export const config = {
   controlPlaneUrl: env.HOUSTON_CONTROL_PLANE_URL || "",
   /** File-authoritative transcript writes also enqueue the managed DB shadow. */
   transcriptDualWrite: env.HOUSTON_TRANSCRIPT_DUAL_WRITE === "1",
+
+  /**
+   * The assistant tool family (`houston_capabilities` / `houston_describe` /
+   * `houston_call`): the agent performing user-facing Houston operations itself,
+   * on the per-user personal-assistant pod.
+   *
+   * The GATEWAY CREDENTIAL is the switch — the same pair the host's dispatcher
+   * requires (`routes/assistant-sandbox.ts`), read here only for its PRESENCE
+   * so the two sides can never disagree. Offering the agent tools whose every
+   * call would come back 501 is worse than offering none: it would have the
+   * agent promise the user actions this deployment cannot perform. The runtime
+   * inherits the host's environment (launcher/runtime-spawner.ts spreads
+   * `process.env`), which is what makes the pair visible on both sides.
+   */
+  assistantEnabled: Boolean(
+    env.HOUSTON_ASSISTANT_CP_URL?.trim() && env.HOUSTON_ASSISTANT_TOKEN?.trim(),
+  ),
+  /**
+   * Where the generated operation catalog the family dispatches over lives.
+   * Resolved by the host's module so the runtime and the host's dispatcher can
+   * never end up reading two different files.
+   */
+  assistantCatalogPath: assistantCatalogPath(env),
 
   /**
    * Code execution policy for long-lived runtime:

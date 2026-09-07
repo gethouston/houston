@@ -5,6 +5,7 @@ import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
 import {
   aboutMeRow,
   adminRow,
+  assistantRow,
   openAdmin,
   openSettings,
 } from "./support/settings-nav";
@@ -18,9 +19,9 @@ import { navRow, screen } from "./support/team-nav";
  * hold, and each of them broke a real user path when it didn't:
  *
  * 1. the rail carries exactly the top-level entries the IA names — the
- *    unlabelled lead run (Inbox, About me, Agent Store), "My accounts"
- *    (Integrations, AI Models) and "Workspace" (Admin, Skills) — with Settings
- *    and the help control in the footer;
+ *    unlabelled lead run (Assistant, Inbox, About me, Agent Store), "My
+ *    accounts" (Integrations, AI Models) and "Workspace" (Admin, Skills) — with
+ *    Settings and the help control in the footer;
  * 2. the two rows that band used to carry are GONE from the rail entirely.
  *    **Permissions** listed the space's agents to reach one's settings page,
  *    which every team's focused agent screen already does per team, in every
@@ -82,9 +83,10 @@ test("the sidebar carries only the IA's top-level entries, under their bands", a
   await armOwner(request);
   await page.goto("/");
 
-  // The lead run needs no band; the rest are named by one. About me sits in it
-  // without a tour anchor, so it is addressed by name.
+  // The lead run needs no band; the rest are named by one. The Assistant and
+  // About me sit in it without a tour anchor, so both are addressed by name.
   const sidebar = page.locator("[data-tour-target='sidebar']");
+  await expect(assistantRow(page)).toBeVisible();
   await expect(navRow(page, "inbox")).toBeVisible();
   await expect(aboutMeRow(page)).toBeVisible();
   await expect(navRow(page, "agent-store")).toBeVisible();
@@ -145,7 +147,9 @@ test("a plain member gets no Workspace band at all", async ({
   await expect(adminRow(page)).toHaveCount(0);
   await expect(navRow(page, "skills")).toHaveCount(0);
   // Ungated rows are untouched by the band's collapse: About me is everyone's
-  // standing context, and Settings is everyone's chrome.
+  // standing context, Settings is everyone's chrome, and the Assistant rides
+  // discovery rather than a role, so a plain member keeps it.
+  await expect(assistantRow(page)).toBeVisible();
   await expect(aboutMeRow(page)).toBeVisible();
   await expect(navRow(page, "settings")).toBeVisible();
 });

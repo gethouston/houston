@@ -14,6 +14,8 @@
     "check:fix": "biome check --write --error-on-warnings",
     "check:boundaries": "node scripts/check-boundaries.mjs",
     "check:parity": "node scripts/check-parity.mjs",
+    "gen:assistant-catalog": "node --experimental-strip-types ui/engine-client/scripts/generate-assistant-catalog.ts",
+    "check:assistant-catalog": "node --experimental-strip-types ui/engine-client/scripts/check-assistant-catalog.ts",
     "generate:team-icons": "node scripts/generate-team-icons.mjs && biome format --write ui/layout/src/sidebar-group-glyph-data-*.ts ui/layout/src/sidebar-group-glyph-tags.ts",
     "prepare": "husky || true",
     "test": "pnpm -r --if-present --no-bail test",

@@ -299,8 +299,12 @@ export class ClaudeSession implements HarnessSession {
     this.model = toSdkModel(model.id);
   }
 
-  async compact(): Promise<void> {
+  async compact(): Promise<undefined> {
     // No-op: the SDK auto-compacts; context tokens update from compact_boundary.
+    // Nothing to instruct and no summary to return either — the SDK owns the
+    // summarization request and never surfaces its text, so a caller's custom
+    // instructions have nowhere to ride and the durable-fact harvest that reads
+    // the returned summary simply finds none on this backend.
   }
 
   setThinkingLevel(level: ThinkingLevel): void {

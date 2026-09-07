@@ -1,4 +1,5 @@
 import type { ToolSelection } from "../../session/tool-selection";
+import type { AssistantToolOptions } from "../../session/tools/assistant";
 import type { IntegrationToolOptions } from "../../session/tools/integrations";
 import type { BridgedPiTool } from "./custom-tools";
 import type { ClaudeLayout } from "./paths";
@@ -18,6 +19,8 @@ export interface ClaudeBackendDeps {
   systemPrompt: string;
   sharedRoots?: string[];
   integrations?: IntegrationToolOptions;
+  /** The assistant family's catalog + host transport; absent → family off. */
+  assistant?: AssistantToolOptions;
   tools?: BridgedPiTool[];
   /** External SDK adapter for tests that must not spawn a process. */
   sdk?: ClaudeSdk;

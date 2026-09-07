@@ -78,6 +78,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         houstonMcp = buildHoustonMcpServer({
           createSdkMcpServer: sdk.createSdkMcpServer,
           integrations: deps.integrations,
+          assistant: deps.assistant,
           tools: deps.tools,
           // The mode does the tool filtering (via `toolNamesForMode`), mirroring
           // the pi path: plan withholds the acting integration tools and keeps

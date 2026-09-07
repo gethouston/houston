@@ -59,6 +59,10 @@ export function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
   };
 }
 
+/**
+ * Lists the user's agents.
+ * @assistant group:agents
+ */
 export async function listAgents(cfg: ControlPlaneConfig): Promise<Agent[]> {
   // Hydrate the color overlay from the `agent_colors` account preference
   // alongside the list fetch (PRODUCT-1344): after a sign-out purge the
@@ -86,11 +90,14 @@ export function createdAgentToUi(agent: CpAgent, color?: string): Agent {
 }
 
 /**
+ * Creates a new agent.
+ *
  * Create an agent directly over the control plane. The agent-picker path
  * delegates create to the SDK (see the mixin); this stays for the portable
  * install flow (`portable.ts install`), a `cfg`-scoped module function with no
  * SDK handle. Same wire the SDK write issues: `POST /agents` with the seed body
  * (JSON.stringify drops undefined, so a plain create posts just `{ name }`).
+ * @assistant group:agents
  */
 export async function createAgent(
   cfg: ControlPlaneConfig,
@@ -120,7 +127,12 @@ export function renamedAgentToUi(previousId: string, agent: CpAgent): Agent {
   return toUiAgent(agent);
 }
 
-/** Color is overlay-only; the server agent is unchanged. Returns the updated view. */
+/**
+ * Changes the color Houston shows for an agent on this device.
+ *
+ * Color is overlay-only; the server agent is unchanged. Returns the updated view.
+ * @assistant group:agents hidden
+ */
 export async function updateAgentColor(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -138,6 +150,10 @@ export async function updateAgentColor(
 
 // Agent-config library: user-scoped like the marketplace reads — a template
 // belongs to the account, not to any existing agent.
+/**
+ * Lists the agent templates installed in Houston.
+ * @assistant group:agents
+ */
 export async function listInstalledConfigs(
   cfg: ControlPlaneConfig,
 ): Promise<InstalledConfig[]> {
@@ -153,6 +169,10 @@ export async function listInstalledConfigs(
     throw err;
   }
 }
+/**
+ * Installs an agent from a GitHub repository.
+ * @assistant group:agents confirm
+ */
 export async function installAgentFromGithub(
   cfg: ControlPlaneConfig,
   githubUrl: string,

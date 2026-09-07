@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import { ABOUT_ME_VIEW_ID } from "../src/components/about-me/id.ts";
 import { ACADEMY_VIEW_ID } from "../src/components/academy/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../src/components/agents-home/id.ts";
+import { ASSISTANT_VIEW_ID } from "../src/components/assistant/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../src/components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../src/components/skills-view/id.ts";
@@ -32,6 +33,8 @@ describe("isTopLevelView", () => {
   it("recognizes the top-level views", () => {
     for (const id of [
       INBOX_VIEW_ID,
+      // The personal assistant's screen, gated on discovery rather than a role.
+      ASSISTANT_VIEW_ID,
       ABOUT_ME_VIEW_ID,
       ACADEMY_VIEW_ID,
       // The mobile Agents and Teams tabs' root screens.
@@ -228,10 +231,15 @@ describe("isActiveTopLevelView", () => {
 
 describe("blockedTopLevelView", () => {
   const gates = (
-    over: { showAiModels?: boolean; showOrganization?: boolean } = {},
+    over: {
+      showAiModels?: boolean;
+      showOrganization?: boolean;
+      showAssistant?: boolean;
+    } = {},
   ) => ({
     showAiModels: over.showAiModels ?? false,
     showOrganization: over.showOrganization ?? false,
+    showAssistant: over.showAssistant ?? false,
   });
 
   it("never blocks the Integrations page", () => {
@@ -265,6 +273,16 @@ describe("blockedTopLevelView", () => {
         ORGANIZATION_VIEW_ID,
         gates({ showOrganization: true }),
       ),
+      false,
+    );
+  });
+
+  it("blocks the assistant where discovery hands out no address", () => {
+    // The deployment serves none (501 gateway-only / 503 no agent tree), so a
+    // `viewMode` left on it would strand the user on an unmounted screen.
+    strictEqual(blockedTopLevelView(ASSISTANT_VIEW_ID, gates()), true);
+    strictEqual(
+      blockedTopLevelView(ASSISTANT_VIEW_ID, gates({ showAssistant: true })),
       false,
     );
   });

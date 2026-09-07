@@ -29,6 +29,7 @@ import type {
   AllConversationsResult,
   ApiKey,
   ApiKeyCreated,
+  AssistantHandle,
   AttachmentManifest,
   AttachmentUploadResult,
   AuditEntry,
@@ -261,11 +262,14 @@ export class HoustonClient {
   }
 
   /**
+   * Reconnect the app to the Houston engine at a new address.
+   *
    * Point this client at a new engine endpoint in place. The desktop app
    * calls this when the supervisor respawns the engine on a fresh port so
    * requests already mid-flight (and every hook holding this instance)
    * recover on their next retry instead of hammering the dead port. See
    * `app/src/lib/engine.ts`.
+   * @assistant group:system hidden
    */
   setEndpoint(opts: { baseUrl: string; token: string }): void {
     this.baseUrl = opts.baseUrl.replace(/\/$/, "");
@@ -273,6 +277,8 @@ export class HoustonClient {
   }
 
   /**
+   * Switch which workspace the app is acting inside.
+   *
    * Pin (or clear) the active hosted space (C8 §Workspaces bridge). Pass an org
    * slug to act inside that team space — every request then carries
    * `x-houston-org: <slug>` — or `null` to fall back to the caller's personal
@@ -284,17 +290,21 @@ export class HoustonClient {
    * yields `403 not_member`. Because `role` is per-space, the caller MUST
    * re-fetch `capabilities()` after switching (C8 §capabilities); this method
    * only redirects the transport.
+   * @assistant group:spaces hidden
    */
   setActiveOrg(slug: string | null): void {
     this.activeOrgSlug = slug;
   }
 
   /**
+   * Note that the active workspace has no agent list to load.
+   *
    * Tell the client the active space's agent list is not coming (boot resolved
    * no workspace to list agents for). Only the v3 host adapter acts on it — it
    * routes provider calls at a specific agent's runtime and would otherwise wait
    * on that list forever (HOU-979). This client addresses one runtime directly,
    * so there is nothing to settle.
+   * @assistant group:system hidden
    */
   noteAgentsUnavailable(): void {}
 
@@ -510,34 +520,83 @@ export class HoustonClient {
 
   // ---------- health / version ----------
 
+  /**
+   * Check that Houston is running.
+   * @assistant group:system hidden
+   */
   health(): Promise<HealthResponse> {
     return this.request("GET", "/health");
   }
+  /**
+   * Read the version of Houston that is running.
+   * @assistant group:system hidden
+   */
   version(): Promise<VersionResponse> {
     return this.request("GET", "/version");
   }
+  /**
+   * Read which features this Houston deployment offers.
+   * @assistant group:system hidden
+   */
   capabilities(): Promise<Capabilities> {
     return this.request("GET", "/capabilities");
   }
 
+  // ---------- personal assistant ----------
+
+  /**
+   * Find the user's personal assistant.
+   *
+   * Answers WHICH agent holds it and WHICH conversation to open; the chat
+   * itself then rides the ordinary per-agent calls, because the assistant IS an
+   * agent — a hidden one this deployment creates on the first ask. Both fields
+   * are opaque addresses: pass them through, never parse them. A deployment
+   * that hosts no assistant answers 501.
+   *
+   * Plumbing, not an operation the assistant performs on itself: `hidden`.
+   * @assistant group:system hidden
+   */
+  getAssistant(): Promise<AssistantHandle> {
+    return this.request("GET", "/assistant");
+  }
+
   // ---------- workspaces ----------
 
+  /**
+   * List the workspaces in Houston.
+   * @assistant group:workspaces
+   */
   listWorkspaces(): Promise<Workspace[]> {
     return this.request("GET", "/workspaces");
   }
+  /**
+   * Create a workspace.
+   * @assistant group:workspaces
+   */
   createWorkspace(req: CreateWorkspace): Promise<Workspace> {
     return this.request("POST", "/workspaces", req);
   }
+  /**
+   * Rename a workspace.
+   * @assistant group:workspaces
+   */
   renameWorkspace(id: string, req: RenameWorkspace): Promise<Workspace> {
     return this.request("POST", `/workspaces/${this.seg(id)}/rename`, req);
   }
+  /**
+   * Permanently delete a workspace and its contents.
+   * @assistant group:workspaces confirm
+   */
   deleteWorkspace(id: string): Promise<void> {
     return this.request("DELETE", `/workspaces/${this.seg(id)}`);
   }
   /**
+   * Choose the language a workspace's interface is shown in.
+   *
    * Set (or clear) a workspace's UI-locale override. Pass `null` to clear it
    * so the workspace falls back to the global `locale` preference. Persisted on
    * the workspace record, so every client of this engine shares the value.
+   * @assistant group:workspaces
    */
   setWorkspaceLocale(id: string, locale: string | null): Promise<Workspace> {
     // The host's workspace-settings route is `PATCH /workspaces/:id` (locale is
@@ -546,17 +605,33 @@ export class HoustonClient {
       locale,
     });
   }
+  /**
+   * Choose which AI provider a workspace uses.
+   * @assistant group:workspaces
+   */
   setWorkspaceProvider(id: string, req: UpdateProvider): Promise<Workspace> {
     return this.request("PATCH", `/workspaces/${this.seg(id)}/provider`, req);
   }
+  /**
+   * Set up a workspace from a GitHub repository.
+   * @assistant group:workspaces confirm
+   */
   installWorkspaceFromGithub(
     req: InstallFromGithub,
   ): Promise<ImportedWorkspace> {
     return this.request("POST", "/workspaces/install-from-github", req);
   }
+  /**
+   * Read the shared background notes of a workspace.
+   * @assistant group:workspaces
+   */
   getWorkspaceContext(id: string): Promise<WorkspaceContext> {
     return this.request("GET", `/workspaces/${this.seg(id)}/context`);
   }
+  /**
+   * Replace the shared background notes of a workspace.
+   * @assistant group:workspaces
+   */
   setWorkspaceContext(
     id: string,
     body: WorkspaceContext,
@@ -566,12 +641,20 @@ export class HoustonClient {
 
   // ---------- sidebar layout ----------
 
+  /**
+   * Read how a workspace's sidebar is arranged.
+   * @assistant group:settings
+   */
   getSidebarLayout(workspaceId: string): Promise<SidebarLayout> {
     return this.request(
       "GET",
       `/workspaces/${this.seg(workspaceId)}/sidebar-layout`,
     );
   }
+  /**
+   * Save how a workspace's sidebar is arranged.
+   * @assistant group:settings
+   */
   setSidebarLayout(
     workspaceId: string,
     layout: SidebarLayout,
@@ -585,9 +668,17 @@ export class HoustonClient {
 
   // ---------- workspace-scoped agents ----------
 
+  /**
+   * List the agents in a workspace.
+   * @assistant group:agents
+   */
   listAgents(workspaceId: string): Promise<Agent[]> {
     return this.request("GET", `/workspaces/${this.seg(workspaceId)}/agents`);
   }
+  /**
+   * Create an agent in a workspace.
+   * @assistant group:agents
+   */
   createAgent(
     workspaceId: string,
     req: CreateAgent,
@@ -598,12 +689,20 @@ export class HoustonClient {
       req,
     );
   }
+  /**
+   * Permanently delete an agent and everything it holds.
+   * @assistant group:agents confirm
+   */
   deleteAgent(workspaceId: string, agentId: string): Promise<void> {
     return this.request(
       "DELETE",
       `/workspaces/${this.seg(workspaceId)}/agents/${this.seg(agentId)}`,
     );
   }
+  /**
+   * Rename an agent.
+   * @assistant group:agents
+   */
   renameAgent(
     workspaceId: string,
     agentId: string,
@@ -615,6 +714,10 @@ export class HoustonClient {
       { newName },
     );
   }
+  /**
+   * Change an agent's details, such as its name or instructions.
+   * @assistant group:agents
+   */
   updateAgent(
     workspaceId: string,
     agentId: string,
@@ -629,6 +732,10 @@ export class HoustonClient {
 
   // ---------- agent files (typed .houston data) ----------
 
+  /**
+   * Read one of an agent's saved data files.
+   * @assistant group:files
+   */
   readAgentFile(agentPath: string, relPath: string): Promise<string> {
     // Read-only POST → replay-safe (this is the route that dominated HOU-432).
     return this.request<{ content: string }>(
@@ -640,6 +747,10 @@ export class HoustonClient {
       true,
     ).then((r) => r.content);
   }
+  /**
+   * Replace the contents of one of an agent's saved data files.
+   * @assistant group:files
+   */
   writeAgentFile(
     agentPath: string,
     relPath: string,
@@ -651,11 +762,19 @@ export class HoustonClient {
       content,
     });
   }
+  /**
+   * Put the standard data templates in place for an agent.
+   * @assistant group:files hidden
+   */
   seedAgentSchemas(agentPath: string): Promise<void> {
     return this.request("POST", "/agents/files/seed-schemas", {
       agent_path: agentPath,
     });
   }
+  /**
+   * Bring an agent's saved data up to the current layout.
+   * @assistant group:files hidden
+   */
   migrateAgentFiles(agentPath: string): Promise<void> {
     return this.request("POST", "/agents/files/migrate", {
       agent_path: agentPath,
@@ -664,11 +783,19 @@ export class HoustonClient {
 
   // ---------- project files (browser) ----------
 
+  /**
+   * List the files in an agent's folder.
+   * @assistant group:files
+   */
   listProjectFiles(agentPath: string): Promise<ProjectFile[]> {
     return this.request("GET", "/agents/files", undefined, {
       agent_path: agentPath,
     });
   }
+  /**
+   * Read a file from an agent's folder.
+   * @assistant group:files
+   */
   readProjectFile(agentPath: string, relPath: string): Promise<string> {
     // Read-only POST → replay-safe.
     return this.request<{ content: string }>(
@@ -680,7 +807,12 @@ export class HoustonClient {
       true,
     ).then((r) => r.content);
   }
-  /** Raw bytes of a project file (binary-safe) plus its served MIME type. */
+  /**
+   * Download a file from an agent's folder.
+   *
+   * Raw bytes of a project file (binary-safe) plus its served MIME type.
+   * @assistant group:files
+   */
   async downloadProjectFile(
     agentPath: string,
     relPath: string,
@@ -710,6 +842,10 @@ export class HoustonClient {
         res.headers.get("content-type") ?? "application/octet-stream",
     };
   }
+  /**
+   * Rename a file in an agent's folder.
+   * @assistant group:files
+   */
   renameFile(
     agentPath: string,
     relPath: string,
@@ -721,12 +857,20 @@ export class HoustonClient {
       new_name: newName,
     });
   }
+  /**
+   * Permanently delete a file from an agent's folder.
+   * @assistant group:files confirm
+   */
   deleteFile(agentPath: string, relPath: string): Promise<void> {
     return this.request("DELETE", "/agents/files", undefined, {
       agent_path: agentPath,
       rel_path: relPath,
     });
   }
+  /**
+   * Create a folder in an agent's folder.
+   * @assistant group:files
+   */
   createFolder(
     agentPath: string,
     folderName: string,
@@ -736,6 +880,10 @@ export class HoustonClient {
       folder_name: folderName,
     });
   }
+  /**
+   * Copy files from this computer into an agent's folder.
+   * @assistant group:files
+   */
   importFiles(
     agentPath: string,
     filePaths: string[],
@@ -747,6 +895,10 @@ export class HoustonClient {
       target_folder: targetFolder ?? null,
     });
   }
+  /**
+   * Add a file to an agent's folder from its contents.
+   * @assistant group:files
+   */
   importFileBytes(
     agentPath: string,
     fileName: string,
@@ -758,11 +910,16 @@ export class HoustonClient {
       data_base64: dataBase64,
     });
   }
-  /** Upload browser Files into the agent's workspace (file-browser drag-drop /
+  /**
+   * Upload files from the user's device into an agent's folder.
+   *
+   * Upload browser Files into the agent's workspace (file-browser drag-drop /
    * Browse). This engine's import route takes one file per request and has no
    * target-folder or relPath parameter, so uploads land flat at the workspace
    * root (the file browser hides the folder-upload affordance on this
-   * engine). */
+   * engine).
+   * @assistant group:files hidden
+   */
   async uploadProjectFiles(
     agentPath: string,
     files: File[],
@@ -773,8 +930,13 @@ export class HoustonClient {
       await this.importFileBytes(agentPath, f.name, bytesToBase64(bytes));
     }
   }
-  /** This engine has no move route; the file browser only offers drag-move on
-   * the TS host. Refuse loudly rather than pretend the file moved. */
+  /**
+   * Move a file into another folder of an agent's folder.
+   *
+   * This engine has no move route; the file browser only offers drag-move on
+   * the TS host. Refuse loudly rather than pretend the file moved.
+   * @assistant group:files
+   */
   async moveProjectFile(
     _agentPath: string,
     _relPath: string,
@@ -782,8 +944,13 @@ export class HoustonClient {
   ): Promise<void> {
     throw new Error("Moving files is not supported on this engine.");
   }
-  /** This engine has no archive route ("Download all" is a TS-host feature);
-   * it is never offered in the UI here, so refuse loudly if reached. */
+  /**
+   * Download everything in an agent's folder as one archive.
+   *
+   * This engine has no archive route ("Download all" is a TS-host feature);
+   * it is never offered in the UI here, so refuse loudly if reached.
+   * @assistant group:files
+   */
   async downloadProjectArchive(
     _agentPath: string,
     _path?: string,
@@ -793,16 +960,28 @@ export class HoustonClient {
 
   // ---------- agents: activities ----------
 
+  /**
+   * List the missions assigned to an agent.
+   * @assistant group:missions
+   */
   listActivities(agentPath: string): Promise<Activity[]> {
     return this.request("GET", "/agents/activities", undefined, {
       agent_path: agentPath,
     });
   }
+  /**
+   * Create a mission for an agent.
+   * @assistant group:missions
+   */
   createActivity(agentPath: string, input: NewActivity): Promise<Activity> {
     return this.request("POST", "/agents/activities", input, {
       agent_path: agentPath,
     });
   }
+  /**
+   * Update a mission's details or status.
+   * @assistant group:missions
+   */
   updateActivity(
     agentPath: string,
     id: string,
@@ -817,6 +996,10 @@ export class HoustonClient {
       },
     );
   }
+  /**
+   * Permanently delete a mission.
+   * @assistant group:missions confirm
+   */
   deleteActivity(agentPath: string, id: string): Promise<void> {
     return this.request(
       "DELETE",
@@ -834,12 +1017,24 @@ export class HoustonClient {
   // scheduler, dispatcher, and run-now/cancel all share it). These methods use
   // the `agentPath` / `routineId` camelCase query params that surface expects.
 
+  /**
+   * List an agent's routines.
+   * @assistant group:routines
+   */
   listRoutines(agentPath: string): Promise<Routine[]> {
     return this.request("GET", "/routines", undefined, { agentPath });
   }
+  /**
+   * Create a routine for an agent.
+   * @assistant group:routines
+   */
   createRoutine(agentPath: string, input: NewRoutine): Promise<Routine> {
     return this.request("POST", "/routines", input, { agentPath });
   }
+  /**
+   * Update a routine's schedule or instructions.
+   * @assistant group:routines
+   */
   updateRoutine(
     agentPath: string,
     id: string,
@@ -849,6 +1044,10 @@ export class HoustonClient {
       agentPath,
     });
   }
+  /**
+   * Permanently delete a routine.
+   * @assistant group:routines confirm
+   */
   deleteRoutine(agentPath: string, id: string): Promise<void> {
     return this.request("DELETE", `/routines/${this.seg(id)}`, undefined, {
       agentPath,
@@ -857,6 +1056,10 @@ export class HoustonClient {
 
   // ---------- routine runs ----------
 
+  /**
+   * List routine runs, optionally for one routine.
+   * @assistant group:routines
+   */
   listRoutineRuns(
     agentPath: string,
     routineId?: string,
@@ -866,6 +1069,10 @@ export class HoustonClient {
       routineId,
     });
   }
+  /**
+   * Create a run record for a routine.
+   * @assistant group:routines
+   */
   createRoutineRun(agentPath: string, routineId: string): Promise<RoutineRun> {
     return this.request(
       "POST",
@@ -876,6 +1083,10 @@ export class HoustonClient {
       },
     );
   }
+  /**
+   * Update the status or details of a routine run.
+   * @assistant group:routines
+   */
   updateRoutineRun(
     agentPath: string,
     id: string,
@@ -888,11 +1099,19 @@ export class HoustonClient {
 
   // ---------- agents: config ----------
 
+  /**
+   * Read an agent's configuration.
+   * @assistant group:agents
+   */
   getAgentConfig(agentPath: string): Promise<ProjectConfig> {
     return this.request("GET", "/agents/config", undefined, {
       agent_path: agentPath,
     });
   }
+  /**
+   * Replace an agent's configuration.
+   * @assistant group:agents
+   */
   setAgentConfig(
     agentPath: string,
     config: ProjectConfig,
@@ -904,12 +1123,20 @@ export class HoustonClient {
 
   // ---------- agent configs (installed manifests) ----------
 
+  /**
+   * List the agent templates installed in Houston.
+   * @assistant group:agents
+   */
   listInstalledConfigs(): Promise<InstalledConfig[]> {
     return this.request("GET", "/agent-configs");
   }
 
   // ---------- conversations ----------
 
+  /**
+   * List an agent's conversations.
+   * @assistant group:chat
+   */
   listConversations(agentPath: string): Promise<ConversationEntry[]> {
     // Read-only POST → replay-safe.
     return this.request(
@@ -921,6 +1148,10 @@ export class HoustonClient {
       true,
     );
   }
+  /**
+   * List the conversations of several agents at once.
+   * @assistant group:chat
+   */
   async listAllConversations(
     agentPaths: string[],
   ): Promise<AllConversationsResult> {
@@ -941,25 +1172,49 @@ export class HoustonClient {
 
   // ---------- skills ----------
 
+  /**
+   * List the skills available in a workspace.
+   * @assistant group:skills
+   */
   listSkills(workspacePath: string): Promise<SkillSummary[]> {
     return this.request("GET", "/skills", undefined, { workspacePath });
   }
+  /**
+   * Read a skill's instructions.
+   * @assistant group:skills
+   */
   loadSkill(workspacePath: string, name: string): Promise<SkillDetail> {
     return this.request("GET", `/skills/${this.seg(name)}`, undefined, {
       workspacePath,
     });
   }
+  /**
+   * Create a skill.
+   * @assistant group:skills
+   */
   createSkill(req: CreateSkillRequest): Promise<void> {
     return this.request("POST", "/skills", req);
   }
+  /**
+   * Save changes to a skill.
+   * @assistant group:skills
+   */
   saveSkill(name: string, req: SaveSkillRequest): Promise<void> {
     return this.request("PUT", `/skills/${this.seg(name)}`, req);
   }
+  /**
+   * Permanently delete a skill.
+   * @assistant group:skills confirm
+   */
   deleteSkill(workspacePath: string, name: string): Promise<void> {
     return this.request("DELETE", `/skills/${this.seg(name)}`, undefined, {
       workspacePath,
     });
   }
+  /**
+   * List the skills shared with the whole workspace.
+   * @assistant group:skills
+   */
   listSharedSkills(workspaceId: string): Promise<{
     items: SkillSummary[];
     diagnostics: { key: string; message: string }[];
@@ -969,12 +1224,20 @@ export class HoustonClient {
       `/workspaces/${this.seg(workspaceId)}/shared-skills`,
     );
   }
+  /**
+   * Read the instructions of a skill shared with the workspace.
+   * @assistant group:skills
+   */
   loadSharedSkill(workspaceId: string, slug: string): Promise<SkillDetail> {
     return this.request(
       "GET",
       `/workspaces/${this.seg(workspaceId)}/shared-skills/${this.seg(slug)}`,
     );
   }
+  /**
+   * Create a skill and share it with the whole workspace.
+   * @assistant group:skills confirm
+   */
   createSharedSkill(
     workspaceId: string,
     req: CreateSkillRequest,
@@ -985,7 +1248,12 @@ export class HoustonClient {
       req,
     );
   }
-  /** Place a FULL existing SKILL.md at an exact slug ("Share to workspace"). */
+  /**
+   * Share an existing skill with the whole workspace.
+   *
+   * Place a FULL existing SKILL.md at an exact slug ("Share to workspace").
+   * @assistant group:skills confirm
+   */
   promoteSharedSkill(
     workspaceId: string,
     slug: string,
@@ -997,6 +1265,10 @@ export class HoustonClient {
       { content },
     );
   }
+  /**
+   * Save changes to a skill shared with the workspace.
+   * @assistant group:skills
+   */
   saveSharedSkill(
     workspaceId: string,
     slug: string,
@@ -1008,17 +1280,29 @@ export class HoustonClient {
       req,
     );
   }
+  /**
+   * Permanently delete a skill shared with the workspace.
+   * @assistant group:skills confirm
+   */
   deleteSharedSkill(workspaceId: string, slug: string): Promise<void> {
     return this.request(
       "DELETE",
       `/workspaces/${this.seg(workspaceId)}/shared-skills/${this.seg(slug)}`,
     );
   }
+  /**
+   * Read which skills an agent has switched on.
+   * @assistant group:skills
+   */
   getSkillsManifest(agentPath: string): Promise<SkillsManifest> {
     return this.request("GET", "/skills-manifest", undefined, {
       workspacePath: agentPath,
     });
   }
+  /**
+   * Choose which skills an agent has switched on.
+   * @assistant group:skills
+   */
   putSkillsManifest(
     agentPath: string,
     manifest: SkillsManifest,
@@ -1031,6 +1315,10 @@ export class HoustonClient {
   // proxies agent-scoped routes, so the adapter needs the scope. Against a
   // direct host this client reaches the same directory via the top-level
   // routes, so the path is unused here — the parameter is the wire contract.
+  /**
+   * Search the community directory of skills.
+   * @assistant group:skills
+   */
   searchCommunitySkills(
     _agentPath: string,
     query: string,
@@ -1049,6 +1337,10 @@ export class HoustonClient {
   // Read-only detail for one community skill: fetches + parses its real
   // SKILL.md so the marketplace can show a true description before install.
   // Carries the browsing agent's path like the other reads (see above).
+  /**
+   * Preview what a community skill does before installing it.
+   * @assistant group:skills
+   */
   previewCommunitySkill(
     _agentPath: string,
     source: string,
@@ -1065,6 +1357,10 @@ export class HoustonClient {
       true,
     );
   }
+  /**
+   * Install a skill from the community directory.
+   * @assistant group:skills confirm
+   */
   installCommunitySkill(
     req: InstallCommunityRequest,
     signal?: AbortSignal,
@@ -1077,6 +1373,10 @@ export class HoustonClient {
       signal,
     );
   }
+  /**
+   * List the skills published in a GitHub repository.
+   * @assistant group:skills
+   */
   listSkillsFromRepo(
     _agentPath: string,
     source: string,
@@ -1092,6 +1392,10 @@ export class HoustonClient {
       true,
     );
   }
+  /**
+   * Install skills from a GitHub repository.
+   * @assistant group:skills confirm
+   */
   installSkillsFromRepo(
     req: InstallFromRepoRequest,
     signal?: AbortSignal,
@@ -1101,21 +1405,37 @@ export class HoustonClient {
 
   // ---------- preferences ----------
 
+  /**
+   * Read one of the user's saved preferences.
+   * @assistant group:settings
+   */
   getPreference(key: string): Promise<string | null> {
     return this.request<PreferenceValue>(
       "GET",
       `/preferences/${this.seg(key)}`,
     ).then((r) => r.value);
   }
+  /**
+   * Change one of the user's saved preferences.
+   * @assistant group:settings
+   */
   setPreference(key: string, value: string | null): Promise<void> {
     return this.request("PUT", `/preferences/${this.seg(key)}`, { value });
   }
 
   // ---------- providers ----------
 
+  /**
+   * Check whether an AI provider is connected.
+   * @assistant group:providers
+   */
   providerStatus(name: string): Promise<ProviderStatus> {
     return this.request("GET", `/providers/${this.seg(name)}/status`);
   }
+  /**
+   * Check which AI providers an agent can use.
+   * @assistant group:providers
+   */
   providerStatusesForAgent(
     _agentId: string,
     names: readonly string[],
@@ -1123,16 +1443,21 @@ export class HoustonClient {
     return Promise.all(names.map((name) => this.providerStatus(name)));
   }
   /**
+   * See how much of each connected AI provider's allowance is left.
+   *
    * Live per-account usage for every CONNECTED provider — rate-limit windows
    * (Claude 5h/weekly, Codex session/weekly, Copilot quotas) and prepaid
    * balances, fetched by the engine from each provider's own usage API. One
    * row per connected provider; a provider with no readable usage surface
    * answers an honest non-`ok` status rather than being omitted.
+   * @assistant group:providers
    */
   providerUsage(): Promise<ProviderUsage[]> {
     return this.request("GET", "/providers/usage");
   }
   /**
+   * Start signing in to an AI provider.
+   *
    * Launch the provider's CLI login. `opts.deviceAuth` requests the
    * provider's headless device-code flow (OpenAI/codex `--device-auth`)
    * for remote engines that can't receive the CLI's `localhost` OAuth
@@ -1142,6 +1467,7 @@ export class HoustonClient {
    * `opts.enterpriseDomain` (GitHub Copilot Enterprise) only matters on the
    * new TS engine, where the control-plane adapter overrides this method; the
    * legacy Rust path has no Copilot provider, so it's passed through harmlessly.
+   * @assistant group:providers
    */
   providerLogin(
     name: string,
@@ -1157,10 +1483,16 @@ export class HoustonClient {
       Object.keys(query).length ? query : undefined,
     );
   }
+  /**
+   * Sign out of an AI provider.
+   * @assistant group:providers confirm
+   */
   providerLogout(name: string): Promise<void> {
     return this.request("POST", `/providers/${this.seg(name)}/logout`);
   }
   /**
+   * Finish an AI provider sign-in with the code from the browser.
+   *
    * Submit the OAuth verification code the user pasted from their
    * browser. Required for remote/headless engines (container,
    * Always-On VPS, future Cloud) where the CLI can't open the user's
@@ -1169,6 +1501,7 @@ export class HoustonClient {
    * input, and this call writes the code back to the CLI's stdin so
    * it can exchange for an OAuth token. The engine emits
    * `ProviderLoginComplete` when the CLI exits.
+   * @assistant group:providers hidden
    */
   submitProviderLoginCode(name: string, code: string): Promise<void> {
     return this.request("POST", `/providers/${this.seg(name)}/login/code`, {
@@ -1176,6 +1509,8 @@ export class HoustonClient {
     });
   }
   /**
+   * Cancel an AI provider sign-in that is still in progress.
+   *
    * Abort an in-flight browser sign-in. The engine kills the provider
    * CLI subprocess and frees the in-flight slot so a follow-up
    * `providerLogin` isn't rejected as "already pending". Use this when
@@ -1185,11 +1520,14 @@ export class HoustonClient {
    * The engine emits a benign `ProviderLoginComplete` (`success:
    * false`, no `error`) so subscribers clear their pending state
    * without showing an error toast.
+   * @assistant group:providers
    */
   cancelProviderLogin(name: string): Promise<void> {
     return this.request("POST", `/providers/${this.seg(name)}/login/cancel`);
   }
   /**
+   * Connect Gemini with an API key.
+   *
    * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
    * the key shape, writes atomically, and chmods 0600 on Unix. The
    * next `providerStatus("gemini")` poll will return `Authenticated`
@@ -1198,14 +1536,18 @@ export class HoustonClient {
    * Gemini-specific: other providers use the CLI's own OAuth flow via
    * `providerLogin`. Do NOT generalize this route until a second
    * provider needs it.
+   * @assistant group:providers hidden
    */
   setGeminiApiKey(apiKey: string): Promise<void> {
     return this.request("POST", "/providers/gemini/credentials", { apiKey });
   }
   /**
+   * Connect an AI provider with an API key.
+   *
    * Connect an API-key provider (OpenCode Zen / Go) by submitting a pasted key.
    * Only the new TS engine serves these providers; the UI gates the call behind
    * `newEngineActive()`, so on the legacy Rust engine this route is never hit.
+   * @assistant group:providers hidden
    */
   setProviderApiKey(
     name: string,
@@ -1220,6 +1562,8 @@ export class HoustonClient {
     });
   }
   /**
+   * Send this computer's Anthropic sign-in to a cloud agent.
+   *
    * Push a desktop-minted Anthropic OAuth credential to the acting space's agent
    * pod.
    *
@@ -1228,6 +1572,7 @@ export class HoustonClient {
    * engine is always CO-LOCATED with its credential dir and has no such route, so
    * reject loudly rather than pretend to succeed (no silent failure). Declared
    * here so the shared app typechecks against both clients (shim parity).
+   * @assistant group:providers hidden
    */
   pushClaudeOAuthCredential(_credentialJson: string): Promise<void> {
     return Promise.reject(
@@ -1235,20 +1580,26 @@ export class HoustonClient {
     );
   }
   /**
+   * Connect a local or custom AI model server.
+   *
    * Connect an OpenAI-compatible (local) server by base URL + model. The legacy
    * Rust engine has no such provider — it's new-engine + desktop only, and the
    * connect UI is gated on `newEngineActive()` + desktop, so this is never hit
    * here. Reject loudly rather than pretend to succeed (no silent failure).
+   * @assistant group:providers
    */
   setProviderCustomEndpoint(_endpoint: CustomEndpoint): Promise<void> {
     return Promise.reject(new Error("Local models require the new engine."));
   }
   /**
+   * Get the credentials that link a local AI model to a cloud agent.
+   *
    * Mint a relay credential so a local model server can be tunnelled to a CLOUD
    * agent (guided "connect a local model" flow). Hosted + new-engine only — the
    * legacy Rust engine has no gateway to issue one, and the UI is gated on the
    * `openaiCompatible` capability, so this is never hit here. Reject loudly
    * rather than pretend (no silent failure).
+   * @assistant group:providers hidden
    */
   getTunnelCredentials(): Promise<TunnelCredentials | null> {
     return Promise.reject(
@@ -1270,6 +1621,10 @@ export class HoustonClient {
   // control-plane build (engine-mode), so on the legacy wire they never run.
   // Kept here so the shared app typechecks against both clients (shim parity).
 
+  /**
+   * See which apps can be connected and which already are.
+   * @assistant group:integrations
+   */
   async integrationStatus(): Promise<IntegrationProviderStatus[]> {
     return (
       await this.request<{ items: IntegrationProviderStatus[] }>(
@@ -1278,10 +1633,19 @@ export class HoustonClient {
       )
     ).items;
   }
-  /** Keep the desktop gateway's Supabase session fresh (null on sign-out). */
+  /**
+   * Keep the app-connection session signed in.
+   *
+   * Keep the desktop gateway's Supabase session fresh (null on sign-out).
+   * @assistant group:integrations hidden
+   */
   async setIntegrationSession(token: string | null): Promise<void> {
     await this.request("PUT", "/integrations/session", { token });
   }
+  /**
+   * List the apps available to connect.
+   * @assistant group:integrations
+   */
   async integrationToolkits(provider: string): Promise<IntegrationToolkit[]> {
     return (
       await this.request<{ items: IntegrationToolkit[] }>(
@@ -1290,6 +1654,10 @@ export class HoustonClient {
       )
     ).items;
   }
+  /**
+   * List the accounts connected for an app.
+   * @assistant group:integrations
+   */
   async integrationConnections(
     provider: string,
   ): Promise<IntegrationConnection[]> {
@@ -1301,11 +1669,14 @@ export class HoustonClient {
     ).items;
   }
   /**
+   * Connect one of the user's app accounts, such as Gmail or Slack.
+   *
    * Begin connecting a toolkit's OAuth. Pass `agent` (the agent slug) when the
    * connect is initiated from a per-agent surface: the gateway then applies that
    * agent's effective allowlist and auto-grants the toolkit to the agent on a
    * successful connect (Teams v2). Omit it for the account-level Integrations
    * page. Single-player/self-host hosts ignore the field.
+   * @assistant group:integrations confirm
    */
   connectIntegration(
     provider: string,
@@ -1317,7 +1688,12 @@ export class HoustonClient {
       ...(agent ? { agent } : {}),
     });
   }
-  /** Poll one connection after connect() until the OAuth finishes. */
+  /**
+   * Check whether an app connection has finished.
+   *
+   * Poll one connection after connect() until the OAuth finishes.
+   * @assistant group:integrations
+   */
   integrationConnection(
     provider: string,
     connectionId: string,
@@ -1327,8 +1703,13 @@ export class HoustonClient {
       `/integrations/${this.seg(provider)}/connections/${this.seg(connectionId)}`,
     );
   }
-  /** `connectionId` narrows the removal to ONE account of the toolkit (a
-   *  toolkit can hold several — two Gmail logins); omitted removes them all. */
+  /**
+   * Disconnect a connected app account.
+   *
+   * `connectionId` narrows the removal to ONE account of the toolkit (a
+   * toolkit can hold several — two Gmail logins); omitted removes them all.
+   * @assistant group:integrations confirm
+   */
   async disconnectIntegration(
     provider: string,
     toolkit: string,
@@ -1341,9 +1722,12 @@ export class HoustonClient {
     );
   }
   /**
+   * Dismiss the notice asking the user to reconnect their apps.
+   *
    * Dismiss the "reconnect your apps" notice by deleting the legacy
    * credentials server-side; afterwards `integrationStatus()` reports no
    * `reconnect` flag.
+   * @assistant group:integrations hidden
    */
   async dismissIntegrationsReconnectNotice(): Promise<void> {
     await this.request("POST", "/integrations/reconnect-notice/dismiss");
@@ -1356,8 +1740,13 @@ export class HoustonClient {
   // returns `null` when the host predates the feature (404) so all custom UI
   // hides, mirroring `getAgentModelChoice`; every other error throws.
 
-  /** All custom integrations, or `null` when the host does not support the
-   *  feature (404 — old build / gateway-fronted pod). */
+  /**
+   * List the apps the user added themselves.
+   *
+   * All custom integrations, or `null` when the host does not support the
+   * feature (404 — old build / gateway-fronted pod).
+   * @assistant group:integrations
+   */
   async customIntegrations(): Promise<CustomIntegrationView[] | null> {
     try {
       return (
@@ -1371,7 +1760,12 @@ export class HoustonClient {
       throw err;
     }
   }
-  /** Remove a custom integration entirely (executor + secret + definition). */
+  /**
+   * Remove an app the user added themselves.
+   *
+   * Remove a custom integration entirely (executor + secret + definition).
+   * @assistant group:integrations confirm
+   */
   async removeCustomIntegration(slug: string): Promise<void> {
     await this.request(
       "DELETE",
@@ -1379,9 +1773,12 @@ export class HoustonClient {
     );
   }
   /**
+   * Provide the secret that finishes setting up a user-added app.
+   *
    * Provide the secret for a `pending` custom integration. The host validates,
    * stores the secret out-of-band, connects, and returns the refreshed view.
    * The secret VALUE crosses only here (HTTPS body), never the chat transcript.
+   * @assistant group:integrations hidden
    */
   submitCustomIntegrationCredential(
     slug: string,
@@ -1394,11 +1791,14 @@ export class HoustonClient {
     );
   }
   /**
+   * List the user-added apps available to one agent.
+   *
    * The custom-integration list through the per-agent surface — the ONE form a
    * gateway-fronted deployment proxies to the agent's pod (the gateway's own
    * `/v1/integrations` subtree is Composio-only, so the top-level form 404s
    * there — HOU-823). The list is user-global; the agent id authorizes and
    * routes. `null` on 404, mirroring `customIntegrations`.
+   * @assistant group:integrations
    */
   async agentCustomIntegrations(
     agentSlugOrId: string,
@@ -1416,11 +1816,14 @@ export class HoustonClient {
     }
   }
   /**
+   * Provide the secret that finishes setting up a user-added app for one agent.
+   *
    * Provide the secret through the per-agent surface (see
    * `agentCustomIntegrations`) — what the in-chat credential card calls, so
    * the save reaches the agent's pod on a gateway-fronted deployment instead
    * of 404ing at the gateway (HOU-823). Same contract as
    * `submitCustomIntegrationCredential` otherwise.
+   * @assistant group:integrations hidden
    */
   submitAgentCustomIntegrationCredential(
     agentSlugOrId: string,
@@ -1434,11 +1837,14 @@ export class HoustonClient {
     );
   }
   /**
+   * Start the browser sign-in for a user-added app.
+   *
    * Start the browser sign-in for an OAuth custom integration (PRODUCT-1172):
    * the host discovers the service's authorization server, registers, and
    * returns the authorize URL to open in the browser. Completion lands on the
    * host's public callback; the refreshed list arrives via
    * `CustomIntegrationsChanged`.
+   * @assistant group:integrations confirm
    */
   startCustomIntegrationOAuth(slug: string): Promise<{ authorizeUrl: string }> {
     return this.request(
@@ -1446,8 +1852,13 @@ export class HoustonClient {
       `/integrations/custom/definitions/${this.seg(slug)}/oauth/start`,
     );
   }
-  /** `startCustomIntegrationOAuth` through the per-agent surface (the ONE
-   *  form a gateway-fronted deployment proxies to the pod — HOU-823). */
+  /**
+   * Start the browser sign-in for one agent's user-added app.
+   *
+   * `startCustomIntegrationOAuth` through the per-agent surface (the ONE
+   * form a gateway-fronted deployment proxies to the pod — HOU-823).
+   * @assistant group:integrations confirm
+   */
   startAgentCustomIntegrationOAuth(
     agentSlugOrId: string,
     slug: string,
@@ -1457,24 +1868,39 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}/oauth/start`,
     );
   }
-  /** Classify a pasted URL (OpenAPI doc / MCP endpoint / unknown) — the manual
-   *  add form's pre-check (HOU-980). `unknown` is a result, never a throw. */
+  /**
+   * Check what kind of service a pasted link points to.
+   *
+   * Classify a pasted URL (OpenAPI doc / MCP endpoint / unknown) — the manual
+   * add form's pre-check (HOU-980). `unknown` is a result, never a throw.
+   * @assistant group:integrations
+   */
   detectCustomIntegration(url: string): Promise<CustomDetectResult> {
     return this.request("POST", "/integrations/custom/detect", { url });
   }
-  /** Register a custom integration from the manual add form. The host compiles
-   *  it before persisting; a compile failure rejects with the real reason. */
+  /**
+   * Add an app of the user's own from a link.
+   *
+   * Register a custom integration from the manual add form. The host compiles
+   * it before persisting; a compile failure rejects with the real reason.
+   * @assistant group:integrations confirm
+   */
   addCustomIntegration(
     input: AddCustomIntegrationInput,
   ): Promise<CustomIntegrationView> {
     return this.request("POST", "/integrations/custom/definitions", input);
   }
-  /** The compiled tools behind one custom integration (the detail card's
-   *  list), or `null` when the host does not serve the route (404 — old
-   *  build / gateway-fronted pod), mirroring `customIntegrations`. The
-   *  OTHER 404 — an unknown slug, marked `{code:"not_found"}` — is a real
-   *  miss and rethrows (a card open across a concurrent remove must not
-   *  read as "feature absent"). */
+  /**
+   * List the actions a user-added app offers.
+   *
+   * The compiled tools behind one custom integration (the detail card's
+   * list), or `null` when the host does not serve the route (404 — old
+   * build / gateway-fronted pod), mirroring `customIntegrations`. The
+   * OTHER 404 — an unknown slug, marked `{code:"not_found"}` — is a real
+   * miss and rethrows (a card open across a concurrent remove must not
+   * read as "feature absent").
+   * @assistant group:integrations
+   */
   async customIntegrationTools(slug: string): Promise<CustomToolInfo[] | null> {
     try {
       return (
@@ -1493,8 +1919,13 @@ export class HoustonClient {
       throw err;
     }
   }
-  /** `detectCustomIntegration` through the per-agent surface (the ONE form a
-   *  gateway-fronted deployment proxies to the pod — HOU-823). */
+  /**
+   * Check what kind of service a pasted link points to, for one agent.
+   *
+   * `detectCustomIntegration` through the per-agent surface (the ONE form a
+   * gateway-fronted deployment proxies to the pod — HOU-823).
+   * @assistant group:integrations
+   */
   detectAgentCustomIntegration(
     agentSlugOrId: string,
     url: string,
@@ -1505,7 +1936,12 @@ export class HoustonClient {
       { url },
     );
   }
-  /** `addCustomIntegration` through the per-agent surface (HOU-823). */
+  /**
+   * Add an app of the user's own to one agent.
+   *
+   * `addCustomIntegration` through the per-agent surface (HOU-823).
+   * @assistant group:integrations confirm
+   */
   addAgentCustomIntegration(
     agentSlugOrId: string,
     input: AddCustomIntegrationInput,
@@ -1516,7 +1952,12 @@ export class HoustonClient {
       input,
     );
   }
-  /** `removeCustomIntegration` through the per-agent surface (HOU-823). */
+  /**
+   * Remove a user-added app from one agent.
+   *
+   * `removeCustomIntegration` through the per-agent surface (HOU-823).
+   * @assistant group:integrations confirm
+   */
   async removeAgentCustomIntegration(
     agentSlugOrId: string,
     slug: string,
@@ -1526,8 +1967,13 @@ export class HoustonClient {
       `/agents/${this.seg(agentSlugOrId)}/integrations/custom/definitions/${this.seg(slug)}`,
     );
   }
-  /** `customIntegrationTools` through the per-agent surface (HOU-823).
-   *  `null` on a route-absent 404 only, mirroring the top-level form. */
+  /**
+   * List the actions one agent's user-added app offers.
+   *
+   * `customIntegrationTools` through the per-agent surface (HOU-823).
+   * `null` on a route-absent 404 only, mirroring the top-level form.
+   * @assistant group:integrations
+   */
   async agentCustomIntegrationTools(
     agentSlugOrId: string,
     slug: string,
@@ -1557,8 +2003,11 @@ export class HoustonClient {
   // by the TS host (self-host) and by the cloud edge (managed). Off on desktop.
 
   /**
+   * List the app events a routine can wake up on.
+   *
    * The trigger catalog for one toolkit (C9) — the events a routine can wake on.
    * Read-only GET, so it replays safely on a transient transport blip.
+   * @assistant group:routines
    */
   async triggerTypes(toolkit: string): Promise<TriggerType[]> {
     return (
@@ -1571,11 +2020,14 @@ export class HoustonClient {
     ).items;
   }
   /**
+   * Check whether an agent's routine triggers are ready.
+   *
    * One agent's per-routine trigger status (C9), or `null` when the host does
    * not serve triggers (404) — a deployment without event-driven routines (e.g.
    * desktop). Callers treat `null` as "triggers unsupported here" and hide the
    * badge; every other error still throws. Mirrors how `getAgentModelChoice`
    * degrades on a 404.
+   * @assistant group:routines
    */
   async agentTriggerStatus(
     agentId: string,
@@ -1594,12 +2046,15 @@ export class HoustonClient {
   }
 
   /**
+   * Create a web address another service can call to start a routine.
+   *
    * Mint (or rotate) a routine's incoming-webhook key. Returns the one-time
    * reveal (`url` + `secret` + `key_prefix`), or `null` when the host does not
    * serve webhook keys (404) — a deployment without a webhook backend (e.g.
    * desktop/self-host). Calling again ROTATES: the old secret is invalidated.
    * Only the gateway serves this route; the TS host 404s it. Mirrors how
    * `agentTriggerStatus` degrades on a 404.
+   * @assistant group:routines confirm
    */
   async mintRoutineWebhookKey(
     agentId: string,
@@ -1622,15 +2077,21 @@ export class HoustonClient {
   // feature, so on the legacy wire these never run. Kept here so the shared app
   // typechecks against both clients (shim parity), same as integrations above.
 
-  /** The current user's org + role (and, for owner/admin, the member roster). */
+  /**
+   * Get the current workspace, your role, and its visible member roster.
+   * @assistant group:org
+   */
   getOrg(): Promise<OrgInfo> {
     return this.request("GET", "/org");
   }
   /**
+   * Get names and photos for workspace members.
+   *
    * Display profiles (name + photo) for the given member ids (any co-member of
    * the active space; the personal space resolves only the caller). Non-co-member
    * ids are omitted. Degrades to an empty map on a host without the route (404),
    * mirroring `getAgentModelChoice`'s swallow; every other error throws.
+   * @assistant group:org
    */
   async getOrgProfiles(ids: string[]): Promise<UserProfilesResult> {
     if (ids.length === 0) return { profiles: {} };
@@ -1648,12 +2109,15 @@ export class HoustonClient {
     }
   }
   /**
+   * List the people available for mentions in the current workspace.
+   *
    * The sanitized co-member directory of the active space: every member the
    * caller shares the space with (the personal space resolves only the caller),
    * named-first. No emails, no roles — it exists so the composer can offer
    * @mentions and the renderer can chip them. Degrades to an empty list on a
    * host without the route (404), mirroring `getOrgProfiles`'s swallow, so a
    * pre-feature gateway simply offers no autocomplete; every other error throws.
+   * @assistant group:org
    */
   async getOrgPeople(): Promise<OrgPerson[]> {
     try {
@@ -1668,11 +2132,14 @@ export class HoustonClient {
     }
   }
   /**
+   * Get your editable name and photo for the current workspace.
+   *
    * The caller's OWN editable display profile (name + photo), effective values
    * plus which of them the user has overridden. Degrades to `null` on a host
    * without the route (404), mirroring `getOrgPeople`'s swallow, so on a
    * pre-feature gateway the Settings profile section simply never renders;
    * every other error throws.
+   * @assistant group:org
    */
   async getMyProfile(): Promise<EditableProfile | null> {
     try {
@@ -1683,6 +2150,8 @@ export class HoustonClient {
     }
   }
   /**
+   * Update your name or photo for the current workspace.
+   *
    * Update the caller's own display profile. Per key: a string sets, `null`
    * clears back to the identity provider's value, an omitted key is untouched.
    * Answers the full effective profile, so the caller repaints from the host's
@@ -1690,28 +2159,41 @@ export class HoustonClient {
    * 404 the way {@link getMyProfile} does — a write that silently reported
    * success on a host that never stored it is the exact silent failure this
    * codebase forbids; the 400 from a rejected name/photo throws too.
+   * @assistant group:org
    */
   setMyProfile(update: EditableProfileUpdate): Promise<EditableProfile> {
     return this.request("PUT", "/me/profile", update);
   }
   /**
+   * Invite or add a person to the current workspace with a chosen role.
+   *
    * Add a member by email at a role (owner only; enforced by the host). A known
    * Houston user is added directly; an unknown email creates a pending invite
    * instead (host answers `202 {invited:true,...}`). The parsed body is returned
    * so the caller can tell the two apart (`invited` / `userId`).
+   * @assistant group:org confirm
    */
   addOrgMember(email: string, role: OrgRole): Promise<AddOrgMemberResult> {
     return this.request("POST", "/org/members", { email, role });
   }
-  /** Revoke a pending invite by id (owner only). */
+  /**
+   * Revoke a pending workspace invitation.
+   * @assistant group:org confirm
+   */
   async deleteOrgInvite(inviteId: string): Promise<void> {
     await this.request("DELETE", `/org/invites/${this.seg(inviteId)}`);
   }
-  /** Remove a member from the org. */
+  /**
+   * Remove a person from the current workspace.
+   * @assistant group:org confirm
+   */
   async removeOrgMember(userId: string): Promise<void> {
     await this.request("DELETE", `/org/members/${this.seg(userId)}`);
   }
-  /** Change a member's role. */
+  /**
+   * Change a workspace member's role.
+   * @assistant group:org confirm
+   */
   async setOrgMemberRole(userId: string, role: OrgRole): Promise<void> {
     await this.request("PATCH", `/org/members/${this.seg(userId)}`, { role });
   }
@@ -1731,12 +2213,15 @@ export class HoustonClient {
   // truth — the exact silent failure this codebase forbids. It throws instead.
 
   /**
+   * List this workspace's teams of agents and people.
+   *
    * Every team of the active space, as the CALLER sees it: ordered by the
    * gateway (`sortOrder`, then creation), with `agentSlugs` role-filtered and
    * `joined`/`owner`/`memberCount` already resolved. A personal space answers
    * its REAL list too — the default team plus whatever its owner created, all
    * of them joined and owned by the one person in it — so the client renders it
    * with no branch. A GET, so it replays safely on a transient transport blip.
+   * @assistant group:teams
    */
   async listAgentTeams(): Promise<AgentTeam[]> {
     const body = await this.request<{ teams?: AgentTeam[] }>(
@@ -1746,12 +2231,15 @@ export class HoustonClient {
     return body.teams ?? [];
   }
   /**
+   * Create a team in this workspace.
+   *
    * Create a team in the active space. Any member may (gating creation on an
    * org role would buy no safety when a team grants nothing); the creator gets
    * an explicit owner row and the team sorts last. `name` is trimmed server-side
    * and must be 1..60 runes (`400 invalid_name`). A POST, so `send` never
    * auto-replays it — the gateway has no dedup, so a LOST response must be
    * reconciled with {@link listAgentTeams}, never blind-retried.
+   * @assistant group:teams
    */
   createAgentTeam(input: {
     name: string;
@@ -1761,6 +2249,8 @@ export class HoustonClient {
     return this.request("POST", "/org/teams", input);
   }
   /**
+   * Rename, reorder, or restyle a team.
+   *
    * Rename, reorder or restyle one team (effective team owner only — identity
    * is not a structural property: the team you may rename is the team you may
    * style). Partial: an omitted key is untouched, so a rename must not also send
@@ -1785,6 +2275,7 @@ export class HoustonClient {
    * NOT an identity field: any string is valid, `""` is simply an empty context
    * rather than a special CLEAR, and it is never trimmed — the user's own line
    * breaks and indentation are the content.
+   * @assistant group:teams
    */
   updateAgentTeam(
     teamId: string,
@@ -1799,20 +2290,26 @@ export class HoustonClient {
     return this.request("PATCH", `/org/teams/${this.seg(teamId)}`, patch);
   }
   /**
+   * Delete a team.
+   *
    * Delete one team (effective team owner only). Its agents fall back to the
    * default team and its memberships cascade — both are database effects, so
    * there is nothing for the client to clean up beyond refetching. Refused with
    * `400 default_team` on the catch-all, which everything else depends on.
+   * @assistant group:teams confirm
    */
   async deleteAgentTeam(teamId: string): Promise<void> {
     await this.request("DELETE", `/org/teams/${this.seg(teamId)}`);
   }
   /**
+   * List the people who joined a team.
+   *
    * One team's EXPLICIT membership rows (any member of the space may read
    * them). Implicit owners — an org owner/admin owns every team — are a
    * permission rule and never appear, so a roster that looks short next to
    * `memberCount` is correct: never derive the caller's own `joined`/`owner`
    * from this list, read them off the {@link AgentTeam}.
+   * @assistant group:teams
    */
   async listAgentTeamMembers(teamId: string): Promise<AgentTeamMember[]> {
     const body = await this.request<{ members?: AgentTeamMember[] }>(
@@ -1822,21 +2319,27 @@ export class HoustonClient {
     return body.members ?? [];
   }
   /**
+   * Join a team.
+   *
    * Subscribe the caller to a team (v1 teams are all public). Idempotent, and it
    * never demotes an existing owner row, so a double-click is harmless. A no-op
    * on the default team, which everyone is already in. One of the THREE
    * people-management routes a personal space refuses (`403 personal_space`) —
    * it holds one human, so there is nobody to subscribe to anyone's team.
+   * @assistant group:teams
    */
   async joinAgentTeam(teamId: string): Promise<void> {
     await this.request("POST", `/org/teams/${this.seg(teamId)}/join`);
   }
   /**
+   * Remove someone from a team, or leave it.
+   *
    * Drop one membership row: the caller's own (leave) or someone else's (remove,
    * effective team owner only). Idempotent — removing a non-member still answers
    * `204`, so a double-click cannot 404. `400 default_team`: nobody leaves the
    * catch-all. `403 personal_space` in a personal space, ahead of that — there
    * are no people to manage there, whichever team is named.
+   * @assistant group:teams confirm
    */
   async removeAgentTeamMember(teamId: string, userId: string): Promise<void> {
     await this.request(
@@ -1845,12 +2348,15 @@ export class HoustonClient {
     );
   }
   /**
+   * Give someone ownership of a team, or take it away.
+   *
    * Set (or clear) one member's explicit ownership of a team — effective team
    * owner only. An UPSERT: it also adds a member who never joined, and the
    * target must already be in the space (`400 not_a_member`). Demoting the last
    * explicit owner is allowed, because implicit owners always exist. Refused
    * with `400 default_team`, which carries no explicit rows at all, and with
    * `403 personal_space` ahead of that in a personal space.
+   * @assistant group:teams confirm
    */
   async setAgentTeamMemberOwner(
     teamId: string,
@@ -1864,11 +2370,14 @@ export class HoustonClient {
     );
   }
   /**
+   * Move an agent into another team.
+   *
    * Move one agent to another team in the same space. The caller must own BOTH
    * the source and the target team, so no team owner can raid another's. This
    * changes GROUPING only — assignments, and therefore who may drive the agent,
    * are untouched. Re-issuing the agent's current team is a no-op `204`;
    * `400 invalid_team_id` when `teamId` is absent, blank, or not a string.
+   * @assistant group:teams confirm
    */
   async setAgentTeam(agentSlugOrId: string, teamId: string): Promise<void> {
     await this.request("PUT", `/agents/${this.seg(agentSlugOrId)}/team`, {
@@ -1883,10 +2392,13 @@ export class HoustonClient {
   // for shim parity like the org methods above.
 
   /**
+   * List the workspaces the user belongs to and any pending invitations.
+   *
    * The caller's spaces + pending invites (C8 §Wire surface). Degrades to an
    * empty result on a host that predates spaces (404) — the switcher then shows
    * only the personal workspace, byte-identical to a pre-C8 deployment. Mirrors
    * how `getAgentModelChoice` swallows a 404; every other error throws.
+   * @assistant group:spaces
    */
   async listOrgs(): Promise<OrgsList> {
     try {
@@ -1899,15 +2411,20 @@ export class HoustonClient {
     }
   }
   /**
+   * Create a shared team workspace.
+   *
    * Create a team space (C8 §Wire surface). NOT idempotent — the gateway has no
    * dedup, so on a LOST response DON'T blind-retry: reconcile via `listOrgs` and
    * reuse the persisted slug. Never degrades — a failure must reach the UI, so it
    * throws the real `HoustonEngineError`. A POST, so `send` never auto-replays it.
+   * @assistant group:spaces
    */
   createOrg(name: string): Promise<OrgSummary> {
     return this.request("POST", "/orgs", { name });
   }
   /**
+   * Accept an invitation to join a team workspace.
+   *
    * Accept a pending invite addressed to the caller (C8 §Wire surface), by the
    * id that rides `listOrgs().invites`. Answers the joined space so the caller
    * can name it without a second read. Never degrades — every rejection is a
@@ -1915,6 +2432,7 @@ export class HoustonClient {
    * or addressed to another email — the gateway deliberately can't tell them
    * apart), `409 already_member`, `403 needs_upgrade` (the team's trial ended).
    * A POST, so `send` never auto-replays it.
+   * @assistant group:spaces confirm
    */
   async acceptOrgInvite(inviteId: string): Promise<OrgSummary> {
     const res = await this.request<{ org: OrgSummary }>(
@@ -1924,19 +2442,25 @@ export class HoustonClient {
     return res.org;
   }
   /**
+   * Decline an invitation to join a team workspace.
+   *
    * Decline a pending invite addressed to the caller (C8 §Wire surface) — the
    * invitee's own `204`, NOT the owner's revoke (`deleteOrgInvite`, which is
    * org-scoped at `/org/invites/:id`). Never degrades: a `404 invite_not_found`
    * must reach the UI so the stale row explains itself.
+   * @assistant group:spaces confirm
    */
   async declineOrgInvite(inviteId: string): Promise<void> {
     await this.request("DELETE", `/org-invites/${this.seg(inviteId)}`);
   }
   /**
+   * Move an agent into a team workspace.
+   *
    * Move an agent into a team space (C8 §Agent move). Returns the `moveId` to
    * poll with `getMoveStatus` to terminal `done` before inviting. Never degrades:
    * a `403 unsupported_move` / `409 unmovable_volume` / `403 needs_upgrade` must
    * surface, so it throws. A POST, so `send` never auto-replays it.
+   * @assistant group:spaces confirm
    */
   moveAgent(agentSlugOrId: string, toSlug: string): Promise<AgentMoveStart> {
     return this.request("POST", `/agents/${this.seg(agentSlugOrId)}/move`, {
@@ -1944,9 +2468,12 @@ export class HoustonClient {
     });
   }
   /**
+   * Check how an agent's move to another workspace is going.
+   *
    * Poll one agent-move's progress (C8). The move-completion signal is THIS route
    * only — the event fan-in relays pod-scoped events and must not be relied on for
    * completion. A GET, so it replays safely on a transient transport blip.
+   * @assistant group:spaces
    */
   getMoveStatus(
     agentSlugOrId: string,
@@ -1966,6 +2493,8 @@ export class HoustonClient {
   // Stripe-hosted URL.
 
   /**
+   * See the plan, trial, and payment status of the team workspace.
+   *
    * The active team's billing summary (C8 §Billing wire surface). Owner/admin on
    * a team space only. Degrades to `null` for the NOT-ENTITLED cases — a gateway
    * that predates billing (404), a caller the gateway refuses billing detail
@@ -1981,6 +2510,7 @@ export class HoustonClient {
    * enterprise), `past_due` (payment failed, still inside the 7-day grace),
    * `expired` (trial or grace elapsed — writes by non-owners then 403
    * `needs_upgrade`, surfaced to members as `OrgSummary.degraded`).
+   * @assistant group:billing
    */
   async getBilling(): Promise<BillingSummary | null> {
     try {
@@ -1996,18 +2526,24 @@ export class HoustonClient {
     }
   }
   /**
+   * Start the checkout that subscribes the team workspace.
+   *
    * Start a Stripe Checkout session for the active team (owner only; the gateway
    * 403s `not_owner` for an admin). Returns the hosted `{url}` to open. Never
    * degrades — a failure must reach the UI, so it throws the real
    * `HoustonEngineError`.
+   * @assistant group:billing confirm
    */
   createCheckout(interval: "monthly" | "annual"): Promise<BillingCheckout> {
     return this.request("POST", "/org/billing/checkout", { interval });
   }
   /**
+   * Open the billing page to change the card, see invoices, or cancel.
+   *
    * Open the Stripe customer portal for the active team (owner only) — card,
    * invoices, interval switch, cancel. Returns the hosted `{url}`. Never degrades;
    * a failure throws so the UI surfaces the real reason.
+   * @assistant group:billing confirm
    */
   createPortal(): Promise<BillingCheckout> {
     return this.request("POST", "/org/billing/portal", {});
@@ -2022,27 +2558,36 @@ export class HoustonClient {
   // these.
 
   /**
+   * List the user's active API keys.
+   *
    * The caller's active API keys, newest first (C9 §Routes). No secrets — each
    * entry carries only its display `prefix`. A GET, so it replays safely on a
    * transient transport blip.
+   * @assistant group:api-keys
    */
   listApiKeys(): Promise<ApiKey[]> {
     return this.request<{ keys: ApiKey[] }>("GET", "/keys").then((r) => r.keys);
   }
   /**
+   * Create an API key for the user.
+   *
    * Mint a personal API key (C9). Returns the FULL secret in `key`, exposed ONLY
    * here and never retrievable again, so the caller reveals it once and keeps it
    * out of any cache. `name` is trimmed 1..100 server-side; ≥20 active keys →
    * `400 {code:"key_limit"}`, which the UI renders inline (revoke to free a
    * slot). A POST, so `send` never auto-replays it.
+   * @assistant group:api-keys confirm
    */
   createApiKey(name: string): Promise<ApiKeyCreated> {
     return this.request("POST", "/keys", { name });
   }
   /**
+   * Permanently revoke an API key.
+   *
    * Soft-revoke a key by id (C9). Idempotent from the user's view: an unknown,
    * foreign, or already-revoked id answers `404` (no existence leak). Returns
    * nothing on success (`204`).
+   * @assistant group:api-keys confirm
    */
   revokeApiKey(id: string): Promise<void> {
     return this.request("DELETE", `/keys/${this.seg(id)}`);
@@ -2051,6 +2596,8 @@ export class HoustonClient {
   // ---------- per-agent assignments (multiplayer) ----------
 
   /**
+   * Choose who may use an agent, and at what access level.
+   *
    * Set who may use this agent, and at what access level (Teams v2).
    *
    * Pass `AgentAssignment[]` (`{userId, access}`) to send the v2 body
@@ -2060,6 +2607,7 @@ export class HoustonClient {
    * except users who already had `manager` keep it). An empty array takes the
    * legacy `{userIds: []}` path, preserving the old "empty = everyone" meaning.
    * Gate: owner any agent; admin only if agent-manager (enforced by the host).
+   * @assistant group:agents confirm
    */
   async setAgentAssignments(
     agentSlugOrId: string,
@@ -2076,20 +2624,26 @@ export class HoustonClient {
     );
   }
   /**
+   * Read which apps and AI models an agent is allowed to use.
+   *
    * Read this agent's Teams settings (any assigned caller or owner):
    * `allowedToolkits` (the agent's integration ceiling — the whole effective
    * allowlist, policy is per agent only) and the caller's effective `access`.
+   * @assistant group:agents
    */
   getAgentSettings(agentSlugOrId: string): Promise<AgentSettings> {
     return this.request("GET", `/agents/${this.seg(agentSlugOrId)}/settings`);
   }
   /**
+   * Choose which apps and AI models an agent is allowed to use.
+   *
    * Replace this agent's manager-set ceilings (agent-manager only). Pass
    * `allowedToolkits` (the integration ceiling: `null` = unrestricted, `[]` =
    * none — the host also prunes now-disallowed toolkits from existing grants so
    * revocation takes effect immediately) and/or `allowedModels` (the AI-model
    * ceiling: `null` = every model allowed, `[]` = none). Both fields are
    * optional so a caller can update one ceiling without touching the other.
+   * @assistant group:agents confirm
    */
   async setAgentSettings(
     agentSlugOrId: string,
@@ -2105,11 +2659,14 @@ export class HoustonClient {
     );
   }
   /**
+   * Read which AI model the user picked for an agent.
+   *
    * Read the ACTING user's model choice for this agent plus the agent's
    * effective `allowedModels` ceiling (any assigned caller / owner). Returns
    * `null` when the host does not serve model choices (404) — a non-Teams host —
    * so the composer degrades to its single-player behavior; every other error
    * throws.
+   * @assistant group:agents
    */
   async getAgentModelChoice(
     agentSlugOrId: string,
@@ -2125,9 +2682,12 @@ export class HoustonClient {
     }
   }
   /**
+   * Choose which AI model an agent uses.
+   *
    * Set the ACTING user's model choice for this agent (any assigned caller). The
    * gateway validates the model is within the agent's `allowedModels` ceiling
    * and answers `400 {code:"model_not_allowed"}` otherwise.
+   * @assistant group:agents
    */
   setAgentModelChoice(
     agentSlugOrId: string,
@@ -2140,9 +2700,12 @@ export class HoustonClient {
     );
   }
   /**
+   * Read the workspace's log of who did what.
+   *
    * Read the org audit log, newest first (owner org-wide; admin filtered to
    * their managed agents; plain members 403). `before` pages by entry id,
    * `limit` caps the page (host clamps to ≤ 200).
+   * @assistant group:org
    */
   async orgAudit(
     opts: { before?: number; limit?: number } = {},
@@ -2160,8 +2723,11 @@ export class HoustonClient {
     ).entries;
   }
   /**
+   * See how much each person and agent used the workspace.
+   *
    * Read per-agent/user usage counters over the last `days` (owner org-wide;
    * admin their managed agents; plain members 403). Host clamps `days` to ≤ 90.
+   * @assistant group:org
    */
   async orgUsage(days: number): Promise<UsageRow[]> {
     return (
@@ -2171,9 +2737,12 @@ export class HoustonClient {
     ).rows;
   }
   /**
+   * See how much running time each agent used.
+   *
    * Per-agent compute usage (engine running time) over the last `days`, scoped
    * server-side to the agents the caller can access. Only deployments that
    * advertise `capabilities.computeUsage` serve it. Host clamps `days` to ≤ 90.
+   * @assistant group:org
    */
   async computeUsage(days: number): Promise<ComputeUsage> {
     return await this.request<ComputeUsage>(
@@ -2184,9 +2753,12 @@ export class HoustonClient {
     );
   }
   /**
+   * Put aside the question an agent is waiting on.
+   *
    * Retire a conversation's pending interaction by appending a durable stop
    * marker (the stepper X / abandon). A runtime passthrough — like a real Stop,
    * the model learns nothing from it.
+   * @assistant group:chat hidden
    */
   async dismissInteraction(
     agentSlugOrId: string,
@@ -2198,11 +2770,14 @@ export class HoustonClient {
     );
   }
   /**
+   * Drop a conversation's messages from one message onward.
+   *
    * Edit-and-resend rewind (PRODUCT-1217): drop the conversation's transcript
    * tail from the named user turn onward, so the caller can resend an edited
    * version of that message with a normal send. A runtime passthrough via the
    * host's channel dispatch, like `dismissInteraction`. Answers 409 while a
    * turn is queued or running, 404 when the turn id is unknown.
+   * @assistant group:chat hidden
    */
   async truncateConversation(
     agentSlugOrId: string,
@@ -2216,11 +2791,14 @@ export class HoustonClient {
     );
   }
   /**
+   * Switch how the running turn of a conversation behaves.
+   *
    * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude Code's
    * shift+tab semantics): the running turn adopts the new mode at its next tool
    * decision. `applied: false` is benign — no turn was running, and the next
    * send pins the mode itself. A runtime passthrough via the host's channel
    * dispatch, like `dismissInteraction`.
+   * @assistant group:chat hidden
    */
   setLiveTurnMode(
     agentSlugOrId: string,
@@ -2236,21 +2814,45 @@ export class HoustonClient {
 
   // ---------- store ----------
 
+  /**
+   * Browse the agents offered in the Agent Store.
+   * @assistant group:store
+   */
   storeCatalog(): Promise<StoreListing[]> {
     return this.request("GET", "/store/catalog");
   }
+  /**
+   * Search the Agent Store.
+   * @assistant group:store
+   */
   storeSearch(q: string): Promise<StoreListing[]> {
     return this.request("GET", "/store/search", undefined, { q });
   }
+  /**
+   * Install an agent from the Agent Store.
+   * @assistant group:store confirm
+   */
   installStoreAgent(req: InstallAgent): Promise<void> {
     return this.request("POST", "/store/installs", req);
   }
+  /**
+   * Uninstall an agent that came from the Agent Store.
+   * @assistant group:store confirm
+   */
   uninstallStoreAgent(agentId: string): Promise<void> {
     return this.request("DELETE", `/store/installs/${this.seg(agentId)}`);
   }
+  /**
+   * Install an agent from a GitHub repository.
+   * @assistant group:agents confirm
+   */
   installAgentFromGithub(req: InstallFromGithub): Promise<{ agentId: string }> {
     return this.request("POST", "/agents/install-from-github", req);
   }
+  /**
+   * Check whether any installed agent has an update available.
+   * @assistant group:agents
+   */
   checkAgentUpdates(): Promise<string[]> {
     // Read-only update check POST → replay-safe.
     return this.request(
@@ -2265,6 +2867,10 @@ export class HoustonClient {
 
   // ---------- attachments ----------
 
+  /**
+   * Upload files to attach to a message.
+   * @assistant group:attachments hidden
+   */
   async saveAttachments(scopeId: string, files: File[]): Promise<string[]> {
     if (files.length === 0) return [];
     const paths = new Array<string>(files.length);
@@ -2323,18 +2929,34 @@ export class HoustonClient {
     await Promise.all(workers);
     if (firstError !== undefined) throw firstError;
   }
+  /**
+   * Permanently delete the files attached to a message.
+   * @assistant group:attachments confirm
+   */
   deleteAttachments(scopeId: string): Promise<void> {
     return this.request("DELETE", `/attachments/${this.seg(scopeId)}`);
   }
+  /**
+   * List the files attached to a message.
+   * @assistant group:attachments
+   */
   listAttachments(scopeId: string): Promise<AttachmentManifest[]> {
     return this.request("GET", `/attachments/${this.seg(scopeId)}`);
   }
 
   // ---------- worktree / shell ----------
 
+  /**
+   * Create a separate working copy of a project's code.
+   * @assistant group:system hidden
+   */
   createWorktree(req: CreateWorktreeRequest): Promise<WorktreeInfo> {
     return this.request("POST", "/worktrees", req);
   }
+  /**
+   * List the separate working copies of a project's code.
+   * @assistant group:system hidden
+   */
   listWorktrees(req: ListWorktreesRequest): Promise<WorktreeInfo[]> {
     // Read-only listing POST → replay-safe.
     return this.request(
@@ -2346,37 +2968,70 @@ export class HoustonClient {
       true,
     );
   }
+  /**
+   * Remove a separate working copy of a project's code.
+   * @assistant group:system hidden
+   */
   removeWorktree(req: RemoveWorktreeRequest): Promise<void> {
     return this.request("POST", "/worktrees/remove", req);
   }
+  /**
+   * Run a command on this computer.
+   * @assistant group:system hidden
+   */
   runShell(req: RunShellRequest): Promise<string> {
     return this.request("POST", "/shell", req);
   }
 
   // ---------- tunnel (mobile pairing + device-token management) ----------
 
+  /**
+   * Check whether the phone connection is available.
+   * @assistant group:system hidden
+   */
   tunnelStatus(): Promise<TunnelStatus> {
     return this.request("GET", "/tunnel/status");
   }
+  /**
+   * Create a code that pairs a phone with this Houston.
+   * @assistant group:system hidden
+   */
   mintPairingCode(): Promise<PairingCode> {
     return this.request("POST", "/tunnel/pairing");
   }
+  /**
+   * Revoke every paired phone and issue a fresh pairing code.
+   * @assistant group:system hidden
+   */
   resetPhoneAccess(): Promise<PairingCode> {
     return this.request("POST", "/tunnel/reset-access");
   }
 
   // ---------- push (mobile notification registration) ----------
 
+  /**
+   * Register a phone to receive notifications.
+   * @assistant group:system hidden
+   */
   registerPushDevice(req: PushRegisterRequest): Promise<{ ok: boolean }> {
     return this.request("POST", "/push/register", req);
   }
+  /**
+   * Stop a phone from receiving notifications.
+   * @assistant group:system hidden
+   */
   unregisterPushDevice(deviceToken: string): Promise<{ ok: boolean }> {
     return this.request("DELETE", "/push/unregister", { deviceToken });
   }
 
   // ---------- sessions ----------
 
-  /** Start a session. `agentPath` is percent-encoded as a single path segment. */
+  /**
+   * Send a message to an agent and set it working.
+   *
+   * Start a session. `agentPath` is percent-encoded as a single path segment.
+   * @assistant group:chat confirm
+   */
   startSession(
     agentPath: string,
     req: SessionStartRequest,
@@ -2384,16 +3039,23 @@ export class HoustonClient {
     return this.request("POST", `/agents/${this.seg(agentPath)}/sessions`, req);
   }
   /**
+   * Drop a message that is still waiting in the send queue.
+   *
    * Drop one queued (not yet sent) message from a conversation's send queue.
    * INERT here: the queue lives in the host engine-adapter (the aliased
    * implementation every build runs); this stub only keeps the unaliased
    * surface shape-identical.
+   * @assistant group:chat hidden
    */
   removeQueuedMessage(
     _agentPath: string,
     _sessionKey: string,
     _id: string,
   ): void {}
+  /**
+   * Stop an agent that is currently working.
+   * @assistant group:chat confirm
+   */
   cancelSession(
     agentPath: string,
     sessionKey: string,
@@ -2403,6 +3065,10 @@ export class HoustonClient {
       `/agents/${this.seg(agentPath)}/sessions/${this.seg(sessionKey)}:cancel`,
     );
   }
+  /**
+   * Start the guided first conversation with an agent.
+   * @assistant group:chat hidden
+   */
   startOnboarding(
     agentPath: string,
     sessionKey: string,
@@ -2414,11 +3080,14 @@ export class HoustonClient {
     );
   }
   /**
+   * Load the messages of a conversation.
+   *
    * `opts.observe` (default true) is consumed by the new-engine adapter, where
    * opening a chat also attaches a passive observer stream: bulk history reads
    * (mission search, board scans) pass `false` so N loads don't spawn N
    * streams. The Rust engine's WS delivers everything already — here the flag
    * is accepted for signature parity and ignored.
+   * @assistant group:chat hidden
    */
   loadChatHistory(
     agentPath: string,
@@ -2431,10 +3100,13 @@ export class HoustonClient {
     );
   }
   /**
+   * Load the previous page of a conversation's messages.
+   *
    * Prepend the previous transcript page before the loaded window (HOU-819).
    * Implemented by the v3 host adapter (which owns the conversation VM the
    * page prepends into); this legacy client loads full histories, so there is
    * never an older page to fetch.
+   * @assistant group:chat hidden
    */
   loadOlderChatHistory(
     _agentPath: string,
@@ -2442,6 +3114,10 @@ export class HoustonClient {
   ): Promise<{ hasOlder: boolean }> {
     return Promise.resolve({ hasOlder: false });
   }
+  /**
+   * Summarize a message into a short title.
+   * @assistant group:chat
+   */
   summarizeActivity(
     message: string,
     opts: SummarizeOptions = {},
@@ -2454,6 +3130,10 @@ export class HoustonClient {
     });
   }
 
+  /**
+   * Draft an agent's instructions from a short description.
+   * @assistant group:agents
+   */
   generateAgentInstructions(
     description: string,
     opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
@@ -2469,6 +3149,10 @@ export class HoustonClient {
 
   // ---------- routine scheduler ----------
 
+  /**
+   * Run a routine immediately.
+   * @assistant group:routines confirm
+   */
   runRoutineNow(agentPath: string, routineId: string): Promise<void> {
     return this.request(
       "POST",
@@ -2479,6 +3163,10 @@ export class HoustonClient {
       },
     );
   }
+  /**
+   * Cancel a routine run that is in progress.
+   * @assistant group:routines confirm
+   */
   cancelRoutineRun(
     agentPath: string,
     routineId: string,
@@ -2491,16 +3179,28 @@ export class HoustonClient {
       { agentPath },
     );
   }
+  /**
+   * Start scheduling routines for an agent.
+   * @assistant group:routines
+   */
   startRoutineScheduler(agentPath: string): Promise<void> {
     return this.request("POST", "/routines/scheduler/start", undefined, {
       agentPath,
     });
   }
+  /**
+   * Stop scheduling routines for an agent.
+   * @assistant group:routines
+   */
   stopRoutineScheduler(agentPath: string): Promise<void> {
     return this.request("POST", "/routines/scheduler/stop", undefined, {
       agentPath,
     });
   }
+  /**
+   * Synchronize an agent's routine schedule now.
+   * @assistant group:routines
+   */
   syncRoutineScheduler(agentPath: string): Promise<void> {
     return this.request("POST", "/routines/scheduler/sync", undefined, {
       agentPath,
@@ -2509,9 +3209,17 @@ export class HoustonClient {
 
   // ---------- agent file watcher ----------
 
+  /**
+   * Start watching an agent's folder for changes.
+   * @assistant group:system hidden
+   */
   startAgentWatcher(agentPath: string): Promise<void> {
     return this.request("POST", "/watcher/start", { agentPath });
   }
+  /**
+   * Stop watching an agent's folder for changes.
+   * @assistant group:system hidden
+   */
   stopAgentWatcher(): Promise<void> {
     return this.request("POST", "/watcher/stop");
   }
@@ -2519,20 +3227,26 @@ export class HoustonClient {
   // ---------- claude (runtime installer) ----------
 
   /**
+   * Check whether the Claude Code runtime is installed.
+   *
    * Snapshot of the runtime Claude Code install — used by the
    * onboarding "Sign in with Anthropic" card so it can show a clear
    * "couldn't reach Anthropic" / "Retry" instead of the misleading
    * "install it yourself" hint that fires for every other
    * `cli_installed=false` case (issue #231).
+   * @assistant group:system hidden
    */
   claudeStatus(): Promise<ClaudeStatus> {
     return this.request("GET", "/claude/status");
   }
   /**
+   * Install the Claude Code runtime.
+   *
    * Kick off a fresh install in the background. The HTTP request
    * returns immediately; progress + completion stream over the WS
    * firehose as `ClaudeCliInstalling` / `ClaudeCliReady` /
    * `ClaudeCliFailed` events.
+   * @assistant group:system hidden
    */
   claudeInstall(): Promise<void> {
     return this.request("POST", "/claude/install");
@@ -2540,56 +3254,103 @@ export class HoustonClient {
 
   // ---------- composio ----------
 
+  /**
+   * Check whether the app-connection service is signed in.
+   * @assistant group:integrations
+   */
   composioStatus(): Promise<ComposioStatus> {
     return this.request("GET", "/composio/status");
   }
+  /**
+   * Check whether the app-connection helper is installed.
+   * @assistant group:integrations
+   */
   composioCliInstalled(): Promise<boolean> {
     return this.request<{ installed: boolean }>(
       "GET",
       "/composio/cli-installed",
     ).then((r) => r.installed);
   }
+  /**
+   * Install the app-connection helper.
+   * @assistant group:integrations
+   */
   composioInstallCli(): Promise<void> {
     return this.request("POST", "/composio/cli");
   }
+  /**
+   * Start signing in to the app-connection service.
+   * @assistant group:integrations
+   */
   composioStartLogin(): Promise<ComposioStartLoginResponse> {
     return this.request("POST", "/composio/login");
   }
+  /**
+   * Finish signing in to the app-connection service.
+   * @assistant group:integrations
+   */
   composioCompleteLogin(cliKey: string): Promise<void> {
     return this.request("POST", "/composio/login/complete", { cliKey });
   }
+  /**
+   * Sign out of the app-connection service.
+   * @assistant group:integrations
+   */
   composioLogout(): Promise<void> {
     return this.request("POST", "/composio/logout");
   }
+  /**
+   * List the apps the connection service offers.
+   * @assistant group:integrations
+   */
   composioListApps(): Promise<ComposioAppEntry[]> {
     return this.request("GET", "/composio/apps");
   }
+  /**
+   * List the apps already connected through the connection service.
+   * @assistant group:integrations
+   */
   composioListConnections(): Promise<string[]> {
     return this.request("GET", "/composio/connections");
   }
+  /**
+   * Connect an app through the connection service.
+   * @assistant group:integrations
+   */
   composioConnectApp(toolkit: string): Promise<ComposioStartLinkResponse> {
     return this.request("POST", "/composio/connections", { toolkit });
   }
-  /** Disconnect a toolkit: removes its connected account(s). */
+  /**
+   * Disconnect an app from the connection service.
+   *
+   * Disconnect a toolkit: removes its connected account(s).
+   * @assistant group:integrations
+   */
   composioDisconnect(toolkit: string): Promise<void> {
     return this.request("POST", "/composio/connections/disconnect", {
       toolkit,
     });
   }
   /**
+   * Renew an app connection that expired.
+   *
    * Reconnect a toolkit by refreshing its auth. Resolves to a browser URL
    * the user must open to complete OAuth re-consent, or `null` when the
    * auth scheme refreshed silently.
+   * @assistant group:integrations
    */
   composioReconnect(toolkit: string): Promise<ComposioReconnectResponse> {
     return this.request("POST", "/composio/connections/reconnect", { toolkit });
   }
   /**
+   * Watch for an app connection to complete.
+   *
    * Ask the engine to actively watch for `toolkit` to land in the
    * consumer connections list and emit `ComposioConnectionAdded` over
    * the WS firehose when it does. Idempotent — duplicate calls while
    * a watch is active are no-ops on the engine. Returns immediately;
    * the result arrives as a WS event.
+   * @assistant group:integrations
    */
   composioWatchConnection(toolkit: string): Promise<void> {
     return this.request("POST", "/composio/connections/watch", { toolkit });
@@ -2597,11 +3358,19 @@ export class HoustonClient {
 
   // ---------- portable agent share / import ----------
 
+  /**
+   * Preview what would be included when sharing an agent.
+   * @assistant group:agents
+   */
   portablePreview(agentPath: string): Promise<PortableInventoryPreview> {
     return this.request("GET", "/agents/portable/preview", undefined, {
       agentPath,
     });
   }
+  /**
+   * Package an agent into a file the user can share.
+   * @assistant group:agents confirm
+   */
   async portablePackage(
     agentPath: string,
     req: PortableExportRequest,
@@ -2626,6 +3395,10 @@ export class HoustonClient {
     if (!res.ok) throw await this.toError(res);
     return await res.arrayBuffer();
   }
+  /**
+   * Take personal details out of an agent package before sharing it.
+   * @assistant group:agents
+   */
   portableAnonymize(
     agentPath: string,
     req: PortableAnonymizeRequest,
@@ -2634,6 +3407,10 @@ export class HoustonClient {
       agentPath,
     });
   }
+  /**
+   * Read a shared agent package and show what is inside.
+   * @assistant group:agents hidden
+   */
   async importPreview(
     bytes: ArrayBuffer | Uint8Array,
   ): Promise<PortableUploadPreviewResponse> {
@@ -2644,18 +3421,29 @@ export class HoustonClient {
       "application/zip",
     );
   }
+  /**
+   * Check a shared agent package for anything unsafe before installing it.
+   * @assistant group:agents
+   */
   importScan(packageId: string): Promise<PortableScanResponse> {
     return this.request("POST", "/store/imports/scan", { packageId });
   }
   /**
+   * Open a shared agent link and get it ready to install.
+   *
    * Fetch a published agent from an Agent Store share link (or bare slug) and
    * park it for install, returning the SAME preview a file upload would. The
    * host resolves the link, validates the IR, and maps it to portable content
    * (SSRF-guarded); the parked package then flows through scan/install unchanged.
+   * @assistant group:agents
    */
   importFromStoreLink(url: string): Promise<PortableUploadPreviewResponse> {
     return this.request("POST", "/store/imports/from-link", { url });
   }
+  /**
+   * Install an agent from a shared package.
+   * @assistant group:agents confirm
+   */
   importInstall(req: PortableInstallRequest): Promise<PortableInstalledAgent> {
     return this.request("POST", "/store/imports/install", req);
   }
@@ -2746,8 +3534,13 @@ export class HoustonClient {
     );
   }
 
-  /** Publish this agent to the Agent Store; returns the public share URL. A kept
-   *  pointer re-publishes the SAME store agent so a re-publish never duplicates. */
+  /**
+   * Publish an agent to the Agent Store and get its public link.
+   *
+   * Publish this agent to the Agent Store; returns the public share URL. A kept
+   * pointer re-publishes the SAME store agent so a re-publish never duplicates.
+   * @assistant group:store confirm
+   */
   async publishAgentToStore(
     agentPath: string,
     req: StorePublishRequest,
@@ -2813,7 +3606,12 @@ export class HoustonClient {
     };
   }
 
-  /** Re-publish an already-listed agent with a freshly gathered selection. */
+  /**
+   * Update what a published agent shares in the Agent Store.
+   *
+   * Re-publish an already-listed agent with a freshly gathered selection.
+   * @assistant group:store confirm
+   */
   async updateStorePublication(
     agentPath: string,
     req: StorePublishRequest,
@@ -2835,7 +3633,12 @@ export class HoustonClient {
     return { shareUrl: pointer.shareUrl, slug: pointer.slug };
   }
 
-  /** Take the listing down; the pointer is kept so a re-publish reuses the agent. */
+  /**
+   * Take an agent's Agent Store listing down.
+   *
+   * Take the listing down; the pointer is kept so a re-publish reuses the agent.
+   * @assistant group:store confirm
+   */
   async unpublishFromStore(agentPath: string): Promise<StoreUnpublishResponse> {
     const { pointer } = await this.request<{ pointer: StorePointer | null }>(
       "GET",
@@ -2853,7 +3656,12 @@ export class HoustonClient {
     return { ok: true };
   }
 
-  /** Whether this agent is linked to a listing, and its live state. */
+  /**
+   * Check whether an agent is published in the Agent Store.
+   *
+   * Whether this agent is linked to a listing, and its live state.
+   * @assistant group:store
+   */
   async getStorePublication(
     agentPath: string,
   ): Promise<StorePublicationStatus> {
@@ -2897,14 +3705,24 @@ export class HoustonClient {
   // caller's own bearer (same surface the publish methods above use). Reads live
   // off `GET /me/agents`; no host-side pointer is involved.
 
-  /** Every listing the caller owns, in all lifecycle states (`GET /me/agents`). */
+  /**
+   * List the Agent Store listings the user owns.
+   *
+   * Every listing the caller owns, in all lifecycle states (`GET /me/agents`).
+   * @assistant group:store
+   */
   listMyStoreAgents(): Promise<MyAgent[]> {
     return this.request<{ items: MyAgent[] }>(
       "GET",
       "/agentstore/me/agents",
     ).then((r) => r.items);
   }
-  /** Ask an admin to make an owned listing public (`PATCH … {requestPublic}`). */
+  /**
+   * Ask Houston to make one of the user's listings public.
+   *
+   * Ask an admin to make an owned listing public (`PATCH … {requestPublic}`).
+   * @assistant group:store confirm
+   */
   async requestStorePublic(storeAgentId: string): Promise<void> {
     await this.request(
       "PATCH",
@@ -2915,7 +3733,12 @@ export class HoustonClient {
       false,
     );
   }
-  /** Drop a public listing back to unlisted (`PATCH … {visibility:"unlisted"}`). */
+  /**
+   * Make a public listing unlisted again.
+   *
+   * Drop a public listing back to unlisted (`PATCH … {visibility:"unlisted"}`).
+   * @assistant group:store confirm
+   */
   async setStoreVisibilityUnlisted(storeAgentId: string): Promise<void> {
     await this.request(
       "PATCH",
@@ -2926,7 +3749,12 @@ export class HoustonClient {
       false,
     );
   }
-  /** Publish (or re-publish) an owned listing (`PATCH … {publish}`). */
+  /**
+   * Publish one of the user's Agent Store listings.
+   *
+   * Publish (or re-publish) an owned listing (`PATCH … {publish}`).
+   * @assistant group:store confirm
+   */
   async publishStoreAgentById(storeAgentId: string): Promise<void> {
     await this.request(
       "PATCH",
@@ -2937,7 +3765,12 @@ export class HoustonClient {
       false,
     );
   }
-  /** Edit an owned listing's store metadata (`PATCH … {identity}`). */
+  /**
+   * Edit how one of the user's listings is presented in the Agent Store.
+   *
+   * Edit an owned listing's store metadata (`PATCH … {identity}`).
+   * @assistant group:store confirm
+   */
   async updateStoreAgentIdentity(
     storeAgentId: string,
     identity: AgentIdentityPatch,
@@ -2951,7 +3784,12 @@ export class HoustonClient {
       false,
     );
   }
-  /** Take an owned listing down by its gateway id (`PATCH … {unpublish}`). */
+  /**
+   * Take one of the user's Agent Store listings down.
+   *
+   * Take an owned listing down by its gateway id (`PATCH … {unpublish}`).
+   * @assistant group:store confirm
+   */
   async unpublishStoreAgentById(storeAgentId: string): Promise<void> {
     await this.request(
       "PATCH",
@@ -2962,7 +3800,12 @@ export class HoustonClient {
       false,
     );
   }
-  /** Soft-delete an owned listing by its gateway id (`DELETE /agents/{id}`). */
+  /**
+   * Permanently delete one of the user's Agent Store listings.
+   *
+   * Soft-delete an owned listing by its gateway id (`DELETE /agents/{id}`).
+   * @assistant group:store confirm
+   */
   async deleteStoreAgentById(storeAgentId: string): Promise<void> {
     await this.request(
       "DELETE",
@@ -2976,14 +3819,24 @@ export class HoustonClient {
   // per-day install analytics — all against the `/agentstore/me/*` gateway
   // routes with the caller's own bearer, exactly like the owner methods above.
 
-  /** The caller's own creator profile, or `null` when never materialized. */
+  /**
+   * Read the user's public creator profile.
+   *
+   * The caller's own creator profile, or `null` when never materialized.
+   * @assistant group:store
+   */
   async getMyStoreProfile(): Promise<CreatorProfile | null> {
     const { profile } = await this.request<{
       profile: CreatorProfile | null;
     }>("GET", "/agentstore/me/profile");
     return profile;
   }
-  /** Upsert the caller's creator profile (`PATCH /me/profile`). */
+  /**
+   * Update the user's public creator profile.
+   *
+   * Upsert the caller's creator profile (`PATCH /me/profile`).
+   * @assistant group:store confirm
+   */
   async updateMyStoreProfile(
     patch: CreatorProfilePatch,
   ): Promise<CreatorProfile> {
@@ -2997,14 +3850,24 @@ export class HoustonClient {
     );
     return profile;
   }
-  /** Whether a handle is claimable by the caller (`GET /handles/{handle}/available`). */
+  /**
+   * Check whether a creator handle is still available.
+   *
+   * Whether a handle is claimable by the caller (`GET /handles/{handle}/available`).
+   * @assistant group:store
+   */
   checkStoreHandle(handle: string): Promise<HandleAvailability> {
     return this.request<HandleAvailability>(
       "GET",
       `/agentstore/handles/${this.seg(handle)}/available`,
     );
   }
-  /** Replace the caller's avatar (`POST /me/avatar`, multipart field `file`). */
+  /**
+   * Replace the creator profile photo.
+   *
+   * Replace the caller's avatar (`POST /me/avatar`, multipart field `file`).
+   * @assistant group:store hidden
+   */
   uploadStoreAvatar(blob: Blob): Promise<AvatarUploadResult> {
     const form = new FormData();
     form.append("file", blob);
@@ -3015,11 +3878,21 @@ export class HoustonClient {
       form,
     );
   }
-  /** Clear the caller's avatar (`DELETE /me/avatar`). Idempotent. */
+  /**
+   * Remove the creator profile photo.
+   *
+   * Clear the caller's avatar (`DELETE /me/avatar`). Idempotent.
+   * @assistant group:store confirm
+   */
   async deleteStoreAvatar(): Promise<void> {
     await this.request("DELETE", "/agentstore/me/avatar");
   }
-  /** Per-UTC-day install analytics over the caller's owned agents (`GET /me/analytics?days=`). */
+  /**
+   * See how many people installed the user's published agents.
+   *
+   * Per-UTC-day install analytics over the caller's owned agents (`GET /me/analytics?days=`).
+   * @assistant group:store
+   */
   getMyStoreAnalytics(days?: number): Promise<CreatorAnalytics> {
     return this.request<CreatorAnalytics>(
       "GET",
@@ -3031,6 +3904,10 @@ export class HoustonClient {
 
   // ---------- WebSocket access (see ws.ts) ----------
 
+  /**
+   * Build the live-updates address for this Houston.
+   * @assistant group:system hidden
+   */
   wsUrl(): string {
     const ws = this.baseUrl.replace(/^http/, "ws");
     return `${ws}/v1/ws?token=${encodeURIComponent(this.token)}`;

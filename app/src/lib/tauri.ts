@@ -42,6 +42,7 @@ import {
   type WarmingWriteOptions,
 } from "./agent-warming-guard";
 import { isKeyGoneError, isKeyLimitError } from "./api-keys-model";
+import { isAssistantUnavailableError } from "./assistant-availability";
 import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
@@ -2005,6 +2006,36 @@ export const tauriProvider = {
    */
   setGeminiApiKey: (apiKey: string) =>
     call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
+};
+
+// ─── Personal assistant ───────────────────────────────────────────────
+
+/** Mirror of the engine `AssistantHandle` — re-exported so callers can import
+ *  it from `lib/tauri.ts` like the other engine DTOs. */
+export type AssistantHandle =
+  import("@houston-ai/engine-client").AssistantHandle;
+
+/**
+ * Where the user's personal assistant lives. The assistant is an ordinary
+ * agent conversation — this is only its address, so every other call it needs
+ * (send, history, events) is the existing per-agent surface above. Both fields
+ * are OPAQUE: the deployment decides what an assistant is, and parsing them
+ * here would bake one deployment's shape into the app.
+ */
+export const tauriAssistant = {
+  /**
+   * A deployment that hosts no assistant answers 501 (the gateway owns
+   * discovery there) or 503 (no agent tree). Neither is a Houston bug: the
+   * sidebar entry and the screen simply do not exist, so the failure is logged
+   * and silenced rather than toasted. Every other failure stays loud.
+   */
+  discover: () =>
+    call<AssistantHandle>(
+      "get_assistant",
+      () => getEngine().getAssistant(),
+      undefined,
+      { silence: isAssistantUnavailableError },
+    ),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────

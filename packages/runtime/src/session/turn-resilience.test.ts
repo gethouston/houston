@@ -87,7 +87,7 @@ class StallSession implements HarnessSession {
     this.listeners.clear();
   }
   async setModel(): Promise<void> {}
-  async compact(): Promise<void> {}
+  async compact(): Promise<undefined> {}
   setThinkingLevel(): void {}
   getContextUsage(): { tokens: number | null } {
     return { tokens: 100 };
@@ -153,7 +153,7 @@ class QuietSession implements HarnessSession {
     this.listeners.clear();
   }
   async setModel(): Promise<void> {}
-  async compact(): Promise<void> {}
+  async compact(): Promise<undefined> {}
   setThinkingLevel(): void {}
   getContextUsage(): { tokens: number | null } {
     return { tokens: 0 };

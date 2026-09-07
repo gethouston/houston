@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "./**/*.ts",
+    "../tests/assistant-*.ts",
+    "../tests/fixtures/**/*.ts"
+  ]
+}

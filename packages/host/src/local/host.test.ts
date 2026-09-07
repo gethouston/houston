@@ -402,6 +402,91 @@ test("workspaces + agents are read from the on-disk desktop tree", async () => {
   }
 });
 
+test("assistant discovery creates a hidden agent reachable on the ordinary per-agent surface", async () => {
+  const { host, base } = await setup();
+  try {
+    const discovered = await fetch(`${base}/v1/assistant`, { headers: auth });
+    expect(discovered.status).toBe(200);
+    const handle = (await discovered.json()) as {
+      agent: string;
+      conversation: string;
+    };
+    expect(handle).toEqual({
+      agent: "Work/.assistant",
+      conversation: "assistant",
+    });
+
+    // The whole point: no new chat wire. The discovered agent answers on the
+    // SAME per-agent routes every other agent uses.
+    const activities = await fetch(
+      `${base}/agents/${encodeURIComponent(handle.agent)}/activities`,
+      { headers: auth },
+    );
+    expect(activities.status).toBe(200);
+    // A plain conversation creates no board row — the board only fills from an
+    // explicit start_mission.
+    expect((await activities.json()) as { items: unknown[] }).toMatchObject({
+      items: [],
+    });
+
+    // …and it stays out of the sidebar: dot names are list-hidden.
+    const agents = (await (
+      await fetch(`${base}/agents`, { headers: auth })
+    ).json()) as Agent[];
+    expect(agents.map((a) => a.id)).toEqual(["Work/Sales"]);
+
+    // Idempotent: a second ask returns the same address, not a second agent.
+    expect(
+      await (await fetch(`${base}/v1/assistant`, { headers: auth })).json(),
+    ).toEqual(handle);
+  } finally {
+    host.stop();
+  }
+});
+
+test("a gateway-fronted pod refuses assistant discovery — the gateway owns it", async () => {
+  const { host, base } = await setup({ gatewayFronted: true });
+  try {
+    const res = await fetch(`${base}/v1/assistant`, { headers: auth });
+    expect(res.status).toBe(501);
+    expect((await res.json()) as { code: string }).toMatchObject({
+      code: "assistant_gateway_only",
+    });
+  } finally {
+    host.stop();
+  }
+});
+
+test("an unfronted host performs its own Houston operations; a fronted one waits for its gateway", async () => {
+  // The boot line is the observable form of the ONE wiring value this host
+  // resolves — the same value its dispatcher answers from and its runtimes
+  // carry in their environment (routes/assistant-wiring.ts).
+  const lines: string[] = [];
+  const log = vi
+    .spyOn(console, "log")
+    .mockImplementation((line: unknown) => void lines.push(String(line)));
+  try {
+    const unfronted = await setup();
+    unfronted.host.stop();
+    expect(
+      lines.some((line) =>
+        line.startsWith("[local-host] assistant operations: this host ("),
+      ),
+    ).toBe(true);
+
+    lines.length = 0;
+    const fronted = await setup({ gatewayFronted: true });
+    fronted.host.stop();
+    expect(
+      lines.some((line) =>
+        line.startsWith("[local-host] assistant operations off: set"),
+      ),
+    ).toBe(true);
+  } finally {
+    log.mockRestore();
+  }
+});
+
 test("a slash-bearing agent id round-trips through the URL (encode → decode)", async () => {
   const { host, base } = await setup();
   try {

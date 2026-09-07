@@ -7,6 +7,7 @@ import type {
   ManifestObjectStore,
   ObjectStore,
 } from "@houston/runtime-client/object-sync";
+import { processAssistantCatalog } from "../assistant/catalog-source";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { captureRuntimeCredential } from "../channel/capture-credential";
@@ -31,6 +32,7 @@ import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { IntegrationRegistry } from "../integrations/registry";
 import { RemoteIntegrationProvider } from "../integrations/remote";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
+import { runtimeSpawnEnv } from "../launcher/runtime-env";
 import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
 import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { reseedAgentSchemas } from "../migrate/agent-schemas";
@@ -40,6 +42,11 @@ import { LocalPaths } from "../paths";
 import type { PodGatewayConfig } from "../pod-gateway";
 import type { ChannelCtx } from "../ports";
 import { forward } from "../proxy/route";
+import {
+  type AssistantWiring,
+  formatAssistantModeLog,
+  resolveAssistantGateway,
+} from "../routes/assistant-wiring";
 import { CredentialServeHealer } from "../routes/credential-healer";
 import { CUSTOM_OAUTH_CALLBACK_PATH } from "../routes/custom-integrations-oauth";
 import { ChannelRoutineFirer } from "../schedule/firer";
@@ -355,6 +362,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       })
     : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
+  // The ONE assistant wiring decision for this host. Unfronted (desktop,
+  // self-host) THIS host serves the routes the operation catalog names and
+  // already accepts `opts.token` on every one of them — so it is its own
+  // gateway and the family is on with nothing for the user to configure. A
+  // gateway-fronted pod passes no self: its gateway stamps the env pair, and
+  // its own routes answer for one agent only.
+  const assistantWiring: AssistantWiring = opts.gatewayFronted
+    ? {}
+    : { self: { url: controlPlaneUrl, token: opts.token } };
+  const assistantGateway = resolveAssistantGateway(assistantWiring);
   const transcriptShadow = opts.durableTurns?.transcriptDualWrite
     ? new HttpTranscriptShadow({ gateway: opts.durableTurns.gateway })
     : undefined;
@@ -381,27 +398,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     opts.spawner ??
     new RuntimeProcessSpawner({
       command: opts.runtimeCommand,
-      env: {
-        ...(opts.systemPrompt
-          ? { HOUSTON_SYSTEM_PROMPT: opts.systemPrompt }
-          : {}),
-        // The runtime drains its own turns inside the host's budget, so the
-        // host's SIGKILL escalation below is the backstop, not the norm.
-        ...(opts.shutdownDrainMs !== undefined
-          ? { HOUSTON_RUNTIME_DRAIN_MS: String(opts.shutdownDrainMs) }
-          : {}),
-        // Packaged: runtimeCommand() spawns this same compiled binary, so the
-        // child must dispatch into RUNTIME role (sidecar-entry.ts reads this).
-        // Additive to the per-runtime env the ProcessLauncher sets (workspace
-        // dir, data dir, port, token). Only set when we ARE the compiled sidecar;
-        // the dev `tsx <source>` command ignores it harmlessly anyway.
-        ...(process.env.HOUSTON_SIDECAR_BINARY
-          ? { HOUSTON_SIDECAR_ROLE: "runtime" }
-          : {}),
-        // Do not inherit a rollout flag into a runtime unless the host also
-        // constructed its pod-auth facade from the complete managed config.
-        HOUSTON_TRANSCRIPT_DUAL_WRITE: transcriptShadow ? "1" : "",
-      },
+      // Host-wide extra env, additive to the per-runtime values the
+      // ProcessLauncher sets (workspace dir, data dir, port, tokens).
+      env: runtimeSpawnEnv({
+        systemPrompt: opts.systemPrompt,
+        sidecarBinary: process.env.HOUSTON_SIDECAR_BINARY,
+        transcriptDualWrite: Boolean(transcriptShadow),
+        shutdownDrainMs: opts.shutdownDrainMs,
+        assistant: assistantGateway,
+      }),
       onLog: opts.onRuntimeLog,
     });
 
@@ -708,6 +713,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     // The desktop shell reveals/opens agent folders in the OS file manager;
     // give it the REAL directory (the agent id is a route key, not a path).
     agentDir: (_ws, a) => agentDir(a.id),
+    // The personal assistant's home. `liveAgentDirFor` is the ONE place that
+    // may create an agent directory with no create path behind it (its
+    // dot-segment carve-out), so discovery goes through it rather than
+    // mkdir-ing a second way.
+    ensureSyntheticAgentDir: (agentId) => {
+      liveAgentDir(agentId);
+    },
+    // Where this host performs Houston operations, from the one resolver —
+    // the same value the spawned runtimes carry in their environment.
+    assistantGateway: () => assistantGateway,
     corsOrigin: "*",
     // Boot-span ledger behind GET /metrics (HOU-1011). Token-gated like every
     // non-public route: timings aren't secrets, but there is no reason to
@@ -968,6 +983,12 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         usageSampler?.start();
       }
       console.log(formatIntegrationsModeLog(opts.integrations));
+      // The assistant dispatcher's one boot line: its gateway, this host
+      // itself, or off naming the env it still needs.
+      console.log(formatAssistantModeLog(assistantWiring));
+      // Read the operation catalog HERE so a deployment that packaged none says
+      // so in the startup log rather than in the first unlucky agent request.
+      processAssistantCatalog();
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
       // The full token rides ONLY for the desktop sidecar; a pod/self-host token
       // is env-supplied and redacted so it never lands in plaintext logs.

@@ -1,5 +1,6 @@
 import type { TurnMode } from "@houston/protocol";
 import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
+import { ASSISTANT_TOOL_NAMES } from "./tools/assistant";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { CUSTOM_INTEGRATION_TOOL_NAMES } from "./tools/custom-integrations";
 import { SKILL_DIRECTORY_TOOL_NAMES } from "./tools/find-skills";
@@ -56,6 +57,15 @@ export interface ToolSelectionInput {
    * and the agent simply has no directory to consult.
    */
   skillDirectory?: boolean;
+  /**
+   * Whether this runtime may perform user-facing Houston operations itself —
+   * the personal-assistant pod. Requires the gateway credential, host
+   * reachability (the tools proxy to `/sandbox/assistant/call`) AND a loaded
+   * operation catalog, so it is decided by the caller, not here. Adds `houston_capabilities`, `houston_describe`,
+   * `houston_call`; absent/false leaves all three off and the agent can only
+   * describe what the user would do in the app themselves.
+   */
+  assistant?: boolean;
 }
 
 export interface ToolSelection {
@@ -221,6 +231,13 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       // dead-end. PLAN_MODE_TOOL_NAMES omits both so planToolNames filters them
       // out; neither is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
       ...(input.skillDirectory ? [...SKILL_DIRECTORY_TOOL_NAMES] : []),
+      // The assistant family shares save_routine's reach: execute AND auto,
+      // never plan. Searching the catalog is a read, but the family exists to
+      // ACT on the user's account (`houston_call`), and a plan turn that could
+      // list operations it cannot perform would just dead-end.
+      // PLAN_MODE_TOOL_NAMES omits all three so planToolNames filters them out;
+      // none is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
+      ...(input.assistant ? [...ASSISTANT_TOOL_NAMES] : []),
       ...executable,
       ...(input.integrations
         ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]

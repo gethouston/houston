@@ -2,6 +2,7 @@ import { canSeeOrganization } from "../components/organization/org-view-model.ts
 import { canSeeAiModelsPage, isSpaceOwner } from "../lib/org-roles.ts";
 import { isTeamWorkspace } from "../lib/space-id.ts";
 import { useWorkspaceStore } from "../stores/workspaces.ts";
+import { useAssistant } from "./use-assistant.ts";
 import { useCapabilities } from "./use-capabilities.ts";
 
 /** The Teams gates that decide which non-agent surfaces this caller can reach. */
@@ -29,6 +30,13 @@ export interface SurfaceGates {
    */
   showSkills: boolean;
   /**
+   * The personal assistant, the rail's lead row and a screen of its own. Not a
+   * role gate: it asks whether this deployment HOLDS an assistant at all
+   * (`useAssistant`), which only discovery can answer. A deployment that serves
+   * none hides the row and the screen entirely.
+   */
+  showAssistant: boolean;
+  /**
    * False while the capabilities the gates read are still loading. Every flag
    * above is computed from `capabilities`, which is `null` until the
    * fetch resolves, so an unresolved gate is indistinguishable from a denied
@@ -52,6 +60,7 @@ export interface SurfaceGates {
  */
 export function useSurfaceGates(): SurfaceGates {
   const { capabilities, isLoading } = useCapabilities();
+  const assistant = useAssistant();
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const isTeam = currentWorkspace
     ? isTeamWorkspace(currentWorkspace.id)
@@ -60,6 +69,11 @@ export function useSurfaceGates(): SurfaceGates {
     showOrganization: canSeeOrganization(capabilities, isTeam),
     showAiModels: canSeeAiModelsPage(capabilities),
     showSkills: isSpaceOwner(capabilities, isTeam),
-    ready: !isLoading,
+    showAssistant: !assistant.isLoading && !assistant.unavailable,
+    // Discovery joins `ready` for the same reason capabilities does: the guard
+    // that sends a blocked view home must not fire while an answer is still on
+    // the way, or opening the assistant on a slow host would bounce the user
+    // out of it a beat later.
+    ready: !isLoading && !assistant.isLoading,
   };
 }

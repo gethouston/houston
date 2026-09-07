@@ -7,14 +7,15 @@ import { screen } from "./team-nav";
  * **Admin is the one top-level screen this helper reaches.** It is the whole of
  * the rail's "Workspace" band that belongs here: Permissions is gone (agent
  * policy is discovered through a team's focused agent screen, see
- * `team-nav.ts` `openAgentSettings`). **About me** joins it: an ungated row
- * in the rail's lead run, so it is addressed the same way.
+ * `team-nav.ts` `openAgentSettings`). **About me** and the **Assistant** join
+ * it: both sit in the rail's lead run, so they are addressed the same way.
  *
- * Neither Admin nor About me carries a tour anchor (the tour walks neither), so
- * each is addressed by its accessible name inside the rail; English is forced by
- * the boot seed, so the labels are stable (`app/src/locales/en/settings.json`
- * `nav.organization` = "Admin", `shell:sidebar.aboutMe` = "About me"). Settings
- * is the exception and keeps its `nav-settings` anchor.
+ * None of the three carries a tour anchor (the tour walks none of them), so each
+ * is addressed by its accessible name inside the rail; English is forced by the
+ * boot seed, so the labels are stable (`app/src/locales/en/settings.json`
+ * `nav.organization` = "Admin", `shell:sidebar.aboutMe` = "About me",
+ * `shell:sidebar.assistant` = "Houston"). Settings is the exception and keeps
+ * its `nav-settings` anchor.
  *
  * Scoped to the WHOLE rail (`sidebar`), not to `agents`: that inner anchor wraps
  * only the "Your teams" band, and the top-level destinations sit above it.
@@ -37,6 +38,25 @@ export function adminRow(page: Page): Locator {
 /** The rail's About me row. Ungated: it exists in every deployment. */
 export function aboutMeRow(page: Page): Locator {
   return railRow(page, "About me");
+}
+
+/**
+ * The rail's Assistant row, leading the unlabelled run. Gated on DISCOVERY
+ * (`GET /v1/assistant`), not on a role: a deployment that serves none has no
+ * row at all. It carries no tour anchor, so its name is the handle.
+ */
+export function assistantRow(page: Page): Locator {
+  return railRow(page, "Houston");
+}
+
+/**
+ * Open the personal assistant from the rail: a 1-on-1 chat owning the whole
+ * window, so there is no back bar and nothing to drill into. Landing on the
+ * panel header's name is the whole navigation.
+ */
+export async function openAssistant(page: Page): Promise<void> {
+  await assistantRow(page).click();
+  await expect(screen(page).getByText("Your personal assistant")).toBeVisible();
 }
 
 /**

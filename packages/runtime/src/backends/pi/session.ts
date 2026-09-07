@@ -1,7 +1,12 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import type { WireEvent } from "@houston/runtime-client";
-import type { HarnessSession, ResolvedModel, ThinkingLevel } from "../types";
+import type {
+  CompactionOutcome,
+  HarnessSession,
+  ResolvedModel,
+  ThinkingLevel,
+} from "../types";
 import { createWireTranslator } from "./wire";
 
 /**
@@ -66,8 +71,8 @@ export class PiSession implements HarnessSession {
     await this.session.setModel(model as unknown as Model<Api>);
   }
 
-  async compact(): Promise<void> {
-    await this.session.compact();
+  compact(customInstructions?: string): Promise<CompactionOutcome> {
+    return this.session.compact(customInstructions);
   }
 
   setThinkingLevel(level: ThinkingLevel): void {

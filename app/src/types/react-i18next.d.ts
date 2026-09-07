@@ -11,6 +11,7 @@ import type academy from "../locales/en/academy.json";
 import type agentOnboarding from "../locales/en/agent-onboarding.json";
 import type agents from "../locales/en/agents.json";
 import type aiHub from "../locales/en/ai-hub.json";
+import type assistant from "../locales/en/assistant.json";
 import type auth from "../locales/en/auth.json";
 import type board from "../locales/en/board.json";
 import type chat from "../locales/en/chat.json";
@@ -38,6 +39,7 @@ declare module "react-i18next" {
     resources: {
       common: typeof common;
       aiHub: typeof aiHub;
+      assistant: typeof assistant;
       auth: typeof auth;
       setup: typeof setup;
       legal: typeof legal;

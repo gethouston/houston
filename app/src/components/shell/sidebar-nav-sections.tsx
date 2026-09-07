@@ -1,31 +1,15 @@
-import type {
-  SidebarNavItemEntry,
-  SidebarNavSection,
-} from "@houston-ai/layout";
-import {
-  Blocks,
-  Boxes,
-  Building2,
-  GraduationCap,
-  Inbox,
-  LibraryBig,
-  Store,
-  UserRound,
-} from "lucide-react";
+import type { SidebarNavSection } from "@houston-ai/layout";
+import { Blocks, GraduationCap, Inbox, Store, UserRound } from "lucide-react";
 import {
   ABOUT_ME_VIEW_ID,
   ACADEMY_VIEW_ID,
-  AI_HUB_VIEW_ID,
   INBOX_VIEW_ID,
-  ORGANIZATION_VIEW_ID,
 } from "../../lib/top-level-views";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
-import { useOrgNav } from "../organization/org-nav-store.ts";
-import { DEFAULT_ORG_TAB } from "../organization/org-view-model.ts";
-import { SKILLS_VIEW_ID } from "../skills-view/id";
 import { STORE_VIEW_ID } from "../store-view";
 import type { SidebarChromeT } from "./sidebar-chrome";
 import { buildInboxBadge } from "./sidebar-inbox-badge";
+import { gatedNavRows } from "./sidebar-nav-rows";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /** One labelled band's persisted fold, exactly as "Your teams" carries it. */
@@ -37,14 +21,17 @@ export interface SectionFold {
 /**
  * The rail's top-level destinations, in three runs above "Your teams".
  *
- * 1. **Unlabelled** — the Inbox, About me, the Academy and the Agent Store.
- *    Where work arrives, what every agent knows about you before it starts,
- *    where you learn the product, and where agents come from: the things a user
- *    reaches for without being asked, so they lead the rail and need no heading
- *    over them. About me and the Academy are everyone's, in every deployment,
- *    and deliberately not gated: standing context about the person, and
- *    learning to fly, are not preferences and belong to nobody's admin
- *    territory.
+ * 1. **Unlabelled** — the Assistant, the Inbox, About me, the Academy and the
+ *    Agent Store. Who you ask for anything, where work arrives, what every
+ *    agent knows about you before it starts, where you learn the product, and
+ *    where agents come from: the things a user reaches for without being asked,
+ *    so they lead the rail and need no heading over them. The Assistant leads
+ *    the run because it is the one row that answers a question the user has not
+ *    worked out how to ask yet; it is the only row gated on DISCOVERY rather
+ *    than on a role, and it is absent where no assistant exists. About me and
+ *    the Academy are everyone's, in every deployment, and deliberately not
+ *    gated: standing context about the person, and learning to fly, are not
+ *    preferences and belong to nobody's admin territory.
  * 2. **"My accounts"** — the connections that belong to the PERSON: the apps
  *    they have OAuthed and the AI accounts they run their turns on. Nobody
  *    else in the space is affected by either.
@@ -76,6 +63,8 @@ export function buildSidebarNavItems(args: {
   showOrganization: boolean;
   /** The Skills row: the SPACE OWNER's, per `useSurfaceGates`. */
   showSkills: boolean;
+  /** The Assistant row: true where discovery hands out an address for one. */
+  showAssistant: boolean;
   /** Unread @mentions of the viewer. Zero draws no badge. */
   mentionCount: number;
   /** The persisted fold of each LABELLED band, and its toggle. Same shape and
@@ -91,43 +80,20 @@ export function buildSidebarNavItems(args: {
     showAiModels,
     showOrganization,
     showSkills,
+    showAssistant,
     mentionCount,
     folds,
     setViewMode,
   } = args;
-  const organization: SidebarNavItemEntry = {
-    id: ORGANIZATION_VIEW_ID,
-    label: t("settings:nav.organization"),
-    icon: <Building2 className="h-4 w-4" />,
-    onClick: () => {
-      // The rail rule: a rail door always opens its screen's HOME, never the
-      // kept-alive leftover (a team row opens its board, the footer's
-      // Settings opens the index via `openSettings(null)`). Admin's home is
-      // its landing section, pinned through the same one-shot store the
-      // Billing deep link uses — which also backs out of a drilled section
-      // like Billing when the screen is already open.
-      useOrgNav.getState().requestTab(DEFAULT_ORG_TAB);
-      setViewMode(ORGANIZATION_VIEW_ID);
-    },
-  };
-  const skills: SidebarNavItemEntry = {
-    id: SKILLS_VIEW_ID,
-    label: t("shell:sidebar.skills"),
-    icon: <LibraryBig className="h-4 w-4" />,
-    onClick: () => setViewMode(SKILLS_VIEW_ID),
-    dataAttrs: tourAnchor("nav-skills"),
-  };
-  const aiModels: SidebarNavItemEntry = {
-    id: AI_HUB_VIEW_ID,
-    label: t("shell:sidebar.aiModels"),
-    icon: <Boxes className="h-4 w-4" />,
-    onClick: () => setViewMode(AI_HUB_VIEW_ID),
-    dataAttrs: tourAnchor("nav-ai-hub"),
-  };
+  const { assistant, organization, skills, aiModels } = gatedNavRows({
+    t,
+    setViewMode,
+  });
   return [
     {
       id: "primary",
       items: [
+        ...(showAssistant ? [assistant] : []),
         {
           id: INBOX_VIEW_ID,
           label: t("shell:sidebar.inbox"),

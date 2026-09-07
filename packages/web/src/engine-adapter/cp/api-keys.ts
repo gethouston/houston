@@ -15,7 +15,12 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * `key_limit` 400 therefore reaches the caller intact for its inline treatment.
  */
 
-/** The caller's active API keys, newest first. No secrets — display prefixes only. */
+/**
+ * Lists the user's active API keys.
+ *
+ * The caller's active API keys, newest first. No secrets — display prefixes only.
+ * @assistant group:api-keys
+ */
 export async function listApiKeys(cfg: ControlPlaneConfig): Promise<ApiKey[]> {
   const res = await cpFetch(cfg, "/v1/keys");
   const body = (await res.json()) as { keys: ApiKey[] };
@@ -23,10 +28,13 @@ export async function listApiKeys(cfg: ControlPlaneConfig): Promise<ApiKey[]> {
 }
 
 /**
+ * Creates a new API key for the user.
+ *
  * Mint a personal API key. Returns the FULL secret (`key`) exposed ONLY here and
  * never retrievable again, so the caller reveals it once and keeps it out of any
  * cache. ≥20 active keys → `400 {code:"key_limit"}`; every error throws so the UI
  * surfaces the real reason (the limit inline, anything else as a bug toast).
+ * @assistant group:api-keys confirm hidden
  */
 export async function createApiKey(
   cfg: ControlPlaneConfig,
@@ -40,8 +48,11 @@ export async function createApiKey(
 }
 
 /**
+ * Permanently revokes one of the user's API keys.
+ *
  * Soft-revoke a key by id. Idempotent from the user's view: an unknown, foreign,
  * or already-revoked id answers `404` (no existence leak). No body on success.
+ * @assistant group:api-keys confirm
  */
 export async function revokeApiKey(
   cfg: ControlPlaneConfig,

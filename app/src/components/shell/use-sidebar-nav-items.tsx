@@ -38,7 +38,8 @@ export function useSidebarNavItems(
     unfolded?: boolean;
   },
 ): { navSections: SidebarNavSection[]; activeNavId: string | undefined } {
-  const { showAiModels, showOrganization, showSkills } = useSurfaceGates();
+  const { showAiModels, showOrganization, showSkills, showAssistant } =
+    useSurfaceGates();
   const agents = useAgentStore((s) => s.agents);
   // The Inbox row carries the count the header bell carries, and it costs
   // nothing to put it here: `useMentionInbox` reads the SHARED
@@ -62,6 +63,7 @@ export function useSidebarNavItems(
       showAiModels,
       showOrganization,
       showSkills,
+      showAssistant,
       mentionCount,
       folds: opts?.unfolded
         ? { myAccounts: openFold, workspace: openFold }

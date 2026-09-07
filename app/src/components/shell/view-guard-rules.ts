@@ -82,13 +82,13 @@ export type DeadViewAction = "keep" | "wait" | "go-home";
  *
  * A `viewMode` no screen answers to, a view this caller's gates hide (the AI
  * Models hub for a plain member, Admin outside a team space or below
- * owner/admin), or a team that stopped existing under an open team view all
- * fall through every render branch and strand the user on a blank card. Those
- * go home.
+ * owner/admin, the assistant on a deployment that serves none), or a team that
+ * stopped existing under an open team view all fall through every render branch
+ * and strand the user on a blank card. Those go home.
  *
  * A GATED view whose gates have not resolved yet WAITS. The gates are computed
- * from `capabilities`, which is null until the fetch lands, so every one of them
- * reads false in that window: acting on it would bounce a user off the very
+ * from `capabilities` and from assistant discovery, both null until their
+ * fetches land, so every one of them reads false in that window: acting on it would bounce a user off the very
  * screen they persisted, on every boot and every space switch — and a team-space
  * switch drops the capabilities query outright, so the window is deterministic
  * rather than theoretical.
@@ -107,6 +107,7 @@ export function deadViewStep(input: {
   viewMode: string;
   showAiModels: boolean;
   showOrganization: boolean;
+  showAssistant: boolean;
   /** False while the capabilities behind the gates are still loading. */
   gatesReady: boolean;
   teams: TeamView[];
@@ -120,6 +121,7 @@ export function deadViewStep(input: {
   const gateDead = blockedTopLevelView(input.viewMode, {
     showAiModels: input.showAiModels,
     showOrganization: input.showOrganization,
+    showAssistant: input.showAssistant,
   });
   if (gateDead && !input.gatesReady) return "wait";
   const dead = !isTopLevelView(input.viewMode) || gateDead || teamDead;

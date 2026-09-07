@@ -1,3 +1,4 @@
+import { loadAssistantCatalog } from "@houston/host/src/assistant/catalog";
 import { DEFAULT_TURN_MODE, type TurnMode } from "@houston/protocol";
 import { resolveModel } from "../ai/providers";
 import { authStorage, modelRuntime } from "../auth/storage";
@@ -16,8 +17,10 @@ import { LruCache } from "../lru";
 import { claudeSessionTokenStale } from "./claude-token-guard";
 import type { TurnPin } from "./exec-turn";
 import { SYSTEM_PROMPT } from "./resource-loader";
+import { sandboxCall } from "./sandbox-call";
 import { buildToolSelection } from "./tool-selection";
 import { makeAskUserTool } from "./tools/ask-user";
+import { makeAssistantTools } from "./tools/assistant";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeCustomIntegrationTools } from "./tools/custom-integrations";
 import { makeSkillDirectoryTools } from "./tools/find-skills";
@@ -27,7 +30,6 @@ import { makeMissionTools } from "./tools/missions";
 import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeReadMissionTool } from "./tools/read-mission";
 import { makeRunCodeTool } from "./tools/run-code";
-import { httpSandboxFetch } from "./tools/sandbox-fetch";
 import { makeSaveLearningTool } from "./tools/save-learning";
 import { makeSaveRoutineTool } from "./tools/save-routine";
 import { makeSuggestActionsTool } from "./tools/suggest-actions";
@@ -80,10 +82,6 @@ const suggestReusableTool = makeSuggestReusableTool();
 // of the two. See conversation-cache-tools.test.ts, which pins that parity.
 const suggestActionsTool = makeSuggestActionsTool();
 
-const sandboxCall =
-  config.controlPlaneUrl && config.sandboxToken
-    ? httpSandboxFetch(config.controlPlaneUrl, config.sandboxToken)
-    : null;
 const hostReachable = sandboxCall !== null;
 
 // Integration tools (Composio, platform mode): available whenever this runtime
@@ -131,6 +129,25 @@ const skillDirectoryTools = sandboxCall
   ? makeSkillDirectoryTools({ call: sandboxCall })
   : [];
 
+// The assistant family (houston_capabilities / houston_describe / houston_call):
+// the agent performing user-facing Houston operations itself, on the personal
+// assistant pod. Three gates, all required — the gateway credential is present
+// (the same pair the host's dispatcher needs, so the two can never disagree),
+// the host is reachable (the family proxies to /sandbox/assistant/call), and
+// this build actually packaged an operation catalog to dispatch over. A missing
+// catalog is a named log line and no tools, never a boot failure.
+const assistantCatalog =
+  config.assistantEnabled && sandboxCall
+    ? loadAssistantCatalog(config.assistantCatalogPath)
+    : null;
+const assistantOptions =
+  assistantCatalog && sandboxCall
+    ? { catalog: assistantCatalog, call: sandboxCall }
+    : undefined;
+const assistantTools = assistantOptions
+  ? makeAssistantTools(assistantOptions)
+  : [];
+
 const toolSelection = buildToolSelection({
   codeExecution: config.codeExecution,
   integrations: integrationTools.length > 0,
@@ -138,6 +155,7 @@ const toolSelection = buildToolSelection({
   saveLearning: hostReachable,
   missions: hostReachable,
   skillDirectory: hostReachable,
+  assistant: assistantTools.length > 0,
 });
 const runCodeTool = toolSelection.includeRunCode
   ? makeRunCodeTool({
@@ -173,6 +191,7 @@ const piBackend = createPiBackend({
     ...(saveLearningTool ? [saveLearningTool] : []),
     ...missionTools,
     ...skillDirectoryTools,
+    ...assistantTools,
     ...integrationTools,
     ...customIntegrationTools,
   ],
@@ -206,6 +225,9 @@ registerBackend(
     // runtime can reach its host with a sandbox token, so the Claude backend's
     // in-process MCP server exposes the identical integration tool set.
     integrations: sandboxCall ? { call: sandboxCall } : undefined,
+    // SAME assistant gate as the pi path above, so an anthropic-backed agent on
+    // the assistant pod can perform the identical set of Houston operations.
+    assistant: assistantOptions,
   }),
 );
 

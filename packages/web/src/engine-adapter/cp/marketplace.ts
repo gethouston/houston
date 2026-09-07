@@ -11,6 +11,10 @@ import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
 // and 404s — the "Couldn't load suggestions" failure). The host serves these
 // read routes agent-scoped too (skills-remote.ts), so one path shape works
 // against both the local sidecar and the gateway.
+/**
+ * Searches the community directory of skills.
+ * @assistant group:skills
+ */
 export async function searchCommunitySkills(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -28,6 +32,10 @@ export async function searchCommunitySkills(
   );
   return (await res.json()) as CommunitySkill[];
 }
+/**
+ * Shows what a community skill does before installing it.
+ * @assistant group:skills
+ */
 export async function previewCommunitySkill(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -42,6 +50,10 @@ export async function previewCommunitySkill(
   );
   return (await res.json()) as CommunitySkillPreview;
 }
+/**
+ * Lists the skills published in a GitHub repository.
+ * @assistant group:skills
+ */
 export async function listSkillsFromRepo(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -55,6 +67,10 @@ export async function listSkillsFromRepo(
   });
   return (await res.json()) as RepoSkill[];
 }
+/**
+ * Installs a skill from the community directory into an agent.
+ * @assistant group:skills confirm
+ */
 export async function installCommunitySkill(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -68,6 +84,10 @@ export async function installCommunitySkill(
   );
   return (await res.json()) as string;
 }
+/**
+ * Installs skills from a GitHub repository into an agent.
+ * @assistant group:skills confirm
+ */
 export async function installSkillsFromRepo(
   cfg: ControlPlaneConfig,
   agentId: string,

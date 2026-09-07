@@ -9,6 +9,10 @@ import {
   runWithInteractionCapture,
 } from "../../session/interaction";
 import { makeAskUserTool } from "../../session/tools/ask-user";
+import {
+  ASSISTANT_TOOL_NAMES,
+  type AssistantToolOptions,
+} from "../../session/tools/assistant";
 import { makeIntegrationTools } from "../../session/tools/integrations";
 import { makePlanReadyTool } from "../../session/tools/plan-ready";
 import { httpSandboxFetch } from "../../session/tools/sandbox-fetch";
@@ -35,6 +39,7 @@ function build(
   integrations?: { call: ReturnType<typeof httpSandboxFetch> },
   mode?: "execute" | "plan" | "auto",
   explicitTools?: BridgedPiTool[],
+  assistant?: AssistantToolOptions,
 ): {
   mcp: HoustonMcp;
   tools: SdkMcpToolDefinition[];
@@ -54,6 +59,7 @@ function build(
   const mcp = buildHoustonMcpServer({
     createSdkMcpServer: fakeCreate,
     integrations,
+    assistant,
     mode,
     tools: explicitTools,
   });
@@ -248,6 +254,31 @@ test("the skill-directory tools are bridged for execute/auto but stripped from p
     );
     expect(build(undefined).tools.map((t) => t.name)).not.toContain(name);
   }
+});
+
+/** The assistant family's own gate: a catalog + the host transport. */
+const ASSISTANT: AssistantToolOptions = {
+  catalog: { version: 3, sourceHash: "fixture", operations: [] },
+  call: httpSandboxFetch("http://host.local", "tok"),
+};
+
+test("the assistant family is bridged whole for execute/auto but stripped from plan", () => {
+  // Parity with the pi backend (conversation-cache-tools.test.ts): an
+  // anthropic-backed assistant must get the IDENTICAL set, or it silently
+  // cannot do what a pi-backed one can. houston_recall is named literally
+  // because it is the family's only in-process tool — it needs neither the
+  // catalog nor the host, so nothing else would fail if it went missing here.
+  const names = (mode?: "execute" | "plan" | "auto") =>
+    build(undefined, mode, undefined, ASSISTANT).tools.map((t) => t.name);
+  for (const name of ASSISTANT_TOOL_NAMES) {
+    expect(names()).toContain(name);
+    expect(names("execute")).toContain(name);
+    expect(names("auto")).toContain(name);
+    expect(names("plan")).not.toContain(name);
+    expect(build(undefined).tools.map((t) => t.name)).not.toContain(name);
+  }
+  expect(names()).toContain("houston_recall");
+  expect(ASSISTANT_TOOL_NAMES).toContain("houston_recall");
 });
 
 test("auto mode keeps the integration + suggest_reusable tools but drops ask_user", () => {

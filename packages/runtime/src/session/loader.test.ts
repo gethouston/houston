@@ -1,8 +1,10 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { ASSISTANT_AGENT_NAME } from "@houston/host/src/routes/assistant";
 import { expect, test, vi } from "vitest";
-import { buildAgentLoader } from "./resource-loader";
+import { learningsDocPath } from "./learnings-context";
+import { buildAgentLoader, makeAgentLoader } from "./resource-loader";
 
 /**
  * The loader is the seam deciding what an agent sees: OUR system prompt, the
@@ -244,6 +246,55 @@ test("a mangled manifest logs a diagnostic and does not crash loader reload", as
   } finally {
     diagnostic.mockRestore();
   }
+});
+
+/**
+ * The assistant's memory injection, pinned on the pi side of the prompt-assembly
+ * parity pair (its twin is backends/claude/system-prompt.test.ts).
+ */
+function agentDirNamed(name: string): string {
+  const dir = join(mkdtempSync(join(tmpdir(), "houston-loader-")), name);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function seedLearnings(cwd: string, text: string): void {
+  const path = learningsDocPath(cwd);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(
+    path,
+    JSON.stringify([
+      { id: "l1", text, created_at: "2026-01-01T00:00:00.000Z" },
+    ]),
+  );
+}
+
+async function promptFor(cwd: string, mode?: "plan"): Promise<string> {
+  const loader = makeAgentLoader(cwd, mode);
+  await loader.reload();
+  return loader.getSystemPrompt() ?? "";
+}
+
+test("makeAgentLoader injects the assistant's memory, with the mode overlay LAST", async () => {
+  const cwd = agentDirNamed(ASSISTANT_AGENT_NAME);
+  seedLearnings(cwd, "Julian prefers short replies.");
+
+  const prompt = await promptFor(cwd, "plan");
+  const memoryAt = prompt.indexOf("# What you remember about this user");
+  expect(memoryAt).toBeGreaterThan(-1);
+  expect(prompt).toContain("- Julian prefers short replies.");
+  // Ordering: workspace/user context → memory → mode overlay.
+  expect(memoryAt).toBeGreaterThan(prompt.indexOf("# Workspace Context"));
+  expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(memoryAt);
+});
+
+test("makeAgentLoader omits the memory section for a normal agent", async () => {
+  const cwd = agentDirNamed("Helper");
+  seedLearnings(cwd, "Julian prefers short replies.");
+
+  const prompt = await promptFor(cwd);
+  expect(prompt).not.toContain("# What you remember about this user");
+  expect(prompt).not.toContain("Julian prefers short replies.");
 });
 
 test("the shared-skills manifest is read once when the loader is built", async () => {

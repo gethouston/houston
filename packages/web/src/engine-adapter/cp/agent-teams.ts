@@ -8,6 +8,10 @@ import type {
 import { HoustonEngineError } from "../client/errors";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
+/**
+ * Chooses who may use an agent, and at what access level.
+ * @assistant group:teams confirm
+ */
 export async function setAgentAssignments(
   cfg: ControlPlaneConfig,
   agentSlugOrId: string,
@@ -24,6 +28,10 @@ export async function setAgentAssignments(
   );
 }
 
+/**
+ * Reads which apps and AI models an agent is allowed to use.
+ * @assistant group:teams
+ */
 export async function getAgentSettings(
   cfg: ControlPlaneConfig,
   agentSlugOrId: string,
@@ -36,9 +44,12 @@ export async function getAgentSettings(
 }
 
 /**
+ * Chooses which apps and AI models an agent is allowed to use.
+ *
  * Replace this agent's manager-set settings. The gateway READ-THEN-MERGES the
  * body, so forwarding only the keys the caller set is the whole contract — a
  * one-ceiling PUT leaves the other untouched.
+ * @assistant group:teams confirm
  */
 export async function setAgentSettings(
   cfg: ControlPlaneConfig,
@@ -56,10 +67,13 @@ export async function setAgentSettings(
 }
 
 /**
+ * Reads which AI model the user picked for an agent.
+ *
  * The ACTING user's model choice for this agent plus its effective
  * `allowedModels` ceiling, or `null` when the gateway does not serve model
  * choices (404) — a non-Teams host — so the composer degrades to single-player
  * behavior. Every other error still throws.
+ * @assistant group:agents
  */
 export async function getAgentModelChoice(
   cfg: ControlPlaneConfig,
@@ -77,7 +91,12 @@ export async function getAgentModelChoice(
   }
 }
 
-/** Set the ACTING user's model choice for this agent (gateway clamps to ceiling). */
+/**
+ * Chooses which AI model an agent uses.
+ *
+ * Set the ACTING user's model choice for this agent (gateway clamps to ceiling).
+ * @assistant group:agents
+ */
 export async function setAgentModelChoice(
   cfg: ControlPlaneConfig,
   agentSlugOrId: string,
@@ -91,9 +110,12 @@ export async function setAgentModelChoice(
 }
 
 /**
+ * Checks whether an agent's routine triggers are ready.
+ *
  * One agent's per-routine trigger status (C9), or `null` when the gateway does
  * not serve triggers (404). Callers treat `null` as "triggers unsupported here"
  * and hide the badge; every other error throws.
+ * @assistant group:routines
  */
 export async function agentTriggerStatus(
   cfg: ControlPlaneConfig,

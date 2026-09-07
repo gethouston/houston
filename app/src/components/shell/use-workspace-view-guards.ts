@@ -29,7 +29,7 @@ import {
  * 2. **The open view must exist.** Every screen is a top-level view now, so a
  *    `viewMode` no screen answers to, a view this caller's gates hide (the AI
  *    Models hub for a plain member, Admin for anyone but an owner/admin of a
- *    team space), or a team
+ *    team space, the assistant where discovery hands out no address), or a team
  *    that stopped existing under an open team view all fall through every render
  *    branch and strand the user on a blank card. Each goes home. Two cases WAIT
  *    instead, because they are in-flight rather than stale: a dead TEAM view in
@@ -46,10 +46,11 @@ import {
 export function useWorkspaceViewGuards(gates: {
   showAiModels: boolean;
   showOrganization: boolean;
-  /** False while the capabilities behind the gates are still loading. */
+  showAssistant: boolean;
+  /** False while the reads behind the gates are still loading. */
   ready: boolean;
 }): void {
-  const { showAiModels, showOrganization, ready } = gates;
+  const { showAiModels, showOrganization, showAssistant, ready } = gates;
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const openTeamView = useUIStore((s) => s.openTeamView);
@@ -93,6 +94,7 @@ export function useWorkspaceViewGuards(gates: {
       viewMode,
       showAiModels,
       showOrganization,
+      showAssistant,
       gatesReady: ready,
       teams,
       activeTeamId,
@@ -109,6 +111,7 @@ export function useWorkspaceViewGuards(gates: {
     ready,
     setViewMode,
     showAiModels,
+    showAssistant,
     showOrganization,
     teams,
     viewMode,

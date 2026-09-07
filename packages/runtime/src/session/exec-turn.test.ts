@@ -152,7 +152,7 @@ function fakeConv(
     async setModel() {
       opts.setModel?.();
     },
-    async compact() {},
+    async compact(): Promise<undefined> {},
     setThinkingLevel() {},
     getContextUsage() {
       return { tokens: 0 };

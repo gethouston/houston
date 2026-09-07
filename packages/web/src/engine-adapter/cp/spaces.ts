@@ -1,8 +1,6 @@
 import type {
   AgentMoveStart,
   AgentMoveStatus,
-  BillingCheckout,
-  BillingSummary,
   OrgSummary,
   OrgsList,
 } from "../../../../../ui/engine-client/src/types";
@@ -10,9 +8,18 @@ import { HoustonEngineError } from "../client/errors";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 /**
+ * Spaces (C8): the caller's personal + team spaces, their lifecycle, the invites
+ * addressed to them, and moving an agent between spaces. The subscription behind
+ * a team space lives in `billing.ts`.
+ */
+
+/**
+ * Lists the spaces the user belongs to and any invitations waiting for them.
+ *
  * The caller's spaces + pending invites. Degrades to an empty result on a
  * gateway that predates spaces (404) — the switcher then shows only the personal
  * workspace, byte-identical to a pre-C8 deployment. Every other error throws.
+ * @assistant group:spaces
  */
 export async function listOrgs(cfg: ControlPlaneConfig): Promise<OrgsList> {
   try {
@@ -27,9 +34,12 @@ export async function listOrgs(cfg: ControlPlaneConfig): Promise<OrgsList> {
 }
 
 /**
+ * Creates a shared space the user can invite teammates into.
+ *
  * Create a team space. NOT idempotent — on a lost response DON'T blind-retry;
  * reconcile via `listOrgs` and reuse the persisted slug (C8). Never degrades: a
  * failure throws so the UI surfaces the real reason.
+ * @assistant group:spaces
  */
 export async function createOrg(
   cfg: ControlPlaneConfig,
@@ -43,6 +53,8 @@ export async function createOrg(
 }
 
 /**
+ * Deletes a shared space the user owns, along with everything inside it.
+ *
  * Delete a team space the caller owns (`DELETE /v1/orgs/:slug`, PRODUCT-1410).
  * Never degrades: every rejection is a state the owner must see — `404
  * org_not_found` (already gone, or not theirs), `403 personal_space` (a
@@ -50,6 +62,7 @@ export async function createOrg(
  * `409 has_members` (teammates remain — remove them first), `409
  * subscription_active` (a live subscription — cancel it first). A `204` means
  * the space and everything in it is gone for good; the caller must re-list.
+ * @assistant group:spaces confirm
  */
 export async function deleteOrg(
   cfg: ControlPlaneConfig,
@@ -61,6 +74,8 @@ export async function deleteOrg(
 }
 
 /**
+ * Accepts an invitation to join a shared space.
+ *
  * Accept a pending invite addressed to the caller (C8), by the id that rides
  * `listOrgs().invites`. Answers the joined space (the gateway wraps it as
  * `{org}`) so the caller can name it without a second read. Never degrades —
@@ -68,6 +83,7 @@ export async function deleteOrg(
  * (revoked, already used, or addressed to another email — the gateway
  * deliberately can't tell those apart), `409 already_member`, `403
  * needs_upgrade` (the team's trial ended).
+ * @assistant group:spaces confirm
  */
 export async function acceptOrgInvite(
   cfg: ControlPlaneConfig,
@@ -82,10 +98,13 @@ export async function acceptOrgInvite(
 }
 
 /**
+ * Declines an invitation to join a shared space.
+ *
  * Decline a pending invite addressed to the caller (C8) — the invitee's own
  * `204`, NOT the owner's revoke (`deleteOrgInvite`, org-scoped at
  * `/v1/org/invites/:id`). Never degrades: a `404 invite_not_found` must reach
  * the UI so the stale row explains itself.
+ * @assistant group:spaces confirm
  */
 export async function declineOrgInvite(
   cfg: ControlPlaneConfig,
@@ -97,9 +116,12 @@ export async function declineOrgInvite(
 }
 
 /**
+ * Moves an agent into a shared space so teammates can work with it.
+ *
  * Move an agent into a team space; returns the `moveId` to poll with
  * `getMoveStatus`. Never degrades — 403 `unsupported_move` / 409
  * `unmovable_volume` / 403 `needs_upgrade` throw so the caller surfaces them.
+ * @assistant group:spaces confirm
  */
 export async function moveAgent(
   cfg: ControlPlaneConfig,
@@ -115,8 +137,11 @@ export async function moveAgent(
 }
 
 /**
+ * Checks how an agent's move to another space is going.
+ *
  * Poll one agent-move's progress (C8). The move-completion signal is THIS route
  * only — never the agent event stream (which relays pod-scoped events).
+ * @assistant group:spaces
  */
 export async function getMoveStatus(
   cfg: ControlPlaneConfig,
@@ -128,58 +153,4 @@ export async function getMoveStatus(
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/move/${encodeURIComponent(moveId)}`,
   );
   return (await res.json()) as AgentMoveStatus;
-}
-
-/**
- * The active team's billing summary. Degrades to `null` for the NOT-ENTITLED
- * cases — a gateway that predates billing (404), a caller it refuses billing
- * detail (403 `personal_space` or plain member), and a billing-off deployment
- * (503 `billing not configured`: no `GW_STRIPE_*` set — every prod gateway with
- * no Stripe, and the kind loop, run this way) — so the billing UI renders
- * nothing and the degrade surfaces take over. Every other error throws. Mirrors
- * the engine-client shim's `getBilling` (same 404/403/503 status set), which is
- * what keeps the 503 from surfacing the red bug toast on team entry (HOU-904).
- */
-export async function getBilling(
-  cfg: ControlPlaneConfig,
-): Promise<BillingSummary | null> {
-  try {
-    const res = await cpFetch(cfg, "/v1/org/billing");
-    return (await res.json()) as BillingSummary;
-  } catch (err) {
-    if (
-      err instanceof HoustonEngineError &&
-      (err.status === 404 || err.status === 403 || err.status === 503)
-    ) {
-      return null;
-    }
-    throw err;
-  }
-}
-
-/**
- * Start a Stripe Checkout session for the active team (owner only; admin gets
- * 403 `not_owner`). Returns the hosted `{url}`. Never degrades — a failure throws
- * so the UI surfaces the real reason.
- */
-export async function createCheckout(
-  cfg: ControlPlaneConfig,
-  interval: "monthly" | "annual",
-): Promise<BillingCheckout> {
-  const res = await cpFetch(cfg, "/v1/org/billing/checkout", {
-    method: "POST",
-    body: JSON.stringify({ interval }),
-  });
-  return (await res.json()) as BillingCheckout;
-}
-
-/**
- * Open the Stripe customer portal for the active team (owner only) — card,
- * invoices, interval switch, cancel. Returns the hosted `{url}`. Never degrades.
- */
-export async function createPortal(
-  cfg: ControlPlaneConfig,
-): Promise<BillingCheckout> {
-  const res = await cpFetch(cfg, "/v1/org/billing/portal", { method: "POST" });
-  return (await res.json()) as BillingCheckout;
 }

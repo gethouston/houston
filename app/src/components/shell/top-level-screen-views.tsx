@@ -9,6 +9,7 @@ import { ABOUT_ME_VIEW_ID, AboutMeView } from "../about-me";
 import { ACADEMY_VIEW_ID, AcademyView } from "../academy";
 import { AgentsHomeView } from "../agents-home/agents-home-view";
 import { AiHubView } from "../ai-hub/ai-hub-view";
+import { ASSISTANT_VIEW_ID, AssistantView } from "../assistant";
 import { InboxView } from "../inbox/inbox-view";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
 import { ORGANIZATION_VIEW_ID, OrganizationView } from "../organization";
@@ -41,9 +42,17 @@ import type { KeepAliveView } from "./keep-alive-views";
 export function topLevelScreenViews(gates: {
   showAiModels: boolean;
   showOrganization: boolean;
+  showAssistant: boolean;
 }): KeepAliveView[] {
   return [
     { id: INBOX_VIEW_ID, enabled: true, content: <InboxView /> },
+    // Gated on DISCOVERY, not on a role: where no assistant exists there is no
+    // address to open a chat at, so the screen is never even mounted.
+    {
+      id: ASSISTANT_VIEW_ID,
+      enabled: gates.showAssistant,
+      content: <AssistantView />,
+    },
     // The mobile Agents tab's root. Ungated: it is the phone's landing screen,
     // so it must exist before anything else resolves — like the Inbox.
     { id: AGENTS_HOME_VIEW_ID, enabled: true, content: <AgentsHomeView /> },

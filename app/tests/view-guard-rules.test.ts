@@ -99,6 +99,7 @@ describe("deadViewStep", () => {
   const base = {
     showAiModels: true,
     showOrganization: true,
+    showAssistant: true,
     gatesReady: true,
     teams: TEAMS,
     activeTeamId: "team-a",
@@ -116,6 +117,30 @@ describe("deadViewStep", () => {
 
   it("sends a view no screen answers to home", () => {
     assert.equal(deadViewStep({ ...base, viewMode: "chat" }), "go-home");
+  });
+
+  it("sends the assistant home on a deployment that serves none", () => {
+    // Not a role gate: discovery answered 501/503, so there is no address to
+    // open a chat at and the screen is not even mounted.
+    assert.equal(
+      deadViewStep({ ...base, viewMode: "assistant", showAssistant: false }),
+      "go-home",
+    );
+    assert.equal(deadViewStep({ ...base, viewMode: "assistant" }), "keep");
+  });
+
+  it("waits rather than bouncing the assistant while discovery is in flight", () => {
+    // Discovery is null until it lands, so the gate reads false in that window:
+    // acting on it would throw the user off the screen they just opened.
+    assert.equal(
+      deadViewStep({
+        ...base,
+        viewMode: "assistant",
+        showAssistant: false,
+        gatesReady: false,
+      }),
+      "wait",
+    );
   });
 
   it("sends a role-blocked view home", () => {

@@ -15,6 +15,7 @@ import academyEn from "../locales/en/academy.json";
 import agentOnboardingEn from "../locales/en/agent-onboarding.json";
 import agentsEn from "../locales/en/agents.json";
 import aiHubEn from "../locales/en/ai-hub.json";
+import assistantEn from "../locales/en/assistant.json";
 import authEn from "../locales/en/auth.json";
 import boardEn from "../locales/en/board.json";
 import chatEn from "../locales/en/chat.json";
@@ -39,6 +40,7 @@ import academyEs from "../locales/es/academy.json";
 import agentOnboardingEs from "../locales/es/agent-onboarding.json";
 import agentsEs from "../locales/es/agents.json";
 import aiHubEs from "../locales/es/ai-hub.json";
+import assistantEs from "../locales/es/assistant.json";
 import authEs from "../locales/es/auth.json";
 import boardEs from "../locales/es/board.json";
 import chatEs from "../locales/es/chat.json";
@@ -63,6 +65,7 @@ import academyPt from "../locales/pt/academy.json";
 import agentOnboardingPt from "../locales/pt/agent-onboarding.json";
 import agentsPt from "../locales/pt/agents.json";
 import aiHubPt from "../locales/pt/ai-hub.json";
+import assistantPt from "../locales/pt/assistant.json";
 import authPt from "../locales/pt/auth.json";
 import boardPt from "../locales/pt/board.json";
 import chatPt from "../locales/pt/chat.json";
@@ -137,6 +140,7 @@ const resources = {
   en: {
     common: commonEn,
     aiHub: aiHubEn,
+    assistant: assistantEn,
     auth: authEn,
     setup: setupEn,
     legal: legalEn,
@@ -163,6 +167,7 @@ const resources = {
   es: {
     common: commonEs,
     aiHub: aiHubEs,
+    assistant: assistantEs,
     auth: authEs,
     setup: setupEs,
     legal: legalEs,
@@ -189,6 +194,7 @@ const resources = {
   pt: {
     common: commonPt,
     aiHub: aiHubPt,
+    assistant: assistantPt,
     auth: authPt,
     setup: setupPt,
     legal: legalPt,
@@ -237,6 +243,7 @@ void i18n
     ns: [
       "common",
       "aiHub",
+      "assistant",
       "auth",
       "setup",
       "legal",

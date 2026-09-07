@@ -16,8 +16,13 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * Every failure surfaces as a {@link HoustonEngineError} from `cpFetch`.
  */
 
-/** The active space's teams, as the CALLER sees them (`joined`/`owner`/
- *  `memberCount` are effective values resolved server-side). */
+/**
+ * Lists the teams of people and agents in this space.
+ *
+ * The active space's teams, as the CALLER sees them (`joined`/`owner`/
+ * `memberCount` are effective values resolved server-side).
+ * @assistant group:teams
+ */
 export async function listAgentTeams(
   cfg: ControlPlaneConfig,
 ): Promise<AgentTeam[]> {
@@ -25,7 +30,12 @@ export async function listAgentTeams(
   return ((await res.json()) as { teams?: AgentTeam[] }).teams ?? [];
 }
 
-/** Create a team with the typed name; the creator becomes its owner. */
+/**
+ * Creates a team in this space.
+ *
+ * Create a team with the typed name; the creator becomes its owner.
+ * @assistant group:teams
+ */
 export async function createAgentTeam(
   cfg: ControlPlaneConfig,
   input: { name: string; icon?: string; color?: string },
@@ -37,14 +47,19 @@ export async function createAgentTeam(
   return (await res.json()) as AgentTeam;
 }
 
-/** Rename, reorder or restyle a team. Partial: an omitted field is left
- *  untouched, so forwarding only what the caller set is the whole contract.
- *  `icon`/`color` (C13 §Team identity) have three states: a string SETS, `""`
- *  CLEARS, an omitted key leaves alone. `null` is not a clear — it is a `400`,
- *  alongside `invalid_icon`/`invalid_color` for a bad shape. Neither is trimmed.
- *  `context` is the team's shared prose, not an identity field: any string is
- *  valid, `""` is an empty context rather than a CLEAR, and it is never
- *  trimmed. */
+/**
+ * Renames a team, reorders it, restyles it, or updates the notes it shares.
+ *
+ * Rename, reorder or restyle a team. Partial: an omitted field is left
+ * untouched, so forwarding only what the caller set is the whole contract.
+ * `icon`/`color` (C13 §Team identity) have three states: a string SETS, `""`
+ * CLEARS, an omitted key leaves alone. `null` is not a clear — it is a `400`,
+ * alongside `invalid_icon`/`invalid_color` for a bad shape. Neither is trimmed.
+ * `context` is the team's shared prose, not an identity field: any string is
+ * valid, `""` is an empty context rather than a CLEAR, and it is never
+ * trimmed.
+ * @assistant group:teams
+ */
 export async function updateAgentTeam(
   cfg: ControlPlaneConfig,
   teamId: string,
@@ -64,7 +79,12 @@ export async function updateAgentTeam(
   return (await res.json()) as AgentTeam;
 }
 
-/** Delete a team; its agents fall back to the default one. */
+/**
+ * Deletes a team.
+ *
+ * Delete a team; its agents fall back to the default one.
+ * @assistant group:teams confirm
+ */
 export async function deleteAgentTeam(
   cfg: ControlPlaneConfig,
   teamId: string,
@@ -74,8 +94,13 @@ export async function deleteAgentTeam(
   });
 }
 
-/** One team's EXPLICIT membership rows. Implicit owners (org owners/admins own
- *  every team) are a permission rule, not a roster entry, and are absent here. */
+/**
+ * Lists the people who joined a team.
+ *
+ * One team's EXPLICIT membership rows. Implicit owners (org owners/admins own
+ * every team) are a permission rule, not a roster entry, and are absent here.
+ * @assistant group:teams
+ */
 export async function listAgentTeamMembers(
   cfg: ControlPlaneConfig,
   teamId: string,
@@ -87,7 +112,12 @@ export async function listAgentTeamMembers(
   return ((await res.json()) as { members?: AgentTeamMember[] }).members ?? [];
 }
 
-/** Self-service join (v1 teams are all public). Idempotent, never demotes. */
+/**
+ * Joins the user to a team in this space.
+ *
+ * Self-service join (v1 teams are all public). Idempotent, never demotes.
+ * @assistant group:teams
+ */
 export async function joinAgentTeam(
   cfg: ControlPlaneConfig,
   teamId: string,
@@ -97,8 +127,13 @@ export async function joinAgentTeam(
   });
 }
 
-/** Drop a membership row: self is a leave, an owner acting on someone else is
- *  a remove. Idempotent, so a double-click cannot 404. */
+/**
+ * Removes someone from a team, or leaves it.
+ *
+ * Drop a membership row: self is a leave, an owner acting on someone else is
+ * a remove. Idempotent, so a double-click cannot 404.
+ * @assistant group:teams confirm
+ */
 export async function removeAgentTeamMember(
   cfg: ControlPlaneConfig,
   teamId: string,
@@ -111,7 +146,12 @@ export async function removeAgentTeamMember(
   );
 }
 
-/** Set (or upsert) a member's owner flag on this team. */
+/**
+ * Gives someone ownership of a team, or takes it away.
+ *
+ * Set (or upsert) a member's owner flag on this team.
+ * @assistant group:teams confirm
+ */
 export async function setAgentTeamMemberOwner(
   cfg: ControlPlaneConfig,
   teamId: string,
@@ -125,8 +165,13 @@ export async function setAgentTeamMemberOwner(
   );
 }
 
-/** Move one agent between teams in the same space. Grouping only: assignments,
- *  and therefore who may drive the agent, are untouched. */
+/**
+ * Moves an agent into another team in this space.
+ *
+ * Move one agent between teams in the same space. Grouping only: assignments,
+ * and therefore who may drive the agent, are untouched.
+ * @assistant group:teams confirm
+ */
 export async function setAgentTeam(
   cfg: ControlPlaneConfig,
   agentSlugOrId: string,

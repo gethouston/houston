@@ -73,6 +73,20 @@ export interface VersionResponse {
   chatHistoryMigrated?: boolean;
 }
 
+/**
+ * Where the user's personal assistant lives. The assistant is an ordinary
+ * agent conversation as far as this client is concerned — this handle is the
+ * address to open it at, and both fields are OPAQUE: never parse them, never
+ * assume a shape. The deployment decides (a hidden local agent on the desktop,
+ * a dedicated pod on the hosted cloud).
+ */
+export interface AssistantHandle {
+  /** The agent id to pass to every per-agent call (chat, events, files). */
+  agent: string;
+  /** The conversation id to open on that agent. */
+  conversation: string;
+}
+
 export interface Capabilities {
   profile: "local" | "cloud";
   revealInOs: boolean;

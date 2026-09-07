@@ -1,0 +1,9 @@
+{
+  "title": "Houston",
+  "opening": "Abriendo Houston",
+  "empty": {
+    "heading": "Hola, soy Houston",
+    "capabilities": "Puedo hacer todo lo que tú puedes hacer en Houston: crear agentes, configurar automatizaciones, conectar tus apps y encontrar lo que necesitas.",
+    "safety": "Siempre te voy a preguntar antes de hacer algo riesgoso."
+  }
+}

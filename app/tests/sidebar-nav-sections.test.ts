@@ -16,7 +16,12 @@ import { describe, it } from "node:test";
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-const NAV = read("../src/components/shell/sidebar-nav-sections.tsx");
+const SECTIONS = read("../src/components/shell/sidebar-nav-sections.tsx");
+const ROWS = read("../src/components/shell/sidebar-nav-rows.tsx");
+/** Both halves of the model: the runs that compose it and the gated rows it
+ *  composes. A row moving between the two files is a refactor, not an IA
+ *  change, so every "the rail says X" assertion reads them as one source. */
+const NAV = `${SECTIONS}\n${ROWS}`;
 const HOOK = read("../src/components/shell/use-sidebar-nav-items.tsx");
 const FOOTER = read("../src/components/shell/sidebar-footer.tsx");
 const SHELL = read("../src/components/shell/workspace-shell.tsx");
@@ -27,10 +32,10 @@ const VIEWS = read("../src/lib/top-level-views.ts");
 /** The source of one nav section, from its id to the next section's. */
 function navSection(id: string): string {
   const marker = `      id: "${id}",`;
-  const start = NAV.indexOf(marker);
+  const start = SECTIONS.indexOf(marker);
   assert.ok(start >= 0, `the rail declares a "${id}" section`);
-  const next = NAV.indexOf('      id: "', start + marker.length);
-  return next === -1 ? NAV.slice(start) : NAV.slice(start, next);
+  const next = SECTIONS.indexOf('      id: "', start + marker.length);
+  return next === -1 ? SECTIONS.slice(start) : SECTIONS.slice(start, next);
 }
 
 /** Every `...(gate ? [rows] : [])` in a section, in source order. */
@@ -61,7 +66,31 @@ describe("the rail's unlabelled run", () => {
     assert.equal(
       primary.match(/\n {10}id: /g)?.length,
       4,
-      "the run leads the rail with exactly four rows",
+      "the run declares exactly four unconditional rows inline",
+    );
+  });
+
+  it("is led by the Assistant, on the one gate that is not a role", () => {
+    // Discovery, not a role: a deployment that serves no assistant has no
+    // address to open a chat at, so the row must not exist there. It leads the
+    // run, ahead of the Inbox, and it is the run's ONLY gated row.
+    assert.deepEqual(gatedRuns(primary), [["showAssistant", "assistant"]]);
+    assert.ok(
+      primary.indexOf("showAssistant ?") < primary.indexOf("id: INBOX_VIEW_ID"),
+      "it leads the run",
+    );
+    assert.ok(NAV.includes("onClick: () => setViewMode(ASSISTANT_VIEW_ID)"));
+    assert.ok(NAV.includes('label: t("shell:sidebar.assistant")'));
+    assert.ok(VIEWS.includes("ASSISTANT_VIEW_ID"), "a real top-level view");
+    // Houston leads the run wearing its animated orb, not a static glyph.
+    assert.ok(
+      ROWS.includes("icon: <HoustonLogo />"),
+      "the row renders the logo",
+    );
+    assert.ok(!ROWS.includes("Sparkles"), "no static sparkle glyph remains");
+    assert.ok(
+      HOOK.includes("showAssistant"),
+      "the hook feeds the gate from useSurfaceGates",
     );
   });
 

@@ -8,6 +8,10 @@ import type {
 import { HoustonEngineError } from "../client/errors";
 import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
 
+/**
+ * Lists the missions on an agent's board.
+ * @assistant group:missions
+ */
 export async function listActivities(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -20,6 +24,10 @@ export async function listActivities(
 // stays here: it is a GENERIC `ActivityUpdate` PATCH (status, pending_interaction,
 // title, …) that no single SDK write (setStatus `{status}` / rename `{title}`)
 // reproduces byte-for-byte, so it can't delegate without an SDK change.
+/**
+ * Updates a mission's details or status.
+ * @assistant group:missions
+ */
 export async function updateActivity(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -36,6 +44,10 @@ export async function updateActivity(
   );
   return (await res.json()) as Activity;
 }
+/**
+ * Lists an agent's routines.
+ * @assistant group:routines
+ */
 export async function listRoutines(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -43,6 +55,10 @@ export async function listRoutines(
   const res = await cpFetch(cfg, `${agentPath(agentId)}/routines`);
   return ((await res.json()) as { items: Routine[] }).items;
 }
+/**
+ * Lists the times an agent's routines have run, including any run in progress.
+ * @assistant group:routines
+ */
 export async function listRoutineRuns(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -51,6 +67,10 @@ export async function listRoutineRuns(
   return ((await res.json()) as { items: RoutineRun[] }).items;
 }
 
+/**
+ * Creates a routine so an agent repeats work on a schedule.
+ * @assistant group:routines
+ */
 export async function createRoutine(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -62,6 +82,10 @@ export async function createRoutine(
   });
   return (await res.json()) as Routine;
 }
+/**
+ * Updates a routine's schedule or instructions.
+ * @assistant group:routines
+ */
 export async function updateRoutine(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -78,6 +102,10 @@ export async function updateRoutine(
   );
   return (await res.json()) as Routine;
 }
+/**
+ * Deletes a routine so it stops running on its schedule.
+ * @assistant group:routines confirm
+ */
 export async function deleteRoutine(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -90,7 +118,12 @@ export async function deleteRoutine(
   );
 }
 
-/** Fire a routine immediately — the host records a routine_run and starts the turn now. */
+/**
+ * Runs a routine right now instead of waiting for its next scheduled time.
+ *
+ * Fire a routine immediately — the host records a routine_run and starts the turn now.
+ * @assistant group:routines confirm
+ */
 export async function runRoutineNow(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -103,7 +136,12 @@ export async function runRoutineNow(
   );
 }
 
-/** Stop an in-flight routine run — the host flips the row terminal, then aborts the turn. */
+/**
+ * Stops a routine run that is currently under way.
+ *
+ * Stop an in-flight routine run — the host flips the row terminal, then aborts the turn.
+ * @assistant group:routines confirm
+ */
 export async function cancelRoutineRun(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -119,10 +157,16 @@ export async function cancelRoutineRun(
 }
 
 /**
+ * Creates a fresh key that lets an outside service start a routine, replacing any key issued before.
+ *
  * Mint (or rotate) a routine's incoming-webhook key, or `null` when the gateway
  * does not serve webhook keys (404). Calling again ROTATES: the old secret is
  * invalidated. Callers treat `null` as "webhook keys unsupported here"; every
  * other error throws. Mirrors `agentTriggerStatus`'s 404 degrade.
+ *
+ * Hidden: the reply carries the raw secret, and an operation the assistant can
+ * call is an operation whose result can end up quoted back into a chat.
+ * @assistant group:routines confirm hidden
  */
 export async function mintRoutineWebhookKey(
   cfg: ControlPlaneConfig,

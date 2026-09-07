@@ -115,6 +115,13 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1280, height: 800 },
+        // Freeze motion for the whole visual suite. `toHaveScreenshot`'s
+        // `animations: "disabled"` only halts CSS animations/transitions; the
+        // sidebar's Houston orb is a canvas rAF loop that ignores it, so the
+        // baselines would flicker frame to frame. The orb (and any other
+        // motion) pauses under `prefers-reduced-motion`, so emulating it here
+        // makes every snapshot deterministic.
+        reducedMotion: "reduce",
       },
       snapshotPathTemplate:
         "{testDir}/__screenshots__/{testFileName}/{arg}{-platform}{ext}",

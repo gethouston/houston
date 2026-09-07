@@ -15,9 +15,12 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  */
 
 /**
+ * Saves an agent's provider sign-in so every agent in the workspace can use it.
+ *
  * Connect-once: after a device-code connect lands on one agent, capture its
  * credential into the workspace's central store so every agent (existing + new)
  * shares the connection. Idempotent; safe to call on each successful connect.
+ * @assistant group:providers hidden
  */
 export async function captureCredential(
   cfg: ControlPlaneConfig,
@@ -35,6 +38,8 @@ export async function captureCredential(
 }
 
 /**
+ * Sends this computer's Claude sign-in to a cloud agent.
+ *
  * Push the desktop's freshly minted Anthropic OAuth credential to the agent's
  * pod. The body is the `claude` CLI's `.credentials.json` shape
  * (`{claudeAiOauth:{...}}`), already a JSON string; the host stores it
@@ -46,6 +51,7 @@ export async function captureCredential(
  * background reconcile (HOU-950; the host still honors the flag for older
  * clients). Resolves on 200; throws the host's reason otherwise so the caller
  * can degrade to the paste flow.
+ * @assistant group:providers hidden
  */
 export async function pushClaudeOAuthCredential(
   cfg: ControlPlaneConfig,
@@ -60,10 +66,13 @@ export async function pushClaudeOAuthCredential(
 }
 
 /**
+ * Signs the workspace out of an AI provider.
+ *
  * Connect-once logout: forget the workspace's central credential for a provider,
  * the mirror of captureCredential. Without it, logout cleared only the agent
  * runtime's local auth.json and the next turn re-served the credential from the
  * central store — so the provider reconnected itself. Idempotent.
+ * @assistant group:providers hidden
  */
 export async function forgetCredential(
   cfg: ControlPlaneConfig,
@@ -81,9 +90,12 @@ export async function forgetCredential(
 }
 
 /**
+ * Connects an AI provider with an API key.
+ *
  * Connect an API-key provider (OpenCode Zen / Go): submit the pasted key, which
  * the host stores centrally for the workspace and pushes into the agent runtime.
  * No OAuth dance, no polling — it returns once the key is accepted.
+ * @assistant group:providers hidden
  */
 export async function setApiKey(
   cfg: ControlPlaneConfig,
@@ -107,11 +119,13 @@ export async function setApiKey(
 }
 
 /**
+ * Connects a local or custom AI model server.
+ *
  * Connect an OpenAI-compatible (local) server: the host forwards the endpoint
  * (base URL + model + optional key) to the agent's standing runtime, which
  * persists it. LOCAL-only — a non-local deployment 400s on the openaiCompatible
  * capability, and cpFetch throws the host's error message.
- *
+ * @assistant group:providers hidden
  */
 export async function setCustomEndpoint(
   cfg: ControlPlaneConfig,
@@ -129,78 +143,19 @@ export async function setCustomEndpoint(
 }
 
 /**
+ * Gets the credentials that link a local AI model to a cloud agent.
+ *
  * Mint a short-lived relay credential for the guided "connect a local model"
  * flow (`POST /v1/tunnel/credentials`, Supabase-authed via cpFetch, mirroring
  * `/v1/integrations`). The desktop runs its frpc sidecar against the returned
  * `relayHost:relayPort` so the user's local model server surfaces at `publicUrl`
  * for their cloud agent. Hosted-only — a non-gateway deployment 404s and cpFetch
  * throws the host's real error message (never swallowed).
+ * @assistant group:providers hidden
  */
 export async function getTunnelCredentials(
   cfg: ControlPlaneConfig,
 ): Promise<TunnelCredentials> {
   const res = await cpFetch(cfg, "/v1/tunnel/credentials", { method: "POST" });
   return (await res.json()) as TunnelCredentials;
-}
-
-/**
- * Claude OAuth push on the setup runtime — `pushClaudeOAuthCredential`,
- * agentless. Used when the desktop's browser login lands with NO agent
- * selected yet (first-run onboarding, the cloud-migration wizard): the setup
- * runtime stores it on the personal workspace, so every agent created or
- * migrated after is already connected.
- */
-export async function pushSetupClaudeOAuthCredential(
-  cfg: ControlPlaneConfig,
-  credentialJson: string,
-): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/claude-oauth`, {
-    method: "POST",
-    body: credentialJson,
-  });
-}
-
-/** Connect-once capture on the setup runtime — `captureCredential`, agentless. */
-export async function captureSetupCredential(
-  cfg: ControlPlaneConfig,
-  provider?: string,
-): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/capture`, {
-    method: "POST",
-    ...(provider ? { body: JSON.stringify({ provider }) } : {}),
-  });
-}
-
-/**
- * Connect-once logout on the setup runtime — `forgetCredential`, agentless. A
- * space with NO agent (first-run before the assistant exists, a failed first
- * create, a deleted last agent) still holds the workspace-central credential
- * the user connected; the setup runtime is the one runtime that can forget it
- * (PRODUCT-1662).
- */
-export async function forgetSetupCredential(
-  cfg: ControlPlaneConfig,
-  provider: string,
-): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/forget`, {
-    method: "POST",
-    body: JSON.stringify({ provider }),
-  });
-}
-
-/** API-key connect on the setup runtime — `setApiKey`, agentless. */
-export async function setSetupApiKey(
-  cfg: ControlPlaneConfig,
-  provider: string,
-  apiKey: string,
-  endpoint?: string,
-): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/api-key`, {
-    method: "POST",
-    body: JSON.stringify({
-      provider,
-      apiKey,
-      ...(endpoint ? { endpoint } : {}),
-    }),
-  });
 }

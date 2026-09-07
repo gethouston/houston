@@ -12,6 +12,12 @@
  * needs no team is the Inbox — which is why the Inbox is where boot waits and
  * where every fallback lands when no team has resolved.
  *
+ * The personal assistant is here too, leading the rail: it is a 1-on-1 chat
+ * with an agent that can do anything the user can do in Houston, so it owns the
+ * whole window like every other destination rather than borrowing a board's
+ * detail panel. It is the one view gated on DISCOVERY rather than on a role —
+ * a deployment that holds no assistant has neither the row nor the screen.
+ *
  * Admin is here, in the rail's "Workspace" band, and About me and the Academy
  * are here under the Inbox: none of them is a preference, so none of them is a
  * Settings section. Each owns
@@ -34,6 +40,7 @@
 import { ABOUT_ME_VIEW_ID } from "../components/about-me/id.ts";
 import { ACADEMY_VIEW_ID } from "../components/academy/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../components/agents-home/id.ts";
+import { ASSISTANT_VIEW_ID } from "../components/assistant/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
 import { ORGANIZATION_VIEW_ID } from "../components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
@@ -45,6 +52,7 @@ export {
   ABOUT_ME_VIEW_ID,
   ACADEMY_VIEW_ID,
   AGENTS_HOME_VIEW_ID,
+  ASSISTANT_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
   ORGANIZATION_VIEW_ID,
   SKILLS_VIEW_ID,
@@ -59,6 +67,7 @@ export const AI_HUB_VIEW_ID = "ai-hub";
 
 export type TopLevelViewId =
   | typeof INBOX_VIEW_ID
+  | typeof ASSISTANT_VIEW_ID
   | typeof ABOUT_ME_VIEW_ID
   | typeof ACADEMY_VIEW_ID
   | typeof AGENTS_HOME_VIEW_ID
@@ -73,6 +82,7 @@ export type TopLevelViewId =
 
 export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   INBOX_VIEW_ID,
+  ASSISTANT_VIEW_ID,
   ABOUT_ME_VIEW_ID,
   ACADEMY_VIEW_ID,
   AGENTS_HOME_VIEW_ID,
@@ -139,8 +149,9 @@ export function isActiveTopLevelView(
 
 /**
  * Whether a top-level `viewMode` points at a view whose gate is off for this
- * caller: the AI Models hub hides from plain members, and Admin is multiplayer
- * owner/admin territory in a TEAM space. The sidebar entry is already hidden,
+ * caller: the AI Models hub hides from plain members, Admin is multiplayer
+ * owner/admin territory in a TEAM space, and the assistant exists only where
+ * discovery hands out an address. The sidebar entry is already hidden,
  * so a STALE `viewMode` (the role changed on a space switch, or the install
  * moved off the hosted cloud, while the page was open) would otherwise fall
  * through every render branch and strand the user on the shell's engine pane
@@ -158,9 +169,11 @@ export function blockedTopLevelView(
   gates: {
     showAiModels: boolean;
     showOrganization: boolean;
+    showAssistant: boolean;
   },
 ): boolean {
   if (viewMode === AI_HUB_VIEW_ID) return !gates.showAiModels;
   if (viewMode === ORGANIZATION_VIEW_ID) return !gates.showOrganization;
+  if (viewMode === ASSISTANT_VIEW_ID) return !gates.showAssistant;
   return false;
 }

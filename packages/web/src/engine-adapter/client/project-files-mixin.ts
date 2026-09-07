@@ -41,12 +41,16 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         init,
       );
     }
+    /** Lists the files in an agent's workspace.
+     * @assistant group:files */
     async listProjectFiles(agentPath: string): Promise<ProjectFile[]> {
       if (!this.ctx.cp) return [];
       return (await (
         await this.cpFilesFetch(agentPath, "files")
       ).json()) as ProjectFile[];
     }
+    /** Reads a file from an agent's workspace.
+     * @assistant group:files */
     async readProjectFile(agentPath: string, relPath: string): Promise<string> {
       if (!this.ctx.cp) return "";
       const res = await this.cpFilesFetch(
@@ -56,7 +60,10 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       const body = (await res.json()) as { content: string; base64: boolean };
       return body.base64 ? atob(body.content) : body.content;
     }
-    /** Raw bytes of a workspace file (binary-safe) plus its served MIME type. */
+    /** Downloads a file from an agent's workspace.
+     *
+     * Raw bytes of a workspace file (binary-safe) plus its served MIME type.
+     * @assistant group:files hidden */
     async downloadProjectFile(
       agentPath: string,
       relPath: string,
@@ -72,6 +79,8 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
           res.headers.get("content-type") ?? "application/octet-stream",
       };
     }
+    /** Permanently deletes a file from an agent's workspace.
+     * @assistant group:files confirm */
     async deleteFile(agentPath: string, relPath: string): Promise<void> {
       if (!this.ctx.cp) return;
       await this.cpFilesFetch(
@@ -80,6 +89,8 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         { method: "DELETE" },
       );
     }
+    /** Renames a file in an agent's workspace.
+     * @assistant group:files confirm */
     async renameFile(
       agentPath: string,
       relPath: string,
@@ -91,6 +102,8 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         body: JSON.stringify({ path: relPath, newName }),
       });
     }
+    /** Creates a folder in an agent's workspace.
+     * @assistant group:files */
     async createFolder(
       agentPath: string,
       folderName: string,
@@ -103,14 +116,17 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         })
       ).json()) as { created: string };
     }
-    /** Upload browser Files into the workspace (Files section drag-drop /
+    /** Uploads files from the user's device into an agent's workspace.
+     *
+     * Upload browser Files into the workspace (Files section drag-drop /
      * Browse / folder pick), optionally into a subfolder. Folder-derived files
      * carry `webkitRelativePath`, forwarded as `relPath` so the host stores them
      * nested and the folder structure survives (HOU-889); hosts predating it
      * ignore the field and store the flat name. Small files batch together
      * (the same size-budgeted plan attachments use) so a many-file folder
      * doesn't turn into hundreds of round trips, while every request stays
-     * within the host's upload cap. */
+     * within the host's upload cap.
+     * @assistant group:files hidden */
     async uploadProjectFiles(
       agentPath: string,
       files: File[],
@@ -137,7 +153,10 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         });
       }
     }
-    /** Move a file/folder into another folder (null = workspace root). */
+    /** Moves a file into another folder of an agent's workspace.
+     *
+     * Move a file/folder into another folder (null = workspace root).
+     * @assistant group:files confirm */
     async moveProjectFile(
       agentPath: string,
       relPath: string,
@@ -149,9 +168,12 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         body: JSON.stringify({ path: relPath, toDir }),
       });
     }
-    /** One zip of the workspace ("Download all") or, with `path`, of a single
+    /** Downloads everything in an agent's workspace as one archive.
+     *
+     * One zip of the workspace ("Download all") or, with `path`, of a single
      * folder's subtree — for deployments with no local file manager to reveal
-     * in (cloud pods, web builds). */
+     * in (cloud pods, web builds).
+     * @assistant group:files hidden */
     async downloadProjectArchive(
       agentPath: string,
       path?: string,

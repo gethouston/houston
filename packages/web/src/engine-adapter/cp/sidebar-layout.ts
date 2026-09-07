@@ -14,6 +14,10 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
 const layoutPath = (workspaceId: string) =>
   `/v1/workspaces/${encodeURIComponent(workspaceId)}/sidebar-layout`;
 
+/**
+ * Reads how a workspace's sidebar is arranged.
+ * @assistant group:workspaces hidden
+ */
 export async function getHostSidebarLayout(
   cfg: ControlPlaneConfig,
   workspaceId: string,
@@ -22,8 +26,13 @@ export async function getHostSidebarLayout(
   return (await res.json()) as SidebarLayout;
 }
 
-/** Persist a layout and return the host's stored copy (its strict validator
- *  echoes exactly what it wrote, so the caller adopts the canonical shape). */
+/**
+ * Saves how a workspace's sidebar is arranged.
+ *
+ * Persist a layout and return the host's stored copy (its strict validator
+ * echoes exactly what it wrote, so the caller adopts the canonical shape).
+ * @assistant group:workspaces hidden
+ */
 export async function putHostSidebarLayout(
   cfg: ControlPlaneConfig,
   workspaceId: string,

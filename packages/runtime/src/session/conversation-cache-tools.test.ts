@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, vi } from "vitest";
@@ -168,5 +168,139 @@ test("pi registers every allowlisted custom tool with the host + sandbox gates o
     restoreEnv("HOUSTON_CONTROL_PLANE_URL", prior.controlPlane);
     restoreEnv("HOUSTON_SANDBOX_TOKEN", prior.sandboxToken);
     restoreEnv("HOUSTON_CODE_SANDBOX_URL", prior.codeSandboxUrl);
+  }
+});
+
+/** A one-operation FIXTURE catalog on disk (never the generated one). */
+function writeFixtureCatalog(): string {
+  const path = join(
+    mkdtempSync(join(tmpdir(), "houston-cct-catalog-")),
+    "assistant-catalog.json",
+  );
+  writeFileSync(
+    path,
+    JSON.stringify({
+      version: 3,
+      sourceHash: "fixture",
+      operations: [
+        {
+          name: "listOrgs",
+          group: "org",
+          description: "The spaces the caller belongs to.",
+          confirm: false,
+          hidden: false,
+          params: [],
+          returns: { type: "object" },
+          route: {
+            method: "GET",
+            path: "/v1/orgs",
+            pathParams: [],
+            query: {},
+            body: null,
+            bodyFields: null,
+          },
+        },
+      ],
+    }),
+  );
+  return path;
+}
+
+/**
+ * Re-import conversation-cache with the host gates open, the fixture catalog in
+ * place, and `assistant` supplying whichever halves of the gateway credential
+ * the case is about. Every env is restored exactly as it was.
+ */
+async function reimportWithAssistantEnv(assistant: {
+  HOUSTON_ASSISTANT_CP_URL?: string;
+  HOUSTON_ASSISTANT_TOKEN?: string;
+}): Promise<{ tools: string[]; customTools: string[] }> {
+  const keys = [
+    "HOUSTON_CONTROL_PLANE_URL",
+    "HOUSTON_SANDBOX_TOKEN",
+    "HOUSTON_ASSISTANT_CP_URL",
+    "HOUSTON_ASSISTANT_TOKEN",
+    "HOUSTON_ASSISTANT_CATALOG",
+  ] as const;
+  const prior = new Map(keys.map((k) => [k, process.env[k]]));
+  process.env.HOUSTON_CONTROL_PLANE_URL = "http://host.local";
+  process.env.HOUSTON_SANDBOX_TOKEN = "sandbox-token";
+  process.env.HOUSTON_ASSISTANT_CATALOG = writeFixtureCatalog();
+  delete process.env.HOUSTON_ASSISTANT_CP_URL;
+  delete process.env.HOUSTON_ASSISTANT_TOKEN;
+  for (const [k, v] of Object.entries(assistant)) process.env[k] = v;
+  try {
+    vi.resetModules();
+    await import("./conversation-cache");
+    return {
+      tools: [...captured.tools],
+      customTools: [...captured.customTools],
+    };
+  } finally {
+    for (const k of keys) restoreEnv(k, prior.get(k));
+  }
+}
+
+/**
+ * The assistant family rides a THIRD gate on top of host reachability — the
+ * gateway credential being present, and a catalog actually loading — so the
+ * open-gate test above leaves it off and its parity assertion passes vacuously
+ * for these three names. This opens that gate too and pins that each
+ * allowlisted assistant name has a registered tool object behind it.
+ */
+test("pi registers the assistant family when its own gate is open too", async () => {
+  const { ASSISTANT_TOOL_NAMES } = await import("./tools/assistant");
+  // The credential IS the switch: BOTH halves, exactly as the host requires.
+  const open = await reimportWithAssistantEnv({
+    HOUSTON_ASSISTANT_CP_URL: "https://gateway.test",
+    HOUSTON_ASSISTANT_TOKEN: "gw-token",
+  });
+  expect(unregistered(open.tools, open.customTools)).toEqual([]);
+  // The gate really opened (else the assertion above passes vacuously).
+  expect(open.tools).toEqual(expect.arrayContaining([...ASSISTANT_TOOL_NAMES]));
+  expect(open.customTools).toEqual(
+    expect.arrayContaining([...ASSISTANT_TOOL_NAMES]),
+  );
+  // Named literally, so dropping it from ASSISTANT_TOOL_NAMES cannot make the
+  // assertions above pass while the assistant loses its own transcript search.
+  expect(open.tools).toContain("houston_recall");
+  expect(open.customTools).toContain("houston_recall");
+});
+
+/**
+ * HALF a credential is not a switch. Offering the tools with no gateway token
+ * behind them would have the agent promise the user actions whose every call
+ * comes back 501 — worse than offering nothing, so both halves are required on
+ * this side exactly as they are on the host's.
+ */
+test.each([
+  [
+    "only the gateway URL",
+    { HOUSTON_ASSISTANT_CP_URL: "https://gateway.test" },
+  ],
+  ["only the gateway token", { HOUSTON_ASSISTANT_TOKEN: "gw-token" }],
+  ["neither half", {}],
+])("the assistant family stays off with %s", async (_label, assistant) => {
+  const { ASSISTANT_TOOL_NAMES } = await import("./tools/assistant");
+  const partial = await reimportWithAssistantEnv(assistant);
+  for (const name of ASSISTANT_TOOL_NAMES) {
+    expect(partial.tools).not.toContain(name);
+    expect(partial.customTools).not.toContain(name);
+  }
+  // The OTHER host-gated tools still registered, so this is the assistant gate
+  // closing rather than the whole re-import having failed.
+  expect(partial.tools).toEqual(expect.arrayContaining(["save_routine"]));
+});
+
+/**
+ * The same gate on the CLAUDE backend: pi and the in-process MCP server must
+ * offer the identical family, or an anthropic-backed agent on the assistant pod
+ * silently cannot do what a pi-backed one can.
+ */
+test("the assistant family stays absent when the deployment did not opt in", async () => {
+  const { ASSISTANT_TOOL_NAMES } = await import("./tools/assistant");
+  for (const name of ASSISTANT_TOOL_NAMES) {
+    expect(base.tools).not.toContain(name);
+    expect(base.customTools).not.toContain(name);
   }
 });

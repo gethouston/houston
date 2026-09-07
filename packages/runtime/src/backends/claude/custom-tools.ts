@@ -12,6 +12,10 @@ import type { TSchema } from "typebox";
 import { z } from "zod";
 import { toolNamesForMode } from "../../session/tool-selection";
 import { makeAskUserTool } from "../../session/tools/ask-user";
+import {
+  type AssistantToolOptions,
+  makeAssistantTools,
+} from "../../session/tools/assistant";
 import { makeCustomIntegrationTools } from "../../session/tools/custom-integrations";
 import { makeSkillDirectoryTools } from "../../session/tools/find-skills";
 import {
@@ -78,6 +82,14 @@ export interface HoustonMcpInput {
    * + `integration_execute` are built; absent → only `ask_user` is.
    */
   integrations?: IntegrationToolOptions;
+  /**
+   * The assistant family's catalog + host transport, on the SAME three gates the
+   * pi path applies (deployment opted in, host reachable, catalog packaged).
+   * Present → `houston_capabilities` + `houston_describe` + `houston_call` are
+   * built; absent → none of them is. Separate from `integrations` because the
+   * family is deployment-scoped, not credential-scoped.
+   */
+  assistant?: AssistantToolOptions;
   /** An already grant-scoped tool set for a disposable turn runtime. */
   tools?: BridgedPiTool[];
   /**
@@ -169,6 +181,9 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
       ...(input.integrations
         ? makeSkillDirectoryTools(input.integrations)
         : []),
+      // The assistant family rides its OWN gate (not the integrations one) and
+      // has the same reach as save_routine: execute/auto, never plan.
+      ...(input.assistant ? makeAssistantTools(input.assistant) : []),
       ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
       ...(input.integrations
         ? makeCustomIntegrationTools(input.integrations)
