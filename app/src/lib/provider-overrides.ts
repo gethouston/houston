@@ -203,6 +203,9 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.4",
     "gpt-5.4-mini",
   ]),
+  // No gpt-5.4: OpenAI retired it for ChatGPT accounts (400 "not supported
+  // when using Codex with a ChatGPT account"); a conversation already pinned
+  // to it keeps working on the wire, it just can't be picked anymore.
   openai: new Set([
     "gpt-6-astra",
     "gpt-5.5",
@@ -210,7 +213,6 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.6-terra",
     "gpt-5.6-luna",
     "gpt-5.3-codex-spark",
-    "gpt-5.4",
     "gpt-5.4-mini",
   ]),
   anthropic: new Set([
@@ -321,7 +323,9 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Your ChatGPT subscription",
     installUrl: "https://github.com/openai/codex",
     auth: "oauth",
-    defaultModel: "gpt-5.5",
+    // Twin of runtime config.codexModel / domain DEFAULT_MODEL: chatgpt.com
+    // answers gpt-5.5 with 404 for ChatGPT accounts since 2026-09-07.
+    defaultModel: "gpt-5.6-terra",
     models: {
       "gpt-6-astra": {
         label: "GPT-6 Astra",
@@ -330,7 +334,7 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       },
       "gpt-5.5": {
         label: "GPT-5.5",
-        description: "OpenAI's frontier model.",
+        description: "Previous-generation model.",
       },
       "gpt-5.6-sol": {
         label: "GPT-5.6 Sol",

@@ -4,6 +4,7 @@ import {
   EFFORT_ORDER,
   getConnectProviders,
   getContextWindowConfig,
+  getDefaultModel,
   getEffortLevels,
   getProvider,
   getVisibleProviders,
@@ -120,12 +121,7 @@ test("effort levels are derived per model from pi's thinking ladder", () => {
   // Every reasoning model derives the four-tier low→xhigh spectrum from pi
   // (the fixture gives each the full ladder); the retired `max` never appears.
   const FULL = ["low", "medium", "high", "xhigh"];
-  for (const id of [
-    "gpt-5.5",
-    "gpt-5.4",
-    "gpt-5.4-mini",
-    "gpt-5.3-codex-spark",
-  ]) {
+  for (const id of ["gpt-5.5", "gpt-5.4-mini", "gpt-5.3-codex-spark"]) {
     assert.deepEqual(getEffortLevels("openai", id), FULL, id);
   }
   for (const id of [
@@ -212,17 +208,16 @@ test("validModelOrNull rejects retired aliases and accepts catalog IDs", () => {
     validModelOrNull("anthropic", "claude-sonnet-4-6"),
     "claude-sonnet-4-6",
   );
-  // Full Codex lineup is catalogued (gpt-5.5 + the gpt-5.4 / mini / spark
-  // models added in HOU-589); the phantom gpt-5.5-codex never shipped.
-  for (const id of [
-    "gpt-5.5",
-    "gpt-5.4",
-    "gpt-5.4-mini",
-    "gpt-5.3-codex-spark",
-  ]) {
+  // Full Codex lineup is catalogued (gpt-5.5 + the mini / spark models added
+  // in HOU-589); the phantom gpt-5.5-codex never shipped.
+  for (const id of ["gpt-5.5", "gpt-5.4-mini", "gpt-5.3-codex-spark"]) {
     assert.equal(validModelOrNull("openai", id), id);
   }
   assert.equal(validModelOrNull("openai", "gpt-5.5-codex"), null);
+  // gpt-5.4 is retired for ChatGPT accounts: still in pi's catalog, hidden by
+  // VISIBLE_MODELS, so a stored pick falls through to the provider default.
+  assert.equal(validModelOrNull("openai", "gpt-5.4"), null);
+  assert.equal(getDefaultModel("openai"), "gpt-5.6-terra");
 });
 
 test("normalizeLegacyModel maps retired aliases, passes everything else through", () => {

@@ -47,8 +47,15 @@ export const config = {
   shutdownDrainMs: Math.max(0, Number(env.HOUSTON_RUNTIME_DRAIN_MS || 3000)),
   /** Default Anthropic model (Claude Pro/Max subscription). */
   model: env.HOUSTON_MODEL || "claude-sonnet-5",
-  /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
-  codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+  /**
+   * Default Codex model (ChatGPT subscription — the cloud's only provider).
+   * gpt-5.6-terra, not gpt-5.5: since 2026-09-07 chatgpt.com answers gpt-5.5
+   * with 404 "does not exist or you do not have access" for ChatGPT accounts
+   * (the Codex CLI fails identically), so a first turn on the old default died
+   * on the switch-model card. Twin of the domain DEFAULT_MODEL and the frontend
+   * PROVIDER_OVERRIDES.openai.defaultModel.
+   */
+  codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.6-terra",
   /**
    * Default GitHub Copilot model (subscription OAuth). A pi-ai `github-copilot`
    * model id — note Copilot's ids use dots (`gpt-5.4`), unlike the native

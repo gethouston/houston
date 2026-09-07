@@ -292,6 +292,17 @@ const PLAN_LIMIT_PATTERNS = [
  */
 const COPILOT_BASE_FALLBACK = "gpt-5-mini";
 
+/**
+ * The ChatGPT / Codex model offered as the one-click switch target when
+ * chatgpt.com rejects a pick: 404 "does not exist or you do not have access"
+ * for gpt-5.5 (since 2026-09-07, on ChatGPT accounts that still list it) and
+ * 400 "not supported when using Codex with a ChatGPT account" for the retired
+ * gpt-5.4. The gpt-5.6 line answers on every account we have evidence from.
+ * Twin of `config.codexModel`, duplicated on purpose like COPILOT_BASE_FALLBACK
+ * so this classifier stays pure.
+ */
+const CODEX_BROAD_FALLBACK = "gpt-5.6-terra";
+
 /** Longest excerpt we keep for the `unknown` card / bug report. */
 const EXCERPT_MAX = 300;
 
@@ -604,13 +615,15 @@ function broadFallback(provider: string, model: string): string | null {
   const fallback =
     provider === "github-copilot"
       ? COPILOT_BASE_FALLBACK
-      : provider === "moonshotai"
-        ? MOONSHOT_BROAD_FALLBACK
-        : provider === "xiaomi"
-          ? XIAOMI_BROAD_FALLBACK
-          : provider === "amazon-bedrock"
-            ? BEDROCK_BROAD_FALLBACK
-            : null;
+      : provider === "openai-codex"
+        ? CODEX_BROAD_FALLBACK
+        : provider === "moonshotai"
+          ? MOONSHOT_BROAD_FALLBACK
+          : provider === "xiaomi"
+            ? XIAOMI_BROAD_FALLBACK
+            : provider === "amazon-bedrock"
+              ? BEDROCK_BROAD_FALLBACK
+              : null;
   return fallback && fallback !== model ? fallback : null;
 }
 

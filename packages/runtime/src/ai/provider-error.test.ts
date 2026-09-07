@@ -496,9 +496,50 @@ test("Bedrock's own fallback never self-suggests", () => {
     expect(err.suggested_fallback).toBeNull();
 });
 
-test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilot provider", () => {
+test("Codex 404 model_not_found → model_unavailable + gpt-5.6-terra fallback (PRODUCT-1695)", () => {
+  // chatgpt.com's exact body for gpt-5.5 on a ChatGPT account since 2026-09-07.
   const err = classifyProviderError({
     provider: "openai-codex",
+    model: "gpt-5.5",
+    message:
+      "Codex error: The model `gpt-5.5` does not exist or you do not have access to it.",
+  });
+  expect(err).toMatchObject({
+    kind: "model_unavailable",
+    model: "gpt-5.5",
+    suggested_fallback: "gpt-5.6-terra",
+  });
+});
+
+test("Codex retired-model 400 → model_unavailable + gpt-5.6-terra fallback (PRODUCT-1695)", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.4",
+    message:
+      "The 'gpt-5.4' model is not supported when using Codex with a ChatGPT account.",
+  });
+  expect(err).toMatchObject({
+    kind: "model_unavailable",
+    model: "gpt-5.4",
+    suggested_fallback: "gpt-5.6-terra",
+  });
+});
+
+test("Codex fallback is never the failing model itself", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.6-terra",
+    message:
+      "OpenAI API error (404): The model `gpt-5.6-terra` does not exist or you do not have access to it. (model_not_found)",
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBeNull();
+});
+
+test("OpenAI model_not_found on a provider without a known fallback offers none", () => {
+  const err = classifyProviderError({
+    provider: "openai",
     model: "gpt-9",
     message:
       "OpenAI API error (404): The model `gpt-9` does not exist or you do not have access to it. (model_not_found)",
@@ -506,7 +547,6 @@ test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilo
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable") {
     expect(err.model).toBe("gpt-9");
-    // We only know a safe fallback for Copilot; elsewhere offer none.
     expect(err.suggested_fallback).toBeNull();
   }
 });

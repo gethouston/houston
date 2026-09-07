@@ -63,7 +63,10 @@ export const DEFAULT_PROVIDER: ProviderId = "openai-codex";
  */
 export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   anthropic: "claude-sonnet-4-6",
-  "openai-codex": "gpt-5.5",
+  // gpt-5.6-terra: chatgpt.com started answering gpt-5.5 with 404 for ChatGPT
+  // accounts on 2026-09-07 (the Codex CLI fails the same way), so the default
+  // had to move off it. Twin of runtime config.codexModel.
+  "openai-codex": "gpt-5.6-terra",
   // Copilot uses DOTTED model ids (claude-sonnet-4.6), unlike native Anthropic.
   "github-copilot": "claude-sonnet-4.6",
   opencode: "claude-sonnet-4-6",
@@ -120,9 +123,12 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "claude-sonnet-4-6",
     "claude-sonnet-5",
   ]),
+  // gpt-5.4 is deliberately absent: OpenAI retired it for ChatGPT accounts
+  // (400 "not supported when using Codex with a ChatGPT account", and it is
+  // gone from chatgpt.com's own model list), so a stored pick migrates to the
+  // default instead of failing every turn.
   "openai-codex": new Set([
     "gpt-5.3-codex-spark",
-    "gpt-5.4",
     "gpt-5.4-mini",
     "gpt-5.5",
     "gpt-5.6-luna",

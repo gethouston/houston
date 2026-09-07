@@ -48,7 +48,6 @@ const PI_MODELS: Record<string, Set<string>> = {
   ]),
   "openai-codex": new Set([
     "gpt-5.3-codex-spark",
-    "gpt-5.4",
     "gpt-5.4-mini",
     "gpt-5.5",
     "gpt-5.6-luna",
@@ -137,8 +136,8 @@ test("CLI-era codex model ids map to the closest current tier", () => {
 });
 
 test("an already-valid pi provider+model passes through unchanged", () => {
-  const r = migrateProviderModel("openai-codex", "gpt-5.4");
-  expect(r).toMatchObject({ provider: "openai-codex", model: "gpt-5.4" });
+  const r = migrateProviderModel("openai-codex", "gpt-5.6-luna");
+  expect(r).toMatchObject({ provider: "openai-codex", model: "gpt-5.6-luna" });
   expect(r.diagnostics).toEqual([]);
   assertValid(r, "passthrough");
 });
@@ -172,7 +171,7 @@ test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)
 test("missing provider/model fall soft to the defaults with provider diagnostic", () => {
   const r = migrateProviderModel(undefined, undefined);
   expect(r.provider).toBe(DEFAULT_PROVIDER);
-  expect(r.model).toBe("gpt-5.5");
+  expect(r.model).toBe("gpt-5.6-terra");
   // Missing provider is reported; a missing model on a defaulted provider just
   // uses the default (no extra noise needed once the provider is known).
   expect(r.diagnostics.some((d) => d.message.includes("provider"))).toBe(true);
@@ -241,4 +240,14 @@ test("the diagnostic key defaults to the config doc path and is overridable", ()
     migrateProviderModel("anthropic", "totally-made-up", "Work/Sales")
       .diagnostics[0]?.key,
   ).toBe("Work/Sales");
+});
+
+test("a retired Codex pick (gpt-5.4) migrates to the current default with a diagnostic", () => {
+  // OpenAI retired gpt-5.4 for ChatGPT accounts (400 "not supported when using
+  // Codex with a ChatGPT account"), so it left VALID_MODELS: a stored pick must
+  // land on the default rather than fail every turn.
+  const r = migrateProviderModel("openai", "gpt-5.4");
+  expect(r).toMatchObject({ provider: "openai-codex", model: "gpt-5.6-terra" });
+  expect(r.diagnostics[0]?.message).toContain("gpt-5.4");
+  assertValid(r, "openai/gpt-5.4");
 });

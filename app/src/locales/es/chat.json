@@ -217,7 +217,7 @@
     },
     "modelDescriptions": {
       "gpt-6-astra": "El más nuevo y capaz. Consume tu cuota 2.5 veces más rápido que Sol.",
-      "gpt-5_5": "El modelo más avanzado de OpenAI.",
+      "gpt-5_5": "Modelo de la generación anterior.",
       "gpt-5_6-sol": "Modelo frontera anterior. Fuerte en trabajo complejo.",
       "gpt-5_6-terra": "Modelo intermedio equilibrado.",
       "gpt-5_6-luna": "Rápido y económico para tareas más simples.",

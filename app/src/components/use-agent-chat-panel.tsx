@@ -2132,7 +2132,7 @@ export function useAgentChatPanel({
             }}
             onSwitchModel={
               isModelUnsupported
-                ? () => selectModel("openai", "gpt-5.5")
+                ? () => selectModel("openai", getDefaultModel("openai"))
                 : undefined
             }
           />

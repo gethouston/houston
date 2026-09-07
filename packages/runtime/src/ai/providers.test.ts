@@ -95,7 +95,7 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   );
   expect(providerDefaultModel("minimax")).toBe("MiniMax-M3[1m]");
   // Unknown falls back to the Codex default (never throws / undefined).
-  expect(providerDefaultModel("nope")).toBe("gpt-5.5");
+  expect(providerDefaultModel("nope")).toBe("gpt-5.6-terra");
 });
 
 test("uncurated providers with a hand-picked default skip pi's dead first row (PRODUCT-1411)", () => {
