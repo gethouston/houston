@@ -22,6 +22,23 @@
          is the safety net for translators that ignore both. -->
     <meta name="google" content="notranslate" />
     <title>Houston</title>
+    <!-- Installable web app (PWA). The manifest (served verbatim from public/)
+         is what Chrome/Android and desktop browsers read for "Install app":
+         name, standalone display, Houston icon. iOS Safari ignores the manifest
+         icons and reads apple-touch-icon for "Add to Home Screen", and the
+         apple-mobile-web-app-* metas make the installed app open without
+         browser chrome. Status bar style stays `default`: the OS paints it in
+         the theme-color above (light/dark), content starts below it, so the
+         safe-area top inset is 0 and nothing overlaps the top bar. No service
+         worker on purpose: the bundle is served no-cache so every launch picks
+         up the current release, and an offline cache would only serve stale
+         chunks against a live host. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Houston" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- Pre-JS frame. The app's CSS arrives with the app bundle, so the FIRST
          painted frame is whatever this document says — before any module runs.
          `houston.theme.cache` is the boot mirror written by

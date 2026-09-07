@@ -85,6 +85,19 @@ file or terminal, pick local directory, native app update, and local log files.
 host's `POST /feedback` route, which files Linear server-side. Outside cloud host
 mode it stays desktop-only.
 
+## Installable (PWA)
+
+The web app installs to a phone or desktop home screen with the Houston icon:
+`public/manifest.webmanifest` (name, standalone display, 192/512 `any` +
+`maskable` icons) plus the `apple-touch-icon` / `apple-mobile-web-app-*` head
+tags in `index.html`, which are what iOS Safari's "Add to Home Screen" reads.
+The icons are renders of the opaque iOS app icon
+(`app/src-tauri/icons/ios/AppIcon-512@2x.png`); regenerate them from that file
+if the brand mark changes. There is deliberately no service worker: the bundle
+is served `no-cache` so every launch runs the current release, and an offline
+cache would only serve stale chunks against a live host. `tests/pwa-manifest.test.ts`
+pins the contract.
+
 ## Parity Guard
 
 `scripts/check-tauri-shims.mjs` runs during `typecheck` and `build`. It fails if
