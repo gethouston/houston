@@ -51,8 +51,8 @@ interface WindowOverride {
  *   stands for all three).
  * - `openai-codex` — Codex's `/status` reports a 95%-EFFECTIVE window (the number
  *   the user sees), and gpt-5.5/5.4 expose an opt-in 1M variant (× 95%).
- *   `gpt-6-astra` (1.05M window, 272k standard-price tier — backported by the
- *   gpt-6-astra catalog patch) follows the gpt-5.5 shape.
+ *   `gpt-6-astra` (1.05M window, 272k standard-price tier) follows the
+ *   gpt-5.5 shape.
  */
 export const MODEL_WINDOW_OVERRIDES: Readonly<
   Record<string, Readonly<Record<string, WindowOverride>>>

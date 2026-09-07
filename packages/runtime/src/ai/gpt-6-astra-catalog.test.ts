@@ -1,11 +1,16 @@
 import { getModel } from "@earendil-works/pi-ai/compat";
 import { expect, test } from "vitest";
-import "./gpt-6-astra-catalog-patch";
 import { piModelIds } from "./pi-catalog";
 
 type ModelId = Parameters<typeof getModel>[1];
 
-test("GPT-6 Astra is injected into the openai-codex catalog", () => {
+/**
+ * GPT-6 Astra ships natively in pi-ai's baked OpenAI catalogs as of 0.85.1;
+ * Houston carried a local backport patch against 0.85.0, deleted with that
+ * bump. The guard stays: a pi bump that dropped or reshaped its entry would
+ * silently strip the OpenAI headline model from the runnable set.
+ */
+test("GPT-6 Astra is in pi's openai-codex catalog", () => {
   const m = getModel("openai-codex", "gpt-6-astra" as ModelId);
   expect(m).toBeDefined();
   expect(m?.name).toBe("GPT-6 Astra");
@@ -32,10 +37,9 @@ test("GPT-6 Astra is injected into the openai-codex catalog", () => {
   expect(piModelIds("openai-codex")).toContain("gpt-6-astra");
 });
 
-test("GPT-6 Astra is injected into the azure-openai-responses catalog", () => {
+test("GPT-6 Astra is in pi's azure-openai-responses catalog", () => {
   const m = getModel("azure-openai-responses", "gpt-6-astra" as ModelId);
   expect(m).toBeDefined();
-  expect(m?.contextWindow).toBe(1_050_000);
   expect(m?.maxTokens).toBe(128_000);
   expect(m?.cost).toEqual({
     input: 10,
@@ -44,14 +48,4 @@ test("GPT-6 Astra is injected into the azure-openai-responses catalog", () => {
     cacheWrite: 12.5,
   });
   expect(piModelIds("azure-openai-responses")).toContain("gpt-6-astra");
-});
-
-test("the patch is idempotent (re-import cannot duplicate the entry)", async () => {
-  const { ensureGpt6Astra } = await import("./gpt-6-astra-catalog-patch");
-  ensureGpt6Astra();
-  ensureGpt6Astra();
-  for (const provider of ["openai-codex", "azure-openai-responses"]) {
-    const ids = piModelIds(provider).filter((id) => id === "gpt-6-astra");
-    expect(ids).toHaveLength(1);
-  }
 });

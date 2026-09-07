@@ -194,8 +194,6 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // model only when the user DEPLOYED it under that name, so a short current
   // list also keeps the "deployment named after the model id" rule legible.
   "azure-openai-responses": new Set([
-    // Backported into pi's catalog by the gpt-6-astra catalog patch
-    // (packages/host/src/providers/gpt-6-astra-catalog-patch.ts).
     "gpt-6-astra",
     "gpt-5.5",
     "gpt-5.6-sol",
@@ -206,8 +204,6 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.4-mini",
   ]),
   openai: new Set([
-    // Backported into pi's catalog by the gpt-6-astra catalog patch
-    // (packages/host/src/providers/gpt-6-astra-catalog-patch.ts).
     "gpt-6-astra",
     "gpt-5.5",
     "gpt-5.6-sol",
