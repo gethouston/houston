@@ -41,6 +41,13 @@ export function ChatProcessMessage({
     item.isTrailing && !item.isActive
       ? turnEndSummaries.get(item.sourceIndex)
       : undefined;
+  const trailer =
+    summary && renderTurnSummary ? renderTurnSummary(summary) : null;
+
+  // An offers-only block (see `ChatDisplayItem.offersOnly`) draws no log: the
+  // bubbles it recorded render above the composer. Only the turn-end summary
+  // it anchors remains — and nothing at all when there is none.
+  if (item.offersOnly && !trailer) return null;
 
   return (
     <Message
@@ -49,16 +56,18 @@ export function ChatProcessMessage({
       avatar={renderMessageAvatar?.(item.segments[0].message)}
     >
       <div>
-        <ChatProcessBlock
-          segments={item.segments}
-          isActive={item.isActive}
-          labels={processLabels}
-          toolLabels={toolLabels}
-          isSpecialTool={isSpecialTool}
-          renderToolResult={renderToolResult}
-          getThinkingMessage={getThinkingMessage}
-        />
-        {summary && renderTurnSummary ? renderTurnSummary(summary) : null}
+        {item.offersOnly ? null : (
+          <ChatProcessBlock
+            segments={item.segments}
+            isActive={item.isActive}
+            labels={processLabels}
+            toolLabels={toolLabels}
+            isSpecialTool={isSpecialTool}
+            renderToolResult={renderToolResult}
+            getThinkingMessage={getThinkingMessage}
+          />
+        )}
+        {trailer}
       </div>
     </Message>
   );

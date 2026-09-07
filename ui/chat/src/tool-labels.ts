@@ -95,6 +95,19 @@ export function toolShortName(name: string): string {
 }
 
 /**
+ * The clean-finish OFFER tools: they record the follow-up bubbles and the
+ * save-as-reusable card that render above the composer, and do no work the
+ * mission log needs to account for. A process block made of nothing else is
+ * bookkeeping, not a task log (see `getChatDisplayItems`).
+ */
+const OFFER_TOOLS = new Set(["suggest_actions", "suggest_reusable"]);
+
+/** Whether a tool call (plain or MCP-prefixed name) is a clean-finish offer. */
+export function isOfferTool(name: string): boolean {
+  return OFFER_TOOLS.has(toolShortName(name));
+}
+
+/**
  * Human label for a tool call. `done` picks past vs. present tense; `custom`
  * (the consumer's optional `toolLabels`) overrides by short name. Falls back to
  * the de-underscored short name for unknown tools.
