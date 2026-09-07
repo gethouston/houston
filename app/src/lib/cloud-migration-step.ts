@@ -7,13 +7,19 @@
  */
 
 import type { MigrationStep } from "./cloud-migration-progress.ts";
+import { isNetworkTransportError } from "./network-transport-error.ts";
 
 export type RunnableStep = Exclude<MigrationStep, "error">;
 
+/**
+ * Keeps the wrapped failure on `cause`: the error-surfacing layer classifies
+ * a connectivity drop by the browser's `TypeError`, which the envelope alone
+ * would hide (every upload cut by the network then filed as a bug).
+ */
 export class MigrationStepError extends Error {
   readonly step: RunnableStep;
   constructor(step: RunnableStep, cause: unknown) {
-    super(cause instanceof Error ? cause.message : String(cause));
+    super(cause instanceof Error ? cause.message : String(cause), { cause });
     this.name = "MigrationStepError";
     this.step = step;
   }
@@ -52,7 +58,22 @@ export type TaskFailureOutcome =
   /** Expected: the run was deferred; the row goes back to `pending`. */
   | { kind: "abandoned" }
   /** A real failure: park the row in `error` and report it. */
-  | { kind: "failed"; step: RunnableStep; message: string };
+  | {
+      kind: "failed";
+      step: RunnableStep;
+      message: string;
+      /** The failure under the step envelope: what Sentry classifies on. */
+      cause: unknown;
+      /** The request never got an answer (device offline, upload cut by the
+       *  network): the row shows authored copy, the report takes the quiet
+       *  connectivity path instead of filing a bug. */
+      transport: boolean;
+    };
+
+/** The failure a step envelope wraps; anything else is its own cause. */
+export function migrationFailureCause(err: unknown): unknown {
+  return err instanceof MigrationStepError ? err.cause : err;
+}
 
 /**
  * A failure that lands after the user deferred is the consequence of the
@@ -67,9 +88,12 @@ export function taskFailureOutcome(
   if (deferred || err instanceof MigrationAbandonedError) {
     return { kind: "abandoned" };
   }
+  const cause = migrationFailureCause(err);
   return {
     kind: "failed",
     step: err instanceof MigrationStepError ? err.step : "uploading",
     message: err instanceof Error ? err.message : String(err),
+    cause,
+    transport: isNetworkTransportError(cause),
   };
 }

@@ -7,6 +7,7 @@ import {
   doneScreenOutcome,
   hasReconnectAppsStep,
   isPlausibleMigrationTarget,
+  MAX_CHUNK_RAW_BYTES,
   type SourceAgent,
   type SourceManifestEntry,
 } from "../src/lib/cloud-migration.ts";
@@ -130,6 +131,15 @@ const entry = (
   size: number,
   kind: "core" | "file" = "file",
 ): SourceManifestEntry => ({ path, size, kind });
+
+// The cloud ingress drops a request whose body takes over 60 s to arrive.
+// 2 Mbps is the slow end of home uplinks; a chunk must clear the deadline
+// there with margin, or the wizard fails the same chunk on every retry.
+test("a chunk uploads within the ingress body deadline on a 2 Mbps uplink", () => {
+  const bytesPerSecondAt2Mbps = (2 * 1_000_000) / 8;
+  const seconds = MAX_CHUNK_RAW_BYTES / bytesPerSecondAt2Mbps;
+  assert.ok(seconds < 45, `a chunk takes ${seconds.toFixed(0)}s at 2 Mbps`);
+});
 
 test("packs entries greedily under the byte budget", () => {
   const chunks = chunkPaths(
