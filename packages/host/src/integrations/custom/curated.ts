@@ -1,4 +1,4 @@
-import { resolveScopeRows } from "../scope-resolve";
+import { normalizeAppName, resolveScopeRows } from "../scope-resolve";
 import type { ToolMatch } from "../types";
 
 /**
@@ -19,6 +19,10 @@ export interface CuratedEntry {
   /** Extra match keywords beyond name/slug/description tokens — include
    *  Spanish/Portuguese terms, since users (and thus model queries) use them. */
   keywords: readonly string[];
+  /** Other names the service goes by, resolved as an explicit `app` scope
+   *  exactly like the real name ("ghl" → HighLevel). Keywords only rank the
+   *  unscoped search; a scope naming an alias would otherwise miss. */
+  aliases?: readonly string[];
 }
 
 export const CURATED_ENTRIES: readonly CuratedEntry[] = [
@@ -48,10 +52,50 @@ export const CURATED_ENTRIES: readonly CuratedEntry[] = [
       "veiculo",
     ],
   },
+  {
+    slug: "highlevel",
+    name: "HighLevel",
+    description:
+      "HighLevel (GoHighLevel, GHL) CRM and marketing platform: contacts and leads, conversations and messages (SMS, email), opportunities and pipelines, calendars and appointments, invoices and payments, social posts and blog posts. One sub-account per connection.",
+    keywords: [
+      "crm",
+      "leads",
+      "contacts",
+      "pipeline",
+      "pipelines",
+      "opportunities",
+      "deals",
+      "appointments",
+      "calendar",
+      "invoices",
+      "payments",
+      "sms",
+      "marketing",
+      "agency",
+      "funnel",
+      "clientes",
+      "contactos",
+      "embudo",
+      "oportunidades",
+      "citas",
+      "facturas",
+      "contatos",
+      "funil",
+      "agendamentos",
+      "faturas",
+    ],
+    aliases: ["gohighlevel", "go high level", "ghl", "leadconnector"],
+  },
 ];
 
 const haystackOf = (entry: CuratedEntry): string =>
-  [entry.slug, entry.name, entry.description, ...entry.keywords]
+  [
+    entry.slug,
+    entry.name,
+    entry.description,
+    ...entry.keywords,
+    ...(entry.aliases ?? []),
+  ]
     .join(" ")
     .toLowerCase();
 
@@ -89,6 +133,27 @@ export function curatedMatches(
 }
 
 /**
+ * The curated slug an explicit `app` scope names by alias ("ghl",
+ * "LeadConnector"), else the scope unchanged. Runs BEFORE the installed
+ * definitions are scoped so an alias keeps resolving after the user adds the
+ * app — the compiled definition only knows its real name, and "unresolved"
+ * there would send the model on an unscoped retry that buries the one app it
+ * asked about. Exact normalized match only: aliases are short, and substring
+ * rules belong to `resolveScopeRows`.
+ */
+export function curatedCanonicalScope(
+  app: string,
+  entries: readonly CuratedEntry[] = CURATED_ENTRIES,
+): string {
+  const scope = normalizeAppName(app);
+  if (!scope) return app;
+  const hit = entries.find((entry) =>
+    (entry.aliases ?? []).some((alias) => normalizeAppName(alias) === scope),
+  );
+  return hit ? hit.slug : app;
+}
+
+/**
  * Resolve an explicit `app` scope against the curated (not-yet-added) entries,
  * with the SAME provider-neutral rules every scope resolution uses — so a
  * scoped search for a curated app answers its connectable row instead of
@@ -100,5 +165,14 @@ export function curatedScoped(
   entries: readonly CuratedEntry[] = CURATED_ENTRIES,
 ): ToolMatch[] {
   const candidates = entries.filter((entry) => !added.has(entry.slug));
-  return resolveScopeRows([...candidates], app).map(connectableRow);
+  // One row per name the entry answers to; the hits collapse back onto the
+  // entry so an alias and the real name never yield two rows for one app.
+  const rows = candidates.flatMap((entry) =>
+    [entry.name, ...(entry.aliases ?? [])].map((name) => ({
+      slug: entry.slug,
+      name,
+    })),
+  );
+  const hit = new Set(resolveScopeRows(rows, app).map((row) => row.slug));
+  return candidates.filter((entry) => hit.has(entry.slug)).map(connectableRow);
 }

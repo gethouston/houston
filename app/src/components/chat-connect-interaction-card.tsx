@@ -93,6 +93,7 @@ export function ChatConnectInteractionCard({
     connecting,
     startConnect,
     curatedDialog,
+    curatedProviderConnect,
     closeCuratedDialog,
   } = useChatConnect({
     toolkit,
@@ -146,11 +147,12 @@ export function ChatConnectInteractionCard({
 
   return (
     <>
-      {/* A curated toolkit's Connect opens the two-option dialog (sign-in /
-          API key) instead of the generic OAuth hand-off. */}
+      {/* A curated toolkit's Connect opens the options dialog (provider
+          connect / MCP sign-in / API key) instead of the generic hand-off. */}
       <CuratedConnectDialog
         agentId={agentId}
         curated={curatedDialog}
+        providerConnect={curatedProviderConnect}
         onClose={closeCuratedDialog}
       />
       <InteractionModal

@@ -77,14 +77,6 @@
     "noResults": "No hay apps que coincidan.",
     "loading": "Cargando apps..."
   },
-  "highlevelGuidance": {
-    "title": "Elige Sub-Account View en HighLevel",
-    "body": "Cuando se abra la página de HighLevel, usa el menú junto a Houston para cambiar Agency View a Sub-Account View.",
-    "houstonAppName": "Houston",
-    "agencyView": "Agency View",
-    "cancel": "Cancelar",
-    "continue": "Continuar a HighLevel"
-  },
   "home": {
     "tabs": {
       "label": "Secciones de integraciones",
@@ -221,6 +213,16 @@
       "description": "Registros oficiales del gobierno de Colombia, Perú y México: consulta procesos judiciales, empresas, vehículos y personas, con respuestas basadas en fuentes oficiales.",
       "keyHelp": "Inicia sesión en tu espacio de trabajo de Croma y copia una clave de API (empieza con croma_live_). Las claves pertenecen al espacio de trabajo de tu organización, no a una cuenta personal."
     },
+    "highlevel": {
+      "description": "Tu CRM de HighLevel (GoHighLevel): contactos, conversaciones, embudos, calendarios, facturas y redes sociales. Una subcuenta por conexión.",
+      "keyTitle": "Conectar con un token de HighLevel",
+      "keyDesc": "Crea un token de integración privada en tu subcuenta y pégalo aquí.",
+      "keyHelp": "En HighLevel, abre la subcuenta que quieres conectar, ve a Configuración (Settings), luego a Integraciones privadas (Private Integrations) y crea un token con los permisos que necesitan tus agentes (contactos, conversaciones, oportunidades, calendarios). Pégalo aquí; empieza con pit-.",
+      "headerLabel": "ID de la subcuenta",
+      "headerHelp": "Lo encuentras en la subcuenta, en Configuración, Perfil del negocio (Business Profile), o en la dirección web de HighLevel después de /location/.",
+      "providerTitle": "Conectar HighLevel con Composio",
+      "providerDesc": "Todas las funciones de HighLevel. Cuando se abra HighLevel, cambia de Agency View a Sub-Account View y aprueba."
+    },
     "connect": {
       "title": "Conectar {{name}}",
       "recommendedBadge": "Recomendado",
@@ -231,7 +233,8 @@
       "openKeys": "Abrir {{name}} para obtener una clave",
       "back": "Atrás",
       "newTo": "¿Nuevo en {{name}}? Crea tu cuenta primero y luego vuelve aquí para conectar.",
-      "createAccount": "Crear una cuenta de {{name}}"
+      "createAccount": "Crear una cuenta de {{name}}",
+      "headerRequired": "Ingresa el ID de la subcuenta para continuar."
     }
   }
 }

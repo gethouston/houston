@@ -1,4 +1,5 @@
 import cromaIcon from "../../assets/integrations/croma.svg";
+import highlevelIcon from "../../assets/integrations/highlevel.svg";
 
 /**
  * Bundled brand icons for the curated catalog entries. Committed assets, not
@@ -10,6 +11,7 @@ import cromaIcon from "../../assets/integrations/croma.svg";
  */
 const CURATED_LOGOS: Readonly<Record<string, string>> = {
   croma: cromaIcon,
+  highlevel: highlevelIcon,
 };
 
 /** The bundled logo URL for a curated slug, or "" for a non-curated one

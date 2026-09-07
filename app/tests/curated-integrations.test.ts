@@ -6,7 +6,9 @@ import {
   curatedAddInput,
   curatedIntegrationOf,
   curatedToolkits,
+  withoutAddedCurated,
 } from "../src/components/integrations/curated-integrations.ts";
+import en from "../src/locales/en/integrations.json" with { type: "json" };
 
 const describeOf = (c: { slug: string }) => `about ${c.slug}`;
 const logoOf = (slug: string) => `bundled:${slug}`;
@@ -33,9 +35,68 @@ describe("curated catalog data", () => {
     }
   });
 
+  it("every entry's copy keys exist in the en locale (the raw key would render otherwise)", () => {
+    const curated = en.curated as Record<string, Record<string, string>>;
+    for (const c of CURATED_INTEGRATIONS) {
+      const keys = [
+        c.descriptionKey,
+        c.keyHelpKey,
+        c.keyTitleKey,
+        c.keyDescKey,
+        c.extraHeader?.labelKey,
+        c.extraHeader?.helpKey,
+        c.signInTitleKey,
+        c.signInDescKey,
+        c.providerTitleKey,
+        c.providerDescKey,
+      ].filter((key): key is NonNullable<typeof key> => key !== undefined);
+      for (const key of keys) {
+        const [ns, slug, leaf] = key.split(".");
+        strictEqual(ns, "curated");
+        strictEqual(slug, c.slug);
+        ok(
+          typeof curated[slug]?.[leaf ?? ""] === "string",
+          `missing en copy for ${key}`,
+        );
+      }
+    }
+  });
+
   it("looks up an entry by slug", () => {
     strictEqual(curatedIntegrationOf("croma")?.name, "Croma");
+    strictEqual(curatedIntegrationOf("highlevel")?.name, "HighLevel");
     strictEqual(curatedIntegrationOf("gmail"), undefined);
+  });
+
+  it("points HighLevel at its MCP endpoint, token plus sub-account id", () => {
+    const highlevel = curatedIntegrationOf("highlevel");
+    ok(highlevel);
+    // The per-client `/mcp/<client>/v2` family refuses to register unknown
+    // OAuth clients; only the original endpoint signs Houston in. The
+    // trailing slash is the resource its OAuth metadata names.
+    strictEqual(
+      highlevel.endpoint,
+      "https://services.leadconnectorhq.com/mcp/",
+    );
+    // Token only, as HighLevel's help center documents; its sub-account id
+    // rides as a static header next to the token.
+    deepStrictEqual(highlevel.authModes, ["credential"]);
+    ok(highlevel.keyHelpKey);
+    ok(highlevel.providerTitleKey);
+    strictEqual(highlevel.extraHeader?.name, "locationId");
+    deepStrictEqual(
+      curatedAddInput(highlevel, "credential", { locationId: "loc_1" }).headers,
+      { locationId: "loc_1" },
+    );
+    strictEqual("headers" in curatedAddInput(highlevel, "credential"), false);
+    deepStrictEqual(highlevel.categories, ["crm", "marketing"]);
+  });
+
+  it("an entry offering a key carries the key help copy", () => {
+    for (const c of CURATED_INTEGRATIONS) {
+      if (c.authModes.includes("credential")) ok(c.keyHelpKey, c.slug);
+      ok(c.authModes.length > 0);
+    }
   });
 });
 
@@ -56,6 +117,47 @@ describe("curatedToolkits", () => {
       toolkits.find((t) => t.slug === "croma"),
       undefined,
     );
+    // The other entries stay listed — exclusion is per slug, never global.
+    strictEqual(
+      toolkits.find((t) => t.slug === "highlevel")?.name,
+      "HighLevel",
+    );
+  });
+});
+
+describe("curated entries next to a provider catalog", () => {
+  const providerCatalog = [
+    { slug: "gmail", name: "Gmail", description: "", logoUrl: "" },
+    // Composio lists HighLevel too — that toolkit IS the card.
+    { slug: "highlevel", name: "Highlevel", description: "", logoUrl: "" },
+  ];
+
+  it("does not add a curated extra for a slug the provider catalog carries", () => {
+    const toolkits = curatedToolkits([], describeOf, logoOf, providerCatalog);
+    deepStrictEqual(
+      toolkits.map((t) => t.slug),
+      ["croma"],
+    );
+  });
+
+  it("drops the provider's same-slug toolkit once the MCP definition is added", () => {
+    const addedHighLevel: CustomIntegrationView = {
+      ...addedCroma,
+      slug: "highlevel",
+      name: "HighLevel",
+    };
+    deepStrictEqual(
+      withoutAddedCurated(providerCatalog, [addedHighLevel]).map((t) => t.slug),
+      ["gmail"],
+    );
+    // A non-curated slug in the custom list never hides a provider app.
+    deepStrictEqual(
+      withoutAddedCurated(providerCatalog, [
+        { ...addedCroma, slug: "gmail" },
+      ]).map((t) => t.slug),
+      ["gmail", "highlevel"],
+    );
+    deepStrictEqual(withoutAddedCurated(providerCatalog, []), providerCatalog);
   });
 });
 

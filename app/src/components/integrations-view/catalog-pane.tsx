@@ -51,7 +51,7 @@ export function CatalogPane({
   /** Disconnect an app's half-made connection (the app modal's Remove). */
   onRemove: (toolkit: string) => void;
   /** Curated entry pressed — the surface opens its dedicated connect dialog. */
-  onCuratedConnect?: (slug: string) => void;
+  onCuratedConnect?: (slug: string, providerConnect: () => void) => void;
   /** Surface-specific sections above the catalog. */
   children?: ReactNode;
 }) {

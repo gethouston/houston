@@ -42,6 +42,7 @@ export function IntegrationConnectCard({
     view,
     startConnect,
     curatedDialog,
+    curatedProviderConnect,
     closeCuratedDialog,
   } = useChatConnect({
     toolkit,
@@ -54,6 +55,7 @@ export function IntegrationConnectCard({
       <CuratedConnectDialog
         agentId={agentId}
         curated={curatedDialog}
+        providerConnect={curatedProviderConnect}
         onClose={closeCuratedDialog}
       />
       <RowCard

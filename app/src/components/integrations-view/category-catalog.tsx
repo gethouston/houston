@@ -6,7 +6,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ConnectFlow } from "../integrations";
 import { curatedIntegrationOf } from "../integrations/curated-integrations";
-import { HighLevelConnectGuidance } from "../integrations/highlevel-connect-guidance";
 import { AppInfoDialog } from "./app-info-dialog";
 import { CatalogCategorySection } from "./catalog-category-section";
 import { useCatalogSections } from "./use-catalog-sections";
@@ -61,9 +60,12 @@ export function CategoryCatalog({
   category: string;
   /** Disconnect a broken connection (the modal's Remove). */
   onRemove: (toolkit: string) => void;
-  /** A curated (non-Composio) entry's connect — the surface opens its own
-   *  connect dialog; the generic OAuth hand-off would 400 on these slugs. */
-  onCuratedConnect?: (slug: string) => void;
+  /** A curated entry's connect — the surface opens its own connect dialog
+   *  (the generic OAuth hand-off would 400 on a non-Composio slug). For a
+   *  slug Composio also carries, the dialog may offer that connect as one
+   *  option: `providerConnect` is THIS row's ordinary hand-off, completion
+   *  callback included, so the pick behaves exactly like pressing the row. */
+  onCuratedConnect?: (slug: string, providerConnect: () => void) => void;
 }) {
   const { t } = useTranslation("integrations");
   const { visible, owners, broken, expand } = useCatalogSections({
@@ -82,11 +84,6 @@ export function CategoryCatalog({
     toolkit: IntegrationToolkit;
     origin: string;
   } | null>(null);
-  const [highLevelRequest, setHighLevelRequest] = useState<{
-    toolkit: string;
-    origin: string;
-  } | null>(null);
-
   const beginConnect = (toolkit: string, origin: string) => {
     void connectFlow.connect(toolkit, origin).then((attempt) => {
       if (attempt.outcome === "active") onConnected?.(toolkit);
@@ -95,11 +92,7 @@ export function CategoryCatalog({
 
   const requestConnect = (toolkit: string, origin: string) => {
     if (onCuratedConnect && curatedIntegrationOf(toolkit)) {
-      onCuratedConnect(toolkit);
-      return;
-    }
-    if (toolkit === "highlevel") {
-      setHighLevelRequest({ toolkit, origin });
+      onCuratedConnect(toolkit, () => beginConnect(toolkit, origin));
       return;
     }
     beginConnect(toolkit, origin);
@@ -151,19 +144,6 @@ export function CategoryCatalog({
         // modal for an app whose hand-off is already running (started from its
         // row, or from another surface entirely).
         busy={info !== null && info.toolkit.slug in connectFlow.states}
-      />
-
-      <HighLevelConnectGuidance
-        open={highLevelRequest !== null}
-        onOpenChange={(open) => {
-          if (!open) setHighLevelRequest(null);
-        }}
-        onContinue={() => {
-          if (!highLevelRequest) return;
-          const request = highLevelRequest;
-          setHighLevelRequest(null);
-          beginConnect(request.toolkit, request.origin);
-        }}
       />
     </div>
   );

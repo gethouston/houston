@@ -1,10 +1,12 @@
 import { CATALOG_PLANE_MAX_W, CatalogGrid, cn } from "@houston-ai/core";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useIntegrationToolkits } from "../../hooks/queries";
 import {
   AddCustomButton,
   CustomIntegrationRow,
   CustomSurfaceSupport,
+  INTEGRATION_PROVIDER,
   LoadingState,
   SigninState,
   UnavailableState,
@@ -12,7 +14,10 @@ import {
   useCustomIntegrationsSurface,
   useIntegrationsGate,
 } from "../integrations";
-import { curatedToolkits } from "../integrations/curated-integrations";
+import {
+  curatedToolkits,
+  withoutAddedCurated,
+} from "../integrations/curated-integrations";
 import { curatedLogoUrl } from "../integrations/curated-logos";
 import {
   PageHeaderTools,
@@ -32,23 +37,39 @@ export function IntegrationsView() {
   const { t } = useTranslation("integrations");
   const gate = useIntegrationsGate();
   const custom = useCustomIntegrationsSurface();
-  // Curated entries (Croma…) join the browse catalog unless already added —
-  // then their row lives in the Installed strip via the custom list instead.
+  const customItems = useMemo(
+    () => (Array.isArray(custom.items) ? custom.items : []),
+    [custom.items],
+  );
+  // Curated entries (Croma, HighLevel) join the browse catalog unless already
+  // added — then their row lives in the Installed strip via the custom list —
+  // or unless the provider catalog carries the slug itself (Composio's
+  // HighLevel app), in which case that toolkit is the card and leaves the
+  // catalog once the MCP definition is added, like any connected app would.
+  const providerCatalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
   const curated = useMemo(
     () =>
       curatedToolkits(
-        Array.isArray(custom.items) ? custom.items : [],
+        customItems,
         (c) => t(c.descriptionKey),
         curatedLogoUrl,
+        providerCatalog.data ?? [],
       ),
-    [custom.items, t],
+    [customItems, providerCatalog.data, t],
   );
-  const apps = useConnectedApps(curated);
+  const merged = useConnectedApps(curated);
+  const apps = useMemo(
+    () => ({
+      ...merged,
+      catalogData: withoutAddedCurated(merged.catalogData, customItems),
+    }),
+    [merged, customItems],
+  );
   const surface = useCatalogSurface({
     active: apps.activeRows,
     catalog: apps.catalogData,
     connections: apps.connData,
-    custom: Array.isArray(custom.items) ? custom.items : [],
+    custom: customItems,
   });
 
   return (

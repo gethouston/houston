@@ -16,6 +16,20 @@ export function normalizeAppName(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
+/** The rows whose normalized slug or name EQUALS the scope — the tier that
+ *  wins outright, exposed so a caller can tell "named exactly" from "near". */
+export function exactScopeRows<T extends ScopeRow>(
+  rows: T[],
+  app: string,
+): T[] {
+  const scope = normalizeAppName(app);
+  if (!scope) return [];
+  return rows.filter(
+    (r) =>
+      normalizeAppName(r.slug) === scope || normalizeAppName(r.name) === scope,
+  );
+}
+
 /**
  * Resolve an EXPLICIT app scope (search's `app` argument — a loose name or
  * slug the model heard from the user) against rows. EXACT normalized
@@ -33,10 +47,7 @@ export function resolveScopeRows<T extends ScopeRow>(
 ): T[] {
   const scope = normalizeAppName(app);
   if (!scope) return [];
-  const exact = rows.filter(
-    (r) =>
-      normalizeAppName(r.slug) === scope || normalizeAppName(r.name) === scope,
-  );
+  const exact = exactScopeRows(rows, app);
   if (exact.length > 0) return exact.slice(0, 3);
   if (scope.length < 3) return [];
   // Distance to the closest containing/contained name or slug; Infinity when

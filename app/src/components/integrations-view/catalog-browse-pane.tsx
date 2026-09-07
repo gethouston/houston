@@ -31,7 +31,7 @@ export function CatalogBrowsePane({
   connectFlow: ConnectFlow;
   onRemove: (toolkit: string, connectionId?: string) => void;
   /** Curated entry pressed — the surface opens its dedicated connect dialog. */
-  onCuratedConnect?: (slug: string) => void;
+  onCuratedConnect?: (slug: string, providerConnect: () => void) => void;
   children?: ReactNode;
 }) {
   return (

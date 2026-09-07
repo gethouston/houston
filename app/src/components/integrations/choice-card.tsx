@@ -41,8 +41,8 @@ export function ChoiceCard({
         {icon}
       </span>
       <span className="min-w-0">
-        <span className="flex items-center gap-2 text-sm font-medium text-ink">
-          <span className="min-w-0 truncate">{title}</span>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-ink">
+          <span className="min-w-0 break-words">{title}</span>
           {badge && (
             <Badge variant="secondary" className="shrink-0">
               {badge}
