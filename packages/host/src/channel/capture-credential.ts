@@ -2,6 +2,15 @@ import { deadGoogleApiKey } from "@houston/protocol/google-key";
 import type { CaptureResult, CredentialStore, RuntimeEndpoint } from "../ports";
 import { scrubRuntimeRefreshToken } from "./scrub-refresh";
 
+/**
+ * Budget for reading the runtime's export. The serve healer's caller — the
+ * runtime's own probe (auth/serve-probe.ts) — gives up at 10s, so an export
+ * still pending past that answers nobody; without a budget a stalled runtime
+ * held every provider's heal for undici's 300s headers timeout and logged one
+ * Sentry error per provider when they finally died (PRODUCT-1687).
+ */
+const RUNTIME_EXPORT_TIMEOUT_MS = 8_000;
+
 type ExportedCredential = {
   provider?: string;
   kind?: "oauth" | "api_key";
@@ -93,6 +102,7 @@ export async function captureRuntimeCredential(args: {
       Authorization: `Bearer ${endpoint.token}`,
       ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
     },
+    signal: AbortSignal.timeout(RUNTIME_EXPORT_TIMEOUT_MS),
   });
   if (!exported.ok) {
     return {

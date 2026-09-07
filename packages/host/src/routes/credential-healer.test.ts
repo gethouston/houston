@@ -228,3 +228,62 @@ test("a heal that fails on a live host stays a loud error and names the cause", 
   expect(errors.mock.calls[0]?.[1]).toBe("fetch failed (cause: ECONNREFUSED)");
   errors.mockRestore();
 });
+
+test("a runtime unreachable for the whole sweep reports one Sentry error per incident (PRODUCT-1687)", async () => {
+  // The runtime's sync heals every provider through the same socket; a
+  // stalled runtime failed 40 heals at once and each was a Sentry error.
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  let now = 1_700_000_000_000;
+  const refused = () =>
+    new TypeError("fetch failed", {
+      cause: Object.assign(new Error("connect ECONNREFUSED"), {
+        code: "ECONNREFUSED",
+      }),
+    });
+  const healer = new CredentialServeHealer(
+    async () => {
+      throw refused();
+    },
+    () => now,
+  );
+  const base = { workspaceId: "ws", agentId: "ws/agent" };
+  await Promise.all(
+    ["xai", "openai", "mistral"].map((provider) =>
+      healer.attempt({ ...base, provider }),
+    ),
+  );
+  expect(errors).toHaveBeenCalledTimes(1);
+  expect(errors.mock.calls[0]?.[1]).toBe("fetch failed (cause: ECONNREFUSED)");
+  expect(warns).toHaveBeenCalledTimes(2);
+  expect(warns.mock.calls[0]?.[0]).toContain("same incident");
+
+  // Still failing 4 minutes on: the same incident, still one error. The
+  // cooldown is per provider, so a fourth provider heals (and fails) now.
+  now += 4 * 60_000;
+  await healer.attempt({ ...base, provider: "groq" });
+  expect(errors).toHaveBeenCalledTimes(1);
+
+  // A different runtime is a different incident.
+  await healer.attempt({ ...base, agentId: "ws/other", provider: "cerebras" });
+  expect(errors).toHaveBeenCalledTimes(2);
+
+  // Quiet for longer than the gap, then failing again: a new incident.
+  now += 6 * 60_000;
+  await healer.attempt({ ...base, provider: "xai" });
+  expect(errors).toHaveBeenCalledTimes(3);
+  errors.mockRestore();
+  warns.mockRestore();
+});
+
+test("a non-network heal failure is never collapsed into an incident", async () => {
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const healer = new CredentialServeHealer(async () => {
+    throw new Error("gateway rejected the credential");
+  });
+  const base = { workspaceId: "ws", agentId: "ws/agent" };
+  await healer.attempt({ ...base, provider: "xai" });
+  await healer.attempt({ ...base, provider: "openai" });
+  expect(errors).toHaveBeenCalledTimes(2);
+  errors.mockRestore();
+});

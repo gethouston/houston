@@ -7,6 +7,13 @@ import { LauncherClosedError } from "../ports";
 
 const HEAL_COOLDOWN_MS = 5 * 60_000;
 
+/**
+ * Two network-level failures against the same runtime closer than this are
+ * one incident. Matches the heal cooldown: a persistent outage re-reports once
+ * per cooldown, never once per provider per sweep.
+ */
+const NETWORK_INCIDENT_GAP_MS = HEAL_COOLDOWN_MS;
+
 export type CredentialHeal = (args: {
   workspaceId: string;
   agentId: string;
@@ -33,6 +40,22 @@ function describeHealError(error: unknown): string {
 }
 
 /**
+ * A failure of the wire, not of the credential: undici's bare `fetch failed`
+ * (connection refused/reset, a socket closed under the request) or the export
+ * budget expiring (`AbortSignal.timeout` rejects with a TimeoutError). Either
+ * says "this runtime is unreachable", which is one fact per runtime — not one
+ * per provider the sweep happened to probe.
+ */
+function isNetworkFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message === "fetch failed" ||
+    error.name === "TimeoutError" ||
+    error.name === "AbortError"
+  );
+}
+
+/**
  * Coalesces serve-miss recovery and limits each provider to one attempt/5m.
  *
  * Per (workspace, SCOPE, provider): one member's miss must not hand its result
@@ -47,10 +70,19 @@ function describeHealError(error: unknown): string {
  * server's catch, which answers 503 + Retry-After — the runtime's probe reads
  * that as transient and keeps its copy, instead of a marked 404 it would act
  * on as a verdict.
+ *
+ * A network failure on a LIVE host is reported once per runtime per incident:
+ * the runtime's sync probes every known provider (40+, 8 at a time), and each
+ * miss heals through the same runtime socket, so a stalled or unreachable
+ * runtime logged one Sentry error per provider — the HOUSTON-APP-5AD bucket
+ * (PRODUCT-1687). The first failure stays a loud error naming the cause; the
+ * rest of the incident is a warn breadcrumb.
  */
 export class CredentialServeHealer {
   private readonly inFlight = new Map<string, Promise<boolean>>();
   private readonly attemptedAt = new Map<string, number>();
+  /** Last network failure per (runtime, cause) — see `sameIncident`. */
+  private readonly networkFailureAt = new Map<string, number>();
 
   constructor(
     private readonly heal: CredentialHeal,
@@ -105,14 +137,38 @@ export class CredentialServeHealer {
             ? error
             : new LauncherClosedError();
         }
+        const detail = describeHealError(error);
+        if (
+          isNetworkFailure(error) &&
+          this.sameIncident(args.agentId, detail)
+        ) {
+          console.warn(
+            `[sandbox/credential] heal failed provider=${args.provider} agent=${args.agentId}: ${detail} (same incident as the last reported failure)`,
+          );
+          return false;
+        }
         console.error(
           `[sandbox/credential] heal failed provider=${args.provider} agent=${args.agentId}:`,
-          describeHealError(error),
+          detail,
         );
         return false;
       })
       .finally(() => this.inFlight.delete(key));
     this.inFlight.set(key, attempt);
     return attempt;
+  }
+
+  /**
+   * Whether a network failure with this cause was already seen against this
+   * runtime within the incident gap. Every failure extends the incident, so a
+   * runtime that stays unreachable reports once, and again only after a quiet
+   * gap — the runtime-side serve-log posture (PRODUCT-1399).
+   */
+  private sameIncident(agentId: string, detail: string): boolean {
+    const key = `${agentId}|${detail}`;
+    const now = this.now();
+    const last = this.networkFailureAt.get(key);
+    this.networkFailureAt.set(key, now);
+    return last !== undefined && now - last < NETWORK_INCIDENT_GAP_MS;
   }
 }
