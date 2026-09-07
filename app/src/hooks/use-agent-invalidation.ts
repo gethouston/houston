@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { planInvalidation } from "../lib/agent-invalidation-plan";
+import { sliceFreshness } from "../lib/all-conversations-freshness";
 import { consumeCustomOAuthReturn } from "../lib/custom-oauth-return";
 import { onEngineRestarted } from "../lib/engine";
 import { subscribeHoustonEvents } from "../lib/events";
@@ -33,6 +34,9 @@ export function useAgentInvalidation() {
     // pod is touched (it just emitted, so it is awake by definition), and the
     // sidebar badges / Mission Control read the patched cache unchanged.
     const patchAllConversations = (agentPath: string) => {
+      // Stamped at the read: a sweep that started before this patch carries
+      // an older slice for the agent and must not overwrite it on settle.
+      sliceFreshness.notePatched(agentPath, Date.now());
       void tauriConversations
         .list(agentPath)
         .then((rows) => {

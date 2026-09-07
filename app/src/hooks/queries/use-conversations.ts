@@ -6,7 +6,10 @@ import {
 import { useEffect } from "react";
 import { agentRosterSettled } from "../../lib/agent-gone";
 import { latestCachedAllConversations } from "../../lib/all-conversations-cache";
-import { mergePartialSweep } from "../../lib/all-conversations-recovery";
+import {
+  foldSweep,
+  sliceFreshness,
+} from "../../lib/all-conversations-freshness";
 import { queryKeys } from "../../lib/query-keys";
 import { type RawConversation, tauriChat } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
@@ -47,13 +50,25 @@ export function useAllConversations(agentPaths: string[]) {
   return useQuery({
     queryKey,
     queryFn: async () => {
+      const startedAt = Date.now();
       const { items, failedAgents } = await sweepWithRetry(agentPaths);
       // A partial sweep must never present itself as the whole board: the
       // agents that did not answer keep their last-known missions (HOU-981).
-      const merged = mergePartialSweep(
+      const failedPaths = failedAgents.map((f) => f.agentPath);
+      const failed = new Set(failedPaths);
+      // Nor may a SLOW sweep roll the board back: its reads were taken at
+      // `startedAt`, and every agent the push stream patched while one slow
+      // agent held the settle open has a newer slice in cache than the rows
+      // this sweep carries (lib/all-conversations-freshness.ts).
+      const overtaken = sliceFreshness.patchedSince(
+        agentPaths.filter((p) => !failed.has(p)),
+        startedAt,
+      );
+      const merged = foldSweep(
         items,
         previousRows(queryClient, queryKey),
-        failedAgents.map((f) => f.agentPath),
+        failedPaths,
+        overtaken,
       );
       recoverFromSweep(failedAgents, roster, queryClient);
       return merged;
