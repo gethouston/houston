@@ -65,7 +65,10 @@ export async function createCheckout(
  *
  * Open the Stripe customer portal for the active team (owner only) — card,
  * invoices, interval switch, cancel. Returns the hosted `{url}`. Never degrades.
- * @assistant group:billing confirm
+ *
+ * Not confirmed: it opens a page. Nothing is charged or changed until the user
+ * acts inside Stripe's own portal, which asks for its own confirmation.
+ * @assistant group:billing
  */
 export async function createPortal(
   cfg: ControlPlaneConfig,

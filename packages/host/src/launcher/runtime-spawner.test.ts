@@ -5,7 +5,10 @@ import type { Agent } from "../domain/types";
 const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));
 vi.mock("node:child_process", () => ({ spawn: spawnMock }));
 
+import { ASSISTANT_AGENT_NAME } from "../routes/assistant";
+import { assistantRuntimeRole } from "./assistant-role";
 import { ProcessLauncher } from "./process";
+import { runtimeSpawnEnv } from "./runtime-env";
 import { RuntimeProcessSpawner } from "./runtime-spawner";
 
 /** A stand-in ChildProcess: an emitter with the bits the spawner touches. */
@@ -60,6 +63,49 @@ test("spawn omits the shared-skills env when no filesystem mirror is available",
     env: Record<string, string | undefined>;
   };
   expect(options.env).not.toHaveProperty("HOUSTON_SHARED_SKILLS_DIR");
+});
+
+test("only the coordinator's child carries the assistant role, and no credential", async () => {
+  // The whole point of deciding the role in the host: two agents, one spawner,
+  // and the role variable reaches exactly one child. A gateway token reaches
+  // neither — the credential stays in the host process.
+  const launcher = new ProcessLauncher({
+    spawner: new RuntimeProcessSpawner({
+      command: ["runtime"],
+      env: (spec) =>
+        runtimeSpawnEnv({
+          transcriptDualWrite: false,
+          assistantRole: spec.assistantRole ?? null,
+        }),
+    }),
+    workspaceDirFor: (a) => `/data/${a.name}`,
+    dataDirFor: (a) => `/data/${a.name}/data`,
+    mintToken: () => "secret",
+    assistantRoleFor: (a) =>
+      assistantRuntimeRole({ agentId: a.id, hostEnv: {} }),
+    allocatePort: async () => 4317,
+    waitHealthy: async () => {},
+  });
+
+  const agent = (id: string, name: string): Agent => ({
+    id,
+    workspaceId: "w1",
+    name,
+    createdAt: 0,
+  });
+  await launcher.ensureAwake(agent("w1/Writer", "Writer"));
+  await launcher.ensureAwake(agent(`w1/${ASSISTANT_AGENT_NAME}`, "assistant"));
+
+  const envs = spawnMock.mock.calls.map(
+    (call) => (call[2] as { env: Record<string, string | undefined> }).env,
+  );
+  expect(envs).toHaveLength(2);
+  expect(envs[0]).not.toHaveProperty("HOUSTON_ASSISTANT_ROLE");
+  expect(envs[1]?.HOUSTON_ASSISTANT_ROLE).toBe("coordinator");
+  for (const env of envs) {
+    expect(env).not.toHaveProperty("HOUSTON_ASSISTANT_TOKEN");
+    expect(env).not.toHaveProperty("HOUSTON_ASSISTANT_CP_URL");
+  }
 });
 
 test("a child that fails to spawn ('error', never 'exit') still fires the exit callback, exactly once", () => {

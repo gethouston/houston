@@ -7,12 +7,19 @@ import {
 } from "./preferences";
 import type { TextStore } from "./store";
 
-function memStore(): TextStore & { raw: Map<string, string> } {
+/** `readDelayMs` widens the read→write window so an interleave is deterministic
+ *  rather than dependent on microtask ordering. */
+function memStore(readDelayMs = 0): TextStore & { raw: Map<string, string> } {
   const raw = new Map<string, string>();
   return {
     raw,
     async readText(key) {
-      return raw.get(key) ?? null;
+      // Snapshot first, then stall: a slow read answers with the state it saw
+      // when it started, which is exactly what makes a read-modify-write lose.
+      const value = raw.get(key) ?? null;
+      if (readDelayMs > 0)
+        await new Promise((resolve) => setTimeout(resolve, readDelayMs));
+      return value;
     },
     async writeText(key, content) {
       raw.set(key, content);
@@ -49,4 +56,16 @@ test("a corrupt (non-object) doc reads as empty, never crashes the boot gates", 
   store.raw.set(prefDocKey(WS), JSON.stringify(["not", "an", "object"]));
   expect(await loadPreferences(store, WS)).toEqual({});
   expect(await getPreference(store, WS, "locale")).toBeNull();
+});
+
+test("concurrent writes of DIFFERENT keys both survive the read-modify-write", async () => {
+  const store = memStore(5);
+  await Promise.all([
+    setPreference(store, WS, "locale", "es"),
+    setPreference(store, WS, "timezone", "America/Bogota"),
+  ]);
+  expect(await loadPreferences(store, WS)).toEqual({
+    locale: "es",
+    timezone: "America/Bogota",
+  });
 });

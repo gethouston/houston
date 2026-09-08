@@ -13,7 +13,7 @@ import { CloudPaths } from "../paths";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
-import { MemoryVfs } from "../vfs";
+import { MemoryVfs, type Vfs } from "../vfs";
 
 /**
  * Workspaces + preferences: the user-level resources the host owns (the last
@@ -656,4 +656,57 @@ test("the group-context mirror is a no-op (PUT still 200) without a paths dep", 
   expect(put.status).toBe(200);
   await put.json();
   expect(await vfs.readText(await groupFileKey(wsId, agent.id))).toBeNull();
+});
+
+/**
+ * A vfs whose reads answer with the state they saw when they started and only
+ * then return. It models a real store's latency and makes the preference
+ * document's load → merge → save window wide enough that a second, unserialized
+ * writer of a DIFFERENT key would save over the first one's base.
+ */
+function slowReadVfs(): Vfs {
+  const inner = new MemoryVfs();
+  return {
+    list: (prefix) => inner.list(prefix),
+    listDetailed: (prefix) => inner.listDetailed(prefix),
+    readText: async (key) => {
+      const value = await inner.readText(key);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      return value;
+    },
+    readBytes: (key) => inner.readBytes(key),
+    writeText: (key, content) => inner.writeText(key, content),
+    writeBytes: (key, content) => inner.writeBytes(key, content),
+    deleteKey: (key) => inner.deleteKey(key),
+    move: (from, to) => inner.move(from, to),
+    deletePrefix: (prefix) => inner.deletePrefix(prefix),
+  };
+}
+
+test("concurrent PUTs of different preference keys both survive", async () => {
+  const server = createControlPlaneServer(deps({ vfs: slowReadVfs() }));
+  await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
+  const addr = server.address();
+  const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
+  const put = (key: string, value: string) =>
+    fetch(`${b}/v1/preferences/${key}`, {
+      method: "PUT",
+      headers: auth("hal"),
+      body: JSON.stringify({ value }),
+    }).then((r) => r.json());
+  try {
+    // Warm the personal workspace so both writes race on the SAME document.
+    await put("locale", "en");
+    await Promise.all([put("locale", "es"), put("timezone", "America/Bogota")]);
+    const read = async (key: string) =>
+      (
+        (await (
+          await fetch(`${b}/v1/preferences/${key}`, { headers: auth("hal") })
+        ).json()) as { value: string | null }
+      ).value;
+    expect(await read("locale")).toBe("es");
+    expect(await read("timezone")).toBe("America/Bogota");
+  } finally {
+    await new Promise<void>((r) => server.close(() => r()));
+  }
 });

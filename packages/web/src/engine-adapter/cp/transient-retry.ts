@@ -35,10 +35,11 @@
  *    is restarting — heals in about a second, which is what the original two
  *    blind retries were sized for (HOU-731).
  *
- * `Retry-After` is deliberately NOT read: the gateway sends no
- * `Access-Control-Expose-Headers`, so a browser cannot see that header on a
- * cross-origin gateway response. The BODY is readable, and it carries the same
- * information, so the body is the contract this file keys on.
+ * The BODY is the contract this file keys on: it carries the REASON, and the
+ * reason — not a duration — picks the schedule below. `Retry-After` says only
+ * "how long", and only where the responder exposes it cross-origin, so it can
+ * never classify; it is captured at the throw site onto
+ * `HoustonEngineError.retryAfterMs` (`ui/engine-client/src/retry-after.ts`).
  *
  * ── Why suppressing the wake toast is not a silent failure ──────────────────
  * The no-silent-failures policy (`CLAUDE.md`) requires every failure a

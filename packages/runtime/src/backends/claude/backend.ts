@@ -144,9 +144,11 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         // End the turn after a tool batch in which an offer tool ran after
         // the closing message — the pi path's `terminate` hint, mirrored.
         hooks: buildTurnEndHooks(),
-        canUseTool: makeCanUseTool(deps.workspaceDir, {
-          sharedRoots: deps.sharedRoots,
-        }),
+        // The role's file policy, whole: an ordinary agent's shared writable
+        // roots, or the coordinator's exact-file allowlist (which replaces root
+        // containment entirely, so its memory document is the only file this
+        // backend's tools can reach).
+        canUseTool: makeCanUseTool(deps.workspaceDir, deps.fileGuard),
         systemPrompt: buildSystemPrompt(
           deps.workspaceDir,
           deps.systemPrompt,

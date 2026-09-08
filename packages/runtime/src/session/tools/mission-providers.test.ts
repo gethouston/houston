@@ -5,15 +5,13 @@ import {
   missionModelDescription,
   missionProviderDescription,
   missionProviderParam,
-  missionRunsOn,
-  resolveMissionPin,
 } from "./mission-providers";
 
 /**
- * The mission pin's closed set: what the SCHEMA offers the model, what the
- * DESCRIPTION spells out, and what a written value resolves to. A provider id
- * is never something the model has to invent (the `codex` → `openai-codex`
- * incident).
+ * The mission pin's closed set: what the SCHEMA offers the model and what the
+ * DESCRIPTION spells out. Every id and every model name a user can ask for is
+ * written down here, so the model picks one instead of inventing it (the
+ * `codex` → `openai-codex` incident).
  */
 
 const OPTIONS: ProviderOption[] = [
@@ -25,6 +23,22 @@ const OPTIONS: ProviderOption[] = [
   },
   { id: "anthropic", name: "Claude (Pro / Max)", connected: false },
   { id: "openrouter", name: "OpenRouter", connected: true },
+];
+
+/** The live catalog, as the runtime's registry reports it. */
+const NAMED: ProviderOption[] = [
+  {
+    id: "openai-codex",
+    name: "ChatGPT / Codex (Plus / Pro)",
+    connected: true,
+    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.4-mini"],
+  },
+  {
+    id: "anthropic",
+    name: "Claude (Pro / Max)",
+    connected: true,
+    models: ["claude-opus-4-6", "claude-sonnet-5"],
+  },
 ];
 
 test("the schema's accepted values ARE the connected provider ids", () => {
@@ -75,91 +89,9 @@ test("the description carries the per-provider model ids the registry knows", ()
   expect(text).not.toContain("openrouter:");
 });
 
-test("a written provider resolves to its id, alias or display name alike", () => {
-  expect(resolveMissionPin({ provider: "Codex" }, OPTIONS)).toEqual({
-    provider: "openai-codex",
-  });
-  expect(
-    resolveMissionPin({ provider: "OpenRouter", model: "any/thing" }, OPTIONS),
-  ).toEqual({ provider: "openrouter", model: "any/thing" });
-});
-
-test("an unknown provider throws the list of ids and names", () => {
-  expect(() => resolveMissionPin({ provider: "gemini-cli" }, OPTIONS)).toThrow(
-    /openai-codex \(ChatGPT \/ Codex \(Plus \/ Pro\)\)/,
-  );
-});
-
-test("a disconnected provider throws a refusal naming it", () => {
-  expect(() => resolveMissionPin({ provider: "claude" }, OPTIONS)).toThrow(
-    /anthropic .*not connected/i,
-  );
-});
-
-test("a model is validated against the provider the same call pins", () => {
-  expect(() =>
-    resolveMissionPin({ provider: "codex", model: "gpt5" }, OPTIONS),
-  ).toThrow(/gpt-5.5-codex/);
-  expect(
-    resolveMissionPin({ provider: "codex", model: "gpt-5.5" }, OPTIONS),
-  ).toEqual({ provider: "openai-codex", model: "gpt-5.5" });
-});
-
-test("a model named alone is validated against the inherited provider", () => {
-  expect(() =>
-    resolveMissionPin({ model: "gpt5" }, OPTIONS, "openai-codex"),
-  ).toThrow(/gpt-5.5/);
-  expect(
-    resolveMissionPin({ model: "gpt-5.5" }, OPTIONS, "openai-codex"),
-  ).toEqual({ model: "gpt-5.5" });
-  // Nothing to validate against: the model rides through and the provider's own
-  // error is what surfaces.
-  expect(resolveMissionPin({ model: "whatever" }, OPTIONS)).toEqual({
-    model: "whatever",
-  });
-});
-
-/** The live catalog, as the runtime's registry reports it. */
-const NAMED: ProviderOption[] = [
-  {
-    id: "openai-codex",
-    name: "ChatGPT / Codex (Plus / Pro)",
-    connected: true,
-    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.4-mini"],
-  },
-  {
-    id: "anthropic",
-    name: "Claude (Pro / Max)",
-    connected: true,
-    models: ["claude-opus-4-6", "claude-sonnet-5"],
-  },
-];
-
 test("the description pairs every model id with the name a user says", () => {
   const text = missionModelDescription(NAMED);
   expect(text).toContain("gpt-5.6-luna = GPT-5.6 Luna");
   expect(text).toContain("claude-opus-4-6 = Opus 4.6");
   expect(text).toContain("claude-sonnet-5 = Sonnet 5");
-});
-
-test("the name the user said pins the model, never the provider default", () => {
-  expect(
-    resolveMissionPin({ provider: "codex", model: "Luna" }, NAMED),
-  ).toEqual({ provider: "openai-codex", model: "gpt-5.6-luna" });
-  expect(
-    resolveMissionPin({ provider: "anthropic", model: "Opus 4.6" }, NAMED),
-  ).toEqual({ provider: "anthropic", model: "claude-opus-4-6" });
-  // A name alone rides the provider the mission inherits.
-  expect(
-    resolveMissionPin({ model: "5.4 mini" }, NAMED, "openai-codex"),
-  ).toEqual({ model: "gpt-5.4-mini" });
-});
-
-test("what the tool tells the user names the model it really pinned", () => {
-  const text = missionRunsOn(
-    { provider: "anthropic", model: "claude-sonnet-5" },
-    NAMED,
-  );
-  expect(text).toContain("claude-sonnet-5 (Sonnet 5)");
-  expect(text).toContain("anthropic (Claude (Pro / Max))");
 });

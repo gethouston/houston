@@ -39,7 +39,11 @@ export async function listOrgs(cfg: ControlPlaneConfig): Promise<OrgsList> {
  * Create a team space. NOT idempotent — on a lost response DON'T blind-retry;
  * reconcile via `listOrgs` and reuse the persisted slug (C8). Never degrades: a
  * failure throws so the UI surfaces the real reason.
- * @assistant group:spaces
+ *
+ * Confirmed: money. A space carries its own subscription, and the call is not
+ * idempotent, so a repeat leaves a second billable space standing.
+ * @param name What to call the new space, in the user's own words.
+ * @assistant group:spaces confirm
  */
 export async function createOrg(
   cfg: ControlPlaneConfig,
@@ -62,7 +66,11 @@ export async function createOrg(
  * `409 has_members` (teammates remain — remove them first), `409
  * subscription_active` (a live subscription — cancel it first). A `204` means
  * the space and everything in it is gone for good; the caller must re-list.
- * @assistant group:spaces confirm
+ *
+ * Confirmed: irreversible. A delete takes the space and everything in it for
+ * good.
+ * @param slug The space to delete, by the slug listOrgs returns.
+ * @assistant group:spaces confirm hidden: destroys a shared space and everything inside it for good; that decision stays with the person, and the hosted gateway denies the route to this surface anyway.
  */
 export async function deleteOrg(
   cfg: ControlPlaneConfig,
@@ -83,6 +91,8 @@ export async function deleteOrg(
  * (revoked, already used, or addressed to another email — the gateway
  * deliberately can't tell those apart), `409 already_member`, `403
  * needs_upgrade` (the team's trial ended).
+ * @param inviteId The invitation to accept, by the id listOrgs returns with
+ *   the pending invitations.
  * @assistant group:spaces confirm
  */
 export async function acceptOrgInvite(
@@ -104,6 +114,8 @@ export async function acceptOrgInvite(
  * `204`, NOT the owner's revoke (`deleteOrgInvite`, org-scoped at
  * `/v1/org/invites/:id`). Never degrades: a `404 invite_not_found` must reach
  * the UI so the stale row explains itself.
+ * @param inviteId The invitation to decline, by the id listOrgs returns
+ *   with the pending invitations.
  * @assistant group:spaces confirm
  */
 export async function declineOrgInvite(
@@ -121,6 +133,10 @@ export async function declineOrgInvite(
  * Move an agent into a team space; returns the `moveId` to poll with
  * `getMoveStatus`. Never degrades — 403 `unsupported_move` / 409
  * `unmovable_volume` / 403 `needs_upgrade` throw so the caller surfaces them.
+ * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
+ *   returns. Read it from listAgents rather than writing the name the user
+ *   says.
+ * @param toSlug The space to move it into, by the slug listOrgs returns.
  * @assistant group:spaces confirm
  */
 export async function moveAgent(
@@ -141,6 +157,10 @@ export async function moveAgent(
  *
  * Poll one agent-move's progress (C8). The move-completion signal is THIS route
  * only — never the agent event stream (which relays pod-scoped events).
+ * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
+ *   returns. Read it from listAgents rather than writing the name the user
+ *   says.
+ * @param moveId The move to check on, by the id moveAgent answered with.
  * @assistant group:spaces
  */
 export async function getMoveStatus(

@@ -13,6 +13,10 @@ import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
 // against both the local sidecar and the gateway.
 /**
  * Searches the community directory of skills.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param query Words to search the community catalogue for, in the user's
+ *   own terms.
  * @assistant group:skills
  */
 export async function searchCommunitySkills(
@@ -34,6 +38,12 @@ export async function searchCommunitySkills(
 }
 /**
  * Shows what a community skill does before installing it.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param source The catalogue entry's source, exactly as
+ *   searchCommunitySkills returned it.
+ * @param skillId The skill's id, exactly as searchCommunitySkills returned
+ *   it.
  * @assistant group:skills
  */
 export async function previewCommunitySkill(
@@ -52,6 +62,10 @@ export async function previewCommunitySkill(
 }
 /**
  * Lists the skills published in a GitHub repository.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param source The full https address of the GitHub repository to read
+ *   skills from.
  * @assistant group:skills
  */
 export async function listSkillsFromRepo(
@@ -69,6 +83,10 @@ export async function listSkillsFromRepo(
 }
 /**
  * Installs a skill from the community directory into an agent.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param body The skill to install, with the source and id exactly as
+ *   searchCommunitySkills returned them.
  * @assistant group:skills confirm
  */
 export async function installCommunitySkill(
@@ -86,6 +104,10 @@ export async function installCommunitySkill(
 }
 /**
  * Installs skills from a GitHub repository into an agent.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param body The repository address, and the skills from
+ *   listSkillsFromRepo to install.
  * @assistant group:skills confirm
  */
 export async function installSkillsFromRepo(

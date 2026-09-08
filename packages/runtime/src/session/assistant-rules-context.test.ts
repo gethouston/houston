@@ -1,5 +1,3 @@
-import { join } from "node:path";
-import { ASSISTANT_AGENT_NAME } from "@houston/host/src/routes/assistant";
 import { expect, test } from "vitest";
 import { buildAssistantRulesSection } from "./assistant-rules-context";
 
@@ -11,15 +9,14 @@ import { buildAssistantRulesSection } from "./assistant-rules-context";
  */
 
 const forAssistant = (): string =>
-  buildAssistantRulesSection(join("/tmp/ws", ASSISTANT_AGENT_NAME)) ?? "";
+  buildAssistantRulesSection("coordinator") ?? "";
 
-test("only the personal assistant gets the rules", () => {
+test("the rules follow the ROLE the host gave this runtime, not its directory", () => {
+  // The managed assistant pod runs under `/workspace` with an ordinarily-named
+  // agent: a directory-shaped gate leaves that pod holding the coordinator's
+  // Houston-wide toolset with none of these rails on it.
   expect(forAssistant()).toContain("# How you operate in Houston");
-  expect(buildAssistantRulesSection(join("/tmp/ws", "Helper"))).toBeNull();
-  // A directory nested under the assistant is not the assistant's own root.
-  expect(
-    buildAssistantRulesSection(join("/tmp/ws", ASSISTANT_AGENT_NAME, "sub")),
-  ).toBeNull();
+  expect(buildAssistantRulesSection(null)).toBeNull();
 });
 
 test("the rules cover every behaviour the incident turned up", () => {

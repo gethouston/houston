@@ -20,6 +20,8 @@ export function toClientSummary(summary: HostSkillSummary): SkillSummary {
 
 /**
  * Lists the skills an agent can follow.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
  * @assistant group:skills
  */
 export async function listSkills(
@@ -39,6 +41,9 @@ export async function listSkills(
  * A single skill's full detail (its SKILL.md content) from the host's
  * `GET /agents/:id/skills/:slug`. Without this the adapter's Proxy fallback
  * stubbed skill detail to `[]`, so clicking any skill showed no content.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param slug The skill's exact slug, from listSkills. Never invent one.
  * @assistant group:skills
  */
 export async function loadSkill(
@@ -55,7 +60,14 @@ export async function loadSkill(
 
 /**
  * Creates a skill an agent can follow.
- * @assistant group:skills
+ *
+ * Confirmed: a skill is standing instruction. Once it exists the agent follows
+ * it in every later turn, changing behavior the user never asked for again.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param body The new skill: its name, a one-line description, and the
+ *   instructions themselves.
+ * @assistant group:skills confirm
  */
 export async function createSkill(
   cfg: ControlPlaneConfig,
@@ -69,7 +81,15 @@ export async function createSkill(
 }
 /**
  * Saves changes to a skill's instructions.
- * @assistant group:skills
+ *
+ * Confirmed: irreversible. It overwrites the skill's text in place and Houston
+ * keeps no earlier copy, so what the user wrote cannot be recovered.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param slug The skill's exact slug, from listSkills. Never invent one.
+ * @param content The skill's full new text. It replaces what was there, so
+ *   send the whole thing.
+ * @assistant group:skills confirm
  */
 export async function saveSkill(
   cfg: ControlPlaneConfig,
@@ -88,6 +108,9 @@ export async function saveSkill(
 }
 /**
  * Deletes a skill so the agent no longer has it.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param slug The skill's exact slug, from listSkills. Never invent one.
  * @assistant group:skills confirm
  */
 export async function deleteSkill(
@@ -104,6 +127,8 @@ export async function deleteSkill(
 
 /**
  * Reads which of an agent's skills are switched on.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
  * @assistant group:skills
  */
 export async function getSkillsManifest(
@@ -116,7 +141,15 @@ export async function getSkillsManifest(
 
 /**
  * Chooses which of an agent's skills are switched on.
- * @assistant group:skills confirm
+ *
+ * Not confirmed: trivially reversible. Nothing is created or destroyed, and
+ * switching one back restores exactly the previous state.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param manifest The full list of which skills are on and off. It replaces
+ *   the stored one, so read getSkillsManifest first and send it back
+ *   changed.
+ * @assistant group:skills
  */
 export async function putSkillsManifest(
   cfg: ControlPlaneConfig,

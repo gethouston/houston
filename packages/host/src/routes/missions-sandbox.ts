@@ -39,8 +39,7 @@ import { handleMissionStart } from "./missions-start";
  * agent-started missions (`origin_session_key` present) that are still
  * `running`. User-created missions keep the client settle path untouched.
  */
-export interface MissionsSandboxDeps {
-  vault: CredentialVault;
+export interface MissionsDeps {
   store: WorkspaceStore;
   vfs?: Vfs;
   paths?: WorkspacePaths;
@@ -59,9 +58,19 @@ export interface MissionsSandboxDeps {
   credentials?: CredentialStore;
 }
 
+/**
+ * The sandbox family's own deps: the mission handlers' plus the vault that
+ * validates the runtime's sandbox token. The per-agent inbound family
+ * (missions-remote-inbound.ts) is authorized by the gateway instead, so it
+ * takes {@link MissionsDeps} and needs no vault.
+ */
+export interface MissionsSandboxDeps extends MissionsDeps {
+  vault: CredentialVault;
+}
+
 /** Resolved per-request context shared by every mission handler. */
 export interface MissionsCtx {
-  deps: MissionsSandboxDeps;
+  deps: MissionsDeps;
   ws: Workspace;
   agent: Agent;
   vfs: Vfs;

@@ -1,5 +1,6 @@
 import type { ToolSelection } from "../../session/tool-selection";
 import type { AssistantToolOptions } from "../../session/tools/assistant";
+import type { WorkspaceGuardOptions } from "../../session/tools/fs-guard";
 import type { IntegrationToolOptions } from "../../session/tools/integrations";
 import type { BridgedPiTool } from "./custom-tools";
 import type { ClaudeLayout } from "./paths";
@@ -17,7 +18,15 @@ export interface ClaudeBackendDeps {
   readToken: () => ClaudeToken | undefined;
   toolSelection: ToolSelection;
   systemPrompt: string;
-  sharedRoots?: string[];
+  /**
+   * How much of the filesystem this runtime's ROLE may touch, as one policy
+   * object (`session/coordinator-policy.ts` builds it) — extra writable roots
+   * for an ordinary agent, an exact-file allowlist for the coordinator. Passed
+   * whole rather than field by field: the Claude backend enforces file rules in
+   * `canUseTool` instead of pi's clamped file tools, and a gate handed half a
+   * policy is a wall with a hole in it.
+   */
+  fileGuard?: WorkspaceGuardOptions;
   integrations?: IntegrationToolOptions;
   /** The assistant family's catalog + host transport; absent → family off. */
   assistant?: AssistantToolOptions;

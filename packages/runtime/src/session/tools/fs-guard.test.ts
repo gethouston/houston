@@ -8,7 +8,12 @@ import {
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
-import { PathDeniedError, PathEscapeError, WorkspaceGuard } from "./fs-guard";
+import {
+  PathDeniedError,
+  PathEscapeError,
+  PathNotAllowedError,
+  WorkspaceGuard,
+} from "./fs-guard";
 
 /**
  * Gate #1 unit wall: every path shape a prompt-injected model could supply to
@@ -286,4 +291,84 @@ test("without an existing shared root, everything stays workspace-only", () => {
   expect(g.sharedRoots).toEqual([]);
   expect(g.clamp("notes.txt")).toBe(join(g.root, "notes.txt"));
   expect(() => g.clamp("/etc/passwd")).toThrow(PathEscapeError);
+});
+
+/**
+ * The exact-file allowlist: the wall for a runtime whose whole file surface is
+ * one document. The coordinator (the user's personal assistant) reads and
+ * rewrites its memory and nothing else, so a prompt injection there must not be
+ * able to reach a shared skill every agent runs, the workspace's own config, or
+ * the session records under `.houston`.
+ */
+function coordinatorFixture(): {
+  workspace: string;
+  shared: string;
+  memory: string;
+  guard: WorkspaceGuard;
+} {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "houston-coord-")));
+  const workspace = join(base, ".assistant");
+  const shared = join(base, "shared-skills");
+  mkdirSync(join(workspace, ".houston", "learnings"), { recursive: true });
+  mkdirSync(join(shared, "deploy"), { recursive: true });
+  writeFileSync(join(shared, "deploy", "SKILL.md"), "shared");
+  writeFileSync(join(workspace, "WORKSPACE.md"), "config");
+  const memory = join(workspace, ".houston", "learnings", "learnings.json");
+  writeFileSync(memory, "[]");
+  return {
+    workspace,
+    shared,
+    memory,
+    guard: new WorkspaceGuard(workspace, {
+      sharedRoots: [shared],
+      allowedFiles: [memory],
+    }),
+  };
+}
+
+test("an allowlisted document is reachable by relative and absolute path", () => {
+  const { workspace, memory, guard } = coordinatorFixture();
+  expect(guard.clamp(memory)).toBe(memory);
+  expect(guard.clamp(".houston/learnings/learnings.json")).toBe(memory);
+  expect(guard.assertInside(memory)).toBe(memory);
+  expect(guard.root).toBe(workspace);
+});
+
+test("the shared skills mirror is refused even though it is a shared root", () => {
+  const { shared, guard } = coordinatorFixture();
+  expect(() => guard.clamp(join(shared, "deploy", "SKILL.md"))).toThrow(
+    PathNotAllowedError,
+  );
+  expect(() => guard.assertInside(join(shared, "deploy", "SKILL.md"))).toThrow(
+    PathNotAllowedError,
+  );
+});
+
+test("everything else in its own workspace is refused too", () => {
+  const { workspace, guard } = coordinatorFixture();
+  for (const path of [
+    join(workspace, "WORKSPACE.md"),
+    join(workspace, ".houston", "transcripts", "assistant.jsonl"),
+    join(workspace, ".houston", "runtime", "auth.json"),
+    ".",
+    "notes.txt",
+  ]) {
+    expect(() => guard.clamp(path)).toThrow(PathNotAllowedError);
+  }
+});
+
+test("the refusal names the document the runtime may touch", () => {
+  const { memory, guard } = coordinatorFixture();
+  expect(() => guard.clamp("/etc/passwd")).toThrow(memory);
+});
+
+test("a symlink cannot stand in for a path outside the allowlist", () => {
+  const { workspace, shared, memory, guard } = coordinatorFixture();
+  const link = join(workspace, ".houston", "learnings", "link.json");
+  symlinkSync(join(shared, "deploy", "SKILL.md"), link);
+  expect(() => guard.clamp(link)).toThrow(PathNotAllowedError);
+  // ...and the real document still resolves through its own symlink.
+  const alias = join(workspace, "memory-alias.json");
+  symlinkSync(memory, alias);
+  expect(guard.clamp(alias)).toBe(alias);
 });

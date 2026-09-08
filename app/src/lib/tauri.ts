@@ -21,6 +21,7 @@ import type {
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
+  MessageApproval,
   MessageMention,
   ProviderAuthState,
   ProviderHealth,
@@ -71,6 +72,7 @@ import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error"
 import { isOrgAdminRequiredError } from "./org-admin-required-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { isProviderLoginSessionLostError } from "./provider-login-session-lost";
+import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
@@ -608,6 +610,13 @@ export const tauriChat = {
        * auto-resume, routine) carries none (see SessionStartRequest).
        */
       mentions?: MessageMention[];
+      /**
+       * Receipts for the approval cards this message answers. Only a USER
+       * message can turn a host-issued request id into a usable approval, so
+       * these ride the send as their own field; the HOST records them and drops
+       * the field before the runtime sees the turn (see SessionStartRequest).
+       */
+      approvals?: MessageApproval[];
     },
   ) =>
     call<string>("send_message", async () => {
@@ -634,6 +643,9 @@ export const tauriChat = {
         // Who this message names (HOU-944). An empty list means what absence
         // means, so never put `[]` on the wire.
         mentions: opts?.mentions?.length ? opts.mentions : undefined,
+        // Which approval cards this message answers. Absence and an empty list
+        // are the same answer, so never put `[]` on the wire.
+        approvals: opts?.approvals?.length ? opts.approvals : undefined,
       });
       return res.sessionKey;
     }),
@@ -1727,10 +1739,6 @@ export const tauriProvider = {
       async () =>
         (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
     ),
-  setDefault: (provider: string) =>
-    call<void>("set_default_provider", () =>
-      getEngine().setPreference(DEFAULT_PROVIDER_PREF_KEY, provider),
-    ),
   /**
    * Last (provider, model) pair the user picked anywhere — agent creation
    * dialog, AI-assist step, or chat-tab model picker. Used as the default
@@ -1758,7 +1766,11 @@ export const tauriProvider = {
           eng.getPreference(DEFAULT_MODEL_PREF_KEY),
         ]);
         return {
-          provider: provider ?? null,
+          // Both halves are normalized on the way out: the model through the
+          // legacy-alias table, the provider through the id dialect, so a value
+          // stored in either dialect seeds a creation dialog as the display id
+          // the catalog is keyed by.
+          provider: toDisplayProviderIdOrNull(provider),
           model: normalizeLegacyModel(model),
         };
       },
@@ -2024,10 +2036,13 @@ export type AssistantHandle =
  */
 export const tauriAssistant = {
   /**
-   * A deployment that hosts no assistant answers 501 (the gateway owns
-   * discovery there) or 503 (no agent tree). Neither is a Houston bug: the
-   * sidebar entry and the screen simply do not exist, so the failure is logged
-   * and silenced rather than toasted. Every other failure stays loud.
+   * Silenced for everything `classifyAssistantDiscoveryFailure` does not call
+   * `unexpected` (`lib/assistant-availability.ts`): a deployment that serves no
+   * assistant (501, or a 503 naming its absence with a code) AND a pod that is
+   * simply not awake yet (an uncoded 503, which the query retries on the
+   * server's own `Retry-After` hint). Neither is a Houston bug — one has no
+   * screen to show, the other answers moments later — so both are logged and
+   * never toasted. Every other failure stays loud.
    */
   discover: () =>
     call<AssistantHandle>(

@@ -18,6 +18,7 @@ import { useRoutineWritesForAnyAgent } from "../../hooks/queries";
 import { useRoutineModelResolution } from "../../hooks/use-routine-model-resolution";
 import { genericErrorDescription } from "../../lib/error-report";
 import { providerModelLabel } from "../../lib/model-labels";
+import { toCanonicalProviderId } from "../../lib/provider-overrides";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { ChatModelSelector } from "../chat-model-selector";
@@ -65,7 +66,12 @@ export function RoutineModelSelector({ agent, routine, bordered }: Props) {
         provider={provider}
         model={model}
         onSelect={(nextProvider, nextModel) =>
-          save({ provider: nextProvider, model: nextModel })
+          // The pin is stored in pi's CANONICAL dialect, the one the fire path
+          // resolves; the picker speaks display ids.
+          save({
+            provider: toCanonicalProviderId(nextProvider),
+            model: nextModel,
+          })
         }
         open={open}
         onOpenChange={setOpen}

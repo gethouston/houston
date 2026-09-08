@@ -123,10 +123,8 @@
     "missionRowFailed": "No pudimos guardar esta tarea en tu tablero. Tu mensaje sí fue enviado.",
     "interactionDismissFailed": "No pudimos descartar la solicitud."
   },
-  "toolRuntimeError": {
-    "retryPrompt": "Intenta de nuevo."
-  },
   "providerError": {
+    "retryPrompt": "Intenta de nuevo.",
     "reconnectedContinue": "Ya inicié sesión de nuevo. Por favor continúa donde quedaste. Si aún no has respondido mi último mensaje, respóndelo ahora."
   },
   "attachmentIssues": {

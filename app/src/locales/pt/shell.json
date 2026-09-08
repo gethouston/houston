@@ -481,23 +481,11 @@
     "stalledTitle": "Ainda estamos nessa",
     "stalledBody": "Isso está demorando mais que o normal. Não desistimos, seu chat e suas mensagens estão seguros e vão continuar assim que seu agente responder."
   },
-  "toolRuntimeError": {
-    "title": "Algo travou",
-    "body": "Uma ferramenta local não iniciou corretamente. Tente de novo e reporte se continuar acontecendo.",
-    "report": "Reportar erro",
-    "reporting": "Enviando relatório...",
+  "reportBug": {
     "reportSuccessTitle": "Relatório enviado",
     "reportSuccessDescription": "Houston recebeu os registros.",
     "reportErrorTitle": "Não foi possível enviar o relatório",
-    "reportErrorDescription": "Tente de novo em instantes.",
-    "retryErrorTitle": "Não foi possível tentar de novo",
-    "modelUnsupported": {
-      "title": "Seu plano do ChatGPT não inclui este modelo",
-      "body": "Alguns modelos só estão disponíveis em certos planos do ChatGPT. Mude para outro modelo para continuar.",
-      "switchAction": "Mudar para {{model}}",
-      "switching": "Mudando...",
-      "switchErrorTitle": "Não foi possível mudar o modelo"
-    }
+    "reportErrorDescription": "Tente de novo em instantes."
   },
   "updateChecker": {
     "launchLabel": "Atualização do Houston em andamento",

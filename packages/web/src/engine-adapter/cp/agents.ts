@@ -103,7 +103,15 @@ export function createdAgentToUi(agent: CpAgent, color?: string): Agent {
  * install flow (`portable.ts install`), a `cfg`-scoped module function with no
  * SDK handle. Same wire the SDK write issues: `POST /agents` with the seed body
  * (JSON.stringify drops undefined, so a plain create posts just `{ name }`).
- * @assistant group:agents
+ *
+ * Confirmed: money. An agent is a billed unit with its own workspace and
+ * running engine, so creating one adds recurring cost the user has to want.
+ * @param name What to call the new agent, in the user's own words.
+ * @param color One of Houston's ten palette colours: charcoal, forest,
+ *   teal, navy, purple, rose, crimson, orange, golden or umber.
+ * @param seed Optional starting files for the new agent. Omit it for a
+ *   blank one.
+ * @assistant group:agents confirm
  * @assistant unschematized: the seed's seeds map is an open record of file path to contents.
  */
 export async function createAgent(
@@ -159,6 +167,8 @@ export async function listInstalledConfigs(
 }
 /**
  * Installs an agent from a GitHub repository.
+ * @param githubUrl The full https address of the GitHub repository to
+ *   install the agent from.
  * @assistant group:agents confirm
  */
 export async function installAgentFromGithub(

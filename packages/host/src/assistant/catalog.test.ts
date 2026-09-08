@@ -1,20 +1,14 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
-  ASSISTANT_CATALOG_VERSION,
   findVisibleOperation,
-  loadAssistantCatalog,
   parseAssistantCatalog,
   visibleOperations,
 } from "./catalog";
-import { DEFAULT_ASSISTANT_CATALOG_PATH } from "./catalog-source";
 
 /**
- * A FIXTURE catalog, never the generated one: these tests pin the loader's
- * contract (shape, version, hidden-withholding, missing-file tolerance), which
- * must not move when the real catalog's 200-odd operations do.
+ * A FIXTURE catalog, never the generated one: these tests pin the parser's
+ * contract (shape, version, hidden-withholding), which must not move when the
+ * real catalog's 200-odd operations do.
  */
 const fixture = {
   version: 3,
@@ -52,25 +46,12 @@ const fixture = {
   ],
 };
 
-const write = (body: string): string => {
-  const path = join(
-    mkdtempSync(join(tmpdir(), "assistant-catalog-")),
-    "c.json",
-  );
-  writeFileSync(path, body);
-  return path;
-};
-
-/** The single line a failed load must say, or a failure naming what it said instead. */
-function loggedOnce(run: (log: (message: string) => void) => unknown): string {
-  const messages: string[] = [];
-  expect(run((message) => messages.push(message))).toBeNull();
-  const [only, ...rest] = messages;
-  if (only === undefined || rest.length > 0) {
-    throw new Error(`expected one log line, got ${messages.length}`);
-  }
-  return only;
-}
+/** The fixture document with the first operation's only parameter replaced. */
+const withFirstParam = (param: Record<string, unknown>): string =>
+  JSON.stringify({
+    ...fixture,
+    operations: [{ ...fixture.operations[0], params: [param] }],
+  });
 
 describe("parseAssistantCatalog", () => {
   test("accepts a well-formed version 3 document", () => {
@@ -93,31 +74,34 @@ describe("parseAssistantCatalog", () => {
   ])("returns null for %s rather than throwing", (_label, body) => {
     expect(parseAssistantCatalog(body)).toBeNull();
   });
-});
 
-describe("loadAssistantCatalog", () => {
-  test("reads a catalog from disk", () => {
-    const catalog = loadAssistantCatalog(write(JSON.stringify(fixture)));
-    expect(catalog?.operations).toHaveLength(2);
+  // `description` / `source` are printed verbatim to the model, so the parsed
+  // type may only claim they are strings if the envelope proved it.
+  test("keeps a parameter's description and source when both are strings", () => {
+    const annotated = withFirstParam({
+      name: "agentPath",
+      required: true,
+      schema: { type: "string" },
+      description: "The agent this acts on.",
+      source: "listAgents",
+    });
+    const [param] =
+      parseAssistantCatalog(annotated)?.operations[0]?.params ?? [];
+    expect(param?.description).toBe("The agent this acts on.");
+    expect(param?.source).toBe("listAgents");
   });
 
-  // A deployment that packaged no catalog is a NORMAL state (the family simply
-  // stays off), so this must never be the thing that fails a boot.
-  test("an absent file disables the family with one named log line", () => {
-    const missing = join(
-      tmpdir(),
-      "assistant-catalog-does-not-exist",
-      "c.json",
-    );
-    const message = loggedOnce((log) => loadAssistantCatalog(missing, log));
-    expect(message).toContain(missing);
-    expect(message).toContain("HOUSTON_ASSISTANT_CATALOG");
-  });
-
-  test("a malformed file disables the family with one named log line", () => {
-    const path = write("{not json");
-    const message = loggedOnce((log) => loadAssistantCatalog(path, log));
-    expect(message).toContain("gen:assistant-catalog");
+  test("returns null for a parameter whose source is not a string", () => {
+    expect(
+      parseAssistantCatalog(
+        withFirstParam({
+          name: "agentPath",
+          required: true,
+          schema: { type: "string" },
+          source: 42,
+        }),
+      ),
+    ).toBeNull();
   });
 });
 
@@ -142,23 +126,5 @@ describe("visibility", () => {
   test("a hidden operation is indistinguishable from an unknown one", () => {
     expect(findVisibleOperation(catalog, "rotateEngineSecret")).toBeUndefined();
     expect(findVisibleOperation(catalog, "noSuchOperation")).toBeUndefined();
-  });
-});
-
-/**
- * The one place the FIXTURE contract is checked against reality: that the
- * generator and this loader still agree on the envelope, and that the default
- * path genuinely points at the file every image is expected to package. Counts
- * are floors, not equalities — the catalog grows with the client.
- */
-describe("the generated catalog", () => {
-  test("parses through the loader at the default path", () => {
-    const catalog = loadAssistantCatalog(DEFAULT_ASSISTANT_CATALOG_PATH);
-    if (!catalog) throw new Error("the generated catalog must load");
-    expect(catalog.version).toBe(ASSISTANT_CATALOG_VERSION);
-    expect(catalog.operations.length).toBeGreaterThanOrEqual(100);
-    expect(
-      catalog.operations.filter((op) => op.route !== null).length,
-    ).toBeGreaterThanOrEqual(90);
   });
 });

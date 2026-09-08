@@ -56,15 +56,39 @@ export const blocked = <T>(
 ): Built<T> => ({ ok: false, refusal: refuse(code, message) });
 
 /**
- * Escape one path value the way the adapter escapes it. A `path` parameter
+ * A segment a URL parser resolves away instead of addressing: `.` and `..`,
+ * plus the percent-encoded spellings WHATWG treats identically (`%2e`, `.%2e`,
+ * `%2e%2e`, …). Escaping does NOT neutralize these — `encodeURIComponent("..")`
+ * is still `..` — so a value carrying one walks the built address out of its
+ * own route and onto another operation's, which is then performed with the
+ * gateway credential. The assistant surface takes these values from a language
+ * model, so this is the boundary that has to refuse them.
+ */
+const DOT_SEGMENT = /^(?:\.|%2e)(?:\.|%2e)?$/i;
+
+/**
+ * Split one path value into the segments it will occupy. A `path` parameter
  * carries a relative path, so its `/` separators must survive while every
  * segment is still escaped — collapsing it into one segment would address a
  * file literally named `a/b` instead of `b` inside `a`.
  */
-function escapePathValue(value: string, encoding: AssistantPathEncoding) {
-  return encoding === "path"
-    ? value.split("/").map(encodeURIComponent).join("/")
-    : encodeURIComponent(value);
+function pathSegments(
+  value: string,
+  encoding: AssistantPathEncoding,
+): string[] {
+  return encoding === "path" ? value.split("/") : [value];
+}
+
+/**
+ * The address a URL parser lands on for this path. Anything but the path
+ * itself means the path does not address what it spells.
+ */
+function resolvesToItself(path: string): boolean {
+  try {
+    return new URL(`http://houston.invalid${path}`).pathname === path;
+  } catch {
+    return false;
+  }
 }
 
 export function buildPath(
@@ -80,12 +104,31 @@ export function buildPath(
         `"${name}" must be a non-empty value: it is part of the address this operation acts on`,
       );
     }
-    path = path.replaceAll(`{${name}}`, escapePathValue(value, encoding));
+    const segments = pathSegments(value, encoding);
+    if (segments.some((seg) => seg === "" || DOT_SEGMENT.test(seg))) {
+      return blocked(
+        "invalid_params",
+        `"${name}" must not contain empty, "." or ".." parts: they would move this call onto a different operation's address`,
+      );
+    }
+    path = path.replaceAll(
+      `{${name}}`,
+      segments.map(encodeURIComponent).join("/"),
+    );
   }
   // A placeholder the catalog's `pathParams` never declared: the generator and
   // this dispatcher disagree, so no address can be built from it.
   if (UNSUBSTITUTED.test(path)) {
     return blocked("operation_not_supported", "this host cannot address it");
+  }
+  // The invariant the checks above serve, asserted on the finished address
+  // rather than trusted: whatever the caller supplied, this path addresses the
+  // route it was built from.
+  if (!resolvesToItself(path)) {
+    return blocked(
+      "invalid_params",
+      "those values do not address this operation",
+    );
   }
   return built(path);
 }

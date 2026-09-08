@@ -1,12 +1,18 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { docKey, saveActivities } from "@houston/domain";
 import type { Activity, HoustonEvent } from "@houston/protocol";
-import { beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test } from "vitest";
 import type { Agent, Workspace } from "../domain/types";
 import { conversationKey, LocalPaths } from "../paths";
-import type { CredentialVault, RuntimeChannel, TurnPin } from "../ports";
+import type {
+  CredentialVault,
+  RuntimeChannel,
+  TurnPin,
+  WorkspaceStore,
+} from "../ports";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
+import { ASSISTANT_CP_URL_ENV, ASSISTANT_TOKEN_ENV } from "./assistant-wiring";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
 import { handleSandboxMissions } from "./missions-sandbox";
 
@@ -23,10 +29,14 @@ import { handleSandboxMissions } from "./missions-sandbox";
  *    404, a hidden dot-agent → 404) and never leaks a name the caller can't see;
  *  - the depth guard reads the CALLER's board (that is where the parent chat
  *    lives) while the running cap counts the TARGET's board;
- *  - list / status / read all accept the same target and act on it.
+ *  - list / status / read all accept the same target and act on it, wherever
+ *    that agent's board lives.
  */
 
 const paths = new LocalPaths();
+
+/** Undoes the managed-pod stub after a test that installed one. */
+let restoreGateway: (() => void) | null = null;
 
 let store: MemoryWorkspaceStore;
 let vfs: MemoryVfs;
@@ -85,11 +95,87 @@ function fakeRes() {
   return { res, captured };
 }
 
+/**
+ * A store where alice reaches a SECOND workspace holding another "Dobby" —
+ * the shape a bare name cannot resolve on its own. The delegate keeps the
+ * real store's behavior for everything else.
+ */
+function withSecondDobby(): { store: WorkspaceStore; agent: Agent } {
+  const teamWs: Workspace = {
+    id: "ws-team",
+    ownerUserId: ws.ownerUserId,
+    kind: "personal",
+    name: "Team",
+    slug: "team",
+    runtime: ws.runtime,
+    createdAt: Date.now(),
+  };
+  const teamDobby: Agent = {
+    id: "agent-team-dobby",
+    workspaceId: teamWs.id,
+    name: "Dobby",
+    createdAt: Date.now(),
+  };
+  const delegate = Object.create(store) as MemoryWorkspaceStore;
+  delegate.listWorkspacesForUser = async (userId) =>
+    userId === ws.ownerUserId
+      ? [...(await store.listWorkspacesForUser(userId)), teamWs]
+      : store.listWorkspacesForUser(userId);
+  delegate.getWorkspace = async (id) =>
+    id === teamWs.id ? teamWs : store.getWorkspace(id);
+  delegate.listAgents = async (id) =>
+    id === teamWs.id ? [teamDobby] : store.listAgents(id);
+  return { store: delegate, agent: teamDobby };
+}
+
+/**
+ * A managed pod's world: the assistant gateway env pair the pod is stamped
+ * with, and a fetch that answers the gateway's routes. Undone after the test.
+ */
+function stubGateway(
+  calls: { url: string; init: RequestInit | undefined }[],
+  routes: Record<string, unknown>,
+): void {
+  const previous = {
+    url: process.env[ASSISTANT_CP_URL_ENV],
+    token: process.env[ASSISTANT_TOKEN_ENV],
+    fetch: globalThis.fetch,
+  };
+  restoreGateway = () => {
+    process.env[ASSISTANT_CP_URL_ENV] = previous.url;
+    process.env[ASSISTANT_TOKEN_ENV] = previous.token;
+    globalThis.fetch = previous.fetch;
+  };
+  process.env[ASSISTANT_CP_URL_ENV] = "https://gw.test";
+  process.env[ASSISTANT_TOKEN_ENV] = "gw-token";
+  globalThis.fetch = (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => {
+    const url = String(input);
+    calls.push({ url, init });
+    const path = new URL(url).pathname;
+    const payload = routes[path];
+    // The target pod answers a start with the same 201 a local start writes.
+    const status =
+      payload === undefined ? 404 : path.endsWith("/start") ? 201 : 200;
+    return new Response(JSON.stringify(payload ?? { error: "not found" }), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+}
+
 async function call(
   method: string,
   path: string,
   body: unknown,
-  opts: { conversationId?: string; search?: string } = {},
+  opts: {
+    conversationId?: string;
+    search?: string;
+    store?: WorkspaceStore;
+    gatewayFronted?: boolean;
+  } = {},
 ) {
   const headers: Record<string, string> = { authorization: "Bearer sb-good" };
   if (opts.conversationId)
@@ -99,7 +185,8 @@ async function call(
   const handled = await handleSandboxMissions(
     {
       vault,
-      store,
+      store: opts.store ?? store,
+      ...(opts.gatewayFronted ? { gatewayFronted: true } : {}),
       vfs,
       paths,
       events: {
@@ -146,6 +233,11 @@ beforeEach(async () => {
   callerRoot = paths.agentRoot(ws, caller);
   targetRoot = paths.agentRoot(ws, target);
   await saveActivities(vfs, callerRoot, [PARENT]);
+});
+
+afterEach(() => {
+  restoreGateway?.();
+  restoreGateway = null;
 });
 
 test("a named agent gets the mission on ITS board, started like a UI mission", async () => {
@@ -368,4 +460,182 @@ test("read answers 404 for a mission that has no transcript yet", async () => {
     search: "?agent=Dobby&id=nope",
   });
   expect(r.status).toBe(404);
+});
+
+test("a bare name that fits two reachable agents is refused, not guessed", async () => {
+  // M2: alice reaches two workspaces that BOTH hold a "Dobby". A bare name
+  // must not silently pick one board over the other.
+  const { store: ambiguous, agent: teamDobby } = withSecondDobby();
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { agent: "Dobby", title: "t", prompt: "p" },
+    { conversationId: "conv-parent", store: ambiguous },
+  );
+  expect(r.status).toBe(409);
+  const message = String((r.body as { error: string }).error);
+  expect(message).toContain("Personal/Dobby");
+  expect(message).toContain("Team/Dobby");
+  expect(await boardOf(targetRoot)).toEqual([]);
+  expect(fired).toEqual([]);
+
+  // The qualified name still resolves, on the workspace it names.
+  const ok = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { agent: "Team/Dobby", title: "t", prompt: "p" },
+    { conversationId: "conv-parent", store: ambiguous },
+  );
+  expect(ok.status).toBe(201);
+  expect(fired[0]?.agentId).toBe(teamDobby.id);
+});
+
+test("in managed cloud the gateway's agents are reachable targets", async () => {
+  // M1: the assistant pod holds only its own agent, so every agent the user
+  // owns lives behind the gateway. A coordinator that cannot address them
+  // cannot do its one job.
+  const calls: { url: string; init: RequestInit | undefined }[] = [];
+  stubGateway(calls, {
+    "/agents": [
+      { id: "slug-kreacher", name: "Kreacher", workspaceId: "Houston" },
+    ],
+    "/agents/slug-kreacher/missions/start": {
+      id: "m-9",
+      title: "Roast the website",
+      status: "running",
+    },
+  });
+
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    {
+      agent: "Kreacher",
+      title: "Roast the website",
+      prompt: "Roast it.",
+      mode: "auto",
+    },
+    { conversationId: "conv-parent", gatewayFronted: true },
+  );
+  expect(r.status).toBe(201);
+  expect(r.body).toEqual({
+    id: "m-9",
+    title: "Roast the website",
+    status: "running",
+  });
+  // The start went to the TARGET's pod through the gateway, carrying the
+  // provenance the target needs to stamp the agent-started marker.
+  const started = calls.find((c) => c.url.includes("/missions/start"));
+  expect(started?.url).toBe(
+    "https://gw.test/agents/slug-kreacher/missions/start",
+  );
+  expect(JSON.parse(String(started?.init?.body))).toEqual({
+    title: "Roast the website",
+    prompt: "Roast it.",
+    mode: "auto",
+    origin: { session_key: "conv-parent", agent: caller.id, depth: 1 },
+  });
+  // Nothing landed locally: the mission lives in the target's pod.
+  expect(await boardOf(targetRoot)).toEqual([]);
+  expect(fired).toEqual([]);
+});
+
+test("checking on a mission follows it into the agent's own pod", async () => {
+  const calls: { url: string; init: RequestInit | undefined }[] = [];
+  stubGateway(calls, {
+    "/agents": [
+      { id: "slug-kreacher", name: "Kreacher", workspaceId: "Houston" },
+    ],
+    "/agents/slug-kreacher/missions": {
+      missions: [
+        { id: "m-9", title: "Roast the website", status: "needs_you" },
+      ],
+    },
+    "/agents/slug-kreacher/missions/read": {
+      id: "m-9",
+      title: "Roast the website",
+      totalMessages: 2,
+      messages: [{ role: "assistant", content: "Here is the roast" }],
+    },
+  });
+
+  const listed = await call("GET", "/sandbox/missions", undefined, {
+    conversationId: "conv-parent",
+    search: "?agent=Kreacher",
+    gatewayFronted: true,
+  });
+  expect(listed.status).toBe(200);
+  expect((listed.body as { missions: { id: string }[] }).missions[0]?.id).toBe(
+    "m-9",
+  );
+
+  const read = await call("GET", "/sandbox/missions/read", undefined, {
+    conversationId: "conv-parent",
+    search: "?agent=Kreacher&id=m-9&limit=5",
+    gatewayFronted: true,
+  });
+  expect(read.status).toBe(200);
+  expect(
+    (read.body as { messages: { content: string }[] }).messages[0]?.content,
+  ).toBe("Here is the roast");
+  expect(calls.map((c) => new URL(c.url).pathname)).toEqual([
+    "/agents",
+    "/agents/slug-kreacher/missions",
+    "/agents",
+    "/agents/slug-kreacher/missions/read",
+  ]);
+});
+
+test("a gateway that cannot answer is an error, never a missing agent", async () => {
+  // The lie to avoid: "there is no agent called Kreacher" when the truth is
+  // that the list could not be read.
+  stubGateway([], {});
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { agent: "Kreacher", title: "t", prompt: "p" },
+    { conversationId: "conv-parent", gatewayFronted: true },
+  );
+  expect(r.status).toBe(502);
+  expect((r.body as { code: string }).code).toBe("agents_unreadable");
+});
+
+test("moving a mission on an agent in its own pod follows it there", async () => {
+  const calls: { url: string; init: RequestInit | undefined }[] = [];
+  stubGateway(calls, {
+    "/agents": [
+      { id: "slug-kreacher", name: "Kreacher", workspaceId: "Houston" },
+    ],
+    "/agents/slug-kreacher/missions/status": { id: "m-9", status: "done" },
+  });
+  const r = await call(
+    "POST",
+    "/sandbox/missions/status",
+    { agent: "Kreacher", id: "m-9", status: "done" },
+    { conversationId: "conv-parent", gatewayFronted: true },
+  );
+  expect(r.status).toBe(200);
+  expect(r.body).toEqual({ id: "m-9", status: "done" });
+  const moved = calls.find((c) => c.url.includes("/missions/status"));
+  expect(moved?.url).toBe(
+    "https://gw.test/agents/slug-kreacher/missions/status",
+  );
+  // The target is named in the ADDRESS, never again in the body: a second
+  // `agent` there would let one move fan out through the pod it reaches.
+  expect(JSON.parse(String(moved?.init?.body))).toEqual({
+    id: "m-9",
+    status: "done",
+  });
+});
+
+test("a move with no mission id is refused before any agent is resolved", async () => {
+  stubGateway([], {});
+  const r = await call(
+    "POST",
+    "/sandbox/missions/status",
+    { agent: "Kreacher", status: "done" },
+    { conversationId: "conv-parent", gatewayFronted: true },
+  );
+  expect(r.status).toBe(400);
+  expect((r.body as { code: string }).code).toBe("invalid_mission");
 });

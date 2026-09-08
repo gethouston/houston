@@ -49,8 +49,8 @@ export function ReportBugButton({
         workspaceName,
       });
       addToast({
-        title: t("shell:toolRuntimeError.reportSuccessTitle"),
-        description: t("shell:toolRuntimeError.reportSuccessDescription"),
+        title: t("shell:reportBug.reportSuccessTitle"),
+        description: t("shell:reportBug.reportSuccessDescription"),
         variant: "success",
       });
     } catch (err) {
@@ -60,8 +60,8 @@ export function ReportBugButton({
       // otherwise never hear about.
       logAndReportError("report_bug", err);
       addToast({
-        title: t("shell:toolRuntimeError.reportErrorTitle"),
-        description: t("shell:toolRuntimeError.reportErrorDescription"),
+        title: t("shell:reportBug.reportErrorTitle"),
+        description: t("shell:reportBug.reportErrorDescription"),
         variant: "error",
       });
     } finally {

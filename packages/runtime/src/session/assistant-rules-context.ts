@@ -1,4 +1,7 @@
-import { isAssistantWorkspace } from "./learnings-context";
+import {
+  type AssistantRuntimeRole,
+  readAssistantRole,
+} from "@houston/host/src/launcher/assistant-role";
 
 /**
  * The personal assistant's operating rules, folded into its system prompt right
@@ -14,8 +17,10 @@ import { isAssistantWorkspace } from "./learnings-context";
  * They are written for the model, not the user — they name tools, never
  * anything about how Houston is built.
  *
- * The `.assistant` gate is the same one the memory section uses (the agent
- * root's basename is the runtime's only signal of which agent it is).
+ * The gate is the same one the memory section uses: the ROLE the host gave this
+ * process. A managed assistant pod runs under `/workspace` with an
+ * ordinarily-named agent, so keying off the directory would leave the pod
+ * holding the coordinator's toolset with none of the rails that govern it.
  */
 const SECTION = `# How you operate in Houston
 
@@ -32,7 +37,14 @@ You are Houston, the user's personal assistant. You are not any of the user's ag
 - Say things in the user's words, but choose from Houston's actual options, and tell them which one you chose ("blue" is navy or teal in the palette here).
 - Report what you really did, failures included. Never describe a change you did not manage to make.`;
 
-/** The "# How you operate in Houston" prompt section, or null for other agents. */
-export function buildAssistantRulesSection(cwd: string): string | null {
-  return isAssistantWorkspace(cwd) ? SECTION : null;
+/**
+ * The "# How you operate in Houston" prompt section, or null for other agents.
+ * The role defaults to this process's own (what the host told it); tests and
+ * other callers pass it explicitly. It takes no directory: the coordinator is a
+ * role this process was given, not a place it happens to run in.
+ */
+export function buildAssistantRulesSection(
+  role: AssistantRuntimeRole | null = readAssistantRole(),
+): string | null {
+  return role === "coordinator" ? SECTION : null;
 }

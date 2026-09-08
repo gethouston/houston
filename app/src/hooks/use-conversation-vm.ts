@@ -4,21 +4,18 @@ import { useSdkSnapshot } from "@houston/sdk/react";
 import type { FeedItem } from "@houston-ai/chat";
 import { conversationStore } from "@houston-ai/engine-client";
 import { useMemo } from "react";
+import { toDisplayProviderId } from "../lib/provider-overrides";
 
 /**
  * The app's ONE binding to the SDK conversation VM (the engine-adapter's
  * `conversationStore`). Components read a conversation's feed, spinner, and
  * status from here — never from an app-side accumulation of feed events.
  *
- * The VM carries ENGINE provider ids; the desktop UI resolves the OLD ids
- * (only codex differs), so the two provider-naming feed items are remapped
- * here — the one place, for seeded history and live pushes alike. Dies with
- * the old-id vocabulary sweep. Keep in sync with the adapter's
- * `toOldProvider` (`packages/web/src/engine-adapter/synthetic.ts`).
+ * The VM carries pi's CANONICAL provider ids while the UI is keyed by the
+ * display ones, so the two provider-naming feed items are remapped here — the
+ * one place, for seeded history and live pushes alike — through the shared
+ * dialect map every other surface uses.
  */
-function toOldProvider(id: string): string {
-  return id === "openai-codex" ? "openai" : id;
-}
 
 function remapItem(item: { feed_type: string; data: unknown }): FeedItem {
   if (
@@ -29,7 +26,7 @@ function remapItem(item: { feed_type: string; data: unknown }): FeedItem {
     const data = item.data as { provider: string };
     return {
       ...item,
-      data: { ...data, provider: toOldProvider(data.provider) },
+      data: { ...data, provider: toDisplayProviderId(data.provider) },
     } as FeedItem;
   }
   return item as FeedItem;

@@ -91,5 +91,12 @@ test("forwards the acting identity and the turn's conversation id", async () => 
 
 test("surfaces a host rejection as a tool error (never a silent success)", async () => {
   mockFetch(() => ({ status: 400, body: { error: "missing 'text'" } }));
-  await expect(run({ text: "" })).rejects.toThrow(/missing 'text'/);
+  const out = await run({ text: "" });
+  const text = out.content[0];
+  expect(text?.type === "text" && text.text).toContain("ERROR host_error");
+  expect(text?.type === "text" && text.text).toContain("missing 'text'");
+  expect(out.details).toMatchObject({
+    ok: false,
+    error: { code: "host_error", status: 400 },
+  });
 });

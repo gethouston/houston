@@ -66,13 +66,16 @@ export async function handleSandboxIntegrations(
   // An explicit provider narrows the call; omitted (the runtime tools always
   // omit it) means ALL providers: search fans out and merges, execute resolves
   // the owning provider from the action's shape (see providersFor/executorOf).
-  if (typeof body.provider === "string" && !registry.has(body.provider)) {
+  const explicit =
+    typeof body.provider === "string" && registry.has(body.provider)
+      ? body.provider
+      : null;
+  if (typeof body.provider === "string" && explicit === null) {
     json(res, 404, {
       error: `unknown integration provider '${body.provider}'`,
     });
     return true;
   }
-  const explicit = typeof body.provider === "string" ? body.provider : null;
 
   // The sandbox proves its workspace; the provider acts as the workspace owner.
   const ws = await deps.store.getWorkspace(claim.workspaceId);

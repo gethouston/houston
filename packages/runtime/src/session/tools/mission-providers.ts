@@ -1,26 +1,19 @@
 import {
   MAX_NAMED_MODELS,
-  modelDisplayName,
   namedModelList,
   type ProviderOption,
-  resolveModelChoice,
-  resolveProviderChoice,
 } from "@houston/domain";
 import { type TOptional, type TString, Type } from "typebox";
-import type { TurnModel } from "../turn-model-context";
-import { START_MISSION_TOOL_NAME } from "./mission-tool-names";
 
 /**
- * The mission pin's provider/model surface: the closed set of provider ids the
- * SCHEMA offers, the sentence that pairs each id with its display name, and the
- * live resolution of whatever the model wrote.
+ * What the mission tools OFFER the model for a provider/model pin: the closed
+ * set of provider ids the schema accepts, and the sentences that pair each id
+ * with the display name — and each provider with the models — a user would say.
  *
- * Both halves are needed and neither replaces the other. The schema is built
- * once per session and then FROZEN into the prompt prefix (the tool defs are
- * cached), so a provider the user connects — or disconnects — mid-session is
- * not reflected in it; the live resolution here, and the host's own check at
- * `POST /sandbox/missions/start`, are what catch that drift. The schema's job is
- * to stop the guessing before it starts.
+ * This is built once per session and FROZEN into the prompt prefix (the tool
+ * defs are cached), so it is a hint: its job is to stop the guessing before it
+ * starts. What a written pin is HELD to is resolved when the tool runs, against
+ * the acting member's live provider status (mission-pin.ts).
  */
 
 /** Models named per provider in the DESCRIPTION — enough to cover every row a
@@ -78,7 +71,7 @@ export function missionProviderDescription(
  * A model enum cannot live in this schema — the valid set depends on the
  * provider chosen in the SAME call, which one flat JSON Schema cannot express —
  * so the per-provider models are stated here and enforced live by
- * {@link resolveMissionPin} and the host.
+ * `resolveMissionPin` and the host.
  *
  * This sentence is also the ONLY place the friendly names reach an agent: the
  * `/providers` wire rows (what `listAgentProviders` reads) carry model IDS
@@ -105,95 +98,4 @@ export function missionModelDescription(
     ? ` Models per provider - ${lists}.`
     : " The connected providers take any model id their gateway serves.";
   return `Pin a specific model id for the provider this call names (omit for that provider's default). Either side of an "=" pair works: the id, or the name the user says for it.${known}`;
-}
-
-/**
- * Resolve what the model wrote into real ids, or throw the sentence that says
- * which values it could have used. `inherited` is the provider the mission would
- * ride when this call names none — the one a lone `model` is checked against.
- */
-export function resolveMissionPin(
-  params: { provider?: string; model?: string },
-  options: readonly ProviderOption[],
-  inherited?: string,
-): { provider?: string; model?: string } {
-  const pin: { provider?: string; model?: string } = {};
-  if (params.provider) {
-    const resolved = resolveProviderChoice(
-      params.provider,
-      options,
-      START_MISSION_TOOL_NAME,
-    );
-    if (!resolved.ok) throw new Error(resolved.message);
-    pin.provider = resolved.id;
-  }
-  if (params.model) {
-    const against = options.find((o) => o.id === (pin.provider ?? inherited));
-    if (!against) {
-      pin.model = params.model.trim();
-      return pin;
-    }
-    const resolved = resolveModelChoice(
-      params.model,
-      against,
-      START_MISSION_TOOL_NAME,
-    );
-    if (!resolved.ok) throw new Error(resolved.message);
-    pin.model = resolved.id;
-  }
-  return pin;
-}
-
-/**
- * The child mission's model pin: the agent's RESOLVED choice, defaulting to the
- * PARENT turn's provider/model — "omit to use the current one". The default is
- * load-bearing, not cosmetic: on managed cloud the runtime holds no standing
- * provider (the gateway injects one per USER send), so an unpinned child turn is
- * refused with "No provider connected". A model named WITHOUT a provider rides
- * the inherited provider; a provider named without a model gets that provider's
- * default (no cross-provider mixing of the parent's model id).
- */
-export function missionPin(
-  chosen: { provider?: string; model?: string },
-  inherited: TurnModel | undefined,
-): { provider?: string; model?: string } {
-  if (chosen.provider) {
-    return {
-      provider: chosen.provider,
-      ...(chosen.model ? { model: chosen.model } : {}),
-    };
-  }
-  const provider = inherited?.provider;
-  const model = chosen.model ?? inherited?.model;
-  return {
-    ...(provider ? { provider } : {}),
-    ...(model ? { model } : {}),
-  };
-}
-
-/**
- * What the tool may TELL the user a mission runs on: only ids that survived
- * resolution here AND the host's own check (a refusal never reaches this), and
- * nothing at all when the mission carries no pin. An echo of the request would
- * claim a provider the mission may never have run on.
- *
- * The model is named with the name the user knows it by, so a request that
- * could fit several rows ("use Sonnet") comes back saying WHICH one it pinned.
- */
-export function missionRunsOn(
-  pin: { provider?: string; model?: string },
-  options: readonly ProviderOption[],
-): string {
-  if (!pin.provider && !pin.model) return "";
-  const named = options.find((o) => o.id === pin.provider);
-  const provider = pin.provider
-    ? ` on ${pin.provider}${named ? ` (${named.name})` : ""}`
-    : "";
-  const spoken = pin.provider
-    ? modelDisplayName(pin.provider, pin.model ?? "")
-    : undefined;
-  const model = pin.model
-    ? ` with model ${pin.model}${spoken ? ` (${spoken})` : ""}`
-    : "";
-  return ` It runs${provider}${model}.`;
 }

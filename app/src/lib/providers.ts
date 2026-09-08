@@ -3,6 +3,14 @@ import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
 // node --experimental-strip-types test runner can't resolve the barrel's
 // extensionless re-exports, and this leaf module has no imports of its own.
 import { resolveModelWindow } from "@houston/protocol/model-windows";
+// Same self-contained-subpath rule: the ONE provider dialect + default-model +
+// legacy-alias tables, owned by `@houston/domain` and re-exported by the SDK.
+import {
+  DEFAULT_MODEL,
+  MODEL_ALIASES,
+  toCanonicalProviderId,
+  toDisplayProviderId,
+} from "@houston/sdk/provider-catalog";
 import type { Capabilities } from "@houston-ai/engine-client";
 import { normalizeKey } from "./ai-hub/catalog-key.ts";
 import {
@@ -188,6 +196,21 @@ function dedupeModelEntries(
 }
 
 /**
+ * The default model Houston pre-selects for a provider, from the ONE table that
+ * owns it (`@houston/domain` `provider-default-models.ts`, keyed by pi's
+ * canonical ids). `undefined` for a provider with no catalog default — the
+ * caller falls back to the provider's first pi model, never to another
+ * provider's.
+ *
+ * Read here rather than restated in `PROVIDER_OVERRIDES`: the app, the runtime
+ * env defaults and the migration that rewrites stored configs all answered this
+ * question separately, and Anthropic drifted to two different models.
+ */
+function catalogDefaultModel(houstonId: string): string | undefined {
+  return DEFAULT_MODEL[toCanonicalProviderId(houstonId)];
+}
+
+/**
  * Build one `ProviderInfo` from a pi catalog provider + its Houston override. pi
  * supplies the runnable model set (ids, windows, thinking levels, reasoning); the
  * override layers on the brand name, per-model label/description/effort, and the
@@ -242,7 +265,7 @@ function buildProvider(
     installUrl: override?.installUrl ?? "",
     cost: override?.cost ?? "",
     models,
-    defaultModel: override?.defaultModel ?? models[0]?.id ?? "",
+    defaultModel: catalogDefaultModel(finalId) ?? models[0]?.id ?? "",
     auth: override?.auth ?? (piProvider.auth === "oauth" ? "oauth" : "apiKey"),
     apiKeyUrl: override?.apiKeyUrl,
     copilotConnect: override?.copilotConnect,
@@ -297,7 +320,7 @@ function buildSeed(): ProviderInfo[] {
       installUrl: override.installUrl ?? "",
       cost: override.cost ?? "",
       models: [],
-      defaultModel: override.defaultModel ?? "",
+      defaultModel: catalogDefaultModel(id) ?? "",
       auth: override.auth ?? "apiKey",
       apiKeyUrl: override.apiKeyUrl,
       copilotConnect: override.copilotConnect,
@@ -317,9 +340,14 @@ function buildSeed(): ProviderInfo[] {
  */
 export const PROVIDERS: ProviderInfo[] = buildSeed();
 
-/** Display name for a provider id, falling back to the id itself. */
+/**
+ * Display name for a provider id in either dialect, falling back to the id
+ * itself for a provider the catalog does not carry. The label twin of
+ * `providerBrandKey` (the logo path) — the two must alias the same way or a
+ * surface draws one brand's mark beside another brand's name.
+ */
 export function providerName(id: string): string {
-  return PROVIDERS.find((p) => p.id === id)?.name ?? id;
+  return getProvider(id)?.name ?? id;
 }
 
 /**
@@ -345,9 +373,17 @@ export function hydrateProviderCatalog(catalog: ProviderCatalog): void {
   PROVIDERS.push(...built);
 }
 
-/** Find a provider by id. */
+/**
+ * Find a provider by id, in EITHER dialect. `PROVIDERS` is keyed by Houston's
+ * display ids, but a provider id read off disk or off the wire (an agent
+ * config, an activity row, a routine pin, a typed provider error) carries pi's
+ * canonical id — so every lookup normalizes first. Unaliased, `openai-codex`
+ * missed the catalog entirely: its label fell back to the raw id and its
+ * default model fell through to another provider's.
+ */
 export function getProvider(id: string): ProviderInfo | undefined {
-  return PROVIDERS.find((p) => p.id === id);
+  const display = toDisplayProviderId(id);
+  return PROVIDERS.find((p) => p.id === display);
 }
 
 /** Empty capability set used while hosted capabilities are still loading. */
@@ -426,7 +462,9 @@ const OPENCODE_ACCOUNT: ProviderInfo = {
   // Connect surfaces never render a model list; the chat picker reads the two
   // real catalog entries (opencode / opencode-go) for its Zen + Go sections.
   models: [],
-  defaultModel: "claude-sonnet-4-6",
+  // The Zen gateway's default: the merged card connects both, and Zen is the
+  // gateway a fresh pick lands on.
+  defaultModel: catalogDefaultModel("opencode") ?? "",
 };
 
 /**
@@ -473,9 +511,19 @@ export function getModel(
   return getProvider(providerId)?.models.find((m) => m.id === modelId);
 }
 
-/** Get the default provider + model for a provider id. */
+/**
+ * The default model for a provider id (either dialect), or `""` when the
+ * catalog does not carry that provider.
+ *
+ * `""` and not a literal: this used to answer `claude-sonnet-4-6` for ANY
+ * provider it could not find, so a canonical `openai-codex` (which missed the
+ * display-keyed catalog) was handed a Claude model — a pair no provider can
+ * run, persisted into `config.json` by the creation flows. Callers treat the
+ * empty answer as "no model to pin", which leaves the runtime to resolve the
+ * turn; a model that belongs to someone else is never the safer answer.
+ */
 export function getDefaultModel(providerId: string): string {
-  return getProvider(providerId)?.defaultModel ?? "claude-sonnet-4-6";
+  return getProvider(providerId)?.defaultModel ?? "";
 }
 
 /** Default + snap-up ceiling for a model's context window (tokens). */
@@ -517,7 +565,9 @@ export function getContextWindowConfig(
 export function validProviderOrNull(
   providerId: string | null | undefined,
 ): string | null {
-  return providerId && getProvider(providerId) ? providerId : null;
+  // The catalog's own id, not the caller's spelling: a stored `openai-codex`
+  // resolves to the display `openai` every other app surface speaks.
+  return (providerId && getProvider(providerId)?.id) || null;
 }
 
 /**
@@ -549,7 +599,9 @@ const OPEN_CATALOG_PROVIDERS: ReadonlySet<string> = new Set([
 export function isOpenCatalogProvider(
   providerId: string | null | undefined,
 ): boolean {
-  return !!providerId && OPEN_CATALOG_PROVIDERS.has(providerId);
+  return (
+    !!providerId && OPEN_CATALOG_PROVIDERS.has(toDisplayProviderId(providerId))
+  );
 }
 
 export function validModelOrNull(
@@ -579,16 +631,13 @@ export function modelAcceptsImages(
 }
 
 /**
- * Retired Claude CLI aliases → the explicit catalog ID that replaced them.
- * Mirrors `MODEL_ALIASES.anthropic` in
- * `packages/domain/src/provider-model-catalog.ts` (the migration-side twin,
- * which the host applies when it rewrites a stored config) — keep both in sync.
- * A bare tier name resolves to the CURRENT model at that tier.
+ * Retired Claude CLI aliases → the explicit catalog id that replaced them, read
+ * from the SAME domain table the host applies when it rewrites a stored config
+ * (`@houston/domain` `model-aliases.ts`). A bare tier name resolves to the
+ * current model at that tier, never an upgrade.
  */
-const LEGACY_MODEL_ALIASES: Readonly<Record<string, string>> = {
-  opus: "claude-opus-5",
-  sonnet: "claude-sonnet-4-6",
-};
+const LEGACY_MODEL_ALIASES: Readonly<Record<string, string>> =
+  MODEL_ALIASES.anthropic ?? {};
 
 /**
  * Interpret a model value that may have been persisted by an older Houston

@@ -6,6 +6,8 @@ const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "../..");
 const adapter = join(repoRoot, "packages/web/src/engine-adapter");
 const sdkModules = join(repoRoot, "packages/sdk/src/modules");
+const generatedDocs = join(packageRoot, "generated");
+const hostAssistant = join(repoRoot, "packages/host/src/assistant");
 
 /** Every non-test `.ts` in `directory` that `matches`, sorted for determinism. */
 function sourcesIn(
@@ -40,10 +42,22 @@ export const assistantPaths = {
     join(sdkModules, "agents", "http.ts"),
   ],
   transportSource: join(adapter, "cp", "fetch.ts"),
-  generated: join(packageRoot, "generated"),
   biome: join(repoRoot, "node_modules/.bin/biome"),
   repo: repoRoot,
 };
+
+/**
+ * Every file one generation writes, with the committed copy's home. The catalog
+ * lands in the HOST package because the host imports it as a module: embedded at
+ * build time, it travels inside the container bundle and the Bun-compiled
+ * desktop sidecar alike, so no artifact has to locate a file it cannot reach.
+ * The two documents are for people and stay beside the client they describe.
+ */
+export const assistantOutputs = [
+  { file: "assistant-catalog.generated.json", directory: hostAssistant },
+  { file: "assistant-capabilities.md", directory: generatedDocs },
+  { file: "assistant-coverage.md", directory: generatedDocs },
+] as const;
 
 /** A source path as it reads in the generated header — repo-relative, POSIX. */
 export function repoRelative(path: string): string {

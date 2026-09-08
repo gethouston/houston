@@ -1,9 +1,12 @@
 import type { ProviderOption } from "@houston/domain";
 import { type Static, type TOptional, type TString, Type } from "typebox";
+import { agentSummaryList, reachableAgentSummaries } from "./mission-agents";
 import {
   missionModelDescription,
   missionProviderParam,
 } from "./mission-providers";
+import type { SandboxFetch } from "./sandbox-fetch";
+import type { SessionToolError } from "./tool-error";
 
 /**
  * The mission tools' parameter schemas and the one rule that varies by session:
@@ -121,19 +124,39 @@ export type UpdateMissionStatusParams = Static<
 export type ReadMissionParams = Static<ReturnType<typeof readMissionParams>>;
 
 /**
- * The named target, or the refusal the assistant gets for leaving it out. The
- * message is written to the model: it says what to do next, not what went wrong.
+ * The named target, or the refusal the assistant gets for leaving it out.
+ *
+ * A VALUE, not a throw: the message is written to the model, it says what to do
+ * next, and it NAMES the agents that would have worked. An identifier is never
+ * to be guessed, and a refusal that withholds the list is what makes a model
+ * guess one (mission-agents.ts fetches it; an unreadable list simply drops out
+ * of the sentence).
  */
-export function targetAgent(
+export type TargetAgent =
+  | { ok: true; agent: string | undefined }
+  | { ok: false; error: SessionToolError };
+
+export async function resolveTargetAgent(
   agent: string | undefined,
   personalAssistant: boolean,
-): string | undefined {
+  call: SandboxFetch,
+  signal?: AbortSignal,
+): Promise<TargetAgent> {
   const named = agent?.trim();
-  if (named) return named;
-  if (!personalAssistant) return undefined;
-  throw new Error(
-    "Name the agent whose board this work belongs on: you have no board of your own, so work you start has to live on one of the user's agents. List the user's agents, pick the one this belongs to (or ask them to create one), then call this again with 'agent' set.",
+  if (named) return { ok: true, agent: named };
+  if (!personalAssistant) return { ok: true, agent: undefined };
+  const directory = agentSummaryList(
+    await reachableAgentSummaries(call, signal),
   );
+  return {
+    ok: false,
+    error: {
+      code: "agent_required",
+      message: directory
+        ? `Name the agent whose board this work belongs on: you have no board of your own, so work you start has to live on one of the user's agents. The user's agents are: ${directory}. Call this again with 'agent' set to the one this belongs to, or ask the user which.`
+        : "Name the agent whose board this work belongs on: you have no board of your own, so work you start has to live on one of the user's agents. List the user's agents, pick the one this belongs to (or ask them to create one), then call this again with 'agent' set.",
+    },
+  };
 }
 
 /** `?agent=<name>` for the read routes, or "" when acting on the own board. */

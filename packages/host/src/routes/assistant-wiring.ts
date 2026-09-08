@@ -2,11 +2,12 @@ import type { AssistantGateway } from "./assistant-forward";
 
 /**
  * WHERE this deployment performs user-facing Houston operations — resolved in
- * ONE place, because three consumers must never disagree about it: the
- * runtime-facing dispatcher (`routes/assistant-sandbox.ts`), the boot line that
- * names the state, and the environment the host hands every runtime it spawns
- * (the runtime's own `assistantEnabled` reads the same pair's presence, so a
- * disagreement would offer the agent tools whose every call comes back 501).
+ * ONE place, for the HOST alone: its runtime-facing dispatcher
+ * (`routes/assistant-sandbox.ts`) and the boot line that names the state. The
+ * gateway credential stops here. No runtime this host spawns is ever told the
+ * URL or the token: a runtime reaches Houston operations through
+ * `/sandbox/assistant/call` with its own per-agent sandbox token, and the host
+ * forwards with the credential resolved below.
  *
  * Two shapes, one rule — the credential IS the switch:
  *  - GATEWAY-FRONTED (a managed cloud pod): the gateway stamps
@@ -79,21 +80,4 @@ export function formatAssistantModeLog(wiring: AssistantWiring = {}): string {
     env[ASSISTANT_TOKEN_ENV]?.trim() ? null : ASSISTANT_TOKEN_ENV,
   ].filter((name): name is string => name !== null);
   return `[local-host] assistant operations off: set ${missing.join(" and ")} to enable`;
-}
-
-/**
- * The two variables a spawned runtime needs in its environment to see the
- * assistant tool family as enabled. On a fronted pod they merely restate what
- * the gateway already put in `process.env`; unfronted they are what carries
- * this host's self-wiring across the process boundary — the runtime code reads
- * the same pair either way and stays deployment-blind.
- */
-export function assistantRuntimeEnv(
-  gateway: AssistantGateway | null,
-): Record<string, string> {
-  if (!gateway) return {};
-  return {
-    [ASSISTANT_CP_URL_ENV]: gateway.url,
-    [ASSISTANT_TOKEN_ENV]: gateway.token,
-  };
 }

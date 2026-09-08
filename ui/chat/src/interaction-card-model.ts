@@ -29,6 +29,10 @@ export type ChatInteractionStep =
       kind: "question";
       id: string;
       question: string;
+      /** Verbatim material the question is about, too long or too multi-line to
+       *  sit in the question line: shown under it in its own scrollable
+       *  monospaced block (`interaction-detail.tsx`). */
+      detail?: string;
       options?: ChatInteractionOption[];
       /** Hide the free-text escape row so the option rows are the ONLY way to
        *  answer. Meaningful only when `options` are present — a free-text-only

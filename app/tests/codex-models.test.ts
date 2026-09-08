@@ -1,5 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
+import { DEFAULT_MODEL } from "@houston/sdk/provider-catalog";
 import {
   isModelVisible,
   PROVIDER_OVERRIDES,
@@ -73,10 +74,7 @@ describe("Codex model curation matches what the subscription serves", () => {
 
 describe("the Codex default is the runtime's default", () => {
   it("matches CODEX_DEFAULT_MODEL", () => {
-    strictEqual(
-      PROVIDER_OVERRIDES.openai.defaultModel,
-      codex.CODEX_DEFAULT_MODEL,
-    );
+    strictEqual(DEFAULT_MODEL["openai-codex"], codex.CODEX_DEFAULT_MODEL);
   });
 
   it("is a model the picker shows", () => {

@@ -11,6 +11,7 @@
  */
 
 export * from "./client.ts";
+export * from "./retry-after.ts";
 export * from "./store-catalog.ts";
 export * from "./types.ts";
 export * from "./vm.ts";

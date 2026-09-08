@@ -1,3 +1,4 @@
+import type { MessageApproval } from "@houston/protocol";
 import type { HoustonEngineClient } from "@houston/runtime-client";
 import { streamEventsResumable } from "@houston/runtime-client";
 import type { FeedOutput } from "./feed-output";
@@ -92,6 +93,14 @@ export interface StreamTurnOptions {
    * single-player renders today.
    */
   mentions?: FeedMention[];
+  /**
+   * The approval cards this turn's message answers. It is a wire passenger, not
+   * SDK behaviour: the HOST reads it off the request, records the receipts, and
+   * drops it before the runtime sees it, because the host is the process that
+   * holds the credential the approved operation would use. Nothing here reads
+   * it, and no feed item is derived from it.
+   */
+  approvals?: MessageApproval[];
 }
 
 /**
@@ -250,6 +259,7 @@ export async function streamTurn(
         ...opts.pin,
         displayText: opts.displayText,
         mentions,
+        approvals: opts.approvals,
       });
     } catch (e) {
       registry.endSend(key);
@@ -327,6 +337,7 @@ export async function streamTurn(
             ...opts.pin,
             displayText: opts.displayText,
             mentions,
+            approvals: opts.approvals,
           });
         try {
           await send();

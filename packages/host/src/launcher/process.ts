@@ -6,6 +6,7 @@ import {
   type RuntimeLauncher,
   type RuntimeState,
 } from "../ports";
+import type { AssistantRuntimeRole } from "./assistant-role";
 
 /**
  * A spawned runtime process. The launcher only needs its port + a way to kill
@@ -46,6 +47,13 @@ export interface SpawnSpec {
   sandboxToken?: string;
   /** The host's own URL, where the runtime fetches `/sandbox/credential`. */
   controlPlaneUrl?: string;
+  /**
+   * Set ONLY for the runtime that is the user's personal-assistant coordinator
+   * (launcher/assistant-role.ts). The spawner turns it into the one role
+   * variable the child reads; every other runtime is spawned without it and is
+   * a plain agent by construction.
+   */
+  assistantRole?: AssistantRuntimeRole;
 }
 
 /** Launches one pi-runtime process. Injectable so the lifecycle is unit-testable. */
@@ -72,6 +80,12 @@ export interface ProcessLauncherOptions {
     controlPlaneUrl: string;
     mintSandboxToken: (agent: Agent) => string;
   };
+  /**
+   * This agent's assistant role, decided by the HOST (it knows which agent it
+   * spawns) rather than guessed inside the runtime. Omitted where no deployment
+   * can hold an assistant, which spawns every runtime as a plain agent.
+   */
+  assistantRoleFor?: (agent: Agent) => AssistantRuntimeRole | null;
   /** Allocate a free loopback port. Default: ask the OS. Injectable for tests. */
   allocatePort?: () => Promise<number>;
   /** Poll the runtime's /health until ready. Injectable for tests. */
@@ -245,6 +259,7 @@ export class ProcessLauncher implements RuntimeLauncher {
     // that kills everything — an orphan by construction.
     if (this.closed) throw new LauncherClosedError();
     const cred = this.opts.credentialServing;
+    const assistantRole = this.opts.assistantRoleFor?.(agent) ?? null;
     const handle = this.opts.spawner.spawn({
       workspaceDir: this.opts.workspaceDirFor(agent),
       dataDir: this.opts.dataDirFor(agent),
@@ -259,6 +274,7 @@ export class ProcessLauncher implements RuntimeLauncher {
             controlPlaneUrl: cred.controlPlaneUrl,
           }
         : {}),
+      ...(assistantRole ? { assistantRole } : {}),
     });
     const entry: Running = { handle, token };
     this.running.set(agent.id, entry);

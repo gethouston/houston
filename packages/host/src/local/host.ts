@@ -31,6 +31,7 @@ import {
 import { FileCustomIntegrationStore } from "../integrations/custom/store";
 import { IntegrationRegistry } from "../integrations/registry";
 import { RemoteIntegrationProvider } from "../integrations/remote";
+import { assistantRuntimeRole } from "../launcher/assistant-role";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
 import { runtimeSpawnEnv } from "../launcher/runtime-env";
 import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
@@ -362,12 +363,14 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       })
     : undefined;
   const controlPlaneUrl = `http://127.0.0.1:${opts.port}`;
-  // The ONE assistant wiring decision for this host. Unfronted (desktop,
-  // self-host) THIS host serves the routes the operation catalog names and
-  // already accepts `opts.token` on every one of them — so it is its own
-  // gateway and the family is on with nothing for the user to configure. A
-  // gateway-fronted pod passes no self: its gateway stamps the env pair, and
-  // its own routes answer for one agent only.
+  // The ONE assistant wiring decision for this host, and it is the HOST's
+  // alone. Unfronted (desktop, self-host) THIS host serves the routes the
+  // operation catalog names and already accepts `opts.token` on every one of
+  // them — so it is its own gateway and the family is on with nothing for the
+  // user to configure. A gateway-fronted pod passes no self: its gateway stamps
+  // the env pair, and its own routes answer for one agent only. Either way the
+  // credential stays in this process: a runtime is told its ROLE and reaches
+  // operations through `/sandbox/assistant/call` with its own sandbox token.
   const assistantWiring: AssistantWiring = opts.gatewayFronted
     ? {}
     : { self: { url: controlPlaneUrl, token: opts.token } };
@@ -398,15 +401,18 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     opts.spawner ??
     new RuntimeProcessSpawner({
       command: opts.runtimeCommand,
-      // Host-wide extra env, additive to the per-runtime values the
-      // ProcessLauncher sets (workspace dir, data dir, port, tokens).
-      env: runtimeSpawnEnv({
-        systemPrompt: opts.systemPrompt,
-        sidecarBinary: process.env.HOUSTON_SIDECAR_BINARY,
-        transcriptDualWrite: Boolean(transcriptShadow),
-        shutdownDrainMs: opts.shutdownDrainMs,
-        assistant: assistantGateway,
-      }),
+      // Extra env per spawned runtime, additive to the per-runtime values the
+      // ProcessLauncher sets (workspace dir, data dir, port, tokens). Built
+      // from the spec so the assistant ROLE — which the launcher decides per
+      // agent — reaches only the coordinator's own child process.
+      env: (spec) =>
+        runtimeSpawnEnv({
+          systemPrompt: opts.systemPrompt,
+          sidecarBinary: process.env.HOUSTON_SIDECAR_BINARY,
+          transcriptDualWrite: Boolean(transcriptShadow),
+          shutdownDrainMs: opts.shutdownDrainMs,
+          assistantRole: spec.assistantRole ?? null,
+        }),
       onLog: opts.onRuntimeLog,
     });
 
@@ -430,6 +436,11 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
               ).split("/"),
             ),
     mintToken: (a) => vault.sandboxToken(a.workspaceId, a.id),
+    // WHICH of this host's runtimes is the personal-assistant coordinator —
+    // decided here, where the agent is known, never inside the runtime (a
+    // managed pod's assistant is an ordinarily-named agent under /workspace,
+    // so its own directory tells it nothing).
+    assistantRoleFor: (a) => assistantRuntimeRole({ agentId: a.id }),
     // Connect-once locally too: keyless runtimes fetch a fresh token from this
     // host, so the refresh token never sits in a runtime's environment.
     credentialServing: {

@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import type { ProviderError } from "@houston/runtime-client";
-import { readAuthFile } from "../auth/auth-file";
+import { readAuthFile, writeAuthFile } from "../auth/auth-file";
 import {
   type ClaudeBackendDeps,
   ClaudeBackendUnavailableError,
@@ -16,12 +16,40 @@ import type { HarnessBackend } from "../backends/types";
 import type { ToolSelection } from "../session/tool-selection";
 import { makeAskUserTool } from "../session/tools/ask-user";
 import { makeClampedFileTools } from "../session/tools/clamped-fs";
+import type { WorkspaceGuardOptions } from "../session/tools/fs-guard";
 import { makePlanReadyTool } from "../session/tools/plan-ready";
-import { makePoolBashTool } from "../session/tools/pool-bash";
+import { makeScrubbedBashTool } from "../session/tools/scrubbed-bash";
 import type { TurnDirectories, TurnSessionRequest } from "./turn-session";
 import { buildTurnHostTools } from "./turn-toolset";
 
 type TurnTool = PiBackendDeps["customTools"][number];
+
+/**
+ * The `get`/`remove` slice of the credential store `readAnthropicToken` needs,
+ * over this pooled turn's own `auth.json`.
+ *
+ * Read fresh from disk per call rather than cached: the pod's credential is
+ * re-served between turns, and a cached copy would spawn the SDK on a token the
+ * control plane has already replaced. `remove` is the write side of the same
+ * contract — when the shared login dir proves the stored entry belongs to a
+ * login the user has replaced, the dead entry is dropped instead of being
+ * skipped on every future read.
+ */
+function turnAuthStore(dataDir: string): {
+  get: (provider: string) => ReturnType<typeof readAuthFile>[string];
+  remove: (provider: string) => void;
+} {
+  const path = join(dataDir, "auth.json");
+  return {
+    get: (provider) => readAuthFile(path)[provider],
+    remove: (provider) => {
+      const creds = readAuthFile(path);
+      if (!(provider in creds)) return;
+      delete creds[provider];
+      writeAuthFile(path, creds);
+    },
+  };
+}
 
 /** Dependencies shared by the pi and Claude pooled-turn backend branches. */
 export interface TurnBackendDeps {
@@ -31,7 +59,13 @@ export interface TurnBackendDeps {
   toolSelection: ToolSelection;
   codeSandbox: TurnTool | null;
   systemPrompt: string;
-  sharedRoots?: string[];
+  /**
+   * How much of the filesystem this turn's ROLE may touch
+   * (`session/coordinator-policy.ts`): shared writable roots for an ordinary
+   * agent, an exact-file allowlist for the coordinator. ONE object for BOTH
+   * branches below — the wall must not depend on which provider the user is on.
+   */
+  fileGuard?: WorkspaceGuardOptions;
   claudeSdk?: ClaudeBackendDeps["sdk"];
   claudeSdkLoad?: ClaudeBackendDeps["sdkLoad"];
 }
@@ -90,14 +124,10 @@ export function createTurnBackend(
   if (provider === "anthropic") {
     const backend = createClaudeBackend({
       workspaceDir,
-      readToken: () =>
-        readAnthropicToken({
-          get: (requestedProvider) =>
-            readAuthFile(join(dataDir, "auth.json"))[requestedProvider],
-        }),
+      readToken: () => readAnthropicToken(turnAuthStore(dataDir)),
       toolSelection: deps.toolSelection,
       systemPrompt: deps.systemPrompt,
-      sharedRoots: deps.sharedRoots,
+      fileGuard: deps.fileGuard,
       layout: turnClaudeLayout(turnRoot, dataDir, deps.turn.conversationId),
       // SAFETY: these are the same pi ToolDefinition objects the MCP bridge
       // accepts; only their heterogeneous schema generics need widening.
@@ -133,12 +163,10 @@ export function createTurnBackend(
     modelRuntime: deps.modelRuntime,
     tools: deps.toolSelection.toolNames,
     customTools: [
-      ...makeClampedFileTools(workspaceDir, {
-        sharedRoots: deps.sharedRoots ?? [],
-      }),
+      ...makeClampedFileTools(workspaceDir, deps.fileGuard ?? {}),
       ...commonTools,
       ...(deps.toolSelection.toolNames.includes("bash")
-        ? [makePoolBashTool(workspaceDir)]
+        ? [makeScrubbedBashTool(workspaceDir)]
         : []),
     ],
   });

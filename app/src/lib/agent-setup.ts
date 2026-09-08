@@ -1,5 +1,6 @@
 import type { RoutineFormData } from "@houston-ai/routines";
 import { logger } from "./logger";
+import { toCanonicalProviderId } from "./provider-overrides";
 import { tauriConfig, tauriRoutines } from "./tauri";
 
 /**
@@ -24,7 +25,12 @@ export async function finishAgentSetup(
         agentPath,
         {
           ...cfg,
-          ...(opts.provider ? { provider: opts.provider } : {}),
+          // config.json stores pi's CANONICAL id; the picker hands us the
+          // display one (`openai`), which the engine's own resolution would
+          // then have to guess at.
+          ...(opts.provider
+            ? { provider: toCanonicalProviderId(opts.provider) }
+            : {}),
           ...(opts.model ? { model: opts.model } : {}),
         },
         // Post-create setup rides as a held request that lands when the engine

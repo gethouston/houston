@@ -14,11 +14,19 @@
 
 import { Button } from "@houston-ai/core";
 import { useState } from "react";
-import { getProvider } from "../../../lib/providers";
 import { tauriSystem } from "../../../lib/tauri";
 import { RowCardButton } from "../../cards/row-card-button";
+import { statusPageUrl } from "./labels.ts";
 
 export { ReportBugButton } from "../../cards/report-bug-button";
+// The pure naming/URL lookups live in `labels.ts` so the unit tests (which
+// cannot load a `.tsx` module) reach them; re-exported here so the card files
+// keep one import.
+export {
+  providerErrorModelLabel,
+  providerLabel,
+  statusPageUrl,
+} from "./labels.ts";
 
 export function ErrorCard({
   icon,
@@ -49,10 +57,6 @@ export function ErrorCard({
       </div>
     </div>
   );
-}
-
-export function providerLabel(id: string): string {
-  return getProvider(id)?.name ?? id;
 }
 
 export function RetryButton({
@@ -94,19 +98,4 @@ export function StatusPageButton({
       {label}
     </Button>
   );
-}
-
-export function statusPageUrl(provider: string): string | null {
-  switch (provider) {
-    case "anthropic":
-      return "https://status.anthropic.com/";
-    case "openai":
-      return "https://status.openai.com/";
-    case "gemini":
-      return "https://status.cloud.google.com/";
-    case "github-copilot":
-      return "https://www.githubstatus.com/";
-    default:
-      return null;
-  }
 }

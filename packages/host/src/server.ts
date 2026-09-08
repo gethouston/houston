@@ -275,6 +275,13 @@ function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   );
+  // Retry-After is NOT a CORS-safelisted response header: without this a
+  // cross-origin caller (the Tauri webview, the dev web app on vite's port, any
+  // web build pointed at a host on another origin) cannot read the "ask me
+  // again in N seconds" hint this host attaches to its 503s (channel/
+  // probe-wake.ts, local/host.ts's drain). The client captures it as
+  // `HoustonEngineError.retryAfterMs` and schedules its retry on it.
+  res.setHeader("Access-Control-Expose-Headers", "Retry-After");
 }
 
 export function healthBody(deps: Pick<ControlPlaneDeps, "storeFenced">): {

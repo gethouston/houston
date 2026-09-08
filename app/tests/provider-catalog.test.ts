@@ -22,7 +22,9 @@ before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 describe("hydrateProviderCatalog: rename + drop", () => {
   it("renames pi `openai-codex` → `openai` and keeps its Codex models", () => {
-    strictEqual(getProvider("openai-codex"), undefined);
+    // The renamed card is the ONLY one; a lookup in pi's dialect resolves to it
+    // rather than missing the catalog.
+    strictEqual(getProvider("openai-codex")?.id, "openai");
     const openai = getProvider("openai");
     strictEqual(openai?.name, "OpenAI");
     strictEqual(openai?.auth, "oauth");

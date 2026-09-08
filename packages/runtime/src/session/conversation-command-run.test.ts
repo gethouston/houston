@@ -28,9 +28,18 @@ const session = {
   getContextUsage: () => ({ tokens: 90_000 }),
 } satisfies HarnessSession;
 
+/**
+ * The live Conversation the cache hands back: a command joins its queue and
+ * pins it exactly as a turn does, so the test owns both fields.
+ */
+const conv = {
+  session,
+  queue: Promise.resolve() as Promise<unknown>,
+  pending: 0,
+};
 vi.mock("./conversation-cache", () => ({
-  conversations: { get: () => undefined },
-  getConversation: vi.fn(async () => ({ session, queue: Promise.resolve() })),
+  conversations: { get: () => conv },
+  getConversation: vi.fn(async () => conv),
 }));
 vi.mock("./chat", () => ({ disposeConversation: vi.fn(async () => {}) }));
 vi.mock("./durable-facts-harvest", () => ({
@@ -42,6 +51,11 @@ const { subscribe } = await import("./bus");
 const { disposeConversation } = await import("./chat");
 const { compactWithFactHarvest } = await import("./durable-facts-harvest");
 const { renderReplayPreamble } = await import("./replay-transcript");
+const { conversationCommandInFlight } = await import(
+  "./conversation-command-gate"
+);
+const { withWorkdirLock } = await import("./workdir-lock");
+const { config } = await import("../config");
 const {
   appendAssistantMessage,
   appendUserMessage,
@@ -66,11 +80,18 @@ function collect(id: string): { events: WireEvent[]; stop: () => void } {
   return { events, stop };
 }
 
+/** Await microtasks until `ready` holds (the queue + workdir lock hops). */
+async function until(ready: () => boolean): Promise<void> {
+  for (let i = 0; i < 100 && !ready(); i++) await Promise.resolve();
+}
+
 beforeEach(() => {
   vi.mocked(disposeConversation).mockClear();
   vi.mocked(compactWithFactHarvest).mockClear();
   session.prompt.mockClear();
   session.compact.mockClear();
+  conv.queue = Promise.resolve();
+  conv.pending = 0;
   counter++;
 });
 
@@ -228,4 +249,105 @@ test("a compaction that fails settles the turn instead of hanging the chat", asy
   expect(events[1]).toMatchObject({
     data: { message: "provider unreachable" },
   });
+});
+
+// ── The command's place in the turn lifecycle ───────────────────────────────
+// A command rewrites the context turns run in, so it takes the SAME two locks
+// a turn does — the conversation's queue and the workspace lock — and marks the
+// conversation held for its whole life so the route refuses new turns onto it.
+
+test("a command waits for the turn already queued on the conversation", async () => {
+  const id = seeded(`queued-${counter}`);
+  let releaseTurn = () => {};
+  conv.queue = new Promise<void>((r) => {
+    releaseTurn = r;
+  });
+  const { events, stop } = collect(id);
+
+  const command = runConversationCommand(id, "clear", "/clear");
+  await Promise.resolve();
+  // Nothing yet — not even the user echo: the queued turn owns the
+  // conversation, and a clear that ran here would dispose its session.
+  expect(events).toEqual([]);
+  expect(disposeConversation).not.toHaveBeenCalled();
+
+  releaseTurn();
+  await command;
+  stop();
+  expect(events.map((e) => e.type)).toEqual([
+    "user",
+    "context_cleared",
+    "done",
+  ]);
+});
+
+test("a command waits for the workspace lock, like every turn does", async () => {
+  const id = seeded(`lock-${counter}`);
+  let releaseLock = () => {};
+  const held = withWorkdirLock(
+    config.workspaceDir,
+    () =>
+      new Promise<void>((r) => {
+        releaseLock = r;
+      }),
+  );
+  const { events, stop } = collect(id);
+
+  const command = runConversationCommand(id, "compact", "/compact");
+  await Promise.resolve();
+  await Promise.resolve();
+  // The user's message is durable and echoed the instant the command is
+  // accepted (a client must see its own bubble), but the work waits.
+  expect(events.map((e) => e.type)).toEqual(["user"]);
+  expect(compactWithFactHarvest).not.toHaveBeenCalled();
+
+  releaseLock();
+  await held;
+  await command;
+  stop();
+  expect(events.map((e) => e.type)).toEqual([
+    "user",
+    "context_compacted",
+    "done",
+  ]);
+});
+
+test("the conversation is held for the command's whole life", async () => {
+  seeded(ASSISTANT_CONVERSATION_ID);
+  let releaseHarvest = () => {};
+  vi.mocked(compactWithFactHarvest).mockImplementationOnce(
+    () =>
+      new Promise<void>((r) => {
+        releaseHarvest = r;
+      }),
+  );
+
+  const command = runConversationCommand(
+    ASSISTANT_CONVERSATION_ID,
+    "clear",
+    "/clear",
+  );
+  await until(() => vi.mocked(compactWithFactHarvest).mock.calls.length > 0);
+  // The window the bug lived in: the harvest is a model call, and a turn
+  // accepted during it would be disposed mid-flight when the clear lands.
+  expect(conversationCommandInFlight(ASSISTANT_CONVERSATION_ID)).toBe(true);
+  // Pinned like a queued turn, so no eviction sweep can take the session.
+  expect(conv.pending).toBe(1);
+
+  releaseHarvest();
+  await command;
+  expect(conversationCommandInFlight(ASSISTANT_CONVERSATION_ID)).toBe(false);
+  expect(conv.pending).toBe(0);
+});
+
+test("a failed command releases the conversation instead of wedging it", async () => {
+  const id = seeded(`wedge-${counter}`);
+  vi.mocked(compactWithFactHarvest).mockRejectedValueOnce(new Error("boom"));
+
+  await runConversationCommand(id, "compact", "/compact");
+
+  expect(conversationCommandInFlight(id)).toBe(false);
+  expect(conv.pending).toBe(0);
+  // The queue chain survives its failure: the next turn still runs.
+  await expect(conv.queue).resolves.toBeUndefined();
 });

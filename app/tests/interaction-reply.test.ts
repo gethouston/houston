@@ -5,14 +5,14 @@ import type { ChatInteractionAnswer } from "@houston-ai/chat";
 // runner needn't resolve the package's extensionless .tsx re-exports.
 import { decodeInteractionAnswersMessage } from "../../ui/chat/src/interaction-answers-message.ts";
 import { isAutoContinueMessage } from "../src/lib/auto-continue-message.ts";
+import { encodeInteractionAnswersMessage } from "../src/lib/interaction-answers-marker.ts";
 import {
   type ConnectOutcome,
   type CredentialOutcome,
-  composeInteractionReply,
-  encodeInteractionAnswersMessage,
   finalConnectNames,
   finalCredentialNames,
-} from "../src/lib/interaction-reply.ts";
+} from "../src/lib/interaction-outcomes.ts";
+import { composeInteractionReply } from "../src/lib/interaction-reply.ts";
 
 const answers: ChatInteractionAnswer[] = [
   { stepId: "q1", question: "To whom?", answer: "john@example.com" },

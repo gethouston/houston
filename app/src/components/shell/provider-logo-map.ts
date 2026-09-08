@@ -117,8 +117,9 @@ export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
   // Most lab ids ARE provider ids (anthropic, openai, mistral, deepseek, xai,
   // minimax, zai, nvidia, meta, qwen, cohere, ...) so `providerBrandKey`
   // resolves them directly; only the ids that spell the brand differently need
-  // an alias. The catch-all `other` lab has no mark of its own — the hub falls
-  // back to an offering provider's logo there (see `modelMarkId`).
+  // an alias. The catch-all `other` lab has no mark of its own and renders the
+  // monogram — never a borrowed provider logo, which would name one brand and
+  // draw another.
   gemini: "google",
   amazon: "amazon-bedrock",
   moonshot: "moonshotai",
@@ -134,11 +135,6 @@ export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
 export function providerBrandKey(id: string): BrandKey | null {
   if (BRAND_KEYS.has(id as BrandKey)) return id as BrandKey;
   return BRAND_ALIASES[id] ?? null;
-}
-
-/** True when Houston ships a bespoke brand mark for this id (vs a monogram). */
-export function hasProviderBrandMark(id: string): boolean {
-  return providerBrandKey(id) !== null;
 }
 
 /**

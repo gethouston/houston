@@ -19,6 +19,10 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  *
  * The host merges the pick into the account's `agent_colors` preference and
  * announces the change, so every open surface repaints without a refresh.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param color One of Houston's ten palette colours: charcoal, forest,
+ *   teal, navy, purple, rose, crimson, orange, golden or umber.
  * @assistant group:agents
  */
 export async function updateAgentColor(
@@ -41,6 +45,10 @@ export async function updateAgentColor(
  * builds its answer from, so the derived route addresses a read while the
  * write stays client-side. {@link updateAgentColor} is the single-request host
  * leaf that publishes this intent.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param color One of Houston's ten palette colours: charcoal, forest,
+ *   teal, navy, purple, rose, crimson, orange, golden or umber.
  * @assistant group:agents hidden: client-side branching; its only request is the list refetch, so use updateAgentColor to write a color.
  */
 export async function applyAgentColor(

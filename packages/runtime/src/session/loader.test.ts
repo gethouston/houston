@@ -269,6 +269,22 @@ function seedLearnings(cwd: string, text: string): void {
   );
 }
 
+/**
+ * The assistant's memory and rules follow the ROLE the host stamped on this
+ * runtime, not the name of the directory it runs in (the managed pod runs under
+ * `/workspace` with an ordinarily-named agent).
+ */
+async function asCoordinator<T>(fn: () => Promise<T> | T): Promise<T> {
+  const prior = process.env.HOUSTON_ASSISTANT_ROLE;
+  process.env.HOUSTON_ASSISTANT_ROLE = "coordinator";
+  try {
+    return await fn();
+  } finally {
+    if (prior === undefined) delete process.env.HOUSTON_ASSISTANT_ROLE;
+    else process.env.HOUSTON_ASSISTANT_ROLE = prior;
+  }
+}
+
 async function promptFor(cwd: string, mode?: "plan"): Promise<string> {
   const loader = makeAgentLoader(cwd, mode);
   await loader.reload();
@@ -279,7 +295,7 @@ test("makeAgentLoader injects the assistant's memory, with the mode overlay LAST
   const cwd = agentDirNamed(ASSISTANT_AGENT_NAME);
   seedLearnings(cwd, "Julian prefers short replies.");
 
-  const prompt = await promptFor(cwd, "plan");
+  const prompt = await asCoordinator(() => promptFor(cwd, "plan"));
   const memoryAt = prompt.indexOf("# What you remember about this user");
   expect(memoryAt).toBeGreaterThan(-1);
   expect(prompt).toContain("- Julian prefers short replies.");
@@ -292,21 +308,26 @@ test("makeAgentLoader puts the assistant's operating rules after its memory", as
   const cwd = agentDirNamed(ASSISTANT_AGENT_NAME);
   seedLearnings(cwd, "Julian prefers short replies.");
 
-  const prompt = await promptFor(cwd, "plan");
+  const prompt = await asCoordinator(() => promptFor(cwd, "plan"));
   const memoryAt = prompt.indexOf("# What you remember about this user");
   const rulesAt = prompt.indexOf("# How you operate in Houston");
   expect(rulesAt).toBeGreaterThan(memoryAt);
   expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(rulesAt);
 });
 
-test("the rules are injected for the assistant with no memory yet", async () => {
-  const prompt = await promptFor(agentDirNamed(ASSISTANT_AGENT_NAME));
+test("the rules are injected for the coordinator with no memory yet", async () => {
+  // Named like any other agent: on the managed pod the coordinator IS one.
+  const prompt = await asCoordinator(() =>
+    promptFor(agentDirNamed("Assistant")),
+  );
   expect(prompt).toContain("# How you operate in Houston");
 });
 
 test("makeAgentLoader omits the operating rules for a normal agent", async () => {
-  const prompt = await promptFor(agentDirNamed("Helper"));
-  expect(prompt).not.toContain("# How you operate in Houston");
+  for (const dir of ["Helper", ASSISTANT_AGENT_NAME]) {
+    const prompt = await promptFor(agentDirNamed(dir));
+    expect(prompt).not.toContain("# How you operate in Houston");
+  }
 });
 
 test("makeAgentLoader omits the memory section for a normal agent", async () => {

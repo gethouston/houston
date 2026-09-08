@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   ActingContext,
   IntegrationProvider,
@@ -22,7 +23,7 @@ import {
  * are completed by the test via `completeConnection`.
  */
 export class FakeIntegrationProvider implements IntegrationProvider {
-  readonly id: string;
+  readonly id: IntegrationProviderId;
   private readonly toolkits: Toolkit[];
   private readonly actions: ToolMatch[];
   /** userId → that user's connections. */
@@ -42,12 +43,12 @@ export class FakeIntegrationProvider implements IntegrationProvider {
 
   constructor(
     opts: {
-      id?: string;
+      id?: IntegrationProviderId;
       toolkits?: Toolkit[];
       actions?: ToolMatch[];
     } = {},
   ) {
-    this.id = opts.id ?? "fake";
+    this.id = opts.id ?? "composio";
     this.toolkits = opts.toolkits ?? [{ slug: "gmail", name: "Gmail" }];
     this.actions = opts.actions ?? [
       {

@@ -151,7 +151,10 @@ test("an already-valid pi provider+model passes through unchanged", () => {
 test("an unknown model id falls soft to the provider default WITH a diagnostic", () => {
   const r = migrateProviderModel("anthropic", "totally-made-up-9000");
   expect(r.provider).toBe("anthropic");
-  expect(r.model).toBe("claude-sonnet-4-6"); // anthropic default
+  // The provider's own default, read from the table that owns it rather than
+  // restated here — restating it is how the app, the runtime and this table
+  // came to name three different Anthropic defaults.
+  expect(r.model).toBe(DEFAULT_MODEL.anthropic);
   expect(r.diagnostics).toHaveLength(1);
   expect(r.diagnostics[0]?.message).toContain("totally-made-up-9000");
   assertValid(r, "unknown anthropic model");

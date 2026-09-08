@@ -1,13 +1,15 @@
 import { afterEach, expect, test } from "vitest";
 import {
-  createAgentTeam,
-  deleteAgentTeam,
   joinAgentTeam,
   listAgentTeamMembers,
-  listAgentTeams,
   removeAgentTeamMember,
   setAgentTeam,
   setAgentTeamMemberOwner,
+} from "../src/engine-adapter/cp/org-team-members";
+import {
+  createAgentTeam,
+  deleteAgentTeam,
+  listAgentTeams,
   updateAgentTeam,
 } from "../src/engine-adapter/cp/org-teams";
 

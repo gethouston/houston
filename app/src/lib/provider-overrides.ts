@@ -80,69 +80,32 @@ export interface ProviderOverride {
   copilotConnect?: boolean;
   /** The engine gateway ids one connect card stands in for (merged OpenCode). */
   gatewayIds?: readonly string[];
-  /** Curated default model pick, when different from pi's first model. */
-  defaultModel?: string;
   /** Per-model presentation overrides, keyed by pi model id. */
   models?: Record<string, ModelOverride>;
 }
 
 /**
+ * The provider id DIALECT, re-exported from the ONE table that owns it
+ * (`@houston/domain` `provider-dialect.ts`, reached through
+ * `@houston/sdk/provider-catalog`).
+ *
  * pi-ai's OAuth OpenAI provider is `openai-codex`, but Houston's frontend
- * card/logo/connect uses the id `openai`. The hydrator renames it so the override
- * below (keyed `openai`) and the `openai` logo apply. pi ALSO ships a DIRECT
- * api-key `openai` provider (~42 models) that would collide with the rename, so
- * it is dropped first (see `DROP_PI_PROVIDERS`).
+ * card/logo/connect uses the id `openai`. The hydrator renames it so the
+ * override below (keyed `openai`) and the `openai` logo apply. pi ALSO ships a
+ * DIRECT api-key `openai` provider (~42 models) that would collide with the
+ * rename, so it is dropped first (see `DROP_PI_PROVIDERS`).
+ *
+ * The app used to restate this map, and the copies drifted: the logo table
+ * aliased `openai-codex` while the label lookups did not, so a conversation
+ * pinned to the canonical id drew the OpenAI mark beside the raw string — and
+ * missed the catalog, inheriting another provider's default model.
  */
-export const PROVIDER_ID_RENAME: Readonly<Record<string, string>> = {
-  "openai-codex": "openai",
-};
-
-/** Inverse of `PROVIDER_ID_RENAME`: DISPLAY id → engine id (openai → openai-codex). */
-const PROVIDER_ID_UNRENAME: Readonly<Record<string, string>> =
-  Object.fromEntries(
-    Object.entries(PROVIDER_ID_RENAME).map(([engine, display]) => [
-      display,
-      engine,
-    ]),
-  );
-
-/**
- * ENGINE provider id → the DISPLAY id the picker/logos use (applies
- * `PROVIDER_ID_RENAME`: openai-codex → openai; everything else passes through).
- * Used to map a stored model-choice back to the display dialect on READ, mirror
- * of the engine-adapter's `toOldProvider` and `@houston/domain`'s
- * `PROVIDER_ALIASES` — duplicated here (not imported) because `app/` does not
- * depend on those packages, exactly as `use-conversation-vm` duplicates
- * `toOldProvider`.
- */
-export function toDisplayProviderId(id: string): string {
-  return PROVIDER_ID_RENAME[id] ?? id;
-}
-
-/**
- * {@link toDisplayProviderId} for a value read off disk, where the field may be
- * absent: `null`/`""` stay `null` (absent, never a pick — the same reading
- * `preferredProvider` gives an unattributed record).
- */
-export function toDisplayProviderIdOrNull(
-  id: string | null | undefined,
-): string | null {
-  return id ? toDisplayProviderId(id) : null;
-}
-
-/**
- * DISPLAY provider id → the canonical ENGINE id (the inverse: openai →
- * openai-codex). The picker offers `openai` (Houston's rename of pi's
- * `openai-codex`), but the gateway/runtime resolve pi's `openai-codex`, so a
- * model-choice WRITE must canonicalize before it leaves the client — the same
- * mapping the direct-send path applies via `@houston/domain`
- * `canonicalProviderId` / `PROVIDER_ALIASES`. Houston never offers pi's raw
- * platform-key `openai`; if it ever does, this alias AND `PROVIDER_ID_RENAME`
- * must be removed together.
- */
-export function toCanonicalProviderId(id: string): string {
-  return PROVIDER_ID_UNRENAME[id] ?? id;
-}
+export {
+  PROVIDER_DISPLAY_RENAME as PROVIDER_ID_RENAME,
+  toCanonicalProviderId,
+  toDisplayProviderId,
+  toDisplayProviderIdOrNull,
+} from "@houston/sdk/provider-catalog";
 
 /**
  * pi providers dropped BEFORE the rename is applied. Two classes:
@@ -339,11 +302,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Your ChatGPT subscription",
     installUrl: "https://github.com/openai/codex",
     auth: "oauth",
-    // The row the Codex backend itself defaults to, and the only full tier it
-    // still serves a ChatGPT subscription. Twin of the runtime's
-    // `CODEX_DEFAULT_MODEL` (packages/runtime/src/ai/codex-offered.ts) and the
-    // domain's `DEFAULT_MODEL["openai-codex"]`; keep all three in sync.
-    defaultModel: "gpt-6-astra",
     models: {
       "gpt-6-astra": {
         label: "GPT-6 Astra",
@@ -379,7 +337,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Your Claude subscription",
     installUrl: "https://docs.anthropic.com/en/docs/claude-code/overview",
     auth: "oauth",
-    defaultModel: "claude-sonnet-5",
     models: {
       "claude-sonnet-5": {
         label: "Sonnet 5",
@@ -425,12 +382,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://github.com/features/copilot",
     auth: "oauth",
     copilotConnect: true,
-    // The cheapest model served on every Copilot plan (HOU-578). GitHub retired
-    // gpt-4.1, the old base model, on 2026-06-01 (pi dropped it in 0.85.0);
-    // under usage-based billing every model spends AI credits, so the default
-    // is the lowest-cost row rather than a "free" one. Twin of the runtime's
-    // `config.githubCopilotModel` and `COPILOT_BASE_FALLBACK`.
-    defaultModel: "gpt-5-mini",
     models: {
       "gpt-5-mini": {
         label: "GPT-5 Mini",
@@ -471,7 +422,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay as you go",
     installUrl: "https://opencode.ai/auth",
     apiKeyUrl: "https://opencode.ai/auth",
-    defaultModel: "claude-sonnet-4-6",
     models: {
       "claude-sonnet-4-6": {
         label: "Sonnet 4.6",
@@ -509,7 +459,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     billing: "subscription",
     installUrl: "https://opencode.ai/auth",
     apiKeyUrl: "https://opencode.ai/auth",
-    defaultModel: "glm-5.1",
     models: {
       "glm-5.1": {
         label: "GLM-5.1",
@@ -540,7 +489,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Free models, then pay as you go",
     installUrl: "https://openrouter.ai",
     apiKeyUrl: "https://openrouter.ai/settings/keys",
-    defaultModel: "anthropic/claude-sonnet-4.6",
     models: {
       "openrouter/free": {
         label: "Free (auto-routed)",
@@ -571,7 +519,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay-as-you-go on your DeepSeek account",
     installUrl: "https://platform.deepseek.com",
     apiKeyUrl: "https://platform.deepseek.com/api_keys",
-    defaultModel: "deepseek-v4-flash",
     models: {
       "deepseek-v4-flash": {
         label: "DeepSeek V4 Flash",
@@ -590,13 +537,9 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Free tier on your Google account",
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
-    // 3.8 Flash (GA 2026-09-02): 1M context, 64K output, and at $0.75/$3.75
-    // per MTok (intro through 2026-12-31, then $1.50/$7.50) it undercuts 3.5
-    // Flash's $1.50/$9 while scoring higher. Twin of the runtime's
-    // `config.geminiModel` and the host's google `defaultModel`. Effort rows
-    // for 3.7/3.8 derive to low/medium/high; Google rejects `minimal` on both
-    // (the carried pi-ai patch floors the no-effort path at LOW).
-    defaultModel: "gemini-3.8-flash",
+    // Effort rows for 3.7/3.8 derive to low/medium/high; Google rejects
+    // `minimal` on both (the carried pi-ai patch floors the no-effort path
+    // at LOW).
     models: {
       "gemini-3.8-flash": {
         label: "Gemini 3.8 Flash",
@@ -640,12 +583,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay-as-you-go on your AWS account",
     installUrl: "https://aws.amazon.com/bedrock/",
     apiKeyUrl: "https://console.aws.amazon.com/bedrock/home#/api-keys",
-    // Inference-profile id (`global.`), NOT the bare foundation id: Bedrock
-    // serves Claude 4.x only through inference profiles, so bare-id invocation
-    // (including the connect-time key probe) fails with "on-demand throughput
-    // isn't supported" (PRODUCT-1477). Twin of the runtime's
-    // `config.bedrockModel`; keep them in sync.
-    defaultModel: "global.anthropic.claude-sonnet-4-6",
     models: {
       "global.anthropic.claude-sonnet-4-6": {
         label: "Claude Sonnet 4.6",
@@ -678,7 +615,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     // The 1M-context tier MiniMax's Coding/Token plan bills against; also works
     // pay-as-you-go. A subscription key run on bare MiniMax-M3 reads as
     // "usage ran out" (HOU-1160), so this is the connect default.
-    defaultModel: "MiniMax-M3[1m]",
     models: {
       "MiniMax-M3[1m]": {
         label: "MiniMax M3 (1M)",
@@ -770,7 +706,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://modelstudio.console.alibabacloud.com",
     apiKeyUrl:
       "https://modelstudio.console.alibabacloud.com/?tab=playground#/api-key",
-    defaultModel: "qwen3.7-max",
   },
   // Alibaba's prepaid token bundles for Qwen (+ hosted open models). The
   // endpoint only accepts the DEDICATED Token Plan API key minted after
@@ -787,9 +722,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "https://www.alibabacloud.com/help/en/model-studio/token-plan-team-quickstart",
     apiKeyUrl:
       "https://www.alibabacloud.com/help/en/model-studio/token-plan-team-quickstart",
-    // pi lists this multi-vendor catalog alphabetically, which would make
-    // MiniMax the default on a card named Qwen.
-    defaultModel: "qwen3.7-max",
   },
   // pi 0.84's individual (personal) tier of the same product — same endpoint,
   // its own dedicated-key + seat purchase flow, so the same guidance applies.
@@ -804,7 +736,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "https://www.alibabacloud.com/help/en/model-studio/token-plan-individual-quickstart",
     apiKeyUrl:
       "https://www.alibabacloud.com/help/en/model-studio/token-plan-individual-quickstart",
-    defaultModel: "qwen3.7-max",
   },
   "google-vertex": {
     name: "Google Vertex AI",
@@ -833,12 +764,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Pay as you go",
     installUrl: "https://platform.moonshot.ai",
     apiKeyUrl: "https://platform.moonshot.ai/console/api-keys",
-    // Moonshot's own migration target for the retired kimi-k2 previews — the
-    // model auto-selected on connect. Unlocked by the same >= $1 first top-up
-    // Moonshot requires before any request works, so every account that can
-    // chat has it. Twin of the runtime's `UNCURATED_DEFAULT_MODEL.moonshotai`
-    // (the key-verifier probe); keep them in sync (PRODUCT-1411).
-    defaultModel: "kimi-k3",
     models: {
       "kimi-k3": {
         label: "Kimi K3",
@@ -862,11 +787,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "https://azure.microsoft.com/products/ai-services/openai-service",
     // Azure keys live per-resource in the portal; there is no global key page.
     apiKeyUrl: "https://portal.azure.com",
-    // pi's azure catalog is alphabetical (gpt-4 first) — start current.
-    // Twin of the runtime's UNCURATED_DEFAULT_MODEL; keep them in sync. The
-    // Codex backend's refusal of gpt-5.5 does not reach here: an Azure request
-    // hits the user's own resource and runs whatever they deployed.
-    defaultModel: "gpt-5.5",
   },
   "vercel-ai-gateway": {
     name: "Vercel AI Gateway",

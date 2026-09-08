@@ -481,23 +481,11 @@
     "stalledTitle": "Still working on it",
     "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your agent answers."
   },
-  "toolRuntimeError": {
-    "title": "Something got stuck",
-    "body": "A local tool did not start correctly. Try again, and report it if this keeps happening.",
-    "report": "Report bug",
-    "reporting": "Sending report...",
+  "reportBug": {
     "reportSuccessTitle": "Report sent",
     "reportSuccessDescription": "Houston received the logs.",
     "reportErrorTitle": "Could not send report",
-    "reportErrorDescription": "Try again in a moment.",
-    "retryErrorTitle": "Could not try again",
-    "modelUnsupported": {
-      "title": "Your ChatGPT plan doesn't include this model",
-      "body": "Some models are only available on certain ChatGPT plans. Switch to a different model to continue.",
-      "switchAction": "Switch to {{model}}",
-      "switching": "Switching...",
-      "switchErrorTitle": "Could not switch model"
-    }
+    "reportErrorDescription": "Try again in a moment."
   },
   "updateChecker": {
     "launchLabel": "Houston update in progress",

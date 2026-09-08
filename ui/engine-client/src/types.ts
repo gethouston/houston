@@ -347,6 +347,17 @@ export interface MessageMention {
 }
 
 /**
+ * One approval card's outcome, carried on the message that answers it. Mirrors
+ * the protocol `MessageApproval` (`@houston/protocol/approval`), which is where
+ * the receipt rule lives: only a USER message can mint one, so the host reads
+ * these off the request and never lets a model author them.
+ */
+export interface MessageApproval {
+  requestId: string;
+  decision: "approve" | "deny";
+}
+
+/**
  * A per-agent access level (Teams v2). `manager` may reconfigure the agent
  * (instructions, skills, model, allowed toolkits, assignments); `user` may only
  * use it. Kept in sync (by hand) with the gateway — the server is the source of
@@ -548,6 +559,17 @@ export interface AgentSettings {
 // ---------- Per-user model choice (multiplayer) ----------
 
 /**
+ * How hard a reasoning-capable model thinks, ascending. A CLOSED set: the
+ * composer offers exactly these four, and a value outside them is dropped on
+ * the way to the model rather than clamped, so a caller that invents one gets
+ * the provider default with no sign anything was ignored. Mirrors
+ * `EffortLevel` (app/src/lib/providers.ts) and the levels
+ * `packages/runtime/src/ai/effort.ts` maps onto pi's thinking levels; a
+ * persisted legacy `"max"` is normalized to `"xhigh"` on read.
+ */
+export type AgentEffortLevel = "low" | "medium" | "high" | "xhigh";
+
+/**
  * A member's chosen AI model for one shared agent (Teams v2). The agent runs on
  * the ACTING user's choice per turn; the gateway clamps it to the agent's
  * `allowedModels` ceiling. `effort` is the
@@ -556,7 +578,7 @@ export interface AgentSettings {
 export interface AgentModelChoice {
   provider: string;
   model: string;
-  effort?: string;
+  effort?: AgentEffortLevel;
 }
 
 /**
@@ -896,10 +918,24 @@ export interface Activity {
   mentioned?: { user_id: string; at: string; by?: string }[];
 }
 
+/**
+ * A mission's board status. The closed set a WRITE may set, mirroring
+ * `ACTIVITY_STATUSES` (@houston/domain) — which this package cannot import, it
+ * being a dependency-free client type mirror. Reads keep `Activity.status` open
+ * on purpose: a status written by a newer host renders neutrally instead of
+ * being dropped.
+ */
+export type ActivityStatus =
+  | "running"
+  | "needs_you"
+  | "done"
+  | "error"
+  | "archived";
+
 export interface ActivityUpdate {
   title?: string;
   description?: string;
-  status?: string;
+  status?: ActivityStatus;
   claude_session_id?: string | null;
   session_key?: string;
   agent?: string;
@@ -1651,6 +1687,16 @@ export interface SessionStartRequest {
    * mentions nobody, and in single-player deployments (no roster to mention).
    */
   mentions?: MessageMention[];
+  /**
+   * The approval cards this message answers: for each, the host-issued request
+   * id and what the person said (`{requestId, decision}`). It rides as its own
+   * field rather than inside the prompt because the prompt is the person's
+   * words; the HOST reads these off the request, records the receipts — the
+   * only thing that turns a request id into a usable approval, and something no
+   * model can author — and drops the field before the runtime sees the turn.
+   * Omitted when the message answers no card; never an empty list.
+   */
+  approvals?: MessageApproval[];
 }
 
 export interface SessionStartResponse {

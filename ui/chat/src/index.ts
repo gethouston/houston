@@ -392,7 +392,6 @@ export type {
   QuotaScope,
   RunStatus,
   TokenUsage,
-  ToolRuntimeErrorEntry,
 } from "./types";
 // === Utilities ===
 export { Typewriter } from "./typewriter";

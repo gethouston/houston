@@ -17,6 +17,7 @@
  * bookkeeping beside the record itself.
  */
 
+import type { ActivityStatus } from "@houston-ai/engine-client";
 import { create } from "zustand";
 import {
   detectEngineAsleep,
@@ -81,7 +82,7 @@ interface AgentProvisioningState {
   setQueuedRowStatus: (
     agentId: string,
     activityId: string,
-    status: string,
+    status: ActivityStatus,
   ) => boolean;
   /**
    * Stop tracking. With `onlyIf`, clears only while that exact entry is still

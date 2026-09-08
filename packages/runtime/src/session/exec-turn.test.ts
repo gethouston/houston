@@ -94,9 +94,9 @@ vi.mock("../store/conversations", () => ({
 
 const { execTurn, recordUserTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
-const { recordQuestions, recordConnection } = await import("./interaction");
-const { guardConfirmation } = await import("./tools/assistant-confirm");
-const { clearConfirmations } = await import("./confirm-gate");
+const { recordQuestions, recordConnection, recordConfirmation } = await import(
+  "./interaction"
+);
 const { appendAssistantMessage, appendUserMessage, consumeSessionReplay } =
   await import("../store/conversations");
 const { getHistory } = await import("../store/conversations");
@@ -1014,96 +1014,72 @@ test("without the replay marker the prompt is the bare text (no preamble on norm
 });
 
 /**
- * The safety binding: a destructive Houston operation is refused and raises its
- * card on THIS turn's done frame, and only the user's own reply — arriving as
- * the next turn's message, the one thing the model cannot author — lets the
- * identical call through.
+ * The safety binding the RUNTIME still owns: an approval card raised during a
+ * turn reaches the user on that turn's done frame, carrying the host-issued
+ * request id verbatim and the real target in words. Nothing in the runtime
+ * decides the approval itself — the host mints the receipt off the user's own
+ * next message (`packages/host/src/assistant/receipts.ts`), so there is no
+ * store here for a model to talk its way past.
  */
-test("a destructive Houston call is authorized by the user's reply, never by the model", async () => {
+test("an approval card reaches the user carrying the host's request id", async () => {
   const id = "exec-confirm";
-  clearConfirmations(id);
-  const op = {
-    name: "deleteAgent",
-    group: "agents",
-    description: "Delete an agent and everything in it.",
-    confirm: true,
-    hidden: false,
-    params: [],
-    returns: { type: "null" },
-    route: null,
-  } as unknown as Parameters<typeof guardConfirmation>[0];
-  const params = { id: "Personal/Dobby" };
-
   const { events, unsub } = collect(id);
-  let first: unknown;
   await execTurn(
     fakeConv(() => {
-      first = guardConfirmation(op, params);
+      recordConfirmation({
+        question:
+          'Delete an agent and everything in it. This affects id "Personal/Dobby". Houston cannot undo this for you. Should I go ahead?',
+        options: [
+          { id: "approve", label: "Yes, go ahead" },
+          { id: "decline", label: "No, don't do it" },
+        ],
+        requestId: "req-1",
+      });
     }),
     id,
     "turn-1",
-    "make Dobby blue",
+    "delete Dobby",
     { author: undefined, priorAuthors: [] },
   );
   unsub();
-  // Refused, and the user has a card in front of them naming the real target.
-  expect(first).toBeDefined();
+
   const done = events.find(
     (e): e is Extract<WireEvent, { type: "done" }> => e.type === "done",
   );
   const step = done?.pendingInteraction?.steps[0];
   if (step?.kind !== "question") throw new Error("no approval card was raised");
   expect(step.question).toContain("Personal/Dobby");
-  const approve = step.options?.find((o) => o.id === "approve");
-  expect(approve).toBeDefined();
-
-  // The app posts the card's answer as an ordinary user message.
-  let second: unknown = "not run";
-  await execTurn(
-    fakeConv(() => {
-      second = guardConfirmation(op, params);
-    }),
-    id,
-    "turn-2",
-    `${step.question}: ${approve?.label}`,
-    { author: undefined, priorAuthors: [] },
-  );
-  expect(second).toBeUndefined();
+  expect(step.requestId).toBe("req-1");
+  expect(step.options?.find((o) => o.id === "approve")).toBeDefined();
 });
 
-test("a reply that never answered the card leaves the call refused", async () => {
-  const id = "exec-confirm-unanswered";
-  clearConfirmations(id);
-  const op = {
-    name: "deleteAgent",
-    group: "agents",
-    description: "Delete an agent and everything in it.",
-    confirm: true,
-    hidden: false,
-    params: [],
-    returns: { type: "null" },
-    route: null,
-  } as unknown as Parameters<typeof guardConfirmation>[0];
-  const params = { id: "Personal/Dobby" };
-
+/**
+ * A2: two calls that differ only past the point an old card truncated at are
+ * TWO cards, because cards are keyed by the host's request id and never by the
+ * question text. One click can therefore never grant two things.
+ */
+test("two different requests raise two cards even when they read alike", async () => {
+  const id = "exec-confirm-two";
+  const { events, unsub } = collect(id);
+  const question = `Write a file. The exact content is:\n${"a".repeat(200)}`;
   await execTurn(
     fakeConv(() => {
-      guardConfirmation(op, params);
+      recordConfirmation({ question, options: [], requestId: "req-a" });
+      recordConfirmation({ question, options: [], requestId: "req-b" });
+      recordConfirmation({ question, options: [], requestId: "req-a" });
     }),
     id,
     "turn-1",
-    "make Dobby blue",
+    "write both",
     { author: undefined, priorAuthors: [] },
   );
-  let second: unknown = "not run";
-  await execTurn(
-    fakeConv(() => {
-      second = guardConfirmation(op, params);
-    }),
-    id,
-    "turn-2",
-    "yes do it",
-    { author: undefined, priorAuthors: [] },
+  unsub();
+
+  const done = events.find(
+    (e): e is Extract<WireEvent, { type: "done" }> => e.type === "done",
   );
-  expect(second).toBeDefined();
+  const steps = done?.pendingInteraction?.steps ?? [];
+  expect(
+    steps.map((s) => (s.kind === "question" ? s.requestId : null)),
+  ).toEqual(["req-a", "req-b"]);
 });

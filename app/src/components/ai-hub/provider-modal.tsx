@@ -37,7 +37,6 @@ export function ProviderModal({
   catalog,
   onClose,
   onOpenModel,
-  onSetDefault,
 }: {
   provider: ProviderInfo;
   open: boolean;
@@ -45,8 +44,6 @@ export function ProviderModal({
   catalog: HubCatalog;
   onClose: () => void;
   onOpenModel: (key: string) => void;
-  /** Wire a default-provider action to show "Set as default" in the footer. */
-  onSetDefault?: (provider: ProviderInfo) => void;
 }) {
   const { t } = useTranslation("aiHub");
   // Tri-state (HOU-979): only a CONFIRMED connection gets the live badge, the
@@ -135,7 +132,6 @@ export function ProviderModal({
       isLocal={isLocal}
       disconnecting={disconnecting}
       onDisconnectLocal={() => void disconnectLocal()}
-      onSetDefault={onSetDefault}
     />
   ) : undefined;
 

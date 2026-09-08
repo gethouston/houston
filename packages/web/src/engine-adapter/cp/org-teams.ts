@@ -1,13 +1,14 @@
-import type {
-  AgentTeam,
-  AgentTeamMember,
-} from "../../../../../ui/engine-client/src/types";
+import type { AgentTeam } from "../../../../../ui/engine-client/src/types";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 /**
  * C13 agent teams: named groups of agents and people INSIDE one space,
  * server-owned. Distinct from `cp/agent-teams.ts`, which is the per-AGENT
  * settings surface (assignments, model choice) and shares only a name.
+ *
+ * The teams themselves live here; who is IN one, and which team an agent
+ * belongs to, live in `./org-team-members` — the same rail, but one file per
+ * question so neither grows past reading.
  *
  * NOTHING here degrades on a 404. Callers feature-detect on
  * `capabilities.agentTeams` before they ever reach this module, so a 404 means
@@ -34,6 +35,10 @@ export async function listAgentTeams(
  * Creates a team in this space.
  *
  * Create a team with the typed name; the creator becomes its owner.
+ * @param input The team's name, and optionally its mark and colour. Use one
+ *   of Houston's ten palette colours (charcoal, forest, teal, navy, purple,
+ *   rose, crimson, orange, golden, umber); leave the mark out unless the
+ *   user named one, and Houston draws its own.
  * @assistant group:teams
  */
 export async function createAgentTeam(
@@ -58,7 +63,14 @@ export async function createAgentTeam(
  * `context` is the team's shared prose, not an identity field: any string is
  * valid, `""` is an empty context rather than a CLEAR, and it is never
  * trimmed.
- * @assistant group:teams
+ *
+ * Confirmed: outward. A rename, a restyle or a note edit lands in front of
+ * every teammate at once, and the previous values are not kept.
+ * @param teamId The team this acts on, by the id listAgentTeams returns.
+ * @param patch Only what changes. A colour is one of Houston's ten palette
+ *   colours, an empty string clears one, and an omitted key leaves the
+ *   field alone.
+ * @assistant group:teams confirm
  */
 export async function updateAgentTeam(
   cfg: ControlPlaneConfig,
@@ -83,6 +95,7 @@ export async function updateAgentTeam(
  * Deletes a team.
  *
  * Delete a team; its agents fall back to the default one.
+ * @param teamId The team this acts on, by the id listAgentTeams returns.
  * @assistant group:teams confirm
  */
 export async function deleteAgentTeam(
@@ -91,94 +104,5 @@ export async function deleteAgentTeam(
 ): Promise<void> {
   await cpFetch(cfg, `/v1/org/teams/${encodeURIComponent(teamId)}`, {
     method: "DELETE",
-  });
-}
-
-/**
- * Lists the people who joined a team.
- *
- * One team's EXPLICIT membership rows. Implicit owners (org owners/admins own
- * every team) are a permission rule, not a roster entry, and are absent here.
- * @assistant group:teams
- */
-export async function listAgentTeamMembers(
-  cfg: ControlPlaneConfig,
-  teamId: string,
-): Promise<AgentTeamMember[]> {
-  const res = await cpFetch(
-    cfg,
-    `/v1/org/teams/${encodeURIComponent(teamId)}/members`,
-  );
-  return ((await res.json()) as { members?: AgentTeamMember[] }).members ?? [];
-}
-
-/**
- * Joins the user to a team in this space.
- *
- * Self-service join (v1 teams are all public). Idempotent, never demotes.
- * @assistant group:teams
- */
-export async function joinAgentTeam(
-  cfg: ControlPlaneConfig,
-  teamId: string,
-): Promise<void> {
-  await cpFetch(cfg, `/v1/org/teams/${encodeURIComponent(teamId)}/join`, {
-    method: "POST",
-  });
-}
-
-/**
- * Removes someone from a team, or leaves it.
- *
- * Drop a membership row: self is a leave, an owner acting on someone else is
- * a remove. Idempotent, so a double-click cannot 404.
- * @assistant group:teams confirm
- */
-export async function removeAgentTeamMember(
-  cfg: ControlPlaneConfig,
-  teamId: string,
-  userId: string,
-): Promise<void> {
-  await cpFetch(
-    cfg,
-    `/v1/org/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
-    { method: "DELETE" },
-  );
-}
-
-/**
- * Gives someone ownership of a team, or takes it away.
- *
- * Set (or upsert) a member's owner flag on this team.
- * @assistant group:teams confirm
- */
-export async function setAgentTeamMemberOwner(
-  cfg: ControlPlaneConfig,
-  teamId: string,
-  userId: string,
-  owner: boolean,
-): Promise<void> {
-  await cpFetch(
-    cfg,
-    `/v1/org/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
-    { method: "PUT", body: JSON.stringify({ owner }) },
-  );
-}
-
-/**
- * Moves an agent into another team in this space.
- *
- * Move one agent between teams in the same space. Grouping only: assignments,
- * and therefore who may drive the agent, are untouched.
- * @assistant group:teams confirm
- */
-export async function setAgentTeam(
-  cfg: ControlPlaneConfig,
-  agentSlugOrId: string,
-  teamId: string,
-): Promise<void> {
-  await cpFetch(cfg, `/v1/agents/${encodeURIComponent(agentSlugOrId)}/team`, {
-    method: "PUT",
-    body: JSON.stringify({ teamId }),
   });
 }

@@ -38,3 +38,6 @@ playwright/.cache/
 
 # pnpm content-addressable store (created when a worktree sits on a different FS than the global store)
 .pnpm-store/
+
+# Process/crash logs (mprocs, dev panes) — machine state, never source
+*.log

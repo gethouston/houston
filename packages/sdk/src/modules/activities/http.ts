@@ -61,6 +61,10 @@ export async function listActivities(
 /**
  * Creates a mission on an agent's board.
  *
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param input The mission to put on the board: its title, and the
+ *   description of the work.
  * @assistant group:missions
  */
 export async function createActivity(
@@ -93,6 +97,9 @@ export async function updateActivity(
 /**
  * Deletes a mission from an agent's board.
  *
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param id The mission to delete, by the id listActivities returns.
  * @assistant group:missions confirm
  */
 export async function deleteActivity(

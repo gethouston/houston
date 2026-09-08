@@ -19,6 +19,7 @@
 
 // Subpath import (like `lib/active-interaction.ts`): value imports from the
 // package index only resolve under bundler resolution.
+import type { MessageApproval } from "@houston/protocol/approval";
 import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
@@ -92,18 +93,15 @@ import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
 import { genericErrorDescription } from "../lib/error-report";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
+import { encodeInteractionAnswersMessage } from "../lib/interaction-answers-marker";
+import { approvalsFromAnswers } from "../lib/interaction-approvals";
 import {
   type ConnectOutcome,
   type CredentialOutcome,
-  encodeInteractionAnswersMessage,
   finalConnectNames,
   finalCredentialNames,
-} from "../lib/interaction-reply";
-import {
-  modelDisplayLabel,
-  providerForModel,
-  providerOffersModel,
-} from "../lib/model-labels";
+} from "../lib/interaction-outcomes";
+import { providerForModel, providerOffersModel } from "../lib/model-labels";
 import {
   isModelAllowed,
   modelSelectorDecision,
@@ -115,7 +113,10 @@ import {
   providerConnectionState,
   providerIsConnected,
 } from "../lib/provider-connection";
-import { toDisplayProviderIdOrNull } from "../lib/provider-overrides";
+import {
+  toCanonicalProviderId,
+  toDisplayProviderIdOrNull,
+} from "../lib/provider-overrides";
 import {
   decideHandoffMode,
   estimateConversationTokens,
@@ -124,8 +125,6 @@ import {
 import {
   type EffortLevel,
   getContextWindowConfig,
-  getDefaultModel,
-  getProvider,
   normalizeLegacyModel,
   validEffortOrDefault,
 } from "../lib/providers";
@@ -187,10 +186,8 @@ import {
   resolveProviderErrorForChat,
 } from "./shell/provider-error-cards/not-connected";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
-import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
 import { skillIntegrationChips } from "./skill-integration-chips";
-import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
 import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
 import { useChatSenderAvatars } from "./use-chat-sender-avatars";
@@ -886,7 +883,9 @@ export function useAgentChatPanel({
             const cfg = await tauriConfig.read(path);
             await tauriConfig.write(path, {
               ...cfg,
-              provider: prov,
+              // config.json is CANONICAL (see `data/config.ts`); `prov` is the
+              // picker's display id.
+              provider: toCanonicalProviderId(prov),
               model: mod,
             });
           }
@@ -1420,8 +1419,13 @@ export function useAgentChatPanel({
   // follow-up action asks the agent to DO the thing, so it runs in `execute`
   // like the save-as-reusable send, never in plan. Omitted → the pinned mode
   // (an answered question resumes the turn the user was already having).
+  // `approvals` carries the receipts for any approval cards the sequence
+  // answered. They ride the send as their OWN field: only a user message can
+  // turn a host-issued request id into a usable approval, and the HOST — the
+  // process holding the credential — reads them off the request and drops them
+  // before the runtime ever sees the turn.
   const sendInteractionMessage = useCallback(
-    (text: string, mode?: TurnMode) => {
+    (text: string, mode?: TurnMode, approvals?: MessageApproval[]) => {
       if (!path || !selectedSessionKey) return;
       tauriChat
         .send(path, text, selectedSessionKey, {
@@ -1429,6 +1433,7 @@ export function useAgentChatPanel({
           modelOverride: displayModelPin.model,
           effortOverride: displayModelPin.effort,
           modeOverride: mode ?? turnMode,
+          ...(approvals?.length ? { approvals } : {}),
         })
         // Two-arg `then`, not `.then().catch()`: the rejection handler must stay
         // exclusive to the SEND, or a throw inside the handoff callback would
@@ -1919,6 +1924,8 @@ export function useAgentChatPanel({
                   { name: credentialedNames.join(", ") },
                 ),
               }),
+              undefined,
+              approvalsFromAnswers(steps, answers),
             );
           }}
           renderSignin={(step, api) => (
@@ -2133,47 +2140,6 @@ export function useAgentChatPanel({
     (msg: ChatMessage) => {
       if (msg.compaction)
         return <ContextCompactedDivider info={msg.compaction} />;
-      if (isToolRuntimeErrorMessage(msg)) {
-        const isModelUnsupported =
-          msg.runtimeError.kind === "provider_model_unsupported";
-        // What the "switch model" button moves to: Codex's CATALOG default,
-        // read at render. A literal id here outlived OpenAI serving it, so the
-        // recovery button repinned the chat to a model that could only fail
-        // again.
-        const codexFallback = getDefaultModel("openai");
-        return (
-          <ToolRuntimeErrorCard
-            error={msg.runtimeError}
-            onRetry={async () => {
-              if (!path || !selectedSessionKey) return;
-              const text = t("chat:toolRuntimeError.retryPrompt");
-              await tauriChat.send(path, text, selectedSessionKey, {
-                // Retry mirrors the displayed dropdown values, not just
-                // the in-memory chatProvider — see send sites above.
-                providerOverride: displayModelPin.provider,
-                modelOverride: displayModelPin.model,
-                effortOverride: displayModelPin.effort,
-                modeOverride: turnMode,
-              });
-              // The retry starts a turn: this card also renders inside an
-              // ARCHIVED transcript, and the send re-activates that mission, so
-              // the user has to travel with it. A throw above skips this and
-              // surfaces through the card's own error path.
-              onSendReactivatedRef.current?.();
-            }}
-            switchModel={
-              isModelUnsupported
-                ? {
-                    label:
-                      modelDisplayLabel("openai", codexFallback) ??
-                      codexFallback,
-                    run: () => selectModel("openai", codexFallback),
-                  }
-                : undefined
-            }
-          />
-        );
-      }
       // Typed provider-error card (rate-limit, quota, model-unavailable,
       // UNAUTHENTICATED reconnect button, internal 5xx, …). The engine emits
       // these as `provider_error` FeedItems; feed-to-messages stashes the
@@ -2211,7 +2177,7 @@ export function useAgentChatPanel({
                 ? encodeAutoContinueMessage(continueText)
                 : providerErrorRetryText(
                     providerError,
-                    t("chat:toolRuntimeError.retryPrompt"),
+                    t("chat:providerError.retryPrompt"),
                   );
               // The reconnect resume fires WITHOUT the user typing, so it is an
               // `autoResume` send: if the conversation shows a running turn it
@@ -2229,8 +2195,8 @@ export function useAgentChatPanel({
                 suppressUserBubble: resendsOriginalPrompt(providerError),
                 autoResume: providerError.kind === "unauthenticated",
               });
-              // Same as the tool-error retry: this card renders inside archived
-              // transcripts too, and the send re-activates the mission.
+              // This card renders inside archived transcripts too, and the
+              // send re-activates the mission — travel with it.
               onSendReactivatedRef.current?.();
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);
@@ -2520,12 +2486,6 @@ export function useAgentChatPanel({
       <ProviderSwitchDialog
         open={switchDialog !== null}
         providerId={switchDialog?.toProvider ?? ""}
-        providerName={
-          switchDialog
-            ? (getProvider(switchDialog.toProvider)?.name ??
-              switchDialog.toProvider)
-            : ""
-        }
         mode={switchDialog?.mode ?? "replay"}
         onConfirm={confirmProviderSwitch}
         onCancel={() => setSwitchDialog(null)}

@@ -79,7 +79,6 @@ type FeedItemVariant =
        */
       turnId?: string;
     }
-  | { feed_type: "tool_runtime_error"; data: ToolRuntimeErrorEntry }
   | { feed_type: "provider_error"; data: ProviderError }
   | { feed_type: "tool_call"; data: { name: string; input: unknown } }
   | { feed_type: "tool_result"; data: { content: string; is_error: boolean } }
@@ -154,11 +153,6 @@ export interface TokenUsage {
   context_tokens: number;
   output_tokens: number;
   cached_tokens: number;
-}
-
-export interface ToolRuntimeErrorEntry {
-  kind: "local_tool" | "provider_process" | "provider_model_unsupported";
-  details: string;
 }
 
 /**

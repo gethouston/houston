@@ -1,9 +1,4 @@
 import type { AssistantOperation } from "@houston/host/src/assistant/catalog";
-import {
-  confirmationKey,
-  recordConfirmationRequest,
-  takeConfirmationOutcome,
-} from "../confirm-gate";
 import { currentConversationId } from "../conversation-context";
 import { recordConfirmation } from "../interaction";
 import {
@@ -11,132 +6,133 @@ import {
   assistantErrorResult,
   assistantNeedsConfirmationResult,
 } from "./assistant-result";
+import type { SandboxFetch } from "./sandbox-fetch";
+import { CONVERSATION_ID_HEADER } from "./save-learning";
 
 /**
  * The gate `houston_call` runs every `confirm: true` operation through.
  *
- * The wording on the card is written HERE, from the catalog and the arguments
- * the runtime is about to send — never by the model. That is the whole point:
- * a model that could author the question could describe a rename and perform a
- * delete, and the user would have approved the rename. What they read is what
- * would happen.
+ * NOTHING here decides an approval. The runtime asks the HOST to raise one
+ * (`POST /sandbox/assistant/pending`), shows the user the card the host worded,
+ * and hands the model back the host's `requestId` to present on its next call.
+ * The host — the process holding the credential — is what matches that id
+ * against the receipt the user's own reply minted, so a runtime that skipped
+ * this gate entirely still performs nothing.
  *
- * The decision itself lives in `confirm-gate.ts`, minted only from the user's
- * own reply. Everything here is composition plus the two refusals.
+ * The wording comes back from the host with the request, so the sentence the
+ * person read and the bytes their yes authorizes are decided in one place and
+ * cannot drift apart. The model never authors either.
  */
 
-/** The approve/deny answers. Their labels are half of the reply line the gate
- *  matches, so they are constants: a reworded label is a new gate. */
+/** The approve/deny answers. */
 const APPROVE = { id: "approve", label: "Yes, go ahead" } as const;
 const DECLINE = { id: "decline", label: "No, don't do it" } as const;
 
 /** The question every approval card closes on. */
 const CLOSING = "Houston cannot undo this for you. Should I go ahead?";
 
-/** How many characters of one argument the card will show. */
-const VALUE_LIMIT = 120;
-
-/** `agentPath` -> `agent path`: the argument named the way a person would. */
-function humanize(key: string): string {
-  return key
-    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
-    .replace(/[_-]+/g, " ")
-    .trim()
-    .toLowerCase();
-}
-
-/** One argument's value, short enough to read on a card. */
-function showValue(value: unknown): string {
-  const raw =
-    value === null || typeof value !== "object"
-      ? String(value)
-      : JSON.stringify(value);
-  return raw.length > VALUE_LIMIT ? `${raw.slice(0, VALUE_LIMIT)}...` : raw;
-}
-
-/** The arguments as a phrase, so the card names WHAT it would act on. */
-function describeParams(params: Record<string, unknown>): string {
-  return Object.entries(params)
-    .filter(([, value]) => value !== undefined)
-    .map(([key, value]) => `${humanize(key)} "${showValue(value)}"`)
-    .join(", ");
-}
-
-/** The catalog's description, guaranteed to end a sentence. */
-function asSentence(description: string): string {
-  const trimmed = description.trim();
-  if (!trimmed) return "";
-  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
-}
-
-/**
- * The plain-language account of what this exact call would do: the operation's
- * own description, then the arguments it would act on. No operation names, no
- * parameter syntax, nothing the user has to be technical to read.
- */
-export function confirmationSummary(
-  op: AssistantOperation,
-  params: Record<string, unknown>,
-): string {
-  const sentence = asSentence(op.description);
-  const detail = describeParams(params);
-  if (!detail) return sentence;
-  return sentence
-    ? `${sentence} This affects ${detail}.`
-    : `Affects ${detail}.`;
-}
+/** The host route that raises one approval request. */
+const PENDING_PATH = "/sandbox/assistant/pending";
 
 /** What the model is told while the user decides. It is an instruction, not a
  *  status: the failure mode this replaces is a model that "confirms" itself. */
-function pendingMessage(name: string, summary: string): string {
-  return `${name} was NOT performed. ${summary} Houston is now showing the user an approval card with exactly these details, and only their own answer can authorize it - you cannot. END YOUR TURN NOW and wait: do not retry this call, do not ask the same thing again in your reply text, and do not work around the gate with other operations. Deleting something and recreating it is not a workaround; the deletion still needs this approval. Once they approve, repeat this exact call unchanged and it will run, once.`;
+function pendingMessage(
+  name: string,
+  summary: string,
+  requestId: string,
+): string {
+  return `${name} was NOT performed. ${summary} Houston is now showing the user an approval card with exactly these details, and only their own answer can authorize it - you cannot. END YOUR TURN NOW and wait: do not retry this call, do not ask the same thing again in your reply text, and do not work around the gate with other operations. Deleting something and recreating it is not a workaround; the deletion still needs this approval. Once they approve, repeat this exact call unchanged with requestId "${requestId}" and it will run, once.`;
 }
 
 /** What the model is told after the user said no. */
-function declinedMessage(name: string): string {
+export function declinedMessage(name: string): string {
   return `The user was shown exactly what ${name} would do and said no. It has not been performed and it must not be: do not retry it, and do not reach the same outcome through other operations. Tell them plainly that you did not do it, then ask what they would like instead.`;
 }
 
+interface PendingReply {
+  requestId: string;
+  summary: string;
+  /** The verbatim arguments the host could not fit in the sentence. */
+  detail?: string;
+}
+
+function readPendingReply(payload: unknown): PendingReply | null {
+  if (typeof payload !== "object" || payload === null) return null;
+  const { requestId, summary, detail } = payload as {
+    requestId?: unknown;
+    summary?: unknown;
+    detail?: unknown;
+  };
+  if (typeof requestId !== "string" || requestId === "") return null;
+  return {
+    requestId,
+    summary: typeof summary === "string" ? summary : "",
+    ...(typeof detail === "string" && detail ? { detail } : {}),
+  };
+}
+
 /**
- * Decide whether one `confirm: true` call may proceed.
+ * Ask the host to raise one approval card and tell the model to wait.
  *
- * Returns `undefined` when it may - either the operation needs no approval, or
- * this conversation holds a live, unspent approval for these EXACT arguments,
- * which this call consumes. Otherwise it returns the refusal the model gets and
- * (for a first ask) raises the approval card the user actually decides on.
+ * Always a refusal: the FIRST answer to a destructive call is never "done". The
+ * card carries the host's `requestId`, so a second card for a different call is
+ * a second card even when the two read alike, and one click grants exactly one
+ * thing.
  */
-export function guardConfirmation(
+export async function requestConfirmation(
   op: AssistantOperation,
   params: Record<string, unknown>,
-): AssistantOperationResult | undefined {
-  if (!op.confirm) return undefined;
+  call: SandboxFetch,
+  signal?: AbortSignal,
+): Promise<AssistantOperationResult> {
   const conversationId = currentConversationId();
-  const key = confirmationKey(op.name, params);
-  const outcome = takeConfirmationOutcome(conversationId, key);
-  if (outcome === "granted") return undefined;
-  if (outcome === "declined")
+  // No conversation (a routine's unattended turn, or a direct call outside a
+  // turn) means there is nowhere for an answer to arrive, so nothing can ever
+  // authorize it. Refusing is the whole contract.
+  if (!conversationId) {
     return assistantErrorResult(op.name, {
-      code: "confirmation_declined",
-      message: declinedMessage(op.name),
+      code: "needs_confirmation",
+      message: `${op.name} changes something the user cannot easily get back, and this turn has no one to ask. Do not retry it: tell the user what needs deciding the next time they are here.`,
     });
+  }
+  let res: Response;
+  try {
+    res = await call(PENDING_PATH, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        [CONVERSATION_ID_HEADER]: conversationId,
+      },
+      body: JSON.stringify({ operation: op.name, params }),
+      signal,
+    });
+  } catch (err) {
+    return assistantErrorResult(op.name, {
+      code: "transport_error",
+      message: `Houston could not be reached to ask the user about that: ${err instanceof Error ? err.message : String(err)}`,
+    });
+  }
+  const pending = res.ok
+    ? readPendingReply(await res.json().catch(() => null))
+    : null;
+  if (!pending) {
+    return assistantErrorResult(op.name, {
+      code: "gateway_error",
+      status: res.status,
+      message: `Houston could not put that in front of the user for approval (HTTP ${res.status}), so it has not been done. Tell them plainly and ask what they would like instead.`,
+    });
+  }
 
-  const summary = confirmationSummary(op, params);
-  const question = `${summary} ${CLOSING}`;
-  // No conversation (a direct call outside a turn) means there is nowhere for
-  // an answer to arrive, so nothing can ever authorize it. Refusing is the
-  // whole contract; the card is still recorded in case a holder is listening.
-  if (conversationId)
-    recordConfirmationRequest({
-      conversationId,
-      key,
-      question,
-      approveLabel: APPROVE.label,
-      declineLabel: DECLINE.label,
-    });
-  recordConfirmation({ question, options: [{ ...APPROVE }, { ...DECLINE }] });
+  const question = `${pending.summary} ${CLOSING}`;
+  recordConfirmation({
+    question,
+    ...(pending.detail ? { detail: pending.detail } : {}),
+    options: [{ ...APPROVE }, { ...DECLINE }],
+    requestId: pending.requestId,
+  });
   return assistantNeedsConfirmationResult(
     op.name,
-    pendingMessage(op.name, summary),
-    { summary, params },
+    pendingMessage(op.name, pending.summary, pending.requestId),
+    { summary: pending.summary, params, requestId: pending.requestId },
   );
 }

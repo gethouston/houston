@@ -51,7 +51,10 @@ export async function captureCredential(
  * background reconcile (HOU-950; the host still honors the flag for older
  * clients). Resolves on 200; throws the host's reason otherwise so the caller
  * can degrade to the paste flow.
- * @assistant group:providers hidden: carries a secret; the desktop's Anthropic OAuth credential.
+ *
+ * Confirmed: outward. It sends this machine's provider sign-in to a remote pod,
+ * which then holds it.
+ * @assistant group:providers confirm hidden: carries a secret; the desktop's Anthropic OAuth credential.
  */
 export async function pushClaudeOAuthCredential(
   cfg: ControlPlaneConfig,
@@ -72,7 +75,10 @@ export async function pushClaudeOAuthCredential(
  * the mirror of captureCredential. Without it, logout cleared only the agent
  * runtime's local auth.json and the next turn re-served the credential from the
  * central store — so the provider reconnected itself. Idempotent.
- * @assistant group:providers hidden: destroys the workspace's provider sign-in, including the one serving this conversation.
+ *
+ * Confirmed: irreversible. The sign-in is gone and the user has to authenticate
+ * with the provider again to get it back.
+ * @assistant group:providers confirm hidden: destroys the workspace's provider sign-in, including the one serving this conversation.
  */
 export async function forgetCredential(
   cfg: ControlPlaneConfig,
@@ -151,7 +157,10 @@ export async function setCustomEndpoint(
  * `relayHost:relayPort` so the user's local model server surfaces at `publicUrl`
  * for their cloud agent. Hosted-only — a non-gateway deployment 404s and cpFetch
  * throws the host's real error message (never swallowed).
- * @assistant group:providers hidden: returns a secret; a short-lived relay credential for the desktop's tunnel sidecar.
+ *
+ * Confirmed: outward. It mints a live relay credential that opens a path from
+ * the public internet to the user's own machine.
+ * @assistant group:providers confirm hidden: returns a secret; a short-lived relay credential for the desktop's tunnel sidecar.
  */
 export async function getTunnelCredentials(
   cfg: ControlPlaneConfig,

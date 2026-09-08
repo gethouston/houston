@@ -3,8 +3,12 @@ import { loadActivities } from "@houston/domain";
 import type { ChatMessage } from "@houston/protocol";
 import { conversationKey } from "../paths";
 import { json } from "./http";
+import {
+  forwardMissionList,
+  forwardMissionRead,
+} from "./missions-remote-forward";
 import { type MissionsCtx, missionSessionKey } from "./missions-sandbox";
-import { targetOrRefuse } from "./missions-target";
+import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
 /**
  * The READ half of the agent's mission tools: the board snapshot
@@ -16,7 +20,9 @@ import { targetOrRefuse } from "./missions-target";
  * its OWN mission reads its runtime's in-process store (tools/read-mission.ts);
  * another agent's transcript lives in another runtime, so the host serves it
  * from the file store — the same conversation key the routine reconciler reads
- * (schedule/reconcile.ts).
+ * (schedule/reconcile.ts). A named agent that lives in ANOTHER POD is asked
+ * for its own answer (missions-remote-forward.ts) and it is relayed unchanged,
+ * so a review reads the same shape wherever the mission runs.
  */
 
 /** Most messages one read returns (the tail), and the per-message transport clip. */
@@ -36,12 +42,13 @@ export async function handleList(
   url: URL,
   res: ServerResponse,
 ): Promise<void> {
-  const ctx = await targetOrRefuse(
+  const route = await resolveMissionRoute(
     callerCtx,
     url.searchParams.get("agent") ?? undefined,
-    res,
   );
-  if (!ctx) return;
+  if (!route.ok) return refuseMissionRoute(route, res);
+  if (route.remote) return forwardMissionList(route.route, res);
+  const ctx = route.ctx;
   const { items } = await loadActivities(ctx.vfs, ctx.root);
   const missions = items
     .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
@@ -66,18 +73,28 @@ export async function handleMissionRead(
   url: URL,
   res: ServerResponse,
 ): Promise<void> {
-  const ctx = await targetOrRefuse(
+  const route = await resolveMissionRoute(
     callerCtx,
     url.searchParams.get("agent") ?? undefined,
-    res,
   );
-  if (!ctx) return;
+  if (!route.ok) return refuseMissionRoute(route, res);
   const id = url.searchParams.get("id")?.trim() ?? "";
   if (!id) {
-    json(res, 400, { error: "pass the mission's 'id' — see list_missions" });
-    return;
+    return json(res, 400, {
+      error: "pass the mission's 'id' - see list_missions",
+      code: "invalid_mission",
+    });
   }
-  const limit = tailLimit(url.searchParams.get("limit"));
+  const rawLimit = url.searchParams.get("limit");
+  if (route.remote) {
+    return forwardMissionRead(
+      route.route,
+      { id, ...(rawLimit ? { limit: rawLimit } : {}) },
+      res,
+    );
+  }
+  const ctx = route.ctx;
+  const limit = tailLimit(rawLimit);
   const { items } = await loadActivities(ctx.vfs, ctx.root);
   const mission = items.find((a) => a.id === id);
   // The convention id covers every mission this feature starts; an explicit
@@ -106,7 +123,8 @@ export async function handleMissionRead(
   }
   json(res, 404, {
     error:
-      "that mission has no conversation yet — check list_missions; a just-started mission may not have begun",
+      "that mission has no conversation yet - check list_missions; a just-started mission may not have begun",
+    code: "mission_not_found",
   });
 }
 

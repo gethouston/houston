@@ -1,6 +1,6 @@
 /**
  * The marks a turn's finish is decided on, held by the per-turn interaction
- * holder (interaction.ts) and fed by whichever turn executor owns the session
+ * holder (interaction-holder.ts) and fed by whichever turn executor owns the session
  * (session/exec-turn.ts, turn/turn-session.ts): the backend's assistant
  * message-start signal (`HarnessSession.subscribeAssistantMessageStart`) and
  * the wire stream's text deltas.

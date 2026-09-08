@@ -13,6 +13,8 @@ import { type HostSkillSummary, toClientSummary } from "./skills";
 
 /**
  * Lists the skills shared with everyone in a workspace.
+ * @param workspaceId The workspace these belong to, by the id
+ *   listWorkspaces returns.
  * @assistant group:skills
  */
 export async function listSharedSkills(
@@ -35,6 +37,10 @@ export async function listSharedSkills(
 
 /**
  * Reads the instructions of a skill shared with the workspace.
+ * @param workspaceId The workspace these belong to, by the id
+ *   listWorkspaces returns.
+ * @param slug The shared skill's exact slug, from listSharedSkills. Never
+ *   invent one.
  * @assistant group:skills
  */
 export async function loadSharedSkill(
@@ -51,6 +57,10 @@ export async function loadSharedSkill(
 
 /**
  * Creates a skill and shares it with everyone in the workspace.
+ * @param workspaceId The workspace these belong to, by the id
+ *   listWorkspaces returns.
+ * @param body The new shared skill: its name, a one-line description, and
+ *   the instructions themselves.
  * @assistant group:skills confirm
  */
 export async function createSharedSkill(
@@ -68,6 +78,11 @@ export async function createSharedSkill(
 
 /**
  * Shares an agent's existing skill with everyone in the workspace.
+ * @param workspaceId The workspace these belong to, by the id
+ *   listWorkspaces returns.
+ * @param slug The shared skill's exact slug, from listSharedSkills. Never
+ *   invent one.
+ * @param content The skill's full text as it should be shared.
  * @assistant group:skills confirm
  */
 export async function promoteSharedSkill(
@@ -86,6 +101,12 @@ export async function promoteSharedSkill(
 
 /**
  * Saves changes to a skill shared with the workspace, for everyone who uses it.
+ * @param workspaceId The workspace these belong to, by the id
+ *   listWorkspaces returns.
+ * @param slug The shared skill's exact slug, from listSharedSkills. Never
+ *   invent one.
+ * @param content The skill's full new text. It replaces what was there, so
+ *   send the whole thing.
  * @assistant group:skills confirm
  */
 export async function saveSharedSkill(
@@ -103,6 +124,10 @@ export async function saveSharedSkill(
 
 /**
  * Deletes a skill shared with the workspace, removing it for everyone.
+ * @param workspaceId The workspace these belong to, by the id
+ *   listWorkspaces returns.
+ * @param slug The shared skill's exact slug, from listSharedSkills. Never
+ *   invent one.
  * @assistant group:skills confirm
  */
 export async function deleteSharedSkill(

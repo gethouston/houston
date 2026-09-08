@@ -47,6 +47,11 @@ export interface AssistantError {
 export interface AssistantConfirmationRequest {
   summary: string;
   params: Record<string, unknown>;
+  /** The HOST-issued id of the approval card now in front of the user. The
+   *  model presents it back on its next `houston_call` for this same call; the
+   *  host matches it against the receipt the user's own reply minted. It
+   *  authorizes nothing on its own. */
+  requestId: string;
 }
 
 /**

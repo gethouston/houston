@@ -1,6 +1,7 @@
 import type { Vfs } from "../vfs";
 import {
   extOf,
+  FileOpError,
   FilePathError,
   fileKey,
   safeRel,
@@ -147,7 +148,15 @@ export async function renameWorkspaceFile(
   const parent = from.includes("/")
     ? from.slice(0, from.lastIndexOf("/") + 1)
     : "";
-  await vfs.move(fileKey(root, from), fileKey(root, `${parent}${newName}`));
+  const fromKey = fileKey(root, from);
+  // A source that is gone (another tab deleted it, a stale listing) is the
+  // user's state, not a server fault: answer 404 like the move op rather than
+  // letting the vfs's generic "source not found" surface as a 500.
+  const keys = (await vfs.listDetailed(root)).map((s) => s.key);
+  const exists =
+    keys.includes(fromKey) || keys.some((k) => k.startsWith(`${fromKey}/`));
+  if (!exists) throw new FileOpError(404, "file not found");
+  await vfs.move(fromKey, fileKey(root, `${parent}${newName}`));
 }
 
 export async function createWorkspaceFolder(

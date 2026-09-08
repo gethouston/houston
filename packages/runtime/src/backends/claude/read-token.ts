@@ -1,13 +1,12 @@
 import { accessDigest } from "@houston/protocol/access-digest";
 import { ANTHROPIC_TOKEN_PREFIXES } from "../../auth/anthropic-setup-token";
 import type { HoustonAuthStore } from "../../auth/credential-store";
-import {
-  currentCredentialScope,
-  isPersonalScope,
-} from "../../session/acting-context";
 import type { ClaudeToken } from "./backend";
-import { readClaudeOAuthCredentialFile } from "./credentials-file";
-import { claudeCredentialsFile } from "./paths";
+import {
+  readSharedLogin,
+  type StoredLogin,
+  sharedLoginSupersedes,
+} from "./shared-login";
 
 /**
  * Resolve the `anthropic` credential into the `ClaudeToken` the Claude Agent SDK
@@ -52,69 +51,58 @@ function classify(value: string): ClaudeToken | undefined {
 }
 
 /**
- * Resolve the credential the desktop login materialized into the SHARED login
- * dir (`<HOUSTON_HOME>/claude-login/.credentials.json`) — the second link of the
- * chain documented on `readAnthropicToken`.
- *
- * A login pushes its credential to ONE runtime, which persists it in THAT
- * agent's `auth.json`. Every other agent's runtime has no store entry, and on
- * macOS/Windows the platform config-dir mechanism is the OS keychain, which the
- * push never writes — so without this link one login heals exactly one agent and
- * every other agent 401s `token_expired` forever. Reading the shared file here
- * makes one login heal EVERY agent's runtime. On Linux it is a no-op in effect:
- * the SDK reads the very same file from `CLAUDE_CONFIG_DIR`.
- *
- * Only an UNEXPIRED access token qualifies. The env token OUTRANKS the config
- * dir inside the SDK, so serving an expired one would shadow a credential the
- * SDK could still refresh in place — strictly worse than resolving nothing.
- * `expiresAt` absent/0 means "no expiry recorded" and is served as-is, matching
- * the store branch's `expires=0` rule.
- *
- * SCOPE (HOU-976): this file is POD-WIDE, so on a managed pod it holds the
- * TEAM's credential. A PERSONAL scope therefore resolves nothing here — the
- * read-side mirror of `writeClaudeOAuthCredentialFile`'s refusal — and the
- * member's turn surfaces the honest "not connected" card (scope-guard.ts)
- * instead of silently running on, and billing, the team account.
- *
- * No access digest: the revoked-token report is gated to oauth-typed STORE
- * entries, and a config-dir credential has none to report against.
- */
-function readSharedLoginFileToken(): ClaudeToken | undefined {
-  if (isPersonalScope(currentCredentialScope().key)) return undefined;
-  const cred = readClaudeOAuthCredentialFile(claudeCredentialsFile());
-  if (!cred) return undefined; // absent, unreadable, or not the CLI envelope
-  const expires = cred.expiresAt ?? 0;
-  if (expires > 0 && expires <= Date.now()) return undefined;
-  // The envelope's own type is the classification: `claudeAiOauth` is a
-  // subscription OAuth credential, which rides `CLAUDE_CODE_OAUTH_TOKEN`.
-  return { kind: "oauth-token", value: cred.accessToken.trim() };
-}
-
-/**
  * The anthropic credential this runtime authenticates the SDK with, resolved in
  * strict precedence order:
  *
  *  1. the STORE entry (`auth.json`), when unexpired — the freshest credential
  *     this agent was served or connected with;
  *  2. the SHARED login dir's `.credentials.json`, when unexpired — one login,
- *     every agent (`readSharedLoginFileToken`);
+ *     every agent (`./shared-login`). It also OUTRANKS link 1 when it is a
+ *     provably later login than the stored copy, which is what lets a reconnect
+ *     performed against another runtime reach this one: without that, an
+ *     unexpired store entry for the account the user just left would be
+ *     preferred for hours, failing every turn on an identity or a token that
+ *     reconnect superseded. A superseded store entry is DELETED, not merely
+ *     skipped — see below.
  *  3. nothing, which hands the turn to the platform's own config-dir mechanism
  *     inside the SDK (the `.credentials.json` it self-refreshes on Linux, the
  *     dir-scoped keychain item on macOS/Windows).
  *
  * Each link falls through to the next on ANY unusable value — expired, empty,
  * malformed, or absent — so a broken credential can never shadow a working one.
+ * A PERSONAL credential scope never reaches the shared dir at all (it is the
+ * team's), so a member is never moved onto the team account by any of this.
  */
 export function readAnthropicToken(
-  store: Pick<HoustonAuthStore, "get">,
+  store: Pick<HoustonAuthStore, "get" | "remove">,
 ): ClaudeToken | undefined {
-  return readStoredAnthropicToken(store) ?? readSharedLoginFileToken();
+  const stored = readStoredAnthropicToken(store);
+  const shared = readSharedLogin();
+  if (!stored) return shared?.token;
+  // An api_key entry (a pasted setup token or console key) is a credential the
+  // user chose for THIS runtime and carries no issuance date, so it is never
+  // superseded by the shared dir — `supersedable` is null for it.
+  if (
+    shared &&
+    stored.supersedable &&
+    sharedLoginSupersedes(shared, stored.supersedable)
+  ) {
+    // Skipping the superseded entry is not enough: it stays in auth.json and
+    // wins again the moment the shared file can no longer PROVE it is newer —
+    // the file is rewritten with a shorter-lived token, or removed entirely —
+    // silently putting this runtime back on the account the user left. The
+    // supersession is a fact about the login, so record it once: drop the dead
+    // entry and every later read resolves the login the user actually has.
+    store.remove("anthropic");
+    return shared.token;
+  }
+  return stored.token;
 }
 
 /** Link 1: the `anthropic` entry in this runtime's own credential store. */
 function readStoredAnthropicToken(
   store: Pick<HoustonAuthStore, "get">,
-): ClaudeToken | undefined {
+): { token: ClaudeToken; supersedable: StoredLogin | null } | undefined {
   const cred = store.get("anthropic");
   if (!cred) return undefined; // not connected — no credential to read
 
@@ -129,7 +117,8 @@ function readStoredAnthropicToken(
       );
       return undefined;
     }
-    return classify(key);
+    const token = classify(key);
+    return token ? { token, supersedable: null } : undefined;
   }
   if (cred.type === "oauth") {
     const access = cred.access?.trim();
@@ -159,7 +148,10 @@ function readStoredAnthropicToken(
     // whatever auth.json holds when a turn later fails (PRODUCT-1319).
     // OAUTH-typed store entries only — mirroring the reporter's oauth gate —
     // so the api_key branch above stays digest-less by design.
-    return { ...token, accessDigest: accessDigest(access) };
+    return {
+      token: { ...token, accessDigest: accessDigest(access) },
+      supersedable: { value: access, expires: cred.expires },
+    };
   }
 
   console.warn(

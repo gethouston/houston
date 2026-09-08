@@ -17,11 +17,29 @@ export interface AssistantGateway {
   token: string;
 }
 
+/**
+ * The address this request actually reaches, or null when parsing it moves it.
+ *
+ * `new URL(...)` RESOLVES `.` and `..` segments (percent-encoded spellings
+ * included) before any request is made, so a path carrying them addresses a
+ * DIFFERENT operation than the one it spells — performed here with the gateway
+ * credential, and the withheld operations are reachable that way. The built
+ * path is refused upstream in `buildPath`; this is the same invariant asserted
+ * where the URL is finally made, so no future caller can reintroduce it.
+ */
 function upstreamUrl(
   gateway: AssistantGateway,
   request: AssistantUpstreamRequest,
-): string {
-  const url = new URL(`${gateway.url}${request.path}`);
+): string | null {
+  const base = new URL(gateway.url);
+  const prefix = base.pathname === "/" ? "" : base.pathname.replace(/\/$/, "");
+  let url: URL;
+  try {
+    url = new URL(`${gateway.url}${request.path}`);
+  } catch {
+    return null;
+  }
+  if (url.pathname !== `${prefix}${request.path}`) return null;
   for (const [key, value] of Object.entries(request.query)) {
     url.searchParams.set(key, value);
   }
@@ -44,9 +62,20 @@ export async function forwardAssistantCall(
   res: ServerResponse,
 ): Promise<void> {
   const { operation, actingAs, fetchImpl } = context;
+  const target = upstreamUrl(gateway, request);
+  if (target === null) {
+    console.error(
+      `[assistant] ${operation} built an address that does not address it: ${request.path.slice(0, 300)}`,
+    );
+    json(res, 400, {
+      error: `those values do not address "${operation}"`,
+      code: "gateway_address",
+    });
+    return;
+  }
   let upstream: Response;
   try {
-    upstream = await fetchImpl(upstreamUrl(gateway, request), {
+    upstream = await fetchImpl(target, {
       method: request.method,
       headers: {
         Authorization: `Bearer ${gateway.token}`,

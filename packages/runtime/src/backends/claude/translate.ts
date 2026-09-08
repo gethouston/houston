@@ -1,21 +1,12 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
-import {
-  clipToolResult,
-  type TokenUsage,
-  type WireEvent,
-} from "@houston/runtime-client";
+import type { WireEvent } from "@houston/runtime-client";
 import { classifyText, mapSdkError } from "./errors";
-import {
-  type EventLike,
-  normalizeUsage,
-  parseArgs,
-  type ToolBlock,
-  toolResultText,
-  type UserContentBlock,
-} from "./translate-support";
+import { createContentBlockTracker } from "./translate-blocks";
+import type { EventLike } from "./translate-support";
+import { createUsageTracker } from "./translate-usage";
 
 // Re-exported for tests that assert the pi-parity usage math directly.
-export { normalizeUsage };
+export { normalizeUsage } from "./translate-support";
 
 type AssistantMsg = Extract<SDKMessage, { type: "assistant" }>;
 type ResultMsg = Extract<SDKMessage, { type: "result" }>;
@@ -41,37 +32,21 @@ export interface TranslatorCallbacks {
  * user-message `tool_result` resolve its tool_end. Unmapped messages drop to [].
  */
 export function createStreamTranslator(cb: TranslatorCallbacks) {
-  const toolBlocks = new Map<number, ToolBlock>();
-  const toolNameById = new Map<string, string>();
+  const blocks = createContentBlockTracker();
+  const usage = createUsageTracker((tokens) => {
+    cb.onContextTokens(tokens);
+  });
   let lastRateLimitRetry: number | null = null;
-  // Block-boundary tracking (HOU-857): a turn's text arrives as flat deltas,
-  // but the model emits DISTINCT content blocks (text → tool_use → text on the
-  // next request). Downstream every consumer concatenates the deltas verbatim
-  // — the live feed, the persisted transcript — so without a separator the
-  // second block glues onto the first mid-sentence ("…for you now.Go ahead…").
-  // When a NEW text block starts after this turn already streamed text, prefix
-  // its first delta with a paragraph break. Same for thinking blocks.
-  let sawText = false;
-  let sawThinking = false;
-  let sepText = false;
-  let sepThinking = false;
   // At most one provider_error per turn: an errored assistant message and an
   // error result can both describe the same failure — never double-terminal.
   let emittedError = false;
-  // The newest PER-REQUEST usage seen this turn (main thread only). This — not
-  // the result message's turn-cumulative aggregate — is what sizes the context
-  // window: each tool round-trip re-sends the whole context (mostly cache
-  // reads), so the aggregate over an agentic turn reads ~N× the real fill and
-  // once made a 3-message Claude chat report a full 1M window. Mirrors pi,
-  // whose turn_end usage is the final assistant message's own request.
-  let lastRequestUsage: TokenUsage | null = null;
 
   function translate(msg: SDKMessage): WireEvent[] {
     switch (msg.type) {
       case "stream_event":
-        return onStreamEvent(msg.event as EventLike);
+        return blocks.onStreamEvent(msg.event as EventLike);
       case "user":
-        return onUserMessage(msg.message?.content);
+        return blocks.onUserMessage(msg.message?.content);
       case "assistant":
         return onAssistant(msg);
       case "result":
@@ -82,98 +57,12 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
       case "system":
         if (msg.subtype === "compact_boundary") {
           const post = msg.compact_metadata?.post_tokens;
-          if (typeof post === "number") {
-            cb.onContextTokens(post);
-            // The compaction just shrank the context: a request usage seen
-            // BEFORE the boundary no longer describes the fill, so re-anchor
-            // it — else a boundary arriving as the turn's last signal would
-            // resurrect the pre-compaction fill on the result's usage frame.
-            if (lastRequestUsage)
-              lastRequestUsage = {
-                ...lastRequestUsage,
-                context_tokens: post,
-                cached_tokens: 0,
-              };
-          }
+          if (typeof post === "number") usage.noteCompactBoundary(post);
         }
         return [];
       default:
         return [];
     }
-  }
-
-  function onStreamEvent(event: EventLike): WireEvent[] {
-    if (event?.type === "content_block_start" && event.index !== undefined) {
-      const block = event.content_block;
-      if (block?.type === "tool_use" && block.id && block.name) {
-        toolBlocks.set(event.index, {
-          id: block.id,
-          name: block.name,
-          json: "",
-          input: block.input,
-        });
-        toolNameById.set(block.id, block.name);
-      }
-      // A FOLLOW-UP text/thinking block: arm the separator; the block's first
-      // delta carries it (never emitted standalone, so an empty block can't
-      // leave a dangling break).
-      if (block?.type === "text" && sawText) sepText = true;
-      if (block?.type === "thinking" && sawThinking) sepThinking = true;
-      return [];
-    }
-    if (event?.type === "content_block_delta") {
-      const d = event.delta;
-      if (d?.type === "text_delta" && d.text !== undefined) {
-        sawText = true;
-        const data = sepText ? `\n\n${d.text}` : d.text;
-        sepText = false;
-        return [{ type: "text", data }];
-      }
-      if (d?.type === "thinking_delta" && d.thinking !== undefined) {
-        sawThinking = true;
-        const data = sepThinking ? `\n\n${d.thinking}` : d.thinking;
-        sepThinking = false;
-        return [{ type: "thinking", data }];
-      }
-      if (d?.type === "input_json_delta" && event.index !== undefined) {
-        const tb = toolBlocks.get(event.index);
-        if (tb) tb.json += d.partial_json ?? "";
-      }
-      return [];
-    }
-    if (event?.type === "content_block_stop" && event.index !== undefined) {
-      const tb = toolBlocks.get(event.index);
-      if (!tb) return [];
-      toolBlocks.delete(event.index);
-      return [
-        { type: "tool_start", data: { name: tb.name, args: parseArgs(tb) } },
-      ];
-    }
-    return [];
-  }
-
-  function onUserMessage(content: unknown): WireEvent[] {
-    if (!Array.isArray(content)) return [];
-    const out: WireEvent[] = [];
-    for (const block of content as UserContentBlock[]) {
-      if (block?.type !== "tool_result") continue;
-      // Only surface results for tools we started THIS turn; an unknown id is a
-      // replayed/foreign result (e.g. resume history) and must not emit tool_end.
-      const name = block.tool_use_id && toolNameById.get(block.tool_use_id);
-      if (!name) continue;
-      // Carry the result's text (clipped) so the mission log can show what
-      // the tool returned — same contract as the pi backend (HOU-717).
-      const content = toolResultText(block.content);
-      out.push({
-        type: "tool_end",
-        data: {
-          name,
-          isError: !!block.is_error,
-          ...(content ? { content: clipToolResult(content) } : {}),
-        },
-      });
-    }
-    return out;
   }
 
   function onAssistant(msg: AssistantMsg): WireEvent[] {
@@ -184,11 +73,7 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
     // fills its OWN context, not this conversation's) and for errored
     // responses (pi likewise only trusts clean assistant usage).
     if (!msg.error && msg.parent_tool_use_id === null) {
-      const requestUsage = normalizeUsage(msg.message?.usage);
-      if (requestUsage) {
-        lastRequestUsage = requestUsage;
-        cb.onContextTokens(requestUsage.context_tokens);
-      }
+      usage.noteRequestUsage(msg.message?.usage);
     }
     if (!msg.error || emittedError) return [];
     emittedError = true;
@@ -214,15 +99,8 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
 
   function onResult(msg: ResultMsg): WireEvent[] {
     const out: WireEvent[] = [];
-    // The turn's usage frame is the LAST request's usage (the current context
-    // fill — pi parity), never the result's turn-cumulative aggregate. The
-    // aggregate is only the fallback when no assistant usage arrived, where
-    // the two coincide (a turn of exactly one request).
-    const usage = lastRequestUsage ?? normalizeUsage(msg.usage);
-    if (usage) {
-      out.push({ type: "usage", data: usage });
-      cb.onContextTokens(usage.context_tokens);
-    }
+    const turnUsage = usage.turnUsage(msg.usage);
+    if (turnUsage) out.push({ type: "usage", data: turnUsage });
     if (msg.subtype !== "success" && !emittedError) {
       emittedError = true;
       const errors: string[] = Array.isArray(msg.errors) ? msg.errors : [];

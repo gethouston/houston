@@ -74,6 +74,8 @@ export async function getOrgPeople(
 
 /**
  * Invites someone to this space with the role the user chooses.
+ * @param email The person's email address, as they gave it.
+ * @param role What they may do in the space.
  * @assistant group:org confirm
  */
 export async function addOrgMember(
@@ -90,6 +92,8 @@ export async function addOrgMember(
 
 /**
  * Cancels a pending invitation to this space.
+ * @param inviteId The pending invitation to cancel, by the id getOrgPeople
+ *   returns.
  * @assistant group:org confirm
  */
 export async function deleteOrgInvite(
@@ -103,6 +107,7 @@ export async function deleteOrgInvite(
 
 /**
  * Removes someone from the current space.
+ * @param userId The person to remove, by the user id getOrgPeople returns.
  * @assistant group:org confirm
  */
 export async function removeOrgMember(
@@ -116,6 +121,8 @@ export async function removeOrgMember(
 
 /**
  * Changes what someone is allowed to do in this space.
+ * @param userId The person, by the user id getOrgPeople returns.
+ * @param role What they may do in the space.
  * @assistant group:org confirm
  */
 export async function setOrgMemberRole(
@@ -131,6 +138,8 @@ export async function setOrgMemberRole(
 
 /**
  * Shows the record of who did what in this space, newest first.
+ * @param opts How much history to read: how many entries, and the instant
+ *   to read back from.
  * @assistant group:org
  * @assistant unroutable: debt: the query string is assembled into the path from an optional options object; routable once before and limit are plain parameters.
  * @assistant unschematized: an audit entry's subject varies per event type and carries the changed record verbatim.
@@ -149,6 +158,7 @@ export async function orgAudit(
 
 /**
  * Shows how much each person and agent used this space over recent days.
+ * @param days How many days back to count, ending today.
  * @assistant group:org
  */
 export async function orgUsage(
@@ -164,6 +174,7 @@ export async function orgUsage(
 
 /**
  * Shows how much running time each agent used over recent days.
+ * @param days How many days back to count, ending today.
  * @assistant group:org
  */
 export async function computeUsage(

@@ -182,21 +182,6 @@ test("keeps the 'Session error' echo when no card surfaced (no silent failures)"
   );
 });
 
-test("tool_runtime_error also suppresses the trailing 'Session error' echo", () => {
-  const messages = feedItemsToMessages([
-    { feed_type: "user_message", data: "hi" },
-    {
-      feed_type: "tool_runtime_error",
-      data: { kind: "provider_process", details: "boom" },
-    },
-    {
-      feed_type: "system_message",
-      data: "Session error: claude hit a runtime error",
-    },
-  ]);
-  assert.ok(!messages.some((m) => m.content.startsWith("Session error:")));
-});
-
 test("a non-session-error system message is never suppressed", () => {
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "hi" },

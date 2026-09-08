@@ -2,6 +2,7 @@ import type { ClaudeBackendDeps } from "../backends/claude/backend";
 import { preloadClaudeSdk } from "../backends/claude/sdk-loader";
 import type { HarnessBackend } from "../backends/types";
 import { config } from "../config";
+import { fileToolGuardOptions } from "../session/coordinator-policy";
 import { SYSTEM_PROMPT } from "../session/resource-loader";
 import { turnCodeExecutionMode } from "../session/tool-selection";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
@@ -81,7 +82,15 @@ async function prepareTurnSession(
     toolSelection,
     codeSandbox,
     systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
-    sharedRoots: config.sharedSkillsDir ? [config.sharedSkillsDir] : [],
+    // The ROLE's file wall, the same policy the long-lived runtime builds
+    // (session-tools.ts): a coordinator turn is held to its memory document,
+    // so the shared skills mirror it must never rewrite is not a writable root
+    // for it on any provider.
+    fileGuard: fileToolGuardOptions({
+      role: config.assistantRole,
+      workspaceDir: directories.workspaceDir,
+      sharedSkillsDir: config.sharedSkillsDir,
+    }),
     claudeSdk: deps.claudeSdk,
     claudeSdkLoad: sdkLoad,
   });

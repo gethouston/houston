@@ -3,6 +3,7 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { getHistory } from "../../store/conversations";
 import { currentConversationId } from "../conversation-context";
+import { type SessionToolErrorDetails, toolErrorResult } from "./tool-error";
 
 /**
  * `houston_recall` — the personal assistant searching its OWN conversation.
@@ -45,7 +46,8 @@ export type HoustonRecallDetails =
       matched: number;
       returned: number;
       totalMessages: number;
-    };
+    }
+  | SessionToolErrorDetails;
 
 const RecallParams = Type.Object({
   query: Type.String({
@@ -107,9 +109,11 @@ export function makeHoustonRecallTool() {
     ): Promise<AgentToolResult<HoustonRecallDetails>> {
       const query = params.query.trim();
       if (!query) {
-        throw new Error(
-          "houston_recall needs something to search for - pass a distinctive word or name from what the user is referring to",
-        );
+        return toolErrorResult({
+          code: "empty_query",
+          message:
+            "houston_recall needs something to search for. Pass one distinctive word or name from what the user is referring to, such as a person, a place or a product.",
+        });
       }
       const conversationId = currentConversationId();
       if (!conversationId) {

@@ -52,12 +52,12 @@ export function buildSystemPrompt(
   const withGroup = group ? `${withContext}\n\n${group}` : withContext;
   // The personal assistant's saved MEMORY next, exactly where the pi backend
   // puts it (session/resource-loader.ts). Null for every other agent — the
-  // `.assistant` gate lives inside buildLearningsSection.
+  // coordinator-role gate lives inside buildLearningsSection.
   const learnings = buildLearningsSection(cwd);
   const withLearnings = learnings ? `${withGroup}\n\n${learnings}` : withGroup;
   // The assistant's OPERATING RULES immediately after its memory, same order as
-  // the pi backend. Null for every other agent (same `.assistant` gate).
-  const rules = buildAssistantRulesSection(cwd);
+  // the pi backend. Null for every other agent (the same role gate).
+  const rules = buildAssistantRulesSection();
   const withRules = rules ? `${withLearnings}\n\n${rules}` : withLearnings;
   // Skills index (HOU-894): the SAME <available_skills> section pi appends for
   // every other provider — name + description + the SKILL.md path to Read. The

@@ -7,6 +7,7 @@ import {
   makeAssistantCallTool,
 } from "./assistant-call";
 import { findCallableOperation } from "./assistant-callable";
+import { describeOperation } from "./assistant-describe";
 import {
   type AssistantOperationResult,
   assistantErrorResult,
@@ -137,7 +138,7 @@ export function makeAssistantDescribeTool(opts: AssistantToolOptions) {
     name: HOUSTON_DESCRIBE_TOOL_NAME,
     label: "How an operation works",
     description:
-      "Read one Houston operation's exact contract: every parameter, whether it is required, what shape it takes, and what it answers. Call it after houston_capabilities and before houston_call - never guess an operation's arguments.",
+      "Read one Houston operation's exact contract: every parameter, whether it is required, what shape it takes, where its accepted values come from, and what it answers. Call it after houston_capabilities and before houston_call - never guess an operation's arguments, and never invent an identifier it tells you to look up.",
     promptSnippet: "Read a Houston operation",
     parameters: DescribeParams,
     executionMode: "parallel",
@@ -152,21 +153,7 @@ export function makeAssistantDescribeTool(opts: AssistantToolOptions) {
           message: `There is no operation called "${params.operation}". Search for the right one with houston_capabilities.`,
         });
       }
-      const contract = JSON.stringify({
-        name: op.name,
-        group: op.group,
-        description: op.description,
-        confirm: op.confirm,
-        params: op.params,
-        returns: op.returns,
-      });
-      const guidance = op.confirm
-        ? " This operation is hard to undo, so Houston asks the user itself: call houston_call normally, and if it answers ERROR needs_confirmation, end your turn and wait for their decision on the card Houston shows them."
-        : "";
-      return assistantTextResult(
-        op.name,
-        `${contract}\n\nPass these to houston_call keyed by parameter name.${guidance}`,
-      );
+      return assistantTextResult(op.name, describeOperation(op));
     },
   });
 }

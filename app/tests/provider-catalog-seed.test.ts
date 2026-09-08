@@ -62,10 +62,14 @@ describe("override-only seed (before the pi catalog loads)", () => {
     strictEqual(anthropic?.defaultModel, "claude-sonnet-5");
   });
 
-  it("seeds the OpenAI card under the `openai` id (not pi's `openai-codex`)", () => {
+  it("seeds the OpenAI card under the `openai` id, reachable in either dialect", () => {
     strictEqual(getProvider("openai")?.name, "OpenAI");
     strictEqual(getProvider("openai")?.auth, "oauth");
-    strictEqual(getProvider("openai-codex"), undefined);
+    // The catalog is keyed by the DISPLAY id, but a lookup by pi's canonical
+    // id resolves to the same card: a config/activity/routine read carries
+    // `openai-codex`, and `undefined` there is what made those surfaces print
+    // the raw id and inherit another provider's default model.
+    strictEqual(getProvider("openai-codex")?.id, "openai");
   });
 
   it("includes the local OpenAI-compatible provider in the seed", () => {

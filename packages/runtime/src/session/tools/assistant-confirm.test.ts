@@ -1,26 +1,30 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AssistantCatalog } from "@houston/host/src/assistant/catalog";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { CONFIRMATION_TTL_MS, resolveConfirmationReply } from "../confirm-gate";
+import { afterEach, expect, test } from "vitest";
 import { runWithConversationId } from "../conversation-context";
 import {
   type InteractionHolder,
   newInteractionHolder,
   runWithInteractionCapture,
 } from "../interaction";
+import { runWithTurnMode } from "../turn-mode-context";
 import { makeAssistantCallTool } from "./assistant-call";
 import { httpSandboxFetch } from "./sandbox-fetch";
 
 /**
- * The confirmation gate — the ONE thing standing between a model that decided
- * to delete something and the delete actually happening.
+ * The confirmation gate as the RUNTIME sees it — the ONE thing standing between
+ * a model that decided to delete something and the delete happening.
  *
  * The incident these pin (Sep 2026): asked to "make Dobby blue", the model
  * called `houston_call({operation:"deleteAgent", confirmed:true})` and Houston
  * deleted the agent. `confirmed` was a tool PARAM the model set itself, so the
- * gate was a sentence in a prompt, not a gate. It is gone: approval now exists
- * only as a runtime record minted from the USER's answer to a real card, keyed
- * to one exact (operation, params) pair, single-use, and short-lived.
+ * gate was a sentence in a prompt, not a gate.
+ *
+ * What replaced it: the runtime holds no approval at all. It asks the HOST to
+ * raise a card (`POST /sandbox/assistant/pending`), shows exactly the wording
+ * the host authored, and repeats the host's `requestId` on the next call. The
+ * host matches that id against the receipt the USER's own reply minted, so a
+ * runtime that lied about every step of this still performs nothing.
  */
 
 const CTX = {} as ExtensionContext;
@@ -69,25 +73,46 @@ const catalog: AssistantCatalog = {
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
-  vi.useRealTimers();
-});
-beforeEach(() => {
-  // A distinct conversation per test would do, but pinning the clock is what
-  // makes the TTL assertions honest, and fake timers reset the shared store's
-  // relevance by moving every prior grant past its expiry.
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-09-07T10:00:00Z"));
 });
 
-/** Every host call this runtime makes, so "never forwarded" is provable. */
-function mockFetch(body: unknown = null) {
-  const calls: string[] = [];
-  globalThis.fetch = (async (input: RequestInfo | URL) => {
-    calls.push(String(input));
-    return new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { "content-type": "application/json" },
+interface HostCall {
+  url: string;
+  headers: Record<string, string>;
+  body: Record<string, unknown> | undefined;
+}
+
+/**
+ * A host that answers `/pending` with a fresh request id and `/call` with
+ * whatever `callReply` says. Every request is recorded, so "never forwarded"
+ * and "carried the id back" are both provable.
+ */
+function mockHost(
+  callReply: () => { status?: number; body?: unknown } = () => ({ body: null }),
+) {
+  const calls: HostCall[] = [];
+  let issued = 0;
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push({
+      url,
+      headers: (init?.headers ?? {}) as Record<string, string>,
+      body: init?.body
+        ? (JSON.parse(String(init.body)) as Record<string, unknown>)
+        : undefined,
     });
+    if (url.endsWith("/sandbox/assistant/pending")) {
+      issued += 1;
+      return Response.json({
+        requestId: `req-${issued}`,
+        summary:
+          'Delete an agent and everything in it. This affects id "Personal/Dobby".',
+      });
+    }
+    const reply = callReply();
+    return new Response(
+      reply.body === undefined ? null : JSON.stringify(reply.body),
+      { status: reply.status ?? 200 },
+    );
   }) as typeof fetch;
   return calls;
 }
@@ -104,21 +129,28 @@ interface CallResult {
 
 /** One `houston_call`, inside a turn of `conversationId`. */
 async function call(
-  conversationId: string,
+  conversationId: string | undefined,
   params: Record<string, unknown>,
+  mode?: "execute" | "plan" | "auto",
 ): Promise<{ result: CallResult; holder: InteractionHolder }> {
   const holder = newInteractionHolder();
-  const result = (await runWithConversationId(conversationId, () =>
-    runWithInteractionCapture(holder, () =>
-      tool.execute("call-1", params as never, undefined, undefined, CTX),
-    ),
-  )) as CallResult;
+  const run = () =>
+    runWithConversationId(conversationId, () =>
+      runWithInteractionCapture(holder, () =>
+        tool.execute("call-1", params as never, undefined, undefined, CTX),
+      ),
+    );
+  const result = (await (mode
+    ? runWithTurnMode({ current: mode }, run)
+    : run())) as CallResult;
   return { result, holder };
 }
 
 const text = (r: CallResult) => r.content.map((c) => c.text ?? "").join("");
 const code = (r: CallResult) =>
   (r.details as { error?: { code?: string } }).error?.code;
+const paths = (calls: HostCall[]) =>
+  calls.map((c) => c.url.replace("http://host", ""));
 
 /** The one question step the gate raised, as the app would render it. */
 function raisedQuestion(holder: InteractionHolder) {
@@ -128,19 +160,8 @@ function raisedQuestion(holder: InteractionHolder) {
   return step;
 }
 
-/** What the app POSTs back when the user clicks an option on that card. */
-function clickOption(
-  holder: InteractionHolder,
-  optionId: "approve" | "decline",
-): string {
-  const step = raisedQuestion(holder);
-  const option = step.options?.find((o) => o.id === optionId);
-  if (!option) throw new Error(`no ${optionId} option on the card`);
-  return `${step.question}: ${option.label}`;
-}
-
-test("the incident: a delete the model 'confirmed' itself never leaves the runtime", async () => {
-  const calls = mockFetch();
+test("the incident: a delete the model 'confirmed' itself is never performed", async () => {
+  const calls = mockHost();
   const { result, holder } = await call("conv-1", {
     operation: "deleteAgent",
     params: { id: "Personal/Dobby" },
@@ -149,28 +170,33 @@ test("the incident: a delete the model 'confirmed' itself never leaves the runti
     confirmed: true,
   });
 
-  expect(calls).toEqual([]);
+  // It asked for a card. It did NOT perform anything.
+  expect(paths(calls)).toEqual(["/sandbox/assistant/pending"]);
   expect(code(result)).toBe("needs_confirmation");
   expect(text(result)).toContain("ERROR needs_confirmation");
   expect(result.details).toMatchObject({
     ok: false,
     operation: "deleteAgent",
-    confirmation: { params: { id: "Personal/Dobby" } },
+    confirmation: { params: { id: "Personal/Dobby" }, requestId: "req-1" },
   });
-  // A real card, in the user's hands — not a sentence in the model's context.
   const step = raisedQuestion(holder);
   expect(step.question).toContain("Delete an agent and everything in it");
   expect(step.question).toContain("Personal/Dobby");
+  expect(step.requestId).toBe("req-1");
   expect(step.options?.map((o) => o.id)).toEqual(["approve", "decline"]);
 });
 
-test("the model cannot mint approval: `confirmed` is not an input it can set", () => {
+test("`confirmed` is not an input the model can set; `requestId` is the only extra", () => {
   const schema = tool.parameters as { properties?: Record<string, unknown> };
-  expect(Object.keys(schema.properties ?? {})).toEqual(["operation", "params"]);
+  expect(Object.keys(schema.properties ?? {})).toEqual([
+    "operation",
+    "params",
+    "requestId",
+  ]);
 });
 
 test("the tool result orders the model to end its turn and never work around the gate", async () => {
-  mockFetch();
+  mockHost();
   const { result } = await call("conv-1", {
     operation: "deleteAgent",
     params: { id: "Personal/Dobby" },
@@ -180,141 +206,124 @@ test("the tool result orders the model to end its turn and never work around the
   expect(message).toMatch(/do not retry/i);
   // The delete-then-recreate dodge, named so the model cannot invent it.
   expect(message).toMatch(/recreat/i);
+  expect(message).toContain("req-1");
 });
 
-test("the user's approval on the card lets the SAME call through exactly once", async () => {
-  const calls = mockFetch();
-  const first = await call("conv-2", {
+test("the pending ask names its conversation, so no other chat can answer it", async () => {
+  const calls = mockHost();
+  await call("conv-2", {
     operation: "deleteAgent",
     params: { id: "Personal/Dobby" },
   });
-  expect(calls).toEqual([]);
-
-  resolveConfirmationReply("conv-2", clickOption(first.holder, "approve"));
-
-  const second = await call("conv-2", {
+  expect(calls[0]?.headers["x-houston-conversation-id"]).toBe("conv-2");
+  expect(calls[0]?.body).toEqual({
     operation: "deleteAgent",
     params: { id: "Personal/Dobby" },
   });
-  expect(second.result.details).toEqual({ ok: true, operation: "deleteAgent" });
-  expect(calls).toEqual(["http://host/sandbox/assistant/call"]);
-
-  // Single use: the grant was consumed, so an identical repeat needs a new one.
-  const third = await call("conv-2", {
-    operation: "deleteAgent",
-    params: { id: "Personal/Dobby" },
-  });
-  expect(code(third.result)).toBe("needs_confirmation");
-  expect(calls).toHaveLength(1);
 });
 
-test("an approval is bound to the exact params: a different target is a new ask", async () => {
-  const calls = mockFetch();
-  const raised = await call("conv-3", {
+test("with a requestId the call goes through, carrying the id for the host to check", async () => {
+  const calls = mockHost(() => ({ body: null }));
+  const { result } = await call("conv-3", {
     operation: "deleteAgent",
     params: { id: "Personal/Dobby" },
+    requestId: "req-1",
   });
-  resolveConfirmationReply("conv-3", clickOption(raised.holder, "approve"));
-
-  const other = await call("conv-3", {
+  expect(result.details).toEqual({ ok: true, operation: "deleteAgent" });
+  expect(paths(calls)).toEqual(["/sandbox/assistant/call"]);
+  expect(calls[0]?.body).toEqual({
     operation: "deleteAgent",
-    params: { id: "Personal/Milo" },
+    params: { id: "Personal/Dobby" },
+    requestId: "req-1",
   });
-  expect(code(other.result)).toBe("needs_confirmation");
-  expect(calls).toEqual([]);
+  expect(calls[0]?.headers["x-houston-conversation-id"]).toBe("conv-3");
 });
 
-test("an approval is scoped to its conversation", async () => {
-  const calls = mockFetch();
-  const raised = await call("conv-4", {
+test("a requestId the host will not honour asks again instead of dead-ending", async () => {
+  const calls = mockHost(() => ({
+    status: 403,
+    body: { error: "not approved", code: "approval_required" },
+  }));
+  const { result, holder } = await call("conv-4", {
     operation: "deleteAgent",
     params: { id: "Personal/Dobby" },
+    requestId: "stale-or-invented",
   });
-  resolveConfirmationReply("conv-4", clickOption(raised.holder, "approve"));
-
-  const elsewhere = await call("conv-5", {
-    operation: "deleteAgent",
-    params: { id: "Personal/Dobby" },
-  });
-  expect(code(elsewhere.result)).toBe("needs_confirmation");
-  expect(calls).toEqual([]);
+  expect(code(result)).toBe("needs_confirmation");
+  expect(paths(calls)).toEqual([
+    "/sandbox/assistant/call",
+    "/sandbox/assistant/pending",
+  ]);
+  expect(raisedQuestion(holder).requestId).toBe("req-1");
 });
 
-test("an approval expires: past the TTL the call is refused again", async () => {
-  const calls = mockFetch();
-  const raised = await call("conv-6", {
+test("the host's denial is reported as declined, and nothing is retried", async () => {
+  mockHost(() => ({
+    status: 403,
+    body: { error: "the user said no", code: "approval_denied" },
+  }));
+  const { result, holder } = await call("conv-5", {
     operation: "deleteAgent",
     params: { id: "Personal/Dobby" },
+    requestId: "req-1",
   });
-  resolveConfirmationReply("conv-6", clickOption(raised.holder, "approve"));
-
-  vi.advanceTimersByTime(CONFIRMATION_TTL_MS + 1);
-
-  const late = await call("conv-6", {
-    operation: "deleteAgent",
-    params: { id: "Personal/Dobby" },
-  });
-  expect(code(late.result)).toBe("needs_confirmation");
-  expect(calls).toEqual([]);
+  expect(code(result)).toBe("confirmation_declined");
+  expect(text(result)).toMatch(/said no/i);
+  expect(holder.pending).toBeUndefined();
 });
 
-test("a denial is reported as declined on the retry, and executes nothing", async () => {
-  const calls = mockFetch();
-  const raised = await call("conv-7", {
+test("outside a conversation there is nowhere to ask, so it refuses and asks nothing", async () => {
+  const calls = mockHost();
+  const { result } = await call(undefined, {
     operation: "deleteAgent",
-    params: { id: "Personal/Dobby" },
+    params: { id: "x" },
   });
-  resolveConfirmationReply("conv-7", clickOption(raised.holder, "decline"));
-
-  const retry = await call("conv-7", {
-    operation: "deleteAgent",
-    params: { id: "Personal/Dobby" },
-  });
-  expect(code(retry.result)).toBe("confirmation_declined");
-  expect(text(retry.result)).toMatch(/said no|declined/i);
-  expect(calls).toEqual([]);
-});
-
-test("a reply that answers something else grants nothing", async () => {
-  const calls = mockFetch();
-  const raised = await call("conv-8", {
-    operation: "deleteAgent",
-    params: { id: "Personal/Dobby" },
-  });
-  resolveConfirmationReply("conv-8", "actually, make Dobby blue");
-  expect(raised.result).toBeDefined();
-
-  const retry = await call("conv-8", {
-    operation: "deleteAgent",
-    params: { id: "Personal/Dobby" },
-  });
-  expect(code(retry.result)).toBe("needs_confirmation");
-  expect(calls).toEqual([]);
-});
-
-test("outside a conversation there is nowhere to record approval, so it refuses", async () => {
-  const calls = mockFetch();
-  const holder = newInteractionHolder();
-  const result = (await runWithInteractionCapture(holder, () =>
-    tool.execute(
-      "call-1",
-      { operation: "deleteAgent", params: { id: "x" } } as never,
-      undefined,
-      undefined,
-      CTX,
-    ),
-  )) as CallResult;
   expect(code(result)).toBe("needs_confirmation");
   expect(calls).toEqual([]);
 });
 
+test("a host that cannot raise the card performs nothing and says so", async () => {
+  globalThis.fetch = (async () =>
+    new Response("nope", { status: 500 })) as typeof fetch;
+  const { result, holder } = await call("conv-6", {
+    operation: "deleteAgent",
+    params: { id: "Personal/Dobby" },
+  });
+  expect(code(result)).toBe("gateway_error");
+  expect(holder.pending).toBeUndefined();
+});
+
 test("a non-confirm operation is untouched by the gate", async () => {
-  const calls = mockFetch([]);
-  const { result, holder } = await call("conv-9", {
+  const calls = mockHost(() => ({ body: [] }));
+  const { result, holder } = await call("conv-7", {
     operation: "listAgents",
     params: {},
   });
   expect(result.details).toEqual({ ok: true, operation: "listAgents" });
-  expect(calls).toHaveLength(1);
+  expect(paths(calls)).toEqual(["/sandbox/assistant/call"]);
   expect(holder.pending).toBeUndefined();
+});
+
+/**
+ * A6: the Mode pill can move to Plan WHILE the turn runs. The session's toolset
+ * is already built, so the live mode is what has to stop the next mutation.
+ */
+test("switching to Plan mode mid-turn stops the next mutation, reads still run", async () => {
+  const calls = mockHost(() => ({ body: [] }));
+  const blocked = await call(
+    "conv-8",
+    { operation: "deleteAgent", params: { id: "Personal/Dobby" } },
+    "plan",
+  );
+  expect(code(blocked.result)).toBe("operation_not_supported");
+  expect(text(blocked.result)).toMatch(/plan mode/i);
+  expect(calls).toEqual([]);
+
+  const read = await call(
+    "conv-8",
+    { operation: "listAgents", params: {} },
+    "plan",
+  );
+  expect(read.result.details).toEqual({ ok: true, operation: "listAgents" });
+  expect(paths(calls)).toEqual(["/sandbox/assistant/call"]);
 });

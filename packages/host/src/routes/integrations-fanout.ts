@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import { curatedCanonicalScope } from "../integrations/custom/curated";
 import { CUSTOM_ACTION_PREFIX } from "../integrations/custom/provider";
 import type { ActingContext } from "../integrations/provider";
@@ -12,7 +13,7 @@ import {
 export function providerForAction(
   registry: IntegrationRegistry,
   action: string,
-): string {
+): IntegrationProviderId {
   const ids = registry.ids();
   if (action.startsWith(CUSTOM_ACTION_PREFIX) && ids.includes("custom")) {
     return "custom";
@@ -27,7 +28,7 @@ export interface IntegrationSearchInput {
   query: string;
   acting?: ActingContext;
   app?: string;
-  provider?: string;
+  provider?: IntegrationProviderId;
   fatalFailure?: (error: unknown) => boolean;
 }
 
@@ -139,7 +140,7 @@ export interface IntegrationExecuteInput {
   params: Record<string, unknown>;
   acting?: ActingContext;
   account?: string;
-  provider?: string;
+  provider?: IntegrationProviderId;
 }
 
 /** Execute an action once through its selected provider. */

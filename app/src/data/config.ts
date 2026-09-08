@@ -5,8 +5,11 @@ import { readAgentJson, writeAgentJson } from "./agent-file";
 
 export interface Config {
   name?: string;
-  // A pi provider id (`anthropic`, `openai-codex`, `opencode`, …). Open string:
-  // the catalog is ~35 providers and drifts (see protocol `ProviderId`).
+  // pi's CANONICAL provider id (`anthropic`, `openai-codex`, `opencode`, …),
+  // never Houston's display id (`openai`): every writer canonicalizes through
+  // `toCanonicalProviderId` and every reader maps back with
+  // `toDisplayProviderIdOrNull`. Open string, because the catalog is ~35
+  // providers and drifts (see protocol `ProviderId`).
   provider?: string;
   model?: string;
   // The active vocabulary is `low|medium|high|xhigh`; a legacy `"max"` may still

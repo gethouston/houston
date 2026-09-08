@@ -1,6 +1,5 @@
 import { expect, test } from "vitest";
 import {
-  assistantRuntimeEnv,
   formatAssistantModeLog,
   resolveAssistantGateway,
 } from "./assistant-wiring";
@@ -8,10 +7,10 @@ import {
 /**
  * The ONE decision about where Houston operations are performed. What these
  * pin: a gateway-fronted pod uses the pair the gateway stamped, an unfronted
- * host performs its own operations with nothing to configure, a host that is
- * neither says so, and whatever is resolved is exactly what a spawned runtime
- * sees — the host and the runtime can never disagree about whether the
- * assistant tool family is on.
+ * host performs its own operations with nothing to configure, and a host that
+ * is neither says so. What is resolved here stays with the HOST's dispatcher:
+ * the runtimes it spawns are told a role, never this credential
+ * (launcher/assistant-role.ts).
  */
 
 const SELF = { url: "http://127.0.0.1:4318", token: "boot-token" };
@@ -65,14 +64,4 @@ test("the boot line names the gateway, this host, or the missing env", () => {
   expect(
     formatAssistantModeLog({ env: { HOUSTON_ASSISTANT_CP_URL: "https://g" } }),
   ).toContain("HOUSTON_ASSISTANT_TOKEN");
-});
-
-test("a spawned runtime carries exactly the resolved pair, or neither variable", () => {
-  expect(
-    assistantRuntimeEnv(resolveAssistantGateway({ env: {}, self: SELF })),
-  ).toEqual({
-    HOUSTON_ASSISTANT_CP_URL: "http://127.0.0.1:4318",
-    HOUSTON_ASSISTANT_TOKEN: "boot-token",
-  });
-  expect(assistantRuntimeEnv(null)).toEqual({});
 });

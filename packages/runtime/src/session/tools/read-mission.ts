@@ -1,15 +1,17 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import { config } from "../../config";
-import { getHistory } from "../../store/conversations";
 import {
-  agentQuery,
   type ReadMissionParams,
   readMissionParams,
-  targetAgent,
+  resolveTargetAgent,
 } from "./mission-params";
+import {
+  type MissionTranscript,
+  ownTranscript,
+  targetTranscript,
+} from "./mission-transcript";
 import type { SandboxFetch } from "./sandbox-fetch";
+import { type SessionToolErrorDetails, toolErrorResult } from "./tool-error";
 
 /**
  * Read another mission's recent conversation (PRODUCT-1244) — the review half
@@ -33,87 +35,10 @@ export interface ReadMissionToolOptions {
   personalAssistant: boolean;
 }
 
-/** One mission's messages, from either source, in the shape the tool renders. */
-interface MissionTranscript {
-  title: string;
-  messages: { role: string; content: string }[];
-  totalMessages: number;
-}
-
-/** The mission's conversation id: `activity-<id>` by convention, with the
- *  explicit `session_key` from activity.json as the fallback for missions
- *  whose chat was keyed differently (legacy imports). Best-effort file read —
- *  the convention covers every mission this feature starts. */
-function conversationIdsFor(missionId: string): string[] {
-  const ids = [`activity-${missionId}`];
-  try {
-    const raw = readFileSync(
-      join(config.workspaceDir, ".houston", "activity", "activity.json"),
-      "utf8",
-    );
-    const items = JSON.parse(raw) as unknown;
-    if (Array.isArray(items)) {
-      const match = items.find(
-        (a) =>
-          typeof a === "object" &&
-          a !== null &&
-          (a as { id?: unknown }).id === missionId,
-      ) as { session_key?: unknown; claude_session_id?: unknown } | undefined;
-      for (const key of [match?.session_key, match?.claude_session_id]) {
-        if (typeof key === "string" && key && !ids.includes(key)) ids.push(key);
-      }
-    }
-  } catch {
-    // No readable activity.json — the convention id above still covers the
-    // normal case; a genuinely unknown mission errors below with guidance.
-  }
-  return ids;
-}
-
-/** This runtime's own transcript for the mission, or null. */
-function ownTranscript(
-  missionId: string,
-  limit: number,
-): MissionTranscript | null {
-  for (const cid of conversationIdsFor(missionId)) {
-    const history = getHistory(cid, { limit });
-    if (history) {
-      return {
-        title: history.title,
-        messages: history.messages.map((m) => ({
-          role: m.role,
-          content: m.content ?? "",
-        })),
-        totalMessages: history.totalMessages ?? history.messages.length,
-      };
-    }
-  }
-  return null;
-}
-
-/** Another agent's transcript, served by the host from its file store. */
-async function targetTranscript(
-  opts: ReadMissionToolOptions,
-  agent: string,
-  missionId: string,
-  limit: number,
-  signal: AbortSignal | undefined,
-): Promise<MissionTranscript> {
-  const query = `${agentQuery(agent)}&id=${encodeURIComponent(missionId)}&limit=${limit}`;
-  const res = await opts.call(`/sandbox/missions/read${query}`, {
-    method: "GET",
-    signal,
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    // The host's bodies are agent-actionable plain language (unknown agent, no
-    // conversation yet) — relay them so the agent corrects itself.
-    throw new Error(
-      `read_mission failed (${res.status}): ${detail.slice(0, 300)}`,
-    );
-  }
-  return (await res.json()) as MissionTranscript;
-}
+/** What one read did: the mission it read, or the named reason it could not. */
+export type ReadMissionDetails =
+  | { ok: true; id: string; totalMessages: number; agent?: string }
+  | SessionToolErrorDetails;
 
 /** The bounded, chronological render of a transcript. */
 function render(transcript: MissionTranscript): string {
@@ -154,23 +79,47 @@ export function makeReadMissionTool(opts: ReadMissionToolOptions) {
     promptSnippet: "Read another mission's conversation",
     parameters: readMissionParams(assistant, DEFAULT_TAIL),
     executionMode: "sequential",
-    async execute(_id, params: ReadMissionParams, signal) {
-      const agent = targetAgent(params.agent, assistant);
+    async execute(
+      _id,
+      params: ReadMissionParams,
+      signal,
+    ): Promise<AgentToolResult<ReadMissionDetails>> {
+      const target = await resolveTargetAgent(
+        params.agent,
+        assistant,
+        opts.call,
+        signal,
+      );
+      if (!target.ok) return toolErrorResult(target.error);
+      const agent = target.agent;
       const limit = Math.min(
         Math.max(Math.floor(params.limit ?? DEFAULT_TAIL), 1),
         100,
       );
-      const transcript = agent
-        ? await targetTranscript(opts, agent, params.id, limit, signal)
-        : ownTranscript(params.id, limit);
-      if (!transcript) {
-        throw new Error(
-          "no conversation found for that mission id - check list_missions; a just-started mission may not have begun yet",
+      let transcript: MissionTranscript | null;
+      if (agent) {
+        const read = await targetTranscript(
+          opts.call,
+          agent,
+          params.id,
+          limit,
+          signal,
         );
+        if (!read.ok) return toolErrorResult(read.error);
+        transcript = read.transcript;
+      } else {
+        transcript = ownTranscript(params.id, limit);
+      }
+      if (!transcript) {
+        return toolErrorResult({
+          code: "mission_not_found",
+          message: `No conversation was found for the mission id ${JSON.stringify(params.id)}. Check list_missions for the ids that exist; a mission that has only just started may not have begun talking yet.`,
+        });
       }
       return {
         content: [{ type: "text" as const, text: render(transcript) }],
         details: {
+          ok: true,
           id: params.id,
           totalMessages: transcript.totalMessages,
           ...(agent ? { agent } : {}),

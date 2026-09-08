@@ -5,15 +5,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import type { AssistantCatalog } from "../assistant/catalog";
-import { loadAssistantCatalog } from "../assistant/catalog";
-import { DEFAULT_ASSISTANT_CATALOG_PATH } from "../assistant/catalog-source";
+import { processAssistantCatalog } from "../assistant/catalog-source";
 import type { RuntimeSpawner } from "../launcher/process";
 import { buildLocalHost } from "../local/host";
+import { CLOUD_ONLY_PROBES } from "./assistant-parity-cloud-probes";
+import { LOCAL_PROBES } from "./assistant-parity-local-probes";
 import {
-  CLOUD_ONLY_PROBES,
-  LOCAL_PROBES,
   PROBE_AGENT,
   PROBE_WORKSPACE,
+  WRITE_DRIVEN_OPERATIONS,
 } from "./assistant-parity-probes";
 import { buildBody, buildPath, buildQuery } from "./assistant-request-parts";
 
@@ -61,8 +61,8 @@ const sentinelSpawner: RuntimeSpawner = {
   },
 };
 
-const loaded = loadAssistantCatalog(DEFAULT_ASSISTANT_CATALOG_PATH);
-if (!loaded) throw new Error("the generated assistant catalog must load");
+const loaded = processAssistantCatalog();
+if (!loaded) throw new Error("the embedded assistant catalog must load");
 const catalog: AssistantCatalog = loaded;
 
 /**
@@ -132,6 +132,52 @@ async function call(operation: string, params: Record<string, unknown>) {
   return { path: built.path, status: res.status, body: await res.text() };
 }
 
+/**
+ * The claim this whole file rests on: EVERY routable operation's address is
+ * exercised. Without this the tables could cover a quarter of the catalog and
+ * still pass, which is exactly how an operation ships unexercised — the suite
+ * would report a clean run over the operations somebody remembered.
+ *
+ * Hidden operations may be probed too, and several are: whether the assistant
+ * is allowed to call one is a policy question, and re-tagging an operation
+ * `hidden` must not quietly retire the guard that its address still resolves.
+ * What is REQUIRED is the visible set, because those are the ones the agent
+ * can actually dispatch.
+ */
+describe("the probe tables cover the catalog", () => {
+  const routable = catalog.operations.filter((op) => op.route !== null);
+  const covered = [
+    ...LOCAL_PROBES.map((probe) => probe.operation),
+    ...CLOUD_ONLY_PROBES.map((probe) => probe.operation),
+    ...WRITE_DRIVEN_OPERATIONS,
+  ];
+
+  test("every visible routable operation is probed", () => {
+    const seen = new Set(covered);
+    const unprobed = routable
+      .filter((op) => !op.hidden && !seen.has(op.name))
+      .map((op) => op.name);
+    // Add each name to LOCAL_PROBES if this host serves it, to
+    // CLOUD_ONLY_PROBES with the reason it does not, or to
+    // WRITE_DRIVEN_OPERATIONS if the write suite drives it by its effect.
+    expect(unprobed).toEqual([]);
+  });
+
+  test("no probe names an operation this catalog cannot dispatch", () => {
+    const dispatchable = new Set(routable.map((op) => op.name));
+    // A probe left behind after an operation was renamed or lost its route
+    // asserts nothing, and reads as coverage that is not there.
+    expect(covered.filter((name) => !dispatchable.has(name))).toEqual([]);
+  });
+
+  test("an operation is covered in exactly one place", () => {
+    const duplicated = covered.filter(
+      (name, index) => covered.indexOf(name) !== index,
+    );
+    expect(duplicated).toEqual([]);
+  });
+});
+
 describe("catalog operations address the local host's real routes", () => {
   test.each(
     LOCAL_PROBES.map((probe) => [probe.operation, probe] as const),
@@ -143,6 +189,15 @@ describe("catalog operations address the local host's real routes", () => {
     );
     expect(res.body).not.toContain(SENTINEL_BODY);
     expect(res.status).not.toBe(SENTINEL_STATUS);
+    if (probe.serviceState) {
+      // A handler that answers for itself with "this deployment cannot do
+      // that". The route resolved; the capability behind it is simply not
+      // wired in a host seeded with nothing.
+      expect(res.status, probe.serviceState.reason).toBe(
+        probe.serviceState.status,
+      );
+      return;
+    }
     // 5xx means the address landed nowhere serviceable (a proxy attempt, a
     // crash); a real handler answers 2xx or a 4xx it authored itself.
     expect(res.status).toBeLessThan(500);

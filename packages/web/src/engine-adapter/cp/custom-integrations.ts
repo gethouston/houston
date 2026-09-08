@@ -36,6 +36,7 @@ export async function customIntegrations(
 
 /**
  * Removes an outside app the user added themselves.
+ * @param slug The custom integration's exact slug, from customIntegrations.
  * @assistant group:integrations confirm
  */
 export async function removeCustomIntegration(
@@ -51,7 +52,13 @@ export async function removeCustomIntegration(
 
 /**
  * Saves the secret that finishes setting up an app the user added themselves.
- * @assistant group:integrations hidden: takes a secret; the user pastes the integration's own credential.
+ *
+ * Confirmed: outward. It hands a secret to a third-party service Houston then
+ * acts against on the user's behalf.
+ * @param slug The custom integration's exact slug, from customIntegrations.
+ * @param values The credential fields the integration asked for, keyed by
+ *   field name.
+ * @assistant group:integrations confirm hidden: takes a secret; the user pastes the integration's own credential.
  */
 export async function submitCustomIntegrationCredential(
   cfg: ControlPlaneConfig,
@@ -68,6 +75,7 @@ export async function submitCustomIntegrationCredential(
 
 /**
  * Starts the browser sign-in for an app the user added themselves.
+ * @param slug The custom integration's exact slug, from customIntegrations.
  * @assistant group:integrations hidden: starts a browser sign-in only the user can finish.
  */
 export async function startCustomIntegrationOAuth(
@@ -84,7 +92,11 @@ export async function startCustomIntegrationOAuth(
 
 /**
  * Checks what kind of service a link the user pasted points to.
- * @assistant group:integrations
+ *
+ * Confirmed: outward. Houston fetches whatever URL it is handed, so a
+ * model-supplied address makes Houston's own network reach a stranger's host.
+ * @param url The full https address of the service's API description.
+ * @assistant group:integrations confirm
  */
 export async function detectCustomIntegration(
   cfg: ControlPlaneConfig,
@@ -99,6 +111,8 @@ export async function detectCustomIntegration(
 
 /**
  * Adds an outside app of the user's own from a link.
+ * @param input The connector to add: where its API description lives and
+ *   how it authenticates.
  * @assistant group:integrations confirm
  * @assistant unschematized: the input's headers is an open record of header name to value.
  */
@@ -120,6 +134,7 @@ export async function addCustomIntegration(
  * A bare 404 = the host predates the route → null, mirroring
  * `customIntegrations`; a `{code:"not_found"}` 404 is an UNKNOWN SLUG (the
  * definition was removed concurrently) and rethrows as a real failure.
+ * @param slug The custom integration's exact slug, from customIntegrations.
  * @assistant group:integrations
  */
 export async function customIntegrationTools(

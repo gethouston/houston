@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterAll, expect, test } from "vitest";
-import { poolBashEnv } from "../session/tools/pool-bash";
+import { scrubbedBashEnv } from "../session/tools/scrubbed-bash";
 import type { TurnRunner } from "./turn-session";
 
 const scratch = mkdtempSync(join(tmpdir(), "houston-pool-leaks-"));
@@ -117,13 +117,28 @@ writeFileSync(
 
 const runtime = createTurnServer({ store, token: "", concurrency: 1 });
 const runtimeUrl = await listen(runtime);
+/**
+ * The `houston-turn-*` roots that already existed when this file loaded.
+ *
+ * Turn roots are minted under the shared $TMPDIR with a fixed prefix, and an
+ * ABORTED run leaves one behind holding the same seeded secret. Without this
+ * snapshot the scan below adopts that corpse as "this turn's root" and then
+ * asserts it was cleaned up — so one interrupted run poisons every later run on
+ * the machine until someone empties $TMPDIR. Only roots that appear after this
+ * line belong to this run.
+ */
+const preexistingRoots = new Set(
+  readdirSync(tmpdir()).filter((name) => name.startsWith("houston-turn-")),
+);
+
 async function observeRoot(
   secret: string,
   workspaceRel = "workspace",
 ): Promise<string> {
   for (let attempt = 0; attempt < 100; attempt += 1) {
     for (const name of readdirSync(tmpdir())) {
-      if (!name.startsWith("houston-turn-")) continue;
+      if (!name.startsWith("houston-turn-") || preexistingRoots.has(name))
+        continue;
       const root = join(tmpdir(), name);
       try {
         if (
@@ -248,7 +263,7 @@ test("a granted turn keeps every operational secret out of pi, tools, bash, and 
     worker: "worker-secret-never-persist",
     storeUrl: "https://store.internal.test",
   };
-  const childEnv = poolBashEnv({
+  const childEnv = scrubbedBashEnv({
     PATH: process.env.PATH,
     HOUSTON_POOL_WORKER_TOKEN: secrets.worker,
     HOUSTON_POOL_STORE_URL: secrets.storeUrl,

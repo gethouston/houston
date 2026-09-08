@@ -202,12 +202,18 @@ describe("buildToolSelection", () => {
 });
 
 /**
- * The assistant family is gated on more than reachability: the deployment has
- * to have opted in AND a catalog has to have loaded, so `buildToolSelection`
- * takes the DECISION as one flag rather than re-deriving it here.
+ * The assistant family is gated on more than reachability: a catalog has to
+ * have loaded (so `buildToolSelection` takes that DECISION as one flag rather
+ * than re-deriving it) AND this runtime has to BE the coordinator. The catalog
+ * reaches the user's whole account, so an ordinary agent — a third-party Agent
+ * Store install included — never gets it, whatever else is in its environment.
  */
 describe("assistant family gating", () => {
-  const base = { codeExecution: "disabled", integrations: false } as const;
+  const base = {
+    codeExecution: "disabled",
+    integrations: false,
+    personalAssistant: true,
+  } as const;
 
   test("absent by default — a normal agent performs no account operations", () => {
     const off = buildToolSelection(base);
@@ -219,12 +225,30 @@ describe("assistant family gating", () => {
     );
   });
 
+  test("an ordinary agent never gets the family, catalog loaded or not", () => {
+    for (const personalAssistant of [false, undefined]) {
+      const agent = buildToolSelection({
+        codeExecution: "local",
+        integrations: true,
+        assistant: true,
+        ...(personalAssistant === undefined ? {} : { personalAssistant }),
+      });
+      for (const name of ASSISTANT_TOOL_NAMES) {
+        expect(agent.toolNames).not.toContain(name);
+      }
+      // ...while everything an agent is supposed to have is untouched.
+      expect(agent.toolNames).toContain("bash");
+      expect(agent.toolNames).toContain("integration_execute");
+    }
+  });
+
   test("the flag adds exactly the tools of the family, and nothing else", () => {
     const on = buildToolSelection({ ...base, assistant: true });
     expect(on.toolNames).toEqual([
-      ...CLAMPED_FILE_TOOL_NAMES,
+      "read",
+      "write",
       "ask_user",
-      "suggest_reusable",
+      SUGGEST_REUSABLE_TOOL_NAME,
       SUGGEST_ACTIONS_TOOL_NAME,
       ...ASSISTANT_TOOL_NAMES,
     ]);
@@ -544,6 +568,7 @@ describe("the personal assistant's tool set", () => {
       assistant: true,
     });
     expect(normal.toolNames).toContain("bash");
+    expect(normal.toolNames).toContain("find_skills");
     expect(normal.toolNames).toEqual(
       buildToolSelection({
         codeExecution: "local",

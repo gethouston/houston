@@ -3,29 +3,35 @@ import type { AssistantCatalog } from "@houston/host/src/assistant/catalog";
 import { findVisibleOperation } from "@houston/host/src/assistant/catalog";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
+import { currentConversationId } from "../conversation-context";
+import { currentTurnMode } from "../turn-mode-context";
+import { approvalCode, errorFromResponse } from "./assistant-call-errors";
 import { isCallableOperation } from "./assistant-callable";
-import { guardConfirmation } from "./assistant-confirm";
+import { declinedMessage, requestConfirmation } from "./assistant-confirm";
 import { checkCallParams } from "./assistant-params";
 import {
-  type AssistantError,
   type AssistantOperationResult,
   assistantErrorResult,
   assistantOkResult,
 } from "./assistant-result";
 import type { SandboxFetch } from "./sandbox-fetch";
+import { CONVERSATION_ID_HEADER } from "./save-learning";
 
 /**
  * `houston_call` — the one tool that PERFORMS a catalogued Houston operation.
  *
- * It holds no credential: it carries only the per-sandbox HMAC token to the
- * host's `/sandbox/assistant/call`, and the host is what knows the gateway URL,
- * the gateway token, and which operations it will actually route. Validation is
+ * It holds no credential and it holds no approval: it carries only the
+ * per-sandbox HMAC token to the host's `/sandbox/assistant/call`, and the host
+ * is what knows the gateway URL, the gateway token, which operations it will
+ * actually route, and whether the USER approved this exact call. Validation is
  * duplicated on purpose — here so the model gets a correctable answer, there so
- * a sandbox token alone can never reach an unrouted operation.
+ * a sandbox token alone can never reach an unrouted or unapproved operation.
  *
- * `confirm: true` operations go through `assistant-confirm.ts` first. There is
- * deliberately NO "confirmed" input: an approval the model could assert is not
- * an approval, and this tool once deleted an agent because it asserted one.
+ * `confirm: true` operations go through `assistant-confirm.ts` first, which asks
+ * the HOST to raise the card and hands back the `requestId` the model presents
+ * on its next call. There is deliberately NO "confirmed" input: an approval the
+ * model could assert is not an approval, and a `requestId` is worthless until
+ * the user's own reply turns it into a receipt in the host.
  */
 
 export const HOUSTON_CALL_TOOL_NAME = "houston_call";
@@ -42,6 +48,12 @@ const CallParams = Type.Object({
     description:
       "The operation's arguments, keyed by parameter name exactly as houston_describe lists them. Pass {} when it takes none.",
   }),
+  requestId: Type.Optional(
+    Type.String({
+      description:
+        "Only for an operation Houston already asked the user to approve: the requestId from that answer, repeated verbatim with the identical operation and params. Never invent one, and never send one you were not given - it authorizes nothing by itself.",
+    }),
+  ),
 });
 type CallParams = Static<typeof CallParams>;
 
@@ -51,42 +63,12 @@ export interface AssistantToolOptions {
   call: SandboxFetch;
 }
 
-/** Read the host's error body, preferring its named `code` over the status. */
-async function errorFromResponse(res: Response): Promise<AssistantError> {
-  const text = await res.text().catch(() => "");
-  let code: string | undefined;
-  let message: string | undefined;
-  try {
-    const body: unknown = JSON.parse(text);
-    if (typeof body === "object" && body !== null) {
-      const fields = body as { code?: unknown; error?: unknown };
-      if (typeof fields.code === "string") code = fields.code;
-      if (typeof fields.error === "string") message = fields.error;
-    }
-  } catch {
-    // A non-JSON body (a proxy's HTML error page) still carries the status.
-  }
-  const detail = message ?? text.slice(0, 300);
-  if (code === "operation_not_supported") {
-    return {
-      code: "operation_not_supported",
-      status: res.status,
-      message: `This Houston install cannot perform that operation yet. Tell the user plainly and offer what you can do instead. (${detail})`,
-    };
-  }
-  return {
-    code: "gateway_error",
-    status: res.status,
-    message: `The operation was refused (HTTP ${res.status})${detail ? `: ${detail}` : ""}.`,
-  };
-}
-
 export function makeAssistantCallTool(opts: AssistantToolOptions) {
   return defineTool({
     name: HOUSTON_CALL_TOOL_NAME,
     label: "Do it in Houston",
     description:
-      "Perform one Houston operation on the user's behalf - the same action they would take in the app themselves. Look the operation up with houston_capabilities, read its parameters with houston_describe, then call it here with the exact name and named arguments. Operations flagged confirm change or delete something the user cannot easily get back: call this normally and Houston itself will show the user an approval card for that exact action - you do not approve anything, and there is no argument that says you did. When the answer is ERROR needs_confirmation, END YOUR TURN and wait; after they approve, repeat the identical call. Failures come back as ERROR with a named code instead of an exception - read it, fix the call if it was yours to fix, and otherwise explain the problem to the user without mentioning operations, parameters, or HTTP.",
+      "Perform one Houston operation on the user's behalf - the same action they would take in the app themselves. Look the operation up with houston_capabilities, read its parameters with houston_describe, then call it here with the exact name and named arguments. Operations flagged confirm change or delete something the user cannot easily get back: call this normally and Houston itself will show the user an approval card for that exact action - you do not approve anything. When the answer is ERROR needs_confirmation, END YOUR TURN and wait; after they approve, repeat the identical call adding the requestId you were given. Failures come back as ERROR with a named code instead of an exception - read it, fix the call if it was yours to fix, and otherwise explain the problem to the user without mentioning operations, parameters, or HTTP.",
     promptSnippet: "Perform a Houston operation",
     parameters: CallParams,
     executionMode: "sequential",
@@ -114,18 +96,28 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
       }
       const checked = checkCallParams(op, params.params);
       if (!checked.ok) return assistantErrorResult(name, checked.error);
+      // The user may switch this conversation to Plan mode WHILE the turn runs
+      // (Claude Code's shift+tab). The session's toolset is already built, so
+      // the LIVE mode is read here, at the moment the call would change
+      // something — a read stays allowed, everything else stops.
+      const planned = refusedInPlanMode(op.route?.method ?? "GET", name);
+      if (planned) return planned;
       // The confirmation gate. It runs on the CHECKED params, so the approval
-      // the user gave is bound to the bytes that would actually be sent.
-      const refusal = guardConfirmation(op, checked.params);
-      if (refusal) return refusal;
+      // the user is asked for is bound to the bytes that would actually be sent.
+      if (op.confirm && !params.requestId)
+        return requestConfirmation(op, checked.params, opts.call, signal);
 
       const acting = currentActingContext();
+      const conversationId = currentConversationId();
       let res: Response;
       try {
         res = await opts.call(CALL_PATH, {
           method: "POST",
           headers: {
             "content-type": "application/json",
+            ...(conversationId
+              ? { [CONVERSATION_ID_HEADER]: conversationId }
+              : {}),
             ...(acting?.actingAs
               ? { "x-houston-acting-as": acting.actingAs }
               : {}),
@@ -133,7 +125,11 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
               ? { "x-houston-acting-user": acting.actingUser }
               : {}),
           },
-          body: JSON.stringify({ operation: name, params: checked.params }),
+          body: JSON.stringify({
+            operation: name,
+            params: checked.params,
+            ...(params.requestId ? { requestId: params.requestId } : {}),
+          }),
           signal,
         });
       } catch (err) {
@@ -143,6 +139,17 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
         });
       }
       if (!res.ok) {
+        const approval = await approvalCode(res.clone());
+        if (approval === "approval_denied")
+          return assistantErrorResult(name, {
+            code: "confirmation_declined",
+            message: declinedMessage(name),
+          });
+        // The receipt is missing, spent, expired, or was minted for different
+        // arguments. Ask again rather than dead-end: the host raises a fresh
+        // card and the model waits, exactly as on a first ask.
+        if (approval === "approval_required")
+          return requestConfirmation(op, checked.params, opts.call, signal);
         return assistantErrorResult(name, await errorFromResponse(res));
       }
       try {
@@ -156,5 +163,22 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
         });
       }
     },
+  });
+}
+
+/**
+ * The live Plan-mode gate. Reads the mode at call time (see
+ * `live-mode-gate.ts`), so a switch made while the agent works stops the very
+ * next mutation. Reported as a RESULT, not a throw, because that is this tool's
+ * whole contract: the model must be able to tell a refusal from a crash.
+ */
+function refusedInPlanMode(
+  method: string,
+  name: string,
+): AssistantOperationResult | undefined {
+  if (method === "GET" || currentTurnMode() !== "plan") return undefined;
+  return assistantErrorResult(name, {
+    code: "operation_not_supported",
+    message: `The user just switched this conversation to Plan mode, so you can no longer change anything in Houston. ${name} was NOT performed. Stop acting now: summarize what you already did, then lay out the remaining work as a clear step-by-step plan in plain language for the user to approve, and end your turn.`,
   });
 }

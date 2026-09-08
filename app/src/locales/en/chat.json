@@ -123,10 +123,8 @@
     "missionRowFailed": "We could not save this task to your board. Your message was still sent.",
     "interactionDismissFailed": "Couldn't dismiss the request."
   },
-  "toolRuntimeError": {
-    "retryPrompt": "Try again."
-  },
   "providerError": {
+    "retryPrompt": "Try again.",
     "reconnectedContinue": "I'm signed in again. Please continue where you left off. If my last message hasn't been answered yet, answer it now."
   },
   "attachmentIssues": {

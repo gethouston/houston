@@ -1,14 +1,17 @@
 import type { ChatMessage } from "@houston/runtime-client";
+import { config } from "../config";
 import {
   appendAssistantMessage,
   appendUserMessage,
 } from "../store/conversations";
-import { isTurnRunning, publish } from "./bus";
+import { publish } from "./bus";
 import { disposeConversation } from "./chat";
 import { conversations, getConversation } from "./conversation-cache";
 import type { ConversationCommand } from "./conversation-command";
+import { beginConversationCommand } from "./conversation-command-gate";
 import { isAssistantConversation } from "./durable-facts";
 import { compactWithFactHarvest } from "./durable-facts-harvest";
+import { withWorkdirLock } from "./workdir-lock";
 
 /**
  * The I/O half of the conversation commands (see `conversation-command.ts` for
@@ -30,21 +33,19 @@ const errMessage = (err: unknown) =>
   err instanceof Error ? err.message : String(err);
 
 /**
- * Whether a command must be refused right now. Same posture as the
- * edit-and-resend rewind: neither may rewrite a conversation's context behind a
- * turn that is executing or queued on it, because both tear the live session
- * down under work the user is waiting on.
- */
-export function conversationCommandBusy(id: string): boolean {
-  return isTurnRunning(id) || (conversations.get(id)?.pending ?? 0) > 0;
-}
-
-/**
  * Run a command as its own turn. Fire-and-forget from the route's view, exactly
  * like `runTurn`: the outcome is delivered on the conversation's event stream,
  * never on the request that triggered it. Never rejects — a failure settles the
  * turn with an `error` frame, because a chat left spinning forever is the one
  * outcome worse than a failed command.
+ *
+ * SERIALIZED EXACTLY AS A TURN IS, and for the same reason: the two layers
+ * `runTurn` uses are the conversation's own queue (ordering within the chat)
+ * and the per-workdir lock (this workspace's files have one writer at a time),
+ * and a command that skipped them would compact — or tear down — a session
+ * another turn is mid-way through. The conversation's acceptance gate
+ * (`conversation-command-gate.ts`) is what keeps a NEW turn from being accepted
+ * behind it while it works.
  */
 export async function runConversationCommand(
   id: string,
@@ -52,24 +53,43 @@ export async function runConversationCommand(
   text: string,
   nonce?: string,
 ): Promise<void> {
+  // Marked before the first await, in the tick the route accepted the command,
+  // so no turn can be accepted into the context this is about to rewrite.
+  const settle = beginConversationCommand(id);
   const turnId = crypto.randomUUID();
-  // The user's own words, recorded and echoed exactly as a normal turn does:
-  // the echo is what a client adopts this turn's id from, and the record is
-  // what makes the command visible to every other reader of the transcript.
-  appendUserMessage(id, text, { turnId });
-  publish(id, {
-    type: "user",
-    data: { content: text, ts: Date.now(), nonce },
-    turnId,
+  // A conversation with no live session has no queue to join and nothing
+  // running to wait for — the gate above already established that.
+  const conv = conversations.get(id);
+  const run = (conv?.queue ?? Promise.resolve()).then(() => {
+    // Recorded and echoed BEFORE the workdir lock, exactly where a turn does it
+    // (chat.ts): the command is durable and visible the instant it is accepted,
+    // even while another conversation holds the lock. The echo is what a client
+    // adopts this turn's id from.
+    appendUserMessage(id, text, { turnId });
+    publish(id, {
+      type: "user",
+      data: { content: text, ts: Date.now(), nonce },
+      turnId,
+    });
+    return withWorkdirLock(config.workspaceDir, () =>
+      command === "compact" ? compactNow(id, turnId) : clearNow(id, turnId),
+    );
   });
+  // Keep the queue chain alive past a failed command, and pin the session
+  // against idle/LRU eviction for as long as this command owns the queue.
+  if (conv) {
+    conv.queue = run.catch(() => {});
+    conv.pending++;
+  }
   try {
-    if (command === "compact") await compactNow(id, turnId);
-    else await clearNow(id, turnId);
+    await run;
+    publish(id, { type: "done", data: null, turnId });
   } catch (err) {
     publish(id, { type: "error", data: { message: errMessage(err) }, turnId });
-    return;
+  } finally {
+    if (conv) conv.pending--;
+    settle();
   }
-  publish(id, { type: "done", data: null, turnId });
 }
 
 /**

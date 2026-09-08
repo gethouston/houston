@@ -1,11 +1,10 @@
-import type { AssistantGateway } from "../routes/assistant-forward";
-import { assistantRuntimeEnv } from "../routes/assistant-wiring";
+import { type AssistantRuntimeRole, assistantRoleEnv } from "./assistant-role";
 
 /**
- * The extra environment EVERY runtime this host spawns inherits — assembled
- * here, and pure, so what a child process is told is unit-testable without
- * spawning one. The per-runtime values (workspace dir, data dir, port, tokens)
- * stay with the launcher, which knows the agent; these are host-wide.
+ * The extra environment a runtime this host spawns inherits — assembled here,
+ * and pure, so what a child process is told is unit-testable without spawning
+ * one. The per-runtime values (workspace dir, data dir, port, tokens) stay with
+ * the launcher, which knows the agent.
  */
 export interface RuntimeSpawnEnvInput {
   /** Product system prompt the app injects into every runtime (voice rules). */
@@ -24,14 +23,14 @@ export interface RuntimeSpawnEnvInput {
       is the backstop, not the norm. Absent = runtime default. */
   shutdownDrainMs?: number;
   /**
-   * Where Houston operations are performed, from the ONE resolver
-   * (`routes/assistant-wiring.ts`). Passing it down is what makes the assistant
-   * tool family visible to the runtime: the runtime's `assistantEnabled` reads
-   * this pair's PRESENCE, so host and runtime cannot disagree about whether the
-   * family is on. Null → neither variable is set and the runtime offers no
-   * assistant tools.
+   * The role of the ONE runtime this environment is for, from the host's own
+   * decision (`launcher/assistant-role.ts`): "coordinator" for the user's
+   * personal assistant, null for every ordinary agent. It is the whole of what
+   * a runtime is told about the assistant — the gateway URL and the gateway
+   * token stay with the host's dispatcher, which is what holds the credential
+   * that authorizes account-wide Houston operations.
    */
-  assistant: AssistantGateway | null;
+  assistantRole: AssistantRuntimeRole | null;
 }
 
 export function runtimeSpawnEnv(
@@ -48,6 +47,6 @@ export function runtimeSpawnEnv(
     // Do not inherit a rollout flag into a runtime unless the host also
     // constructed its pod-auth facade from the complete managed config.
     HOUSTON_TRANSCRIPT_DUAL_WRITE: input.transcriptDualWrite ? "1" : "",
-    ...assistantRuntimeEnv(input.assistant),
+    ...assistantRoleEnv(input.assistantRole),
   };
 }

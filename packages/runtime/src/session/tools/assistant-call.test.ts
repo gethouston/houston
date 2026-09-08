@@ -238,15 +238,16 @@ test("params that are not an object are refused, not forwarded", async () => {
 
 // The gate itself lives in `assistant-confirm.test.ts`; what belongs HERE is
 // that a confirm operation cannot reach the host through this tool on the
-// model's say-so alone.
-test("a confirm operation is refused until the user has approved it", async () => {
+// model's say-so alone. Run outside a conversation (an unattended turn), where
+// there is nobody to ask, so the only correct answer is a refusal.
+test("a confirm operation with nobody to ask is refused and forwarded nowhere", async () => {
   const calls = mockFetch(() => ({ body: null }));
   const result = await run({
     operation: "deleteRoutine",
     params: { id: "r1" },
   });
   expect(errorCode(result)).toBe("needs_confirmation");
-  expect(text(result)).toContain("was NOT performed");
+  expect(text(result)).toMatch(/no one to ask/i);
   expect(calls).toHaveLength(0);
 });
 

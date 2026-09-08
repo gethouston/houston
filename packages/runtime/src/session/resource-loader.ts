@@ -132,8 +132,8 @@ export function makeAgentLoader(
   // (HOU-711 — `provided` is the gateway's Supabase copy in cloud, else the two
   // files at cwd), then the GROUP context section (local-only `GROUP.md` the host
   // mirrors into each grouped agent's cwd; null when ungrouped), then the personal
-  // assistant's saved MEMORY (null for every other agent — the gate is inside
-  // buildLearningsSection) followed by its OPERATING RULES, then the turn MODE
+  // assistant's saved MEMORY (null for every other agent — the coordinator-role
+  // gate is inside buildLearningsSection) followed by its OPERATING RULES, then the turn MODE
   // overlay LAST so the plan/auto mandate is the final word. CLAUDE.md/AGENTS.md still load via
   // agentsFilesOverride below.
   const section = buildWorkspaceContextSection(cwd, provided);
@@ -143,7 +143,7 @@ export function makeAgentLoader(
   const withGroup = group ? `${withContext}\n\n${group}` : withContext;
   const learnings = buildLearningsSection(cwd);
   const withLearnings = learnings ? `${withGroup}\n\n${learnings}` : withGroup;
-  const rules = buildAssistantRulesSection(cwd);
+  const rules = buildAssistantRulesSection();
   const withRules = rules ? `${withLearnings}\n\n${rules}` : withLearnings;
   return buildAgentLoader({
     cwd,

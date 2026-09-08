@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import type { IntegrationProvider } from "./provider";
 
 /**
@@ -10,7 +11,7 @@ import type { IntegrationProvider } from "./provider";
  * /v1/capabilities `integrations` flag is then false and the routes 404/503).
  */
 export class IntegrationRegistry {
-  private readonly byId = new Map<string, IntegrationProvider>();
+  private readonly byId = new Map<IntegrationProviderId, IntegrationProvider>();
 
   constructor(providers: IntegrationProvider[] = []) {
     for (const p of providers) this.register(p);
@@ -27,18 +28,20 @@ export class IntegrationRegistry {
   }
 
   /** Resolve a provider by id; throws (never returns undefined) on an unknown id. */
-  get(id: string): IntegrationProvider {
+  get(id: IntegrationProviderId): IntegrationProvider {
     const provider = this.byId.get(id);
     if (!provider) throw new Error(`unknown integration provider '${id}'`);
     return provider;
   }
 
-  has(id: string): boolean {
-    return this.byId.has(id);
+  /** Narrows an untrusted string (a path segment, a request body) to a provider
+   *  this deployment actually registered. */
+  has(id: string): id is IntegrationProviderId {
+    return this.byId.has(id as IntegrationProviderId);
   }
 
   /** Registered provider ids (for capabilities / a provider picker). */
-  ids(): string[] {
+  ids(): IntegrationProviderId[] {
     return [...this.byId.keys()];
   }
 

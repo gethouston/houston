@@ -1,10 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { expect, test, vi } from "vitest";
+import { ApprovalStore } from "../assistant/approvals";
 import type { AssistantCatalog } from "../assistant/catalog";
-import type { CredentialVault } from "../ports";
+import type { Agent, Workspace } from "../domain/types";
+import type { CredentialVault, WorkspaceStore } from "../ports";
 import {
   ASSISTANT_CALL_PATH,
+  ASSISTANT_PENDING_PATH,
   handleSandboxAssistant,
 } from "./assistant-sandbox";
 
@@ -188,6 +191,23 @@ const CATALOG: AssistantCatalog = {
       },
     },
     {
+      name: "deleteAgent",
+      group: "agents",
+      description: "Delete an agent and everything in it.",
+      confirm: false,
+      hidden: false,
+      params: [{ name: "id", required: true, schema: { type: "string" } }],
+      returns: { type: "null" },
+      route: {
+        method: "DELETE",
+        path: "/agents/{id}",
+        pathParams: [{ name: "id", encoding: "segment" }],
+        query: {},
+        body: null,
+        bodyFields: null,
+      },
+    },
+    {
       name: "downloadAgentFile",
       group: "files",
       description: "Catalogued, but no route could be derived from its source.",
@@ -200,23 +220,72 @@ const CATALOG: AssistantCatalog = {
   ],
 };
 
+/** The assistant's own sandbox, plus an ordinary agent's — every agent on a
+ *  desktop holds one of these, which is exactly why the claim is scoped. */
+const ASSISTANT_AGENT = "w1/.assistant";
+
+/**
+ * The agents this caller can address. Identifiers are never guessed: every
+ * agent-naming parameter is resolved against THIS set before a request is
+ * built, so the route's tests need a real one. Ids are written out (rather than
+ * generated) so the expected gateway URLs below can name them.
+ */
+const WORKSPACE: Workspace = {
+  id: "w1",
+  ownerUserId: "u1",
+  kind: "personal",
+  name: "Work",
+  slug: "work",
+  runtime: "local",
+  createdAt: 0,
+};
+const AGENTS: Agent[] = [
+  { id: "Work/Ada", workspaceId: WORKSPACE.id, name: "Ada", createdAt: 0 },
+  { id: "Work/Dobby", workspaceId: WORKSPACE.id, name: "Dobby", createdAt: 0 },
+  // Dot-named: Houston's own, never addressable and never a match.
+  {
+    id: ASSISTANT_AGENT,
+    workspaceId: WORKSPACE.id,
+    name: ".assistant",
+    createdAt: 0,
+  },
+];
+const store = {
+  getWorkspace: async (id: string) => (id === WORKSPACE.id ? WORKSPACE : null),
+  listWorkspacesForUser: async () => [WORKSPACE],
+  listAgents: async () => AGENTS,
+} as unknown as WorkspaceStore;
+
 const vault: CredentialVault = {
   sandboxToken: () => "sbx",
   validateSandboxToken: (t) =>
-    t === "sbx" ? { workspaceId: "w1", agentId: "a1" } : null,
+    t === "sbx"
+      ? { workspaceId: WORKSPACE.id, agentId: ASSISTANT_AGENT }
+      : t === "sbx-sales"
+        ? { workspaceId: WORKSPACE.id, agentId: "w1/Sales" }
+        : null,
 };
 
 const GATEWAY = { url: "https://gateway.test", token: "gw-token" };
 
 function mockReq(
   body: unknown,
-  opts: { token?: string; actingAs?: string } = {},
+  opts: {
+    token?: string;
+    actingAs?: string;
+    conversationId?: string | null;
+  } = {},
 ): IncomingMessage {
   const req = Readable.from([
     Buffer.from(body === undefined ? "" : JSON.stringify(body)),
   ]) as unknown as IncomingMessage;
+  const conversationId =
+    opts.conversationId === null
+      ? undefined
+      : (opts.conversationId ?? "conv-1");
   req.headers = {
     authorization: `Bearer ${opts.token ?? "sbx"}`,
+    ...(conversationId ? { "x-houston-conversation-id": conversationId } : {}),
     ...(opts.actingAs ? { "x-houston-acting-as": opts.actingAs } : {}),
   };
   return req;
@@ -269,41 +338,80 @@ function sent(calls: Captured[]): Captured {
   return first;
 }
 
-async function call(
-  body: unknown,
-  opts: {
-    token?: string;
-    actingAs?: string;
-    gateway?: typeof GATEWAY | null;
-    catalog?: AssistantCatalog | null;
-    fetchImpl?: typeof fetch;
-    method?: string;
-  } = {},
-) {
+interface CallOpts {
+  token?: string;
+  actingAs?: string;
+  conversationId?: string | null;
+  gateway?: typeof GATEWAY | null;
+  catalog?: AssistantCatalog | null;
+  fetchImpl?: typeof fetch;
+  method?: string;
+  path?: string;
+  gatewayFronted?: boolean;
+  approvals?: ApprovalStore;
+}
+
+async function call(body: unknown, opts: CallOpts = {}) {
   const out = mockRes();
+  const path = opts.path ?? ASSISTANT_CALL_PATH;
   const handled = await handleSandboxAssistant(
     {
       vault,
+      store,
       fetchImpl: opts.fetchImpl,
+      gatewayFronted: opts.gatewayFronted,
+      approvals: opts.approvals ?? new ApprovalStore(),
       assistantGateway: () =>
         opts.gateway === undefined ? GATEWAY : opts.gateway,
       assistantCatalog: () =>
         opts.catalog === undefined ? CATALOG : opts.catalog,
     },
     opts.method ?? "POST",
-    ASSISTANT_CALL_PATH,
-    new URL(`http://host${ASSISTANT_CALL_PATH}`),
+    path,
+    new URL(`http://host${path}`),
     mockReq(body, opts),
     out.res,
   );
   return { handled, ...out.out };
 }
 
+/**
+ * A `confirm: true` call the user already approved: the store issues the
+ * request the card carried, the user's reply decides it, and the call presents
+ * the id back — the whole three-step contract, from the outside.
+ */
+async function approvedCall(
+  operation: string,
+  params: Record<string, unknown>,
+  opts: CallOpts = {},
+) {
+  const approvals = opts.approvals ?? new ApprovalStore();
+  const conversationId =
+    opts.conversationId === null ? "conv-1" : (opts.conversationId ?? "conv-1");
+  const request = approvals.issue({
+    operation,
+    params,
+    agentId: ASSISTANT_AGENT,
+    conversationId,
+    summary: "s",
+  });
+  approvals.decide({
+    requestId: request.requestId,
+    agentId: ASSISTANT_AGENT,
+    conversationId,
+    decision: "approve",
+  });
+  return call(
+    { operation, params, requestId: request.requestId },
+    { ...opts, approvals },
+  );
+}
+
 test("a request for another path is not this route's", async () => {
   const out = mockRes();
   await expect(
     handleSandboxAssistant(
-      { vault },
+      { vault, store },
       "POST",
       "/sandbox/missions",
       new URL("http://host/sandbox/missions"),
@@ -478,11 +586,9 @@ test("a whole-parameter body is forwarded as the gateway's JSON body", async () 
 // that read only the whole-parameter form would send them with NO body at all.
 test("a field-mapped body is assembled from its named parameters", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { invited: true } }));
-  await call(
-    {
-      operation: "addOrgMember",
-      params: { email: "ada@example.com", role: "member" },
-    },
+  await approvedCall(
+    "addOrgMember",
+    { email: "ada@example.com", role: "member" },
     { fetchImpl: impl },
   );
   expect(sent(calls).url).toBe("https://gateway.test/v1/org/members");
@@ -496,8 +602,9 @@ test("a field-mapped body is assembled from its named parameters", async () => {
 // so an omitted optional field must be absent here too — never an explicit null.
 test("an omitted optional body field is left out of the body", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { invited: true } }));
-  await call(
-    { operation: "addOrgMember", params: { email: "ada@example.com" } },
+  await approvedCall(
+    "addOrgMember",
+    { email: "ada@example.com" },
     { fetchImpl: impl },
   );
   expect(sent(calls).body).toEqual({ email: "ada@example.com" });
@@ -505,11 +612,9 @@ test("an omitted optional body field is left out of the body", async () => {
 
 test("a path placeholder is substituted and percent-escaped", async () => {
   const { calls, impl } = fetchStub(() => ({ body: {} }));
-  await call(
-    {
-      operation: "deleteRoutine",
-      params: { agentPath: "Work/Ada", id: "r 1/x" },
-    },
+  await approvedCall(
+    "deleteRoutine",
+    { agentPath: "Work/Ada", id: "r 1/x" },
     { fetchImpl: impl },
   );
   expect(sent(calls).method).toBe("DELETE");
@@ -640,3 +745,363 @@ test("a non-POST on the route is rejected", async () => {
 
 // Where the gateway pair comes from (env / this host / nowhere) is the
 // wiring resolver's contract — see assistant-wiring.test.ts.
+
+/**
+ * A1 — the claim is AUTHORIZATION, not just authentication.
+ *
+ * Every agent on a desktop carries a valid sandbox token. Before this, the
+ * route only checked that the token verified and then forwarded the operation
+ * with the gateway credential, so any agent could post `deleteRoutine` and
+ * Houston would perform it, with no card and no trace of who asked.
+ */
+test("another agent's sandbox token is refused, even though it is valid", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: {} }));
+  const out = await call(
+    { operation: "listOrgs", params: {} },
+    { token: "sbx-sales", fetchImpl: impl },
+  );
+  expect(out.status).toBe(401);
+  expect(calls).toHaveLength(0);
+});
+
+test("another agent cannot raise an approval request either", async () => {
+  const out = await call(
+    { operation: "deleteRoutine", params: { agentPath: "Work/Ada", id: "r1" } },
+    { token: "sbx-sales", path: ASSISTANT_PENDING_PATH },
+  );
+  expect(out.status).toBe(401);
+});
+
+// On a managed pod the gateway hands ONE pod's operation credential to ONE
+// agent, so the only claim this host can decode already is that agent's.
+test("on a gateway-fronted pod the pod's own agent is the assistant", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: [] }));
+  const out = await call(
+    { operation: "listOrgs", params: {} },
+    { token: "sbx-sales", fetchImpl: impl, gatewayFronted: true },
+  );
+  expect(out.status).toBe(200);
+  expect(calls).toHaveLength(1);
+});
+
+/**
+ * A1 (second half) — the confirmation lock lives HERE, not in the runtime. A
+ * runtime that never showed a card, or a caller addressing the route directly
+ * with the sandbox token it already holds, performs nothing.
+ */
+test("a confirm operation with no receipt is refused, and nothing is forwarded", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: {} }));
+  const out = await call(
+    { operation: "deleteRoutine", params: { agentPath: "Work/Ada", id: "r1" } },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(403);
+  expect(out.body).toMatchObject({ code: "approval_required" });
+  expect(calls).toHaveLength(0);
+});
+
+test("an invented requestId is refused exactly like none at all", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: {} }));
+  const out = await call(
+    {
+      operation: "deleteRoutine",
+      params: { agentPath: "Work/Ada", id: "r1" },
+      requestId: "made-up",
+    },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(403);
+  expect(out.body).toMatchObject({ code: "approval_required" });
+  expect(calls).toHaveLength(0);
+});
+
+test("an approved receipt lets the call through and answers the gateway's reply", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await approvedCall(
+    "deleteRoutine",
+    { agentPath: "Work/Ada", id: "r1" },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(200);
+  expect(calls).toHaveLength(1);
+});
+
+/** A4 — single use. One click performs one action, never a second. */
+test("a receipt is spent once: the identical call after it is refused", async () => {
+  const approvals = new ApprovalStore();
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const params = { agentPath: "Work/Ada", id: "r1" };
+  const request = approvals.issue({
+    operation: "deleteRoutine",
+    params,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    summary: "s",
+  });
+  approvals.decide({
+    requestId: request.requestId,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    decision: "approve",
+  });
+  const body = {
+    operation: "deleteRoutine",
+    params,
+    requestId: request.requestId,
+  };
+  expect((await call(body, { approvals, fetchImpl: impl })).status).toBe(200);
+  const replay = await call(body, { approvals, fetchImpl: impl });
+  expect(replay.status).toBe(403);
+  expect(replay.body).toMatchObject({ code: "approval_required" });
+  expect(calls).toHaveLength(1);
+});
+
+/** A2 — the receipt is bound to the exact bytes, not to a card's wording. */
+test("a receipt minted for other params does not authorize these", async () => {
+  const approvals = new ApprovalStore();
+  const { calls, impl } = fetchStub(() => ({ body: {} }));
+  const request = approvals.issue({
+    operation: "deleteRoutine",
+    params: { agentPath: "Work/Ada", id: "r1" },
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    summary: "s",
+  });
+  approvals.decide({
+    requestId: request.requestId,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    decision: "approve",
+  });
+  const out = await call(
+    {
+      operation: "deleteRoutine",
+      params: { agentPath: "Work/Ada", id: "r2" },
+      requestId: request.requestId,
+    },
+    { approvals, fetchImpl: impl },
+  );
+  expect(out.status).toBe(403);
+  expect(out.body).toMatchObject({ code: "approval_required" });
+  expect(calls).toHaveLength(0);
+});
+
+test("a receipt from another conversation authorizes nothing here", async () => {
+  const approvals = new ApprovalStore();
+  const { calls, impl } = fetchStub(() => ({ body: {} }));
+  const params = { agentPath: "Work/Ada", id: "r1" };
+  const request = approvals.issue({
+    operation: "deleteRoutine",
+    params,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-other",
+    summary: "s",
+  });
+  approvals.decide({
+    requestId: request.requestId,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-other",
+    decision: "approve",
+  });
+  const out = await call(
+    { operation: "deleteRoutine", params, requestId: request.requestId },
+    { approvals, fetchImpl: impl, conversationId: "conv-1" },
+  );
+  expect(out.status).toBe(403);
+  expect(calls).toHaveLength(0);
+});
+
+test("an expired receipt is refused", async () => {
+  let now = 1_000;
+  const approvals = new ApprovalStore(() => now);
+  const { calls, impl } = fetchStub(() => ({ body: {} }));
+  const params = { agentPath: "Work/Ada", id: "r1" };
+  const request = approvals.issue({
+    operation: "deleteRoutine",
+    params,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    summary: "s",
+  });
+  approvals.decide({
+    requestId: request.requestId,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    decision: "approve",
+  });
+  now += 10 * 60_000 + 1;
+  const out = await call(
+    { operation: "deleteRoutine", params, requestId: request.requestId },
+    { approvals, fetchImpl: impl },
+  );
+  expect(out.status).toBe(403);
+  expect(calls).toHaveLength(0);
+});
+
+test("a denial is reported as a denial, and performs nothing", async () => {
+  const approvals = new ApprovalStore();
+  const { calls, impl } = fetchStub(() => ({ body: {} }));
+  const params = { agentPath: "Work/Ada", id: "r1" };
+  const request = approvals.issue({
+    operation: "deleteRoutine",
+    params,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    summary: "s",
+  });
+  approvals.decide({
+    requestId: request.requestId,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    decision: "deny",
+  });
+  const out = await call(
+    { operation: "deleteRoutine", params, requestId: request.requestId },
+    { approvals, fetchImpl: impl },
+  );
+  expect(out.status).toBe(403);
+  expect(out.body).toMatchObject({ code: "approval_denied" });
+  expect(calls).toHaveLength(0);
+});
+
+/** The `/pending` half: what the card is made of, and what it refuses to raise. */
+test("a pending request returns an id and the wording the card will show", async () => {
+  const approvals = new ApprovalStore();
+  const out = await call(
+    { operation: "deleteRoutine", params: { agentPath: "Work/Ada", id: "r1" } },
+    { approvals, path: ASSISTANT_PENDING_PATH },
+  );
+  expect(out.status).toBe(200);
+  const body = out.body as { requestId: string; summary: string };
+  expect(body.requestId).toMatch(/^[0-9a-f]{32}$/);
+  expect(body.summary).toContain("Delete a routine for good");
+  expect(body.summary).toContain("Work/Ada");
+  expect(approvals.hasPending(ASSISTANT_AGENT, "conv-1")).toBe(true);
+});
+
+test("an operation that needs no approval cannot raise a card", async () => {
+  const out = await call(
+    { operation: "listOrgs", params: {} },
+    { path: ASSISTANT_PENDING_PATH },
+  );
+  expect(out.status).toBe(400);
+  expect(out.body).toMatchObject({ code: "not_confirmable" });
+});
+
+test("a pending request with arguments the operation refuses is a 400", async () => {
+  const out = await call(
+    { operation: "deleteRoutine", params: { agentPath: "Work/Ada" } },
+    { path: ASSISTANT_PENDING_PATH },
+  );
+  expect(out.status).toBe(400);
+  expect(out.body).toMatchObject({ code: "invalid_params" });
+});
+
+// An unattended turn (a routine) has nobody to ask, so there is nowhere for an
+// answer to arrive and nothing may be raised in the first place.
+test("a pending request with no conversation is refused", async () => {
+  const out = await call(
+    { operation: "deleteRoutine", params: { agentPath: "Work/Ada", id: "r1" } },
+    { path: ASSISTANT_PENDING_PATH, conversationId: null },
+  );
+  expect(out.status).toBe(400);
+  expect(out.body).toMatchObject({ code: "missing_conversation" });
+});
+
+test("a hidden operation cannot be raised for approval either", async () => {
+  const out = await call(
+    { operation: "rotateEngineSecret", params: {} },
+    { path: ASSISTANT_PENDING_PATH },
+  );
+  expect(out.status).toBe(400);
+  expect(out.body).toMatchObject({ code: "operation_not_supported" });
+});
+
+/**
+ * IDENTIFIERS ARE NEVER GUESSED (the incident this closes: a model asked to act
+ * on "Dobby" sent the word "Dobby" into a route that wants an id, got a 404
+ * with nothing in it to correct from, and invented another spelling).
+ *
+ * The route resolves every agent-naming parameter against the agents that
+ * actually exist for this caller BEFORE building the request, and a reference
+ * that resolves to nothing comes back naming the ones that would have.
+ */
+test("an agent named by the word the user said reaches the gateway as its id", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: null }));
+  const out = await call(
+    { operation: "deleteAgent", params: { id: "Dobby" } },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(200);
+  expect(calls[0]?.url).toBe("https://gateway.test/agents/Work%2FDobby");
+});
+
+test("the qualified spelling resolves too, and an id passes through unchanged", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: null }));
+  await call(
+    { operation: "deleteAgent", params: { id: "Work/Dobby" } },
+    { fetchImpl: impl },
+  );
+  await call(
+    { operation: "deleteAgent", params: { id: "Work/Ada" } },
+    { fetchImpl: impl },
+  );
+  expect(calls.map((c) => c.url)).toEqual([
+    "https://gateway.test/agents/Work%2FDobby",
+    "https://gateway.test/agents/Work%2FAda",
+  ]);
+});
+
+test("a name nothing matches is refused with the agents that would have, and nothing is forwarded", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: null }));
+  const out = await call(
+    { operation: "deleteAgent", params: { id: "Doby" } },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(400);
+  expect(out.body).toMatchObject({ code: "unknown_agent" });
+  const { error } = out.body as { error: string };
+  expect(error).toContain("Dobby (id Work/Dobby, in Work)");
+  expect(error).toContain("Ada (id Work/Ada, in Work)");
+  // Houston's own dot-agent is not a place work can go, so it is never offered.
+  expect(error).not.toContain(".assistant");
+  expect(calls).toHaveLength(0);
+});
+
+/**
+ * The card and the receipt must describe the SAME bytes: an approval raised for
+ * the word the user said is spent by the call that runs against the resolved
+ * id, and nothing else.
+ */
+test("an approval raised for a spoken name is spent by the call that runs on the id", async () => {
+  const approvals = new ApprovalStore();
+  const pending = await call(
+    { operation: "deleteRoutine", params: { agentPath: "Dobby", id: "r1" } },
+    { path: ASSISTANT_PENDING_PATH, approvals },
+  );
+  expect(pending.status).toBe(200);
+  const { requestId, summary } = pending.body as {
+    requestId: string;
+    summary: string;
+  };
+  // The card names the agent the way the user will recognize it.
+  expect(summary).toContain("Work/Dobby");
+  approvals.decide({
+    requestId,
+    agentId: ASSISTANT_AGENT,
+    conversationId: "conv-1",
+    decision: "approve",
+  });
+
+  const { calls, impl } = fetchStub(() => ({ body: null }));
+  const out = await call(
+    {
+      operation: "deleteRoutine",
+      params: { agentPath: "Dobby", id: "r1" },
+      requestId,
+    },
+    { approvals, fetchImpl: impl },
+  );
+  expect(out.status).toBe(200);
+  expect(calls[0]?.url).toContain("agentPath=Work%2FDobby");
+});

@@ -4,10 +4,10 @@ import type { ProviderConnections } from "../../hooks/use-provider-connections.t
 import type { ProviderInfo } from "../../lib/providers.ts";
 
 /**
- * The provider modal's connected footer: which provider is signed in, the
- * disconnect action, and the optional "Set as default". A local
- * (OpenAI-compatible) provider disconnects through the bridge teardown instead of
- * a credential sign-out, hence the separate `onDisconnectLocal`.
+ * The provider modal's connected footer: which provider is signed in and the
+ * disconnect action. A local (OpenAI-compatible) provider disconnects through
+ * the bridge teardown instead of a credential sign-out, hence the separate
+ * `onDisconnectLocal`.
  *
  * Extracted from `provider-modal.tsx` to keep that file inside the size budget.
  */
@@ -17,7 +17,6 @@ export function ProviderModalFooter({
   isLocal,
   disconnecting,
   onDisconnectLocal,
-  onSetDefault,
 }: {
   provider: ProviderInfo;
   connections: ProviderConnections;
@@ -26,7 +25,6 @@ export function ProviderModalFooter({
   /** A local disconnect is in flight. */
   disconnecting: boolean;
   onDisconnectLocal: () => void;
-  onSetDefault?: (provider: ProviderInfo) => void;
 }) {
   const { t } = useTranslation("aiHub");
   const busy = connections.busy[provider.id];
@@ -47,11 +45,6 @@ export function ProviderModalFooter({
         >
           {isLocal ? t("providerModal.disconnect") : t("providerModal.signOut")}
         </Button>
-        {onSetDefault && (
-          <Button size="sm" onClick={() => onSetDefault(provider)}>
-            {t("providerModal.setDefault")}
-          </Button>
-        )}
       </div>
     </div>
   );

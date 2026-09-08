@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { getPreference, setPreference } from "@houston/domain";
+import { updatePreference } from "@houston/domain";
 import type { UserId } from "../domain/types";
 import type { Vfs } from "../vfs";
 import { type AgentRouteDeps, authorizeAgent } from "./agent-authz";
@@ -62,24 +62,29 @@ export function agentColorOrNull(value: unknown): string | null {
   return trimmed;
 }
 
-/** Read-modify-write the map; the mutation returns the next one. */
+/**
+ * Read-modify-write the map; the mutation returns the next one.
+ *
+ * `updatePreference` serializes the load, the edit and the save per preference
+ * DOCUMENT. Without that, two overlapping writers read the same base and the
+ * last save drops the other's entry — and colors are written in bursts (a
+ * template installs several agents at once, a rename recolors while a create
+ * writes), so the loser vanishes silently, leaving an agent wearing the
+ * default. Different accounts key different documents and never wait on each
+ * other.
+ */
 async function editColorMap(
   vfs: Vfs,
   workspaceId: string,
   edit: (current: Record<string, string>) => Record<string, string>,
 ): Promise<Record<string, string>> {
-  const next = edit(
-    parseAgentColorMap(
-      await getPreference(vfs, workspaceId, AGENT_COLORS_PREF_KEY),
-    ),
-  );
-  await setPreference(
+  const { preferences } = await updatePreference(
     vfs,
     workspaceId,
     AGENT_COLORS_PREF_KEY,
-    JSON.stringify(next),
+    (current) => JSON.stringify(edit(parseAgentColorMap(current))),
   );
-  return next;
+  return parseAgentColorMap(preferences[AGENT_COLORS_PREF_KEY] ?? null);
 }
 
 /** Merge one agent's color into the `agent_colors` map; returns the merge. */

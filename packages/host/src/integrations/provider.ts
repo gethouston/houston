@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   ActionResult,
   Connection,
@@ -61,8 +62,9 @@ export interface ProviderSearchResult {
  * flag, not a forked implementation, so there is no drift.
  */
 export interface IntegrationProvider {
-  /** Stable id, e.g. "composio". */
-  readonly id: string;
+  /** Which registered provider this is — the same closed set the
+   *  `/v1/integrations/{provider}/…` path segment names. */
+  readonly id: IntegrationProviderId;
 
   /** Can this deployment serve the user right now (gateway needs a session)? */
   readiness(): Promise<ProviderReadiness>;

@@ -1,31 +1,23 @@
+import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import type { ProviderOption } from "@houston/domain";
 import { connectedProviderChoices } from "../../ai/provider-choices";
-import { currentActingContext } from "../acting-context";
-import { currentConversationId } from "../conversation-context";
-import { currentTurnModel } from "../turn-model-context";
+import { missionCall } from "./mission-call";
 import {
   agentQuery,
   type ListMissionsParams,
   listMissionsParams,
-  type StartMissionParams,
-  startMissionParams,
-  targetAgent,
+  resolveTargetAgent,
   type UpdateMissionStatusParams,
   updateMissionStatusParams,
 } from "./mission-params";
 import {
-  missionPin,
-  missionRunsOn,
-  resolveMissionPin,
-} from "./mission-providers";
-import {
   LIST_MISSIONS_TOOL_NAME,
-  START_MISSION_TOOL_NAME,
   UPDATE_MISSION_STATUS_TOOL_NAME,
 } from "./mission-tool-names";
 import type { SandboxFetch } from "./sandbox-fetch";
-import { CONVERSATION_ID_HEADER } from "./save-learning";
+import { makeStartMissionTool } from "./start-mission";
+import { type SessionToolErrorDetails, toolErrorResult } from "./tool-error";
 
 /**
  * The agent's mission-board tools (PRODUCT-1244): start a new mission, see a
@@ -41,7 +33,21 @@ import { CONVERSATION_ID_HEADER } from "./save-learning";
  * marker, attribution), resolves the named agent, fires the child turn through
  * the routine-firing channel, and enforces the guards (depth 1, running cap,
  * never the current conversation, never a running mission).
+ *
+ * Every refusal is a RESULT, never a throw (tool-error.ts): a missing target is
+ * something the model fixes on its own turn, and only a value can hand it the
+ * agents it could have named.
  */
+
+/** What one board read returned, or why it was refused. */
+export type ListMissionsDetails =
+  | { ok: true; count: number }
+  | SessionToolErrorDetails;
+
+/** The move that landed, or why it was refused. */
+export type UpdateMissionStatusDetails =
+  | { ok: true; id: string; status: string }
+  | SessionToolErrorDetails;
 
 export interface MissionToolOptions {
   call: SandboxFetch;
@@ -52,97 +58,36 @@ export interface MissionToolOptions {
    */
   personalAssistant: boolean;
   /**
-   * The providers this runtime can pin a mission to, snapshotted as the tool
-   * defs are built (default: the runtime's own provider status). They become the
-   * `provider` param's accepted values, so the model picks from a list instead
-   * of inventing an id.
+   * The providers the `provider` param offers as accepted values, snapshotted
+   * as the tool defs are built (default: the runtime's own provider status), so
+   * the model picks from a list instead of inventing an id. A schema hint: what
+   * a pin is judged against comes from {@link resolveProviders}.
    */
   providers?: readonly ProviderOption[];
+  /**
+   * The provider status a mission pin is validated against, read afresh on
+   * every `start_mission` call (default: the runtime's own status, resolved in
+   * the acting member's scope because a tool executes inside the turn). Inject
+   * it to drive that status from a test.
+   */
+  resolveProviders?: () => readonly ProviderOption[];
 }
 
 export function makeMissionTools(opts: MissionToolOptions) {
   const assistant = opts.personalAssistant;
   const providers = opts.providers ?? connectedProviderChoices();
+  // An injected snapshot with no resolver describes a runtime whose provider
+  // status never moves — the shape a test wants when it is not about drift.
+  const resolveProviders =
+    opts.resolveProviders ??
+    (opts.providers ? () => providers : connectedProviderChoices);
+  const call = missionCall(opts.call);
 
-  /** Shared authed call; forwards the acting identity + this conversation's id
-   *  so the host can stamp attribution and enforce the self/depth guards. */
-  async function call(
-    method: "GET" | "POST",
-    path: string,
-    body: unknown,
-    signal: AbortSignal | undefined,
-  ): Promise<unknown> {
-    const acting = currentActingContext();
-    const conversationId = currentConversationId();
-    const res = await opts.call(`/sandbox/missions${path}`, {
-      method,
-      headers: {
-        "content-type": "application/json",
-        ...(acting?.actingAs ? { "x-houston-acting-as": acting.actingAs } : {}),
-        ...(acting?.actingUser
-          ? { "x-houston-acting-user": acting.actingUser }
-          : {}),
-        ...(conversationId ? { [CONVERSATION_ID_HEADER]: conversationId } : {}),
-      },
-      ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
-      signal,
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      // The host's error bodies are agent-actionable plain language (cap hit,
-      // still running, unknown agent or id) — relay them so the agent can
-      // explain or correct itself.
-      throw new Error(
-        `mission request failed (${res.status}): ${detail.slice(0, 300)}`,
-      );
-    }
-    return res.json();
-  }
-
-  const start = defineTool({
-    name: START_MISSION_TOOL_NAME,
-    label: "Start a mission",
-    description: assistant
-      ? "Start a new mission on the board of the agent you name, running in the background as its own chat. This is how work actually gets done: name the agent whose board this work belongs on, give it a complete standalone prompt, and it starts once your current turn ends. Check on it later with list_missions and read_mission on that same agent. On success, tell the user in plain words which agent is doing it."
-      : "Start a new mission on the user's board, running in the background as its own chat. Use when the user asks to kick off separate workstreams, or a task splits into independent pieces they want tracked separately. The mission starts after your current turn ends; check on it later with list_missions and read_mission. Start only missions the user asked for or clearly wants, never more than a few at once. On success, tell the user in plain words which mission you started.",
-    promptSnippet: "Start a new mission on the board",
-    parameters: startMissionParams(assistant, providers),
-    executionMode: "sequential",
-    async execute(_id, params: StartMissionParams, signal) {
-      const agent = targetAgent(params.agent, assistant);
-      const inherited = currentTurnModel();
-      const pin = missionPin(
-        resolveMissionPin(params, providers, inherited?.provider),
-        inherited,
-      );
-      const body = {
-        ...params,
-        ...(agent ? { agent } : {}),
-        // Resolved (id, display name or alias) BEFORE the inheritance default,
-        // so a mission never carries a name the host has to guess at — and a
-        // value nothing matches is refused above, naming every id it could
-        // have used.
-        ...pin,
-      };
-      const r = (await call("POST", "/start", body, signal)) as {
-        id: string;
-        title: string;
-      };
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Started mission "${r.title}" (id ${r.id})${agent ? ` on ${agent}` : ""}.${missionRunsOn(pin, providers)} It starts after this turn ends - check it later with list_missions or read_mission.`,
-          },
-        ],
-        details: {
-          id: r.id,
-          title: r.title,
-          ...(agent ? { agent } : {}),
-          ...pin,
-        },
-      };
-    },
+  const start = makeStartMissionTool({
+    call,
+    personalAssistant: assistant,
+    providers,
+    resolveProviders,
   });
 
   const list = defineTool({
@@ -154,16 +99,29 @@ export function makeMissionTools(opts: MissionToolOptions) {
     promptSnippet: "List the missions on the board",
     parameters: listMissionsParams(assistant),
     executionMode: "sequential",
-    async execute(_id, params: ListMissionsParams, signal) {
-      const agent = targetAgent(params.agent, assistant);
-      const r = (await call("GET", agentQuery(agent), undefined, signal)) as {
-        missions: unknown[];
-      };
+    async execute(
+      _id,
+      params: ListMissionsParams,
+      signal,
+    ): Promise<AgentToolResult<ListMissionsDetails>> {
+      const target = await resolveTargetAgent(
+        params.agent,
+        assistant,
+        call.sandbox,
+        signal,
+      );
+      if (!target.ok) return toolErrorResult(target.error);
+      const r = (await call(
+        "GET",
+        agentQuery(target.agent),
+        undefined,
+        signal,
+      )) as { missions: unknown[] };
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(r.missions, null, 2) },
         ],
-        details: { count: r.missions.length },
+        details: { ok: true, count: r.missions.length },
       };
     },
   });
@@ -176,8 +134,19 @@ export function makeMissionTools(opts: MissionToolOptions) {
     promptSnippet: "Move a mission to done or archived",
     parameters: updateMissionStatusParams(assistant),
     executionMode: "sequential",
-    async execute(_id, params: UpdateMissionStatusParams, signal) {
-      const agent = targetAgent(params.agent, assistant);
+    async execute(
+      _id,
+      params: UpdateMissionStatusParams,
+      signal,
+    ): Promise<AgentToolResult<UpdateMissionStatusDetails>> {
+      const target = await resolveTargetAgent(
+        params.agent,
+        assistant,
+        call.sandbox,
+        signal,
+      );
+      if (!target.ok) return toolErrorResult(target.error);
+      const agent = target.agent;
       const r = (await call(
         "POST",
         "/status",
@@ -194,7 +163,7 @@ export function makeMissionTools(opts: MissionToolOptions) {
             text: `Moved the mission to ${r.status}. Tell the user in plain words.`,
           },
         ],
-        details: { id: r.id, status: r.status },
+        details: { ok: true, id: r.id, status: r.status },
       };
     },
   });

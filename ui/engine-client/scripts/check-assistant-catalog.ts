@@ -1,24 +1,22 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { assistantPaths } from "./assistant-paths.ts";
+import { assistantOutputs, repoRelative } from "./assistant-paths.ts";
 import { generateAssistantCatalog } from "./generate-assistant-catalog.ts";
 
-const files = [
-  "assistant-catalog.json",
-  "assistant-capabilities.md",
-  "assistant-coverage.md",
-];
 const temporary = mkdtempSync(join(tmpdir(), "houston-assistant-catalog-"));
 let drifted = false;
 try {
   generateAssistantCatalog(temporary);
-  for (const file of files) {
-    const expected = readFileSync(join(assistantPaths.generated, file));
+  for (const { file, directory } of assistantOutputs) {
+    const committed = join(directory, file);
+    const expected = readFileSync(committed);
     const actual = readFileSync(join(temporary, file));
     if (!expected.equals(actual)) {
       drifted = true;
-      process.stderr.write(`Assistant catalog drift detected in ${file}.\n`);
+      process.stderr.write(
+        `Assistant catalog drift detected in ${repoRelative(committed)}.\n`,
+      );
     }
   }
 } finally {

@@ -1,13 +1,13 @@
-import { existsSync, rmSync } from "node:fs";
 import {
   currentCredentialScope,
   isPersonalScope,
 } from "../../session/acting-context";
+import { type ProbeAnswer, spawnStatusProbe } from "./auth-cli";
 import {
-  type ProbeAnswer,
-  spawnClaudeLogout,
-  spawnStatusProbe,
-} from "./auth-cli";
+  type CredentialProbe,
+  readCredentialCache,
+  refreshAnthropicCredential,
+} from "./credential-probe-cache";
 import { claudeCredentialFileUsable } from "./credentials-file";
 import { claudeCredentialsFile } from "./paths";
 
@@ -33,94 +33,16 @@ import { claudeCredentialsFile } from "./paths";
  * of re-spawning a subprocess per poll.
  */
 
-export type { ProbeAnswer };
-
-/** The probe: resolve a `claude` credential's presence for the shared dir. */
-export type CredentialProbe = () => Promise<ProbeAnswer>;
-
-/** Last KNOWN `claude auth status` result for the shared login dir. */
-let cache: boolean | undefined;
-
-/** When the cache was last populated (ms epoch), for the coalescing TTL. */
-let lastProbeAt = 0;
-
-/** While in the future, skip re-spawning a probe that just failed to answer. */
-let unknownBackoffUntil = 0;
-
-/** An in-flight probe, so concurrent callers share ONE subprocess. */
-let inFlight: Promise<boolean> | null = null;
-
-/**
- * How long a fresh result is reused before re-spawning the probe. The frontend
- * polls `/providers` and `/providers/usage` on a tight React Query cadence and
- * each hits this. Asymmetric on purpose: a CONNECTED answer is stable (our own
- * routes force a refresh after a login/logout), while a DISCONNECTED one must
- * flip within a poll cycle of the user signing in.
- */
-const TTL_CONNECTED_MS = 30_000;
-const TTL_DISCONNECTED_MS = 2_000;
-
-/** How long an unanswerable probe is left alone (no subprocess per poll). */
-const UNKNOWN_BACKOFF_MS = 15_000;
-
-/**
- * Re-probe the shared-dir credential and update the cache. Never throws.
- *
- * An answer we can't trust (thrown spawn error, timeout, garbage) does NOT
- * overwrite the cache: it logs the concrete reason, returns the LAST KNOWN
- * value, and sets a backoff so the poll cadence doesn't spawn a subprocess per
- * request while the probe is broken. `probe` is injected in tests.
- */
-export async function refreshAnthropicCredential(
-  probe: CredentialProbe = spawnStatusProbe,
-  opts: { force?: boolean } = {},
-): Promise<boolean> {
-  // Reuse a fresh-enough result so a burst of status polls collapses to one
-  // spawn. `force` (after a materialize/logout that changed the credential)
-  // bypasses BOTH the TTL and the unknown backoff; the first probe (cache still
-  // undefined, no backoff) always runs.
-  const now = Date.now();
-  if (!opts.force) {
-    if (now < unknownBackoffUntil) return cache ?? false;
-    const ttl = cache === true ? TTL_CONNECTED_MS : TTL_DISCONNECTED_MS;
-    if (cache !== undefined && now - lastProbeAt < ttl) return cache;
-  }
-  // Coalesce concurrent callers onto one in-flight subprocess.
-  if (inFlight) return inFlight;
-  inFlight = (async () => {
-    let answer: ProbeAnswer;
-    try {
-      answer = await probe();
-    } catch (err) {
-      answer = {
-        known: false,
-        reason: err instanceof Error ? err.message : String(err),
-      };
-    }
-    if (answer.known) {
-      cache = answer.loggedIn;
-      unknownBackoffUntil = 0;
-      // Only an ANSWER refreshes the TTL clock — see the else branch.
-      lastProbeAt = Date.now();
-    } else {
-      unknownBackoffUntil = Date.now() + UNKNOWN_BACKOFF_MS;
-      // The TTL clock is deliberately NOT stamped here: it times how fresh the
-      // cached ANSWER is, and this probe produced none. Stamping it made the
-      // two knobs stack instead of compose — after the 15s backoff expired, the
-      // 30s connected TTL kept blocking, so a broken probe froze the status for
-      // 30s rather than the 15s this backoff promises.
-      console.warn(
-        `[claude] could not read anthropic credential status (${answer.reason}); keeping the last known answer (${cache ?? false})`,
-      );
-    }
-    return cache ?? false;
-  })();
-  try {
-    return await inFlight;
-  } finally {
-    inFlight = null;
-  }
-}
+export {
+  forgetAnthropicCredentialCacheForTest,
+  refreshAnthropicCredential,
+  resetAnthropicCredentialCache,
+} from "./credential-probe-cache";
+export {
+  clearGhostClaudeCredential,
+  logoutAnthropicCredential,
+} from "./credential-removal";
+export type { CredentialProbe, ProbeAnswer };
 
 /**
  * The sync "is anthropic connected?" signal, hit at turn time by
@@ -145,7 +67,7 @@ export async function refreshAnthropicCredential(
 export function anthropicCredentialCached(): boolean {
   if (isPersonalScope(currentCredentialScope().key)) return false;
   if (claudeCredentialFileUsable(claudeCredentialsFile())) return true;
-  return cache ?? false;
+  return readCredentialCache() ?? false;
 }
 
 /**
@@ -166,93 +88,15 @@ export async function anthropicCredentialSettled(
 ): Promise<boolean | undefined> {
   if (isPersonalScope(currentCredentialScope().key)) return false;
   if (claudeCredentialFileUsable(claudeCredentialsFile())) return true;
-  if (cache !== undefined) return cache;
+  const known = readCredentialCache();
+  if (known !== undefined) return known;
   await refreshAnthropicCredential(probe);
   // Still `undefined` when the probe could not answer — an unanswerable probe
   // is not a sign-out, so the caller must decide without inventing one.
-  return cache;
+  return readCredentialCache();
 }
 
 /** Fire-and-forget cache warm at runtime boot (server mode). */
 export function primeAnthropicCredential(): void {
   void refreshAnthropicCredential();
-}
-
-/**
- * Reset the cache directly — used after a logout clears the credential so the
- * card flips to disconnected without waiting for the next probe.
- */
-export function resetAnthropicCredentialCache(value = false): void {
-  cache = value;
-  // Zero the TTL and the backoff so the next `refreshAnthropicCredential`
-  // re-probes immediately (a logout/reset must reflect right away).
-  lastProbeAt = 0;
-  unknownBackoffUntil = 0;
-  inFlight = null;
-}
-
-/** Test seam: return the cache to the COLD (never-asked) state. */
-export function forgetAnthropicCredentialCacheForTest(): void {
-  resetAnthropicCredentialCache();
-  cache = undefined;
-}
-
-/**
- * Drop the materialized shared-dir credential after the CENTRAL store
- * authoritatively disconnected anthropic (a serve probe answered
- * not-connected). On a serve-mode pod that file only ever comes from a central
- * push (`credentials-file.ts`), so once the central row is gone any surviving
- * copy is a ghost: the served env token vanished with auth.json, the SDK falls
- * back to this file, and every turn burns a 401 on the dead family with no
- * reporter left to heal it — the served manifest no longer lists anthropic, so
- * `reportRevokedServedToken` no-ops on its provenance gate and the storm
- * sustains until the file's token expires (PRODUCT-1307 / HOUSTON-APP-4YA).
- *
- * A personal scope never owns the shared dir (HOU-976) and must not delete the
- * team's credential on its own disconnect. The cache reset (and its forced
- * re-probe) happens only when a file was actually removed, so the per-turn
- * not-connected sync of an ordinary disconnected pod stays free of subprocess
- * churn.
- *
- * Returns whether a credential was actually dropped, so the sync that asked for
- * it can name this provider in its own removal log line.
- */
-export function clearGhostClaudeCredential(): boolean {
-  if (isPersonalScope(currentCredentialScope().key)) return false;
-  const path = claudeCredentialsFile();
-  if (!existsSync(path)) return false;
-  try {
-    rmSync(path, { force: true });
-  } catch (err) {
-    console.warn(
-      `[claude] could not remove the ghost materialized credential at ${path}:`,
-      err instanceof Error ? err.message : err,
-    );
-    return false;
-  }
-  console.log(
-    "[claude] removed ghost materialized credential: the central store no longer holds an anthropic credential for this workspace",
-  );
-  resetAnthropicCredentialCache(false);
-  return true;
-}
-
-/**
- * Clear the browser-login credential for the shared dir. Rejects on failure so
- * the caller can surface it (no silent failure). The materialized file goes too
- * — on the pod its existence IS the connected signal — and the cache is reset
- * either way, so a failed keychain logout still reports disconnected locally
- * rather than leaving a stale "connected".
- */
-export async function logoutAnthropicCredential(): Promise<void> {
-  try {
-    await spawnClaudeLogout();
-  } finally {
-    try {
-      rmSync(claudeCredentialsFile(), { force: true });
-    } catch {
-      // Best-effort; the cache reset below still reports disconnected.
-    }
-    resetAnthropicCredentialCache(false);
-  }
 }

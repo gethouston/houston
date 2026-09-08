@@ -1,66 +1,34 @@
-export type JsonSchema = Record<string, unknown>;
-
-export interface AssistantParameter {
-  name: string;
-  required: boolean;
-  schema: JsonSchema;
-}
-
-export type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+import type {
+  AssistantCatalogDocument,
+  AssistantHttpMethod,
+  AssistantJsonSchema,
+  AssistantOperationDocument,
+  AssistantParameterDocument,
+  AssistantPathEncoding,
+  AssistantPathParam as AssistantPathParamDocument,
+  AssistantRouteDocument,
+} from "@houston/domain";
 
 /**
- * How a path parameter's value is escaped into the URL.
+ * What the generator writes, and what the coverage gate judges.
  *
- * - `segment` — one path segment (`encodeURIComponent`), the usual case.
- * - `path` — a relative path whose `/` separators survive; each segment is
- *   escaped on its own. Only the agent-file routes take one.
+ * The DOCUMENT shapes are not declared here: they are the single declaration in
+ * `@houston/domain`, which the host reads the same file back through. A second
+ * copy on the writer's side would drift, and the drift would only ever surface
+ * as a catalog the host silently refuses to load. The aliases below are that
+ * one declaration under the names this generator has always used.
+ *
+ * Everything after them is generator-only: the coverage gate's view of an
+ * operation, which is deliberately absent from the emitted document.
  */
-export type PathEncoding = "segment" | "path";
 
-export interface AssistantPathParam {
-  name: string;
-  encoding: PathEncoding;
-}
-
-/**
- * The HTTP call one adapter operation makes. `path` is the FULL host path — no
- * base is prepended anywhere — with `{paramName}` placeholders where the source
- * interpolates a parameter.
- */
-export interface AssistantRoute {
-  method: HttpMethod;
-  path: string;
-  pathParams: AssistantPathParam[];
-  /** Query-string key -> the parameter that supplies it. */
-  query: Record<string, string>;
-  /** The parameter sent as the whole JSON body. */
-  body: string | null;
-  /**
-   * The JSON body assembled field by field: body key -> the parameter that
-   * supplies it, either by name (`name`) or by one of its fields
-   * (`seed.claudeMd`). At most one of `body` / `bodyFields` is set; both `null`
-   * means no body.
-   */
-  bodyFields: Record<string, string> | null;
-  /**
-   * `true` when the adapter function post-processes what comes back (unwrapping
-   * `items`, 404 fallbacks, `.then` transforms). A caller driving the route
-   * directly receives the host's raw response instead.
-   */
-  rawResponse: boolean;
-}
-
-export interface AssistantOperation {
-  name: string;
-  group: string;
-  description: string;
-  confirm: boolean;
-  hidden: boolean;
-  params: AssistantParameter[];
-  returns: JsonSchema;
-  /** `null` when the route could not be derived conservatively from the source. */
-  route: AssistantRoute | null;
-}
+export type JsonSchema = AssistantJsonSchema;
+export type HttpMethod = AssistantHttpMethod;
+export type PathEncoding = AssistantPathEncoding;
+export type AssistantPathParam = AssistantPathParamDocument;
+export type AssistantParameter = AssistantParameterDocument;
+export type AssistantRoute = AssistantRouteDocument;
+export type AssistantOperation = AssistantOperationDocument;
 
 export interface UnroutableOperation {
   name: string;
@@ -102,12 +70,7 @@ export interface OperationAnnotation {
   unschematizedFields: string[];
 }
 
-export interface AssistantCatalog {
-  $comment: string;
-  version: 3;
-  sourceHash: string;
-  operations: AssistantOperation[];
-}
+export type AssistantCatalog = AssistantCatalogDocument;
 
 export interface Coverage {
   undocumented: string[];

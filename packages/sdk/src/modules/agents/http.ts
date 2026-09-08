@@ -63,6 +63,9 @@ export async function createAgent(
 /**
  * Renames an agent.
  *
+ * @param id The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param name The new name, in the user's own words.
  * @assistant group:agents confirm
  */
 export async function renameAgent(
@@ -80,6 +83,8 @@ export async function renameAgent(
 /**
  * Deletes an agent and everything in it.
  *
+ * @param id The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
  * @assistant group:agents confirm
  */
 export async function deleteAgent(scope: HttpScope, id: string): Promise<void> {

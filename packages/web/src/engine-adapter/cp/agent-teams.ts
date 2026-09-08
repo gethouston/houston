@@ -10,6 +10,11 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 /**
  * Chooses who may use an agent, and at what access level.
+ * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
+ *   returns. Read it from listAgents rather than writing the name the user
+ *   says.
+ * @param assignments Who may use the agent, by the user ids getOrgPeople
+ *   returns.
  * @assistant group:teams confirm
  * @assistant unroutable: debt: the body is chosen client-side between the v1 userIds and v2 assignments shapes; routable once callers pass only assignments.
  */
@@ -31,6 +36,9 @@ export async function setAgentAssignments(
 
 /**
  * Reads which apps and AI models an agent is allowed to use.
+ * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
+ *   returns. Read it from listAgents rather than writing the name the user
+ *   says.
  * @assistant group:teams
  */
 export async function getAgentSettings(
@@ -50,6 +58,11 @@ export async function getAgentSettings(
  * Replace this agent's manager-set settings. The gateway READ-THEN-MERGES the
  * body, so forwarding only the keys the caller set is the whole contract — a
  * one-ceiling PUT leaves the other untouched.
+ * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
+ *   returns. Read it from listAgents rather than writing the name the user
+ *   says.
+ * @param settings The ceilings to set. Pass only what changes: an omitted
+ *   key is left alone, and null means no limit.
  * @assistant group:teams confirm
  */
 export async function setAgentSettings(
@@ -74,6 +87,9 @@ export async function setAgentSettings(
  * `allowedModels` ceiling, or `null` when the gateway does not serve model
  * choices (404) — a non-Teams host — so the composer degrades to single-player
  * behavior. Every other error still throws.
+ * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
+ *   returns. Read it from listAgents rather than writing the name the user
+ *   says.
  * @assistant group:agents
  */
 export async function getAgentModelChoice(
@@ -96,7 +112,17 @@ export async function getAgentModelChoice(
  * Chooses which AI model an agent uses.
  *
  * Set the ACTING user's model choice for this agent (gateway clamps to ceiling).
- * @assistant group:agents
+ *
+ * Confirmed: money. The choice sets the rate every later turn with this agent
+ * is billed at.
+ * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
+ *   returns. Read it from listAgents rather than writing the name the user
+ *   says.
+ * @param choice Which AI to use: a provider connected here
+ *   (listAgentProviders lists them), one of the models this agent is
+ *   allowed (getAgentModelChoice returns the allowed set) and optionally
+ *   how hard it should think, one of low, medium, high or xhigh.
+ * @assistant group:agents confirm
  */
 export async function setAgentModelChoice(
   cfg: ControlPlaneConfig,
@@ -116,6 +142,9 @@ export async function setAgentModelChoice(
  * One agent's per-routine trigger status (C9), or `null` when the gateway does
  * not serve triggers (404). Callers treat `null` as "triggers unsupported here"
  * and hide the badge; every other error throws.
+ * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
+ *   returns. Read it from listAgents rather than writing the name the user
+ *   says.
  * @assistant group:routines
  */
 export async function agentTriggerStatus(

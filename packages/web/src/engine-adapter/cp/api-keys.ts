@@ -19,7 +19,9 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * Lists the user's active API keys.
  *
  * The caller's active API keys, newest first. No secrets — display prefixes only.
- * @assistant group:api-keys
+ *
+ * Not confirmed: a read. It names the user's keys and reveals no secret.
+ * @assistant group:api-keys hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
  */
 export async function listApiKeys(cfg: ControlPlaneConfig): Promise<ApiKey[]> {
   const res = await cpFetch(cfg, "/v1/keys");
@@ -52,7 +54,10 @@ export async function createApiKey(
  *
  * Soft-revoke a key by id. Idempotent from the user's view: an unknown, foreign,
  * or already-revoked id answers `404` (no existence leak). No body on success.
- * @assistant group:api-keys confirm
+ *
+ * Confirmed: irreversible. A revoked key never works again, and anything
+ * signing with it stops without warning.
+ * @assistant group:api-keys confirm hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
  */
 export async function revokeApiKey(
   cfg: ControlPlaneConfig,

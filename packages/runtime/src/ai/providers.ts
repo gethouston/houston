@@ -7,6 +7,8 @@ import type { Api, Model } from "@earendil-works/pi-ai";
 // accepts — narrower than `KnownProvider`, which since pi 0.82 also names
 // purely dynamic providers (radius) with no static catalog entry.
 import { type BuiltinProvider, getModel } from "@earendil-works/pi-ai/compat";
+import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
+import { toCanonicalProviderId } from "@houston/domain/provider-dialect";
 import type { ProviderHealth } from "@houston/protocol";
 import {
   authFailureActive,
@@ -220,48 +222,17 @@ function saveSettings(s: Settings) {
 }
 
 /**
- * Uncurated providers whose alphabetically-first catalog model is a bad
- * default — the id the key VERIFIER probes and the first chat runs on, so a
- * dead first row breaks connect itself:
- * - NVIDIA serves each hosted model per ACCOUNT (HOU-890): alphabetical
- *   first rows (gemma, deepseek) answer `404 Function not found for account`
- *   for many accounts. NVIDIA retired the previously-pinned llama-3.x NIM
- *   rows (dropped from pi's catalog in 0.84.4) and then gpt-oss-120b (dropped
- *   in 0.85.0); openai/gpt-oss-20b is the last survivor of the families our
- *   partially-gated live key was served (llama / gpt-oss / minimax — see
- *   isNvidiaFunctionGated). Keep in sync
- *   with the classifier's NVIDIA_BROAD_FALLBACK and the verifier's
- *   NVIDIA_VERIFY_FALLBACKS.
- * - Moonshot AI RETIRED the whole kimi-k2 preview series on 2026-05-25
- *   (platform.kimi.ai/docs/models: kimi-k2-0711-preview, -0905-preview,
- *   -turbo-preview, -thinking, -thinking-turbo), but pi-ai's baked catalog
- *   still lists them, and the first row IS kimi-k2-0711-preview — every
- *   Moonshot connect answered `404 Not found the model kimi-k2-0711-preview
- *   or Permission denied` and read as "couldn't reach Moonshot" (PRODUCT-1411,
- *   Sentry HOUSTON-APP-54G). kimi-k3 is Moonshot's own migration target;
- *   it unlocks on the same >= $1 first top-up Moonshot requires before ANY
- *   request works (an un-funded account answers `429 suspended due to
- *   insufficient balance` on every model — which the verifier already reads
- *   as proof of the key), so every account that can chat at all has it.
- *   Twin of the frontend's `PROVIDER_OVERRIDES.moonshotai.defaultModel`
- *   (auto-select on connect reads THAT); keep them in sync.
- */
-const UNCURATED_DEFAULT_MODEL: Record<string, string> = {
-  nvidia: "openai/gpt-oss-20b",
-  moonshotai: "kimi-k3",
-  // pi's azure catalog is alphabetical, so "first model" would be gpt-4 —
-  // a 2023 model as the connect-time default. Start on the current
-  // broadly-deployed tier instead (PRODUCT-1477).
-  [AZURE_OPENAI]: "gpt-5.5",
-};
-
-/**
- * The default model for an uncurated pi provider: the hand-picked override
- * when one exists (and pi still lists it), else the first model pi lists;
- * undefined when pi has no catalog for it.
+ * The default model for an uncurated pi provider: the domain table's
+ * hand-picked entry when it has one (and pi still lists it), else the first
+ * model pi lists; undefined when pi has no catalog for it.
+ *
+ * The table is consulted rather than restated because this id is what the key
+ * VERIFIER probes and what the first chat runs on, so a dead pick breaks connect
+ * itself — and the app's picker pre-selects from that same table. Two copies
+ * meant the screen offering a model and the turn running one could disagree.
  */
 function uncuratedDefaultModel(provider: string): string | undefined {
-  const preferred = UNCURATED_DEFAULT_MODEL[provider];
+  const preferred = DEFAULT_MODEL[provider];
   if (preferred && piModelIds(provider).includes(preferred)) return preferred;
   return firstCatalogModel(provider);
 }
@@ -554,22 +525,17 @@ export function safeGetModel(
  * Canonicalize a wire provider id arriving on a turn PIN / provider override.
  *
  * Houston's UI RENAMES pi's `openai-codex` subscription to the display id
- * `openai` and never offers pi's raw platform-key `openai` provider (frontend
- * `PROVIDER_ID_RENAME` in `app/src/lib/provider-overrides.ts`; shared alias
- * table `PROVIDER_ALIASES` in `@houston/domain`). So on the wire a bare `openai`
- * ALWAYS means the Codex product. The frontend's `wireTurnPin` already applies
- * this before send; we enforce the SAME mapping here — the single pin-entry seam
- * every turn's provider override flows through (exec-turn, conversation-cache,
- * generate-agent) — so NO caller (the hosted Teams model-choice path, a routine
- * pin, a hand-crafted request body) can land a turn on pi's raw `openai`
- * provider and miss the `openai-codex` credential.
- *
- * TRADEOFF: this hard-codes that wire `openai` == Codex. If Houston ever offers
- * platform-key OpenAI as its own provider, THIS alias and the frontend rename
- * must be removed together.
+ * `openai` and never offers pi's raw platform-key `openai` provider, so on the
+ * wire a bare `openai` ALWAYS means the Codex product. The rename map itself is
+ * the domain's (`@houston/domain/provider-dialect`, the same module the
+ * frontend's `wireTurnPin` applies before send); this function is the runtime's
+ * single pin-entry seam — every turn's provider override flows through it
+ * (exec-turn, conversation-cache, generate-agent) — so NO caller (the hosted
+ * Teams model-choice path, a routine pin, a hand-crafted request body) can land
+ * a turn on pi's raw `openai` provider and miss the `openai-codex` credential.
  */
 export function canonicalPinProvider(id: string): string {
-  return id === "openai" ? "openai-codex" : id;
+  return toCanonicalProviderId(id);
 }
 
 /**

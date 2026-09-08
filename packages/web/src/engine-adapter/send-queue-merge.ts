@@ -1,4 +1,5 @@
 import type {
+  MessageApproval,
   MessageMention,
   SessionStartRequest,
 } from "../../../../ui/engine-client/src/types";
@@ -14,7 +15,7 @@ import type {
 /** The fields a flush derives from the whole queue rather than its last entry. */
 export type MergedSendFields = Pick<
   SessionStartRequest,
-  "prompt" | "displayText" | "mentions"
+  "prompt" | "displayText" | "mentions" | "approvals"
 >;
 
 /** Trim, drop the empties, and join blank-line-separated — the shape the old
@@ -45,7 +46,26 @@ function unionMentions(
 }
 
 /**
- * Combine the held requests' prompt, bubble text and @mentions.
+ * Every approval receipt the merged entries carry, deduped by `requestId` and
+ * in first-seen order. Like the mentions union and for a sharper reason: a
+ * receipt is a person's yes, and taking only the last entry's would silently
+ * drop an approval they actually gave — the card would come back and ask again.
+ * A repeat of the same request id keeps the FIRST answer: the host retires a
+ * request the moment it is decided, so a later duplicate is not a second
+ * decision.
+ */
+function unionApprovals(
+  reqs: readonly SessionStartRequest[],
+): MessageApproval[] | undefined {
+  const seen = new Map<string, MessageApproval>();
+  for (const r of reqs)
+    for (const a of r.approvals ?? [])
+      if (!seen.has(a.requestId)) seen.set(a.requestId, a);
+  return seen.size > 0 ? [...seen.values()] : undefined;
+}
+
+/**
+ * Combine the held requests' prompt, bubble text, @mentions and approvals.
  *
  * The BUBBLE is reconstructed exactly like the prompt so a history reload
  * matches what the send showed: each entry contributes what its own bubble
@@ -62,5 +82,6 @@ export function mergeSendFields(
       ? joinLines(reqs.map((r) => r.displayText ?? r.prompt))
       : undefined,
     mentions: unionMentions(reqs),
+    approvals: unionApprovals(reqs),
   };
 }

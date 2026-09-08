@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   IntegrationConnection,
   IntegrationProviderStatus,
@@ -10,7 +11,7 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
 // dismiss — delegate to `sdk.integrations.*` (byte-identical routes, no
 // refetch); see `client/integrations-mixin.ts`. Only the READS stay here.
 
-const integrationPath = (provider: string) =>
+const integrationPath = (provider: IntegrationProviderId) =>
   `/v1/integrations/${encodeURIComponent(provider)}`;
 
 /**
@@ -26,11 +27,15 @@ export async function integrationStatus(
 
 /**
  * Checks whether a connection to an outside app has finished.
+ * @param provider Which integration surface to ask: composio for the app
+ *   catalogue, custom for the user's own connectors.
+ * @param connectionId The connection to check, by the id
+ *   integrationConnections returns.
  * @assistant group:integrations
  */
 export async function integrationConnection(
   cfg: ControlPlaneConfig,
-  provider: string,
+  provider: IntegrationProviderId,
   connectionId: string,
 ): Promise<IntegrationConnection> {
   const res = await cpFetch(
@@ -42,11 +47,13 @@ export async function integrationConnection(
 
 /**
  * Lists the outside apps available to connect.
+ * @param provider Which integration surface to ask: composio for the app
+ *   catalogue, custom for the user's own connectors.
  * @assistant group:integrations
  */
 export async function integrationToolkits(
   cfg: ControlPlaneConfig,
-  provider: string,
+  provider: IntegrationProviderId,
 ): Promise<IntegrationToolkit[]> {
   const res = await cpFetch(cfg, `${integrationPath(provider)}/toolkits`);
   return ((await res.json()) as { items: IntegrationToolkit[] }).items;
@@ -54,11 +61,13 @@ export async function integrationToolkits(
 
 /**
  * Lists the accounts the user has connected for one outside app.
+ * @param provider Which integration surface to ask: composio for the app
+ *   catalogue, custom for the user's own connectors.
  * @assistant group:integrations
  */
 export async function integrationConnections(
   cfg: ControlPlaneConfig,
-  provider: string,
+  provider: IntegrationProviderId,
 ): Promise<IntegrationConnection[]> {
   const res = await cpFetch(cfg, `${integrationPath(provider)}/connections`);
   return ((await res.json()) as { items: IntegrationConnection[] }).items;
@@ -72,6 +81,8 @@ export async function integrationConnections(
 
 /**
  * Lists the events from an outside app that a routine can wake up on.
+ * @param toolkit The outside app's toolkit slug, exactly as
+ *   integrationToolkits returned it.
  * @assistant group:integrations
  * @assistant unschematized: a trigger type's config and payload are the outside app's own shapes.
  */

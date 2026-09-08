@@ -38,14 +38,18 @@ const PROVIDERS: ProviderOption[] = [
   { id: "anthropic", name: "Claude (Pro / Max)", connected: false },
 ];
 
-function tools(personalAssistant: boolean) {
+function tools(
+  personalAssistant: boolean,
+  /** What a given path answers, when the flat {@link REPLY} is not the point. */
+  replyFor?: (path: string) => unknown,
+) {
   const calls: Recorded[] = [];
   const call: SandboxFetch = async (path, init) => {
     calls.push({
       path,
       body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
     });
-    return new Response(JSON.stringify(REPLY), {
+    return new Response(JSON.stringify(replyFor?.(path) ?? REPLY), {
       status: 200,
       headers: { "content-type": "application/json" },
     });
@@ -76,11 +80,16 @@ function tools(personalAssistant: boolean) {
 
 test("the assistant cannot start a mission without naming an agent", async () => {
   const { start, calls } = tools(true);
-  await expect(
-    start({ title: "Roast the website", prompt: "Roast it." }),
-  ).rejects.toThrow(/agent/i);
-  // Nothing reached the host: no board anywhere grew a hidden card.
-  expect(calls).toEqual([]);
+  const out = await start({ title: "Roast the website", prompt: "Roast it." });
+  expect(out.details).toMatchObject({
+    ok: false,
+    error: { code: "agent_required" },
+  });
+  const first = out.content[0];
+  expect(first?.type === "text" && first.text).toMatch(/agent/i);
+  // No board anywhere grew a hidden card: the only call made is the one that
+  // fetches the agents the refusal offers instead.
+  expect(calls.map((c) => c.path)).toEqual(["/sandbox/assistant/call"]);
 });
 
 test("the assistant's mission goes to the agent it names", async () => {
@@ -100,14 +109,52 @@ test("the assistant's mission goes to the agent it names", async () => {
 
 test("the assistant must name an agent to read or move a board too", async () => {
   const { list, move, calls } = tools(true);
-  await expect(list({})).rejects.toThrow(/agent/i);
-  await expect(move({ id: "m-1", status: "done" })).rejects.toThrow(/agent/i);
-  expect(calls).toEqual([]);
+  const refusals = [
+    await list({}),
+    await move({ id: "m-1", status: "done" }),
+  ] as const;
+  for (const out of refusals) {
+    // A refusal the model READS and can act on, never a thrown exception it
+    // can only report — the same posture start_mission takes.
+    expect(out.details).toMatchObject({
+      ok: false,
+      error: { code: "agent_required" },
+    });
+    const first = out.content[0];
+    expect(first?.type === "text" && first.text).toMatch(/agent/i);
+  }
+  // No board was read or moved: the only calls made are the ones that fetch
+  // the agents each refusal offers instead.
+  expect(calls.map((c) => c.path)).toEqual([
+    "/sandbox/assistant/call",
+    "/sandbox/assistant/call",
+  ]);
 
   await list({ agent: "Dobby" });
-  expect(calls[0]?.path).toBe("/sandbox/missions?agent=Dobby");
+  expect(calls[2]?.path).toBe("/sandbox/missions?agent=Dobby");
   await move({ agent: "Dobby", id: "m-1", status: "done" });
-  expect(calls[1]?.body).toMatchObject({ agent: "Dobby", id: "m-1" });
+  expect(calls[3]?.body).toMatchObject({ agent: "Dobby", id: "m-1" });
+});
+
+test("a refusal to read or move names the agents that would have worked", async () => {
+  // The point of the value: a model told only "name an agent" invents a name.
+  const agents = (path: string) =>
+    path === "/sandbox/assistant/call"
+      ? [
+          { id: "a-1", name: "Dobby" },
+          { id: "a-2", name: ".assistant" },
+        ]
+      : undefined;
+  for (const out of [
+    await tools(true, agents).list({}),
+    await tools(true, agents).move({ id: "m-1", status: "done" }),
+  ]) {
+    const first = out.content[0];
+    const text = first?.type === "text" ? first.text : "";
+    expect(text).toContain("Dobby (id a-1)");
+    // Houston's own hidden agents keep no board and are never offered.
+    expect(text).not.toContain(".assistant");
+  }
 });
 
 test("every other agent keeps working on its own board, unchanged", async () => {

@@ -4,13 +4,13 @@ import { IntegrationRegistry } from "./registry";
 
 test("registers, resolves, and reports providers by id", () => {
   const composio = new FakeIntegrationProvider({ id: "composio" });
-  const other = new FakeIntegrationProvider({ id: "other" });
-  const reg = new IntegrationRegistry([composio, other]);
+  const custom = new FakeIntegrationProvider({ id: "custom" });
+  const reg = new IntegrationRegistry([composio, custom]);
 
   expect(reg.size).toBe(2);
-  expect(reg.ids().sort()).toEqual(["composio", "other"]);
+  expect(reg.ids().sort()).toEqual(["composio", "custom"]);
   expect(reg.has("composio")).toBe(true);
-  expect(reg.get("other")).toBe(other);
+  expect(reg.get("custom")).toBe(custom);
 });
 
 test("a duplicate id is a wiring bug, not a silent overwrite", () => {

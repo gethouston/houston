@@ -11,6 +11,8 @@ import {
   parseClaudeOAuthEnvelope,
   parseMentions,
 } from "@houston/protocol";
+import { assistantApprovals } from "../assistant/approvals";
+import { applyApprovalReceiptsToTurnBody } from "../assistant/receipts";
 import {
   ACTING_AS_HEADER,
   actingAuthorFromHeader,
@@ -50,6 +52,7 @@ import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
 import { handleCustomIntegrationsDispatch } from "./custom-integrations-user";
 import { json, readJson } from "./http";
 import { handleMigration } from "./migration";
+import { handleAgentMissions } from "./missions-remote-inbound";
 import { handlePortableExport } from "./portable";
 import { handlePortableAnonymize } from "./portable-anonymize";
 import { handlePortablePreview } from "./portable-preview";
@@ -849,6 +852,29 @@ export async function handleAgents(
     const actingAuthor = deps.gatewayFronted
       ? actingAuthorFromHeader(req.headers[ACTING_AS_HEADER])
       : null;
+    // The pod side of a cross-pod mission (missions-remote-inbound.ts): the
+    // assistant's `start_mission` for an agent that lives in another pod
+    // addresses the gateway, which dispatches `/agents/{id}/missions…` here.
+    // Mounted BEFORE the channel so the whole family is served by the host off
+    // this workspace's vfs — the agent's runtime has no mission routes and
+    // would answer for something else entirely.
+    const dispatchActingAs = trustedActingAs(deps, req);
+    if (
+      await handleAgentMissions(
+        deps,
+        {
+          ...ctx,
+          ...(actingAuthor ? { author: actingAuthor } : {}),
+          ...(dispatchActingAs ? { actingAs: dispatchActingAs } : {}),
+        },
+        method,
+        rest,
+        url,
+        req,
+        res,
+      )
+    )
+      return true;
     if (
       await handleAgentData(
         deps.vfs,
@@ -1022,55 +1048,87 @@ export async function handleAgents(
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    // Teams attribution: a user turn (POST …/conversations/:cid/messages) marks
-    // the acting human as a contributor on the mission it drives, and records
-    // the teammates that message @mentioned (HOU-945). Best-effort metadata
-    // that never blocks the turn (see activity-attribution.ts); runs only when
-    // a gateway vouched for the actor (actingAuthor non-null) — off the gateway
-    // nothing here runs, not even the body read, so desktop/self-host behavior
-    // and activity.json are byte-identical.
+    // The user turn this request may be (POST …/conversations/:cid/messages).
+    // Two seams below read it: Teams attribution and approval receipts.
+    const turnMatch =
+      method === "POST"
+        ? rest.match(/^conversations\/([^/]+)\/messages$/)
+        : null;
+    const turnConversationId = turnMatch?.[1]
+      ? decodeURIComponent(turnMatch[1])
+      : undefined;
     let turnBody: Buffer | undefined;
-    if (actingAuthor && deps.vfs) {
-      const turnMatch =
-        method === "POST"
-          ? rest.match(/^conversations\/([^/]+)\/messages$/)
-          : null;
-      if (turnMatch?.[1]) {
-        // The mentions ride the turn body, which the channel reads next — drain
-        // it ONCE here and hand the buffer down on the ctx (the stream is
-        // exhausted afterwards, so the channel must not re-read it).
-        turnBody = await readBody(req, MAX_JSON_BYTES);
-        let mentionedIds: string[] = [];
-        try {
-          const parsed = JSON.parse(turnBody.toString("utf8") || "{}") as {
-            mentions?: unknown;
-          };
-          // The same shared guard the runtime and the cloud turn parser apply.
-          mentionedIds = (parseMentions(parsed.mentions) ?? []).map(
-            (m) => m.userId,
-          );
-        } catch {
-          // An unparseable body carries no mentions to stamp, and deciding what
-          // to tell the client is not this seam's business — the channel this
-          // request is headed for answers it, and the two channels answer
-          // differently: TurnChannel (cloudrun) parses the buffer below and
-          // returns a clean 400 {error:"invalid JSON body"} (turn/dispatch.ts),
-          // while ProxyChannel forwards the raw bytes to the agent's pi
-          // runtime, whose own body parse is unguarded — that path answers the
-          // runtime's 500 {error:"internal error"}, relayed verbatim. Swallow
-          // here only because the request keeps travelling; it never ends on a
-          // silent success.
-        }
-        await stampTurnAttribution(
-          deps.vfs,
-          paths.agentRoot(ctx.workspace, ctx.agent),
-          ctx.agent.id,
-          decodeURIComponent(turnMatch[1]),
-          actingAuthor,
-          mentionedIds,
-          emit,
+    // Teams attribution: a user turn marks the acting human as a contributor on
+    // the mission it drives, and records the teammates that message @mentioned
+    // (HOU-945). Best-effort metadata that never blocks the turn (see
+    // activity-attribution.ts); runs only when a gateway vouched for the actor
+    // (actingAuthor non-null) — off the gateway nothing here runs, not even the
+    // body read, so desktop/self-host behavior and activity.json are identical.
+    if (actingAuthor && deps.vfs && turnConversationId !== undefined) {
+      // The mentions ride the turn body, which the channel reads next — drain
+      // it ONCE here and hand the buffer down on the ctx (the stream is
+      // exhausted afterwards, so the channel must not re-read it).
+      turnBody = await readBody(req, MAX_JSON_BYTES);
+      let mentionedIds: string[] = [];
+      try {
+        const parsed = JSON.parse(turnBody.toString("utf8") || "{}") as {
+          mentions?: unknown;
+        };
+        // The same shared guard the runtime and the cloud turn parser apply.
+        mentionedIds = (parseMentions(parsed.mentions) ?? []).map(
+          (m) => m.userId,
         );
+      } catch {
+        // An unparseable body carries no mentions to stamp, and deciding what
+        // to tell the client is not this seam's business — the channel this
+        // request is headed for answers it, and the two channels answer
+        // differently: TurnChannel (cloudrun) parses the buffer below and
+        // returns a clean 400 {error:"invalid JSON body"} (turn/dispatch.ts),
+        // while ProxyChannel forwards the raw bytes to the agent's pi
+        // runtime, whose own body parse is unguarded — that path answers the
+        // runtime's 500 {error:"internal error"}, relayed verbatim. Swallow
+        // here only because the request keeps travelling; it never ends on a
+        // silent success.
       }
+      await stampTurnAttribution(
+        deps.vfs,
+        paths.agentRoot(ctx.workspace, ctx.agent),
+        ctx.agent.id,
+        turnConversationId,
+        actingAuthor,
+        mentionedIds,
+        emit,
+      );
+    }
+    // A deleted conversation takes its pending approvals with it: the card is
+    // gone from the user's screen and there is no message left that could ever
+    // answer it, so leaving the request live would let a stale id be spent.
+    const deletedConversation =
+      method === "DELETE" ? rest.match(/^conversations\/([^/]+)$/) : null;
+    if (deletedConversation?.[1])
+      assistantApprovals.clear(
+        ctx.agent.id,
+        decodeURIComponent(deletedConversation[1]),
+      );
+    // APPROVAL RECEIPTS (assistant/receipts.ts): a destructive Houston operation
+    // is authorized by the person's OWN message, and this is the only seam it
+    // passes through on its way to the runtime — so the yes is recorded here,
+    // where no runtime can author one. The receipts ride the request's own
+    // `approvals` field, which this strips before forwarding. Gated on a live
+    // card for this exact agent + conversation, so an ordinary turn never even
+    // reads its body.
+    if (
+      turnConversationId !== undefined &&
+      assistantApprovals.hasPending(ctx.agent.id, turnConversationId)
+    ) {
+      turnBody ??= await readBody(req, MAX_JSON_BYTES);
+      turnBody =
+        applyApprovalReceiptsToTurnBody({
+          approvals: assistantApprovals,
+          agentId: ctx.agent.id,
+          conversationId: turnConversationId,
+          body: turnBody,
+        }) ?? turnBody;
     }
     await channel.dispatch(
       turnBody ? { ...ctx, body: turnBody } : ctx,

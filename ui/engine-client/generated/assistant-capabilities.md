@@ -7,25 +7,20 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## agents
 
-- `createAgent`: Creates a new agent. Always choose a `color` for it, one of Houston's ten palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange, golden, or umber. It is how the new agent is told apart at a glance, and leaving it out gives every agent the same default color.
+- `createAgent`: Creates a new agent. Always choose a `color` for it, one of Houston's ten palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange, golden, or umber. It is how the new agent is told apart at a glance, and leaving it out gives every agent the same default color. **Confirmation required.**
 - `deleteAgent`: Deletes an agent and everything in it. **Confirmation required.**
 - `getAgentModelChoice`: Reads which AI model the user picked for an agent.
 - `installAgentFromGithub`: Installs an agent from a GitHub repository. **Confirmation required.**
 - `listAgents`: Lists the user's agents.
 - `listInstalledConfigs`: Lists the agent templates installed in Houston.
 - `renameAgent`: Renames an agent. **Confirmation required.**
-- `setAgentModelChoice`: Chooses which AI model an agent uses.
+- `setAgentModelChoice`: Chooses which AI model an agent uses. **Confirmation required.**
 - `updateAgentColor`: Change an agent's color. Pick one of Houston's ten palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange, golden, or umber. The new color shows up everywhere that agent appears.
-
-## api-keys
-
-- `listApiKeys`: Lists the user's active API keys.
-- `revokeApiKey`: Permanently revokes one of the user's API keys. **Confirmation required.**
 
 ## billing
 
 - `createCheckout`: Starts the checkout that subscribes the team workspace to a paid plan. **Confirmation required.**
-- `createPortal`: Opens the billing page where the user can change the card, see invoices, or cancel. **Confirmation required.**
+- `createPortal`: Opens the billing page where the user can change the card, see invoices, or cancel.
 - `getBilling`: Shows the plan, trial, and payment status of the team workspace.
 
 ## files
@@ -44,7 +39,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `addCustomIntegration`: Adds an outside app of the user's own from a link. **Confirmation required.**
 - `customIntegrations`: Lists the outside apps the user added themselves.
 - `customIntegrationTools`: Lists the actions an app the user added themselves offers.
-- `detectCustomIntegration`: Checks what kind of service a link the user pasted points to.
+- `detectCustomIntegration`: Checks what kind of service a link the user pasted points to. **Confirmation required.**
 - `integrationConnection`: Checks whether a connection to an outside app has finished.
 - `integrationConnections`: Lists the accounts the user has connected for one outside app.
 - `integrationStatus`: Shows which outside apps can be connected and which ones already are.
@@ -57,7 +52,6 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `createActivity`: Creates a mission on an agent's board.
 - `deleteActivity`: Deletes a mission from an agent's board. **Confirmation required.**
 - `listActivities`: Lists the missions on an agent's board.
-- `updateActivity`: Updates a mission's details or status.
 
 ## org
 
@@ -79,24 +73,24 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 - `agentTriggerStatus`: Checks whether an agent's routine triggers are ready.
 - `cancelRoutineRun`: Stops a routine run that is currently under way. **Confirmation required.**
-- `createRoutine`: Creates a routine so an agent repeats work on a schedule.
+- `createRoutine`: Creates a routine so an agent repeats work on a schedule. **Confirmation required.**
 - `deleteRoutine`: Deletes a routine so it stops running on its schedule. **Confirmation required.**
 - `listRoutineRuns`: Lists the times an agent's routines have run, including any run in progress.
 - `listRoutines`: Lists an agent's routines.
 - `runRoutineNow`: Runs a routine right now instead of waiting for its next scheduled time. **Confirmation required.**
-- `updateRoutine`: Updates a routine's schedule or instructions.
+- `updateRoutine`: Updates a routine's schedule or instructions. **Confirmation required.**
 
 ## settings
 
 - `getContext`: Reads the background notes Houston gives an agent on every conversation. (not callable yet)
 - `getMyProfile`: Reads the user's own name and photo.
 - `setContext`: Replaces the background notes Houston gives an agent on every conversation. **Confirmation required.** (not callable yet)
-- `setMyProfile`: Updates the user's own name or photo. **Confirmation required.**
+- `setMyProfile`: Updates the user's own name or photo.
 
 ## skills
 
 - `createSharedSkill`: Creates a skill and shares it with everyone in the workspace. **Confirmation required.**
-- `createSkill`: Creates a skill an agent can follow.
+- `createSkill`: Creates a skill an agent can follow. **Confirmation required.**
 - `deleteSharedSkill`: Deletes a skill shared with the workspace, removing it for everyone. **Confirmation required.**
 - `deleteSkill`: Deletes a skill so the agent no longer has it. **Confirmation required.**
 - `getSkillsManifest`: Reads which of an agent's skills are switched on.
@@ -109,17 +103,16 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `loadSkill`: Reads a skill's instructions.
 - `previewCommunitySkill`: Shows what a community skill does before installing it.
 - `promoteSharedSkill`: Shares an agent's existing skill with everyone in the workspace. **Confirmation required.**
-- `putSkillsManifest`: Chooses which of an agent's skills are switched on. **Confirmation required.**
+- `putSkillsManifest`: Chooses which of an agent's skills are switched on.
 - `saveSharedSkill`: Saves changes to a skill shared with the workspace, for everyone who uses it. **Confirmation required.**
-- `saveSkill`: Saves changes to a skill's instructions.
+- `saveSkill`: Saves changes to a skill's instructions. **Confirmation required.**
 - `searchCommunitySkills`: Searches the community directory of skills.
 
 ## spaces
 
 - `acceptOrgInvite`: Accepts an invitation to join a shared space. **Confirmation required.**
-- `createOrg`: Creates a shared space the user can invite teammates into.
+- `createOrg`: Creates a shared space the user can invite teammates into. **Confirmation required.**
 - `declineOrgInvite`: Declines an invitation to join a shared space. **Confirmation required.**
-- `deleteOrg`: Deletes a shared space the user owns, along with everything inside it. **Confirmation required.**
 - `getMoveStatus`: Checks how an agent's move to another space is going.
 - `listOrgs`: Lists the spaces the user belongs to and any invitations waiting for them.
 - `moveAgent`: Moves an agent into a shared space so teammates can work with it. **Confirmation required.**
@@ -129,7 +122,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `createAgentTeam`: Creates a team in this space.
 - `deleteAgentTeam`: Deletes a team. **Confirmation required.**
 - `getAgentSettings`: Reads which apps and AI models an agent is allowed to use.
-- `joinAgentTeam`: Joins the user to a team in this space.
+- `joinAgentTeam`: Joins the user to a team in this space. **Confirmation required.**
 - `listAgentTeamMembers`: Lists the people who joined a team.
 - `listAgentTeams`: Lists the teams of people and agents in this space.
 - `removeAgentTeamMember`: Removes someone from a team, or leaves it. **Confirmation required.**
@@ -137,7 +130,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `setAgentSettings`: Chooses which apps and AI models an agent is allowed to use. **Confirmation required.**
 - `setAgentTeam`: Moves an agent into another team in this space. **Confirmation required.**
 - `setAgentTeamMemberOwner`: Gives someone ownership of a team, or takes it away. **Confirmation required.**
-- `updateAgentTeam`: Renames a team, reorders it, restyles it, or updates the notes it shares.
+- `updateAgentTeam`: Renames a team, reorders it, restyles it, or updates the notes it shares. **Confirmation required.**
 
 ## workspaces
 

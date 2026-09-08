@@ -44,10 +44,22 @@ export type InteractionStep =
       kind: "question";
       id: string;
       question: string;
+      /** Verbatim material the question is ABOUT, when it is too long or too
+       *  multi-line to read inside a sentence — the exact text a file would be
+       *  written with, the exact arguments an operation would run with. Shown
+       *  under the question in its own scrollable block, so a value the user is
+       *  approving is never one they could not see. */
+      detail?: string;
       options?: InteractionOption[];
       /** Lowercase toolkit slug (e.g. "gmail") when the question concerns a
        *  connected app: the card shows that app's logo. */
       toolkit?: string;
+      /** Present ONLY on an approval card for a destructive Houston operation:
+       *  the host-issued id of the pending request this card decides. The
+       *  user's answer travels back carrying it (see `./approval`), which is
+       *  what makes the approval bound to ONE exact call and usable once. A
+       *  card that carries one is never deduped against another card. */
+      requestId?: string;
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }

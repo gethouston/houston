@@ -1,6 +1,5 @@
 import type { AssistantHandle } from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
-import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 
 /**
@@ -9,25 +8,26 @@ import type { BaseCtor } from "./mixin";
  * the ordinary per-agent methods on this same client — the assistant IS an
  * agent, so there is nothing else to add here.
  *
- * Reached with `gatewayAuthFetch` on `baseUrl`, like `capabilities()` and
- * `version()`: `/v1/assistant` is the HOST's (or the gateway's) own surface,
- * not the per-agent runtime protocol, and hosted mode rotates the bearer
- * mid-session so the live token must be read per attempt (HOU-687).
+ * Routed through `cpFetch` like every other control-plane read, on the config
+ * both deployments share (`prefConfig()`: the gateway in cloud, the local host
+ * otherwise). That buys the live-bearer auth hosted mode needs (the token
+ * rotates mid-session, HOU-687) AND the reason-aware read retry: discovery is
+ * fired on mount, so it lands squarely on a gateway roll or a still-waking pod,
+ * and the ladder rides those out instead of reporting the assistant absent.
+ * A non-2xx arrives as a `HoustonEngineError` carrying the host's reason and
+ * its `Retry-After` hint; `lib/assistant-availability.ts` classifies it, so no
+ * fallback address is invented here — inventing an agent id would send the
+ * user's chat somewhere that does not exist.
  */
 export function AssistantMixin<TBase extends BaseCtor>(Base: TBase) {
   class Assistant extends Base {
+    /** Finds the user's personal assistant: which agent holds it, and which conversation to open.
+     * @assistant group:system hidden: the assistant IS this agent, so where it lives tells it nothing it can act on. */
     async getAssistant(): Promise<AssistantHandle> {
-      const res = await controlPlane.gatewayAuthFetch(
-        this.ctx.token,
-        () => this.ctx.cp?.activeOrgSlug,
-      )(`${this.ctx.baseUrl}/v1/assistant`);
-      // No fallback address: a deployment that hosts no assistant answers 501,
-      // and inventing an agent id here would send the user's chat somewhere
-      // that does not exist. The caller surfaces the real failure.
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new HoustonEngineError(res.status, body);
-      }
+      const res = await controlPlane.cpFetch(
+        this.ctx.prefConfig(),
+        "/v1/assistant",
+      );
       return (await res.json()) as AssistantHandle;
     }
   }

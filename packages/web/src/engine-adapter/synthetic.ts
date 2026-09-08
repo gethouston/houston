@@ -1,4 +1,8 @@
 import { migrateProviderModel } from "@houston/domain";
+import {
+  toCanonicalProviderId,
+  toDisplayProviderId,
+} from "@houston/domain/provider-dialect";
 import type { Agent, Workspace } from "../../../../ui/engine-client/src/types";
 
 /**
@@ -65,19 +69,18 @@ export function syntheticAgent(): Agent {
  */
 export function toNewProvider(name: string): string | null {
   if (!name) return null;
-  if (name === "openai" || name === "codex") return "openai-codex";
-  return name;
+  // `codex` is the CLI era's informal name, resolved by the domain's spoken
+  // alias ladder; the display/canonical rename is the dialect map.
+  if (name === "codex") return "openai-codex";
+  return toCanonicalProviderId(name);
 }
 
 /**
- * New engine ProviderId -> old desktop provider name. Only Codex is renamed
- * (openai-codex -> openai); the OpenCode ids are the same on both sides.
+ * Engine ProviderId -> the display id the desktop UI speaks, through the ONE
+ * dialect map (`@houston/domain` `provider-dialect.ts`). Only Codex is renamed;
+ * every other id is the same on both sides.
  */
-export function toOldProvider(id: string): string {
-  // openrouter/deepseek/google/amazon-bedrock/minimax share one id across frontend and engine;
-  // only codex differs.
-  return id === "openai-codex" ? "openai" : id;
-}
+export const toOldProvider = toDisplayProviderId;
 
 /**
  * An engine ProviderId in the adapter's dialect: any pi-ai provider id (the

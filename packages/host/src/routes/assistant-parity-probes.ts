@@ -1,106 +1,75 @@
 /**
- * The catalog operations the parity probe drives against a real local host,
- * and the ones it deliberately does not.
+ * What the parity suite drives, and the vocabulary the probe tables share.
  *
  * The generated catalog describes ONE surface that the local host and the
- * hosted gateway both serve. This table is how that claim stays true: every
- * probe names an operation, the arguments to dispatch it with, and whether the
- * local host is expected to answer it at all.
+ * hosted gateway both serve. The tables are how that claim stays true: every
+ * routable operation the assistant can call is named in exactly one of them,
+ * and the suite asserts that coverage is complete — a new annotated operation
+ * that nobody probed fails the build rather than shipping unexercised.
+ *
+ * Three tables, because there are three honest answers to "what happens when
+ * the local host is asked to perform this?":
+ *
+ * - `LOCAL_PROBES` (./assistant-parity-local-probes) — it answers.
+ * - `CLOUD_ONLY_PROBES` (./assistant-parity-cloud-probes) — it legitimately
+ *   does not, and the probe asserts the miss so a path that starts resolving
+ *   locally shows up as the drift it is.
+ * - `WRITE_DRIVEN_OPERATIONS` — driven end to end by the write suite, which
+ *   proves the method, the body mapping and the id round-trip rather than just
+ *   the address.
  */
 
 /** The agent and workspace the probe's temporary host is seeded with. */
 export const PROBE_AGENT = "Work/Sales";
 export const PROBE_WORKSPACE = "Work";
 
+/**
+ * The folder the file probes create, rename, move and delete in sequence. The
+ * Files routes act on real paths, so they are exercised against something the
+ * probes own rather than against the agent's seeded content.
+ */
+export const PROBE_FOLDER = "parity probe";
+export const PROBE_FOLDER_RENAMED = "parity probe renamed";
+
 export interface Probe {
   operation: string;
   params: Record<string, unknown>;
+  /**
+   * Set when the honest answer on a bare probe host is a 5xx: the handler is
+   * real and answers for itself, but the capability behind it is not wired in
+   * a host seeded with nothing. The string says which state, and the suite
+   * asserts that status instead of the usual "below 500".
+   */
+  serviceState?: { status: number; reason: string };
 }
 
-/**
- * A representative operation from every family the local host serves. Reads,
- * plus the preference writes (locale, agent color): a probe asserts the ADDRESS
- * resolves to a live handler, and a destructive call would prove nothing extra.
- */
-export const LOCAL_PROBES: readonly Probe[] = [
-  { operation: "listWorkspaces", params: {} },
-  {
-    operation: "getHostSidebarLayout",
-    params: { workspaceId: PROBE_WORKSPACE },
-  },
-  { operation: "getPreference", params: { key: "locale" } },
-  { operation: "setPreference", params: { key: "locale", value: "en" } },
-  { operation: "listAgents", params: {} },
-  { operation: "listInstalledConfigs", params: {} },
-  {
-    operation: "updateAgentColor",
-    params: { agentId: PROBE_AGENT, color: "teal" },
-  },
-  { operation: "listActivities", params: { agentId: PROBE_AGENT } },
-  {
-    operation: "updateActivity",
-    params: { agentId: PROBE_AGENT, id: "no-such-activity", updates: {} },
-  },
-  { operation: "listRoutines", params: { agentId: PROBE_AGENT } },
-  { operation: "listRoutineRuns", params: { agentId: PROBE_AGENT } },
-  {
-    operation: "runRoutineNow",
-    params: { agentId: PROBE_AGENT, id: "no-such-routine" },
-  },
-  { operation: "listSkills", params: { agentId: PROBE_AGENT } },
-  { operation: "getSkillsManifest", params: { agentId: PROBE_AGENT } },
-  { operation: "listSharedSkills", params: { workspaceId: PROBE_WORKSPACE } },
-  {
-    operation: "readAgentFile",
-    params: { agentId: PROBE_AGENT, relPath: "config.json" },
-  },
-  { operation: "listProjectFiles", params: { agentPath: PROBE_AGENT } },
-  {
-    operation: "readProjectFile",
-    params: { agentPath: PROBE_AGENT, relPath: "CLAUDE.md" },
-  },
-  { operation: "integrationStatus", params: {} },
-];
+/** A probe the local host is expected to MISS, with the reason it may. */
+export interface CloudOnlyProbe extends Probe {
+  reason: string;
+}
+
+export const probe = (
+  operation: string,
+  params: Record<string, unknown> = {},
+  serviceState?: Probe["serviceState"],
+): Probe => ({ operation, params, ...(serviceState ? { serviceState } : {}) });
+
+export const cloudOnly = (
+  operation: string,
+  reason: string,
+  params: Record<string, unknown> = {},
+): CloudOnlyProbe => ({ operation, params, reason });
 
 /**
- * Operations the local host legitimately does not serve, each with the reason.
- * They are asserted to MISS — a cloud-only path that starts resolving locally
- * means the two surfaces drifted and this list is stale.
+ * Operations the write suite drives against the real host by their effect, so
+ * they carry no address probe of their own. Listed here because the coverage
+ * assertion counts them: an operation is covered by a probe table OR by a
+ * write, never by neither.
  */
-export const CLOUD_ONLY_PROBES: readonly (Probe & { reason: string })[] = [
-  {
-    operation: "getOrg",
-    params: {},
-    reason: "spaces and their membership exist only on the hosted gateway",
-  },
-  {
-    operation: "listOrgs",
-    params: {},
-    reason: "a local host has no account with more than one space",
-  },
-  {
-    operation: "getBilling",
-    params: {},
-    reason: "billing is a hosted-subscription concern",
-  },
-  {
-    operation: "listApiKeys",
-    params: {},
-    reason: "personal API keys authenticate against the hosted public API",
-  },
-  {
-    operation: "getMyProfile",
-    params: {},
-    reason: "the display profile comes from the hosted identity provider",
-  },
-  {
-    operation: "getAgentSettings",
-    params: { agentSlugOrId: PROBE_AGENT },
-    reason: "manager-set per-agent ceilings are a Teams surface",
-  },
-  {
-    operation: "agentTriggerStatus",
-    params: { agentSlugOrId: PROBE_AGENT },
-    reason: "the gateway owns trigger subscriptions",
-  },
+export const WRITE_DRIVEN_OPERATIONS: readonly string[] = [
+  "createActivity",
+  "deleteActivity",
+  "createAgent",
+  "renameAgent",
+  "deleteAgent",
 ];

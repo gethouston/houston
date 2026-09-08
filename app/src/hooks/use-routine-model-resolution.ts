@@ -29,6 +29,7 @@ import {
   modelSelectorDecision,
   resolvePersonalModelPin,
 } from "../lib/model-selector-lock";
+import { toDisplayProviderIdOrNull } from "../lib/provider-overrides";
 import type { Agent } from "../lib/types";
 import { useAgentConfig, useAgentModelChoice } from "./queries";
 import { useCapabilities } from "./use-capabilities";
@@ -73,7 +74,10 @@ export function useRoutineModelResolution(
   const allowedModels = personal ? (choiceInfo?.allowedModels ?? null) : null;
   const { data: config } = useAgentConfig(agent.folderPath);
 
-  const pinnedProvider = routine.provider ?? "";
+  // routines.json stores pi's CANONICAL id (the host canonicalizes every pin
+  // it fires — `routinePin`), while the picker, the label chain and the health
+  // probe are all keyed by the display id.
+  const pinnedProvider = toDisplayProviderIdOrNull(routine.provider) ?? "";
   const pinnedModel = routine.model ?? "";
   const followsAgent = !pinnedProvider || !pinnedModel;
   const choice = personal ? choiceInfo?.choice : null;

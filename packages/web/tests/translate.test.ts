@@ -221,7 +221,7 @@ test("a refused not-connected send surfaces the typed reconnect card with provid
     async (s) => {
       statuses.push(s);
     },
-    "openai",
+    { provider: "openai" },
   );
   feed.stop();
 

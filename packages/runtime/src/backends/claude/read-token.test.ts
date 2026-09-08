@@ -9,9 +9,24 @@ import { runWithActingContext } from "../../session/acting-context";
 import { claudeCredentialsFile, claudeLoginConfigDir } from "./paths";
 import { readAnthropicToken } from "./read-token";
 
-/** A minimal credential-store stub: only `get("anthropic")` is exercised. */
-function store(cred: Credential | undefined): Pick<HoustonAuthStore, "get"> {
-  return { get: (id: string) => (id === "anthropic" ? cred : undefined) };
+/**
+ * A minimal credential-store stub over ONE entry, honouring both halves of the
+ * contract: `get` reads it, `remove` drops it (so a test can assert the stored
+ * entry is gone, not merely skipped). `removed` records the ids removed.
+ */
+function store(
+  cred: Credential | undefined,
+): Pick<HoustonAuthStore, "get" | "remove"> & { removed: string[] } {
+  let held = cred;
+  const removed: string[] = [];
+  return {
+    removed,
+    get: (id: string) => (id === "anthropic" ? held : undefined),
+    remove: (id: string) => {
+      removed.push(id);
+      if (id === "anthropic") held = undefined;
+    },
+  };
 }
 
 // The shared-login fallback reads `<HOUSTON_HOME>/claude-login/.credentials.json`,
@@ -288,4 +303,159 @@ test("the shared login file's token carries NO access digest", () => {
   // working setup.
   writeSharedLoginFile(envelope("sk-ant-oat01-shared", Date.now() + HOUR));
   expect(readAnthropicToken(store(undefined))?.accessDigest).toBeUndefined();
+});
+
+// ── One authoritative login across runtimes ────────────────────────────────
+// Every agent has its own runtime and its own `auth.json`, but ONE shared login
+// file. A reconnect reaches exactly one runtime's store; the others learn about
+// it only from that file, so an unexpired copy of the account the user just
+// left must not outrank it.
+
+test("a newer shared login outranks this runtime's own unexpired copy", () => {
+  // The repro: runtime A holds an unexpired token for the account the user left
+  // (or one the reconnect superseded); the user reconnects via runtime B, which
+  // updates the shared file. Before this, A preferred its own copy until it
+  // expired — hours of turns failing on an identity the user already replaced.
+  writeSharedLoginFile(
+    envelope("sk-ant-oat01-reconnected", Date.now() + 8 * HOUR),
+  );
+
+  const token = readAnthropicToken(
+    store({
+      type: "oauth",
+      access: "sk-ant-oat01-superseded",
+      refresh: "",
+      expires: Date.now() + HOUR,
+    }),
+  );
+
+  expect(token).toEqual({
+    kind: "oauth-token",
+    value: "sk-ant-oat01-reconnected",
+  });
+});
+
+test("a SUPERSEDED store entry is DELETED, not just skipped", () => {
+  // Skipping is not enough. The dead entry stays in auth.json and wins again
+  // the moment the shared file can no longer prove it is newer — here, by the
+  // file being removed — putting the runtime back on the account the user left.
+  writeSharedLoginFile(
+    envelope("sk-ant-oat01-reconnected", Date.now() + 8 * HOUR),
+  );
+  const s = store({
+    type: "oauth",
+    access: "sk-ant-oat01-superseded",
+    refresh: "",
+    expires: Date.now() + HOUR,
+  });
+
+  expect(readAnthropicToken(s)).toEqual({
+    kind: "oauth-token",
+    value: "sk-ant-oat01-reconnected",
+  });
+  expect(s.removed).toEqual(["anthropic"]);
+  expect(s.get("anthropic")).toBeUndefined();
+
+  // The proof it matters: with the shared file gone, the superseded token must
+  // not come back. Before the delete this resolved it again.
+  rmSync(claudeLoginConfigDir(), { recursive: true, force: true });
+  expect(readAnthropicToken(s)).toBeUndefined();
+});
+
+test("a store entry that is NOT superseded is left in place", () => {
+  // The delete is scoped to a PROVEN supersession — an older shared file must
+  // never cost the runtime the credential the gateway just served it.
+  writeSharedLoginFile(envelope("sk-ant-oat01-stale-file", Date.now() + HOUR));
+  const s = store({
+    type: "oauth",
+    access: "sk-ant-oat01-just-served",
+    refresh: "",
+    expires: Date.now() + 8 * HOUR,
+  });
+
+  expect(readAnthropicToken(s)).toMatchObject({
+    value: "sk-ant-oat01-just-served",
+  });
+  expect(s.removed).toEqual([]);
+});
+
+test("an OLDER shared login never displaces a freshly served credential", () => {
+  // The same bug facing the other way: on a managed pod the gateway serves this
+  // runtime a token per turn, and a login file left behind by an earlier
+  // connect must never pull the pod back onto it.
+  writeSharedLoginFile(envelope("sk-ant-oat01-stale-file", Date.now() + HOUR));
+
+  const token = readAnthropicToken(
+    store({
+      type: "oauth",
+      access: "sk-ant-oat01-just-served",
+      refresh: "",
+      expires: Date.now() + 8 * HOUR,
+    }),
+  );
+
+  expect(token).toMatchObject({ value: "sk-ant-oat01-just-served" });
+});
+
+test("a shared login with no expiry recorded cannot prove it is newer", () => {
+  writeSharedLoginFile({
+    claudeAiOauth: { accessToken: "sk-ant-oat01-undated", refreshToken: "r" },
+  });
+
+  const token = readAnthropicToken(
+    store({
+      type: "oauth",
+      access: "sk-ant-oat01-mine",
+      refresh: "",
+      expires: Date.now() + HOUR,
+    }),
+  );
+
+  expect(token).toMatchObject({ value: "sk-ant-oat01-mine" });
+});
+
+test("the same token in both sinks is one login, and stays digest-stamped", () => {
+  const access = "sk-ant-oat01-same";
+  writeSharedLoginFile(envelope(access, Date.now() + 8 * HOUR));
+
+  const token = readAnthropicToken(
+    store({ type: "oauth", access, refresh: "", expires: Date.now() + HOUR }),
+  );
+
+  // Taking the file here would silently drop the digest the revoked-token
+  // report needs (PRODUCT-1319) for no gain — it is the same credential.
+  expect(token).toEqual({
+    kind: "oauth-token",
+    value: access,
+    accessDigest: accessDigest(access),
+  });
+});
+
+test("a pasted key is the user's own choice for this runtime, never superseded", () => {
+  writeSharedLoginFile(envelope("sk-ant-oat01-shared", Date.now() + 8 * HOUR));
+
+  const token = readAnthropicToken(
+    store({ type: "api_key", key: "sk-ant-api03-pasted" }),
+  );
+
+  expect(token).toEqual({ kind: "api-key", value: "sk-ant-api03-pasted" });
+});
+
+test("a personal scope is never moved onto the pod-shared login", () => {
+  // The file is the TEAM's credential on a managed pod. Adopting it for a
+  // member would run — and bill — their turn on the team account.
+  writeSharedLoginFile(envelope("sk-ant-oat01-team", Date.now() + 8 * HOUR));
+
+  const token = runWithActingContext({ credentialScopeKey: "u:member-1" }, () =>
+    readAnthropicToken(
+      store({
+        type: "oauth",
+        access: "sk-ant-oat01-mine",
+        refresh: "",
+        expires: Date.now() + HOUR,
+      }),
+    ),
+  );
+
+  expect(token).toMatchObject({ value: "sk-ant-oat01-mine" });
 });

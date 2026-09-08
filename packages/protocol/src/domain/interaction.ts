@@ -32,7 +32,9 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
   if (v.kind === "question")
     return (
       typeof v.question === "string" &&
-      (v.toolkit === undefined || typeof v.toolkit === "string")
+      (v.detail === undefined || typeof v.detail === "string") &&
+      (v.toolkit === undefined || typeof v.toolkit === "string") &&
+      (v.requestId === undefined || typeof v.requestId === "string")
     );
   if (v.kind === "signin")
     return v.reason === undefined || typeof v.reason === "string";

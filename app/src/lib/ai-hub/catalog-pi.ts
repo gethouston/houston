@@ -17,18 +17,29 @@ import {
   DROP_PI_PROVIDERS,
   isModelVisible,
   PROVIDER_ID_RENAME,
+  PROVIDER_OVERRIDES,
 } from "../provider-overrides.ts";
 import { normalizeKey } from "./catalog-key.ts";
 import { detectLab } from "./catalog-lab.ts";
 import type { Candidate } from "./catalog-merge.ts";
 import type { RawModel } from "./catalog-snapshot.ts";
 
-/** One runnable pi model entry → the internal `RawModel` carrier. */
-function entryToRaw(entry: CatalogModelEntry): RawModel {
+/**
+ * One runnable pi model entry → the internal `RawModel` carrier.
+ *
+ * The NAME is Houston's curated label when the provider override carries one,
+ * so the hub calls a model exactly what the chat picker calls it. The KEY stays
+ * derived from pi's own name: it is the cross-provider merge identity AND what
+ * the baked models.dev snapshot was keyed with, so a curated label must never
+ * reach it (`normalizeKey`). Search falls through to the key, so a model is
+ * still findable by the vendor-qualified name pi ships.
+ */
+function entryToRaw(providerId: string, entry: CatalogModelEntry): RawModel {
   const raw: RawModel = {
     key: normalizeKey(entry.name),
     id: entry.id,
-    name: entry.name,
+    name:
+      PROVIDER_OVERRIDES[providerId]?.models?.[entry.id]?.label ?? entry.name,
   };
   if (entry.reasoning) raw.reasoning = true;
   // Vision (image INPUT) rides on the `input` modality list so `capabilitiesOf`
@@ -73,7 +84,7 @@ export function piCatalogToCandidates(
     const subscription = provider.auth === "oauth";
     for (const entry of provider.models) {
       if (!isModelVisible(providerId, entry.id)) continue;
-      const raw = entryToRaw(entry);
+      const raw = entryToRaw(providerId, entry);
       candidates.push({
         providerId,
         raw,

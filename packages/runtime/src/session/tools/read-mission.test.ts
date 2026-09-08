@@ -48,16 +48,26 @@ test("a named agent's mission is read through the host", async () => {
 
 test("the assistant cannot read a mission without naming an agent", async () => {
   const { read, paths } = tool(true);
-  await expect(read({ id: "m-1" })).rejects.toThrow(/agent/i);
-  expect(paths).toEqual([]);
+  const out = await read({ id: "m-1" });
+  expect(out.details).toMatchObject({
+    ok: false,
+    error: { code: "agent_required" },
+  });
+  const first = out.content[0];
+  expect(first?.type === "text" && first.text).toMatch(/agent/i);
+  // No mission was read: the only call made is the one that fetches the agents
+  // the refusal offers instead.
+  expect(paths.filter((p) => p.startsWith("/sandbox/missions"))).toEqual([]);
 });
 
 test("another agent reading its own mission never reaches the host", async () => {
   const { read, paths } = tool(false);
   // No such conversation in this runtime's store: the in-process path answers,
   // and the host is not consulted.
-  await expect(read({ id: "unknown-mission" })).rejects.toThrow(
-    /no conversation found/,
-  );
+  const out = await read({ id: "unknown-mission" });
+  expect(out.details).toMatchObject({
+    ok: false,
+    error: { code: "mission_not_found" },
+  });
   expect(paths).toEqual([]);
 });

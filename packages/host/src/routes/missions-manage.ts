@@ -8,12 +8,14 @@ import {
 import type { PendingInteraction } from "@houston/protocol";
 import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
+import { type MissionStatusInput, parseMissionStatus } from "./missions-remote";
+import { forwardMissionStatus } from "./missions-remote-forward";
 import {
   fireActivityChanged,
   type MissionsCtx,
   missionSessionKey,
 } from "./missions-sandbox";
-import { targetOrRefuse } from "./missions-target";
+import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
 /**
  * The agent's explicit board move (`POST /sandbox/missions/status`): `done` or
@@ -25,7 +27,9 @@ import { targetOrRefuse } from "./missions-target";
  * would immediately contradict).
  *
  * An optional `agent` moves a card on ANOTHER agent's board — the settle half
- * of a mission the caller started there.
+ * of a mission the caller started there. That board is reached wherever it
+ * lives: on this disk, or over the wire in the agent's own pod, which applies
+ * the very same move with the very same guards.
  */
 export async function handleMissionStatus(
   callerCtx: MissionsCtx,
@@ -33,16 +37,26 @@ export async function handleMissionStatus(
   res: ServerResponse,
 ): Promise<void> {
   const body = await readJson(req);
-  const id = typeof body.id === "string" ? body.id : "";
-  const status = body.status;
-  if (!id || (status !== "done" && status !== "archived")) {
-    json(res, 400, {
-      error: "pass the mission's 'id' and 'status': 'done' or 'archived'",
-    });
-    return;
-  }
-  const ctx = await targetOrRefuse(callerCtx, body.agent, res);
-  if (!ctx) return;
+  const parsed = parseMissionStatus(body);
+  if (!parsed.ok)
+    return json(res, 400, { error: parsed.error, code: parsed.code });
+  const route = await resolveMissionRoute(callerCtx, body.agent);
+  if (!route.ok) return refuseMissionRoute(route, res);
+  if (route.remote) return forwardMissionStatus(route.route, parsed.value, res);
+  await applyMissionStatus(route.ctx, parsed.value, res);
+}
+
+/**
+ * The move itself, on the board this host holds — the half that runs on
+ * whichever side owns the files, so the pod serving a cross-pod move applies
+ * the identical guards (never a running mission, never the conversation the
+ * caller is speaking in) rather than a looser copy of them.
+ */
+export async function applyMissionStatus(
+  ctx: MissionsCtx,
+  { id, status }: MissionStatusInput,
+  res: ServerResponse,
+): Promise<void> {
   const outcome = await withDocLock(`${ctx.root}#activity`, async () => {
     const { items } = await loadActivities(ctx.vfs, ctx.root);
     const current = items.find((a) => a.id === id);

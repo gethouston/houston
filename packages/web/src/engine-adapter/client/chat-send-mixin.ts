@@ -92,13 +92,18 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
             status,
             pendingInteraction,
           ),
-        req.provider,
-        undefined,
-        req.suppressUserBubble,
-        wireTurnPin(req),
-        req.displayText,
-        req.author,
-        req.mentions,
+        {
+          provider: req.provider,
+          suppressUserBubble: req.suppressUserBubble,
+          pin: wireTurnPin(req),
+          displayText: req.displayText,
+          author: req.author,
+          mentions: req.mentions,
+          // Receipts for the approval cards this message answers. Wire
+          // passengers: only the HOST reads them (routes/agents.ts), and it
+          // drops them before the runtime sees the turn.
+          approvals: req.approvals,
+        },
       ).finally(() => {
         // The turn settled (or failed): release anything queued behind it.
         if (req.autoResume) noteAutoResumeEnded(path, req.sessionKey);

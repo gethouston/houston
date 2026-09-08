@@ -939,6 +939,9 @@ importers:
         specifier: workspace:*
         version: link:../../packages/agentstore-client
     devDependencies:
+      '@houston/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       typescript:
         specifier: 5.9.3
         version: 5.9.3

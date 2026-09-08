@@ -167,7 +167,8 @@ test("the total budget drops the OLDEST hits, never the newest", async () => {
   const out = await run({ query: "invoice", limit: 50 }, id);
   const details = detailsOf(out);
   expect(details).toMatchObject({ matched: 50 });
-  if (details.outcome !== "searched") throw new Error("expected a search");
+  if (!("outcome" in details) || details.outcome !== "searched")
+    throw new Error("expected a search");
   // The cap really bit, and it bit the old end.
   expect(details.returned).toBeGreaterThan(0);
   expect(details.returned).toBeLessThan(50);
@@ -202,11 +203,19 @@ test("outside a turn there is no conversation to search", async () => {
   expect(textOf(out)).toContain("There is no conversation to search");
 });
 
-test("an empty query is a correctable error, not an empty search", async () => {
+test("an empty query is a correctable error value, not a throw", async () => {
   const id = seed([msg("user", "hello")]);
-  await expect(run({ query: "   " }, id)).rejects.toThrow(
-    /needs something to search for/,
-  );
+  const out = await run({ query: "   " }, id);
+  // A VALUE with a code: the model can fix its own call from it, which a
+  // thrown exception gives it nothing to do.
+  expect(detailsOf(out)).toEqual({
+    ok: false,
+    error: {
+      code: "empty_query",
+      message: expect.stringContaining("needs something to search for"),
+    },
+  });
+  expect(textOf(out)).toContain("ERROR empty_query");
 });
 
 test("still reaches what a /clear put out of the model's context", async () => {

@@ -18,6 +18,13 @@
 export interface AssistantDocs {
   description?: string;
   group?: string;
+  /**
+   * `@param <name> <what it is>` lines, by parameter name. A parameter naming
+   * an existing thing (an agent, a routine, a skill) is unguessable from its
+   * type alone, so the author's sentence is what a caller reads instead of
+   * inventing an identifier.
+   */
+  params: Record<string, string>;
   confirm: boolean;
   hidden: boolean;
   hiddenReason?: string;
@@ -87,10 +94,39 @@ function parseTags(line: string, docs: AssistantDocs): void {
   }
 }
 
+/**
+ * `@param <name> <description>`, description running to the end of the line and
+ * on through any following lines that are neither blank nor another tag — the
+ * ordinary JSDoc wrapping rule, so a long sentence does not have to fit 80
+ * columns to survive.
+ */
+function parseParams(lines: readonly string[]): Record<string, string> {
+  const params: Record<string, string> = {};
+  let open: string | null = null;
+  for (const line of lines) {
+    const match = /^@param\s+([A-Za-z_$][\w$]*)\s+(.*)$/.exec(line.trim());
+    if (match) {
+      const [, name, rest] = match;
+      open = name;
+      params[name] = rest.trim();
+      continue;
+    }
+    if (!open) continue;
+    const continued = line.trim();
+    if (!continued || continued.startsWith("@")) {
+      open = null;
+      continue;
+    }
+    params[open] = `${params[open]} ${continued}`.trim();
+  }
+  return params;
+}
+
 export function parseAssistantDocs(block?: string): AssistantDocs {
   const docs: AssistantDocs = {
     confirm: false,
     hidden: false,
+    params: {},
     unknownTags: [],
   };
   if (!block) return docs;
@@ -103,6 +139,7 @@ export function parseAssistantDocs(block?: string): AssistantDocs {
     if (line) descriptionLines.push(line.trim());
   }
   docs.description = descriptionLines.join(" ") || undefined;
+  docs.params = parseParams(lines);
   for (const line of lines) {
     if (line.startsWith("@assistant"))
       parseTags(line.slice("@assistant".length), docs);
