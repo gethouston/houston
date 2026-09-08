@@ -1,12 +1,10 @@
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { integrationHarness } from "./local-model-integration-harness";
 
 const mocks = vi.hoisted(() => ({
   controller: vi.fn(),
   snapshot: vi.fn(),
   desktop: vi.fn(),
-  retire: vi.fn(),
-  stop: vi.fn(),
-  disconnect: vi.fn(),
   logout: vi.fn(),
   save: vi.fn(),
   report: vi.fn(),
@@ -36,18 +34,23 @@ import {
 } from "../../../app/src/lib/local-model-connect";
 
 const endpoint = { baseUrl: "https://model.example/v1", model: "model" };
+let h: ReturnType<typeof integrationHarness>;
+let bridge: ReturnType<ReturnType<typeof integrationHarness>["controller"]>;
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.desktop.mockReturnValue(true);
   mocks.session.mockResolvedValue({ uid: "owner" });
-  mocks.snapshot.mockReturnValue({ journal: null });
-  mocks.controller.mockResolvedValue({
-    retire: mocks.retire,
-    stop: mocks.stop,
-    disconnect: mocks.disconnect,
-    getSnapshot: mocks.snapshot,
-  });
+  h = integrationHarness();
+  bridge = h.controller();
+  mocks.snapshot.mockImplementation(bridge.getSnapshot);
+  mocks.controller.mockResolvedValue(bridge);
+  mocks.save.mockImplementation(h.save);
+  mocks.logout.mockImplementation(h.clear);
 });
+afterEach(async () => bridge.dispose());
+
+const connect = () =>
+  bridge.connect({ targetBaseUrl: "http://localhost:1234/v1", model: "local" });
 
 test.each([
   false,
@@ -61,9 +64,11 @@ test.each([
 });
 
 test("owned bridge disconnect uses SDK teardown", async () => {
-  mocks.snapshot.mockReturnValue({ journal: {} });
+  await connect();
   await disconnectLocalModel();
-  expect(mocks.disconnect).toHaveBeenCalledOnce();
+  expect(h.journal()).toBeNull();
+  expect(h.endpoint()).toBeNull();
+  expect(h.live()).toBeNull();
   expect(mocks.logout).not.toHaveBeenCalled();
 });
 
@@ -78,42 +83,36 @@ test.each([
 });
 
 test("manual replacement retires the owned bridge after the new endpoint is accepted", async () => {
-  mocks.snapshot.mockReturnValue({ journal: {} });
-  mocks.retire.mockImplementation(async () => {
-    expect(mocks.save).toHaveBeenCalledExactlyOnceWith(endpoint, "inline");
+  await connect();
+  const revoke = h.ports.management.revoke;
+  h.ports.management.revoke = vi.fn(async (...args) => {
+    expect(h.endpoint()).toEqual(endpoint);
+    return revoke(...args);
   });
   await connectManualEndpoint(endpoint);
-  expect(mocks.retire).toHaveBeenCalledOnce();
+  expect(h.endpoint()).toEqual(endpoint);
+  expect(h.journal()).toBeNull();
+  expect(h.live()).toBeNull();
   expect(mocks.save).toHaveBeenCalledExactlyOnceWith(endpoint, "inline");
 });
 
 test("invalid manual settings preserve the working local bridge", async () => {
-  mocks.snapshot.mockReturnValue({ journal: {} });
-  const failure = new Error("invalid endpoint");
-  mocks.save.mockRejectedValue(failure);
-  await expect(connectManualEndpoint(endpoint)).rejects.toBe(failure);
-  expect(mocks.retire).not.toHaveBeenCalled();
+  await connect();
+  const original = h.endpoint();
+  await expect(
+    connectManualEndpoint({ ...endpoint, model: "" }),
+  ).rejects.toThrow("invalid endpoint");
+  expect(h.endpoint()).toEqual(original);
+  expect(h.journal()?.phase).toBe("committed");
+  expect(h.running()).toBe(true);
 });
 
-test("failed bridge retirement is reported to the caller", async () => {
-  mocks.snapshot.mockReturnValue({ journal: {} });
+test("failed bridge retirement is reported to the caller and preserves the manual endpoint", async () => {
+  await connect();
   const failure = new Error("revocation unavailable");
-  mocks.retire.mockRejectedValue(failure);
+  vi.mocked(h.ports.management.revoke).mockRejectedValue(failure);
   await expect(connectManualEndpoint(endpoint)).rejects.toBe(failure);
   expect(mocks.report).toHaveBeenCalledWith(failure);
-  expect(mocks.save).toHaveBeenCalledOnce();
-});
-
-test("manual replacement drains pending disconnect cleanup before saving", async () => {
-  mocks.snapshot.mockReturnValue({ journal: { phase: "disconnecting" } });
-  let cleanupDrained = false;
-  mocks.stop.mockImplementation(async () => {
-    cleanupDrained = true;
-  });
-  mocks.save.mockImplementation(async () => {
-    expect(cleanupDrained).toBe(true);
-  });
-  await connectManualEndpoint(endpoint);
-  expect(mocks.stop).toHaveBeenCalledOnce();
-  expect(mocks.retire).toHaveBeenCalledOnce();
+  expect(h.endpoint()).toEqual(endpoint);
+  expect(h.journal()?.phase).toBe("retiring");
 });

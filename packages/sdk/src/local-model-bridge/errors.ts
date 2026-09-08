@@ -42,3 +42,24 @@ export function cancelledBridgeOperation(explicit: boolean): void {
 export function isBridgeAbort(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
+
+export function isBridgeAbsent(error: unknown): boolean {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("status" in error) ||
+    error.status !== 404
+  )
+    return false;
+  if ("code" in error && error.code !== undefined)
+    return error.code === "bridge_not_found";
+  // HoustonEngineError keeps gateway's top-level code in body; its getter
+  // exposes only the nested host error shape.
+  const body = "body" in error ? error.body : undefined;
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "code" in body &&
+    body.code === "bridge_not_found"
+  );
+}

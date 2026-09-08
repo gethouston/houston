@@ -38,6 +38,7 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
     if (this.disposed)
       return Promise.reject(new Error("bridge controller disposed"));
     const epoch = this.lifetime.invalidate();
+    if (input) this.emit({ ...this.snapshot, status: "connecting" });
     const signal = external
       ? AbortSignal.any([external, this.lifetime.abort.signal])
       : this.lifetime.abort.signal;
@@ -53,7 +54,7 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
           retiring = true;
           this.emit({
             status: "disabled",
-            journal: saved.phase === "disconnecting" ? saved : null,
+            journal: saved,
           });
           await retireBridge(this.ports, saved, signal);
           this.emit({ status: "disabled", journal: null });
@@ -90,7 +91,7 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
         if (epoch !== this.lifetime.epoch)
           return cancelledBridgeOperation(!!input);
         if (signal.aborted) {
-          this.emit({ status: "disabled", journal: null });
+          this.emit({ status: "disabled", journal: this.snapshot.journal });
           return cancelledBridgeOperation(!!input);
         }
         this.failure(error, epoch, retiring);

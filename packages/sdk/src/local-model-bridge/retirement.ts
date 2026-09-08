@@ -1,3 +1,4 @@
+import { isBridgeAbsent } from "./errors";
 import { sameBridgeIdentity } from "./identity";
 import { registerBridge } from "./registration";
 import type { LocalBridgeJournal, LocalModelBridgePorts } from "./types";
@@ -49,9 +50,13 @@ export async function retireBridge(
     signal?.throwIfAborted();
   }
   if (!retiring.descriptor) throw new Error("bridge descriptor missing");
-  if (signal)
-    await ports.management.revoke(retiring.descriptor.bridgeId, signal);
-  else await ports.management.revoke(retiring.descriptor.bridgeId);
+  try {
+    if (signal)
+      await ports.management.revoke(retiring.descriptor.bridgeId, signal);
+    else await ports.management.revoke(retiring.descriptor.bridgeId);
+  } catch (error) {
+    if (!isBridgeAbsent(error)) throw error;
+  }
   signal?.throwIfAborted();
   if (retiring.phase === "disconnecting") {
     await ports.management.clearEndpoint(signal);

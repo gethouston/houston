@@ -337,7 +337,7 @@ test.each([
   else expect(h.journal()).toBeNull();
   expect(h.controller.getSnapshot()).toMatchObject({
     status: "disabled",
-    journal: null,
+    journal: h.journal(),
   });
   await h.controller.dispose();
 });

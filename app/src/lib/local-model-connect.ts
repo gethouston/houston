@@ -22,6 +22,16 @@ async function controller() {
   return localBridgeController(session?.uid ?? "");
 }
 
+async function ownedController() {
+  const snapshot = localBridgeSnapshot();
+  return osIsTauri() &&
+    (snapshot.journal ||
+      snapshot.status === "connecting" ||
+      snapshot.status === "reconnecting")
+    ? controller()
+    : null;
+}
+
 async function reported<T>(action: () => Promise<T>): Promise<T> {
   try {
     return await action();
@@ -80,18 +90,15 @@ export async function reconnectLocalModel(): Promise<void> {
 export async function connectManualEndpoint(
   endpoint: CustomEndpoint,
 ): Promise<void> {
-  const bridge =
-    osIsTauri() && localBridgeSnapshot().journal ? await controller() : null;
-  if (bridge?.getSnapshot().journal?.phase === "disconnecting")
-    await reported(() => bridge.stop());
-  await tauriProvider.setCustomEndpoint(endpoint, "inline");
-  if (bridge?.getSnapshot().journal) await reported(() => bridge.retire());
+  const bridge = await ownedController();
+  const save = () => tauriProvider.setCustomEndpoint(endpoint, "inline");
+  if (bridge) await reported(() => bridge.replaceEndpoint(save));
+  else await save();
 }
 
 export async function disconnectLocalModel(): Promise<void> {
   return reported(async () => {
-    const bridge =
-      osIsTauri() && localBridgeSnapshot().journal ? await controller() : null;
+    const bridge = await ownedController();
     if (bridge) await bridge.disconnect();
     else await tauriProvider.launchLogout(LOCAL_PROVIDER_ID);
   });

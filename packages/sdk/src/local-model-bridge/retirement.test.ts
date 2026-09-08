@@ -374,9 +374,9 @@ test.each([
   });
   expect(h.live()).toBeDefined();
   expect(h.journal()?.phase).toBe("retiring");
-  expect(controller.getSnapshot()).toEqual({
+  expect(controller.getSnapshot()).toMatchObject({
     status: "disabled",
-    journal: null,
+    journal: h.journal(),
   });
   expect(h.ports.report).toHaveBeenCalledWith(offline);
   const originalKey = h.journal()?.idempotencyKey;
@@ -425,9 +425,9 @@ test("failed retirement survives restart and never restores a manually replaced 
   );
   await expect(controller.retire()).rejects.toThrow("offline");
   expect(h.journal()).toMatchObject({ ...original, phase: "retiring" });
-  expect(controller.getSnapshot()).toEqual({
+  expect(controller.getSnapshot()).toMatchObject({
     status: "disabled",
-    journal: null,
+    journal: h.journal(),
   });
   await controller.dispose();
   const restarted = h.controller();

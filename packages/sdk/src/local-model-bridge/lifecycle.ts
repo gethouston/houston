@@ -1,3 +1,4 @@
+import { observeBridgeJournal } from "./journal";
 import { BridgeLifetime } from "./lifetime";
 import { discoverBridge } from "./resume";
 import {
@@ -22,6 +23,19 @@ export abstract class LocalBridgeLifecycle extends LocalBridgeState {
     super();
     this.lifetime = new BridgeLifetime(ports.report);
     ports.management.identity = Object.freeze({ ...ports.management.identity });
+    this.ports = {
+      ...ports,
+      storage: observeBridgeJournal(ports, (journal) => {
+        this.emit({
+          ...this.snapshot,
+          journal,
+          descriptor: journal?.descriptor,
+          ...(journal && bridgeIsRetiring(journal)
+            ? { status: "disabled", generation: undefined }
+            : {}),
+        });
+      }),
+    };
     this.unsubscribe = ports.native.subscribe((event) => this.event(event));
   }
   protected abstract event(event: LocalBridgeNativeEvent): void;
@@ -45,12 +59,6 @@ export abstract class LocalBridgeLifecycle extends LocalBridgeState {
       this.emit({ ...this.snapshot, status: resume.kind });
       return;
     }
-    if (resume.kind === "saved" && !bridgeIsRetiring(resume.journal))
-      this.emit({
-        ...this.snapshot,
-        journal: resume.journal,
-        descriptor: resume.journal.descriptor,
-      });
     return this.begin(
       resume.kind === "migration" ? resume.input : undefined,
       false,
@@ -92,15 +100,34 @@ export abstract class LocalBridgeLifecycle extends LocalBridgeState {
     if (this.disposed)
       return Promise.reject(new Error("bridge controller disposed"));
     this.lifetime.invalidate();
-    this.emit({ status: "disabled", journal: null });
+    this.emit({ ...this.snapshot, status: "disabled", generation: undefined });
+    return this.lifetime.enqueue(() => this.finishRetirement());
+  }
+  replaceEndpoint(save: () => Promise<void>): Promise<void> {
+    if (this.disposed)
+      return Promise.reject(new Error("bridge controller disposed"));
+    // Pending writes/logout must drain before replacement. A healthy committed
+    // connection stays live (including renewal) until the new settings succeed.
+    if (this.snapshot.journal?.phase !== "committed")
+      this.lifetime.invalidate();
     return this.lifetime.enqueue(async () => {
-      const journal = await loadScopedBridge(this.ports);
-      const retiring = journal
-        ? await markBridgeRetiring(this.ports, journal, "retiring")
-        : null;
-      await this.ports.native.stop();
-      if (retiring) await retireBridge(this.ports, retiring);
+      await save();
+      this.lifetime.invalidate();
+      this.emit({
+        ...this.snapshot,
+        status: "disabled",
+        generation: undefined,
+      });
+      await this.finishRetirement();
     });
+  }
+  private async finishRetirement() {
+    const journal = await loadScopedBridge(this.ports);
+    const retiring = journal
+      ? await markBridgeRetiring(this.ports, journal, "retiring")
+      : null;
+    await this.ports.native.stop();
+    if (retiring) await retireBridge(this.ports, retiring);
   }
   async dispose() {
     this.disposed = true;
