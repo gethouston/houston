@@ -56,7 +56,9 @@ export function aboutMeRow(page: Page): Locator {
  * row at all. It carries no tour anchor, so its name is the handle.
  */
 export function assistantRow(page: Page): Locator {
-  return railRow(page, "Houston");
+  // By test id, never by name: the seeded agent is also called "Houston", and
+  // the assistant row only appears once discovery has answered.
+  return page.getByTestId("rail-assistant");
 }
 
 /**

@@ -45,9 +45,12 @@ export function gatedNavRows(args: {
       id: ASSISTANT_VIEW_ID,
       label: t("shell:sidebar.assistant"),
       // No tour anchor: the tour does not walk this row, exactly as it does not
-      // walk About me, Admin or Skills.
+      // walk About me, Admin or Skills. The test id is what tells this row
+      // apart from an agent the person happened to name "Houston", and it is
+      // only present once discovery has answered, so a click waits for it.
       icon: <HoustonLogo />,
       onClick: () => setViewMode(ASSISTANT_VIEW_ID),
+      dataAttrs: { "data-testid": "rail-assistant" },
     },
     organization: {
       id: ORGANIZATION_VIEW_ID,
