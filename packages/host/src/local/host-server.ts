@@ -7,6 +7,7 @@ import { refreshViewsOnEvents } from "../docs/view-warm";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { StoreSyncDaemon } from "../store-sync";
 import { FsVfs } from "../vfs";
+import { managedBridgeCapability } from "./bridge-capability";
 import type { createHostBase } from "./host-base";
 import type { createHostIntegrations } from "./host-integrations";
 import { LOCAL_USER, severityLog } from "./host-log";
@@ -68,6 +69,7 @@ export function createHostServer(
 
   const capabilities: Capabilities = {
     ...(opts.capabilities ?? LOCAL_CAPABILITIES),
+    ...managedBridgeCapability(opts.gatewayFronted, opts.credentials),
     // Served capabilities advertise the integrations actually wired, not the
     // profile's nominal list — an unconfigured deployment says [] honestly.
     integrations: registry.ids(),

@@ -214,7 +214,16 @@
       "error": "Not reachable",
       "offlineHint": "Your model isn't reachable right now. Make sure {{app}} is open on this computer.",
       "yourApp": "the app on your computer",
-      "reconnect": "Reconnect"
+      "reconnect": "Reconnect",
+      "disabled": "Disconnected",
+      "reconnecting": "Reconnecting...",
+      "model_unavailable": "Open your model app",
+      "authorization_required": "Sign in to reconnect",
+      "revoked": "Connection removed",
+      "authorizationHint": "Sign in to the account that connected this model, then reconnect.",
+      "revokedHint": "This connection was removed. Connect your model again to use it.",
+      "reconnect_required": "Reconnect your model",
+      "reconnectHint": "Connect your model again to link it to this workspace."
     }
   }
 }

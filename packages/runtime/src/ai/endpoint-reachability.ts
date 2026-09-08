@@ -1,3 +1,4 @@
+import { bridgeReadiness, refreshBridgeReadiness } from "./bridge-readiness";
 import { customEndpointStatus } from "./openai-compatible";
 
 /**
@@ -60,7 +61,10 @@ async function fetchProbe(baseUrl: string): Promise<boolean> {
 export async function refreshEndpointReachability(
   probe: EndpointProbe = fetchProbe,
 ): Promise<boolean> {
-  const baseUrl = customEndpointStatus().endpoint?.baseUrl;
+  const endpoint = customEndpointStatus().endpoint;
+  if (endpoint?.bridge)
+    return refreshBridgeReadiness(endpoint.bridge, endpoint.model);
+  const baseUrl = endpoint?.baseUrl;
   if (!baseUrl) {
     cache = null;
     return false;
@@ -93,7 +97,9 @@ export async function refreshEndpointReachability(
  * building rows, so real answers arrive with the first poll.
  */
 export function endpointReachableCached(): boolean {
-  const baseUrl = customEndpointStatus().endpoint?.baseUrl;
+  const endpoint = customEndpointStatus().endpoint;
+  if (endpoint?.bridge) return bridgeReadiness(endpoint.bridge, endpoint.model);
+  const baseUrl = endpoint?.baseUrl;
   if (!baseUrl) return false;
   if (cache && cache.baseUrl === baseUrl) return cache.ok;
   return true;

@@ -1,9 +1,11 @@
-import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type { WireEvent } from "@houston/runtime-client";
 import type { ThinkingLevel } from "../types";
 import { toSdkEffort } from "./effort";
 import { classifyText } from "./errors";
+import { hasSessionId, isAssistantMessageStart } from "./sdk-message-shapes";
 import type { ClaudeSessionDeps, TurnAuth } from "./session-deps";
+import { houstonToolServerLost } from "./tool-server-lost";
 import { createStreamTranslator } from "./translate";
 
 const errMessage = (err: unknown): string =>
@@ -41,6 +43,8 @@ export interface TurnAttemptState {
   /** Whether the user's Stop already fired for this attempt. */
   isAborting(): boolean;
   setContextTokens(tokens: number): void;
+  /** Why this attempt asked for a fresh rerun, for the session's warn line. */
+  setRetryReason(reason: string): void;
   emit(e: WireEvent): void;
   tickLiveness(): void;
   /** One model round-trip beginning, for the turn's finish marks. */
@@ -103,6 +107,32 @@ export async function runTurnAttempt(
       if (msg.type === "result" && msg.subtype === "success") succeeded = true;
       if (isAssistantMessageStart(msg)) state.emitAssistantMessageStart();
       if (hasSessionId(msg)) capturedSessionId = msg.session_id;
+      if (houstonToolServerLost(msg)) {
+        // The turn is running without Houston's tools (PRODUCT-1706). On a
+        // resume, abandon this attempt and rerun fresh with the canonical
+        // history — never let the model finish a tool-less turn and report
+        // the integrations as "missing". A fresh session that still lacks
+        // them is a real failure: surface it as one.
+        abortController.abort();
+        if (resume !== undefined) {
+          // The mapping is dropped on purpose; the finally block must not
+          // re-store the session id this attempt captured.
+          capturedSessionId = undefined;
+          state.setRetryReason("came up without Houston's tool server");
+          state.deps.sessionsStore.remove(state.deps.conversationId);
+          return "retry-fresh";
+        }
+        state.emit({
+          type: "provider_error",
+          data: classifyText(
+            "Houston's tools did not attach to this turn (the houston MCP server is not connected); the turn was stopped instead of running without them",
+            state.model,
+            null,
+            state.usedAccessDigest,
+          ),
+        });
+        return "failed";
+      }
       for (const wire of translator.translate(msg)) {
         if (wire.type === "provider_error") {
           const errText =
@@ -110,6 +140,7 @@ export async function runTurnAttempt(
               ? wire.data.raw_excerpt
               : wire.data.message;
           if (danglingResume(errText)) {
+            state.setRetryReason("was rejected by the SDK");
             state.deps.sessionsStore.remove(state.deps.conversationId);
             return "retry-fresh";
           }
@@ -130,6 +161,7 @@ export async function runTurnAttempt(
     // throw is just the SDK closing the iterator — don't re-report it.
     if (providerErrored) return "failed";
     if (danglingResume(errMessage(err))) {
+      state.setRetryReason("was rejected by the SDK");
       state.deps.sessionsStore.remove(state.deps.conversationId);
       return "retry-fresh";
     }
@@ -155,22 +187,4 @@ export async function runTurnAttempt(
   return succeeded && !providerErrored && !abortController.signal.aborted
     ? "success"
     : "failed";
-}
-
-/** A main-thread `message_start` stream event — the start of one API response. */
-function isAssistantMessageStart(msg: SDKMessage): boolean {
-  return (
-    msg.type === "stream_event" &&
-    msg.parent_tool_use_id === null &&
-    msg.event?.type === "message_start"
-  );
-}
-
-function hasSessionId(
-  msg: SDKMessage,
-): msg is SDKMessage & { session_id: string } {
-  return (
-    "session_id" in msg &&
-    typeof (msg as { session_id?: unknown }).session_id === "string"
-  );
 }

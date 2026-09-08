@@ -30,6 +30,8 @@ export class ClaudeSession implements HarnessSession {
   private readonly events = new SessionEventHub();
   private disposed = false;
   private aborting = false;
+  /** Why the last attempt asked for a fresh rerun, for the warn line. */
+  private retryReason = "";
   private abortController: AbortController | undefined;
   private model: string;
   private thinkingLevel: ThinkingLevel | undefined;
@@ -92,11 +94,12 @@ export class ClaudeSession implements HarnessSession {
     });
     if (outcome === "retry-fresh") {
       // The SDK refused the resume id (its cwd-scoped lookup missed the
-      // transcript — e.g. the workspace was renamed). The stale mapping is
+      // transcript — e.g. the workspace was renamed), or resumed it with
+      // Houston's tool server detached (PRODUCT-1706). The stale mapping is
       // already dropped; run the turn once more as a fresh session instead of
       // erroring a conversation that can never resume again.
       console.warn(
-        `[claude] resume for conversation ${this.deps.conversationId} was rejected by the SDK; starting a fresh session`,
+        `[claude] resume for conversation ${this.deps.conversationId} ${this.retryReason}; starting a fresh session`,
       );
       outcome = await runTurnAttempt(this.attemptState(), {
         text: `${this.deps.freshRetryPromptPrefix ?? ""}${prompt}`,
@@ -122,6 +125,9 @@ export class ClaudeSession implements HarnessSession {
       isAborting: () => this.aborting,
       setContextTokens: (tokens) => {
         this.contextTokens = tokens;
+      },
+      setRetryReason: (reason) => {
+        this.retryReason = reason;
       },
       emit: (e) => this.events.emit(e),
       tickLiveness: () => this.events.tickLiveness(),

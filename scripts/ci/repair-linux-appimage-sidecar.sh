@@ -29,6 +29,7 @@ esac
   "$APPIMAGE" --appimage-extract >/dev/null
 )
 ROOT="$TMP/squashfs-root"
+node "$(dirname "$0")/assert-no-frpc.mjs" "$ROOT"
 PACKAGED="$ROOT/usr/bin/houston-engine"
 [ -f "$PACKAGED" ] || { echo "ERROR: AppImage has no usr/bin/houston-engine" >&2; exit 1; }
 

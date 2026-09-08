@@ -169,6 +169,9 @@ jobs:
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
+        # The report is a debugging aid; a GitHub artifact-service hiccup
+        # (403 on FinalizeArtifact, seen on green shards) must not fail the job.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-shard-${{ matrix.shard }}
@@ -204,6 +207,9 @@ jobs:
 
       - name: Upload Playwright report
         if: ${{ !cancelled() }}
+        # The report is a debugging aid; a GitHub artifact-service hiccup
+        # (403 on FinalizeArtifact, seen on green shards) must not fail the job.
+        continue-on-error: true
         uses: actions/upload-artifact@v4
         with:
           name: playwright-visual-report

@@ -11,6 +11,7 @@
  */
 
 export * from "./client.ts";
+export * from "./local-model-bridge.ts";
 export * from "./retry-after.ts";
 export * from "./store-catalog.ts";
 export * from "./types.ts";

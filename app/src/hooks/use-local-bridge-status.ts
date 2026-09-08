@@ -1,129 +1,38 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { listenOsEvent } from "../lib/events";
-import type { BridgeStatus, SavedBridgeTarget } from "../lib/local-model";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import {
-  reconnectBlockedByMissingDescriptor,
-  sessionOwnsBridge,
-} from "../lib/local-model";
+  localBridgeSnapshot,
+  subscribeLocalBridge,
+} from "../lib/local-bridge-binding";
 import { reconnectLocalModel } from "../lib/local-model-connect";
-import {
-  osIsTauri,
-  osLocalBridgeStatus,
-  osSavedBridgeTarget,
-} from "../lib/os-bridge";
+import { osIsTauri } from "../lib/os-bridge";
 
-export interface LocalBridgeStatus {
-  status: BridgeStatus | null;
-  /** This machine's saved bridge target, or null (direct/manual endpoint). */
-  savedTarget: SavedBridgeTarget | null;
-  /** Whether THIS session owns/owned a bridge → show the tunnel pill, not the
-   *  standard connected indicator. */
-  ownsBridge: boolean;
-  /** The local app's name for the offline hint (e.g. "LM Studio"), if known. */
-  appName?: string;
-  /** Re-establish the tunnel (getTunnelCredentials -> reconnect_local_bridge).
-   *  This is the pill's Retry / Reconnect action, NOT a mere status re-read. */
-  reconnect: () => void;
-  /** A reconnect is in flight (for the pill's disabled/`retrying` state). */
-  reconnecting: boolean;
-}
-
-/**
- * Live state of the local model bridge for the online/offline pill. Seeds from a
- * one-shot `local_bridge_status` read + a `saved_bridge_target` probe, then
- * tracks the `local-bridge-status` Tauri event the native shell emits on every
- * transition.
- *
- * The pill's Retry actually RECONNECTS the tunnel (mint fresh credentials +
- * `reconnect_local_bridge`, reusing the persisted proxyKey) rather than only
- * re-reading status — after a restart frpc is gone and a status re-read alone
- * would stay offline forever.
- *
- * Desktop only — everything stays null in the browser (there is no bridge
- * there). Pass `enabled: false` to skip subscribing when no local model is
- * connected.
- */
-export function useLocalBridgeStatus(enabled = true): LocalBridgeStatus {
-  const [status, setStatus] = useState<BridgeStatus | null>(null);
-  const [savedTarget, setSavedTarget] = useState<SavedBridgeTarget | null>(
-    null,
+/** The product observes the SDK snapshot; the native event subscription is shared. */
+export function useLocalBridgeStatus(enabled = true) {
+  const snapshot = useSyncExternalStore(
+    subscribeLocalBridge,
+    localBridgeSnapshot,
+    localBridgeSnapshot,
   );
   const [reconnecting, setReconnecting] = useState(false);
-  const mounted = useRef(true);
-
-  useEffect(() => {
-    mounted.current = true;
-    if (!enabled || !osIsTauri()) {
-      setStatus(null);
-      setSavedTarget(null);
-      return () => {
-        mounted.current = false;
-      };
-    }
-    // Passive meta-probes (not user-initiated): a transient read failure must
-    // not toast. The event stream is the authoritative signal for status.
-    osLocalBridgeStatus()
-      .then((s) => {
-        if (mounted.current) setStatus(s);
-      })
-      .catch((err) =>
-        console.error("[local-bridge] initial status read failed", err),
-      );
-    osSavedBridgeTarget()
-      .then((tgt) => {
-        if (mounted.current) setSavedTarget(tgt);
-      })
-      .catch((err) =>
-        console.error("[local-bridge] saved target read failed", err),
-      );
-    const off = listenOsEvent<BridgeStatus>("local-bridge-status", (s) => {
-      if (!mounted.current) return;
-      setStatus(s);
-      // The descriptor's lifecycle rides status transitions (an explicit stop
-      // deletes it before emitting offline; a start persists it) — re-probe so
-      // a disconnect retires the pill instead of leaving a stale Reconnect
-      // that can only fail.
-      osSavedBridgeTarget()
-        .then((tgt) => {
-          if (mounted.current) setSavedTarget(tgt);
-        })
-        .catch((err) =>
-          console.error("[local-bridge] saved target re-read failed", err),
-        );
-    });
-    return () => {
-      mounted.current = false;
-      off();
-    };
-  }, [enabled]);
-
   const reconnect = useCallback(() => {
-    if (!enabled || !osIsTauri() || reconnecting) return;
+    if (!enabled || reconnecting || !osIsTauri()) return;
     setReconnecting(true);
-    void (async () => {
-      // Precheck the descriptor: a disconnect (this window or another) may
-      // have deleted it after this pill rendered, and reconnecting then can
-      // only fail. Confirmed-gone means the pill itself is stale — heal the
-      // UI, don't toast an error nobody can act on.
-      const probed = await osSavedBridgeTarget().catch(() => undefined);
-      if (reconnectBlockedByMissingDescriptor(probed)) {
-        if (mounted.current) setSavedTarget(null);
-        return;
-      }
-      await reconnectLocalModel().catch(() => {
-        // reconnectLocalModel already toasted the real reason (Report-bug).
-      });
-    })().finally(() => {
-      if (mounted.current) setReconnecting(false);
-    });
+    void reconnectLocalModel()
+      .catch(() => {
+        // The action reports through the app's standard error paths.
+      })
+      .finally(() => setReconnecting(false));
   }, [enabled, reconnecting]);
-
+  const active = enabled && osIsTauri();
+  const target = active ? (snapshot.journal?.input ?? null) : null;
   return {
-    status,
-    savedTarget,
-    ownsBridge: sessionOwnsBridge(savedTarget, status),
-    appName: savedTarget?.appName,
+    status: active ? { status: snapshot.status } : null,
+    savedTarget: target,
+    ownsBridge:
+      active &&
+      (snapshot.journal !== null || !["disabled"].includes(snapshot.status)),
+    appName: target?.appName,
     reconnect,
-    reconnecting,
+    reconnecting: reconnecting || snapshot.status === "reconnecting",
   };
 }

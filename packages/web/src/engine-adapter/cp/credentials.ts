@@ -1,7 +1,4 @@
-import type {
-  CustomEndpoint,
-  TunnelCredentials,
-} from "../../../../../ui/engine-client/src/types";
+import type { CustomEndpoint } from "../../../../../ui/engine-client/src/types";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 /**
@@ -146,25 +143,4 @@ export async function setCustomEndpoint(
       body: JSON.stringify(endpoint),
     },
   );
-}
-
-/**
- * Gets the credentials that link a local AI model to a cloud agent.
- *
- * Mint a short-lived relay credential for the guided "connect a local model"
- * flow (`POST /v1/tunnel/credentials`, Supabase-authed via cpFetch, mirroring
- * `/v1/integrations`). The desktop runs its frpc sidecar against the returned
- * `relayHost:relayPort` so the user's local model server surfaces at `publicUrl`
- * for their cloud agent. Hosted-only — a non-gateway deployment 404s and cpFetch
- * throws the host's real error message (never swallowed).
- *
- * Confirmed: outward. It mints a live relay credential that opens a path from
- * the public internet to the user's own machine.
- * @assistant group:providers confirm hidden: returns a secret; a short-lived relay credential for the desktop's tunnel sidecar.
- */
-export async function getTunnelCredentials(
-  cfg: ControlPlaneConfig,
-): Promise<TunnelCredentials> {
-  const res = await cpFetch(cfg, "/v1/tunnel/credentials", { method: "POST" });
-  return (await res.json()) as TunnelCredentials;
 }

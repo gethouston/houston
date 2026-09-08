@@ -1,4 +1,4 @@
-import { salvageLeadingJson } from "./json-salvage";
+import { salvageJsonDoc } from "./json-salvage";
 
 /**
  * The domain layer's only I/O dependency: a keyed text store. The host's Vfs
@@ -46,17 +46,18 @@ export async function loadJson<T>(
  * publish) must parse identically or the doc-served and pod-served answers
  * drift. A leading byte-order mark is an encoding artifact, not content:
  * files-first docs get hand-written by agents, users and editors, and
- * `JSON.parse` rejects a BOM outright (HOU-953). A complete value followed by
- * trailing bytes (an outside writer appended or overlapped the doc) keeps the
- * value: nothing the user wrote is lost, and the next save rewrites the file
- * clean. Anything else throws with the key named.
+ * `JSON.parse` rejects a BOM outright (HOU-953). What an outside writer
+ * mangled losslessly (trailing bytes after a complete value, a raw newline or
+ * tab inside a string) is repaired (`json-salvage.ts`): nothing the user wrote
+ * is lost, and the next save rewrites the file clean. Anything else throws
+ * with the key named.
  */
 export function parseJsonDoc(raw: string, key: string): unknown {
   const text = raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
   try {
     return JSON.parse(text) as unknown;
   } catch (err) {
-    const salvaged = salvageLeadingJson(text);
+    const salvaged = salvageJsonDoc(text);
     if (salvaged !== undefined) return salvaged;
     throw new Error(
       `${key} is not valid JSON (${err instanceof Error ? err.message : String(err)})`,

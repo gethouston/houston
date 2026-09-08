@@ -1,12 +1,10 @@
 /**
  * The LOCAL-model half of the provider modal: the bridge's live online/offline
- * state, and a "disconnect" that tears the tunnel down rather than merely
- * clearing a credential.
+ * state and a disconnect that revokes and closes the owned connection.
  *
  * Extracted from `provider-modal.tsx` so that file stays a composition of a
- * header, a model list and a footer. Nothing here is account-scoped (HOU-976): a
- * local OpenAI-compatible endpoint is agent CONFIGURATION, not a credential, so
- * there is no personal-versus-team question to ask about it.
+ * header, a model list and a footer. The SDK binds bridge ownership to the
+ * signed-in account, workspace, agent and registered device.
  */
 
 import { useCallback, useState } from "react";
@@ -42,14 +40,13 @@ export function useProviderModalLocal(opts: {
   connected: boolean;
   onDisconnected: () => void;
 }): ProviderModalLocal {
-  const localConnected = opts.isLocal && opts.connected;
   const {
     status: bridge,
     ownsBridge,
     appName: bridgeAppName,
     reconnect: reconnectBridge,
     reconnecting,
-  } = useLocalBridgeStatus(localConnected);
+  } = useLocalBridgeStatus(opts.isLocal);
   const [disconnecting, setDisconnecting] = useState(false);
   const { onDisconnected } = opts;
   const disconnectLocal = useCallback(async () => {
@@ -65,7 +62,7 @@ export function useProviderModalLocal(opts: {
   }, [onDisconnected]);
 
   return {
-    showTunnelPill: localConnected && ownsBridge,
+    showTunnelPill: opts.isLocal && ownsBridge,
     showConnectedBadge: opts.connected && (!opts.isLocal || !ownsBridge),
     bridge,
     bridgeAppName,

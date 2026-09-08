@@ -1,10 +1,11 @@
 import type { HoustonFamily } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import {
+  bootBindingId,
   EVENT_FAMILY,
-  listAgentIds,
   type ProjectorDeps,
   putFamilyDoc,
+  singleAgentId,
 } from "./project-family";
 
 /**
@@ -24,6 +25,7 @@ export class DocShadowProjector {
   // refused — nothing may cross-post into the bound agent's doc.
   private bound: string | undefined;
   private addressing = false;
+  private rebinding: Promise<void> | undefined;
   private readonly refused = new Set<string>();
 
   constructor(private readonly deps: ProjectorDeps) {}
@@ -39,33 +41,15 @@ export class DocShadowProjector {
     // keeps repeat boots at one GET per family, no revision churn.
     this.ready = this.deps.shadow
       .seed()
-      .then(() => this.seedContent())
+      .then(async () => {
+        const only = await bootBindingId(this.deps.store);
+        if (only === undefined) return;
+        this.bound = only;
+        await this.seedBound(only);
+      })
       .catch((error: unknown) => {
         console.error("[doc-shadow] boot seed failed", error);
       });
-  }
-
-  private async seedContent(): Promise<void> {
-    const agents = await listAgentIds(this.deps.store);
-    if (agents.length === 0) {
-      // Cloud pods can reach boot before the workspace tree hydrates (seen
-      // live: real agent pods with zero agents at seed time). Not an error
-      // and NOT a poison: the hydration writes fire watcher events, and the
-      // first projection binds late and back-fills the whole seed.
-      console.warn(
-        "[doc-shadow] no agents at boot seed; binding on first projection",
-      );
-      return;
-    }
-    const only = agents.length === 1 ? agents[0] : undefined;
-    if (only === undefined) {
-      console.warn(
-        `[doc-shadow] host serves ${agents.length} agents; binding deferred to the first addressed agent`,
-      );
-      return;
-    }
-    this.bound = only;
-    await this.seedBound(only);
   }
 
   private async seedBound(agentId: string): Promise<void> {
@@ -139,6 +123,7 @@ export class DocShadowProjector {
    */
   async boundAgent(): Promise<string | undefined> {
     await this.ready;
+    await this.rebindIfMoved();
     return this.bound;
   }
 
@@ -148,8 +133,13 @@ export class DocShadowProjector {
   }
 
   private async project(agentId: string, family: HoustonFamily): Promise<void> {
-    if (this.bound === undefined && !(await this.lazyBind(agentId, family))) {
-      return;
+    if (this.bound === undefined) {
+      // Bind on first projection when boot found no agents; several agents
+      // stay ambiguous until bindAddressed.
+      if ((await singleAgentId(this.deps.store)) !== agentId) return;
+      this.rebind(agentId, family, "agent hydrated after boot");
+    } else if (agentId !== this.bound) {
+      await this.rebindIfMoved(family);
     }
     if (agentId !== this.bound) {
       // The refusal is the DESIGNED outcome (rename leftovers beside the live
@@ -168,24 +158,43 @@ export class DocShadowProjector {
   }
 
   /**
-   * Bind on first projection when boot found no agents. True = agentId is
-   * the host's single agent; the remaining families are enqueued so the
-   * boot seed this pod missed still happens. Several agents = still
-   * ambiguous: wait for bindAddressed.
+   * Follow a rename. The binding is a directory name and a rename moves the
+   * directory — often on the very wake that booted this pod, since the rename
+   * request is what woke it. Left alone, every projection and view publish
+   * for the renamed agent is refused as cross-agent until the next pod
+   * restart, and asleep readers keep getting the pre-rename docs
+   * (HOUSTON-APP-5AP). Re-binds only when the bound directory is gone AND
+   * exactly one remains; a delete (none left) or a leftover beside the live
+   * agent (several) keeps the old binding, as ambiguous as at seed.
    */
-  private async lazyBind(
+  private rebindIfMoved(family?: HoustonFamily): Promise<void> {
+    this.rebinding ??= (async () => {
+      const bound = this.bound;
+      if (bound === undefined) return;
+      if ((await this.deps.store.getAgent(bound)) !== null) return;
+      const only = await singleAgentId(this.deps.store);
+      if (only === null || only === bound) return;
+      this.refused.clear();
+      this.rebind(only, family, `agent directory moved from ${bound}`);
+    })().finally(() => {
+      this.rebinding = undefined;
+    });
+    return this.rebinding;
+  }
+
+  /** Bind late; every family but the one in flight is enqueued so the boot
+   *  seed this pod missed (or seeded under another name) still happens. */
+  private rebind(
     agentId: string,
-    family: HoustonFamily,
-  ): Promise<boolean> {
-    const agents = await listAgentIds(this.deps.store);
-    if (agents.length !== 1 || agents[0] !== agentId) return false;
+    inFlight: HoustonFamily | undefined,
+    why: string,
+  ): void {
     this.bound = agentId;
     console.warn(
-      `[doc-shadow] bound to ${agentId} on first projection (agent hydrated after boot); seeding remaining families`,
+      `[doc-shadow] bound to ${agentId} (${why}); seeding remaining families`,
     );
     for (const other of Object.values(EVENT_FAMILY)) {
-      if (other && other !== family) this.enqueue(agentId, other);
+      if (other && other !== inFlight) this.enqueue(agentId, other);
     }
-    return true;
   }
 }

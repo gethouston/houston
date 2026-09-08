@@ -40,6 +40,7 @@ export async function applyEndpointConnect(
   // The descriptor both the config file and the org share persist — built
   // once so the two writes can never diverge on a field.
   const descriptor = {
+    ...(input.bridge ? { bridge: input.bridge } : {}),
     baseUrl,
     model: input.model.trim(),
     ...(input.name !== undefined ? { name: input.name } : {}),
@@ -95,10 +96,13 @@ export async function applyEndpointConnect(
       ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
     });
     if (input.shared === true) {
-      await shared.put({
-        ...descriptor,
-        ...(input.apiKey !== undefined ? { apiKey: input.apiKey } : {}),
-      });
+      await shared.put(
+        {
+          ...descriptor,
+          ...(input.apiKey !== undefined ? { apiKey: input.apiKey } : {}),
+        },
+        op.actingToken,
+      );
     } else {
       await shared.remove({ ownerOnly: true });
     }

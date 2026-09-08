@@ -7,6 +7,7 @@ import {
   type ModelRuntime,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
+import { isManagedBridgeModel } from "../../ai/openai-compatible-model";
 import { makeAgentLoader } from "../../session/resource-loader";
 import { toolNamesForMode } from "../../session/tool-selection";
 import type {
@@ -165,6 +166,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         tools: toolNamesForMode(opts.mode, deps.tools),
         customTools: deps.customTools,
       });
+      if (isManagedBridgeModel(opts.model)) session.setAutoRetryEnabled(false);
       return new PiSession(session);
     },
   };

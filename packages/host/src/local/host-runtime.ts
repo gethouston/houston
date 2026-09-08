@@ -10,6 +10,7 @@ import { forward } from "../proxy/route";
 import { CredentialServeHealer } from "../routes/credential-healer";
 import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { agentDirFor, liveAgentDirFor } from "./agent-dirs";
+import { managedBridgeRuntimeEnv } from "./bridge-capability";
 import type { createHostBase } from "./host-base";
 import type { LocalHostOptions } from "./host-options";
 
@@ -37,14 +38,18 @@ export function createHostRuntime(
       // ProcessLauncher sets (workspace dir, data dir, port, tokens). Built
       // from the spec so the assistant ROLE — which the launcher decides per
       // agent — reaches only the coordinator's own child process.
-      env: (spec) =>
-        runtimeSpawnEnv({
+      env: (spec) => ({
+        // The managed pod's own credential-gateway coordinates, so a runtime
+        // can reach the local-model bridge the gateway fronts for it.
+        ...managedBridgeRuntimeEnv(opts.gatewayFronted, opts.credentials),
+        ...runtimeSpawnEnv({
           systemPrompt: opts.systemPrompt,
           sidecarBinary: process.env.HOUSTON_SIDECAR_BINARY,
           transcriptDualWrite: Boolean(transcriptShadow),
           shutdownDrainMs: opts.shutdownDrainMs,
           assistantRole: spec.assistantRole ?? null,
         }),
+      }),
       onLog: opts.onRuntimeLog,
     });
 

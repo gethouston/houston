@@ -8,6 +8,22 @@ const ORG = "0011223344556677";
 const AGENT = "8899aabbccddeeff";
 const PATH = `${BASE}/v1/pod/shared-endpoint/${ORG}/${AGENT}`;
 
+test("bridge share forwards signed acting authority and explicit bridge metadata", async () => {
+  const { calls, fetchImpl } = fakeFetch(() => json({ ok: true }));
+  const bridge = {
+    id: "00000000-0000-4000-8000-000000000001",
+    version: 1 as const,
+  };
+  await store(fetchImpl).put(
+    { baseUrl: "https://display.example/v1", model: "model", bridge },
+    "signed-acting",
+  );
+  expect(headers(calls[0] as FetchCall)["x-houston-acting-as"]).toBe(
+    "signed-acting",
+  );
+  expect(JSON.parse(String(calls[0]?.init?.body))).toMatchObject({ bridge });
+});
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status });
 }

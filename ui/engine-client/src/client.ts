@@ -129,7 +129,6 @@ import type {
   SummarizeResult,
   TriggerStatusItem,
   TriggerType,
-  TunnelCredentials,
   TunnelStatus,
   UpdateAgent,
   UpdateProvider,
@@ -1258,18 +1257,11 @@ export class HoustonClient {
   setProviderCustomEndpoint(_endpoint: CustomEndpoint): Promise<void> {
     return Promise.reject(new Error("Local models require the new engine."));
   }
-  /**
-   * Mint a relay credential so a local model server can be tunnelled to a CLOUD
-   * agent (guided "connect a local model" flow). Hosted + new-engine only — the
-   * legacy Rust engine has no gateway to issue one, and the UI is gated on the
-   * `openaiCompatible` capability, so this is never hit here. Reject loudly
-   * rather than pretend (no silent failure).
-   */
-  getTunnelCredentials(): Promise<TunnelCredentials | null> {
+  getLocalModelBridgeAccess(
+    _userId: string,
+  ): Promise<import("./local-model-bridge").LocalModelBridgeAccess | null> {
     return Promise.reject(
-      new Error(
-        "Connecting a local model to a cloud agent requires the new engine.",
-      ),
+      new Error("Local model bridges require the new engine."),
     );
   }
   // "Sign in with Google" for Gemini goes through the standard

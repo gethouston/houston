@@ -34,7 +34,7 @@ describe("routineProviderHealth", () => {
     strictEqual(routineProviderHealth({ health: "unreachable" }), "checking");
   });
 
-  it("health wins over the denormalized boolean when both are present", () => {
+  it("a present credential keeps its richer health", () => {
     // Out of credits is an AUTHENTICATED credential with no quota: reading
     // `authenticated` alone would call it connected and the run would fail.
     strictEqual(
@@ -42,12 +42,53 @@ describe("routineProviderHealth", () => {
       "out_of_credits",
     );
     strictEqual(
+      routineProviderHealth({ authenticated: true, health: "needs_reconnect" }),
+      "needs_reconnect",
+    );
+  });
+
+  // A sleeping pod's `/providers` is the pod's LAST captured answer with only
+  // `configured` overlaid from the credential store (PRODUCT-1706): the
+  // captured `health` can be another member's "not connected" while THIS
+  // viewer's account is stored and usable. The store's claim wins.
+  it("a stored credential overrides a captured 'not connected'", () => {
+    strictEqual(
+      routineProviderHealth({
+        authenticated: true,
+        auth_state: "authenticated",
+        health: "not_connected",
+      }),
+      "connected",
+    );
+  });
+
+  it("a missing credential overrides a captured 'connected'", () => {
+    strictEqual(
       routineProviderHealth({
         authenticated: false,
         auth_state: "unauthenticated",
         health: "connected",
       }),
-      "connected",
+      "not_connected",
+    );
+    strictEqual(
+      routineProviderHealth({
+        authenticated: false,
+        auth_state: "unauthenticated",
+        health: "needs_reconnect",
+      }),
+      "not_connected",
+    );
+  });
+
+  it("an unknown probe is checking even when a stale health is captured", () => {
+    strictEqual(
+      routineProviderHealth({
+        authenticated: false,
+        auth_state: "unknown",
+        health: "not_connected",
+      }),
+      "checking",
     );
   });
 

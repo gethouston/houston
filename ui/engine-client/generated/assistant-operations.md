@@ -67,7 +67,6 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `captureSetupCredential` | unroutable | unconfirmed: withheld from dispatch | credential plumbing; first-run capture, before any agent exists. | provider: free text |
 | `forgetCredential` | POST | confirmed: host approval required | destroys the workspace's provider sign-in, including the one serving this conversation. | agentId: resolved:agents; provider: free text |
 | `forgetSetupCredential` | POST | unconfirmed: withheld from dispatch | destroys the space's provider sign-in, before any agent exists. | provider: free text |
-| `getTunnelCredentials` | POST | confirmed: host approval required | returns a secret; a short-lived relay credential for the desktop's tunnel sidecar. | none |
 | `listAgentProviders` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `pushClaudeOAuthCredential` | POST | confirmed: host approval required | carries a secret; the desktop's Anthropic OAuth credential. | agentId: resolved:agents; credentialJson: free text |
 | `pushSetupClaudeOAuthCredential` | POST | unconfirmed: withheld from dispatch | carries a secret; the desktop's Anthropic OAuth credential, before any agent exists. | credentialJson: free text |

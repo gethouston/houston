@@ -941,6 +941,9 @@ importers:
       '@houston/agentstore-client':
         specifier: workspace:*
         version: link:../../packages/agentstore-client
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
     devDependencies:
       '@houston/domain':
         specifier: workspace:*

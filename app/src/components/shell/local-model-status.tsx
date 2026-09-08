@@ -8,14 +8,19 @@ const DOT_CLASS: Record<BridgeStatusKind, string> = {
   connecting: "bg-warning animate-pulse",
   offline: "bg-ink-muted",
   error: "bg-danger",
+  disabled: "bg-ink-muted",
+  reconnecting: "bg-warning motion-safe:animate-pulse",
+  model_unavailable: "bg-warning",
+  authorization_required: "bg-warning",
+  revoked: "bg-ink-muted",
+  reconnect_required: "bg-warning",
 };
 
 /**
  * A compact online/offline pill for a connected local model, shown ONLY when
  * this session owns/owned the bridge. When the bridge is down it is honest and
  * kind: it names the app that must be open on this computer and offers a
- * Reconnect that actually re-establishes the tunnel (not a mere status re-read).
- * Never silent.
+ * Reconnect action restores the authenticated connection.
  */
 export function LocalModelStatusPill({
   status,
@@ -26,13 +31,28 @@ export function LocalModelStatusPill({
   status: BridgeStatusKind;
   /** The local app's name (e.g. "LM Studio") for the offline hint. */
   appName?: string;
-  /** Re-establish the tunnel. */
+  /** Restore the authenticated connection. */
   onRetry?: () => void;
   /** A reconnect is in flight. */
   retrying?: boolean;
 }) {
   const { t } = useTranslation("providers");
-  const down = status === "offline" || status === "error";
+  const down = [
+    "offline",
+    "error",
+    "model_unavailable",
+    "authorization_required",
+    "revoked",
+    "reconnect_required",
+  ].includes(status);
+  const hint =
+    status === "authorization_required"
+      ? "localModel.status.authorizationHint"
+      : status === "revoked"
+        ? "localModel.status.revokedHint"
+        : status === "reconnect_required"
+          ? "localModel.status.reconnectHint"
+          : "localModel.status.offlineHint";
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -46,7 +66,7 @@ export function LocalModelStatusPill({
       {down && (
         <div className="flex flex-col gap-1.5">
           <p className="text-[12px] leading-relaxed text-ink-muted">
-            {t("localModel.status.offlineHint", {
+            {t(hint, {
               app: appName || t("localModel.status.yourApp"),
             })}
           </p>

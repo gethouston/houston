@@ -21,6 +21,27 @@ const shared: OrgSharedEndpoint = {
   ownerAgent: "0123456789abcdef",
 };
 
+test("managed bridge metadata survives organization hydration", async () => {
+  const bridge = {
+    id: "00000000-0000-4000-8000-000000000001",
+    version: 1 as const,
+  };
+  const { calls, fetchImpl } = runtimeFetch({
+    configured: false,
+    orgShared: false,
+  });
+  await syncSharedEndpoint({
+    store: store({ ...shared, bridge }),
+    runtime,
+    fetchImpl,
+  });
+  expect(writes(calls)[0]?.body).toMatchObject({
+    bridge,
+    orgShared: true,
+    model: shared.model,
+  });
+});
+
 function store(value: OrgSharedEndpoint | null): SharedEndpointStore {
   return {
     get: async () => value,

@@ -66,6 +66,8 @@ export interface TurnRequest {
   turnId?: string;
   /** Per-claim gateway token. Secret material, never log this value. */
   hostToken?: string;
+  /** Signed gateway authority; human attribution cannot authorize inference. */
+  actingToken?: string;
   /** Human attribution for machine-dispatched work. */
   actingAs?: { userId: string; name?: string };
   /** Hydrate and resolve the model without calling it or writing back. */

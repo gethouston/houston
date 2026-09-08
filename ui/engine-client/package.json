@@ -14,7 +14,8 @@
     "typecheck": "tsgo --noEmit && tsgo -p scripts/tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@houston/agentstore-client": "workspace:*"
+    "@houston/agentstore-client": "workspace:*",
+    "@houston/protocol": "workspace:*"
   },
   "devDependencies": {
     "@houston/domain": "workspace:*",

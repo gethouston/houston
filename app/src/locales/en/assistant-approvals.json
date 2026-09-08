@@ -23,7 +23,6 @@
     "deleteSkill": "Delete this skill so the agent no longer has it.",
     "detectCustomIntegration": "Check what kind of service this link points to.",
     "forgetCredential": "Sign this workspace out of the AI account.",
-    "getTunnelCredentials": "Get the credentials that link a local AI model to a cloud agent.",
     "installAgentFromGithub": "Install an agent from a GitHub repository.",
     "installCommunitySkill": "Install a skill from the community directory into the agent.",
     "installSkillsFromRepo": "Install skills from a GitHub repository into the agent.",

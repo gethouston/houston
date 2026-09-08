@@ -1,3 +1,4 @@
+import { ManagedBridgeEndpointSchema } from "@houston/protocol";
 import { refreshEndpointReachability } from "../ai/endpoint-reachability";
 import { customEndpointStatus } from "../ai/openai-compatible";
 import {
@@ -137,6 +138,9 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
   try {
     const body = await readJson(ctx.req);
     setCustomEndpoint({
+      ...(body.bridge !== undefined
+        ? { bridge: ManagedBridgeEndpointSchema.parse(body.bridge) }
+        : {}),
       baseUrl: String(body.baseUrl || ""),
       model: String(body.model || ""),
       name: typeof body.name === "string" ? body.name : undefined,

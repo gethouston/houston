@@ -23,7 +23,6 @@
     "deleteSkill": "Eliminar esta habilidad para que el agente ya no la tenga.",
     "detectCustomIntegration": "Revisar a qué tipo de servicio apunta este enlace.",
     "forgetCredential": "Cerrar la sesión de este espacio de trabajo en la cuenta de IA.",
-    "getTunnelCredentials": "Obtener las credenciales que conectan un modelo de IA local con un agente en la nube.",
     "installAgentFromGithub": "Instalar un agente desde un repositorio de GitHub.",
     "installCommunitySkill": "Instalar en el agente una habilidad del directorio de la comunidad.",
     "installSkillsFromRepo": "Instalar en el agente habilidades desde un repositorio de GitHub.",

@@ -70,6 +70,8 @@ export interface Capabilities {
    * user's own machine, unreachable from a cloud runtime, so cloud sets false.
    */
   openaiCompatible: boolean;
+  /** Managed relay protocol versions actually served by this deployment. */
+  localModelBridge?: { versions: number[] };
   /**
    * Third-party integration providers available (e.g. "composio"). Each lets a
    * user connect their OWN account and gives agents tools over those apps.

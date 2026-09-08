@@ -4,7 +4,7 @@
 //! [`InvokeBody::Raw`] (JSON-encoding a multi-megabyte clip number-by-number
 //! would freeze the webview — same reasoning as `commands::save_file`). The
 //! language hint travels in the `x-dictation-lang` header. The sidecar child
-//! gets the SAME orphan-prevention discipline as the engine/frpc sidecars
+//! gets the SAME orphan-prevention discipline as the engine sidecar
 //! (Unix process group + `killpg`, Windows kill-on-close Job Object).
 
 use std::io::{BufReader, Read};

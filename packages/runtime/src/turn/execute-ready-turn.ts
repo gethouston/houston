@@ -2,6 +2,7 @@ import type { WireFrame } from "@houston/runtime-client";
 import { runWithActingContext } from "../session/acting-context";
 import { runWithConversationScope } from "../session/bus";
 import type { startClaimHeartbeat } from "./claim-heartbeat";
+import { localModelContextForTurn } from "./local-model-context";
 import type { TurnServerDeps } from "./server-types";
 import { finishTurnDurability } from "./turn-durability";
 import type { TurnFilesystem } from "./turn-filesystem";
@@ -95,6 +96,13 @@ export async function executeReadyTurn(input: {
           {
             credentialScopeKey: `u:turn:${input.turn.workspaceId}:${input.turn.agentId}`,
             authPath: input.authPath,
+            ...(input.turn.actingToken
+              ? { actingAs: input.turn.actingToken }
+              : {}),
+            localModelTransport: localModelContextForTurn(
+              input.turn,
+              input.deps.poolStoreUrl,
+            ),
             ...(input.turn.actingAs
               ? { actingUser: input.turn.actingAs.userId }
               : {}),

@@ -88,6 +88,7 @@ export interface AssistantHandle {
 }
 
 export interface Capabilities {
+  localModelBridge?: { versions: number[] };
   profile: "local" | "cloud";
   revealInOs: boolean;
   terminal: boolean;
@@ -2452,6 +2453,7 @@ export interface WebhookKeyReveal {
 // base URL + model id. New-engine + desktop only (the URL is the user's own
 // machine). The key is optional — keyless local servers ignore it.
 export interface CustomEndpoint {
+  bridge?: import("@houston/protocol").ManagedBridgeEndpoint;
   baseUrl: string;
   model: string;
   name?: string;
@@ -2463,21 +2465,4 @@ export interface CustomEndpoint {
    */
   shared?: boolean;
   apiKey?: string;
-}
-
-// ── Local-model tunnel credentials ───────────────────────────────────────────
-// One-click "connect a local model" issues a short-lived relay credential from
-// the gateway (`POST /v1/tunnel/credentials`). The desktop then runs an frpc
-// sidecar against `relayHost:relayPort` with `token`/`transport`, which exposes
-// the user's local model server at `publicUrl` (under `subdomain`) so their
-// CLOUD agent can reach it. New-engine + hosted only.
-export interface TunnelCredentials {
-  subdomain: string;
-  publicUrl: string;
-  relayHost: string;
-  relayPort: number;
-  token: string;
-  /** ISO-8601 expiry of `token`; the desktop re-mints before it lapses. */
-  tokenExpiresAt: string;
-  transport: string;
 }

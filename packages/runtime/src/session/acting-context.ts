@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
+import type { LocalModelTransportContext } from "../ai/local-model-transport";
 import { decodeActingAuthor } from "./attribution";
 
 /**
@@ -21,14 +22,15 @@ import { decodeActingAuthor } from "./attribution";
  * behavior is unchanged.
  */
 export interface ActingContext {
+  localModelTransport?: LocalModelTransportContext;
   actingAs?: string;
   actingUser?: string;
   /**
    * WHOSE credentials this subtree resolves. Normally derived from `actingAs`
-   * (see `credentialScopeKeyFor`); an internal caller may instead supply an
-   * attribution-free scope when it has a stable execution identity but no
-   * acting user (the stateless turn server scopes process-local health this
-   * way). Precomputed because the credential store resolves it on every
+   * (see `credentialScopeKeyFor`); an internal caller may supply a stable
+   * execution scope independently of forwarded acting authority. Pooled turns
+   * use this to keep credential health isolated by workspace and agent.
+   * Precomputed because the credential store resolves it on every
    * `read()` pi makes inside `prepareRequest`.
    */
   credentialScopeKey?: string;
@@ -91,15 +93,16 @@ export function runWithActingContext<T>(
     (!ctx.actingAs &&
       !ctx.actingUser &&
       !ctx.credentialScopeKey &&
-      !ctx.authPath)
+      !ctx.authPath &&
+      !ctx.localModelTransport)
   )
     return fn();
   return store.run(
     {
       ...ctx,
-      credentialScopeKey: ctx.actingAs
-        ? credentialScopeKeyFor(ctx.actingAs)
-        : ctx.credentialScopeKey,
+      credentialScopeKey:
+        ctx.credentialScopeKey ??
+        (ctx.actingAs ? credentialScopeKeyFor(ctx.actingAs) : undefined),
     },
     fn,
   );

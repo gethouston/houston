@@ -1,3 +1,4 @@
+import type { ManagedBridgeEndpoint } from "@houston/protocol";
 import type {
   OrgSharedEndpoint,
   SharedEndpointStore,
@@ -5,6 +6,7 @@ import type {
 import type { RuntimeEndpoint } from "../ports";
 
 interface RuntimeEndpointDescriptor {
+  bridge?: ManagedBridgeEndpoint;
   baseUrl: string;
   model: string;
   name?: string;
@@ -57,6 +59,7 @@ async function seedRuntime(
         "content-type": "application/json",
       },
       body: JSON.stringify({
+        ...(shared.bridge ? { bridge: shared.bridge } : {}),
         baseUrl: shared.baseUrl,
         model: shared.model,
         ...(shared.name !== null ? { name: shared.name } : {}),

@@ -501,3 +501,129 @@ test("subscribeAssistantMessageStart fires per main-thread message_start, never 
   await session.prompt("again");
   expect(starts).toBe(2);
 });
+
+// PRODUCT-1706: a resumed session that comes up without Houston's tool server
+// reruns fresh (with the canonical history) instead of letting the model finish
+// a tool-less turn and report the integrations as "missing".
+function initMsg(servers: unknown, sessionId = "s"): SDKMessage {
+  return {
+    type: "system",
+    subtype: "init",
+    session_id: sessionId,
+    mcp_servers: servers,
+  } as unknown as SDKMessage;
+}
+function missingHoustonToolResult(sessionId = "s"): SDKMessage {
+  return {
+    type: "user",
+    message: {
+      role: "user",
+      content: [
+        {
+          type: "tool_result",
+          tool_use_id: "t1",
+          is_error: true,
+          content:
+            "<tool_use_error>Error: No such tool available: mcp__houston__integration_execute</tool_use_error>",
+        },
+      ],
+    },
+    session_id: sessionId,
+  } as unknown as SDKMessage;
+}
+
+test("a resume whose init lacks the houston server reruns fresh with the history prefix", async () => {
+  const store = fakeStore("sess-old");
+  const prompts: string[] = [];
+  const optionsSeen: Options[] = [];
+  const query: ClaudeQuery = (params) => {
+    prompts.push(params.prompt);
+    optionsSeen.push(params.options);
+    if (params.options.resume)
+      return arrayQuery([
+        initMsg([{ name: "houston", status: "failed" }], "sess-old"),
+        textMsg("tool-less answer", "sess-old"),
+        usageMsg("sess-old"),
+      ])(params);
+    return arrayQuery([
+      initMsg([{ name: "houston", status: "connected" }], "sess-new"),
+      textMsg("recovered", "sess-new"),
+      usageMsg("sess-new"),
+    ])(params);
+  };
+  const session = make({
+    query,
+    store,
+    freshRetryPromptPrefix: "[canonical replay]\n",
+  });
+  const events: WireEvent[] = [];
+  session.subscribe((e) => events.push(e));
+
+  await session.prompt("run the routine");
+
+  expect(prompts).toEqual([
+    "run the routine",
+    "[canonical replay]\nrun the routine",
+  ]);
+  expect(optionsSeen[0]?.resume).toBe("sess-old");
+  expect(optionsSeen[1] && "resume" in optionsSeen[1]).toBe(false);
+  expect(optionsSeen[0]?.abortController?.signal.aborted).toBe(true);
+  // The abandoned attempt's answer never reaches the wire; the fresh one does.
+  expect(events.filter((e) => e.type === "text")).toEqual([
+    { type: "text", data: "recovered" },
+  ]);
+  expect(events.some((e) => e.type === "provider_error")).toBe(false);
+  // The dropped mapping is not re-stored from the abandoned attempt.
+  expect(store.setCalls).toEqual([["c1", "sess-new"]]);
+});
+
+test("the live signature (a houston tool answered 'No such tool') also reruns fresh", async () => {
+  const store = fakeStore("sess-old");
+  let call = 0;
+  const query: ClaudeQuery = (params) => {
+    call++;
+    if (call === 1)
+      return arrayQuery([
+        initMsg([{ name: "houston", status: "connected" }], "sess-old"),
+        missingHoustonToolResult("sess-old"),
+        textMsg("integrations are missing", "sess-old"),
+        usageMsg("sess-old"),
+      ])(params);
+    return arrayQuery([textMsg("recovered", "sess-new"), usageMsg("sess-new")])(
+      params,
+    );
+  };
+  const session = make({ query, store });
+  const events: WireEvent[] = [];
+  session.subscribe((e) => events.push(e));
+
+  await session.prompt("go");
+
+  expect(call).toBe(2);
+  expect(events.filter((e) => e.type === "text")).toEqual([
+    { type: "text", data: "recovered" },
+  ]);
+});
+
+test("a FRESH session without the houston server fails the turn visibly, no retry loop", async () => {
+  let call = 0;
+  const query: ClaudeQuery = (params) => {
+    call++;
+    return arrayQuery([
+      initMsg([], "sess-new"),
+      textMsg("tool-less answer", "sess-new"),
+      usageMsg("sess-new"),
+    ])(params);
+  };
+  const session = make({ query, store: fakeStore() });
+  const events: WireEvent[] = [];
+  session.subscribe((e) => events.push(e));
+
+  await session.prompt("go");
+
+  expect(call).toBe(1);
+  expect(events.some((e) => e.type === "text")).toBe(false);
+  const error = events.find((e) => e.type === "provider_error");
+  expect(error).toBeDefined();
+  expect(JSON.stringify(error)).toContain("did not attach");
+});

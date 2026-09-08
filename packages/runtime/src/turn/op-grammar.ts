@@ -1,4 +1,8 @@
 import {
+  type ManagedBridgeEndpoint,
+  ManagedBridgeEndpointSchema,
+} from "@houston/protocol";
+import {
   isBinaryBodyOpRoute,
   isOpRoute,
   isReadOpRoute,
@@ -51,6 +55,7 @@ export type AgentOp =
       kind: "settings";
       action: "endpoint";
       input: {
+        bridge?: ManagedBridgeEndpoint;
         baseUrl: string;
         model: string;
         name?: string;
@@ -229,6 +234,9 @@ function parseSettingsOp(raw: Record<string, unknown>): AgentOp {
       kind: "settings",
       action: "endpoint",
       input: {
+        ...(input.bridge !== undefined
+          ? { bridge: ManagedBridgeEndpointSchema.parse(input.bridge) }
+          : {}),
         baseUrl: str(input.baseUrl, "op.input.baseUrl"),
         model: str(input.model, "op.input.model"),
         ...(typeof input.name === "string" ? { name: input.name } : {}),
