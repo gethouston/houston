@@ -40,7 +40,13 @@ export interface LocalBridgeJournal {
   identity: LocalBridgeIdentity;
   idempotencyKey: string;
   migration?: true;
-  phase: "prepared" | "registered" | "ready" | "committed";
+  phase:
+    | "prepared"
+    | "registered"
+    | "ready"
+    | "committed"
+    | "retiring"
+    | "disconnecting";
   input: Omit<LocalBridgeConnectInput, "localApiKey" | "legacy">;
   descriptor?: LocalBridgeDescriptor;
 }

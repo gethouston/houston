@@ -119,12 +119,22 @@ pub(crate) async fn forward(
             .await
             .map_err(|_| "upstream_failed");
     }
-    let content_type = response
-        .headers()
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .filter(|v| v.len() <= 256)
-        .map(str::to_owned);
+    let content_type = match response.headers().get("content-type") {
+        None => None,
+        Some(value) => {
+            let value = value.to_str().map_err(|_| "upstream_failed")?;
+            if value.len() > 256 {
+                return Err("upstream_failed");
+            }
+            // The relay accepts only bare media types; parameters stay local.
+            let media_type = value.split(';').next().ok_or("upstream_failed")?.trim();
+            let canonical = ["application/json", "text/event-stream"]
+                .into_iter()
+                .find(|allowed| media_type.eq_ignore_ascii_case(allowed))
+                .ok_or("upstream_failed")?;
+            Some(canonical.to_owned())
+        }
+    };
     emit(
         &sender,
         Outgoing::ResponseStart {

@@ -18,6 +18,7 @@ use tokio_tungstenite::{
 use uuid::Uuid;
 
 type Socket = WebSocketStream<TcpStream>;
+mod normalization;
 #[allow(clippy::result_large_err)] // Tungstenite fixes the handshake callback error type.
 async fn relay() -> (String, tokio::task::JoinHandle<Socket>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -218,6 +219,18 @@ async fn rejects_bad_sequence_and_bounds_admission() {
 async fn rejects_non_loopback_and_noncanonical_targets() {
     for target in [
         "http://example.com/v1",
+        "http://example.com",
+        "http://192.0.2.1/",
+        "http://127.1",
+        "http://2130706433/",
+        "http://user@127.0.0.1",
+        "http://127.0.0.1/?x=1",
+        "http://127.0.0.1/#fragment",
+        "http://127.0.0.1/%2e%2e/v1",
+        "http://127.0.0.1/api/../v1",
+        "http://127.0.0.1/./v1",
+        "http://127.0.0.1/\\example.com",
+        "http://[2001:db8::1]/",
         "http://127.1/v1",
         "http://2130706433/v1",
         "http://user@127.0.0.1/v1",

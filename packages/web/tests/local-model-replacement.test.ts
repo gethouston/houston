@@ -5,6 +5,9 @@ const mocks = vi.hoisted(() => ({
   snapshot: vi.fn(),
   desktop: vi.fn(),
   retire: vi.fn(),
+  stop: vi.fn(),
+  disconnect: vi.fn(),
+  logout: vi.fn(),
   save: vi.fn(),
   report: vi.fn(),
   session: vi.fn(),
@@ -24,10 +27,13 @@ vi.mock("../../../app/src/lib/os-bridge", () => ({
   osDetectLocalModels: vi.fn(),
 }));
 vi.mock("../../../app/src/lib/tauri", () => ({
-  tauriProvider: { setCustomEndpoint: mocks.save },
+  tauriProvider: { setCustomEndpoint: mocks.save, launchLogout: mocks.logout },
 }));
 
-import { connectManualEndpoint } from "../../../app/src/lib/local-model-connect";
+import {
+  connectManualEndpoint,
+  disconnectLocalModel,
+} from "../../../app/src/lib/local-model-connect";
 
 const endpoint = { baseUrl: "https://model.example/v1", model: "model" };
 beforeEach(() => {
@@ -37,8 +43,28 @@ beforeEach(() => {
   mocks.snapshot.mockReturnValue({ journal: null });
   mocks.controller.mockResolvedValue({
     retire: mocks.retire,
+    stop: mocks.stop,
+    disconnect: mocks.disconnect,
     getSnapshot: mocks.snapshot,
   });
+});
+
+test.each([
+  false,
+  true,
+])("ordinary endpoint disconnect does not require bridge capability (desktop=%s)", async (desktop) => {
+  mocks.desktop.mockReturnValue(desktop);
+  mocks.controller.mockRejectedValue(new Error("bridge_not_supported"));
+  await disconnectLocalModel();
+  expect(mocks.controller).not.toHaveBeenCalled();
+  expect(mocks.logout).toHaveBeenCalledExactlyOnceWith("openai-compatible");
+});
+
+test("owned bridge disconnect uses SDK teardown", async () => {
+  mocks.snapshot.mockReturnValue({ journal: {} });
+  await disconnectLocalModel();
+  expect(mocks.disconnect).toHaveBeenCalledOnce();
+  expect(mocks.logout).not.toHaveBeenCalled();
 });
 
 test.each([
@@ -76,4 +102,18 @@ test("failed bridge retirement is reported to the caller", async () => {
   await expect(connectManualEndpoint(endpoint)).rejects.toBe(failure);
   expect(mocks.report).toHaveBeenCalledWith(failure);
   expect(mocks.save).toHaveBeenCalledOnce();
+});
+
+test("manual replacement drains pending disconnect cleanup before saving", async () => {
+  mocks.snapshot.mockReturnValue({ journal: { phase: "disconnecting" } });
+  let cleanupDrained = false;
+  mocks.stop.mockImplementation(async () => {
+    cleanupDrained = true;
+  });
+  mocks.save.mockImplementation(async () => {
+    expect(cleanupDrained).toBe(true);
+  });
+  await connectManualEndpoint(endpoint);
+  expect(mocks.stop).toHaveBeenCalledOnce();
+  expect(mocks.retire).toHaveBeenCalledOnce();
 });

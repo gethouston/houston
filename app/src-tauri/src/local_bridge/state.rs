@@ -44,7 +44,10 @@ pub fn validate(identity: &Identity, journal: &Journal) -> Result<(), String> {
         {
             return Err("Bridge journal identity mismatch".into());
         }
-    } else if !matches!(journal.phase, Phase::Prepared) {
+    } else if !matches!(
+        journal.phase,
+        Phase::Prepared | Phase::Retiring | Phase::Disconnecting
+    ) {
         return Err("Missing bridge descriptor".into());
     }
     Ok(())

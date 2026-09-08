@@ -63,6 +63,8 @@ pub enum Phase {
     Registered,
     Ready,
     Committed,
+    Retiring,
+    Disconnecting,
 }
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

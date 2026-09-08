@@ -322,7 +322,7 @@ test.each([
 test.each([
   false,
   true,
-])("retire preserves replacement and clears journal even when revoke fails: %s", async (fails) => {
+])("retire preserves replacement and retains failed cleanup: %s", async (fails) => {
   const h = harness();
   await h.controller.connect(input);
   if (fails)
@@ -333,7 +333,8 @@ test.each([
   if (fails) await expect(retiring).rejects.toThrow("offline");
   else await retiring;
   expect(h.ports.management.clearEndpoint).not.toHaveBeenCalled();
-  expect(h.journal()).toBeNull();
+  if (fails) expect(h.journal()?.phase).toBe("retiring");
+  else expect(h.journal()).toBeNull();
   expect(h.controller.getSnapshot()).toMatchObject({
     status: "disabled",
     journal: null,

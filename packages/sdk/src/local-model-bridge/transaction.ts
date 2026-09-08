@@ -4,24 +4,15 @@ import {
   isAuthorizationFailure,
   isPermanentBridgeFailure,
 } from "./errors";
+import { sameBridgeIdentity } from "./identity";
 import { migrationProof } from "./migration";
+import { registerBridge } from "./registration";
 import type {
   LocalBridgeConnectInput,
   LocalBridgeJournal,
   LocalModelBridgePorts,
 } from "./types";
 
-export function sameBridgeIdentity(
-  a: LocalBridgeJournal["identity"],
-  b: LocalBridgeJournal["identity"],
-) {
-  return (
-    a.environment === b.environment &&
-    a.orgId === b.orgId &&
-    a.userId === b.userId &&
-    a.agentId === b.agentId
-  );
-}
 export function bridgeEndpoint(journal: LocalBridgeJournal): CustomEndpoint {
   const descriptor = journal.descriptor;
   if (!descriptor) throw new Error("bridge descriptor missing");
@@ -48,10 +39,6 @@ export async function prepareBridge(
   if (journal && !sameBridgeIdentity(journal.identity, identity))
     throw new Error("bridge identity mismatch");
   if (input) {
-    if (journal?.descriptor) {
-      await ports.management.revoke(journal.descriptor.bridgeId, signal);
-      signal.throwIfAborted();
-    }
     const { localApiKey: _key, legacy: _legacy, ...publicInput } = input;
     journal = {
       version: 1,
@@ -71,25 +58,13 @@ export async function prepareBridge(
       (journal.migration
         ? await migrationProof(ports, journal.input.model, signal)
         : undefined);
-    const descriptor = await ports.management.register(
-      {
-        ...device,
-        agentId: identity.agentId,
-        model: journal.input.model,
-        name: journal.input.name,
-        shared: journal.input.shared,
-        idempotencyKey: journal.idempotencyKey,
-        ...(legacy ? { legacy } : {}),
-      },
+    const descriptor = await registerBridge(
+      ports,
+      journal,
+      device,
       signal,
+      legacy,
     );
-    if (
-      descriptor.orgId !== identity.orgId ||
-      descriptor.userId !== identity.userId ||
-      descriptor.deviceId !== device.deviceId ||
-      descriptor.model !== journal.input.model
-    )
-      throw new Error("bridge registration identity mismatch");
     // Keep the prepared idempotency key durable if this write fails. Resume can recover the descriptor.
     journal = { ...journal, descriptor, phase: "registered" };
     await ports.storage.save(identity, journal);

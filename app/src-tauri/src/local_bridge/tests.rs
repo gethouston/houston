@@ -41,3 +41,31 @@ fn minimal_journal_roundtrip_omits_optional_fields() {
     let journal: Journal = serde_json::from_value(input.clone()).unwrap();
     assert_eq!(serde_json::to_value(journal).unwrap(), input);
 }
+#[test]
+fn retiring_journal_roundtrips_ambiguous_and_known_registrations() {
+    cleanup_journal_roundtrip("retiring");
+}
+#[test]
+fn disconnecting_journal_roundtrips_ambiguous_and_known_registrations() {
+    cleanup_journal_roundtrip("disconnecting");
+}
+fn cleanup_journal_roundtrip(phase: &str) {
+    let mut value = serde_json::json!({"version":1,"identity":identity("a"),"idempotencyKey":uuid::Uuid::new_v4(),"phase":phase,
+        "input":{"targetBaseUrl":"http://127.0.0.1:1234/v1","model":"selected"}});
+    for registered in [false, true] {
+        if registered {
+            value["descriptor"] = serde_json::json!({
+                "bridgeId":uuid::Uuid::new_v4(),"deviceId":uuid::Uuid::new_v4(),
+                "userId":"user","orgId":"org","model":"selected","shared":false,
+                "revision":1,"baseUrl":"https://cloud.gethouston.ai/display"
+            });
+        }
+        let journal: Journal = serde_json::from_value(value.clone()).unwrap();
+        assert!(state::validate(&identity("a"), &journal).is_ok());
+        assert!(state::validate(&identity("b"), &journal).is_err());
+        assert_eq!(serde_json::to_value(journal).unwrap(), value);
+    }
+    value["descriptor"]["userId"] = "foreign".into();
+    let journal: Journal = serde_json::from_value(value).unwrap();
+    assert!(state::validate(&identity("a"), &journal).is_err());
+}

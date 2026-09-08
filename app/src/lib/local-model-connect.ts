@@ -82,13 +82,16 @@ export async function connectManualEndpoint(
 ): Promise<void> {
   const bridge =
     osIsTauri() && localBridgeSnapshot().journal ? await controller() : null;
+  if (bridge?.getSnapshot().journal?.phase === "disconnecting")
+    await reported(() => bridge.stop());
   await tauriProvider.setCustomEndpoint(endpoint, "inline");
   if (bridge?.getSnapshot().journal) await reported(() => bridge.retire());
 }
 
 export async function disconnectLocalModel(): Promise<void> {
   return reported(async () => {
-    const bridge = osIsTauri() ? await controller() : null;
+    const bridge =
+      osIsTauri() && localBridgeSnapshot().journal ? await controller() : null;
     if (bridge) await bridge.disconnect();
     else await tauriProvider.launchLogout(LOCAL_PROVIDER_ID);
   });

@@ -3,7 +3,8 @@ import { cancelPreparedBridge } from "./cancellation";
 import { openBridge, renewalDelay, renewBridge } from "./connection";
 import { BridgeStateError, cancelledBridgeOperation } from "./errors";
 import { LocalBridgeLifecycle } from "./lifecycle";
-import { bridgeNeedsWake, discoverBridge } from "./resume";
+import { bridgeNeedsWake } from "./resume";
+import { bridgeIsRetiring, loadScopedBridge, retireBridge } from "./retirement";
 import { bridgeRetry } from "./retry";
 import type { LocalBridgeConnectInput, LocalBridgeNativeEvent } from "./types";
 
@@ -13,33 +14,6 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
   private device?: LocalBridgeDevice;
   connect(input: LocalBridgeConnectInput, signal?: AbortSignal): Promise<void> {
     return this.begin(input, false, signal);
-  }
-  async resume(): Promise<void> {
-    if (this.disposed) throw new Error("bridge controller disposed");
-    if (["connecting", "online", "reconnecting"].includes(this.snapshot.status))
-      return;
-    this.emit({ ...this.snapshot, status: "connecting" });
-    const signal = this.lifetime.abort.signal;
-    const resume = await discoverBridge(this.ports, signal);
-    if (!resume) return;
-    if (resume.kind === "terminal") {
-      this.emit({ ...this.snapshot, status: resume.status });
-      return;
-    }
-    if (resume.kind === "disabled" || resume.kind === "reconnect_required") {
-      this.emit({ ...this.snapshot, status: resume.kind });
-      return;
-    }
-    if (resume.kind === "saved")
-      this.emit({
-        ...this.snapshot,
-        journal: resume.journal,
-        descriptor: resume.journal.descriptor,
-      });
-    return this.begin(
-      resume.kind === "migration" ? resume.input : undefined,
-      false,
-    );
   }
   reconnect(): Promise<void> {
     this.attempts = 0;
@@ -56,7 +30,7 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
     if (status !== "reconnecting") return this.stopWithStatus(status);
     return this.begin(undefined, true);
   }
-  private begin(
+  protected begin(
     input: LocalBridgeConnectInput | undefined,
     retry: boolean,
     external?: AbortSignal,
@@ -67,16 +41,34 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
     const signal = external
       ? AbortSignal.any([external, this.lifetime.abort.signal])
       : this.lifetime.abort.signal;
-    this.emit({
-      ...this.snapshot,
-      status: retry ? "reconnecting" : "connecting",
-      generation: undefined,
-    });
     return this.lifetime.enqueue(async () => {
       await this.ports.native.stop();
       if (epoch !== this.lifetime.epoch)
         return cancelledBridgeOperation(!!input);
+      let retiring = false;
       try {
+        const saved = await loadScopedBridge(this.ports);
+        signal.throwIfAborted();
+        if (saved && (input || bridgeIsRetiring(saved))) {
+          retiring = true;
+          this.emit({
+            status: "disabled",
+            journal: saved.phase === "disconnecting" ? saved : null,
+          });
+          await retireBridge(this.ports, saved, signal);
+          this.emit({ status: "disabled", journal: null });
+          if (!input) return;
+          retiring = false;
+        }
+        if (!saved && !input) {
+          this.emit({ status: "disabled", journal: null });
+          return;
+        }
+        this.emit({
+          ...this.snapshot,
+          status: retry ? "reconnecting" : "connecting",
+          generation: undefined,
+        });
         const { journal, device, ready } = await openBridge(
           this.ports,
           signal,
@@ -98,15 +90,15 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
         if (epoch !== this.lifetime.epoch)
           return cancelledBridgeOperation(!!input);
         if (signal.aborted) {
-          this.emit({ ...this.snapshot, status: "disabled" });
+          this.emit({ status: "disabled", journal: null });
           return cancelledBridgeOperation(!!input);
         }
-        this.failure(error, epoch);
+        this.failure(error, epoch, retiring);
         if (!retry) throw error;
       }
     });
   }
-  private failure(error: unknown, epoch: number) {
+  private failure(error: unknown, epoch: number, retiring = false) {
     if (
       this.onlineAt !== undefined &&
       (this.ports.now ?? Date.now)() - this.onlineAt >= 60_000
@@ -119,7 +111,11 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
       this.attempts++,
       this.ports.random ?? Math.random,
     );
-    this.emit({ ...this.snapshot, status, generation: undefined });
+    this.emit(
+      retiring
+        ? { status: "disabled", journal: this.snapshot.journal }
+        : { ...this.snapshot, status, generation: undefined },
+    );
     if (delay === null) return;
     this.lifetime.timer = setTimeout(() => {
       if (epoch === this.lifetime.epoch)

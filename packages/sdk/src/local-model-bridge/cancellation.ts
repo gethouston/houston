@@ -1,10 +1,13 @@
-import { savedBridge } from "./connection";
+import { loadScopedBridge, retireBridge } from "./retirement";
 import type { LocalModelBridgePorts } from "./types";
 
 export async function cancelPreparedBridge(ports: LocalModelBridgePorts) {
-  const journal = await savedBridge(ports);
-  if (!journal || journal.phase === "committed") return;
-  if (journal.descriptor)
-    await ports.management.revoke(journal.descriptor.bridgeId);
-  await ports.storage.clear(ports.management.identity);
+  try {
+    const journal = await loadScopedBridge(ports);
+    if (journal && journal.phase !== "committed")
+      await retireBridge(ports, journal);
+  } catch (error) {
+    // Cleanup remains durable; its failure must not replace the caller's AbortError.
+    ports.report(error);
+  }
 }

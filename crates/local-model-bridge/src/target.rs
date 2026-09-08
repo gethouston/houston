@@ -13,7 +13,8 @@ pub(crate) struct Target {
 }
 impl Target {
     pub fn new(config: &BridgeConfig) -> Result<Self, BridgeError> {
-        let url = Url::parse(&config.target_base_url).map_err(|_| BridgeError::InvalidTarget)?;
+        let mut url =
+            Url::parse(&config.target_base_url).map_err(|_| BridgeError::InvalidTarget)?;
         let host = url.host_str().ok_or(BridgeError::InvalidTarget)?;
         let literal = host.trim_start_matches('[').trim_end_matches(']');
         let loopback = literal.parse::<IpAddr>().is_ok_and(|ip| ip.is_loopback());
@@ -76,6 +77,10 @@ impl Target {
                     SocketAddr::from(([0, 0, 0, 0, 0, 0, 0, 1], port)),
                 ],
             );
+        }
+        // Detection and legacy descriptors store an origin, not an API prefix.
+        if url.path() == "/" {
+            url.set_path("/v1");
         }
         Ok(Self {
             client: builder.build().map_err(|_| BridgeError::InvalidTarget)?,
