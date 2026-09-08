@@ -306,7 +306,11 @@ test("a vanished family file converges the doc back to empty", async () => {
   );
   projector.onEvent({ type: "RoutinesChanged", agentPath: agent.id });
   await projector.flush();
-  expect((puts.at(-1)?.doc as unknown[]).length).toBe(1);
+  // The first projection also back-fills the other families; only the
+  // routines doc carries the file.
+  expect(
+    (puts.find((p) => p.family === "routines")?.doc as unknown[]).length,
+  ).toBe(1);
 
   await vfs.deleteKey(docKey(root, "routines"));
   projector.onEvent({ type: "RoutinesChanged", agentPath: agent.id });
@@ -513,5 +517,129 @@ test("cross-agent refusals are a latched warn, never repeated per family", async
   } finally {
     warns.mockRestore();
     errors.mockRestore();
+  }
+});
+
+// A rename moves the agent's directory, and the rename request is often the
+// wake that booted this pod: the seed bound the OLD name. Every projection
+// for the new name was refused as cross-agent until the next pod restart, so
+// asleep readers kept the pre-rename docs (HOUSTON-APP-5AP). The binding
+// must follow the move.
+test("the binding follows a rename: the moved directory re-binds and re-seeds", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const old = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "Old Name",
+  });
+  const puts: { family: string; doc: unknown }[] = [];
+  const shadow: DocShadow = {
+    async seed() {},
+    async put(family, doc) {
+      puts.push({ family, doc });
+    },
+  };
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+    projector.seed();
+    await projector.flush();
+    expect(await projector.boundAgent()).toBe(old.id);
+    puts.length = 0;
+
+    // The rename (memory store ids are stable, so delete + create models the
+    // directory move) and the renamed agent's first file change.
+    await store.deleteAgent(old.id);
+    const renamed = await store.createAgent({
+      workspaceId: workspace.id,
+      name: "New Name",
+    });
+    await vfs.writeText(
+      docKey(paths.agentRoot(workspace, renamed), "learnings"),
+      JSON.stringify([{ id: "l1", text: "after rename", created_at: "now" }]),
+    );
+    projector.onEvent({ type: "LearningsChanged", agentPath: renamed.id });
+    await projector.flush();
+
+    expect(puts.find((p) => p.family === "learnings")?.doc).toEqual([
+      { id: "l1", text: "after rename", created_at: "now" },
+    ]);
+    // The whole seed re-runs under the new name, each family once.
+    expect(puts.map((p) => p.family).sort()).toEqual([
+      "activity",
+      "config",
+      "learnings",
+      "routine_runs",
+      "routines",
+    ]);
+    expect(await projector.boundAgent()).toBe(renamed.id);
+    expect(
+      warns.mock.calls.some((call) =>
+        String(call[0]).includes("refusing cross-agent projection"),
+      ),
+    ).toBe(false);
+    expect(errors).not.toHaveBeenCalled();
+  } finally {
+    warns.mockRestore();
+    errors.mockRestore();
+  }
+});
+
+// The view sink asks boundAgent() before every publish; a view captured for
+// the renamed agent must land, not be refused against the stale binding.
+test("boundAgent follows a rename before the first projection", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const old = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "Old Name",
+  });
+  const shadow: DocShadow = { async seed() {}, async put() {} };
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+    projector.seed();
+    expect(await projector.boundAgent()).toBe(old.id);
+    await store.deleteAgent(old.id);
+    const renamed = await store.createAgent({
+      workspaceId: workspace.id,
+      name: "New Name",
+    });
+    expect(await projector.boundAgent()).toBe(renamed.id);
+    await projector.flush();
+  } finally {
+    warns.mockRestore();
+  }
+});
+
+// A delete leaves no agent, and a leftover directory beside the live one
+// leaves several: neither is a move the projector can follow on its own.
+test("the binding stays put when the bound agent vanishes without a single successor", async () => {
+  const store = new MemoryWorkspaceStore();
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const old = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "Old Name",
+  });
+  const shadow: DocShadow = { async seed() {}, async put() {} };
+  const warns = vi.spyOn(console, "warn").mockImplementation(() => {});
+  try {
+    const projector = new DocShadowProjector({ store, vfs, paths, shadow });
+    projector.seed();
+    expect(await projector.boundAgent()).toBe(old.id);
+    await store.deleteAgent(old.id);
+    expect(await projector.boundAgent()).toBe(old.id);
+    await store.createAgent({ workspaceId: workspace.id, name: "A" });
+    await store.createAgent({ workspaceId: workspace.id, name: "B" });
+    expect(await projector.boundAgent()).toBe(old.id);
+  } finally {
+    warns.mockRestore();
   }
 });

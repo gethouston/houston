@@ -1,7 +1,7 @@
 import type { HoustonEvent } from "@houston/protocol";
 import type { EventHub } from "../events/hub";
 import type { WorkspaceStore } from "../ports";
-import { listAgentIds } from "./project-family";
+import { singleAgentId } from "./project-family";
 import { VIEW_RESTS } from "./view-capture";
 
 // The warm must OUTLAST the launcher's 60s boot-health budget
@@ -30,24 +30,35 @@ interface ViewAnswer {
    * host is mid-shutdown. Nothing about the view itself failed.
    */
   notNow: boolean;
+  /** The host stopped serving exactly one agent mid-window; no view to warm. */
+  noAgent: boolean;
 }
 
 /**
  * GET one of our own view routes so the server's capture re-publishes it.
  * Retries every RETRY_DELAY_MS until a 200 or until `budgetMs` elapses; a zero
- * budget is a single attempt.
+ * budget is a single attempt. The agent is resolved on EVERY attempt: a
+ * rename moves the agent's directory, and the request that renames it is
+ * often the very wake this warm runs under (HOUSTON-APP-5AP) — a boot-time
+ * id would 404 for the rest of the window.
  */
 async function fetchView(
   self: SelfFetch,
-  agentId: string,
+  resolveAgentId: () => Promise<string | null>,
   rest: string,
   budgetMs: number,
 ): Promise<ViewAnswer> {
   const fetchImpl = self.fetchImpl ?? fetch;
-  const url = `http://127.0.0.1:${self.port}/agents/${encodeURIComponent(agentId)}/${rest}`;
   const deadline = Date.now() + budgetMs;
-  const answer: ViewAnswer = { status: 0, notNow: false };
+  const answer: ViewAnswer = { status: 0, notNow: false, noAgent: false };
   for (;;) {
+    const agentId = await resolveAgentId();
+    if (agentId === null) {
+      answer.noAgent = true;
+      break;
+    }
+    answer.noAgent = false;
+    const url = `http://127.0.0.1:${self.port}/agents/${encodeURIComponent(agentId)}/${rest}`;
     try {
       const response = await fetchImpl(url, {
         headers: { Authorization: `Bearer ${self.token}` },
@@ -68,13 +79,6 @@ async function fetchView(
   return answer;
 }
 
-async function singleAgentId(store: WorkspaceStore): Promise<string | null> {
-  const agents = await listAgentIds(store);
-  // Same single-agent rule as the doc projector: the doc route names ONE
-  // agent; on any other host shape the warm quietly stands down.
-  return agents.length === 1 ? (agents[0] ?? null) : null;
-}
-
 /**
  * Boot self-warm: GET each view route against our own server once so an
  * agent whose pod slept since before view docs existed still gets its docs
@@ -86,16 +90,27 @@ export function warmViewDocs(
   opts: SelfFetch & { store: WorkspaceStore },
 ): void {
   void (async () => {
-    const only = await singleAgentId(opts.store);
-    if (only === null) return;
+    // Same single-agent rule as the doc projector: the doc route names ONE
+    // agent; on any other host shape the warm quietly stands down.
+    const resolve = () => singleAgentId(opts.store);
+    if ((await resolve()) === null) return;
     for (const rest of Object.keys(VIEW_RESTS)) {
-      const { status, notNow } = await fetchView(
+      const { status, notNow, noAgent } = await fetchView(
         opts,
-        only,
+        resolve,
         rest,
         WARM_BUDGET_MS,
       );
       if (status === 200) continue;
+      if (noAgent) {
+        // The agent was deleted, or a second directory appeared (a leftover
+        // beside a rename): the doc route no longer names one agent, so
+        // there is no view to warm — the projector stands down the same way.
+        console.warn(
+          `[view-docs] boot warm for ${rest} stood down: host no longer serves exactly one agent`,
+        );
+        continue;
+      }
       // A runtime still not up after the whole window is the launcher's
       // failure, and it is already loud there (the eager spawn's "never became
       // healthy" error). The warm is best-effort on top: the previously
@@ -145,7 +160,7 @@ export function refreshViewsOnEvents(
             ? event.agentPath
             : await singleAgentId(opts.store);
         if (agentId === null) return;
-        const { status } = await fetchView(opts, agentId, rest, 0);
+        const { status } = await fetchView(opts, async () => agentId, rest, 0);
         if (status !== 200) {
           // An agent delete/rename unlinks `.agents/skills/**`, and the FS
           // watcher classifies each unlink as SkillsChanged for the now-gone

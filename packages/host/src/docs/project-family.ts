@@ -41,6 +41,42 @@ export async function listAgentIds(store: WorkspaceStore): Promise<string[]> {
   return agents;
 }
 
+/**
+ * The agent the doc route binds to at boot seed, or undefined when the host
+ * cannot tell yet. Zero agents: cloud pods can reach boot before the
+ * workspace tree hydrates (seen live: real agent pods with zero agents at
+ * seed time) — not an error and NOT a poison, the hydration writes fire
+ * watcher events and the first projection binds late. Several agents (rename
+ * leftovers beside the live one): the gateway's first addressed request
+ * decides.
+ */
+export async function bootBindingId(
+  store: WorkspaceStore,
+): Promise<string | undefined> {
+  const agents = await listAgentIds(store);
+  if (agents.length === 1) return agents[0];
+  console.warn(
+    agents.length === 0
+      ? "[doc-shadow] no agents at boot seed; binding on first projection"
+      : `[doc-shadow] host serves ${agents.length} agents; binding deferred to the first addressed agent`,
+  );
+  return undefined;
+}
+
+/**
+ * The host's ONE agent, or null when it serves none or several. The doc
+ * route names a single agent, so every doc-side actor (projector binding,
+ * view warm) stands down on any other host shape. Re-read from the store on
+ * each call: the answer changes under a rename, which moves the directory
+ * (the local store's ids are directory names).
+ */
+export async function singleAgentId(
+  store: WorkspaceStore,
+): Promise<string | null> {
+  const agents = await listAgentIds(store);
+  return agents.length === 1 ? (agents[0] ?? null) : null;
+}
+
 /** Read one agent's family file and PUT it into the doc shadow. */
 export async function putFamilyDoc(
   deps: ProjectorDeps,
