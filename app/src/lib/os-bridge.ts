@@ -17,6 +17,8 @@
  * this file.
  */
 
+import type { LocalBridgeDevice, LocalBridgeIdentity } from "@houston/protocol";
+import type { LocalBridgeJournal, LocalBridgeNativePort } from "@houston/sdk";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
   type Event,
@@ -28,14 +30,7 @@ import type {
   DictationModelProgress,
   DictationModelStatus,
 } from "./dictation/types";
-import type {
-  BridgeStatus,
-  DetectedServer,
-  ReconnectBridgeArgs,
-  SavedBridgeTarget,
-  StartBridgeArgs,
-  StartBridgeResult,
-} from "./local-model";
+import type { DetectedServer } from "./local-model";
 
 // ── Platform detection ────────────────────────────────────────────────
 
@@ -372,46 +367,66 @@ export function osTriggerNativeSentrySmokeTest(): Promise<void> {
   return invoke<void>("sentry_native_stack_smoke_test");
 }
 
-// ── Local model bridge (guided "connect a local model") ───────────────────────
-// Native, desktop-only: the Rust shell scans localhost for LM Studio / Jan /
-// Ollama, runs a local auth proxy, and drives an frpc sidecar. These reach the
-// user's OWN machine, so they never move to the (possibly remote) engine.
+// ── Local model bridge ────────────────────────────────────────────────
 
-/** Scan the local machine for OpenAI-compatible model servers. */
 export function osDetectLocalModels(): Promise<DetectedServer[]> {
   return invoke<DetectedServer[]>("detect_local_models");
 }
 
-/** Start the frpc bridge that exposes a local server at a public URL. */
+export function osLocalBridgeDevice(
+  identity: LocalBridgeIdentity,
+): Promise<LocalBridgeDevice> {
+  return invoke<LocalBridgeDevice>("local_bridge_device", { identity });
+}
+
+export function osLocalBridgeLegacyCandidate(
+  identity: LocalBridgeIdentity,
+): ReturnType<LocalBridgeNativePort["legacyCandidate"]> {
+  return invoke("local_bridge_legacy_candidate", { identity });
+}
+
+export function osCompleteBridgeMigration(
+  identity: LocalBridgeIdentity,
+): Promise<void> {
+  return invoke<void>("local_bridge_complete_migration", { identity });
+}
+
 export function osStartLocalBridge(
-  args: StartBridgeArgs,
-): Promise<StartBridgeResult> {
-  return invoke<StartBridgeResult>("start_local_bridge", { ...args });
+  args: Parameters<LocalBridgeNativePort["start"]>[0],
+): ReturnType<LocalBridgeNativePort["start"]> {
+  return invoke("start_local_bridge", { args });
 }
 
-/** Re-establish frpc for the saved target after a restart, reusing the persisted
- *  proxyKey so the already-registered cloud endpoint stays valid. */
-export function osReconnectLocalBridge(
-  args: ReconnectBridgeArgs,
-): Promise<StartBridgeResult> {
-  return invoke<StartBridgeResult>("reconnect_local_bridge", { ...args });
+export function osRenewLocalBridge(
+  identity: LocalBridgeIdentity,
+  ticket: string,
+): Promise<void> {
+  return invoke<void>("renew_local_bridge", { identity, ticket });
 }
 
-/** The bridge target this machine has persisted, or `null` when this machine
- *  owns no local-model tunnel (direct/manual endpoint, or another machine's). */
-export function osSavedBridgeTarget(): Promise<SavedBridgeTarget | null> {
-  return invoke<SavedBridgeTarget | null>("saved_bridge_target");
+export function osSavedBridgeTarget(
+  identity: LocalBridgeIdentity,
+): Promise<LocalBridgeJournal | null> {
+  return invoke<LocalBridgeJournal | null>("saved_bridge_target", { identity });
 }
 
-/** Tear down the running bridge (frpc + local auth proxy). Idempotent. */
-export function osStopLocalBridge(): Promise<void> {
-  return invoke<void>("stop_local_bridge");
+export function osSaveBridgeTarget(
+  identity: LocalBridgeIdentity,
+  journal: LocalBridgeJournal,
+): Promise<void> {
+  return invoke<void>("save_bridge_target", { identity, journal });
 }
 
-/** One-shot read of the bridge's current status (the `local-bridge-status`
- *  event streams the same shape). */
-export function osLocalBridgeStatus(): Promise<BridgeStatus> {
-  return invoke<BridgeStatus>("local_bridge_status");
+export function osForgetBridgeTarget(
+  identity: LocalBridgeIdentity,
+): Promise<void> {
+  return invoke<void>("forget_bridge_target", { identity });
+}
+
+export function osStopLocalBridge(
+  identity: LocalBridgeIdentity,
+): Promise<void> {
+  return invoke<void>("stop_local_bridge", { identity });
 }
 
 // ── First-run cloud migration (HOU-719) ──────────────────────────────────

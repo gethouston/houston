@@ -11,6 +11,9 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+tokio-util = "0.7"
+houston-local-model-bridge = { path = "../../crates/local-model-bridge" }
+uuid = { version = "1", features = ["serde", "v4"] }
 # `devtools` = enables WKWebView inspector in debug AND release. In practice
 # only dev builds benefit — production ships to non-technical users — but
 # having it on across the board means Cmd+Opt+I works whenever someone
@@ -54,20 +57,8 @@ tracing-log = "0.2"
 # systems with no Secret Service daemon.
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust", "vendored"] }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking", "stream"], default-features = false }
-# Local-bridge auth reverse-proxy (src/local_bridge/proxy.rs). hyper's server is
-# needed because reqwest gives us only a client; a real streaming SSE/chunked
-# proxy needs to OWN the inbound HTTP connection. hyper 1.x + hyper-util +
-# http-body-util are ALREADY in the tree (reqwest pulls them as its client
-# transport), so enabling the server features adds no new crates to compile.
-hyper = { version = "1", features = ["server", "http1"] }
-hyper-util = { version = "0.1", features = ["tokio"] }
-http-body-util = "0.1"
-bytes = "1"
-# `StreamExt::map` over reqwest's response `bytes_stream()` when piping the
-# upstream body back out unbuffered (SSE pass-through).
-futures-util = "0.3"
-# High-entropy proxy-key generation (src/local_bridge/keys.rs).
 rand = "0.9"
+futures-util = "0.3"
 # sha256 verification of the downloaded whisper.cpp dictation model
 # (src/dictation/model.rs). Streamed into the hasher during download so the
 # 181 MB file is never read twice.

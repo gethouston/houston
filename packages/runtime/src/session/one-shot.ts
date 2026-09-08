@@ -6,6 +6,7 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type { PiThinkingLevel } from "../ai/effort";
+import { isManagedBridgeModel } from "../ai/openai-compatible-model";
 
 export interface OneShotOptions {
   cwd: string;
@@ -49,6 +50,7 @@ export async function oneShotText(opts: OneShotOptions): Promise<string> {
     ...(opts.thinkingLevel ? { thinkingLevel: opts.thinkingLevel } : {}),
   });
 
+  if (isManagedBridgeModel(opts.model)) session.setAutoRetryEnabled(false);
   let text = "";
   const unsub = session.subscribe((e: AgentSessionEvent) => {
     if (

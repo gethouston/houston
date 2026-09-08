@@ -1,4 +1,6 @@
+import type { ManagedBridgeEndpoint } from "@houston/protocol";
 export interface SharedEndpointInput {
+  bridge?: ManagedBridgeEndpoint;
   baseUrl: string;
   model: string;
   name?: string;
@@ -8,6 +10,7 @@ export interface SharedEndpointInput {
 }
 
 export interface OrgSharedEndpoint {
+  bridge?: ManagedBridgeEndpoint;
   baseUrl: string;
   model: string;
   name: string | null;
@@ -19,7 +22,7 @@ export interface OrgSharedEndpoint {
 
 export interface SharedEndpointStore {
   get(): Promise<OrgSharedEndpoint | null>;
-  put(endpoint: SharedEndpointInput): Promise<void>;
+  put(endpoint: SharedEndpointInput, actingAs?: string): Promise<void>;
   remove(opts: { ownerOnly: boolean }): Promise<void>;
 }
 
@@ -56,10 +59,13 @@ export class RemoteSharedEndpointStore implements SharedEndpointStore {
     return (await res.json()) as OrgSharedEndpoint;
   }
 
-  async put(endpoint: SharedEndpointInput): Promise<void> {
+  async put(endpoint: SharedEndpointInput, actingAs?: string): Promise<void> {
     const res = await this.fetchImpl(this.url(), {
       method: "PUT",
-      headers: this.authHeaders({ "content-type": "application/json" }),
+      headers: this.authHeaders({
+        "content-type": "application/json",
+        ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
+      }),
       body: JSON.stringify(endpoint),
     });
     if (res.status !== 200) throw await this.errorFromResponse(res, "PUT");

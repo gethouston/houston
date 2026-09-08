@@ -47,7 +47,12 @@ const CANDIDATES: &[(ServerKind, u16)] = &[
 /// Probe every candidate port concurrently and return one [`DetectedServer`]
 /// each. Always returns a full list (unreachable ports included).
 pub async fn detect() -> Vec<DetectedServer> {
-    let client = match reqwest::Client::builder().timeout(PROBE_TIMEOUT).build() {
+    let client = match reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(PROBE_TIMEOUT)
+        .build()
+    {
         Ok(c) => c,
         Err(e) => {
             // Building a client only fails on a broken TLS backend; degrade to

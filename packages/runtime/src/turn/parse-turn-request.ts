@@ -245,6 +245,10 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     turnId: typeof b.turnId === "string" ? b.turnId : undefined,
     hostToken: typeof b.hostToken === "string" ? b.hostToken : undefined,
     actingAs,
+    actingToken:
+      typeof b.actingToken === "string" && b.actingToken.length <= 16384
+        ? b.actingToken
+        : undefined,
     shadow: typeof b.shadow === "boolean" ? b.shadow : undefined,
     workspaceContext:
       typeof b.workspaceContext === "string" ? b.workspaceContext : undefined,

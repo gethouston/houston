@@ -8,6 +8,7 @@ import {
 import {
   type CustomEndpoint,
   type HoustonEvent,
+  ManagedBridgeEndpointSchema,
   parseClaudeOAuthEnvelope,
   parseMentions,
 } from "@houston/protocol";
@@ -674,7 +675,16 @@ export async function handleAgents(
       noChannel(res, authz.workspace.runtime);
       return true;
     }
+    const bridge =
+      body.bridge === undefined
+        ? undefined
+        : ManagedBridgeEndpointSchema.safeParse(body.bridge);
+    if (bridge && !bridge.success) {
+      json(res, 400, { error: "invalid bridge descriptor" });
+      return true;
+    }
     const endpoint: CustomEndpoint = {
+      ...(bridge?.success ? { bridge: bridge.data } : {}),
       baseUrl,
       model,
       name: typeof body.name === "string" ? body.name : undefined,
@@ -694,20 +704,26 @@ export async function handleAgents(
       endpointSaved = true;
       if (deps.gatewayFronted && deps.sharedEndpoints) {
         if (endpoint.shared === true) {
-          await deps.sharedEndpoints.put({
-            baseUrl: endpoint.baseUrl,
-            model: endpoint.model,
-            ...(endpoint.name !== undefined ? { name: endpoint.name } : {}),
-            ...(endpoint.contextWindow !== undefined
-              ? { contextWindow: endpoint.contextWindow }
-              : {}),
-            ...(endpoint.reasoning !== undefined
-              ? { reasoning: endpoint.reasoning }
-              : {}),
-            ...(endpoint.apiKey !== undefined
-              ? { apiKey: endpoint.apiKey }
-              : {}),
-          });
+          await deps.sharedEndpoints.put(
+            {
+              ...(endpoint.bridge ? { bridge: endpoint.bridge } : {}),
+              baseUrl: endpoint.baseUrl,
+              model: endpoint.model,
+              ...(endpoint.name !== undefined ? { name: endpoint.name } : {}),
+              ...(endpoint.contextWindow !== undefined
+                ? { contextWindow: endpoint.contextWindow }
+                : {}),
+              ...(endpoint.reasoning !== undefined
+                ? { reasoning: endpoint.reasoning }
+                : {}),
+              ...(endpoint.apiKey !== undefined
+                ? { apiKey: endpoint.apiKey }
+                : {}),
+            },
+            typeof req.headers[ACTING_AS_HEADER] === "string"
+              ? req.headers[ACTING_AS_HEADER]
+              : undefined,
+          );
         } else {
           await deps.sharedEndpoints.remove({ ownerOnly: true });
         }

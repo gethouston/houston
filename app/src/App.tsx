@@ -135,10 +135,8 @@ export default function App() {
     refetch: refetchSession,
   } = useSession();
 
-  // Desktop boot: if this machine owns a local-model tunnel whose cloud endpoint
-  // is still active, quietly re-establish frpc (dead after a restart). Gated on a
-  // signed-in session — the reconnect mints hosted tunnel credentials.
-  useLocalBridgeAutoReconnect(Boolean(session));
+  // The SDK owns reconnect, renewal and identity fencing for desktop models.
+  useLocalBridgeAutoReconnect(session?.uid ?? null);
 
   // Re-drive any share-via-team agent move whose driver vanished mid-move
   // (HOU-817): the gateway keeps the agent locked until the move finishes.

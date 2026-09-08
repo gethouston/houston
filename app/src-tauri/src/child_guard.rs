@@ -1,8 +1,6 @@
 //! Shared OS process-lifetime primitives so a spawned child never outlives the
-//! app, plus the bundled-sidecar binary resolver. Both the engine sidecar
-//! ([`crate::engine_supervisor`]) and the local-bridge frpc tunnel
-//! ([`crate::local_bridge::frpc`]) share ONE copy of this tricky code instead of
-//! duplicating it.
+//! app, plus the bundled-sidecar binary resolver. The engine and dictation
+//! sidecars share these process-group and Windows Job Object guards.
 //!
 //! Two orphan-prevention mechanisms, one per OS:
 //!   - **Unix**: the child runs in its own process group (`setpgid(0,0)` in a

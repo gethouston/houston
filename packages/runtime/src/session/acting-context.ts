@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
+import type { LocalModelTransportContext } from "../ai/local-model-transport";
 import { decodeActingAuthor } from "./attribution";
 
 /**
@@ -21,6 +22,7 @@ import { decodeActingAuthor } from "./attribution";
  * behavior is unchanged.
  */
 export interface ActingContext {
+  localModelTransport?: LocalModelTransportContext;
   actingAs?: string;
   actingUser?: string;
   /**
@@ -91,7 +93,8 @@ export function runWithActingContext<T>(
     (!ctx.actingAs &&
       !ctx.actingUser &&
       !ctx.credentialScopeKey &&
-      !ctx.authPath)
+      !ctx.authPath &&
+      !ctx.localModelTransport)
   )
     return fn();
   return store.run(

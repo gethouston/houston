@@ -166,13 +166,9 @@ describe("the permissive read (tunnel autoreconnect / first-load gate)", () => {
   });
 
   it("is used only where leniency is the safe choice, never for a badge", () => {
-    // Guard against it creeping back into a "Connected" surface. The two
-    // sanctioned consumers are the tunnel auto-reconnect and the first-load
-    // claudeAvailable gate; neither paints a connection badge.
-    for (const file of [
-      "../src/hooks/use-local-bridge-autoreconnect.ts",
-      "../src/hooks/use-houston-init.ts",
-    ]) {
+    // The first-load claudeAvailable gate permits unknown status. Bridge
+    // readiness is independently authorized by its management protocol.
+    for (const file of ["../src/hooks/use-houston-init.ts"]) {
       strictEqual(
         read(file).includes("providerNotConfirmedDisconnected"),
         true,

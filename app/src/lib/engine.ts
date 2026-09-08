@@ -151,6 +151,7 @@ const _ready: Promise<void> = new Promise((resolve) => {
 /** Lazily-created shared WS instance. */
 let _ws: EngineWebSocket | null = null;
 function applyConfig(config: { baseUrl: string; token: string }) {
+  const previousEnvironment = window.__HOUSTON_ENGINE__?.baseUrl;
   window.__HOUSTON_ENGINE__ = config;
   if (_client) {
     // Engine restarted on a fresh random port: repoint the EXISTING client in
@@ -167,6 +168,9 @@ function applyConfig(config: { baseUrl: string; token: string }) {
   // would be dropped if a client is constructed after setActiveOrg ran (and it
   // keeps the token-refresh setEndpoint path idempotent). Absent ⇒ personal.
   _client.setActiveOrg(window.__HOUSTON_ACTIVE_ORG__ ?? null);
+  if (previousEnvironment && previousEnvironment !== config.baseUrl) {
+    window.dispatchEvent(new Event("houston-engine-environment-changed"));
+  }
   if (_resolveReady) {
     _resolveReady();
     _resolveReady = null;

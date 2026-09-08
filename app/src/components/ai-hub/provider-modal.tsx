@@ -107,7 +107,15 @@ export function ProviderModal({
           <LocalModelStatusPill
             status={bridge?.status ?? "connecting"}
             appName={bridgeAppName}
-            onRetry={reconnectBridge}
+            onRetry={
+              bridge?.status === "reconnect_required" ||
+              bridge?.status === "revoked"
+                ? () => {
+                    onClose();
+                    connections.connect(provider);
+                  }
+                : reconnectBridge
+            }
             retrying={reconnecting}
           />
         )}

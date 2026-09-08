@@ -1,9 +1,8 @@
 import type { CustomEndpoint } from "@houston/runtime-client";
-import type { TunnelCredentials } from "../../../../../ui/engine-client/src/types";
 import { emitEvent } from "../bus";
 import * as controlPlane from "../control-plane";
 import { credentialSiblings, toNewProvider } from "../synthetic";
-import { isHoustonEngineError } from "./errors";
+import { localModelBridgeAccess } from "./local-model-bridge";
 import type { BaseCtor } from "./mixin";
 import { connectApiKey } from "./provider-api-key";
 import { pushClaudeCredential } from "./provider-claude-push";
@@ -14,6 +13,9 @@ import {
 
 export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProviderCredentials extends Base {
+    getLocalModelBridgeAccess(userId: string) {
+      return localModelBridgeAccess(this.ctx, userId);
+    }
     /** Disconnect a provider account. */
     async providerLogout(name: string): Promise<void> {
       const pid = toNewProvider(name);
@@ -112,38 +114,6 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
         success: true,
         error: null,
       });
-    }
-
-    /**
-     * Mint a relay credential for the guided "connect a local model" flow: the
-     * desktop tunnels the user's local model server up to their CLOUD agent (see
-     * control-plane.getTunnelCredentials).
-     *
-     * Returns `null` when THIS deployment has no relay to tunnel through —
-     * no gateway at all (local/self-host: the engine is co-located, no tunnel
-     * is needed), a gateway without the tunnels route (404), or one whose
-     * relay is explicitly unconfigured (the 503 "tunnel relay not
-     * configured"). `null` tells the connect flow to register the detected
-     * server DIRECTLY; the engine's save-time validation stays the authority
-     * on whether a localhost endpoint is acceptable. Anything else (auth,
-     * transient outage) still throws — a relay that exists but errored must
-     * surface, never silently downgrade to a direct endpoint.
-     */
-    async getTunnelCredentials(): Promise<TunnelCredentials | null> {
-      if (!this.ctx.cp) return null;
-      try {
-        return await controlPlane.getTunnelCredentials(this.ctx.cp);
-      } catch (err) {
-        if (
-          isHoustonEngineError(err) &&
-          (err.status === 404 ||
-            (err.status === 503 &&
-              err.message.includes("relay not configured")))
-        ) {
-          return null;
-        }
-        throw err;
-      }
     }
   }
   return ProviderCredentials;

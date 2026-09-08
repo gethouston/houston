@@ -212,7 +212,7 @@ export async function invoke<T = unknown>(
       // already short-circuits off-Tauri; this keeps shim parity intact.
       return false as T;
     case "saved_bridge_target":
-      // The web app never runs a local-model bridge (no native frpc), so it can
+      // The web app never runs a native local-model bridge, so it can
       // never own a saved target. Returning null is the honest answer and keeps
       // the tunnel-vs-direct pill rule correct: a connected openai-compatible
       // endpoint on web reads as normally connected, not as a bridge.
@@ -252,13 +252,19 @@ export async function invoke<T = unknown>(
 
     case "get_engine_handshake": // web injects window.__HOUSTON_ENGINE__ directly
     // The guided "connect a local model" bridge scans localhost and runs an
-    // frpc sidecar — both need the native desktop shell. The browser build
+    // an outbound model connection in the native desktop shell. The browser build
     // gates the guided flow on isTauri() and shows the manual endpoint form
     // instead, so these are never reached here; surface a clear error if they
     // somehow are (no silent failure).
     case "detect_local_models":
     case "start_local_bridge":
-    case "reconnect_local_bridge":
+    case "local_bridge_device":
+    case "save_bridge_target":
+    case "forget_bridge_target":
+    case "renew_local_bridge":
+    case "local_bridge_migration_needed":
+    case "local_bridge_legacy_candidate":
+    case "local_bridge_complete_migration":
     case "stop_local_bridge":
     case "local_bridge_status":
     // On-device dictation runs a bundled whisper.cpp sidecar — desktop-only,

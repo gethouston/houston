@@ -13,7 +13,8 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@houston/agentstore-client": "workspace:*"
+    "@houston/agentstore-client": "workspace:*",
+    "@houston/protocol": "workspace:*"
   },
   "devDependencies": {
     "typescript": "5.9.3"

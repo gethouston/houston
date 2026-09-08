@@ -1,3 +1,4 @@
+import type { ManagedBridgeEndpoint } from "./local-model-bridge";
 /**
  * The conversation core — runtime v2, verbatim. One runtime instance serves
  * exactly this surface; the host nests it under /v1/agents/:id/conversations/*.
@@ -208,6 +209,7 @@ export interface ProviderUsage {
  * key is optional — keyless local servers ignore it. LOCAL profile only.
  */
 export interface CustomEndpoint {
+  bridge?: ManagedBridgeEndpoint;
   baseUrl: string;
   model: string;
   /** Friendly label for the picker; defaults to the model id. */

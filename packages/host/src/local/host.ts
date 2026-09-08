@@ -64,6 +64,10 @@ import { FsVfs } from "../vfs";
 import { FsWatcher } from "../watch/watcher";
 import { agentDirFor, liveAgentDirFor } from "./agent-dirs";
 import { formatHostListeningBanner } from "./banner";
+import {
+  managedBridgeCapability,
+  managedBridgeRuntimeEnv,
+} from "./bridge-capability";
 
 /** The single local user every request resolves to. */
 export const LOCAL_USER = "local-owner";
@@ -382,6 +386,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     new RuntimeProcessSpawner({
       command: opts.runtimeCommand,
       env: {
+        ...managedBridgeRuntimeEnv(opts.gatewayFronted, opts.credentials),
         ...(opts.systemPrompt
           ? { HOUSTON_SYSTEM_PROMPT: opts.systemPrompt }
           : {}),
@@ -649,6 +654,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
 
   const capabilities: Capabilities = {
     ...(opts.capabilities ?? LOCAL_CAPABILITIES),
+    ...managedBridgeCapability(opts.gatewayFronted, opts.credentials),
     // Served capabilities advertise the integrations actually wired, not the
     // profile's nominal list — an unconfigured deployment says [] honestly.
     integrations: registry.ids(),
