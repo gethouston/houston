@@ -5,6 +5,7 @@ import { toSdkEffort } from "./effort";
 import { classifyText } from "./errors";
 import { toSdkModel } from "./model";
 import type { SessionsStore } from "./sessions-store";
+import { houstonToolServerLost } from "./tool-server-lost";
 import { createStreamTranslator } from "./translate";
 
 /**
@@ -91,6 +92,8 @@ export class ClaudeSession implements HarnessSession {
   private readonly messageStartListeners = new Set<() => void>();
   private disposed = false;
   private aborting = false;
+  /** Why the last attempt asked for a fresh rerun, for the warn line. */
+  private retryReason = "";
   private abortController: AbortController | undefined;
   private model: string;
   private thinkingLevel: ThinkingLevel | undefined;
@@ -167,11 +170,12 @@ export class ClaudeSession implements HarnessSession {
     const outcome = await this.runAttempt(text, resume, auth.env);
     if (outcome !== "retry-fresh") return;
     // The SDK refused the resume id (its cwd-scoped lookup missed the
-    // transcript — e.g. the workspace was renamed). The stale mapping is
+    // transcript — e.g. the workspace was renamed), or resumed it with
+    // Houston's tool server detached (PRODUCT-1706). The stale mapping is
     // already dropped; run the turn once more as a fresh session instead of
     // erroring a conversation that can never resume again.
     console.warn(
-      `[claude] resume for conversation ${this.deps.conversationId} was rejected by the SDK; starting a fresh session`,
+      `[claude] resume for conversation ${this.deps.conversationId} ${this.retryReason}; starting a fresh session`,
     );
     await this.runAttempt(
       `${this.deps.freshRetryPromptPrefix ?? ""}${text}`,
@@ -230,6 +234,33 @@ export class ClaudeSession implements HarnessSession {
         if (isAssistantMessageStart(msg))
           for (const l of this.messageStartListeners) l();
         if (hasSessionId(msg)) capturedSessionId = msg.session_id;
+        if (houstonToolServerLost(msg)) {
+          // The turn is running without Houston's tools (PRODUCT-1706). On a
+          // resume, abandon this attempt and rerun fresh with the canonical
+          // history — never let the model finish a tool-less turn and report
+          // the integrations as "missing". A fresh session that still lacks
+          // them is a real failure: surface it as one.
+          abortController.abort();
+          if (resume !== undefined) {
+            // The mapping is dropped on purpose; the finally block must not
+            // re-store the session id this attempt captured.
+            capturedSessionId = undefined;
+            this.retryReason = "came up without Houston's tool server";
+            this.deps.sessionsStore.remove(this.deps.conversationId);
+            return "retry-fresh";
+          }
+          providerErrored = true;
+          this.emit({
+            type: "provider_error",
+            data: classifyText(
+              "Houston's tools did not attach to this turn (the houston MCP server is not connected); the turn was stopped instead of running without them",
+              this.model,
+              null,
+              this.usedAccessDigest,
+            ),
+          });
+          return "done";
+        }
         for (const wire of translator.translate(msg)) {
           if (wire.type === "provider_error") {
             const errText =
@@ -237,6 +268,7 @@ export class ClaudeSession implements HarnessSession {
                 ? wire.data.raw_excerpt
                 : wire.data.message;
             if (danglingResume(errText)) {
+              this.retryReason = "was rejected by the SDK";
               this.deps.sessionsStore.remove(this.deps.conversationId);
               return "retry-fresh";
             }
@@ -257,6 +289,7 @@ export class ClaudeSession implements HarnessSession {
       // throw is just the SDK closing the iterator — don't re-report it.
       if (providerErrored) return "done";
       if (danglingResume(errMessage(err))) {
+        this.retryReason = "was rejected by the SDK";
         this.deps.sessionsStore.remove(this.deps.conversationId);
         return "retry-fresh";
       }
