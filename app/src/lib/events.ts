@@ -18,6 +18,7 @@
 import type { HoustonEvent } from "@houston-ai/core";
 import { topics } from "@houston-ai/engine-client";
 import { getEngineWs } from "./engine";
+import { showErrorToast } from "./error-toast";
 import { legacyEmit, legacyListen } from "./os-bridge";
 
 type Unsub = () => void;
@@ -74,12 +75,23 @@ export function listenOsEvent<T>(
   handler: (ev: T) => void,
 ): Unsub {
   let off: Unsub | undefined;
-  legacyListen<T>(event, (tauriEv) => handler(tauriEv.payload))
+  let disposed = false;
+  legacyListen<T>(event, (tauriEv) => {
+    if (!disposed) handler(tauriEv.payload);
+  })
     .then((fn) => {
-      off = fn;
+      if (disposed) fn();
+      else off = fn;
     })
-    .catch(() => {});
+    .catch((error: unknown) => {
+      showErrorToast(
+        "os_event_subscribe",
+        "OS event subscription failed",
+        error,
+      );
+    });
   return () => {
+    disposed = true;
     off?.();
   };
 }

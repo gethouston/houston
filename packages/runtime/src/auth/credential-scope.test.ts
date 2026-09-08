@@ -5,6 +5,7 @@ import { afterEach, expect, test } from "vitest";
 import { config } from "../config";
 import {
   credentialScopeKeyFor,
+  currentCredentialScope,
   runWithActingContext,
   TEAM_CREDENTIAL_SCOPE,
 } from "../session/acting-context";
@@ -40,6 +41,17 @@ function tmpDataDir(): string {
 const apiKey = (key: string) => ({ type: "api_key" as const, key });
 
 afterEach(() => resetAuthFailures());
+
+test("signed bridge authority preserves the explicit pooled credential scope", () => {
+  const actingAs = actingToken("synthetic-member");
+  const keys = ["u:turn:workspace:agent-a", "u:turn:workspace:agent-b"];
+  for (const key of keys) {
+    runWithActingContext({ actingAs, credentialScopeKey: key }, () => {
+      expect(currentCredentialScope()).toEqual({ key, actingAs });
+    });
+  }
+  expect(currentCredentialScope()).toEqual({ key: TEAM_CREDENTIAL_SCOPE });
+});
 
 // ---- the headline: two identities, two files, concurrently ----
 

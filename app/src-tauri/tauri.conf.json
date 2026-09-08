@@ -49,7 +49,6 @@
     "externalBin": [
       "binaries/houston-engine",
       "binaries/claude",
-      "binaries/frpc",
       "binaries/whisper-cli"
     ],
     "resources": {

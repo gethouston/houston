@@ -214,7 +214,16 @@
       "error": "No disponible",
       "offlineHint": "Tu modelo no está disponible ahora. Asegúrate de que {{app}} esté abierta en este computador.",
       "yourApp": "la app en tu computador",
-      "reconnect": "Reconectar"
+      "reconnect": "Reconectar",
+      "disabled": "Desconectado",
+      "reconnecting": "Reconectando...",
+      "model_unavailable": "Abre la app de tu modelo",
+      "authorization_required": "Inicia sesión para reconectar",
+      "revoked": "Conexión eliminada",
+      "authorizationHint": "Inicia sesión en la cuenta que conectó este modelo y vuelve a conectarlo.",
+      "revokedHint": "Esta conexión se eliminó. Vuelve a conectar tu modelo para usarlo.",
+      "reconnect_required": "Vuelve a conectar tu modelo",
+      "reconnectHint": "Vuelve a conectar tu modelo para vincularlo a este espacio."
     }
   }
 }

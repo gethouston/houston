@@ -101,9 +101,11 @@ export function gatewayAuthFetch(
   fallbackToken: string,
   getOrg?: () => string | null | undefined,
   getToken?: () => string,
+  guard?: (bearer: string) => void,
 ): typeof fetch {
   return async (input, init) => {
     const send = (bearer: string) => {
+      guard?.(bearer);
       const headers = new Headers(init?.headers);
       if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
       // Active-space header (C8), re-read per attempt so a mid-flight space

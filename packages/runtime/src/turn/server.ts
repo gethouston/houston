@@ -107,6 +107,15 @@ export function createTurnServer(deps: TurnServerDeps): Server {
         }
         return json(res, 200, { status: "ok", mode: "turn" });
       }
+      if (req.method === "GET" && path === "/v1/capabilities") {
+        return json(
+          res,
+          200,
+          (deps.poolStoreUrl ?? process.env.HOUSTON_POOL_STORE_URL)
+            ? { localModelBridge: { versions: [1] } }
+            : {},
+        );
+      }
       if (req.method !== "POST" || (path !== "/turn" && path !== "/op")) {
         return json(res, 404, { error: "not found" });
       }

@@ -1,3 +1,4 @@
+import { ManagedBridgeEndpointSchema } from "@houston/protocol";
 import { parseClaudeOAuthEnvelope } from "@houston/runtime-client";
 import { AZURE_OPENAI, normalizeAzureEndpoint } from "../ai/azure-openai";
 import { refreshEndpointReachability } from "../ai/endpoint-reachability";
@@ -152,6 +153,9 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
   try {
     const body = await readJson(ctx.req);
     setCustomEndpoint({
+      ...(body.bridge !== undefined
+        ? { bridge: ManagedBridgeEndpointSchema.parse(body.bridge) }
+        : {}),
       baseUrl: String(body.baseUrl || ""),
       model: String(body.model || ""),
       name: typeof body.name === "string" ? body.name : undefined,

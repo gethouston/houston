@@ -8,7 +8,7 @@
 //!
 //! The model is downloaded once into the app data dir; the sidecar binary is
 //! staged by Tauri's `externalBin` and resolved via [`crate::child_guard`],
-//! sharing the same orphan-prevention discipline as the engine/frpc sidecars.
+//! sharing the same orphan-prevention discipline as the engine sidecar.
 
 mod cpu;
 mod model;

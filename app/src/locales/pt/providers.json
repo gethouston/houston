@@ -214,7 +214,16 @@
       "error": "Indisponível",
       "offlineHint": "Seu modelo está indisponível agora. Confira se o {{app}} está aberto neste computador.",
       "yourApp": "o app no seu computador",
-      "reconnect": "Reconectar"
+      "reconnect": "Reconectar",
+      "disabled": "Desconectado",
+      "reconnecting": "Reconectando...",
+      "model_unavailable": "Abra o app do seu modelo",
+      "authorization_required": "Entre para reconectar",
+      "revoked": "Conexão removida",
+      "authorizationHint": "Entre na conta que conectou este modelo e conecte novamente.",
+      "revokedHint": "Esta conexão foi removida. Conecte seu modelo novamente para usá-lo.",
+      "reconnect_required": "Reconecte seu modelo",
+      "reconnectHint": "Conecte seu modelo novamente para vinculá-lo a este espaço."
     }
   }
 }

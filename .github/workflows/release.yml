@@ -58,8 +58,7 @@
 #   POSTHOG_PROJECT_ID                 — PostHog project ID (numeric) the annotation lands under.
 #
 # Windows Authenticode signing (Azure Artifact Signing, formerly "Trusted
-# Signing") — ALL SIX must be set or the MSI ships UNSIGNED (SmartScreen
-# warns users; the build still succeeds with a ::warning::):
+# Signing") — all six credentials are required for Windows releases:
 #   AZURE_TENANT_ID                    — Entra tenant ID
 #   AZURE_CLIENT_ID                    — App registration (service principal) client ID with the "Artifact Signing Certificate Profile Signer" role on the signing account
 #   AZURE_CLIENT_SECRET                — Client secret for that app registration
@@ -668,32 +667,8 @@ jobs:
             app/src-tauri/binaries/houston-engine-universal-apple-darwin \
             app/src-tauri/binaries/claude-universal-apple-darwin
 
-      # Fetch the frpc tunnel client (fatedier/frp, Apache-2.0) for both arches
-      # and lipo a universal fat binary, mirroring the host sidecar above.
-      # build.rs::stage_frpc_sidecar also stages per-arch copies during tauri's
-      # per-arch cargo runs, but the `--target universal-apple-darwin` bundle
-      # ships this fat binary at binaries/frpc-universal-apple-darwin. Without it
-      # the local-model tunnel ships a loud-fail placeholder and never connects.
-      - name: Fetch + lipo universal frpc tunnel client (aarch64 + x86_64)
-        run: |
-          set -euo pipefail
-          for TRIPLE in aarch64-apple-darwin x86_64-apple-darwin; do
-            echo "=== fetching frpc for $TRIPLE ==="
-            scripts/fetch-frpc.sh "$TRIPLE"
-            test -x "target/frpc/frpc-$TRIPLE" \
-              || { echo "::error::frpc missing for $TRIPLE"; exit 1; }
-          done
-          mkdir -p app/src-tauri/binaries
-          echo "=== Lipo universal frpc ==="
-          lipo -create \
-            target/frpc/frpc-aarch64-apple-darwin \
-            target/frpc/frpc-x86_64-apple-darwin \
-            -output app/src-tauri/binaries/frpc-universal-apple-darwin
-          chmod +x app/src-tauri/binaries/frpc-universal-apple-darwin
-          lipo -info app/src-tauri/binaries/frpc-universal-apple-darwin
-
       # Build the whisper.cpp dictation sidecar (whisper-cli, MIT) for both arches
-      # and lipo a universal fat binary, mirroring frpc + the host sidecar above.
+      # and lipo a universal fat binary, mirroring the host sidecar above.
       # build.rs::stage_whisper_sidecar also stages per-arch copies during tauri's
       # per-arch cargo runs, but the `--target universal-apple-darwin` bundle ships
       # this fat binary at binaries/whisper-cli-universal-apple-darwin. The `test -x`
@@ -813,6 +788,7 @@ jobs:
 
       - name: Verify .app signing and notarization
         run: |
+          node scripts/ci/assert-no-frpc.mjs "${{ steps.artifacts.outputs.app }}"
           echo "=== Code signature ==="
           codesign -vvv --deep --strict "${{ steps.artifacts.outputs.app }}"
 
@@ -1246,14 +1222,11 @@ jobs:
   # Scope:
   #   * Windows x86_64 + aarch64 (matrix), MSI installers.
   #   * Authenticode signing (Azure Artifact Signing, formerly "Trusted
-  #     Signing"): when the six AZURE_* secrets are set (see the header
-  #     comment), a config overlay wires `bundle.windows.signCommand` to
+  #     Signing"): the six AZURE_* secrets are required. A config overlay wires `bundle.windows.signCommand` to
   #     `artifact-signing-cli`, so Tauri signs EVERY bundled binary
   #     (houston-app.exe, the sidecars, the MSI itself) — not a post-hoc
-  #     MSI-only pass. Without the secrets the MSI ships UNSIGNED
-  #     (SmartScreen warns users) and the job emits a ::warning:: so the
-  #     gap is loud, not silent. SmartScreen reputation accrues per
-  #     certificate + file hash after signing goes live.
+  #     MSI-only pass. Missing credentials fail the production build. The
+  #     delivered MSI payload is extracted and its signatures are verified.
   #
   # Build pipeline (runs once per matrix arch, x86_64 + aarch64):
   #   1. Bun-compile the Houston HOST sidecar for the matrix target via
@@ -1377,24 +1350,10 @@ jobs:
           echo "Sidecar size:"
           ls -lah target/host-sidecar/houston-host-${{ matrix.target }}.exe
 
-      # Fetch the frpc tunnel client (fatedier/frp, Apache-2.0) for the matrix
-      # target BEFORE tauri build. build.rs::stage_frpc_sidecar copies
-      # target/frpc/frpc-<target>.exe to the externalBin name
-      # binaries/frpc-<target>.exe (same pattern as the host sidecar). Without it
-      # the local-model tunnel ships a loud-fail placeholder and never connects.
-      - name: Fetch frpc tunnel client (${{ matrix.target }})
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/fetch-frpc.sh ${{ matrix.target }}
-          test -x "target/frpc/frpc-${{ matrix.target }}.exe" \
-            || { echo "::error::frpc missing for ${{ matrix.target }}"; exit 1; }
-          ls -lah target/frpc/frpc-${{ matrix.target }}.exe
-
       # Build the whisper.cpp dictation sidecar (whisper-cli, MIT) for the matrix
       # target BEFORE tauri build. build.rs::stage_whisper_sidecar copies
       # target/whisper/whisper-cli-<target>.exe to the externalBin name
-      # binaries/whisper-cli-<target>.exe (same pattern as frpc). CPU-only,
+      # binaries/whisper-cli-<target>.exe (same pattern as the host sidecar). CPU-only,
       # self-contained (static), pinned to the AVX2 (Haswell 2013+) baseline on
       # x86-64 — older CPUs are gated in-app (dictation/cpu.rs), never crashed.
       # The `test -x` gate FAILS the release rather than shipping the loud-fail
@@ -1416,9 +1375,8 @@ jobs:
         shell: bash
         run: bash scripts/ci/point-updater-at-cloud-manifest.sh
 
-      # Authenticode signing via Azure Artifact Signing. Gated on the
-      # AZURE_* secrets so forks and pre-onboarding releases still build
-      # (unsigned, with a loud ::warning:: below). `cargo install` compiles
+      # Authenticode signing via Azure Artifact Signing. Production builds
+      # require the signing credentials. `cargo install` compiles
       # ~2-4 min on a cold runner; ~/.cargo/registry is in the cache above
       # so warm runs are faster. Pinned — bump deliberately. Needs the .NET
       # runtime + Windows SDK signtool, both preinstalled on GitHub's
@@ -1444,9 +1402,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${AZURE_CLIENT_SECRET:-}" ]; then
-            echo "::warning::AZURE_* signing secrets not set — Windows MSI ships UNSIGNED and SmartScreen will warn users. See the header comment in release.yml."
-            echo "config_arg=" >> "$GITHUB_OUTPUT"
-            exit 0
+            echo "::error::Windows production releases require all Azure code-signing credentials."
+            exit 1
           fi
           for v in AZURE_TENANT_ID AZURE_CLIENT_ID AZURE_SIGNING_ENDPOINT AZURE_SIGNING_ACCOUNT AZURE_SIGNING_PROFILE; do
             if [ -z "$(eval echo "\${$v:-}")" ]; then
@@ -1517,28 +1474,15 @@ jobs:
           echo "  .msi:     $MSI ($(du -sh "$MSI" | cut -f1))"
           echo "  .msi.sig: $SIG ($(wc -c < "$SIG") bytes)"
 
-      # Mirrors the macOS job's signature/notarization verification: if we
-      # asked for Authenticode signing, PROVE the MSI actually carries a
-      # valid, timestamped signature before it reaches the draft release.
-      # (The .msi.sig above is the SEPARATE Tauri-updater minisign signature.)
-      - name: Verify Authenticode signature on MSI
-        if: ${{ env.AZURE_CLIENT_SECRET != '' }}
+      - name: Verify MSI and bundled executable signatures
         shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $msi = "${{ steps.artifacts-windows.outputs.msi }}"
-          $sig = Get-AuthenticodeSignature $msi
-          Write-Host "Status:    $($sig.Status)"
-          Write-Host "Signer:    $($sig.SignerCertificate.Subject)"
-          Write-Host "Timestamp: $($sig.TimeStamperCertificate.Subject)"
-          if ($sig.Status -ne 'Valid') {
-            Write-Error "MSI Authenticode signature is $($sig.Status), expected Valid. Signing was requested (AZURE_* secrets set) so this is a hard failure."
-            exit 1
-          }
-          if (-not $sig.TimeStamperCertificate) {
-            Write-Error "MSI signature has no timestamp — it would expire with the certificate. Hard failure."
-            exit 1
-          }
+        run: ./scripts/ci/verify-windows-release.ps1 -Installer "${{ steps.artifacts-windows.outputs.msi }}"
+
+      - name: Verify upgrade removes retired client and preserves saved settings
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/ci/verify-windows-upgrade.ps1 -Installer "${{ steps.artifacts-windows.outputs.msi }}" -Architecture "${{ matrix.arch }}"
 
       # Sentry upload (Windows): Rust debug symbols for the Tauri app binary
       # and matrix-arch houston-engine.exe. MSVC emits PDBs alongside both
@@ -1622,7 +1566,6 @@ jobs:
             --clobber
 
           echo "::notice::Windows MSI + .sig uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
-          echo "::warning::This MSI is UNSIGNED (code-signing wise) — Windows SmartScreen will warn on first install. The updater minisign signature above is separate; it covers in-app auto-update verification, not OS code-signing. SignPath integration lands in a follow-up PR."
 
   # ============================================================================
   # Linux desktop build — x86_64 AppImage. Runs IN PARALLEL with the mac and
@@ -1741,18 +1684,7 @@ jobs:
       - name: Disable in-build updater artifacts (signed post-repair instead)
         run: bash scripts/ci/configure-ts-engine-unsigned.sh
 
-      # frpc is a Tauri externalBin (the local-model bridge tunnel client). The
-      # exit-1 placeholder build.rs stages when frpc is absent is not an ELF, so
-      # linuxdeploy's ldd pass aborts the AppImage bundling. Fetch the real,
-      # SHA256-verified frpc so build.rs stages binaries/frpc-x86_64-unknown-linux-gnu.
-      - name: Fetch frpc tunnel client (x86_64-unknown-linux-gnu)
-        run: |
-          set -euo pipefail
-          scripts/fetch-frpc.sh x86_64-unknown-linux-gnu
-          test -f target/frpc/frpc-x86_64-unknown-linux-gnu \
-            || { echo "::error::frpc missing for x86_64-unknown-linux-gnu"; exit 1; }
-
-      # Build the whisper.cpp dictation sidecar (whisper-cli, MIT). Like frpc, the
+      # Build the whisper.cpp dictation sidecar (whisper-cli, MIT). The
       # exit-1 placeholder build.rs stages when whisper-cli is absent is not an ELF
       # and would abort linuxdeploy's ldd pass, so build the real CPU-only
       # (GGML_NATIVE=OFF), self-contained binary before bundling. The `test -x`

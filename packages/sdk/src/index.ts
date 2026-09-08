@@ -51,6 +51,7 @@ export type {
   CommandResult,
 } from "./commands";
 export { CommandRegistry, isCommandEnvelope } from "./commands";
+export * from "./local-model-bridge";
 export type { ModuleContext } from "./module-context";
 // ===== Activities module contract ======================================
 export {
