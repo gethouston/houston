@@ -21,6 +21,7 @@ describe("assistant catalog extraction", () => {
   it("publishes exported functions and public mixin methods, nothing else", () => {
     expect(result.catalog.operations.map(({ name }) => name).sort()).toEqual([
       "allThings",
+      "branchedThing",
       "createThing",
       "deleteAgentFileEntry",
       "deleteThing",

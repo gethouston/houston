@@ -67,6 +67,41 @@ export interface UnroutableOperation {
   reason: string;
 }
 
+export type AcknowledgementKind = "hidden" | "unroutable" | "unschematized";
+
+/** One human-owned exception: the author states why automation stops here. */
+export interface Acknowledgement {
+  name: string;
+  kind: AcknowledgementKind;
+  /** The author's reason, with the `debt:` marker stripped. */
+  reason: string;
+  /** The reason says the operation SHOULD be automatable and needs work. */
+  debt: boolean;
+}
+
+/**
+ * Everything the coverage gate judges one operation on. Deliberately absent
+ * from the generated catalog: `location` moves with every edit above the
+ * declaration, and committing it would make the drift check fire on line
+ * shifts that change nothing about the surface.
+ */
+export interface OperationAnnotation {
+  name: string;
+  /** Repo-relative `file:line` of the declaration. */
+  location: string;
+  documented: boolean;
+  /** The declared group, `undefined` when none was declared. */
+  group?: string;
+  hidden: boolean;
+  hiddenReason?: string;
+  unroutableReason?: string;
+  unschematizedReason?: string;
+  unknownTags: string[];
+  routable: boolean;
+  /** `param` / `returns` names whose schema fell back to free-form. */
+  unschematizedFields: string[];
+}
+
 export interface AssistantCatalog {
   $comment: string;
   version: 3;
@@ -87,6 +122,8 @@ export interface Coverage {
 export interface ExtractionResult {
   catalog: AssistantCatalog;
   coverage: Coverage;
+  /** Per-operation input to the coverage gate, in catalog order. */
+  annotations: OperationAnnotation[];
 }
 
 /**

@@ -144,6 +144,28 @@ export async function replaceThing(
   await cpFetch(cfg, "/v1/things", { method: "POST" });
 }
 
+/**
+ * Branched twin of `replaceThing`: one request per branch, different path and
+ * verb, so no single route describes the call.
+ *
+ * @assistant group:agents
+ */
+export async function branchedThing(
+  cfg: ControlPlaneConfig,
+  id: string,
+  archive: boolean,
+): Promise<void> {
+  if (archive) {
+    await cpFetch(cfg, `/v1/things/${encodeURIComponent(id)}/archive`, {
+      method: "POST",
+    });
+    return;
+  }
+  await cpFetch(cfg, `/v1/things/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export async function getThingContext(
   cfg: ControlPlaneConfig,
   kind: "workspace" | "user",

@@ -1,8 +1,10 @@
 import type {
+  Acknowledgement,
   AssistantCatalog,
-  Coverage,
+  ExtractionResult,
   UnroutableOperation,
 } from "./assistant-catalog-types.ts";
+import { acknowledgements } from "./assistant-gate.ts";
 
 export function renderCatalog(catalog: AssistantCatalog): string {
   return `${JSON.stringify(catalog, null, 2)}\n`;
@@ -52,10 +54,32 @@ function unroutableSection(values: UnroutableOperation[]): string[] {
   ];
 }
 
-export function renderCoverage(
-  catalog: AssistantCatalog,
-  coverage: Coverage,
-): string {
+function acknowledgedSection(
+  title: string,
+  lead: string,
+  values: Acknowledgement[],
+): string[] {
+  return [
+    `## ${title} (${values.length})`,
+    "",
+    lead,
+    "",
+    ...(values.length > 0
+      ? values.map(
+          ({ name, kind, reason }) => `- \`${name}\` — ${kind}: ${reason}`,
+        )
+      : ["None."]),
+  ];
+}
+
+export function renderCoverage({
+  catalog,
+  coverage,
+  annotations,
+}: ExtractionResult): string {
+  const stated = acknowledgements(annotations);
+  const debt = stated.filter((item) => item.debt);
+  const exceptions = stated.filter((item) => !item.debt);
   const documented = catalog.operations.length - coverage.undocumented.length;
   const rawResponse = catalog.operations.filter(
     (operation) => operation.route?.rawResponse,
@@ -73,8 +97,22 @@ export function renderCoverage(
     `- Routable: ${catalog.operations.length - coverage.unroutable.length}`,
     `- Unroutable: ${coverage.unroutable.length}`,
     `- Raw-response routes: ${rawResponse}`,
+    `- Acknowledged exceptions: ${exceptions.length}`,
+    `- Acknowledged debt: ${debt.length}`,
     "",
     "A raw-response route reaches the host through an adapter function that post-processes the reply (unwrapping `items`, 404 fallbacks, `.then` transforms). The route itself carries the host's response unchanged.",
+    "",
+    ...acknowledgedSection(
+      "Acknowledged exceptions",
+      "Every operation the assistant cannot drive states why in its `@assistant` tag, and `pnpm check:assistant-coverage` fails the build on any that does not. These are the human-owned exceptions.",
+      exceptions,
+    ),
+    "",
+    ...acknowledgedSection(
+      "Acknowledged debt",
+      "Exceptions whose author says the operation SHOULD be automatable and is waiting on a refactor.",
+      debt,
+    ),
     "",
     ...section("Undocumented operations", coverage.undocumented),
     "",

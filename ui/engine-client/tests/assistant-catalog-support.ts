@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import type {
   AssistantPathParam,
   AssistantRoute,
+  OperationAnnotation,
 } from "../scripts/assistant-catalog-types.ts";
 import { assistantPaths } from "../scripts/assistant-paths.ts";
 
@@ -37,3 +38,18 @@ export const route = (path: string, extra: Partial<AssistantRoute> = {}) => ({
 
 export const segments = (...names: string[]): AssistantPathParam[] =>
   names.map((name) => ({ name, encoding: "segment" }));
+
+/** A clean annotation: every gate rule satisfied, one field at a time bent. */
+export const annotation = (
+  overrides: Partial<OperationAnnotation> = {},
+): OperationAnnotation => ({
+  name: "listThings",
+  location: "packages/web/src/engine-adapter/cp/things.ts:12",
+  documented: true,
+  group: "agents",
+  hidden: false,
+  unknownTags: [],
+  routable: true,
+  unschematizedFields: [],
+  ...overrides,
+});

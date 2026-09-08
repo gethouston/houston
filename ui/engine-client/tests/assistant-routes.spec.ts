@@ -93,6 +93,7 @@ describe("assistant route derivation", () => {
   it("refuses to guess a route for every irregular shape", () => {
     const expected = {
       allThings: "non-literal path",
+      branchedThing: "multiple request calls",
       getThingContext: "unescaped path interpolation",
       headThing: "unsupported HTTP method HEAD",
       probeThing: "non-assignment request option",

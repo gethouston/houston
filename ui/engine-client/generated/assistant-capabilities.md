@@ -7,7 +7,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## agents
 
-- `createAgent`: Creates a new agent.
+- `createAgent`: Creates a new agent. Always choose a `color` for it, one of Houston's ten palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange, golden, or umber. It is how the new agent is told apart at a glance, and leaving it out gives every agent the same default color.
 - `deleteAgent`: Deletes an agent and everything in it. **Confirmation required.**
 - `getAgentModelChoice`: Reads which AI model the user picked for an agent.
 - `installAgentFromGithub`: Installs an agent from a GitHub repository. **Confirmation required.**
@@ -15,6 +15,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `listInstalledConfigs`: Lists the agent templates installed in Houston.
 - `renameAgent`: Renames an agent. **Confirmation required.**
 - `setAgentModelChoice`: Chooses which AI model an agent uses.
+- `updateAgentColor`: Change an agent's color. Pick one of Houston's ten palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange, golden, or umber. The new color shows up everywhere that agent appears.
 
 ## api-keys
 
@@ -69,6 +70,10 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `orgUsage`: Shows how much each person and agent used this space over recent days.
 - `removeOrgMember`: Removes someone from the current space. **Confirmation required.**
 - `setOrgMemberRole`: Changes what someone is allowed to do in this space. **Confirmation required.**
+
+## providers
+
+- `listAgentProviders`: Lists the AI providers Houston can use, with which ones are connected.
 
 ## routines
 

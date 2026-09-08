@@ -33,7 +33,7 @@ export function generateAssistantCatalog(
   );
   writeFileSync(
     join(outputDirectory, "assistant-coverage.md"),
-    renderCoverage(result.catalog, result.coverage),
+    renderCoverage(result),
   );
 }
 
