@@ -3,7 +3,7 @@ import {
   currentCredentialScope,
   isPersonalScope,
 } from "../../session/acting-context";
-import type { ClaudeToken } from "./backend";
+import type { ClaudeToken } from "./backend-types";
 
 /**
  * The READ-side mirror of `credentials-file.ts`'s write refusal, at TURN START

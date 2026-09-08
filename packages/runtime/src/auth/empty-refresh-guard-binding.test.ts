@@ -5,44 +5,60 @@ import { expect, test, vi } from "vitest";
 import { config } from "../config";
 
 /**
- * PRODUCT-1317's guard must not be switchable off by an import graph.
- *
- * The re-serve used to be a binding `serve.ts` performed at load, so it was only
- * in place if something had imported `serve.ts` first — a caller that reached
- * the store through a shorter path (importing `serve-context` for `serveModeOn`)
- * left the guard silently disabled and pi free to POST `refresh_token=""`. So
- * nothing here imports `serve.ts`: the guard has to reach for it itself.
+ * PRODUCT-1317's guard re-serves an expiring access-only entry through
+ * serve.ts's sync. serve.ts binds that sync when it loads, and every runtime
+ * loads it at boot (the turn start and the provider routes import it), so the
+ * binding is in place before any refresh closure can fire. This suite pins the
+ * three states: no-op off serve mode, bound once serve.ts loaded, and a loud
+ * report (never a silent skip) if serve mode is on with nothing bound.
  */
 
 config.dataDir = mkdtempSync(join(tmpdir(), "houston-erg-data-"));
 
-// Stands in for the real sync (exercised end to end in serve.test.ts) — this
-// suite is about WHICH function the guard resolves, and that it resolves one.
-vi.mock("./serve", () => ({ syncServedCredentialSafe: vi.fn(async () => {}) }));
+// The sweep behind the sync is exercised end to end in serve.test.ts; here it
+// only has to be observable.
+vi.mock("./serve-sync-run", () => ({ runServedSync: vi.fn(async () => []) }));
 
-const { syncServedCredentialSafe } = await import("./serve");
-const { runEmptyRefreshServeSync } = await import("./empty-refresh-guard");
-const { HoustonAuthStore } = await import("./credential-store");
+const { runServedSync } = await import("./serve-sync-run");
+const { bindEmptyRefreshServeSync, runEmptyRefreshServeSync } = await import(
+  "./empty-refresh-guard"
+);
+
+const serveMode = (on: boolean) => {
+  config.controlPlaneUrl = on ? "http://control-plane.test" : "";
+  config.sandboxToken = on ? "sbx-token" : "";
+};
 
 test("off serve mode the guard stays a true no-op", async () => {
-  config.controlPlaneUrl = "";
-  config.sandboxToken = "";
-  vi.mocked(syncServedCredentialSafe).mockClear();
-
+  serveMode(false);
+  const report = vi.spyOn(console, "error").mockImplementation(() => {});
   await runEmptyRefreshServeSync();
-
-  // An access-only entry only exists where the serve path wrote one, so there
-  // is nothing to re-serve on desktop/self-host.
-  expect(syncServedCredentialSafe).not.toHaveBeenCalled();
+  expect(runServedSync).not.toHaveBeenCalled();
+  expect(report).not.toHaveBeenCalled();
+  report.mockRestore();
 });
 
-test("a store read re-serves in serve mode, with nothing having imported serve.ts", async () => {
-  config.controlPlaneUrl = "http://control-plane.test";
-  config.sandboxToken = "sbx-token";
-  vi.mocked(syncServedCredentialSafe).mockClear();
+test("in serve mode an unbound guard reports loudly instead of skipping", async () => {
+  serveMode(true);
+  bindEmptyRefreshServeSync(null);
+  const report = vi.spyOn(console, "error").mockImplementation(() => {});
+  await expect(runEmptyRefreshServeSync()).resolves.toBeUndefined();
+  expect(report).toHaveBeenCalledWith(
+    expect.stringContaining("no served sync is bound"),
+  );
+  report.mockRestore();
+  serveMode(false);
+});
+
+test("loading serve.ts binds the guard, and a store read re-serves through it", async () => {
+  serveMode(true);
+  bindEmptyRefreshServeSync(null);
+  await import("./serve");
+  vi.mocked(runServedSync).mockClear();
+  const { HoustonAuthStore } = await import("./credential-store");
   const store = new HoustonAuthStore(join(config.dataDir, "auth.json"));
-  // A Gate #2 served entry inside pi's five-minute validity floor: the exact
-  // state that must re-sync centrally before pi's expiry check runs.
+  // A served entry inside pi's five-minute validity floor: the exact state
+  // that must re-sync centrally before pi's expiry check runs.
   store.set("openai-codex", {
     type: "oauth",
     access: "served-at",
@@ -52,7 +68,6 @@ test("a store read re-serves in serve mode, with nothing having imported serve.t
 
   await store.read("openai-codex");
 
-  expect(syncServedCredentialSafe).toHaveBeenCalledWith("empty-refresh-guard");
-  config.controlPlaneUrl = "";
-  config.sandboxToken = "";
+  expect(runServedSync).toHaveBeenCalled();
+  serveMode(false);
 });

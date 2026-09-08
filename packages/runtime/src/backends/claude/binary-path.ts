@@ -1,6 +1,6 @@
 import { closeSync, existsSync, openSync, readSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ClaudeBackendUnavailableError } from "./backend";
+import { ClaudeBackendUnavailableError } from "./sdk-loader";
 
 /**
  * Resolve the spawnable `claude` executable for the Claude Agent SDK, but ONLY

@@ -1,5 +1,5 @@
 import { expect, test } from "./support/fixtures";
-import { navRow, screen } from "./support/team-nav";
+import { missionCard, navRow, screen } from "./support/team-nav";
 
 /**
  * The navigation stack's browser-history sync: the app
@@ -31,14 +31,16 @@ test("browser back closes the chat panel before leaving the board", async ({
   page,
 }) => {
   await page.goto("/");
-  await screen(page).getByText("Plan a trip to Tokyo").click();
+  // The kanban card, never the Agents home row preview that carries the same
+  // title while that screen is still the active one at boot.
+  await missionCard(page, "Plan a trip to Tokyo").click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
   await page.goBack();
   await expect(page.getByTestId("mission-panel")).toBeHidden();
   await expect(screen(page)).toHaveAttribute("data-screen", "team");
   // The board itself is still on the glass, not blanked by the pop.
-  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 });
 
 test("browser back retreats a Settings drill-in to the index", async ({

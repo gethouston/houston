@@ -1,16 +1,14 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
-import {
-  buildClaudeEnv,
-  ClaudeBackendUnavailableError,
-  type ClaudeToken,
-} from "./backend";
+import type { ClaudeToken } from "./backend-types";
 import { resolveClaudeExecutable } from "./binary-path";
+import { buildClaudeEnv } from "./claude-env";
 import { toSdkModel } from "./model";
 import { claudeLoginConfigDir } from "./paths";
 import {
   anthropicCredentialStorageDir,
   assertAnthropicScopeCredential,
 } from "./scope-guard";
+import { ClaudeBackendUnavailableError } from "./sdk-loader";
 import type { ClaudeQuery } from "./session";
 import { createStreamTranslator } from "./translate";
 

@@ -71,19 +71,18 @@ export function bindEmptyRefreshServeSync(
 }
 
 /**
- * Re-serve the expiring access-only entry, resolving serve.ts's non-throwing,
- * single-flighted sync AT THE MOMENT THE GUARD FIRES.
+ * Re-serve the expiring access-only entry through serve.ts's non-throwing,
+ * single-flighted sync, which serve.ts BINDS here when it loads.
  *
- * Deliberately not a static import (it would cycle: serve → storage →
- * credential-store → this module) and deliberately not a binding serve.ts
- * performs at load: a binding is only in place if something imported serve.ts
- * first, so a caller that reached the store through a shorter path — importing
- * `serve-context` for `serveModeOn` rather than `serve` — silently disabled the
- * guard and let pi POST `refresh_token=""` (PRODUCT-1317). Resolved here, the
- * guard cannot be switched off by an import graph.
- *
- * Off serve mode there is nothing to re-serve — an access-only entry only ever
- * exists where the serve path wrote one — so it stays a genuine no-op there.
+ * Not a static import: it would cycle (serve -> storage -> credential-store ->
+ * this module), and a dynamic import closes that same cycle through the one
+ * module with a top-level await (`storage.ts`), which the bundler cannot
+ * order. The binding is safe because serve.ts is on every runtime's boot path
+ * (the turn start and the provider routes import it), so it is in place
+ * before any refresh closure can fire. Off serve mode there is nothing to
+ * re-serve, so the guard is a genuine no-op there; in serve mode an unbound
+ * guard is a wiring fault and says so loudly instead of letting pi POST
+ * `refresh_token=""` (PRODUCT-1317).
  */
 export async function runEmptyRefreshServeSync(): Promise<void> {
   if (serveSyncOverride) {
@@ -91,6 +90,7 @@ export async function runEmptyRefreshServeSync(): Promise<void> {
     return;
   }
   if (!serveModeOn()) return;
-  const { syncServedCredentialSafe } = await import("./serve");
-  await syncServedCredentialSafe("empty-refresh-guard");
+  console.error(
+    "[empty-refresh-guard] serve mode is on but no served sync is bound; serve.ts did not load before a refresh fired",
+  );
 }

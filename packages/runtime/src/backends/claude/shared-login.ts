@@ -4,7 +4,7 @@ import {
   currentCredentialScope,
   isPersonalScope,
 } from "../../session/acting-context";
-import type { ClaudeToken } from "./backend";
+import type { ClaudeToken } from "./backend-types";
 import { claudeCredentialsFile } from "./paths";
 import { readSharedLoginFile } from "./shared-login-file";
 

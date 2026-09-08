@@ -1,4 +1,5 @@
 import { currentCredentialScope } from "../session/acting-context";
+import { bindEmptyRefreshServeSync } from "./empty-refresh-guard";
 import { runServedSync } from "./serve-sync-run";
 
 export {
@@ -86,3 +87,11 @@ export async function syncServedCredentialSafe(tag: string): Promise<void> {
     );
   }
 }
+
+// The empty-refresh guard (credential-store.ts) re-serves an expiring
+// access-only entry through the sync above. It cannot import this module (the
+// import graph cycles through storage.ts), so this module binds the sync when
+// it loads, which every runtime does at boot.
+bindEmptyRefreshServeSync(() =>
+  syncServedCredentialSafe("empty-refresh-guard"),
+);
