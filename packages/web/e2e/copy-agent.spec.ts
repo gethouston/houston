@@ -12,6 +12,7 @@ import {
   rowSwitch,
   seedCopySource,
 } from "./support/copy-agent";
+import { newAgentRow } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 import { litRows, rail, screen } from "./support/team-nav";
 
@@ -31,7 +32,7 @@ test("copies an agent, leaving chosen items behind and bringing the chats", asyn
   const { routineId } = await seedCopySource(request);
   await page.goto("/");
 
-  await page.getByRole("button", { name: "New agent" }).click();
+  await newAgentRow(page).click();
   await openCopyWizard(page);
 
   // The seeded agent is the one source; picking it reads its content and
@@ -131,7 +132,7 @@ test("a bare source skips the list screens; chats stay behind by default", async
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "New agent" }).click();
+  await newAgentRow(page).click();
   await openCopyWizard(page);
 
   const dialog = createDialog(page);

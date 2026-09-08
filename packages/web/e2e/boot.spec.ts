@@ -1,3 +1,4 @@
+import { newAgentRow } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 import { litRows, navRow, rail, screen, teamTab } from "./support/team-nav";
 
@@ -29,7 +30,7 @@ test("boots past every gate onto the first team's Tasks board", async ({
   await expect(navRow(page, "skills")).toBeVisible();
   await expect(navRow(page, "settings")).toBeVisible();
   await expect(sidebar.getByText("Your teams")).toBeVisible();
-  await expect(page.getByRole("button", { name: "New agent" })).toBeVisible();
+  await expect(newAgentRow(page)).toBeVisible();
 
   // The board a user lands on is a TEAM's, and the two halves of the chrome say
   // so between them. The RAIL says which team: its block is a name and its

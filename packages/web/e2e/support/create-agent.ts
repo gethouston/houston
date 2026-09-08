@@ -1,4 +1,21 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
+import { rail } from "./team-nav";
+
+/**
+ * The DEFAULT team's "New agent" row in the rail — the door this flow walks.
+ *
+ * "New agent" names two controls at once: this row at the foot of an expanded
+ * team block, and the Agents home's round button
+ * (`agents-home-new-agent`, `agents-home-list.tsx`). The Agents home is mounted
+ * for the whole session, so a page-wide lookup by accessible name matches both
+ * and trips strict mode. Naming the block also fixes WHERE the agent lands: a
+ * team's row creates into that team, and these flows want the default one.
+ */
+export function newAgentRow(page: Page): Locator {
+  return rail(page)
+    .locator('[data-sidebar-drop-section=""]')
+    .getByRole("button", { name: "New agent" });
+}
 
 /**
  * Create an agent through the real dialog and return to a usable shell.
@@ -17,7 +34,7 @@ import { expect, type Page } from "@playwright/test";
  * a broken auto-open fails loudly here instead of silently later.
  */
 export async function createAgent(page: Page, name: string): Promise<void> {
-  await page.getByRole("button", { name: "New agent" }).click();
+  await newAgentRow(page).click();
   // The card's label as the chooser ships it (`shell:newAgent.createCard`).
   const scratch = page.getByRole("button", { name: "Create new", exact: true });
   await scratch.waitFor({ state: "visible" });
@@ -39,7 +56,7 @@ export async function createAgent(page: Page, name: string): Promise<void> {
 
   // Back in the shell: the sidebar (with its New-agent control) is interactive
   // again and the new agent is present in it.
-  await expect(page.getByRole("button", { name: "New agent" })).toBeVisible();
+  await expect(newAgentRow(page)).toBeVisible();
   await expect(
     page.locator("[data-tour-target='agents']").getByText(name).first(),
   ).toBeVisible();
