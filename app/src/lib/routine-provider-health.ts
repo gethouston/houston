@@ -20,6 +20,17 @@
  * probe saying "I could not confirm", which renders as the neutral `checking`
  * — never as a healthy or a broken claim (the HOU-979 rule).
  *
+ * WHEN THE TWO DISAGREE, `authenticated` wins on the connected/not-connected
+ * axis. While an agent's pod is asleep the gateway answers `/providers` from
+ * the pod's LAST captured view with only `configured` (→ `authenticated`)
+ * overlaid from the credential store; the captured `health` is whatever the
+ * pod computed for whoever asked last, and in a team space that was often a
+ * `not_connected` for a different member's scope. Reading `health` first
+ * painted "Not connected" on every routine of an account whose chat picker
+ * (which reads `authenticated`) said Connected, until the pod woke and the
+ * proxied answer replaced the capture. `needs_reconnect` and `out_of_credits`
+ * are kept: both describe a credential that IS present.
+ *
  * Pure + DOM/i18n-free so every state is unit-tested without a renderer
  * (`app/tests/routine-provider-health.test.ts`).
  */
@@ -54,14 +65,33 @@ export function routineProviderHealth(
   status: RoutineProviderStatusLike | undefined,
 ): RoutineProviderHealth {
   if (!status) return "checking";
-  if (status.health) {
-    return status.health === "unreachable" ? "checking" : status.health;
+  // `unknown` is "could not confirm", never "signed out" — the same reading
+  // the rest of the app gives the tri-state.
+  if (status.auth_state === "unknown" || status.health === "unreachable") {
+    return "checking";
   }
-  // Older engine: no `health` field at all. Read the tri-state exactly as the
-  // rest of the app does — `unknown` is "could not confirm", never "signed
-  // out" — and fall back to the denormalized boolean for the rest.
-  if (status.auth_state === "unknown") return "checking";
-  return status.authenticated ? "connected" : "not_connected";
+  const configured = connectedClaim(status);
+  if (status.health) {
+    if (configured === undefined) return status.health;
+    if (!configured) return "not_connected";
+    return status.health === "not_connected" ? "connected" : status.health;
+  }
+  // Older engine: no `health` field at all — the denormalized boolean is all
+  // there is.
+  return configured ? "connected" : "not_connected";
+}
+
+/**
+ * The probe's connected/not-connected claim (`configured` on the wire), or
+ * `undefined` when the status carries neither field — a hand-built fixture
+ * with only `health`, which is then taken at its word.
+ */
+function connectedClaim(
+  status: RoutineProviderStatusLike,
+): boolean | undefined {
+  if (status.authenticated !== undefined) return status.authenticated;
+  if (status.auth_state === undefined) return undefined;
+  return status.auth_state === "authenticated";
 }
 
 /**

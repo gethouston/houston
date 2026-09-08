@@ -1,4 +1,8 @@
-import type { NewRoutine, RoutineUpdate } from "@houston-ai/engine-client";
+import type {
+  NewRoutine,
+  Routine,
+  RoutineUpdate,
+} from "@houston-ai/engine-client";
 import {
   type QueryClient,
   useMutation,
@@ -6,6 +10,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
+import {
+  patchRoutineList,
+  replaceRoutineInList,
+} from "../../lib/routine-optimistic";
 import { tauriRoutines } from "../../lib/tauri";
 
 /**
@@ -85,6 +93,12 @@ export interface RoutineWriteFor {
  */
 export function useRoutineWritesForAnyAgent() {
   const qc = useQueryClient();
+  // Optimistic (PRODUCT-1706): the row and the screen paint the edit the
+  // instant it is sent. On the hosted profile a write can take seconds (the
+  // agent's pod may have to wake first), and painting the OLD schedule for
+  // that window made a saved time look ignored. The host's applied routine
+  // replaces the guess when it lands; a rejected write rolls the cache back
+  // and refetches, and the caller's onError shows the authored toast.
   const update = useMutation({
     mutationFn: ({
       agentPath,
@@ -92,7 +106,28 @@ export function useRoutineWritesForAnyAgent() {
       updates,
     }: RoutineWriteFor & { updates: RoutineUpdate }) =>
       tauriRoutines.update(agentPath, routineId, updates),
-    onSuccess: (_r, { agentPath }) => afterRoutineWrite(qc, agentPath),
+    onMutate: async ({ agentPath, routineId, updates }) => {
+      const key = queryKeys.routines(agentPath);
+      // An in-flight refetch would overwrite the optimistic row with the
+      // pre-edit truth the moment it lands.
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<Routine[]>(key);
+      qc.setQueryData<Routine[]>(key, (list) =>
+        patchRoutineList(list, routineId, updates, new Date().toISOString()),
+      );
+      return { previous };
+    },
+    onError: (_err, { agentPath }, context) => {
+      const key = queryKeys.routines(agentPath);
+      if (context?.previous) qc.setQueryData(key, context.previous);
+      qc.invalidateQueries({ queryKey: key });
+    },
+    onSuccess: (routine, { agentPath }) => {
+      qc.setQueryData<Routine[]>(queryKeys.routines(agentPath), (list) =>
+        replaceRoutineInList(list, routine),
+      );
+      afterRoutineWrite(qc, agentPath);
+    },
   });
   const remove = useMutation({
     mutationFn: ({ agentPath, routineId }: RoutineWriteFor) =>
