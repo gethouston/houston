@@ -146,6 +146,84 @@ test("a bare 503 without Retry-After still reports", async () => {
   vi.useRealTimers();
 });
 
+// A rename moves the agent's directory, and the rename request is often the
+// very wake this warm runs under: boot listed the OLD name, the client reads
+// the NEW one. The warm must follow the move, never 404 the old id for the
+// rest of its window (HOUSTON-APP-5AP, the 404 flavor).
+test("boot warm follows an agent renamed mid-window", async () => {
+  vi.useFakeTimers();
+  const store = new MemoryWorkspaceStore();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const old = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "Old Name",
+  });
+  const start = Date.now();
+  const urls: string[] = [];
+  const fetchImpl = vi.fn(async (url: string | URL | Request) => {
+    urls.push(String(url));
+    // The runtime is still booting when the warm's first attempt lands.
+    if (Date.now() - start < 5_000) return stillStarting();
+    // The disk store's ids are directory names: only the current one serves.
+    const agent = (await store.listAgents(workspace.id))[0];
+    const served = String(url).includes(encodeURIComponent(agent?.id ?? ""));
+    return served
+      ? new Response("{}", { status: 200 })
+      : new Response('{"error":"agent not found"}', { status: 404 });
+  }) as unknown as typeof fetch;
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  warmViewDocs({ port: 4318, token: "t", store, fetchImpl });
+  // First attempt lands on the old id, then the rename moves the directory
+  // (the memory store keeps ids stable, so model the move as delete+create).
+  await vi.advanceTimersByTimeAsync(50);
+  await store.deleteAgent(old.id);
+  const renamed = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "New Name",
+  });
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(urls[0]).toContain(encodeURIComponent(old.id));
+  const renamedUrls = urls.filter((u) =>
+    u.includes(encodeURIComponent(renamed.id)),
+  );
+  // Every view route warmed under the new name, none reported.
+  expect(renamedUrls).toHaveLength(4);
+  expect(errorSpy).not.toHaveBeenCalled();
+  expect(warnSpy).not.toHaveBeenCalled();
+  errorSpy.mockRestore();
+  warnSpy.mockRestore();
+  vi.useRealTimers();
+});
+
+// A host that stops serving exactly one agent mid-window (delete, or a
+// leftover directory appearing beside the live one) has no view to warm: the
+// warm stands down as a breadcrumb, never an error.
+test("boot warm stands down quietly when the single agent goes away", async () => {
+  vi.useFakeTimers();
+  const store = new MemoryWorkspaceStore();
+  const workspace = await store.getOrCreatePersonalWorkspace("alice");
+  const only = await store.createAgent({
+    workspaceId: workspace.id,
+    name: "Only",
+  });
+  const fetchImpl = vi.fn(
+    async () => new Response('{"error":"agent not found"}', { status: 404 }),
+  ) as unknown as typeof fetch;
+  const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+  warmViewDocs({ port: 4318, token: "t", store, fetchImpl });
+  await vi.advanceTimersByTimeAsync(50);
+  await store.deleteAgent(only.id);
+  await vi.advanceTimersByTimeAsync(1_000_000);
+  expect(errorSpy).not.toHaveBeenCalled();
+  expect(warnSpy).toHaveBeenCalledTimes(4);
+  expect(warnSpy.mock.calls[0]?.[0]).toMatch(/no longer serves exactly one/);
+  errorSpy.mockRestore();
+  warnSpy.mockRestore();
+  vi.useRealTimers();
+});
+
 test("a SkillsChanged event re-fetches /skills for that agent (debounced)", async () => {
   vi.useFakeTimers();
   const store = new MemoryWorkspaceStore();
