@@ -7,7 +7,7 @@ import {
   type Declaration,
   isPlumbingParameter,
 } from "./assistant-declarations.ts";
-import { entitySourceFor } from "./assistant-entity-sources.ts";
+import { entityRuleFor, namesEntity } from "./assistant-entity-sources.ts";
 import { repoRelative } from "./assistant-paths.ts";
 import { isFallback, schemaForType } from "./assistant-schema.ts";
 
@@ -26,6 +26,12 @@ export interface OperationParameters {
   params: AssistantParameter[];
   /** Parameter names whose schema fell back to a free-form comment. */
   unschematized: string[];
+  /**
+   * Parameter names that address an existing thing with nothing behind them:
+   * no closed set, no live list, no stated reason. The coverage gate fails on
+   * these, because the alternative is a model inventing an id.
+   */
+  openIdentifiers: string[];
 }
 
 /** Everything outside the signature that a parameter's entry carries. */
@@ -45,6 +51,7 @@ export function parametersOf(
   context: ParameterContext,
 ): OperationParameters {
   const unschematized: string[] = [];
+  const openIdentifiers: string[] = [];
   const params = declaration.node.parameters
     .filter((parameter) => !isPlumbingParameter(parameter))
     .map((parameter) => {
@@ -55,21 +62,37 @@ export function parametersOf(
         parameter,
       );
       if (isFallback(schema)) unschematized.push(name);
-      const source_ = entitySourceFor(name, context.route);
+      const closed = isClosed(schema);
+      const rule = entityRuleFor(name, context.route);
+      // A closed schema already carries its values: naming a discovery
+      // operation, a live list or a reason on top of it would send the model
+      // on a lookup it does not need. And nothing lists itself.
+      if (
+        !closed &&
+        !rule?.collection &&
+        !rule?.unlisted &&
+        namesEntity(name, context.route)
+      )
+        openIdentifiers.push(name);
+      const identity =
+        closed || !rule
+          ? {}
+          : {
+              ...(rule.collection ? { resolver: rule.collection } : {}),
+              ...(rule.unlisted ? { unresolved: rule.unlisted } : {}),
+              ...(rule.discovery && rule.discovery !== context.operation
+                ? { source: rule.discovery }
+                : {}),
+            };
       return {
         name,
         required: !parameter.questionToken && !parameter.initializer,
         schema,
         ...(context.docs[name] ? { description: context.docs[name] } : {}),
-        // A closed schema already carries its values; naming a discovery
-        // operation on top of it would send the model on a lookup it does not
-        // need. And nothing lists itself.
-        ...(source_ && source_ !== context.operation && !isClosed(schema)
-          ? { source: source_ }
-          : {}),
+        ...identity,
       };
     });
-  return { params, unschematized };
+  return { params, unschematized, openIdentifiers };
 }
 
 /**

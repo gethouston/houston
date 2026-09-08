@@ -103,7 +103,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `loadSkill`: Reads a skill's instructions.
 - `previewCommunitySkill`: Shows what a community skill does before installing it.
 - `promoteSharedSkill`: Shares an agent's existing skill with everyone in the workspace. **Confirmation required.**
-- `putSkillsManifest`: Chooses which of an agent's skills are switched on.
+- `putSkillsManifest`: Chooses which of an agent's skills are switched on. **Confirmation required.**
 - `saveSharedSkill`: Saves changes to a skill shared with the workspace, for everyone who uses it. **Confirmation required.**
 - `saveSkill`: Saves changes to a skill's instructions. **Confirmation required.**
 - `searchCommunitySkills`: Searches the community directory of skills.

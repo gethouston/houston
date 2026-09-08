@@ -13,7 +13,7 @@ import type {
 import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { bearer, header, json } from "./http";
-import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
+import { liveTurns } from "./live-turn";
 import { handleMissionSettle, handleMissionStatus } from "./missions-manage";
 import { handleList, handleMissionRead } from "./missions-read";
 import { handleMissionStart } from "./missions-start";
@@ -138,7 +138,13 @@ export async function handleSandboxMissions(
     vfs,
     root: paths.agentRoot(ws, agent),
     paths,
-    conversationId: header(req, CONVERSATION_ID_HEADER),
+    // WHICH CHAT THIS CALL IS SPEAKING IN, from the host's own record of the
+    // turn (routes/live-turn.ts) rather than the runtime's header. Every mission
+    // decision that reads it is a decision ABOUT the caller - which mission it
+    // may not move (it is the one it is talking in), how deep its next start
+    // sits - so a runtime that could name any conversation would be answering
+    // its own guards.
+    conversationId: liveTurns.get(claim.agentId)?.conversationId,
     author: deps.gatewayFronted
       ? (actingAuthorFromHeader(req.headers[ACTING_AS_HEADER]) ?? undefined)
       : undefined,

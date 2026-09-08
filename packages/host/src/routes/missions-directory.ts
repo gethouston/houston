@@ -1,7 +1,9 @@
 import type { Agent, Workspace } from "../domain/types";
+import { assistantRuntimeRole } from "../launcher/assistant-role";
 import type { AgentRef } from "./agent-refs";
 import type { AssistantGateway } from "./assistant-forward";
 import { resolveAssistantGateway } from "./assistant-wiring";
+import { gatewayMissionDirectory } from "./missions-directory-gateway";
 import type { MissionsCtx } from "./missions-sandbox";
 import { reachableAgents } from "./reachable-agents";
 
@@ -68,81 +70,24 @@ export function localMissionDirectory(
       const reachable = await reachableAgents(ctx.deps.store, ctx.ws);
       return {
         ok: true,
-        candidates: reachable.map(({ workspace, agent }) => ({
-          remote: false as const,
-          id: agent.id,
-          name: agent.name,
-          workspace: workspace.name,
-          workspaceId: workspace.id,
-          ws: workspace,
-          agent,
-        })),
+        candidates: reachable
+          .filter(
+            ({ agent }) =>
+              !(
+                assistantRuntimeRole({ agentId: ctx.agent.id }) &&
+                agent.id === ctx.agent.id
+              ),
+          )
+          .map(({ workspace, agent }) => ({
+            remote: false as const,
+            id: agent.id,
+            name: agent.name,
+            workspace: workspace.name,
+            workspaceId: workspace.id,
+            ws: workspace,
+            agent,
+          })),
       };
-    },
-  };
-}
-
-/** The client-facing agent shape the gateway lists (`toAgentJson`). */
-interface GatewayAgent {
-  id: string;
-  name: string;
-  workspaceId?: string;
-}
-
-const isGatewayAgent = (value: unknown): value is GatewayAgent =>
-  typeof value === "object" &&
-  value !== null &&
-  typeof (value as GatewayAgent).id === "string" &&
-  typeof (value as GatewayAgent).name === "string";
-
-/**
- * The user's agents as the gateway knows them. An unreachable or unreadable
- * gateway is an ERROR, never an empty list: answering "there is no agent
- * called Dobby" because the network hiccuped would teach the model a lie.
- */
-export function gatewayMissionDirectory(
-  gateway: AssistantGateway,
-  opts: { fetchImpl?: typeof fetch; actingAs?: string } = {},
-): MissionTargetDirectory {
-  return {
-    async list() {
-      const unreadable = {
-        ok: false,
-        status: 502,
-        code: "agents_unreadable",
-        error: "could not reach the other agents right now - try again",
-      } as const;
-      let response: Response;
-      try {
-        response = await (opts.fetchImpl ?? fetch)(`${gateway.url}/agents`, {
-          headers: {
-            Authorization: `Bearer ${gateway.token}`,
-            ...(opts.actingAs ? { "x-houston-acting-as": opts.actingAs } : {}),
-          },
-        });
-      } catch (err) {
-        console.error("[missions] could not list agents from the gateway", err);
-        return unreadable;
-      }
-      if (!response.ok) {
-        console.error(
-          `[missions] the gateway refused the agent list (${response.status})`,
-        );
-        return unreadable;
-      }
-      const payload: unknown = await response.json().catch(() => null);
-      if (!Array.isArray(payload)) {
-        console.error("[missions] the gateway's agent list was not a list");
-        return unreadable;
-      }
-      const candidates = payload.filter(isGatewayAgent).map((a) => ({
-        remote: true as const,
-        id: a.id,
-        name: a.name,
-        workspace: a.workspaceId ?? "",
-        workspaceId: a.workspaceId ?? "",
-      }));
-      return { ok: true, candidates };
     },
   };
 }
@@ -168,7 +113,12 @@ export function missionTargetDirectory(
         ? resolveAssistantGateway()
         : null;
   if (!gateway) return local;
-  const remote = gatewayMissionDirectory(gateway, opts);
+  const remote = gatewayMissionDirectory(gateway, {
+    ...opts,
+    excludeIds: assistantRuntimeRole({ agentId: ctx.agent.id })
+      ? [ctx.agent.id, process.env.HOUSTON_AGENT_SLUG ?? ctx.agent.id]
+      : [],
+  });
   return {
     async list() {
       const [here, there] = await Promise.all([local.list(), remote.list()]);

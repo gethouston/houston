@@ -26,9 +26,11 @@ const CLAUDE_BACKEND_ID = "anthropic";
 
 /**
  * Layer 2: does this cached conversation hold a Claude session whose pinned
- * access token is no longer the stored one? A cheap, no-network check — one
- * store read, ambient-scoped exactly like the read the turn itself would make
- * (the whole request runs inside the acting identity, HOU-976). Sessions with
+ * access token is no longer the stored one? A cheap, no-network check — the
+ * store read plus, at most, one `statSync` of the shared login file (its parse
+ * is cached until the file changes), ambient-scoped exactly like the read the
+ * turn itself would make (the whole request runs inside the acting identity,
+ * HOU-976). Sessions with
  * no digest (api_key, config-dir credential) and non-Claude backends never
  * match, so they are never rebuilt from under a working setup.
  */

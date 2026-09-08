@@ -19,9 +19,7 @@ export interface RemoteMissionRoute {
   target: RemoteMissionTarget;
   gateway: AssistantGateway;
   fetchImpl?: typeof fetch;
-  /** The caller's verified acting identity, relayed so the gateway
-   *  authorizes the real person rather than the pod. */
-  actingAs?: string;
+  // The gateway derives the acting user from the authenticated pod credential.
 }
 
 /** A board move, in the vocabulary both entries take it in. */
@@ -47,14 +45,22 @@ export interface MissionStartInput {
  */
 export interface MissionOrigin {
   session_key: string;
-  /** The calling agent's id: provenance for the target's logs. */
+  /** The calling agent's id, recorded on the target's row as provenance. */
   agent: string;
+  /** How deep the mission being started sits: 1 when a person's chat asked. */
   depth: number;
 }
 
-/** The one depth a mission may be started at: work Houston started never
- *  starts further work (missions-start.ts). */
-export const MISSION_ORIGIN_DEPTH = 1;
+/**
+ * The deepest a mission may sit. Depth 1 is work a PERSON asked for; a mission
+ * Houston started would be depth 2, which is refused - the board stays a flat
+ * list and a spawn loop cannot run away.
+ *
+ * The number is carried rather than assumed because the caller's parent chat
+ * can live in another pod, where the target has no way to look it up: the
+ * caller counts it from its own board and the target enforces the ceiling.
+ */
+export const MAX_MISSION_DEPTH = 1;
 
 export type MissionParse<T> =
   | { ok: true; value: T }
@@ -137,7 +143,7 @@ export function parseMissionOrigin(
     };
   }
   const depth = typeof origin.depth === "number" ? origin.depth : 0;
-  if (depth !== MISSION_ORIGIN_DEPTH) {
+  if (!Number.isInteger(depth) || depth < 1 || depth > MAX_MISSION_DEPTH) {
     return {
       ok: false,
       code: "mission_depth",
@@ -146,4 +152,21 @@ export function parseMissionOrigin(
     };
   }
   return { ok: true, value: { session_key: sessionKey, agent, depth } };
+}
+
+/**
+ * What a successful start answers with, on BOTH entries (the local route and
+ * the inbound cross-pod leg, which run the same handler). `provider`/`model`
+ * are the pins the mission actually runs on as the TARGET resolved them, which
+ * is why they are echoed rather than assumed: a start that named a provider
+ * the target clamps, or named none at all, still has to be reported truthfully
+ * by the runtime's `start_mission`. Absent means the mission inherits the
+ * target runtime's own defaults, which are not decided until the turn runs.
+ */
+export interface MissionStartResponse {
+  id: string;
+  title: string;
+  status: "running";
+  provider?: string;
+  model?: string;
 }

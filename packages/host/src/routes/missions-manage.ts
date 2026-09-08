@@ -20,13 +20,13 @@ import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 /**
  * The agent's explicit board move (`POST /sandbox/missions/status`): `done` or
  * `archived`, finished missions only. This is the ONE deliberate exception to
- * "only the user moves a card to done" — the user delegated the review to the
+ * "only the user moves a card to done" - the user delegated the review to the
  * agent (PRODUCT-1244's planning-agent flow), the move is an explicit tool call
  * visible in the parent chat, and the guards below keep it away from anything
  * still running and from the agent's own conversation (which the turn's settle
  * would immediately contradict).
  *
- * An optional `agent` moves a card on ANOTHER agent's board — the settle half
+ * An optional `agent` moves a card on ANOTHER agent's board - the settle half
  * of a mission the caller started there. That board is reached wherever it
  * lives: on this disk, or over the wire in the agent's own pod, which applies
  * the very same move with the very same guards.
@@ -42,12 +42,15 @@ export async function handleMissionStatus(
     return json(res, 400, { error: parsed.error, code: parsed.code });
   const route = await resolveMissionRoute(callerCtx, body.agent);
   if (!route.ok) return refuseMissionRoute(route, res);
-  if (route.remote) return forwardMissionStatus(route.route, parsed.value, res);
+  if (route.remote) {
+    await forwardMissionStatus(route.route, parsed.value, res);
+    return;
+  }
   await applyMissionStatus(route.ctx, parsed.value, res);
 }
 
 /**
- * The move itself, on the board this host holds — the half that runs on
+ * The move itself, on the board this host holds - the half that runs on
  * whichever side owns the files, so the pod serving a cross-pod move applies
  * the identical guards (never a running mission, never the conversation the
  * caller is speaking in) rather than a looser copy of them.
@@ -76,20 +79,20 @@ export async function applyMissionStatus(
     return applied;
   });
   if (outcome === "not_found") {
-    json(res, 404, { error: "no mission with that id — check list_missions" });
+    json(res, 404, { error: "no mission with that id - check list_missions" });
     return;
   }
   if (outcome === "running") {
     json(res, 409, {
       error:
-        "that mission is still running — wait for it to finish before moving it",
+        "that mission is still running - wait for it to finish before moving it",
     });
     return;
   }
   if (outcome === "self") {
     json(res, 409, {
       error:
-        "you can't move the mission this conversation belongs to — the user closes it when they're ready",
+        "you can't move the mission this conversation belongs to - the user closes it when they're ready",
     });
     return;
   }
@@ -119,7 +122,7 @@ export async function handleMissionSettle(
     return;
   }
   // Malformed interaction shapes are dropped by resolveInteractionPatch inside
-  // applyActivityUpdate — pass through as-is; null clears explicitly.
+  // applyActivityUpdate - pass through as-is; null clears explicitly.
   const interaction = (body.pending_interaction ??
     null) as PendingInteraction | null;
   const settled = await withDocLock(`${ctx.root}#activity`, async () => {

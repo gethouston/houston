@@ -1,15 +1,19 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
-import { expect, test, vi } from "vitest";
+import { createRoutine, saveRoutines } from "@houston/domain";
+import { afterEach, expect, test, vi } from "vitest";
 import { ApprovalStore } from "../assistant/approvals";
 import type { AssistantCatalog } from "../assistant/catalog";
 import type { Agent, Workspace } from "../domain/types";
+import { LocalPaths } from "../paths";
 import type { CredentialVault, WorkspaceStore } from "../ports";
+import { MemoryVfs } from "../vfs";
 import {
   ASSISTANT_CALL_PATH,
   ASSISTANT_PENDING_PATH,
   handleSandboxAssistant,
 } from "./assistant-sandbox";
+import { liveTurns } from "./live-turn";
 
 /**
  * The runtime-facing operation dispatcher. What these pin: only a valid sandbox
@@ -52,7 +56,12 @@ const CATALOG: AssistantCatalog = {
       confirm: false,
       hidden: false,
       params: [
-        { name: "agentPath", required: true, schema: { type: "string" } },
+        {
+          name: "agentPath",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+        },
         { name: "limit", required: false, schema: { type: "number" } },
       ],
       returns: { type: "array" },
@@ -72,7 +81,12 @@ const CATALOG: AssistantCatalog = {
       confirm: false,
       hidden: false,
       params: [
-        { name: "agentPath", required: true, schema: { type: "string" } },
+        {
+          name: "agentPath",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+        },
         { name: "input", required: true, schema: { type: "object" } },
       ],
       returns: { type: "object" },
@@ -92,8 +106,18 @@ const CATALOG: AssistantCatalog = {
       confirm: false,
       hidden: false,
       params: [
-        { name: "agentPath", required: true, schema: { type: "string" } },
-        { name: "id", required: true, schema: { type: "string" } },
+        {
+          name: "agentPath",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+        },
+        {
+          name: "id",
+          required: true,
+          schema: { type: "string" },
+          resolver: "routines",
+        },
         { name: "updates", required: true, schema: { type: "object" } },
       ],
       returns: { type: "object" },
@@ -113,8 +137,18 @@ const CATALOG: AssistantCatalog = {
       confirm: true,
       hidden: false,
       params: [
-        { name: "agentPath", required: true, schema: { type: "string" } },
-        { name: "id", required: true, schema: { type: "string" } },
+        {
+          name: "agentPath",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+        },
+        {
+          name: "id",
+          required: true,
+          schema: { type: "string" },
+          resolver: "routines",
+        },
       ],
       returns: { type: "null" },
       route: {
@@ -155,7 +189,12 @@ const CATALOG: AssistantCatalog = {
       confirm: false,
       hidden: false,
       params: [
-        { name: "agentId", required: true, schema: { type: "string" } },
+        {
+          name: "agentId",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+        },
         { name: "relPath", required: true, schema: { type: "string" } },
       ],
       returns: { type: "object" },
@@ -196,7 +235,14 @@ const CATALOG: AssistantCatalog = {
       description: "Delete an agent and everything in it.",
       confirm: false,
       hidden: false,
-      params: [{ name: "id", required: true, schema: { type: "string" } }],
+      params: [
+        {
+          name: "id",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+        },
+      ],
       returns: { type: "null" },
       route: {
         method: "DELETE",
@@ -265,6 +311,11 @@ const vault: CredentialVault = {
         ? { workspaceId: WORKSPACE.id, agentId: "w1/Sales" }
         : null,
 };
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+  liveTurns.forget(ASSISTANT_AGENT);
+});
 
 const GATEWAY = { url: "https://gateway.test", token: "gw-token" };
 
@@ -352,12 +403,29 @@ interface CallOpts {
 }
 
 async function call(body: unknown, opts: CallOpts = {}) {
+  const vfs = new MemoryVfs();
+  const paths = new LocalPaths();
+  for (const agent of AGENTS) {
+    await saveRoutines(
+      vfs,
+      paths.agentRoot(WORKSPACE, agent),
+      ["r1", "r2", "r 1-x"].map((id) =>
+        createRoutine(
+          { name: id, prompt: "p", schedule: "0 9 * * *" },
+          id,
+          "2026-01-01",
+        ),
+      ),
+    );
+  }
   const out = mockRes();
   const path = opts.path ?? ASSISTANT_CALL_PATH;
   const handled = await handleSandboxAssistant(
     {
       vault,
       store,
+      vfs,
+      paths,
       fetchImpl: opts.fetchImpl,
       gatewayFronted: opts.gatewayFronted,
       approvals: opts.approvals ?? new ApprovalStore(),
@@ -518,7 +586,7 @@ test("named arguments become the gateway's path, query and body", async () => {
       operation: "updateRoutine",
       params: {
         agentPath: "Work/Ada",
-        id: "r 1/x",
+        id: "r 1-x",
         updates: { cron: "0 9 * * *" },
       },
     },
@@ -526,7 +594,7 @@ test("named arguments become the gateway's path, query and body", async () => {
   );
   // The id is percent-escaped exactly as HoustonClient.seg escapes it.
   expect(sent(calls).url).toBe(
-    "https://gateway.test/v1/routines/r%201%2Fx?agentPath=Work%2FAda",
+    "https://gateway.test/v1/routines/r%201-x?agentPath=Work%2FAda",
   );
   expect(sent(calls).method).toBe("PATCH");
   expect(sent(calls).body).toEqual({ cron: "0 9 * * *" });
@@ -614,12 +682,12 @@ test("a path placeholder is substituted and percent-escaped", async () => {
   const { calls, impl } = fetchStub(() => ({ body: {} }));
   await approvedCall(
     "deleteRoutine",
-    { agentPath: "Work/Ada", id: "r 1/x" },
+    { agentPath: "Work/Ada", id: "r 1-x" },
     { fetchImpl: impl },
   );
   expect(sent(calls).method).toBe("DELETE");
   expect(sent(calls).url).toBe(
-    "https://gateway.test/v1/routines/r%201%2Fx?agentPath=Work%2FAda",
+    "https://gateway.test/v1/routines/r%201-x?agentPath=Work%2FAda",
   );
 });
 
@@ -775,6 +843,7 @@ test("another agent cannot raise an approval request either", async () => {
 // On a managed pod the gateway hands ONE pod's operation credential to ONE
 // agent, so the only claim this host can decode already is that agent's.
 test("on a gateway-fronted pod the pod's own agent is the assistant", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
   const { calls, impl } = fetchStub(() => ({ body: [] }));
   const out = await call(
     { operation: "listOrgs", params: {} },
@@ -1104,4 +1173,122 @@ test("an approval raised for a spoken name is spent by the call that runs on the
   );
   expect(out.status).toBe(200);
   expect(calls[0]?.url).toContain("agentPath=Work%2FDobby");
+});
+
+test("a hosted operation resolves the real gateway agent slug", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
+  const seen: string[] = [];
+  const fetchImpl = (async (url: RequestInfo | URL) => {
+    seen.push(String(url));
+    return new Response(
+      JSON.stringify(
+        String(url).endsWith("/agents")
+          ? [{ id: "dobby-slug", name: "Dobby", workspaceId: "Houston" }]
+          : [],
+      ),
+    );
+  }) as typeof fetch;
+  const result = await call(
+    {
+      operation: "readAgentFile",
+      params: { agentId: "Dobby", relPath: "notes.md" },
+    },
+    { gatewayFronted: true, token: "sbx-sales", fetchImpl },
+  );
+  expect(result.status).toBe(200);
+  expect(seen).toEqual([
+    "https://gateway.test/agents",
+    "https://gateway.test/agents/dobby-slug/agentfile/notes.md",
+  ]);
+});
+
+test("a failed hosted directory reports a gateway error without dispatching", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
+  const fetchImpl = vi.fn<typeof fetch>(async () =>
+    Response.json({ error: "unavailable" }, { status: 503 }),
+  );
+  const result = await call(
+    {
+      operation: "readAgentFile",
+      params: { agentId: "Dobby", relPath: "notes.md" },
+    },
+    { gatewayFronted: true, token: "sbx-sales", fetchImpl },
+  );
+  expect(result.status).toBe(502);
+  expect(result.body).toMatchObject({ code: "directory_unavailable" });
+  expect(fetchImpl).toHaveBeenCalledTimes(1);
+});
+
+/**
+ * S2 — PLAN MODE IS THE HOST'S. The runtime withholds its acting tools in plan,
+ * but the host holds the credential, so a runtime that dispatched anyway (a
+ * bug, a fork, a prompt-injected turn) is refused here from the host's OWN
+ * record of the turn (routes/live-turn.ts), never from the request.
+ */
+test("a write is refused while the host's record of this turn says plan", async () => {
+  liveTurns.start(ASSISTANT_AGENT, "conv-1", "plan");
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const result = await call(
+    {
+      operation: "createRoutine",
+      params: { agentPath: "w1/Dobby", input: { name: "n" } },
+    },
+    { fetchImpl: impl, conversationId: "conv-1" },
+  );
+  expect(result.status).toBe(403);
+  expect(result.body).toMatchObject({ code: "plan_mode" });
+  expect(calls).toEqual([]);
+});
+
+test("a plan turn still reads: a proposal is built out of what is there", async () => {
+  liveTurns.start(ASSISTANT_AGENT, "conv-1", "plan");
+  const { calls, impl } = fetchStub(() => ({ body: [] }));
+  const result = await call(
+    { operation: "listOrgs", params: {} },
+    { fetchImpl: impl, conversationId: "conv-1" },
+  );
+  expect(result.status).toBe(200);
+  expect(calls).toHaveLength(1);
+});
+
+test("the Mode pill switching to execute lets the same write through", async () => {
+  liveTurns.start(ASSISTANT_AGENT, "conv-1", "plan");
+  liveTurns.setMode(ASSISTANT_AGENT, "conv-1", "execute");
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const result = await call(
+    {
+      operation: "createRoutine",
+      params: { agentPath: "w1/Dobby", input: { name: "n" } },
+    },
+    { fetchImpl: impl, conversationId: "conv-1" },
+  );
+  expect(result.status).toBe(200);
+  expect(calls).toHaveLength(1);
+});
+
+test("a mode switch in ANOTHER chat does not re-label this turn", async () => {
+  liveTurns.start(ASSISTANT_AGENT, "conv-1", "plan");
+  liveTurns.setMode(ASSISTANT_AGENT, "conv-other", "execute");
+  const result = await call(
+    {
+      operation: "createRoutine",
+      params: { agentPath: "w1/Dobby", input: { name: "n" } },
+    },
+    { conversationId: "conv-1" },
+  );
+  expect(result.status).toBe(403);
+  expect(result.body).toMatchObject({ code: "plan_mode" });
+});
+
+test("plan refuses the approval card too, before the user is ever asked", async () => {
+  liveTurns.start(ASSISTANT_AGENT, "conv-1", "plan");
+  const result = await call(
+    {
+      operation: "deleteRoutine",
+      params: { agentPath: "w1/Dobby", id: "r1" },
+    },
+    { path: ASSISTANT_PENDING_PATH, conversationId: "conv-1" },
+  );
+  expect(result.status).toBe(403);
+  expect(result.body).toMatchObject({ code: "plan_mode" });
 });

@@ -1,4 +1,5 @@
 export * from "./activities";
+export * from "./agent-color-ids";
 export * from "./agent-name";
 export * from "./anonymize";
 export * from "./anonymize-ai";

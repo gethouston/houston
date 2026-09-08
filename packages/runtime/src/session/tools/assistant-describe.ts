@@ -35,12 +35,28 @@ function renderParam(param: AssistantOperationParam): Record<string, unknown> {
  */
 export function sourceGuidance(op: AssistantOperation): string {
   const sourced = op.params.flatMap((param) =>
-    param.source ? [`"${param.name}" from ${param.source}`] : [],
+    param.source && !param.resolver
+      ? [`"${param.name}" from ${param.source}`]
+      : [],
   );
   if (sourced.length === 0) return "";
   return ` Never invent an identifier: take ${sourced.join(", ")}. Call ${
     sourced.length === 1 ? "that operation" : "those operations"
   } with houston_call first unless you already have the exact value the user gave you.`;
+}
+
+/**
+ * The sentence for the parameters Houston checks itself before it acts: the
+ * model may pass the exact name the user said instead of spending a call on the
+ * lookup first, and a value that matches nothing comes back with the ones that
+ * do - so a wrong guess costs a correction, never a wrong thing done.
+ */
+export function resolutionGuidance(op: AssistantOperation): string {
+  const resolved = op.params.flatMap((param) =>
+    param.resolver ? [`"${param.name}"`] : [],
+  );
+  if (resolved.length === 0) return "";
+  return ` Houston resolves ${resolved.join(", ")} against what exists: pass the id, or the exact name the user gave you. A value that matches nothing is refused with the ones that do.`;
 }
 
 /**
@@ -68,5 +84,5 @@ export function describeOperation(op: AssistantOperation): string {
   const guidance = op.confirm
     ? " This operation is hard to undo, so Houston asks the user itself: call houston_call normally, and if it answers ERROR needs_confirmation, end your turn and wait for their decision on the card Houston shows them."
     : "";
-  return `${contract}\n\nPass these to houston_call keyed by parameter name.${choiceGuidance(op)}${sourceGuidance(op)}${guidance}`;
+  return `${contract}\n\nPass these to houston_call keyed by parameter name.${choiceGuidance(op)}${resolutionGuidance(op)}${sourceGuidance(op)}${guidance}`;
 }

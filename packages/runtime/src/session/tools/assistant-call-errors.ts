@@ -27,6 +27,13 @@ export async function errorFromResponse(
     // A non-JSON body (a proxy's HTML error page) still carries the status.
   }
   const detail = message ?? text.slice(0, 300);
+  // The host enforces plan mode itself (routes/assistant-operate.ts), and its
+  // refusal has to reach the model as a NAMED state rather than a server error:
+  // "the gateway refused" reads as something to retry, and retrying is the one
+  // thing that cannot work here - only the user can leave plan mode.
+  if (code === "plan_mode") {
+    return { code: "plan_mode", status: res.status, message: detail };
+  }
   if (code === "operation_not_supported") {
     return {
       code: "operation_not_supported",

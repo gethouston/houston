@@ -6,8 +6,8 @@ import type { ChatInteractionAnswer } from "@houston-ai/chat";
  * actually clicked.
  *
  * The receipt these produce is what the HOST matches against the request it
- * issued (`packages/host/src/assistant/approvals.ts`); it travels as a marker on
- * the reply text (`@houston/protocol/approval`) and never reaches the model.
+ * issued (`packages/host/src/assistant/approvals.ts`); it travels in the message approvals field
+ * (`@houston/protocol/approval`) and never reaches the model.
  */
 
 /** The shape {@link approvalsFromAnswers} needs off one interaction step: its
@@ -17,7 +17,7 @@ import type { ChatInteractionAnswer } from "@houston-ai/chat";
 export interface ApprovalCardStep {
   id: string;
   requestId?: string;
-  options?: { id: string; label: string }[];
+  options?: { id: string; kind?: "choice" | "approval" }[];
 }
 
 /**
@@ -37,9 +37,12 @@ export function approvalsFromAnswers(
   const approvals: MessageApproval[] = [];
   for (const answer of answers) {
     const step = steps.find((s) => s.id === answer.stepId);
-    if (!step?.requestId) continue;
-    const chosen = step.options?.find((o) => o.label === answer.answer);
-    if (!chosen) continue;
+    if (!step?.requestId || answer.source !== "option") continue;
+    const chosen = step.options?.find(
+      (o) => o.id === answer.optionId && o.kind === "approval",
+    );
+    if (!chosen || (chosen.id !== "approve" && chosen.id !== "decline"))
+      continue;
     approvals.push({
       requestId: step.requestId,
       decision: chosen.id === "approve" ? "approve" : "deny",

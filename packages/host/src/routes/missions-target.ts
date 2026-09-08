@@ -1,8 +1,9 @@
 import type { ServerResponse } from "node:http";
+import { assistantRuntimeRole } from "../launcher/assistant-role";
 import {
   agentRefDirectory,
+  describeAgentRef,
   matchAgentRefs,
-  qualifiedAgentRef,
 } from "./agent-refs";
 import { resolveAssistantGateway } from "./assistant-wiring";
 import { json } from "./http";
@@ -51,8 +52,17 @@ export async function resolveMissionRoute(
   ref: unknown,
   opts: MissionDirectoryOptions = {},
 ): Promise<MissionRoute> {
-  if (ref === undefined || ref === null)
+  if (ref === undefined || ref === null) {
+    if (assistantRuntimeRole({ agentId: ctx.agent.id })) {
+      return {
+        ok: false,
+        status: 400,
+        code: "invalid_agent",
+        error: "name the agent whose board this mission belongs on",
+      };
+    }
     return { ok: true, remote: false, ctx };
+  }
   if (typeof ref !== "string" || !ref.trim()) {
     return {
       ok: false,
@@ -93,7 +103,7 @@ export async function resolveMissionRoute(
       status: 409,
       code: "agent_ambiguous",
       error: `"${wanted}" names more than one agent - say which one: ${found
-        .map(qualifiedAgentRef)
+        .map(describeAgentRef)
         .join(", ")}`,
     };
   }
@@ -127,7 +137,6 @@ export async function resolveMissionRoute(
       target,
       gateway,
       ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
-      ...(ctx.actingAs ? { actingAs: ctx.actingAs } : {}),
     },
   };
 }

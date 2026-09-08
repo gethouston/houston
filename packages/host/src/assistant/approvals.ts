@@ -73,6 +73,25 @@ export class ApprovalStore {
     return request;
   }
 
+  /** Only an unanswered, unexpired request may appear as an approval card. */
+  pending(
+    requestId: string,
+    agentId: string,
+    conversationId?: string,
+  ): ApprovalRequest | undefined {
+    this.prune();
+    const request = this.byId.get(requestId);
+    if (
+      !request ||
+      request.decision !== undefined ||
+      request.agentId !== agentId ||
+      (conversationId !== undefined &&
+        request.conversationId !== conversationId)
+    )
+      return undefined;
+    return { ...request };
+  }
+
   /**
    * Record the user's answer, arriving on their own message. Returns false — and
    * changes nothing — for an id this agent+conversation never raised, one that

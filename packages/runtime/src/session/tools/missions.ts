@@ -111,12 +111,14 @@ export function makeMissionTools(opts: MissionToolOptions) {
         signal,
       );
       if (!target.ok) return toolErrorResult(target.error);
-      const r = (await call(
+      const result = await call<{ missions: unknown[] }>(
         "GET",
         agentQuery(target.agent),
         undefined,
         signal,
-      )) as { missions: unknown[] };
+      );
+      if (!result.ok) return toolErrorResult(result.error);
+      const r = result.data;
       return {
         content: [
           { type: "text" as const, text: JSON.stringify(r.missions, null, 2) },
@@ -147,15 +149,14 @@ export function makeMissionTools(opts: MissionToolOptions) {
       );
       if (!target.ok) return toolErrorResult(target.error);
       const agent = target.agent;
-      const r = (await call(
+      const result = await call<{ id: string; status: string }>(
         "POST",
         "/status",
         { ...params, ...(agent ? { agent } : {}) },
         signal,
-      )) as {
-        id: string;
-        status: string;
-      };
+      );
+      if (!result.ok) return toolErrorResult(result.error);
+      const r = result.data;
       return {
         content: [
           {

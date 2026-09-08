@@ -20,4 +20,11 @@ export {
   OPENAI_COMPATIBLE,
   providerName,
 } from "./providers/lookup";
+// The user-facing provider SENTENCES (never pi's canonical id) — see
+// ./providers/provider-copy.
+export {
+  cloudProviderUnavailable,
+  routineProviderUnavailable,
+  sentenceProviderName,
+} from "./providers/provider-copy";
 export type { HostProvider, ProviderAuthMethod } from "./providers/types";

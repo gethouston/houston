@@ -132,7 +132,15 @@ test("a refusal lists the values accepted right now, not at build time", async (
   s.set([CODEX, ANTHROPIC]);
   await expect(
     s.start({ title: "Draft", prompt: "Write it.", provider: "gemini-cli" }),
-  ).rejects.toThrow(/anthropic \(Claude \(Pro \/ Max\)\)/);
+  ).resolves.toMatchObject({
+    details: {
+      ok: false,
+      error: {
+        code: "invalid_provider",
+        message: expect.stringMatching(/anthropic \(Claude \(Pro \/ Max\)\)/),
+      },
+    },
+  });
   // Refused before the host: no board grew a card for a pin nothing matches.
   expect(s.bodies).toEqual([]);
 });
@@ -142,7 +150,15 @@ test("a provider disconnected after the build is refused by name", async () => {
   s.set([CODEX, off(ANTHROPIC)]);
   await expect(
     s.start({ title: "Draft", prompt: "Write it.", provider: "claude" }),
-  ).rejects.toThrow(/anthropic .*is not connected/i);
+  ).resolves.toMatchObject({
+    details: {
+      ok: false,
+      error: {
+        code: "invalid_provider",
+        message: expect.stringMatching(/anthropic .*is not connected/i),
+      },
+    },
+  });
   expect(s.bodies).toEqual([]);
 });
 
@@ -156,7 +172,15 @@ test("a model is validated against the provider's live catalog", async () => {
       provider: "anthropic",
       model: "gpt-5.5",
     }),
-  ).rejects.toThrow(/claude-sonnet-5/);
+  ).resolves.toMatchObject({
+    details: {
+      ok: false,
+      error: {
+        code: "invalid_provider",
+        message: expect.stringMatching(/claude-sonnet-5/),
+      },
+    },
+  });
   expect(s.bodies).toEqual([]);
 });
 
@@ -189,7 +213,15 @@ test("with no list injected, the live one is the runtime's own status", async ()
 
   await expect(
     run({ title: "Draft", prompt: "Write it.", provider: "claude" }),
-  ).rejects.toThrow(/anthropic .*is not connected/i);
+  ).resolves.toMatchObject({
+    details: {
+      ok: false,
+      error: {
+        code: "invalid_provider",
+        message: expect.stringMatching(/anthropic .*is not connected/i),
+      },
+    },
+  });
 
   live.options = [CODEX, ANTHROPIC];
   await run({ title: "Draft", prompt: "Write it.", provider: "claude" });

@@ -19,6 +19,10 @@
       "types": "./src/provider-dialect.ts",
       "import": "./src/provider-dialect.ts"
     },
+    "./model-display-names": {
+      "types": "./src/model-display-names.ts",
+      "import": "./src/model-display-names.ts"
+    },
     "./provider-default-models": {
       "types": "./src/provider-default-models.ts",
       "import": "./src/provider-default-models.ts"
@@ -26,6 +30,10 @@
     "./model-aliases": {
       "types": "./src/model-aliases.ts",
       "import": "./src/model-aliases.ts"
+    },
+    "./agent-color-ids": {
+      "types": "./src/agent-color-ids.ts",
+      "import": "./src/agent-color-ids.ts"
     },
     "./assistant-catalog-types": {
       "types": "./src/assistant-catalog-types.ts",

@@ -7,6 +7,7 @@ import {
   renderCapabilities,
   renderCatalog,
   renderCoverage,
+  renderOperations,
 } from "./assistant-render.ts";
 
 /** The generated file names, so a missing body is a compile error. */
@@ -34,6 +35,7 @@ export function generateAssistantCatalog(outputDirectory?: string): void {
     ),
     "assistant-capabilities.md": renderCapabilities(result.catalog),
     "assistant-coverage.md": renderCoverage(result),
+    "assistant-operations.md": renderOperations(result.catalog),
   };
   for (const { file, directory } of assistantOutputs) {
     const target = outputDirectory ?? directory;

@@ -21,13 +21,17 @@ import type {
 const missionPath = (route: RemoteMissionRoute, suffix: string): string =>
   `${route.gateway.url}/agents/${encodeURIComponent(route.target.id)}/missions${suffix}`;
 
-/** Start a mission on an agent whose board lives in another pod. */
+/**
+ * Start a mission on an agent whose board lives in another pod. Answers the
+ * status the caller ended up sending, so the caller can charge the start to its
+ * own fan-out budget only when the target actually took it.
+ */
 export function forwardMissionStart(
   route: RemoteMissionRoute,
   input: MissionStartInput,
   origin: MissionOrigin,
   res: ServerResponse,
-): Promise<void> {
+): Promise<number> {
   return forward(route, "POST", missionPath(route, "/start"), res, {
     ...input,
     origin,
@@ -38,7 +42,7 @@ export function forwardMissionStart(
 export function forwardMissionList(
   route: RemoteMissionRoute,
   res: ServerResponse,
-): Promise<void> {
+): Promise<number> {
   return forward(route, "GET", missionPath(route, ""), res);
 }
 
@@ -47,7 +51,7 @@ export function forwardMissionRead(
   route: RemoteMissionRoute,
   query: { id: string; limit?: string },
   res: ServerResponse,
-): Promise<void> {
+): Promise<number> {
   const url = new URL(missionPath(route, "/read"));
   url.searchParams.set("id", query.id);
   if (query.limit) url.searchParams.set("limit", query.limit);
@@ -64,12 +68,13 @@ export function forwardMissionStatus(
   route: RemoteMissionRoute,
   input: MissionStatusInput,
   res: ServerResponse,
-): Promise<void> {
+): Promise<number> {
   return forward(route, "POST", missionPath(route, "/status"), res, input);
 }
 
 /**
- * One call out, the target pod's own answer back.
+ * One call out, the target pod's own answer back, and the status this side
+ * ended up sending.
  *
  * A pod refusal keeps its status and its sentence: the cap, the unknown id and
  * the "no conversation yet" answers are written for the model to act on, and a
@@ -82,7 +87,7 @@ async function forward(
   url: string,
   res: ServerResponse,
   body?: unknown,
-): Promise<void> {
+): Promise<number> {
   const { target, gateway } = route;
   let upstream: Response;
   try {
@@ -91,7 +96,6 @@ async function forward(
       headers: {
         Authorization: `Bearer ${gateway.token}`,
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-        ...(route.actingAs ? { "x-houston-acting-as": route.actingAs } : {}),
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
@@ -101,7 +105,7 @@ async function forward(
       error: `could not reach ${target.name} right now - try again`,
       code: "agent_unreachable",
     });
-    return;
+    return 502;
   }
   const text = await upstream.text();
   const payload = parseJson(text);
@@ -113,11 +117,11 @@ async function forward(
       error: `${target.name} answered something unreadable`,
       code: "agent_unreachable",
     });
-    return;
+    return 502;
   }
   if (upstream.ok) {
     json(res, upstream.status, payload);
-    return;
+    return upstream.status;
   }
   const reason = errorText(payload);
   console.error(
@@ -127,6 +131,7 @@ async function forward(
     error: reason || `${target.name} refused the call`,
     code: "agent_refused",
   });
+  return upstream.status;
 }
 
 /** The parsed body, or undefined when it is not JSON (an empty body is null). */

@@ -7,49 +7,16 @@
  * alone, because nothing anywhere turned a spoken name into an id. Provider
  * names had this ladder already (`provider-choice.ts`); models did not.
  *
- * The table below is the model half of that ladder, and the single place both
- * the agent-facing tool and the host route read display names from. It mirrors
- * the app's picker labels (`app/src/lib/provider-overrides.ts`) so the name the
- * user reads on screen is the name that resolves here; the app is not imported
- * (domain is frontend-agnostic), so the two are kept in sync by hand.
+ * The names themselves live in `model-display-names.ts`, the ONE table every
+ * surface reads, so the name a user sees on screen is the name that resolves
+ * here. This module is the spoken half: matching a written phrase against those
+ * names, and listing them back in a sentence.
  */
 
+import { MODEL_DISPLAY, modelDisplayName } from "./model-display-names";
 import { type ProviderId, VALID_MODELS } from "./provider-model-catalog";
 
-/**
- * `model id → the name the user would say`, per provider, NEWEST FIRST within a
- * family — a bare family name ("opus") resolves to the first row that carries
- * it, so this order IS the "newest of that family" rule.
- *
- * Only the rows a user can name are here: the current generation the app's
- * picker shows. Every other id in `VALID_MODELS` (dated snapshots,
- * `claude-3-*`) stays runnable and resolves by its exact id — it just has no
- * spoken name to resolve FROM. Open-catalog providers (gateways) have no entry
- * at all: their ids are whatever the gateway serves.
- */
-export const MODEL_DISPLAY: Partial<
-  Record<ProviderId, Record<string, string>>
-> = {
-  anthropic: {
-    "claude-fable-5-1": "Fable 5.1",
-    "claude-fable-5": "Fable 5",
-    "claude-opus-5": "Opus 5",
-    "claude-opus-4-8": "Opus 4.8",
-    "claude-opus-4-7": "Opus 4.7",
-    "claude-opus-4-6": "Opus 4.6",
-    "claude-sonnet-5": "Sonnet 5",
-    "claude-sonnet-4-6": "Sonnet 4.6",
-    "claude-haiku-4-5": "Haiku 4.5",
-  },
-  "openai-codex": {
-    "gpt-6-astra": "GPT-6 Astra",
-    "gpt-5.6-sol": "GPT-5.6 Sol",
-    "gpt-5.6-terra": "GPT-5.6 Terra",
-    "gpt-5.6-luna": "GPT-5.6 Luna",
-    "gpt-5.3-codex-spark": "GPT-5.3 Codex Spark",
-    "gpt-5.4-mini": "GPT-5.4 mini",
-  },
-};
+export { MODEL_DISPLAY, modelDisplayName };
 
 /** A model the user named, as this table knows it. */
 export interface SpokenModel {
@@ -60,14 +27,6 @@ export interface SpokenModel {
   /** Whether the spoken name fits several rows and this is the newest of them
    *  — the caller must SAY which one it picked. */
   ambiguous: boolean;
-}
-
-/** The name the app shows for `id`, or undefined for an id with no spoken name. */
-export function modelDisplayName(
-  provider: ProviderId,
-  id: string,
-): string | undefined {
-  return MODEL_DISPLAY[provider]?.[id];
 }
 
 /**

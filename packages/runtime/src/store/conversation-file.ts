@@ -1,24 +1,29 @@
 import {
   existsSync,
   mkdirSync,
-  readdirSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import type {
-  ChatMessage,
-  ConversationHistory,
-  ConversationSummary,
-  TokenUsage,
-  ToolCallRecord,
-} from "@houston/runtime-client";
+import type { ChatMessage } from "@houston/runtime-client";
+import type { UserMessageMeta } from "./conversation-message-meta";
 import {
   dropParsedFile,
   readParsedFile,
   stampParsedFile,
 } from "./conversation-parse-cache";
+
+export { appendAssistantMessageAt } from "./conversation-append-assistant";
+export type {
+  AssistantMessageMeta,
+  UserMessageMeta,
+} from "./conversation-message-meta";
+export {
+  getHistoryAt,
+  type HistoryWindow,
+  listConversationsAt,
+} from "./conversation-queries";
 
 /**
  * Pure, dir-parameterized conversation file logic: one JSON file per
@@ -42,7 +47,21 @@ export type StoredConversation = {
    * cannot lose the carried context.
    */
   needsSessionReplay?: true;
+  /**
+   * The durable half of a Claude `/compact`: the summary the NEXT prompt opens
+   * its fresh session with, written BEFORE the resume mapping is dropped and
+   * removed only once that prompt succeeds (`conversation-compaction.ts`). On
+   * disk so a restart, an eviction or a mode switch between the two cannot lose
+   * the compacted history.
+   */
+  claudeCompaction?: CompactionCheckpoint;
 };
+
+/** A compaction summary waiting to be carried into the next prompt. */
+export interface CompactionCheckpoint {
+  summary: string;
+  createdAt: number;
+}
 
 const fileFor = (dir: string, id: string) =>
   join(dir, `${encodeURIComponent(id)}.json`);
@@ -78,60 +97,6 @@ function save(dir: string, conv: StoredConversation) {
   writeFileSync(tmp, JSON.stringify(conv));
   renameSync(tmp, f); // atomic swap; never leaves a half-written file
   stampParsedFile(f, conv);
-}
-
-/** Optional fields of a persisted user message. */
-export interface UserMessageMeta {
-  author?: ChatMessage["author"];
-  /**
-   * The teammates the message @mentions (HOU-944). Structure only: the model
-   * ran on the plain "@Name" text either way. Omitted when the message mentions
-   * nobody, so a single-player record stays byte-identical to today.
-   */
-  mentions?: ChatMessage["mentions"];
-  /** The turn's wire id (`WireFrame.turnId`) — same on the assistant reply. */
-  turnId?: string;
-  /**
-   * The bubble text to render when it must differ from `content` (the real
-   * prompt the model ran on). Presentation-only; persisted so a history reload
-   * renders `displayText ?? content`. Omitted when the two are the same string.
-   */
-  displayText?: string;
-}
-
-/** Optional fields of a persisted assistant message. */
-export interface AssistantMessageMeta {
-  tools?: ToolCallRecord[];
-  /** The turn's reasoning text, replayed into the mission log on reload (HOU-717). */
-  thinking?: string;
-  usage?: TokenUsage | null;
-  providerSwitch?: ChatMessage["providerSwitch"];
-  compaction?: ChatMessage["compaction"];
-  /**
-   * Marks the message a `/clear` wrote. It is what the chat replays its
-   * boundary divider from, and what `renderReplayPreamble` windows on so the
-   * cleared turns are never carried back into a rebuilt session.
-   */
-  contextCleared?: true;
-  providerError?: ChatMessage["providerError"];
-  /** Files the turn created/modified (relative paths); omitted when empty. */
-  fileChanges?: ChatMessage["fileChanges"];
-  /**
-   * What the turn ended on — a question / connect the user has to answer, or a
-   * pure clean-finish offer. Set ONLY on a clean turn (the caller mirrors the
-   * `done`-frame condition). Persisted so a client that missed the live `done`
-   * and settles from history still renders the card it would have shown.
-   */
-  pendingInteraction?: ChatMessage["pendingInteraction"];
-  /**
-   * Set when the user STOPPED this turn — persisted so the standard "Stopped by
-   * user" line survives a history reload and the reload derivation renders the
-   * interruption instead of a plain successful finish. Absent on completed
-   * turns.
-   */
-  stopped?: true;
-  /** The turn's wire id (`WireFrame.turnId`) — same as the user message's. */
-  turnId?: string;
 }
 
 export function appendUserMessageAt(
@@ -176,38 +141,6 @@ export function appendUserMessageAt(
   };
 }
 
-export function appendAssistantMessageAt(
-  dir: string,
-  id: string,
-  content: string,
-  meta: AssistantMessageMeta = {},
-) {
-  const conv = loadConversation(dir, id);
-  if (!conv) return;
-  conv.messages.push({
-    role: "assistant",
-    content,
-    ts: Date.now(),
-    tools: meta.tools?.length ? meta.tools : undefined,
-    thinking: meta.thinking || undefined,
-    usage: meta.usage ?? undefined,
-    providerSwitch: meta.providerSwitch,
-    compaction: meta.compaction,
-    contextCleared: meta.contextCleared,
-    providerError: meta.providerError,
-    fileChanges: meta.fileChanges,
-    pendingInteraction: meta.pendingInteraction,
-    stopped: meta.stopped,
-    turnId: meta.turnId,
-  });
-  conv.updatedAt = Date.now();
-  save(dir, conv);
-  return {
-    conversation: conv,
-    message: conv.messages[conv.messages.length - 1] as ChatMessage,
-  };
-}
-
 export function renameConversationMutationAt(
   dir: string,
   id: string,
@@ -227,57 +160,4 @@ export function deleteConversationAt(dir: string, id: string): boolean {
   if (!existsSync(f)) return false;
   rmSync(f);
   return true;
-}
-
-/**
- * A transcript window request: `limit` = max messages returned, `before` = the
- * absolute index the window must end at (exclusive) — the caller's current
- * `offset`, for fetching the previous page. Both optional; absent = full
- * history (the pre-windowing contract, unchanged for old clients).
- */
-export interface HistoryWindow {
-  limit?: number;
-  before?: number;
-}
-
-export function getHistoryAt(
-  dir: string,
-  id: string,
-  window: HistoryWindow = {},
-): ConversationHistory | null {
-  const conv = loadConversation(dir, id);
-  if (!conv) return null;
-  const total = conv.messages.length;
-  const end = Math.min(Math.max(window.before ?? total, 0), total);
-  const start =
-    window.limit === undefined ? 0 : Math.max(0, end - window.limit);
-  return {
-    id: conv.id,
-    title: conv.title,
-    messages: conv.messages.slice(start, end),
-    offset: start,
-    totalMessages: total,
-  };
-}
-
-export function listConversationsAt(dir: string): ConversationSummary[] {
-  if (!existsSync(dir)) return [];
-  const out: ConversationSummary[] = [];
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith(".json")) continue;
-    // Path-keyed cached read: a list pass costs one stat per file and parses
-    // only files that actually changed since the last read — it used to
-    // re-parse EVERY transcript on every call.
-    const conv = readParsedFile(join(dir, f));
-    if (!conv) continue; // unreadable/foreign file — skip, as before
-    const last = conv.messages[conv.messages.length - 1];
-    out.push({
-      id: conv.id,
-      title: conv.title,
-      createdAt: conv.createdAt,
-      updatedAt: conv.updatedAt,
-      lastMessage: last?.content.slice(0, 80),
-    });
-  }
-  return out.sort((a, b) => b.updatedAt - a.updatedAt);
 }

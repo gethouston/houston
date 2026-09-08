@@ -1554,6 +1554,26 @@ test("ModelNotOfferedError: a pinned id the provider lacks is a typed model_unav
     expect(same.providerError.suggested_fallback).toBeNull();
 });
 
+test("ModelNotOfferedError names the provider in the dialect a person reads", () => {
+  // The routine run history shows this message VERBATIM (the host's
+  // reconcile → providerErrorSummary), so pi's canonical `openai-codex` was a
+  // raw internal id in front of a non-technical reader. The SHAPE is
+  // load-bearing for unattended readers, so only the provider token moves.
+  const err = new ModelNotOfferedError(
+    "openai-codex",
+    "gpt-5.5",
+    "gpt-6-astra",
+  );
+  expect(err.message).toBe('openai model "gpt-5.5" is not available');
+  // The wire field keeps the canonical id: every card and switch action is
+  // keyed by it.
+  expect(err.providerError.provider).toBe("openai-codex");
+  // A provider spelled the same in both dialects is untouched.
+  expect(
+    new ModelNotOfferedError("anthropic", "claude-2.1", null).message,
+  ).toBe('anthropic model "claude-2.1" is not available');
+});
+
 test("a retired Codex model names a served one as the switch target", () => {
   // Verbatim from Dobby's runtime.log: a mission pinned `openai-codex` with no
   // model, resolved onto the then-default gpt-5.5, and OpenAI answered 404.

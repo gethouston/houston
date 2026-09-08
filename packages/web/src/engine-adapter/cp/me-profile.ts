@@ -38,10 +38,7 @@ export async function getMyProfile(
  * above: a write that reported success on a host that never stored it is a
  * silent failure, so every status — including the 400 of a rejected name or
  * photo — reaches the caller.
- *
- * Not confirmed: trivially reversible. A name or photo override is set back in
- * one call, and it costs nothing.
- * @assistant group:settings
+ * @assistant group:settings unconfirmed: Reversible personal display overrides; costs nothing and changes no permissions.
  */
 export async function setMyProfile(
   cfg: ControlPlaneConfig,

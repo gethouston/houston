@@ -28,6 +28,9 @@ export type AssistantErrorCode =
   | "confirmation_declined"
   /** Nothing in this build can perform it: no route in the catalog, or the host refused. */
   | "operation_not_supported"
+  /** The chat is in Plan mode, so the host performed nothing. The user asked
+   *  for a proposal; only they can move the turn to Execute. */
+  | "plan_mode"
   /** The gateway answered a 4xx/5xx. */
   | "gateway_error"
   /** The host could not be reached, or answered something unreadable. */

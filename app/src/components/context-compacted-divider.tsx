@@ -1,6 +1,6 @@
 import type { ChatCompactionInfo } from "@houston-ai/chat";
 import { useTranslation } from "react-i18next";
-import { getProvider } from "../lib/providers";
+import { providerName } from "../lib/providers";
 
 interface ContextCompactedDividerProps {
   info: ChatCompactionInfo;
@@ -30,8 +30,7 @@ export function ContextCompactedDivider({
 
   let label: string;
   if (info.kind === "provider_switch") {
-    const provider =
-      getProvider(info.provider ?? "")?.name ?? info.provider ?? "";
+    const provider = providerName(info.provider ?? "");
     label = t(
       info.summarized
         ? "providerSwitch.dividerSummary"

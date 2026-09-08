@@ -153,12 +153,6 @@ test("the gateway's 5xx vocabulary maps to typed reasons", () => {
   expect(
     classifyUnavailableBody({ error: "shared skills not configured" }),
   ).toBe("feature-absent");
-  // A wake-shaped error WITHOUT the waking detail is a real failure (the
-  // gateway exhausted its 290s hold, or ensure-awake itself broke) — it keeps
-  // the short handoff patience so the toast is not delayed by 15s.
-  expect(
-    classifyUnavailableBody({ error: "engine unavailable", detail: "boom" }),
-  ).toBe("handoff");
   expect(classifyUnavailableBody({ error: "rolling" })).toBe("handoff");
   expect(classifyUnavailableBody(null)).toBe("handoff");
 
@@ -359,4 +353,51 @@ test("a POST against a waking pod still never blind-retries", async () => {
   });
   expect(res.status).toBe(503);
   expect(inner).toHaveBeenCalledTimes(1);
+});
+
+// ── The assistant-discovery vocabulary ─────────────────────────────────────
+
+test("'engine unavailable' is the gateway's transient bucket, whatever the detail", () => {
+  // `cloud/internal/edge/agents/assistant.go` answers every in-flight state of
+  // the assistant pod this way — provisioning, waking, teardown in flight, a
+  // credential mint still running — each with its OWN detail and a Retry-After.
+  // Matching only "agent is waking" gave all the others the ~2s handoff budget,
+  // so a first-ever assistant open (which always provisions) reported the
+  // assistant absent instead of waiting for the pod it had just asked for.
+  for (const detail of [
+    "agent is waking",
+    "assistant provisioning unavailable",
+    "assistant pod is being torn down; retry",
+    "assistant credential unavailable",
+    "provisioning",
+  ]) {
+    expect(
+      classifyUnavailableBody({ error: "engine unavailable", detail }),
+    ).toBe("engine-waking");
+  }
+  // The gateway also answers it bare, with no detail at all.
+  expect(classifyUnavailableBody({ error: "engine unavailable" })).toBe(
+    "engine-waking",
+  );
+});
+
+test("a 'not_configured' code is a deployment shape, and is never retried", () => {
+  // `503 {"error":"assistant not configured","code":"not_configured"}` — the
+  // credential IS the switch, so this answer is permanent for the session.
+  // Unrecognized it fell to "handoff" and cost two round trips per read to be
+  // told the same thing.
+  expect(
+    classifyUnavailableBody({
+      error: "assistant not configured",
+      code: "not_configured",
+    }),
+  ).toBe("feature-absent");
+  // The CODE is the contract, not the prose beside it.
+  expect(
+    classifyUnavailableBody({
+      error: "certificates off",
+      code: "not_configured",
+    }),
+  ).toBe("feature-absent");
+  expect(retryDelaysFor("feature-absent")).toEqual([]);
 });

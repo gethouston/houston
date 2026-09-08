@@ -10,61 +10,70 @@
 - Routable: 109
 - Unroutable: 12
 - Raw-response routes: 78
-- Acknowledged exceptions: 35
+- Acknowledged exceptions: 44
 - Acknowledged debt: 6
 
 A raw-response route reaches the host through an adapter function that post-processes the reply (unwrapping `items`, 404 fallbacks, `.then` transforms). The route itself carries the host's response unchanged.
 
-## Acknowledged exceptions (35)
+## Acknowledged exceptions (44)
 
 Every operation the assistant cannot drive states why in its `@assistant` tag, and `pnpm check:assistant-coverage` fails the build on any that does not. These are the human-owned exceptions.
 
-- `applyAgentColor` — hidden: client-side branching; its only request is the list refetch, so use updateAgentColor to write a color.
-- `createAgent` — unschematized: the seed's seeds map is an open record of file path to contents.
-- `listInstalledConfigs` — unschematized: an installed template carries its raw config document, whose shape is the template's own.
-- `createApiKey` — hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
-- `listApiKeys` — hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
-- `revokeApiKey` — hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
-- `saveAttachments` — hidden: binary upload; the composer batches the dropped files and base64 frames them itself.
-- `downloadProjectArchive` — hidden: binary download; returns a zip Blob no chat turn can carry.
-- `downloadProjectFile` — hidden: binary download; returns a Blob no chat turn can carry.
-- `uploadProjectFiles` — hidden: binary upload; browser File objects the Files section hands it.
-- `addCustomIntegration` — unschematized: the input's headers is an open record of header name to value.
-- `startCustomIntegrationOAuth` — hidden: starts a browser sign-in only the user can finish.
-- `submitCustomIntegrationCredential` — hidden: takes a secret; the user pastes the integration's own credential.
-- `triggerTypes` — unschematized: a trigger type's config and payload are the outside app's own shapes.
-- `updateActivity` — hidden: its session_key, origin_session_key and pending_interaction fields rewrite mission lineage and author approval cards; a status change belongs to the coordinator's update_mission_status tool.
-- `getOrgProfiles` — hidden: UI plumbing; resolves member ids to the names and photos the app's avatars render.
-- `orgAudit` — unschematized: an audit entry's subject varies per event type and carries the changed record verbatim.
-- `captureCredential` — hidden: credential plumbing; the device-code connect flow calls it as its own last step.
-- `captureSetupCredential` — hidden: credential plumbing; first-run capture, before any agent exists.
-- `forgetCredential` — hidden: destroys the workspace's provider sign-in, including the one serving this conversation.
-- `forgetSetupCredential` — hidden: destroys the space's provider sign-in, before any agent exists.
-- `getTunnelCredentials` — hidden: returns a secret; a short-lived relay credential for the desktop's tunnel sidecar.
-- `pushClaudeOAuthCredential` — hidden: carries a secret; the desktop's Anthropic OAuth credential.
-- `pushSetupClaudeOAuthCredential` — hidden: carries a secret; the desktop's Anthropic OAuth credential, before any agent exists.
-- `setApiKey` — hidden: takes a secret; the user pastes the provider key themselves.
-- `setCustomEndpoint` — hidden: takes a secret; the guided local-model setup supplies the server URL and its key.
-- `setSetupApiKey` — hidden: takes a secret; the user pastes the provider key during first-run setup.
-- `listRoutines` — unschematized: a routine's trigger_config is the outside app's own event shape.
-- `mintRoutineWebhookKey` — hidden: returns a secret; the webhook key is revealed once and calling again rotates it.
-- `getPreference` — hidden: UI plumbing; an untyped key/value store the app reads for its own device settings.
-- `setPreference` — hidden: UI plumbing; an open key/value write that can clobber any app setting.
-- `deleteOrg` — hidden: destroys a shared space and everything inside it for good; that decision stays with the person, and the hosted gateway denies the route to this surface anyway.
-- `getAssistant` — hidden: the assistant IS this agent, so where it lives tells it nothing it can act on.
-- `getHostSidebarLayout` — hidden: UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render.
-- `putHostSidebarLayout` — hidden: UI plumbing; the app's drag and drop owns this write, and calling it blind rearranges the user's sidebar.
+- `applyAgentColor` - hidden: client-side branching; its only request is the list refetch, so use updateAgentColor to write a color.
+- `createAgent` - unschematized: the seed's seeds map is an open record of file path to contents.
+- `listInstalledConfigs` - unschematized: an installed template carries its raw config document, whose shape is the template's own.
+- `updateAgentColor` - unconfirmed: Reversible display preference; changes no agent behavior or access.
+- `createApiKey` - hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
+- `listApiKeys` - hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
+- `revokeApiKey` - hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
+- `saveAttachments` - hidden: binary upload; the composer batches the dropped files and base64 frames them itself.
+- `createPortal` - unconfirmed: Opens the billing portal; changes and charges require the user to act there.
+- `createFolder` - unconfirmed: Creates an empty folder without replacing existing content.
+- `downloadProjectArchive` - hidden: binary download; returns a zip Blob no chat turn can carry.
+- `downloadProjectFile` - hidden: binary download; returns a Blob no chat turn can carry.
+- `uploadProjectFiles` - hidden: binary upload; browser File objects the Files section hands it.
+- `addCustomIntegration` - unschematized: the input's headers is an open record of header name to value.
+- `startCustomIntegrationOAuth` - hidden: starts a browser sign-in only the user can finish.
+- `submitCustomIntegrationCredential` - hidden: takes a secret; the user pastes the integration's own credential.
+- `triggerTypes` - unschematized: a trigger type's config and payload are the outside app's own shapes.
+- `createActivity` - unconfirmed: Creates a board draft without starting work or spending model tokens.
+- `updateActivity` - hidden: its session_key, origin_session_key and pending_interaction fields rewrite mission lineage and author approval cards; a status change belongs to the coordinator's update_mission_status tool.
+- `getOrgProfiles` - hidden: UI plumbing; resolves member ids to the names and photos the app's avatars render.
+- `orgAudit` - unschematized: an audit entry's subject varies per event type and carries the changed record verbatim.
+- `captureCredential` - hidden: credential plumbing; the device-code connect flow calls it as its own last step.
+- `captureSetupCredential` - hidden: credential plumbing; first-run capture, before any agent exists.
+- `forgetCredential` - hidden: destroys the workspace's provider sign-in, including the one serving this conversation.
+- `forgetSetupCredential` - hidden: destroys the space's provider sign-in, before any agent exists.
+- `getTunnelCredentials` - hidden: returns a secret; a short-lived relay credential for the desktop's tunnel sidecar.
+- `pushClaudeOAuthCredential` - hidden: carries a secret; the desktop's Anthropic OAuth credential.
+- `pushSetupClaudeOAuthCredential` - hidden: carries a secret; the desktop's Anthropic OAuth credential, before any agent exists.
+- `setApiKey` - hidden: takes a secret; the user pastes the provider key themselves.
+- `setCustomEndpoint` - hidden: takes a secret; the guided local-model setup supplies the server URL and its key.
+- `setSetupApiKey` - hidden: takes a secret; the user pastes the provider key during first-run setup.
+- `listRoutines` - unschematized: a routine's trigger_config is the outside app's own event shape.
+- `mintRoutineWebhookKey` - hidden: returns a secret; the webhook key is revealed once and calling again rotates it.
+- `getPreference` - hidden: UI plumbing; an untyped key/value store the app reads for its own device settings.
+- `setMyProfile` - unconfirmed: Reversible personal display overrides; costs nothing and changes no permissions.
+- `setPreference` - hidden: UI plumbing; an open key/value write that can clobber any app setting.
+- `listSkillsFromRepo` - unconfirmed: Read-only repository listing; POST carries the source address.
+- `previewCommunitySkill` - unconfirmed: Read-only preview; POST carries the catalog source and skill id.
+- `searchCommunitySkills` - unconfirmed: Read-only search; POST carries the search terms.
+- `deleteOrg` - hidden: destroys a shared space and everything inside it for good; that decision stays with the person, and the hosted gateway denies the route to this surface anyway.
+- `getAssistant` - hidden: the assistant IS this agent, so where it lives tells it nothing it can act on.
+- `createAgentTeam` - unconfirmed: Creates an empty team without moving agents or adding other members.
+- `getHostSidebarLayout` - hidden: UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render.
+- `putHostSidebarLayout` - hidden: UI plumbing; the app's drag and drop owns this write, and calling it blind rearranges the user's sidebar.
 
 ## Acknowledged debt (6)
 
 Exceptions whose author says the operation SHOULD be automatable and is waiting on a refactor.
 
-- `orgAudit` — unroutable: the query string is assembled into the path from an optional options object; routable once before and limit are plain parameters.
-- `createRoutine` — unschematized: input is typed unknown; it should carry the routine wire shape so a caller can build one.
-- `updateRoutine` — unschematized: updates is typed unknown; it should carry the routine wire shape so a caller can build one.
-- `getContext` — unroutable: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
-- `setContext` — unroutable: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
-- `setAgentAssignments` — unroutable: the body is chosen client-side between the v1 userIds and v2 assignments shapes; routable once callers pass only assignments.
+- `orgAudit` - unroutable: the query string is assembled into the path from an optional options object; routable once before and limit are plain parameters.
+- `createRoutine` - unschematized: input is typed unknown; it should carry the routine wire shape so a caller can build one.
+- `updateRoutine` - unschematized: updates is typed unknown; it should carry the routine wire shape so a caller can build one.
+- `getContext` - unroutable: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
+- `setContext` - unroutable: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
+- `setAgentAssignments` - unroutable: the body is chosen client-side between the v1 userIds and v2 assignments shapes; routable once callers pass only assignments.
 
 ## Undocumented operations (0)
 
@@ -145,3 +154,5 @@ No HTTP route could be derived conservatively from the function body, so the ope
 - `setContext`: unescaped path interpolation
 - `setSetupApiKey`: non-assignment body entry
 - `uploadProjectFiles`: body value is not a parameter
+
+Every operation's method, approval policy and parameter resolution: [assistant-operations.md](assistant-operations.md).

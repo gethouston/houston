@@ -49,9 +49,18 @@ describe("isAssistantUnavailableError", () => {
   });
 
   it("never matches other statuses — a real failure must stay loud", () => {
-    for (const status of [400, 401, 403, 404, 500, 502, 504]) {
+    for (const status of [400, 401, 403, 500, 502, 504]) {
       assert.equal(isAssistantUnavailableError({ status }), false);
     }
+  });
+
+  it("matches the pre-route gateway's plain-text 404", () => {
+    // A gateway older than the assistant route has no handler for the path and
+    // answers a plain-text 404 with no code at all.
+    assert.equal(
+      isAssistantUnavailableError({ status: 404, body: "404 page not found" }),
+      true,
+    );
   });
 
   it("never matches non-errors or shapeless throws", () => {
@@ -77,8 +86,8 @@ describe("classifyAssistantDiscoveryFailure", () => {
       kind: "transient",
       retryAfterMs: null,
     });
+    assert.equal(shouldRetryAssistantDiscovery(0, err), true);
     assert.equal(shouldRetryAssistantDiscovery(1, err), true);
-    assert.equal(shouldRetryAssistantDiscovery(2, err), true);
   });
 
   it("reads 501 as UNSUPPORTED and never retries it", () => {
@@ -92,7 +101,7 @@ describe("classifyAssistantDiscoveryFailure", () => {
     assert.deepEqual(classifyAssistantDiscoveryFailure(err), {
       kind: "unsupported",
     });
-    assert.equal(shouldRetryAssistantDiscovery(1, err), false);
+    assert.equal(shouldRetryAssistantDiscovery(0, err), false);
   });
 
   it("reads every explicit absence code as UNSUPPORTED, in both body shapes", () => {
@@ -120,7 +129,7 @@ describe("classifyAssistantDiscoveryFailure", () => {
         `nested ${code}`,
       );
       assert.equal(
-        shouldRetryAssistantDiscovery(1, { status: 503, body: { code } }),
+        shouldRetryAssistantDiscovery(0, { status: 503, body: { code } }),
         false,
         `retry ${code}`,
       );
@@ -134,8 +143,39 @@ describe("classifyAssistantDiscoveryFailure", () => {
     });
   });
 
+  it("reads a 404 as UNSUPPORTED — a gateway that predates the route", () => {
+    // Deployed gateways older than `GET /v1/assistant` answer the unrouted path
+    // with a plain-text 404 (no JSON, no code). Read as `unexpected` it earned a
+    // retry ladder AND a Sentry event per user per session, for a deployment
+    // that simply has no assistant.
+    const err = Object.assign(new Error("Engine error 404"), {
+      status: 404,
+      body: "404 page not found",
+    });
+    assert.deepEqual(classifyAssistantDiscoveryFailure(err), {
+      kind: "unsupported",
+    });
+    assert.equal(shouldRetryAssistantDiscovery(0, err), false);
+  });
+
+  it("believes an absence code only on a status that can carry one", () => {
+    // The code is the gateway's word for "no assistant here", and it is only
+    // ever spoken on 404/501/503. A 500 or a 401 that happens to carry the same
+    // string is a real failure wearing a borrowed name, and must stay loud.
+    for (const status of [400, 401, 403, 500, 502, 504]) {
+      assert.deepEqual(
+        classifyAssistantDiscoveryFailure({
+          status,
+          body: { error: "boom", code: ASSISTANT_NOT_CONFIGURED },
+        }),
+        { kind: "unexpected" },
+        `status ${status}`,
+      );
+    }
+  });
+
   it("reads everything else as UNEXPECTED — the loud path", () => {
-    for (const status of [400, 401, 403, 404, 500, 502, 504]) {
+    for (const status of [400, 401, 403, 500, 502, 504]) {
       assert.deepEqual(
         classifyAssistantDiscoveryFailure({ status }),
         { kind: "unexpected" },
@@ -169,26 +209,25 @@ describe("classifyAssistantDiscoveryFailure", () => {
 });
 
 describe("assistant discovery retry policy", () => {
-  it("gives a transient failure a bounded budget, a real failure one blind retry", () => {
+  it("counts failures from ZERO, so a limit of N buys exactly N retries", () => {
+    // The failure count is the number of failures SEEN SO FAR: 0 on the first
+    // one. Counting it as 1 made every budget one attempt larger than its
+    // docstring claims — six transient attempts (~23s) instead of five, and
+    // "one blind retry" that was two.
     const transient = { status: 503 };
-    for (let count = 1; count <= ASSISTANT_TRANSIENT_RETRY_LIMIT; count++) {
+    for (let count = 0; count < ASSISTANT_TRANSIENT_RETRY_LIMIT; count++) {
       assert.equal(shouldRetryAssistantDiscovery(count, transient), true);
     }
     assert.equal(
-      shouldRetryAssistantDiscovery(
-        ASSISTANT_TRANSIENT_RETRY_LIMIT + 1,
-        transient,
-      ),
+      shouldRetryAssistantDiscovery(ASSISTANT_TRANSIENT_RETRY_LIMIT, transient),
       false,
     );
 
     const unexpected = { status: 500 };
-    for (let count = 1; count <= ASSISTANT_UNEXPECTED_RETRY_LIMIT; count++) {
-      assert.equal(shouldRetryAssistantDiscovery(count, unexpected), true);
-    }
+    assert.equal(shouldRetryAssistantDiscovery(0, unexpected), true);
     assert.equal(
       shouldRetryAssistantDiscovery(
-        ASSISTANT_UNEXPECTED_RETRY_LIMIT + 1,
+        ASSISTANT_UNEXPECTED_RETRY_LIMIT,
         unexpected,
       ),
       false,
@@ -233,6 +272,7 @@ describe("isAssistantUnavailableError stays the reporting-silence predicate", ()
       }),
       true,
     );
+    assert.equal(isAssistantUnavailableError({ status: 404 }), true);
     assert.equal(isAssistantUnavailableError({ status: 500 }), false);
   });
 });

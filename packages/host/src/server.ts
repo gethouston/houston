@@ -74,6 +74,7 @@ import { handleSandboxProviderUsage } from "./routes/provider-usage";
 import { BodyTooLargeError } from "./routes/read-body";
 import { handleRoutineFires } from "./routes/routine-fires";
 import { handleSandboxRoutines } from "./routes/routines-sandbox";
+import { refuseOutOfCoordinatorScope } from "./routes/sandbox-scope";
 import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSharedSkills } from "./routes/shared-skills";
 import { handleSkillsDirectory } from "./routes/skills-directory";
@@ -352,6 +353,11 @@ async function handle(
   // shape themselves.
   if (handleCatalog(method, path, res)) return;
 
+  // THE COORDINATOR'S REACH (routes/sandbox-scope.ts). Every /sandbox/* route
+  // below authenticates a sandbox token, which is the right gate for an
+  // ordinary agent and too wide a one for the personal assistant: this refuses
+  // the families the coordinator has no tool for before any of them is asked.
+  if (refuseOutOfCoordinatorScope(deps, path, url, req, res)) return;
   // Sandbox-facing credential serve (HMAC sandbox token, not a user JWT).
   if (await handleSandboxCredential(deps, method, path, url, req, res)) return;
   // Sandbox-facing revoked-token report (HOU-952): the runtime's turn is the

@@ -327,3 +327,19 @@ test("switching to Plan mode mid-turn stops the next mutation, reads still run",
   expect(read.result.details).toEqual({ ok: true, operation: "listAgents" });
   expect(paths(calls)).toEqual(["/sandbox/assistant/call"]);
 });
+
+test("approval controls are structural and the summary has no closing question", async () => {
+  mockHost();
+  const { holder } = await call("conv-controls", {
+    operation: "deleteAgent",
+    params: { id: "Personal/Dobby" },
+  });
+  const step = raisedQuestion(holder);
+  expect(step.options).toEqual([
+    { kind: "approval", id: "approve" },
+    { kind: "approval", id: "decline" },
+  ]);
+  expect(step.question).toBe(
+    'Delete an agent and everything in it. This affects id "Personal/Dobby".',
+  );
+});

@@ -162,14 +162,16 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
     ).toEqual({ activeProvider: "anthropic", model: "claude-opus-5" });
   });
 
-  test("a new provider id passes through with the universal model floor", () => {
+  test("a new provider id passes through carrying NO other provider's model", () => {
     // The pi-ai catalog is open: a provider id we don't know is NOT invalid and
     // must not be rewritten to the default provider. With no stored model and
-    // no DEFAULT_MODEL entry, the model falls to the universal floor (the
-    // default provider's model) so the turn still resolves.
+    // no DEFAULT_MODEL entry there is no honest default, so the model is left
+    // unset and the runtime picks from THAT provider's own catalog — the
+    // engine's setSettings skips a falsy model rather than storing one. A
+    // universal floor here wrote Codex's id onto every uncurated provider.
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ provider: "newco" })),
-    ).toEqual({ activeProvider: "newco", model: "gpt-6-astra" });
+    ).toEqual({ activeProvider: "newco", model: "" });
   });
 
   test("skips non-config files, missing provider, and bad JSON", () => {

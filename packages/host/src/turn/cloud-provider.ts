@@ -1,5 +1,6 @@
 import type { TurnPin } from "../ports";
 import {
+  cloudProviderUnavailable,
   isCloudProvider,
   isTurnServable,
   OPENAI_COMPATIBLE,
@@ -73,7 +74,7 @@ export async function resolveCloudTurn(
       throw new Error(
         pin.provider === OPENAI_COMPATIBLE
           ? NO_ENDPOINT_PINNED
-          : `${pin.provider} is not available for cloud agents — edit the routine to pick another provider`,
+          : cloudProviderUnavailable(pin.provider),
       );
   }
   const settings = await readSettings(deps, prefix);

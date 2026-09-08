@@ -1,166 +1,147 @@
-import {
-  agentDirectory,
-  matchAgentRefs,
-  qualifiedAgentName,
-  type ReachableAgent,
-} from "../routes/reachable-agents";
+import type { AssistantEntityCollection } from "@houston/domain/assistant-catalog-types";
 import type { AssistantOperation } from "./catalog";
-
-/**
- * Identifiers are never guessed.
- *
- * A catalogued operation takes an agent as a plain string, under four spellings
- * of the same value (`id`, `agentId`, `agentPath`, `agentSlugOrId`), and the
- * schema says only "string". Left there, a model asked to rename "Marketing"
- * sends the word "Marketing" into a route that wants an id, gets a 404 with
- * nothing in it to correct from, and tries another invention. This module is
- * the fix: every agent-naming parameter is resolved against the agents that
- * ACTUALLY exist for this caller before the request is built, and a reference
- * that resolves to nothing comes back with the ones that would have.
- *
- * WHICH parameters those are is derived from the operation's own route — a
- * placeholder sitting in the segment after `agents` names an agent, whatever it
- * is called — never from a hand-kept list that a new operation would silently
- * fall out of.
- *
- * Pure: the reachable agents arrive from the caller, so the local host reads
- * them from its store and a gateway-fronted host from whatever it can see, and
- * the resolution ladder stays one thing.
- */
+import { resolveAgentReference } from "./entity-agent-resolution";
+import type { EntityDirectory } from "./entity-directory";
+import { directoryEntries } from "./entity-resolution-directory";
+import { valueProblem } from "./entity-values";
 
 export type EntityResolutionCode =
   | "invalid_params"
   | "unknown_agent"
-  | "ambiguous_agent";
+  | "ambiguous_agent"
+  | "unknown_entity"
+  | "ambiguous_entity";
 
 export type EntityResolution =
   | { ok: true; params: Record<string, unknown> }
   | { ok: false; code: EntityResolutionCode; message: string };
 
-export interface EntityResolutionDeps {
-  /** Every agent this caller may address, its own workspace first. */
-  agents(): Promise<readonly ReachableAgent[]>;
+export type EntityResolutionDeps = EntityDirectory;
+
+/** The scope a child collection is listed under, once that parent resolved. */
+const PARENT: Partial<
+  Record<AssistantEntityCollection, AssistantEntityCollection>
+> = {
+  routines: "agents",
+  skills: "agents",
+  activities: "agents",
+  "shared-skills": "workspaces",
+};
+
+/** Resolve parent scopes before children regardless of declaration order. */
+function identifiers(op: AssistantOperation) {
+  return op.params
+    .flatMap((param) =>
+      param.resolver ? [{ name: param.name, collection: param.resolver }] : [],
+    )
+    .sort(
+      (a, b) => (PARENT[a.collection] ? 1 : 0) - (PARENT[b.collection] ? 1 : 0),
+    );
 }
 
 /**
- * The parameter names a body/query field is allowed to carry an agent under.
- * The path is the primary evidence; these cover the fields no path describes.
- */
-const AGENT_FIELD_NAMES: ReadonlySet<string> = new Set([
-  "agentId",
-  "agentPath",
-  "agentSlugOrId",
-]);
-
-/** The collection segment whose next segment addresses one agent. */
-const AGENTS_SEGMENT = "agents";
-
-/** The parameter reference a body field reads, without its field path. */
-const rootOf = (reference: string): string =>
-  reference.split(".")[0] ?? reference;
-
-/**
- * Every parameter of `op` that names an agent, derived from the operation
- * itself: the path placeholders that fill an `/agents/{…}` segment, plus the
- * body and query fields spelled with one of the agent field names.
- */
-export function agentIdentifierParams(op: AssistantOperation): string[] {
-  const found = new Set<string>();
-  const route = op.route;
-  if (route) {
-    const segments = route.path.split("/").filter(Boolean);
-    segments.forEach((segment, at) => {
-      if (at === 0 || segments[at - 1] !== AGENTS_SEGMENT) return;
-      const name = /^\{(.+)\}$/.exec(segment)?.[1];
-      if (name) found.add(name);
-    });
-    for (const [key, reference] of Object.entries(route.bodyFields ?? {})) {
-      if (AGENT_FIELD_NAMES.has(key)) found.add(rootOf(reference));
-    }
-    for (const [key, reference] of Object.entries(route.query)) {
-      if (AGENT_FIELD_NAMES.has(key)) found.add(rootOf(reference));
-    }
-  }
-  for (const param of op.params) {
-    if (AGENT_FIELD_NAMES.has(param.name)) found.add(param.name);
-  }
-  // Only parameters the operation actually declares: a placeholder the route
-  // fills from something else is not something a caller can send.
-  const declared = new Set(op.params.map((param) => param.name));
-  return [...found].filter((name) => declared.has(name));
-}
-
-const refuse = (
-  code: EntityResolutionCode,
-  message: string,
-): EntityResolution => ({ ok: false, code, message });
-
-/**
- * Resolve every agent-naming parameter of `op` to the agent's id.
+ * Turn every identifier the model passed into the real one, or refuse with the
+ * values that exist.
  *
- * Accepts the id, the exact name, and `<Workspace>/<Agent>`. A bare name two
- * workspaces both use is refused with the qualified spellings rather than
- * resolved to whichever came first; a reference nothing matches is refused with
- * the whole directory, because a rejection that does not say what WOULD have
- * worked is what sends a model guessing again.
- *
- * Params are returned as a new object; the caller's is never mutated.
+ * Which parameters name a thing is the catalog's own answer (`resolver`, put
+ * there by the generator from the route the value is spliced into), so a new
+ * operation on a known collection is checked the day it is annotated. Directory
+ * failures propagate to the host reporting path: an unavailable list must never
+ * become an empty list, and an empty list must never authorize an unchecked
+ * identifier.
  */
 export async function resolveEntityParams(
   op: AssistantOperation,
   params: Record<string, unknown>,
   deps: EntityResolutionDeps,
 ): Promise<EntityResolution> {
-  const names = agentIdentifierParams(op).filter((name) =>
-    Object.hasOwn(params, name),
-  );
-  if (names.length === 0) return { ok: true, params };
-
   const resolved = { ...params };
-  let reachable: readonly ReachableAgent[] | null = null;
-  for (const name of names) {
+  const refs = identifiers(op);
+  for (const { name, collection } of refs) {
+    if (!Object.hasOwn(params, name) || params[name] === undefined) continue;
     const raw = resolved[name];
-    if (raw === undefined || raw === null) continue;
     if (typeof raw !== "string" || !raw.trim()) {
-      return refuse(
-        "invalid_params",
-        `"${name}" must name one of the user's agents. Call listAgents and pass the id it gives.`,
-      );
+      return {
+        ok: false,
+        code: "invalid_params",
+        message: `"${name}" must be a non-empty ${collection} id or exact name.`,
+      };
     }
-    reachable ??= await deps.agents();
-    const matches = matchAgentRefs(reachable, raw);
-    const only = matches.length === 1 ? matches[0] : undefined;
-    if (matches.length === 0) return unknownAgent(name, raw, reachable);
-    if (!only) return ambiguousAgent(name, raw, matches);
-    resolved[name] = only.agent.id;
+    if (collection === "agents") {
+      const result = resolveAgentReference(name, raw, await deps.agents());
+      if (!result.ok) return result;
+      resolved[name] = result.params[name];
+      continue;
+    }
+    const parent = PARENT[collection];
+    const scope = parent
+      ? resolved[refs.find((ref) => ref.collection === parent)?.name ?? ""]
+      : "";
+    if (parent && (typeof scope !== "string" || !scope)) {
+      return {
+        ok: false,
+        code: "invalid_params",
+        message: `"${name}" requires a resolved ${parent} scope.`,
+      };
+    }
+    const result = matchEntity({
+      name,
+      raw,
+      collection,
+      entries: await directoryEntries(
+        collection,
+        deps,
+        typeof scope === "string" ? scope : "",
+      ),
+    });
+    if (!result.ok) return result;
+    resolved[name] = result.params[name];
   }
-  return { ok: true, params: resolved };
+  const problem = valueProblem(op, resolved);
+  return problem
+    ? { ok: false, code: "invalid_params", message: problem }
+    : { ok: true, params: resolved };
 }
 
-function unknownAgent(
-  name: string,
-  raw: string,
-  reachable: readonly ReachableAgent[],
-): EntityResolution {
-  const directory = agentDirectory(reachable);
-  return refuse(
-    "unknown_agent",
-    directory
-      ? `There is no agent called ${JSON.stringify(raw)}, so "${name}" cannot be resolved. The agents here are: ${directory}. Pass one of those ids.`
-      : `There is no agent called ${JSON.stringify(raw)}, and this user has no agents yet, so "${name}" cannot be resolved. Offer to create one.`,
-  );
+interface Entry {
+  id: string;
+  name: string;
+  email?: string;
 }
 
-function ambiguousAgent(
-  name: string,
-  raw: string,
-  matches: readonly ReachableAgent[],
-): EntityResolution {
-  const candidates = matches
-    .map((entry) => `${qualifiedAgentName(entry)} (id ${entry.agent.id})`)
-    .join(", ");
-  return refuse(
-    "ambiguous_agent",
-    `${JSON.stringify(raw)} names more than one agent, so "${name}" is ambiguous: ${candidates}. Pass the id of the one the user meant, or ask them which.`,
-  );
+/**
+ * One value against one live list: its id, or its exact name (an address for a
+ * person or an invite), case-insensitively. Anything else is refused with every
+ * value that exists, so the next attempt is a choice rather than a guess.
+ */
+function matchEntity(input: {
+  name: string;
+  raw: string;
+  collection: AssistantEntityCollection;
+  entries: readonly Entry[];
+}): EntityResolution {
+  const { name, raw, collection, entries } = input;
+  const normalized = raw.trim().toLowerCase();
+  const byId = entries.filter((entry) => entry.id.toLowerCase() === normalized);
+  const matches = byId.length
+    ? byId
+    : entries.filter((entry) =>
+        [entry.name, entry.email].some(
+          (value) => value?.toLowerCase() === normalized,
+        ),
+      );
+  const only = matches.length === 1 ? matches[0] : undefined;
+  if (only) return { ok: true, params: { [name]: only.id } };
+  const candidates = matches.length ? matches : entries;
+  const accepted = candidates.map(describe).join(", ") || "there are none yet";
+  return {
+    ok: false,
+    code: matches.length ? "ambiguous_entity" : "unknown_entity",
+    message: `"${name}" ${JSON.stringify(raw)} ${
+      matches.length ? "is ambiguous in" : "does not exist in"
+    } ${collection}. Accepted values: ${accepted}. Pass an id, or ask the user which one they mean.`,
+  };
 }
+
+const describe = (entry: Entry): string =>
+  `${entry.name}${entry.email && entry.email !== entry.name ? ` <${entry.email}>` : ""} (id ${entry.id})`;

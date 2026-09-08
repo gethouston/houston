@@ -11,7 +11,7 @@ import {
   parseMissionStatus,
 } from "./missions-remote";
 import type { MissionsCtx, MissionsDeps } from "./missions-sandbox";
-import { startMission } from "./missions-start";
+import { startMission } from "./missions-start-run";
 
 /**
  * The mission family on the PER-AGENT surface — `/agents/{id}/missions…`,
@@ -76,6 +76,16 @@ export async function handleAgentMissions(
   }
   if (method !== verb.method) {
     json(res, 405, { error: "method not allowed", code: "method_not_allowed" });
+    return true;
+  }
+  if (
+    (verb.op === "list" || verb.op === "read") &&
+    url.searchParams.has("agent")
+  ) {
+    json(res, 400, {
+      error: "this mission call names the agent in its address",
+      code: "invalid_agent",
+    });
     return true;
   }
   if (!deps.vfs) {
@@ -155,5 +165,7 @@ async function startInbound(
       error: origin.error,
       code: origin.code,
     });
-  await startMission(ctx, parsed.value, origin.value.session_key, res);
+  // The origin travels whole: the target records WHO asked and at what depth,
+  // which is the only trace of either once the parent's pod is out of reach.
+  await startMission(ctx, parsed.value, origin.value, res);
 }

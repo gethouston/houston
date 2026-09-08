@@ -47,7 +47,10 @@ export async function handleList(
     url.searchParams.get("agent") ?? undefined,
   );
   if (!route.ok) return refuseMissionRoute(route, res);
-  if (route.remote) return forwardMissionList(route.route, res);
+  if (route.remote) {
+    await forwardMissionList(route.route, res);
+    return;
+  }
   const ctx = route.ctx;
   const { items } = await loadActivities(ctx.vfs, ctx.root);
   const missions = items
@@ -87,11 +90,12 @@ export async function handleMissionRead(
   }
   const rawLimit = url.searchParams.get("limit");
   if (route.remote) {
-    return forwardMissionRead(
+    await forwardMissionRead(
       route.route,
       { id, ...(rawLimit ? { limit: rawLimit } : {}) },
       res,
     );
+    return;
   }
   const ctx = route.ctx;
   const limit = tailLimit(rawLimit);

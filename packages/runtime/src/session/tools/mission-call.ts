@@ -2,6 +2,7 @@ import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import type { SandboxFetch } from "./sandbox-fetch";
 import { CONVERSATION_ID_HEADER } from "./save-learning";
+import { hostErrorFrom, type SessionToolErrorDetails } from "./tool-error";
 
 /**
  * The mission tools' one authed call to the host, shared by every tool in the
@@ -13,12 +14,12 @@ import { CONVERSATION_ID_HEADER } from "./save-learning";
  * agent may author.
  */
 export interface MissionCall {
-  (
+  <T>(
     method: "GET" | "POST",
     path: string,
     body: unknown,
     signal: AbortSignal | undefined,
-  ): Promise<unknown>;
+  ): Promise<{ ok: true; data: T } | SessionToolErrorDetails>;
   /**
    * The sandbox transport underneath. A mission tool's REFUSAL has to reach a
    * sibling route to name the agents the caller could have used
@@ -30,37 +31,47 @@ export interface MissionCall {
 }
 
 export function missionCall(fetchSandbox: SandboxFetch): MissionCall {
-  const call = async (
+  const call = async <T>(
     method: "GET" | "POST",
     path: string,
     body: unknown,
     signal: AbortSignal | undefined,
-  ): Promise<unknown> => {
-    const acting = currentActingContext();
-    const conversationId = currentConversationId();
-    const res = await fetchSandbox(`/sandbox/missions${path}`, {
-      method,
-      headers: {
-        "content-type": "application/json",
-        ...(acting?.actingAs ? { "x-houston-acting-as": acting.actingAs } : {}),
-        ...(acting?.actingUser
-          ? { "x-houston-acting-user": acting.actingUser }
-          : {}),
-        ...(conversationId ? { [CONVERSATION_ID_HEADER]: conversationId } : {}),
-      },
-      ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
-      signal,
-    });
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      // The host's error bodies are agent-actionable plain language (cap hit,
-      // still running, unknown agent or id) — relay them so the agent can
-      // explain or correct itself.
-      throw new Error(
-        `mission request failed (${res.status}): ${detail.slice(0, 300)}`,
-      );
+  ): Promise<{ ok: true; data: T } | SessionToolErrorDetails> => {
+    try {
+      const acting = currentActingContext();
+      const conversationId = currentConversationId();
+      const res = await fetchSandbox(`/sandbox/missions${path}`, {
+        method,
+        headers: {
+          "content-type": "application/json",
+          ...(acting?.actingAs
+            ? { "x-houston-acting-as": acting.actingAs }
+            : {}),
+          ...(acting?.actingUser
+            ? { "x-houston-acting-user": acting.actingUser }
+            : {}),
+          ...(conversationId
+            ? { [CONVERSATION_ID_HEADER]: conversationId }
+            : {}),
+        },
+        ...(method === "POST" ? { body: JSON.stringify(body) } : {}),
+        signal,
+      });
+      if (!res.ok)
+        return {
+          ok: false,
+          error: await hostErrorFrom(res, "mission request"),
+        };
+      return { ok: true, data: (await res.json()) as T };
+    } catch (err) {
+      return {
+        ok: false,
+        error: {
+          code: "transport_error",
+          message: err instanceof Error ? err.message : String(err),
+        },
+      };
     }
-    return res.json();
   };
   return Object.assign(call, { sandbox: fetchSandbox });
 }

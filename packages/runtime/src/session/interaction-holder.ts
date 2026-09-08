@@ -19,7 +19,7 @@ type SuggestActionsStep = Extract<InteractionStep, { kind: "suggest_actions" }>;
 
 export interface InteractionHolder {
   /** Approval cards the RUNTIME raised for destructive Houston operations
-   *  (`confirm-gate.ts`), ids `x1`..`xN`. They are question steps on the wire so
+   *  (`recordConfirmation`, interaction-questions.ts), ids `x1`..`xN`. They are question steps on the wire so
    *  every surface renders them today, but they are NOT the model's questions:
    *  `ask_user`'s replace semantics must never be able to erase one, and they
    *  lead the sequence because a delete outranks anything the model wanted to

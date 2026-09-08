@@ -5,7 +5,7 @@ import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { genericErrorDescription } from "../../lib/error-report";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
-import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
+import { getProvider, type ProviderInfo } from "../../lib/providers";
 import { tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { ProviderLoginDialog } from "./provider-login-dialog";
@@ -67,7 +67,10 @@ export function ProviderLoginFallback() {
           authCode: ev.data.auth_code,
         });
         if (action === "ignore") return;
-        const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
+        // The engine names providers in pi's CANONICAL dialect
+        // (`openai-codex`); the catalog and this dialog are keyed by Houston's
+        // DISPLAY id, so the lookup aliases rather than matching raw.
+        const prov = getProvider(ev.data.provider);
         if (action === "open") {
           // Desktop loopback flow: pi's in-process callback server finishes
           // the exchange; the client only opens the URL. Surface a failed
@@ -103,9 +106,12 @@ export function ProviderLoginFallback() {
       }
       if (ev.type === "ProviderLoginComplete") {
         // Only clear a dialog showing THIS provider — a completion for a
-        // different provider must not clobber an in-flight sign-in.
+        // different provider must not clobber an in-flight sign-in. Aliased
+        // for the same reason as the lookup above: the dialog holds a display
+        // id, the event carries pi's canonical one.
+        const completed = getProvider(ev.data.provider)?.id ?? ev.data.provider;
         setDialog((current) =>
-          current?.provider.id === ev.data.provider ? null : current,
+          current?.provider.id === completed ? null : current,
         );
       }
     });

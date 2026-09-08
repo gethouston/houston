@@ -1,12 +1,12 @@
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { matchAgentRefs } from "./agent-refs";
 import {
-  gatewayMissionDirectory,
   localMissionDirectory,
   missionTargetDirectory,
 } from "./missions-directory";
+import { gatewayMissionDirectory } from "./missions-directory-gateway";
 import type { MissionsCtx, MissionsSandboxDeps } from "./missions-sandbox";
 
 /**
@@ -143,4 +143,38 @@ test("a fronted pod lists both sides; an unfronted host stays local", async () =
   expect(desktop.ok && desktop.candidates.map((c) => c.name)).toEqual([
     "Helper",
   ]);
+});
+
+afterEach(() => vi.unstubAllEnvs());
+test("the coordinator is excluded by identity even with a public name", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
+  const ctx = await ctxFor({ gatewayFronted: true });
+  expect(await localMissionDirectory(ctx).list()).toEqual({
+    ok: true,
+    candidates: [],
+  });
+});
+test("ambiguous remote names include their distinct ids", async () => {
+  const { resolveMissionRoute } = await import("./missions-target");
+  const result = await resolveMissionRoute(await ctxFor(), "Dobby", {
+    gateway,
+    fetchImpl: listing([
+      { id: "dobby-1", name: "Dobby", workspaceId: "Houston" },
+      { id: "dobby-2", name: "Dobby", workspaceId: "Houston" },
+    ]),
+  });
+  expect(result.ok).toBe(false);
+  if (result.ok) return;
+  expect(result.error).toContain("id dobby-1");
+  expect(result.error).toContain("id dobby-2");
+});
+
+test("a coordinator cannot select its own board by omitting the target", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
+  const { resolveMissionRoute } = await import("./missions-target");
+  const result = await resolveMissionRoute(
+    await ctxFor({ gatewayFronted: true }),
+    undefined,
+  );
+  expect(result.ok).toBe(false);
 });

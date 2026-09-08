@@ -1,3 +1,15 @@
+/** Collections supported by the host's pinned EntityDirectory contract. */
+export type AssistantEntityCollection =
+  | "agents"
+  | "teams"
+  | "workspaces"
+  | "members"
+  | "invites"
+  | "routines"
+  | "skills"
+  | "shared-skills"
+  | "activities";
+
 /**
  * The assistant operation catalog's WIRE shape: the document
  * `pnpm gen:assistant-catalog` writes to
@@ -98,6 +110,15 @@ export interface AssistantParameterDocument<Schema = AssistantJsonSchema> {
    * Absent when the schema is already a closed set, or when nothing lists them.
    */
   source?: string;
+  /**
+   * The live list the host resolves this value against before it builds the
+   * approval card or the request (`packages/host/src/assistant/entity-directory.ts`):
+   * an id or the exact name is accepted, anything else is refused with the
+   * values that exist. Absent when the schema is already closed.
+   */
+  resolver?: AssistantEntityCollection;
+  /** Why no live list backs this identifier, when none does. */
+  unresolved?: string;
 }
 
 export interface AssistantOperationDocument<Schema = AssistantJsonSchema> {
@@ -112,6 +133,10 @@ export interface AssistantOperationDocument<Schema = AssistantJsonSchema> {
   confirm: boolean;
   /** Withheld entirely — never listed, never described, never callable. */
   hidden: boolean;
+  /** Why it is withheld, written by the author of the operation. */
+  hiddenReason?: string;
+  /** Why an HTTP mutation dispatches without an approval card. */
+  unconfirmed?: string;
   params: AssistantParameterDocument<Schema>[];
   returns: Schema;
   /** `null` when no route could be derived conservatively from the source. */

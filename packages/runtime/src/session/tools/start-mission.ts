@@ -77,10 +77,9 @@ export function makeStartMissionTool(opts: StartMissionOptions) {
       // One read for the whole call, so the pin that is accepted and the
       // sentence that reports it can never describe different provider status.
       const live = opts.resolveProviders();
-      const pin = missionPin(
-        resolveMissionPin(params, live, inherited?.provider),
-        inherited,
-      );
+      const resolved = resolveMissionPin(params, live, inherited?.provider);
+      if (!resolved.ok) return toolErrorResult(resolved.error);
+      const pin = missionPin(resolved.pin, inherited);
       const body = {
         ...params,
         ...(agent ? { agent } : {}),
@@ -90,15 +89,23 @@ export function makeStartMissionTool(opts: StartMissionOptions) {
         // have used.
         ...pin,
       };
-      const r = (await opts.call("POST", "/start", body, signal)) as {
+      const result = await opts.call<{
         id: string;
         title: string;
-      };
+        provider?: string;
+        model?: string;
+      }>("POST", "/start", body, signal);
+      if (!result.ok) return toolErrorResult(result.error);
+      const r = result.data;
+      const effective =
+        r.provider !== undefined || r.model !== undefined
+          ? { provider: r.provider, model: r.model }
+          : pin;
       return {
         content: [
           {
             type: "text" as const,
-            text: `Started mission "${r.title}" (id ${r.id})${agent ? ` on ${agent}` : ""}.${missionRunsOn(pin, live)} It starts after this turn ends - check it later with list_missions or read_mission.`,
+            text: `Started mission "${r.title}" (id ${r.id})${agent ? ` on ${agent}` : ""}.${missionRunsOn(effective, live)} It starts after this turn ends - check it later with list_missions or read_mission.`,
           },
         ],
         details: {
@@ -106,7 +113,7 @@ export function makeStartMissionTool(opts: StartMissionOptions) {
           id: r.id,
           title: r.title,
           ...(agent ? { agent } : {}),
-          ...pin,
+          ...effective,
         },
       };
     },

@@ -1,3 +1,4 @@
+import type { AssistantEntityCollection } from "@houston/domain/assistant-catalog-types";
 import { Type } from "typebox";
 import { describe, expect, test } from "vitest";
 import type { Agent, Workspace } from "../domain/types";
@@ -8,16 +9,16 @@ import type {
   AssistantRoute,
 } from "./catalog";
 import {
-  agentIdentifierParams,
   type EntityResolutionDeps,
   resolveEntityParams,
 } from "./entity-resolution";
 
 /**
- * FIXTURE operations, never the generated catalog: these pin the derivation
- * rule and the refusals, which must not move when the adapter's operations do.
- * The routes are copied verbatim from real catalog entries, so the four
- * spellings of an agent reference are exercised as they actually ship.
+ * FIXTURE operations, never the generated catalog: these pin the resolution and
+ * the refusals, which must not move when the adapter's operations do. Which
+ * parameter carries which `resolver` is the generator's half of the contract
+ * (ui/engine-client/tests/assistant-entity-sources.spec.ts); here it is stated
+ * on the fixture, exactly as the catalog states it on a real operation.
  */
 
 const workspace = (id: string, name: string): Workspace => ({
@@ -47,12 +48,26 @@ const REACHABLE: ReachableAgent[] = [
 ];
 
 const deps = (agents: readonly ReachableAgent[] = REACHABLE) =>
-  ({ agents: async () => agents }) satisfies EntityResolutionDeps;
+  ({
+    agents: async () => agents,
+    teams: async () => [],
+    workspaces: async () => [],
+    members: async () => [],
+    invites: async () => [],
+    routines: async () => [],
+    skills: async () => [],
+    sharedSkills: async () => [],
+    activities: async () => [],
+  }) satisfies EntityResolutionDeps;
 
-const param = (name: string): AssistantOperationParam => ({
-  name,
+/** A parameter, optionally naming the live list its value is resolved against. */
+type ParamSpec = string | [string, AssistantEntityCollection];
+
+const param = (spec: ParamSpec): AssistantOperationParam => ({
+  name: typeof spec === "string" ? spec : spec[0],
   required: true,
   schema: Type.String(),
+  ...(typeof spec === "string" ? {} : { resolver: spec[1] }),
 });
 
 const route = (
@@ -70,8 +85,8 @@ const route = (
 
 const operation = (
   name: string,
-  params: string[],
-  routed: AssistantRoute | null,
+  params: ParamSpec[],
+  routed: AssistantRoute | null = null,
 ): AssistantOperation => ({
   name,
   group: "agents",
@@ -83,98 +98,15 @@ const operation = (
   route: routed,
 });
 
-describe("agentIdentifierParams", () => {
-  test("claims every placeholder filling the segment after /agents", () => {
-    const cases: [string, string[], string[]][] = [
-      ["/agents/{id}", ["id"], ["id"]],
-      [
-        "/v1/agents/{agentSlugOrId}/move",
-        ["agentSlugOrId", "toSlug"],
-        ["agentSlugOrId"],
-      ],
-      [
-        "/agents/{agentPath}/files/folder",
-        ["agentPath", "folderName"],
-        ["agentPath"],
-      ],
-      [
-        "/agents/{agentId}/skills-manifest",
-        ["agentId", "manifest"],
-        ["agentId"],
-      ],
-      [
-        "/agents/{agentId}/agentfile/{relPath}",
-        ["agentId", "relPath"],
-        ["agentId"],
-      ],
-    ];
-    for (const [path, params, expected] of cases) {
-      expect(
-        agentIdentifierParams(operation("op", params, route(path))),
-      ).toEqual(expected);
-    }
-  });
-
-  test("never claims a look-alike collection or a nested placeholder", () => {
-    expect(
-      agentIdentifierParams(
-        operation("listInstalledConfigs", ["id"], route("/v1/agent-configs")),
-      ),
-    ).toEqual([]);
-    expect(
-      agentIdentifierParams(
-        operation(
-          "cancelRoutineRun",
-          ["agentId", "routineId", "runId"],
-          route("/agents/{agentId}/routines/{routineId}/runs/{runId}/cancel"),
-        ),
-      ),
-    ).toEqual(["agentId"]);
-  });
-
-  test("claims an agent named in a body or query field", () => {
-    expect(
-      agentIdentifierParams(
-        operation(
-          "setTarget",
-          ["agentId"],
-          route("/v1/things", {
-            bodyFields: { agentId: "agentId" },
-          }),
-        ),
-      ),
-    ).toEqual(["agentId"]);
-    expect(
-      agentIdentifierParams(
-        operation(
-          "readBoard",
-          ["agentSlugOrId"],
-          route("/v1/board", {
-            query: { agentSlugOrId: "agentSlugOrId" },
-          }),
-        ),
-      ),
-    ).toEqual(["agentSlugOrId"]);
-  });
-
-  test("claims an agent-named parameter even with no derivable route", () => {
-    expect(
-      agentIdentifierParams(operation("x", ["agentId", "body"], null)),
-    ).toEqual(["agentId"]);
-  });
-
-  test("ignores a placeholder the caller cannot send", () => {
-    expect(
-      agentIdentifierParams(operation("x", ["other"], route("/agents/{id}"))),
-    ).toEqual([]);
-  });
-});
-
 describe("resolveEntityParams", () => {
-  const deleteAgent = operation("deleteAgent", ["id"], route("/agents/{id}"));
+  const deleteAgent = operation(
+    "deleteAgent",
+    [["id", "agents"]],
+    route("/agents/{id}"),
+  );
   const writeAgentFile = operation(
     "writeAgentFile",
-    ["agentId", "relPath", "content"],
+    [["agentId", "agents"], "relPath", "content"],
     route("/agents/{agentId}/agentfile/{relPath}"),
   );
 
@@ -289,6 +221,223 @@ describe("resolveEntityParams", () => {
     expect(out).toEqual({
       ok: true,
       params: { relPath: "notes.md", content: "hi" },
+    });
+  });
+});
+
+const directory = () => ({
+  ...deps(),
+  teams: async () => [{ id: "t1", name: "Design" }],
+  workspaces: async () => [{ id: "w1", name: "Studio" }],
+  members: async () => [
+    { userId: "u1", name: "Jules", email: "jules@test.dev" },
+  ],
+  invites: async () => [{ id: "i1", email: "invite@test.dev" }],
+  routines: async (agentId: string) => {
+    expect(agentId).toBe("a-legal");
+    return [{ id: "r1", name: "Daily" }];
+  },
+  skills: async (agentId: string) => {
+    expect(agentId).toBe("a-legal");
+    return [{ slug: "draft", name: "Drafting" }];
+  },
+  sharedSkills: async (workspaceId: string) => {
+    expect(workspaceId).toBe("w1");
+    return [{ slug: "shared", name: "Shared Drafting" }];
+  },
+  activities: async (agentId: string) => {
+    expect(agentId).toBe("a-legal");
+    return [{ id: "m1", name: "Review" }];
+  },
+});
+
+describe("every collection resolves against its live list", () => {
+  test.each<[string, ParamSpec[], Record<string, unknown>, unknown]>([
+    [
+      "a team and a person, by name and by address",
+      [
+        ["teamId", "teams"],
+        ["userId", "members"],
+      ],
+      { teamId: "design", userId: "JULES@test.dev" },
+      { teamId: "t1", userId: "u1" },
+    ],
+    [
+      "an invite, by the address it was sent to",
+      [["inviteId", "invites"]],
+      { inviteId: "INVITE@test.dev" },
+      { inviteId: "i1" },
+    ],
+    [
+      "a routine, under the agent that owns it",
+      [
+        ["id", "routines"],
+        ["agentId", "agents"],
+      ],
+      { agentId: "Legal", id: "daily" },
+      { agentId: "a-legal", id: "r1" },
+    ],
+    [
+      "a skill, by its title",
+      [
+        ["slug", "skills"],
+        ["agentId", "agents"],
+      ],
+      { agentId: "Legal", slug: "Drafting" },
+      { agentId: "a-legal", slug: "draft" },
+    ],
+    [
+      "a mission on the agent's board",
+      [
+        ["id", "activities"],
+        ["agentId", "agents"],
+      ],
+      { agentId: "Legal", id: "Review" },
+      { agentId: "a-legal", id: "m1" },
+    ],
+    [
+      "a shared skill, under its workspace",
+      [
+        ["slug", "shared-skills"],
+        ["workspaceId", "workspaces"],
+      ],
+      { workspaceId: "Studio", slug: "Shared Drafting" },
+      { workspaceId: "w1", slug: "shared" },
+    ],
+  ])("resolves %s", async (_label, params, given, expected) => {
+    const op = operation("fixture", params, null);
+    expect(await resolveEntityParams(op, given, directory())).toEqual({
+      ok: true,
+      params: expected,
+    });
+  });
+
+  test("refuses a child whose parent scope was not given", async () => {
+    const op = operation("loadSkill", [["slug", "skills"]], null);
+    const out = await resolveEntityParams(op, { slug: "draft" }, directory());
+    expect(out).toEqual({
+      ok: false,
+      code: "invalid_params",
+      message: '"slug" requires a resolved agents scope.',
+    });
+  });
+
+  test("rejects an unknown name with the complete accepted list", async () => {
+    const op = operation("fixture", [["teamId", "teams"]], null);
+    const out = await resolveEntityParams(
+      op,
+      { teamId: "guessed" },
+      directory(),
+    );
+    expect(out).toMatchObject({ ok: false, code: "unknown_entity" });
+    if (!out.ok) expect(out.message).toContain("Design (id t1)");
+  });
+
+  test("says so when the list is empty rather than accepting the guess", async () => {
+    const op = operation("fixture", [["teamId", "teams"]], null);
+    const out = await resolveEntityParams(op, { teamId: "Design" }, deps());
+    expect(out).toMatchObject({ ok: false, code: "unknown_entity" });
+    if (!out.ok) expect(out.message).toContain("there are none yet");
+  });
+
+  test("refuses ambiguity with candidate ids, and takes an explicit id", async () => {
+    const op = operation("fixture", [["teamId", "teams"]], null);
+    const duplicate = {
+      ...directory(),
+      teams: async () => [
+        { id: "t1", name: "Design" },
+        { id: "t2", name: "DESIGN" },
+      ],
+    };
+    const out = await resolveEntityParams(op, { teamId: "design" }, duplicate);
+    expect(out).toMatchObject({ ok: false, code: "ambiguous_entity" });
+    if (!out.ok) {
+      expect(out.message).toContain("Design (id t1)");
+      expect(out.message).toContain("DESIGN (id t2)");
+    }
+    expect(await resolveEntityParams(op, { teamId: "t2" }, duplicate)).toEqual({
+      ok: true,
+      params: { teamId: "t2" },
+    });
+  });
+
+  test("propagates a directory failure instead of resolving against nothing", async () => {
+    const op = operation("fixture", [["teamId", "teams"]], null);
+    const broken = {
+      ...directory(),
+      teams: async () => {
+        throw new Error("gateway 503");
+      },
+    };
+    await expect(
+      resolveEntityParams(op, { teamId: "Design" }, broken),
+    ).rejects.toThrow("gateway 503");
+  });
+
+  test("leaves a parameter the catalog does not resolve untouched", async () => {
+    const op = operation("cancelRoutineRun", [["agentId", "agents"], "runId"]);
+    expect(
+      await resolveEntityParams(
+        op,
+        { agentId: "Legal", runId: "guess" },
+        deps(),
+      ),
+    ).toEqual({ ok: true, params: { agentId: "a-legal", runId: "guess" } });
+  });
+});
+
+describe("colour values", () => {
+  const createTeam = operation("createAgentTeam", ["input"]);
+  const setColor = operation("updateAgentColor", [
+    ["agentId", "agents"],
+    "color",
+  ]);
+
+  test.each([
+    "charcoal",
+    "UMBER",
+    "#1a2b3c",
+    "",
+  ])("accepts %s as a colour Houston can store", async (color) => {
+    expect(
+      await resolveEntityParams(createTeam, { input: { color } }, deps()),
+    ).toEqual({ ok: true, params: { input: { color } } });
+  });
+
+  test.each([
+    "blurple",
+    "#12345",
+    "rgb(1,2,3)",
+    7,
+  ])("refuses %s and names the palette", async (color) => {
+    const out = await resolveEntityParams(
+      createTeam,
+      { input: { name: "Design", color } },
+      deps(),
+    );
+    expect(out).toMatchObject({ ok: false, code: "invalid_params" });
+    if (!out.ok) {
+      expect(out.message).toContain('"input.color"');
+      expect(out.message).toContain("charcoal");
+      expect(out.message).toContain("umber");
+    }
+  });
+
+  test("checks a colour passed as a parameter of its own", async () => {
+    const out = await resolveEntityParams(
+      setColor,
+      { agentId: "Legal", color: "neon" },
+      deps(),
+    );
+    expect(out).toMatchObject({ ok: false, code: "invalid_params" });
+    if (!out.ok) expect(out.message).toContain('"color"');
+  });
+
+  test("leaves a body object without a colour alone", async () => {
+    const params = { input: { name: "Design", icon: "star" } };
+    expect(await resolveEntityParams(createTeam, params, deps())).toEqual({
+      ok: true,
+      params,
     });
   });
 });

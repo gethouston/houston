@@ -297,8 +297,12 @@ test("a command waits for the workspace lock, like every turn does", async () =>
   await Promise.resolve();
   await Promise.resolve();
   // The user's message is durable and echoed the instant the command is
-  // accepted (a client must see its own bubble), but the work waits.
+  // accepted (a client must see its own bubble), but the work waits. Recorded
+  // BEFORE the lock as well as echoed: another conversation's turn can hold the
+  // workspace for minutes, and a composer spinning against a transcript that
+  // does not yet carry the message loses it on any reload in between.
   expect(events.map((e) => e.type)).toEqual(["user"]);
+  expect(getHistory(id)?.messages.at(-1)?.content).toBe("/compact");
   expect(compactWithFactHarvest).not.toHaveBeenCalled();
 
   releaseLock();

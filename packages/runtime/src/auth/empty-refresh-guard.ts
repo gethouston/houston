@@ -1,4 +1,5 @@
 import type { Credential } from "@earendil-works/pi-ai";
+import { serveModeOn } from "./serve-context";
 
 /**
  * PRODUCT-1317: no empty-string refresh token ever leaves this process.
@@ -59,21 +60,37 @@ export function maskAccessOnly(
   return isAccessOnlyOAuth(cred) ? undefined : cred;
 }
 
-/**
- * serve.ts binds its non-throwing, single-flighted sync here at load — a
- * direct import would cycle (serve → storage → credential-store → serve).
- * Unbound (desktop/self-host, tests) it is a no-op, which is sound: an
- * access-only entry only exists where the serve path wrote one, and the serve
- * path lives in serve.ts.
- */
-let serveSync: (() => Promise<void>) | null = null;
+/** A sync standing in for serve.ts's own — tests drive the guard through it. */
+let serveSyncOverride: (() => Promise<void>) | null = null;
 
+/** Test seam: run the guard against `fn`, or `null` to restore the real sync. */
 export function bindEmptyRefreshServeSync(
   fn: (() => Promise<void>) | null,
 ): void {
-  serveSync = fn;
+  serveSyncOverride = fn;
 }
 
+/**
+ * Re-serve the expiring access-only entry, resolving serve.ts's non-throwing,
+ * single-flighted sync AT THE MOMENT THE GUARD FIRES.
+ *
+ * Deliberately not a static import (it would cycle: serve → storage →
+ * credential-store → this module) and deliberately not a binding serve.ts
+ * performs at load: a binding is only in place if something imported serve.ts
+ * first, so a caller that reached the store through a shorter path — importing
+ * `serve-context` for `serveModeOn` rather than `serve` — silently disabled the
+ * guard and let pi POST `refresh_token=""` (PRODUCT-1317). Resolved here, the
+ * guard cannot be switched off by an import graph.
+ *
+ * Off serve mode there is nothing to re-serve — an access-only entry only ever
+ * exists where the serve path wrote one — so it stays a genuine no-op there.
+ */
 export async function runEmptyRefreshServeSync(): Promise<void> {
-  await serveSync?.();
+  if (serveSyncOverride) {
+    await serveSyncOverride();
+    return;
+  }
+  if (!serveModeOn()) return;
+  const { syncServedCredentialSafe } = await import("./serve");
+  await syncServedCredentialSafe("empty-refresh-guard");
 }

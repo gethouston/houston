@@ -146,10 +146,10 @@ export async function getSkillsManifest(
  * switching one back restores exactly the previous state.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
- * @param manifest The full list of which skills are on and off. It replaces
- *   the stored one, so read getSkillsManifest first and send it back
- *   changed.
- * @assistant group:skills
+ * @param manifest The complete enabled skill list. Every omitted skill is
+ *   disabled. Read getSkillsManifest first and send the full revised
+ *   manifest.
+ * @assistant group:skills confirm
  */
 export async function putSkillsManifest(
   cfg: ControlPlaneConfig,

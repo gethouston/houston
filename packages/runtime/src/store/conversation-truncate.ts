@@ -26,6 +26,7 @@ export function truncateConversationMutationAt(
   if (at === -1) return null;
   const removed = conv.messages.length - at;
   conv.messages = conv.messages.slice(0, at);
+  delete conv.claudeCompaction;
   conv.needsSessionReplay = true;
   conv.updatedAt = Date.now();
   saveConversation(dir, conv);

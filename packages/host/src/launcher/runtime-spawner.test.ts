@@ -27,6 +27,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 
 test("spawn exposes a configured shared-skills directory to the runtime", () => {
@@ -193,4 +194,52 @@ test("a runtime that fails to spawn aborts the boot instead of burning the healt
     expect(Date.now() - started).toBeLessThan(1_000); // not the 60s budget
     expect(await launcher.status("sales")).toBe("asleep");
   })();
+});
+
+test.each([
+  null,
+  "coordinator",
+] as const)("spawn strips parent host secrets and stamps only trusted role %s", (role) => {
+  const secrets = [
+    "HOUSTON_ASSISTANT_TOKEN",
+    "HOUSTON_ASSISTANT_CP_URL",
+    "HOUSTON_ASSISTANT_USER_ID",
+    "HOUSTON_HOST_TOKEN",
+    "HOUSTON_CREDENTIALS_URL",
+    "HOUSTON_STORE_URL",
+    "HOUSTON_USER_ID",
+    "COMPOSIO_API_KEY",
+  ];
+  for (const key of secrets) vi.stubEnv(key, "host-only");
+  vi.stubEnv("HOUSTON_ASSISTANT_ROLE", "coordinator");
+  new RuntimeProcessSpawner({
+    command: ["runtime"],
+    env: () =>
+      runtimeSpawnEnv({ transcriptDualWrite: false, assistantRole: role }),
+  }).spawn({
+    workspaceDir: "/agent",
+    dataDir: "/data",
+    token: "runtime",
+    port: 4317,
+  });
+  const env = (spawnMock.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv }).env;
+  for (const key of secrets) expect(env).not.toHaveProperty(key);
+  expect(env.HOUSTON_ASSISTANT_ROLE).toBe(role ?? undefined);
+});
+
+test("spawn still hands the runtime the shared Houston home it authenticates from", () => {
+  // HOUSTON_HOME is a path, not a credential: the runtime resolves the SHARED
+  // Claude login dir from it (`<HOUSTON_HOME>/claude-login`), so withholding it
+  // would send every agent to a home with no credential in it.
+  vi.stubEnv("HOUSTON_HOME", "/houston-home");
+  vi.stubEnv("HOUSTON_ASSISTANT_TOKEN", "host-only");
+  new RuntimeProcessSpawner({ command: ["runtime"] }).spawn({
+    workspaceDir: "/agent",
+    dataDir: "/data",
+    token: "runtime",
+    port: 4317,
+  });
+  const env = (spawnMock.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv }).env;
+  expect(env.HOUSTON_HOME).toBe("/houston-home");
+  expect(env).not.toHaveProperty("HOUSTON_ASSISTANT_TOKEN");
 });

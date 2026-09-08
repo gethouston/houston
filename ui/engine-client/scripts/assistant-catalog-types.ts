@@ -35,7 +35,11 @@ export interface UnroutableOperation {
   reason: string;
 }
 
-export type AcknowledgementKind = "hidden" | "unroutable" | "unschematized";
+export type AcknowledgementKind =
+  | "hidden"
+  | "unroutable"
+  | "unschematized"
+  | "unconfirmed";
 
 /** One human-owned exception: the author states why automation stops here. */
 export interface Acknowledgement {
@@ -62,6 +66,11 @@ export interface OperationAnnotation {
   group?: string;
   hidden: boolean;
   hiddenReason?: string;
+  method?: HttpMethod;
+  confirm: boolean;
+  unconfirmed?: string;
+  /** Parameters that address an existing thing with nothing behind them. */
+  openIdentifiers: string[];
   unroutableReason?: string;
   unschematizedReason?: string;
   unknownTags: string[];

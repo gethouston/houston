@@ -42,59 +42,93 @@ const PARENT = { provider: "anthropic", model: "claude-sonnet-5" };
 
 test("a written provider resolves to its id, alias or display name alike", () => {
   expect(resolveMissionPin({ provider: "Codex" }, OPTIONS)).toEqual({
-    provider: "openai-codex",
+    ok: true,
+    pin: {
+      provider: "openai-codex",
+    },
   });
   expect(
     resolveMissionPin({ provider: "OpenRouter", model: "any/thing" }, OPTIONS),
-  ).toEqual({ provider: "openrouter", model: "any/thing" });
+  ).toEqual({ ok: true, pin: { provider: "openrouter", model: "any/thing" } });
 });
 
-test("an unknown provider throws the list of ids and names", () => {
-  expect(() => resolveMissionPin({ provider: "gemini-cli" }, OPTIONS)).toThrow(
-    /openai-codex \(ChatGPT \/ Codex \(Plus \/ Pro\)\)/,
-  );
+test("an unknown provider returns the list of ids and names", () => {
+  expect(resolveMissionPin({ provider: "gemini-cli" }, OPTIONS)).toMatchObject({
+    ok: false,
+    error: {
+      code: "invalid_provider",
+      message: expect.stringMatching(
+        /openai-codex \(ChatGPT \/ Codex \(Plus \/ Pro\)\)/,
+      ),
+    },
+  });
 });
 
-test("a disconnected provider throws a refusal naming it", () => {
-  expect(() => resolveMissionPin({ provider: "claude" }, OPTIONS)).toThrow(
-    /anthropic .*not connected/i,
-  );
+test("a disconnected provider returns a refusal naming it", () => {
+  expect(resolveMissionPin({ provider: "claude" }, OPTIONS)).toMatchObject({
+    ok: false,
+    error: {
+      code: "invalid_provider",
+      message: expect.stringMatching(/anthropic .*not connected/i),
+    },
+  });
 });
 
 test("a model is validated against the provider the same call pins", () => {
-  expect(() =>
+  expect(
     resolveMissionPin({ provider: "codex", model: "gpt5" }, OPTIONS),
-  ).toThrow(/gpt-5.5-codex/);
+  ).toMatchObject({
+    ok: false,
+    error: {
+      code: "invalid_provider",
+      message: expect.stringMatching(/gpt-5.5-codex/),
+    },
+  });
   expect(
     resolveMissionPin({ provider: "codex", model: "gpt-5.5" }, OPTIONS),
-  ).toEqual({ provider: "openai-codex", model: "gpt-5.5" });
+  ).toEqual({ ok: true, pin: { provider: "openai-codex", model: "gpt-5.5" } });
 });
 
 test("a model named alone is validated against the inherited provider", () => {
-  expect(() =>
+  expect(
     resolveMissionPin({ model: "gpt5" }, OPTIONS, "openai-codex"),
-  ).toThrow(/gpt-5.5/);
+  ).toMatchObject({
+    ok: false,
+    error: {
+      code: "invalid_provider",
+      message: expect.stringMatching(/gpt-5.5/),
+    },
+  });
   expect(
     resolveMissionPin({ model: "gpt-5.5" }, OPTIONS, "openai-codex"),
-  ).toEqual({ model: "gpt-5.5" });
+  ).toEqual({ ok: true, pin: { model: "gpt-5.5" } });
   // Nothing to validate against: the model rides through and the provider's own
   // error is what surfaces.
   expect(resolveMissionPin({ model: "whatever" }, OPTIONS)).toEqual({
-    model: "whatever",
+    ok: true,
+    pin: {
+      model: "whatever",
+    },
   });
 });
 
 test("the name the user said pins the model, never the provider default", () => {
   expect(
     resolveMissionPin({ provider: "codex", model: "Luna" }, NAMED),
-  ).toEqual({ provider: "openai-codex", model: "gpt-5.6-luna" });
+  ).toEqual({
+    ok: true,
+    pin: { provider: "openai-codex", model: "gpt-5.6-luna" },
+  });
   expect(
     resolveMissionPin({ provider: "anthropic", model: "Opus 4.6" }, NAMED),
-  ).toEqual({ provider: "anthropic", model: "claude-opus-4-6" });
+  ).toEqual({
+    ok: true,
+    pin: { provider: "anthropic", model: "claude-opus-4-6" },
+  });
   // A name alone rides the provider the mission inherits.
   expect(
     resolveMissionPin({ model: "5.4 mini" }, NAMED, "openai-codex"),
-  ).toEqual({ model: "gpt-5.4-mini" });
+  ).toEqual({ ok: true, pin: { model: "gpt-5.4-mini" } });
 });
 
 // --- the pin the child mission actually carries ----------------------------

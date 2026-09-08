@@ -175,13 +175,18 @@ export function providerAuthMethod(id: string): ProviderAuthMethod {
 
 /**
  * A provider's default model id: a curated entry's configured default, else —
- * for an uncurated pi provider — the first model pi lists for it, else the Codex
- * default (a non-pi id with no catalog). Never throws / undefined.
+ * for an uncurated pi provider — the domain table's hand-picked entry or the
+ * first model pi lists, else `""`.
+ *
+ * NEVER another provider's default. Answering an unknown id with the Codex
+ * model handed a turn (and the settings writer) an OpenAI id for a provider
+ * that does not serve it; `""` is the honest "no opinion", and `setSettings`
+ * skips a falsy model rather than storing one. Never throws / undefined.
  */
 export function providerDefaultModel(id: string): string {
   const curated = PROVIDERS.find((p) => p.id === id);
   if (curated) return curated.defaultModel;
-  return uncuratedDefaultModel(id) ?? config.codexModel;
+  return uncuratedDefaultModel(id) ?? "";
 }
 
 /** The first model id pi lists for a provider, or undefined when it has none. */

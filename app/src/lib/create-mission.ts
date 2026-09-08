@@ -6,6 +6,7 @@
 
 import type { MessageMention } from "@houston-ai/engine-client";
 import { isAgentProvisioning } from "../stores/agent-provisioning";
+import { activityRowPin, definedPins } from "./agent-model-overrides";
 import { analytics } from "./analytics";
 import { createMissionNow } from "./create-mission-now";
 import { createMissionWhileWarming } from "./create-mission-warming";
@@ -124,13 +125,17 @@ export async function createMission(
   const title = opts.title ?? fallbackMissionTitle(titleText);
   const description = text;
 
+  // The row is stamped in pi's CANONICAL dialect (the one every send path reads
+  // it back in), and a model the catalog could not resolve is left OFF the row
+  // rather than written as an empty pin.
+  const rowPin = activityRowPin(opts);
   const item = await tauriActivity.create(
     agent.folderPath,
     title,
     description,
     opts.agentMode,
-    opts.providerOverride,
-    opts.modelOverride,
+    rowPin.provider,
+    rowPin.model,
   );
   const conversationId = item.id;
   const sessionKey = sessionKeyForActivity(conversationId);
@@ -141,9 +146,9 @@ export async function createMission(
       : text;
 
     await tauriChat.send(agent.folderPath, prompt, sessionKey, {
-      providerOverride: opts.providerOverride,
-      modelOverride: opts.modelOverride,
-      effortOverride: opts.effortOverride,
+      // Empty pins dropped: a turn naming a provider and an empty model is a
+      // half-pin the runtime rejects.
+      ...definedPins(opts),
       modeOverride: opts.modeOverride,
       mentions: opts.mentions,
       // `buildPrompt` swaps in a prompt the user should not see (a hidden setup

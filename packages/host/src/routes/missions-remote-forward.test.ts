@@ -67,9 +67,7 @@ test("a start is addressed to the target's pod and relayed verbatim", async () =
   const seen: { url: string; init?: RequestInit }[] = [];
   const { res, captured } = fakeRes();
   await forwardMissionStart(
-    route(answers(201, '{"id":"m-9","title":"t","status":"running"}', seen), {
-      actingAs: "acting-token",
-    }),
+    route(answers(201, '{"id":"m-9","title":"t","status":"running"}', seen)),
     { title: "t", prompt: "p" },
     { session_key: "conv-parent", agent: "agent-1", depth: 1 },
     res,
@@ -77,9 +75,8 @@ test("a start is addressed to the target's pod and relayed verbatim", async () =
   expect(seen[0]?.url).toBe("https://gw.test/agents/slug-1/missions/start");
   const headers = seen[0]?.init?.headers as Record<string, string>;
   expect(headers.Authorization).toBe("Bearer gw-token");
-  // The verified acting identity rides along, so the gateway authorizes the
-  // person rather than the pod.
-  expect(headers["x-houston-acting-as"]).toBe("acting-token");
+  // The gateway derives the acting user from the authenticated pod credential.
+  expect(headers).not.toHaveProperty("x-houston-acting-as");
   expect(captured).toEqual({
     status: 201,
     body: { id: "m-9", title: "t", status: "running" },
@@ -103,15 +100,13 @@ test("a move is posted to the target's pod and relayed verbatim", async () => {
   const seen: { url: string; init?: RequestInit }[] = [];
   const { res, captured } = fakeRes();
   await forwardMissionStatus(
-    route(answers(200, '{"id":"m-9","status":"done"}', seen), {
-      actingAs: "acting-token",
-    }),
+    route(answers(200, '{"id":"m-9","status":"done"}', seen)),
     { id: "m-9", status: "done" },
     res,
   );
   expect(seen[0]?.url).toBe("https://gw.test/agents/slug-1/missions/status");
   const headers = seen[0]?.init?.headers as Record<string, string>;
-  expect(headers["x-houston-acting-as"]).toBe("acting-token");
+  expect(headers).not.toHaveProperty("x-houston-acting-as");
   expect(JSON.parse(String(seen[0]?.init?.body))).toEqual({
     id: "m-9",
     status: "done",
@@ -130,7 +125,7 @@ test("the pod owns the guards, so its refusal to move is what comes back", async
     route(
       answers(
         409,
-        '{"error":"that mission is still running — wait for it to finish before moving it"}',
+        '{"error":"that mission is still running - wait for it to finish before moving it"}',
       ),
     ),
     { id: "m-9", status: "done" },
@@ -139,7 +134,7 @@ test("the pod owns the guards, so its refusal to move is what comes back", async
   expect(captured.status).toBe(409);
   expect(captured.body).toEqual({
     error:
-      "that mission is still running — wait for it to finish before moving it",
+      "that mission is still running - wait for it to finish before moving it",
     code: "agent_refused",
   });
 });

@@ -5,7 +5,7 @@ import { json, type RouteContext, readJson } from "./http-helpers";
  * Narrow rollback for a failed API-key connect (PRODUCT-1321).
  *
  * The host's connect pushes the pasted key here FIRST (the runtime
- * live-verifies and persists it — provider-routes.ts handleApiKey), and only
+ * live-verifies and persists it — api-key-route.ts `handleApiKey`), and only
  * then stores it centrally. When that central PUT fails, the runtime is left
  * holding a verified, usable key the central store never learned about: it is
  * absent from `served-providers.json`, so an authoritative central 404 can

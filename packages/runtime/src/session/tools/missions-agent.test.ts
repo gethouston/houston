@@ -194,7 +194,17 @@ test("an unknown provider never reaches the host, and names the options", async 
   const { start, calls } = tools(false);
   await expect(
     start({ title: "Draft", prompt: "Write it.", provider: "gemini-cli" }),
-  ).rejects.toThrow("openai-codex (ChatGPT / Codex (Plus / Pro))");
+  ).resolves.toMatchObject({
+    details: {
+      ok: false,
+      error: {
+        code: "invalid_provider",
+        message: expect.stringContaining(
+          "openai-codex (ChatGPT / Codex (Plus / Pro))",
+        ),
+      },
+    },
+  });
   expect(calls).toEqual([]);
 });
 
@@ -202,7 +212,15 @@ test("a disconnected provider is refused by name instead of failing later", asyn
   const { start, calls } = tools(false);
   await expect(
     start({ title: "Draft", prompt: "Write it.", provider: "claude" }),
-  ).rejects.toThrow(/anthropic .*is not connected/i);
+  ).resolves.toMatchObject({
+    details: {
+      ok: false,
+      error: {
+        code: "invalid_provider",
+        message: expect.stringMatching(/anthropic .*is not connected/i),
+      },
+    },
+  });
   expect(calls).toEqual([]);
 });
 

@@ -4,6 +4,7 @@ import {
   appendAssistantMessage,
   appendUserMessage,
 } from "../store/conversations";
+import { isNothingToCompact } from "./autocompact-guard";
 import { publish } from "./bus";
 import { disposeConversation } from "./chat";
 import { conversations, getConversation } from "./conversation-cache";
@@ -129,10 +130,6 @@ async function compactNow(id: string, turnId: string): Promise<void> {
  *     `renderReplayPreamble` reads the marker so a later session rebuild
  *     (a provider switch) can never resurrect the cleared turns either.
  */
-/** pi's refusal when a session holds too little to summarize (its `compact()`
- *  throws `Nothing to compact (session too small)`). */
-const NOTHING_TO_HARVEST = /nothing to compact/i;
-
 async function clearNow(id: string, turnId: string): Promise<void> {
   if (isAssistantConversation(id)) {
     try {
@@ -143,7 +140,7 @@ async function clearNow(id: string, turnId: string): Promise<void> {
       // A chat too short for pi to summarize is the ORDINARY state of a fresh
       // conversation, not a failure — logging it at warn level teaches us to
       // scroll past warnings. Everything else IS a failure and stays loud.
-      if (NOTHING_TO_HARVEST.test(why)) {
+      if (isNothingToCompact(why)) {
         console.info(
           "[conversation-command] nothing to harvest before /clear:",
           why,

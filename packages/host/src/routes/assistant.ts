@@ -24,7 +24,9 @@ import { json } from "./http";
  * Gateway-fronted (a managed cloud pod): the GATEWAY owns discovery — it alone
  * knows which pod holds this user's assistant, which a single pod cannot. 501
  * is the honest answer; a second, divergent implementation here would be worse
- * than none.
+ * than none. A deployment with no agent tree of its own answers 501 too, with
+ * its own code: both are "this engine does not implement discovery", and both
+ * are permanent for the session.
  */
 
 export const ASSISTANT_PATH = "/v1/assistant";
@@ -81,8 +83,13 @@ export async function handleAssistant(
     });
     return true;
   }
+  // 501, like the gateway-fronted branch above: a deployment with no on-disk
+  // agent tree cannot grow one mid-session, so this is "not implemented here",
+  // not "try again". A 503 put it in the transport's retryable set, so every
+  // such host spent ten seconds of blind retries before the client could read
+  // the answer that was already final.
   if (!deps.ensureSyntheticAgentDir) {
-    json(res, 503, {
+    json(res, 501, {
       error: "this host cannot hold an assistant: no agent tree is configured",
       code: "assistant_unavailable",
     });

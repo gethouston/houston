@@ -100,3 +100,7 @@ test("surfaces a host rejection as a tool error (never a silent success)", async
     error: { code: "host_error", status: 400 },
   });
 });
+
+test("agent-facing learning instructions contain no em dashes", () => {
+  expect(tool.description).not.toContain("\u2014");
+});

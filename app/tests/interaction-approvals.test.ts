@@ -8,14 +8,16 @@ import {
 } from "../src/lib/interaction-approvals.ts";
 
 /**
- * A3 / A4 from the app's side: a person's click on an approval card becomes a
- * receipt bound to the host's request id, and anything short of a click becomes
- * nothing at all.
+ * A3 / A4 from the app's side: a person's click on an approval CONTROL becomes a
+ * receipt bound to the host's request id, and anything short of that click -
+ * typed prose, an ordinary option that happens to be called "approve" - becomes
+ * nothing at all. The control is structural (`kind: "approval"` + an id); its
+ * wording is the app's own locale and carries no meaning here.
  */
 
-const options = [
-  { id: "approve", label: "Yes, go ahead" },
-  { id: "decline", label: "No, don't do it" },
+const options: ApprovalCardStep["options"] = [
+  { id: "approve", kind: "approval" },
+  { id: "decline", kind: "approval" },
 ];
 
 const card = (id: string, requestId: string): ApprovalCardStep => ({
@@ -24,10 +26,25 @@ const card = (id: string, requestId: string): ApprovalCardStep => ({
   options,
 });
 
-const answer = (stepId: string, text: string): ChatInteractionAnswer => ({
+/** A control the person clicked, with the wording their locale showed them. */
+const clicked = (
+  stepId: string,
+  optionId: string,
+  text: string,
+): ChatInteractionAnswer => ({
   stepId,
   question: "Delete it?",
   answer: text,
+  source: "option",
+  optionId,
+});
+
+/** Words the person typed into the composer, whatever they happen to say. */
+const typed = (stepId: string, text: string): ChatInteractionAnswer => ({
+  stepId,
+  question: "Delete it?",
+  answer: text,
+  source: "text",
 });
 
 describe("approvalsFromAnswers", () => {
@@ -35,7 +52,7 @@ describe("approvalsFromAnswers", () => {
     deepStrictEqual(
       approvalsFromAnswers(
         [card("x1", "req-1")],
-        [answer("x1", "Yes, go ahead")],
+        [clicked("x1", "approve", "Yes, go ahead")],
       ),
       [{ requestId: "req-1", decision: "approve" }],
     );
@@ -45,7 +62,7 @@ describe("approvalsFromAnswers", () => {
     deepStrictEqual(
       approvalsFromAnswers(
         [card("x1", "req-1")],
-        [answer("x1", "No, don't do it")],
+        [clicked("x1", "decline", "No, don't do it")],
       ),
       [{ requestId: "req-1", decision: "deny" }],
     );
@@ -55,7 +72,10 @@ describe("approvalsFromAnswers", () => {
     deepStrictEqual(
       approvalsFromAnswers(
         [card("x1", "req-1"), card("x2", "req-2")],
-        [answer("x1", "Yes, go ahead"), answer("x2", "No, don't do it")],
+        [
+          clicked("x1", "approve", "Yes, go ahead"),
+          clicked("x2", "decline", "No, don't do it"),
+        ],
       ),
       [
         { requestId: "req-1", decision: "approve" },
@@ -68,7 +88,27 @@ describe("approvalsFromAnswers", () => {
     deepStrictEqual(
       approvalsFromAnswers(
         [card("x1", "req-1")],
-        [answer("x1", "wait, what does that mean?")],
+        [typed("x1", "wait, what does that mean?")],
+      ),
+      [],
+    );
+  });
+
+  it("typing the control's own wording still yields no receipt", () => {
+    deepStrictEqual(
+      approvalsFromAnswers(
+        [card("x1", "req-1")],
+        [typed("x1", "Yes, go ahead")],
+      ),
+      [],
+    );
+  });
+
+  it("an ordinary option named approve decides nothing", () => {
+    deepStrictEqual(
+      approvalsFromAnswers(
+        [{ id: "x1", requestId: "req-1", options: [{ id: "approve" }] }],
+        [clicked("x1", "approve", "Yes, go ahead")],
       ),
       [],
     );
@@ -78,7 +118,7 @@ describe("approvalsFromAnswers", () => {
     deepStrictEqual(
       approvalsFromAnswers(
         [{ id: "q1", options }],
-        [answer("q1", "Yes, go ahead")],
+        [clicked("q1", "approve", "Yes, go ahead")],
       ),
       [],
     );
@@ -112,7 +152,7 @@ describe("a composed reply that answered an approval card", () => {
   it("leaves the reply body untouched: receipts ride their own field, never the text", () => {
     const text = encodeInteractionAnswersMessage({
       ...base,
-      answers: [answer("x1", "Yes, go ahead")],
+      answers: [clicked("x1", "approve", "Yes, go ahead")],
     });
     // The person's words are the person's words. Nothing about an approval is
     // hidden inside them - the host reads the receipts off the request itself.

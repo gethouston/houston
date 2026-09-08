@@ -1,4 +1,5 @@
 import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { CompactionCheckpoints } from "../../store/conversation-compaction";
 import type { ThinkingLevel } from "../types";
 import type { SessionsStore } from "./sessions-store";
 
@@ -29,6 +30,7 @@ export interface ClaudeSessionDeps {
   /** Static per-session options (cwd, tools, canUseTool, systemPrompt, …). */
   baseOptions: Options;
   sessionsStore: SessionsStore;
+  compactions?: CompactionCheckpoints;
   /** Initial SDK model string. */
   model: string;
   thinkingLevel?: ThinkingLevel;

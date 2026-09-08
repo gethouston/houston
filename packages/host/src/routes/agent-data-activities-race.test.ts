@@ -135,3 +135,37 @@ test("activity PATCH validates and deletes null provider/model pins", async () =
   const invalid = await patch(store, "id-pinned", { provider: 42 });
   expect(invalid.status).toBe(400);
 });
+
+test("create conflicts without replacing an existing mission or provenance", async () => {
+  const store = slowStore();
+  await post(store, { id: "existing", title: "Original" });
+  await patch(store, "existing", { status: "done" });
+  const original = store.data.get(KEY);
+  const result = await post(store, { id: "existing", title: "Replacement" });
+  expect(result.status).toBe(409);
+  expect(result.body).toMatchObject({ code: "activity_exists" });
+  expect(store.data.get(KEY)).toBe(original);
+});
+
+test("the same create repeated answers with the row already on the board", async () => {
+  const store = slowStore();
+  await post(store, { id: "warming", title: "Warm-up", description: "d" });
+  await patch(store, "warming", { status: "done" });
+  const settled = store.data.get(KEY);
+  const retried = await post(store, {
+    id: "warming",
+    title: "Warm-up",
+    description: "d",
+  });
+  expect(retried.status).toBe(201);
+  expect(retried.body).toMatchObject({ id: "warming", status: "done" });
+  expect(store.data.get(KEY)).toBe(settled);
+});
+test("concurrent same-id creates produce one conflict", async () => {
+  const store = slowStore();
+  const results = await Promise.all([
+    post(store, { id: "same", title: "A" }),
+    post(store, { id: "same", title: "B" }),
+  ]);
+  expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+});

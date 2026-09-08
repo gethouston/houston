@@ -14,6 +14,8 @@ import type {
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
+import { liveTurns } from "./live-turn";
+import { missionFanout } from "./mission-fanout";
 import { handleSandboxMissions } from "./missions-sandbox";
 
 /**
@@ -102,13 +104,23 @@ async function call(
   method: string,
   path: string,
   body: unknown,
-  opts: { conversationId?: string; token?: string } = {},
+  opts: {
+    conversationId?: string;
+    /** A conversation the RUNTIME claims and the host never recorded (S7). */
+    forgedConversationId?: string;
+    token?: string;
+  } = {},
 ) {
   const headers: Record<string, string> = {
     authorization: `Bearer ${opts.token ?? "sb-good"}`,
   };
+  if (opts.forgedConversationId)
+    headers[CONVERSATION_ID_HEADER] = opts.forgedConversationId;
+  // The host's own record of the turn is what every mission decision reads
+  // (routes/live-turn.ts); production writes it when the turn starts.
   if (opts.conversationId)
-    headers[CONVERSATION_ID_HEADER] = opts.conversationId;
+    liveTurns.start(agent.id, opts.conversationId, "execute");
+  else liveTurns.forget(agent.id);
   const { res, captured } = fakeRes();
   const handled = await handleSandboxMissions(
     {
@@ -156,6 +168,8 @@ beforeEach(async () => {
   agent = await store.createAgent({ workspaceId: ws.id, name: "Helper" });
   root = paths.agentRoot(ws, agent);
   await saveActivities(vfs, root, [PARENT]);
+  missionFanout.forget(agent.id);
+  liveTurns.forget(agent.id);
 });
 
 test("a bad sandbox token is rejected", async () => {
@@ -469,4 +483,105 @@ test("a non-matching path is not handled", async () => {
     res,
   );
   expect(handled).toBe(false);
+});
+
+test("the local start echoes resolved provider and model", async () => {
+  const result = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "codex", model: "Luna" },
+    { conversationId: "conv-parent" },
+  );
+  expect(result.body).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-5.6-luna",
+  });
+});
+test("mission refusal copy contains no em dash", async () => {
+  const result = await call("POST", "/sandbox/missions/status", {
+    id: PARENT.id,
+    status: "done",
+  });
+  expect(JSON.stringify(result.body)).not.toContain("\u2014");
+});
+
+/**
+ * S7 — PROVENANCE THE CALLER CANNOT AUTHOR. The conversation a start comes
+ * from decides whether it is allowed at all, so it is the host's record of the
+ * turn that answers, never the runtime's header.
+ */
+test("a forged conversation header does not buy a fresh top-level chat", async () => {
+  // The caller IS working inside a mission; it claims a conversation of its own
+  // invention, which the depth guard would read as a person's chat.
+  await saveActivities(vfs, root, [
+    { ...PARENT, origin_session_key: "conv-grandparent", origin_depth: 1 },
+  ]);
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent", forgedConversationId: "conv-invented" },
+  );
+  expect(r.status).toBe(409);
+  expect(r.body).toMatchObject({ code: "mission_depth" });
+  expect(fired).toEqual([]);
+});
+
+test("a header with no turn behind it cannot start anything", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { forgedConversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(400);
+  expect(r.body).toMatchObject({ code: "not_in_turn" });
+  expect(fired).toEqual([]);
+});
+
+test("the started row records WHO asked and how deep it sits", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+  const started = (await onDisk()).find((a) => a.origin_session_key);
+  expect(started).toMatchObject({
+    origin_session_key: "conv-parent",
+    origin_agent: agent.id,
+    origin_depth: 1,
+  });
+});
+
+test("the caller's own budget refuses a flood spread across boards", async () => {
+  // Nothing is running on THIS board, so only the caller-side ledger can refuse.
+  for (let i = 0; i < 20; i++)
+    missionFanout.record(agent.id, {
+      missionId: `remote-${i}`,
+      boardRoot: null,
+    });
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(409);
+  expect(r.body).toMatchObject({ code: "mission_fanout" });
+  expect(fired).toEqual([]);
+});
+
+test("a finished local mission gives its caller's slot back", async () => {
+  for (let i = 0; i < 20; i++)
+    missionFanout.record(agent.id, { missionId: `m-${i}`, boardRoot: root });
+  // Not one of them is on the board, so every slot reconciles away.
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
 });

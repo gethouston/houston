@@ -60,8 +60,9 @@ describe("the label path aliases the provider dialect, like the icon path", () =
       providerErrorModelLabel("anthropic", "claude-sonnet-5"),
       "Sonnet 5",
     );
-    // An id the catalog has never seen is still the truest name for it.
-    strictEqual(providerErrorModelLabel("openai", "gpt-nine"), "gpt-nine");
+    // An id the catalog has never seen is still NAMED, never echoed raw — the
+    // card reads "GPT Nine ran out of room", not "gpt-nine ran out of room".
+    strictEqual(providerErrorModelLabel("openai", "gpt-nine"), "GPT Nine");
   });
 
   it("points Gemini outages at Google's status page (D5: dead branch)", () => {

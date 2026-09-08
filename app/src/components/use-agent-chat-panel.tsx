@@ -91,9 +91,13 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
-import { genericErrorDescription } from "../lib/error-report";
+import {
+  genericErrorDescription,
+  logAndReportError,
+} from "../lib/error-report";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import { encodeInteractionAnswersMessage } from "../lib/interaction-answers-marker";
+import { localizeApprovalQuestion } from "../lib/interaction-approval-labels";
 import { approvalsFromAnswers } from "../lib/interaction-approvals";
 import {
   type ConnectOutcome,
@@ -513,7 +517,7 @@ export function useAgentChatPanel({
         setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
         setAgentEffort((cfg.effort as string) ?? null);
       })
-      .catch(() => {});
+      .catch((err) => logAndReportError("chat.read-agent-model", err));
   }, [path, initialTurnMode]);
 
   const previousSessionKeyRef = useRef(selectedSessionKey);
@@ -537,7 +541,7 @@ export function useAgentChatPanel({
     tauriProvider
       .getDefault()
       .then((p) => setLastUsedProvider(p || null))
-      .catch(() => {});
+      .catch((err) => logAndReportError("chat.read-default-provider", err));
   }, []);
 
   const { data: activities } = useActivity(path ?? undefined);
@@ -795,7 +799,7 @@ export function useAgentChatPanel({
         model: effectiveModel,
       })
       .catch((err) => {
-        console.error("[chat] failed to pin the conversation's model:", err);
+        logAndReportError("chat.pin-conversation-model", err);
       });
   }, [path, selectedActivity, hasMessages, effectiveProvider, effectiveModel]);
 
@@ -867,7 +871,7 @@ export function useAgentChatPanel({
             model: mod,
           });
           await tauriActivity.update(path, selectedActivityId, {
-            provider: prov,
+            provider: toCanonicalProviderId(prov),
             model: mod,
           });
         } else if (modelDecision.personal) {
@@ -1027,7 +1031,9 @@ export function useAgentChatPanel({
         // The device's sticky default too: the create-agent dialog seeds from
         // it, so a hosted pick must register as "last used" like a shared-mode
         // pick does (applyProviderModel writes it on the other branches).
-        tauriProvider.setLastUsed(prov, mod).catch(() => {});
+        tauriProvider
+          .setLastUsed(prov, mod)
+          .catch((err) => logAndReportError("chat.save-last-model", err));
         return;
       }
       void handleModelSelect(prov, mod);
@@ -1802,11 +1808,17 @@ export function useAgentChatPanel({
     // that concerns an integration wears the app's identity in its title. A step
     // with no toolkit passes through unbranded; a catalog miss keeps the question
     // plain-titled with a prettified name and no logo — never a crash.
-    const steps: ChatInteractionStep[] = override.steps.map((step) =>
-      step.kind === "question" && step.toolkit
-        ? { ...step, brand: resolveBrand(step.toolkit) }
-        : step,
-    );
+    const steps: ChatInteractionStep[] = override.steps.map((step) => {
+      if (step.kind !== "question") return step;
+      const question = localizeApprovalQuestion(step, {
+        approve: t("chat:approvalCard.approve"),
+        decline: t("chat:approvalCard.decline"),
+        closing: t("chat:approvalCard.closing"),
+      });
+      return step.toolkit
+        ? { ...question, brand: resolveBrand(step.toolkit) }
+        : question;
+    });
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
     // A completed sequence has walked EVERY step, but a signin/connect step may
     // have been SKIPPED — a fact the agent must hear (or it re-asks forever) —

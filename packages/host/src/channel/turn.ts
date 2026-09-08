@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { CustomEndpoint } from "@houston/protocol";
+import { normalizeTurnMode } from "@houston/protocol";
 import type {
   CaptureResult,
   ChannelCtx,
@@ -7,6 +8,7 @@ import type {
   TurnPin,
 } from "../ports";
 import { OPENAI_COMPATIBLE } from "../providers";
+import { liveTurns } from "../routes/live-turn";
 import {
   customEndpointKey,
   PROVIDER,
@@ -70,6 +72,11 @@ export class TurnChannel implements RuntimeChannel {
     _actingUser?: string,
     _actingAs?: string,
   ): Promise<void> {
+    // A turn begins here for every programmatic fire (a routine, a trigger, a
+    // mission's first turn): the host records which conversation this agent is
+    // working in, because a runtime's own claim about that is not evidence
+    // (routes/live-turn.ts).
+    liveTurns.start(ctx.agent.id, conversationId, normalizeTurnMode(pin?.mode));
     const outcome = await dispatchTurn(
       this.deps,
       ctx.workspace,

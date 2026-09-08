@@ -19,7 +19,20 @@ export type SessionToolErrorCode =
   /** The tool was called with nothing to act on (an empty search). */
   | "empty_query"
   /** The host refused; `message` relays its own agent-actionable words. */
-  | "host_error";
+  | "host_error"
+  | "transport_error"
+  /** That board already holds as many agent-started missions as it allows. */
+  | "mission_cap"
+  /** A mission Houston started may not start further missions. */
+  | "mission_depth"
+  /** The CALLER already has as many missions running as it may start, spread
+   *  across every board it can reach. */
+  | "mission_fanout"
+  | "agent_not_found"
+  | "agent_ambiguous"
+  | "invalid_provider"
+  | "agent_unreachable"
+  | "agent_refused";
 
 export interface SessionToolError {
   code: SessionToolErrorCode;
@@ -56,9 +69,33 @@ export async function hostErrorFrom(
   what: string,
 ): Promise<SessionToolError> {
   const detail = await res.text().catch(() => "");
+  let payload: unknown;
+  try {
+    payload = JSON.parse(detail);
+  } catch {
+    payload = null;
+  }
+  if (typeof payload === "object" && payload !== null) {
+    const { code, error } = payload as { code?: unknown; error?: unknown };
+    if (isActionableCode(code) && typeof error === "string")
+      return { code, message: error, status: res.status };
+  }
   return {
     code: "host_error",
     status: res.status,
     message: `${what} was refused (HTTP ${res.status})${detail ? `: ${detail.slice(0, 300)}` : ""}.`,
   };
+}
+
+function isActionableCode(code: unknown): code is SessionToolErrorCode {
+  return (
+    code === "mission_cap" ||
+    code === "mission_depth" ||
+    code === "mission_fanout" ||
+    code === "agent_not_found" ||
+    code === "agent_ambiguous" ||
+    code === "invalid_provider" ||
+    code === "agent_unreachable" ||
+    code === "agent_refused"
+  );
 }

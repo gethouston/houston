@@ -14,10 +14,13 @@
 
 import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
 import {
+  modelDisplayName,
+  toCanonicalProviderId,
+} from "@houston/sdk/provider-catalog";
+import {
   DROP_PI_PROVIDERS,
   isModelVisible,
   PROVIDER_ID_RENAME,
-  PROVIDER_OVERRIDES,
 } from "../provider-overrides.ts";
 import { normalizeKey } from "./catalog-key.ts";
 import { detectLab } from "./catalog-lab.ts";
@@ -27,8 +30,10 @@ import type { RawModel } from "./catalog-snapshot.ts";
 /**
  * One runnable pi model entry → the internal `RawModel` carrier.
  *
- * The NAME is Houston's curated label when the provider override carries one,
- * so the hub calls a model exactly what the chat picker calls it. The KEY stays
+ * The NAME is Houston's curated name when the shared display table carries one
+ * (the same table `buildProvider` labels the picker from, keyed by pi's
+ * canonical ids), so the hub calls a model exactly what the picker calls it.
+ * The KEY stays
  * derived from pi's own name: it is the cross-provider merge identity AND what
  * the baked models.dev snapshot was keyed with, so a curated label must never
  * reach it (`normalizeKey`). Search falls through to the key, so a model is
@@ -39,7 +44,8 @@ function entryToRaw(providerId: string, entry: CatalogModelEntry): RawModel {
     key: normalizeKey(entry.name),
     id: entry.id,
     name:
-      PROVIDER_OVERRIDES[providerId]?.models?.[entry.id]?.label ?? entry.name,
+      modelDisplayName(toCanonicalProviderId(providerId), entry.id) ??
+      entry.name,
   };
   if (entry.reasoning) raw.reasoning = true;
   // Vision (image INPUT) rides on the `input` modality list so `capabilitiesOf`

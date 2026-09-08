@@ -7,6 +7,7 @@ import { describe, expect, test } from "vitest";
 import {
   choiceGuidance,
   describeOperation,
+  resolutionGuidance,
   sourceGuidance,
 } from "./assistant-describe";
 
@@ -44,6 +45,13 @@ const SLUG: AssistantOperationParam = {
   schema: Type.String(),
   source: "listSkills",
 };
+const TEAM_ID: AssistantOperationParam = {
+  name: "teamId",
+  required: true,
+  schema: Type.String(),
+  source: "listAgentTeams",
+  resolver: "teams",
+};
 const COLOR: AssistantOperationParam = {
   name: "color",
   required: true,
@@ -67,6 +75,27 @@ describe("sourceGuidance", () => {
 
   test("says nothing for an operation whose values are all free text", () => {
     expect(sourceGuidance(op([TEXT]))).toBe("");
+  });
+
+  test("leaves out what Houston resolves, so no lookup call is asked for", () => {
+    expect(sourceGuidance(op([TEAM_ID, SLUG]))).toContain(
+      '"slug" from listSkills',
+    );
+    expect(sourceGuidance(op([TEAM_ID, SLUG]))).not.toContain("teamId");
+    expect(sourceGuidance(op([TEAM_ID]))).toBe("");
+  });
+});
+
+describe("resolutionGuidance", () => {
+  test("says a resolved parameter takes the id or the exact name", () => {
+    const text = resolutionGuidance(op([TEAM_ID, SLUG]));
+    expect(text).toContain('Houston resolves "teamId" against what exists');
+    expect(text).toContain("pass the id, or the exact name the user gave you");
+    expect(text).toContain("refused with the ones that do");
+  });
+
+  test("says nothing when Houston resolves none of the parameters", () => {
+    expect(resolutionGuidance(op([AGENT_ID, TEXT]))).toBe("");
   });
 });
 

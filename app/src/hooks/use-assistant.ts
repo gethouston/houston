@@ -1,23 +1,53 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   assistantDiscoveryRetryDelayMs,
+  isAssistantUnavailableError,
   shouldRetryAssistantDiscovery,
 } from "../lib/assistant-availability.ts";
+import {
+  type AssistantDiscovery,
+  assistantDiscoveryState,
+} from "../lib/assistant-discovery-state.ts";
 import { newEngineActive } from "../lib/engine.ts";
 import { queryKeys } from "../lib/query-keys.ts";
-import { type AssistantHandle, tauriAssistant } from "../lib/tauri.ts";
+import {
+  type AssistantHandle,
+  surfaceEngineError,
+  tauriAssistant,
+} from "../lib/tauri.ts";
 
-/** Where the personal assistant lives, and whether it exists here at all. */
-export interface AssistantDiscovery {
-  /** The address to open the chat at, or null while unknown / unavailable. */
-  handle: AssistantHandle | null;
-  /** True while discovery is still deciding. Gates never act on this. */
-  isLoading: boolean;
-  /**
-   * Discovery has settled without an address. The sidebar entry and the screen
-   * do not exist — a silent answer, never an error the user is shown.
-   */
-  unavailable: boolean;
+export type { AssistantDiscovery } from "../lib/assistant-discovery-state.ts";
+
+/**
+ * Ask for the assistant's address, retrying on the budget the failure earns.
+ *
+ * The ladder lives HERE and not in the query's `retry` option because `call()`
+ * in lib/tauri.ts logs, toasts and Sentry-captures every rejection it sees: a
+ * query-level retry turned ONE waking pod into a stack of toasts and a Sentry
+ * event per attempt. Every attempt runs silent (`surface: false` — still
+ * logged) and the FINAL error is surfaced once, by hand, down the same path
+ * `call()` would have used. Same discipline as the cross-agent sweep
+ * (`hooks/queries/all-conversations-sweep.ts`).
+ */
+async function discoverAssistant(): Promise<AssistantHandle> {
+  for (let failures = 0; ; failures += 1) {
+    try {
+      return await tauriAssistant.discover({ surface: false });
+    } catch (err) {
+      if (!shouldRetryAssistantDiscovery(failures, err)) {
+        // The same silence the single-call path used: a deployment with no
+        // assistant and a pod that is merely waking are both expected states of
+        // a healthy install, so they are logged and never reported.
+        await surfaceEngineError("get_assistant", err, undefined, {
+          silence: isAssistantUnavailableError,
+        });
+        throw err;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, assistantDiscoveryRetryDelayMs(failures, err)),
+      );
+    }
+  }
 }
 
 /**
@@ -31,17 +61,18 @@ export interface AssistantDiscovery {
  *
  * Three answers, read by `classifyAssistantDiscoveryFailure`:
  *
- *  - **No assistant here** — a deployment whose host fronts discovery to the
- *    gateway, holds no agent tree, or has no assistant credential bound. That
- *    is feature ABSENCE: it settles hidden and is never asked again.
+ *  - **No assistant here** — a deployment whose host does not implement
+ *    discovery (a gateway fronts it, or it holds no agent tree), a gateway that
+ *    predates the route, or one with no assistant credential bound. That is
+ *    feature ABSENCE: it settles hidden and is never asked again.
  *  - **Not yet** — the gateway's answer while an engine pod provisions, wakes
  *    or is replaced. Recoverable, so it is retried with backoff (honouring a
  *    retry hint the failure advertises) and, once the budget is spent, left in
  *    a state TanStack refetches on the next mount, window focus or reconnect.
  *    The rail row comes back on its own; nothing asks the user to reload.
- *  - **Anything else** — a real failure, kept on the loud path
- *    (`tauriAssistant.discover` logs + reports it; the user sees nothing) with
- *    one blind retry so a gateway handoff does not cost a session's assistant.
+ *  - **Anything else** — a real failure, kept on the loud path (the user sees
+ *    nothing; the log and Sentry get it) with one blind retry so a gateway
+ *    handoff does not cost a session's assistant.
  *
  * `staleTime` is infinite for the SUCCESS case only: an address does not
  * change under us. A query holding no data is stale whatever that value says,
@@ -51,20 +82,18 @@ export function useAssistant(): AssistantDiscovery {
   const enabled = newEngineActive();
   const query = useQuery({
     queryKey: queryKeys.assistant(),
-    queryFn: () => tauriAssistant.discover(),
+    queryFn: discoverAssistant,
     enabled,
     staleTime: Number.POSITIVE_INFINITY,
-    retry: shouldRetryAssistantDiscovery,
-    retryDelay: assistantDiscoveryRetryDelayMs,
+    // No `retry` here on purpose: the bounded, reason-aware ladder is inside
+    // `discoverAssistant`, where the intermediate attempts stay silent.
+    retry: false,
   });
 
-  return {
+  return assistantDiscoveryState({
+    enabled,
     handle: query.data ?? null,
-    isLoading: enabled && query.isLoading,
-    // Any settled failure hides the entry: an assistant we cannot address is
-    // one the user cannot open, and a rail row that opens a broken screen is
-    // worse than no row. Hidden is a verdict on THIS attempt, not on the
-    // session — a later refetch that answers puts the row back.
-    unavailable: !enabled || (query.isError && !query.isLoading),
-  };
+    isError: query.isError,
+    isFetching: query.isFetching,
+  });
 }

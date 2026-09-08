@@ -20,7 +20,12 @@
 // follow-up actions. They arrive on the same `done` frame, render above the
 // composer rather than replacing it, and outlive the user's later move to done.
 
-export interface InteractionOption {
+export type InteractionOption =
+  | ChoiceOption
+  | { kind: "approval"; id: "approve" | "decline" };
+
+interface ChoiceOption {
+  kind?: "choice";
   id: string;
   label: string;
   /** One muted line of consequence or benefit shown after the label. */

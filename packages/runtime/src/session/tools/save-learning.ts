@@ -60,7 +60,7 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
     name: SAVE_LEARNING_TOOL_NAME,
     label: "Remember this",
     description:
-      "Save one learning to the user's memory so it survives into future sessions. NEVER write .houston/learnings/learnings.json with file tools to ADD a memory — this tool is the ONLY safe way to save, because it merges with the user's existing memory instead of overwriting it, and it records who taught the learning and which mission it came from. The single exception is consolidation: when this tool answers that memory is full, rewrite that file with the merged, trimmed list exactly as it asks, then save again. Pass only the learning's text. On success, confirm in plain words - never mention files, JSON, or paths.",
+      "Save one learning to the user's memory so it survives into future sessions. NEVER write .houston/learnings/learnings.json with file tools to ADD a memory - this tool is the ONLY safe way to save, because it merges with the user's existing memory instead of overwriting it, and it records who taught the learning and which mission it came from. The single exception is consolidation: when this tool answers that memory is full, rewrite that file with the merged, trimmed list exactly as it asks, then save again. Pass only the learning's text. On success, confirm in plain words - never mention files, JSON, or paths.",
     promptSnippet: "Save a learning to memory",
     parameters: SaveLearningParams,
     executionMode: "sequential",

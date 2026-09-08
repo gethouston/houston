@@ -7,7 +7,7 @@ import { genericErrorDescription } from "../../lib/error-report";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { localizedProviderLoginError } from "../../lib/provider-login-error";
-import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
+import { getProvider, type ProviderInfo } from "../../lib/providers";
 import { tauriSystem } from "../../lib/tauri";
 import type {
   AddToast,
@@ -25,6 +25,26 @@ interface Args {
   patchAuthState(providerId: string, authenticated: boolean): void;
   setLoginDialog: Dispatch<SetStateAction<ProviderLoginDialogState | null>>;
   setPending: Dispatch<SetStateAction<ProviderPending | null>>;
+}
+
+/**
+ * The provider card an engine event is about, and the id every keyed surface
+ * on this screen speaks.
+ *
+ * The engine names providers in pi's CANONICAL dialect (`openai-codex`) while
+ * the catalog, the status map and the dialogs here are keyed by Houston's
+ * DISPLAY id (`openai`) - so the event's id is resolved through the
+ * dialect-aware lookup rather than matched raw. The connect list is consulted
+ * first so a merged OpenCode account toasts as "OpenCode" rather than its
+ * primary gateway's catalog name.
+ */
+function eventProvider(
+  visibleProviders: readonly ProviderInfo[],
+  eventId: string,
+): { info: ProviderInfo | undefined; id: string } {
+  const known = getProvider(eventId);
+  const info = visibleProviders.find((p) => p.id === known?.id) ?? known;
+  return { info, id: info?.id ?? eventId };
 }
 
 /**
@@ -52,12 +72,10 @@ export function useProviderLoginEvents({
     const release = claimProviderLoginSurface();
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
-        // Resolve the display name from the connect list first so the merged
-        // OpenCode account toasts as "OpenCode", not its primary gateway's
-        // catalog name; fall back to the full catalog for any non-connect id.
-        const prov =
-          visibleProviders.find((p) => p.id === ev.data.provider) ??
-          PROVIDERS.find((p) => p.id === ev.data.provider);
+        const { info: prov } = eventProvider(
+          visibleProviders,
+          ev.data.provider,
+        );
         // MUST precede the open/dialog decision: for a REMOTE-engine desktop the
         // engine emits a codex URL with no user_code, so shouldOpenLoginUrlDirectly
         // would plainly openUrl — but pi's callback server is in the pod and
@@ -112,9 +130,10 @@ export function useProviderLoginEvents({
           }));
         }
       } else if (ev.type === "ProviderLoginComplete") {
-        const prov =
-          visibleProviders.find((p) => p.id === ev.data.provider) ??
-          PROVIDERS.find((p) => p.id === ev.data.provider);
+        const { info: prov, id: providerId } = eventProvider(
+          visibleProviders,
+          ev.data.provider,
+        );
         if (ev.data.success) {
           addToast({
             title: t("toast.signInSucceeded", {
@@ -123,7 +142,7 @@ export function useProviderLoginEvents({
             variant: "success",
           });
           // Flip the card to connected immediately; loadStatuses reconciles.
-          patchAuthState(ev.data.provider, true);
+          patchAuthState(providerId, true);
         } else if (ev.data.error) {
           addToast({
             title: t("toast.signInFailed", {
@@ -137,13 +156,11 @@ export function useProviderLoginEvents({
         // completion for a different provider must not clobber an in-flight
         // sign-in.
         setLoginDialog((current) =>
-          current?.provider.id === ev.data.provider ? null : current,
+          current?.provider.id === providerId ? null : current,
         );
         // Same rule for the pending spinner: on failure the status poll never
         // sees authenticated, so without this clear the row would spin forever.
-        setPending((current) =>
-          current?.id === ev.data.provider ? null : current,
-        );
+        setPending((current) => (current?.id === providerId ? null : current));
         loadStatuses();
       }
     });

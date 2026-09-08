@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
 import type { AssistantRoute } from "../scripts/assistant-catalog-types.ts";
-import { entitySourceFor } from "../scripts/assistant-entity-sources.ts";
+import { ENTITY_SOURCES } from "../scripts/assistant-entity-rules.ts";
+import {
+  entityRuleFor,
+  entitySourceFor,
+  namesEntity,
+} from "../scripts/assistant-entity-sources.ts";
 import { parseAssistantDocs } from "../scripts/assistant-jsdoc.ts";
 import { route } from "./assistant-catalog-support.ts";
 
 /**
- * The two halves of "never guess an identifier": the author's sentence about a
- * parameter, and the operation that lists what it accepts. Both are derived,
- * so both are pinned here rather than left to the drift check, which only
- * proves the generated file matches whatever the rules currently produce.
+ * "Never guess an identifier", in three derived halves: the author's sentence
+ * about a parameter, the operation that lists what it accepts, and the live
+ * list the host resolves it against. All three are derived, so all three are
+ * pinned here rather than left to the drift check, which only proves the
+ * generated file matches whatever the rules currently produce.
  */
 
 const at = (path: string, extra: Partial<AssistantRoute> = {}) =>
@@ -118,5 +124,94 @@ describe("@param extraction", () => {
     ).toEqual({ id: "The thing." });
     expect(parseAssistantDocs("/** Lists things. */").params).toEqual({});
     expect(parseAssistantDocs().params).toEqual({});
+  });
+});
+
+describe("entityRuleFor", () => {
+  it("hands the host the live list each collection resolves against", () => {
+    const cases: [string, string, string][] = [
+      ["/agents/{id}", "id", "agents"],
+      ["/v1/org/teams/{teamId}", "teamId", "teams"],
+      ["/v1/org/teams/{teamId}/members/{userId}", "userId", "members"],
+      ["/v1/org/invites/{inviteId}", "inviteId", "invites"],
+      ["/v1/org-invites/{inviteId}/accept", "inviteId", "invites"],
+      [
+        "/v1/workspaces/{workspaceId}/shared-skills",
+        "workspaceId",
+        "workspaces",
+      ],
+      [
+        "/v1/workspaces/{workspaceId}/shared-skills/{slug}",
+        "slug",
+        "shared-skills",
+      ],
+      ["/agents/{agentId}/routines/{id}", "id", "routines"],
+      ["/agents/{agentId}/skills/{slug}", "slug", "skills"],
+      ["/agents/{agentId}/activities/{id}", "id", "activities"],
+    ];
+    for (const [path, parameter, collection] of cases)
+      expect(entityRuleFor(parameter, at(path))?.collection).toBe(collection);
+  });
+
+  it("states why an identifier no live list covers stays open", () => {
+    const cases: [string, string][] = [
+      ["/agents/{a}/routines/{r}/runs/{runId}/cancel", "runId"],
+      ["/v1/agents/{agentSlugOrId}/move/{moveId}", "moveId"],
+      [
+        "/v1/integrations/{provider}/connections/{connectionId}",
+        "connectionId",
+      ],
+      ["/v1/integrations/custom/definitions/{slug}", "slug"],
+      ["/agents/{agentId}/agentfile/{relPath}", "relPath"],
+    ];
+    for (const [path, parameter] of cases) {
+      const rule = entityRuleFor(parameter, at(path));
+      expect(rule?.collection).toBeUndefined();
+      expect(rule?.unlisted).toMatch(/\S/);
+    }
+  });
+
+  it("claims a value by the body key or query key that carries it", () => {
+    expect(
+      entityRuleFor(
+        "target",
+        at("/v1/things", { bodyFields: { teamId: "target" } }),
+      )?.collection,
+    ).toBe("teams");
+    expect(
+      entityRuleFor("who", at("/v1/things", { query: { userId: "who" } }))
+        ?.collection,
+    ).toBe("members");
+  });
+
+  it("sources both identifiers in a community preview from the external catalog", () => {
+    const preview = at("/agents/{agentId}/skills/community/preview");
+    expect(entitySourceFor("source", preview)).toBe("searchCommunitySkills");
+    expect(entitySourceFor("skillId", preview)).toBe("searchCommunitySkills");
+    expect(entityRuleFor("skillId", preview)?.collection).toBeUndefined();
+  });
+
+  it("every rule either resolves its values or says why it cannot", () => {
+    for (const rule of ENTITY_SOURCES)
+      expect([rule.collection, rule.unlisted].filter(Boolean)).toHaveLength(1);
+  });
+});
+
+describe("namesEntity", () => {
+  it("reads an identifier from its spelling or from its path segment", () => {
+    expect(namesEntity("teamId", null)).toBe(true);
+    expect(namesEntity("toSlug", null)).toBe(true);
+    expect(namesEntity("ids", null)).toBe(true);
+    expect(
+      namesEntity("relPath", at("/agents/{agentId}/agentfile/{relPath}")),
+    ).toBe(true);
+    expect(
+      namesEntity("who", at("/v1/things", { query: { userId: "who" } })),
+    ).toBe(true);
+  });
+
+  it("leaves free text alone", () => {
+    for (const name of ["name", "content", "query", "days", "email", "toDir"])
+      expect(namesEntity(name, at("/v1/things"))).toBe(false);
   });
 });

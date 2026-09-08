@@ -1,10 +1,12 @@
+import { readServedProvidersAt } from "../../auth/auth-file";
+import { servedManifestPathFor, serveModeOn } from "../../auth/serve-context";
 import {
   currentCredentialScope,
   isPersonalScope,
 } from "../../session/acting-context";
 import type { ClaudeToken } from "./backend";
-import { readClaudeOAuthCredentialFile } from "./credentials-file";
 import { claudeCredentialsFile } from "./paths";
+import { readSharedLoginFile } from "./shared-login-file";
 
 /**
  * THE SHARED LOGIN — `<HOUSTON_HOME>/claude-login/.credentials.json`, the ONE
@@ -54,7 +56,7 @@ export function readSharedLogin(
   now: number = Date.now(),
 ): SharedLogin | undefined {
   if (isPersonalScope(currentCredentialScope().key)) return undefined;
-  const cred = readClaudeOAuthCredentialFile(claudeCredentialsFile());
+  const cred = readSharedLoginFile(claudeCredentialsFile());
   if (!cred) return undefined; // absent, unreadable, or not the CLI envelope
   const expiresAt = cred.expiresAt ?? 0;
   if (expiresAt > 0 && expiresAt <= now) return undefined;
@@ -63,6 +65,30 @@ export function readSharedLogin(
   // The envelope's own type is the classification: `claudeAiOauth` is a
   // subscription OAuth credential, which rides `CLAUDE_CODE_OAUTH_TOKEN`.
   return { token: { kind: "oauth-token", value }, expiresAt };
+}
+
+/**
+ * Whether the CONTROL PLANE is the authority for this runtime's `anthropic`
+ * credential — true on a managed pod that the serve sync hydrated anthropic on.
+ *
+ * There the gateway mints a short-TTL access token per turn into `auth.json`
+ * and nothing rewrites the shared login file, which keeps the longer-lived
+ * value some earlier connect pushed. The supersede rule below would therefore
+ * be permanently true: every read would delete the freshly served entry, run
+ * the turn on the older pushed token, and the next sync would put the served
+ * one back — a ping-pong that ends in `token_revoked` as soon as Anthropic
+ * invalidates the previous holder. So on that runtime the SERVED entry wins and
+ * the file is only the fallback it was always meant to be.
+ *
+ * Read from the serve path's own provenance manifest, not from serve mode
+ * alone: a managed pod whose gateway does NOT serve anthropic (the desktop
+ * pushes the credential there instead) still needs the supersede rule, because
+ * a reconnect pushed to ANOTHER agent's runtime reaches this one only through
+ * the shared file.
+ */
+function anthropicIsCentrallyServed(): boolean {
+  if (!serveModeOn()) return false;
+  return readServedProvidersAt(servedManifestPathFor()).includes("anthropic");
 }
 
 /** The runtime's own stored OAuth credential, as this comparison sees it. */
@@ -89,12 +115,19 @@ export interface StoredLogin {
  * DIFFER would let a stale file (an old login this machine never cleaned up)
  * beat a credential the gateway just served, which is the same bug facing the
  * other way. Only a provable ordering may move a runtime off its own token.
+ *
+ * And it applies only where the file is the AUTHORITY on the login — the
+ * desktop/self-host runtime share. Where the control plane serves anthropic,
+ * the store entry is the live credential and the file is a push-time leftover
+ * that can never be superseded by anything, so it may not win at all.
  */
 export function sharedLoginSupersedes(
   shared: SharedLogin,
   stored: StoredLogin,
 ): boolean {
   return (
-    shared.token.value !== stored.value && shared.expiresAt > stored.expires
+    shared.token.value !== stored.value &&
+    shared.expiresAt > stored.expires &&
+    !anthropicIsCentrallyServed()
   );
 }

@@ -10,6 +10,8 @@
  * and fall back to a monogram (see `monogramText`) for anything unmapped.
  */
 
+import { PROVIDER_DISPLAY_RENAME } from "@houston/sdk/provider-catalog";
+
 /**
  * Every brand mark Houston ships a real SVG for. Each is a genuine single-color
  * brand logo sourced verbatim from models.dev (github.com/sst/models.dev, MIT)
@@ -89,6 +91,21 @@ export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
 ]);
 
 /**
+ * The display-rename pairs whose display id names a mark Houston actually ships
+ * (`openai-codex` → the OpenAI mark). A rename onto an id with no art of its
+ * own is skipped: it would resolve to a mark that does not exist, and the
+ * monogram is the honest answer there.
+ */
+function dialectAliases(): Record<string, BrandKey> {
+  const out: Record<string, BrandKey> = {};
+  for (const [canonical, display] of Object.entries(PROVIDER_DISPLAY_RENAME)) {
+    if (BRAND_KEYS.has(display as BrandKey))
+      out[canonical] = display as BrandKey;
+  }
+  return out;
+}
+
+/**
  * Regional/variant ids and AI-hub lab ids that reuse a parent brand's mark, so a
  * "-cn" spin-off, a "-gateway"/"-workers" edge variant, or a lab alias needs no
  * bespoke art. Keyed by the incoming id, valued by the `BrandKey` it borrows.
@@ -96,12 +113,16 @@ export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
  * carries no alias and cleanly falls to the monogram itself.
  */
 export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
+  // A provider Houston RENAMES for display is the same brand under both
+  // spellings, so the dialect table IS an alias table — read from the ONE
+  // module that owns it (`@houston/domain` provider-dialect) rather than
+  // restated here, where a new rename would silently draw a monogram.
+  ...dialectAliases(),
   // Variant ids models.dev serves the generic default for — reuse a parent
   // brand's real mark rather than a monogram. Retired provider ids (kimi-coding,
   // moonshotai-cn, xiaomi-token-plan-*) keep their alias: they no longer render
   // a card (DROP_PI_PROVIDERS) but a legacy conversation pinned to one still
   // shows the right glyph.
-  "openai-codex": "openai",
   "minimax-cn": "minimax",
   "moonshotai-cn": "moonshotai",
   "kimi-coding": "moonshotai",

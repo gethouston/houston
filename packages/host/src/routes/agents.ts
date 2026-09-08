@@ -8,8 +8,10 @@ import {
 import {
   type CustomEndpoint,
   type HoustonEvent,
+  normalizeTurnMode,
   parseClaudeOAuthEnvelope,
   parseMentions,
+  type TurnMode,
 } from "@houston/protocol";
 import { assistantApprovals } from "../assistant/approvals";
 import { applyApprovalReceiptsToTurnBody } from "../assistant/receipts";
@@ -21,6 +23,7 @@ import {
 import { RevokedRefillBlockedError } from "../credentials/revocation-tombstones";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
+import { assistantRuntimeRole } from "../launcher/assistant-role";
 import {
   AgentNameConflictError,
   ApiKeyRejectedError,
@@ -31,6 +34,8 @@ import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
 import type { Vfs } from "../vfs";
 import { stampTurnAttribution } from "./activity-attribution";
+import { handleApprovalRead } from "./agent-approval-read";
+import { approvalResponse } from "./agent-approval-stream";
 import {
   type AgentRouteDeps,
   authorizeAgent,
@@ -51,6 +56,7 @@ import { legacyAgentColor } from "./agent-legacy-color";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
 import { handleCustomIntegrationsDispatch } from "./custom-integrations-user";
 import { json, readJson } from "./http";
+import { liveTurns } from "./live-turn";
 import { handleMigration } from "./migration";
 import { handleAgentMissions } from "./missions-remote-inbound";
 import { handlePortableExport } from "./portable";
@@ -198,6 +204,20 @@ export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
  * behind one ownership check, all hosting-model-agnostic via RuntimeChannel.
  * Returns true when the request was handled.
  */
+/** The `mode` a turn body pins, when it carries one the host can read. */
+function turnModeOf(body: Buffer): unknown {
+  try {
+    return (JSON.parse(body.toString("utf8") || "{}") as { mode?: unknown })
+      .mode;
+  } catch {
+    // An unparseable body pins nothing; the channel this request is headed for
+    // answers the caller (see the mentions read below, which swallows for the
+    // same reason). "execute" is the safe reading: the plan gate refuses work,
+    // and refusing on a body nobody could parse would be a denial of service.
+    return undefined;
+  }
+}
+
 export async function handleAgents(
   deps: AgentRouteDeps,
   userId: UserId,
@@ -787,6 +807,8 @@ export async function handleAgents(
     return true;
   }
 
+  if (await handleApprovalRead(deps, userId, method, path, res)) return true;
+
   // The per-agent runtime surface: /agents/:agentId/<anything> → the agent's
   // runtime, via the workspace's channel. The frontend points its runtime
   // client at `${controlPlaneUrl}/agents/${agentId}`, so chat turns, the SSE
@@ -1058,6 +1080,36 @@ export async function handleAgents(
       ? decodeURIComponent(turnMatch[1])
       : undefined;
     let turnBody: Buffer | undefined;
+    // WHICH CONVERSATION THIS AGENT IS WORKING IN, recorded by the host rather
+    // than taken from the runtime's word for it (routes/live-turn.ts): the
+    // mission depth guard and the assistant's plan-mode gate are both about the
+    // runtime, so neither may be answered by it. The mode is read only for the
+    // coordinator, the one agent whose operations the host itself performs -
+    // every other agent's send reaches the channel with its body untouched.
+    if (turnConversationId !== undefined) {
+      const coordinator = assistantRuntimeRole({ agentId: ctx.agent.id });
+      let mode: TurnMode = "execute";
+      if (coordinator) {
+        turnBody ??= await readBody(req, MAX_JSON_BYTES);
+        mode = normalizeTurnMode(turnModeOf(turnBody));
+      }
+      liveTurns.start(ctx.agent.id, turnConversationId, mode);
+    }
+    // The Mode pill moved WHILE the assistant works (`POST …/mode`, the route
+    // the runtime applies to its live turn): the host reads the same switch on
+    // its way through, so its own plan gate cannot lag the runtime's.
+    const modeSwitch =
+      method === "POST" && assistantRuntimeRole({ agentId: ctx.agent.id })
+        ? rest.match(/^conversations\/([^/]+)\/mode$/)
+        : null;
+    if (modeSwitch?.[1]) {
+      turnBody ??= await readBody(req, MAX_JSON_BYTES);
+      liveTurns.setMode(
+        ctx.agent.id,
+        decodeURIComponent(modeSwitch[1]),
+        normalizeTurnMode(turnModeOf(turnBody)),
+      );
+    }
     // Teams attribution: a user turn marks the acting human as a contributor on
     // the mission it drives, and records the teammates that message @mentioned
     // (HOU-945). Best-effort metadata that never blocks the turn (see
@@ -1130,13 +1182,27 @@ export async function handleAgents(
           body: turnBody,
         }) ?? turnBody;
     }
+    // The two reads that can carry a pending interaction (the stored history
+    // and the live stream): the runtime's bytes reach the shell only through
+    // the host's approval substitution.
+    const conversationRead =
+      method === "GET"
+        ? rest.match(/^conversations\/([^/]+)\/(messages|events)$/)
+        : null;
+    const clientResponse = conversationRead?.[1]
+      ? approvalResponse(
+          res,
+          ctx.agent.id,
+          decodeURIComponent(conversationRead[1]),
+        )
+      : res;
     await channel.dispatch(
       turnBody ? { ...ctx, body: turnBody } : ctx,
       method,
       rest,
       url,
       req,
-      res,
+      clientResponse,
     );
     return true;
   }

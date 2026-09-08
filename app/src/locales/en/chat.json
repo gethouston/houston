@@ -375,5 +375,10 @@
   },
   "copyMessage": {
     "copy": "Copy message"
+  },
+  "approvalCard": {
+    "approve": "Yes, go ahead",
+    "decline": "No, don't do it",
+    "closing": "Houston cannot undo this for you. Should I go ahead?"
   }
 }

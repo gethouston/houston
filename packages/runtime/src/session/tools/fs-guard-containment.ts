@@ -12,10 +12,10 @@ import {
 } from "./fs-guard-paths";
 
 /**
- * The rules a resolved path is judged against: root containment plus the
- * credential deny list, and the exact-file allowlist that replaces both. Kept
- * apart from the guard object so each rule reads as a pure decision over
- * (path, boundaries) with nothing else in scope.
+ * The rules a resolved path is judged against: root containment, the credential
+ * deny list, and the exact-file allowlist that narrows the first two to a
+ * single document. Kept apart from the guard object so each rule reads as a
+ * pure decision over (path, boundaries) with nothing else in scope.
  */
 
 /**
@@ -86,6 +86,13 @@ export function assertContained(
  * The exact-file rule: resolve the model's path the way pi does, then require
  * it to BE one of the allowed documents — lexically, or once symlinks are
  * resolved, so neither a link nor a `..` detour can stand in for one.
+ *
+ * The allowlist NARROWS the workspace wall, it does not replace it. Being on
+ * the list is necessary, never sufficient: the resolved path must still land
+ * inside the agent's own directory and must still not be credential material,
+ * so a listed document that is (or sits behind) a symlink pointing out of the
+ * workspace is refused, and `auth.json` cannot be reached by listing it. The
+ * two rules stack in exactly the order containment applies them.
  */
 export function assertAllowedFile(
   raw: string,
@@ -106,5 +113,11 @@ export function assertAllowedFile(
       raw,
       allowedFiles.map((file) => file.lexical),
     );
+  // `root` is the guard's CANONICAL workspace root, so the real path is the one
+  // form that can be compared against it: a lexical match would accept the
+  // symlink itself and let the tool follow it anywhere.
+  const boundary: RootBoundary = { canonical: root, lexical: root };
+  if (!contains(real, root)) throw new PathEscapeError(raw, root);
+  if (isCredential(real, boundary)) throw new PathDeniedError(raw);
   return abs;
 }

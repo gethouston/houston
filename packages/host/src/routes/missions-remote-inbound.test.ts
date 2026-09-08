@@ -127,6 +127,10 @@ test("a start from another pod lands on this agent's board and fires its turn", 
   // The marker the caller could not write itself: what makes the runtime's
   // turn-end report settle this card (missions-manage.ts).
   expect(created?.origin_session_key).toBe("conv-parent");
+  // WHO asked and HOW DEEP, kept rather than discarded: the calling pod's board
+  // is unreadable from here, so the row is the only place either fact survives.
+  expect(created?.origin_agent).toBe(ORIGIN.agent);
+  expect(created?.origin_depth).toBe(1);
   // Attribution comes from the gateway-verified acting identity, not the body.
   expect(created?.created_by).toBe("u-1");
   expect(fired).toEqual([
@@ -160,6 +164,19 @@ test("provenance is required, and a deeper origin is refused", async () => {
   expect((deep.body as { code: string }).code).toBe("mission_depth");
   expect(await board()).toEqual([]);
   expect(fired).toEqual([]);
+
+  // A depth that is not a real level at all: zero, negative, fractional. The
+  // ceiling is a range check, not an equality test, so none of these slips past.
+  for (const depth of [0, -1, 1.5, Number.NaN]) {
+    const bogus = await call("POST", "missions/start", {
+      title: "t",
+      prompt: "p",
+      origin: { ...ORIGIN, depth },
+    });
+    expect(bogus.status).toBe(409);
+    expect((bogus.body as { code: string }).code).toBe("mission_depth");
+  }
+  expect(await board()).toEqual([]);
 });
 
 test("this route serves the agent it addresses, never a second hop", async () => {
@@ -243,4 +260,26 @@ test("the server's own deps satisfy this route, so the mount passes them through
   const mountable = (deps: AgentRouteDeps): MissionsDeps => deps;
   const served = (deps: ControlPlaneDeps): AgentRouteDeps => deps;
   expect([typeof mountable, typeof served]).toEqual(["function", "function"]);
+});
+
+test.each([
+  "missions?agent=Other",
+  "missions/read?agent=Other&id=m-1",
+])("inbound %s refuses a second target", async (rest) => {
+  const result = await call("GET", rest);
+  expect(result.status).toBe(400);
+  expect(result.body).toMatchObject({ code: "invalid_agent" });
+});
+test("the inbound start echoes resolved provider and model", async () => {
+  const result = await call("POST", "missions/start", {
+    title: "t",
+    prompt: "p",
+    origin: ORIGIN,
+    provider: "codex",
+    model: "Luna",
+  });
+  expect(result.body).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-5.6-luna",
+  });
 });

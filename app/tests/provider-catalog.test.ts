@@ -1,5 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { before, describe, it } from "node:test";
+import { DEFAULT_MODEL } from "@houston/sdk/provider-catalog";
 import {
   EFFORT_ORDER,
   getContextWindowConfig,
@@ -197,9 +198,15 @@ describe("helpers read the hydrated cache", () => {
       validModelOrNull("anthropic", normalizeLegacyModel("opus")),
       "claude-opus-5",
     );
+    // Bare "sonnet" lands on the provider's ONE default, read from the table
+    // the alias itself derives from (`@houston/domain` model-aliases.ts): saying
+    // "sonnet" and saying nothing must pick the same model, and a second copy
+    // of the id here is the drift that rule exists to prevent. The assertion
+    // that earns its keep is that the default is a model the catalog OFFERS —
+    // a default outside VALID_MODELS would null here.
     strictEqual(
       validModelOrNull("anthropic", normalizeLegacyModel("sonnet")),
-      "claude-sonnet-4-6",
+      DEFAULT_MODEL.anthropic,
     );
   });
 });

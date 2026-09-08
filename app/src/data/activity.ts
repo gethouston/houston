@@ -6,6 +6,7 @@
  */
 
 import type { PendingInteraction } from "@houston/protocol";
+import { toCanonicalProviderId } from "@houston/sdk/provider-catalog";
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
 import {
   applyActivityPatch,
@@ -99,7 +100,8 @@ export async function create(
     claude_session_id: null,
     agent,
     updated_at: now(),
-    provider,
+    provider:
+      provider === undefined ? undefined : toCanonicalProviderId(provider),
     model,
   };
   await writeAgentJson(agentPath, NAME, s, [...items, item]);

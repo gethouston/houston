@@ -53,6 +53,8 @@ const CatalogEnvelope = Type.Object({
       description: Type.String(),
       confirm: Type.Boolean(),
       hidden: Type.Boolean(),
+      hiddenReason: Type.Optional(Type.String()),
+      unconfirmed: Type.Optional(Type.String()),
       params: Type.Array(
         Type.Object({
           name: Type.String(),
@@ -64,6 +66,20 @@ const CatalogEnvelope = Type.Object({
           // them verbatim to the model.
           description: Type.Optional(Type.String()),
           source: Type.Optional(Type.String()),
+          resolver: Type.Optional(
+            Type.Union([
+              Type.Literal("agents"),
+              Type.Literal("teams"),
+              Type.Literal("workspaces"),
+              Type.Literal("members"),
+              Type.Literal("invites"),
+              Type.Literal("routines"),
+              Type.Literal("skills"),
+              Type.Literal("shared-skills"),
+              Type.Literal("activities"),
+            ]),
+          ),
+          unresolved: Type.Optional(Type.String()),
         }),
       ),
       returns: Type.Unknown(),

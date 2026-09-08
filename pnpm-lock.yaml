@@ -887,6 +887,9 @@ importers:
       '@houston/design-tokens':
         specifier: workspace:*
         version: link:../../packages/design-tokens
+      '@houston/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1

@@ -1,6 +1,11 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { WireEvent } from "@houston/runtime-client";
-import { expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test } from "vitest";
+import { createCompactionCheckpoints } from "../../store/conversation-compaction";
+import { createConversationStore } from "../../store/conversations";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import type { SessionsStore } from "./sessions-store";
 
@@ -13,6 +18,15 @@ import type { SessionsStore } from "./sessions-store";
  * costs the user nothing. Driven by a scripted `query`, so no binary and no
  * network, exactly like session.test.ts.
  */
+
+let directory: string;
+let checkpoints: ReturnType<typeof createCompactionCheckpoints>;
+beforeEach(() => {
+  directory = mkdtempSync(join(tmpdir(), "claude-compaction-"));
+  createConversationStore(directory).appendUserMessage("c1", "Plan Lisbon");
+  checkpoints = createCompactionCheckpoints(directory);
+});
+afterEach(() => rmSync(directory, { recursive: true, force: true }));
 
 function textMsg(text: string, sessionId = "s"): SDKMessage {
   return {
@@ -95,6 +109,7 @@ function make(query: ClaudeQuery, sessions: SessionsStore): ClaudeSession {
     conversationId: "c1",
     baseOptions: { tools: ["Bash"], allowedTools: ["mcp__houston"] } as Options,
     sessionsStore: sessions,
+    compactions: checkpoints,
     model: "claude-sonnet-4-6",
     refreshAuth: () => ({ env: { CLAUDE_CODE_OAUTH_TOKEN: "t" } }),
   });
@@ -243,4 +258,118 @@ test("Stop cancels a summarization that is still running", async () => {
   await compacting.catch(() => undefined);
 
   expect(signalled?.aborted).toBe(true);
+});
+
+test("a rebuilt session reloads its compacted history", async () => {
+  const sessions = store("sdk-1");
+  const { query, calls } = scripted(() => [
+    textMsg("Durable Lisbon summary"),
+    usageMsg(10),
+  ]);
+  const session = make(query, sessions);
+  await session.compact();
+  session.dispose();
+  await make(query, sessions).prompt("Continue after restart");
+  expect(calls[1]?.prompt).toContain("Durable Lisbon summary");
+});
+
+test("a failed next prompt does not consume compacted history", async () => {
+  const sessions = store("sdk-1");
+  let count = 0;
+  const { query, calls } = scripted(() =>
+    ++count === 2
+      ? [errorMsg]
+      : [textMsg("Durable Lisbon summary"), usageMsg(10)],
+  );
+  const session = make(query, sessions);
+  await session.compact();
+  await session.prompt("Fails authentication");
+  await session.prompt("Try again");
+  expect(calls[2]?.prompt).toContain("Durable Lisbon summary");
+  expect(calls[2]?.options.resume).toBeUndefined();
+});
+
+test("the summarizer has no MCP server or permission to use tools", async () => {
+  const { query, calls } = scripted(() => [textMsg("summary"), usageMsg(10)]);
+  const session = new ClaudeSession({
+    compactions: checkpoints,
+    query,
+    conversationId: "c1",
+    sessionsStore: store("sdk-1"),
+    model: "claude-sonnet-5",
+    refreshAuth: () => ({ env: {} }),
+    baseOptions: {
+      mcpServers: { hostile: { command: "hostile" } },
+      canUseTool: async (_tool, input) => ({
+        behavior: "allow",
+        updatedInput: input,
+      }),
+    },
+  });
+  await session.compact();
+  const options = calls[0]?.options;
+  expect(options?.mcpServers).toEqual({});
+  const permission = options?.canUseTool;
+  if (!permission) throw new Error("missing deny-all policy");
+  expect(
+    await permission(
+      "Bash",
+      {},
+      { signal: new AbortController().signal, toolUseID: "t", requestId: "p" },
+    ),
+  ).toMatchObject({ behavior: "deny" });
+});
+
+test("checkpoint persistence failure leaves the old resume mapping intact", async () => {
+  const sessions = store("sdk-1");
+  const { query } = scripted(() => [textMsg("summary"), usageMsg(10)]);
+  const session = new ClaudeSession({
+    query,
+    conversationId: "c1",
+    model: "claude-sonnet-5",
+    baseOptions: {},
+    sessionsStore: sessions,
+    refreshAuth: () => ({ env: {} }),
+    compactions: {
+      ...checkpoints,
+      save: () => {
+        throw new Error("disk full");
+      },
+    },
+  });
+  await expect(session.compact()).rejects.toThrow("disk full");
+  expect(sessions.id()).toBe("sdk-1");
+});
+
+test("a crash between checkpoint and mapping removal starts from the summary", async () => {
+  const sessions = store("sdk-1");
+  checkpoints.save("c1", "Summary survived the crash");
+  const { query, calls } = scripted(() => [textMsg("Continued"), usageMsg(10)]);
+  await make(query, sessions).prompt("Continue");
+  expect(calls[0]?.options.resume).toBeUndefined();
+  expect(calls[0]?.prompt).toContain("Summary survived the crash");
+  expect(checkpoints.read("c1")).toBeUndefined();
+});
+
+test("aborting the next prompt preserves the checkpoint across eviction", async () => {
+  const sessions = store("sdk-1");
+  const summary = scripted(() => [
+    textMsg("Summary after abort"),
+    usageMsg(10),
+  ]);
+  await make(summary.query, sessions).compact();
+  let session: ClaudeSession;
+  const aborting: ClaudeQuery = () =>
+    (async function* () {
+      yield textMsg("Partial");
+      await session.abort();
+      yield usageMsg(10);
+    })();
+  session = make(aborting, sessions);
+  await session.prompt("Stop this");
+  session.dispose();
+  expect(checkpoints.read("c1")?.summary).toBe("Summary after abort");
+  const retry = scripted(() => [textMsg("Continued"), usageMsg(10)]);
+  await make(retry.query, sessions).prompt("Continue");
+  expect(retry.calls[0]?.prompt).toContain("Summary after abort");
 });

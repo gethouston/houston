@@ -65,7 +65,7 @@ export async function listActivities(
  *   agent's name is not its id, so read the id from listAgents first.
  * @param input The mission to put on the board: its title, and the
  *   description of the work.
- * @assistant group:missions
+ * @assistant group:missions unconfirmed: Creates a board draft without starting work or spending model tokens.
  */
 export async function createActivity(
   scope: HttpScope,

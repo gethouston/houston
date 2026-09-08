@@ -3,18 +3,22 @@ import { type ApprovalStore, assistantApprovals } from "../assistant/approvals";
 import type { AssistantCatalog } from "../assistant/catalog";
 import { processAssistantCatalog } from "../assistant/catalog-source";
 import { ACTING_AS_HEADER } from "../auth/acting";
+import type { WorkspacePaths } from "../paths";
 import type { CredentialVault, WorkspaceStore } from "../ports";
+import type { Vfs } from "../vfs";
 import { assistantClaim } from "./assistant-claim";
 import type { AssistantGateway } from "./assistant-forward";
 import {
   handleAssistantCall,
   handleAssistantPending,
 } from "./assistant-operate";
-import type { AssistantOperationCtx } from "./assistant-operation-ctx";
+import {
+  type AssistantOperationCtx,
+  assistantOperationDirectory,
+} from "./assistant-operation-ctx";
 import { resolveAssistantGateway } from "./assistant-wiring";
 import { bearer, header, json, readJson } from "./http";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
-import { reachableAgentsForWorkspace } from "./reachable-agents";
 
 /**
  * The RUNTIME-facing assistant surface (HMAC sandbox token) — what the agent's
@@ -52,6 +56,8 @@ export interface AssistantSandboxDeps {
    * before any request is built (`assistant/entity-resolution.ts`).
    */
   store: WorkspaceStore;
+  vfs?: Vfs;
+  paths?: WorkspacePaths;
   /** Injection point for tests; production uses the global fetch. */
   fetchImpl?: typeof fetch;
   /**
@@ -128,6 +134,12 @@ export async function handleSandboxAssistant(
   const operation =
     typeof payload.operation === "string" ? payload.operation : "";
   const params = (payload.params ?? {}) as Record<string, unknown>;
+  const directory = assistantOperationDirectory(
+    deps,
+    claim,
+    gateway,
+    header(req, ACTING_AS_HEADER),
+  );
   const ctx: AssistantOperationCtx = {
     catalog,
     approvals: deps.approvals ?? assistantApprovals,
@@ -135,7 +147,8 @@ export async function handleSandboxAssistant(
     conversationId: header(req, CONVERSATION_ID_HEADER),
     // Read lazily: only an operation that actually names an agent pays for the
     // listing, and both handlers resolve against the SAME set.
-    agents: () => reachableAgentsForWorkspace(deps.store, claim.workspaceId),
+    agents: directory.agents,
+    directory,
   };
 
   if (!isCall) {

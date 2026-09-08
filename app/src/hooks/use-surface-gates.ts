@@ -73,7 +73,10 @@ export function useSurfaceGates(): SurfaceGates {
     // Discovery joins `ready` for the same reason capabilities does: the guard
     // that sends a blocked view home must not fire while an answer is still on
     // the way, or opening the assistant on a slow host would bounce the user
-    // out of it a beat later.
+    // out of it a beat later. `assistant.isLoading` covers a REFETCH of a
+    // previously failed discovery too (`lib/assistant-discovery-state.ts`), so
+    // the guard holds while the repair is in flight instead of evicting the
+    // user from the screen it is about to fix.
     ready: !isLoading && !assistant.isLoading,
   };
 }

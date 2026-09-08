@@ -48,6 +48,7 @@ import {
   type MessageAuthor,
 } from "./attribution";
 import { needsAutocompact } from "./autocompact";
+import { runAutocompact } from "./autocompact-guard";
 import { publish } from "./bus";
 import { evictClaudeSessionOnRevokedToken } from "./claude-token-guard";
 import {
@@ -279,14 +280,10 @@ export async function execTurn(
    */
   let turnProvider: string | undefined;
   /**
-   * The model id the turn RESOLVED onto — the twin of `turnProvider` for the
-   * catch's classification. A thrown failure after resolution (pi's manual
-   * `compact()` rejecting with "Summarization failed: …" on the active model)
-   * used to be classified with the PIN's model only, which an unpinned chat
-   * never carries: the model-keyed branches (NVIDIA's per-account gate needs a
-   * model to name on the switch-model card) fell through to `unknown`, and
-   * the log line read `model=?` (PRODUCT-1636). Undefined ONLY when
-   * `resolveModel` itself threw, where the pin is the next-best evidence.
+   * The resolved model id classifies failures after model selection, including
+   * compaction errors. Model-specific provider errors need this id to offer a
+   * valid replacement. Undefined only when resolution failed, in which case
+   * the turn's pin is the next-best evidence.
    */
   let turnModel: string | undefined;
   /**
@@ -488,12 +485,19 @@ export async function execTurn(
         // the last moment to keep what they taught (session/durable-facts.ts).
         // Best-effort: it never fails the turn, and every other conversation
         // compacts exactly as before.
-        await compactWithFactHarvest(conv.session, id);
-        compaction = { trigger: "proactive", pre_tokens: fill };
-        // Stream the boundary so the chat draws the divider + resets its
-        // window estimate; persisted on the assistant message below so the
-        // divider survives a history reload.
-        publish(id, { type: "context_compacted", data: compaction, turnId });
+        // A compaction that REFUSES (the Claude backend throws on a provider
+        // failure, an empty summary or a session too small) must not fail this
+        // turn: the fill would stay over the threshold and every later turn
+        // would die at this same step — a wedged chat. `runAutocompact` reports
+        // the refusal once and holds the retry off, and the turn runs on
+        // uncompacted (session/autocompact-guard.ts).
+        if (await runAutocompact(conv.session, id)) {
+          compaction = { trigger: "proactive", pre_tokens: fill };
+          // Stream the boundary so the chat draws the divider + resets its
+          // window estimate; persisted on the assistant message below so the
+          // divider survives a history reload.
+          publish(id, { type: "context_compacted", data: compaction, turnId });
+        }
       }
     }
     // Effort: the routine's pin wins, else the agent's saved setting; if neither

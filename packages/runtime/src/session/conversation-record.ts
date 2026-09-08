@@ -26,7 +26,7 @@ export type Conversation = {
    * backend boundary must REBUILD the session on the new backend — never forward
    * a foreign model into the live one via `setModel` (that would route an
    * anthropic turn through pi's in-process client, or an openai id through the
-   * Claude subprocess). Compared against `backendFor(model.provider).id` each turn.
+   * Claude subprocess). Compared against `serverBackendFor(model.provider).id` each turn.
    */
   backendId: string;
   /**

@@ -38,8 +38,9 @@ export async function listAgentTeams(
  * @param input The team's name, and optionally its mark and colour. Use one
  *   of Houston's ten palette colours (charcoal, forest, teal, navy, purple,
  *   rose, crimson, orange, golden, umber); leave the mark out unless the
- *   user named one, and Houston draws its own.
- * @assistant group:teams
+ *   user named one, and Houston draws its own. A literal #rrggbb is also
+ *   accepted; an empty string clears the colour.
+ * @assistant group:teams unconfirmed: Creates an empty team without moving agents or adding other members.
  */
 export async function createAgentTeam(
   cfg: ControlPlaneConfig,
@@ -68,8 +69,8 @@ export async function createAgentTeam(
  * every teammate at once, and the previous values are not kept.
  * @param teamId The team this acts on, by the id listAgentTeams returns.
  * @param patch Only what changes. A colour is one of Houston's ten palette
- *   colours, an empty string clears one, and an omitted key leaves the
- *   field alone.
+ *   colours or a literal #rrggbb, an empty string clears one, and an omitted
+ *   key leaves the field alone. Omit the icon unless the user named one.
  * @assistant group:teams confirm
  */
 export async function updateAgentTeam(

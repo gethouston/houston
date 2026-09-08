@@ -4,6 +4,7 @@
  * ```
  * @assistant group:<slug>            the taxonomy bucket the operation lives in
  * @assistant confirm                 the caller must confirm before dispatching
+ * @assistant unconfirmed: <reason>   a mutation dispatches unasked, and why
  * @assistant hidden: <reason>        withheld from the assistant, and why
  * @assistant unroutable: <reason>    no route can be derived, and why
  * @assistant unschematized: <reason> the shapes stay free-form, and why
@@ -28,6 +29,7 @@ export interface AssistantDocs {
   confirm: boolean;
   hidden: boolean;
   hiddenReason?: string;
+  unconfirmed?: string;
   unroutableReason?: string;
   unschematizedReason?: string;
   /** Tags the grammar does not define — a typo, or a reason left off. */
@@ -36,6 +38,7 @@ export interface AssistantDocs {
 
 const REASON_KEYS = {
   hidden: "hiddenReason",
+  unconfirmed: "unconfirmed",
   unroutable: "unroutableReason",
   unschematized: "unschematizedReason",
 } as const;

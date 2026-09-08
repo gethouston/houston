@@ -1,7 +1,5 @@
-import type {
-  AssistantPathEncoding,
-  AssistantRoute,
-} from "../assistant/catalog";
+import type { AssistantRoute } from "../assistant/catalog";
+import { addressSegments, safeSegment } from "./assistant-path-segments";
 
 /**
  * The pieces of one outbound request, built from a catalog route and the
@@ -56,30 +54,6 @@ export const blocked = <T>(
 ): Built<T> => ({ ok: false, refusal: refuse(code, message) });
 
 /**
- * A segment a URL parser resolves away instead of addressing: `.` and `..`,
- * plus the percent-encoded spellings WHATWG treats identically (`%2e`, `.%2e`,
- * `%2e%2e`, …). Escaping does NOT neutralize these — `encodeURIComponent("..")`
- * is still `..` — so a value carrying one walks the built address out of its
- * own route and onto another operation's, which is then performed with the
- * gateway credential. The assistant surface takes these values from a language
- * model, so this is the boundary that has to refuse them.
- */
-const DOT_SEGMENT = /^(?:\.|%2e)(?:\.|%2e)?$/i;
-
-/**
- * Split one path value into the segments it will occupy. A `path` parameter
- * carries a relative path, so its `/` separators must survive while every
- * segment is still escaped — collapsing it into one segment would address a
- * file literally named `a/b` instead of `b` inside `a`.
- */
-function pathSegments(
-  value: string,
-  encoding: AssistantPathEncoding,
-): string[] {
-  return encoding === "path" ? value.split("/") : [value];
-}
-
-/**
  * The address a URL parser lands on for this path. Anything but the path
  * itself means the path does not address what it spells.
  */
@@ -104,8 +78,8 @@ export function buildPath(
         `"${name}" must be a non-empty value: it is part of the address this operation acts on`,
       );
     }
-    const segments = pathSegments(value, encoding);
-    if (segments.some((seg) => seg === "" || DOT_SEGMENT.test(seg))) {
+    const segments = addressSegments(route, name, encoding, value);
+    if (!segments.every(safeSegment)) {
       return blocked(
         "invalid_params",
         `"${name}" must not contain empty, "." or ".." parts: they would move this call onto a different operation's address`,
@@ -113,7 +87,9 @@ export function buildPath(
     }
     path = path.replaceAll(
       `{${name}}`,
-      segments.map(encodeURIComponent).join("/"),
+      encoding === "path"
+        ? segments.map(encodeURIComponent).join("/")
+        : encodeURIComponent(value),
     );
   }
   // A placeholder the catalog's `pathParams` never declared: the generator and

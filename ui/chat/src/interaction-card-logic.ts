@@ -102,6 +102,9 @@ export function toCompletedAnswers(
         stepId: step.id,
         question: step.question,
         answer: committed.answer,
+        ...(committed.optionId === null
+          ? ({ source: "text" } as const)
+          : ({ source: "option", optionId: committed.optionId } as const)),
       });
     }
   }

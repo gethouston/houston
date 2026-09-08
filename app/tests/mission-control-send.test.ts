@@ -1,5 +1,6 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { DEFAULT_MODEL } from "@houston/sdk/provider-catalog";
 import {
   type ActivityOverrideSource,
   resolveActivityOverride,
@@ -80,14 +81,18 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     });
   });
 
-  it("normalizes the legacy 'sonnet' alias to claude-sonnet-4-6", () => {
+  it("normalizes the legacy 'sonnet' alias to the provider's current default", () => {
+    // The alias derives from `DEFAULT_MODEL.anthropic` (`@houston/domain`
+    // model-aliases.ts) so that a stored "sonnet" and an unpinned send land on
+    // the same model. Read from that table rather than restated, or this pin
+    // silently outlives the next default.
     const overrides = resolveActivityOverride(
       `activity-${legacySonnetActivity.id}`,
       [legacySonnetActivity],
     );
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
-      modelOverride: "claude-sonnet-4-6",
+      modelOverride: DEFAULT_MODEL.anthropic,
     });
   });
 

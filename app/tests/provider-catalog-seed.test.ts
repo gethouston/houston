@@ -78,6 +78,16 @@ describe("override-only seed (before the pi catalog loads)", () => {
     strictEqual(local?.models.length, 0);
   });
 
+  it("never fabricates a default model it cannot know (B4)", () => {
+    // The seed carries NO models, so a provider without a curated default has
+    // no default to seed — `""` says exactly that, and every caller reads it as
+    // "no model to pin" rather than pinning an empty string.
+    strictEqual(getDefaultModel("groq"), "");
+    strictEqual(getDefaultModel("openai-compatible"), "");
+    // A curated default is still answered, in either dialect.
+    strictEqual(getDefaultModel("openai-codex"), "gpt-6-astra");
+  });
+
   it("does not throw from any read helper while models are empty", () => {
     doesNotThrow(() => {
       getModel("anthropic", "claude-sonnet-5");

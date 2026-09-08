@@ -1,5 +1,4 @@
 import { currentCredentialScope } from "../session/acting-context";
-import { bindEmptyRefreshServeSync } from "./empty-refresh-guard";
 import { runServedSync } from "./serve-sync-run";
 
 export {
@@ -70,6 +69,12 @@ export function syncServedCredential(): Promise<string[]> {
  * Best-effort wrapper for read routes and turn start: hydration must never fail
  * the request it precedes. A missing connection still surfaces downstream as
  * the runtime's normal "No provider connected" when nothing was applied.
+ *
+ * Also what the credential store's empty-refresh guard runs (PRODUCT-1317): an
+ * expiring access-only entry is re-served through THIS single-flighted sync
+ * before pi's expiry check can route it into a refresh. The safe variant on
+ * purpose — a hydration failure must never fail the credential read it precedes
+ * (the modify mask still guards), and it already logs the failure.
  */
 export async function syncServedCredentialSafe(tag: string): Promise<void> {
   try {
@@ -81,14 +86,3 @@ export async function syncServedCredentialSafe(tag: string): Promise<void> {
     );
   }
 }
-
-// PRODUCT-1317: the credential store's empty-refresh guard re-serves an
-// expiring access-only entry through THIS single-flighted sync before pi's
-// expiry check can route it into a refresh. Bound rather than imported by the
-// store — a direct import would cycle (serve → storage → credential-store →
-// serve). The safe variant on purpose: a hydration failure must never fail
-// the credential read it precedes (the modify mask still guards), and the
-// safe wrapper already logs the failure.
-bindEmptyRefreshServeSync(() =>
-  syncServedCredentialSafe("empty-refresh-guard"),
-);

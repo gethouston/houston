@@ -1,4 +1,5 @@
 import type { AgentId, WorkspaceId } from "../domain/types";
+import { ASSISTANT_USER_ID_ENV } from "../launcher/assistant-role";
 import type { CredentialVault } from "../ports";
 import { ASSISTANT_AGENT_NAME } from "./assistant";
 
@@ -16,8 +17,8 @@ import { ASSISTANT_AGENT_NAME } from "./assistant";
  * - DESKTOP / SELF-HOST: one host serves every agent, so the claim must name the
  *   synthetic `.assistant` agent (`routes/assistant.ts`) and nothing else.
  * - GATEWAY-FRONTED (a managed cloud pod): the pod holds exactly ONE agent and
- *   the gateway stamped this pod's operation credential deliberately, so the
- *   only claim this host can decode already IS the agent it was granted for.
+ *   the host must carry the gateway-stamped assistant user identity as well as
+ *   the operation credential. An ordinary agent pod has no assistant identity.
  */
 
 export interface AssistantClaim {
@@ -43,6 +44,13 @@ export function assistantClaim(
 ): AssistantClaim | null {
   const claim = token ? vault.validateSandboxToken(token) : null;
   if (!claim) return null;
-  if (!opts.gatewayFronted && !isAssistantAgentId(claim.agentId)) return null;
+  if (opts.gatewayFronted) {
+    // The gateway stamps the assistant's user id into the pod it provisions for
+    // the personal assistant and into NO other pod, so a pod host that carries
+    // it is the second factor a fronted deployment has instead of the dot-name:
+    // an ordinary agent's pod cannot answer as the coordinator even holding a
+    // valid sandbox token for its own runtime.
+    if (!process.env[ASSISTANT_USER_ID_ENV]?.trim()) return null;
+  } else if (!isAssistantAgentId(claim.agentId)) return null;
   return { workspaceId: claim.workspaceId, agentId: claim.agentId };
 }

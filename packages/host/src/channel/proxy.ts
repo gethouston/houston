@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ClaudeOAuthCredential, CustomEndpoint } from "@houston/protocol";
+import { normalizeTurnMode } from "@houston/protocol";
 import {
   type RevocationTombstones,
   RevokedRefillBlockedError,
@@ -16,6 +17,7 @@ import {
   type RuntimeLauncher,
   type TurnPin,
 } from "../ports";
+import { liveTurns } from "../routes/live-turn";
 import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
 import { captureRuntimeCredential } from "./capture-credential";
 import { errorCodeFrom, TurnFireError } from "./fire-error";
@@ -257,6 +259,11 @@ export class ProxyChannel implements RuntimeChannel {
     actingUser?: string,
     actingAs?: string,
   ): Promise<void> {
+    // A turn begins here for every programmatic fire (a routine, a trigger, a
+    // mission's first turn): the host records which conversation this agent is
+    // working in, because a runtime's own claim about that is not evidence
+    // (routes/live-turn.ts).
+    liveTurns.start(ctx.agent.id, conversationId, normalizeTurnMode(pin?.mode));
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
     // the conversation, exactly as a user message would. The routine's

@@ -64,7 +64,7 @@ export interface TurnAttemptInput {
 export async function runTurnAttempt(
   state: TurnAttemptState,
   { text, resume, env }: TurnAttemptInput,
-): Promise<"done" | "retry-fresh"> {
+): Promise<"success" | "failed" | "retry-fresh"> {
   const abortController = new AbortController();
   state.beginAttempt(abortController);
 
@@ -93,12 +93,14 @@ export async function runTurnAttempt(
   // throw-AFTER-error-result — the SDK routinely rejects the iterator right
   // after yielding an error `result` — is not reported a SECOND time.
   let providerErrored = false;
+  let succeeded = false;
   const danglingResume = (message: string): boolean =>
     resume !== undefined && DANGLING_RESUME_RE.test(message);
   try {
     for await (const msg of state.deps.query({ prompt: text, options })) {
       if (state.isAborting()) break;
       state.tickLiveness();
+      if (msg.type === "result" && msg.subtype === "success") succeeded = true;
       if (isAssistantMessageStart(msg)) state.emitAssistantMessageStart();
       if (hasSessionId(msg)) capturedSessionId = msg.session_id;
       for (const wire of translator.translate(msg)) {
@@ -123,16 +125,17 @@ export async function runTurnAttempt(
     // state (not `instanceof AbortError`) deliberately: importing the SDK's
     // error class at module load would eager-load the 250 MB optional binary
     // into every non-Anthropic process.
-    if (state.isAborting()) return "done";
+    if (state.isAborting()) return "failed";
     // The typed failure already rode the stream as a provider_error; the trailing
     // throw is just the SDK closing the iterator — don't re-report it.
-    if (providerErrored) return "done";
+    if (providerErrored) return "failed";
     if (danglingResume(errMessage(err))) {
       state.deps.sessionsStore.remove(state.deps.conversationId);
       return "retry-fresh";
     }
     // Any other throw is an unexpected transport failure: surface it as a
     // typed provider_error rather than rethrow, so the turn never dies silently.
+    providerErrored = true;
     state.emit({
       type: "provider_error",
       data: classifyText(
@@ -149,7 +152,9 @@ export async function runTurnAttempt(
         capturedSessionId,
       );
   }
-  return "done";
+  return succeeded && !providerErrored && !abortController.signal.aborted
+    ? "success"
+    : "failed";
 }
 
 /** A main-thread `message_start` stream event — the start of one API response. */

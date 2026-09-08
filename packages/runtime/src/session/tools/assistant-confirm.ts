@@ -25,11 +25,8 @@ import { CONVERSATION_ID_HEADER } from "./save-learning";
  */
 
 /** The approve/deny answers. */
-const APPROVE = { id: "approve", label: "Yes, go ahead" } as const;
-const DECLINE = { id: "decline", label: "No, don't do it" } as const;
-
-/** The question every approval card closes on. */
-const CLOSING = "Houston cannot undo this for you. Should I go ahead?";
+const APPROVE = { kind: "approval", id: "approve" } as const;
+const DECLINE = { kind: "approval", id: "decline" } as const;
 
 /** The host route that raises one approval request. */
 const PENDING_PATH = "/sandbox/assistant/pending";
@@ -123,9 +120,8 @@ export async function requestConfirmation(
     });
   }
 
-  const question = `${pending.summary} ${CLOSING}`;
   recordConfirmation({
-    question,
+    question: pending.summary,
     ...(pending.detail ? { detail: pending.detail } : {}),
     options: [{ ...APPROVE }, { ...DECLINE }],
     requestId: pending.requestId,

@@ -18,7 +18,8 @@
  *     anything else falls back to the default provider WITH a diagnostic.
  *   - model: if already a valid pi model for the mapped provider, keep it; else
  *     map a known legacy alias to the closest pi id AT THE SAME TIER (never an
- *     auto-upgrade); else fall soft to the provider's default WITH a diagnostic.
+ *     auto-upgrade); else fall soft to THAT provider's own default WITH a
+ *     diagnostic, and to `""` when it has none.
  *
  * The catalog/alias tables live in `provider-model-catalog.ts`.
  */
@@ -88,29 +89,48 @@ function mapProvider(
   return DEFAULT_PROVIDER;
 }
 
-/** A provider's catalog default model, or the universal floor (the
- * DEFAULT_PROVIDER's model) when a new, catalog-less pi provider has no entry in
- * DEFAULT_MODEL. Never undefined — DEFAULT_MODEL is now `Partial` over an open
- * ProviderId, so a missing key must fall back, not crash. */
+/**
+ * A provider's OWN catalog default, or `""` when DEFAULT_MODEL has no entry for
+ * it. Never another provider's model: the table is `Partial` over an open
+ * ProviderId, so a floor keyed on DEFAULT_PROVIDER answered every uncurated
+ * provider (groq, mistral, xai, …) with Codex's id — and this result is
+ * PERSISTED, so a Groq agent's stored model became an OpenAI one.
+ *
+ * `""` is the honest "no opinion": the runtime's own ladder (the domain pick if
+ * pi still lists it, else pi's first model for that provider) decides, and
+ * every settings writer skips a falsy model rather than storing one.
+ */
 function defaultModelFor(provider: ProviderId): string {
-  return DEFAULT_MODEL[provider] ?? DEFAULT_MODEL[DEFAULT_PROVIDER] ?? "";
+  return DEFAULT_MODEL[provider] ?? "";
 }
 
 /** Map a stored model to a valid pi model for `provider`, recording a
- * diagnostic when it can't be placed and falls back to the provider default. */
+ * diagnostic whenever the stored value is not what comes back. */
 function mapModel(
   provider: ProviderId,
   raw: string | undefined,
   diagnostics: DocDiagnostic[],
   key: string,
 ): string {
-  if (!raw) return defaultModelFor(provider);
+  const fallback = defaultModelFor(provider);
+  if (!raw) {
+    // A config that GAINED a model it never carried is a change to the user's
+    // data and is reported like any other. Nothing is gained when the provider
+    // has no catalog default, so nothing is said.
+    if (fallback)
+      diagnostics.push({
+        key,
+        message: `no ${provider} model stored → defaulting to ${fallback}`,
+      });
+    return fallback;
+  }
   const canonical = canonicalModelId(provider, raw);
   if (canonical) return canonical;
-  const fallback = defaultModelFor(provider);
   diagnostics.push({
     key,
-    message: `unknown ${provider} model ${JSON.stringify(raw)} → falling back to ${fallback}`,
+    message: fallback
+      ? `unknown ${provider} model ${JSON.stringify(raw)} → falling back to ${fallback}`
+      : `unknown ${provider} model ${JSON.stringify(raw)} → ${provider} has no catalog default, so the model is left unset`,
   });
   return fallback;
 }
@@ -125,9 +145,11 @@ export interface MigratedProviderModel {
  * Migrate a stored `(provider, model)` (legacy or current) to a `(ProviderId,
  * model)` pi-ai accepts. Pure. The result's provider is ALWAYS a valid
  * ProviderId and the model is ALWAYS one pi offers for that provider (for the
- * OAuth providers) or the stored/default id (for the open-catalog gateways).
- * Unknowns never throw — they fall soft to a documented default and surface a
- * diagnostic (beta no-silent-failure policy).
+ * OAuth providers), the stored/default id (for the open-catalog gateways), or
+ * `""` when that provider has no catalog default — never a model belonging to
+ * a DIFFERENT provider. An empty model means the caller's own ladder picks;
+ * `setSettings` skips it rather than storing it. Unknowns never throw — they
+ * fall soft and surface a diagnostic (beta no-silent-failure policy).
  *
  * `diagnosticKey` is the source the diagnostic points at (defaults to the
  * config doc path so a UI can show "we adjusted this agent's model").

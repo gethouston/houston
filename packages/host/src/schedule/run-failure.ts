@@ -3,7 +3,7 @@ import type {
   RoutineRunFailure,
   RoutineRunFailureCode,
 } from "@houston/protocol";
-import { providerName } from "../providers";
+import { sentenceProviderName } from "../providers";
 
 /**
  * Why a routine run failed, in the terms the person reading its history can
@@ -16,16 +16,6 @@ import { providerName } from "../providers";
  * an honest English sentence for the surfaces (and the run history) that show
  * it verbatim, matching the existing run-row copy.
  */
-
-/**
- * The provider name for a SENTENCE. The catalog names carry a plan
- * parenthetical ("Claude (Pro / Max)") which reads wrong mid-sentence, so it
- * is dropped here and only here — the catalog stays the source of truth for
- * every place a provider is NAMED rather than narrated.
- */
-function sentenceProviderName(id: string): string {
-  return providerName(id).replace(/\s*\(.*\)\s*$/, "");
-}
 
 /**
  * Whose credential ran the failed turn. A turn with no acting identity has

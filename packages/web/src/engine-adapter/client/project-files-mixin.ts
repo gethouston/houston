@@ -103,7 +103,7 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       });
     }
     /** Creates a folder in an agent's workspace.
-     * @assistant group:files */
+     * @assistant group:files unconfirmed: Creates an empty folder without replacing existing content. */
     async createFolder(
       agentPath: string,
       folderName: string,

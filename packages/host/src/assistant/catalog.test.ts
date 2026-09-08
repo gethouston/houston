@@ -128,3 +128,26 @@ describe("visibility", () => {
     expect(findVisibleOperation(catalog, "noSuchOperation")).toBeUndefined();
   });
 });
+
+test("validates policy reasons in the shared operation envelope", () => {
+  for (const field of ["unconfirmed", "hiddenReason"]) {
+    expect(
+      parseAssistantCatalog(
+        JSON.stringify({
+          ...fixture,
+          operations: [{ ...fixture.operations[0], [field]: 42 }],
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      parseAssistantCatalog(
+        JSON.stringify({
+          ...fixture,
+          operations: [
+            { ...fixture.operations[0], [field]: "Authored reason." },
+          ],
+        }),
+      ),
+    ).not.toBeNull();
+  }
+});

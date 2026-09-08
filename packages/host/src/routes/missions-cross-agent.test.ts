@@ -14,6 +14,8 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { ASSISTANT_CP_URL_ENV, ASSISTANT_TOKEN_ENV } from "./assistant-wiring";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
+import { liveTurns } from "./live-turn";
+import { missionFanout } from "./mission-fanout";
 import { handleSandboxMissions } from "./missions-sandbox";
 
 /**
@@ -172,14 +174,21 @@ async function call(
   body: unknown,
   opts: {
     conversationId?: string;
+    /** A conversation the RUNTIME claims and the host never recorded (S7). */
+    forgedConversationId?: string;
     search?: string;
     store?: WorkspaceStore;
     gatewayFronted?: boolean;
   } = {},
 ) {
   const headers: Record<string, string> = { authorization: "Bearer sb-good" };
+  if (opts.forgedConversationId)
+    headers[CONVERSATION_ID_HEADER] = opts.forgedConversationId;
+  // The host's own record of the turn is what every mission decision reads
+  // (routes/live-turn.ts); production writes it when the turn starts.
   if (opts.conversationId)
-    headers[CONVERSATION_ID_HEADER] = opts.conversationId;
+    liveTurns.start(caller.id, opts.conversationId, "execute");
+  else liveTurns.forget(caller.id);
   const { res, captured } = fakeRes();
   const url = new URL(`http://host${path}${opts.search ?? ""}`);
   const handled = await handleSandboxMissions(
@@ -236,6 +245,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  missionFanout.forget(caller.id);
   restoreGateway?.();
   restoreGateway = null;
 });
@@ -473,9 +483,11 @@ test("a bare name that fits two reachable agents is refused, not guessed", async
     { conversationId: "conv-parent", store: ambiguous },
   );
   expect(r.status).toBe(409);
+  // Each candidate carries its ID, the one spelling that is never ambiguous:
+  // in cloud two same-named agents both render as "Dobby" without it.
   const message = String((r.body as { error: string }).error);
-  expect(message).toContain("Personal/Dobby");
-  expect(message).toContain("Team/Dobby");
+  expect(message).toContain(`(id ${target.id}, in Personal)`);
+  expect(message).toContain(`(id ${teamDobby.id}, in Team)`);
   expect(await boardOf(targetRoot)).toEqual([]);
   expect(fired).toEqual([]);
 
@@ -638,4 +650,52 @@ test("a move with no mission id is refused before any agent is resolved", async 
   );
   expect(r.status).toBe(400);
   expect((r.body as { code: string }).code).toBe("invalid_mission");
+});
+
+/**
+ * S7 — the fan-out budget belongs to the CALLER. Every board refuses its own
+ * 21st running mission; only the caller's own ledger sees a caller spreading
+ * twenty starts over twenty agents, which no single board can.
+ */
+test("the caller's budget is spent across every board, not per board", async () => {
+  // Twenty starts already out in other pods, none of them on any board here.
+  for (let i = 0; i < 20; i++)
+    missionFanout.record(caller.id, {
+      missionId: `remote-${i}`,
+      boardRoot: null,
+    });
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { agent: "Dobby", title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(409);
+  expect(r.body).toMatchObject({ code: "mission_fanout" });
+  expect(await boardOf(targetRoot)).toEqual([]);
+  expect(fired).toEqual([]);
+});
+
+test("a cross-pod start carries the depth it was counted at", async () => {
+  // The calling chat is itself a mission, one level down. The forwarded origin
+  // has to say so: the target's pod cannot read this board to find out.
+  await saveActivities(vfs, callerRoot, [
+    { ...PARENT, origin_session_key: "conv-grandparent", origin_depth: 1 },
+  ]);
+  const calls: { url: string; init: RequestInit | undefined }[] = [];
+  stubGateway(calls, {
+    "/agents": [
+      { id: "slug-kreacher", name: "Kreacher", workspaceId: "Houston" },
+    ],
+  });
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { agent: "Kreacher", title: "t", prompt: "p" },
+    { conversationId: "conv-parent", gatewayFronted: true },
+  );
+  // Depth 2 is past the ceiling, so nothing leaves this pod at all.
+  expect(r.status).toBe(409);
+  expect(r.body).toMatchObject({ code: "mission_depth" });
+  expect(calls.find((c) => c.url.includes("/missions/start"))).toBeUndefined();
 });

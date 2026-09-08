@@ -23,7 +23,7 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  *   agent's name is not its id, so read the id from listAgents first.
  * @param color One of Houston's ten palette colours: charcoal, forest,
  *   teal, navy, purple, rose, crimson, orange, golden or umber.
- * @assistant group:agents
+ * @assistant group:agents unconfirmed: Reversible display preference; changes no agent behavior or access.
  */
 export async function updateAgentColor(
   cfg: ControlPlaneConfig,

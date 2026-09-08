@@ -375,5 +375,10 @@
   },
   "copyMessage": {
     "copy": "Copiar mensagem"
+  },
+  "approvalCard": {
+    "approve": "Sim, pode continuar",
+    "decline": "Não, não faça isso",
+    "closing": "Houston não pode desfazer isso para você. Quer continuar?"
   }
 }

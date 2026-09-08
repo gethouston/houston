@@ -1,15 +1,23 @@
 /**
  * How a provider/model pair is NAMED, in one place.
  *
- * The chat picker's trigger and the routine screen's model row show the same
- * pair and must never disagree about what to call it, so the label chain lives
- * here rather than inside either surface: the catalog's curated label first,
- * then the engine-reported configured model (the OpenAI-compatible local
- * provider has no catalog entry), then the raw id. `null` when nothing names it
- * — each caller decides its own last-resort copy, which is translated and
- * therefore cannot live in this i18n-free module.
+ * The chat picker's trigger, the quota cards and the routine screen's model row
+ * show the same pair and must never disagree about what to call it, so the
+ * label chain lives here rather than inside any of them: the hydrated catalog's
+ * curated label, then the shared display table (a provider keeps far more
+ * runnable ids than the picker shows — a pin to one of those has no catalog row
+ * but still has a name), then the engine-reported configured model (the local
+ * OpenAI-compatible provider has no catalog entry at all), and finally a name
+ * derived from the id itself. A raw model id is never a label. `null` only when
+ * there is no model at all — each caller decides its own last-resort copy,
+ * which is translated and therefore cannot live in this i18n-free module.
  */
 
+import {
+  humanizedModelName,
+  modelDisplayName,
+  toCanonicalProviderId,
+} from "@houston/sdk/provider-catalog";
 import { getModel, PROVIDERS, providerName } from "./providers.ts";
 
 /**
@@ -22,7 +30,14 @@ export function modelDisplayLabel(
   model: string,
   activeModel?: string,
 ): string | null {
-  return getModel(provider, model)?.label ?? activeModel ?? (model || null);
+  const curated =
+    getModel(provider, model)?.label ??
+    // The shared table is keyed by pi's canonical ids; the app speaks display
+    // ones.
+    modelDisplayName(toCanonicalProviderId(provider), model);
+  if (curated) return curated;
+  if (activeModel) return activeModel;
+  return model ? humanizedModelName(model) : null;
 }
 
 /**

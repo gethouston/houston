@@ -1,4 +1,5 @@
 import { getOverflowPatterns } from "@earendil-works/pi-ai";
+import { toDisplayProviderId } from "@houston/domain/provider-dialect";
 import type { AuthFailureCause, ProviderError } from "@houston/runtime-client";
 import { servedScopeFor } from "../auth/served-scope";
 import { AZURE_OPENAI } from "./azure-openai";
@@ -422,12 +423,16 @@ function localServedFallback(message: string): string | null {
  * forced OpenRouter's `anthropic/claude-opus-5` onto Anthropic produced for 15
  * users (PRODUCT-1657). The message keeps its long-standing shape — unattended
  * readers (a routine's reconcile) parse it off the persisted assistant message.
+ * Only the provider TOKEN is translated to Houston's display dialect: the run
+ * history prints this sentence verbatim to a non-technical reader, while the
+ * `provider` FIELD stays canonical because every card and switch action keys
+ * off it.
  */
 export class ModelNotOfferedError extends Error {
   readonly providerError: ProviderError;
 
   constructor(provider: string, model: string, fallback: string | null) {
-    const message = `${provider} model "${model}" is not available`;
+    const message = `${toDisplayProviderId(provider)} model "${model}" is not available`;
     super(message);
     this.name = "ModelNotOfferedError";
     this.providerError = stampCredentialScope({

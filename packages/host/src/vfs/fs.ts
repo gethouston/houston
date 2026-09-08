@@ -111,9 +111,13 @@ export class FsVfs implements Vfs {
           .split(sep)
           .join("/"),
         size: f.size,
-        updatedMs: Math.round(f.mtimeMs),
+        // TRUNCATED, never rounded: the filesystem reports fractional
+        // milliseconds, and rounding one up names an instant that has not
+        // happened - a file that reports itself created after the moment it
+        // was read.
+        updatedMs: Math.floor(f.mtimeMs),
         // Linux filesystems without birthtime report 0 — omit rather than lie.
-        ...(f.birthMs > 0 ? { createdMs: Math.round(f.birthMs) } : {}),
+        ...(f.birthMs > 0 ? { createdMs: Math.floor(f.birthMs) } : {}),
       }))
       .sort((a, b) => a.key.localeCompare(b.key));
   }

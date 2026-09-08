@@ -57,6 +57,7 @@ export const assistantOutputs = [
   { file: "assistant-catalog.generated.json", directory: hostAssistant },
   { file: "assistant-capabilities.md", directory: generatedDocs },
   { file: "assistant-coverage.md", directory: generatedDocs },
+  { file: "assistant-operations.md", directory: generatedDocs },
 ] as const;
 
 /** A source path as it reads in the generated header — repo-relative, POSIX. */

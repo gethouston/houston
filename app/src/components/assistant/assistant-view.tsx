@@ -10,7 +10,9 @@ import { AssistantChat } from "./assistant-chat";
  * holds the assistant, which conversation to open), so the screen waits on it
  * behind a calm spinner and hands the address to the chat. It resolves once per
  * session — the query is cached forever — so this beat is only ever the first
- * open.
+ * open. The spinner also covers a query that is PAUSED rather than in flight
+ * (an offline device) and one being refetched after a failure, because
+ * `isLoading` means "no answer yet", not "a request is on the wire".
  *
  * A deployment that serves no assistant renders nothing here at all: the rail
  * row is already hidden and the view guard sends a stale `viewMode` home, so

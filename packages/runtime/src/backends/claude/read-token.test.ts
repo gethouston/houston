@@ -1,13 +1,38 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Credential } from "@earendil-works/pi-ai";
 import { accessDigest } from "@houston/protocol/access-digest";
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
+
+// The shared login file is re-parsed only when it CHANGED, and "how many times
+// did we open it" is the whole claim — so the real `readFileSync` is wrapped
+// (never replaced) to make the count observable. Everything else in node:fs is
+// the genuine article, this suite's own setup included.
+vi.mock("node:fs", async (importOriginal) => {
+  const real = await importOriginal<typeof import("node:fs")>();
+  return { ...real, default: real, readFileSync: vi.fn(real.readFileSync) };
+});
+
+import {
+  servedProvidersPathIn,
+  writeServedProvidersAt,
+} from "../../auth/auth-file";
 import type { HoustonAuthStore } from "../../auth/credential-store";
-import { runWithActingContext } from "../../session/acting-context";
+import { config } from "../../config";
+import {
+  runWithActingContext,
+  TEAM_CREDENTIAL_SCOPE,
+} from "../../session/acting-context";
 import { claudeCredentialsFile, claudeLoginConfigDir } from "./paths";
 import { readAnthropicToken } from "./read-token";
+import { forgetSharedLoginCacheForTest } from "./shared-login-file";
 
 /**
  * A minimal credential-store stub over ONE entry, honouring both halves of the
@@ -35,17 +60,24 @@ function store(
 // `houstonHome()` resolves `process.env` on every call, so no dynamic import of
 // the modules under test is needed here.
 let prevHome: string | undefined;
+let prevDataDir: string;
 let home: string;
 
 beforeAll(() => {
   prevHome = process.env.HOUSTON_HOME;
   home = mkdtempSync(join(tmpdir(), "read-token-home-"));
   process.env.HOUSTON_HOME = home;
+  // The serve-mode cases below read the served-providers manifest out of the
+  // data dir; pinned into the same temp home so no test ever touches (or
+  // reads) the developer's real one.
+  prevDataDir = config.dataDir;
+  config.dataDir = join(home, "data");
 });
 
 afterAll(() => {
   if (prevHome === undefined) delete process.env.HOUSTON_HOME;
   else process.env.HOUSTON_HOME = prevHome;
+  config.dataDir = prevDataDir;
   rmSync(home, { recursive: true, force: true });
 });
 
@@ -68,7 +100,25 @@ const HOUR = 60 * 60 * 1000;
 beforeEach(() => {
   vi.spyOn(console, "warn").mockImplementation(() => {});
   rmSync(claudeLoginConfigDir(), { recursive: true, force: true });
+  // The parsed file is cached by (inode, size, mtime); a suite that rewrites it
+  // several times inside one millisecond must not read a previous test's copy.
+  forgetSharedLoginCacheForTest();
+  rmSync(servedProvidersPathIn(config.dataDir, TEAM_CREDENTIAL_SCOPE), {
+    force: true,
+  });
+  config.controlPlaneUrl = "";
+  config.sandboxToken = "";
 });
+
+/** Put this runtime on a managed pod whose gateway serves `providers`. */
+function serveModeServing(providers: string[]): void {
+  config.controlPlaneUrl = "http://control-plane.test";
+  config.sandboxToken = "sbx-token";
+  writeServedProvidersAt(
+    servedProvidersPathIn(config.dataDir, TEAM_CREDENTIAL_SCOPE),
+    providers,
+  );
+}
 
 test("a setup token (sk-ant-oat01…) maps to an oauth-token", () => {
   const token = readAnthropicToken(
@@ -458,4 +508,139 @@ test("a personal scope is never moved onto the pod-shared login", () => {
   );
 
   expect(token).toMatchObject({ value: "sk-ant-oat01-mine" });
+});
+
+// ── The served entry is authoritative on a managed pod ─────────────────────
+// There the gateway rotates a short-TTL access token into auth.json before
+// every turn and NOTHING rewrites the pod-shared login file, so the file's
+// longer-lived push-time value would "supersede" every served token forever.
+
+test("a served anthropic entry is never superseded by the pod-shared file", () => {
+  // The ping-pong: each read deleted the just-served entry and ran the turn on
+  // the older pushed token; the next sync re-applied the served one; repeat —
+  // until Anthropic invalidated the previous holder and every turn 401'd
+  // token_revoked.
+  serveModeServing(["anthropic"]);
+  writeSharedLoginFile(envelope("sk-ant-oat01-pushed", Date.now() + 8 * HOUR));
+  const s = store({
+    type: "oauth",
+    access: "sk-ant-oat01-served",
+    refresh: "",
+    expires: Date.now() + 5 * 60 * 1000, // the gateway's short TTL
+  });
+
+  expect(readAnthropicToken(s)).toMatchObject({
+    value: "sk-ant-oat01-served",
+  });
+  expect(s.removed).toEqual([]);
+  expect(s.get("anthropic")).toBeDefined();
+});
+
+test("a managed pod that does NOT serve anthropic keeps the supersede rule", () => {
+  // The desktop pushes anthropic to one agent's runtime there, so a reconnect
+  // pushed to ANOTHER runtime reaches this one only through the shared file.
+  serveModeServing(["openai-codex"]);
+  writeSharedLoginFile(
+    envelope("sk-ant-oat01-reconnected", Date.now() + 8 * HOUR),
+  );
+  const s = store({
+    type: "oauth",
+    access: "sk-ant-oat01-superseded",
+    refresh: "",
+    expires: Date.now() + HOUR,
+  });
+
+  expect(readAnthropicToken(s)).toMatchObject({
+    value: "sk-ant-oat01-reconnected",
+  });
+  expect(s.removed).toEqual(["anthropic"]);
+});
+
+test("a disk that cannot drop the superseded entry still resolves the login", () => {
+  // The drop is a write (auth.json); EACCES/ENOSPC must not fail the turn where
+  // it used to degrade to "keep resolving".
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  writeSharedLoginFile(
+    envelope("sk-ant-oat01-reconnected", Date.now() + 8 * HOUR),
+  );
+  const s = store({
+    type: "oauth",
+    access: "sk-ant-oat01-superseded",
+    refresh: "",
+    expires: Date.now() + HOUR,
+  });
+  s.remove = () => {
+    throw Object.assign(new Error("ENOSPC: no space left on device"), {
+      code: "ENOSPC",
+    });
+  };
+
+  expect(readAnthropicToken(s)).toEqual({
+    kind: "oauth-token",
+    value: "sk-ant-oat01-reconnected",
+  });
+  // Never silent to us: console.error is the runtime's Sentry feed.
+  expect(error).toHaveBeenCalledWith(
+    expect.stringContaining("could not drop the superseded"),
+    expect.stringContaining("ENOSPC"),
+  );
+  error.mockRestore();
+});
+
+// ── The shared login file is parsed once per CHANGE, not once per read ─────
+
+test("an unchanged shared login file is read from disk once, not per call", () => {
+  // Every credential read of a turn lands here (prompt prep, summarizer,
+  // anonymizer, each cache lookup), and each one used to open, read and parse
+  // the file again.
+  writeSharedLoginFile(envelope("sk-ant-oat01-shared", Date.now() + HOUR));
+  const path = claudeCredentialsFile(claudeLoginConfigDir());
+  vi.mocked(readFileSync).mockClear();
+
+  const first = readAnthropicToken(store(undefined));
+  for (let i = 0; i < 5; i++) {
+    expect(readAnthropicToken(store(undefined))).toEqual(first);
+  }
+
+  expect(first).toMatchObject({ value: "sk-ant-oat01-shared" });
+  expect(
+    vi.mocked(readFileSync).mock.calls.filter((call) => call[0] === path),
+  ).toHaveLength(1);
+});
+
+test("a REWRITTEN shared login file is picked up, not served from the cache", () => {
+  writeSharedLoginFile(envelope("sk-ant-oat01-first", Date.now() + HOUR));
+  expect(readAnthropicToken(store(undefined))).toMatchObject({
+    value: "sk-ant-oat01-first",
+  });
+
+  // A reconnect rewrites the file: the very next read must see the new login,
+  // or the runtime keeps authenticating with the credential it just replaced.
+  writeSharedLoginFile(envelope("sk-ant-oat01-second", Date.now() + 2 * HOUR));
+  expect(readAnthropicToken(store(undefined))).toMatchObject({
+    value: "sk-ant-oat01-second",
+  });
+});
+
+test("a shared login file removed under the cache resolves nothing", () => {
+  writeSharedLoginFile(envelope("sk-ant-oat01-gone", Date.now() + HOUR));
+  expect(readAnthropicToken(store(undefined))).toBeDefined();
+
+  rmSync(claudeLoginConfigDir(), { recursive: true, force: true });
+  expect(readAnthropicToken(store(undefined))).toBeUndefined();
+});
+
+test("expiry is judged per read, never cached with the parse", () => {
+  // The file is parsed once; whether its token can still authenticate a turn
+  // is a question about NOW, and must be re-asked on every read.
+  const expiresAt = Date.now() + 50;
+  writeSharedLoginFile(envelope("sk-ant-oat01-brief", expiresAt));
+  expect(readAnthropicToken(store(undefined))).toMatchObject({
+    value: "sk-ant-oat01-brief",
+  });
+
+  vi.useFakeTimers();
+  vi.setSystemTime(expiresAt + 1);
+  expect(readAnthropicToken(store(undefined))).toBeUndefined();
+  vi.useRealTimers();
 });

@@ -1,13 +1,8 @@
 /**
  * The ONE default model per provider, keyed by pi's CANONICAL provider id.
  *
- * This is the single value behind three questions that used to be answered by
- * three drifting tables: what the picker pre-selects the moment a provider
- * connects (the app's catalog `defaultModel`), what a turn pinned to a provider
- * with no model runs on (the runtime's env defaults), and where a migration
- * lands a stored model it cannot place (`provider-model.ts`). They disagreed —
- * Anthropic read `claude-sonnet-5` in the app and the runtime but
- * `claude-sonnet-4-6` here, and this table is the one that REWRITES user data.
+ * The picker, runtime and stored-model migrations share these defaults.
+ * A provider-only pin and a newly connected provider select the same model.
  *
  * `Partial` because `ProviderId` is open (any pi-ai id): a provider absent from
  * this table has no catalog default, and readers must handle the missing key
@@ -75,6 +70,8 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // backend's refusal of gpt-5.5 does not reach here: an Azure request hits the
   // user's own resource and runs whatever they deployed.
   "azure-openai-responses": "gpt-5.5",
-  // No catalog default — the model is whatever the user's local server serves.
-  "openai-compatible": "",
+  // `openai-compatible` is deliberately ABSENT, not empty: the model is whatever
+  // the user's local server serves, and an "" entry is non-nullish, so every
+  // `catalogDefaultModel(id) ?? models[0]?.id` fallback stopped at it and the
+  // picker offered no model at all.
 };

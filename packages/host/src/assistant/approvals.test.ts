@@ -135,6 +135,26 @@ test("a request expires, and an expired one is neither answerable nor spendable"
   expect(store.hasPending(AGENT, CONV)).toBe(false);
 });
 
+test("only a live, unanswered request of this agent+conversation is presentable", () => {
+  let now = 1_000;
+  const store = new ApprovalStore(() => now);
+  const live = store.issue({
+    operation: "del",
+    params: {},
+    agentId: AGENT,
+    conversationId: CONV,
+    summary: "s",
+  });
+  expect(store.pending(live.requestId, AGENT, CONV)?.summary).toBe("s");
+  expect(store.pending(live.requestId, "Work/Sales", CONV)).toBeUndefined();
+  expect(store.pending(live.requestId, AGENT, "other")).toBeUndefined();
+  expect(store.pending("invented", AGENT, CONV)).toBeUndefined();
+  const answered = approved(store, "del", { id: "a" });
+  expect(store.pending(answered.requestId, AGENT, CONV)).toBeUndefined();
+  now += APPROVAL_TTL_MS + 1;
+  expect(store.pending(live.requestId, AGENT, CONV)).toBeUndefined();
+});
+
 test("clearing a conversation forgets its requests and leaves the others", () => {
   const store = new ApprovalStore();
   approved(store, "del", {});

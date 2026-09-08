@@ -53,12 +53,14 @@ export interface WorkspaceGuardOptions {
    *  same symlink-resolved containment applies as for the workspace. */
   sharedRoots?: string[];
   /**
-   * An EXACT list of the files the tools may touch. When present it replaces
-   * root containment entirely — `sharedRoots` and the rest of the workspace are
+   * An EXACT list of the files the tools may touch. When present it NARROWS the
+   * workspace to those files — `sharedRoots` and the rest of the workspace are
    * refused — so a role with a single document to maintain can be given exactly
-   * that document. A listed file need not exist yet (the memory doc is written
-   * before it is first read), and a symlink standing in for one is judged by
-   * where it really points.
+   * that document. Listing a path is necessary, never sufficient: it must still
+   * resolve inside the workspace root and must still not be credential material.
+   * A listed file need not exist yet (the memory doc is written before it is
+   * first read), and a symlink standing in for one — or a listed path that IS
+   * one — is judged by where it really points.
    */
   allowedFiles?: string[];
 }

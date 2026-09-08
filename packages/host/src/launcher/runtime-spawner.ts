@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import type { RuntimeHandle, RuntimeSpawner, SpawnSpec } from "./process";
+import { runtimeParentEnv } from "./runtime-parent-env";
 
 export interface RuntimeSpawnerOptions {
   /**
@@ -37,7 +38,7 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
       throw new Error("RuntimeProcessSpawner: command is empty");
     const child = spawn(cmd, args, {
       env: {
-        ...process.env,
+        ...runtimeParentEnv(process.env),
         ...this.opts.env?.(spec),
         HOUSTON_HOST: "127.0.0.1",
         HOUSTON_PORT: String(spec.port),

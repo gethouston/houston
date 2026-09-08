@@ -95,7 +95,11 @@ test("a gateway-fronted pod refuses: the gateway owns discovery there", async ()
 
 test("a host with no agent tree says so instead of handing out a dead address", async () => {
   const res = await get(deps({ ensureSyntheticAgentDir: undefined }));
-  expect(res.status).toBe(503);
+  // 501, not 503: a host with no agent tree will NEVER grow one mid-session, so
+  // this is "not implemented here", the same answer the gateway-fronted branch
+  // gives. As a 503 it was retried eight times over ten seconds by the desktop
+  // transport before the client's classifier ever saw it.
+  expect(res.status).toBe(501);
   expect(res.body).toMatchObject({ code: "assistant_unavailable" });
 });
 

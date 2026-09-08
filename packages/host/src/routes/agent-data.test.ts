@@ -167,7 +167,7 @@ test("activities: full CRUD lifecycle over the host", async () => {
   ).toBe(404);
 });
 
-test("activities: POST honors a client-generated id; a same-id retry is idempotent; a bogus id is rejected (HOU-693)", async () => {
+test("activities: POST honors a client-generated id; a same-id retry is idempotent; a same-id DIFFERENT mission is refused; a bogus id is rejected (HOU-693)", async () => {
   const id = crypto.randomUUID();
   const created = await fetch(`${base}/agents/${agentId}/activities`, {
     method: "POST",
@@ -177,11 +177,11 @@ test("activities: POST honors a client-generated id; a same-id retry is idempote
   expect(created.status).toBe(201);
   expect(((await created.json()) as Activity).id).toBe(id);
 
-  // Retry with the same id upserts, never duplicates.
+  // Retry with the same id lands on the existing row, never a duplicate.
   const retried = await fetch(`${base}/agents/${agentId}/activities`, {
     method: "POST",
     headers: auth("alice"),
-    body: JSON.stringify({ id, title: "Warm-up mission (retry)" }),
+    body: JSON.stringify({ id, title: "Warm-up mission" }),
   });
   expect(retried.status).toBe(201);
   const list = (await (
@@ -190,6 +190,18 @@ test("activities: POST honors a client-generated id; a same-id retry is idempote
     })
   ).json()) as { items: Activity[] };
   expect(list.items.filter((a) => a.id === id)).toHaveLength(1);
+
+  // A DIFFERENT mission asking for a taken id is refused: taking it over would
+  // reset the live card's status and erase whose work it is.
+  const stolen = await fetch(`${base}/agents/${agentId}/activities`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ id, title: "Someone else's mission" }),
+  });
+  expect(stolen.status).toBe(409);
+  expect((await stolen.json()) as { code?: string }).toMatchObject({
+    code: "activity_exists",
+  });
 
   for (const bogus of ["", "   ", "x".repeat(65), 42]) {
     const rejected = await fetch(`${base}/agents/${agentId}/activities`, {

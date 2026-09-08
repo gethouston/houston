@@ -116,8 +116,10 @@ test("bare tier aliases resolve to the pi id at the SAME tier (no upgrade)", () 
   expect(opus.diagnostics).toEqual([]);
   assertValid(opus, "anthropic/opus");
 
+  // Sonnet's bare alias IS the provider's current default (model-aliases.ts):
+  // "sonnet" and "no model" must resolve to the same thing.
   const sonnet = migrateProviderModel("anthropic", "sonnet");
-  expect(sonnet.model).toBe("claude-sonnet-4-6");
+  expect(sonnet.model).toBe(DEFAULT_MODEL.anthropic);
   expect(sonnet.diagnostics).toEqual([]);
   assertValid(sonnet, "anthropic/sonnet");
 
@@ -180,10 +182,11 @@ test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)
 test("missing provider/model fall soft to the defaults with provider diagnostic", () => {
   const r = migrateProviderModel(undefined, undefined);
   expect(r.provider).toBe(DEFAULT_PROVIDER);
-  expect(r.model).toBe("gpt-6-astra");
-  // Missing provider is reported; a missing model on a defaulted provider just
-  // uses the default (no extra noise needed once the provider is known).
+  expect(r.model).toBe(DEFAULT_MODEL[DEFAULT_PROVIDER]);
+  // Both substitutions are reported: the config gained a provider AND a model
+  // it never carried, and either can surprise the person reading it back.
   expect(r.diagnostics.some((d) => d.message.includes("provider"))).toBe(true);
+  expect(r.diagnostics.some((d) => d.message.includes("model"))).toBe(true);
   assertValid(r, "all missing");
 });
 
@@ -266,4 +269,47 @@ test("a stored Codex model the subscription no longer serves migrates to one it 
   expect(VALID_MODELS["openai-codex"]?.has("gpt-6-astra")).toBe(true);
   for (const gone of ["gpt-5.5", "gpt-5.4"])
     expect(VALID_MODELS["openai-codex"]?.has(gone), gone).toBe(false);
+});
+
+test("a provider with no catalog default never inherits another provider's model", () => {
+  // DEFAULT_MODEL is Partial over an OPEN ProviderId: twelve shipped providers
+  // (groq, cerebras, mistral, xai, …) have no entry. A universal floor keyed on
+  // DEFAULT_PROVIDER rewrote every one of them to Codex's id and PERSISTED it —
+  // a Groq agent whose stored model became an OpenAI one.
+  expect(DEFAULT_MODEL.groq).toBeUndefined();
+  for (const provider of ["groq", "cerebras", "mistral", "xai", "fireworks"]) {
+    const r = migrateProviderModel(provider, undefined);
+    expect(r.provider, provider).toBe(provider);
+    expect(r.model, provider).toBe("");
+    expect(r.model, provider).not.toBe(DEFAULT_MODEL[DEFAULT_PROVIDER]);
+    expect(r.model, provider).not.toBe(DEFAULT_MODEL.anthropic);
+  }
+});
+
+test("an absent model that GAINS the provider's default says so", () => {
+  // The migration writes the result back to the agent's config, so a config
+  // that silently gained a model it never had must be visible — the same rule
+  // an unknown model already followed.
+  const r = migrateProviderModel("anthropic", undefined);
+  expect(r.model).toBe(DEFAULT_MODEL.anthropic);
+  expect(r.diagnostics).toHaveLength(1);
+  expect(r.diagnostics[0]?.message).toContain(String(DEFAULT_MODEL.anthropic));
+});
+
+test("nothing is gained, so nothing is reported, when the provider has no default", () => {
+  expect(migrateProviderModel("groq", undefined).diagnostics).toEqual([]);
+});
+
+test("a provider with no catalog default is ABSENT, never an empty string", () => {
+  // Readers fall through with `DEFAULT_MODEL[id] ?? <next candidate>` (the app
+  // catalog's `catalogDefaultModel(id) ?? models[0]?.id`). An "" entry is
+  // non-nullish, so it stopped that fallback dead and the picker offered no
+  // model at all for a local OpenAI-compatible server.
+  expect(DEFAULT_MODEL["openai-compatible"]).toBeUndefined();
+  expect("openai-compatible" in DEFAULT_MODEL).toBe(false);
+  expect(DEFAULT_MODEL["openai-compatible"] ?? "first-served-model").toBe(
+    "first-served-model",
+  );
+  // ...and the migration's own floor still answers "no opinion", not a guess.
+  expect(migrateProviderModel("openai-compatible", undefined).model).toBe("");
 });

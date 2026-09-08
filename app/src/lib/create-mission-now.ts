@@ -34,6 +34,7 @@ import { getEngine } from "./engine";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { logger } from "./logger";
+import { missionRowInput } from "./mission-row";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
 import { healStaleRosterFromError } from "./roster-heal";
 import { showSendFailedToast } from "./send-error-toast";
@@ -62,14 +63,10 @@ async function landMissionRow(
   mission: MissionIdentity,
 ): Promise<string | null> {
   try {
-    const created = await tauriActivity.createWithId(agent.folderPath, {
-      id: mission.conversationId,
-      title: mission.title,
-      description: mission.description,
-      agent: opts.agentMode,
-      provider: opts.providerOverride,
-      model: opts.modelOverride,
-    });
+    const created = await tauriActivity.createWithId(
+      agent.folderPath,
+      missionRowInput(mission, opts),
+    );
     if (created.id !== mission.conversationId) {
       await getEngine().updateActivity(agent.folderPath, created.id, {
         session_key: mission.sessionKey,

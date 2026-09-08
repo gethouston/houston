@@ -1,4 +1,5 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
+import type { CompactionCheckpoints } from "../../store/conversation-compaction";
 import type { CompactionOutcome } from "../types";
 import type { ClaudeQuery, TurnAuth } from "./session";
 import type { SessionsStore } from "./sessions-store";
@@ -33,6 +34,7 @@ export interface ClaudeCompactionDeps {
   /** The session's static options (cwd, systemPrompt, MCP servers, …). */
   baseOptions: Options;
   sessionsStore: SessionsStore;
+  compactions: CompactionCheckpoints;
   /** SDK model string the summarization runs on (the session's current model). */
   model: string;
   /** The subprocess env carrying the CURRENT stored credential. */
@@ -100,6 +102,11 @@ export async function compactClaudeSession(
     // and the MCP tools Houston registers), leaving prose as the only output.
     tools: [],
     allowedTools: [],
+    mcpServers: {},
+    canUseTool: async () => ({
+      behavior: "deny",
+      message: "Tools are unavailable during summarization.",
+    }),
   };
 
   const prompt = customInstructions
@@ -119,12 +126,14 @@ export async function compactClaudeSession(
             : wire.data.message;
     }
   }
+  deps.abortController.signal.throwIfAborted();
   if (failure) throw new Error(`Summarization failed: ${failure}`);
   if (!summary.trim())
     throw new Error("Summarization failed: the summarizer returned no summary");
 
   // The restart, and the LAST step: until this line the conversation still has
   // its full SDK session, so every throw above leaves the user's history whole.
+  deps.compactions.save(deps.conversationId, summary);
   deps.sessionsStore.remove(deps.conversationId);
   return { summary };
 }

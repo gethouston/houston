@@ -1,4 +1,10 @@
 import { color as themeColor } from "@houston/design-tokens";
+import {
+  AGENT_COLOR_IDS,
+  type AgentColorId,
+} from "@houston/domain/agent-color-ids";
+
+export { AGENT_COLOR_IDS, type AgentColorId };
 
 /** Agent color definitions, each with light and dark variants. */
 export interface AgentColor {
@@ -6,26 +12,6 @@ export interface AgentColor {
   light: string;
   dark: string;
 }
-
-// Wheel order — neutral first, then green → teal → blue → violet → pink →
-// red → orange → yellow, earth last. This IS the display order of every
-// picker, and neighbours on the wheel sitting side by side is what makes a
-// too-close pair (rose vs crimson) visible at a glance instead of shipping.
-export const AGENT_COLOR_IDS = [
-  "charcoal",
-  "forest",
-  "teal",
-  "navy",
-  "purple",
-  "rose",
-  "crimson",
-  "orange",
-  "golden",
-  "umber",
-] as const;
-
-/** One of the ten palette ids — the exact union a color parameter accepts. */
-export type AgentColorId = (typeof AGENT_COLOR_IDS)[number];
 
 /** Palette hexes come from @houston/design-tokens (the same source that
  *  generates the --ht-agent-* CSS variables), so TS and CSS can't drift. */

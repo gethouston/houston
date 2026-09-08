@@ -1644,6 +1644,23 @@ export function mergeGatewayStatus(
 }
 
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
+
+/**
+ * The stored `default_provider` preference, in the DISPLAY dialect every
+ * catalog lookup downstream is keyed by.
+ *
+ * The ONE read of this key. It can hold either dialect — an install that last
+ * picked Codex stored pi's canonical `openai-codex`, the picker writes
+ * Houston's `openai` — and while only one accessor normalized it, the same
+ * stored value meant two different providers depending on which one asked: the
+ * chat panel's initial pick and the boot connection probe both read the raw id
+ * and missed the catalog entirely.
+ */
+async function storedDefaultProvider(): Promise<string | null> {
+  return toDisplayProviderIdOrNull(
+    await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY),
+  );
+}
 const DEFAULT_MODEL_PREF_KEY = "default_model";
 
 export const tauriProvider = {
@@ -1733,11 +1750,15 @@ export const tauriProvider = {
         return out;
       },
     ),
+  /**
+   * The provider the next chat opens on, in the DISPLAY dialect — the same
+   * value `getLastUsed` answers with, read the same way (see
+   * {@link storedDefaultProvider}). `""` when nothing is stored.
+   */
   getDefault: () =>
     call<string>(
       "get_default_provider",
-      async () =>
-        (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
+      async () => (await storedDefaultProvider()) ?? "",
     ),
   /**
    * Last (provider, model) pair the user picked anywhere — agent creation
@@ -1760,19 +1781,15 @@ export const tauriProvider = {
     call<{ provider: string | null; model: string | null }>(
       "get_last_used_provider",
       async () => {
-        const eng = getEngine();
+        // Both halves are normalized on the way out: the provider through the
+        // id dialect (`storedDefaultProvider`), the model through the
+        // legacy-alias table, so a value stored by any older build seeds a
+        // creation dialog as the pair the catalog is keyed by.
         const [provider, model] = await Promise.all([
-          eng.getPreference(DEFAULT_PROVIDER_PREF_KEY),
-          eng.getPreference(DEFAULT_MODEL_PREF_KEY),
+          storedDefaultProvider(),
+          getEngine().getPreference(DEFAULT_MODEL_PREF_KEY),
         ]);
-        return {
-          // Both halves are normalized on the way out: the model through the
-          // legacy-alias table, the provider through the id dialect, so a value
-          // stored in either dialect seeds a creation dialog as the display id
-          // the catalog is keyed by.
-          provider: toDisplayProviderIdOrNull(provider),
-          model: normalizeLegacyModel(model),
-        };
+        return { provider, model: normalizeLegacyModel(model) };
       },
     ),
   /**
@@ -2038,18 +2055,24 @@ export const tauriAssistant = {
   /**
    * Silenced for everything `classifyAssistantDiscoveryFailure` does not call
    * `unexpected` (`lib/assistant-availability.ts`): a deployment that serves no
-   * assistant (501, or a 503 naming its absence with a code) AND a pod that is
-   * simply not awake yet (an uncoded 503, which the query retries on the
-   * server's own `Retry-After` hint). Neither is a Houston bug — one has no
-   * screen to show, the other answers moments later — so both are logged and
-   * never toasted. Every other failure stays loud.
+   * assistant (a 501, a gateway older than the route answering 404, or a 503
+   * naming its absence with a code) AND a pod that is simply not awake yet (an
+   * uncoded 503, which the caller retries on the server's own `Retry-After`
+   * hint). Neither is a Houston bug — one has no screen to show, the other
+   * answers moments later — so both are logged and never toasted. Every other
+   * failure stays loud.
+   *
+   * `surface: false` is how `hooks/use-assistant.ts` runs its retry ladder:
+   * every attempt is logged and none is reported, and the hook surfaces the
+   * final error itself through {@link surfaceEngineError}. One user-visible
+   * surface per user-visible action.
    */
-  discover: () =>
+  discover: (options?: Pick<EngineCallOptions, "surface">) =>
     call<AssistantHandle>(
       "get_assistant",
       () => getEngine().getAssistant(),
       undefined,
-      { silence: isAssistantUnavailableError },
+      { silence: isAssistantUnavailableError, ...options },
     ),
 };
 

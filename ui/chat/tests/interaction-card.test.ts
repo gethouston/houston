@@ -174,7 +174,13 @@ describe("answerWithOption", () => {
   it("completes when the option step is the last step", () => {
     const t = answerWithOption(initialStepperState(), [Q1], "o2");
     assert.deepEqual(t.completed, [
-      { stepId: "q1", question: "Who is it for?", answer: "Jane" },
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "Jane",
+        source: "option",
+        optionId: "o2",
+      },
     ]);
   });
 
@@ -224,8 +230,19 @@ describe("stepper flow: question, question, connect", () => {
 
     const done = advanceConnect(afterQ2.state, steps);
     assert.deepEqual(done.completed, [
-      { stepId: "q1", question: "Who is it for?", answer: "John" },
-      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "John",
+        source: "option",
+        optionId: "o1",
+      },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "Running late",
+        source: "text",
+      },
     ]);
   });
 
@@ -256,7 +273,12 @@ describe("skipStep", () => {
     s = answerWithText(s, steps).state; // answer Q2 -> connect
     const done = advanceConnect(s, steps);
     assert.deepEqual(done.completed, [
-      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "Running late",
+        source: "text",
+      },
     ]);
   });
 
@@ -265,7 +287,13 @@ describe("skipStep", () => {
     assert.equal(s.current, 1); // on Q2, the last step
     const done = skipStep(s, [Q1, Q2]);
     assert.deepEqual(done.completed, [
-      { stepId: "q1", question: "Who is it for?", answer: "John" },
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "John",
+        source: "option",
+        optionId: "o1",
+      },
     ]);
   });
 
@@ -291,7 +319,13 @@ describe("skipStep", () => {
     assert.equal(s.current, 1); // on the connect step, the last step
     const done = skipStep(s, [Q1, CONNECT]);
     assert.deepEqual(done.completed, [
-      { stepId: "q1", question: "Who is it for?", answer: "John" },
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "John",
+        source: "option",
+        optionId: "o1",
+      },
     ]);
   });
 
@@ -324,7 +358,12 @@ describe("stepper flow: question, signin, connect", () => {
     // Signin contributes no answer text; only question answers complete.
     const done = advanceConnect(afterSignin.state, steps);
     assert.deepEqual(done.completed, [
-      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "Running late",
+        source: "text",
+      },
     ]);
   });
 
@@ -340,7 +379,12 @@ describe("advanceSignin", () => {
     const afterQ = answerWithText(s, [Q2, SIGNIN]).state; // -> signin (last)
     const done = advanceSignin(afterQ, [Q2, SIGNIN]);
     assert.deepEqual(done.completed, [
-      { stepId: "q2", question: "What should it say?", answer: "hi" },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "hi",
+        source: "text",
+      },
     ]);
   });
 
@@ -356,7 +400,12 @@ describe("advanceCredential", () => {
     const afterQ = answerWithText(s, [Q2, CREDENTIAL]).state; // -> credential
     const done = advanceCredential(afterQ, [Q2, CREDENTIAL]);
     assert.deepEqual(done.completed, [
-      { stepId: "q2", question: "What should it say?", answer: "hi" },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "hi",
+        source: "text",
+      },
     ]);
   });
 
@@ -379,7 +428,12 @@ describe("advanceCustom", () => {
     const afterQ = answerWithText(s, [Q2, CUSTOM]).state; // -> custom (last)
     const done = advanceCustom(afterQ, [Q2, CUSTOM]);
     assert.deepEqual(done.completed, [
-      { stepId: "q2", question: "What should it say?", answer: "hi" },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "hi",
+        source: "text",
+      },
     ]);
   });
 
@@ -422,7 +476,12 @@ describe("forward navigation past a completed signin step", () => {
 
     const done = advanceConnect(s, steps); // connected -> complete
     assert.deepEqual(done.completed, [
-      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "Running late",
+        source: "text",
+      },
     ]);
   });
 });
@@ -461,7 +520,12 @@ describe("forward navigation past a completed step", () => {
 
     const done = advanceConnect(s, steps); // B connected -> complete
     assert.deepEqual(done.completed, [
-      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "Running late",
+        source: "text",
+      },
     ]);
   });
 
@@ -503,7 +567,12 @@ describe("reconsider a skipped step", () => {
 
     const done = advanceConnect(s, steps); // connect B -> complete
     assert.deepEqual(done.completed, [
-      { stepId: "q2", question: "What should it say?", answer: "Running late" },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "Running late",
+        source: "text",
+      },
     ]);
   });
 
@@ -546,15 +615,32 @@ describe("toCompletedAnswers", () => {
       q1: { answer: "John", optionId: "o1" },
     };
     assert.deepEqual(toCompletedAnswers([Q1, Q2, CONNECT], answers), [
-      { stepId: "q1", question: "Who is it for?", answer: "John" },
-      { stepId: "q2", question: "What should it say?", answer: "hi" },
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "John",
+        source: "option",
+        optionId: "o1",
+      },
+      {
+        stepId: "q2",
+        question: "What should it say?",
+        answer: "hi",
+        source: "text",
+      },
     ]);
   });
 
   it("ignores connect steps (they produce no question answer)", () => {
     const answers = { q1: { answer: "John", optionId: "o1" } };
     assert.deepEqual(toCompletedAnswers([Q1, CONNECT], answers), [
-      { stepId: "q1", question: "Who is it for?", answer: "John" },
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "John",
+        source: "option",
+        optionId: "o1",
+      },
     ]);
   });
 });
@@ -566,7 +652,13 @@ describe("branded question", () => {
   it("answers and completes like a plain question, brand and all", () => {
     const t = answerWithOption(initialStepperState(), [Q_BRANDED], "yes");
     assert.deepEqual(t.completed, [
-      { stepId: "qb", question: "Send this draft?", answer: "Send it" },
+      {
+        stepId: "qb",
+        question: "Send this draft?",
+        answer: "Send it",
+        source: "option",
+        optionId: "yes",
+      },
     ]);
   });
 

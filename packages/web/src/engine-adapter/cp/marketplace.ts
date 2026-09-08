@@ -17,7 +17,7 @@ import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
  *   agent's name is not its id, so read the id from listAgents first.
  * @param query Words to search the community catalogue for, in the user's
  *   own terms.
- * @assistant group:skills
+ * @assistant group:skills unconfirmed: Read-only search; POST carries the search terms.
  */
 export async function searchCommunitySkills(
   cfg: ControlPlaneConfig,
@@ -44,7 +44,7 @@ export async function searchCommunitySkills(
  *   searchCommunitySkills returned it.
  * @param skillId The skill's id, exactly as searchCommunitySkills returned
  *   it.
- * @assistant group:skills
+ * @assistant group:skills unconfirmed: Read-only preview; POST carries the catalog source and skill id.
  */
 export async function previewCommunitySkill(
   cfg: ControlPlaneConfig,
@@ -66,7 +66,7 @@ export async function previewCommunitySkill(
  *   agent's name is not its id, so read the id from listAgents first.
  * @param source The full https address of the GitHub repository to read
  *   skills from.
- * @assistant group:skills
+ * @assistant group:skills unconfirmed: Read-only repository listing; POST carries the source address.
  */
 export async function listSkillsFromRepo(
   cfg: ControlPlaneConfig,

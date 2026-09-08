@@ -7,11 +7,13 @@ import {
 /**
  * The coverage gate: a user-facing adapter operation is either a properly
  * annotated, routable assistant tool, or it carries a written acknowledgement
- * of why it is not. Anything else fails the build — a silent `route: null` or a
+ * of why it is not. Anything else fails the build - a silent `route: null` or a
  * bare `hidden` used to drop an operation out of automation with nobody
  * noticing.
  */
 export type CoverageRule =
+  | "unconfirmed-mutation"
+  | "unresolved-identifier"
   | "unknown-tag"
   | "undocumented"
   | "ungrouped"
@@ -53,6 +55,7 @@ export function acknowledgements(
   for (const annotation of annotations) {
     const stated = [
       ["hidden", annotation.hiddenReason],
+      ["unconfirmed", annotation.unconfirmed],
       ["unroutable", annotation.unroutableReason],
       ["unschematized", annotation.unschematizedReason],
     ] as const;
@@ -88,9 +91,28 @@ function reachViolations(
   annotation: OperationAnnotation,
 ): Omit<CoverageViolation, "name" | "location">[] {
   // A hidden operation is not automated at all, so how it would have been
-  // routed or typed is moot — but ONLY once hiding itself is justified.
-  if (annotation.hidden && annotation.hiddenReason) return [];
+  // routed, typed or confirmed is moot - but ONLY once hiding itself is
+  // justified. Its own reason is the statement; a second one restating it
+  // would be noise the next author copies.
   const found: Omit<CoverageViolation, "name" | "location">[] = [];
+  if (annotation.hidden && annotation.hiddenReason) return found;
+  if (
+    annotation.method &&
+    annotation.method !== "GET" &&
+    !annotation.confirm &&
+    !annotation.unconfirmed?.trim()
+  )
+    found.push({
+      rule: "unconfirmed-mutation",
+      problem: `${annotation.method} changes something and dispatches with no approval card and no authored reason.`,
+      fix: "add `@assistant confirm` (the user answers a card first) or `@assistant unconfirmed: <why this one needs no approval>`.",
+    });
+  if (annotation.openIdentifiers.length > 0)
+    found.push({
+      rule: "unresolved-identifier",
+      problem: `${annotation.openIdentifiers.join(", ")} name something that already exists, and nothing says which values are accepted.`,
+      fix: "add the collection to ui/engine-client/scripts/assistant-entity-rules.ts: a `collection` the host resolves the value against live, or an `unlisted` reason naming the operation that lists it.",
+    });
   if (!annotation.routable && !annotation.unroutableReason)
     found.push({
       rule: "unroutable",
@@ -118,7 +140,7 @@ export function coverageViolations(
       ...annotation.unknownTags.map((tag) => ({
         rule: "unknown-tag" as const,
         problem: `\`@assistant ${tag}\` is not a tag the grammar defines.`,
-        fix: "use `group:<slug>`, `confirm`, `hidden: <reason>`, `unroutable: <reason>`, or `unschematized: <reason>`.",
+        fix: "use `group:<slug>`, `confirm`, `unconfirmed: <reason>`, `hidden: <reason>`, `unroutable: <reason>`, or `unschematized: <reason>`.",
       })),
       ...(annotation.documented
         ? []
@@ -135,7 +157,7 @@ export function coverageViolations(
             {
               rule: "unjustified-hidden" as const,
               problem: "`hidden` with no reason.",
-              fix: "write `@assistant hidden: <why the assistant must not call this>` — a bare `hidden` drops an operation out of automation with no rationale.",
+              fix: "write `@assistant hidden: <why the assistant must not call this>` - a bare `hidden` drops an operation out of automation with no rationale.",
             },
           ]
         : []),
@@ -160,7 +182,7 @@ export function formatViolations(
   ];
   for (const violation of violations) {
     lines.push(
-      `  ${violation.name} — ${violation.location}`,
+      `  ${violation.name} - ${violation.location}`,
       `    ${violation.rule}: ${violation.problem}`,
       `    fix: ${violation.fix}`,
       "",
@@ -168,7 +190,7 @@ export function formatViolations(
   }
   lines.push(
     "Every user-facing adapter operation is a routable assistant tool or says why it is not.",
-    "Tag grammar: ui/engine-client/scripts/assistant-jsdoc.ts — exceptions: ui/engine-client/generated/assistant-coverage.md",
+    "Tag grammar: ui/engine-client/scripts/assistant-jsdoc.ts - exceptions: ui/engine-client/generated/assistant-coverage.md",
   );
   return `${lines.join("\n")}\n`;
 }

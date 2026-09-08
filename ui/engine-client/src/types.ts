@@ -824,7 +824,14 @@ export interface UpdateAgent {
 
 // ---------- Agents / agent-data files ----------
 
-export interface InteractionOption {
+/** A choice the agent authored, or a structural approval control whose label
+ *  the surface owns in its own locale (`kind: "approval"`, id-keyed). */
+export type InteractionOption =
+  | InteractionChoiceOption
+  | { kind: "approval"; id: "approve" | "decline" };
+
+export interface InteractionChoiceOption {
+  kind?: "choice";
   id: string;
   label: string;
   /** One muted line of consequence or benefit shown after the label. */
@@ -841,11 +848,20 @@ export type InteractionStep =
       kind: "question";
       id: string;
       question: string;
+      /** Verbatim material the question is ABOUT, when it is too long or too
+       *  multi-line to read inside a sentence. Shown under the question in its
+       *  own scrollable block, so a value the user approves is always visible. */
+      detail?: string;
       options?: InteractionOption[];
       /** Lowercase toolkit slug when the question concerns an integration (e.g.
        *  "gmail"); the app resolves it to the app's identity and BRANDS the
        *  question card's header with the logo + name. Absent = a plain question. */
       toolkit?: string;
+      /** Present ONLY on an approval card for a destructive Houston operation:
+       *  the host-issued id of the pending request this card decides. The
+       *  user's answer travels back carrying it, which binds the approval to
+       *  ONE exact call and makes it usable once. */
+      requestId?: string;
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }

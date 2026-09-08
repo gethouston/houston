@@ -12,9 +12,15 @@
  * | `provider-name-aliases.ts`    | `PROVIDER_ALIASES`                        |
  * | `model-aliases.ts`            | `MODEL_ALIASES`                           |
  *
- * Each leaf is import-free (or type-only) so it can be exposed as a package
- * subpath and loaded under plain `node --experimental-strip-types`, which is
- * what lets the app catalog read these values rather than restate them.
+ * Each leaf is dependency-free — no import at all, a type-only one, or (in
+ * `provider-name-aliases.ts`) a value import of a sibling leaf — so it can be
+ * exposed as a package subpath and loaded under plain
+ * `node --experimental-strip-types`, which is what lets the app catalog read
+ * these values rather than restate them. A leaf that IS exposed as a subpath
+ * reaches a sibling through the package subpath (`model-aliases.ts` reads
+ * `@houston/domain/provider-default-models`): that runner resolves no
+ * extensionless relative specifier, and a `.ts` one is a type error under this
+ * package's emitting tsconfig.
  *
  * The catalog is hard-coded (NOT read from pi-ai) so `@houston/domain` stays
  * free of the pi-ai dependency and the open/closed boundary. The valid-model

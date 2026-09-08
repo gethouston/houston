@@ -63,7 +63,9 @@ function classify(value: string): ClaudeToken | undefined {
  *     unexpired store entry for the account the user just left would be
  *     preferred for hours, failing every turn on an identity or a token that
  *     reconnect superseded. A superseded store entry is DELETED, not merely
- *     skipped — see below.
+ *     skipped — see below. Where the control plane serves anthropic, the store
+ *     entry is the live per-turn credential and this link stays a pure
+ *     fallback (`sharedLoginSupersedes`).
  *  3. nothing, which hands the turn to the platform's own config-dir mechanism
  *     inside the SDK (the `.credentials.json` it self-refreshes on Linux, the
  *     dir-scoped keychain item on macOS/Windows).
@@ -93,7 +95,19 @@ export function readAnthropicToken(
     // silently putting this runtime back on the account the user left. The
     // supersession is a fact about the login, so record it once: drop the dead
     // entry and every later read resolves the login the user actually has.
-    store.remove("anthropic");
+    //
+    // BEST-EFFORT: the drop is a WRITE (auth.json, atomically), and a full or
+    // read-only disk must not take the turn down with it — resolving the login
+    // the user actually has is the job, and it succeeds either way. Reported,
+    // never swallowed: console.error is the runtime's Sentry feed (main.ts).
+    try {
+      store.remove("anthropic");
+    } catch (err) {
+      console.error(
+        '[claude] could not drop the superseded "anthropic" credential; the shared login is used for this turn and the drop is retried on the next read:',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
     return shared.token;
   }
   return stored.token;

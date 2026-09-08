@@ -372,3 +372,53 @@ test("a symlink cannot stand in for a path outside the allowlist", () => {
   symlinkSync(memory, alias);
   expect(guard.clamp(alias)).toBe(alias);
 });
+
+test("an allowlisted path that IS a symlink out of the workspace is refused", () => {
+  // The allowlist narrows the wall; it does not replace it. A listed document
+  // that points outside the agent's own directory would otherwise hand the one
+  // runtime with a single-file surface an unbounded read and write.
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "houston-coord-link-")));
+  const workspace = join(base, ".assistant");
+  const outside = join(base, "outside");
+  mkdirSync(join(workspace, ".houston", "learnings"), { recursive: true });
+  mkdirSync(outside);
+  const target = join(outside, "secrets.json");
+  writeFileSync(target, "[]");
+  const memory = join(workspace, ".houston", "learnings", "learnings.json");
+  symlinkSync(target, memory);
+  const guard = new WorkspaceGuard(workspace, { allowedFiles: [memory] });
+
+  expect(() => guard.clamp(memory)).toThrow(PathEscapeError);
+  expect(() => guard.clamp(target)).toThrow();
+  expect(() => guard.assertInside(memory)).toThrow(PathEscapeError);
+});
+
+test("an allowlisted credential file is denied, list or no list", () => {
+  // The deny list STACKS on the allowlist: listing `auth.json` (a bad policy, a
+  // future refactor, a path built from a moved data dir) must not open the very
+  // file the wall exists for.
+  const workspace = realpathSync(
+    mkdtempSync(join(tmpdir(), "houston-coord-cred-")),
+  );
+  mkdirSync(join(workspace, ".houston", "runtime"), { recursive: true });
+  const auth = join(workspace, ".houston", "runtime", "auth.json");
+  writeFileSync(auth, "{}");
+  const guard = new WorkspaceGuard(workspace, { allowedFiles: [auth] });
+
+  expect(() => guard.clamp(auth)).toThrow(PathDeniedError);
+  expect(() => guard.assertInside(auth)).toThrow(PathDeniedError);
+});
+
+test("a symlink to an allowlisted credential file is denied too", () => {
+  const workspace = realpathSync(
+    mkdtempSync(join(tmpdir(), "houston-coord-cred2-")),
+  );
+  mkdirSync(join(workspace, ".houston", "runtime"), { recursive: true });
+  const auth = join(workspace, ".houston", "runtime", "auth.json");
+  writeFileSync(auth, "{}");
+  const alias = join(workspace, "notes.json");
+  symlinkSync(auth, alias);
+  const guard = new WorkspaceGuard(workspace, { allowedFiles: [auth] });
+
+  expect(() => guard.clamp(alias)).toThrow(PathDeniedError);
+});

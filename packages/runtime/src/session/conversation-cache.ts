@@ -1,13 +1,9 @@
 import { DEFAULT_TURN_MODE } from "@houston/protocol";
 import { resolveModel } from "../ai/providers";
-import { backendFor } from "../backends/registry";
 import { config } from "../config";
 import { LruCache } from "../lru";
 import { claudeSessionTokenStale } from "./claude-token-guard";
-// Imported for its module-level side effects: the process's harness backend
-// registrations (pi as the default, Claude for `anthropic`) must be in place
-// before this cache opens a session through `backendFor`.
-import "./conversation-backends";
+import { serverBackendFor } from "./conversation-backends";
 import { type Conversation, isConvBusy } from "./conversation-record";
 import type { TurnPin } from "./exec-turn";
 import type { ProvidedContext } from "./workspace-context";
@@ -84,9 +80,10 @@ export async function getConversation(
   // pinned routine works even when the agent's saved provider is logged out.
   const builtModel = resolveModel(pin?.model, pin?.provider);
   // Resolve the provider's backend (pi by default) and open the conversation's
-  // session through it. The backend rehydrates prior turns from disk when the
+  // session through it — `serverBackendFor` wires this process's registrations
+  // on first use. The backend rehydrates prior turns from disk when the
   // conversation already exists — see createPiBackend.
-  const backend = backendFor(builtModel.provider);
+  const backend = serverBackendFor(builtModel.provider);
   // The first turn's mode fixes how the session is built (read-only + planning
   // overlay for "plan"). A later flip rebuilds via `switchModeIfNeeded`.
   const mode = pin?.mode ?? DEFAULT_TURN_MODE;

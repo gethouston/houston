@@ -1,6 +1,6 @@
 import type { TurnMode } from "@houston/protocol";
-import { backendFor } from "../backends/registry";
 import type { ResolvedModel } from "../backends/types";
+import { serverBackendFor } from "./conversation-backends";
 import type { Conversation } from "./conversation-record";
 
 /**
@@ -8,6 +8,10 @@ import type { Conversation } from "./conversation-record";
  * backend its resolved model requires, and moving it to the execution mode the
  * turn asks for. Both dispose the live session and open a fresh one; the cache
  * itself (conversation-cache.ts) never rebuilds a session for these reasons.
+ *
+ * The backend is resolved through `serverBackendFor` (conversation-backends.ts),
+ * which registers this process's backends on first use — so importing this
+ * module on its own is enough to rebuild a session correctly.
  */
 
 /**
@@ -38,7 +42,7 @@ export async function switchBackendIfNeeded(
   model: ResolvedModel,
   mode: TurnMode,
 ): Promise<{ rebuilt: boolean; preTokens: number | null }> {
-  const backend = backendFor(model.provider);
+  const backend = serverBackendFor(model.provider);
   if (backend.id === conv.backendId) return { rebuilt: false, preTokens: null };
 
   // Capture the leaving provider's context fill BEFORE tearing the session down,
@@ -89,7 +93,7 @@ export async function switchModeIfNeeded(
 ): Promise<{ rebuilt: boolean }> {
   if (conv.mode === mode) return { rebuilt: false };
   conv.session.dispose();
-  conv.session = await backendFor(model.provider).createSession({
+  conv.session = await serverBackendFor(model.provider).createSession({
     conversationId,
     model,
     mode,

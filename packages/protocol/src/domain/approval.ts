@@ -53,3 +53,12 @@ export function parseMessageApprovals(value: unknown): MessageApproval[] {
   }
   return approvals;
 }
+
+/** The host-owned content a shell displays before sending a receipt. */
+export interface ApprovalPresentation {
+  title: string;
+  detail?: string;
+  options: { kind: "approval"; id: "approve" | "decline" }[];
+  operation: string;
+  expiresAt: number;
+}

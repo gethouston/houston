@@ -6,6 +6,7 @@ import {
 } from "@houston/domain";
 import type { TurnModel } from "../turn-model-context";
 import { START_MISSION_TOOL_NAME } from "./mission-tool-names";
+import type { SessionToolErrorDetails } from "./tool-error";
 
 /**
  * What a written provider/model becomes: the real ids a mission is started
@@ -21,7 +22,7 @@ import { START_MISSION_TOOL_NAME } from "./mission-tool-names";
  */
 
 /**
- * Resolve what the model wrote into real ids, or throw the sentence that says
+ * Resolve what the model wrote into real ids, or return the refusal that says
  * which values it could have used. `inherited` is the provider the mission would
  * ride when this call names none — the one a lone `model` is checked against.
  */
@@ -29,7 +30,9 @@ export function resolveMissionPin(
   params: { provider?: string; model?: string },
   options: readonly ProviderOption[],
   inherited?: string,
-): { provider?: string; model?: string } {
+):
+  | { ok: true; pin: { provider?: string; model?: string } }
+  | SessionToolErrorDetails {
   const pin: { provider?: string; model?: string } = {};
   if (params.provider) {
     const resolved = resolveProviderChoice(
@@ -37,24 +40,32 @@ export function resolveMissionPin(
       options,
       START_MISSION_TOOL_NAME,
     );
-    if (!resolved.ok) throw new Error(resolved.message);
+    if (!resolved.ok)
+      return {
+        ok: false,
+        error: { code: "invalid_provider", message: resolved.message },
+      };
     pin.provider = resolved.id;
   }
   if (params.model) {
     const against = options.find((o) => o.id === (pin.provider ?? inherited));
     if (!against) {
       pin.model = params.model.trim();
-      return pin;
+      return { ok: true, pin };
     }
     const resolved = resolveModelChoice(
       params.model,
       against,
       START_MISSION_TOOL_NAME,
     );
-    if (!resolved.ok) throw new Error(resolved.message);
+    if (!resolved.ok)
+      return {
+        ok: false,
+        error: { code: "invalid_provider", message: resolved.message },
+      };
     pin.model = resolved.id;
   }
-  return pin;
+  return { ok: true, pin };
 }
 
 /**

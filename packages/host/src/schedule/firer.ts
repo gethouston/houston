@@ -1,7 +1,7 @@
 import { routinePin, routinePrompt } from "@houston/domain";
 import type { WorkspaceRuntime } from "../domain/types";
 import type { RuntimeChannel } from "../ports";
-import { hostProvider } from "../providers";
+import { hostProvider, routineProviderUnavailable } from "../providers";
 import type { FiringJob, RoutineFirer } from "./scheduler";
 
 /**
@@ -38,14 +38,12 @@ export class ChannelRoutineFirer implements RoutineFirer {
     // A pin that resolves to no known provider (junk or a legacy id no alias
     // maps — routinePin passes those through verbatim) fails the run RIGHT
     // HERE with the real reason: fireRoutineRun marks the run errored with
-    // this message. Firing it anyway would die inside the runtime as an
-    // ephemeral stream error nobody persists, and the run would wait out the
-    // 15-minute timeout with a vague message.
-    if (pin.provider && !hostProvider(pin.provider)) {
-      throw new Error(
-        `unknown provider: ${pin.provider} — edit the routine and pick a provider`,
-      );
-    }
+    // this message, and the person reading the run history is the audience for
+    // it. Firing it anyway would die inside the runtime as an ephemeral stream
+    // error nobody persists, and the run would wait out the 15-minute timeout
+    // with a vague message.
+    if (pin.provider && !hostProvider(pin.provider))
+      throw new Error(routineProviderUnavailable(pin.provider));
     await channel.fireTurn(
       { workspace: job.workspace, agent: job.agent },
       job.conversationId,

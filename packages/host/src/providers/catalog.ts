@@ -1,3 +1,4 @@
+import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import type { HostProvider } from "./types";
 
 /**
@@ -6,6 +7,12 @@ import type { HostProvider } from "./types";
  * and which ones the cloud per-turn runtime offers — for the api-key submit route
  * and the cloudrun providers/auth-status listing. The standing-runtime (proxy)
  * path doesn't use this: it relays the runtime's own /providers + /auth/* surface.
+ *
+ * Each `defaultModel` READS the domain table (`DEFAULT_MODEL`) rather than
+ * restating its string: this catalog is consulted live on the cloud per-turn
+ * path (`turn/dispatch-providers.ts` `activeModel`), so a value that drifted
+ * from the domain's would start a hosted turn on a model the picker never
+ * offered. `catalog.test.ts` holds the two together.
  */
 export const PROVIDERS: readonly HostProvider[] = [
   { id: "anthropic", name: "Claude (Pro / Max)", auth: "oauth", cloud: false },
@@ -36,7 +43,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "mimo-v2.5-free",
       "nemotron-3-ultra-free",
     ],
-    defaultModel: "claude-sonnet-4-6",
+    defaultModel: DEFAULT_MODEL.opencode,
   },
   {
     id: "opencode-go",
@@ -50,7 +57,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "qwen3.7-max",
       "deepseek-v4-pro",
     ],
-    defaultModel: "glm-5.1",
+    defaultModel: DEFAULT_MODEL["opencode-go"],
   },
   {
     id: "openrouter",
@@ -65,7 +72,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "google/gemini-3-flash-preview",
       "deepseek/deepseek-v4-pro",
     ],
-    defaultModel: "anthropic/claude-sonnet-4.6",
+    defaultModel: DEFAULT_MODEL.openrouter,
   },
   {
     id: "deepseek",
@@ -75,7 +82,7 @@ export const PROVIDERS: readonly HostProvider[] = [
     // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
     models: ["deepseek-v4-flash", "deepseek-v4-pro"],
-    defaultModel: "deepseek-v4-flash",
+    defaultModel: DEFAULT_MODEL.deepseek,
   },
   {
     id: "google",
@@ -92,7 +99,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "gemma-4-26b-a4b-it",
       "gemma-4-31b-it",
     ],
-    defaultModel: "gemini-3.8-flash",
+    defaultModel: DEFAULT_MODEL.google,
   },
   {
     id: "amazon-bedrock",
@@ -110,7 +117,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "amazon.nova-pro-v1:0",
       "amazon.nova-lite-v1:0",
     ],
-    defaultModel: "global.anthropic.claude-sonnet-4-6",
+    defaultModel: DEFAULT_MODEL["amazon-bedrock"],
   },
   {
     id: "minimax",
@@ -127,7 +134,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "MiniMax-M2.7-highspeed",
       "MiniMax-M3",
     ],
-    defaultModel: "MiniMax-M3[1m]",
+    defaultModel: DEFAULT_MODEL.minimax,
   },
   {
     id: "openai-compatible",
