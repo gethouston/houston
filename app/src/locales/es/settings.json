@@ -2,6 +2,7 @@
   "title": "Configuración",
   "nav": {
     "profile": "Perfil",
+    "aboutMe": "Sobre mí",
     "apiKeys": "Claves de API",
     "language": "Idioma",
     "shortcuts": "Atajos de teclado",
@@ -171,6 +172,7 @@
     },
     "rows": {
       "profile": "Tu nombre y tu foto",
+      "aboutMe": "Lo que tus agentes saben de ti antes de empezar",
       "apiKeys": "Permite que otras apps y asistentes de IA inicien tareas con tus agentes",
       "shortcuts": "Usa Houston sin el mouse",
       "reportBug": "¿Algo falló o tienes una idea? Cuéntanos",

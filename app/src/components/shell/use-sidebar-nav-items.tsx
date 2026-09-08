@@ -2,9 +2,7 @@ import type { SidebarNavSection } from "@houston-ai/layout";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import type { NavMode } from "../../lib/nav-stack";
 import { isTopLevelView } from "../../lib/top-level-views";
-import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { useMentionInbox } from "../board/use-mention-inbox";
 import type { SidebarChromeT } from "./sidebar-chrome";
 import { buildSidebarNavItems, type SectionFold } from "./sidebar-nav-sections";
 
@@ -17,12 +15,12 @@ import { buildSidebarNavItems, type SectionFold } from "./sidebar-nav-sections";
  * same question: only a TOP-LEVEL view lights a nav row, and a team screen
  * lights a team row instead (`useSidebarTeamsModel`).
  *
- * Every entry now POINTS AT A SCREEN. The one that never did, "Guide me", left
- * for the footer's help control (`sidebar-help-menu.tsx`), which is why arming
- * the tour is no longer composed here.
+ * Every entry POINTS AT A SCREEN. "Guide me" points at none, so it is an item
+ * behind the footer's help control (`sidebar-help-menu.tsx`) rather than a row
+ * here, and arming the tour is not composed in this hook.
  *
- * One row carries live state in its trailing slot, and it gets it here rather
- * than inside the pure nav model: the Inbox's unread mentions.
+ * The rail's FOOTER cluster is not here either: the Academy and Settings are
+ * drawn by `sidebar-footer.tsx`, below the teams the rail lists.
  */
 export function useSidebarNavItems(
   t: SidebarChromeT,
@@ -40,13 +38,7 @@ export function useSidebarNavItems(
 ): { navSections: SidebarNavSection[]; activeNavId: string | undefined } {
   const { showAiModels, showOrganization, showSkills, showAssistant } =
     useSurfaceGates();
-  const agents = useAgentStore((s) => s.agents);
-  // The Inbox row carries the count the header bell carries, and it costs
-  // nothing to put it here: `useMentionInbox` reads the SHARED
-  // `all-conversations` key every board already reads, so the rail joins the
-  // one sweep instead of starting a second cross-agent fan-out.
-  const { mentionCount } = useMentionInbox(agents);
-  // The two new bands fold and persist exactly like `teamsSectionCollapsed`
+  // The two labelled bands fold and persist exactly like `teamsSectionCollapsed`
   // does for "Your teams" — three bands, one rule, one storage shape.
   const myAccountsCollapsed = useUIStore((s) => s.myAccountsSectionCollapsed);
   const toggleMyAccounts = useUIStore(
@@ -64,7 +56,6 @@ export function useSidebarNavItems(
       showOrganization,
       showSkills,
       showAssistant,
-      mentionCount,
       folds: opts?.unfolded
         ? { myAccounts: openFold, workspace: openFold }
         : {

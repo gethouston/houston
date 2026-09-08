@@ -2,6 +2,7 @@
   "title": "Settings",
   "nav": {
     "profile": "Profile",
+    "aboutMe": "About me",
     "apiKeys": "API keys",
     "language": "Language",
     "shortcuts": "Keyboard shortcuts",
@@ -171,6 +172,7 @@
     },
     "rows": {
       "profile": "Your name and picture",
+      "aboutMe": "What your agents know about you before they start",
       "apiKeys": "Let other apps and AI assistants start tasks with your agents",
       "shortcuts": "Run Houston without the mouse",
       "reportBug": "Something broke, or you have an idea? Tell us",

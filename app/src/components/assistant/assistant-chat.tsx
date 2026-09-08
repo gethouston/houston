@@ -21,6 +21,7 @@ import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
 import { assistantAgent } from "./assistant-agent";
 import { AssistantEmptyState } from "./assistant-empty-state";
+import { useContextCommandMenu } from "./use-context-command-menu";
 
 const noop = () => {};
 /** The assistant never lists missions: `panelOnly` renders the chat alone. */
@@ -75,15 +76,30 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
     [panel.effectiveProvider, panel.effectiveModel, panel.turnMode],
   );
 
-  // No activity rows to reconcile against: the send hook's per-conversation
-  // loading then follows the SDK VM alone, which is exactly the signal an
-  // activity-less chat has.
-  const send = useAgentBoardSend({ agent, rawItems: undefined });
+  // No board behind this chat (`rawItems: undefined`, not an empty board): the
+  // send hook's per-conversation loading then follows the SDK conversation VM
+  // alone, which is the only lifecycle signal an activity-less chat has — it
+  // starts the spinner on the turn and ends it on the settle.
+  const send = useAgentBoardSend({
+    agent,
+    rawItems: undefined,
+    openSessionKey: sessionKey,
+  });
   const sendQueue = useBoardSendQueue({
     selectedSessionKey: sessionKey,
     selectedAgentPath: path,
     overrides,
     sendMessageNow: send.sendMessageNow,
+  });
+
+  // The composer "+" menu gains the two conversation commands. They travel as
+  // ordinary messages (the runtime reads them at the turn route), so the menu
+  // is a shortcut for typing them, never a second path.
+  const attachMenu = useContextCommandMenu({
+    base: panel.attachMenu,
+    sessionKey,
+    sendMessage: sendQueue.handleSendMessage,
+    running: send.effectiveLoading[sessionKey] === true,
   });
 
   const { feedItems, hasOlderMessages, onLoadOlderMessages } =
@@ -141,7 +157,7 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
         composerOverrideMode={panel.composerOverrideMode}
         canSendEmpty={panel.canSendEmpty}
         footer={panel.footer}
-        attachMenu={panel.attachMenu}
+        attachMenu={attachMenu}
         prepareAttachments={attachmentValidation.prepareAttachments}
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}
         thinkingIndicator={panel.thinkingIndicator}

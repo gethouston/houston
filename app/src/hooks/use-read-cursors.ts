@@ -1,34 +1,18 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect } from "react";
 import { conversationIdForChat } from "../lib/chat-conversation-id";
 import { logger } from "../lib/logger";
 import { queryClient } from "../lib/query-client";
-import {
-  getReadCursorStore,
-  markConversationRead,
-  subscribeToReadCursors,
-} from "../lib/read-cursor-live-store";
-import type { ReadCursorStore } from "../lib/read-cursors";
+import { markConversationRead } from "../lib/read-cursor-live-store";
 
 /**
- * The React bindings for the app's live read-cursor store (HOU-945): one hook
- * to READ it and one to FEED it.
+ * The React binding that FEEDS the app's live read-cursor store (HOU-945).
  *
  * Everything stateful lives in `lib/read-cursor-live-store.ts`, which is
  * React-free so a notification callback running with no component mounted reads
- * the very same store the shell paints. This module adds only the two things
- * that genuinely need React: the external-store subscription, and the effect
- * that mounts the "conversation viewed" observer.
+ * the very same store the shell wrote. This module adds only the part that
+ * genuinely needs React: the effect that mounts the "conversation viewed"
+ * observer.
  */
-
-/** The live cursor store for the signed-in user (a fresh empty store when
- *  signed out). Re-renders the caller whenever a cursor moves. */
-export function useReadCursorStore(): ReadCursorStore {
-  return useSyncExternalStore(
-    subscribeToReadCursors,
-    getReadCursorStore,
-    getReadCursorStore,
-  );
-}
 
 /**
  * Cache events that mean "this conversation is being read RIGHT NOW": it was

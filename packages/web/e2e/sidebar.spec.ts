@@ -11,7 +11,7 @@ test("collapsed sidebar expands from the top monogram and rail clicks", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(navRow(page, "inbox")).toBeVisible();
+  await expect(navRow(page, "agent-store")).toBeVisible();
 
   const sidebar = page.locator("[data-tour-target='sidebar']");
 

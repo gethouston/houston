@@ -99,7 +99,7 @@ export function useAllConversations(agentPaths: string[]) {
     // routine, a teammate, another device) was simply invisible.
     //
     // Why a window and not `refetchOnMount: "always"`: seven surfaces mount
-    // this hook (sidebar badges, Mission Control, archived, mentions inbox,
+    // this hook (sidebar badges, Mission Control, archived, mentions,
     // command palette, …), and "always" fans out to the whole fleet on each of
     // their mounts — the very pod-wake storm the Infinity was there to prevent.
     // A window revalidates the boot (a restored copy is always older than it)

@@ -12,7 +12,7 @@ describe("SETTINGS_SECTION_IDS", () => {
     // gate, no tri-state loading rule and no workspace opt-out to keep.
     deepStrictEqual(
       [...SETTINGS_SECTION_IDS],
-      ["profile", "apiKeys", "shortcuts", "reportBug", "migration"],
+      ["profile", "aboutMe", "apiKeys", "shortcuts", "reportBug", "migration"],
     );
   });
 });
@@ -20,6 +20,7 @@ describe("SETTINGS_SECTION_IDS", () => {
 describe("parseSettingsSection", () => {
   it("passes a valid section id through", () => {
     strictEqual(parseSettingsSection("profile"), "profile");
+    strictEqual(parseSettingsSection("aboutMe"), "aboutMe");
     strictEqual(parseSettingsSection("apiKeys"), "apiKeys");
     strictEqual(parseSettingsSection("reportBug"), "reportBug");
   });
@@ -35,14 +36,17 @@ describe("parseSettingsSection", () => {
     // "members" was removed with the Settings > Members surface (the Admin
     // People tab is now the canonical home); a stale deep-link must not land.
     strictEqual(parseSettingsSection("members"), null);
-    // Time worked, Admin and Permissions are TOP-LEVEL views, and the context
-    // editors moved to the Inbox's Context surface: all of them are reached
-    // without Settings, so a stale pin must fall back rather than land.
+    // Time worked, Admin and Permissions are TOP-LEVEL views, and the company
+    // half of the standing context is an Admin section: all of them are
+    // reached without Settings, so a stale pin must fall back rather than
+    // land. The `about-me` VIEW id an older install may have pinned is not a
+    // section id either: the section is `aboutMe`.
     strictEqual(parseSettingsSection("timeWorked"), null);
     strictEqual(parseSettingsSection("organization"), null);
     strictEqual(parseSettingsSection("permissions"), null);
     strictEqual(parseSettingsSection("workspaceContext"), null);
     strictEqual(parseSettingsSection("userContext"), null);
+    strictEqual(parseSettingsSection("about-me"), null);
   });
 
   it("maps null to null", () => {

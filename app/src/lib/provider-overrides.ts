@@ -120,6 +120,17 @@ export function toDisplayProviderId(id: string): string {
 }
 
 /**
+ * {@link toDisplayProviderId} for a value read off disk, where the field may be
+ * absent: `null`/`""` stay `null` (absent, never a pick — the same reading
+ * `preferredProvider` gives an unattributed record).
+ */
+export function toDisplayProviderIdOrNull(
+  id: string | null | undefined,
+): string | null {
+  return id ? toDisplayProviderId(id) : null;
+}
+
+/**
  * DISPLAY provider id → the canonical ENGINE id (the inverse: openai →
  * openai-codex). The picker offers `openai` (Houston's rename of pi's
  * `openai-codex`), but the gateway/runtime resolve pi's `openai-codex`, so a
@@ -189,10 +200,12 @@ export const API_KEY_ENDPOINT_PROVIDERS: ReadonlySet<string> = new Set([
  * (`provider-overrides-drift.test.ts`) rejects orphans.
  */
 export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
-  // Mirrors the `openai` set below where the azure catalog offers the same id
-  // (pi's azure list still carries 2023-era gpt-4; hide it). Azure serves a
+  // The current OpenAI line, minus pi's 2023-era gpt-4 rows. Azure serves a
   // model only when the user DEPLOYED it under that name, so a short current
   // list also keeps the "deployment named after the model id" rule legible.
+  // Wider than the `openai` set below by gpt-5.5 / gpt-5.4: those two are
+  // refused by the CODEX backend (a ChatGPT subscription), not by Azure, which
+  // runs whatever the user's own resource has deployed.
   "azure-openai-responses": new Set([
     "gpt-6-astra",
     "gpt-5.5",
@@ -203,14 +216,19 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.4",
     "gpt-5.4-mini",
   ]),
+  // Exactly what OpenAI's Codex backend serves a ChatGPT subscription, probed
+  // live against its responses endpoint — `codexOfferedModelIds` in
+  // packages/runtime/src/ai/codex-offered.ts is the documented source and
+  // carries the evidence; `codex-models.test.ts` pins this set to it. pi's
+  // catalog is a SUPERSET: it still lists gpt-5.5 (404 `model_not_found`) and
+  // gpt-5.4 (400 "not supported when using Codex with a ChatGPT account"), and
+  // offering either can only produce a dead turn.
   openai: new Set([
     "gpt-6-astra",
-    "gpt-5.5",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
     "gpt-5.3-codex-spark",
-    "gpt-5.4",
     "gpt-5.4-mini",
   ]),
   anthropic: new Set([
@@ -321,16 +339,16 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Your ChatGPT subscription",
     installUrl: "https://github.com/openai/codex",
     auth: "oauth",
-    defaultModel: "gpt-5.5",
+    // The row the Codex backend itself defaults to, and the only full tier it
+    // still serves a ChatGPT subscription. Twin of the runtime's
+    // `CODEX_DEFAULT_MODEL` (packages/runtime/src/ai/codex-offered.ts) and the
+    // domain's `DEFAULT_MODEL["openai-codex"]`; keep all three in sync.
+    defaultModel: "gpt-6-astra",
     models: {
       "gpt-6-astra": {
         label: "GPT-6 Astra",
         description:
           "Newest and most capable. Uses your allowance 2.5x faster than Sol.",
-      },
-      "gpt-5.5": {
-        label: "GPT-5.5",
-        description: "OpenAI's frontier model.",
       },
       "gpt-5.6-sol": {
         label: "GPT-5.6 Sol",
@@ -347,10 +365,6 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
       "gpt-5.3-codex-spark": {
         label: "GPT-5.3 Codex Spark",
         description: "Ultra-fast coding model.",
-      },
-      "gpt-5.4": {
-        label: "GPT-5.4",
-        description: "Strong model for everyday coding.",
       },
       "gpt-5.4-mini": {
         label: "GPT-5.4 mini",
@@ -437,6 +451,9 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         label: "Claude Haiku 4.5",
         description: "Anthropic's fastest, for quick tasks. Needs Copilot Pro.",
       },
+      // Served by GitHub's Copilot gateway, which is not the ChatGPT
+      // subscription: gpt-5.5 stays runnable here even though OpenAI's own
+      // Codex backend stopped serving it (see the `openai` set above).
       "gpt-5.5": {
         label: "GPT-5.5",
         description: "OpenAI's frontier model. Needs Copilot Pro.",
@@ -464,6 +481,8 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
         label: "Opus 4.8",
         description: "Most capable Claude, slower.",
       },
+      // OpenCode Zen's own gateway, not the ChatGPT subscription — gpt-5.5
+      // stays runnable here (see the `openai` set above).
       "gpt-5.5": {
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
@@ -844,7 +863,9 @@ export const PROVIDER_OVERRIDES: Record<string, ProviderOverride> = {
     // Azure keys live per-resource in the portal; there is no global key page.
     apiKeyUrl: "https://portal.azure.com",
     // pi's azure catalog is alphabetical (gpt-4 first) — start current.
-    // Twin of the runtime's UNCURATED_DEFAULT_MODEL; keep them in sync.
+    // Twin of the runtime's UNCURATED_DEFAULT_MODEL; keep them in sync. The
+    // Codex backend's refusal of gpt-5.5 does not reach here: an Azure request
+    // hits the user's own resource and runs whatever they deployed.
     defaultModel: "gpt-5.5",
   },
   "vercel-ai-gateway": {

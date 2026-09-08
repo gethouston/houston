@@ -1,14 +1,8 @@
 import type { SidebarNavSection } from "@houston-ai/layout";
-import { Blocks, GraduationCap, Inbox, Store, UserRound } from "lucide-react";
-import {
-  ABOUT_ME_VIEW_ID,
-  ACADEMY_VIEW_ID,
-  INBOX_VIEW_ID,
-} from "../../lib/top-level-views";
+import { Blocks, Store } from "lucide-react";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view";
 import { STORE_VIEW_ID } from "../store-view";
 import type { SidebarChromeT } from "./sidebar-chrome";
-import { buildInboxBadge } from "./sidebar-inbox-badge";
 import { gatedNavRows } from "./sidebar-nav-rows";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
@@ -21,17 +15,13 @@ export interface SectionFold {
 /**
  * The rail's top-level destinations, in three runs above "Your teams".
  *
- * 1. **Unlabelled** — the Assistant, the Inbox, About me, the Academy and the
- *    Agent Store. Who you ask for anything, where work arrives, what every
- *    agent knows about you before it starts, where you learn the product, and
- *    where agents come from: the things a user reaches for without being asked,
- *    so they lead the rail and need no heading over them. The Assistant leads
- *    the run because it is the one row that answers a question the user has not
- *    worked out how to ask yet; it is the only row gated on DISCOVERY rather
- *    than on a role, and it is absent where no assistant exists. About me and
- *    the Academy are everyone's, in every deployment, and deliberately not
- *    gated: standing context about the person, and learning to fly, are not
- *    preferences and belong to nobody's admin territory.
+ * 1. **Unlabelled** — the Assistant and the Agent Store. Who you ask for
+ *    anything, and where agents come from: the things a user reaches for
+ *    without being asked, so they lead the rail and need no heading over them.
+ *    The Assistant leads the run because it is the one row that answers a
+ *    question the user has not worked out how to ask yet; it is the only row
+ *    gated on DISCOVERY rather than on a role, and it is absent where no
+ *    assistant exists.
  * 2. **"My accounts"** — the connections that belong to the PERSON: the apps
  *    they have OAuthed and the AI accounts they run their turns on. Nobody
  *    else in the space is affected by either.
@@ -46,15 +36,17 @@ export interface SectionFold {
  * the rows it names — which is the ONE rule, and why nothing here needs a
  * second one asking whether a run came out empty.
  *
- * Four things a reader may come looking for live elsewhere, each on purpose.
+ * Five things a reader may come looking for live elsewhere, each on purpose.
  * Per-agent policy is every team's focused agent screen, discovered through
  * the team that owns the agent. Time worked is a section inside Admin, beside
- * the activity feed and usage bars it is read against. "Guide me" is one of
- * two items behind the help control in the rail's footer
- * (`sidebar-help-menu.tsx`), because it points at no screen. Settings is a
- * permanent footer row beside that control: it belongs to the PERSON's chrome
- * rather than to what the space is made of, and must stay reachable in the
- * deployments where the Workspace band does not exist.
+ * the activity feed and usage bars it is read against. About me is a Settings
+ * section: what the agents know about the person is a standing preference,
+ * kept with their name and their language. "Guide me" is one of two items
+ * behind the help control in the rail's footer (`sidebar-help-menu.tsx`),
+ * because it points at no screen. The Academy and Settings are the rail's
+ * FOOTER cluster (`sidebar-footer.tsx`): learning to fly and the person's own
+ * chrome sit under the space's contents rather than above them, and both must
+ * stay reachable in the deployments where the Workspace band does not exist.
  */
 export function buildSidebarNavItems(args: {
   t: SidebarChromeT;
@@ -65,8 +57,6 @@ export function buildSidebarNavItems(args: {
   showSkills: boolean;
   /** The Assistant row: true where discovery hands out an address for one. */
   showAssistant: boolean;
-  /** Unread @mentions of the viewer. Zero draws no badge. */
-  mentionCount: number;
   /** The persisted fold of each LABELLED band, and its toggle. Same shape and
    *  same persistence as "Your teams" below them: one band anatomy, one rule. */
   folds: {
@@ -81,7 +71,6 @@ export function buildSidebarNavItems(args: {
     showOrganization,
     showSkills,
     showAssistant,
-    mentionCount,
     folds,
     setViewMode,
   } = args;
@@ -94,31 +83,6 @@ export function buildSidebarNavItems(args: {
       id: "primary",
       items: [
         ...(showAssistant ? [assistant] : []),
-        {
-          id: INBOX_VIEW_ID,
-          label: t("shell:sidebar.inbox"),
-          icon: <Inbox className="h-4 w-4" />,
-          onClick: () => setViewMode(INBOX_VIEW_ID),
-          dataAttrs: tourAnchor("nav-inbox"),
-          trailing: buildInboxBadge(t, mentionCount),
-        },
-        {
-          id: ABOUT_ME_VIEW_ID,
-          label: t("shell:sidebar.aboutMe"),
-          icon: <UserRound className="h-4 w-4" />,
-          // No tour anchor: the tour does not walk this row, exactly as it
-          // does not walk Admin or Skills. A target in the anchor union that no
-          // step spotlights is dead weight the union exists to prevent.
-          onClick: () => setViewMode(ABOUT_ME_VIEW_ID),
-        },
-        {
-          id: ACADEMY_VIEW_ID,
-          label: t("shell:sidebar.academy"),
-          icon: <GraduationCap className="h-4 w-4" />,
-          // No tour anchor, for the same reason About me above carries none:
-          // the tour does not walk this row.
-          onClick: () => setViewMode(ACADEMY_VIEW_ID),
-        },
         {
           id: STORE_VIEW_ID,
           label: t("shell:sidebar.agentStore"),

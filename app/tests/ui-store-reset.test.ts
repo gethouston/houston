@@ -24,11 +24,11 @@ describe("useUIStore.reset", () => {
     useUIStore.getState().reset();
 
     const next = useUIStore.getState();
-    // The honest initial view: the Inbox. Home is the first team's Mission
-    // Control, and no team has resolved at this point, so the one screen that
-    // needs no team is where the store starts (the shell's boot rule moves the
-    // user on once a team lands).
-    strictEqual(next.viewMode, "inbox");
+    // The honest initial view: the Agents home. Home is the first team's
+    // Mission Control, and no team has resolved at this point, so the screen
+    // that needs no team is where the store starts (the shell's boot rule
+    // moves the user on once a team lands).
+    strictEqual(next.viewMode, "agents-home");
     strictEqual(next.activityPanelId, null);
     strictEqual(next.shareAgentId, null);
     strictEqual(next.paletteOpen, false);

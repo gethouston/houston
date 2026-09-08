@@ -19,9 +19,9 @@ import { navRow, screen } from "./support/team-nav";
  * hold, and each of them broke a real user path when it didn't:
  *
  * 1. the rail carries exactly the top-level entries the IA names — the
- *    unlabelled lead run (Assistant, Inbox, About me, Agent Store), "My
- *    accounts" (Integrations, AI Models) and "Workspace" (Admin, Skills) — with
- *    Settings and the help control in the footer;
+ *    unlabelled lead run (Assistant, Agent Store), "My accounts"
+ *    (Integrations, AI Models) and "Workspace" (Admin, Skills) — with the
+ *    Academy, Settings and the help control in the footer;
  * 2. the two rows that band used to carry are GONE from the rail entirely.
  *    **Permissions** listed the space's agents to reach one's settings page,
  *    which every team's focused agent screen already does per team, in every
@@ -83,12 +83,10 @@ test("the sidebar carries only the IA's top-level entries, under their bands", a
   await armOwner(request);
   await page.goto("/");
 
-  // The lead run needs no band; the rest are named by one. The Assistant and
-  // About me sit in it without a tour anchor, so both are addressed by name.
+  // The lead run needs no band; the rest are named by one. The Assistant sits
+  // in it without a tour anchor, so it is addressed by name.
   const sidebar = page.locator("[data-tour-target='sidebar']");
   await expect(assistantRow(page)).toBeVisible();
-  await expect(navRow(page, "inbox")).toBeVisible();
-  await expect(aboutMeRow(page)).toBeVisible();
   await expect(navRow(page, "agent-store")).toBeVisible();
 
   await expect(sidebar.getByText("My accounts")).toBeVisible();
@@ -101,6 +99,9 @@ test("the sidebar carries only the IA's top-level entries, under their bands", a
   // outside the band.
   await expect(adminRow(page)).toBeVisible();
   await expect(navRow(page, "skills")).toBeVisible();
+  // The footer cluster: the Academy directly above Settings. The Academy
+  // carries no tour anchor, so its name is the handle.
+  await expect(railButton(page, "Academy")).toBeVisible();
   await expect(navRow(page, "settings")).toBeVisible();
 
   // The rows this IA deleted, asserted by the names they used to wear. An owner
@@ -108,6 +109,10 @@ test("the sidebar carries only the IA's top-level entries, under their bands", a
   // ever comes back it comes back here.
   await expect(railButton(page, "Permissions")).toHaveCount(0);
   await expect(railButton(page, "Time worked")).toHaveCount(0);
+  // About me is a Settings section and the Inbox screen is gone, so neither
+  // may hold a rail slot as well.
+  await expect(railButton(page, "About me")).toHaveCount(0);
+  await expect(railButton(page, "Inbox")).toHaveCount(0);
   // "Guide me" was never a destination: it lives behind the footer's help
   // control now, not in the rail's lead run.
   await expect(railButton(page, "Guide me")).toHaveCount(0);
@@ -146,11 +151,11 @@ test("a plain member gets no Workspace band at all", async ({
   await expect(sidebar.getByText("Workspace", { exact: true })).toHaveCount(0);
   await expect(adminRow(page)).toHaveCount(0);
   await expect(navRow(page, "skills")).toHaveCount(0);
-  // Ungated rows are untouched by the band's collapse: About me is everyone's
-  // standing context, Settings is everyone's chrome, and the Assistant rides
+  // Ungated rows are untouched by the band's collapse: the Academy is
+  // everyone's, Settings is everyone's chrome, and the Assistant rides
   // discovery rather than a role, so a plain member keeps it.
   await expect(assistantRow(page)).toBeVisible();
-  await expect(aboutMeRow(page)).toBeVisible();
+  await expect(railButton(page, "Academy")).toBeVisible();
   await expect(navRow(page, "settings")).toBeVisible();
 });
 
@@ -169,12 +174,11 @@ test("Settings holds only settings, under one heading", async ({
   const group = (name: string) =>
     main.getByRole("heading", { level: 2, name, exact: true });
   await expect(group("General")).toBeVisible();
-  // The five headings that named things which are no longer settings. Each died
-  // with its rows: the tour is armed from the footer's help control, the
-  // person's context editor is the About me rail row and the company's is a
-  // section of Admin, Time worked is another Admin section, Admin
-  // itself is a rail screen, and the help-shaped rows merged into General rather
-  // than keeping a group of their own.
+  // The five headings that named things which are not settings. Each died with
+  // its rows: the tour is armed from the footer's help control, what the agents
+  // know about the COMPANY is a section of Admin, Time worked is another Admin
+  // section, Admin itself is a rail screen, and the help-shaped rows sit in
+  // General rather than keeping a group of their own.
   for (const heading of ["Help", "Context", "Support", "Workspace", "Team"]) {
     await expect(group(heading)).toHaveCount(0);
   }
@@ -186,6 +190,9 @@ test("Settings holds only settings, under one heading", async ({
   // The help-shaped rows survived the fold: they sit in General now.
   await expect(main.getByText("Keyboard shortcuts")).toBeVisible();
   await expect(main.getByText("Report bug")).toBeVisible();
+  // About me is one of them: a standing preference about the person, so the
+  // index lists it beside their name and their language.
+  await expect(aboutMeRow(page)).toBeVisible();
 
   // This server bakes no identity key, so there is no session and therefore no
   // person to name. The header draws nothing rather than an empty face — the

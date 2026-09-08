@@ -21,8 +21,8 @@ import i18n from "./i18n.ts";
  * Open the board the agent's missions live on, filtered to that agent.
  *
  * With no team claiming the agent there is no board of its own to open, so this
- * goes HOME — the first team's Mission Control, or the Inbox when no team has
- * resolved. That is the one fallback the whole app shares (`lib/home-nav.ts`),
+ * goes HOME — the first team's Mission Control, or the Agents home when no
+ * team has resolved. That is the app's one fallback (`lib/home-nav.ts`),
  * which is what keeps a nav that misses from landing somewhere bespoke.
  */
 export function openAgentBoard(agentId: string): void {

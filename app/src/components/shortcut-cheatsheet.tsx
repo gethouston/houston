@@ -22,10 +22,6 @@ const NAV_ROWS: Row[] = [
     labelKey: "shell:cheatsheet.rows.palette",
   },
   {
-    glyphs: shortcutLabel("inbox"),
-    labelKey: "shell:cheatsheet.rows.inbox",
-  },
-  {
     glyphs: shortcutLabel("newMission"),
     labelKey: "shell:cheatsheet.rows.newMission",
   },

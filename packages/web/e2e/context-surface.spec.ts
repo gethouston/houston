@@ -1,26 +1,17 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import {
-  aboutMeRow,
-  openAboutMe,
-  openAdminSection,
-} from "./support/settings-nav";
+import { openAboutMe, openAdminSection } from "./support/settings-nav";
 import { screen } from "./support/team-nav";
 
 /**
  * The standing context every agent loads before it starts a turn — and the two
- * homes it now has, one per OWNER of the words.
+ * homes it has, one per OWNER of the words.
  *
- * It used to be a single two-tab "Context" screen behind a quiet door in the
- * Inbox's masthead: find a door, then pick a tab, before reaching the one thing
- * you came for. Both the door and the tab strip are gone, and each half went to
- * whoever the words belong to:
- *
- *  - **About me** — what the agents know about the PERSON. It is nobody's admin
- *    territory and it is not a preference, so it is an UNGATED top-level row in
- *    the rail's lead run, owning the whole window (no back bar, nothing above
- *    it). It exists in every deployment, including a solo desktop install.
+ *  - **About me** — what the agents know about the PERSON. They set it once
+ *    about themselves, so it is a SECTION of Settings, beside their name and
+ *    their language. It is ungated: it exists in every deployment, including a
+ *    solo desktop install.
  *  - **Admin > Company context** — what the agents know about the COMPANY. It is
  *    shared by everyone in the space, so it is the space owner's: a section of
  *    the Admin dashboard, which is itself gated to a team space and therefore
@@ -45,7 +36,7 @@ async function seedEmptyContext(page: Page) {
   });
 }
 
-test("About me is a rail row of its own, owning the whole window", async ({
+test("About me is a Settings section, drilled from the index", async ({
   page,
 }) => {
   // No capabilities armed: a plain single-player install, which is exactly
@@ -53,7 +44,6 @@ test("About me is a rail row of its own, owning the whole window", async ({
   // context there.
   await seedEmptyContext(page);
   await page.goto("/");
-  await expect(aboutMeRow(page)).toBeVisible();
   await openAboutMe(page);
 
   await expect(
@@ -66,11 +56,14 @@ test("About me is a rail row of its own, owning the whole window", async ({
   // company — is the invitation.
   await expect(screen(page).getByText(/I'm Juan/)).toBeVisible();
 
-  // Nothing sits above a top-level screen, so it offers no way back — a bar
-  // naming the Inbox would be the old door leaking through.
+  // A section sits one level below the index, so it wears that level's back
+  // bar and returns there.
+  const back = screen(page).getByRole("button", { name: "Settings" });
+  await expect(back).toBeVisible();
+  await back.click();
   await expect(
-    screen(page).getByRole("button", { name: "Inbox", exact: true }),
-  ).toHaveCount(0);
+    screen(page).getByRole("heading", { name: "Settings", exact: true }),
+  ).toBeVisible();
 });
 
 test("Company context is a section of Admin, editing the workspace's half", async ({

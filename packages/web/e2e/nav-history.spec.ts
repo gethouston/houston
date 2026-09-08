@@ -10,21 +10,21 @@ import { navRow, screen } from "./support/team-nav";
 
 test("browser back and forward walk the app's screens", async ({ page }) => {
   await page.goto("/");
-  // Boot's Inbox→home redirect REPLACES, so the stack starts on the board.
+  // Boot's landing→home redirect REPLACES, so the stack starts on the board.
   await expect(screen(page)).toHaveAttribute("data-screen", "team");
 
-  await navRow(page, "inbox").click();
-  await expect(screen(page)).toHaveAttribute("data-screen", "inbox");
+  await navRow(page, "agent-store").click();
+  await expect(screen(page)).toHaveAttribute("data-screen", "agent-store");
   await navRow(page, "settings").click();
   await expect(screen(page)).toHaveAttribute("data-screen", "settings");
 
   await page.goBack();
-  await expect(screen(page)).toHaveAttribute("data-screen", "inbox");
+  await expect(screen(page)).toHaveAttribute("data-screen", "agent-store");
   await page.goBack();
   await expect(screen(page)).toHaveAttribute("data-screen", "team");
 
   await page.goForward();
-  await expect(screen(page)).toHaveAttribute("data-screen", "inbox");
+  await expect(screen(page)).toHaveAttribute("data-screen", "agent-store");
 });
 
 test("browser back closes the chat panel before leaving the board", async ({
@@ -64,8 +64,8 @@ test("a reload re-boots to a single-entry stack and keeps navigating", async ({
   page,
 }) => {
   await page.goto("/");
-  await navRow(page, "inbox").click();
-  await expect(screen(page)).toHaveAttribute("data-screen", "inbox");
+  await navRow(page, "agent-store").click();
+  await expect(screen(page)).toHaveAttribute("data-screen", "agent-store");
 
   // viewMode is deliberately not persisted: a refresh lands back on home
   // with a fresh one-entry stack — and navigation still works from there.

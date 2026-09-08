@@ -25,13 +25,13 @@ export interface FileChangeEntry {
   status: "created" | "modified";
 }
 
-/** Marks a `from: "system"` message as a boundary divider — either a
- *  context compaction or a mid-session provider switch. */
+/** Marks a `from: "system"` message as a boundary divider — a context
+ *  compaction, a mid-session provider switch, or a cleared context. */
 export interface ChatCompactionInfo {
   /** What produced this divider. */
-  kind: "compacted" | "provider_switch";
+  kind: "compacted" | "provider_switch" | "context_cleared";
   /** Compaction trigger. Set only when `kind === "compacted"`. */
-  trigger?: "native" | "proactive";
+  trigger?: "native" | "proactive" | "manual";
   /** Provider switched TO. Set only when `kind === "provider_switch"`. */
   provider?: string;
   /** Whether a switch summarized prior context (`true`) or carried the full
@@ -379,6 +379,22 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
             trigger: item.data.trigger,
             preTokens: item.data.pre_tokens ?? undefined,
           },
+        });
+        break;
+      }
+
+      case "context_cleared": {
+        flush();
+        messages.push({
+          key: keyFor("context-cleared", item),
+          from: "system",
+          // Empty content — the renderer shows a localized divider keyed off
+          // `compaction`, not this string.
+          content: "",
+          isStreaming: false,
+          tools: [],
+          fileChanges: [],
+          compaction: { kind: "context_cleared" },
         });
         break;
       }

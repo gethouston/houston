@@ -102,14 +102,14 @@ describe("modelSelectorDecision", () => {
 
 describe("isModelAllowed", () => {
   it("treats null / undefined ceiling as no ceiling (all models allowed)", () => {
-    strictEqual(isModelAllowed(null, "gpt-5.5"), true);
-    strictEqual(isModelAllowed(undefined, "gpt-5.5"), true);
+    strictEqual(isModelAllowed(null, "gpt-6-astra"), true);
+    strictEqual(isModelAllowed(undefined, "gpt-6-astra"), true);
   });
 
   it("gates on membership when a ceiling is set", () => {
-    strictEqual(isModelAllowed(["gpt-5.5", "claude"], "gpt-5.5"), true);
-    strictEqual(isModelAllowed(["gpt-5.5"], "claude"), false);
-    strictEqual(isModelAllowed([], "gpt-5.5"), false);
+    strictEqual(isModelAllowed(["gpt-6-astra", "claude"], "gpt-6-astra"), true);
+    strictEqual(isModelAllowed(["gpt-6-astra"], "claude"), false);
+    strictEqual(isModelAllowed([], "gpt-6-astra"), false);
   });
 });
 
@@ -121,13 +121,13 @@ describe("resolvePersonalModelPin", () => {
   it("uses the user's stored choice when present", () => {
     deepStrictEqual(
       resolvePersonalModelPin(
-        { provider: "openai", model: "gpt-5.5", effort: "low" },
-        ["gpt-5.5"],
+        { provider: "openai", model: "gpt-6-astra", effort: "low" },
+        ["gpt-6-astra"],
         fallback,
         null,
         blind,
       ),
-      { provider: "openai", model: "gpt-5.5", effort: "low" },
+      { provider: "openai", model: "gpt-6-astra", effort: "low" },
     );
   });
 
@@ -146,7 +146,7 @@ describe("resolvePersonalModelPin", () => {
     deepStrictEqual(
       resolvePersonalModelPin(
         null,
-        ["claude", "gpt-5.5"],
+        ["claude", "gpt-6-astra"],
         fallback,
         null,
         blind,
@@ -157,11 +157,11 @@ describe("resolvePersonalModelPin", () => {
 
   it("snaps to the ceiling model's owning provider", () => {
     deepStrictEqual(
-      resolvePersonalModelPin(null, ["gpt-5.5", "gemini"], fallback, null, {
+      resolvePersonalModelPin(null, ["gpt-6-astra", "gemini"], fallback, null, {
         ...blind,
-        providerFor: (model) => (model === "gpt-5.5" ? "openai" : null),
+        providerFor: (model) => (model === "gpt-6-astra" ? "openai" : null),
       }),
-      { provider: "openai", model: "gpt-5.5", effort: "high" },
+      { provider: "openai", model: "gpt-6-astra", effort: "high" },
     );
   });
 
@@ -202,8 +202,8 @@ describe("resolvePersonalModelPin", () => {
   it("uses an in-ceiling mission pin while keeping personal effort", () => {
     deepStrictEqual(
       resolvePersonalModelPin(
-        { provider: "openai", model: "gpt-5.5", effort: "low" },
-        ["claude", "gpt-5.5"],
+        { provider: "openai", model: "gpt-6-astra", effort: "low" },
+        ["claude", "gpt-6-astra"],
         fallback,
         { provider: "anthropic", model: "claude" },
         blind,
@@ -215,13 +215,13 @@ describe("resolvePersonalModelPin", () => {
   it("ignores an out-of-ceiling mission pin", () => {
     deepStrictEqual(
       resolvePersonalModelPin(
-        { provider: "openai", model: "gpt-5.5", effort: "low" },
-        ["gpt-5.5"],
+        { provider: "openai", model: "gpt-6-astra", effort: "low" },
+        ["gpt-6-astra"],
         fallback,
         { provider: "anthropic", model: "claude" },
         blind,
       ),
-      { provider: "openai", model: "gpt-5.5", effort: "low" },
+      { provider: "openai", model: "gpt-6-astra", effort: "low" },
     );
   });
 });
@@ -236,7 +236,7 @@ describe("hiddenModelCount", () => {
 
   const universe = rows(
     ["anthropic", "claude"],
-    ["openai", "gpt-5.5"],
+    ["openai", "gpt-6-astra"],
     ["google", "gemini"],
   );
 
@@ -245,19 +245,22 @@ describe("hiddenModelCount", () => {
   });
 
   it("hides nothing when the ceiling allows every model", () => {
-    strictEqual(hiddenModelCount(universe, ["claude", "gpt-5.5", "gemini"]), 0);
+    strictEqual(
+      hiddenModelCount(universe, ["claude", "gpt-6-astra", "gemini"]),
+      0,
+    );
   });
 
   it("counts exactly the models the ceiling turns off", () => {
     strictEqual(hiddenModelCount(universe, ["claude"]), 2);
-    strictEqual(hiddenModelCount(universe, ["claude", "gpt-5.5"]), 1);
+    strictEqual(hiddenModelCount(universe, ["claude", "gpt-6-astra"]), 1);
   });
 
   it("counts a model offered by two providers once", () => {
     // Same bare model id from two providers is one hidden model, not two.
     const dupes = rows(
-      ["openrouter", "gpt-5.5"],
-      ["openai", "gpt-5.5"],
+      ["openrouter", "gpt-6-astra"],
+      ["openai", "gpt-6-astra"],
       ["anthropic", "claude"],
     );
     strictEqual(hiddenModelCount(dupes, ["claude"]), 1);

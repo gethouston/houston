@@ -27,6 +27,18 @@ const SPACE_INVARIANT_KEY_ROOTS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Whether a query key holds user-scoped, space-invariant state — the keys no
+ * SERVER event can ever be about. Shared with the event-stream catch-up sweep
+ * (`use-agent-invalidation.ts`), which re-reads the world after a transport gap
+ * and must leave identity and the first-run flags out of it: churning them
+ * flaps App.tsx's auth and onboarding gates for a stream drop that says nothing
+ * about either.
+ */
+export function isSpaceInvariantQueryKey(key: readonly unknown[]): boolean {
+  return SPACE_INVARIANT_KEY_ROOTS.has(String(key[0]));
+}
+
+/**
  * Drop the query cache on a real active-space change (C8 §Active space), EXCEPT
  * the user-scoped, space-invariant keys above.
  *
@@ -58,7 +70,6 @@ export function resetCacheForSpaceChange(
   if (!orgChanged) return;
   cancelAllConnectFlows();
   queryClient.removeQueries({
-    predicate: (query) =>
-      !SPACE_INVARIANT_KEY_ROOTS.has(String(query.queryKey[0])),
+    predicate: (query) => !isSpaceInvariantQueryKey(query.queryKey),
   });
 }

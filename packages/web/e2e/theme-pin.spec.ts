@@ -69,7 +69,7 @@ test("data-theme pin re-resolves Tailwind color utilities per subtree", async ({
 }) => {
   await page.goto("/");
   // Anchor: the shell is up, so globals.css (the @theme inline bridge) is loaded.
-  await expect(navRow(page, "inbox")).toBeVisible();
+  await expect(navRow(page, "agent-store")).toBeVisible();
 
   // --- Light app: a data-theme="dark" pin must render DARK inside it. ---
   const lightAppUnpinned = await probe(page, "light", null);

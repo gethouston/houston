@@ -46,8 +46,8 @@ e2e/
     fixtures.ts     # the `test`/`expect` used by specs (resets the host per test)
     identity.ts     # sign the harness in as a known user (see Signed-in specs below)
     settings-nav.ts # the rail's anchorless rows (Admin + its sections and
-                    # Analytics lenses, About me) and Settings
-    team-nav.ts     # the rail (top-level rows + the Inbox) + the screen ON THE
+                    # Analytics lenses) and Settings + its sections (About me)
+    team-nav.ts     # the rail (top-level rows) + the screen ON THE
                     # GLASS; open a team's section, and an agent's settings page
                     # through it ("focused agent screen", the ONE door onto agent policy)
     mobile-nav.ts   # the PHONE chrome: the floating nav bar, its More menu,
@@ -246,7 +246,7 @@ so each server gets its own optimizer output — no shared state, no race.
 
 1. `import { test, expect } from "./support/fixtures"` (gives you a seeded page).
 2. `await page.goto("/")` — the app boots straight to the shell, onto the FIRST
-   team's Tasks board (there is no global board; the Inbox is where boot
+   team's Tasks board (there is no global board; the Agents home is where boot
    waits when no team has resolved), one agent selected.
 3. Prefer role/label/text selectors; the app forces `en`, so English copy is
    stable. Reach for an existing stable anchor (e.g. `data-tour-target`) over a

@@ -14,6 +14,7 @@
  * on a provider the user has not connected (PRODUCT-1236).
  */
 
+import { toDisplayProviderIdOrNull } from "./provider-overrides.ts";
 import {
   getDefaultModel,
   normalizeLegacyModel,
@@ -84,7 +85,14 @@ export function resolveAgentModelOverrides(
   cfg: BrainConfig,
   connected: readonly string[] | null = null,
 ): AgentModelOverrides {
-  const configured = validProviderOrNull(cfg.provider);
+  // Configs written by the engine store pi's CANONICAL provider id
+  // (`openai-codex`) while the catalog is keyed by Houston's DISPLAY id
+  // (`openai`), so the id is mapped before it is looked up — unmapped, a
+  // Codex agent's kickoff resolved to no pin at all and ran on whatever the
+  // runtime had active. The wire takes either dialect (`PROVIDER_ALIASES`).
+  const configured = validProviderOrNull(
+    toDisplayProviderIdOrNull(cfg.provider),
+  );
   const provider = usableProvider(configured, connected);
   if (!provider) return {};
   const stored = provider === configured;

@@ -23,6 +23,19 @@ describe("resolveAgentModelOverrides", () => {
     );
   });
 
+  it("reads a provider stored in the ENGINE dialect", () => {
+    // Engine-written configs carry pi's `openai-codex`; the catalog is keyed by
+    // Houston's `openai`. Unmapped, the pin vanished and the kickoff ran on
+    // whatever the runtime had active instead of the agent's own Codex model.
+    deepStrictEqual(
+      resolveAgentModelOverrides({
+        provider: "openai-codex",
+        model: "gpt-6-astra",
+      }),
+      { providerOverride: "openai", modelOverride: "gpt-6-astra" },
+    );
+  });
+
   it("forwards a stored effort the model accepts", () => {
     deepStrictEqual(
       resolveAgentModelOverrides({

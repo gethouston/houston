@@ -14,7 +14,7 @@ test("every step is the plain rail spotlight on desktop, phone state notwithstan
           isMobile: false,
           home,
           menuOpen,
-          viewMode: "inbox",
+          viewMode: "store",
         }),
         "rail",
       );
@@ -26,7 +26,7 @@ test("a More-menu step rings the More button while the menu is shut, then the ro
       isMobile: true,
       home: "more",
       menuOpen,
-      viewMode: "inbox",
+      viewMode: "store",
     });
   assert.equal(spot(false), "openMenu");
   assert.equal(spot(true), "inMenu");
@@ -40,7 +40,7 @@ test("an Agents-home step rings the Agents item until that screen is on the glas
       menuOpen: false,
       viewMode,
     });
-  assert.equal(spot("inbox"), "openAgents");
+  assert.equal(spot("store"), "openAgents");
   assert.equal(spot("team"), "openAgents");
   // On the screen the control is plainly there: no dialog, so no `inDialog`.
   assert.equal(spot("agents-home"), "onScreen");

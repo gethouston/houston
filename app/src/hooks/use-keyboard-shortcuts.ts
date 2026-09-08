@@ -3,7 +3,6 @@ import { flatSidebarOrder } from "../lib/agent-order";
 import { startNewMission } from "../lib/new-mission";
 import { openAgentBoard } from "../lib/open-agent";
 import { isTypingTarget, matchShortcut } from "../lib/shortcuts";
-import { INBOX_VIEW_ID } from "../lib/top-level-views";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
@@ -37,12 +36,6 @@ export function useKeyboardShortcuts() {
         e.preventDefault();
         const ui = useUIStore.getState();
         ui.setPaletteOpen(!ui.paletteOpen);
-        return;
-      }
-
-      if (matchShortcut("inbox", e)) {
-        e.preventDefault();
-        useUIStore.getState().setViewMode(INBOX_VIEW_ID);
         return;
       }
 

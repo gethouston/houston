@@ -60,7 +60,7 @@ describe("buildAiGenerationProps", () => {
       costUsd: 0.01,
       durationMs: 100,
       provider: "openai",
-      model: "gpt-5.5",
+      model: "gpt-6-astra",
       sessionKey: "sess-4",
     });
     for (const key of Object.keys(props)) {

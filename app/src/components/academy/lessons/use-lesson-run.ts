@@ -25,8 +25,8 @@ const LESSON_SOURCE = "academy_path";
  *
  * A team view is never set by id alone: which team and which of its sections
  * is open is store state, so `openHome` — the ONE writer of a whole team view
- * — takes that id and lands on the first team's Mission Control (the Inbox
- * when no team has resolved). Everything else is a plain top-level view.
+ * — takes that id and lands on the first team's Mission Control (the Agents
+ * home when no team has resolved). Everything else is a plain top-level view.
  */
 function navigateToLessonView(viewId: string): void {
   if (viewId === TEAM_VIEW_ID) {

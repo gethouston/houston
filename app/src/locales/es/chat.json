@@ -259,6 +259,12 @@
   "filesUpdated_one": "1 archivo actualizado",
   "filesUpdated_other": "{{count}} archivos actualizados",
   "contextCompacted": "Resumimos la conversación anterior para que el chat pueda continuar",
+  "contextCompactedManual": "Compactamos la conversación para liberar espacio",
+  "contextCleared": "Contexto borrado. Empiezo de cero y conservo lo que aprendí sobre ti.",
+  "contextCommands": {
+    "compact": "Compactar contexto",
+    "clear": "Borrar contexto"
+  },
   "conversationMap": {
     "title": "Buscar en el chat",
     "moreActions": "Acciones del chat",

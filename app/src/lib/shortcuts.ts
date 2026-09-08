@@ -3,7 +3,6 @@ import { isMac } from "./platform";
 export type ShortcutAction =
   | "newMission"
   | "palette"
-  | "inbox"
   | "prevAgent"
   | "nextAgent"
   | "boardUp"
@@ -35,11 +34,6 @@ const shortcuts: Record<ShortcutAction, ShortcutDef> = {
     parts: [mod, "K"],
     match: (e) =>
       cmd(e) && !e.shiftKey && !e.altKey && (e.key === "k" || e.key === "K"),
-  },
-  inbox: {
-    parts: [mod, "M"],
-    match: (e) =>
-      cmd(e) && !e.shiftKey && !e.altKey && (e.key === "m" || e.key === "M"),
   },
   prevAgent: {
     parts: [mod, "["],

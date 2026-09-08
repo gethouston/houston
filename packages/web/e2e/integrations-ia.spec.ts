@@ -81,8 +81,10 @@ test("Teams member: no Admin nav, but the Integrations nav opens the personal ca
     }),
   ).toHaveCount(0);
 
-  // The Inbox and Settings remain too — the two rows every caller gets.
-  await expect(page.locator('[data-tour-target="nav-inbox"]')).toBeVisible();
+  // The Agent Store and Settings remain too, the rows every caller gets.
+  await expect(
+    page.locator('[data-tour-target="nav-agent-store"]'),
+  ).toBeVisible();
   await expect(page.locator('[data-tour-target="nav-settings"]')).toBeVisible();
 });
 

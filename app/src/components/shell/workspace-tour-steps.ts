@@ -21,7 +21,6 @@
 export const TOUR_TARGETS = [
   "spaceSwitcher",
   "agents",
-  "nav-inbox",
   "main",
   "newMission",
   "nav-integrations",

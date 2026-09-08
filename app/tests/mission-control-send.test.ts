@@ -28,7 +28,7 @@ const legacySonnetActivity: ActivityOverrideSource = {
 const codexActivity: ActivityOverrideSource = {
   id: "ghi",
   provider: "openai",
-  model: "gpt-5.5",
+  model: "gpt-6-astra",
 };
 
 const routineActivity: ActivityOverrideSource = {
@@ -153,7 +153,7 @@ describe("resolveMissionControlSendOverrides", () => {
 describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
   const composer = {
     providerOverride: "openai",
-    modelOverride: "gpt-5.5",
+    modelOverride: "gpt-6-astra",
     modeOverride: "plan" as const,
   };
 
@@ -180,7 +180,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
       resolveFollowUpOverrides("activity-anything", undefined, composer),
       {
         providerOverride: "openai",
-        modelOverride: "gpt-5.5",
+        modelOverride: "gpt-6-astra",
         modeOverride: "execute",
       },
     );
@@ -191,7 +191,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
       resolveFollowUpOverrides("activity-missing", [opus47Activity], composer),
       {
         providerOverride: "openai",
-        modelOverride: "gpt-5.5",
+        modelOverride: "gpt-6-astra",
         modeOverride: "execute",
       },
     );
@@ -204,7 +204,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
       resolveFollowUpOverrides("activity-x", [{ id: "x" }], composer),
       {
         providerOverride: "openai",
-        modelOverride: "gpt-5.5",
+        modelOverride: "gpt-6-astra",
         modeOverride: "execute",
       },
     );

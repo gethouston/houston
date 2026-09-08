@@ -36,7 +36,7 @@ const state = (
 
 describe("navigated push", () => {
   it("appends the resulting location and advances the cursor", () => {
-    const s = state(at("inbox"), initialNavState());
+    const s = state(at("agents-home"), initialNavState());
     const out = navigated(s, { viewMode: "settings" }, "push");
     assert.ok("navStack" in out);
     assert.equal(out.navIndex, 1);
@@ -45,19 +45,19 @@ describe("navigated push", () => {
   });
 
   it("re-navigating to the current location is not a move", () => {
-    const s = state(at("inbox"), initialNavState());
-    const out = navigated(s, { viewMode: "inbox" }, "push");
+    const s = state(at("agents-home"), initialNavState());
+    const out = navigated(s, { viewMode: "agents-home" }, "push");
     assert.equal("navStack" in out, false);
   });
 
   it("truncates the forward set, like the browser's own pushState", () => {
-    const stack = [navEntryOf(at("inbox")), navEntryOf(at("settings"))];
-    const s = state(at("inbox"), { navStack: stack, navIndex: 0 });
+    const stack = [navEntryOf(at("agents-home")), navEntryOf(at("settings"))];
+    const s = state(at("agents-home"), { navStack: stack, navIndex: 0 });
     const out = navigated(s, { viewMode: "skills" }, "push");
     assert.ok("navStack" in out);
     assert.deepEqual(
       out.navStack.map((e) => e.viewMode),
-      ["inbox", "skills"],
+      ["agents-home", "skills"],
     );
     assert.equal(out.navIndex, 1);
   });
@@ -65,7 +65,7 @@ describe("navigated push", () => {
 
 describe("navigated replace", () => {
   it("swaps the current entry without growing the stack", () => {
-    const s = state(at("inbox"), initialNavState());
+    const s = state(at("agents-home"), initialNavState());
     const out = navigated(s, { viewMode: "team" }, "replace");
     assert.ok("navStack" in out);
     assert.equal(out.navIndex, 0);
@@ -159,8 +159,8 @@ describe("navigated reset", () => {
   });
 
   it("is a no-op when the stack already is the bare root", () => {
-    const s = state(at("inbox"), initialNavState());
-    const out = navigated(s, { viewMode: "inbox" }, "reset");
+    const s = state(at("agents-home"), initialNavState());
+    const out = navigated(s, { viewMode: "agents-home" }, "reset");
     assert.equal("navStack" in out, false);
   });
 });
@@ -235,10 +235,10 @@ describe("entry plumbing", () => {
     assert.equal(viewFieldsOf(navEntryOf(at("team"))).viewMode, "team");
   });
 
-  it("boots as a single Inbox entry, matching the store's initial view", () => {
+  it("boots as a single Agents home entry, matching the store's initial view", () => {
     const nav = initialNavState();
     assert.equal(nav.navIndex, 0);
     assert.equal(nav.navStack.length, 1);
-    assert.ok(sameNavEntry(nav.navStack[0], navEntryOf(at("inbox"))));
+    assert.ok(sameNavEntry(nav.navStack[0], navEntryOf(at("agents-home"))));
   });
 });

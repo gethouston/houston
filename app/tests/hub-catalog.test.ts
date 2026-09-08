@@ -34,19 +34,22 @@ function offerProviders(model: CatalogModel | undefined): string[] {
 
 describe("offers carry Houston provider ids + pi model ids", () => {
   it("renames openai-codex → openai and preserves the pi model id", () => {
-    // `gpt-5.5` is offered by the OAuth Codex provider (renamed `openai`),
-    // Copilot, and OpenCode: it folds to one model with three offers.
-    const gpt = all.byKey.get("gpt 5.5");
-    ok(gpt, "expected a merged 'gpt 5.5' model");
-    deepStrictEqual(offerProviders(gpt), [
-      "github-copilot",
-      "openai",
-      "opencode",
-    ]);
-    const openai = gpt?.offers.find((o) => o.providerId === "openai");
+    const astra = all.byKey.get("gpt 6 astra");
+    ok(astra, "expected a 'gpt 6 astra' model");
+    deepStrictEqual(offerProviders(astra), ["openai"]);
+    const openai = astra?.offers.find((o) => o.providerId === "openai");
     // The pi model id is preserved verbatim so the picker's
     // `${providerId}::${modelId}` lookup matches PROVIDERS.
-    strictEqual(openai?.modelId, "gpt-5.5");
+    strictEqual(openai?.modelId, "gpt-6-astra");
+  });
+
+  it("folds one model id served by several gateways into one row", () => {
+    // gpt-5.5 runs on GitHub's Copilot gateway and on OpenCode Zen, but the
+    // ChatGPT subscription refuses it (curated out of `openai`), so it folds
+    // to exactly two offers.
+    const gpt = all.byKey.get("gpt 5.5");
+    ok(gpt, "expected a merged 'gpt 5.5' model");
+    deepStrictEqual(offerProviders(gpt), ["github-copilot", "opencode"]);
   });
 
   it("drops pi's direct api-key openai provider (its models never surface)", () => {
@@ -84,11 +87,8 @@ describe("pricing and subscription flags come from pi", () => {
   it("marks OAuth (subscription) offers with no per-token price", () => {
     const gpt = all.byKey.get("gpt 5.5");
     const oauth = gpt?.offers.filter((o) => o.subscription) ?? [];
-    // Codex + Copilot are OAuth; OpenCode is api-key.
-    deepStrictEqual(oauth.map((o) => o.providerId).sort(), [
-      "github-copilot",
-      "openai",
-    ]);
+    // Copilot is OAuth; OpenCode is api-key.
+    deepStrictEqual(oauth.map((o) => o.providerId).sort(), ["github-copilot"]);
     for (const offer of oauth) {
       strictEqual(offer.costInput, undefined);
       strictEqual(offer.costOutput, undefined);

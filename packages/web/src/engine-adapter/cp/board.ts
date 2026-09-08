@@ -47,6 +47,7 @@ export async function updateActivity(
 /**
  * Lists an agent's routines.
  * @assistant group:routines
+ * @assistant unschematized: a routine's trigger_config is the outside app's own event shape.
  */
 export async function listRoutines(
   cfg: ControlPlaneConfig,
@@ -70,6 +71,7 @@ export async function listRoutineRuns(
 /**
  * Creates a routine so an agent repeats work on a schedule.
  * @assistant group:routines
+ * @assistant unschematized: debt: input is typed unknown; it should carry the routine wire shape so a caller can build one.
  */
 export async function createRoutine(
   cfg: ControlPlaneConfig,
@@ -85,6 +87,7 @@ export async function createRoutine(
 /**
  * Updates a routine's schedule or instructions.
  * @assistant group:routines
+ * @assistant unschematized: debt: updates is typed unknown; it should carry the routine wire shape so a caller can build one.
  */
 export async function updateRoutine(
   cfg: ControlPlaneConfig,
@@ -166,7 +169,7 @@ export async function cancelRoutineRun(
  *
  * Hidden: the reply carries the raw secret, and an operation the assistant can
  * call is an operation whose result can end up quoted back into a chat.
- * @assistant group:routines confirm hidden
+ * @assistant group:routines confirm hidden: returns a secret; the webhook key is revealed once and calling again rotates it.
  */
 export async function mintRoutineWebhookKey(
   cfg: ControlPlaneConfig,

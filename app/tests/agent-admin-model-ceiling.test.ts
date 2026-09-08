@@ -53,7 +53,7 @@ describe("ceilingValue — inline row state for a ceiling", () => {
 
   it("an explicit set reports its count (including empty = 0)", () => {
     deepStrictEqual(ceilingValue([]), { kind: "count", count: 0 });
-    deepStrictEqual(ceilingValue(["gpt-5.5", "claude-opus-4-8"]), {
+    deepStrictEqual(ceilingValue(["gpt-6-astra", "claude-opus-4-8"]), {
       kind: "count",
       count: 2,
     });

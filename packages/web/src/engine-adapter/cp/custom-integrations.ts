@@ -51,7 +51,7 @@ export async function removeCustomIntegration(
 
 /**
  * Saves the secret that finishes setting up an app the user added themselves.
- * @assistant group:integrations hidden
+ * @assistant group:integrations hidden: takes a secret; the user pastes the integration's own credential.
  */
 export async function submitCustomIntegrationCredential(
   cfg: ControlPlaneConfig,
@@ -68,7 +68,7 @@ export async function submitCustomIntegrationCredential(
 
 /**
  * Starts the browser sign-in for an app the user added themselves.
- * @assistant group:integrations hidden
+ * @assistant group:integrations hidden: starts a browser sign-in only the user can finish.
  */
 export async function startCustomIntegrationOAuth(
   cfg: ControlPlaneConfig,
@@ -100,6 +100,7 @@ export async function detectCustomIntegration(
 /**
  * Adds an outside app of the user's own from a link.
  * @assistant group:integrations confirm
+ * @assistant unschematized: the input's headers is an open record of header name to value.
  */
 export async function addCustomIntegration(
   cfg: ControlPlaneConfig,

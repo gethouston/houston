@@ -190,27 +190,77 @@ describe("planInvalidation — unrelated cases keep their exact effects", () => 
 });
 
 /**
- * HOU-981. The `/v1/events` feed has no replay cursor: a drop loses every event
- * emitted while it was down. Nothing re-read the cross-agent aggregate after
- * that, so a mission created during the gap stayed invisible for the rest of
- * the session. A re-connect is now a transport event the plan turns into a
- * re-sweep.
+ * The `/v1/events` feed has no replay cursor: a drop loses every event emitted
+ * while it was down, and which ones is unknowable. A re-connect is a transport
+ * event the plan turns into a full catch-up sweep — anything narrower leaves
+ * some surface (an agent created during the gap, a routine that finished)
+ * silently stale until the user remounts it.
  */
-describe("planInvalidation — EventStreamReconnected catches the aggregate up", () => {
-  it("re-sweeps the cross-agent aggregate", () => {
+describe("planInvalidation — EventStreamReconnected catches the world up", () => {
+  it("sweeps the whole cache", () => {
     const plan = planInvalidation({ type: "EventStreamReconnected" }, {});
-    ok(
-      invalidates(plan, queryKeys.allConversations([])),
-      "the aggregate prefix must be invalidated so every roster variant refetches",
+    strictEqual(
+      plan.invalidateAll,
+      true,
+      "a gap of unknown content cannot be caught up by a key list",
     );
   });
 
-  it("touches nothing else — a re-sweep already wakes every pod", () => {
+  it("reloads the open workspace's roster, which no cache key covers", () => {
+    const plan = planInvalidation(
+      { type: "EventStreamReconnected" },
+      { workspaceId: "default" },
+    );
+    strictEqual(plan.reloadAgentsWorkspace, "default");
+  });
+
+  it("stays inert on the surfaces a sweep cannot express", () => {
     const plan = planInvalidation({ type: "EventStreamReconnected" }, {});
-    strictEqual(plan.invalidate.length, 1);
     deepStrictEqual(plan.patchAllConversations, []);
     strictEqual(plan.reloadAgentsWorkspace, undefined);
     strictEqual(plan.focusWindow, undefined);
+  });
+});
+
+/**
+ * The client's personal workspace id is the SYNTHETIC "default" the adapter
+ * substitutes for whatever the host serves; an event carries the SERVER's id
+ * (the local host's on-disk folder name, the gateway's engine id). A string
+ * compare between the two is always false, so every `AgentsChanged` for the
+ * personal space was dropped: an agent the assistant created reached the app
+ * and stayed invisible until a manual refresh.
+ */
+describe("planInvalidation — the personal space's two vocabularies", () => {
+  it("reloads the roster for a personal-space event named by the host", () => {
+    const plan = planInvalidation(
+      { type: "AgentsChanged", data: { workspace_id: "Personal" } },
+      { workspaceId: "default" },
+    );
+    strictEqual(
+      plan.reloadAgentsWorkspace,
+      "default",
+      "an agent created by an agent must appear without a refresh",
+    );
+  });
+
+  it("still refuses a TEAM space's event while personal is open", () => {
+    const plan = planInvalidation(
+      {
+        type: "AgentsChanged",
+        data: { workspace_id: "org:0123456789abcdef" },
+      },
+      { workspaceId: "default" },
+    );
+    strictEqual(plan.reloadAgentsWorkspace, undefined);
+    deepStrictEqual(plan.invalidate, []);
+  });
+
+  it("refreshes the sidebar layout for the host's own personal id", () => {
+    const plan = planInvalidation(
+      { type: "SidebarLayoutChanged", data: { workspace_id: "Personal" } },
+      { workspaceId: "default" },
+    );
+    ok(invalidates(plan, queryKeys.sidebarLayout("default")));
   });
 });
 

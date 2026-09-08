@@ -11,6 +11,7 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
 /**
  * Chooses who may use an agent, and at what access level.
  * @assistant group:teams confirm
+ * @assistant unroutable: debt: the body is chosen client-side between the v1 userIds and v2 assignments shapes; routable once callers pass only assignments.
  */
 export async function setAgentAssignments(
   cfg: ControlPlaneConfig,

@@ -34,7 +34,7 @@ export async function listApiKeys(cfg: ControlPlaneConfig): Promise<ApiKey[]> {
  * never retrievable again, so the caller reveals it once and keeps it out of any
  * cache. ≥20 active keys → `400 {code:"key_limit"}`; every error throws so the UI
  * surfaces the real reason (the limit inline, anything else as a bug toast).
- * @assistant group:api-keys confirm hidden
+ * @assistant group:api-keys confirm hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
  */
 export async function createApiKey(
   cfg: ControlPlaneConfig,

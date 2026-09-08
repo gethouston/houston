@@ -85,6 +85,25 @@ export function useConversationVm(
   );
 }
 
+/**
+ * Subscribe to ONE conversation's status. The loading rollups read it this way
+ * — a `useMemo` over the synchronous {@link getConversationStatus} alone never
+ * wakes when a turn settles, and a surface with no activity list has nothing
+ * else to wake it. Cheaper than {@link useConversationVm} for that job: no feed
+ * remap per published snapshot.
+ */
+export function useConversationStatus(
+  agentPath: string | null | undefined,
+  sessionKey: string | null | undefined,
+): ConversationVM["sessionStatus"] | undefined {
+  const scope =
+    agentPath && sessionKey
+      ? conversationScope(agentPath, sessionKey)
+      : "conversation/none";
+  return useSdkSnapshot<ConversationVM>(conversationStore, scope)
+    ?.sessionStatus;
+}
+
 /** The conversation's feed (remapped), or [] before anything published. */
 export function useConversationFeed(
   agentPath: string | null | undefined,

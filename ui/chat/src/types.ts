@@ -87,13 +87,26 @@ type FeedItemVariant =
   | {
       /**
        * A context-compaction boundary. Earlier turns were summarized to free
-       * context, either by the provider CLI itself (`native`) or by Houston's
-       * proactive reseed (`proactive`). Rendered as a subtle divider; the full
-       * chat above and below stays visible. `pre_tokens` is how full the
-       * context was just before compaction, when reported.
+       * context: by the provider CLI itself (`native`), by Houston's proactive
+       * reseed (`proactive`), or because the user asked for it (`manual`).
+       * Rendered as a subtle divider; the full chat above and below stays
+       * visible. `pre_tokens` is how full the context was just before
+       * compaction, when reported.
        */
       feed_type: "context_compacted";
-      data: { trigger: "native" | "proactive"; pre_tokens?: number | null };
+      data: {
+        trigger: "native" | "proactive" | "manual";
+        pre_tokens?: number | null;
+      };
+    }
+  | {
+      /**
+       * A cleared-context boundary. The user asked the conversation to start
+       * fresh: from here on the agent remembers nothing said above, while the
+       * chat above stays visible and searchable. Rendered as a subtle divider.
+       */
+      feed_type: "context_cleared";
+      data: null;
     }
   | {
       /**

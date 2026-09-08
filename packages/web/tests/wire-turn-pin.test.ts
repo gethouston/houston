@@ -10,8 +10,8 @@ import { wireTurnPin } from "../src/engine-adapter/turn-pin";
 
 test("maps the app dialect to engine ids (openai → openai-codex, legacy aliases)", () => {
   expect(
-    wireTurnPin({ provider: "openai", model: "gpt-5.5", effort: "high" }),
-  ).toEqual({ provider: "openai-codex", model: "gpt-5.5", effort: "high" });
+    wireTurnPin({ provider: "openai", model: "gpt-6-astra", effort: "high" }),
+  ).toEqual({ provider: "openai-codex", model: "gpt-6-astra", effort: "high" });
   // CLI-era bare tier aliases map at the same tier.
   expect(wireTurnPin({ provider: "claude", model: "opus" })).toEqual({
     provider: "anthropic",
@@ -20,9 +20,11 @@ test("maps the app dialect to engine ids (openai → openai-codex, legacy aliase
 });
 
 test("modern engine ids pass through verbatim", () => {
-  expect(wireTurnPin({ provider: "openai-codex", model: "gpt-5.5" })).toEqual({
+  expect(
+    wireTurnPin({ provider: "openai-codex", model: "gpt-6-astra" }),
+  ).toEqual({
     provider: "openai-codex",
-    model: "gpt-5.5",
+    model: "gpt-6-astra",
   });
 });
 

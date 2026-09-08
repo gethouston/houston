@@ -111,3 +111,50 @@ test("the catch-up seam is wired at all — the regression that started this", (
   expect(typeof opts.onConnect).toBe("function");
   stop();
 });
+
+/**
+ * The wake seam. A machine that slept through a host restart holds a socket
+ * that is open on paper and dead in fact, and the loop would otherwise learn
+ * that only from its deliberately slow idle watchdog. The adapter hands it the
+ * platform's own recovery moments, so the user's first glance at the window is
+ * already the trigger.
+ */
+type Listener = (ev: unknown) => void;
+
+function fakeDomTarget(log: { added: string[]; removed: string[] }) {
+  return {
+    addEventListener: (type: string, _fn: Listener) => log.added.push(type),
+    removeEventListener: (type: string, _fn: Listener) =>
+      log.removed.push(type),
+  };
+}
+
+test("the loop is given the platform's wake signals, and drops them on stop", () => {
+  const log = { added: [] as string[], removed: [] as string[] };
+  vi.stubGlobal("window", fakeDomTarget(log));
+  vi.stubGlobal("document", {
+    ...fakeDomTarget(log),
+    visibilityState: "visible",
+  });
+
+  const { opts, stop } = subscribe();
+  const teardown = (
+    opts as { wake?: (retry: () => void) => () => void }
+  ).wake?.(() => {});
+
+  expect(log.added).toEqual(["online", "visibilitychange"]);
+  teardown?.();
+  expect(log.removed).toEqual(["online", "visibilitychange"]);
+
+  stop();
+  vi.unstubAllGlobals();
+});
+
+/** A host with no DOM (tests, a Node-side adapter) simply gets no wake. */
+test("a DOM-less host registers nothing instead of crashing", () => {
+  const { opts, stop } = subscribe();
+  const wake = (opts as { wake?: (retry: () => void) => () => void }).wake;
+
+  expect(() => wake?.(() => {})?.()).not.toThrow();
+  stop();
+});

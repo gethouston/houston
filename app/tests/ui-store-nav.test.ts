@@ -25,7 +25,7 @@ describe("nav-aware actions", () => {
     const s = useUIStore.getState();
     s.setViewMode("skills");
     s.setViewMode("skills");
-    assert.deepEqual(views(), ["inbox", "skills"]);
+    assert.deepEqual(views(), ["agents-home", "skills"]);
     assert.equal(useUIStore.getState().navIndex, 1);
   });
 
@@ -117,7 +117,7 @@ describe("navBack / navApplyHistory", () => {
     useUIStore.getState().setViewMode("skills");
     useUIStore.getState().navApplyHistory(-3);
     assert.equal(useUIStore.getState().navIndex, 0);
-    assert.equal(useUIStore.getState().viewMode, "inbox");
+    assert.equal(useUIStore.getState().viewMode, "agents-home");
   });
 
   it("closes an open panel through its registered owner on back", () => {
@@ -277,6 +277,6 @@ describe("navBack / navApplyHistory", () => {
     const now = useUIStore.getState();
     assert.equal(now.navStack.length, 1);
     assert.equal(now.navIndex, 0);
-    assert.equal(now.navStack[0].viewMode, "inbox");
+    assert.equal(now.navStack[0].viewMode, "agents-home");
   });
 });

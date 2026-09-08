@@ -26,7 +26,7 @@ describe("hydrateProviderCatalog: rename + drop", () => {
     const openai = getProvider("openai");
     strictEqual(openai?.name, "OpenAI");
     strictEqual(openai?.auth, "oauth");
-    ok(openai?.models.some((m) => m.id === "gpt-5.5"));
+    ok(openai?.models.some((m) => m.id === "gpt-6-astra"));
   });
 
   it("drops pi's colliding DIRECT api-key `openai` provider entirely", () => {

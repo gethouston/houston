@@ -24,7 +24,7 @@ test("More opens the card and closes again without navigating", async ({
   await page.goto("/");
 
   const menu = await openMoreMenu(page);
-  await expect(menu.getByRole("button", { name: "Inbox" })).toBeVisible();
+  await expect(menu.getByRole("button", { name: "Agent Store" })).toBeVisible();
 
   await page.keyboard.press("Escape");
   await expect(moreMenu(page)).toBeHidden();
@@ -39,15 +39,7 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
   await page.goto("/");
   const menu = await openMoreMenu(page);
 
-  for (const label of [
-    "Inbox",
-    "About me",
-    "Academy",
-    "Agent Store",
-    "Integrations",
-    "AI Models",
-    "Skills",
-  ]) {
+  for (const label of ["Agent Store", "Integrations", "AI Models", "Skills"]) {
     await expect(
       menu.getByRole("button", { name: label, exact: true }),
       `"${label}" should be a row of the More menu`,
@@ -62,7 +54,6 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
   // The rows carry the RAIL's tour anchors, which is what lets the guided
   // setup ring the same destination on both breakpoints.
   for (const anchor of [
-    "nav-inbox",
     "nav-agent-store",
     "nav-integrations",
     "nav-ai-hub",
@@ -102,9 +93,9 @@ test("a destination row lands on its screen and closes the menu", async ({
   await page.goto("/");
   await openMoreMenu(page);
 
-  await moreRow(page, "nav-inbox").tap();
+  await moreRow(page, "nav-agent-store").tap();
   await expect(moreMenu(page)).toBeHidden();
-  await expect(screen(page)).toHaveAttribute("data-screen", "inbox");
+  await expect(screen(page)).toHaveAttribute("data-screen", "agent-store");
   await expect(navItem(page, "more")).toHaveAttribute("aria-current", "page");
 });
 

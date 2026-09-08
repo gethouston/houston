@@ -1,6 +1,7 @@
 import type { SidebarNavItemEntry } from "@houston-ai/layout";
-import { Boxes, Building2, LibraryBig } from "lucide-react";
+import { Boxes, Building2, GraduationCap, LibraryBig } from "lucide-react";
 import {
+  ACADEMY_VIEW_ID,
   AI_HUB_VIEW_ID,
   ORGANIZATION_VIEW_ID,
 } from "../../lib/top-level-views";
@@ -77,5 +78,30 @@ export function gatedNavRows(args: {
       onClick: () => setViewMode(AI_HUB_VIEW_ID),
       dataAttrs: tourAnchor("nav-ai-hub"),
     },
+  };
+}
+
+/**
+ * The Academy row, built here because BOTH breakpoints' footer clusters draw
+ * it: the rail's foot right above Settings (`sidebar-footer.tsx`) and the tail
+ * of the phone's More menu (`mobile-more-menu.tsx`). One row, one label, one
+ * destination, whichever cluster renders it.
+ *
+ * It is ungated on purpose, like Settings beside it: every deployment ships
+ * the Academy, and learning to fly is nobody's admin territory. No tour anchor
+ * — the tour does not walk this row, and a target in the anchor union that no
+ * step spotlights is dead weight the union exists to prevent.
+ */
+export function academyNavRow(args: {
+  /** `shell:sidebar.academy`, resolved by the caller: the two clusters that
+   *  draw this row hold `t` over different namespace sets. */
+  label: string;
+  onOpen: () => void;
+}): SidebarNavItemEntry {
+  return {
+    id: ACADEMY_VIEW_ID,
+    label: args.label,
+    icon: <GraduationCap className="h-4 w-4" />,
+    onClick: args.onOpen,
   };
 }

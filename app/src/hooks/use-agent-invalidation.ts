@@ -9,6 +9,7 @@ import { onEngineRestarted } from "../lib/engine";
 import { subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
 import { osFocusWindow } from "../lib/os-bridge";
+import { isSpaceInvariantQueryKey } from "../lib/space-cache";
 import { tauriConversations } from "../lib/tauri";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
@@ -94,6 +95,17 @@ export function useAgentInvalidation() {
             ? consumeCustomOAuthReturn()
             : false,
       });
+      // The catch-up sweep: every cached query goes stale and TanStack
+      // refetches the mounted ones. The transport gap that asks for this lost
+      // an unknown set of events, so a key list would only be a guess (see the
+      // plan's `invalidateAll`). Identity and the first-run flags are held out
+      // — no server event is ever about them, and refetching them flaps the
+      // auth / onboarding gates over a dropped stream.
+      if (plan.invalidateAll) {
+        qc.invalidateQueries({
+          predicate: (q) => !isSpaceInvariantQueryKey(q.queryKey),
+        });
+      }
       for (const queryKey of plan.invalidate) {
         qc.invalidateQueries({ queryKey });
       }

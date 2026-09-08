@@ -312,3 +312,33 @@ describe("provider-error dedup keys on kind, not provider", () => {
     strictEqual(messages.filter((m) => m.providerError).length, 2);
   });
 });
+
+describe("context boundaries", () => {
+  it("turns a cleared context into its own divider message", () => {
+    const messages = feedItemsToMessages([
+      user("remember my flight"),
+      { feed_type: "context_cleared", data: null, id: "c1" },
+      user("hello again"),
+    ]);
+    const divider = messages.find((m) => m.compaction);
+    strictEqual(divider?.from, "system");
+    strictEqual(divider?.compaction?.kind, "context_cleared");
+    // The chat above and below the boundary stays exactly where it was.
+    strictEqual(messages.filter((m) => m.from === "user").length, 2);
+  });
+
+  it("carries a manual compaction's trigger through to the divider", () => {
+    const messages = feedItemsToMessages([
+      {
+        feed_type: "context_compacted",
+        data: { trigger: "manual", pre_tokens: 120 },
+        id: "k1",
+      },
+    ]);
+    deepStrictEqual(messages[0]?.compaction, {
+      kind: "compacted",
+      trigger: "manual",
+      preTokens: 120,
+    });
+  });
+});

@@ -5,15 +5,16 @@
  * without pulling in React/lucide — and so the store never has to depend on a
  * component module.
  *
- * Every id below is the user's own app: their profile, their keys, their
- * shortcuts, a bug report, their migration. None of them is gated and all of
- * them read the current workspace, so there is no per-section gate here and no
- * opt-out from the Settings workspace gate — Admin and Permissions, the two
- * surfaces that needed both, are TOP-LEVEL views again in the rail's "Workspace"
- * band (`lib/top-level-views.ts`).
+ * Every id below is the user's own app: their profile, what their agents know
+ * about them, their keys, their shortcuts, a bug report, their migration. None
+ * of them is gated and all of them read the current workspace, so there is no
+ * per-section gate here and no opt-out from the Settings workspace gate — Admin
+ * and Permissions, the two surfaces that needed both, are TOP-LEVEL views again
+ * in the rail's "Workspace" band (`lib/top-level-views.ts`).
  */
 export const SETTINGS_SECTION_IDS = [
   "profile",
+  "aboutMe",
   "apiKeys",
   "shortcuts",
   "reportBug",

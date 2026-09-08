@@ -1,6 +1,5 @@
 {
   "sidebar": {
-    "aboutMe": "About me",
     "academy": "Academy",
     "addAgent": "New agent",
     "agentStore": "Agent Store",
@@ -26,7 +25,6 @@
     "expand": "Expand sidebar",
     "guideMe": "Guide me",
     "help": "Help",
-    "inbox": "Inbox",
     "integrations": "Integrations",
     "myAccounts": "My accounts",
     "needsYouCount_one": "{{count}} issue needs you",
@@ -494,12 +492,11 @@
     "reportErrorDescription": "Try again in a moment.",
     "retryErrorTitle": "Could not try again",
     "modelUnsupported": {
-      "title": "Your ChatGPT plan doesn't include GPT-5.5 Codex",
-      "body": "Switch to GPT-5.5 to continue. The Codex variant is only available on some ChatGPT plans (Plus, Pro, Team), not on Business or Enterprise.",
-      "switchAction": "Switch to GPT-5.5",
+      "title": "Your ChatGPT plan doesn't include this model",
+      "body": "Some models are only available on certain ChatGPT plans. Switch to a different model to continue.",
+      "switchAction": "Switch to {{model}}",
       "switching": "Switching...",
-      "switchErrorTitle": "Could not switch model",
-      "switchErrorDescription": "Open the model picker and choose GPT-5.5 manually."
+      "switchErrorTitle": "Could not switch model"
     }
   },
   "updateChecker": {
@@ -656,8 +653,7 @@
       "newMission": "Start new task",
       "integrations": "Open Integrations",
       "settings": "Open Settings",
-      "shortcuts": "Show keyboard shortcuts",
-      "inbox": "Go to Inbox"
+      "shortcuts": "Show keyboard shortcuts"
     }
   },
   "cheatsheet": {
@@ -670,7 +666,6 @@
     },
     "rows": {
       "palette": "Open command palette",
-      "inbox": "Go to Inbox",
       "newMission": "Start new task",
       "prevAgent": "Previous agent",
       "nextAgent": "Next agent",

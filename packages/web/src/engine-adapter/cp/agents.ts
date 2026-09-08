@@ -1,3 +1,4 @@
+import type { AgentColorId } from "@houston-ai/core";
 import type {
   Agent,
   AgentAccess,
@@ -7,11 +8,11 @@ import type {
 import { HoustonEngineError } from "../client/errors";
 import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "../synthetic";
 import { colorOverlay, moveColor, setColor } from "./agent-color";
-import { hydrateAgentColors } from "./agent-color-sync";
+import { syncAgentColors } from "./agent-color-sync";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 /** What the control plane returns for an agent (id + name + workspace + ts). */
-interface CpAgent {
+export interface CpAgent {
   id: string;
   workspaceId: string;
   name: string;
@@ -64,13 +65,15 @@ export function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
  * @assistant group:agents
  */
 export async function listAgents(cfg: ControlPlaneConfig): Promise<Agent[]> {
-  // Hydrate the color overlay from the `agent_colors` account preference
+  // Reconcile the color overlay with the `agent_colors` account preference
   // alongside the list fetch (PRODUCT-1344): after a sign-out purge the
   // device overlay is empty, and mapping before the account copy lands would
-  // paint every agent default-purple. hydrateAgentColors never rejects.
+  // paint every agent default-purple. It also carries colors set elsewhere —
+  // another device, or the assistant's `updateAgentColor` — onto this one, so
+  // the list refetch an agent change triggers repaints. Never rejects.
   const [res] = await Promise.all([
     cpFetch(cfg, "/agents"),
-    hydrateAgentColors(cfg),
+    syncAgentColors(cfg),
   ]);
   const colors = colorOverlay();
   return ((await res.json()) as CpAgent[]).map((a) => toUiAgent(a, colors));
@@ -90,7 +93,10 @@ export function createdAgentToUi(agent: CpAgent, color?: string): Agent {
 }
 
 /**
- * Creates a new agent.
+ * Creates a new agent. Always choose a `color` for it, one of Houston's ten
+ * palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange,
+ * golden, or umber. It is how the new agent is told apart at a glance, and
+ * leaving it out gives every agent the same default color.
  *
  * Create an agent directly over the control plane. The agent-picker path
  * delegates create to the SDK (see the mixin); this stays for the portable
@@ -98,11 +104,12 @@ export function createdAgentToUi(agent: CpAgent, color?: string): Agent {
  * SDK handle. Same wire the SDK write issues: `POST /agents` with the seed body
  * (JSON.stringify drops undefined, so a plain create posts just `{ name }`).
  * @assistant group:agents
+ * @assistant unschematized: the seed's seeds map is an open record of file path to contents.
  */
 export async function createAgent(
   cfg: ControlPlaneConfig,
   name: string,
-  color?: string,
+  color?: AgentColorId,
   seed?: {
     claudeMd?: string;
     seeds?: Record<string, string>;
@@ -112,6 +119,7 @@ export async function createAgent(
     method: "POST",
     body: JSON.stringify({
       name,
+      color,
       claudeMd: seed?.claudeMd,
       seeds: seed?.seeds,
     }),
@@ -127,32 +135,12 @@ export function renamedAgentToUi(previousId: string, agent: CpAgent): Agent {
   return toUiAgent(agent);
 }
 
-/**
- * Changes the color Houston shows for an agent on this device.
- *
- * Color is overlay-only; the server agent is unchanged. Returns the updated view.
- * @assistant group:agents hidden
- */
-export async function updateAgentColor(
-  cfg: ControlPlaneConfig,
-  agentId: string,
-  color: string,
-): Promise<Agent> {
-  setColor(agentId, color);
-  const res = await cpFetch(cfg, "/agents");
-  const found = ((await res.json()) as CpAgent[]).find((a) => a.id === agentId);
-  if (!found)
-    throw new HoustonEngineError(404, {
-      error: { message: "agent not found" },
-    });
-  return toUiAgent(found);
-}
-
 // Agent-config library: user-scoped like the marketplace reads — a template
 // belongs to the account, not to any existing agent.
 /**
  * Lists the agent templates installed in Houston.
  * @assistant group:agents
+ * @assistant unschematized: an installed template carries its raw config document, whose shape is the template's own.
  */
 export async function listInstalledConfigs(
   cfg: ControlPlaneConfig,

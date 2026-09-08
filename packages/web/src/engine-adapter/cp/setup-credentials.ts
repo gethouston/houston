@@ -15,7 +15,7 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * selected yet (first-run onboarding, the cloud-migration wizard): the setup
  * runtime stores it on the personal workspace, so every agent created or
  * migrated after is already connected.
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: carries a secret; the desktop's Anthropic OAuth credential, before any agent exists.
  */
 export async function pushSetupClaudeOAuthCredential(
   cfg: ControlPlaneConfig,
@@ -31,7 +31,7 @@ export async function pushSetupClaudeOAuthCredential(
  * Saves a provider sign-in to the workspace before any agent exists.
  *
  * Connect-once capture on the setup runtime — `captureCredential`, agentless.
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: credential plumbing; first-run capture, before any agent exists.
  */
 export async function captureSetupCredential(
   cfg: ControlPlaneConfig,
@@ -47,7 +47,7 @@ export async function captureSetupCredential(
  * Connects an AI provider with an API key before any agent exists.
  *
  * API-key connect on the setup runtime — `setApiKey`, agentless.
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: takes a secret; the user pastes the provider key during first-run setup.
  */
 export async function setSetupApiKey(
   cfg: ControlPlaneConfig,
@@ -72,7 +72,7 @@ export async function setSetupApiKey(
  * create, a deleted last agent) still holds the credential the user connected;
  * the setup runtime is the one runtime that can forget it (PRODUCT-1662).
  *
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: destroys the space's provider sign-in, before any agent exists.
  */
 export async function forgetSetupCredential(
   cfg: ControlPlaneConfig,

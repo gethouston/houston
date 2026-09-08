@@ -18,6 +18,7 @@ import {
   scanContent,
   unpackAgent,
 } from "@houston/domain";
+import { agentColorId } from "@houston-ai/core";
 import type {
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
@@ -171,7 +172,11 @@ export async function install(
   const agent = await createAgent(
     cfg,
     req.agentName,
-    req.agentColor ?? undefined,
+    // The request carries whatever the source agent stored — a palette id, or
+    // one of the palette's hexes for an agent that predates ids. Canonicalize
+    // to the id the picker and the assistant both speak; the rendered color is
+    // the same either way.
+    req.agentColor ? agentColorId(req.agentColor) : undefined,
     packageSeed(pkg),
   );
   uploads.delete(req.packageId);

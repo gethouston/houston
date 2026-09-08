@@ -83,7 +83,7 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
           // stay put and the whole create reads as a silent failure. Land them
           // on home — the same place the shell sends a blocked view — so the
           // switch is visible. The new space's teams may not have resolved yet,
-          // in which case home IS the Inbox and the shell's boot rule moves
+          // in which case home IS the Agents home and the boot rule moves
           // them on to the first team's Mission Control the moment it lands;
           // that composition is deliberate. The toast's Invite action then
           // takes them on to Admin from home.

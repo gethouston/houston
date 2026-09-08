@@ -20,7 +20,7 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * Connect-once: after a device-code connect lands on one agent, capture its
  * credential into the workspace's central store so every agent (existing + new)
  * shares the connection. Idempotent; safe to call on each successful connect.
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: credential plumbing; the device-code connect flow calls it as its own last step.
  */
 export async function captureCredential(
   cfg: ControlPlaneConfig,
@@ -51,7 +51,7 @@ export async function captureCredential(
  * background reconcile (HOU-950; the host still honors the flag for older
  * clients). Resolves on 200; throws the host's reason otherwise so the caller
  * can degrade to the paste flow.
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: carries a secret; the desktop's Anthropic OAuth credential.
  */
 export async function pushClaudeOAuthCredential(
   cfg: ControlPlaneConfig,
@@ -72,7 +72,7 @@ export async function pushClaudeOAuthCredential(
  * the mirror of captureCredential. Without it, logout cleared only the agent
  * runtime's local auth.json and the next turn re-served the credential from the
  * central store — so the provider reconnected itself. Idempotent.
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: destroys the workspace's provider sign-in, including the one serving this conversation.
  */
 export async function forgetCredential(
   cfg: ControlPlaneConfig,
@@ -95,7 +95,7 @@ export async function forgetCredential(
  * Connect an API-key provider (OpenCode Zen / Go): submit the pasted key, which
  * the host stores centrally for the workspace and pushes into the agent runtime.
  * No OAuth dance, no polling — it returns once the key is accepted.
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: takes a secret; the user pastes the provider key themselves.
  */
 export async function setApiKey(
   cfg: ControlPlaneConfig,
@@ -125,7 +125,7 @@ export async function setApiKey(
  * (base URL + model + optional key) to the agent's standing runtime, which
  * persists it. LOCAL-only — a non-local deployment 400s on the openaiCompatible
  * capability, and cpFetch throws the host's error message.
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: takes a secret; the guided local-model setup supplies the server URL and its key.
  */
 export async function setCustomEndpoint(
   cfg: ControlPlaneConfig,
@@ -151,7 +151,7 @@ export async function setCustomEndpoint(
  * `relayHost:relayPort` so the user's local model server surfaces at `publicUrl`
  * for their cloud agent. Hosted-only — a non-gateway deployment 404s and cpFetch
  * throws the host's real error message (never swallowed).
- * @assistant group:providers hidden
+ * @assistant group:providers hidden: returns a secret; a short-lived relay credential for the desktop's tunnel sidecar.
  */
 export async function getTunnelCredentials(
   cfg: ControlPlaneConfig,

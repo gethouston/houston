@@ -1,6 +1,5 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { ABOUT_ME_VIEW_ID } from "../src/components/about-me/id.ts";
 import { ACADEMY_VIEW_ID } from "../src/components/academy/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../src/components/agents-home/id.ts";
 import { ASSISTANT_VIEW_ID } from "../src/components/assistant/id.ts";
@@ -19,7 +18,6 @@ import {
 import {
   AI_HUB_VIEW_ID,
   blockedTopLevelView,
-  INBOX_VIEW_ID,
   isActiveTopLevelView,
   isMissionBoardSurface,
   isMissionBoardView,
@@ -32,10 +30,8 @@ import {
 describe("isTopLevelView", () => {
   it("recognizes the top-level views", () => {
     for (const id of [
-      INBOX_VIEW_ID,
       // The personal assistant's screen, gated on discovery rather than a role.
       ASSISTANT_VIEW_ID,
-      ABOUT_ME_VIEW_ID,
       ACADEMY_VIEW_ID,
       // The mobile Agents and Teams tabs' root screens.
       AGENTS_HOME_VIEW_ID,
@@ -53,21 +49,28 @@ describe("isTopLevelView", () => {
     }
   });
 
-  it("is exactly those thirteen, and no settings section doubles as one", () => {
+  it("is exactly those eleven, and no settings section doubles as one", () => {
     // A Settings section is reached THROUGH `settings`, so no section id may
     // also resolve as a top-level view. Checking the live section list (rather
     // than retired string literals) keeps this failing if a future section is
     // wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 13);
+    strictEqual(TOP_LEVEL_VIEWS.size, 11);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }
     // Retired `viewMode` values an older install may still have pinned: the
     // global usage page, the Permissions screen (agent policy is a team's
-    // focused agent screen now) and the standalone Time worked screen (a lens
-    // inside Admin).
-    for (const retired of ["usage", "permissions", "time-worked"]) {
+    // focused agent screen), the standalone Time worked screen (a lens inside
+    // Admin), the Inbox, and About me (a Settings section, which the loop
+    // above already proves is no top-level view).
+    for (const retired of [
+      "usage",
+      "permissions",
+      "time-worked",
+      "inbox",
+      "about-me",
+    ]) {
       strictEqual(isTopLevelView(retired), false, retired);
     }
   });
@@ -91,7 +94,7 @@ describe("isMissionBoardView", () => {
     // The general Mission Control is deleted. Its id must not linger as a
     // board: it would claim ⌘N for a screen that mounts no board at all.
     strictEqual(isMissionBoardView("dashboard"), false);
-    strictEqual(isMissionBoardView(INBOX_VIEW_ID), false);
+    strictEqual(isMissionBoardView(AGENTS_HOME_VIEW_ID), false);
   });
 
   it("covers nothing else", () => {
@@ -117,7 +120,7 @@ describe("isMissionBoardSurface", () => {
 
   it("is never a board off the team view, whatever the stale team section says", () => {
     // `teamSection` is sticky store state: it keeps the last team's section
-    // while the user is on the Inbox, and must not speak for it. Claiming the
+    // while the user is on the Agents home, and must not speak for it. Claiming
     // arrows and Enter there would swallow them over a plain list.
     for (const teamSection of [
       null,
@@ -127,7 +130,7 @@ describe("isMissionBoardSurface", () => {
       "settings",
     ] as const) {
       strictEqual(
-        isMissionBoardSurface({ viewMode: INBOX_VIEW_ID, teamSection }),
+        isMissionBoardSurface({ viewMode: AGENTS_HOME_VIEW_ID, teamSection }),
         false,
         `${teamSection}`,
       );
@@ -211,7 +214,10 @@ describe("isActiveTopLevelView", () => {
   it("only enables work for the visible top-level screen", () => {
     // A shared hook must use an explicit top-level id, not an arbitrary tab.
     strictEqual(isActiveTopLevelView(SETTINGS_VIEW_ID, SETTINGS_VIEW_ID), true);
-    strictEqual(isActiveTopLevelView(INBOX_VIEW_ID, SETTINGS_VIEW_ID), false);
+    strictEqual(
+      isActiveTopLevelView(AGENTS_HOME_VIEW_ID, SETTINGS_VIEW_ID),
+      false,
+    );
   });
 
   it("keeps each promoted screen's read on its OWN screen", () => {
@@ -287,12 +293,6 @@ describe("blockedTopLevelView", () => {
     );
   });
 
-  it("never blocks About me: standing context is everyone's, everywhere", () => {
-    // It is ungated on purpose — what the agents know about the PERSON exists
-    // in every deployment, so no gate can ever strand a user off it.
-    strictEqual(blockedTopLevelView(ABOUT_ME_VIEW_ID, gates()), false);
-  });
-
   it("never blocks the Academy: learning the product is everyone's", () => {
     // Ungated on purpose, exactly like About me: every deployment ships the
     // Academy, so no gate can ever strand a user off it.
@@ -303,8 +303,6 @@ describe("blockedTopLevelView", () => {
     // The team view has a gate of its own (`blockedTeamView`, over the resolved
     // teams) rather than a caps flag, so this one never blocks it.
     for (const id of [
-      INBOX_VIEW_ID,
-      ABOUT_ME_VIEW_ID,
       ACADEMY_VIEW_ID,
       // The phone's landing screen: a gate that could strand a user off it
       // would strand them off the app.

@@ -11,7 +11,7 @@ import type { LessonStepSpec } from "../src/lib/academy/lesson-spec.ts";
 /** A world where nothing has happened yet. */
 function world(over: Partial<LessonSignals> = {}): LessonSignals {
   return {
-    viewMode: "inbox",
+    viewMode: "agents-home",
     hostEventsSinceArmed: new Set(),
     conversationCount: null,
     conversationBaseline: null,

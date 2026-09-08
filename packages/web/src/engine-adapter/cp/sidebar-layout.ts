@@ -16,7 +16,7 @@ const layoutPath = (workspaceId: string) =>
 
 /**
  * Reads how a workspace's sidebar is arranged.
- * @assistant group:workspaces hidden
+ * @assistant group:workspaces hidden: UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render.
  */
 export async function getHostSidebarLayout(
   cfg: ControlPlaneConfig,
@@ -31,7 +31,7 @@ export async function getHostSidebarLayout(
  *
  * Persist a layout and return the host's stored copy (its strict validator
  * echoes exactly what it wrote, so the caller adopts the canonical shape).
- * @assistant group:workspaces hidden
+ * @assistant group:workspaces hidden: UI plumbing; the app's drag and drop owns this write, and calling it blind rearranges the user's sidebar.
  */
 export async function putHostSidebarLayout(
   cfg: ControlPlaneConfig,

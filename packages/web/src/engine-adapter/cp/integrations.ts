@@ -73,6 +73,7 @@ export async function integrationConnections(
 /**
  * Lists the events from an outside app that a routine can wake up on.
  * @assistant group:integrations
+ * @assistant unschematized: a trigger type's config and payload are the outside app's own shapes.
  */
 export async function triggerTypes(
   cfg: ControlPlaneConfig,

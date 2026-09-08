@@ -31,13 +31,13 @@ describe("planNewMission (issue #328)", () => {
     const plan = planNewMission({
       activeAgent: agent,
       providerOverride: "openai",
-      modelOverride: "gpt-5.5",
+      modelOverride: "gpt-6-astra",
     });
     deepStrictEqual(plan, {
       kind: "create",
       agent,
       providerOverride: "openai",
-      modelOverride: "gpt-5.5",
+      modelOverride: "gpt-6-astra",
     });
   });
 

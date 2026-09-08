@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v81 - 2026-09-07
+
+The composer's attach menu carries the conversation commands under its file
+entries: compact context, and clear context. The chat feed gains a cleared-
+context boundary alongside the compaction and provider-switch dividers, and a
+compaction divider now says whether the user asked for it.
+
 ## v80 - 2026-09-04
 
 The per-agent task list takes the Agents home's chat-list grammar: every row

@@ -66,7 +66,8 @@ export interface ModelOption {
    *   - Opus 4.x: 1M only on Max/Team/Enterprise (automatic) or with usage
    *     credits; 200k on Pro without credits.
    *   - Sonnet 4.6: 200k unless usage credits are enabled (on every plan).
-   *   - Codex caps gpt-5.5 at ~272k regardless of the 1M raw API offer.
+   *   - Codex caps its full tier (gpt-6-astra) at ~272k regardless of the 1M
+   *     raw API offer.
    * So this is an estimate. The indicator snaps UP to `contextWindowMax` once
    * a session's observed usage exceeds this default, which PROVES the real
    * window is larger (Claude Code auto-compacts before the limit, so observed

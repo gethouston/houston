@@ -99,7 +99,12 @@ export function RoutineSetupChatBoard({
   );
 
   const rawItems = useMemo(() => [activity], [activity]);
-  const send = useAgentBoardSend({ agent, rawItems, promptContext });
+  const send = useAgentBoardSend({
+    agent,
+    rawItems,
+    openSessionKey: sessionKey,
+    promptContext,
+  });
   const sendQueue = useBoardSendQueue({
     selectedSessionKey: sessionKey,
     selectedAgentPath: path,

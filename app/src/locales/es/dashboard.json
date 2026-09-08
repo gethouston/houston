@@ -1,20 +1,4 @@
 {
-  "mentions": {
-    "ariaCount_one": "{{count}} mención sin leer",
-    "ariaCount_other": "{{count}} menciones sin leer",
-    "row": {
-      "by": "{{name}} te mencionó",
-      "byUnknown": "Te mencionaron",
-      "agent": "en {{agent}}"
-    },
-    "empty": {
-      "title": "Aún no hay menciones",
-      "description": "Cuando alguien de tu equipo te nombre en una tarea, aparece aquí."
-    },
-    "bell": {
-      "label": "Notificaciones"
-    }
-  },
   "filter": {
     "allAgents": "Todos los agentes"
   },
@@ -60,9 +44,5 @@
     "descriptionWithAgent": "Explora los skills que {{name}} ya sabe hacer.",
     "empty": "Aún no hay skills.",
     "skillsLoading": "Cargando skills..."
-  },
-  "inbox": {
-    "title": "Bandeja de entrada",
-    "subtitle": "Tareas donde alguien de tu equipo te mencionó."
   }
 }

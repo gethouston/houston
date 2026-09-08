@@ -61,6 +61,7 @@ export type {
 
 export * from "./cp/agent-color";
 export * from "./cp/agent-color-sync";
+export * from "./cp/agent-color-write";
 export * from "./cp/agent-teams";
 export * from "./cp/agents";
 export * from "./cp/api-keys";

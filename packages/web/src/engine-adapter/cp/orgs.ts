@@ -29,7 +29,7 @@ export async function getOrg(cfg: ControlPlaneConfig): Promise<OrgInfo> {
  * predates the route (404) — teammate faces then fall back to initials — so a
  * pre-feature host stays byte-identical. Mirrors `getAgentModelChoice`'s 404
  * swallow; every other error throws.
- * @assistant group:org hidden
+ * @assistant group:org hidden: UI plumbing; resolves member ids to the names and photos the app's avatars render.
  */
 export async function getOrgProfiles(
   cfg: ControlPlaneConfig,
@@ -132,6 +132,8 @@ export async function setOrgMemberRole(
 /**
  * Shows the record of who did what in this space, newest first.
  * @assistant group:org
+ * @assistant unroutable: debt: the query string is assembled into the path from an optional options object; routable once before and limit are plain parameters.
+ * @assistant unschematized: an audit entry's subject varies per event type and carries the changed record verbatim.
  */
 export async function orgAudit(
   cfg: ControlPlaneConfig,

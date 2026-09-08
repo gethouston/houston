@@ -2,20 +2,20 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { screen } from "./team-nav";
 
 /**
- * Navigating the rail's ANCHORLESS top-level destinations, plus Settings.
+ * Navigating the rail's ANCHORLESS top-level destinations, plus Settings and
+ * the sections inside it.
  *
  * **Admin is the one top-level screen this helper reaches.** It is the whole of
  * the rail's "Workspace" band that belongs here: Permissions is gone (agent
  * policy is discovered through a team's focused agent screen, see
- * `team-nav.ts` `openAgentSettings`). **About me** and the **Assistant** join
- * it: both sit in the rail's lead run, so they are addressed the same way.
+ * `team-nav.ts` `openAgentSettings`). The **Assistant** joins it, leading the
+ * rail's lead run, so it is addressed the same way.
  *
- * None of the three carries a tour anchor (the tour walks none of them), so each
- * is addressed by its accessible name inside the rail; English is forced by the
- * boot seed, so the labels are stable (`app/src/locales/en/settings.json`
- * `nav.organization` = "Admin", `shell:sidebar.aboutMe` = "About me",
- * `shell:sidebar.assistant` = "Houston"). Settings is the exception and keeps
- * its `nav-settings` anchor.
+ * Neither carries a tour anchor (the tour walks neither), so each is addressed
+ * by its accessible name inside the rail; English is forced by the boot seed,
+ * so the labels are stable (`app/src/locales/en/settings.json`
+ * `nav.organization` = "Admin", `shell:sidebar.assistant` = "Houston").
+ * Settings is the exception and keeps its `nav-settings` anchor.
  *
  * Scoped to the WHOLE rail (`sidebar`), not to `agents`: that inner anchor wraps
  * only the "Your teams" band, and the top-level destinations sit above it.
@@ -35,9 +35,14 @@ export function adminRow(page: Page): Locator {
   return railRow(page, "Admin");
 }
 
-/** The rail's About me row. Ungated: it exists in every deployment. */
+/**
+ * The Settings index's About me row. What the agents know about the PERSON is
+ * a standing preference, so it is a section of Settings rather than a rail
+ * destination, and it is reached the way a user reads it: by name, on the
+ * index (`settings:nav.aboutMe` = "About me").
+ */
 export function aboutMeRow(page: Page): Locator {
-  return railRow(page, "About me");
+  return screen(page).getByRole("button", { name: "About me", exact: true });
 }
 
 /**
@@ -75,14 +80,15 @@ export async function openAdmin(page: Page): Promise<void> {
 }
 
 /**
- * Open About me from the rail: the standing context every agent loads about the
- * PERSON. A top-level screen owning the whole window, so there is no back bar
- * and nothing to drill into — landing on the `<h1>` is the whole navigation.
+ * Open About me: the standing context every agent loads about the PERSON, a
+ * section of Settings. Two steps, because it IS two levels — the index, then
+ * the drill-in, whose own `<h2>` proves it landed.
  */
 export async function openAboutMe(page: Page): Promise<void> {
+  await openSettings(page);
   await aboutMeRow(page).click();
   await expect(
-    screen(page).getByRole("heading", { name: "About me", level: 1 }),
+    screen(page).getByRole("heading", { name: "About me", level: 2 }),
   ).toBeVisible();
 }
 

@@ -73,6 +73,36 @@ test("holds a conversation that never becomes a board card", async ({
   ).toHaveCount(0);
 });
 
+test("the composer menu offers the conversation commands once there is a chat", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await openAssistant(page);
+
+  // Nothing to compact or clear before the first message, so the entries are
+  // there (never a menu that changes shape under the user) but inert.
+  await screen(page).getByRole("button", { name: "Attach" }).click();
+  await expect(
+    page.getByRole("button", { name: "Clear context" }),
+  ).toBeDisabled();
+  await page.keyboard.press("Escape");
+
+  const composer = screen(page).getByPlaceholder("Send a follow-up...");
+  await composer.fill("hello");
+  await composer.press("Enter");
+  await expect(screen(page).getByText(/Roger that\. You said:/)).toBeVisible({
+    timeout: 15_000,
+  });
+
+  await screen(page).getByRole("button", { name: "Attach" }).click();
+  await expect(
+    page.getByRole("button", { name: "Compact context" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Clear context" }),
+  ).toBeEnabled();
+});
+
 test("the row is absent where the deployment serves no assistant", async ({
   page,
 }) => {
@@ -92,7 +122,9 @@ test("the row is absent where the deployment serves no assistant", async ({
   await page.goto("/");
 
   // A positive signal first, so the absence below cannot pass on an unpainted
-  // rail: the Inbox row is unconditional in every deployment.
-  await expect(page.locator("[data-tour-target='nav-inbox']")).toBeVisible();
+  // rail: the Agent Store row is unconditional in every deployment.
+  await expect(
+    page.locator("[data-tour-target='nav-agent-store']"),
+  ).toBeVisible();
   await expect(assistantRow(page)).toHaveCount(0);
 });

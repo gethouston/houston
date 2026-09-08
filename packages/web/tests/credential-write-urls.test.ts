@@ -2,12 +2,12 @@ import { afterEach, expect, test } from "vitest";
 import {
   captureCredential,
   forgetCredential,
-  forgetSetupCredential,
   pushClaudeOAuthCredential,
   setApiKey,
   setCustomEndpoint,
 } from "../src/engine-adapter/cp/credentials";
 import { runtimeClientFor } from "../src/engine-adapter/cp/runtime-clients";
+import { forgetSetupCredential } from "../src/engine-adapter/cp/setup-credentials";
 
 /**
  * HOU-976 personal-only, the URL contract: a credential write NEVER names an

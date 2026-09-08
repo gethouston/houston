@@ -2,7 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { Activity } from "../../data/activity";
-import { getConversationStatus } from "../../hooks/use-conversation-vm";
+import {
+  getConversationStatus,
+  useConversationStatus,
+} from "../../hooks/use-conversation-vm";
 import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { createMission } from "../../lib/create-mission";
@@ -18,12 +21,18 @@ import type { Agent } from "../../lib/types";
 import { useAgentProvisioningStore } from "../../stores/agent-provisioning";
 import { useUIStore } from "../../stores/ui";
 import type { SendOverrides } from "./board-source";
+import {
+  type BoardRows,
+  deriveSessionLoading,
+  rowSessionKey,
+} from "./session-loading";
 
 /**
  * Per-agent session loading + the create / send / stop / run-in-terminal
  * actions. `effectiveLoading` treats a session as busy whenever its activity
  * is running — not just when WE started it — so the chat keeps Stop/Esc live
  * for sessions kicked off elsewhere (routines, onboarding, Mission Control).
+ * The rules live in `session-loading.ts`; this hook only gathers their inputs.
  *
  * Provider/model overrides are passed in (mirroring the composer dropdown)
  * rather than re-resolved, so the wire never silently routes to a different
@@ -32,10 +41,21 @@ import type { SendOverrides } from "./board-source";
 export function useAgentBoardSend({
   agent,
   rawItems,
+  openSessionKey,
   promptContext,
 }: {
   agent: Agent;
+  /**
+   * The board rows behind this surface. `undefined` means the surface has NO
+   * board at all (the assistant chat creates no activity record), which is a
+   * different state from `[]` (a board whose rows have not landed yet) — see
+   * {@link BoardRows}: only the first lets a settled conversation VM end the
+   * spinner on its own.
+   */
   rawItems: Activity[] | undefined;
+  /** The conversation this surface has open: subscribed below, so the spinner
+   *  tracks its turn lifecycle live instead of waiting on a row refetch. */
+  openSessionKey: string | null;
   /**
    * Model-facing context prepended to EVERY outgoing prompt, hidden from the
    * chat (the bubble keeps the user's words via `displayText` / the
@@ -50,38 +70,30 @@ export function useAgentBoardSend({
   const queryClient = useQueryClient();
   const [loadingState, setLoading] = useState<Record<string, boolean>>({});
 
-  // Reads the conversation VM's status synchronously; recomputes when the
-  // activity list refetches (the SessionStatus/ActivityChanged invalidations)
-  // or a local send flips `loadingState`. The card's activity status is the
+  // The open conversation's VM is SUBSCRIBED: it is what recomputes the rollup
+  // the instant its turn settles. Background sessions are read synchronously
+  // and re-derive on that publish or on the activity refetch (the
+  // SessionStatus/ActivityChanged invalidations); their card status is the
   // host-persisted signal (the turn stream writes it at start and settle).
+  const openStatus = useConversationStatus(path, openSessionKey);
   const effectiveLoading = useMemo(() => {
-    const out: Record<string, boolean> = {};
-    const vmStatusFor = (key: string) => {
-      const s = getConversationStatus(path, key);
-      return s === "idle" ? undefined : s;
-    };
-    const activityStatusBySession = new Map<string, string>();
-    for (const a of rawItems ?? []) {
-      activityStatusBySession.set(
-        a.session_key ?? `activity-${a.id}`,
-        a.status,
-      );
-    }
-    for (const [key, value] of Object.entries(loadingState)) {
-      if (!value) continue;
-      const knownStatus = vmStatusFor(key);
-      const activityStatus = activityStatusBySession.get(key);
-      if (!knownStatus && activityStatus && activityStatus !== "running")
-        continue;
-      if (!knownStatus || knownStatus === "running") out[key] = true;
-    }
-    for (const a of rawItems ?? []) {
-      const key = a.session_key ?? `activity-${a.id}`;
-      if (vmStatusFor(key) === "running") out[key] = true;
-      if (a.status === "running") out[key] = true;
-    }
-    return out;
-  }, [loadingState, rawItems, path]);
+    const rows: BoardRows =
+      rawItems === undefined
+        ? { present: false }
+        : {
+            present: true,
+            statusBySession: new Map(
+              rawItems.map((a) => [rowSessionKey(a), a.status]),
+            ),
+          };
+    return deriveSessionLoading({
+      locallySent: loadingState,
+      rows,
+      openSessionKey,
+      vmStatus: (key) =>
+        key === openSessionKey ? openStatus : getConversationStatus(path, key),
+    });
+  }, [loadingState, rawItems, path, openSessionKey, openStatus]);
 
   const createConversation = useCallback(
     async ({
@@ -155,7 +167,7 @@ export function useAgentBoardSend({
       overrides: SendOverrides,
     ) => {
       const activity = (rawItems ?? []).find(
-        (a) => (a.session_key ?? `activity-${a.id}`) === sessionKey,
+        (a) => rowSessionKey(a) === sessionKey,
       );
       // Activity status flip (→ "running") is owned by the engine; don't
       // pre-write from the UI.

@@ -259,6 +259,12 @@
   "filesUpdated_one": "1 file updated",
   "filesUpdated_other": "{{count}} files updated",
   "contextCompacted": "Earlier conversation summarized so the chat can keep going",
+  "contextCompactedManual": "Conversation compacted to free up space",
+  "contextCleared": "Context cleared. I'll start fresh, and I keep what I've learned about you.",
+  "contextCommands": {
+    "compact": "Compact context",
+    "clear": "Clear context"
+  },
   "conversationMap": {
     "title": "Search chat",
     "moreActions": "Chat actions",

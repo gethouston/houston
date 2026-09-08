@@ -16,29 +16,38 @@ import { getPreference, setPreference } from "./files-context";
  * behind `/v1/preferences/:key`, which the local host, self-host, and the
  * cloud gateway all serve (the PRODUCT-1282 `onboarding_completed` pattern).
  *
- * Flow: `listAgents` hydrates once per active space — account entries fill
- * ids the device is missing (the post-sign-out restore), the device copy wins
- * per id (it holds the freshest pick), and a device map the account lacks is
- * healed UP so pre-fix colors become durable. Every later overlay write
- * (pick/rename/delete) re-pushes the full map.
+ * Flow: every `listAgents` reconciles the two copies. Entries only the device
+ * holds always survive, so a pre-fix device map is healed UP and becomes
+ * durable. Which copy wins a SHARED id depends on whether this device still
+ * owes the account a write: while a pick is unsaved the device wins (its pick
+ * must not be overwritten by the copy it is about to replace), and once the
+ * account has accepted it the account wins — that is what carries a color set
+ * on another device, or by the assistant's `updateAgentColor`, onto this one.
  */
 export const AGENT_COLORS_PREF_KEY = "agent_colors";
 
 let syncCfg: ControlPlaneConfig | null = null;
-/** Spaces already hydrated this session — preferences are scoped to the
- *  ACTIVE space (the gateway keys them by org), so each space visited gets
- *  one read + heal, which is also what carries colors into a team space
- *  after a move-to-organization. */
-let hydratedSpaces = new Set<string>();
 let pushChain: Promise<void> = Promise.resolve();
 let pushQueued = false;
+/** Set by every overlay write, cleared only once the account copy has ACCEPTED
+ *  that exact map. A failed save therefore keeps the device winning instead of
+ *  letting the next reconcile silently restore the color the user replaced. */
+let devicePending = false;
+/** Counts overlay writes so a reconcile can tell whether one landed WHILE its
+ *  read was in flight: such a read predates the pick and is stale even if the
+ *  push that followed it has already succeeded. */
+let deviceWrites = 0;
 
-/** Account entries fill the gaps; the device's own picks win per id. */
+/**
+ * Entries only one side holds always survive. `devicePending` decides the
+ * shared ids: the device's unsaved pick, or the account's accepted truth.
+ */
 export function mergeColorOverlays(
   account: Record<string, string>,
   device: Record<string, string>,
+  deviceWins: boolean,
 ): Record<string, string> {
-  return { ...account, ...device };
+  return deviceWins ? { ...account, ...device } : { ...device, ...account };
 }
 
 /** Parse the stored pref defensively: absent/corrupt → empty, and only
@@ -72,21 +81,20 @@ function sameRecord(
 }
 
 /**
- * Merge the account copy into the device overlay before the agent list is
- * mapped. Never throws — an unreachable host must not take the agent list
- * down with it; the space is simply not marked hydrated, so the next list
- * retries. Runs once per (config, active space).
+ * Reconcile the account copy with the device overlay before the agent list is
+ * mapped. Runs on EVERY list: one small preference read alongside the list
+ * fetch is what makes a color set anywhere else appear here, since the agent
+ * list is already refetched whenever an agent changes. Never throws — an
+ * unreachable host must not take the agent list down with it; the device
+ * overlay still renders and the next list retries.
  */
-export async function hydrateAgentColors(
-  cfg: ControlPlaneConfig,
-): Promise<void> {
+export async function syncAgentColors(cfg: ControlPlaneConfig): Promise<void> {
   if (syncCfg !== cfg) {
     syncCfg = cfg;
-    hydratedSpaces = new Set();
+    devicePending = false;
     setOverlayWriteListener(schedulePush);
   }
-  const space = cfg.activeOrgSlug ?? "";
-  if (hydratedSpaces.has(space)) return;
+  const writesBefore = deviceWrites;
   let account: Record<string, string>;
   try {
     account = parseAccountColors(
@@ -94,13 +102,15 @@ export async function hydrateAgentColors(
     );
   } catch (e) {
     // Read-side degrade (the onboarding-completed precedent): the device
-    // overlay still renders, and hydration retries on the next agent list.
+    // overlay still renders, and the next agent list retries.
     console.error("[agent-colors] account read failed; device copy shown", e);
     return;
   }
-  hydratedSpaces.add(space);
   const device = colorOverlay();
-  const merged = mergeColorOverlays(account, device);
+  // A pick made WHILE this read was in flight predates the answer, so the
+  // answer is stale even if its own push has already been accepted.
+  const deviceWins = devicePending || deviceWrites !== writesBefore;
+  const merged = mergeColorOverlays(account, device, deviceWins);
   if (!sameRecord(merged, device)) overwriteColorOverlay(merged);
   if (!sameRecord(merged, account)) schedulePush();
 }
@@ -110,16 +120,21 @@ export async function hydrateAgentColors(
  *  the freshest overlay. */
 function schedulePush(): void {
   const cfg = syncCfg;
-  if (!cfg || pushQueued) return;
+  if (!cfg) return;
+  devicePending = true;
+  deviceWrites += 1;
+  if (pushQueued) return;
   pushQueued = true;
   pushChain = pushChain.then(async () => {
     pushQueued = false;
+    const pushed = colorOverlay();
     try {
-      await setPreference(
-        cfg,
-        AGENT_COLORS_PREF_KEY,
-        JSON.stringify(colorOverlay()),
-      );
+      await setPreference(cfg, AGENT_COLORS_PREF_KEY, JSON.stringify(pushed));
+      // Clean only if this push carried the CURRENT map: a write that landed
+      // mid-flight leaves the account a version behind, and its own queued
+      // push is what clears the debt.
+      if (!pushQueued && sameRecord(pushed, colorOverlay()))
+        devicePending = false;
     } catch (e) {
       // The device write already succeeded (the user sees their pick); the
       // account copy self-heals on the next write or hydration, so this
@@ -136,13 +151,12 @@ export function flushAgentColorPushes(): Promise<void> {
 }
 
 /**
- * Forget which spaces were hydrated. Called from `setEndpoint`, which repoints
- * the ONE long-lived client in place: after it the bearer may belong to a
- * DIFFERENT account (sign-out purged the overlay, then someone else signed
- * in), so the next agent list must re-merge THAT account's colors instead of
- * trusting this session's earlier read. A same-account token rotation just
- * re-runs one cheap, idempotent GET per space.
+ * Drop this device's claim to be ahead of the account. Called from
+ * `setEndpoint`, which repoints the ONE long-lived client in place: after it
+ * the bearer may belong to a DIFFERENT account (sign-out purged the overlay,
+ * then someone else signed in), and an unsaved pick from the previous session
+ * must not outrank the incoming account's own colors.
  */
 export function resetAgentColorSync(): void {
-  hydratedSpaces = new Set();
+  devicePending = false;
 }

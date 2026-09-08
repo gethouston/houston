@@ -27,7 +27,7 @@ import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
  * `scopeId` is legacy: current hosts ignore it, but engine pods that predate
  * the durable-uploads layout still 400 without it — keep sending it until no
  * pre-HOU-706 pod remains.
- * @assistant group:attachments hidden
+ * @assistant group:attachments hidden: binary upload; the composer batches the dropped files and base64 frames them itself.
  */
 export async function saveAttachments(
   cfg: ControlPlaneConfig,

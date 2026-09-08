@@ -82,6 +82,7 @@ import {
   encodeAutoContinueMessage,
   filterAutoContinueFeedItems,
 } from "../lib/auto-continue-message";
+import { coherentPinModel, resolveChatModelPin } from "../lib/chat-model-pin";
 import {
   effectiveContextWindow,
   sessionContextUsage,
@@ -98,7 +99,11 @@ import {
   finalConnectNames,
   finalCredentialNames,
 } from "../lib/interaction-reply";
-import { providerForModel, providerOffersModel } from "../lib/model-labels";
+import {
+  modelDisplayLabel,
+  providerForModel,
+  providerOffersModel,
+} from "../lib/model-labels";
 import {
   isModelAllowed,
   modelSelectorDecision,
@@ -110,6 +115,7 @@ import {
   providerConnectionState,
   providerIsConnected,
 } from "../lib/provider-connection";
+import { toDisplayProviderIdOrNull } from "../lib/provider-overrides";
 import {
   decideHandoffMode,
   estimateConversationTokens,
@@ -122,7 +128,6 @@ import {
   getProvider,
   normalizeLegacyModel,
   validEffortOrDefault,
-  validModelOrNull,
 } from "../lib/providers";
 import { queryKeys } from "../lib/query-keys";
 import { showSendFailedToast } from "../lib/send-error-toast";
@@ -483,6 +488,10 @@ export function useAgentChatPanel({
   // stored alias never falls through to the default model and silently
   // downgrades an Opus agent to Sonnet — activity records in particular are
   // never migrated on disk, so this read-side guard is what covers them.
+  // Provider ids get the same treatment on read: both tiers store pi's
+  // CANONICAL id (`openai-codex`) while the catalog, picker and logos speak
+  // Houston's DISPLAY id (`openai`), so they are mapped here — the seam
+  // `use-agent-model-choice` already applies to a stored model choice.
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
@@ -503,7 +512,7 @@ export function useAgentChatPanel({
     tauriConfig
       .read(path)
       .then((cfg) => {
-        setAgentProvider((cfg.provider as string) ?? null);
+        setAgentProvider(toDisplayProviderIdOrNull(cfg.provider as string));
         setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
         setAgentEffort((cfg.effort as string) ?? null);
       })
@@ -557,7 +566,10 @@ export function useAgentChatPanel({
     if (!pickedPin) return;
     if (
       selectedActivity?.id === pickedPin.activityId &&
-      selectedActivity.provider === pickedPin.provider &&
+      // The row comes back in the engine dialect while the pick was made in the
+      // display one, so the echo only clears when compared on equal terms.
+      toDisplayProviderIdOrNull(selectedActivity.provider) ===
+        pickedPin.provider &&
       selectedActivity.model === pickedPin.model
     )
       setPickedPin(null);
@@ -565,8 +577,9 @@ export function useAgentChatPanel({
 
   const pinForSelected =
     pickedPin && pickedPin.activityId === selectedActivityId ? pickedPin : null;
-  const activityProvider =
-    pinForSelected?.provider ?? selectedActivity?.provider ?? null;
+  const activityProvider = toDisplayProviderIdOrNull(
+    pinForSelected?.provider ?? selectedActivity?.provider,
+  );
   const activityModel = normalizeLegacyModel(
     pinForSelected?.model ?? selectedActivity?.model ?? null,
   );
@@ -654,10 +667,15 @@ export function useAgentChatPanel({
     hasMessages,
     unconfirmedProviders,
   );
-  const effectiveModel =
-    validModelOrNull(effectiveProvider, activityModel) ??
-    validModelOrNull(effectiveProvider, agentModel) ??
-    getDefaultModel(effectiveProvider);
+  // The model that belongs beside that provider, from the SAME source that
+  // named it (mission pin → agent choice → the provider's own default). The
+  // glyph and the label can no longer disagree: a model never travels from one
+  // provider onto another. See `chat-model-pin` for the precedence.
+  const effectiveModel = resolveChatModelPin(
+    effectiveProvider,
+    { provider: activityProvider, model: activityModel },
+    { provider: agentProvider, model: agentModel },
+  ).model;
   // Effort is a per-agent setting validated against whatever model is active
   // (activity override or agent default), so it never offers an unsupported
   // level for the model that will actually run.
@@ -741,17 +759,25 @@ export function useAgentChatPanel({
       ceilingResolver,
     ],
   );
-  const displayModelPin = useMemo(
-    () => ({
+  // Last coherence pass over whichever tier won: a model the pinned provider
+  // cannot run falls back to THAT provider's default (the Teams personal
+  // resolution assembles its pair from stored halves, so it needs the same
+  // guarantee the shared path gets from `resolveChatModelPin`).
+  const displayModelPin = useMemo(() => {
+    const model = coherentPinModel(
+      rawDisplayModelPin.provider,
+      rawDisplayModelPin.model,
+    );
+    return {
       ...rawDisplayModelPin,
+      model,
       effort: validEffortOrDefault(
         rawDisplayModelPin.provider,
-        rawDisplayModelPin.model,
+        model,
         rawDisplayModelPin.effort,
       ),
-    }),
-    [rawDisplayModelPin],
-  );
+    };
+  }, [rawDisplayModelPin]);
 
   // Converge legacy pin-less chats (created before per-conversation pins):
   // stamp the shared agent-derived provider/model onto its activity, so a later
@@ -2110,6 +2136,11 @@ export function useAgentChatPanel({
       if (isToolRuntimeErrorMessage(msg)) {
         const isModelUnsupported =
           msg.runtimeError.kind === "provider_model_unsupported";
+        // What the "switch model" button moves to: Codex's CATALOG default,
+        // read at render. A literal id here outlived OpenAI serving it, so the
+        // recovery button repinned the chat to a model that could only fail
+        // again.
+        const codexFallback = getDefaultModel("openai");
         return (
           <ToolRuntimeErrorCard
             error={msg.runtimeError}
@@ -2130,9 +2161,14 @@ export function useAgentChatPanel({
               // surfaces through the card's own error path.
               onSendReactivatedRef.current?.();
             }}
-            onSwitchModel={
+            switchModel={
               isModelUnsupported
-                ? () => selectModel("openai", "gpt-5.5")
+                ? {
+                    label:
+                      modelDisplayLabel("openai", codexFallback) ??
+                      codexFallback,
+                    run: () => selectModel("openai", codexFallback),
+                  }
                 : undefined
             }
           />

@@ -18,18 +18,20 @@ interface ToolRuntimeErrorCardProps {
   error: ToolRuntimeErrorEntry;
   onRetry?: () => Promise<void> | void;
   /**
-   * Invoked when the user clicks "Switch to GPT-5.5" on a
-   * `provider_model_unsupported` card. The caller is expected to update
-   * whatever scope still pins the unsupported model (workspace, activity,
-   * agent override) and then drive a retry.
+   * The escape offered on a `provider_model_unsupported` card: the model the
+   * switch moves to (`label`, named in every string the card shows) and the
+   * action that repins it — the caller updates whatever scope still pins the
+   * unsupported model (workspace, activity, agent override) and drives a
+   * retry. One object so the copy can never name a different model than the
+   * button selects.
    */
-  onSwitchModel?: () => Promise<void> | void;
+  switchModel?: { label: string; run: () => Promise<void> | void };
 }
 
 export function ToolRuntimeErrorCard({
   error,
   onRetry,
-  onSwitchModel,
+  switchModel,
 }: ToolRuntimeErrorCardProps) {
   const { t } = useTranslation(["shell", "common"]);
   const addToast = useUIStore((s) => s.addToast);
@@ -86,11 +88,11 @@ export function ToolRuntimeErrorCard({
     }
   };
 
-  const switchModel = async () => {
-    if (!onSwitchModel || switching) return;
+  const runSwitch = async () => {
+    if (!switchModel || switching) return;
     setSwitching(true);
     try {
-      await onSwitchModel();
+      await switchModel.run();
     } catch (e) {
       addToast({
         title: t("shell:toolRuntimeError.modelUnsupported.switchErrorTitle"),
@@ -121,9 +123,9 @@ export function ToolRuntimeErrorCard({
           <p className="text-xs leading-relaxed text-ink-muted">{body}</p>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            {isModelUnsupported && onSwitchModel && (
+            {isModelUnsupported && switchModel && (
               <Button
-                onClick={switchModel}
+                onClick={runSwitch}
                 className="h-8 gap-2 rounded-full px-3 text-xs"
                 size="sm"
                 disabled={switching}
@@ -135,7 +137,9 @@ export function ToolRuntimeErrorCard({
                 )}
                 {switching
                   ? t("shell:toolRuntimeError.modelUnsupported.switching")
-                  : t("shell:toolRuntimeError.modelUnsupported.switchAction")}
+                  : t("shell:toolRuntimeError.modelUnsupported.switchAction", {
+                      model: switchModel.label,
+                    })}
               </Button>
             )}
             {!isModelUnsupported && onRetry && (

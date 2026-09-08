@@ -58,6 +58,7 @@ export async function writeAgentFile(
  * caller's own. The gateway splices both into each chat turn's prompt, so the
  * cloud path never writes them to the agent volume (unlike the local file path).
  * @assistant group:settings
+ * @assistant unroutable: debt: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
  */
 export async function getContext(
   cfg: ControlPlaneConfig,
@@ -69,6 +70,7 @@ export async function getContext(
 /**
  * Replaces the background notes Houston gives an agent on every conversation.
  * @assistant group:settings confirm
+ * @assistant unroutable: debt: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
  */
 export async function setContext(
   cfg: ControlPlaneConfig,
@@ -83,7 +85,7 @@ export async function setContext(
 
 /**
  * Reads one of the user's saved preferences.
- * @assistant group:settings hidden
+ * @assistant group:settings hidden: UI plumbing; an untyped key/value store the app reads for its own device settings.
  */
 export async function getPreference(
   cfg: ControlPlaneConfig,
@@ -94,7 +96,7 @@ export async function getPreference(
 }
 /**
  * Changes one of the user's saved preferences.
- * @assistant group:settings hidden
+ * @assistant group:settings hidden: UI plumbing; an open key/value write that can clobber any app setting.
  */
 export async function setPreference(
   cfg: ControlPlaneConfig,

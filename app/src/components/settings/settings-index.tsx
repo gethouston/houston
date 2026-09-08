@@ -1,4 +1,10 @@
-import { Bug, CircleUserRound, CloudUpload, Keyboard } from "lucide-react";
+import {
+  Bug,
+  CircleUserRound,
+  CloudUpload,
+  Keyboard,
+  UserRound,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { genericErrorDescription } from "../../lib/error-report";
 import type { SettingsSectionId } from "../../lib/settings-sections";
@@ -22,14 +28,12 @@ interface SettingsIndexProps {
  * The settings landing page, and ONLY settings: the things every user adjusts
  * about their own app.
  *
- * Everything that was not a setting has left. The guided tour starts from the
- * Agent Store, the Context editors are one step from the Inbox, and Time worked,
- * Admin and Permissions are screens of their own in the rail's "Workspace" band
- * — none of them was a preference, and the index reads shorter for it. What is
- * left is ONE general group everybody sees (identity, appearance, language,
- * notifications, account, then the help-shaped rows that used to sit under a
- * "Support" heading of their own), plus Danger. There is no role gate on this
- * page at all any more.
+ * Only preferences live here. The guided tour starts from the Agent Store, and
+ * Time worked, Admin and Permissions are screens of their own in the rail's
+ * "Workspace" band, because none of them is something a person adjusts about
+ * their own app. What the page holds is ONE general group everybody sees
+ * (identity, About me, appearance, language, notifications, account, then the
+ * help-shaped rows), plus Danger. There is no role gate on this page.
  *
  * The page OPENS on the signed-in person: the rail's avatar menu was a second
  * door onto this page and is gone, so identity is a header here rather than a
@@ -81,6 +85,15 @@ export function SettingsIndex({
               onClick={() => onSelect("profile")}
             />
           )}
+          {/* What every agent reads about the person before it starts a turn:
+              a standing preference they set once about themselves, so it sits
+              with their name and their language rather than in the rail. */}
+          <SettingsRow
+            icon={UserRound}
+            title={t("settings:nav.aboutMe")}
+            description={t("settings:index.rows.aboutMe")}
+            onClick={() => onSelect("aboutMe")}
+          />
           <AppearanceSection />
           <LanguageSection />
           <NotificationsSection />

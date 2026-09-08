@@ -3,7 +3,7 @@ import { useEffect, useRef } from "react";
 import { useTeams } from "../../hooks/use-teams";
 import { analytics } from "../../lib/analytics";
 import { homeTeam } from "../../lib/teams-model";
-import { INBOX_VIEW_ID } from "../../lib/top-level-views";
+import { AGENTS_HOME_VIEW_ID } from "../../lib/top-level-views";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -19,7 +19,7 @@ import {
  * what lives here is the effect around them.
  *
  * 1. **Boot lands on the first team's Mission Control.** The store starts on
- *    the Inbox, the one screen that needs no team, so the first paint is
+ *    the Agents home, the screen that needs no team, so the first paint is
  *    honest while the teams are still resolving. The moment the first team
  *    lands, home is its Mission Control and that is where the user goes.
  *    One shot per
@@ -77,7 +77,7 @@ export function useWorkspaceViewGuards(gates: {
     boot.current = step.state;
     if (step.action === "open-home-team" && team !== null) {
       // A REDIRECT, not a place the user chose: replacing keeps the transient
-      // boot Inbox off the nav stack, so browser back can't land on it.
+      // boot landing off the nav stack, so browser back can't land on it.
       // Same trigger on both breakpoints (the first team resolving is the
       // "workspace is ready" signal), different landing: the phone opens on
       // the Agents home, the desktop on the home team's board.
@@ -103,7 +103,7 @@ export function useWorkspaceViewGuards(gates: {
     const team = homeTeam(teams);
     // Replace, not push: a dead view sent home must not stay reachable via
     // the browser back button (backing into it would just bounce home again).
-    if (team === null) setViewMode(INBOX_VIEW_ID, { nav: "replace" });
+    if (team === null) setViewMode(AGENTS_HOME_VIEW_ID, { nav: "replace" });
     else openTeamView(team.id, "mission-control", { nav: "replace" });
   }, [
     activeTeamId,

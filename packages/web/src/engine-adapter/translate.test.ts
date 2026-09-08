@@ -120,9 +120,9 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
     expect(
       configWriteToSettings(
         CONFIG,
-        JSON.stringify({ provider: "openai", model: "gpt-5.5" }),
+        JSON.stringify({ provider: "openai", model: "gpt-6-astra" }),
       ),
-    ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
+    ).toEqual({ activeProvider: "openai-codex", model: "gpt-6-astra" });
     // GitHub Copilot shares one id across frontend and engine: a picked
     // (non-default) Copilot model must mirror to the runtime, or every turn runs
     // the provider default. Copilot uses DOTTED model ids (claude-opus-4.8).
@@ -168,8 +168,8 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
     // no DEFAULT_MODEL entry, the model falls to the universal floor (the
     // default provider's model) so the turn still resolves.
     expect(
-      configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
-    ).toEqual({ activeProvider: "gemini", model: "gpt-5.5" });
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "newco" })),
+    ).toEqual({ activeProvider: "newco", model: "gpt-6-astra" });
   });
 
   test("skips non-config files, missing provider, and bad JSON", () => {
