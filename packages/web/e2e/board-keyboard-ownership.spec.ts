@@ -70,9 +70,13 @@ test("a kept-alive team board off the glass owns nothing, and takes the keys bac
 
   // Off to a top-level view with no board of its own. The team screen is only
   // HIDDEN — its board is still mounted, still holding whatever it registered.
+  // Counted on the KANBAN copy, off the glass and all: the kept-alive Agents
+  // home carries the same title in its preview line, which is not a card.
   await page.locator("[data-tour-target='nav-agent-store']").click();
   await expect(onScreenMission).toHaveCount(0);
-  await expect(page.getByText("Plan a trip to Tokyo")).toHaveCount(1);
+  await expect(
+    page.getByTestId("board-columns").getByText("Plan a trip to Tokyo"),
+  ).toHaveCount(1);
 
   // The keys belong to the user here: nothing on screen has a highlight to
   // move, so an arrow must neither light a card inside the invisible screen nor

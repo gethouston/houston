@@ -67,6 +67,20 @@ export function screen(page: Page): Locator {
 }
 
 /**
+ * A mission's card on the board that is ON THE GLASS, by its title.
+ *
+ * The Agents home is where boot waits and where every fallback lands, so it is
+ * mounted for the whole session and its rows keep each agent's latest task
+ * title in their preview line. A bare `getByText(title)` therefore matches that
+ * hidden preview as well as the card — a strict-mode violation, or worse a
+ * `.first()` that silently drifts onto the invisible copy. Ask for the CARD:
+ * the kanban columns of the screen the user is looking at.
+ */
+export function missionCard(page: Page, title: string): Locator {
+  return screen(page).getByTestId("board-columns").getByText(title);
+}
+
+/**
  * Where the screen on the glass draws its HEADER cluster.
  *
  * ONE home at every width now: the strip inside the screen. The phone used to

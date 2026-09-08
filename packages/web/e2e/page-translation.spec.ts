@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { completeSurvey, resetToFirstRun } from "./support/onboarding";
+import { missionCard } from "./support/team-nav";
 
 /**
  * Browser page translation (Chrome, Safari, translating extensions) rewrites
@@ -100,7 +101,7 @@ test("the DOM guard re-points removeChild/insertBefore at the wrapper", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   const outcome = await page.evaluate(() => {
     const translate = (p: HTMLElement) => {

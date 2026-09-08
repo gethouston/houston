@@ -1,7 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { openTeamSection } from "./support/team-nav";
+import { missionCard, openTeamSection } from "./support/team-nav";
 
 /**
  * The Routines redesign: creation is chat-first, driven by locally-rendered
@@ -214,7 +214,7 @@ test("switching tabs never stacks two chat panels in the shared shell panel (HOU
 
   // Open a mission's chat on the Activity tab: the ONE shared shell panel holds
   // exactly one conversation (each ChatPanel owns exactly one composer textarea).
-  await page.getByText("Plan a trip to Tokyo").click();
+  await missionCard(page, "Plan a trip to Tokyo").click();
   const panel = page.getByTestId("mission-panel");
   await expect(panel.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
   await expect(panel.locator("textarea")).toHaveCount(1);

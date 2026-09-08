@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { closeActivityPanel } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
-import { screen } from "./support/team-nav";
+import { missionCard, screen } from "./support/team-nav";
 
 /**
  * The reworked agent self-setup flow. Creating an agent through the dialog no
@@ -31,7 +31,7 @@ test("creating an agent auto-starts its setup mission and opens the chat", async
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   await createFromScratch(page, "Aurora");
 
@@ -47,7 +47,7 @@ test("the welcome chat is live before the board sweep returns its row", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   // Hold every activities READ, so the cross-agent sweep cannot return the new
   // mission's row for the whole assertion budget below. That is the co-located

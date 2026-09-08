@@ -1,7 +1,12 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { openArchivedTasks, openTeamSection } from "./support/team-nav";
+import {
+  missionCard,
+  openArchivedTasks,
+  openTeamSection,
+  screen,
+} from "./support/team-nav";
 
 /**
  * The persisted query mirror's query-key heads, or null while no mirror
@@ -146,8 +151,8 @@ test("renders the seeded missions on the board", async ({ page }) => {
   await page.goto("/");
 
   // Seeded in state.ts: one "needs_you" mission, one "done" mission.
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(page.getByText("Draft the launch email")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Draft the launch email")).toBeVisible();
 });
 
 test("restores cached missions before starting fresh board reads", async ({
@@ -155,7 +160,7 @@ test("restores cached missions before starting fresh board reads", async ({
 }) => {
   await seedUserScopedToken(page);
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   // Let the async persister commit this populated board (the write throttle
   // lags the fetch by a second or more — wait for the CONTENT, not just the
@@ -217,7 +222,7 @@ test("restores cached missions before starting fresh board reads", async ({
 
   expect(boardReads).toBe(0);
   // The restore then lands, and yesterday's cards paint off it.
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 });
 
 /**
@@ -237,7 +242,7 @@ test("paints cached missions immediately while cold-start reads are held", async
 }) => {
   await seedUserScopedToken(page);
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   // Let the async persister commit the board's list surface to IndexedDB.
   await expect
@@ -256,7 +261,7 @@ test("paints cached missions immediately while cold-start reads are held", async
   // read can answer. The grace only has to stay far under the hold to keep the
   // proof sharp; it must ALSO absorb a full dev-server reload on a contended CI
   // runner, which alone can blow a too-tight budget. 12s of grace, 20s hold.
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible({
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible({
     timeout: 12_000,
   });
 });
@@ -264,7 +269,7 @@ test("paints cached missions immediately while cold-start reads are held", async
 test("opens a mission's chat when its card is clicked", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByText("Plan a trip to Tokyo").click();
+  await missionCard(page, "Plan a trip to Tokyo").click();
 
   // The mission's conversation opens (an existing mission uses the follow-up
   // composer; a brand-new conversation uses "What should the agent work on?").
@@ -282,7 +287,7 @@ test("keeps the open chat when clicking app chrome outside the panel", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByText("Plan a trip to Tokyo").click();
+  await missionCard(page, "Plan a trip to Tokyo").click();
   await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
 
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
@@ -293,13 +298,13 @@ test("keeps the open chat when clicking app chrome outside the panel", async ({
 /** The "Search tasks" box filters the board client-side. */
 test("filters the board with the search box", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(page.getByText("Draft the launch email")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Draft the launch email")).toBeVisible();
 
   await page.getByRole("searchbox", { name: "Search tasks" }).fill("Tokyo");
 
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(page.getByText("Draft the launch email")).toHaveCount(0);
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Draft the launch email")).toHaveCount(0);
 });
 
 /**
@@ -334,9 +339,11 @@ test("archives a Done mission from its card", async ({ page }) => {
   await card.getByRole("button", { name: "Archive" }).click();
 
   // Off the active board, and found again in the archived list.
-  await expect(page.getByText("Draft the launch email")).toHaveCount(0);
+  await expect(missionCard(page, "Draft the launch email")).toHaveCount(0);
   await openArchivedTasks(page);
-  await expect(page.getByText("Draft the launch email")).toBeVisible();
+  // The archived surface is a LIST, not the kanban, so it is scoped to the
+  // screen rather than to the columns.
+  await expect(screen(page).getByText("Draft the launch email")).toBeVisible();
 });
 
 /** The archive box belongs to the Done column alone: a mission still waiting on
@@ -393,7 +400,7 @@ test("deletes a mission from the board", async ({ page }) => {
     .getByRole("button", { name: "Delete" })
     .click();
 
-  await expect(page.getByText("Draft the launch email")).toHaveCount(0);
+  await expect(missionCard(page, "Draft the launch email")).toHaveCount(0);
 });
 
 /**
@@ -433,8 +440,8 @@ test("keeps the healthy agents' missions when one agent's reads fail", async ({
   await page.goto("/");
   await openTeamBoard(page);
 
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(page.getByText("Draft the launch email")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Draft the launch email")).toBeVisible();
   // HOU-1245 retired the generic error-toast pair, and this notice rode it: an
   // incomplete sweep now recovers QUIETLY. The recovery itself is unchanged and
   // still covered — `stepSweepRecovery` schedules the bounded re-sweep, unit
@@ -473,7 +480,7 @@ test("re-reads the restored board on boot so missions created offline appear", a
   await seedUserScopedToken(page);
   await page.route("**/v1/events*", (route) => route.abort());
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   await expect
     .poll(async () => (await persistedMirrorHeads(page)) ?? [], {
@@ -505,7 +512,7 @@ test("re-reads the restored board on boot so missions created offline appear", a
   await openTeamBoard(page);
 
   // Yesterday's board is still there...
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
   // ...and the boot sweep brought in what happened while we were away.
-  await expect(page.getByText("Overnight expense report")).toBeVisible();
+  await expect(missionCard(page, "Overnight expense report")).toBeVisible();
 });

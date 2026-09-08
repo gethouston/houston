@@ -40,9 +40,14 @@ export function adminRow(page: Page): Locator {
  * a standing preference, so it is a section of Settings rather than a rail
  * destination, and it is reached the way a user reads it: by name, on the
  * index (`settings:nav.aboutMe` = "About me").
+ *
+ * Anchored on the row's TITLE rather than its whole accessible name: every
+ * settings row reads its description out too (`settings:index.rows.aboutMe`),
+ * so the name is the title plus that sentence, and an exact match would pin
+ * copy this helper has no business owning.
  */
 export function aboutMeRow(page: Page): Locator {
-  return screen(page).getByRole("button", { name: "About me", exact: true });
+  return screen(page).getByRole("button", { name: /^About me/ });
 }
 
 /**
@@ -56,12 +61,16 @@ export function assistantRow(page: Page): Locator {
 
 /**
  * Open the personal assistant from the rail: a 1-on-1 chat owning the whole
- * window, so there is no back bar and nothing to drill into. Landing on the
- * panel header's name is the whole navigation.
+ * window, so there is no back bar, no panel header and nothing to drill into.
+ * The COMPOSER is therefore the landing — a 1-on-1 chat opens on the place the
+ * user types, and it is the one part of the surface that stands whether the
+ * thread is empty or already long.
  */
 export async function openAssistant(page: Page): Promise<void> {
   await assistantRow(page).click();
-  await expect(screen(page).getByText("Your personal assistant")).toBeVisible();
+  await expect(
+    screen(page).getByPlaceholder("Send a follow-up..."),
+  ).toBeVisible();
 }
 
 /**
