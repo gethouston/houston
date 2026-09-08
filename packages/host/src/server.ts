@@ -72,6 +72,7 @@ import { handleSetupRuntime } from "./routes/setup-runtime";
 import { handleSharedSkills } from "./routes/shared-skills";
 import { handleSkillsDirectory } from "./routes/skills-directory";
 import { handleSandboxSkills } from "./routes/skills-sandbox";
+import { handleStoreFenceGate } from "./routes/store-fence-gate";
 import { handleSandboxTranscripts } from "./routes/transcripts-sandbox";
 import { handleTriggerEvents } from "./routes/trigger-events";
 import type { FireLock } from "./schedule/fire-lock";
@@ -345,6 +346,10 @@ async function handle(
   // browser lands here from the service's consent screen with no Houston
   // bearer token — the single-use `state` is its authentication.
   if (await handleCustomOAuthCallback(deps, method, path, url, res)) return;
+  // A pod that lost its object-store write fence must not accept writes it
+  // can no longer persist (PRODUCT-1706): the runtime's own saves first, the
+  // user-facing /agents/ writes after auth below.
+  if (handleStoreFenceGate(deps, method, path, res, "sandbox")) return;
   // Runtime-facing scheduled-task save (merge-safe; HMAC sandbox token). The
   // agent's save_routine tool calls this instead of writing routines.json.
   if (await handleSandboxRoutines(deps, method, path, url, req, res)) return;
@@ -367,6 +372,7 @@ async function handle(
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
   if (!userId) return json(res, 401, { error: "unauthorized" });
+  if (handleStoreFenceGate(deps, method, path, res, "agents")) return;
   // An AUTHENTICATED /agents/<id>/ request names the agent this host is
   // addressed as — the doc shadow's binding signal on hosts whose workspace
   // holds more than one agent directory (rename leftovers). After auth only:
