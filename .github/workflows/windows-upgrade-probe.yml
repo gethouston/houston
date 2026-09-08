@@ -2,14 +2,9 @@
 # published MSIs and dumps the verbose MSI logs. Delete before merging.
 name: Windows upgrade probe
 on:
-  workflow_dispatch:
-    inputs:
-      old_tag:
-        default: cloud-v0.6.17
-        type: string
-      new_tag:
-        default: cloud-v0.6.18
-        type: string
+  push:
+    branches: [fix/windows-upgrade-verify]
+    paths: [".github/workflows/windows-upgrade-probe.yml"]
 permissions:
   contents: read
 jobs:
@@ -22,8 +17,8 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OLD_TAG: ${{ inputs.old_tag }}
-          NEW_TAG: ${{ inputs.new_tag }}
+          OLD_TAG: cloud-v0.6.17
+          NEW_TAG: cloud-v0.6.18
         run: |
           $ErrorActionPreference = 'Continue'
           $root = Join-Path $env:RUNNER_TEMP 'probe'
