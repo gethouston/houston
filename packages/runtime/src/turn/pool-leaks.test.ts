@@ -21,6 +21,7 @@ process.env.HOUSTON_WORKSPACE_DIR = join(scratch, "process-workspace");
 process.env.HOUSTON_CODE_EXECUTION = "disabled";
 
 const { createTurnServer } = await import("./server");
+const { runTurn: runRealTurn } = await import("./turn-session");
 
 const storeRoot = join(scratch, "store");
 const store = new LocalDirStore(storeRoot);
@@ -115,39 +116,20 @@ writeFileSync(
   }),
 );
 
-const runtime = createTurnServer({ store, token: "", concurrency: 1 });
+const turnRoots = new Map<string, string>();
+const runtime = createTurnServer({
+  store,
+  token: "",
+  concurrency: 1,
+  runTurn: (directories, turn) => {
+    if (!directories.turnRoot) throw new Error("Turn root was not supplied");
+    turnRoots.set(turn.text, directories.turnRoot);
+    return runRealTurn(directories, turn);
+  },
+});
 const runtimeUrl = await listen(runtime);
-async function observeRoot(
-  secret: string,
-  workspaceRel = "workspace",
-): Promise<string> {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
-    for (const name of readdirSync(tmpdir())) {
-      if (!name.startsWith("houston-turn-")) continue;
-      const root = join(tmpdir(), name);
-      try {
-        if (
-          readFileSync(
-            join(root, "store", workspaceRel, "secret.txt"),
-            "utf8",
-          ) === secret
-        ) {
-          return root;
-        }
-      } catch {
-        // Another test's root, or this root before hydration completed.
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1));
-  }
-  throw new Error(`did not observe the ${secret} turn root`);
-}
 
-async function run(
-  agent: "a" | "b" | "s",
-  index: number,
-  workspaceRel?: string,
-): Promise<void> {
+async function run(agent: "a" | "b" | "s", index: number): Promise<void> {
   const responsePromise = fetch(`${runtimeUrl}/turn`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -166,11 +148,12 @@ async function run(
       },
     }),
   });
-  const root = await observeRoot(`SECRET-${agent.toUpperCase()}`, workspaceRel);
   const response = await responsePromise;
   expect(response.status).toBe(200);
   const raw = await response.text();
   expect(raw).toContain(`echo:REQUEST-${agent.toUpperCase()}-${index}`);
+  const root = turnRoots.get(`REQUEST-${agent.toUpperCase()}-${index}`);
+  if (!root) throw new Error("Turn root was not observed");
   expect(existsSync(root)).toBe(false);
 }
 
@@ -187,8 +170,8 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
   await run("b", 0);
   await run("a", 1);
   await run("b", 1);
-  await run("s", 0, "workspaces/W/A");
-  await run("s", 1, "workspaces/W/A");
+  await run("s", 0);
+  await run("s", 1);
 
   expect(seen.map(({ token }) => token)).toEqual([
     "token-a",
