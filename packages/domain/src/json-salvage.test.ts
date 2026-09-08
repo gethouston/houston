@@ -1,5 +1,10 @@
 import { expect, test } from "vitest";
-import { firstJsonValueEnd, salvageLeadingJson } from "./json-salvage";
+import {
+  escapeControlCharsInStrings,
+  firstJsonValueEnd,
+  salvageJsonDoc,
+  salvageLeadingJson,
+} from "./json-salvage";
 import { loadRoutineRuns, loadRoutines } from "./routines";
 import { loadJson, parseJsonDoc, type TextStore } from "./store";
 
@@ -43,6 +48,62 @@ test("salvageLeadingJson refuses when nothing is cleanly recoverable", () => {
   expect(salvageLeadingJson("{not json")).toBeUndefined();
   expect(salvageLeadingJson(doc.slice(0, -10))).toBeUndefined();
   expect(salvageLeadingJson('{"a": tru}xyz')).toBeUndefined();
+});
+
+test("escapeControlCharsInStrings re-escapes raw control characters inside strings only", () => {
+  // The wild shape (HOUSTON-APP-5D6): an in-place edit of a long prompt left a
+  // literal tab and newline inside the string literal.
+  const raw = '[{"id":"r1","prompt":"Line one\nLine\ttwo \u0001 end"}]\n';
+  const fixed = escapeControlCharsInStrings(raw);
+  expect(fixed).toBe(
+    '[{"id":"r1","prompt":"Line one\\nLine\\ttwo \\u0001 end"}]\n',
+  );
+  expect(JSON.parse(fixed as string)).toEqual([
+    { id: "r1", prompt: "Line one\nLine\ttwo \u0001 end" },
+  ]);
+  // Already-clean text (whitespace between tokens is legal) is left alone.
+  expect(escapeControlCharsInStrings(doc)).toBeUndefined();
+  // `\"` inside a string never closes it early, so the newline after it is
+  // still recognised as inside the string.
+  expect(escapeControlCharsInStrings('{"a":"x\\"\ny"}')).toBe(
+    '{"a":"x\\"\\ny"}',
+  );
+  // A control character between tokens is a real syntax error, not ours.
+  expect(escapeControlCharsInStrings('{"a":\u00011}')).toBeUndefined();
+});
+
+test("salvageJsonDoc repairs raw control characters, then trailing junk", () => {
+  const rawNewline = '[{"id":"r1","prompt":"a\nb"}]\n';
+  expect(salvageJsonDoc(rawNewline)).toEqual([{ id: "r1", prompt: "a\nb" }]);
+  // Both shapes at once: an appended partial copy of a doc with a raw tab.
+  const rawTab = '[{"id":"r1","prompt":"a\tb"}]\n';
+  expect(salvageJsonDoc(`${rawTab}${rawTab.slice(0, 12)}`)).toEqual([
+    { id: "r1", prompt: "a\tb" },
+  ]);
+  expect(salvageJsonDoc(`${doc}]}`)).toEqual([routine]);
+  // Mangled beyond a lossless repair: the caller keeps its throw.
+  expect(salvageJsonDoc('[{"id":"r1","prompt":"a\nb"}')).toBeUndefined();
+  expect(salvageJsonDoc("{oops")).toBeUndefined();
+});
+
+test("loadRoutines survives a raw newline inside a prompt (HOUSTON-APP-5D6)", async () => {
+  const store = memStore();
+  const key = `${ROOT}/.houston/routines/routines.json`;
+  const edited = {
+    ...routine,
+    prompt: "Every morning:\n- check mail\n\t- reply",
+  };
+  // A hand edit that pasted the multi-line prompt in raw.
+  await store.writeText(
+    key,
+    JSON.stringify([edited], null, 2).replace(
+      JSON.stringify(edited.prompt),
+      `"${edited.prompt}"`,
+    ),
+  );
+  const { items, diagnostics } = await loadRoutines(store, ROOT);
+  expect(items.map((r) => r.prompt)).toEqual([edited.prompt]);
+  expect(diagnostics).toEqual([]);
 });
 
 test("loadRoutines survives trailing junk after the array (list_routines no longer 500s)", async () => {
