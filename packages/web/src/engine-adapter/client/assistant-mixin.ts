@@ -1,5 +1,6 @@
 import type { AssistantHandle } from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
+import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 
 /**
@@ -18,6 +19,12 @@ import type { BaseCtor } from "./mixin";
  * its `Retry-After` hint; `lib/assistant-availability.ts` classifies it, so no
  * fallback address is invented here — inventing an agent id would send the
  * user's chat somewhere that does not exist.
+ *
+ * A 2xx is not believed either until it names BOTH ids: the address is the one
+ * thing the app cannot work out for itself, so a body that is missing it (an
+ * intermediary's JSON, a half-written gateway answer) would open a chat pane
+ * pointed at nothing at all, silently. It is reported as the 502 it is, which
+ * `classifyAssistantDiscoveryFailure` reads as `unexpected` — the loud path.
  */
 export function AssistantMixin<TBase extends BaseCtor>(Base: TBase) {
   class Assistant extends Base {
@@ -28,7 +35,19 @@ export function AssistantMixin<TBase extends BaseCtor>(Base: TBase) {
         this.ctx.prefConfig(),
         "/v1/assistant",
       );
-      return (await res.json()) as AssistantHandle;
+      const body: unknown = await res.json();
+      const handle = body as Partial<AssistantHandle> | null;
+      if (
+        typeof handle?.agent !== "string" ||
+        handle.agent === "" ||
+        typeof handle.conversation !== "string" ||
+        handle.conversation === ""
+      )
+        throw new HoustonEngineError(502, {
+          error: "the assistant address is missing from the host's answer",
+          code: "assistant_malformed",
+        });
+      return { agent: handle.agent, conversation: handle.conversation };
     }
   }
   return Assistant;

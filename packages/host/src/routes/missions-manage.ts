@@ -8,6 +8,7 @@ import {
 import type { PendingInteraction } from "@houston/protocol";
 import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
+import { liveTurns } from "./live-turn";
 import { type MissionStatusInput, parseMissionStatus } from "./missions-remote";
 import { forwardMissionStatus } from "./missions-remote-forward";
 import {
@@ -125,6 +126,12 @@ export async function handleMissionSettle(
   // applyActivityUpdate - pass through as-is; null clears explicitly.
   const interaction = (body.pending_interaction ??
     null) as PendingInteraction | null;
+  // THE TURN IS OVER. This report is the one thing the runtime sends at the end
+  // of every turn on every deployment, so it is where the host observes a turn
+  // ending: the live-turn record for that conversation is dropped, and a
+  // /sandbox write arriving after the work finished is refused as out-of-turn
+  // rather than served against a turn that is no longer running.
+  liveTurns.end(ctx.agent.id, cid);
   const settled = await withDocLock(`${ctx.root}#activity`, async () => {
     const { items } = await loadActivities(ctx.vfs, ctx.root);
     const current = items.find((a) => missionSessionKey(a) === cid);

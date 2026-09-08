@@ -20,6 +20,7 @@
  */
 
 import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
+import { toCanonicalProviderId } from "@houston/domain/provider-dialect";
 import type { ProviderId } from "./provider-ids";
 
 /**
@@ -67,3 +68,22 @@ export const MODEL_ALIASES: Partial<
     "gpt-5.1-mini": "gpt-5.4-mini",
   },
 };
+
+/**
+ * The legacy aliases of ONE provider, in either id dialect, or an empty table
+ * for a provider that has none.
+ *
+ * Per-provider by construction: the same bare id means different things to
+ * different providers ("gpt-5.5" is a retired Codex row, and reading the
+ * Anthropic row for it hands a Codex pin straight through as a hard pin on a
+ * model the picker never showed).
+ */
+export function modelAliasesFor(
+  provider: string | null | undefined,
+): Readonly<Record<string, string>> {
+  if (!provider) return {};
+  const canonical = toCanonicalProviderId(provider);
+  for (const [id, aliases] of Object.entries(MODEL_ALIASES))
+    if (id === canonical && aliases) return aliases;
+  return {};
+}

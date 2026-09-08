@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
 import { beforeEach, expect, test } from "vitest";
+import { assistantApprovals } from "../assistant/approvals";
 import type {
   CaptureResult,
   ChannelCtx,
@@ -11,6 +12,8 @@ import type {
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { handleAgents } from "./agents";
+import { liveTurns } from "./live-turn";
+import { missionFanout } from "./mission-fanout";
 
 /**
  * PATCH /agents/:id (rename) — the runtime-quiesce contract.
@@ -309,4 +312,65 @@ test("DELETE runs inside the quiesced span too (a stale dispatch must not resurr
   // runtime into the doomed directory (HOU-827's sibling for delete).
   expect(calls).toEqual([`quiesce:${agentId}`, `teardown:${agentId}`]);
   expect(await memory.getAgent(agentId)).toBeNull();
+});
+
+/**
+ * A local agent's id IS its `<Workspace>/<Agent>` path, so a rename frees the
+ * old id and a delete frees it for reuse. Everything this process remembers
+ * under that id has to go with it (routes/agent-state-cleanup.ts): a pending
+ * approval receipt would otherwise answer for an agent nobody approved
+ * anything for, and a spent fan-out budget would follow a dead id to whoever
+ * takes the path next.
+ */
+function seedAgentState(id: string): string {
+  liveTurns.start(id, "conv-1", "execute");
+  missionFanout.record(id, { missionId: "m1", boardRoot: null });
+  return assistantApprovals.issue({
+    operation: "deleteAgent",
+    params: { agentPath: id },
+    agentId: id,
+    conversationId: "conv-1",
+    summary: "Delete it?",
+  }).requestId;
+}
+
+test("a rename takes the old id's approvals, turn and fan-out with it", async () => {
+  const requestId = seedAgentState(agentId);
+  // The desktop store's shape: an agent's id IS its path, so a rename MOVES it
+  // and the old id is free for the next agent to hold.
+  const base = deps();
+  const moved = {
+    ...base,
+    store: {
+      ...base.store,
+      renameAgent: async (id: string, name: string) => ({
+        ...(await base.store.renameAgent(id, name)),
+        id: `${workspaceId}/${name}`,
+      }),
+    },
+  };
+  const { status } = await rename("Marketing", moved);
+  expect(status).toBe(200);
+  expect(assistantApprovals.pending(requestId, agentId)).toBeUndefined();
+  expect(liveTurns.get(agentId, "conv-1")).toBeUndefined();
+  expect(await missionFanout.running(agentId, vfs)).toBe(0);
+});
+
+test("a delete leaves nothing behind for the next agent on that path", async () => {
+  const requestId = seedAgentState(agentId);
+  const path = `/agents/${encodeURIComponent(agentId)}`;
+  const response = res();
+  await handleAgents(
+    deps(channel),
+    "alice",
+    "DELETE",
+    path,
+    new URL(path, "http://host.local"),
+    reqWithBody({}),
+    response,
+  );
+  expect(response.status).toBe(200);
+  expect(assistantApprovals.pending(requestId, agentId)).toBeUndefined();
+  expect(liveTurns.get(agentId, "conv-1")).toBeUndefined();
+  expect(await missionFanout.running(agentId, vfs)).toBe(0);
 });

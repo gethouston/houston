@@ -192,8 +192,3 @@ export function humanizedModelName(id: string): string {
   if (!name) return id;
   return date ? `${name} (${date})` : name;
 }
-
-/** The name to SHOW for a model: curated when we have one, derived otherwise. */
-export function modelLabel(provider: ProviderId, id: string): string {
-  return modelDisplayName(provider, id) ?? humanizedModelName(id);
-}

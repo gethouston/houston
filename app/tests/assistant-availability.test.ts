@@ -3,16 +3,20 @@ import { describe, it } from "node:test";
 import {
   ASSISTANT_GATEWAY_ONLY,
   ASSISTANT_NOT_CONFIGURED,
-  ASSISTANT_RETRY_MAX_DELAY_MS,
-  ASSISTANT_RETRY_MIN_DELAY_MS,
-  ASSISTANT_TRANSIENT_RETRY_LIMIT,
   ASSISTANT_UNAVAILABLE,
-  ASSISTANT_UNEXPECTED_RETRY_LIMIT,
-  assistantDiscoveryRetryDelayMs,
   classifyAssistantDiscoveryFailure,
   isAssistantUnavailableError,
-  shouldRetryAssistantDiscovery,
 } from "../src/lib/assistant-availability.ts";
+import {
+  ASSISTANT_RETRY_MAX_DELAY_MS,
+  ASSISTANT_RETRY_MIN_DELAY_MS,
+  ASSISTANT_TRANSIENT_REFETCH_MS,
+  ASSISTANT_TRANSIENT_RETRY_LIMIT,
+  ASSISTANT_UNEXPECTED_RETRY_LIMIT,
+  assistantDiscoveryRetryDelayMs,
+  assistantRefetchIntervalMs,
+  shouldRetryAssistantDiscovery,
+} from "../src/lib/assistant-retry-schedule.ts";
 
 describe("isAssistantUnavailableError", () => {
   it("matches the gateway-fronted 501 (discovery belongs to the gateway)", () => {
@@ -274,5 +278,40 @@ describe("isAssistantUnavailableError stays the reporting-silence predicate", ()
     );
     assert.equal(isAssistantUnavailableError({ status: 404 }), true);
     assert.equal(isAssistantUnavailableError({ status: 500 }), false);
+  });
+});
+
+/**
+ * The re-review's #13: with the ladder spent on a waking pod, discovery settled
+ * with `retry: false` and no beat at all, so the rail row stayed absent for the
+ * rest of the session. It now asks again, slowly, and only while the failure is
+ * the kind that heals on its own.
+ */
+describe("a spent ladder is not a settled answer", () => {
+  it("keeps asking after a transient failure, on a slow beat", () => {
+    assert.equal(
+      assistantRefetchIntervalMs({ status: 503 }),
+      ASSISTANT_TRANSIENT_REFETCH_MS,
+    );
+    assert.equal(
+      assistantRefetchIntervalMs({
+        status: 503,
+        body: { error: "engine unavailable" },
+      }),
+      ASSISTANT_TRANSIENT_REFETCH_MS,
+    );
+  });
+
+  it("polls nothing for absence, a real failure, or a healthy query", () => {
+    assert.equal(assistantRefetchIntervalMs({ status: 501 }), false);
+    assert.equal(
+      assistantRefetchIntervalMs({
+        status: 503,
+        body: { code: "not_configured" },
+      }),
+      false,
+    );
+    assert.equal(assistantRefetchIntervalMs({ status: 500 }), false);
+    assert.equal(assistantRefetchIntervalMs(null), false);
   });
 });

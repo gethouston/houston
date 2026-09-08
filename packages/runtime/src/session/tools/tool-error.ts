@@ -18,6 +18,19 @@ export type SessionToolErrorCode =
   | "mission_not_found"
   /** The tool was called with nothing to act on (an empty search). */
   | "empty_query"
+  /**
+   * The host has no live turn recorded for this agent and conversation, so the
+   * write is refused. A real state, not a bug: the tool ran outside a turn (a
+   * late callback, a retry after the turn settled), and the correction is to do
+   * it inside one - never to retry the same call.
+   */
+  | "not_in_turn"
+  /**
+   * The chat is in Plan mode, so the host changed nothing. Only the USER can
+   * leave plan mode, which is exactly why this may not read as a server error:
+   * a retry is the one thing that cannot work.
+   */
+  | "plan_mode"
   /** The host refused; `message` relays its own agent-actionable words. */
   | "host_error"
   | "transport_error"
@@ -31,6 +44,12 @@ export type SessionToolErrorCode =
   | "agent_not_found"
   | "agent_ambiguous"
   | "invalid_provider"
+  /** The MODEL named is not one the pinned provider offers. Distinct from
+   *  `invalid_provider`: the provider resolved fine, so re-picking a provider
+   *  is the wrong correction and the values to choose from are that provider's
+   *  models. Decided in the runtime (mission-pin.ts) - the host validates
+   *  providers only, so it is never relayed from a host reply. */
+  | "invalid_model"
   | "agent_unreachable"
   | "agent_refused";
 
@@ -89,6 +108,8 @@ export async function hostErrorFrom(
 
 function isActionableCode(code: unknown): code is SessionToolErrorCode {
   return (
+    code === "not_in_turn" ||
+    code === "plan_mode" ||
     code === "mission_cap" ||
     code === "mission_depth" ||
     code === "mission_fanout" ||

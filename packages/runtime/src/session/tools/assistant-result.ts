@@ -31,6 +31,10 @@ export type AssistantErrorCode =
   /** The chat is in Plan mode, so the host performed nothing. The user asked
    *  for a proposal; only they can move the turn to Execute. */
   | "plan_mode"
+  /** The host has no live turn recorded for this agent and conversation, so it
+   *  performed nothing. The correction is to act inside a turn, never to retry
+   *  the same call. */
+  | "not_in_turn"
   /** The gateway answered a 4xx/5xx. */
   | "gateway_error"
   /** The host could not be reached, or answered something unreadable. */

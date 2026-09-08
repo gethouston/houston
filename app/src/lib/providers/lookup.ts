@@ -1,6 +1,7 @@
 // Same self-contained-subpath rule as `./build-provider.ts`: the ONE provider
 // dialect table, owned by `@houston/domain` and re-exported by the SDK.
 import { toDisplayProviderId } from "@houston/sdk/provider-catalog";
+import { BRAND_ALIASES } from "./brand-aliases.ts";
 import { PROVIDERS } from "./catalog.ts";
 import type { ProviderInfo } from "./types.ts";
 
@@ -11,13 +12,23 @@ import type { ProviderInfo } from "./types.ts";
  */
 
 /**
- * Display name for a provider id in either dialect, falling back to the id
- * itself for a provider the catalog does not carry. The label twin of
- * `providerBrandKey` (the logo path) — the two must alias the same way or a
- * surface draws one brand's mark beside another brand's name.
+ * Display name for a provider id in either dialect.
+ *
+ * The label twin of `providerBrandKey` (the logo path), reading the SAME brand
+ * table (`./brand-aliases.ts`): a regional or variant id the catalog does not
+ * carry ("minimax-cn", "qwen-token-plan", a retired "kimi-coding" still on an
+ * old conversation) draws its parent's mark, so it must read as that parent's
+ * name too — a surface that draws MiniMax's logo beside the raw string
+ * "minimax-cn" names one thing and shows another.
+ *
+ * The id itself remains the last resort: for a provider nothing knows, it is
+ * the truest name we have.
  */
 export function providerName(id: string): string {
-  return getProvider(id)?.name ?? id;
+  const known = getProvider(id);
+  if (known) return known.name;
+  const parent = BRAND_ALIASES[toDisplayProviderId(id)];
+  return (parent === undefined ? undefined : getProvider(parent)?.name) ?? id;
 }
 
 /**

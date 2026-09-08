@@ -8,6 +8,7 @@ const adapter = join(repoRoot, "packages/web/src/engine-adapter");
 const sdkModules = join(repoRoot, "packages/sdk/src/modules");
 const generatedDocs = join(packageRoot, "generated");
 const hostAssistant = join(repoRoot, "packages/host/src/assistant");
+const domainSource = join(repoRoot, "packages/domain/src");
 
 /** Every non-test `.ts` in `directory` that `matches`, sorted for determinism. */
 function sourcesIn(
@@ -51,10 +52,14 @@ export const assistantPaths = {
  * lands in the HOST package because the host imports it as a module: embedded at
  * build time, it travels inside the container bundle and the Bun-compiled
  * desktop sidecar alike, so no artifact has to locate a file it cannot reach.
- * The two documents are for people and stay beside the client they describe.
+ * The capability index lands in DOMAIN for the same reason: the runtime folds
+ * it into the coordinator's system prompt, so it must be a module both the
+ * container bundle and the desktop sidecar carry. The two documents are for
+ * people and stay beside the client they describe.
  */
 export const assistantOutputs = [
   { file: "assistant-catalog.generated.json", directory: hostAssistant },
+  { file: "assistant-capability-index.generated.ts", directory: domainSource },
   { file: "assistant-capabilities.md", directory: generatedDocs },
   { file: "assistant-coverage.md", directory: generatedDocs },
   { file: "assistant-operations.md", directory: generatedDocs },

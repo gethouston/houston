@@ -12,6 +12,14 @@ export interface CompactionCheckpoints {
   read(id: string): CompactionCheckpoint | undefined;
   save(id: string, summary: string): CompactionCheckpoint;
   consume(id: string, checkpoint: CompactionCheckpoint): void;
+  /**
+   * Drop the checkpoint unconditionally, whatever it holds. `consume` retires a
+   * summary that was DELIVERED; this discards one that must never be delivered
+   * at all - the conversation left the Claude backend, was cleared, or was cut.
+   * An armed checkpoint is the model's memory of turns that no longer apply, and
+   * it also suppresses the resume of the session that would have replaced it.
+   */
+  clear(id: string): void;
 }
 
 /** The summary and its transcript marker land in the same atomic file write. */
@@ -48,6 +56,12 @@ export function createCompactionCheckpoints(
       )
         return;
       const { claudeCompaction: _consumed, ...next } = conv;
+      saveConversation(dir, next);
+    },
+    clear(id) {
+      const conv = loadConversation(dir, id);
+      if (!conv?.claudeCompaction) return;
+      const { claudeCompaction: _dropped, ...next } = conv;
       saveConversation(dir, next);
     },
   };

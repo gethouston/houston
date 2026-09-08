@@ -6,16 +6,16 @@
 - Undocumented: 0
 - Ungrouped: 0
 - Unschematized: 16
-- Hidden: 29
+- Hidden: 30
 - Routable: 109
 - Unroutable: 12
 - Raw-response routes: 78
-- Acknowledged exceptions: 44
-- Acknowledged debt: 6
+- Acknowledged exceptions: 46
+- Acknowledged debt: 4
 
 A raw-response route reaches the host through an adapter function that post-processes the reply (unwrapping `items`, 404 fallbacks, `.then` transforms). The route itself carries the host's response unchanged.
 
-## Acknowledged exceptions (44)
+## Acknowledged exceptions (46)
 
 Every operation the assistant cannot drive states why in its `@assistant` tag, and `pnpm check:assistant-coverage` fails the build on any that does not. These are the human-owned exceptions.
 
@@ -27,7 +27,7 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `listApiKeys` - hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
 - `revokeApiKey` - hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
 - `saveAttachments` - hidden: binary upload; the composer batches the dropped files and base64 frames them itself.
-- `createPortal` - unconfirmed: Opens the billing portal; changes and charges require the user to act there.
+- `createPortal` - hidden: answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model.
 - `createFolder` - unconfirmed: Creates an empty folder without replacing existing content.
 - `downloadProjectArchive` - hidden: binary download; returns a zip Blob no chat turn can carry.
 - `downloadProjectFile` - hidden: binary download; returns a Blob no chat turn can carry.
@@ -50,8 +50,10 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `setApiKey` - hidden: takes a secret; the user pastes the provider key themselves.
 - `setCustomEndpoint` - hidden: takes a secret; the guided local-model setup supplies the server URL and its key.
 - `setSetupApiKey` - hidden: takes a secret; the user pastes the provider key during first-run setup.
+- `createRoutine` - unschematized: a trigger binding carries the outside app's own event config, whose shape belongs to that app.
 - `listRoutines` - unschematized: a routine's trigger_config is the outside app's own event shape.
 - `mintRoutineWebhookKey` - hidden: returns a secret; the webhook key is revealed once and calling again rotates it.
+- `updateRoutine` - unschematized: a trigger binding carries the outside app's own event config, whose shape belongs to that app.
 - `getPreference` - hidden: UI plumbing; an untyped key/value store the app reads for its own device settings.
 - `setMyProfile` - unconfirmed: Reversible personal display overrides; costs nothing and changes no permissions.
 - `setPreference` - hidden: UI plumbing; an open key/value write that can clobber any app setting.
@@ -64,13 +66,11 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `getHostSidebarLayout` - hidden: UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render.
 - `putHostSidebarLayout` - hidden: UI plumbing; the app's drag and drop owns this write, and calling it blind rearranges the user's sidebar.
 
-## Acknowledged debt (6)
+## Acknowledged debt (4)
 
 Exceptions whose author says the operation SHOULD be automatable and is waiting on a refactor.
 
 - `orgAudit` - unroutable: the query string is assembled into the path from an optional options object; routable once before and limit are plain parameters.
-- `createRoutine` - unschematized: input is typed unknown; it should carry the routine wire shape so a caller can build one.
-- `updateRoutine` - unschematized: updates is typed unknown; it should carry the routine wire shape so a caller can build one.
 - `getContext` - unroutable: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
 - `setContext` - unroutable: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
 - `setAgentAssignments` - unroutable: the body is chosen client-side between the v1 userIds and v2 assignments shapes; routable once callers pass only assignments.
@@ -106,13 +106,14 @@ None.
 - `uploadProjectFiles.files`
 - `downloadProjectArchive.returns`
 
-## Hidden operations (29)
+## Hidden operations (30)
 
 - `applyAgentColor`
 - `createApiKey`
 - `listApiKeys`
 - `revokeApiKey`
 - `saveAttachments`
+- `createPortal`
 - `downloadProjectArchive`
 - `downloadProjectFile`
 - `uploadProjectFiles`

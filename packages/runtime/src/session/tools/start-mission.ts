@@ -37,7 +37,7 @@ export type StartMissionDetails =
  */
 
 const ASSISTANT_DESCRIPTION =
-  "Start a new mission on the board of the agent you name, running in the background as its own chat. This is how work actually gets done: name the agent whose board this work belongs on, give it a complete standalone prompt, and it starts once your current turn ends. Check on it later with list_missions and read_mission on that same agent. On success, tell the user in plain words which agent is doing it.";
+  "Start a new mission on the board of the agent you name, running in the background as its own chat. This is how work actually gets done: name the agent whose board this work belongs on, give it a complete standalone prompt, and it starts once your current turn ends. Check on it later with list_missions and read_mission on that same agent. On success, tell the user in plain words which agent is doing it. Once a mission exists, the Houston operations own it: deleteActivity removes one and listActivities reads a board.";
 
 const AGENT_DESCRIPTION =
   "Start a new mission on the user's board, running in the background as its own chat. Use when the user asks to kick off separate workstreams, or a task splits into independent pieces they want tracked separately. The mission starts after your current turn ends; check on it later with list_missions and read_mission. Start only missions the user asked for or clearly wants, never more than a few at once. On success, tell the user in plain words which mission you started.";

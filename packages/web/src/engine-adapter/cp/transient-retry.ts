@@ -17,6 +17,38 @@ import {
 const TRANSIENT_STATUSES = new Set([502, 503, 504]);
 
 /**
+ * Reads whose CALLER owns the retry schedule, and which must therefore not be
+ * retried here as well.
+ *
+ * Two ladders on one read multiply: assistant discovery runs its own bounded,
+ * reason-aware ladder in `app/src/hooks/use-assistant.ts` (5 attempts), and
+ * stacking this one under it turned a waking pod into ~25 requests and a
+ * minute and a half of spinner before the rail row could settle. The caller's
+ * ladder is the better-informed of the two — it reads the failure's own
+ * `Retry-After` hint and tells a deployment with no assistant apart from a pod
+ * that is merely waking, which a transport cannot.
+ */
+const CALLER_OWNED_RETRY_PATHS: ReadonlySet<string> = new Set([
+  "/v1/assistant",
+]);
+
+/** The request's path, or null when the input is not a parseable URL (a
+ *  relative string in a non-browser context): unknown paths keep the ladder. */
+function pathOf(input: RequestInfo | URL): string | null {
+  const raw =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.href
+        : input.url;
+  try {
+    return new URL(raw, "http://houston.invalid").pathname;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Read a transient response's reason WITHOUT disturbing the body the caller
  * will parse: the classification runs on a clone. A body that isn't the JSON
  * the gateway documents (an HTML error page from an intermediary, an empty
@@ -38,12 +70,16 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * handoff, or an engine pod that is still cold-starting: transient gateway
  * statuses and network-level drops are retried on the schedule their
  * {@link UnavailableReason} earns. Writes never blind-retry — a thrown network
- * error on a POST may have reached the gateway; the caller decides.
+ * error on a POST may have reached the gateway; the caller decides. So does a
+ * read on a {@link CALLER_OWNED_RETRY_PATHS} path, for the same reason.
  */
 export function transientRetryFetch(inner: typeof fetch): typeof fetch {
   return async (input, init) => {
     const method = (init?.method ?? "GET").toUpperCase();
-    const retriable = method === "GET" || method === "HEAD";
+    const path = pathOf(input);
+    const retriable =
+      (method === "GET" || method === "HEAD") &&
+      !(path !== null && CALLER_OWNED_RETRY_PATHS.has(path));
     let res: Response | undefined;
     let failure: unknown;
     for (let i = 0; ; i++) {

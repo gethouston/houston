@@ -54,11 +54,45 @@ export function parseMessageApprovals(value: unknown): MessageApproval[] {
   return approvals;
 }
 
-/** The host-owned content a shell displays before sending a receipt. */
+/**
+ * ONE argument the operation would run with, as the card must show it.
+ *
+ * Structural on purpose: the HOST decides WHAT is being approved (the operation
+ * and the exact bytes), the SURFACE decides what language to say it in. A
+ * sentence authored in the host can only ever be authored in one language, and
+ * a person cannot approve what they cannot read.
+ *
+ * `value` is the argument verbatim, already text (objects as their JSON). It is
+ * never abbreviated silently: past the host's limit it is cut and `truncated`
+ * carries how many characters were left out, so the surface can say so in
+ * words. `long` is the host's judgement that the value cannot sit inside a
+ * sentence (it is long or multi-line) and belongs in the card's own block.
+ */
+export interface ApprovalArg {
+  /** The parameter's name as the catalog declares it (`agentSlugOrId`). */
+  name: string;
+  value: string;
+  long: boolean;
+  /** Characters cut off the end of `value`. Absent when nothing was cut. */
+  truncated?: number;
+}
+
+/** The host-owned content a shell displays before sending a receipt.
+ *
+ *  `title`/`detail` are the host's plain-English rendering, for text-only
+ *  surfaces and as the fallback for any shell that cannot localize the
+ *  operation. A shell that can renders `operation` + `args` in its own
+ *  language. `label` on each option is likewise a default the surface is
+ *  expected to override with its own locale. */
 export interface ApprovalPresentation {
   title: string;
   detail?: string;
-  options: { kind: "approval"; id: "approve" | "decline" }[];
+  args: ApprovalArg[];
+  options: {
+    kind: "approval";
+    id: "approve" | "decline";
+    label: string;
+  }[];
   operation: string;
   expiresAt: number;
 }

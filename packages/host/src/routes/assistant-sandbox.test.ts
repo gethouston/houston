@@ -75,6 +75,30 @@ const CATALOG: AssistantCatalog = {
       },
     },
     {
+      name: "setAgentTeam",
+      group: "teams",
+      description: "Put an agent on a team.",
+      confirm: false,
+      hidden: false,
+      params: [
+        {
+          name: "team",
+          required: true,
+          schema: { type: "string" },
+          resolver: "teams",
+        },
+      ],
+      returns: { type: "object" },
+      route: {
+        method: "POST",
+        path: "/v1/teams/assign",
+        pathParams: [],
+        query: { team: "team" },
+        body: null,
+        bodyFields: null,
+      },
+    },
+    {
       name: "createRoutine",
       group: "routines",
       description: "Schedule recurring work.",
@@ -400,9 +424,20 @@ interface CallOpts {
   path?: string;
   gatewayFronted?: boolean;
   approvals?: ApprovalStore;
+  /** Call as a runtime with no turn of the host's running behind it (S9). */
+  noLiveTurn?: boolean;
 }
 
 async function call(body: unknown, opts: CallOpts = {}) {
+  // Production records the turn when the user's send arrives
+  // (routes/agents.ts), and every write is refused without one. Tests that pin
+  // the gate itself start their own record (or ask for none at all).
+  const claimed =
+    opts.conversationId === null
+      ? undefined
+      : (opts.conversationId ?? "conv-1");
+  if (claimed && !opts.noLiveTurn && !liveTurns.get(ASSISTANT_AGENT, claimed))
+    liveTurns.start(ASSISTANT_AGENT, claimed, "execute");
   const vfs = new MemoryVfs();
   const paths = new LocalPaths();
   for (const agent of AGENTS) {
@@ -1067,14 +1102,16 @@ test("a pending request with arguments the operation refuses is a 400", async ()
 });
 
 // An unattended turn (a routine) has nobody to ask, so there is nowhere for an
-// answer to arrive and nothing may be raised in the first place.
+// answer to arrive and nothing may be raised in the first place. A call that
+// names no conversation at all names no turn either, which is the earlier and
+// stricter of the two refusals (routes/plan-gate.ts).
 test("a pending request with no conversation is refused", async () => {
   const out = await call(
     { operation: "deleteRoutine", params: { agentPath: "Work/Ada", id: "r1" } },
     { path: ASSISTANT_PENDING_PATH, conversationId: null },
   );
   expect(out.status).toBe(400);
-  expect(out.body).toMatchObject({ code: "missing_conversation" });
+  expect(out.body).toMatchObject({ code: "not_in_turn" });
 });
 
 test("a hidden operation cannot be raised for approval either", async () => {
@@ -1291,4 +1328,114 @@ test("plan refuses the approval card too, before the user is ever asked", async 
   );
   expect(result.status).toBe(403);
   expect(result.body).toMatchObject({ code: "plan_mode" });
+});
+
+/**
+ * S2 (round 2) — THE CALL IS THE CATALOG'S VOCABULARY. An undeclared argument
+ * changes nothing about what the operation does, so leaving it in would put a
+ * sentence in front of the person ("Houston note: this is reversible") that the
+ * call itself never carries.
+ */
+test("an undeclared argument is refused before anything is dispatched", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const result = await call(
+    {
+      operation: "createRoutine",
+      params: {
+        agentPath: "w1/Dobby",
+        input: { name: "n" },
+        "Houston note": "this is reversible",
+      },
+    },
+    { fetchImpl: impl, conversationId: "conv-1" },
+  );
+  expect(result.status).toBe(400);
+  expect(result.body).toMatchObject({ code: "invalid_params" });
+  expect(String((result.body as { error: string }).error)).toContain(
+    "Houston note",
+  );
+  expect(calls).toEqual([]);
+});
+
+test("an undeclared argument never reaches an approval card", async () => {
+  const approvals = new ApprovalStore();
+  const result = await call(
+    {
+      operation: "deleteRoutine",
+      params: {
+        agentPath: "w1/Dobby",
+        id: "r1",
+        "Houston note": "this is reversible",
+      },
+    },
+    { path: ASSISTANT_PENDING_PATH, conversationId: "conv-1", approvals },
+  );
+  expect(result.status).toBe(400);
+  expect(result.body).toMatchObject({ code: "invalid_params" });
+  // Nothing was raised, so there is no receipt an approval could ever spend.
+  expect(approvals.hasPending(ASSISTANT_AGENT, "conv-1")).toBe(false);
+});
+
+/**
+ * S9 — THE GATE FAILS CLOSED. Missions have always refused a call with no turn
+ * behind it (`not_in_turn`); the operation dispatcher answers the same way, so a
+ * runtime cannot reach the credential by simply never being in a turn.
+ */
+test("a write with no live turn behind it is refused", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const result = await call(
+    {
+      operation: "createRoutine",
+      params: { agentPath: "w1/Dobby", input: { name: "n" } },
+    },
+    { fetchImpl: impl, conversationId: "conv-1", noLiveTurn: true },
+  );
+  expect(result.status).toBe(400);
+  expect(result.body).toMatchObject({ code: "not_in_turn" });
+  expect(calls).toEqual([]);
+});
+
+test("a write naming a chat the host started no turn in is refused", async () => {
+  liveTurns.start(ASSISTANT_AGENT, "conv-1", "execute");
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const result = await call(
+    {
+      operation: "createRoutine",
+      params: { agentPath: "w1/Dobby", input: { name: "n" } },
+    },
+    { fetchImpl: impl, conversationId: "conv-invented", noLiveTurn: true },
+  );
+  expect(result.status).toBe(400);
+  expect(result.body).toMatchObject({ code: "not_in_turn" });
+  expect(calls).toEqual([]);
+});
+
+test("a read outside a turn still reads", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: [] }));
+  const result = await call(
+    { operation: "listOrgs", params: {} },
+    { fetchImpl: impl, conversationId: "conv-1", noLiveTurn: true },
+  );
+  expect(result.status).toBe(200);
+  expect(calls).toHaveLength(1);
+});
+
+/**
+ * A collection this deployment does not have at all. Answered as a refusal the
+ * model can act on ("Houston cannot do this here") rather than an empty list,
+ * which would have it offering to create the user's first team on a host that
+ * has no teams (assistant/entity-directory-local.ts).
+ */
+test("a local host says teams are not supported, not that there are none yet", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const result = await call(
+    { operation: "setAgentTeam", params: { team: "Growth" } },
+    { fetchImpl: impl, conversationId: "conv-1" },
+  );
+  expect(result.status).toBe(400);
+  expect(result.body).toMatchObject({ code: "unsupported_entity" });
+  expect(String((result.body as { error: string }).error)).toContain(
+    "not supported on this Houston",
+  );
+  expect(calls).toEqual([]);
 });

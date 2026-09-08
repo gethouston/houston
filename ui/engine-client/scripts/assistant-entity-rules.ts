@@ -1,4 +1,5 @@
 import type { AssistantEntityCollection } from "@houston/domain/assistant-catalog-types";
+import { FIELD_SOURCES } from "./assistant-field-rules.ts";
 
 /**
  * WHAT a parameter's value is, in one table.
@@ -51,7 +52,8 @@ export interface EntityRule {
 /**
  * The collections, in the order they are consulted. `after` beats `names`: the
  * route is the stronger evidence, because it is the path the value is actually
- * spliced into.
+ * spliced into. The body-field rules come LAST, so a qualified `<param>.<field>`
+ * name can never shadow a rule the path itself established.
  */
 export const ENTITY_SOURCES: readonly EntityRule[] = [
   // Agents. Every `/agents/{…}` and `/v1/agents/{…}` segment, under all four
@@ -171,4 +173,5 @@ export const ENTITY_SOURCES: readonly EntityRule[] = [
     unlisted:
       "An agent document is addressed by its known name, and nothing lists them.",
   },
+  ...FIELD_SOURCES,
 ];

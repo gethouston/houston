@@ -15,12 +15,11 @@
  * barrels' extensionless internal imports do not resolve.
  */
 
-export { MODEL_ALIASES } from "@houston/domain/model-aliases";
+export { MODEL_ALIASES, modelAliasesFor } from "@houston/domain/model-aliases";
 export {
   humanizedModelName,
   MODEL_DISPLAY,
   modelDisplayName,
-  modelLabel,
 } from "@houston/domain/model-display-names";
 export { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 export {

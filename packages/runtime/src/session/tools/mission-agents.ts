@@ -55,11 +55,22 @@ export async function reachableAgentSummaries(
       body: JSON.stringify({ operation: "listAgents", params: {} }),
       signal,
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      console.error(
+        `[missions] could not read the user's agents for a refusal: HTTP ${res.status}`,
+      );
+      return [];
+    }
     return summarize(await res.json());
-  } catch {
+  } catch (err) {
     // Never a second failure on the diagnostic path: the caller's own refusal
-    // is what the model has to act on, and it reads fine without the names.
+    // is what the model has to act on, and it reads fine without the names. But
+    // it must not be silent either - a refusal that stopped naming the agents
+    // is how this reads to the user, and nothing else would say why.
+    console.error(
+      "[missions] could not read the user's agents for a refusal:",
+      err instanceof Error ? err.message : String(err),
+    );
     return [];
   }
 }

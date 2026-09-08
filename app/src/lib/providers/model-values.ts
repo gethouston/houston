@@ -1,6 +1,6 @@
 // Same self-contained-subpath rule as `./build-provider.ts`: the ONE
 // legacy-alias table, owned by `@houston/domain` and re-exported by the SDK.
-import { MODEL_ALIASES } from "@houston/sdk/provider-catalog";
+import { modelAliasesFor } from "@houston/sdk/provider-catalog";
 import { getProvider, isOpenCatalogProvider } from "./lookup.ts";
 import {
   type ContextWindowConfig,
@@ -92,34 +92,32 @@ export function modelAcceptsImages(
 }
 
 /**
- * Retired Claude CLI aliases → the explicit catalog id that replaced them, read
- * from the SAME domain table the host applies when it rewrites a stored config
- * (`@houston/domain` `model-aliases.ts`). A bare tier name resolves to the
- * current model at that tier, never an upgrade.
- */
-const LEGACY_MODEL_ALIASES: Readonly<Record<string, string>> =
-  MODEL_ALIASES.anthropic ?? {};
-
-/**
  * Interpret a model value that may have been persisted by an older Houston
- * build. The catalog pins explicit versions now, so a stored `"opus"`/`"sonnet"`
- * (an agent config the engine has not migrated yet, or an activity record —
- * those are never migrated) must be read as the version it denoted rather than
- * treated as unknown. Without this, `validModelOrNull` would null a legacy
- * `"opus"` and the effective-model chain would fall through to the default,
- * silently downgrading an Opus agent to Sonnet. Already-explicit IDs and other
- * providers' models pass through unchanged; null/undefined returns null so it
+ * build, AGAINST THE PROVIDER IT BELONGS TO. The catalog pins explicit versions
+ * now, so a stored `"opus"`/`"sonnet"` (an agent config the engine has not
+ * migrated yet, or an activity record — those are never migrated) must be read
+ * as the version it denoted rather than treated as unknown. Without this,
+ * `validModelOrNull` would null a legacy `"opus"` and the effective-model chain
+ * would fall through to the default, silently downgrading an Opus agent to
+ * Sonnet.
+ *
+ * The provider is not optional: the same bare id means different things to
+ * different providers, and reading one provider's row for another's pin is how
+ * a stored Codex `gpt-5.5` survived as a hard pin on a model the picker never
+ * shows, answered by the send as "model not available". Either id dialect is
+ * accepted (`modelAliasesFor` canonicalizes). Already-explicit ids and models
+ * with no alias row pass through unchanged; null/undefined returns null so it
  * composes in `??` chains.
  */
 export function normalizeLegacyModel(
   model: string | null | undefined,
+  provider: string | null | undefined,
 ): string | null {
   if (!model) return null;
+  const aliases = modelAliasesFor(provider);
   // `hasOwnProperty` guard so a hand-edited config with a model like
   // "constructor"/"__proto__" resolves to itself, not an Object.prototype member.
-  return Object.hasOwn(LEGACY_MODEL_ALIASES, model)
-    ? LEGACY_MODEL_ALIASES[model]
-    : model;
+  return Object.hasOwn(aliases, model) ? aliases[model] : model;
 }
 
 /** Reasoning-effort levels the given provider+model accepts (low→high). */

@@ -119,6 +119,43 @@ export interface AssistantParameterDocument<Schema = AssistantJsonSchema> {
   resolver?: AssistantEntityCollection;
   /** Why no live list backs this identifier, when none does. */
   unresolved?: string;
+  /**
+   * Identifiers carried INSIDE this parameter, one level in (see
+   * {@link AssistantFieldDocument}). Absent when the parameter carries none.
+   */
+  fields?: AssistantFieldDocument[];
+}
+
+/**
+ * One FIELD inside an object parameter: the same "where does this value come
+ * from" answer a parameter carries, one level in.
+ *
+ * It exists because the identity a caller needs does not stop at the top level.
+ * `setAgentModelChoice` takes one `choice` object holding a provider and a
+ * model, `putSkillsManifest` takes a manifest holding a list of skill names,
+ * `setAgentAssignments` takes a list of people - and to a reader that declared
+ * nothing about them, every one of those is a free string to invent. Declaring
+ * them here is what lets the host resolve them against the live list (or say
+ * plainly that nothing lists them) instead of forwarding a guess.
+ *
+ * ONE level, deliberately. Every identifier in the surface sits at the top of
+ * its object or one step inside it; walking arbitrarily deep would buy nothing
+ * and make the resolver a schema interpreter.
+ *
+ * A field applies to whatever the parameter's value turns out to be: a property
+ * of an object, the same property of every element of an array of objects, and
+ * - when the field itself holds a list - to every entry in that list. The shape
+ * of the value decides, so no flag says which.
+ */
+export interface AssistantFieldDocument {
+  /** The property name inside the object the parameter carries. */
+  name: string;
+  /** The catalog operation whose result lists this field's accepted values. */
+  source?: string;
+  /** The live list the host resolves the value against before it acts. */
+  resolver?: AssistantEntityCollection;
+  /** Why no live list backs this one, when none does. */
+  unresolved?: string;
 }
 
 export interface AssistantOperationDocument<Schema = AssistantJsonSchema> {

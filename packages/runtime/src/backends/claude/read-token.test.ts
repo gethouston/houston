@@ -644,3 +644,65 @@ test("expiry is judged per read, never cached with the parse", () => {
   expect(readAnthropicToken(store(undefined))).toBeUndefined();
   vi.useRealTimers();
 });
+
+test("an expired SERVED token never falls back to the shared login file", () => {
+  // On a pod the gateway is the authority for, the shared file is a push-time
+  // leftover that can belong to another account entirely. Running the turn on
+  // it would authenticate the user as someone else; failing the turn lets the
+  // next sync bring a fresh token.
+  serveModeServing(["anthropic"]);
+  writeSharedLoginFile(
+    envelope("sk-ant-oat01-someone-else", Date.now() + HOUR),
+  );
+  expect(
+    readAnthropicToken(
+      store({
+        type: "oauth",
+        access: "sk-ant-oat01-served",
+        refresh: "",
+        expires: Date.now() - 1,
+      }),
+    ),
+  ).toBeUndefined();
+});
+
+test("an expired token still falls back where the file IS the authority", () => {
+  // Desktop and self-host: one login, every agent. Nothing central serves
+  // anthropic here, so the shared file is exactly what the user logged in with.
+  writeSharedLoginFile(envelope("sk-ant-oat01-desktop", Date.now() + HOUR));
+  expect(
+    readAnthropicToken(
+      store({
+        type: "oauth",
+        access: "sk-ant-oat01-old",
+        refresh: "",
+        expires: Date.now() - 1,
+      }),
+    ),
+  ).toMatchObject({ kind: "oauth-token", value: "sk-ant-oat01-desktop" });
+});
+
+test("a caller with no remove drops nothing", () => {
+  // The session staleness probe (session/claude-token-guard.ts) asks whether a
+  // cached session's token is still current. It must answer, not act.
+  writeSharedLoginFile(envelope("sk-ant-oat01-newer", Date.now() + 2 * HOUR));
+  const held = store({
+    type: "oauth",
+    access: "sk-ant-oat01-older",
+    refresh: "",
+    expires: Date.now() + HOUR,
+  });
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const readOnly = readAnthropicToken({ get: held.get });
+  expect(readOnly).toMatchObject({ value: "sk-ant-oat01-newer" });
+  expect(held.removed).toEqual([]);
+  // Not attempted at all: a probe that tries the write and reports the failure
+  // is a probe that fills the log with an error nobody can act on.
+  expect(error).not.toHaveBeenCalled();
+  error.mockRestore();
+  // The full read, which owns the drop, still records the supersession.
+  expect(readAnthropicToken(held)).toMatchObject({
+    value: "sk-ant-oat01-newer",
+  });
+  expect(held.removed).toEqual(["anthropic"]);
+});

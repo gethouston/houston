@@ -68,10 +68,12 @@ type Call = { prompt: string; options: Options };
 /** A store whose mapping is real, so a dropped session is observable. */
 function store(
   sessionId?: string,
-): SessionsStore & { id: () => string | undefined } {
+): SessionsStore & { id: () => string | undefined; purged: string[] } {
   let current = sessionId;
+  const purged: string[] = [];
   return {
     id: () => current,
+    purged,
     getSessionId: () => current,
     setSessionId: (_c, s) => {
       current = s;
@@ -79,7 +81,12 @@ function store(
     remove: () => {
       current = undefined;
     },
-    purge: () => {},
+    // The real store deletes the transcript JSONL as well; recorded here so a
+    // test can tell the two apart.
+    purge: (id) => {
+      purged.push(id);
+      current = undefined;
+    },
     resolveResume: () => current,
   };
 }
@@ -133,6 +140,10 @@ test("compaction summarizes the live session and returns the summary", async () 
   expect(calls[0]?.options.resume).toBe("sdk-1");
   // ...and the restart: the mapping is gone, so the next turn opens fresh.
   expect(sessions.id()).toBeUndefined();
+  // The abandoned transcript goes with it. Dropping the mapping alone left one
+  // unreachable JSONL per compaction in the SHARED config dir: the session id
+  // it is named after lived only in the mapping just deleted.
+  expect(sessions.purged).toEqual(["c1"]);
 });
 
 test("the summarizer is given no tools and says nothing on the wire", async () => {

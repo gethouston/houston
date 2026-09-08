@@ -34,6 +34,12 @@ export async function errorFromResponse(
   if (code === "plan_mode") {
     return { code: "plan_mode", status: res.status, message: detail };
   }
+  // Same reasoning, other direction: the host recorded no live turn for this
+  // chat, so nothing happened and nothing will if the call is repeated. Named,
+  // so the model acts inside a turn instead of retrying a "gateway error".
+  if (code === "not_in_turn") {
+    return { code: "not_in_turn", status: res.status, message: detail };
+  }
   if (code === "operation_not_supported") {
     return {
       code: "operation_not_supported",

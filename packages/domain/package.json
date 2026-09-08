@@ -35,6 +35,14 @@
       "types": "./src/agent-color-ids.ts",
       "import": "./src/agent-color-ids.ts"
     },
+    "./assistant-role": {
+      "types": "./src/assistant-role.ts",
+      "import": "./src/assistant-role.ts"
+    },
+    "./assistant-capability-index": {
+      "types": "./src/assistant-capability-index.generated.ts",
+      "import": "./src/assistant-capability-index.generated.ts"
+    },
     "./assistant-catalog-types": {
       "types": "./src/assistant-catalog-types.ts",
       "import": "./src/assistant-catalog-types.ts"

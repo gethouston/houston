@@ -80,7 +80,7 @@ test("a model is validated against the provider the same call pins", () => {
   ).toMatchObject({
     ok: false,
     error: {
-      code: "invalid_provider",
+      code: "invalid_model",
       message: expect.stringMatching(/gpt-5.5-codex/),
     },
   });
@@ -95,7 +95,7 @@ test("a model named alone is validated against the inherited provider", () => {
   ).toMatchObject({
     ok: false,
     error: {
-      code: "invalid_provider",
+      code: "invalid_model",
       message: expect.stringMatching(/gpt-5.5/),
     },
   });

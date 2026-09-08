@@ -91,15 +91,15 @@ export function hydrateProviderCatalog(catalog: ProviderCatalog): void {
   // An empty catalog is NOT a deployment with zero providers: every deployment
   // serves the full pi-ai set, so `[]` means a broken host or empty registry.
   // Rebuilding from it would wipe the override seed down to just the local
-  // provider, emptying the picker + connect surfaces. Keep the seed instead so
-  // the UI stays populated, but warn — an empty catalog is never expected on a
-  // healthy host and points at a deploy/registry problem worth investigating.
-  if (catalog.length === 0) {
-    console.warn(
-      "[providers] hydrateProviderCatalog called with an empty catalog; keeping the seed",
-    );
-    return;
-  }
+  // provider, emptying the picker + connect surfaces, so the seed is kept and
+  // the UI stays populated.
+  //
+  // Nothing is logged here: the query that OWNS the fetch already counts a
+  // 200-but-empty catalog as a failure and surfaces it once, with authored copy
+  // and a Sentry report (`hooks/use-provider-catalog.ts` ->
+  // `deriveCatalogFailure` -> `useQueryErrorToast`). A console line here would
+  // be a second, unreported account of the same event.
+  if (catalog.length === 0) return;
   const built = buildCatalog(catalog);
   PROVIDERS.length = 0;
   PROVIDERS.push(...built);

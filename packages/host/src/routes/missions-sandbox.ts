@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Activity, HoustonEvent } from "@houston/protocol";
-import { ACTING_AS_HEADER, actingAuthorFromHeader } from "../auth/acting";
+import { actingAuthorFromHeader } from "../auth/acting";
 import type { Agent, Workspace, WorkspaceRuntime } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
@@ -13,10 +13,12 @@ import type {
 import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { bearer, header, json } from "./http";
+import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
 import { liveTurns } from "./live-turn";
 import { handleMissionSettle, handleMissionStatus } from "./missions-manage";
 import { handleList, handleMissionRead } from "./missions-read";
 import { handleMissionStart } from "./missions-start";
+import { refusedOutsideExecuteTurn } from "./plan-gate";
 
 /**
  * The RUNTIME-facing mission routes (HMAC sandbox token), PRODUCT-1244 — the
@@ -130,6 +132,24 @@ export async function handleSandboxMissions(
     json(res, 404, { error: "agent not found" });
     return true;
   }
+  // WHICH CHAT THIS CALL IS SPEAKING IN. The runtime NAMES the conversation
+  // (`x-houston-conversation-id`) and the host MATCHES it against its own record
+  // of the turn it started there (routes/live-turn.ts): every mission decision
+  // that reads it is a decision ABOUT the caller - which mission it may not move
+  // (it is the one it is talking in), how deep its next start sits, whose name
+  // the work is done in - so a runtime that could source a conversation would be
+  // answering its own guards. No record means no turn of the host's is running
+  // there, and the write is refused rather than attributed to a chat nobody is in.
+  const claimedConversationId = header(req, CONVERSATION_ID_HEADER);
+  const turn = claimedConversationId
+    ? liveTurns.get(claim.agentId, claimedConversationId)
+    : undefined;
+  if (
+    (isStart || isStatus) &&
+    refusedOutsideExecuteTurn(claim.agentId, claimedConversationId, res)
+  ) {
+    return true;
+  }
   const paths = deps.paths ?? DEFAULT_PATHS;
   const ctx: MissionsCtx = {
     deps,
@@ -138,17 +158,15 @@ export async function handleSandboxMissions(
     vfs,
     root: paths.agentRoot(ws, agent),
     paths,
-    // WHICH CHAT THIS CALL IS SPEAKING IN, from the host's own record of the
-    // turn (routes/live-turn.ts) rather than the runtime's header. Every mission
-    // decision that reads it is a decision ABOUT the caller - which mission it
-    // may not move (it is the one it is talking in), how deep its next start
-    // sits - so a runtime that could name any conversation would be answering
-    // its own guards.
-    conversationId: liveTurns.get(claim.agentId)?.conversationId,
+    conversationId: turn?.conversationId,
+    // WHO the turn acts as, as the host recorded it when the turn began. A
+    // loopback /sandbox call is not gateway-fronted, so the acting-as header on
+    // THIS request is the runtime's own word about whose name the mission is
+    // created in; the header the gateway stamped on the user's send is not.
     author: deps.gatewayFronted
-      ? (actingAuthorFromHeader(req.headers[ACTING_AS_HEADER]) ?? undefined)
+      ? (actingAuthorFromHeader(turn?.actingAs) ?? undefined)
       : undefined,
-    actingAs: deps.gatewayFronted ? header(req, ACTING_AS_HEADER) : undefined,
+    actingAs: deps.gatewayFronted ? turn?.actingAs : undefined,
   };
 
   if (isList) await handleList(ctx, url, res);

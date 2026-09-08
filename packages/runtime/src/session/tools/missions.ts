@@ -94,7 +94,7 @@ export function makeMissionTools(opts: MissionToolOptions) {
     name: LIST_MISSIONS_TOOL_NAME,
     label: "Check the board",
     description: assistant
-      ? "See one agent's mission board: every mission on it with its status. Statuses: 'running' (working or waiting to start), 'needs_you' (finished or blocked, awaiting review), 'error' (failed), 'done', 'archived'. Name the agent whose board you want - use it to check on work you started there, and to avoid starting the same thing twice."
+      ? "See one agent's mission board: every mission on it with its status. Statuses: 'running' (working or waiting to start), 'needs_you' (finished or blocked, awaiting review), 'error' (failed), 'done', 'archived'. Name the agent whose board you want - use it to check on work you started there, and to avoid starting the same thing twice. The Houston operation listActivities reads the same board, and deleteActivity is what removes a mission from it."
       : "See the user's mission board: every mission with its status. Statuses: 'running' (working or waiting to start), 'needs_you' (finished or blocked, awaiting review), 'error' (failed), 'done', 'archived'. Use it to check on missions you started, avoid duplicates before starting new ones, or answer what's in flight.",
     promptSnippet: "List the missions on the board",
     parameters: listMissionsParams(assistant),
@@ -118,21 +118,39 @@ export function makeMissionTools(opts: MissionToolOptions) {
         signal,
       );
       if (!result.ok) return toolErrorResult(result.error);
-      const r = result.data;
+      // A 200 whose body is not a board is still a failure, and it has to reach
+      // the model as one: reading `.length` off it threw a TypeError that pi
+      // surfaces as an opaque crash, ending the turn where a named refusal
+      // would have let the model try the other agent.
+      const missions = result.data?.missions;
+      if (!Array.isArray(missions)) {
+        return toolErrorResult({
+          code: "host_error",
+          message:
+            "The board came back in a shape this tool could not read. Try again, and tell the user plainly if it keeps happening.",
+        });
+      }
       return {
         content: [
-          { type: "text" as const, text: JSON.stringify(r.missions, null, 2) },
+          { type: "text" as const, text: JSON.stringify(missions, null, 2) },
         ],
-        details: { ok: true, count: r.missions.length },
+        details: { ok: true, count: missions.length },
       };
     },
   });
 
+  const MOVE_DESCRIPTION =
+    "Move a finished mission on the user's board to 'done' (reviewed and complete) or 'archived' (put away). Only works on missions that already finished - never one still running, and never the mission this chat belongs to. Move a mission only when the user asked you to manage it, or you started it yourself and reviewed its outcome with read_mission first.";
+  // Moving is the ONLY thing this tool does, and a model that reads it as the
+  // whole of mission management answers that a mission cannot be deleted - the
+  // exact failure this cross-reference ends. Only the assistant gets it: an
+  // ordinary agent has no Houston operations to be pointed at.
   const updateStatus = defineTool({
     name: UPDATE_MISSION_STATUS_TOOL_NAME,
     label: "Move a mission",
-    description:
-      "Move a finished mission on the user's board to 'done' (reviewed and complete) or 'archived' (put away). Only works on missions that already finished - never one still running, and never the mission this chat belongs to. Move a mission only when the user asked you to manage it, or you started it yourself and reviewed its outcome with read_mission first.",
+    description: assistant
+      ? `${MOVE_DESCRIPTION} Deleting a mission is NOT this tool: use the Houston operation deleteActivity, which asks the user to confirm first. Never archive something the user asked you to delete.`
+      : MOVE_DESCRIPTION,
     promptSnippet: "Move a mission to done or archived",
     parameters: updateMissionStatusParams(assistant),
     executionMode: "sequential",

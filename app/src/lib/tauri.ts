@@ -1789,7 +1789,7 @@ export const tauriProvider = {
           storedDefaultProvider(),
           getEngine().getPreference(DEFAULT_MODEL_PREF_KEY),
         ]);
-        return { provider, model: normalizeLegacyModel(model) };
+        return { provider, model: normalizeLegacyModel(model, provider) };
       },
     ),
   /**

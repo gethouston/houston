@@ -379,6 +379,11 @@
   "approvalCard": {
     "approve": "Sí, adelante",
     "decline": "No, no lo hagas",
-    "closing": "Houston no puede deshacer esto por ti. ¿Quieres continuar?"
+    "closing": "Houston no puede deshacer esto por ti. ¿Quieres continuar?",
+    "affects": "Esto afecta a {{arguments}}.",
+    "argument": "{{name}} \"{{value}}\"",
+    "exactValue": "Contenido exacto de {{name}}:",
+    "truncated_one": "[y {{formatted}} carácter más, que también se escribiría]",
+    "truncated_other": "[y {{formatted}} caracteres más, que también se escribirían]"
   }
 }

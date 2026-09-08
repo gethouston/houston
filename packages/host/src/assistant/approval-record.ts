@@ -6,6 +6,8 @@
  * each one keeps.
  */
 
+import type { ApprovalArg } from "@houston/protocol/approval";
+
 /** How long a request — and the receipt it becomes — stays usable. */
 export const APPROVAL_TTL_MS = 10 * 60_000;
 
@@ -25,6 +27,11 @@ export interface ApprovalRequest {
   /** The verbatim arguments too long to sit in {@link summary}, shown under it
    *  on the card. Absent when everything fit in the sentence. */
   detail?: string;
+  /** The exact arguments this call would run with, structurally — what a
+   *  surface renders the card from in the READER's language. Derived from the
+   *  same params {@link key} is computed over, so the card a person sees and
+   *  the call their yes authorizes are one thing. */
+  args: ApprovalArg[];
   createdAt: number;
   expiresAt: number;
   /** Set once the user answered. Undefined while the card is still in front

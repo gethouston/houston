@@ -77,9 +77,18 @@ test("local directory uses owned live documents and excludes its coordinator ide
   expect(await directory.sharedSkills(ws.id)).toEqual([
     { slug: "shared", name: "shared" },
   ]);
-  expect(await directory.teams()).toEqual([]);
-  expect(await directory.members()).toEqual([]);
-  expect(await directory.invites()).toEqual([]);
+  // Teams, the people in them and their invitations are not an empty list on a
+  // local host: they are not part of it at all. An empty list would have the
+  // model offering to create the first one.
+  await expect(directory.teams()).rejects.toThrow(
+    "teams are not supported on this Houston",
+  );
+  await expect(directory.members()).rejects.toThrow(
+    "team members are not supported on this Houston",
+  );
+  await expect(directory.invites()).rejects.toThrow(
+    "invitations are not supported on this Houston",
+  );
   await expect(directory.activities(foreign.id)).rejects.toThrow();
   await expect(directory.sharedSkills(outsider.id)).rejects.toThrow();
   await saveActivities(vfs, root, [

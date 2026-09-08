@@ -54,6 +54,7 @@ import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
 import { legacyAgentColor } from "./agent-legacy-color";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
+import { forgetAgentState } from "./agent-state-cleanup";
 import { handleCustomIntegrationsDispatch } from "./custom-integrations-user";
 import { json, readJson } from "./http";
 import { liveTurns } from "./live-turn";
@@ -395,6 +396,10 @@ export async function handleAgents(
         }
         throw err;
       }
+      // The old id is free the moment the directory moves, so nothing this
+      // process still holds under it may outlive the rename
+      // (routes/agent-state-cleanup.ts).
+      if (renamed.id !== agentId) forgetAgentState(agentId);
       // The id moved with the directory, so the color entry must move too
       // (routes/agent-color.ts) or the renamed agent renders the default.
       if (deps.vfs) {
@@ -427,6 +432,7 @@ export async function handleAgents(
     };
     if (channel.withQuiesced) await channel.withQuiesced(ctx, doDelete);
     else await doDelete();
+    forgetAgentState(agentId);
     // A local agent's id is its path, so a future agent can reuse it — leaving
     // the entry behind would hand it a dead agent's color.
     if (deps.vfs) {
@@ -1093,7 +1099,14 @@ export async function handleAgents(
         turnBody ??= await readBody(req, MAX_JSON_BYTES);
         mode = normalizeTurnMode(turnModeOf(turnBody));
       }
-      liveTurns.start(ctx.agent.id, turnConversationId, mode);
+      // WHO this turn acts as, recorded with it: the gateway-minted token this
+      // request arrived with (undefined off the gateway, where an inbound
+      // acting header is untrusted client input). The `/sandbox/*` routes this
+      // turn calls back into read it from here rather than from their own
+      // request, which the runtime writes and could name anyone in.
+      liveTurns.start(ctx.agent.id, turnConversationId, mode, {
+        actingAs: dispatchActingAs,
+      });
     }
     // The Mode pill moved WHILE the assistant works (`POST …/mode`, the route
     // the runtime applies to its live turn): the host reads the same switch on
@@ -1118,9 +1131,13 @@ export async function handleAgents(
     // body read, so desktop/self-host behavior and activity.json are identical.
     if (actingAuthor && deps.vfs && turnConversationId !== undefined) {
       // The mentions ride the turn body, which the channel reads next — drain
-      // it ONCE here and hand the buffer down on the ctx (the stream is
-      // exhausted afterwards, so the channel must not re-read it).
-      turnBody = await readBody(req, MAX_JSON_BYTES);
+      // it ONCE here and hand the buffer down on the ctx. The stream is
+      // exhausted after the first read, so this MUST reuse the buffer the mode
+      // pin above may already hold: re-reading a drained request yields an
+      // empty body, and on a managed coordinator pod (fronted, so acting-as is
+      // always present) that is the whole message, its mode pin, its mentions
+      // and its approval receipts, dropped.
+      turnBody ??= await readBody(req, MAX_JSON_BYTES);
       let mentionedIds: string[] = [];
       try {
         const parsed = JSON.parse(turnBody.toString("utf8") || "{}") as {

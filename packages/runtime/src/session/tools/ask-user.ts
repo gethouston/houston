@@ -27,7 +27,7 @@ const AskUserParams = Type.Object({
     Type.Object({
       question: Type.String({
         description:
-          "ONE question to show the user, in plain everyday language. Never fuse two asks into one ('Should I do X? If so, what is Y?') — make them separate questions in this same call.",
+          "ONE question to show the user, in plain everyday language. Never fuse two asks into one ('Should I do X? If so, what is Y?') - make them separate questions in this same call.",
       }),
       options: Type.Optional(
         Type.Array(
@@ -47,7 +47,7 @@ const AskUserParams = Type.Object({
           }),
           {
             description:
-              "2-6 short, mutually-exclusive choices for this question, offered as single-select rows. Provide these for nearly every question — whenever you can think of likely answers, offer them as choices. Omit ONLY for genuinely open input (a name, an address, content to write). The user can always type a custom answer instead of picking one, so never add a catch-all choice like 'Other' or 'Something else' to this list.",
+              "2-6 short, mutually-exclusive choices for this question, offered as single-select rows. Provide these for nearly every question - whenever you can think of likely answers, offer them as choices. Omit ONLY for genuinely open input (a name, an address, content to write). The user can always type a custom answer instead of picking one, so never add a catch-all choice like 'Other' or 'Something else' to this list.",
           },
         ),
       ),
@@ -78,7 +78,7 @@ export function makeAskUserTool() {
     name: "ask_user",
     label: "Ask the user",
     description:
-      "Ask the user up to 3 blocking questions, offer choices, or request approval before continuing. Batch everything you need before you can act into this ONE call — never drip one question per turn. Houston shows the batch as a single interactive card in place of the chat input; end your turn right after calling this. ALWAYS use this instead of ending your turn with a question written in plain text.",
+      "Ask the user up to 3 blocking questions, offer choices, or request approval before continuing. Batch everything you need before you can act into this ONE call - never drip one question per turn. Houston shows the batch as a single interactive card in place of the chat input; end your turn right after calling this. ALWAYS use this instead of ending your turn with a question written in plain text.",
     promptSnippet: "Ask the user up to 3 questions and wait for their answers",
     parameters: AskUserParams,
     executionMode: "sequential",

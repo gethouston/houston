@@ -182,10 +182,11 @@ async function call(
   } = {},
 ) {
   const headers: Record<string, string> = { authorization: "Bearer sb-good" };
-  if (opts.forgedConversationId)
-    headers[CONVERSATION_ID_HEADER] = opts.forgedConversationId;
-  // The host's own record of the turn is what every mission decision reads
-  // (routes/live-turn.ts); production writes it when the turn starts.
+  // The runtime NAMES the conversation on every mission call and the host
+  // matches it against its own record of the turn (routes/live-turn.ts), which
+  // production writes when the turn starts.
+  const claimed = opts.forgedConversationId ?? opts.conversationId;
+  if (claimed) headers[CONVERSATION_ID_HEADER] = claimed;
   if (opts.conversationId)
     liveTurns.start(caller.id, opts.conversationId, "execute");
   else liveTurns.forget(caller.id);

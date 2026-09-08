@@ -7,6 +7,7 @@ import {
   namesEntity,
 } from "../scripts/assistant-entity-sources.ts";
 import { parseAssistantDocs } from "../scripts/assistant-jsdoc.ts";
+import { nestedFieldsFor } from "../scripts/assistant-nested-fields.ts";
 import { route } from "./assistant-catalog-support.ts";
 
 /**
@@ -213,5 +214,79 @@ describe("namesEntity", () => {
   it("leaves free text alone", () => {
     for (const name of ["name", "content", "query", "days", "email", "toDir"])
       expect(namesEntity(name, at("/v1/things"))).toBe(false);
+  });
+});
+
+describe("nestedFieldsFor", () => {
+  const object = (properties: Record<string, unknown>) => ({
+    type: "object",
+    properties,
+  });
+  const text = { type: "string" };
+  const list = { type: "array", items: text };
+
+  it("declares the provider and model inside a model choice", () => {
+    const fields = nestedFieldsFor(
+      "choice",
+      object({ provider: text, model: text, effort: text }),
+      at("/v1/agents/{agentSlugOrId}/model-choice"),
+      "setAgentModelChoice",
+    );
+    expect(fields).toEqual([
+      {
+        name: "model",
+        unresolved: expect.stringContaining("listAgentProviders"),
+        source: "listAgentProviders",
+      },
+      {
+        name: "provider",
+        unresolved: expect.stringContaining("listAgentProviders"),
+        source: "listAgentProviders",
+      },
+    ]);
+  });
+
+  it("declares a list the host resolves against the agent's skills", () => {
+    expect(
+      nestedFieldsFor(
+        "manifest",
+        object({ enabled: list, version: { type: "number" } }),
+        at("/agents/{agentId}/skills-manifest"),
+        "putSkillsManifest",
+      ),
+    ).toEqual([{ name: "enabled", resolver: "skills", source: "listSkills" }]);
+  });
+
+  it("reads through a list of objects to the identifier each entry carries", () => {
+    expect(
+      nestedFieldsFor(
+        "assignments",
+        { anyOf: [list, { type: "array", items: object({ userId: text }) }] },
+        null,
+        "setAgentAssignments",
+      ),
+    ).toEqual([
+      { name: "userId", resolver: "members", source: "getOrgPeople" },
+    ]);
+  });
+
+  it("claims nothing a rule does not name", () => {
+    // A creation payload is full of `slug`/`id` fields that name something being
+    // MADE. The top level's spelling heuristic would resolve them against lists
+    // they are not in; here, only a declared field is claimed.
+    expect(
+      nestedFieldsFor(
+        "input",
+        object({ slug: text, name: text, spec: text }),
+        at("/v1/integrations/definitions"),
+        "addCustomIntegration",
+      ),
+    ).toEqual([]);
+  });
+
+  it("has nothing to say about a parameter that is not an object", () => {
+    expect(
+      nestedFieldsFor("id", text, at("/agents/{id}"), "deleteAgent"),
+    ).toEqual([]);
   });
 });

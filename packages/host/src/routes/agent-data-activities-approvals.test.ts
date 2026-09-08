@@ -118,10 +118,29 @@ test("a live requestId is served with the HOST's card, not the stored prose", as
     question: "Delete Dobby and everything it has done?",
     detail: "Personal/Dobby",
     options: [
-      { kind: "approval", id: "approve" },
-      { kind: "approval", id: "decline" },
+      { kind: "approval", id: "approve", label: "Yes, go ahead" },
+      { kind: "approval", id: "decline", label: "No, don't do it" },
     ],
+    approval: {
+      operation: "delete_agent",
+      args: [{ name: "agent", value: "Dobby", long: false }],
+    },
   });
+});
+
+test("a runtime cannot author an approval block of its own", async () => {
+  const hostile = row("f".repeat(32));
+  const step = hostile.pending_interaction?.steps[0] as
+    | Record<string, unknown>
+    | undefined;
+  if (!step) throw new Error("the fixture must carry a question step");
+  // A file the agent's own tools can write, claiming a destructive operation
+  // next to an id this host never issued.
+  step.approval = { operation: "deleteAgent", args: [] };
+  const served = firstStep((await listed([hostile])).body);
+
+  expect(served?.approval).toBeUndefined();
+  expect(served?.requestId).toBeUndefined();
 });
 
 test("an unknown requestId is stripped, leaving an ordinary question", async () => {

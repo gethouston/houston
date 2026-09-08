@@ -20,7 +20,6 @@ Calling an operation returns the host's raw response. Where the adapter function
 ## billing
 
 - `createCheckout`: Starts the checkout that subscribes the team workspace to a paid plan. **Confirmation required.**
-- `createPortal`: Opens the billing page where the user can change the card, see invoices, or cancel.
 - `getBilling`: Shows the plan, trial, and payment status of the team workspace.
 
 ## files

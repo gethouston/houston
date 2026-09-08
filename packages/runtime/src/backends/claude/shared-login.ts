@@ -86,7 +86,7 @@ export function readSharedLogin(
  * a reconnect pushed to ANOTHER agent's runtime reaches this one only through
  * the shared file.
  */
-function anthropicIsCentrallyServed(): boolean {
+export function anthropicIsCentrallyServed(): boolean {
   if (!serveModeOn()) return false;
   return readServedProvidersAt(servedManifestPathFor()).includes("anthropic");
 }

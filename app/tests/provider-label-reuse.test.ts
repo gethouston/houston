@@ -67,10 +67,31 @@ describe("brand aliases follow the provider dialect", () => {
   });
 
   it("does not restate the dialect pair", () => {
-    const src = read("../src/components/shell/provider-logo-map.ts");
+    const src = read("../src/lib/providers/brand-aliases.ts");
     ok(
       !src.includes('"openai-codex": "openai"'),
       "the dialect pair must come from @houston/domain, not a second copy",
     );
+  });
+
+  /**
+   * The mark and the label read ONE table, so a variant id can never draw a
+   * brand's logo beside a raw string like "minimax-cn".
+   */
+  it("names a variant id after the brand whose mark it draws", () => {
+    strictEqual(providerBrandKey("minimax-cn"), "minimax");
+    strictEqual(providerName("minimax-cn"), providerName("minimax"));
+    strictEqual(providerName("minimax-cn"), "MiniMax");
+  });
+
+  it("keeps the id when the parent is not in the catalog either", () => {
+    // The mark exists (the art ships with the app), the NAME comes from the
+    // live catalog — and inventing one would be worse than the id.
+    strictEqual(providerBrandKey("qwen-token-plan"), "qwen");
+    strictEqual(providerName("qwen-token-plan"), "qwen-token-plan");
+  });
+
+  it("still falls back to the id for a provider nothing knows", () => {
+    strictEqual(providerName("not-a-provider"), "not-a-provider");
   });
 });

@@ -1,0 +1,148 @@
+{
+  "operations": {
+    "acceptOrgInvite": "Accept this invitation to join a shared space.",
+    "addCustomIntegration": "Add an outside app of your own from a link.",
+    "addOrgMember": "Invite someone to this space with the role you chose.",
+    "cancelRoutineRun": "Stop this routine run while it is under way.",
+    "createAgent": "Create a new agent.",
+    "createApiKey": "Create a new API key.",
+    "createCheckout": "Start the checkout that subscribes this workspace to a paid plan.",
+    "createOrg": "Create a shared space you can invite teammates into.",
+    "createRoutine": "Create a routine so the agent repeats work on a schedule.",
+    "createSharedSkill": "Create a skill and share it with everyone in the workspace.",
+    "createSkill": "Create a skill the agent can follow.",
+    "declineOrgInvite": "Decline this invitation to join a shared space.",
+    "deleteActivity": "Delete this mission from the agent's board.",
+    "deleteAgent": "Delete this agent and everything in it. This cannot be undone.",
+    "deleteAgentTeam": "Delete this team.",
+    "deleteFile": "Delete this file from the agent's workspace for good.",
+    "deleteOrg": "Delete this shared space and everything inside it. This cannot be undone.",
+    "deleteOrgInvite": "Cancel this pending invitation to the space.",
+    "deleteRoutine": "Delete this routine so it stops running on its schedule.",
+    "deleteSharedSkill": "Delete a skill shared with the workspace, removing it for everyone.",
+    "deleteSkill": "Delete this skill so the agent no longer has it.",
+    "detectCustomIntegration": "Check what kind of service this link points to.",
+    "forgetCredential": "Sign this workspace out of the AI account.",
+    "getTunnelCredentials": "Get the credentials that link a local AI model to a cloud agent.",
+    "installAgentFromGithub": "Install an agent from a GitHub repository.",
+    "installCommunitySkill": "Install a skill from the community directory into the agent.",
+    "installSkillsFromRepo": "Install skills from a GitHub repository into the agent.",
+    "joinAgentTeam": "Join this team in the space.",
+    "mintRoutineWebhookKey": "Create a fresh key that lets an outside service start this routine. Any key issued before stops working.",
+    "moveAgent": "Move this agent into a shared space so teammates can work with it.",
+    "moveProjectFile": "Move this file into another folder of the agent's workspace.",
+    "promoteSharedSkill": "Share the agent's skill with everyone in the workspace.",
+    "pushClaudeOAuthCredential": "Send this computer's Claude sign-in to a cloud agent.",
+    "putSkillsManifest": "Choose which of the agent's skills are switched on.",
+    "removeAgentTeamMember": "Remove this person from the team.",
+    "removeCustomIntegration": "Remove an outside app you added yourself.",
+    "removeOrgMember": "Remove this person from the space.",
+    "renameAgent": "Rename this agent.",
+    "renameFile": "Rename this file in the agent's workspace.",
+    "revokeApiKey": "Revoke this API key for good. Anything still using it stops working.",
+    "runRoutineNow": "Run this routine right now instead of waiting for its next scheduled time.",
+    "saveSharedSkill": "Save changes to a skill shared with the workspace, for everyone who uses it.",
+    "saveSkill": "Save changes to this skill's instructions.",
+    "setAgentAssignments": "Choose who may use this agent, and at what access level.",
+    "setAgentModelChoice": "Change which AI model this agent uses.",
+    "setAgentSettings": "Choose which apps and AI models this agent is allowed to use.",
+    "setAgentTeam": "Move this agent into another team in this space.",
+    "setAgentTeamMemberOwner": "Give someone ownership of this team, or take it away.",
+    "setContext": "Replace the background notes Houston gives the agent on every conversation.",
+    "setOrgMemberRole": "Change what this person is allowed to do in this space.",
+    "submitCustomIntegrationCredential": "Save the secret that finishes setting up this app.",
+    "updateActivity": "Update this mission's details or status.",
+    "updateAgentTeam": "Rename this team, reorder it, restyle it, or update the notes it shares.",
+    "updateRoutine": "Update this routine's schedule or instructions.",
+    "writeAgentFile": "Replace the contents of one of the agent's saved data files."
+  },
+  "arguments": {
+    "agentId": "agent",
+    "agentPath": "agent",
+    "agentSlugOrId": "agent",
+    "assignments": "access",
+    "body": "details",
+    "choice": "model",
+    "color": "color",
+    "content": "contents",
+    "credentialJson": "sign in",
+    "email": "email",
+    "githubUrl": "GitHub link",
+    "id": "id",
+    "input": "details",
+    "interval": "billing period",
+    "inviteId": "invitation",
+    "kind": "kind",
+    "manifest": "skills",
+    "name": "name",
+    "newName": "new name",
+    "owner": "ownership",
+    "patch": "changes",
+    "provider": "AI account",
+    "relPath": "file",
+    "role": "role",
+    "routineId": "routine",
+    "runId": "run",
+    "seed": "starting instructions",
+    "settings": "settings",
+    "slug": "name",
+    "teamId": "team",
+    "toDir": "destination folder",
+    "toSlug": "space",
+    "updates": "changes",
+    "url": "link",
+    "userId": "person",
+    "values": "values",
+    "workspaceId": "workspace"
+  },
+  "argumentsByOperation": {
+    "deleteActivity": {
+      "id": "mission"
+    },
+    "deleteAgent": {
+      "id": "agent"
+    },
+    "deleteOrg": {
+      "slug": "space"
+    },
+    "deleteRoutine": {
+      "id": "routine"
+    },
+    "deleteSharedSkill": {
+      "slug": "skill"
+    },
+    "deleteSkill": {
+      "slug": "skill"
+    },
+    "promoteSharedSkill": {
+      "slug": "skill"
+    },
+    "removeCustomIntegration": {
+      "slug": "app"
+    },
+    "renameAgent": {
+      "id": "agent"
+    },
+    "revokeApiKey": {
+      "id": "key"
+    },
+    "runRoutineNow": {
+      "id": "routine"
+    },
+    "saveSharedSkill": {
+      "slug": "skill"
+    },
+    "saveSkill": {
+      "slug": "skill"
+    },
+    "submitCustomIntegrationCredential": {
+      "slug": "app"
+    },
+    "updateActivity": {
+      "id": "mission"
+    },
+    "updateRoutine": {
+      "id": "routine"
+    }
+  }
+}

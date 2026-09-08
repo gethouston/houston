@@ -8,6 +8,7 @@ import {
   type ConsumeApprovalInput,
   type IssueApprovalInput,
 } from "./approval-record";
+import { approvalArgs } from "./summary";
 
 /**
  * Where a destructive Houston operation's approval actually lives: in the HOST,
@@ -66,6 +67,9 @@ export class ApprovalStore {
       conversationId: input.conversationId,
       summary: input.summary,
       ...(input.detail ? { detail: input.detail } : {}),
+      // Derived from the SAME params the key is computed over, never passed in
+      // beside them: the card's arguments and the approved call cannot drift.
+      args: approvalArgs(input.params),
       createdAt: at,
       expiresAt: at + APPROVAL_TTL_MS,
     };

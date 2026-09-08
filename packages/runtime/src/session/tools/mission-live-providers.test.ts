@@ -176,7 +176,7 @@ test("a model is validated against the provider's live catalog", async () => {
     details: {
       ok: false,
       error: {
-        code: "invalid_provider",
+        code: "invalid_model",
         message: expect.stringMatching(/claude-sonnet-5/),
       },
     },

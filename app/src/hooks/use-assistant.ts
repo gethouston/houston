@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  assistantDiscoveryRetryDelayMs,
-  isAssistantUnavailableError,
-  shouldRetryAssistantDiscovery,
-} from "../lib/assistant-availability.ts";
+import { isAssistantUnavailableError } from "../lib/assistant-availability.ts";
 import {
   type AssistantDiscovery,
   assistantDiscoveryState,
 } from "../lib/assistant-discovery-state.ts";
+import {
+  assistantDiscoveryRetryDelayMs,
+  assistantRefetchIntervalMs,
+  shouldRetryAssistantDiscovery,
+} from "../lib/assistant-retry-schedule.ts";
 import { newEngineActive } from "../lib/engine.ts";
 import { queryKeys } from "../lib/query-keys.ts";
 import {
@@ -88,6 +89,12 @@ export function useAssistant(): AssistantDiscovery {
     // No `retry` here on purpose: the bounded, reason-aware ladder is inside
     // `discoverAssistant`, where the intermediate attempts stay silent.
     retry: false,
+    // A spent ladder on a still-waking pod is not a settled answer, so the
+    // query keeps asking on a slow beat rather than leaving the rail row
+    // absent until something else happens to remount it. Absence ("this
+    // deployment has no assistant") and real failures poll nothing: one is
+    // final, the other is already reported.
+    refetchInterval: (q) => assistantRefetchIntervalMs(q.state.error),
   });
 
   return assistantDiscoveryState({

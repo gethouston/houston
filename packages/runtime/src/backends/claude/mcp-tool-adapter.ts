@@ -4,6 +4,7 @@ import type {
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
+import { loggedToolCall } from "../../session/tool-call-log";
 import { toZodShape } from "./schema-to-zod";
 
 /**
@@ -47,12 +48,10 @@ export function adaptTool(tool: BridgedPiTool): SdkMcpToolDefinition {
       // The SDK passes an abort signal on `extra`; forward it so a stopped turn
       // cancels the integration proxy fetch mid-flight (same as the pi path).
       const signal = (extra as { signal?: AbortSignal } | undefined)?.signal;
-      const result = await tool.execute(
-        `mcp-${tool.name}`,
-        args,
-        signal,
-        undefined,
-        NOOP_CTX,
+      // The SAME tool-call record the pi path writes (session/tool-call-log.ts),
+      // so runtime.log reads identically whichever backend served the turn.
+      const result = await loggedToolCall(tool.name, () =>
+        tool.execute(`mcp-${tool.name}`, args, signal, undefined, NOOP_CTX),
       );
       return toCallToolResult(result);
     },

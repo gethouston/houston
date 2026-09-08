@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadActivities } from "@houston/domain";
 import { json, readJson } from "./http";
-import { liveTurns } from "./live-turn";
 import { MAX_AGENT_STARTED_MISSIONS, missionFanout } from "./mission-fanout";
 import {
   MAX_MISSION_DEPTH,
@@ -39,12 +38,13 @@ export async function handleMissionStart(
   const parsed = parseMissionStart(body);
   if (!parsed.ok)
     return json(res, 400, { error: parsed.error, code: parsed.code });
-  // WHERE THIS CALL COMES FROM, as the HOST recorded it when the turn began
-  // (routes/live-turn.ts) - not as the runtime says. The parent conversation is
-  // the agent-started marker AND what the depth chain is counted from, so a
-  // caller that could name a conversation of its own invention would report
-  // itself as a fresh top-level chat forever and the chain would never end.
-  const parentCid = liveTurns.get(ctx.agent.id)?.conversationId;
+  // WHERE THIS CALL COMES FROM: the conversation the caller named, matched
+  // against the HOST's own record of the turn running there before this handler
+  // ever ran (routes/missions-sandbox.ts). The parent conversation is the
+  // agent-started marker AND what the depth chain is counted from, so a caller
+  // that could name a conversation of its own invention would report itself as
+  // a fresh top-level chat forever and the chain would never end.
+  const parentCid = ctx.conversationId;
   if (!parentCid) {
     return json(res, 400, {
       error: "start_mission only works during a turn",

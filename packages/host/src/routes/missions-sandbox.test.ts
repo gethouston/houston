@@ -1,7 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { docKey, saveActivities } from "@houston/domain";
-import type { Activity, HoustonEvent } from "@houston/protocol";
+import type { Activity, HoustonEvent, TurnMode } from "@houston/protocol";
 import { beforeEach, expect, test } from "vitest";
+import { ACTING_AS_HEADER } from "../auth/acting";
 import type { Agent, Workspace } from "../domain/types";
 import { LocalPaths } from "../paths";
 import type {
@@ -109,17 +110,28 @@ async function call(
     /** A conversation the RUNTIME claims and the host never recorded (S7). */
     forgedConversationId?: string;
     token?: string;
+    /** The mode the host recorded for the turn (the Mode pill's answer). */
+    mode?: TurnMode;
+    /** The acting token the GATEWAY stamped on the send that started the turn. */
+    actingAs?: string;
+    /** An acting token the RUNTIME puts on its own loopback call (S16). */
+    spoofedActingAs?: string;
+    gatewayFronted?: boolean;
   } = {},
 ) {
   const headers: Record<string, string> = {
     authorization: `Bearer ${opts.token ?? "sb-good"}`,
   };
-  if (opts.forgedConversationId)
-    headers[CONVERSATION_ID_HEADER] = opts.forgedConversationId;
-  // The host's own record of the turn is what every mission decision reads
-  // (routes/live-turn.ts); production writes it when the turn starts.
+  // The runtime NAMES the conversation on every mission call; the host matches
+  // it against its own record of the turn (routes/live-turn.ts), which
+  // production writes when the turn starts.
+  const claimed = opts.forgedConversationId ?? opts.conversationId;
+  if (claimed) headers[CONVERSATION_ID_HEADER] = claimed;
+  if (opts.spoofedActingAs) headers[ACTING_AS_HEADER] = opts.spoofedActingAs;
   if (opts.conversationId)
-    liveTurns.start(agent.id, opts.conversationId, "execute");
+    liveTurns.start(agent.id, opts.conversationId, opts.mode ?? "execute", {
+      actingAs: opts.actingAs,
+    });
   else liveTurns.forget(agent.id);
   const { res, captured } = fakeRes();
   const handled = await handleSandboxMissions(
@@ -132,6 +144,7 @@ async function call(
         emit: (_userId: string, event: HoustonEvent) => events.push(event),
       } as never,
       channels: { local: channel },
+      ...(opts.gatewayFronted ? { gatewayFronted: true } : {}),
       ...(connectedProviders === null ? {} : { credentials }),
     },
     method,
@@ -522,8 +535,10 @@ test("a forged conversation header does not buy a fresh top-level chat", async (
     { title: "t", prompt: "p" },
     { conversationId: "conv-parent", forgedConversationId: "conv-invented" },
   );
-  expect(r.status).toBe(409);
-  expect(r.body).toMatchObject({ code: "mission_depth" });
+  // Naming a chat the host never started a turn in is refused outright, so the
+  // depth chain is never even reached from an invented parent.
+  expect(r.status).toBe(400);
+  expect(r.body).toMatchObject({ code: "not_in_turn" });
   expect(fired).toEqual([]);
 });
 
@@ -584,4 +599,115 @@ test("a finished local mission gives its caller's slot back", async () => {
     { conversationId: "conv-parent" },
   );
   expect(r.status).toBe(201);
+});
+
+/** A gateway-minted acting-as header value for `sub` (the signature is never
+ *  verified pod-side; the gateway is the trust boundary — auth/acting.ts). */
+function actingToken(sub: string, name: string): string {
+  const payload = Buffer.from(JSON.stringify({ sub, name })).toString(
+    "base64url",
+  );
+  return `acting-v1.${payload}.sig`;
+}
+
+test("plan mode refuses a start: the host reads its own record of the turn", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent", mode: "plan" },
+  );
+  expect(r.status).toBe(403);
+  expect(r.body).toMatchObject({ code: "plan_mode" });
+  expect(fired).toEqual([]);
+  expect(await onDisk()).toHaveLength(1);
+});
+
+test("plan mode refuses a board move", async () => {
+  await saveActivities(vfs, root, [
+    PARENT,
+    {
+      id: "child-1",
+      title: "Draft",
+      description: "",
+      status: "needs_you",
+      session_key: "conv-child",
+    },
+  ]);
+  const r = await call(
+    "POST",
+    "/sandbox/missions/status",
+    { id: "child-1", status: "done" },
+    { conversationId: "conv-parent", mode: "plan" },
+  );
+  expect(r.status).toBe(403);
+  expect(r.body).toMatchObject({ code: "plan_mode" });
+  expect((await onDisk()).find((a) => a.id === "child-1")?.status).toBe(
+    "needs_you",
+  );
+});
+
+test("the mission is created in the name the GATEWAY vouched for, not the one the runtime sends", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    {
+      conversationId: "conv-parent",
+      gatewayFronted: true,
+      actingAs: actingToken("alice-sub", "Alice"),
+      // The runtime's own loopback call claims somebody else entirely.
+      spoofedActingAs: actingToken("mallory-sub", "Mallory"),
+    },
+  );
+  expect(r.status).toBe(201);
+  const created = (await onDisk()).find((a) => a.id !== PARENT.id);
+  expect(created?.created_by).toBe("alice-sub");
+  expect(created?.contributors).toEqual([
+    { user_id: "alice-sub", name: "Alice" },
+  ]);
+});
+
+test("a turn the runtime never started acts as nobody", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    {
+      conversationId: "conv-parent",
+      gatewayFronted: true,
+      spoofedActingAs: actingToken("mallory-sub", "Mallory"),
+    },
+  );
+  expect(r.status).toBe(201);
+  const created = (await onDisk()).find((a) => a.id !== PARENT.id);
+  expect(created?.created_by).toBeUndefined();
+  expect(created?.contributors).toBeUndefined();
+});
+
+test("the settle report ends the turn: a later write is out of turn", async () => {
+  const started = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(started.status).toBe(201);
+  // The runtime reports its terminal state for the turn it was running.
+  const settled = await call("POST", "/sandbox/missions/settle", {
+    conversation_id: "conv-parent",
+    status: "needs_you",
+  });
+  expect(settled.status).toBe(200);
+  // A second start naming the same (now finished) chat has no live turn behind
+  // it. `call` re-records when `conversationId` is passed, so this one names it
+  // the way a runtime would after its turn ended.
+  const late = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "late", prompt: "p" },
+    { forgedConversationId: "conv-parent" },
+  );
+  expect(late.status).toBe(400);
+  expect(late.body).toMatchObject({ code: "not_in_turn" });
 });

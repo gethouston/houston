@@ -38,7 +38,13 @@ export function claudeSessionTokenStale(conv: Conversation): boolean {
   if (conv.backendId !== CLAUDE_BACKEND_ID) return false;
   const pinned = conv.session.getUsedAccessDigest?.();
   if (pinned === undefined) return false;
-  return pinned !== readAnthropicToken(authStorage)?.accessDigest;
+  // READ-ONLY on purpose: no `remove` is handed over, so this probe can never
+  // delete the superseded store entry the full read drops. A staleness question
+  // that mutates a credential is a question that changes its own answer.
+  return (
+    pinned !==
+    readAnthropicToken({ get: (id) => authStorage.get(id) })?.accessDigest
+  );
 }
 
 /**

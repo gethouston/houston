@@ -56,6 +56,7 @@ test("a fronted pod passes no gateway pair down, whatever its own env holds", ()
     assistantRole: assistantRuntimeRole({
       agentId: "ws/Assistant",
       hostEnv: {
+        HOUSTON_MANAGED_CLOUD: "1",
         HOUSTON_ASSISTANT_CP_URL: "https://gateway.example",
         HOUSTON_ASSISTANT_TOKEN: "pod",
         HOUSTON_ASSISTANT_USER_ID: "user-42",

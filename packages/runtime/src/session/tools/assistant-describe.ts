@@ -24,6 +24,19 @@ function renderParam(param: AssistantOperationParam): Record<string, unknown> {
     required: param.required,
     ...(param.description ? { description: param.description } : {}),
     ...(param.source ? { valuesFrom: param.source } : {}),
+    ...(param.fields
+      ? {
+          fields: param.fields.map((field) => ({
+            name: field.name,
+            ...(field.source ? { valuesFrom: field.source } : {}),
+            ...(field.resolver
+              ? { houstonResolves: true }
+              : field.unresolved
+                ? { note: field.unresolved }
+                : {}),
+          })),
+        }
+      : {}),
     schema: param.schema,
   };
 }
@@ -34,11 +47,20 @@ function renderParam(param: AssistantOperationParam): Record<string, unknown> {
  * that takes only free text is not given a paragraph about identifiers.
  */
 export function sourceGuidance(op: AssistantOperation): string {
-  const sourced = op.params.flatMap((param) =>
-    param.source && !param.resolver
+  const sourced = op.params.flatMap((param) => [
+    ...(param.source && !param.resolver
       ? [`"${param.name}" from ${param.source}`]
-      : [],
-  );
+      : []),
+    // A body object hides its identifiers from a reader that stops at the top
+    // level: the provider and model inside a `choice`, the toolkits inside a
+    // settings ceiling. Named the way they are passed, so the sentence maps
+    // onto the object the model is about to build.
+    ...(param.fields ?? []).flatMap((field) =>
+      field.source && !field.resolver
+        ? [`"${param.name}.${field.name}" from ${field.source}`]
+        : [],
+    ),
+  ]);
   if (sourced.length === 0) return "";
   return ` Never invent an identifier: take ${sourced.join(", ")}. Call ${
     sourced.length === 1 ? "that operation" : "those operations"
@@ -52,9 +74,12 @@ export function sourceGuidance(op: AssistantOperation): string {
  * do - so a wrong guess costs a correction, never a wrong thing done.
  */
 export function resolutionGuidance(op: AssistantOperation): string {
-  const resolved = op.params.flatMap((param) =>
-    param.resolver ? [`"${param.name}"`] : [],
-  );
+  const resolved = op.params.flatMap((param) => [
+    ...(param.resolver ? [`"${param.name}"`] : []),
+    ...(param.fields ?? []).flatMap((field) =>
+      field.resolver ? [`"${param.name}.${field.name}"`] : [],
+    ),
+  ]);
   if (resolved.length === 0) return "";
   return ` Houston resolves ${resolved.join(", ")} against what exists: pass the id, or the exact name the user gave you. A value that matches nothing is refused with the ones that do.`;
 }

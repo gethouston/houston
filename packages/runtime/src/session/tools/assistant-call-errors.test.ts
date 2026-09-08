@@ -51,3 +51,26 @@ test("an unsupported operation keeps its own remedy", async () => {
   expect(error.code).toBe("operation_not_supported");
   expect(error.message).toContain("Tell the user plainly");
 });
+
+test("a host with no live turn recorded is a named state, not a gateway error", async () => {
+  // The host answers 400 not_in_turn when nothing is running for this chat
+  // (a late callback, a retry after the turn settled). "The gateway refused"
+  // would read as something to retry; retrying is the one thing that cannot
+  // work, because the correction is to act inside a turn.
+  const error = await errorFromResponse(
+    Response.json(
+      {
+        code: "not_in_turn",
+        error:
+          "this only works during a turn, in the chat the turn is running in",
+      },
+      { status: 400 },
+    ),
+  );
+  expect(error).toEqual({
+    code: "not_in_turn",
+    status: 400,
+    message:
+      "this only works during a turn, in the chat the turn is running in",
+  });
+});

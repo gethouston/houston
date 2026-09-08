@@ -11,6 +11,7 @@ import {
   skillDirectoryTools,
 } from "./host-tools";
 import { personalAssistant } from "./runtime-role";
+import { withToolCallLog } from "./tool-call-log";
 import { buildToolSelection } from "./tool-selection";
 import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
@@ -120,6 +121,10 @@ const runCodeTool = toolSelection.includeRunCode
  * of this list and {@link toolSelection}'s names, so a name allowlisted with no
  * object here is invisible to the model, silently (pinned by
  * conversation-cache-tools.test.ts).
+ *
+ * Every one of them is wrapped in the tool-call log (session/tool-call-log.ts),
+ * at the list rather than at each factory, so a tool added here cannot ship
+ * unlogged. The Claude backend wraps the same tools at its MCP bridge.
  */
 export const piCustomTools = [
   ...fileTools,
@@ -136,4 +141,4 @@ export const piCustomTools = [
   ...assistantTools,
   ...integrationTools,
   ...customIntegrationTools,
-];
+].map(withToolCallLog);

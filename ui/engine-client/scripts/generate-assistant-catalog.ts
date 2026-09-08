@@ -5,6 +5,7 @@ import { extractCatalog } from "./assistant-extractor.ts";
 import { assistantOutputs, assistantPaths } from "./assistant-paths.ts";
 import {
   renderCapabilities,
+  renderCapabilityIndex,
   renderCatalog,
   renderCoverage,
   renderOperations,
@@ -12,6 +13,23 @@ import {
 
 /** The generated file names, so a missing body is a compile error. */
 type AssistantOutputFile = (typeof assistantOutputs)[number]["file"];
+
+/**
+ * Run one generated body through the repo's own formatter, so a committed
+ * output is byte-identical to what `pnpm check` would rewrite it to — without
+ * this the drift check and the formatter disagree forever.
+ */
+function format(file: AssistantOutputFile, body: string): string {
+  return execFileSync(
+    assistantPaths.biome,
+    ["format", "--stdin-file-path", file],
+    {
+      cwd: assistantPaths.repo,
+      encoding: "utf8",
+      input: body,
+    },
+  );
+}
 
 /**
  * Write every generated output. Each file goes to its committed home; passing
@@ -24,14 +42,13 @@ export function generateAssistantCatalog(outputDirectory?: string): void {
     transportSource: assistantPaths.transportSource,
   });
   const bodies: Record<AssistantOutputFile, string> = {
-    "assistant-catalog.generated.json": execFileSync(
-      assistantPaths.biome,
-      ["format", "--stdin-file-path", "assistant-catalog.generated.json"],
-      {
-        cwd: assistantPaths.repo,
-        encoding: "utf8",
-        input: renderCatalog(result.catalog),
-      },
+    "assistant-catalog.generated.json": format(
+      "assistant-catalog.generated.json",
+      renderCatalog(result.catalog),
+    ),
+    "assistant-capability-index.generated.ts": format(
+      "assistant-capability-index.generated.ts",
+      renderCapabilityIndex(result.catalog),
     ),
     "assistant-capabilities.md": renderCapabilities(result.catalog),
     "assistant-coverage.md": renderCoverage(result),

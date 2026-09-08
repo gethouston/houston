@@ -3,7 +3,7 @@ import { join } from "node:path";
 import {
   type AssistantRuntimeRole,
   readAssistantRole,
-} from "@houston/host/src/launcher/assistant-role";
+} from "@houston/domain/assistant-role";
 import type { Learning } from "@houston/protocol";
 
 /**

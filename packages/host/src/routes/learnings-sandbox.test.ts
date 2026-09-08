@@ -11,6 +11,7 @@ import {
   CONVERSATION_ID_HEADER,
   handleSandboxLearnings,
 } from "./learnings-sandbox";
+import { liveTurns } from "./live-turn";
 
 /**
  * The runtime-facing memory save route: merge-safe, and the ONLY writer that
@@ -87,20 +88,40 @@ async function save(
   text: string,
   opts: {
     gatewayFronted?: boolean;
+    /** What the GATEWAY stamped on the send that started this turn. */
     acting?: string;
-    /** The routine creator's sub, as a fired routine's turn forwards it. */
+    /** The routine creator's sub, as the fire that started the turn knew it. */
     actingUser?: string;
-    conversationId?: string;
+    /** An identity the RUNTIME puts on its own loopback call (S16). */
+    spoofedActing?: string;
+    spoofedActingUser?: string;
+    /** `null` names no conversation at all; omitted names one with no mission. */
+    conversationId?: string | null;
+    /** Call as a runtime with no turn of the host's running behind it. */
+    noLiveTurn?: boolean;
+    mode?: "plan" | "execute" | "auto";
     token?: string;
   } = {},
 ) {
   const headers: Record<string, string> = {
     authorization: `Bearer ${opts.token ?? "sb-good"}`,
   };
-  if (opts.acting) headers["x-houston-acting-as"] = opts.acting;
-  if (opts.actingUser) headers["x-houston-acting-user"] = opts.actingUser;
-  if (opts.conversationId)
-    headers[CONVERSATION_ID_HEADER] = opts.conversationId;
+  if (opts.spoofedActing) headers["x-houston-acting-as"] = opts.spoofedActing;
+  if (opts.spoofedActingUser)
+    headers["x-houston-acting-user"] = opts.spoofedActingUser;
+  const conversationId =
+    opts.conversationId === null
+      ? undefined
+      : (opts.conversationId ?? "conv-none");
+  if (conversationId) headers[CONVERSATION_ID_HEADER] = conversationId;
+  // The turn the host recorded when it began (routes/live-turn.ts): which chat
+  // it runs in, and whose name it acts in.
+  liveTurns.forget(agent.id);
+  if (conversationId && !opts.noLiveTurn)
+    liveTurns.start(agent.id, conversationId, opts.mode ?? "execute", {
+      actingAs: opts.acting,
+      actingUser: opts.actingUser,
+    });
   const { res, captured } = fakeRes();
   const handled = await handleSandboxLearnings(
     {
@@ -231,8 +252,8 @@ test("the mission matches by the activity-<id> fallback", async () => {
   expect(learning?.mission_title).toBe("Renewals");
 });
 
-test("no conversation id and no match stamp no mission keys", async () => {
-  await save("no cid");
+test("a conversation with no mission behind it stamps no mission keys", async () => {
+  await save("no mission");
   await save("unknown cid", { conversationId: "conv-nope" });
   for (const learning of await onDisk()) {
     expect(learning).not.toHaveProperty("mission_id");
@@ -285,4 +306,72 @@ test("a non-matching path or method is not handled", async () => {
     res,
   );
   expect(handled).toBe(false);
+});
+
+/**
+ * S4 / S9 / S16 (round 2) — a memory write happens inside a turn the HOST
+ * started, in the chat that turn runs in, and in the name the gateway vouched
+ * for there. None of the three may come from the call itself: the runtime is
+ * the least-trusted process in the system and it writes every one of them.
+ */
+test("a save with no turn behind it is refused", async () => {
+  const r = await save("nothing is running", { noLiveTurn: true });
+  expect(r.status).toBe(400);
+  expect(r.body).toMatchObject({ code: "not_in_turn" });
+  expect(await onDisk()).toEqual([]);
+});
+
+test("a save naming no conversation at all is refused", async () => {
+  const r = await save("nowhere", { conversationId: null });
+  expect(r.status).toBe(400);
+  expect(r.body).toMatchObject({ code: "not_in_turn" });
+  expect(await onDisk()).toEqual([]);
+});
+
+test("a save naming a chat the host started no turn in is refused", async () => {
+  liveTurns.start(agent.id, "conv-42", "execute");
+  const r = await save("elsewhere", {
+    conversationId: "conv-invented",
+    noLiveTurn: true,
+  });
+  expect(r.status).toBe(400);
+  expect(r.body).toMatchObject({ code: "not_in_turn" });
+  expect(await onDisk()).toEqual([]);
+});
+
+test("plan mode writes nothing to memory", async () => {
+  const r = await save("remember this", {
+    conversationId: "conv-42",
+    mode: "plan",
+  });
+  expect(r.status).toBe(403);
+  expect(r.body).toMatchObject({ code: "plan_mode" });
+  expect(await onDisk()).toEqual([]);
+});
+
+test("the learning is taught by the person the GATEWAY vouched for", async () => {
+  const r = await save("Renewals are quarterly", {
+    gatewayFronted: true,
+    acting: actingHeader("u-felipe", "Felipe"),
+    // The runtime's own loopback call claims somebody else entirely.
+    spoofedActing: actingHeader("u-mallory", "Mallory"),
+    spoofedActingUser: "sub-mallory",
+    conversationId: "conv-42",
+  });
+  expect(r.status).toBe(201);
+  expect((await onDisk())[0]?.taught_by).toEqual({
+    user_id: "u-felipe",
+    name: "Felipe",
+  });
+});
+
+test("a turn with no vouched identity cannot be given one by the runtime", async () => {
+  const r = await save("who taught this", {
+    gatewayFronted: true,
+    spoofedActing: actingHeader("u-mallory", "Mallory"),
+    spoofedActingUser: "sub-mallory",
+    conversationId: "conv-42",
+  });
+  expect(r.status).toBe(201);
+  expect((await onDisk())[0]).not.toHaveProperty("taught_by");
 });

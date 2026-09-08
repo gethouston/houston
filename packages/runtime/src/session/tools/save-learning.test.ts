@@ -104,3 +104,20 @@ test("surfaces a host rejection as a tool error (never a silent success)", async
 test("agent-facing learning instructions contain no em dashes", () => {
   expect(tool.description).not.toContain("\u2014");
 });
+
+test("the host's turn-gate refusals keep their own codes", async () => {
+  // /sandbox/learnings/save answers 400 not_in_turn / 403 plan_mode. Both are
+  // states the model must act on differently from "the server refused".
+  for (const [status, code] of [
+    [400, "not_in_turn"],
+    [403, "plan_mode"],
+  ] as const) {
+    const calls = mockFetch(() => ({
+      status,
+      body: { code, error: "refused" },
+    }));
+    const result = await run({ text: "remember this" });
+    expect(result.details).toMatchObject({ ok: false, error: { code } });
+    expect(calls).toHaveLength(1);
+  }
+});

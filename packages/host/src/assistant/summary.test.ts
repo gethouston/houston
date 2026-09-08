@@ -40,12 +40,14 @@ test("short arguments read as one plain sentence", () => {
   ).toEqual({
     title:
       'Delete an agent and everything in it. This affects id "Personal/Dobby".',
+    args: [{ name: "id", value: "Personal/Dobby", long: false }],
   });
 });
 
 test("an operation with no arguments is just its own sentence", () => {
   expect(confirmationSummary(op("wipe", "Erase everything."), {})).toEqual({
     title: "Erase everything.",
+    args: [],
   });
 });
 
@@ -55,7 +57,10 @@ test("undefined arguments are not shown, because they are not sent", () => {
       id: "a",
       note: undefined,
     }),
-  ).toEqual({ title: 'Delete it. This affects id "a".' });
+  ).toEqual({
+    title: 'Delete it. This affects id "a".',
+    args: [{ name: "id", value: "a", long: false }],
+  });
 });
 
 test("a long value is shown in full, out of the sentence and into the detail block", () => {
@@ -104,4 +109,36 @@ test("argument names are humanized, never shown as code", () => {
   expect(summary.title).toContain('agent path "Work/Ada"');
   expect(summary.title).toContain('routine id "r1"');
   expect(summary.detail).toBeUndefined();
+});
+
+/**
+ * The card's account of the call is STRUCTURAL, so the surface can say it in
+ * the reader's language while the host stays the authority on what is being
+ * approved: same operation, same bytes, whatever language reads them.
+ */
+test("every argument travels structurally, with the host's own wording beside it", () => {
+  const content = `line one\nline two\n${"x".repeat(500)}`;
+  const summary = confirmationSummary(op("writeAgentFile", "Write a file."), {
+    agentId: "Personal/Dobby",
+    content,
+    skipped: undefined,
+  });
+
+  expect(summary.args).toEqual([
+    { name: "agentId", value: "Personal/Dobby", long: false },
+    { name: "content", value: content, long: true },
+  ]);
+});
+
+test("a value past the limit says how much it cut, structurally too", () => {
+  const summary = confirmationSummary(op("writeAgentFile", "Write a file."), {
+    content: "y".repeat(2_500),
+  });
+
+  expect(summary.args).toHaveLength(1);
+  expect(summary.args[0]?.value).toHaveLength(2_000);
+  expect(summary.args[0]?.truncated).toBe(500);
+  // The host's English rendering says the same thing in words, for the
+  // surfaces that have no wording of their own.
+  expect(summary.detail).toContain("and 500 more characters");
 });

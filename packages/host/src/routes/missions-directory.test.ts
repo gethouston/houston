@@ -147,6 +147,7 @@ test("a fronted pod lists both sides; an unfronted host stays local", async () =
 
 afterEach(() => vi.unstubAllEnvs());
 test("the coordinator is excluded by identity even with a public name", async () => {
+  vi.stubEnv("HOUSTON_MANAGED_CLOUD", "1");
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
   const ctx = await ctxFor({ gatewayFronted: true });
   expect(await localMissionDirectory(ctx).list()).toEqual({
@@ -170,6 +171,7 @@ test("ambiguous remote names include their distinct ids", async () => {
 });
 
 test("a coordinator cannot select its own board by omitting the target", async () => {
+  vi.stubEnv("HOUSTON_MANAGED_CLOUD", "1");
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
   const { resolveMissionRoute } = await import("./missions-target");
   const result = await resolveMissionRoute(

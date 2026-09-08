@@ -58,10 +58,13 @@ export function resolveMissionPin(
       against,
       START_MISSION_TOOL_NAME,
     );
+    // The PROVIDER resolved; it is the model that did not. Coding this as
+    // `invalid_provider` sent the model back to re-pick a provider that was
+    // never the problem, past the list of models the refusal already named.
     if (!resolved.ok)
       return {
         ok: false,
-        error: { code: "invalid_provider", message: resolved.message },
+        error: { code: "invalid_model", message: resolved.message },
       };
     pin.model = resolved.id;
   }

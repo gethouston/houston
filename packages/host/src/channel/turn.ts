@@ -67,16 +67,25 @@ export class TurnChannel implements RuntimeChannel {
     pin?: TurnPin,
     // The per-turn cloud runtime hydrates a fresh process per POST /turn and has
     // no standing sandbox proxy to relay an acting-user header to; the acting-as
-    // identity flows through the standing-pod path (ProxyChannel). Accepted to
-    // keep the port aligned, ignored here.
-    _actingUser?: string,
-    _actingAs?: string,
+    // identity flows through the standing-pod path (ProxyChannel). Not sent to
+    // the runtime here - recorded on the turn, which is where the `/sandbox/*`
+    // routes read it from.
+    actingUser?: string,
+    actingAs?: string,
   ): Promise<void> {
     // A turn begins here for every programmatic fire (a routine, a trigger, a
     // mission's first turn): the host records which conversation this agent is
-    // working in, because a runtime's own claim about that is not evidence
-    // (routes/live-turn.ts).
-    liveTurns.start(ctx.agent.id, conversationId, normalizeTurnMode(pin?.mode));
+    // working in AND whose name the work is done in, because a runtime's own
+    // claim about either is not evidence (routes/live-turn.ts).
+    liveTurns.start(
+      ctx.agent.id,
+      conversationId,
+      normalizeTurnMode(pin?.mode),
+      {
+        actingAs,
+        actingUser,
+      },
+    );
     const outcome = await dispatchTurn(
       this.deps,
       ctx.workspace,

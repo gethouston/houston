@@ -1,11 +1,11 @@
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import {
   type AssistantRuntimeRole,
   readAssistantRole,
-} from "@houston/host/src/launcher/assistant-role";
+} from "@houston/domain/assistant-role";
+import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import { CODEX_DEFAULT_MODEL } from "./ai/codex-offered";
 
 const env = process.env;

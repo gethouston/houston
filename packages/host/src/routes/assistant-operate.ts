@@ -1,6 +1,7 @@
 import type { ServerResponse } from "node:http";
 import type { AssistantOperation } from "../assistant/catalog";
 import { findVisibleOperation } from "../assistant/catalog";
+import { UnsupportedEntityCollectionError } from "../assistant/entity-directory-local";
 import {
   type EntityResolution,
   resolveEntityParams,
@@ -13,8 +14,11 @@ import type {
   AssistantCallInput,
   AssistantOperationCtx,
 } from "./assistant-operation-ctx";
+import {
+  refusedOutsideExecute,
+  refusedUnknownParams,
+} from "./assistant-operation-guards";
 import { json } from "./http";
-import { liveTurns } from "./live-turn";
 
 /**
  * The two decisions `/sandbox/assistant/*` makes once the caller is known to be
@@ -44,6 +48,16 @@ async function resolvedParams(
   try {
     resolution = await resolveEntityParams(op, params, ctx.directory);
   } catch (error) {
+    // A collection this deployment simply does not have is not an outage: the
+    // model must hear "this Houston has no such thing" once, not retry a list
+    // that will never exist (assistant/entity-directory-local.ts).
+    if (error instanceof UnsupportedEntityCollectionError) {
+      json(res, 400, {
+        error: `${error.collection} are not supported on this Houston, so nothing here can name one. Tell the user plainly that Houston cannot do this for them.`,
+        code: "unsupported_entity",
+      });
+      return null;
+    }
     console.error("[assistant] could not read the entity directory", error);
     json(res, 502, {
       error: "could not read the available items right now - try again",
@@ -54,37 +68,6 @@ async function resolvedParams(
   if (resolution.ok) return resolution.params;
   json(res, 400, { error: resolution.message, code: resolution.code });
   return null;
-}
-
-/**
- * PLAN MODE IS THE HOST'S TO ENFORCE, not the runtime's alone.
- *
- * Plan means the user asked for a proposal and not for the work itself. The
- * runtime withholds its acting tools in that mode, but the host is the process
- * that HOLDS the gateway credential: a runtime that skipped its own check (a
- * bug, a fork, a prompt-injected turn addressing this route directly with the
- * sandbox token it already carries) must still not get an account-wide write
- * performed for it. So the mode is read from the host's own record of the turn
- * (routes/live-turn.ts), never from the request.
- *
- * Reads pass: a plan is built out of what is there, and refusing to LOOK would
- * leave the model proposing blind. Everything that writes is refused with a
- * sentence the model can act on - the user leaves plan mode when they want the
- * work done.
- */
-function refusedInPlanMode(
-  ctx: AssistantOperationCtx,
-  op: AssistantOperation,
-  res: ServerResponse,
-): boolean {
-  if (op.route?.method === "GET") return false;
-  if (liveTurns.get(ctx.agentId)?.mode !== "plan") return false;
-  json(res, 403, {
-    error:
-      "this chat is in Plan mode, so nothing is changed yet. Finish the plan and tell the user to switch to Execute when they want it done.",
-    code: "plan_mode",
-  });
-  return true;
 }
 
 /**
@@ -115,7 +98,8 @@ export async function handleAssistantPending(
     });
     return;
   }
-  if (refusedInPlanMode(ctx, op, res)) return;
+  if (refusedOutsideExecute(ctx, op, res)) return;
+  if (refusedUnknownParams(op, rawParams, res)) return;
   const params = await resolvedParams(ctx, op, rawParams, res);
   if (!params) return;
   // Validate the arguments the SAME way performing them would, so a card can
@@ -170,7 +154,8 @@ export async function handleAssistantCall(
     });
     return;
   }
-  if (refusedInPlanMode(ctx, op, res)) return;
+  if (refusedOutsideExecute(ctx, op, res)) return;
+  if (refusedUnknownParams(op, input.params, res)) return;
   const params = await resolvedParams(ctx, op, input.params, res);
   if (!params) return;
   const dispatch = dispatchAssistantOperation(

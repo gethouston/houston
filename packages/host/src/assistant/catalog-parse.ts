@@ -37,6 +37,19 @@ const RouteEnvelope = Type.Object({
   rawResponse: Type.Optional(Type.Boolean()),
 });
 
+/** The live lists the host can resolve a value against (AssistantEntityCollection). */
+const EntityCollection = Type.Union([
+  Type.Literal("agents"),
+  Type.Literal("teams"),
+  Type.Literal("workspaces"),
+  Type.Literal("members"),
+  Type.Literal("invites"),
+  Type.Literal("routines"),
+  Type.Literal("skills"),
+  Type.Literal("shared-skills"),
+  Type.Literal("activities"),
+]);
+
 /**
  * The envelope shape, checked field for field against the document
  * `@houston/domain` declares. Per-param `schema` / `returns` stay `Unknown` on
@@ -66,20 +79,21 @@ const CatalogEnvelope = Type.Object({
           // them verbatim to the model.
           description: Type.Optional(Type.String()),
           source: Type.Optional(Type.String()),
-          resolver: Type.Optional(
-            Type.Union([
-              Type.Literal("agents"),
-              Type.Literal("teams"),
-              Type.Literal("workspaces"),
-              Type.Literal("members"),
-              Type.Literal("invites"),
-              Type.Literal("routines"),
-              Type.Literal("skills"),
-              Type.Literal("shared-skills"),
-              Type.Literal("activities"),
-            ]),
-          ),
+          resolver: Type.Optional(EntityCollection),
           unresolved: Type.Optional(Type.String()),
+          // Identifiers one level inside a body object. Optional (most
+          // parameters carry none) and checked when present, because the host
+          // RESOLVES what it finds here against the user's live lists.
+          fields: Type.Optional(
+            Type.Array(
+              Type.Object({
+                name: Type.String(),
+                source: Type.Optional(Type.String()),
+                resolver: Type.Optional(EntityCollection),
+                unresolved: Type.Optional(Type.String()),
+              }),
+            ),
+          ),
         }),
       ),
       returns: Type.Unknown(),

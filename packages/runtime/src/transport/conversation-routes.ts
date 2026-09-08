@@ -1,10 +1,11 @@
 import { normalizeTurnMode } from "@houston/protocol";
-import { evict, isTurnRunning } from "../session/bus";
+import { evict } from "../session/bus";
 import {
   cancelTurn,
   disposeConversation,
   setLiveTurnMode,
 } from "../session/chat";
+import { conversationCommandBusy } from "../session/conversation-command-gate";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import { truncateConversationTurn } from "../session/truncate-turn";
 import {
@@ -71,12 +72,17 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "POST" && action === "dismiss-interaction") {
-    // The card that triggers this is never shown mid-turn, so a running turn
-    // here means the user raced a live turn — answer 409 and let them Stop
+    // The card that triggers this is never shown mid-turn, so a busy
+    // conversation here means the user raced one — answer 409 and let them Stop
     // (which retires the turn AND stamps the durable stop) instead of writing a
-    // second marker behind the executing turn. Idle: append the stop marker,
-    // retiring the pending interaction exactly as a real Stop does.
-    if (isTurnRunning(id)) {
+    // second marker behind it. The same gate the commands use
+    // (conversation-command-gate.ts), so an ACCEPTED-but-not-yet-running turn
+    // and an in-flight `/clear` are refused too: this appends a durable marker
+    // that a `/clear` boundary written after it would strand. Nothing is
+    // awaited between the check and the write, so the check IS the whole hold.
+    // Idle: append the stop marker, retiring the pending interaction exactly as
+    // a real Stop does.
+    if (conversationCommandBusy(id)) {
       json(res, 409, { error: "turn running" });
       return true;
     }

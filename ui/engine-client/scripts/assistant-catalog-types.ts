@@ -1,5 +1,6 @@
 import type {
   AssistantCatalogDocument,
+  AssistantFieldDocument as AssistantFieldDocumentType,
   AssistantHttpMethod,
   AssistantJsonSchema,
   AssistantOperationDocument,
@@ -27,6 +28,7 @@ export type HttpMethod = AssistantHttpMethod;
 export type PathEncoding = AssistantPathEncoding;
 export type AssistantPathParam = AssistantPathParamDocument;
 export type AssistantParameter = AssistantParameterDocument;
+export type AssistantFieldDocument = AssistantFieldDocumentType;
 export type AssistantRoute = AssistantRouteDocument;
 export type AssistantOperation = AssistantOperationDocument;
 

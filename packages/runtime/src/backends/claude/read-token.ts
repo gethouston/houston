@@ -3,6 +3,7 @@ import { ANTHROPIC_TOKEN_PREFIXES } from "../../auth/anthropic-setup-token";
 import type { HoustonAuthStore } from "../../auth/credential-store";
 import type { ClaudeToken } from "./backend";
 import {
+  anthropicIsCentrallyServed,
   readSharedLogin,
   type StoredLogin,
   sharedLoginSupersedes,
@@ -76,11 +77,23 @@ function classify(value: string): ClaudeToken | undefined {
  * team's), so a member is never moved onto the team account by any of this.
  */
 export function readAnthropicToken(
-  store: Pick<HoustonAuthStore, "get" | "remove">,
+  store: Pick<HoustonAuthStore, "get"> &
+    Partial<Pick<HoustonAuthStore, "remove">>,
 ): ClaudeToken | undefined {
   const stored = readStoredAnthropicToken(store);
+  // A served token that EXPIRED is not an absent credential: on a pod the
+  // gateway is the authority for, the shared file is a push-time leftover that
+  // may belong to another account entirely, so authenticating with it would run
+  // the user's turn as someone else. The turn fails instead, and the next sync
+  // brings a fresh token.
+  if (stored === "expired" && anthropicIsCentrallyServed()) {
+    console.warn(
+      '[claude] the served "anthropic" access token is expired; refusing the shared login dir, which is not this runtime\'s authority',
+    );
+    return undefined;
+  }
   const shared = readSharedLogin();
-  if (!stored) return shared?.token;
+  if (!stored || stored === "expired") return shared?.token;
   // An api_key entry (a pasted setup token or console key) is a credential the
   // user chose for THIS runtime and carries no issuance date, so it is never
   // superseded by the shared dir — `supersedable` is null for it.
@@ -100,8 +113,12 @@ export function readAnthropicToken(
     // read-only disk must not take the turn down with it — resolving the login
     // the user actually has is the job, and it succeeds either way. Reported,
     // never swallowed: console.error is the runtime's Sentry feed (main.ts).
+    // A READ-ONLY caller (the session staleness probe,
+    // session/claude-token-guard.ts) passes no `remove`: a probe that answers
+    // "is this session's token still current" must not delete a credential on
+    // the way. The read the turn itself makes carries the drop.
     try {
-      store.remove("anthropic");
+      store.remove?.("anthropic");
     } catch (err) {
       console.error(
         '[claude] could not drop the superseded "anthropic" credential; the shared login is used for this turn and the drop is retried on the next read:',
@@ -113,10 +130,16 @@ export function readAnthropicToken(
   return stored.token;
 }
 
-/** Link 1: the `anthropic` entry in this runtime's own credential store. */
+/**
+ * Link 1: the `anthropic` entry in this runtime's own credential store.
+ * `"expired"` is distinct from absent - see {@link readAnthropicToken}.
+ */
 function readStoredAnthropicToken(
   store: Pick<HoustonAuthStore, "get">,
-): { token: ClaudeToken; supersedable: StoredLogin | null } | undefined {
+):
+  | { token: ClaudeToken; supersedable: StoredLogin | null }
+  | "expired"
+  | undefined {
   const cred = store.get("anthropic");
   if (!cred) return undefined; // not connected — no credential to read
 
@@ -153,7 +176,7 @@ function readStoredAnthropicToken(
       console.warn(
         `[claude] stored "anthropic" oauth access token is expired; falling back to the shared login dir credential`,
       );
-      return undefined;
+      return "expired";
     }
     const token = classify(access);
     if (!token) return undefined;

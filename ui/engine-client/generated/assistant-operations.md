@@ -24,7 +24,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `revokeApiKey` | DELETE | confirmed: host approval required | credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway. | id: open: API keys are secrets the directory never lists. |
 | `saveAttachments` | unroutable | unconfirmed: withheld from dispatch | binary upload; the composer batches the dropped files and base64 frames them itself. | agentId: resolved:agents; scopeId: free text; files: free text |
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
-| `createPortal` | POST | unconfirmed: Opens the billing portal; changes and charges require the user to act there. | visible | none |
+| `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
 | `getBilling` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `createFolder` | POST | unconfirmed: Creates an empty folder without replacing existing content. | visible | agentPath: resolved:agents; folderName: free text |
 | `deleteFile` | DELETE | confirmed: host approval required | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles. |
@@ -122,7 +122,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `listAgentTeamMembers` | GET | unconfirmed: read-only HTTP GET | visible | teamId: resolved:teams |
 | `listAgentTeams` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `removeAgentTeamMember` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams; userId: resolved:members |
-| `setAgentAssignments` | unroutable | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; assignments: free text |
+| `setAgentAssignments` | unroutable | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; assignments: resolved:members |
 | `setAgentSettings` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; settings: free text |
 | `setAgentTeam` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; teamId: resolved:teams |
 | `setAgentTeamMemberOwner` | PUT | confirmed: host approval required | visible | teamId: resolved:teams; userId: resolved:members; owner: free text |

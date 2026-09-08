@@ -12,6 +12,16 @@ import { fileURLToPath } from "node:url";
 
 const UNICODE_SPACES = /[\u00A0\u2000-\u200A\u202F\u205F\u3000]/g;
 
+/**
+ * NTFS alternate-data-stream suffixes (`auth.json::$DATA`, `auth.json:hidden`).
+ * On Windows they address the SAME file under a different name, so a rule that
+ * matches path segments would see `auth.json::$DATA` and not `auth.json` while
+ * the open call reads the credential all the same. Stripped on every platform:
+ * the suffix is meaningless elsewhere, and a rule that only holds on one OS is
+ * a rule that will be found not holding on another.
+ */
+const NTFS_STREAM = /:[^:\\/]*(?::\$[A-Za-z_]+)?$/;
+
 /** An allowed root in both the forms containment is judged against. */
 export interface RootBoundary {
   canonical: string;
@@ -30,7 +40,18 @@ export function normalizeLikePi(input: string): string {
     return join(homedir(), p.slice(2));
   }
   if (/^file:\/\//.test(p)) return fileURLToPath(p);
-  return p;
+  return stripStream(p);
+}
+
+/**
+ * `path::$DATA` / `path:stream` -> `path`, leaving a Windows drive letter
+ * (`C:\dir`) and a bare drive-relative path alone.
+ */
+function stripStream(input: string): string {
+  const start = input.length > 1 && input[1] === ":" ? 2 : 0;
+  const head = input.slice(0, start);
+  const tail = input.slice(start);
+  return tail.includes(":") ? head + tail.replace(NTFS_STREAM, "") : input;
 }
 
 /**

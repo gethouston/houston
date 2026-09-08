@@ -47,7 +47,7 @@ const InstallSkillParams = Type.Object({
   }),
   skillId: Type.String({
     description:
-      "The skill's `skillId` exactly as find_skills returned it. Never invent one — only install something find_skills actually returned.",
+      "The skill's `skillId` exactly as find_skills returned it. Never invent one - only install something find_skills actually returned.",
   }),
 });
 type InstallSkillParams = Static<typeof InstallSkillParams>;

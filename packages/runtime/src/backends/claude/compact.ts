@@ -133,7 +133,14 @@ export async function compactClaudeSession(
 
   // The restart, and the LAST step: until this line the conversation still has
   // its full SDK session, so every throw above leaves the user's history whole.
+  //
+  // `purge`, not `remove`: dropping the mapping alone left the pre-compaction
+  // transcript JSONL behind in the SHARED config dir, one per compaction,
+  // unreachable forever - the session id it is named after lived only in the
+  // mapping being deleted here. The two die together because neither is of any
+  // use without the other, and what the compaction keeps is the summary, which
+  // is already saved above and appended to the conversation itself.
   deps.compactions.save(deps.conversationId, summary);
-  deps.sessionsStore.remove(deps.conversationId);
+  deps.sessionsStore.purge(deps.conversationId);
   return { summary };
 }

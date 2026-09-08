@@ -20,9 +20,18 @@
 // follow-up actions. They arrive on the same `done` frame, render above the
 // composer rather than replacing it, and outlive the user's later move to done.
 
+import type { ApprovalArg } from "./approval";
+
 export type InteractionOption =
   | ChoiceOption
-  | { kind: "approval"; id: "approve" | "decline" };
+  | {
+      kind: "approval";
+      id: "approve" | "decline";
+      /** A default the SURFACE overrides with its own locale. The host always
+       *  emits one so a shell that cannot localize (and every decoder that
+       *  requires a label) still renders two readable buttons. */
+      label?: string;
+    };
 
 interface ChoiceOption {
   kind?: "choice";
@@ -65,6 +74,16 @@ export type InteractionStep =
        *  what makes the approval bound to ONE exact call and usable once. A
        *  card that carries one is never deduped against another card. */
       requestId?: string;
+      /** Present ONLY on an approval card, alongside `requestId`: the exact
+       *  call the host is asking about, structurally. It lets a surface author
+       *  the question in the READER's language while the host stays the sole
+       *  authority on what is being approved. `question`/`detail` remain the
+       *  host's English rendering of the same thing, for surfaces that cannot.
+       *
+       *  Trustworthy only WITH `requestId`: a step whose id the host did not
+       *  issue has its `requestId` stripped on the way out, and a surface must
+       *  ignore this block whenever that happened. */
+      approval?: { operation: string; args: ApprovalArg[] };
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }

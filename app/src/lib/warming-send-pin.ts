@@ -33,7 +33,7 @@ export function preferRowPin(
     // Rows store pi's CANONICAL id; the pin travels through the app's display
     // dialect and is re-canonicalized at the wire (`wireTurnPin`).
     provider: toDisplayProviderIdOrNull(row.provider) ?? undefined,
-    model: normalizeLegacyModel(row.model ?? null) ?? undefined,
+    model: normalizeLegacyModel(row.model ?? null, row.provider) ?? undefined,
     effort: send.effort,
   };
 }

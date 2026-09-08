@@ -261,9 +261,17 @@ export class ProxyChannel implements RuntimeChannel {
   ): Promise<void> {
     // A turn begins here for every programmatic fire (a routine, a trigger, a
     // mission's first turn): the host records which conversation this agent is
-    // working in, because a runtime's own claim about that is not evidence
-    // (routes/live-turn.ts).
-    liveTurns.start(ctx.agent.id, conversationId, normalizeTurnMode(pin?.mode));
+    // working in AND whose name the work is done in, because a runtime's own
+    // claim about either is not evidence (routes/live-turn.ts).
+    liveTurns.start(
+      ctx.agent.id,
+      conversationId,
+      normalizeTurnMode(pin?.mode),
+      {
+        actingAs,
+        actingUser,
+      },
+    );
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
     // the conversation, exactly as a user message would. The routine's

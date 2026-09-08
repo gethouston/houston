@@ -76,7 +76,11 @@ export function assertContained(
       // A symlink inside an allowed root pointing at `auth.json` must not
       // launder it, so the resolved form is judged too.
       if (isCredential(real, allowedRoot)) throw new PathDeniedError(raw);
-      return abs;
+      // The PROVEN path, not the one that was asked for. `abs` is a name that
+      // resolved here once; handing it back leaves the tool to resolve it a
+      // second time, and between the two resolutions a link can be repointed
+      // outside the workspace. What was checked is what gets opened.
+      return real;
     }
   }
   throw new PathEscapeError(raw, root);
@@ -119,5 +123,7 @@ export function assertAllowedFile(
   const boundary: RootBoundary = { canonical: root, lexical: root };
   if (!contains(real, root)) throw new PathEscapeError(raw, root);
   if (isCredential(real, boundary)) throw new PathDeniedError(raw);
-  return abs;
+  // The proven path, for the same reason containment returns one: the tool must
+  // open what was judged, not re-resolve the name a second time.
+  return real;
 }

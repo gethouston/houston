@@ -15,6 +15,7 @@ import {
   loadedClaudeSdk,
   preloadClaudeSdk,
 } from "./sdk-loader";
+import { installClaudeSdkWarningFilter } from "./sdk-warnings";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
@@ -52,6 +53,9 @@ export { ClaudeBackendUnavailableError } from "./sdk-loader";
  * would otherwise re-read that shared dir and finish the turn on the team account.
  */
 export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
+  // Houston pre-approves its own MCP tools, which the SDK warns about on every
+  // single `query()`. Reported once, at INFO, instead of once per turn at ERROR.
+  installClaudeSdkWarningFilter();
   return {
     // The pi provider id this backend serves turns for (the registry maps
     // `model.provider` → backend). Houston's native Anthropic provider is

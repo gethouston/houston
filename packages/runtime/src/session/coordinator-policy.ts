@@ -1,4 +1,4 @@
-import type { AssistantRuntimeRole } from "@houston/host/src/launcher/assistant-role";
+import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
 import { learningsDocPath } from "./learnings-context";
 import type { WorkspaceGuardOptions } from "./tools/fs-guard";
 

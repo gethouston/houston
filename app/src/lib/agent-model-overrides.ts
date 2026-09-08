@@ -109,7 +109,7 @@ export function resolveAgentModelOverrides(
   const stored = provider === configured;
   const model =
     (stored
-      ? validModelOrNull(provider, normalizeLegacyModel(cfg.model))
+      ? validModelOrNull(provider, normalizeLegacyModel(cfg.model, provider))
       : null) ?? getDefaultModel(provider);
   const effort =
     stored && cfg.effort

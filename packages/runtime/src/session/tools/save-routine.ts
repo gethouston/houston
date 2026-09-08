@@ -1,9 +1,13 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import { currentTurnMode } from "../turn-mode-context";
 import type { SandboxFetch } from "./sandbox-fetch";
+import { CONVERSATION_ID_HEADER } from "./save-learning";
+import {
+  SaveRoutineParams,
+  type SaveRoutineParamsValue,
+} from "./save-routine-params";
 
 /**
  * The agent's structured tool to CREATE or UPDATE a scheduled task (a Routine).
@@ -24,90 +28,6 @@ import type { SandboxFetch } from "./sandbox-fetch";
  */
 export const SAVE_ROUTINE_TOOL_NAME = "save_routine";
 
-/**
- * The wake binding for an event-triggered scheduled task (Houston Cloud only).
- * All fields optional so both shapes pass the schema; the host validates the
- * binding and rejects it where event triggers are unavailable.
- *  - Composio: `toolkit` + `trigger_slug` + `trigger_config`.
- *  - Webhook:  `kind: "webhook"` (the gateway mints the URL out of band).
- */
-const TriggerParam = Type.Object({
-  kind: Type.Optional(
-    Type.String({
-      description: "'webhook' for an incoming-webhook wake; omit for Composio.",
-    }),
-  ),
-  toolkit: Type.Optional(
-    Type.String({ description: "Composio toolkit slug, e.g. 'gmail'." }),
-  ),
-  trigger_slug: Type.Optional(
-    Type.String({
-      description:
-        "Composio trigger-type slug, e.g. 'GMAIL_NEW_GMAIL_MESSAGE'.",
-    }),
-  ),
-  trigger_config: Type.Optional(
-    Type.Record(Type.String(), Type.Unknown(), {
-      description: "Config for the Composio trigger type.",
-    }),
-  ),
-  connected_account_id: Type.Optional(
-    Type.String({
-      description: "Pin only when the user has >1 account for the toolkit.",
-    }),
-  ),
-});
-
-const SaveRoutineParams = Type.Object({
-  name: Type.String({
-    description: "A short human name for the scheduled task.",
-  }),
-  prompt: Type.String({
-    description:
-      "The instruction Houston runs each time the scheduled task wakes.",
-  }),
-  schedule: Type.Optional(
-    Type.String({
-      description:
-        "A cron expression that wakes the task. Supply this OR 'trigger', never both and never neither.",
-    }),
-  ),
-  trigger: Type.Optional(TriggerParam),
-  chat_mode: Type.Optional(
-    Type.Union([Type.Literal("shared"), Type.Literal("per_run")], {
-      description:
-        "'shared' (default): every run continues one chat. 'per_run': each run gets its own chat.",
-    }),
-  ),
-  suppress_when_silent: Type.Optional(
-    Type.Boolean({
-      description:
-        "true to stay silent when a run finds nothing that needs the user's attention.",
-    }),
-  ),
-  enabled: Type.Optional(
-    Type.Boolean({ description: "false to save the task turned off." }),
-  ),
-  integrations: Type.Optional(
-    Type.Array(Type.String(), {
-      description: "Integration slugs this task uses.",
-    }),
-  ),
-  setup_activity_id: Type.Optional(
-    Type.String({
-      description:
-        "The id of THIS setup chat, so the task links back to the conversation that created it. Stamp it when the kickoff carried one.",
-    }),
-  ),
-  id: Type.Optional(
-    Type.String({
-      description:
-        "Omit to CREATE a new scheduled task. Supply the id of an existing task to UPDATE it in place (only the fields you pass change).",
-    }),
-  ),
-});
-type SaveRoutineParams = Static<typeof SaveRoutineParams>;
-
 export interface SaveRoutineToolOptions {
   call: SandboxFetch;
 }
@@ -124,7 +44,7 @@ export interface SaveRoutineToolOptions {
  * untouched.
  */
 export const ROUTINE_RUN_SAVE_REFUSAL =
-  "save_routine is not available inside a running routine. This turn IS the automation firing — do the work it describes and reply with the result. The user can change the routine from its own screen or its setup chat.";
+  "save_routine is not available inside a running routine. This turn IS the automation firing - do the work it describes and reply with the result. The user can change the routine from its own screen or its setup chat.";
 
 /** True while the turn is a routine RUN (never its setup chat). */
 function inRoutineRun(): boolean {
@@ -142,21 +62,25 @@ export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
     name: SAVE_ROUTINE_TOOL_NAME,
     label: "Save a scheduled task",
     description:
-      "Create or update a scheduled task (a Routine) in the user's saved automations. NEVER write .houston/routines/routines.json with file tools — this tool is the ONLY safe way to save, because it merges with the user's other tasks instead of overwriting them. Omit 'id' to create; pass an existing task's 'id' to change it. Give exactly one wake: a 'schedule' (cron) or a 'trigger' (event). On success, tell the user in plain words - never mention files, JSON, or cron.",
+      "Create or update a scheduled task (a Routine) in the user's saved automations. NEVER write .houston/routines/routines.json with file tools - this tool is the ONLY safe way to save, because it merges with the user's other tasks instead of overwriting them. Omit 'id' to create; pass an existing task's 'id' to change it. Give exactly one wake: a 'schedule' (cron) or a 'trigger' (event). On success, tell the user in plain words - never mention files, JSON, or cron.",
     promptSnippet: "Save or update a scheduled task",
     parameters: SaveRoutineParams,
     executionMode: "sequential",
     async execute(
       _id: string,
-      params: SaveRoutineParams,
+      params: SaveRoutineParamsValue,
       signal: AbortSignal | undefined,
     ) {
       // A firing routine may not author routines — see ROUTINE_RUN_SAVE_REFUSAL.
       if (inRoutineRun()) throw new Error(ROUTINE_RUN_SAVE_REFUSAL);
-      // WHO this turn acts as (C2): forward the header the host reads so a saved
-      // routine records the acting user as its creator — same as the integration
-      // tools. Turn-scoped; absent outside a turn.
+      // WHO this turn acts as (C2) and WHICH conversation it belongs to: both
+      // are turn-scoped ambient context, forwarded exactly as start_mission and
+      // houston_call forward them. The conversation id is what lets the host key
+      // the save to the live turn it recorded, so `created_by` comes from an
+      // identity the HOST holds rather than one this runtime asserts. Absent
+      // outside a turn, and the host then stamps nothing.
       const acting = currentActingContext();
+      const conversationId = currentConversationId();
       const auto = currentTurnMode() === "auto";
       const res = await opts.call("/sandbox/routines/save", {
         method: "POST",
@@ -167,6 +91,9 @@ export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
             : {}),
           ...(acting?.actingUser
             ? { "x-houston-acting-user": acting.actingUser }
+            : {}),
+          ...(conversationId
+            ? { [CONVERSATION_ID_HEADER]: conversationId }
             : {}),
           ...(auto ? { "x-houston-turn-mode": "auto" } : {}),
         },

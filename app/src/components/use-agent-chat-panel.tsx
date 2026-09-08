@@ -63,6 +63,7 @@ import {
   useSetAgentModelChoice,
   useSkills,
 } from "../hooks/queries";
+import { useApprovalCardCopy } from "../hooks/use-approval-card-copy";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useConnectAiComposer } from "../hooks/use-connect-ai-composer";
 import {
@@ -95,6 +96,7 @@ import {
   genericErrorDescription,
   logAndReportError,
 } from "../lib/error-report";
+
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import { encodeInteractionAnswersMessage } from "../lib/interaction-answers-marker";
 import { localizeApprovalQuestion } from "../lib/interaction-approval-labels";
@@ -133,6 +135,7 @@ import {
   validEffortOrDefault,
 } from "../lib/providers";
 import { queryKeys } from "../lib/query-keys";
+import { reportRejection } from "../lib/report-rejection";
 import { showSendFailedToast } from "../lib/send-error-toast";
 import { hasAgentOutput } from "../lib/setup-mission-greeting";
 import {
@@ -351,6 +354,9 @@ export function useAgentChatPanel({
   onOpenChildMission,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t, i18n } = useTranslation(["board", "chat", "dashboard", "teams"]);
+  // Approval cards are worded HERE, from the host's structural account of the
+  // exact call (`lib/interaction-approval-labels.ts`).
+  const approvalCopy = useApprovalCardCopy();
   const { processLabels, getThinkingMessage, thinkingIndicator } =
     useChatDisplayLabels();
   const queryClient = useQueryClient();
@@ -510,14 +516,20 @@ export function useAgentChatPanel({
       setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
       return;
     }
-    tauriConfig
-      .read(path)
-      .then((cfg) => {
+    reportRejection(
+      tauriConfig.read(path).then((cfg) => {
         setAgentProvider(toDisplayProviderIdOrNull(cfg.provider as string));
-        setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
+        setAgentModel(
+          normalizeLegacyModel(
+            (cfg.model as string) ?? null,
+            cfg.provider as string,
+          ),
+        );
         setAgentEffort((cfg.effort as string) ?? null);
-      })
-      .catch((err) => logAndReportError("chat.read-agent-model", err));
+      }),
+      "chat.read-agent-model",
+      logAndReportError,
+    );
   }, [path, initialTurnMode]);
 
   const previousSessionKeyRef = useRef(selectedSessionKey);
@@ -538,10 +550,11 @@ export function useAgentChatPanel({
   // stays only as the last resort, matching the engine's factory default.
   const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
   useEffect(() => {
-    tauriProvider
-      .getDefault()
-      .then((p) => setLastUsedProvider(p || null))
-      .catch((err) => logAndReportError("chat.read-default-provider", err));
+    reportRejection(
+      tauriProvider.getDefault().then((p) => setLastUsedProvider(p || null)),
+      "chat.read-default-provider",
+      logAndReportError,
+    );
   }, []);
 
   const { data: activities } = useActivity(path ?? undefined);
@@ -583,6 +596,9 @@ export function useAgentChatPanel({
   );
   const activityModel = normalizeLegacyModel(
     pinForSelected?.model ?? selectedActivity?.model ?? null,
+    // The row's own provider, not the picker's: a legacy id is only legacy
+    // against the provider it was stored for.
+    pinForSelected?.provider ?? selectedActivity?.provider,
   );
 
   // Which providers the user is actually logged into (reactive + cached), read
@@ -793,14 +809,14 @@ export function useAgentChatPanel({
     if (!hasMessages) return;
     if (stampedActivityIds.current.has(selectedActivity.id)) return;
     stampedActivityIds.current.add(selectedActivity.id);
-    tauriActivity
-      .update(path, selectedActivity.id, {
+    reportRejection(
+      tauriActivity.update(path, selectedActivity.id, {
         provider: effectiveProvider,
         model: effectiveModel,
-      })
-      .catch((err) => {
-        logAndReportError("chat.pin-conversation-model", err);
-      });
+      }),
+      "chat.pin-conversation-model",
+      logAndReportError,
+    );
   }, [path, selectedActivity, hasMessages, effectiveProvider, effectiveModel]);
 
   // ── Context-usage indicator ───────────────────────────────────────────
@@ -1031,9 +1047,11 @@ export function useAgentChatPanel({
         // The device's sticky default too: the create-agent dialog seeds from
         // it, so a hosted pick must register as "last used" like a shared-mode
         // pick does (applyProviderModel writes it on the other branches).
-        tauriProvider
-          .setLastUsed(prov, mod)
-          .catch((err) => logAndReportError("chat.save-last-model", err));
+        reportRejection(
+          tauriProvider.setLastUsed(prov, mod),
+          "chat.save-last-model",
+          logAndReportError,
+        );
         return;
       }
       void handleModelSelect(prov, mod);
@@ -1810,11 +1828,7 @@ export function useAgentChatPanel({
     // plain-titled with a prettified name and no logo — never a crash.
     const steps: ChatInteractionStep[] = override.steps.map((step) => {
       if (step.kind !== "question") return step;
-      const question = localizeApprovalQuestion(step, {
-        approve: t("chat:approvalCard.approve"),
-        decline: t("chat:approvalCard.decline"),
-        closing: t("chat:approvalCard.closing"),
-      });
+      const question = localizeApprovalQuestion(step, approvalCopy);
       return step.toolkit
         ? { ...question, brand: resolveBrand(step.toolkit) }
         : question;
@@ -2080,6 +2094,7 @@ export function useAgentChatPanel({
     dismissInteractionStep,
     dismissActiveInteraction,
     resolveBrand,
+    approvalCopy,
     t,
   ]);
   const composerOverride = composerOverrideState.node;

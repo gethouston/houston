@@ -74,7 +74,7 @@ export function makeReadMissionTool(opts: ReadMissionToolOptions) {
     name: READ_MISSION_TOOL_NAME,
     label: "Review a mission",
     description: assistant
-      ? "Read the recent conversation of one mission by id (from list_missions) on the agent you name, to review what it produced before reporting back to the user or moving it on that agent's board."
+      ? "Read the recent conversation of one mission by id (from list_missions) on the agent you name, to review what it produced before reporting back to the user, moving it on that agent's board, or removing it with the Houston operation deleteActivity."
       : "Read the recent conversation of one mission by id (from list_missions), to review its result or progress before reporting back or moving it on the board. Returns the last messages of that mission's chat.",
     promptSnippet: "Read another mission's conversation",
     parameters: readMissionParams(assistant, DEFAULT_TAIL),

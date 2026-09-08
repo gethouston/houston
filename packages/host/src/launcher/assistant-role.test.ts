@@ -32,20 +32,56 @@ test("every ordinary agent on the same host is a plain runtime", () => {
 
 test("a managed assistant pod's runtime is the coordinator whatever the agent is named", () => {
   // The pod provisions under /workspace with a seeded, ordinarily-named agent,
-  // so ONLY the gateway's marker identifies it.
+  // so ONLY the gateway's marker identifies it - and the marker counts only on
+  // the managed profile that mints it.
   expect(
     assistantRuntimeRole({
       agentId: "ws-1/Assistant",
-      hostEnv: { HOUSTON_ASSISTANT_USER_ID: "user-42" },
+      hostEnv: {
+        HOUSTON_MANAGED_CLOUD: "1",
+        HOUSTON_ASSISTANT_USER_ID: "user-42",
+      },
     }),
   ).toBe("coordinator");
   // A blank marker is not a marker.
   expect(
     assistantRuntimeRole({
       agentId: "ws-1/Assistant",
-      hostEnv: { HOUSTON_ASSISTANT_USER_ID: "  " },
+      hostEnv: {
+        HOUSTON_MANAGED_CLOUD: "1",
+        HOUSTON_ASSISTANT_USER_ID: "  ",
+      },
     }),
   ).toBeNull();
+});
+
+/**
+ * S8 — the same second factor `routes/assistant-claim.ts` requires. A
+ * self-hoster who copied the documented assistant variables into an ordinary
+ * host would otherwise turn EVERY agent there into a coordinator: no bash, no
+ * skills, and `start_mission` refused, on agents that are nobody's assistant.
+ */
+test("the pod marker alone is not a coordinator off the managed profile", () => {
+  for (const agentId of ["ws-1/Assistant", "ws-1/Writer"]) {
+    expect(
+      assistantRuntimeRole({
+        agentId,
+        hostEnv: {
+          HOUSTON_ASSISTANT_USER_ID: "user-42",
+          HOUSTON_ASSISTANT_CP_URL: "https://gateway.example",
+          HOUSTON_ASSISTANT_TOKEN: "gw",
+        },
+      }),
+    ).toBeNull();
+  }
+  // The synthetic dot-name is still the coordinator on such a host: that is the
+  // local deployment's own answer, and no environment is needed for it.
+  expect(
+    assistantRuntimeRole({
+      agentId: `ws-1/${ASSISTANT_AGENT_NAME}`,
+      hostEnv: { HOUSTON_ASSISTANT_USER_ID: "user-42" },
+    }),
+  ).toBe("coordinator");
 });
 
 test("holding the gateway credential does not make a pod an assistant pod", () => {

@@ -37,8 +37,19 @@ export function entityRuleFor(
   const after = route ? segmentBefore(route.path, parameter) : null;
   const byRoute = after && ENTITY_SOURCES.find((rule) => rule.after === after);
   if (byRoute) return byRoute;
-  const path = route?.path ?? "";
-  const names = wireNames(parameter, route);
+  return entityRuleForNames(wireNames(parameter, route), route?.path ?? "");
+}
+
+/**
+ * The rule claiming any of `names`, narrowed by the route path. The name-only
+ * half of {@link entityRuleFor}, exported because a field INSIDE a body object
+ * reaches the wire under no path segment at all: the only evidence about it is
+ * what it is called, qualified by the parameter that carries it.
+ */
+export function entityRuleForNames(
+  names: readonly string[],
+  path: string,
+): EntityRule | undefined {
   return ENTITY_SOURCES.find(
     (rule) =>
       rule.names?.some((name) => names.includes(name)) &&

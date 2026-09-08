@@ -1,5 +1,6 @@
 import type { TurnMode } from "@houston/protocol";
 import type { ResolvedModel } from "../backends/types";
+import { conversationCompactions } from "../store/conversation-compaction";
 import { serverBackendFor } from "./conversation-backends";
 import type { Conversation } from "./conversation-record";
 
@@ -13,6 +14,9 @@ import type { Conversation } from "./conversation-record";
  * which registers this process's backends on first use — so importing this
  * module on its own is enough to rebuild a session correctly.
  */
+
+/** The backend id the Claude Agent SDK registers under (`backends/claude`). */
+const ANTHROPIC_BACKEND_ID = "anthropic";
 
 /**
  * COMPLIANCE GATE: ensure a conversation's live session sits on the backend the
@@ -44,6 +48,15 @@ export async function switchBackendIfNeeded(
 ): Promise<{ rebuilt: boolean; preTokens: number | null }> {
   const backend = serverBackendFor(model.provider);
   if (backend.id === conv.backendId) return { rebuilt: false, preTokens: null };
+
+  // Leaving the Claude backend retires its armed compaction checkpoint. It is a
+  // summary waiting to be prepended to the NEXT anthropic prompt; the history it
+  // summarizes is about to be carried into the new backend as a transcript
+  // replay instead, so a conversation that later comes back to anthropic would
+  // otherwise read the same stretch twice - once replayed, once summarized -
+  // with the summary also suppressing the resume of the session it belongs to.
+  if (conv.backendId === ANTHROPIC_BACKEND_ID)
+    conversationCompactions.clear(conversationId);
 
   // Capture the leaving provider's context fill BEFORE tearing the session down,
   // so the switch can still be sized against the new model's window downstream.

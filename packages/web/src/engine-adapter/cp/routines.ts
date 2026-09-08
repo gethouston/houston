@@ -1,6 +1,8 @@
 import type {
+  NewRoutine,
   Routine,
   RoutineRun,
+  RoutineUpdate,
   WebhookKeyReveal,
 } from "../../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "../client/errors";
@@ -48,15 +50,16 @@ export async function listRoutineRuns(
  * spending model budget on every run until someone stops it.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
- * @param input The routine to create: what it should do and when it should
- *   run.
+ * @param input The routine to create: a name, the instructions it runs
+ *   (`prompt`), and WHEN it runs - either `schedule`, a cron expression, or
+ *   `trigger`, an event binding. Exactly one of the two.
  * @assistant group:routines confirm
- * @assistant unschematized: debt: input is typed unknown; it should carry the routine wire shape so a caller can build one.
+ * @assistant unschematized: a trigger binding carries the outside app's own event config, whose shape belongs to that app.
  */
 export async function createRoutine(
   cfg: ControlPlaneConfig,
   agentId: string,
-  input: unknown,
+  input: NewRoutine,
 ): Promise<Routine> {
   const res = await cpFetch(cfg, `${agentPath(agentId)}/routines`, {
     method: "POST",
@@ -73,15 +76,16 @@ export async function createRoutine(
  *   agent's name is not its id, so read the id from listAgents first.
  * @param id The routine to change, by the id listRoutines returns.
  * @param updates Only the fields that change; anything omitted is left as
- *   it was.
+ *   it was. `schedule` and `trigger` are the two wake mechanisms: setting one
+ *   replaces the other.
  * @assistant group:routines confirm
- * @assistant unschematized: debt: updates is typed unknown; it should carry the routine wire shape so a caller can build one.
+ * @assistant unschematized: a trigger binding carries the outside app's own event config, whose shape belongs to that app.
  */
 export async function updateRoutine(
   cfg: ControlPlaneConfig,
   agentId: string,
   id: string,
-  updates: unknown,
+  updates: RoutineUpdate,
 ): Promise<Routine> {
   const res = await cpFetch(
     cfg,

@@ -367,10 +367,12 @@ test("a symlink cannot stand in for a path outside the allowlist", () => {
   const link = join(workspace, ".houston", "learnings", "link.json");
   symlinkSync(join(shared, "deploy", "SKILL.md"), link);
   expect(() => guard.clamp(link)).toThrow(PathNotAllowedError);
-  // ...and the real document still resolves through its own symlink.
+  // ...and the real document still resolves through its own symlink - to the
+  // PROVEN path, so the tool opens what the guard judged rather than the name,
+  // which a repointed link could resolve elsewhere a moment later.
   const alias = join(workspace, "memory-alias.json");
   symlinkSync(memory, alias);
-  expect(guard.clamp(alias)).toBe(alias);
+  expect(guard.clamp(alias)).toBe(memory);
 });
 
 test("an allowlisted path that IS a symlink out of the workspace is refused", () => {
@@ -421,4 +423,34 @@ test("a symlink to an allowlisted credential file is denied too", () => {
   const guard = new WorkspaceGuard(workspace, { allowedFiles: [auth] });
 
   expect(() => guard.clamp(alias)).toThrow(PathDeniedError);
+});
+
+test("the guard answers with the path it proved, not the name it was given", () => {
+  // Returning the requested name leaves the tool to resolve it a SECOND time,
+  // and a link repointed between the two resolutions opens a file nothing
+  // checked. The same reason a hardlinked credential must not be reachable
+  // under a laundered name.
+  const base = realpathSync(mkdtempSync(join(tmpdir(), "houston-real-")));
+  const workspace = join(base, "ws");
+  mkdirSync(join(workspace, "docs"), { recursive: true });
+  const real = join(workspace, "docs", "notes.md");
+  writeFileSync(real, "hi");
+  const link = join(workspace, "notes-link.md");
+  symlinkSync(real, link);
+  const guard = new WorkspaceGuard(workspace);
+  expect(guard.clamp(link)).toBe(real);
+  expect(guard.assertInside(link)).toBe(real);
+});
+
+test("an NTFS data-stream suffix cannot launder a denied name", () => {
+  // `auth.json::$DATA` opens `auth.json` on Windows while reading, segment by
+  // segment, as a different file entirely.
+  const workspace = realpathSync(mkdtempSync(join(tmpdir(), "houston-ads-")));
+  mkdirSync(join(workspace, ".houston", "runtime"), { recursive: true });
+  const guard = new WorkspaceGuard(workspace);
+  for (const suffix of ["::$DATA", ":hidden"]) {
+    expect(() => guard.clamp(`.houston/runtime/auth.json${suffix}`)).toThrow(
+      PathDeniedError,
+    );
+  }
 });

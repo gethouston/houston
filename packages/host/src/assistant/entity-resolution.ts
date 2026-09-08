@@ -1,16 +1,15 @@
 import type { AssistantEntityCollection } from "@houston/domain/assistant-catalog-types";
 import type { AssistantOperation } from "./catalog";
-import { resolveAgentReference } from "./entity-agent-resolution";
 import type { EntityDirectory } from "./entity-directory";
-import { directoryEntries } from "./entity-resolution-directory";
+import {
+  DirectoryReader,
+  type EntityRefusal,
+  type EntityResolutionCode,
+  resolveEntityValue,
+} from "./entity-resolution-values";
 import { valueProblem } from "./entity-values";
 
-export type EntityResolutionCode =
-  | "invalid_params"
-  | "unknown_agent"
-  | "ambiguous_agent"
-  | "unknown_entity"
-  | "ambiguous_entity";
+export type { EntityResolutionCode } from "./entity-resolution-values";
 
 export type EntityResolution =
   | { ok: true; params: Record<string, unknown> }
@@ -28,15 +27,26 @@ const PARENT: Partial<
   "shared-skills": "workspaces",
 };
 
+interface Reference {
+  /** How the value is named in a refusal: `agentId`, or `manifest.enabled`. */
+  label: string;
+  collection: AssistantEntityCollection;
+}
+
 /** Resolve parent scopes before children regardless of declaration order. */
-function identifiers(op: AssistantOperation) {
-  return op.params
-    .flatMap((param) =>
-      param.resolver ? [{ name: param.name, collection: param.resolver }] : [],
-    )
-    .sort(
-      (a, b) => (PARENT[a.collection] ? 1 : 0) - (PARENT[b.collection] ? 1 : 0),
-    );
+function ordered(refs: Reference[]): Reference[] {
+  return [...refs].sort(
+    (a, b) => (PARENT[a.collection] ? 1 : 0) - (PARENT[b.collection] ? 1 : 0),
+  );
+}
+
+/** The parameters that name a thing, top level. */
+function identifiers(op: AssistantOperation): Reference[] {
+  return ordered(
+    op.params.flatMap((param) =>
+      param.resolver ? [{ label: param.name, collection: param.resolver }] : [],
+    ),
+  );
 }
 
 /**
@@ -49,6 +59,12 @@ function identifiers(op: AssistantOperation) {
  * failures propagate to the host reporting path: an unavailable list must never
  * become an empty list, and an empty list must never authorize an unchecked
  * identifier.
+ *
+ * THREE shapes, because an identifier does not only arrive as a top-level
+ * string: a parameter can carry a LIST of them, and a body object can carry
+ * them one level in (`manifest.enabled`, `assignments[].userId`). Those were
+ * invisible here while the catalog said `string`, so the model's guess went
+ * straight through the approval card and into the request.
  */
 export async function resolveEntityParams(
   op: AssistantOperation,
@@ -56,92 +72,101 @@ export async function resolveEntityParams(
   deps: EntityResolutionDeps,
 ): Promise<EntityResolution> {
   const resolved = { ...params };
+  const reader = new DirectoryReader(deps);
   const refs = identifiers(op);
-  for (const { name, collection } of refs) {
-    if (!Object.hasOwn(params, name) || params[name] === undefined) continue;
-    const raw = resolved[name];
-    if (typeof raw !== "string" || !raw.trim()) {
-      return {
-        ok: false,
-        code: "invalid_params",
-        message: `"${name}" must be a non-empty ${collection} id or exact name.`,
-      };
-    }
-    if (collection === "agents") {
-      const result = resolveAgentReference(name, raw, await deps.agents());
-      if (!result.ok) return result;
-      resolved[name] = result.params[name];
-      continue;
-    }
-    const parent = PARENT[collection];
-    const scope = parent
-      ? resolved[refs.find((ref) => ref.collection === parent)?.name ?? ""]
-      : "";
-    if (parent && (typeof scope !== "string" || !scope)) {
-      return {
-        ok: false,
-        code: "invalid_params",
-        message: `"${name}" requires a resolved ${parent} scope.`,
-      };
-    }
-    const result = matchEntity({
-      name,
-      raw,
+  for (const { label, collection } of refs) {
+    if (!Object.hasOwn(params, label) || params[label] === undefined) continue;
+    const scope = scopeFor(label, collection, refs, resolved);
+    if (!scope.ok) return scope;
+    const value = await resolveEntityValue({
+      label,
+      value: resolved[label],
       collection,
-      entries: await directoryEntries(
-        collection,
-        deps,
-        typeof scope === "string" ? scope : "",
-      ),
+      scope: scope.scope,
+      reader,
     });
-    if (!result.ok) return result;
-    resolved[name] = result.params[name];
+    if (!value.ok) return value;
+    resolved[label] = value.value;
   }
-  const problem = valueProblem(op, resolved);
+  const nested = await resolveNestedFields(op, resolved, refs, reader);
+  if (!nested.ok) return nested;
+  const problem = valueProblem(op, nested.params);
   return problem
     ? { ok: false, code: "invalid_params", message: problem }
-    : { ok: true, params: resolved };
+    : { ok: true, params: nested.params };
 }
 
-interface Entry {
-  id: string;
-  name: string;
-  email?: string;
+/** The already-resolved parent id a child collection is listed under. */
+function scopeFor(
+  label: string,
+  collection: AssistantEntityCollection,
+  refs: readonly Reference[],
+  resolved: Record<string, unknown>,
+): { ok: true; scope: string } | EntityRefusal {
+  const parent = PARENT[collection];
+  if (!parent) return { ok: true, scope: "" };
+  const holder = refs.find((ref) => ref.collection === parent)?.label ?? "";
+  const scope = resolved[holder];
+  if (typeof scope !== "string" || !scope) {
+    return {
+      ok: false,
+      code: "invalid_params",
+      message: `"${label}" requires a resolved ${parent} scope.`,
+    };
+  }
+  return { ok: true, scope };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 /**
- * One value against one live list: its id, or its exact name (an address for a
- * person or an invite), case-insensitively. Anything else is refused with every
- * value that exists, so the next attempt is a choice rather than a guess.
+ * The identifiers a body object carries one level in, resolved in place. The
+ * fields are the catalog's declaration (`AssistantFieldDocument`), and the
+ * VALUE decides which shape they apply to: an object's property, the same
+ * property of every element of a list of objects, or every entry of a list the
+ * field itself holds.
  */
-function matchEntity(input: {
-  name: string;
-  raw: string;
-  collection: AssistantEntityCollection;
-  entries: readonly Entry[];
-}): EntityResolution {
-  const { name, raw, collection, entries } = input;
-  const normalized = raw.trim().toLowerCase();
-  const byId = entries.filter((entry) => entry.id.toLowerCase() === normalized);
-  const matches = byId.length
-    ? byId
-    : entries.filter((entry) =>
-        [entry.name, entry.email].some(
-          (value) => value?.toLowerCase() === normalized,
-        ),
-      );
-  const only = matches.length === 1 ? matches[0] : undefined;
-  if (only) return { ok: true, params: { [name]: only.id } };
-  const candidates = matches.length ? matches : entries;
-  const accepted = candidates.map(describe).join(", ") || "there are none yet";
-  return {
-    ok: false,
-    code: matches.length ? "ambiguous_entity" : "unknown_entity",
-    message: `"${name}" ${JSON.stringify(raw)} ${
-      matches.length ? "is ambiguous in" : "does not exist in"
-    } ${collection}. Accepted values: ${accepted}. Pass an id, or ask the user which one they mean.`,
-  };
+async function resolveNestedFields(
+  op: AssistantOperation,
+  params: Record<string, unknown>,
+  refs: readonly Reference[],
+  reader: DirectoryReader,
+): Promise<{ ok: true; params: Record<string, unknown> } | EntityRefusal> {
+  const resolved = { ...params };
+  for (const param of op.params) {
+    const fields = param.fields?.filter((field) => field.resolver) ?? [];
+    if (fields.length === 0) continue;
+    const value = resolved[param.name];
+    if (value === undefined) continue;
+    const items = Array.isArray(value) ? value : [value];
+    const next: unknown[] = [];
+    for (const item of items) {
+      if (!isRecord(item)) {
+        next.push(item);
+        continue;
+      }
+      const copy = { ...item };
+      for (const field of fields) {
+        const collection = field.resolver;
+        if (!collection || copy[field.name] === undefined) continue;
+        const label = `${param.name}.${field.name}`;
+        const scope = scopeFor(label, collection, refs, resolved);
+        if (!scope.ok) return scope;
+        const one = await resolveEntityValue({
+          label,
+          value: copy[field.name],
+          collection,
+          scope: scope.scope,
+          reader,
+        });
+        if (!one.ok) return one;
+        copy[field.name] = one.value;
+      }
+      next.push(copy);
+    }
+    resolved[param.name] = Array.isArray(value) ? next : next[0];
+  }
+  return { ok: true, params: resolved };
 }
-
-const describe = (entry: Entry): string =>
-  `${entry.name}${entry.email && entry.email !== entry.name ? ` <${entry.email}>` : ""} (id ${entry.id})`;

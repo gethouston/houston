@@ -379,6 +379,11 @@
   "approvalCard": {
     "approve": "Yes, go ahead",
     "decline": "No, don't do it",
-    "closing": "Houston cannot undo this for you. Should I go ahead?"
+    "closing": "Houston cannot undo this for you. Should I go ahead?",
+    "affects": "This affects {{arguments}}.",
+    "argument": "{{name}} \"{{value}}\"",
+    "exactValue": "The exact {{name}}:",
+    "truncated_one": "[and {{formatted}} more character, all of which would be written]",
+    "truncated_other": "[and {{formatted}} more characters, all of which would be written]"
   }
 }

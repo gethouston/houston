@@ -108,11 +108,14 @@
   },
   "detail": {
     "saveChanges": "Save changes",
+    "savingChanges": "Saving...",
     "loadFailed": "Couldn't load this skill's instructions.",
     "unavailableToast": "That skill no longer exists.",
     "instructionsPlaceholder": "Instructions for this skill...",
     "integrations": "Works with",
-    "rename": "Rename skill"
+    "rename": "Rename skill",
+    "deleteTitle": "Delete “{{name}}”?",
+    "deleteDescription": "The agent will no longer have this skill. This cannot be undone."
   },
   "categories": {
     "Advisory": "Advisory",

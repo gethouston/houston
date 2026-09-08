@@ -8,6 +8,7 @@ import {
   isPlumbingParameter,
 } from "./assistant-declarations.ts";
 import { entityRuleFor, namesEntity } from "./assistant-entity-sources.ts";
+import { nestedFieldsFor } from "./assistant-nested-fields.ts";
 import { repoRelative } from "./assistant-paths.ts";
 import { isFallback, schemaForType } from "./assistant-schema.ts";
 
@@ -84,12 +85,22 @@ export function parametersOf(
                 ? { source: rule.discovery }
                 : {}),
             };
+      // The same identity questions, asked one level inside a body object: a
+      // `choice` holding a provider and a model says nothing about either
+      // unless the fields are declared (assistant-nested-fields.ts).
+      const fields = nestedFieldsFor(
+        name,
+        schema,
+        context.route,
+        context.operation,
+      );
       return {
         name,
         required: !parameter.questionToken && !parameter.initializer,
         schema,
         ...(context.docs[name] ? { description: context.docs[name] } : {}),
         ...identity,
+        ...(fields.length > 0 ? { fields } : {}),
       };
     });
   return { params, unschematized, openIdentifiers };

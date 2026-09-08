@@ -65,7 +65,9 @@ export function resolveActivityOverride(
     // send re-canonicalizes at the wire (`wireTurnPin`), so a row read here
     // must land in the same dialect as a pin read anywhere else.
     providerOverride: toDisplayProviderIdOrNull(activity.provider) ?? undefined,
-    modelOverride: normalizeLegacyModel(activity.model ?? null) ?? undefined,
+    modelOverride:
+      normalizeLegacyModel(activity.model ?? null, activity.provider) ??
+      undefined,
   };
 }
 
