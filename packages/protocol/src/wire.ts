@@ -137,18 +137,34 @@ export type WireEvent =
     }
   | {
       /**
-       * The runtime compacted this conversation's context before running the
-       * turn: at/over the autocompact threshold of the active model's window,
-       * earlier turns are summarized so long chats keep working (`proactive`;
-       * `native` is reserved for a provider's own compaction). Renders a
-       * boundary divider and resets the context-usage window; persisted on the
-       * turn's assistant message (`ChatMessage.compaction`) for reload replay.
+       * The runtime compacted this conversation's context: at/over the
+       * autocompact threshold of the active model's window, earlier turns are
+       * summarized so long chats keep working (`proactive`); the user asked for
+       * it with the `/compact` conversation command (`manual`); `native` is
+       * reserved for a provider's own compaction. Renders a boundary divider
+       * and resets the context-usage window; persisted on the turn's assistant
+       * message (`ChatMessage.compaction`) for reload replay.
        */
       type: "context_compacted";
       data: {
-        trigger: "native" | "proactive";
+        trigger: "native" | "proactive" | "manual";
         pre_tokens?: number | null;
       };
+    }
+  | {
+      /**
+       * The user cleared this conversation's context with the `/clear`
+       * conversation command: the live session was torn down, so the model
+       * starts the next turn remembering nothing said before this point, while
+       * the transcript above stays intact and searchable (`houston_recall`).
+       * Renders a boundary divider and resets the context-usage fill;
+       * persisted as its own marker message (`ChatMessage.contextCleared`) so
+       * the divider survives a reload AND so the transcript replay that
+       * rebuilds a session never carries pre-clear messages back into the
+       * model (session/replay-transcript.ts).
+       */
+      type: "context_cleared";
+      data: null;
     }
   | {
       /**

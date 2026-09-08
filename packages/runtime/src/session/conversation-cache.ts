@@ -16,6 +16,7 @@ import { config } from "../config";
 import { LruCache } from "../lru";
 import { claudeSessionTokenStale } from "./claude-token-guard";
 import type { TurnPin } from "./exec-turn";
+import { isAssistantWorkspace } from "./learnings-context";
 import { SYSTEM_PROMPT } from "./resource-loader";
 import { sandboxCall } from "./sandbox-call";
 import { buildToolSelection } from "./tool-selection";
@@ -45,6 +46,15 @@ import type { ProvidedContext } from "./workspace-context";
  * the default backend, built once here from the module-level deps. Turn logic
  * lives in exec-turn.ts; the public turn API (run/cancel/dispose) in chat.ts.
  */
+
+/**
+ * Whether this runtime IS the user's personal assistant — the coordinator that
+ * operates Houston and hands work to the user's agents. The agent root's
+ * basename is the runtime's only signal of which agent it is (the same gate the
+ * memory + rules prompt sections use). It clamps the tool surface on BOTH
+ * backends and makes every mission tool name the agent whose board it acts on.
+ */
+const personalAssistant = isAssistantWorkspace(config.workspaceDir);
 
 // Workspace-clamped file tools (security Gate #1). These shadow pi's builtins
 // by name: pi's defaults resolve absolute paths as-is, so without the clamp a
@@ -117,9 +127,13 @@ const saveLearningTool = sandboxCall
 // The mission-board tools (PRODUCT-1244): start_mission / list_missions /
 // update_mission_status proxy to /sandbox/missions/* with the same trust
 // posture as save_routine; read_mission reads this runtime's own transcript
-// store in-process. All four ride the host-reachability gate together.
+// store in-process, and goes through the host only for a mission that runs on
+// ANOTHER agent. All four ride the host-reachability gate together.
 const missionTools = sandboxCall
-  ? [...makeMissionTools({ call: sandboxCall }), makeReadMissionTool()]
+  ? [
+      ...makeMissionTools({ call: sandboxCall, personalAssistant }),
+      makeReadMissionTool({ call: sandboxCall, personalAssistant }),
+    ]
   : [];
 
 // The open-skills-directory tools: proxy to /sandbox/skills/* so the agent can
@@ -156,6 +170,7 @@ const toolSelection = buildToolSelection({
   missions: hostReachable,
   skillDirectory: hostReachable,
   assistant: assistantTools.length > 0,
+  personalAssistant,
 });
 const runCodeTool = toolSelection.includeRunCode
   ? makeRunCodeTool({
@@ -228,6 +243,9 @@ registerBackend(
     // SAME assistant gate as the pi path above, so an anthropic-backed agent on
     // the assistant pod can perform the identical set of Houston operations.
     assistant: assistantOptions,
+    // SAME coordinator clamp as the pi path: the assistant's surface must not
+    // depend on which provider the user happens to be on.
+    personalAssistant,
   }),
 );
 

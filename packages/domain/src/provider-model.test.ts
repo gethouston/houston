@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { DEFAULT_PROVIDER, migrateProviderModel } from "./provider-model";
+import { DEFAULT_MODEL, VALID_MODELS } from "./provider-model-catalog";
 
 const VALID_PROVIDERS = [
   "anthropic",
@@ -46,11 +47,13 @@ const PI_MODELS: Record<string, Set<string>> = {
     "claude-sonnet-4-6",
     "claude-sonnet-5",
   ]),
+  // pi's Codex catalog MINUS the rows OpenAI stopped serving a ChatGPT
+  // subscription (gpt-5.4, gpt-5.5 — probed live, see the runtime's
+  // ai/codex-offered.ts): a migration that lands on one produces a first turn
+  // that can only fail `model_not_found`.
   "openai-codex": new Set([
     "gpt-5.3-codex-spark",
-    "gpt-5.4",
     "gpt-5.4-mini",
-    "gpt-5.5",
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
@@ -76,9 +79,11 @@ function assertValid(r: ReturnType<typeof migrateProviderModel>, msg: string) {
 
 test("the real legacy desktop inputs map to valid pi ids with no diagnostic", () => {
   // From the user's actual ~/.houston data: {"provider":"openai","model":"gpt-5.5"}.
+  // gpt-5.5 has since been retired from the ChatGPT subscription, so it is a
+  // legacy id like any other and migrates to Codex's current full tier.
   const codex = migrateProviderModel("openai", "gpt-5.5");
   expect(codex.provider).toBe("openai-codex");
-  expect(codex.model).toBe("gpt-5.5");
+  expect(codex.model).toBe("gpt-6-astra");
   expect(codex.diagnostics).toEqual([]);
   assertValid(codex, "openai/gpt-5.5");
 
@@ -125,7 +130,7 @@ test("bare tier aliases resolve to the pi id at the SAME tier (no upgrade)", () 
 test("CLI-era codex model ids map to the closest current tier", () => {
   const full = migrateProviderModel("openai", "gpt-5");
   expect(full.provider).toBe("openai-codex");
-  expect(full.model).toBe("gpt-5.5");
+  expect(full.model).toBe("gpt-6-astra");
   expect(full.diagnostics).toEqual([]);
   assertValid(full, "openai/gpt-5");
 
@@ -137,8 +142,8 @@ test("CLI-era codex model ids map to the closest current tier", () => {
 });
 
 test("an already-valid pi provider+model passes through unchanged", () => {
-  const r = migrateProviderModel("openai-codex", "gpt-5.4");
-  expect(r).toMatchObject({ provider: "openai-codex", model: "gpt-5.4" });
+  const r = migrateProviderModel("openai-codex", "gpt-5.6-sol");
+  expect(r).toMatchObject({ provider: "openai-codex", model: "gpt-5.6-sol" });
   expect(r.diagnostics).toEqual([]);
   assertValid(r, "passthrough");
 });
@@ -172,7 +177,7 @@ test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)
 test("missing provider/model fall soft to the defaults with provider diagnostic", () => {
   const r = migrateProviderModel(undefined, undefined);
   expect(r.provider).toBe(DEFAULT_PROVIDER);
-  expect(r.model).toBe("gpt-5.5");
+  expect(r.model).toBe("gpt-6-astra");
   // Missing provider is reported; a missing model on a defaulted provider just
   // uses the default (no extra noise needed once the provider is known).
   expect(r.diagnostics.some((d) => d.message.includes("provider"))).toBe(true);
@@ -241,4 +246,21 @@ test("the diagnostic key defaults to the config doc path and is overridable", ()
     migrateProviderModel("anthropic", "totally-made-up", "Work/Sales")
       .diagnostics[0]?.key,
   ).toBe("Work/Sales");
+});
+
+test("a stored Codex model the subscription no longer serves migrates to one it does", () => {
+  // The retired full-tier rows. A migration that kept them verbatim handed the
+  // runtime an id whose only outcome is `model_not_found` on the first turn.
+  for (const stale of ["gpt-5.5", "gpt-5.4", "gpt-5.5-codex"]) {
+    const r = migrateProviderModel("openai-codex", stale);
+    expect(r.model, stale).toBe("gpt-6-astra");
+    expect(r.diagnostics, stale).toEqual([]);
+    assertValid(r, `openai-codex/${stale}`);
+  }
+  // The provider's own default is a model it serves — this is what a pin
+  // naming a provider and NO model lands on.
+  expect(DEFAULT_MODEL["openai-codex"]).toBe("gpt-6-astra");
+  expect(VALID_MODELS["openai-codex"]?.has("gpt-6-astra")).toBe(true);
+  for (const gone of ["gpt-5.5", "gpt-5.4"])
+    expect(VALID_MODELS["openai-codex"]?.has(gone), gone).toBe(false);
 });

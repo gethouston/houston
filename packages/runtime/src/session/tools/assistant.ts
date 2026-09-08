@@ -161,7 +161,7 @@ export function makeAssistantDescribeTool(opts: AssistantToolOptions) {
         returns: op.returns,
       });
       const guidance = op.confirm
-        ? " This operation is hard to undo: tell the user exactly what it will do and get their answer before calling it with confirmed true."
+        ? " This operation is hard to undo, so Houston asks the user itself: call houston_call normally, and if it answers ERROR needs_confirmation, end your turn and wait for their decision on the card Houston shows them."
         : "";
       return assistantTextResult(
         op.name,

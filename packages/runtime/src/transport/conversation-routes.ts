@@ -8,6 +8,12 @@ import {
   runTurn,
   setLiveTurnMode,
 } from "../session/chat";
+import { clearConfirmations } from "../session/confirm-gate";
+import { parseConversationCommand } from "../session/conversation-command";
+import {
+  conversationCommandBusy,
+  runConversationCommand,
+} from "../session/conversation-command-run";
 import { isDraining } from "../session/drain";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import { truncateConversationTurn } from "../session/truncate-turn";
@@ -177,6 +183,9 @@ async function handleConversationRoot(ctx: RouteContext, id: string) {
     // cursor for a deleted conversation is unserviceable by definition, so a
     // reconnect gets a resync against the (now empty) history — correct.
     evict(id);
+    // A deleted conversation must not leave a live approval behind: the user
+    // who granted it no longer has the chat it belonged to.
+    clearConfirmations(id);
     deleteConversation(id)
       ? json(ctx.res, 200, { ok: true })
       : json(ctx.res, 404, { error: "conversation not found" });
@@ -211,6 +220,34 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     json(ctx.res, 400, { error: "missing 'text'" });
     return;
   }
+  // CONVERSATION COMMANDS (`/clear`, `/compact`): an instruction to the
+  // conversation, not a prompt for the agent. Intercepted HERE — the one place
+  // every channel's message enters the runtime, ahead of the provider gate
+  // below — so a `/clear` still works for someone whose provider is
+  // disconnected, and so no command text can ever reach the model. Anything
+  // else, `/unknown` included, falls through as an ordinary message.
+  const command = parseConversationCommand(text);
+  if (command) {
+    // Same refusal as the edit-and-resend rewind: a command tears this
+    // conversation's context down, which must never happen behind a turn the
+    // user is waiting on. Clients hold sends while a turn runs, so a 409 here
+    // means the caller raced one.
+    if (conversationCommandBusy(id)) {
+      json(ctx.res, 409, { error: "turn running" });
+      return;
+    }
+    // Fire-and-forget like `runTurn`: the outcome (and a compaction can take a
+    // model call's worth of seconds) arrives on the conversation's event
+    // stream, never on this request.
+    void runConversationCommand(
+      id,
+      command,
+      text,
+      typeof nonce === "string" ? nonce : undefined,
+    );
+    json(ctx.res, 202, { ok: true, id });
+    return;
+  }
   // Never trust the wire: only the known mode literals ("plan", "auto") pass;
   // everything else (absent, garbage, unknown) normalizes to "execute".
   const turnMode = normalizeTurnMode(mode);
@@ -232,7 +269,16 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
   // still runs either way so the pinned provider's token is fresh.
   const pinnedProvider =
     typeof provider === "string" && provider ? provider : undefined;
-  if (!(await ensureProviderForTurn()) && !pinnedProvider) {
+  const pinnedModel = typeof model === "string" ? model : undefined;
+  // The pin goes in so the turn's `[turn]` diagnostic names what this turn
+  // really runs on, not the agent's saved provider (ai/turn-diagnostic.ts).
+  if (
+    !(await ensureProviderForTurn({
+      provider: pinnedProvider,
+      model: pinnedModel,
+    })) &&
+    !pinnedProvider
+  ) {
     // `code` is the machine-readable half: the host's scheduler reads it to
     // demote a routine firing into this expected user state (nothing connected
     // yet) to a warning instead of a Sentry error (HOUSTON-APP-4XM).
@@ -252,7 +298,7 @@ async function handleStartTurn(ctx: RouteContext, id: string) {
     typeof nonce === "string" ? nonce : undefined,
     {
       provider: pinnedProvider,
-      model: typeof model === "string" ? model : undefined,
+      model: pinnedModel,
       effort: typeof effort === "string" ? effort : undefined,
       mode: turnMode,
     },

@@ -227,11 +227,24 @@ describe("the SDK write operations act on the real host", () => {
     expect(listed.body).not.toContain("Parity probe mission");
   });
 
-  test("createAgent adds an agent to rename and delete", async () => {
-    const created = await call("createAgent", { name: "Parity Probe" });
+  /** The color store as the app reads it back: `agent_colors`, parsed. */
+  const storedColors = async (): Promise<Record<string, string>> => {
+    const read = await call("getPreference", { key: "agent_colors" });
+    const value = json(read.body).value;
+    return typeof value === "string"
+      ? (JSON.parse(value) as Record<string, string>)
+      : {};
+  };
+
+  test("createAgent adds an agent, already wearing its color", async () => {
+    const created = await call("createAgent", {
+      name: "Parity Probe",
+      color: "forest",
+    });
     expect(created.status).toBeLessThan(300);
     probeAgent = String(json(created.body).id ?? "");
     expect(probeAgent).not.toBe("");
+    expect((await storedColors())[probeAgent]).toBe("forest");
   });
 
   test("renameAgent renames it", async () => {
@@ -244,13 +257,28 @@ describe("the SDK write operations act on the real host", () => {
     // delete below must follow the id the host answered with, not the old one.
     probeAgent = String(json(renamed.body).id ?? probeAgent);
     expect(probeAgent).toContain("Parity Probe Renamed");
+    // The id moved with the directory; the color must follow it, or the
+    // renamed agent silently reverts to the default.
+    expect((await storedColors())[probeAgent]).toBe("forest");
   });
 
-  test("deleteAgent removes it", async () => {
+  test("updateAgentColor recolors it in the store the app renders from", async () => {
+    const recolored = await call("updateAgentColor", {
+      agentId: probeAgent,
+      color: "teal",
+    });
+    expect(recolored.status).toBeLessThan(300);
+    expect((await storedColors())[probeAgent]).toBe("teal");
+  });
+
+  test("deleteAgent removes it, color and all", async () => {
     const removed = await call("deleteAgent", { id: probeAgent });
     expect(removed.status).toBeLessThan(300);
 
     const listed = await call("listAgents", {});
     expect(listed.body).not.toContain("Parity Probe Renamed");
+    // A future agent can reuse the path-derived id; it must not inherit this
+    // one's color.
+    expect(probeAgent in (await storedColors())).toBe(false);
   });
 });

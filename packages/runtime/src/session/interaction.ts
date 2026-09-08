@@ -12,6 +12,9 @@ import { TurnFinishMarks } from "./turn-finish";
  * board card can settle to `needs_you`.
  *
  * Merge semantics within one turn (the tools may call any combination):
+ * - The confirmation gate APPENDS an approval card per destructive Houston
+ *   operation the model tried to perform (ids `x1`..`xN`), deduped by question.
+ *   They LEAD the sequence and no tool can replace them.
  * - `ask_user` SETS the question steps — a second `ask_user` call REPLACES them
  *   (ids `q1`..`qN`).
  * - A `signin_required` (409) from the integrations host RECORDS the single
@@ -43,6 +46,7 @@ import { TurnFinishMarks } from "./turn-finish";
  */
 
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
+type QuestionOptions = NonNullable<QuestionStep["options"]>;
 type SigninStep = Extract<InteractionStep, { kind: "signin" }>;
 type ConnectStep = Extract<InteractionStep, { kind: "connect" }>;
 type CredentialStep = Extract<InteractionStep, { kind: "credential" }>;
@@ -54,6 +58,13 @@ type SuggestReusableStep = Extract<
 type SuggestActionsStep = Extract<InteractionStep, { kind: "suggest_actions" }>;
 
 export interface InteractionHolder {
+  /** Approval cards the RUNTIME raised for destructive Houston operations
+   *  (`confirm-gate.ts`), ids `x1`..`xN`. They are question steps on the wire so
+   *  every surface renders them today, but they are NOT the model's questions:
+   *  `ask_user`'s replace semantics must never be able to erase one, and they
+   *  lead the sequence because a delete outranks anything the model wanted to
+   *  ask alongside it. Deduped by question text. */
+  readonly confirmations: QuestionStep[];
   /** Question steps from the last `ask_user` call this turn (replace semantics). */
   readonly questions: QuestionStep[];
   /** The single signin step, once the host reported the user must sign in. */
@@ -83,6 +94,7 @@ export interface InteractionHolder {
 }
 
 class Holder implements InteractionHolder {
+  readonly confirmations: QuestionStep[] = [];
   readonly questions: QuestionStep[] = [];
   signin: SigninStep | undefined;
   readonly connects: ConnectStep[] = [];
@@ -99,6 +111,7 @@ class Holder implements InteractionHolder {
     // card still wins. Defensive normalization — one card, one meaning.
     if (this.planReady) return { steps: [this.planReady] };
     const steps = [
+      ...this.confirmations,
       ...this.questions,
       ...(this.signin ? [this.signin] : []),
       ...this.connects,
@@ -130,6 +143,28 @@ export function runWithInteractionCapture<T>(
   fn: () => T,
 ): T {
   return store.run(holder as Holder, fn);
+}
+
+/**
+ * Raise the approval card for one destructive Houston operation, deduped by
+ * question text (the same call confirmed twice in a turn is ONE card, or a
+ * single answer would silently decide two). APPEND, never replace: unlike the
+ * model's own questions this step is the runtime's, and losing it would mean
+ * the user never saw what they are about to approve. A no-op outside a turn.
+ */
+export function recordConfirmation(input: {
+  question: string;
+  options: QuestionOptions;
+}): void {
+  const holder = store.getStore();
+  if (!holder) return;
+  if (holder.confirmations.some((c) => c.question === input.question)) return;
+  holder.confirmations.push({
+    kind: "question",
+    id: `x${holder.confirmations.length + 1}`,
+    question: input.question,
+    options: input.options,
+  });
 }
 
 /**

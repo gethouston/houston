@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import {
   currentTurnFinish,
   newInteractionHolder,
+  recordConfirmation,
   recordConnection,
   recordPlanReady,
   recordQuestions,
@@ -377,4 +378,81 @@ test("every holder carries fresh finish marks that tools reach through THEIR tur
   );
   expect(other?.closingMessageSeen).toBe(false);
   expect(currentTurnFinish()).toBeUndefined();
+});
+
+test("a confirmation card leads the sequence and ask_user cannot replace it", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordConfirmation({
+      question: "Delete an agent. Should I go ahead?",
+      options: [
+        { id: "approve", label: "Yes, go ahead" },
+        { id: "decline", label: "No, don't do it" },
+      ],
+    });
+    recordQuestions([{ kind: "question", id: "q1", question: "What colour?" }]);
+  });
+  expect(holder.pending).toEqual({
+    steps: [
+      {
+        kind: "question",
+        id: "x1",
+        question: "Delete an agent. Should I go ahead?",
+        options: [
+          { id: "approve", label: "Yes, go ahead" },
+          { id: "decline", label: "No, don't do it" },
+        ],
+      },
+      { kind: "question", id: "q1", question: "What colour?" },
+    ],
+  });
+});
+
+test("the same call confirmed twice in a turn raises ONE card", () => {
+  const holder = newInteractionHolder();
+  const card = {
+    question: "Delete an agent. Should I go ahead?",
+    options: [
+      { id: "approve", label: "Yes, go ahead" },
+      { id: "decline", label: "No, don't do it" },
+    ],
+  };
+  runWithInteractionCapture(holder, () => {
+    recordConfirmation(card);
+    recordConfirmation(card);
+  });
+  expect(holder.pending?.steps).toHaveLength(1);
+});
+
+test("two different destructive calls each get their own card, in order", () => {
+  const holder = newInteractionHolder();
+  const options = [
+    { id: "approve", label: "Yes, go ahead" },
+    { id: "decline", label: "No, don't do it" },
+  ];
+  runWithInteractionCapture(holder, () => {
+    recordConfirmation({ question: "Delete Dobby?", options });
+    recordConfirmation({ question: "Delete Milo?", options });
+  });
+  expect(holder.pending?.steps.map((s) => s.id)).toEqual(["x1", "x2"]);
+});
+
+test("a confirmation outranks the clean-finish offers", () => {
+  const holder = newInteractionHolder();
+  runWithInteractionCapture(holder, () => {
+    recordSuggestActions({
+      actions: [
+        { id: "a", label: "A", message: "a" },
+        { id: "b", label: "B", message: "b" },
+      ],
+    });
+    recordConfirmation({
+      question: "Delete Dobby?",
+      options: [
+        { id: "approve", label: "Yes, go ahead" },
+        { id: "decline", label: "No, don't do it" },
+      ],
+    });
+  });
+  expect(holder.pending?.steps.map((s) => s.id)).toEqual(["x1"]);
 });

@@ -9,7 +9,7 @@ import {
   LIST_MISSIONS_TOOL_NAME,
   START_MISSION_TOOL_NAME,
   UPDATE_MISSION_STATUS_TOOL_NAME,
-} from "./tools/missions";
+} from "./tools/mission-tool-names";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
 import { READ_MISSION_TOOL_NAME } from "./tools/read-mission";
 import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
@@ -43,9 +43,10 @@ export interface ToolSelectionInput {
    * Whether this runtime can reach its host with a sandbox token — the SAME
    * reachability the other host-proxying tools need. Adds the mission-board
    * tools (PRODUCT-1244): `start_mission`, `list_missions`, `read_mission`,
-   * `update_mission_status` — how the agent starts new missions for itself and
-   * reviews them. `read_mission` is in-process but rides the same gate: reading
-   * missions without being able to list them is useless.
+   * `update_mission_status` — how the agent starts new missions (on its own
+   * board, or on the board of an agent it names) and reviews them.
+   * `read_mission` rides the same gate: reading missions without being able to
+   * list them is useless.
    */
   missions?: boolean;
   /**
@@ -66,6 +67,47 @@ export interface ToolSelectionInput {
    * describe what the user would do in the app themselves.
    */
   assistant?: boolean;
+  /**
+   * True when this runtime IS the user's personal assistant. It is a
+   * COORDINATOR: it operates Houston and hands work to the user's agents, and
+   * never produces work itself — so the tools that could do the work are not on
+   * its list at all (see {@link COORDINATOR_TOOL_NAMES}). Structural, not
+   * prompt-deep: a model cannot browse, run code, or write a document with
+   * tools it was never given.
+   */
+  personalAssistant?: boolean;
+}
+
+/**
+ * The personal assistant's whole tool surface. Everything here either operates
+ * Houston, records the turn's interaction lifecycle, or hands work to an agent.
+ *
+ * `read` + `write` are the ONE file pair it keeps, and only because memory
+ * consolidation needs exactly them: a full memory is answered with "read that
+ * file, merge it, write the trimmed list back" (routes/learning-write.ts), and
+ * both halves are clamped to its own directory by the workspace guard. No
+ * `edit`/`ls`/`grep`/`find` — none of them is on that path. No `bash`,
+ * `run_code`, integration or skill tools: those DO work, and work belongs on an
+ * agent's board where the user can see it.
+ */
+export const COORDINATOR_TOOL_NAMES: readonly string[] = [
+  "read",
+  "write",
+  ASK_USER_TOOL_NAME,
+  SUGGEST_REUSABLE_TOOL_NAME,
+  SUGGEST_ACTIONS_TOOL_NAME,
+  PLAN_READY_TOOL_NAME,
+  SAVE_LEARNING_TOOL_NAME,
+  START_MISSION_TOOL_NAME,
+  LIST_MISSIONS_TOOL_NAME,
+  READ_MISSION_TOOL_NAME,
+  UPDATE_MISSION_STATUS_TOOL_NAME,
+  ...ASSISTANT_TOOL_NAMES,
+];
+
+/** Clamp any tool list to the coordinator surface, preserving order. */
+export function coordinatorToolNames(all: readonly string[]): string[] {
+  return all.filter((name) => COORDINATOR_TOOL_NAMES.includes(name));
 }
 
 export interface ToolSelection {
@@ -188,61 +230,66 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       : input.codeExecution === "remote"
         ? ["run_code"]
         : [];
+  const toolNames = [
+    ...CLAMPED_FILE_TOOL_NAMES,
+    // ask_user is available in EVERY mode/backend — any blocking question,
+    // choice, or approval goes through it instead of plain-text.
+    ASK_USER_TOOL_NAME,
+    // suggest_reusable is available in execute AND auto — it holds no
+    // credential, takes no real-world action, and never blocks the turn (a
+    // clean finish offering to save the work as a Skill/Routine). It must
+    // NEVER reach plan mode, and it won't automatically: PLAN_MODE_TOOL_NAMES
+    // (the plan allowlist) doesn't list it, so `planToolNames` filters it out;
+    // and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES, so auto keeps it.
+    SUGGEST_REUSABLE_TOOL_NAME,
+    SUGGEST_ACTIONS_TOOL_NAME,
+    // save_routine reaches execute AND auto (it never blocks the turn) but not
+    // plan (plan is read-only): PLAN_MODE_TOOL_NAMES omits it so planToolNames
+    // filters it out, and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto
+    // keeps it — the same reach as suggest_reusable.
+    ...(input.saveRoutine ? [SAVE_ROUTINE_TOOL_NAME] : []),
+    // save_learning has the SAME reach as save_routine — execute and auto,
+    // never plan (plan is read-only and saving a learning is a real write).
+    // PLAN_MODE_TOOL_NAMES omits it so planToolNames filters it out, and it
+    // isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps it.
+    ...(input.saveLearning ? [SAVE_LEARNING_TOOL_NAME] : []),
+    // The mission-board tools share save_routine's reach: execute AND auto
+    // (an orchestrating turn is usually execute; an autopilot run may still
+    // check or start missions), never plan — PLAN_MODE_TOOL_NAMES omits them
+    // so planToolNames filters them out, and none are in
+    // AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
+    ...(input.missions
+      ? [
+          START_MISSION_TOOL_NAME,
+          LIST_MISSIONS_TOOL_NAME,
+          READ_MISSION_TOOL_NAME,
+          UPDATE_MISSION_STATUS_TOOL_NAME,
+        ]
+      : []),
+    // find_skills + install_skill reach execute AND auto, never plan. Finding
+    // is a read, but installing is a real write, and the pair is only useful
+    // together — a plan turn that can find a skill it cannot add would just
+    // dead-end. PLAN_MODE_TOOL_NAMES omits both so planToolNames filters them
+    // out; neither is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
+    ...(input.skillDirectory ? [...SKILL_DIRECTORY_TOOL_NAMES] : []),
+    // The assistant family shares save_routine's reach: execute AND auto,
+    // never plan. Searching the catalog is a read, but the family exists to
+    // ACT on the user's account (`houston_call`), and a plan turn that could
+    // list operations it cannot perform would just dead-end.
+    // PLAN_MODE_TOOL_NAMES omits all three so planToolNames filters them out;
+    // none is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
+    ...(input.assistant ? [...ASSISTANT_TOOL_NAMES] : []),
+    ...executable,
+    ...(input.integrations
+      ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]
+      : []),
+  ];
   return {
-    toolNames: [
-      ...CLAMPED_FILE_TOOL_NAMES,
-      // ask_user is available in EVERY mode/backend — any blocking question,
-      // choice, or approval goes through it instead of plain-text.
-      ASK_USER_TOOL_NAME,
-      // suggest_reusable is available in execute AND auto — it holds no
-      // credential, takes no real-world action, and never blocks the turn (a
-      // clean finish offering to save the work as a Skill/Routine). It must
-      // NEVER reach plan mode, and it won't automatically: PLAN_MODE_TOOL_NAMES
-      // (the plan allowlist) doesn't list it, so `planToolNames` filters it out;
-      // and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES, so auto keeps it.
-      SUGGEST_REUSABLE_TOOL_NAME,
-      SUGGEST_ACTIONS_TOOL_NAME,
-      // save_routine reaches execute AND auto (it never blocks the turn) but not
-      // plan (plan is read-only): PLAN_MODE_TOOL_NAMES omits it so planToolNames
-      // filters it out, and it isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto
-      // keeps it — the same reach as suggest_reusable.
-      ...(input.saveRoutine ? [SAVE_ROUTINE_TOOL_NAME] : []),
-      // save_learning has the SAME reach as save_routine — execute and auto,
-      // never plan (plan is read-only and saving a learning is a real write).
-      // PLAN_MODE_TOOL_NAMES omits it so planToolNames filters it out, and it
-      // isn't in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps it.
-      ...(input.saveLearning ? [SAVE_LEARNING_TOOL_NAME] : []),
-      // The mission-board tools share save_routine's reach: execute AND auto
-      // (an orchestrating turn is usually execute; an autopilot run may still
-      // check or start missions), never plan — PLAN_MODE_TOOL_NAMES omits them
-      // so planToolNames filters them out, and none are in
-      // AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
-      ...(input.missions
-        ? [
-            START_MISSION_TOOL_NAME,
-            LIST_MISSIONS_TOOL_NAME,
-            READ_MISSION_TOOL_NAME,
-            UPDATE_MISSION_STATUS_TOOL_NAME,
-          ]
-        : []),
-      // find_skills + install_skill reach execute AND auto, never plan. Finding
-      // is a read, but installing is a real write, and the pair is only useful
-      // together — a plan turn that can find a skill it cannot add would just
-      // dead-end. PLAN_MODE_TOOL_NAMES omits both so planToolNames filters them
-      // out; neither is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
-      ...(input.skillDirectory ? [...SKILL_DIRECTORY_TOOL_NAMES] : []),
-      // The assistant family shares save_routine's reach: execute AND auto,
-      // never plan. Searching the catalog is a read, but the family exists to
-      // ACT on the user's account (`houston_call`), and a plan turn that could
-      // list operations it cannot perform would just dead-end.
-      // PLAN_MODE_TOOL_NAMES omits all three so planToolNames filters them out;
-      // none is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
-      ...(input.assistant ? [...ASSISTANT_TOOL_NAMES] : []),
-      ...executable,
-      ...(input.integrations
-        ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]
-        : []),
-    ],
-    includeRunCode: input.codeExecution === "remote",
+    toolNames: input.personalAssistant
+      ? coordinatorToolNames(toolNames)
+      : toolNames,
+    // The coordinator never runs code, whatever the deployment offers.
+    includeRunCode:
+      input.codeExecution === "remote" && !input.personalAssistant,
   };
 }

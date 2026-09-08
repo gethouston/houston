@@ -465,3 +465,96 @@ describe("turnCodeExecutionMode", () => {
     expect(turnCodeExecutionMode("disabled", false)).toBe("disabled");
   });
 });
+
+/**
+ * The personal assistant is a COORDINATOR: it operates Houston and hands work
+ * to the user's agents. It never produces work itself, so the tools that could
+ * do the work are not on its list at all — a rule enforced by the tool set, not
+ * only by the prompt. The one file pair it keeps is what memory consolidation
+ * needs: the host answers a full memory with "read that file, write the trimmed
+ * list back", and both halves are clamped to its own directory.
+ */
+describe("the personal assistant's tool set", () => {
+  const coordinator = () =>
+    buildToolSelection({
+      codeExecution: "local",
+      integrations: true,
+      saveRoutine: true,
+      saveLearning: true,
+      missions: true,
+      skillDirectory: true,
+      assistant: true,
+      personalAssistant: true,
+    });
+
+  test("is exactly the coordinator surface", () => {
+    expect(coordinator().toolNames).toEqual([
+      "read",
+      "write",
+      "ask_user",
+      SUGGEST_REUSABLE_TOOL_NAME,
+      SUGGEST_ACTIONS_TOOL_NAME,
+      "save_learning",
+      "start_mission",
+      "list_missions",
+      "read_mission",
+      "update_mission_status",
+      ...ASSISTANT_TOOL_NAMES,
+    ]);
+  });
+
+  test("carries nothing that could do the work itself", () => {
+    const names = coordinator().toolNames;
+    for (const banned of [
+      "bash",
+      "run_code",
+      "edit",
+      "ls",
+      "grep",
+      "find",
+      "integration_search",
+      "integration_execute",
+      "request_connection",
+      "find_skills",
+      "install_skill",
+      "save_routine",
+    ]) {
+      expect(names).not.toContain(banned);
+    }
+  });
+
+  test("never runs code, even where the deployment offers it", () => {
+    expect(
+      buildToolSelection({
+        codeExecution: "remote",
+        integrations: true,
+        personalAssistant: true,
+      }).includeRunCode,
+    ).toBe(false);
+  });
+
+  test("every other agent is untouched by the clamp", () => {
+    const normal = buildToolSelection({
+      codeExecution: "local",
+      integrations: true,
+      saveRoutine: true,
+      saveLearning: true,
+      missions: true,
+      skillDirectory: true,
+      assistant: true,
+    });
+    expect(normal.toolNames).toContain("bash");
+    expect(normal.toolNames).toEqual(
+      buildToolSelection({
+        codeExecution: "local",
+        integrations: true,
+        saveRoutine: true,
+        saveLearning: true,
+        missions: true,
+        skillDirectory: true,
+        assistant: true,
+        personalAssistant: false,
+      }).toolNames,
+    );
+  });
+});

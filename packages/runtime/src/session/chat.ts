@@ -4,13 +4,13 @@ import type { TurnMode } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { stampCredentialScope } from "../ai/provider-error";
 import { logProviderError } from "../ai/provider-error-log";
+import { canonicalPinProvider, isProvider } from "../ai/providers";
 import {
-  activeProvider,
-  canonicalPinProvider,
-  isProvider,
-  providerConfigured,
-  resolveModel,
-} from "../ai/providers";
+  logTurnTarget,
+  resolveTurnTarget,
+  type TurnPinSource,
+  turnTargetIsRunnable,
+} from "../ai/turn-diagnostic";
 import { serveModeOn, syncServedCredentialSafe } from "../auth/serve";
 import { cleanupClaudeConversation } from "../backends/claude/cleanup";
 import { config } from "../config";
@@ -26,6 +26,10 @@ import {
   getConversation,
 } from "./conversation-cache";
 import { execTurn, recordUserTurn, type TurnPin } from "./exec-turn";
+import {
+  connectedProviderForTurn,
+  pinnedProviderUnavailable,
+} from "./provider-gate";
 import { withWorkdirLock } from "./workdir-lock";
 import type { ProvidedContext } from "./workspace-context";
 
@@ -49,27 +53,25 @@ const errMessage = (err: unknown) =>
  * `error` event that can race the client's SSE subscribe and get lost, leaving the
  * chat spinning forever after logout.
  */
-export async function ensureProviderForTurn(): Promise<string | null> {
+export async function ensureProviderForTurn(
+  pin?: TurnPinSource,
+): Promise<string | null> {
   // Connect-once: pull the workspace's current central credential into auth.json
   // so pi uses the user's own token. Best-effort — a transient failure leaves the
   // existing (still-valid) credential; a forgotten connection => activeProvider null.
   await syncServedCredentialSafe("serve");
-  const provider = activeProvider();
-  // Ground-truth diagnostic: the provider + model + the model's actual API base
-  // URL this turn will run against. baseUrl is unambiguous — opencode.ai/zen/go/v1
-  // is OpenCode Go, openai/chatgpt is Codex — unlike asking the model itself,
-  // which open models (GLM/Kimi/…) routinely get wrong.
-  if (provider) {
-    try {
-      const m = resolveModel() as { id?: string; baseUrl?: string };
-      console.log(
-        `[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`,
-      );
-    } catch {
-      /* resolveModel can throw on a bad pin; the turn surfaces it as an error */
-    }
-  }
-  return provider;
+  // Ground-truth diagnostic, resolved through the PIN (ai/turn-diagnostic.ts):
+  // the agent's saved provider is not what a pinned turn runs on, and the log
+  // line has to say what the turn actually does. Logged for a pinned turn even
+  // when nothing is connected — that turn still runs, and its failure needs a
+  // target on the record.
+  const target = resolveTurnTarget(pin);
+  if (turnTargetIsRunnable(target)) logTurnTarget(target);
+  // The AUTH gate is a different question from the diagnostic above: it reports
+  // the agent's own connected provider, and the route pairs it with the pin. It
+  // waits out an UNSETTLED anthropic signal (provider-gate.ts) rather than
+  // failing the request on a cold cache the first probe hasn't answered yet.
+  return connectedProviderForTurn();
 }
 
 /**
@@ -97,7 +99,7 @@ export async function runTurn(
     serveModeOn() &&
     canonicalPinnedProvider &&
     isProvider(canonicalPinnedProvider) &&
-    !providerConfigured(canonicalPinnedProvider)
+    (await pinnedProviderUnavailable(canonicalPinnedProvider))
   ) {
     appendUserMessage(id, text, { turnId, displayText, mentions });
     publish(id, {
@@ -131,7 +133,7 @@ export async function runTurn(
   // terminal event. Local provider-pinned turns retain their historical bypass.
   // In serve mode the gate above refuses only a definitively absent canonical
   // pinned provider, after the route's served-credential sync has completed.
-  if (!pin?.provider && !activeProvider()) {
+  if (!pin?.provider && !(await connectedProviderForTurn())) {
     publish(id, {
       type: "error",
       data: { message: "No provider connected. Connect an AI provider first." },

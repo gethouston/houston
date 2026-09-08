@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { missionPin } from "./missions";
+import { missionPin } from "./mission-providers";
 
 /**
  * The child mission's default model pin (PRODUCT-1244). The inheritance is

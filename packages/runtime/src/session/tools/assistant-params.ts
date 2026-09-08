@@ -1,6 +1,7 @@
 import type { AssistantOperation } from "@houston/host/src/assistant/catalog";
 import { Value } from "typebox/value";
 import type { AssistantError } from "./assistant-result";
+import { invalidParamMessage } from "./assistant-schema-hint";
 
 /**
  * Argument validation for `houston_call`. The catalog carries each param's JSON
@@ -72,11 +73,20 @@ export function checkCallParams(
       };
     }
     if (!Value.Check(param.schema, value)) {
+      // The message carries the accepted values (or the expected type) inline:
+      // a model that has to spend a round trip on houston_describe to learn
+      // them instead guesses formats until it reaches for a destructive
+      // workaround. See assistant-schema-hint.ts.
       return {
         ok: false,
         error: {
           code: "invalid_param",
-          message: `The value given for "${param.name}" does not match what ${op.name} accepts. Call houston_describe for its schema and try again.`,
+          message: invalidParamMessage({
+            operation: op.name,
+            param: param.name,
+            schema: param.schema,
+            value,
+          }),
         },
       };
     }

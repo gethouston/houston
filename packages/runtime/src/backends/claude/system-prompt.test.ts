@@ -134,6 +134,31 @@ test("the assistant's memory lands after the context sections and before the ove
   );
 });
 
+test("the assistant's operating rules land right after its memory", () => {
+  const dir = agentDirNamed(ASSISTANT_AGENT_NAME);
+  seedLearnings(dir, "Julian prefers short replies.");
+
+  const prompt = buildSystemPrompt(dir, "You are Houston.", "plan");
+  const memoryAt = prompt.indexOf("# What you remember about this user");
+  const rulesAt = prompt.indexOf("# How you operate in Houston");
+  expect(rulesAt).toBeGreaterThan(memoryAt);
+  // Skills, then the overlay, still come after both.
+  expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(rulesAt);
+});
+
+test("the rules render for the assistant even with no memory yet", () => {
+  const prompt = buildSystemPrompt(
+    agentDirNamed(ASSISTANT_AGENT_NAME),
+    "You are Houston.",
+  );
+  expect(prompt).toContain("# How you operate in Houston");
+});
+
+test("a normal agent gets no operating rules", () => {
+  const prompt = buildSystemPrompt(agentDirNamed("Helper"), "You are Houston.");
+  expect(prompt).not.toContain("# How you operate in Houston");
+});
+
 test("a normal agent's learnings are never injected", () => {
   const dir = agentDirNamed("Helper");
   seedLearnings(dir, "Julian prefers short replies.");

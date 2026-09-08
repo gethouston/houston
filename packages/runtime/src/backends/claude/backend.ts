@@ -79,6 +79,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           createSdkMcpServer: sdk.createSdkMcpServer,
           integrations: deps.integrations,
           assistant: deps.assistant,
+          personalAssistant: deps.personalAssistant,
           tools: deps.tools,
           // The mode does the tool filtering (via `toolNamesForMode`), mirroring
           // the pi path: plan withholds the acting integration tools and keeps
@@ -93,7 +94,11 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       }
 
       const localBash = deps.toolSelection.toolNames.includes("bash");
-      const policy = buildToolPolicy({ localBash, mode: opts.mode });
+      const policy = buildToolPolicy({
+        localBash,
+        mode: opts.mode,
+        personalAssistant: deps.personalAssistant,
+      });
       // undefined on the Node path (self-host / engine-pod / per-turn Docker +
       // dev/tests): the SDK resolves its own native binary. Only set inside the
       // Bun-compiled desktop sidecar, where require.resolve can't reach it.

@@ -123,11 +123,8 @@ const tool = makeAssistantCallTool({
   call: httpSandboxFetch("http://host/", "sb-token"),
 });
 
-const run = (params: {
-  operation: string;
-  params: Record<string, unknown>;
-  confirmed?: boolean;
-}) => tool.execute("call-1", params, undefined, undefined, CTX);
+const run = (params: { operation: string; params: Record<string, unknown> }) =>
+  tool.execute("call-1", params, undefined, undefined, CTX);
 
 const text = (result: { content: Array<{ type: string; text?: string }> }) =>
   result.content.map((c) => c.text ?? "").join("");
@@ -239,37 +236,18 @@ test("params that are not an object are refused, not forwarded", async () => {
   expect(calls).toHaveLength(0);
 });
 
+// The gate itself lives in `assistant-confirm.test.ts`; what belongs HERE is
+// that a confirm operation cannot reach the host through this tool on the
+// model's say-so alone.
 test("a confirm operation is refused until the user has approved it", async () => {
   const calls = mockFetch(() => ({ body: null }));
   const result = await run({
     operation: "deleteRoutine",
     params: { id: "r1" },
   });
-  expect(errorCode(result)).toBe("confirmation_required");
-  expect(text(result)).toContain("confirmed true");
+  expect(errorCode(result)).toBe("needs_confirmation");
+  expect(text(result)).toContain("was NOT performed");
   expect(calls).toHaveLength(0);
-});
-
-test("confirmed false is not approval either", async () => {
-  const calls = mockFetch(() => ({ body: null }));
-  const result = await run({
-    operation: "deleteRoutine",
-    params: { id: "r1" },
-    confirmed: false,
-  });
-  expect(errorCode(result)).toBe("confirmation_required");
-  expect(calls).toHaveLength(0);
-});
-
-test("a confirm operation goes through once confirmed", async () => {
-  const calls = mockFetch(() => ({ body: null }));
-  const result = await run({
-    operation: "deleteRoutine",
-    params: { id: "r1" },
-    confirmed: true,
-  });
-  expect(calls).toHaveLength(1);
-  expect(result.details).toEqual({ ok: true, operation: "deleteRoutine" });
 });
 
 test("a host refusal surfaces its named code, never a throw", async () => {
@@ -326,10 +304,9 @@ test("an unreadable 2xx body is a transport_error, not a success", async () => {
 test("an empty 2xx body reads as a null payload", async () => {
   mockFetch(() => ({ raw: "" }));
   const result = await run({
-    operation: "deleteRoutine",
-    params: { id: "r1" },
-    confirmed: true,
+    operation: "listRoutines",
+    params: { agentPath: "Work/Ada" },
   });
-  expect(result.details).toEqual({ ok: true, operation: "deleteRoutine" });
+  expect(result.details).toEqual({ ok: true, operation: "listRoutines" });
   expect(text(result)).toBe("null");
 });

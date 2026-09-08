@@ -208,3 +208,27 @@ test("an empty query is a correctable error, not an empty search", async () => {
     /needs something to search for/,
   );
 });
+
+test("still reaches what a /clear put out of the model's context", async () => {
+  // `/clear` empties the MODEL's context, never the transcript — so recall is
+  // exactly how the assistant answers "what did I tell you about X?" after one.
+  const id = seed([
+    msg(
+      "user",
+      "My accountant is Marta Ferreira",
+      at("2026-02-01T09:00:00.000Z"),
+    ),
+    msg("user", "/clear", at("2026-02-02T09:00:00.000Z")),
+    {
+      role: "assistant",
+      content: "",
+      ts: at("2026-02-02T09:00:01.000Z"),
+      contextCleared: true,
+    },
+    msg("user", "who is my accountant?", at("2026-02-03T09:00:00.000Z")),
+  ]);
+
+  const out = await run({ query: "accountant" }, id);
+
+  expect(textOf(out)).toContain("Marta Ferreira");
+});

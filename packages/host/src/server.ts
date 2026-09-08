@@ -37,6 +37,7 @@ import {
   type WorkspaceStore,
 } from "./ports";
 import { handleAccount } from "./routes/account";
+import { handleAgentColor } from "./routes/agent-color";
 import {
   type AgentConfigsDeps,
   handleAgentConfigs,
@@ -499,6 +500,12 @@ async function handle(
   if (await handleTriggerEvents(deps, userId, method, path, req, res)) return;
   // Pod cron delivery — same internal-only trust posture as trigger-events.
   if (await handleRoutineFires(deps, userId, method, path, req, res)) return;
+
+  // One agent's color. Agent-scoped, but NOT part of the per-agent dispatch
+  // below: it writes the same `agent_colors` PREFERENCE the app's color sync
+  // owns, so it is served here, ahead of handleAgents, rather than proxied to
+  // the agent's runtime, which knows nothing about that doc.
+  if (await handleAgentColor(deps, userId, method, path, req, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

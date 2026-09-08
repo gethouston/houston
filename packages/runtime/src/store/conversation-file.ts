@@ -107,6 +107,12 @@ export interface AssistantMessageMeta {
   usage?: TokenUsage | null;
   providerSwitch?: ChatMessage["providerSwitch"];
   compaction?: ChatMessage["compaction"];
+  /**
+   * Marks the message a `/clear` wrote. It is what the chat replays its
+   * boundary divider from, and what `renderReplayPreamble` windows on so the
+   * cleared turns are never carried back into a rebuilt session.
+   */
+  contextCleared?: true;
   providerError?: ChatMessage["providerError"];
   /** Files the turn created/modified (relative paths); omitted when empty. */
   fileChanges?: ChatMessage["fileChanges"];
@@ -187,6 +193,7 @@ export function appendAssistantMessageAt(
     usage: meta.usage ?? undefined,
     providerSwitch: meta.providerSwitch,
     compaction: meta.compaction,
+    contextCleared: meta.contextCleared,
     providerError: meta.providerError,
     fileChanges: meta.fileChanges,
     pendingInteraction: meta.pendingInteraction,

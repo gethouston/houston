@@ -110,7 +110,12 @@ export function historyToFeed(
         ...turn,
       });
     }
-    // A persisted proactive compaction: replay the boundary divider so it
+    // A persisted `/clear` marker: replay the boundary divider so it survives
+    // a reload, exactly like a compaction's.
+    if (m.contextCleared) {
+      out.push({ feed_type: "context_cleared", data: null, ts, ...turn });
+    }
+    // A persisted compaction: replay the boundary divider so it
     // (and the window reset) survives a reload.
     if (m.compaction) {
       out.push({

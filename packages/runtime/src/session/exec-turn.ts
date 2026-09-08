@@ -50,6 +50,7 @@ import {
 import { needsAutocompact } from "./autocompact";
 import { publish } from "./bus";
 import { evictClaudeSessionOnRevokedToken } from "./claude-token-guard";
+import { resolveConfirmationReply } from "./confirm-gate";
 import {
   type Conversation,
   conversations,
@@ -172,6 +173,12 @@ export async function execTurn(
   acting?: ActingContext,
 ) {
   const { author, priorAuthors } = recorded;
+  // The user's own words are the ONLY thing that can approve a destructive
+  // Houston operation, and this is where they arrive: read the message against
+  // whatever approval card the previous turn left in front of them, BEFORE the
+  // model runs, so a `houston_call` this turn can consume a real answer and
+  // nothing else can mint one (see `confirm-gate.ts`).
+  resolveConfirmationReply(id, text);
 
   let assistantText = "";
   // The turn's reasoning, accumulated for persistence so a history reload can

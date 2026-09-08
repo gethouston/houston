@@ -73,8 +73,10 @@ export interface AssistantOperation {
   group: string;
   description: string;
   /**
-   * Destructive or hard to reverse: `houston_call` refuses it unless the model
-   * passes `confirmed: true` after the user approved that specific action.
+   * Destructive or hard to reverse: `houston_call` refuses it and raises an
+   * approval card, and performs it only once the USER has answered yes to that
+   * exact call (`packages/runtime/src/session/confirm-gate.ts`). The model has
+   * no way to declare an approval.
    */
   confirm: boolean;
   /** Withheld entirely — never listed, never described, never callable. */

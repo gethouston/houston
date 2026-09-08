@@ -288,6 +288,27 @@ test("makeAgentLoader injects the assistant's memory, with the mode overlay LAST
   expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(memoryAt);
 });
 
+test("makeAgentLoader puts the assistant's operating rules after its memory", async () => {
+  const cwd = agentDirNamed(ASSISTANT_AGENT_NAME);
+  seedLearnings(cwd, "Julian prefers short replies.");
+
+  const prompt = await promptFor(cwd, "plan");
+  const memoryAt = prompt.indexOf("# What you remember about this user");
+  const rulesAt = prompt.indexOf("# How you operate in Houston");
+  expect(rulesAt).toBeGreaterThan(memoryAt);
+  expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(rulesAt);
+});
+
+test("the rules are injected for the assistant with no memory yet", async () => {
+  const prompt = await promptFor(agentDirNamed(ASSISTANT_AGENT_NAME));
+  expect(prompt).toContain("# How you operate in Houston");
+});
+
+test("makeAgentLoader omits the operating rules for a normal agent", async () => {
+  const prompt = await promptFor(agentDirNamed("Helper"));
+  expect(prompt).not.toContain("# How you operate in Houston");
+});
+
 test("makeAgentLoader omits the memory section for a normal agent", async () => {
   const cwd = agentDirNamed("Helper");
   seedLearnings(cwd, "Julian prefers short replies.");

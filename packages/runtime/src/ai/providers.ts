@@ -16,6 +16,7 @@ import { servedScopeFor } from "../auth/served-scope";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
 import { AZURE_OPENAI, withAzureBaseUrl } from "./azure-openai";
+import { CODEX_PROVIDER_ID, codexOfferedModelIds } from "./codex-offered";
 import { endpointReachableCached } from "./endpoint-reachability";
 import {
   MINIMAX_PROVIDER,
@@ -513,12 +514,21 @@ export function safeGetModel(
     if (m && provider === XIAOMI_PROVIDER_ID) return withXiaomiBaseUrl(m);
     return m;
   };
+  const offered = safeModelIds(provider as ProviderId);
   if (pinned) {
     // pi-ai's getModel returns `undefined` (it never throws) for an id the
     // provider doesn't offer. A pinned id is NOT auto-corrected, but it must
     // still be validated here: returning undefined would crash the turn
     // downstream with a raw `Cannot read properties of undefined` TypeError.
-    const m = lookup(mp);
+    //
+    // Validated against what Houston OFFERS, not pi's raw catalog: where the
+    // two differ (a Codex row OpenAI retired, a Xiaomi model the plan gateway
+    // 404s) pi still resolves the id and the turn dies at the provider with the
+    // provider's own wording. Failing here instead gives the typed
+    // switch-model card, whose `suggested_fallback` names a model that runs.
+    // Open-catalog gateways return [] and keep passing any id through.
+    const m =
+      offered.length > 0 && !offered.includes(modelId) ? undefined : lookup(mp);
     if (!m)
       throw new ModelNotOfferedError(
         provider,
@@ -527,7 +537,6 @@ export function safeGetModel(
       );
     return m;
   }
-  const offered = safeModelIds(provider as ProviderId);
   // Open-catalog gateways (opencode/opencode-go) return [] from getModels but
   // accept arbitrary ids — only guard when we actually have a catalog to check.
   if (offered.length > 0 && !offered.includes(modelId)) {
@@ -618,6 +627,11 @@ export function safeModelIds(provider: ProviderId): string[] {
   // key verified against one must not be offered a model it 404s.
   if (provider === XIAOMI_PROVIDER_ID)
     return xiaomiOfferedModelIds(piModelIds(provider));
+  // pi's Codex catalog outlives what a ChatGPT subscription can run: the rows
+  // OpenAI stopped serving answer `model_not_found` on the first turn
+  // (./codex-offered.ts carries the probe and its verdicts).
+  if (provider === CODEX_PROVIDER_ID)
+    return codexOfferedModelIds(piModelIds(provider));
   return piModelIds(provider);
 }
 

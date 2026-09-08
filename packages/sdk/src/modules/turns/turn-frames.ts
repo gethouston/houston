@@ -65,9 +65,15 @@ export function applyTurnFrame(
       });
       break;
     case "context_compacted":
-      // Proactive context compaction: draw the boundary divider + reset the
-      // context-usage window (same divider a reload replays from history).
+      // Context compaction (the runtime's own, or the user's `/compact`): draw
+      // the boundary divider + reset the context-usage window (the same
+      // divider a reload replays from history).
       push(s, { feed_type: "context_compacted", data: ev.data });
+      break;
+    case "context_cleared":
+      // The user's `/clear`: the transcript above stays, but the model starts
+      // the next turn remembering none of it. Same divider treatment.
+      push(s, { feed_type: "context_cleared", data: null });
       break;
     case "file_changes":
       // Files this turn created/modified — the chat attaches them to the

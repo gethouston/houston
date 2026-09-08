@@ -2,6 +2,7 @@ import type {
   createSdkMcpServer as CreateSdkMcpServer,
   SdkMcpToolDefinition,
 } from "@anthropic-ai/claude-agent-sdk";
+import type { ProviderOption } from "@houston/domain";
 import { expect, test } from "vitest";
 import { z } from "zod";
 import {
@@ -14,15 +15,17 @@ import {
   type AssistantToolOptions,
 } from "../../session/tools/assistant";
 import { makeIntegrationTools } from "../../session/tools/integrations";
+import { makeMissionTools } from "../../session/tools/missions";
 import { makePlanReadyTool } from "../../session/tools/plan-ready";
+import { makeReadMissionTool } from "../../session/tools/read-mission";
 import { httpSandboxFetch } from "../../session/tools/sandbox-fetch";
 import {
   type BridgedPiTool,
   buildHoustonMcpServer,
   HOUSTON_MCP_SERVER_NAME,
   type HoustonMcp,
-  toZodShape,
 } from "./custom-tools";
+import { toZodShape } from "./schema-to-zod";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import type { SessionsStore } from "./sessions-store";
 
@@ -40,6 +43,8 @@ function build(
   mode?: "execute" | "plan" | "auto",
   explicitTools?: BridgedPiTool[],
   assistant?: AssistantToolOptions,
+  personalAssistant?: boolean,
+  providers?: readonly ProviderOption[],
 ): {
   mcp: HoustonMcp;
   tools: SdkMcpToolDefinition[];
@@ -60,8 +65,10 @@ function build(
     createSdkMcpServer: fakeCreate,
     integrations,
     assistant,
+    personalAssistant,
     mode,
     tools: explicitTools,
+    providers,
   });
   return { mcp, tools: capturedTools, serverName: capturedName };
 }
@@ -581,4 +588,186 @@ test("an ask_user call dispatched during a Claude-session turn lands in the turn
   expect(holder.pending).toEqual({
     steps: [{ kind: "question", id: "q1", question: "Ready to send?" }],
   });
+});
+
+// --- the personal assistant (coordinator) ----------------------------------
+
+/** The provider status both backends build their mission schema from. */
+const MISSION_PROVIDERS: ProviderOption[] = [
+  {
+    id: "openai-codex",
+    name: "ChatGPT / Codex (Plus / Pro)",
+    connected: true,
+    models: ["gpt-5.5"],
+  },
+  { id: "anthropic", name: "Claude (Pro / Max)", connected: false },
+];
+
+/** The mission tools' pi-side params, for the schema-parity comparison. */
+function missionPiParams(personalAssistant: boolean) {
+  const opts = {
+    ...INTEGRATIONS,
+    personalAssistant,
+    providers: MISSION_PROVIDERS,
+  };
+  const [start, list, update] = makeMissionTools(opts);
+  const read = makeReadMissionTool(opts);
+  if (!start || !list || !update) throw new Error("missing mission tools");
+  const shape = (t: { parameters: unknown }) =>
+    t.parameters as {
+      properties: Record<string, unknown>;
+      required?: string[];
+    };
+  return {
+    start_mission: shape(start),
+    list_missions: shape(list),
+    read_mission: shape(read),
+    update_mission_status: shape(update),
+  };
+}
+
+test("the assistant's bridged set is the coordinator surface, nothing that works", () => {
+  const { tools, mcp } = build(
+    INTEGRATIONS,
+    undefined,
+    undefined,
+    ASSISTANT,
+    true,
+  );
+  // Parity with the pi backend's COORDINATOR_TOOL_NAMES clamp: the assistant
+  // must not be able to do MORE just because the user is on Anthropic. (The
+  // file tools + bash are SDK built-ins, clamped by tool-policy.ts, not here.)
+  expect(new Set(tools.map((t) => t.name))).toEqual(
+    new Set([
+      "ask_user",
+      "suggest_reusable",
+      "suggest_actions",
+      "save_learning",
+      "start_mission",
+      "list_missions",
+      "read_mission",
+      "update_mission_status",
+      ...ASSISTANT_TOOL_NAMES,
+    ]),
+  );
+  for (const banned of [
+    "mcp__houston__integration_execute",
+    "mcp__houston__request_connection",
+    "mcp__houston__install_skill",
+    "mcp__houston__save_routine",
+  ]) {
+    expect(mcp.allowedTools).not.toContain(banned);
+  }
+});
+
+test("every other agent's bridged set is untouched by the coordinator clamp", () => {
+  const plain = build(INTEGRATIONS).tools.map((t) => t.name);
+  const explicitFalse = build(
+    INTEGRATIONS,
+    undefined,
+    undefined,
+    undefined,
+    false,
+  ).tools.map((t) => t.name);
+  expect(explicitFalse).toEqual(plain);
+  expect(plain).toContain("integration_execute");
+});
+
+test("the mission tools bridge with the same keys and split as pi, both roles", () => {
+  for (const personalAssistant of [false, true]) {
+    const { tools } = build(
+      INTEGRATIONS,
+      undefined,
+      undefined,
+      ASSISTANT,
+      personalAssistant,
+      MISSION_PROVIDERS,
+    );
+    for (const [name, params] of Object.entries(
+      missionPiParams(personalAssistant),
+    )) {
+      const shape = byName(tools, name).inputSchema as Record<string, unknown>;
+      expect(new Set(Object.keys(shape))).toEqual(
+        new Set(Object.keys(params.properties)),
+      );
+      // The target agent is optional in the SCHEMA either way: a missing one is
+      // refused by the tool with an instruction, not by a validation error.
+      expect(params.required ?? []).not.toContain("agent");
+    }
+    const start = z.object(byName(tools, "start_mission").inputSchema);
+    expect(start.safeParse({ title: "t", prompt: "p" }).success).toBe(true);
+    expect(
+      start.safeParse({ agent: "Dobby", title: "t", prompt: "p" }).success,
+    ).toBe(true);
+    expect(start.safeParse({ title: "t" }).success).toBe(false);
+    const list = z.object(byName(tools, "list_missions").inputSchema);
+    expect(list.safeParse({}).success).toBe(true);
+    expect(list.safeParse({ agent: "Dobby" }).success).toBe(true);
+  }
+});
+
+test("start_mission's provider enum survives the bridge with the same ids", () => {
+  const { tools } = build(
+    INTEGRATIONS,
+    undefined,
+    undefined,
+    ASSISTANT,
+    false,
+    MISSION_PROVIDERS,
+  );
+  const shape = byName(tools, "start_mission").inputSchema as Record<
+    string,
+    z.ZodType
+  >;
+  const provider = z.object({ provider: shape.provider ?? z.never() });
+  expect(provider.safeParse({ provider: "openai-codex" }).success).toBe(true);
+  // A disconnected provider is not a value on either backend.
+  expect(provider.safeParse({ provider: "anthropic" }).success).toBe(false);
+  expect(provider.safeParse({ provider: "codex" }).success).toBe(false);
+  expect(provider.safeParse({}).success).toBe(true);
+});
+
+test("with no provider connected neither backend offers the param", () => {
+  const { tools } = build(
+    INTEGRATIONS,
+    undefined,
+    undefined,
+    ASSISTANT,
+    false,
+    [],
+  );
+  const shape = byName(tools, "start_mission").inputSchema as Record<
+    string,
+    z.ZodType
+  >;
+  expect(shape.provider).toBeUndefined();
+  expect(
+    Object.keys(missionPiParamsFor([]).start_mission.properties),
+  ).not.toContain("provider");
+});
+
+/** The pi-side start_mission schema for a given provider snapshot. */
+function missionPiParamsFor(providers: readonly ProviderOption[]) {
+  const [start] = makeMissionTools({
+    ...INTEGRATIONS,
+    personalAssistant: false,
+    providers,
+  });
+  if (!start) throw new Error("missing start_mission");
+  return {
+    start_mission: start.parameters as unknown as {
+      properties: Record<string, unknown>;
+    },
+  };
+}
+
+test("the mode union bridges as a closed set too, not an opaque value", () => {
+  const { tools } = build(INTEGRATIONS);
+  const shape = byName(tools, "start_mission").inputSchema as Record<
+    string,
+    z.ZodType
+  >;
+  const mode = z.object({ mode: shape.mode ?? z.never() });
+  expect(mode.safeParse({ mode: "plan" }).success).toBe(true);
+  expect(mode.safeParse({ mode: "yolo" }).success).toBe(false);
 });

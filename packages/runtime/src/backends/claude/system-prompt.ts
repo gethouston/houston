@@ -6,6 +6,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { TurnMode } from "@houston/protocol";
 import { config } from "../../config";
+import { buildAssistantRulesSection } from "../../session/assistant-rules-context";
 import { buildLearningsSection } from "../../session/learnings-context";
 import { withModeOverlay } from "../../session/mode-overlays";
 import {
@@ -54,14 +55,18 @@ export function buildSystemPrompt(
   // `.assistant` gate lives inside buildLearningsSection.
   const learnings = buildLearningsSection(cwd);
   const withLearnings = learnings ? `${withGroup}\n\n${learnings}` : withGroup;
+  // The assistant's OPERATING RULES immediately after its memory, same order as
+  // the pi backend. Null for every other agent (same `.assistant` gate).
+  const rules = buildAssistantRulesSection(cwd);
+  const withRules = rules ? `${withLearnings}\n\n${rules}` : withLearnings;
   // Skills index (HOU-894): the SAME <available_skills> section pi appends for
   // every other provider — name + description + the SKILL.md path to Read. The
   // SDK's own skill discovery is off (`settingSources: []`, `Skill` disallowed),
   // so without this an Anthropic session had NO idea what skills exist or where
   // their files live, and a "Use the <skill> skill." turn ran blind.
-  const withSkills = withLearnings + buildSkillsSection(cwd);
+  const withSkills = withRules + buildSkillsSection(cwd);
   // Mode overlay LAST — after Houston's prompt, the context file, both context
-  // sections, the assistant's memory, AND the skills index — so the plan
+  // sections, the assistant's memory + rules, AND the skills index — so the plan
   // (read-only) or auto (Autopilot) mandate is the final word the model reads.
   // Execute passes through unchanged.
   return withModeOverlay(withSkills, mode);

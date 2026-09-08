@@ -292,6 +292,18 @@ const PLAN_LIMIT_PATTERNS = [
  */
 const COPILOT_BASE_FALLBACK = "gpt-5-mini";
 
+/**
+ * The Codex model offered as the switch target when a ChatGPT subscription
+ * refuses the one a turn ran on ("The model `gpt-5.5` does not exist or you do
+ * not have access to it."). pi's baked catalog outlives what OpenAI serves, so
+ * a retired id can still reach a turn from a stale saved/pinned value — and the
+ * card is only useful if it names one that RUNS. Duplicated from
+ * `CODEX_DEFAULT_MODEL` (./codex-offered.ts, which carries the live probe and
+ * its verdicts) on purpose, like COPILOT_BASE_FALLBACK, so this classifier
+ * stays pure + unit-testable; keep the two in sync.
+ */
+const CODEX_BROAD_FALLBACK = "gpt-6-astra";
+
 /** Longest excerpt we keep for the `unknown` card / bug report. */
 const EXCERPT_MAX = 300;
 
@@ -604,13 +616,15 @@ function broadFallback(provider: string, model: string): string | null {
   const fallback =
     provider === "github-copilot"
       ? COPILOT_BASE_FALLBACK
-      : provider === "moonshotai"
-        ? MOONSHOT_BROAD_FALLBACK
-        : provider === "xiaomi"
-          ? XIAOMI_BROAD_FALLBACK
-          : provider === "amazon-bedrock"
-            ? BEDROCK_BROAD_FALLBACK
-            : null;
+      : provider === "openai-codex"
+        ? CODEX_BROAD_FALLBACK
+        : provider === "moonshotai"
+          ? MOONSHOT_BROAD_FALLBACK
+          : provider === "xiaomi"
+            ? XIAOMI_BROAD_FALLBACK
+            : provider === "amazon-bedrock"
+              ? BEDROCK_BROAD_FALLBACK
+              : null;
   return fallback && fallback !== model ? fallback : null;
 }
 

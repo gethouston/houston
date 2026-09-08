@@ -63,9 +63,24 @@ const PI_LACKS = [
 /** The read-only file tools plan mode allows (SDK names). No Edit/Write. */
 const PLAN_FILE_TOOLS = ["Read", "Glob", "Grep"] as const;
 
+/**
+ * The personal assistant's file tools (SDK names). It coordinates and never
+ * produces work, so it keeps only the pair memory consolidation needs — read
+ * the memory file, write the trimmed list back — mirroring the pi-side
+ * COORDINATOR_TOOL_NAMES clamp. Everything else (Edit/Glob/Grep/Bash) is denied.
+ */
+const COORDINATOR_FILE_TOOLS = ["Read", "Write"] as const;
+const COORDINATOR_DENIED = ["Edit", "Glob", "Grep", "Bash"] as const;
+
 export interface ToolPolicyInput {
   /** True when code execution is local — the only mode that grants Bash. */
   localBash: boolean;
+  /**
+   * True when this runtime is the user's personal assistant — the coordinator.
+   * Clamps the built-ins to Read + Write (memory consolidation) and denies the
+   * rest, whatever the deployment's code-execution setting says.
+   */
+  personalAssistant?: boolean;
   /**
    * The turn's execution mode. "plan" clamps the SDK built-ins to the read-only
    * subset (Read/Glob/Grep) and denies Edit/Write/Bash. "auto" (Autopilot) keeps
@@ -91,8 +106,16 @@ export function buildToolPolicy(input: ToolPolicyInput): ToolPolicy {
   // permissionMode "default" and enforces plan via this allowlist + the overlay.
   if (input.mode === "plan") {
     return {
-      tools: [...PLAN_FILE_TOOLS],
-      disallowedTools: [...PI_LACKS, "Edit", "Write", "Bash"],
+      tools: input.personalAssistant ? ["Read"] : [...PLAN_FILE_TOOLS],
+      disallowedTools: input.personalAssistant
+        ? [...PI_LACKS, ...COORDINATOR_DENIED, "Write"]
+        : [...PI_LACKS, "Edit", "Write", "Bash"],
+    };
+  }
+  if (input.personalAssistant) {
+    return {
+      tools: [...COORDINATOR_FILE_TOOLS],
+      disallowedTools: [...PI_LACKS, ...COORDINATOR_DENIED],
     };
   }
   const tools = input.localBash ? [...FILE_TOOLS, "Bash"] : [...FILE_TOOLS];

@@ -4,7 +4,13 @@ import type { Activity, HoustonEvent } from "@houston/protocol";
 import { beforeEach, expect, test } from "vitest";
 import type { Agent, Workspace } from "../domain/types";
 import { LocalPaths } from "../paths";
-import type { CredentialVault, RuntimeChannel, TurnPin } from "../ports";
+import type {
+  CredentialStore,
+  CredentialVault,
+  RuntimeChannel,
+  TurnPin,
+  WorkspaceCredential,
+} from "../ports";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
@@ -31,12 +37,26 @@ let root: string;
 let events: HoustonEvent[];
 let fired: { cid: string; text: string; pin?: TurnPin }[];
 let fireError: Error | null;
+/** Which providers the host's central credential store holds a row for, or
+ *  null for a deployment that has no store to judge with. */
+let connectedProviders: string[] | null;
 
 const vault: CredentialVault = {
   sandboxToken: () => "sb",
   validateSandboxToken: (token) =>
     token === "sb-good" ? { workspaceId: ws.id, agentId: agent.id } : null,
 };
+
+const credentials = {
+  async get(
+    _ws: string,
+    provider: string,
+  ): Promise<WorkspaceCredential | null> {
+    return connectedProviders?.includes(provider)
+      ? ({ provider } as WorkspaceCredential)
+      : null;
+  },
+} as unknown as CredentialStore;
 
 const channel = {
   async fireTurn(
@@ -100,6 +120,7 @@ async function call(
         emit: (_userId: string, event: HoustonEvent) => events.push(event),
       } as never,
       channels: { local: channel },
+      ...(connectedProviders === null ? {} : { credentials }),
     },
     method,
     path,
@@ -130,6 +151,7 @@ beforeEach(async () => {
   events = [];
   fired = [];
   fireError = null;
+  connectedProviders = null;
   ws = await store.getOrCreatePersonalWorkspace("alice");
   agent = await store.createAgent({ workspaceId: ws.id, name: "Helper" });
   root = paths.agentRoot(ws, agent);
@@ -199,6 +221,86 @@ test("start validates mode and provider", async () => {
   );
   expect(prov.status).toBe(400);
   expect(fired).toEqual([]);
+});
+
+test("a friendly provider name starts the mission on the real id", async () => {
+  connectedProviders = ["openai-codex"];
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "codex", model: "gpt-5.5" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+  // The pin must reach the TURN, not just the board row: a mission whose first
+  // turn runs on the agent's default provider is a silent substitution.
+  expect(fired[0]?.pin).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+  });
+  const created = (await onDisk()).find((a) => a.id !== PARENT.id);
+  expect(created?.provider).toBe("openai-codex");
+  expect(created?.model).toBe("gpt-5.5");
+});
+
+test("the name a user says for a model reaches the turn as its id", async () => {
+  connectedProviders = ["openai-codex"];
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "codex", model: "Luna" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+  expect(fired[0]?.pin).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-5.6-luna",
+  });
+  const created = (await onDisk()).find((a) => a.id !== PARENT.id);
+  expect(created?.model).toBe("gpt-5.6-luna");
+});
+
+test("an unknown provider is refused with the ids and names that would work", async () => {
+  connectedProviders = ["openai-codex", "google"];
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "gemini-cli" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(400);
+  const error = (r.body as { error: string }).error;
+  expect(error).toContain("openai-codex (ChatGPT / Codex (Plus / Pro))");
+  expect(error).toContain("google (Google Gemini)");
+  expect(error).not.toContain("deepseek");
+  expect(fired).toEqual([]);
+});
+
+test("a real provider nobody connected is refused by name, not started", async () => {
+  connectedProviders = ["openai-codex"];
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "deepseek" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(400);
+  const error = (r.body as { error: string }).error;
+  expect(error).toContain("deepseek (DeepSeek)");
+  expect(error).toMatch(/not connected/i);
+  expect(fired).toEqual([]);
+  expect((await onDisk()).length).toBe(1);
+});
+
+test("with no credential store to judge with, a known provider still starts", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "Claude (Pro / Max)" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+  expect(fired[0]?.pin?.provider).toBe("anthropic");
 });
 
 test("depth 1: an agent-started mission can't start missions", async () => {

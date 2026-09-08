@@ -13,6 +13,7 @@ import {
   type MissionsCtx,
   missionSessionKey,
 } from "./missions-sandbox";
+import { targetOrRefuse } from "./missions-target";
 
 /**
  * The agent's explicit board move (`POST /sandbox/missions/status`): `done` or
@@ -22,9 +23,12 @@ import {
  * visible in the parent chat, and the guards below keep it away from anything
  * still running and from the agent's own conversation (which the turn's settle
  * would immediately contradict).
+ *
+ * An optional `agent` moves a card on ANOTHER agent's board — the settle half
+ * of a mission the caller started there.
  */
 export async function handleMissionStatus(
-  ctx: MissionsCtx,
+  callerCtx: MissionsCtx,
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
@@ -37,6 +41,8 @@ export async function handleMissionStatus(
     });
     return;
   }
+  const ctx = await targetOrRefuse(callerCtx, body.agent, res);
+  if (!ctx) return;
   const outcome = await withDocLock(`${ctx.root}#activity`, async () => {
     const { items } = await loadActivities(ctx.vfs, ctx.root);
     const current = items.find((a) => a.id === id);

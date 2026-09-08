@@ -63,7 +63,12 @@ export const DEFAULT_PROVIDER: ProviderId = "openai-codex";
  */
 export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   anthropic: "claude-sonnet-4-6",
-  "openai-codex": "gpt-5.5",
+  // Codex's current full tier, and the id a pin naming `openai-codex` with NO
+  // model lands on. gpt-5.5 held this slot after OpenAI stopped serving it to
+  // ChatGPT subscriptions, so every such pin died `model_not_found` on its
+  // first turn. Twin of the runtime's `CODEX_DEFAULT_MODEL`
+  // (packages/runtime/src/ai/codex-offered.ts), which carries the live probe.
+  "openai-codex": "gpt-6-astra",
   // Copilot uses DOTTED model ids (claude-sonnet-4.6), unlike native Anthropic.
   "github-copilot": "claude-sonnet-4.6",
   opencode: "claude-sonnet-4-6",
@@ -120,11 +125,15 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "claude-sonnet-4-6",
     "claude-sonnet-5",
   ]),
+  // pi's Codex catalog MINUS the rows OpenAI refuses a ChatGPT subscription:
+  // gpt-5.5 answers `404 model_not_found` and gpt-5.4 answers `400 not
+  // supported when using Codex with a ChatGPT account` (probed live against
+  // the responses endpoint — packages/runtime/src/ai/codex-offered.ts holds the
+  // method and the verdicts). Keeping them "valid" is what let a stored id
+  // survive migration into a turn that could only fail.
   "openai-codex": new Set([
     "gpt-5.3-codex-spark",
-    "gpt-5.4",
     "gpt-5.4-mini",
-    "gpt-5.5",
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
@@ -143,15 +152,22 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
 };
 
 /**
- * Legacy provider name → pi ProviderId. The CLI era spoke "openai" (and the
- * informal "codex"/"chatgpt"); pi calls that same subscription "openai-codex".
- * Everything else is either already a pi id (handled separately) or unknown.
+ * Legacy / spoken provider name → pi ProviderId, keyed LOWERCASE. The CLI era
+ * spoke "openai" (and the informal "codex"/"chatgpt"); pi calls that same
+ * subscription "openai-codex". The rest are the short names a user or an agent
+ * actually says for a provider whose pi id is longer ("gemini", "bedrock",
+ * "copilot") — resolving them here is what keeps an agent from GUESSING an id
+ * (`provider-choice.ts`). Everything else is either already a pi id (handled
+ * separately) or unknown.
  */
 export const PROVIDER_ALIASES: Record<string, ProviderId> = {
   openai: "openai-codex",
   codex: "openai-codex",
   chatgpt: "openai-codex",
   claude: "anthropic",
+  gemini: "google",
+  bedrock: "amazon-bedrock",
+  copilot: "github-copilot",
 };
 
 /**
@@ -179,13 +195,20 @@ export const MODEL_ALIASES: Partial<
     "claude-haiku-latest": "claude-haiku-4-5",
   },
   "openai-codex": {
-    // CLI-era Codex ids that predate pi's gpt-5.x line, mapped to the closest
-    // current tier. Codex's full tier is gpt-5.5; the mini tier is gpt-5.4-mini.
-    "gpt-5": "gpt-5.5",
-    "gpt-5-codex": "gpt-5.5",
-    "gpt-5.1": "gpt-5.5",
-    "gpt-5.2": "gpt-5.5",
-    codex: "gpt-5.5",
+    // Codex ids the subscription no longer serves, mapped to the closest tier
+    // it does. The full tier is gpt-6-astra; the mini tier is gpt-5.4-mini.
+    // gpt-5.4 / gpt-5.5 were full-tier rows themselves until OpenAI retired
+    // them, and gpt-5.5-codex never shipped at all — they are legacy ids here
+    // for the same reason the CLI-era ones are: a stored value that must land
+    // somewhere that runs.
+    "gpt-5": "gpt-6-astra",
+    "gpt-5-codex": "gpt-6-astra",
+    "gpt-5.1": "gpt-6-astra",
+    "gpt-5.2": "gpt-6-astra",
+    "gpt-5.4": "gpt-6-astra",
+    "gpt-5.5": "gpt-6-astra",
+    "gpt-5.5-codex": "gpt-6-astra",
+    codex: "gpt-6-astra",
     "gpt-5-mini": "gpt-5.4-mini",
     "gpt-5.1-mini": "gpt-5.4-mini",
   },

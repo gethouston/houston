@@ -18,9 +18,9 @@ export interface Probe {
 }
 
 /**
- * A representative operation from every family the local host serves. Reads
- * only, plus one preference write: a probe asserts the ADDRESS resolves to a
- * live handler, and a destructive call would prove nothing extra.
+ * A representative operation from every family the local host serves. Reads,
+ * plus the preference writes (locale, agent color): a probe asserts the ADDRESS
+ * resolves to a live handler, and a destructive call would prove nothing extra.
  */
 export const LOCAL_PROBES: readonly Probe[] = [
   { operation: "listWorkspaces", params: {} },
@@ -32,6 +32,10 @@ export const LOCAL_PROBES: readonly Probe[] = [
   { operation: "setPreference", params: { key: "locale", value: "en" } },
   { operation: "listAgents", params: {} },
   { operation: "listInstalledConfigs", params: {} },
+  {
+    operation: "updateAgentColor",
+    params: { agentId: PROBE_AGENT, color: "teal" },
+  },
   { operation: "listActivities", params: { agentId: PROBE_AGENT } },
   {
     operation: "updateActivity",

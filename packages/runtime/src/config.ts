@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { assistantCatalogPath } from "@houston/host/src/assistant/catalog-source";
+import { CODEX_DEFAULT_MODEL } from "./ai/codex-offered";
 
 const env = process.env;
 
@@ -48,8 +49,13 @@ export const config = {
   shutdownDrainMs: Math.max(0, Number(env.HOUSTON_RUNTIME_DRAIN_MS || 3000)),
   /** Default Anthropic model (Claude Pro/Max subscription). */
   model: env.HOUSTON_MODEL || "claude-sonnet-5",
-  /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
-  codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+  /**
+   * Default Codex model (ChatGPT subscription — the cloud's only provider).
+   * The id comes from `ai/codex-offered.ts` rather than a literal here: this
+   * default IS what a turn pinned to `openai-codex` with no model runs on, so
+   * it has to move with the served set, not drift behind it.
+   */
+  codexModel: env.HOUSTON_CODEX_MODEL || CODEX_DEFAULT_MODEL,
   /**
    * Default GitHub Copilot model (subscription OAuth). A pi-ai `github-copilot`
    * model id — note Copilot's ids use dots (`gpt-5.4`), unlike the native

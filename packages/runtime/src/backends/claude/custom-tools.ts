@@ -7,10 +7,13 @@ import type {
   AgentToolResult,
   ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import type { ProviderOption } from "@houston/domain";
 import type { TurnMode } from "@houston/protocol";
 import type { TSchema } from "typebox";
-import { z } from "zod";
-import { toolNamesForMode } from "../../session/tool-selection";
+import {
+  COORDINATOR_TOOL_NAMES,
+  toolNamesForMode,
+} from "../../session/tool-selection";
 import { makeAskUserTool } from "../../session/tools/ask-user";
 import {
   type AssistantToolOptions,
@@ -29,6 +32,7 @@ import { makeSaveLearningTool } from "../../session/tools/save-learning";
 import { makeSaveRoutineTool } from "../../session/tools/save-routine";
 import { makeSuggestActionsTool } from "../../session/tools/suggest-actions";
 import { makeSuggestReusableTool } from "../../session/tools/suggest-reusable";
+import { toZodShape } from "./schema-to-zod";
 
 /**
  * Bridge Houston's pi-shaped custom tools (`ask_user`, `plan_ready`,
@@ -90,8 +94,22 @@ export interface HoustonMcpInput {
    * family is deployment-scoped, not credential-scoped.
    */
   assistant?: AssistantToolOptions;
+  /**
+   * True when this runtime IS the user's personal assistant — the coordinator.
+   * Clamps the bridged set to {@link COORDINATOR_TOOL_NAMES}, the same surface
+   * the pi path's `buildToolSelection` allowlists, so the two backends never
+   * drift on what the assistant may do.
+   */
+  personalAssistant?: boolean;
   /** An already grant-scoped tool set for a disposable turn runtime. */
   tools?: BridgedPiTool[];
+  /**
+   * The provider status the mission tools build their `provider` choice from
+   * (default: the runtime's own). Passed through so both backends can be built
+   * from ONE snapshot — the enum the model sees must not depend on which
+   * backend serves the turn.
+   */
+  providers?: readonly ProviderOption[];
   /**
    * The turn's execution mode, applied as the SAME tool filter the pi path uses
    * (`toolNamesForMode`): "plan" keeps `ask_user` + `plan_ready` (the acting
@@ -170,11 +188,22 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
       // save_learning reaches the host with the SAME sandbox token, and has the
       // same reach as save_routine: execute/auto, never plan.
       ...(input.integrations ? [makeSaveLearningTool(input.integrations)] : []),
-      // The mission-board tools ride the same host-reachability
-      // gate and the same execute/auto reach; read_mission is in-process but is
-      // useless without list_missions, so it shares the gate.
+      // The mission-board tools ride the same host-reachability gate and the
+      // same execute/auto reach; read_mission reaches the host only for another
+      // agent's mission, but is useless without list_missions either way, so it
+      // shares the gate.
       ...(input.integrations
-        ? [...makeMissionTools(input.integrations), makeReadMissionTool()]
+        ? [
+            ...makeMissionTools({
+              ...input.integrations,
+              personalAssistant: input.personalAssistant ?? false,
+              ...(input.providers ? { providers: input.providers } : {}),
+            }),
+            makeReadMissionTool({
+              ...input.integrations,
+              personalAssistant: input.personalAssistant ?? false,
+            }),
+          ]
         : []),
       // find_skills + install_skill reach the host with the SAME sandbox token,
       // and have the same reach as save_routine: execute/auto, never plan.
@@ -191,13 +220,16 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
       // SAFETY: Houston's tool implementations satisfy BridgedPiTool at runtime;
       // the assertion only widens their heterogeneous TypeBox parameter types.
     ] as unknown as BridgedPiTool[]);
+  const scoped = input.personalAssistant
+    ? built.filter((t) => COORDINATOR_TOOL_NAMES.includes(t.name))
+    : built;
   const allowed = new Set(
     toolNamesForMode(
       input.mode,
-      built.map((t) => t.name),
+      scoped.map((t) => t.name),
     ),
   );
-  const piTools = built.filter((t) => allowed.has(t.name));
+  const piTools = scoped.filter((t) => allowed.has(t.name));
 
   const tools = piTools.map(adaptTool);
   const server = input.createSdkMcpServer({
@@ -263,73 +295,4 @@ function toCallToolResult(result: AgentToolResult<unknown>): {
         : { type: "text", text: JSON.stringify(c) },
   );
   return { content };
-}
-
-// --- typebox (JSON Schema) → zod raw shape --------------------------------
-//
-// The SDK's in-process MCP requires each tool's `inputSchema` to be a zod raw
-// shape (a record of zod validators); it rejects a plain JSON Schema. Houston's
-// pi tools carry typebox schemas (which ARE JSON Schema), so the bridge converts
-// each tool's typebox params into the equivalent zod raw shape at build time.
-// This keeps the pi tool the SINGLE source of truth for the schema — no
-// hand-maintained zod duplicate to drift. The converter covers exactly the
-// JSON Schema constructs these tools use; an unrecognized node falls back to
-// `z.unknown()` rather than silently dropping a field.
-
-/** The JSON-Schema-shaped view of a typebox node the converter reads. */
-interface JsonSchemaNode {
-  type?: string;
-  description?: string;
-  properties?: Record<string, JsonSchemaNode>;
-  required?: string[];
-  items?: JsonSchemaNode;
-  patternProperties?: Record<string, JsonSchemaNode>;
-}
-
-/** Convert a typebox object schema into a zod raw shape (per-property validators). */
-export function toZodShape(schema: TSchema): Record<string, z.ZodType> {
-  const node = schema as unknown as JsonSchemaNode;
-  const required = new Set(node.required ?? []);
-  const shape: Record<string, z.ZodType> = {};
-  for (const [key, prop] of Object.entries(node.properties ?? {})) {
-    const built = toZodType(prop);
-    shape[key] = required.has(key) ? built : built.optional();
-  }
-  return shape;
-}
-
-/** Convert one JSON Schema node into the equivalent zod validator. */
-function toZodType(node: JsonSchemaNode): z.ZodType {
-  const built = baseZodType(node);
-  return node.description ? built.describe(node.description) : built;
-}
-
-function baseZodType(node: JsonSchemaNode): z.ZodType {
-  switch (node.type) {
-    case "string":
-      return z.string();
-    case "number":
-      return z.number();
-    case "integer":
-      return z.number().int();
-    case "boolean":
-      return z.boolean();
-    case "array":
-      return z.array(node.items ? toZodType(node.items) : z.unknown());
-    case "object": {
-      if (node.properties) return z.object(toZodShape(node as TSchema));
-      // A typebox `Record` emits `patternProperties` (open string keys) and no
-      // `properties`; map it to a zod record over its value schema.
-      const patternValue = node.patternProperties
-        ? Object.values(node.patternProperties)[0]
-        : undefined;
-      return z.record(
-        z.string(),
-        patternValue ? toZodType(patternValue) : z.unknown(),
-      );
-    }
-    default:
-      // No `type` (e.g. typebox `Unknown`) → an unconstrained value.
-      return z.unknown();
-  }
 }

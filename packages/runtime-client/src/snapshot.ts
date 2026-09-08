@@ -148,8 +148,9 @@ export function reduceSnapshot(
       return { running: false, partial: "", seq };
     case "provider_switched":
     case "context_compacted":
-      // Boundary markers (a mid-session provider switch / a proactive context
-      // compaction), not turn progress — published while a turn is live, so
+    case "context_cleared":
+      // Boundary markers (a mid-session provider switch, a context compaction,
+      // a `/clear`), not turn progress — published while a turn is live, so
       // leave running/partial untouched.
       return {
         running: prev.running,

@@ -3,6 +3,7 @@ import { join, sep } from "node:path";
 import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
 import type { TurnMode } from "@houston/protocol";
 import { config } from "../config";
+import { buildAssistantRulesSection } from "./assistant-rules-context";
 import { makeCompactionGuard } from "./compaction-guard";
 import { buildLearningsSection } from "./learnings-context";
 import { withModeOverlay } from "./mode-overlays";
@@ -132,8 +133,8 @@ export function makeAgentLoader(
   // files at cwd), then the GROUP context section (local-only `GROUP.md` the host
   // mirrors into each grouped agent's cwd; null when ungrouped), then the personal
   // assistant's saved MEMORY (null for every other agent — the gate is inside
-  // buildLearningsSection), then the turn MODE overlay LAST so the plan/auto
-  // mandate is the final word. CLAUDE.md/AGENTS.md still load via
+  // buildLearningsSection) followed by its OPERATING RULES, then the turn MODE
+  // overlay LAST so the plan/auto mandate is the final word. CLAUDE.md/AGENTS.md still load via
   // agentsFilesOverride below.
   const section = buildWorkspaceContextSection(cwd, provided);
   const base = config.systemPrompt || SYSTEM_PROMPT;
@@ -142,10 +143,12 @@ export function makeAgentLoader(
   const withGroup = group ? `${withContext}\n\n${group}` : withContext;
   const learnings = buildLearningsSection(cwd);
   const withLearnings = learnings ? `${withGroup}\n\n${learnings}` : withGroup;
+  const rules = buildAssistantRulesSection(cwd);
+  const withRules = rules ? `${withLearnings}\n\n${rules}` : withLearnings;
   return buildAgentLoader({
     cwd,
     skillsDir: config.skillsDirOverride || join(cwd, ".agents", "skills"),
     sharedSkillsDir: config.sharedSkillsDir,
-    systemPrompt: withModeOverlay(withLearnings, mode),
+    systemPrompt: withModeOverlay(withRules, mode),
   });
 }

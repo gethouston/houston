@@ -95,6 +95,8 @@ vi.mock("../store/conversations", () => ({
 const { execTurn, recordUserTurn } = await import("./exec-turn");
 const { subscribe } = await import("./bus");
 const { recordQuestions, recordConnection } = await import("./interaction");
+const { guardConfirmation } = await import("./tools/assistant-confirm");
+const { clearConfirmations } = await import("./confirm-gate");
 const { appendAssistantMessage, appendUserMessage, consumeSessionReplay } =
   await import("../store/conversations");
 const { getHistory } = await import("../store/conversations");
@@ -1009,4 +1011,99 @@ test("without the replay marker the prompt is the bare text (no preamble on norm
   });
 
   expect(prompts).toEqual(["hello there"]);
+});
+
+/**
+ * The safety binding: a destructive Houston operation is refused and raises its
+ * card on THIS turn's done frame, and only the user's own reply — arriving as
+ * the next turn's message, the one thing the model cannot author — lets the
+ * identical call through.
+ */
+test("a destructive Houston call is authorized by the user's reply, never by the model", async () => {
+  const id = "exec-confirm";
+  clearConfirmations(id);
+  const op = {
+    name: "deleteAgent",
+    group: "agents",
+    description: "Delete an agent and everything in it.",
+    confirm: true,
+    hidden: false,
+    params: [],
+    returns: { type: "null" },
+    route: null,
+  } as unknown as Parameters<typeof guardConfirmation>[0];
+  const params = { id: "Personal/Dobby" };
+
+  const { events, unsub } = collect(id);
+  let first: unknown;
+  await execTurn(
+    fakeConv(() => {
+      first = guardConfirmation(op, params);
+    }),
+    id,
+    "turn-1",
+    "make Dobby blue",
+    { author: undefined, priorAuthors: [] },
+  );
+  unsub();
+  // Refused, and the user has a card in front of them naming the real target.
+  expect(first).toBeDefined();
+  const done = events.find(
+    (e): e is Extract<WireEvent, { type: "done" }> => e.type === "done",
+  );
+  const step = done?.pendingInteraction?.steps[0];
+  if (step?.kind !== "question") throw new Error("no approval card was raised");
+  expect(step.question).toContain("Personal/Dobby");
+  const approve = step.options?.find((o) => o.id === "approve");
+  expect(approve).toBeDefined();
+
+  // The app posts the card's answer as an ordinary user message.
+  let second: unknown = "not run";
+  await execTurn(
+    fakeConv(() => {
+      second = guardConfirmation(op, params);
+    }),
+    id,
+    "turn-2",
+    `${step.question}: ${approve?.label}`,
+    { author: undefined, priorAuthors: [] },
+  );
+  expect(second).toBeUndefined();
+});
+
+test("a reply that never answered the card leaves the call refused", async () => {
+  const id = "exec-confirm-unanswered";
+  clearConfirmations(id);
+  const op = {
+    name: "deleteAgent",
+    group: "agents",
+    description: "Delete an agent and everything in it.",
+    confirm: true,
+    hidden: false,
+    params: [],
+    returns: { type: "null" },
+    route: null,
+  } as unknown as Parameters<typeof guardConfirmation>[0];
+  const params = { id: "Personal/Dobby" };
+
+  await execTurn(
+    fakeConv(() => {
+      guardConfirmation(op, params);
+    }),
+    id,
+    "turn-1",
+    "make Dobby blue",
+    { author: undefined, priorAuthors: [] },
+  );
+  let second: unknown = "not run";
+  await execTurn(
+    fakeConv(() => {
+      second = guardConfirmation(op, params);
+    }),
+    id,
+    "turn-2",
+    "yes do it",
+    { author: undefined, priorAuthors: [] },
+  );
+  expect(second).toBeDefined();
 });

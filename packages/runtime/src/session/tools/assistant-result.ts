@@ -21,8 +21,11 @@ export type AssistantErrorCode =
   | "invalid_param"
   /** `params` was not an object of param values. */
   | "invalid_params"
-  /** The operation is `confirm: true` and the user has not approved it. */
-  | "confirmation_required"
+  /** The operation is `confirm: true` and no approval from the user exists for
+   *  this exact call. Houston is showing them the approval card. */
+  | "needs_confirmation"
+  /** The user was shown the approval card for this exact call and said no. */
+  | "confirmation_declined"
   /** Nothing in this build can perform it: no route in the catalog, or the host refused. */
   | "operation_not_supported"
   /** The gateway answered a 4xx/5xx. */
@@ -37,6 +40,15 @@ export interface AssistantError {
   status?: number;
 }
 
+/** What the user is being asked to approve, alongside a `needs_confirmation`
+ *  refusal: the plain-language sentence on their card and the exact arguments
+ *  the approval will be bound to. Structured so the model can restate the ask
+ *  without re-deriving it — never so it can act on it. */
+export interface AssistantConfirmationRequest {
+  summary: string;
+  params: Record<string, unknown>;
+}
+
 /**
  * What every operation-addressed tool (`houston_describe`, `houston_call`)
  * hands back. A UNION rather than an `ok: boolean` with an optional error, so
@@ -44,7 +56,13 @@ export interface AssistantError {
  */
 export type AssistantOperationDetails =
   | { ok: true; operation: string }
-  | { ok: false; operation: string; error: AssistantError };
+  | {
+      ok: false;
+      operation: string;
+      error: AssistantError;
+      /** Set only on `needs_confirmation`: the ask now in front of the user. */
+      confirmation?: AssistantConfirmationRequest;
+    };
 
 export type AssistantOperationResult =
   AgentToolResult<AssistantOperationDetails>;
@@ -62,6 +80,27 @@ export function assistantErrorResult(
   return {
     content: [{ type: "text", text: `ERROR ${error.code}: ${error.message}` }],
     details: { ok: false, operation, error },
+  };
+}
+
+/**
+ * The refusal that raises a real approval card: the operation is destructive
+ * and no approval for THIS exact call exists. Carries the ask in structured
+ * form so the model can wait on it intelligently instead of guessing.
+ */
+export function assistantNeedsConfirmationResult(
+  operation: string,
+  message: string,
+  confirmation: AssistantConfirmationRequest,
+): AssistantOperationResult {
+  return {
+    content: [{ type: "text", text: `ERROR needs_confirmation: ${message}` }],
+    details: {
+      ok: false,
+      operation,
+      error: { code: "needs_confirmation", message },
+      confirmation,
+    },
   };
 }
 

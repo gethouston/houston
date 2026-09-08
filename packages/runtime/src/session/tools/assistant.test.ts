@@ -202,7 +202,10 @@ test("houston_describe warns on a confirm operation before it is ever called", a
     CTX,
   );
   expect(text(result)).toContain("hard to undo");
-  expect(text(result)).toContain("confirmed true");
+  // The gate is Houston's, not the model's: the guidance must not suggest the
+  // model has any way to declare an approval.
+  expect(text(result)).toContain("needs_confirmation");
+  expect(text(result)).not.toMatch(/confirmed true/i);
 });
 
 test.each([

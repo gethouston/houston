@@ -37,6 +37,12 @@ import {
   noChannel,
   trustedActingAs,
 } from "./agent-authz";
+import {
+  agentColorOrNull,
+  clearAgentColor,
+  moveAgentColor,
+  storeAgentColor,
+} from "./agent-color";
 import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
 import { legacyAgentColor } from "./agent-legacy-color";
@@ -289,6 +295,15 @@ export async function handleAgents(
         throw err;
       }
     }
+    // Optional create-time color, into the SAME `agent_colors` preference the
+    // app's color sync reads (routes/agent-color.ts) — a template, a portable
+    // install or the assistant can birth an agent already colored. Cosmetic, so
+    // an absent or malformed value is simply not stored rather than failing the
+    // create; a real write failure still propagates.
+    const createColor = agentColorOrNull(body.color);
+    if (createColor && deps.vfs) {
+      await storeAgentColor(deps.vfs, ws.id, agent.id, createColor);
+    }
     deps.events?.emit(ws.ownerUserId, {
       type: "AgentsChanged",
       workspaceId: ws.id,
@@ -357,6 +372,12 @@ export async function handleAgents(
         }
         throw err;
       }
+      // The id moved with the directory, so the color entry must move too
+      // (routes/agent-color.ts) or the renamed agent renders the default.
+      if (deps.vfs) {
+        const colorWs = await deps.store.getOrCreatePersonalWorkspace(userId);
+        await moveAgentColor(deps.vfs, colorWs.id, agentId, renamed.id);
+      }
       deps.events?.emit(authz.workspace.ownerUserId, {
         type: "AgentsChanged",
         workspaceId: authz.workspace.id,
@@ -383,6 +404,12 @@ export async function handleAgents(
     };
     if (channel.withQuiesced) await channel.withQuiesced(ctx, doDelete);
     else await doDelete();
+    // A local agent's id is its path, so a future agent can reuse it — leaving
+    // the entry behind would hand it a dead agent's color.
+    if (deps.vfs) {
+      const colorWs = await deps.store.getOrCreatePersonalWorkspace(userId);
+      await clearAgentColor(deps.vfs, colorWs.id, agentId);
+    }
     deps.events?.emit(authz.workspace.ownerUserId, {
       type: "AgentsChanged",
       workspaceId: authz.workspace.id,

@@ -1,4 +1,8 @@
+// `getProviders` is pi-ai's legacy static-catalog read (preserved on `/compat`):
+// the baked, network-free list of every provider the runtime can run.
+import { getProviders } from "@earendil-works/pi-ai/compat";
 import type { ProviderId } from "@houston/protocol";
+import { QWEN_PROVIDER_ID } from "./providers/qwen-dashscope";
 
 // The api-key-provider gate is pi-derived (any pi provider that isn't OAuth),
 // not the curated catalog below — see ./providers/api-key. Re-exported here so
@@ -212,6 +216,23 @@ export function isTurnServable(
 ): boolean {
   if (provider === OPENAI_COMPATIBLE) return hasCustomEndpoint;
   return isCloudProvider(provider);
+}
+
+/**
+ * Every provider id this host recognises: the curated catalog plus pi-ai's full
+ * baked registry (the same source `/v1/catalog` and the capabilities hint
+ * enumerate). Mirrors the runtime's own `isProvider` so a pin the runtime could
+ * run is never refused earlier by the host as "unknown".
+ */
+const KNOWN_PROVIDER_IDS: ReadonlySet<string> = new Set([
+  ...PROVIDERS.map((p) => p.id as string),
+  ...getProviders(),
+  QWEN_PROVIDER_ID,
+]);
+
+/** Whether `id` names a provider this deployment could run at all. */
+export function isKnownProvider(id: string): boolean {
+  return KNOWN_PROVIDER_IDS.has(id);
 }
 
 /** Lookup a provider by id. */

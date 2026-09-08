@@ -21,6 +21,13 @@ export interface ClaudeBackendDeps {
   integrations?: IntegrationToolOptions;
   /** The assistant family's catalog + host transport; absent → family off. */
   assistant?: AssistantToolOptions;
+  /**
+   * True when this runtime IS the user's personal assistant — the coordinator.
+   * Clamps BOTH layers this backend controls: the SDK built-ins (tool-policy.ts)
+   * and the bridged Houston tools (custom-tools.ts), so the Claude path exposes
+   * the same coordinator surface the pi path does.
+   */
+  personalAssistant?: boolean;
   tools?: BridgedPiTool[];
   /** External SDK adapter for tests that must not spawn a process. */
   sdk?: ClaudeSdk;

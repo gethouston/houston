@@ -175,14 +175,17 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
  *
  *  - `<CLAUDE_CONFIG_DIR>/.credentials.json` — the SDK's + `claude auth status`'
  *    source of truth on Linux (the hosted pod), and what the SDK self-refreshes
- *    in place there.
- *  - the pi auth store (`auth.json` `oauth` entry) — resolved into the SDK
- *    subprocess as `CLAUDE_CODE_OAUTH_TOKEN` (read-token.ts → claude-env.ts).
- *    This is the ONLY sink that works on a macOS/Windows engine: there the SDK
- *    reads credentials from the OS keychain scoped to `CLAUDE_CONFIG_DIR`, never
- *    from the pushed file, so without this the push is invisible and every turn
- *    401s "Not logged in". The env token also outranks both file and keychain on
- *    all three OSes, so one code path authenticates uniformly.
+ *    in place there. The dir is WORKSPACE-SHARED, so this sink is what carries
+ *    the push to EVERY agent's runtime, not just this one.
+ *  - the pi auth store (`auth.json` `oauth` entry), private to THIS runtime.
+ *
+ * Both sinks are resolved into the SDK subprocess as `CLAUDE_CODE_OAUTH_TOKEN`
+ * (read-token.ts → claude-env.ts), store first. The env token is what makes the
+ * push land on a macOS/Windows engine at all: there the SDK reads credentials
+ * from the OS keychain scoped to `CLAUDE_CONFIG_DIR`, never from the pushed
+ * file, so a push the runtime does not lift into the env is invisible and every
+ * turn 401s "Not logged in". The env token also outranks both file and keychain
+ * on all three OSes, so one code path authenticates uniformly.
  *
  * Desktop/self-host keeps the full credential so its holder self-refreshes; serve
  * mode strips the refresh token from BOTH sinks so the gateway remains the

@@ -4,6 +4,7 @@ import { findVisibleOperation } from "@houston/host/src/assistant/catalog";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { isCallableOperation } from "./assistant-callable";
+import { guardConfirmation } from "./assistant-confirm";
 import { checkCallParams } from "./assistant-params";
 import {
   type AssistantError,
@@ -21,6 +22,10 @@ import type { SandboxFetch } from "./sandbox-fetch";
  * the gateway token, and which operations it will actually route. Validation is
  * duplicated on purpose — here so the model gets a correctable answer, there so
  * a sandbox token alone can never reach an unrouted operation.
+ *
+ * `confirm: true` operations go through `assistant-confirm.ts` first. There is
+ * deliberately NO "confirmed" input: an approval the model could assert is not
+ * an approval, and this tool once deleted an agent because it asserted one.
  */
 
 export const HOUSTON_CALL_TOOL_NAME = "houston_call";
@@ -37,12 +42,6 @@ const CallParams = Type.Object({
     description:
       "The operation's arguments, keyed by parameter name exactly as houston_describe lists them. Pass {} when it takes none.",
   }),
-  confirmed: Type.Optional(
-    Type.Boolean({
-      description:
-        "Set true ONLY after the user has, in this conversation and in this turn, explicitly approved THIS specific action on THIS specific target. Operations marked confirm are destructive or hard to reverse and are refused without it. Never set it because the user approved something similar earlier, because the action seems obviously wanted, or to retry a refusal - ask them first, in plain words, and wait for their answer.",
-    }),
-  ),
 });
 type CallParams = Static<typeof CallParams>;
 
@@ -87,7 +86,7 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
     name: HOUSTON_CALL_TOOL_NAME,
     label: "Do it in Houston",
     description:
-      "Perform one Houston operation on the user's behalf - the same action they would take in the app themselves. Look the operation up with houston_capabilities, read its parameters with houston_describe, then call it here with the exact name and named arguments. Operations flagged confirm change or delete something the user cannot easily get back: describe exactly what will happen, ask them in plain words, wait for their answer, and only then repeat the call with confirmed true. Failures come back as ERROR with a named code instead of an exception - read it, fix the call if it was yours to fix, and otherwise explain the problem to the user without mentioning operations, parameters, or HTTP.",
+      "Perform one Houston operation on the user's behalf - the same action they would take in the app themselves. Look the operation up with houston_capabilities, read its parameters with houston_describe, then call it here with the exact name and named arguments. Operations flagged confirm change or delete something the user cannot easily get back: call this normally and Houston itself will show the user an approval card for that exact action - you do not approve anything, and there is no argument that says you did. When the answer is ERROR needs_confirmation, END YOUR TURN and wait; after they approve, repeat the identical call. Failures come back as ERROR with a named code instead of an exception - read it, fix the call if it was yours to fix, and otherwise explain the problem to the user without mentioning operations, parameters, or HTTP.",
     promptSnippet: "Perform a Houston operation",
     parameters: CallParams,
     executionMode: "sequential",
@@ -115,12 +114,10 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
       }
       const checked = checkCallParams(op, params.params);
       if (!checked.ok) return assistantErrorResult(name, checked.error);
-      if (op.confirm && params.confirmed !== true) {
-        return assistantErrorResult(name, {
-          code: "confirmation_required",
-          message: `${name} changes something the user cannot easily undo. Tell them exactly what it will do, ask whether to go ahead, and only repeat this call with confirmed true once they have said yes.`,
-        });
-      }
+      // The confirmation gate. It runs on the CHECKED params, so the approval
+      // the user gave is bound to the bytes that would actually be sent.
+      const refusal = guardConfirmation(op, checked.params);
+      if (refusal) return refusal;
 
       const acting = currentActingContext();
       let res: Response;

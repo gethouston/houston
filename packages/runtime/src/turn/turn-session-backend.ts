@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import type { ChatMessage } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { logTurnTarget } from "../ai/turn-diagnostic";
 import { readAuthFile } from "../auth/auth-file";
 import type { newUsedTokenCapture } from "../auth/used-token";
 import { hasUnreadablePiSessionTail } from "../backends/pi/backend";
@@ -40,9 +41,17 @@ export async function openTurnBackendSession(input: {
     baseUrl?: string;
     reasoning?: boolean;
   };
-  console.log(
-    `[turn] provider=${provider} model=${diagnostic.id} baseUrl=${diagnostic.baseUrl}`,
-  );
+  // Same one-line form the long-lived runtime logs (ai/turn-diagnostic.ts), so
+  // desktop and pod logs read identically. `pinned` speaks for the MODEL only:
+  // a pooled turn's provider always arrives on the request (this runtime holds
+  // no saved pick), while the model is a per-turn pin over the hydrated
+  // settings.json / provider default (turn-model.ts).
+  logTurnTarget({
+    provider,
+    model: diagnostic.id,
+    baseUrl: diagnostic.baseUrl,
+    pinned: Boolean(pin?.model),
+  });
   const effort =
     pin?.effort ??
     (diagnostic.reasoning === true ? DEFAULT_REASONING_EFFORT : undefined);

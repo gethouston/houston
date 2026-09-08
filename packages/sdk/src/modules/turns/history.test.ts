@@ -56,6 +56,39 @@ describe("historyToFeed", () => {
     });
   });
 
+  it("replays a /clear marker as its own boundary, keeping the chat around it", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "my flight is on the 4th", ts: 1 },
+      { role: "user", content: "/clear", ts: 2 },
+      { role: "assistant", content: "", ts: 3, contextCleared: true },
+      { role: "user", content: "hello again", ts: 4 },
+    ]);
+    expect(feed.find((f) => f.feed_type === "context_cleared")).toEqual({
+      feed_type: "context_cleared",
+      data: null,
+      ts: 3,
+    });
+    // A reload shows the user everything they said, on both sides of the line.
+    expect(feed.filter((f) => f.feed_type === "user_message")).toHaveLength(3);
+  });
+
+  it("replays a manual compaction with its trigger intact", () => {
+    const feed = historyToFeed([
+      {
+        role: "assistant",
+        content: "",
+        ts: 1,
+        compaction: { trigger: "manual", pre_tokens: 900 },
+      },
+    ]);
+    expect(feed.find((f) => f.feed_type === "context_compacted")?.data).toEqual(
+      {
+        trigger: "manual",
+        pre_tokens: 900,
+      },
+    );
+  });
+
   it("carries the pi provider id through unchanged by default (identity map)", () => {
     const feed = historyToFeed([
       {
