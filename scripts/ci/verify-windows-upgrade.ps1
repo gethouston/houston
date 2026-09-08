@@ -58,8 +58,11 @@ try {
     Invoke-Msi '/i' $installerPath 'upgrade.log'
     $installedPath = $installerPath
     $files = @(Get-ChildItem -LiteralPath $installDir -Recurse -File)
-    if (-not ($files | Where-Object { $_.Name -ieq 'Houston.exe' })) {
-        throw 'Upgraded Houston executable is missing.'
+    # The MSI ships the Cargo bin (`houston-app.exe`, app/src-tauri/Cargo.toml);
+    # the product name "Houston" only names the install folder and shortcuts.
+    if (-not ($files | Where-Object { $_.Name -ieq 'houston-app.exe' })) {
+        $installed = ($files | ForEach-Object { $_.FullName.Substring($installDir.Length) }) -join ', '
+        throw "Upgraded Houston executable is missing. Installed files: $installed"
     }
     if ($files | Where-Object { $_.Name -match '^frpc(?:-|\.|$)' }) {
         throw 'The upgrade left a retired FRP executable installed.'
