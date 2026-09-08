@@ -1,3 +1,4 @@
+import { retryAfterMsOf } from "../../../../../ui/engine-client/src/retry-after";
 import { appVersionHeader } from "../app-version";
 import { HoustonEngineError, SIGNED_OUT_ERROR } from "../client/errors";
 import { hasSessionRefresher, refreshLiveToken } from "../session-refresh";
@@ -192,7 +193,11 @@ export async function cpFetch(
   if (!res.ok) {
     // Surface the real failure (auth, not-found, server) — never swallow.
     const body = await res.json().catch(() => ({}));
-    const err = new HoustonEngineError(res.status, body);
+    const err = new HoustonEngineError(
+      res.status,
+      body,
+      retryAfterMsOf(res.headers),
+    );
     if (agentId) err.agentId = agentId;
     throw err;
   }

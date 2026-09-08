@@ -123,10 +123,8 @@
     "missionRowFailed": "No pudimos guardar esta tarea en tu tablero. Tu mensaje sí fue enviado.",
     "interactionDismissFailed": "No pudimos descartar la solicitud."
   },
-  "toolRuntimeError": {
-    "retryPrompt": "Intenta de nuevo."
-  },
   "providerError": {
+    "retryPrompt": "Intenta de nuevo.",
     "reconnectedContinue": "Ya inicié sesión de nuevo. Por favor continúa donde quedaste. Si aún no has respondido mi último mensaje, respóndelo ahora."
   },
   "attachmentIssues": {
@@ -259,6 +257,12 @@
   "filesUpdated_one": "1 archivo actualizado",
   "filesUpdated_other": "{{count}} archivos actualizados",
   "contextCompacted": "Resumimos la conversación anterior para que el chat pueda continuar",
+  "contextCompactedManual": "Compactamos la conversación para liberar espacio",
+  "contextCleared": "Contexto borrado. Empiezo de cero y conservo lo que aprendí sobre ti.",
+  "contextCommands": {
+    "compact": "Compactar contexto",
+    "clear": "Borrar contexto"
+  },
   "conversationMap": {
     "title": "Buscar en el chat",
     "moreActions": "Acciones del chat",
@@ -371,5 +375,15 @@
   },
   "copyMessage": {
     "copy": "Copiar mensaje"
+  },
+  "approvalCard": {
+    "approve": "Sí, adelante",
+    "decline": "No, no lo hagas",
+    "closing": "Houston no puede deshacer esto por ti. ¿Quieres continuar?",
+    "affects": "Esto afecta a {{arguments}}.",
+    "argument": "{{name}} \"{{value}}\"",
+    "exactValue": "Contenido exacto de {{name}}:",
+    "truncated_one": "[y {{formatted}} carácter más, que también se escribiría]",
+    "truncated_other": "[y {{formatted}} caracteres más, que también se escribirían]"
   }
 }

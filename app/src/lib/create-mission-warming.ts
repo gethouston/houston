@@ -27,6 +27,7 @@ import type {
   CreateMissionResult,
 } from "./create-mission";
 import { startMissionNow } from "./create-mission-now";
+import { missionRowInput } from "./mission-row";
 import { fallbackMissionTitle } from "./mission-title";
 
 export function createMissionWhileWarming(
@@ -56,14 +57,7 @@ export function createMissionWhileWarming(
       buildPrompt: opts.buildPrompt
         ? () => opts.buildPrompt?.(conversationId) ?? text
         : undefined,
-      row: {
-        id: conversationId,
-        title,
-        description,
-        agent: opts.agentMode,
-        provider: opts.providerOverride,
-        model: opts.modelOverride,
-      },
+      row: missionRowInput({ conversationId, title, description }, opts),
       provider: opts.providerOverride,
       model: opts.modelOverride,
       effort: opts.effortOverride,

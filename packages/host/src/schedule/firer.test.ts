@@ -170,7 +170,11 @@ test("an unresolvable provider pin fails the fire with the real reason, before a
   // stream error and the run would time out vague 15 minutes later.
   await expect(
     firer.fire(job({ routine: { ...job().routine, provider: "gemini-cli" } })),
-  ).rejects.toThrow("unknown provider: gemini-cli");
+    // Named the way a person reads it, never pi's canonical id — the run
+    // history shows this sentence verbatim (providers/provider-copy.ts).
+  ).rejects.toThrow(
+    "This routine runs on gemini-cli, which is not available here. Open the routine and pick another provider.",
+  );
   expect(cloudrun.calls).toHaveLength(0);
 });
 

@@ -1,10 +1,15 @@
 #!/usr/bin/env node
 /**
- * Locale parity validator.
+ * Locale validator: PARITY and USAGE.
  *
- * Compares every non-English locale against English to catch structural
+ * Parity compares every non-English locale against English to catch structural
  * drift — missing keys, extra keys, or mismatched leaf types (string vs
- * object). Also bans em dashes in user-facing copy per product preference.
+ * object). It also bans em dashes in user-facing copy per product preference.
+ *
+ * Usage walks `app/src` and fails on a literal `t("...")` key that NO locale
+ * defines. Parity alone could never see those: three skill-surface keys were
+ * in sync across all three locales by being absent from all three, and each
+ * rendered its own key at the user ("detail.savingChanges" on the save button).
  *
  * Exit 0 = clean, 1 = problems (with a human-readable report).
  */
@@ -12,6 +17,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { usageReport } from "./check-locale-usage.mjs";
 
 const ROOT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -88,6 +94,8 @@ function walk(ref, cand, pathPrefix, report) {
   }
 }
 
+const SOURCE = join(dirname(fileURLToPath(import.meta.url)), "..", "src");
+
 function validate() {
   const locales = readdirSync(ROOT).filter((name) => !name.startsWith("."));
   if (!locales.includes(REFERENCE)) {
@@ -156,11 +164,18 @@ function validate() {
     for (const item of report.emDashes) console.error(`  EM-DASH  ${item}`);
   }
 
+  const unresolved = usageReport(SOURCE, locales, loadLocale);
+  if (unresolved.length > 0) {
+    failed = true;
+    console.error(`\nt() keys no locale defines:`);
+    for (const item of unresolved) console.error(`  MISSING  ${item}`);
+  }
+
   if (failed) {
     console.error("\nLocale validation failed.");
     process.exit(1);
   }
-  console.log("\nAll locales in sync.");
+  console.log("\nAll locales in sync, and every t() key resolves.");
 }
 
 validate();

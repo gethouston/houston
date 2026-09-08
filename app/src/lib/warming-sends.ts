@@ -13,6 +13,7 @@
  * a relaunch the flush falls back to the message text alone.
  */
 
+import type { ActivityStatus } from "@houston-ai/engine-client";
 import {
   type MessageMention,
   pushPendingUserMessage,
@@ -181,7 +182,7 @@ export async function flushWarmingSends(
         // the board card still opens THIS conversation and the turn's status
         // writes still resolve (both match session_key first); plus a status
         // settled while queued (the welcome card's needs_you).
-        const patch: { session_key?: string; status?: string } = {};
+        const patch: { session_key?: string; status?: ActivityStatus } = {};
         if (send.sessionKey !== `activity-${created.id}`) {
           patch.session_key = send.sessionKey;
         }

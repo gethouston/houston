@@ -237,6 +237,8 @@ export interface AIBoardProps {
    * an X to mean.
    */
   hidePanelClose?: boolean;
+  /** Drop the detail panel's header row (see KanbanDetailPanel.hideHeader). */
+  hidePanelHeader?: boolean;
   /**
    * Draft text keyed by session key. Used to persist composer text across
    * navigation so users don't lose what they've typed. The key
@@ -379,6 +381,7 @@ export function AIBoard({
   panelOnly,
   disableComposerAutoFocus,
   hidePanelClose,
+  hidePanelHeader,
   drafts,
   onDraftChange,
   isSpecialTool,
@@ -812,6 +815,7 @@ export function AIBoard({
   const detailPanel = (
     <KanbanDetailPanel
       title={panelTitle}
+      hideHeader={hidePanelHeader}
       onClose={hidePanelClose ? undefined : closePanel}
       leading={panelLeading}
       avatar={panelAvatar}

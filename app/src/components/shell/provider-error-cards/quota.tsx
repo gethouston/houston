@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 import { credentialScopeOf } from "../../../lib/credential-scope";
 import { RowCard } from "../../cards/row-card";
 import { RowCardButton } from "../../cards/row-card-button";
-import { providerLabel } from "./shared";
+import { providerErrorModelLabel, providerLabel } from "./shared";
 
 interface BaseProps {
   /** Open the model picker so the user can choose a different model/provider. */
@@ -72,8 +72,11 @@ export function ContextOverflowCard({
 }) {
   const { t } = useTranslation("shell");
   // Name the model when the wire carried it, else fall back to the provider's
-  // display name — the sentence must always name WHAT ran out of room.
-  const model = error.model ?? providerLabel(error.provider);
+  // display name — the sentence must always name WHAT ran out of room. Both
+  // are catalog labels ("GPT-6 Astra"), never the wire's raw ids.
+  const model = error.model
+    ? providerErrorModelLabel(error.provider, error.model)
+    : providerLabel(error.provider);
   return (
     <div className="w-full px-1 py-2">
       <RowCard
@@ -108,7 +111,11 @@ export function ModelUnavailableCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
+  const model = providerErrorModelLabel(error.provider, error.model);
   const fallback = error.suggested_fallback;
+  const fallbackLabel = fallback
+    ? providerErrorModelLabel(error.provider, fallback)
+    : "";
   // Name WHOSE plan lacks the model when the wire says the turn ran on the
   // sender's own account (HOU-976). A member reading "your {{provider}}
   // account" would otherwise reasonably read it as the team's, and go asking an
@@ -130,7 +137,7 @@ export function ModelUnavailableCard({
       <RowCard
         media={<AlertTriangleIcon className="size-5" />}
         title={t("providerError.modelUnavailable.title")}
-        description={t(bodyKey, { provider, model: error.model })}
+        description={t(bodyKey, { provider, model })}
         // Same `undefined`-not-a-fragment rule as the card above.
         action={
           (fallback && onApplyModel) || onSwitchModel ? (
@@ -138,7 +145,7 @@ export function ModelUnavailableCard({
               {fallback && onApplyModel && (
                 <RowCardButton
                   label={t("providerError.modelUnavailable.switchToFallback", {
-                    model: fallback,
+                    model: fallbackLabel,
                   })}
                   onClick={() => onApplyModel(fallback)}
                 />

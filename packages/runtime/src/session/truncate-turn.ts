@@ -1,7 +1,10 @@
 import { truncateConversation } from "../store/conversations";
-import { evict, isTurnRunning } from "./bus";
+import { evict } from "./bus";
 import { disposeConversation } from "./chat";
-import { conversations } from "./conversation-cache";
+import {
+  beginConversationCommand,
+  conversationCommandBusy,
+} from "./conversation-command-gate";
 
 /**
  * The edit-and-resend rewind (PRODUCT-1217): cut a conversation at a user
@@ -26,19 +29,27 @@ export async function truncateConversationTurn(
   id: string,
   turnId: string,
 ): Promise<TruncateTurnResult> {
-  // Same posture as dismiss-interaction: never rewrite history behind an
-  // executing turn — and not behind a QUEUED one either (`pending` covers a
-  // turn parked on the workdir lock whose session teardown below would
-  // otherwise yank its session mid-wait). The client disables the edit
-  // affordance while running, so a 409 here means the user raced a turn.
-  if (isTurnRunning(id) || (conversations.get(id)?.pending ?? 0) > 0)
-    return "busy";
-  const cut = truncateConversation(id, turnId);
-  if (!cut) return "not_found";
-  await disposeConversation(id, { deleteSessions: true });
-  // Outstanding SSE resume cursors point into the pre-cut feed — unserviceable
-  // by definition, so drop the channel; reconnects get `sync {resync}` and
-  // refetch the truncated history.
-  evict(id);
-  return cut;
+  // A rewind IS a conversation command: it rewrites the context later turns
+  // read, so it rides the same acceptance gate `/clear` and `/compact` do
+  // (conversation-command-gate.ts) rather than a private copy of half of it.
+  // The private copy checked only the executing and queued turns, which left
+  // the window this closes: a turn ACCEPTED by the route but not yet queued
+  // (credential sync, session build) would have its session torn out from
+  // under it, and a `/clear` already working the conversation could interleave
+  // with the teardown below. The client disables the edit affordance while a
+  // turn runs, so a 409 here means the user raced one.
+  if (conversationCommandBusy(id)) return "busy";
+  const settle = beginConversationCommand(id);
+  try {
+    const cut = truncateConversation(id, turnId);
+    if (!cut) return "not_found";
+    await disposeConversation(id, { deleteSessions: true });
+    // Outstanding SSE resume cursors point into the pre-cut feed — unserviceable
+    // by definition, so drop the channel; reconnects get `sync {resync}` and
+    // refetch the truncated history.
+    evict(id);
+    return cut;
+  } finally {
+    settle();
+  }
 }

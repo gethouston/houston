@@ -1,11 +1,16 @@
 import { strictEqual } from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import {
+  modelDisplayName,
+  toCanonicalProviderId,
+} from "@houston/sdk/provider-catalog";
+import {
   modelDisplayLabel,
   providerForModel,
   providerModelLabel,
   providerOffersModel,
 } from "../src/lib/model-labels.ts";
+import { PROVIDER_OVERRIDES } from "../src/lib/provider-overrides.ts";
 import {
   getModel,
   hydrateProviderCatalog,
@@ -37,12 +42,63 @@ describe("modelDisplayLabel", () => {
     );
   });
 
-  it("falls back to the raw selection before giving up", () => {
+  it("names a model that is runnable but hidden from the picker (B6)", () => {
+    // `VALID_MODELS.anthropic` keeps 28 runnable ids while the picker shows 7,
+    // so a user pinned to a preserved one has no catalog row — the shared
+    // display table still knows its name.
+    strictEqual(getModel("anthropic", "claude-opus-4-6"), undefined);
+    strictEqual(modelDisplayLabel("anthropic", "claude-opus-4-6"), "Opus 4.6");
+  });
+
+  it("never renders a raw model id (B6: the reported bug)", () => {
+    // A dated snapshot pin: no catalog row, no curated name, and before the fix
+    // the quota card, the picker trigger and the routine screen all printed
+    // this string verbatim at the user.
+    strictEqual(
+      modelDisplayLabel("anthropic", "claude-sonnet-4-5-20250929"),
+      "Claude Sonnet 4.5 (2025-09-29)",
+    );
     strictEqual(
       modelDisplayLabel("anthropic", "some-unlisted-model"),
-      "some-unlisted-model",
+      "Some Unlisted Model",
     );
+  });
+
+  it("is null only for an empty model id", () => {
     strictEqual(modelDisplayLabel("anthropic", ""), null);
+  });
+});
+
+/**
+ * B6 — the picker labels and the shared display table used to be two hand-synced
+ * copies of the same names. There is now ONE table, so the guard is that every
+ * model the app curates resolves through it.
+ */
+describe("curated picker labels come from the shared display table", () => {
+  it("names every curated model, under its CANONICAL provider id", () => {
+    for (const [displayId, override] of Object.entries(PROVIDER_OVERRIDES)) {
+      const canonical = toCanonicalProviderId(displayId);
+      for (const modelId of Object.keys(override.models ?? {})) {
+        const name = modelDisplayName(canonical, modelId);
+        strictEqual(
+          typeof name,
+          "string",
+          `MODEL_DISPLAY["${canonical}"] has no name for the curated "${modelId}"`,
+        );
+      }
+    }
+  });
+
+  it("has no per-model label left in the app overrides", () => {
+    for (const override of Object.values(PROVIDER_OVERRIDES)) {
+      for (const [modelId, model] of Object.entries(override.models ?? {})) {
+        strictEqual(
+          "label" in model,
+          false,
+          `"${modelId}" still carries an app-side label; names live in @houston/domain`,
+        );
+      }
+    }
   });
 });
 

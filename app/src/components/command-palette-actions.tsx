@@ -9,10 +9,9 @@
  */
 
 import { CommandGroup, CommandItem, CommandShortcut } from "@houston-ai/core";
-import { Inbox, Keyboard, Plus, Settings, Store } from "lucide-react";
+import { Keyboard, Plus, Settings, Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { shortcutLabel } from "../lib/shortcuts";
-import { INBOX_VIEW_ID } from "../lib/top-level-views";
 import { useUIStore } from "../stores/ui";
 import { STORE_VIEW_ID } from "./store-view";
 
@@ -34,17 +33,6 @@ export function PaletteActions({
         <Plus />
         <span>{t("palette.actions.newMission")}</span>
         <CommandShortcut>{shortcutLabel("newMission")}</CommandShortcut>
-      </CommandItem>
-      <CommandItem
-        onSelect={() => {
-          setViewMode(INBOX_VIEW_ID);
-          onClose();
-        }}
-        value="action inbox"
-      >
-        <Inbox />
-        <span>{t("palette.actions.inbox")}</span>
-        <CommandShortcut>{shortcutLabel("inbox")}</CommandShortcut>
       </CommandItem>
       <CommandItem
         onSelect={() => {

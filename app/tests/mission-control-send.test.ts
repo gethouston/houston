@@ -1,5 +1,6 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { DEFAULT_MODEL } from "@houston/sdk/provider-catalog";
 import {
   type ActivityOverrideSource,
   resolveActivityOverride,
@@ -28,7 +29,7 @@ const legacySonnetActivity: ActivityOverrideSource = {
 const codexActivity: ActivityOverrideSource = {
   id: "ghi",
   provider: "openai",
-  model: "gpt-5.5",
+  model: "gpt-6-astra",
 };
 
 const routineActivity: ActivityOverrideSource = {
@@ -80,14 +81,18 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     });
   });
 
-  it("normalizes the legacy 'sonnet' alias to claude-sonnet-4-6", () => {
+  it("normalizes the legacy 'sonnet' alias to the provider's current default", () => {
+    // The alias derives from `DEFAULT_MODEL.anthropic` (`@houston/domain`
+    // model-aliases.ts) so that a stored "sonnet" and an unpinned send land on
+    // the same model. Read from that table rather than restated, or this pin
+    // silently outlives the next default.
     const overrides = resolveActivityOverride(
       `activity-${legacySonnetActivity.id}`,
       [legacySonnetActivity],
     );
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
-      modelOverride: "claude-sonnet-4-6",
+      modelOverride: DEFAULT_MODEL.anthropic,
     });
   });
 
@@ -153,7 +158,7 @@ describe("resolveMissionControlSendOverrides", () => {
 describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
   const composer = {
     providerOverride: "openai",
-    modelOverride: "gpt-5.5",
+    modelOverride: "gpt-6-astra",
     modeOverride: "plan" as const,
   };
 
@@ -180,7 +185,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
       resolveFollowUpOverrides("activity-anything", undefined, composer),
       {
         providerOverride: "openai",
-        modelOverride: "gpt-5.5",
+        modelOverride: "gpt-6-astra",
         modeOverride: "execute",
       },
     );
@@ -191,7 +196,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
       resolveFollowUpOverrides("activity-missing", [opus47Activity], composer),
       {
         providerOverride: "openai",
-        modelOverride: "gpt-5.5",
+        modelOverride: "gpt-6-astra",
         modeOverride: "execute",
       },
     );
@@ -204,7 +209,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
       resolveFollowUpOverrides("activity-x", [{ id: "x" }], composer),
       {
         providerOverride: "openai",
-        modelOverride: "gpt-5.5",
+        modelOverride: "gpt-6-astra",
         modeOverride: "execute",
       },
     );

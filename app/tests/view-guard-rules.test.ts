@@ -18,18 +18,18 @@ describe("bootGuardStep", () => {
     // workspace"), or a deployment without one would never boot at all.
     const step = bootGuardStep(INITIAL_BOOT_GUARD, {
       workspaceId: null,
-      viewMode: "inbox",
+      viewMode: "agents-home",
       hasHomeTeam: true,
     });
     assert.equal(step.action, "wait");
     assert.deepEqual(step.state, { workspaceId: null, armed: true });
   });
 
-  it("waits on the Inbox while no team has resolved, staying armed", () => {
+  it("waits on the landing while no team has resolved, staying armed", () => {
     const armed = { workspaceId: "ws-1", armed: true };
     const step = bootGuardStep(armed, {
       workspaceId: "ws-1",
-      viewMode: "inbox",
+      viewMode: "agents-home",
       hasHomeTeam: false,
     });
     assert.equal(step.action, "wait");
@@ -40,16 +40,16 @@ describe("bootGuardStep", () => {
     const armed = { workspaceId: "ws-1", armed: true };
     const first = bootGuardStep(armed, {
       workspaceId: "ws-1",
-      viewMode: "inbox",
+      viewMode: "agents-home",
       hasHomeTeam: true,
     });
     assert.equal(first.action, "open-home-team");
     assert.equal(first.state.armed, false);
 
-    // Back on the Inbox later by the user's own click: never yanked again.
+    // Back on the landing later by the user's own click: never yanked again.
     const again = bootGuardStep(first.state, {
       workspaceId: "ws-1",
-      viewMode: "inbox",
+      viewMode: "agents-home",
       hasHomeTeam: true,
     });
     assert.equal(again.action, "wait");
@@ -65,10 +65,10 @@ describe("bootGuardStep", () => {
     assert.equal(moved.action, "wait");
     assert.equal(moved.state.armed, false);
 
-    // The teams land and the user is back on the Inbox: their click stands.
+    // The teams land and the user is back on the landing: their click stands.
     const later = bootGuardStep(moved.state, {
       workspaceId: "ws-1",
-      viewMode: "inbox",
+      viewMode: "agents-home",
       hasHomeTeam: true,
     });
     assert.equal(later.action, "wait");
@@ -78,7 +78,7 @@ describe("bootGuardStep", () => {
     const done = { workspaceId: "ws-1", armed: false };
     // The view open on the tick the id changes belongs to the space just LEFT,
     // so it must not disarm the new one (a space switch lands on home, which is
-    // the Inbox while the new space's teams are in flight).
+    // the Agents home while the new space's teams are in flight).
     const switched = bootGuardStep(done, {
       workspaceId: "ws-2",
       viewMode: "team",
@@ -88,7 +88,7 @@ describe("bootGuardStep", () => {
 
     const landed = bootGuardStep(switched.state, {
       workspaceId: "ws-2",
-      viewMode: "inbox",
+      viewMode: "agents-home",
       hasHomeTeam: true,
     });
     assert.equal(landed.action, "open-home-team");
@@ -99,23 +99,52 @@ describe("deadViewStep", () => {
   const base = {
     showAiModels: true,
     showOrganization: true,
+    showAssistant: true,
     gatesReady: true,
     teams: TEAMS,
     activeTeamId: "team-a",
   };
 
   it("keeps a live view", () => {
-    assert.equal(deadViewStep({ ...base, viewMode: "inbox" }), "keep");
+    assert.equal(deadViewStep({ ...base, viewMode: "agents-home" }), "keep");
     assert.equal(deadViewStep({ ...base, viewMode: "team" }), "keep");
-    assert.equal(deadViewStep({ ...base, viewMode: "about-me" }), "keep");
-    // Ungated like About me: no gate can take the Academy away, so the guard
-    // must never send a user home off it.
+    // Ungated: no gate can take the Academy away, so the guard must never
+    // send a user home off it.
     assert.equal(deadViewStep({ ...base, viewMode: "academy" }), "keep");
     assert.equal(deadViewStep({ ...base, viewMode: "organization" }), "keep");
   });
 
   it("sends a view no screen answers to home", () => {
     assert.equal(deadViewStep({ ...base, viewMode: "chat" }), "go-home");
+    // Retired ids an older install may still have pinned: the Inbox screen is
+    // gone and About me is a Settings section, so both are stale `viewMode`s
+    // that must land the user home rather than on a blank card.
+    assert.equal(deadViewStep({ ...base, viewMode: "inbox" }), "go-home");
+    assert.equal(deadViewStep({ ...base, viewMode: "about-me" }), "go-home");
+  });
+
+  it("sends the assistant home on a deployment that serves none", () => {
+    // Not a role gate: discovery answered 501/503, so there is no address to
+    // open a chat at and the screen is not even mounted.
+    assert.equal(
+      deadViewStep({ ...base, viewMode: "assistant", showAssistant: false }),
+      "go-home",
+    );
+    assert.equal(deadViewStep({ ...base, viewMode: "assistant" }), "keep");
+  });
+
+  it("waits rather than bouncing the assistant while discovery is in flight", () => {
+    // Discovery is null until it lands, so the gate reads false in that window:
+    // acting on it would throw the user off the screen they just opened.
+    assert.equal(
+      deadViewStep({
+        ...base,
+        viewMode: "assistant",
+        showAssistant: false,
+        gatesReady: false,
+      }),
+      "wait",
+    );
   });
 
   it("sends a role-blocked view home", () => {

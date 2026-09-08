@@ -54,7 +54,7 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     // (identity.ts) boot the full app tree on THIS server, and that graph is
     // not part of the SignInScreen warm-up. Cold, its compile lands on the
     // first signed-in spec of every worker — on a contended CI runner that
-    // blew 17–30s and flaked mentions-inbox + profile-settings (run
+    // blew 17–30s and flaked the signed-in specs (profile-settings, run
     // 30597316258). Same generous ceiling as the rest of the warm-up.
     await signInAsViewer(authPage, { shellTimeout: 120_000 });
   } finally {

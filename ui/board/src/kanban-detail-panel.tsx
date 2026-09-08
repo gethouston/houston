@@ -24,6 +24,9 @@ export interface KanbanDetailPanelProps {
   actions?: React.ReactNode;
   /** Rendered before the avatar (e.g. a Back button for a full-page panel). */
   leading?: React.ReactNode;
+  /** Drop the header row entirely: the chat starts at the panel's top edge.
+      The caller owns every affordance the header carried (close, actions). */
+  hideHeader?: boolean;
   /** Large avatar shown in the header */
   avatar?: React.ReactNode;
   /** Name displayed next to the avatar (e.g. "Houston") */
@@ -54,6 +57,7 @@ export const KanbanDetailPanel = forwardRef<
     children,
     actions,
     leading,
+    hideHeader,
     avatar,
     agentName,
     missionLabelOverride,
@@ -83,63 +87,65 @@ export const KanbanDetailPanel = forwardRef<
           chat surface rather than a separate bar (`bg-background` is the SAME
           token ChatPanel and the panes wear, so header, chat, and pane are
           one color — no seam on the light canvas / dark transparent). */}
-      <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
-        <div className="flex items-center gap-3 max-w-3xl mx-auto w-full">
-          {leading}
-          {avatar}
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-ink">
-              {agentName ?? title}
-            </p>
-            {(agentName ? missionLabel : subtitle) && (
-              <p className="text-xs text-ink-muted truncate">
-                {agentName ? missionLabel : subtitle}
-                {status && (
-                  <>
-                    {(agentName ? missionLabel : subtitle) && (
-                      <span className="mx-1">&middot;</span>
-                    )}
-                    <span className={cn(isRunning && "text-blue-500")}>
-                      {labels[status] ?? status}
-                    </span>
-                  </>
-                )}
+      {!hideHeader && (
+        <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
+          <div className="flex items-center gap-3 max-w-3xl mx-auto w-full">
+            {leading}
+            {avatar}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-ink">
+                {agentName ?? title}
               </p>
+              {(agentName ? missionLabel : subtitle) && (
+                <p className="text-xs text-ink-muted truncate">
+                  {agentName ? missionLabel : subtitle}
+                  {status && (
+                    <>
+                      {(agentName ? missionLabel : subtitle) && (
+                        <span className="mx-1">&middot;</span>
+                      )}
+                      <span className={cn(isRunning && "text-blue-500")}>
+                        {labels[status] ?? status}
+                      </span>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+            {isRunning && (
+              <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
             )}
-          </div>
-          {isRunning && (
-            <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
-          )}
-          {/* Actions sit BEFORE the face stack: the overflow menu reads as
+            {/* Actions sit BEFORE the face stack: the overflow menu reads as
               panel chrome next to the close button, while the people stack
               stays glued to the close affordance on the right edge. */}
-          {actions}
-          {people && people.length > 0 && (
-            /* `surface="background"` because this header wears `bg-background`,
+            {actions}
+            {people && people.length > 0 && (
+              /* `surface="background"` because this header wears `bg-background`,
                not the card tier: the default `ring-input` ring would paint a
                white halo band around each face instead of a cutout. */
-            <KanbanPeople
-              people={people}
-              size="md"
-              surface="background"
-              label={peopleLabel}
-              expandable
-              expandLabel={peopleExpandLabel}
-              className="shrink-0"
-            />
-          )}
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label={closeLabel}
-              className="size-7 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-hover/50 transition-colors shrink-0"
-            >
-              <XIcon className="size-4" strokeWidth={1.75} />
-            </button>
-          )}
+              <KanbanPeople
+                people={people}
+                size="md"
+                surface="background"
+                label={peopleLabel}
+                expandable
+                expandLabel={peopleExpandLabel}
+                className="shrink-0"
+              />
+            )}
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label={closeLabel}
+                className="size-7 flex items-center justify-center rounded-md text-ink-muted hover:text-ink hover:bg-hover/50 transition-colors shrink-0"
+              >
+                <XIcon className="size-4" strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content */}
       {children}

@@ -1,8 +1,14 @@
+import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import type { SandboxFetch } from "./sandbox-fetch";
+import {
+  hostErrorFrom,
+  type SessionToolErrorDetails,
+  toolErrorResult,
+} from "./tool-error";
 
 /**
  * The agent's structured tool to SAVE a learning (a stable fact or preference
@@ -44,12 +50,17 @@ interface SavedLearning {
   id: string;
 }
 
+/** What one save did: the learning it stored, or the named reason it did not. */
+export type SaveLearningDetails =
+  | { ok: true; id: string }
+  | SessionToolErrorDetails;
+
 export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
   return defineTool({
     name: SAVE_LEARNING_TOOL_NAME,
     label: "Remember this",
     description:
-      "Save one learning to the user's memory so it survives into future sessions. NEVER write .houston/learnings/learnings.json with file tools — this tool is the ONLY safe way to save, because it merges with the user's existing memory instead of overwriting it, and it records who taught the learning and which mission it came from. Pass only the learning's text. On success, confirm in plain words - never mention files, JSON, or paths.",
+      "Save one learning to the user's memory so it survives into future sessions. NEVER write .houston/learnings/learnings.json with file tools to ADD a memory - this tool is the ONLY safe way to save, because it merges with the user's existing memory instead of overwriting it, and it records who taught the learning and which mission it came from. The single exception is consolidation: when this tool answers that memory is full, rewrite that file with the merged, trimmed list exactly as it asks, then save again. Pass only the learning's text. On success, confirm in plain words - never mention files, JSON, or paths.",
     promptSnippet: "Save a learning to memory",
     parameters: SaveLearningParams,
     executionMode: "sequential",
@@ -57,7 +68,7 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
       _id: string,
       params: SaveLearningParams,
       signal: AbortSignal | undefined,
-    ) {
+    ): Promise<AgentToolResult<SaveLearningDetails>> {
       // WHO this turn acts as (C2) and WHICH conversation it belongs to: both
       // are turn-scoped ambient context, forwarded so the host can stamp the
       // learning's provenance. Absent outside a turn (or off the gateway), and
@@ -81,14 +92,12 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
         body: JSON.stringify({ text: params.text }),
         signal,
       });
+      // The host's error bodies are already agent-actionable (empty text,
+      // memory full, memory not available on this install) — relayed as a
+      // value, so the agent explains the reason to the user or corrects itself
+      // instead of losing the whole turn to an exception.
       if (!res.ok) {
-        const detail = await res.text().catch(() => "");
-        // The host's error bodies are already agent-actionable (empty text,
-        // memory not available on this install) — relay them so the agent
-        // explains the reason to the user and can correct itself.
-        throw new Error(
-          `save_learning failed (${res.status}): ${detail.slice(0, 300)}`,
-        );
+        return toolErrorResult(await hostErrorFrom(res, "save_learning"));
       }
       const saved = (await res.json()) as SavedLearning;
       return {
@@ -98,7 +107,7 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
             text: "Saved to memory. Tell the user you'll remember it, in plain words.",
           },
         ],
-        details: { id: saved.id },
+        details: { ok: true, id: saved.id },
       };
     },
   });

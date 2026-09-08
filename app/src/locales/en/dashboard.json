@@ -1,20 +1,4 @@
 {
-  "mentions": {
-    "ariaCount_one": "{{count}} unread mention",
-    "ariaCount_other": "{{count}} unread mentions",
-    "row": {
-      "by": "{{name}} mentioned you",
-      "byUnknown": "You were mentioned",
-      "agent": "in {{agent}}"
-    },
-    "empty": {
-      "title": "No mentions yet",
-      "description": "When a teammate names you in a task, it shows up here."
-    },
-    "bell": {
-      "label": "Notifications"
-    }
-  },
   "filter": {
     "allAgents": "All agents"
   },
@@ -60,9 +44,5 @@
     "descriptionWithAgent": "Browse the skills {{name}} already knows how to do.",
     "empty": "No skills yet.",
     "skillsLoading": "Loading skills..."
-  },
-  "inbox": {
-    "title": "Inbox",
-    "subtitle": "Tasks where a teammate mentioned you."
   }
 }

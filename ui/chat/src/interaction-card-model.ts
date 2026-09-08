@@ -13,6 +13,7 @@ export interface ChatInteractionBrand {
 }
 
 export interface ChatInteractionOption {
+  kind?: "choice" | "approval";
   id: string;
   label: string;
   /** TOLERATED on the wire but NOT rendered: the card shows label + Recommended
@@ -29,6 +30,10 @@ export type ChatInteractionStep =
       kind: "question";
       id: string;
       question: string;
+      /** Verbatim material the question is about, too long or too multi-line to
+       *  sit in the question line: shown under it in its own scrollable
+       *  monospaced block (`interaction-detail.tsx`). */
+      detail?: string;
       options?: ChatInteractionOption[];
       /** Hide the free-text escape row so the option rows are the ONLY way to
        *  answer. Meaningful only when `options` are present — a free-text-only
@@ -53,11 +58,20 @@ export type ChatInteractionStep =
   | { kind: "custom"; id: string; title: string };
 
 /** One completed question answer handed to `onComplete`, in step order. */
-export interface ChatInteractionAnswer {
+/**
+ * How the user produced one answer. Only an explicit option CLICK carries an
+ * option id; text the user typed is never matched back to an option, so typing
+ * an option's wording can never read as having chosen that control.
+ */
+export type ChatInteractionAnswerSource =
+  | { source: "option"; optionId: string }
+  | { source: "text" };
+
+export type ChatInteractionAnswer = {
   stepId: string;
   question: string;
   answer: string;
-}
+} & ChatInteractionAnswerSource;
 
 /** True when the agent offered concrete choices (option rows render). */
 export function hasSelectableOptions(

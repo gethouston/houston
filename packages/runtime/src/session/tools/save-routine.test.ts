@@ -134,3 +134,27 @@ test("still saves from a routine's setup chat (authoring is untouched)", async (
   );
   expect(calls).toHaveLength(1);
 });
+
+test("the turn's conversation rides the save, exactly as it rides a mission", () => {
+  // `created_by` must come from the identity the HOST recorded for the live
+  // turn, not from a header this runtime asserts about itself. The conversation
+  // id is the key it looks that turn up by.
+  const calls = mockFetch(() => ({ body: { id: "r-1", name: "Digest" } }));
+  return runWithConversationId("activity-42", () =>
+    runWithActingContext({ actingAs: "u-1", actingUser: "u-1" }, async () => {
+      await run({ name: "Digest", prompt: "Send it", schedule: "0 9 * * *" });
+      expect(calls[0]?.headers["x-houston-conversation-id"]).toBe(
+        "activity-42",
+      );
+    }),
+  );
+});
+
+test("outside a turn the header is simply absent", () => {
+  const calls = mockFetch(() => ({ body: { id: "r-2", name: "Digest" } }));
+  return run({ name: "Digest", prompt: "Send it", schedule: "0 9 * * *" }).then(
+    () => {
+      expect(calls[0]?.headers).not.toHaveProperty("x-houston-conversation-id");
+    },
+  );
+});

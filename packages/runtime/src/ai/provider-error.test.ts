@@ -496,7 +496,7 @@ test("Bedrock's own fallback never self-suggests", () => {
     expect(err.suggested_fallback).toBeNull();
 });
 
-test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilot provider", () => {
+test("OpenAI model_not_found → model_unavailable, with a switch target where we know one", () => {
   const err = classifyProviderError({
     provider: "openai-codex",
     model: "gpt-9",
@@ -506,9 +506,18 @@ test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilo
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable") {
     expect(err.model).toBe("gpt-9");
-    // We only know a safe fallback for Copilot; elsewhere offer none.
-    expect(err.suggested_fallback).toBeNull();
+    expect(err.suggested_fallback).toBe("gpt-6-astra");
   }
+  // A provider we have no evidence for offers none — a guessed target that
+  // fails again is worse than a card that only says which model died.
+  const unknown = classifyProviderError({
+    provider: "groq",
+    model: "gpt-9",
+    message:
+      "404: The model `gpt-9` does not exist or you do not have access to it. (model_not_found)",
+  });
+  if (unknown.kind === "model_unavailable")
+    expect(unknown.suggested_fallback).toBeNull();
 });
 
 test("Copilot's own base model never self-suggests as the fallback", () => {
@@ -1543,4 +1552,50 @@ test("ModelNotOfferedError: a pinned id the provider lacks is a typed model_unav
   );
   if (same.providerError.kind === "model_unavailable")
     expect(same.providerError.suggested_fallback).toBeNull();
+});
+
+test("ModelNotOfferedError names the provider in the dialect a person reads", () => {
+  // The routine run history shows this message VERBATIM (the host's
+  // reconcile → providerErrorSummary), so pi's canonical `openai-codex` was a
+  // raw internal id in front of a non-technical reader. The SHAPE is
+  // load-bearing for unattended readers, so only the provider token moves.
+  const err = new ModelNotOfferedError(
+    "openai-codex",
+    "gpt-5.5",
+    "gpt-6-astra",
+  );
+  expect(err.message).toBe('openai model "gpt-5.5" is not available');
+  // The wire field keeps the canonical id: every card and switch action is
+  // keyed by it.
+  expect(err.providerError.provider).toBe("openai-codex");
+  // A provider spelled the same in both dialects is untouched.
+  expect(
+    new ModelNotOfferedError("anthropic", "claude-2.1", null).message,
+  ).toBe('anthropic model "claude-2.1" is not available');
+});
+
+test("a retired Codex model names a served one as the switch target", () => {
+  // Verbatim from Dobby's runtime.log: a mission pinned `openai-codex` with no
+  // model, resolved onto the then-default gpt-5.5, and OpenAI answered 404.
+  // The card was correct but dead-ended — it offered nothing to switch to.
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+    message:
+      "Codex error: The model `gpt-5.5` does not exist or you do not have access to it.",
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBe("gpt-6-astra");
+});
+
+test("the Codex switch target is never the model that just failed", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-6-astra",
+    message:
+      "The model `gpt-6-astra` does not exist or you do not have access to it.",
+  });
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBeNull();
 });

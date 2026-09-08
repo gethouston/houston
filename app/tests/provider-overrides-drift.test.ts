@@ -1,5 +1,6 @@
 import { ok } from "node:assert";
 import { describe, it } from "node:test";
+import { DEFAULT_MODEL } from "@houston/sdk/provider-catalog";
 import {
   isModelVisible,
   PROVIDER_ID_RENAME,
@@ -124,30 +125,32 @@ describe("VISIBLE_MODELS stay in sync with the shipped pi-ai catalog", () => {
   }
 });
 
-describe("PROVIDER_OVERRIDES defaultModel is offered and visible", () => {
-  // The override's `defaultModel` is what auto-selects the moment a key
+describe("the domain default model is offered and visible", () => {
+  // `DEFAULT_MODEL` (@houston/domain) is what auto-selects the moment a key
   // verifies (`resolveAutoSelect`), so it must be a model the shipped catalog
   // offers AND one the picker shows — a retired or hidden default sends the
   // first chat straight into "model not found" (PRODUCT-1411: Moonshot's
-  // catalog-first row was a model Moonshot had already retired).
-  for (const [houstonId, override] of Object.entries(PROVIDER_OVERRIDES)) {
-    const modelId = override.defaultModel;
+  // catalog-first row was a model Moonshot had already retired). It is keyed by
+  // pi's CANONICAL ids, which is what the shipped catalog is keyed by too.
+  for (const [piId, modelId] of Object.entries(DEFAULT_MODEL)) {
     if (!modelId) continue;
-    const piId = houstonToPi[houstonId] ?? houstonId;
+    const houstonId = PROVIDER_ID_RENAME[piId] ?? piId;
+    // Only providers Houston actually surfaces carry a picker/visibility rule.
+    if (!PROVIDER_OVERRIDES[houstonId]) continue;
     // Houston-injected SKUs (MiniMax's token plan) are legitimately absent
     // from pi's catalog; the overrides guard above already pins those.
     if (!HOUSTON_INJECTED_MODELS.has(`${piId}/${modelId}`)) {
       it(`${houstonId} default ${modelId} exists in the shipped catalog`, () => {
         ok(
           shippedModel(piId, modelId) != null,
-          `PROVIDER_OVERRIDES["${houstonId}"].defaultModel "${modelId}" is not offered by the shipped catalog (provider "${piId}").`,
+          `DEFAULT_MODEL["${piId}"] = "${modelId}" is not offered by the shipped catalog (provider "${piId}").`,
         );
       });
     }
     it(`${houstonId} default ${modelId} is visible in the picker`, () => {
       ok(
         isModelVisible(houstonId, modelId),
-        `PROVIDER_OVERRIDES["${houstonId}"].defaultModel "${modelId}" is hidden by VISIBLE_MODELS["${houstonId}"].`,
+        `DEFAULT_MODEL["${piId}"] = "${modelId}" is hidden by VISIBLE_MODELS["${houstonId}"].`,
       );
     });
   }

@@ -48,6 +48,7 @@ import {
   type MessageAuthor,
 } from "./attribution";
 import { needsAutocompact } from "./autocompact";
+import { runAutocompact } from "./autocompact-guard";
 import { publish } from "./bus";
 import { evictClaudeSessionOnRevokedToken } from "./claude-token-guard";
 import {
@@ -57,6 +58,7 @@ import {
   switchModeIfNeeded,
 } from "./conversation-cache";
 import { runWithConversationId } from "./conversation-context";
+import { compactWithFactHarvest } from "./durable-facts-harvest";
 import {
   diffSnapshots,
   type FileSnapshot,
@@ -171,7 +173,6 @@ export async function execTurn(
   acting?: ActingContext,
 ) {
   const { author, priorAuthors } = recorded;
-
   let assistantText = "";
   // The turn's reasoning, accumulated for persistence so a history reload can
   // replay it in the mission log (HOU-717) — same lifecycle as assistantText.
@@ -279,14 +280,10 @@ export async function execTurn(
    */
   let turnProvider: string | undefined;
   /**
-   * The model id the turn RESOLVED onto — the twin of `turnProvider` for the
-   * catch's classification. A thrown failure after resolution (pi's manual
-   * `compact()` rejecting with "Summarization failed: …" on the active model)
-   * used to be classified with the PIN's model only, which an unpinned chat
-   * never carries: the model-keyed branches (NVIDIA's per-account gate needs a
-   * model to name on the switch-model card) fell through to `unknown`, and
-   * the log line read `model=?` (PRODUCT-1636). Undefined ONLY when
-   * `resolveModel` itself threw, where the pin is the next-best evidence.
+   * The resolved model id classifies failures after model selection, including
+   * compaction errors. Model-specific provider errors need this id to offer a
+   * valid replacement. Undefined only when resolution failed, in which case
+   * the turn's pin is the next-best evidence.
    */
   let turnModel: string | undefined;
   /**
@@ -440,7 +437,9 @@ export async function execTurn(
         );
         let summarized = false;
         if (switchNeedsCompaction(preTokens, targetWindow)) {
-          await conv.session.compact();
+          // Same fact harvest as the autocompact path below: this summary is
+          // just as much of the assistant's history leaving the context.
+          await compactWithFactHarvest(conv.session, id);
           summarized = true;
         }
         providerSwitch = {
@@ -480,12 +479,25 @@ export async function execTurn(
         fill ?? 0,
       );
       if (needsAutocompact(fill, window)) {
-        await conv.session.compact();
-        compaction = { trigger: "proactive", pre_tokens: fill };
-        // Stream the boundary so the chat draws the divider + resets its
-        // window estimate; persisted on the assistant message below so the
-        // divider survives a history reload.
-        publish(id, { type: "context_compacted", data: compaction, turnId });
+        // For the ASSISTANT's conversation this also asks the summarizer for the
+        // durable facts the summarized stretch revealed and saves them as
+        // memories — the moment those turns stop being visible to the model is
+        // the last moment to keep what they taught (session/durable-facts.ts).
+        // Best-effort: it never fails the turn, and every other conversation
+        // compacts exactly as before.
+        // A compaction that REFUSES (the Claude backend throws on a provider
+        // failure, an empty summary or a session too small) must not fail this
+        // turn: the fill would stay over the threshold and every later turn
+        // would die at this same step — a wedged chat. `runAutocompact` reports
+        // the refusal once and holds the retry off, and the turn runs on
+        // uncompacted (session/autocompact-guard.ts).
+        if (await runAutocompact(conv.session, id)) {
+          compaction = { trigger: "proactive", pre_tokens: fill };
+          // Stream the boundary so the chat draws the divider + resets its
+          // window estimate; persisted on the assistant message below so the
+          // divider survives a history reload.
+          publish(id, { type: "context_compacted", data: compaction, turnId });
+        }
       }
     }
     // Effort: the routine's pin wins, else the agent's saved setting; if neither

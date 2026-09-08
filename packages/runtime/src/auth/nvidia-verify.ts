@@ -22,8 +22,9 @@ type Probe = (model: ReturnType<typeof safeGetModel>) => Promise<string | null>;
  * 0.84.4 and gpt-oss-120b in 0.85.0; of the families our partially-gated live
  * key was served (llama / gpt-oss / minimax), gpt-oss-20b survives (MoE-fast)
  * with minimax-m3 as a second family so a gpt-oss-wide gate still can't
- * produce a false `key_restricted`. The first is also the runtime's NVIDIA default
- * model (`UNCURATED_DEFAULT_MODEL`) and the classifier's suggested fallback.
+ * produce a false `key_restricted`. The first is also NVIDIA's entry in the
+ * domain default-model table (`@houston/domain/provider-default-models`, what
+ * a first chat runs on) and the classifier's suggested fallback.
  */
 const NVIDIA_VERIFY_FALLBACKS = ["openai/gpt-oss-20b", "minimaxai/minimax-m3"];
 

@@ -364,15 +364,25 @@ export interface ChatMessage {
     pre_tokens?: number | null;
   };
   /**
-   * Set on the first assistant message produced after the runtime proactively
-   * compacted the conversation to stay under the context window, so the
-   * boundary divider and the window reset survive a history reload. Mirrors
-   * the `context_compacted` wire frame.
+   * Set on the first assistant message produced after the conversation was
+   * compacted — proactively by the runtime to stay under the context window,
+   * or on the user's own `/compact` command — so the boundary divider and the
+   * window reset survive a history reload. Mirrors the `context_compacted`
+   * wire frame.
    */
   compaction?: {
-    trigger: "native" | "proactive";
+    trigger: "native" | "proactive" | "manual";
     pre_tokens?: number | null;
   };
+  /**
+   * Set on the marker message a `/clear` command writes. Two jobs: the chat
+   * replays the boundary divider from it after a reload, and the transcript
+   * replay that rebuilds a backend session starts AFTER the newest one — which
+   * is what keeps pre-clear messages out of the model's context for good while
+   * leaving them in the transcript for the user and for `houston_recall`.
+   * Mirrors the `context_cleared` wire frame.
+   */
+  contextCleared?: true;
   /**
    * User-visible workspace files this turn created or modified (relative
    * paths). Set on the assistant message only when the turn's diff was

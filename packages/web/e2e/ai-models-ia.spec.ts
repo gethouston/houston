@@ -132,7 +132,9 @@ test("Teams member: the AI Models nav is there, and no usage screen is", async (
 
   await expect(page.locator('[data-tour-target="nav-ai-hub"]')).toBeVisible();
   await expect(page.locator('[data-tour-target="nav-usage"]')).toHaveCount(0);
-  await expect(page.locator('[data-tour-target="nav-inbox"]')).toBeVisible();
+  await expect(
+    page.locator('[data-tour-target="nav-agent-store"]'),
+  ).toBeVisible();
 });
 
 test("Teams member in a team space: the hub is theirs, and says so", async ({

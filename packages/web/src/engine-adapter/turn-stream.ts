@@ -10,10 +10,10 @@ import {
   type PendingInteraction,
   StreamRegistry,
   type StreamTuning,
+  type StreamTurnOptions,
   observeConversation as sdkObserveConversation,
   streamTurn as sdkStreamTurn,
   streamKey,
-  type TurnWirePin,
 } from "@houston/sdk";
 import { cachePersistOutput } from "./cache-persist";
 import { createBusFeedOutput } from "./feed-output";
@@ -151,21 +151,11 @@ export function pushPendingUserMessage(
 }
 
 /**
- * The web adapter's turn entry. The turn/feed machinery lives in `@houston/sdk`
- * now; this drives it with a bus-backed {@link createBusFeedOutput} FeedOutput
- * and keeps the historical `(…, setActivityStatus)` signature shape so app
- * callers and the adapter's unit tests are unchanged. `setActivityStatus` is
- * already bound to this turn's conversation, so the FeedOutput ignores the
- * (agentPath, sessionKey) it re-supplies. `provider` is the chat's composer
- * pick (frontend id) — it labels the typed reconnect card when the runtime
- * refuses the send as not-connected. `pin` is the same pick in ENGINE ids,
- * sent on the wire so the turn runs on the conversation's own provider/model
- * instead of the agent-wide settings (HOU-695) — see `wireTurnPin`. `author` is
- * the acting user in a multiplayer deployment: it stamps the optimistic bubble
- * so a shared conversation names its sender before any server frame lands
- * (HOU-943), and is absent single-player. `mentions` is that message's @mention
- * sidecar (HOU-944), which chips the same bubble; the engine still receives
- * only the plain `@Name` text inside `prompt`.
+ * The web adapter's turn entry. The turn/feed machinery lives in `@houston/sdk`;
+ * this drives it with a bus-backed {@link createBusFeedOutput} FeedOutput.
+ * `setActivityStatus` is already bound to this turn's conversation, so the
+ * FeedOutput ignores the (agentPath, sessionKey) it re-supplies. Everything
+ * optional rides one options bag, forwarded to the SDK unchanged.
  */
 export function streamTurn(
   engine: HoustonEngineClient,
@@ -176,13 +166,7 @@ export function streamTurn(
     status: BoardStatus,
     pendingInteraction: PendingInteraction | null,
   ) => Promise<void>,
-  provider?: string,
-  tuning?: StreamTuning,
-  suppressUserBubble?: boolean,
-  pin?: TurnWirePin,
-  displayText?: string,
-  author?: FeedAuthor,
-  mentions?: FeedMention[],
+  opts: StreamTurnOptions = {},
 ): Promise<void> {
   return sdkStreamTurn(
     engine,
@@ -191,15 +175,7 @@ export function streamTurn(
     prompt,
     composedOutput(setActivityStatus),
     registry,
-    {
-      provider,
-      tuning,
-      suppressUserBubble,
-      pin,
-      displayText,
-      author,
-      mentions,
-    },
+    opts,
   );
 }
 

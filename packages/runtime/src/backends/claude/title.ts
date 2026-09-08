@@ -1,4 +1,4 @@
-import type { ClaudeToken } from "./backend";
+import type { ClaudeToken } from "./backend-types";
 import { oneShotWithClaude } from "./one-shot";
 import type { ClaudeQuery } from "./session";
 

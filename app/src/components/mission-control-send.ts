@@ -19,6 +19,7 @@
 // directly by `node --test --experimental-strip-types` (Node ESM requires
 // the extension for runtime-value imports). Vite/TSC accept it because
 // `allowImportingTsExtensions: true` is set in `app/tsconfig.json`.
+import { toDisplayProviderIdOrNull } from "../lib/provider-overrides.ts";
 import { normalizeLegacyModel } from "../lib/providers.ts";
 import { DEFAULT_TURN_MODE } from "../lib/turn-mode.ts";
 
@@ -60,8 +61,13 @@ export function resolveActivityOverride(
   });
   if (!activity) return {};
   return {
-    providerOverride: activity.provider,
-    modelOverride: normalizeLegacyModel(activity.model ?? null) ?? undefined,
+    // Activity rows store pi's CANONICAL id; the app speaks display ids and the
+    // send re-canonicalizes at the wire (`wireTurnPin`), so a row read here
+    // must land in the same dialect as a pin read anywhere else.
+    providerOverride: toDisplayProviderIdOrNull(activity.provider) ?? undefined,
+    modelOverride:
+      normalizeLegacyModel(activity.model ?? null, activity.provider) ??
+      undefined,
   };
 }
 

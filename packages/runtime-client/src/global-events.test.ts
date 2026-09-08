@@ -263,3 +263,167 @@ test("aborting the signal stops the loop after the current attempt", async () =>
   expect(connects).toBe(1);
   expect(h.connections).toHaveLength(1);
 });
+
+/**
+ * Liveness. The global feed is the app's ONLY reactivity channel, so the loop
+ * has exactly one unacceptable outcome: a tab that holds a connection nothing
+ * is coming through while the host is healthy. These pin the three ways that
+ * used to happen — a wedged read, an outage outlasting a fixed retry cadence,
+ * and a machine that slept through both.
+ */
+
+/** A `sleep` that only ever ends when its signal aborts (never on time). */
+const untilPoked = (_ms: number, signal: AbortSignal) =>
+  new Promise<void>((resolve) => {
+    if (signal.aborted) return resolve();
+    signal.addEventListener("abort", () => resolve(), { once: true });
+  });
+
+test("a silent connection is force-reconnected by the idle watchdog", async () => {
+  // Connection 0 stays open and says nothing — the half-open socket a slept
+  // laptop or a moved network leaves behind. Without the watchdog `read()`
+  // never settles and the loop never iterates again.
+  const h = await startServer((conn, i) => {
+    if (i > 0) conn.send({ type: "AgentsChanged" });
+  });
+  const ac = new AbortController();
+  const errors: unknown[] = [];
+  const events: unknown[] = [];
+
+  await streamGlobalEvents({
+    url: () => `${h.baseUrl}/v1/events`,
+    fetch,
+    signal: ac.signal,
+    sleep: instant,
+    idleTimeoutMs: 60,
+    onError: (e) => errors.push(e),
+    onEvent: (d) => {
+      events.push(d);
+      ac.abort();
+    },
+  });
+
+  expect(events).toEqual([{ type: "AgentsChanged" }]);
+  expect(h.connections.length).toBeGreaterThanOrEqual(2);
+  expect(String(errors[0])).toContain("stalled");
+});
+
+test("backoff grows per failed attempt, is capped, and resets once bytes flow", async () => {
+  const caps: number[] = [];
+  const h = await startServer(
+    (conn) => {
+      conn.send({ type: "AgentsChanged" });
+      conn.res.end();
+    },
+    (i) => (i < 3 ? 503 : 200),
+  );
+  const ac = new AbortController();
+  let events = 0;
+
+  await streamGlobalEvents({
+    url: () => `${h.baseUrl}/v1/events`,
+    fetch,
+    signal: ac.signal,
+    sleep: instant,
+    maxDelayMs: 4000,
+    jitter: (capMs) => {
+      caps.push(capMs);
+      return 0;
+    },
+    onEvent: () => {
+      if (++events === 2) ac.abort();
+    },
+  });
+
+  // 1500 → 3000 → 4000 (capped), then the 4th attempt delivers and the cap
+  // drops back to the initial delay: a healthy stream that drops again must
+  // not inherit the outage's backoff.
+  expect(caps).toEqual([1500, 3000, 4000, 1500]);
+});
+
+test("never gives up: an outage longer than any retry budget still recovers", async () => {
+  const h = await startServer(
+    (conn) => {
+      conn.send({ type: "AgentsChanged" });
+      conn.res.end();
+    },
+    (i) => (i < 12 ? 503 : 200),
+  );
+  const ac = new AbortController();
+  const events: unknown[] = [];
+
+  await streamGlobalEvents({
+    url: () => `${h.baseUrl}/v1/events`,
+    fetch,
+    signal: ac.signal,
+    sleep: instant,
+    onError: () => {},
+    onEvent: (d) => {
+      events.push(d);
+      ac.abort();
+    },
+  });
+
+  expect(events).toEqual([{ type: "AgentsChanged" }]);
+  expect(h.connections).toHaveLength(13);
+});
+
+test("wake cuts a pending backoff short and is torn down with the loop", async () => {
+  const h = await startServer(
+    (conn) => {
+      conn.send({ type: "AgentsChanged" });
+      conn.res.end();
+    },
+    (i) => (i === 0 ? 503 : 200),
+  );
+  const ac = new AbortController();
+  let retryNow: (() => void) | undefined;
+  let wakeTornDown = false;
+  const events: unknown[] = [];
+
+  await streamGlobalEvents({
+    url: () => `${h.baseUrl}/v1/events`,
+    fetch,
+    signal: ac.signal,
+    sleep: untilPoked, // the wait ends ONLY if something wakes it
+    wake: (fn) => {
+      retryNow = fn;
+      return () => {
+        wakeTornDown = true;
+      };
+    },
+    onError: () => setTimeout(() => retryNow?.(), 0),
+    onEvent: (d) => {
+      events.push(d);
+      ac.abort();
+    },
+  });
+
+  expect(events).toEqual([{ type: "AgentsChanged" }]);
+  expect(wakeTornDown).toBe(true);
+});
+
+test("wake leaves a healthy connection alone", async () => {
+  const h = await startServer((conn) => {
+    conn.send({ type: "AgentsChanged" });
+  }); // stays open — a live stream, not a wedged one
+  const ac = new AbortController();
+  let retryNow: (() => void) | undefined;
+
+  await streamGlobalEvents({
+    url: () => `${h.baseUrl}/v1/events`,
+    fetch,
+    signal: ac.signal,
+    sleep: instant,
+    wake: (fn) => {
+      retryNow = fn;
+      return () => {};
+    },
+    onEvent: () => {
+      retryNow?.(); // bytes just arrived: nothing to recover
+      ac.abort();
+    },
+  });
+
+  expect(h.connections).toHaveLength(1);
+});

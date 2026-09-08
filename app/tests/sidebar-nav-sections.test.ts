@@ -16,21 +16,29 @@ import { describe, it } from "node:test";
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
 
-const NAV = read("../src/components/shell/sidebar-nav-sections.tsx");
+const SECTIONS = read("../src/components/shell/sidebar-nav-sections.tsx");
+const ROWS = read("../src/components/shell/sidebar-nav-rows.tsx");
+/** Both halves of the model: the runs that compose it and the gated rows it
+ *  composes. A row moving between the two files is a refactor, not an IA
+ *  change, so every "the rail says X" assertion reads them as one source. */
+const NAV = `${SECTIONS}\n${ROWS}`;
 const HOOK = read("../src/components/shell/use-sidebar-nav-items.tsx");
 const FOOTER = read("../src/components/shell/sidebar-footer.tsx");
 const SHELL = read("../src/components/shell/workspace-shell.tsx");
 const HELP = read("../src/components/shell/sidebar-help-menu.tsx");
 const GUIDED_SETUP = read("../src/hooks/use-run-guided-setup.ts");
 const VIEWS = read("../src/lib/top-level-views.ts");
+const SETTINGS_SECTIONS = read("../src/lib/settings-sections.ts");
+/** The phone's long tail, which mirrors the rail's footer cluster. */
+const MORE_MENU = read("../src/components/shell/mobile-more-menu.tsx");
 
 /** The source of one nav section, from its id to the next section's. */
 function navSection(id: string): string {
   const marker = `      id: "${id}",`;
-  const start = NAV.indexOf(marker);
+  const start = SECTIONS.indexOf(marker);
   assert.ok(start >= 0, `the rail declares a "${id}" section`);
-  const next = NAV.indexOf('      id: "', start + marker.length);
-  return next === -1 ? NAV.slice(start) : NAV.slice(start, next);
+  const next = SECTIONS.indexOf('      id: "', start + marker.length);
+  return next === -1 ? SECTIONS.slice(start) : SECTIONS.slice(start, next);
 }
 
 /** Every `...(gate ? [rows] : [])` in a section, in source order. */
@@ -43,59 +51,67 @@ function gatedRuns(source: string): [string, string][] {
 describe("the rail's unlabelled run", () => {
   const primary = navSection("primary");
 
-  it("is Inbox, About me, Academy, Agent store, in that order and nothing else", () => {
-    const order = [
-      "INBOX_VIEW_ID",
-      "ABOUT_ME_VIEW_ID",
-      "ACADEMY_VIEW_ID",
-      "STORE_VIEW_ID",
-    ].map((id) => primary.indexOf(`id: ${id},`));
+  it("is the Assistant then the Agent store, and nothing else", () => {
     assert.ok(
-      order.every((i) => i >= 0),
-      "all four rows are declared",
-    );
-    assert.deepEqual(
-      order,
-      [...order].sort((a, b) => a - b),
+      primary.indexOf("id: STORE_VIEW_ID,") >= 0,
+      "the Agent store row is declared",
     );
     assert.equal(
       primary.match(/\n {10}id: /g)?.length,
-      4,
-      "the run leads the rail with exactly four rows",
+      1,
+      "the run declares exactly one unconditional row inline",
     );
   });
 
-  it("gives About me a real destination, ungated", () => {
-    // Standing context about the PERSON exists in every deployment, so the row
-    // sits in the UNGATED lead run rather than behind any of the band gates,
-    // and it navigates like every other row instead of arming something.
-    assert.ok(primary.includes("onClick: () => setViewMode(ABOUT_ME_VIEW_ID)"));
-    assert.ok(primary.includes('label: t("shell:sidebar.aboutMe")'));
-    assert.ok(VIEWS.includes("ABOUT_ME_VIEW_ID"), "a real top-level view");
-  });
-
-  it("gives the Academy a real destination, ungated, under About me", () => {
-    // Learning the product ships in every deployment, so the row sits in the
-    // UNGATED lead run beside About me rather than behind a band gate, and it
-    // navigates like every other row instead of arming something.
-    assert.ok(primary.includes("onClick: () => setViewMode(ACADEMY_VIEW_ID)"));
-    assert.ok(primary.includes('label: t("shell:sidebar.academy")'));
-    assert.ok(VIEWS.includes("ACADEMY_VIEW_ID"), "a real top-level view");
+  it("is led by the Assistant, on the one gate that is not a role", () => {
+    // Discovery, not a role: a deployment that serves no assistant has no
+    // address to open a chat at, so the row must not exist there. It leads the
+    // run, ahead of the Agent store, and it is the run's ONLY gated row.
+    assert.deepEqual(gatedRuns(primary), [["showAssistant", "assistant"]]);
     assert.ok(
-      primary.indexOf("id: ABOUT_ME_VIEW_ID,") <
-        primary.indexOf("id: ACADEMY_VIEW_ID,"),
-      "it follows About me",
+      primary.indexOf("showAssistant ?") < primary.indexOf("id: STORE_VIEW_ID"),
+      "it leads the run",
+    );
+    assert.ok(NAV.includes("onClick: () => setViewMode(ASSISTANT_VIEW_ID)"));
+    assert.ok(NAV.includes('label: t("shell:sidebar.assistant")'));
+    assert.ok(VIEWS.includes("ASSISTANT_VIEW_ID"), "a real top-level view");
+    // Houston leads the run wearing its animated orb, not a static glyph.
+    assert.ok(
+      ROWS.includes("icon: <HoustonLogo />"),
+      "the row renders the logo",
+    );
+    assert.ok(!ROWS.includes("Sparkles"), "no static sparkle glyph remains");
+    assert.ok(
+      HOOK.includes("showAssistant"),
+      "the hook feeds the gate from useSurfaceGates",
     );
   });
 
-  it("states unread mentions on the Inbox row, and nowhere else in the run", () => {
-    // The trailing slot is where a nav row states live status, and the Inbox
-    // count is the ONE thing stated there: built from an already-resolved
-    // value, so the nav model stays a pure build and the hook that feeds it
-    // stays the one place a rail row subscribes to data.
-    assert.ok(primary.includes("trailing: buildInboxBadge(t, mentionCount)"));
-    assert.equal(primary.match(/trailing:/g)?.length, 1);
-    assert.ok(HOOK.includes("useMentionInbox(agents)"));
+  it("leaves About me to Settings and the Academy to the footer", () => {
+    // What the agents know about the PERSON is a standing preference, so it is
+    // a Settings section; the Academy is the rail's footer cluster, above
+    // Settings. Neither may hold a slot among the destinations as well.
+    assert.ok(!NAV.includes("ABOUT_ME_VIEW_ID"));
+    // The Academy row is BUILT in `sidebar-nav-rows.tsx` for the two footer
+    // clusters, so it is the composition of destinations that must not hold
+    // it, not the row file the footer imports from.
+    assert.ok(!SECTIONS.includes("ACADEMY_VIEW_ID"));
+    assert.ok(!VIEWS.includes("ABOUT_ME_VIEW_ID"), "no such top-level view");
+    assert.ok(
+      SETTINGS_SECTIONS.includes('"aboutMe"'),
+      "About me is a settings section id",
+    );
+  });
+
+  it("carries no Inbox row, and nothing subscribes to data for one", () => {
+    // The Inbox screen is gone, so neither its row nor the unread-mention
+    // badge that rode its trailing slot may survive: the nav model stays a
+    // pure build and the hook that feeds it subscribes to no list at all.
+    assert.ok(!NAV.includes("INBOX_VIEW_ID"));
+    assert.ok(!NAV.includes("buildInboxBadge"));
+    assert.equal(primary.match(/trailing:/g)?.length, undefined);
+    assert.ok(!HOOK.includes("useMentionInbox"));
+    assert.ok(!VIEWS.includes("INBOX_VIEW_ID"), "no such top-level view");
   });
 
   it("carries no row that points at no screen", () => {
@@ -154,6 +170,37 @@ describe("the rail's Workspace band", () => {
 
   it("keeps the Skills row's tour anchor", () => {
     assert.ok(NAV.includes('dataAttrs: tourAnchor("nav-skills")'));
+  });
+});
+
+describe("the rail's footer cluster", () => {
+  it("draws the Academy directly above Settings", () => {
+    // The bottom of the rail is what a person opens about their own use of
+    // Houston: learning to fly, then their preferences. Both are ungated, and
+    // the Academy must come first in the source so it renders above the gear.
+    assert.ok(FOOTER.includes("academyNavRow("), "built from the shared row");
+    assert.ok(FOOTER.includes('label: t("sidebar.academy")'));
+    assert.ok(FOOTER.includes("active={viewMode === ACADEMY_VIEW_ID}"));
+    assert.ok(
+      FOOTER.indexOf("ACADEMY_VIEW_ID)") <
+        FOOTER.indexOf("active={viewMode === SETTINGS_VIEW_ID}"),
+      "the Academy row is drawn before the Settings row",
+    );
+    assert.ok(VIEWS.includes("ACADEMY_VIEW_ID"), "a real top-level view");
+  });
+
+  it("is ONE row, shared with the phone's More menu", () => {
+    // Two breakpoints, one destination: the menu spends the same builder, so
+    // the label, the glyph and the view id cannot drift apart.
+    assert.ok(ROWS.includes("export function academyNavRow("));
+    assert.ok(MORE_MENU.includes("academyNavRow("));
+    assert.ok(MORE_MENU.includes('label: t("shell:sidebar.academy")'));
+    // A menu destination is a tab-level move on the phone, never a level
+    // pushed onto the tree the user was standing in.
+    assert.ok(
+      MORE_MENU.includes('setViewMode(ACADEMY_VIEW_ID, { nav: "reset" })'),
+    );
+    assert.ok(MORE_MENU.includes("<MobileMoreRowButton row={academy} />"));
   });
 });
 

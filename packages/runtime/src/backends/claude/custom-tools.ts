@@ -1,30 +1,13 @@
 import type {
   createSdkMcpServer as CreateSdkMcpServer,
   McpSdkServerConfigWithInstance,
-  SdkMcpToolDefinition,
 } from "@anthropic-ai/claude-agent-sdk";
-import type {
-  AgentToolResult,
-  ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
-import type { TurnMode } from "@houston/protocol";
-import type { TSchema } from "typebox";
-import { z } from "zod";
-import { toolNamesForMode } from "../../session/tool-selection";
-import { makeAskUserTool } from "../../session/tools/ask-user";
-import { makeCustomIntegrationTools } from "../../session/tools/custom-integrations";
-import { makeSkillDirectoryTools } from "../../session/tools/find-skills";
-import {
-  type IntegrationToolOptions,
-  makeIntegrationTools,
-} from "../../session/tools/integrations";
-import { makeMissionTools } from "../../session/tools/missions";
-import { makePlanReadyTool } from "../../session/tools/plan-ready";
-import { makeReadMissionTool } from "../../session/tools/read-mission";
-import { makeSaveLearningTool } from "../../session/tools/save-learning";
-import { makeSaveRoutineTool } from "../../session/tools/save-routine";
-import { makeSuggestActionsTool } from "../../session/tools/suggest-actions";
-import { makeSuggestReusableTool } from "../../session/tools/suggest-reusable";
+import { adaptTool } from "./mcp-tool-adapter";
+import { type BridgedToolSetInput, buildBridgedToolSet } from "./mcp-tool-set";
+
+// The bridged tool shape lives with the adapter that consumes it; re-exported
+// so callers keep one import site for the Claude custom-tool bridge.
+export type { BridgedPiTool } from "./mcp-tool-adapter";
 
 /**
  * Bridge Houston's pi-shaped custom tools (`ask_user`, `plan_ready`,
@@ -68,123 +51,17 @@ export interface HoustonMcp {
 }
 
 /** Inputs for {@link buildHoustonMcpServer}. */
-export interface HoustonMcpInput {
+export interface HoustonMcpInput extends BridgedToolSetInput {
   /** The SDK factory, passed in so this module never imports the optional SDK. */
   createSdkMcpServer: typeof CreateSdkMcpServer;
-  /**
-   * Integration proxy config when this runtime can reach its host with a sandbox
-   * token — the SAME gate as the pi path (`config.controlPlaneUrl &&
-   * config.sandboxToken`). Present → `request_connection` + `integration_search`
-   * + `integration_execute` are built; absent → only `ask_user` is.
-   */
-  integrations?: IntegrationToolOptions;
-  /** An already grant-scoped tool set for a disposable turn runtime. */
-  tools?: BridgedPiTool[];
-  /**
-   * The turn's execution mode, applied as the SAME tool filter the pi path uses
-   * (`toolNamesForMode`): "plan" keeps `ask_user` + `plan_ready` (the acting
-   * integration tools are withheld), "auto" drops `ask_user` (the one blocking
-   * tool) and `plan_ready` while KEEPING `integration_search` /
-   * `integration_execute` / `request_connection` (the queued connect card ends
-   * the turn instead of holding it open — HOU-853), and "execute" (or absent)
-   * exposes the full built set minus `plan_ready` (plan-only). `plan_ready`
-   * never survives outside plan.
-   * `suggest_reusable` mirrors the acting tools' reach — it survives execute AND
-   * auto (it never blocks the turn) but never plan (plan is not a finished task).
-   */
-  mode?: TurnMode;
 }
-
-/**
- * The minimal slice of a pi tool this bridge reads. `execute`'s trailing
- * `onUpdate`/`ctx` params are inert for every Houston custom tool (verified:
- * none read them), so the adapter passes inert placeholders — see {@link NOOP_CTX}.
- * A pi `ToolDefinition<S>` narrows `params` to `Static<S>`; here it is widened to
- * `unknown` so heterogeneous tools share one adapter, and the SDK-validated args
- * are handed straight through.
- */
-export interface BridgedPiTool {
-  name: string;
-  description: string;
-  parameters: TSchema;
-  execute(
-    toolCallId: string,
-    params: unknown,
-    signal: AbortSignal | undefined,
-    onUpdate: undefined,
-    ctx: ExtensionContext,
-  ): Promise<AgentToolResult<unknown>>;
-}
-
-/**
- * Inert `ExtensionContext` placeholder. The bridged tools never touch `ctx`
- * (they use the turn-scoped AsyncLocalStorage stores instead), so an empty object
- * is safe. Cast once here rather than threading a real context the SDK path has
- * no way to supply.
- */
-// SAFETY: every tool admitted to this bridge ignores ExtensionContext and gets
-// its request scope from AsyncLocalStorage, as documented on BridgedPiTool.
-const NOOP_CTX = {} as ExtensionContext;
 
 /**
  * Build the single in-process MCP server exposing Houston's custom tools to the
  * Claude backend, plus the `allowedTools` entries that auto-approve them.
  */
 export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
-  // Reuse the EXISTING tool implementations verbatim; build the full set this
-  // runtime could expose (ask_user + plan_ready always, the integration tools
-  // when the gate is open), then apply the turn's mode filter — the SAME `toolNamesForMode`
-  // the pi path clamps its name allowlist with, so the two backends never drift
-  // on what a mode allows. On the pi path filtering the NAME list is enough (pi
-  // gates custom tools by name); here the MCP server exposes exactly the tools it
-  // is handed, so we filter the tool OBJECTS to the mode's allowed names. The
-  // variance between a concrete pi `ToolDefinition<S>` and the widened adapter
-  // shape is bridged by one documented assertion at this single boundary.
-  const built =
-    input.tools ??
-    ([
-      makeAskUserTool(),
-      // plan_ready is in the built set but name-gated by `toolNamesForMode`: it
-      // survives only on a plan turn (filtered out of execute/auto below).
-      makePlanReadyTool(),
-      // suggest_reusable is the inverse gating: name-kept in execute/auto, filtered
-      // out of plan by `toolNamesForMode`.
-      makeSuggestReusableTool(),
-      makeSuggestActionsTool(),
-      // save_routine reaches the host with the SAME sandbox token the integration
-      // tools use (present ⟺ host reachable). It reaches execute/auto but never
-      // plan — the same reach as suggest_reusable, applied by `toolNamesForMode`.
-      ...(input.integrations ? [makeSaveRoutineTool(input.integrations)] : []),
-      // save_learning reaches the host with the SAME sandbox token, and has the
-      // same reach as save_routine: execute/auto, never plan.
-      ...(input.integrations ? [makeSaveLearningTool(input.integrations)] : []),
-      // The mission-board tools ride the same host-reachability
-      // gate and the same execute/auto reach; read_mission is in-process but is
-      // useless without list_missions, so it shares the gate.
-      ...(input.integrations
-        ? [...makeMissionTools(input.integrations), makeReadMissionTool()]
-        : []),
-      // find_skills + install_skill reach the host with the SAME sandbox token,
-      // and have the same reach as save_routine: execute/auto, never plan.
-      ...(input.integrations
-        ? makeSkillDirectoryTools(input.integrations)
-        : []),
-      ...(input.integrations ? makeIntegrationTools(input.integrations) : []),
-      ...(input.integrations
-        ? makeCustomIntegrationTools(input.integrations)
-        : []),
-      // SAFETY: Houston's tool implementations satisfy BridgedPiTool at runtime;
-      // the assertion only widens their heterogeneous TypeBox parameter types.
-    ] as unknown as BridgedPiTool[]);
-  const allowed = new Set(
-    toolNamesForMode(
-      input.mode,
-      built.map((t) => t.name),
-    ),
-  );
-  const piTools = built.filter((t) => allowed.has(t.name));
-
-  const tools = piTools.map(adaptTool);
+  const tools = buildBridgedToolSet(input).map(adaptTool);
   const server = input.createSdkMcpServer({
     name: HOUSTON_MCP_SERVER_NAME,
     tools,
@@ -193,128 +70,4 @@ export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
     (t) => `mcp__${HOUSTON_MCP_SERVER_NAME}__${t.name}`,
   );
   return { server, allowedTools };
-}
-
-/** Adapt one pi tool into an SDK in-process MCP tool definition. */
-function adaptTool(tool: BridgedPiTool): SdkMcpToolDefinition {
-  return {
-    name: tool.name,
-    description: withPlainName(tool.name, tool.description),
-    inputSchema: toZodShape(tool.parameters),
-    async handler(args: unknown, extra: unknown) {
-      // The SDK passes an abort signal on `extra`; forward it so a stopped turn
-      // cancels the integration proxy fetch mid-flight (same as the pi path).
-      const signal = (extra as { signal?: AbortSignal } | undefined)?.signal;
-      const result = await tool.execute(
-        `mcp-${tool.name}`,
-        args,
-        signal,
-        undefined,
-        NOOP_CTX,
-      );
-      return toCallToolResult(result);
-    },
-  };
-}
-
-/**
- * Restate a tool's plain name inside its description. MCP tools surface to the
- * model as `mcp__houston__<tool>`, but the shared system prompt names them bare
- * (`ask_user`, `request_connection`). This sentence lets the model map the prompt
- * mandate onto the namespaced tool WITHOUT forking the shared prompt per backend.
- */
-function withPlainName(name: string, description: string): string {
-  return `This is the \`${name}\` tool (your instructions refer to it as \`${name}\`). ${description}`;
-}
-
-/** A single MCP text content block — the only shape Houston's tools emit. */
-interface McpTextContent {
-  type: "text";
-  text: string;
-}
-
-/**
- * Map a pi tool result onto the MCP `CallToolResult` content shape. Every
- * bridged tool returns text; a non-text block (never produced today) is coerced
- * to a JSON string rather than dropped.
- */
-function toCallToolResult(result: AgentToolResult<unknown>): {
-  content: McpTextContent[];
-} {
-  const content = result.content.map(
-    (c): McpTextContent =>
-      c.type === "text"
-        ? { type: "text", text: c.text }
-        : { type: "text", text: JSON.stringify(c) },
-  );
-  return { content };
-}
-
-// --- typebox (JSON Schema) → zod raw shape --------------------------------
-//
-// The SDK's in-process MCP requires each tool's `inputSchema` to be a zod raw
-// shape (a record of zod validators); it rejects a plain JSON Schema. Houston's
-// pi tools carry typebox schemas (which ARE JSON Schema), so the bridge converts
-// each tool's typebox params into the equivalent zod raw shape at build time.
-// This keeps the pi tool the SINGLE source of truth for the schema — no
-// hand-maintained zod duplicate to drift. The converter covers exactly the
-// JSON Schema constructs these tools use; an unrecognized node falls back to
-// `z.unknown()` rather than silently dropping a field.
-
-/** The JSON-Schema-shaped view of a typebox node the converter reads. */
-interface JsonSchemaNode {
-  type?: string;
-  description?: string;
-  properties?: Record<string, JsonSchemaNode>;
-  required?: string[];
-  items?: JsonSchemaNode;
-  patternProperties?: Record<string, JsonSchemaNode>;
-}
-
-/** Convert a typebox object schema into a zod raw shape (per-property validators). */
-export function toZodShape(schema: TSchema): Record<string, z.ZodType> {
-  const node = schema as unknown as JsonSchemaNode;
-  const required = new Set(node.required ?? []);
-  const shape: Record<string, z.ZodType> = {};
-  for (const [key, prop] of Object.entries(node.properties ?? {})) {
-    const built = toZodType(prop);
-    shape[key] = required.has(key) ? built : built.optional();
-  }
-  return shape;
-}
-
-/** Convert one JSON Schema node into the equivalent zod validator. */
-function toZodType(node: JsonSchemaNode): z.ZodType {
-  const built = baseZodType(node);
-  return node.description ? built.describe(node.description) : built;
-}
-
-function baseZodType(node: JsonSchemaNode): z.ZodType {
-  switch (node.type) {
-    case "string":
-      return z.string();
-    case "number":
-      return z.number();
-    case "integer":
-      return z.number().int();
-    case "boolean":
-      return z.boolean();
-    case "array":
-      return z.array(node.items ? toZodType(node.items) : z.unknown());
-    case "object": {
-      if (node.properties) return z.object(toZodShape(node as TSchema));
-      // A typebox `Record` emits `patternProperties` (open string keys) and no
-      // `properties`; map it to a zod record over its value schema.
-      const patternValue = node.patternProperties
-        ? Object.values(node.patternProperties)[0]
-        : undefined;
-      return z.record(
-        z.string(),
-        patternValue ? toZodType(patternValue) : z.unknown(),
-      );
-    }
-    default:
-      // No `type` (e.g. typebox `Unknown`) → an unconstrained value.
-      return z.unknown();
-  }
 }

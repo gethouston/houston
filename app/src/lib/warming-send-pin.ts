@@ -1,5 +1,6 @@
 // Explicit `.ts` extension: `node --test --experimental-strip-types` loads
 // this module directly (app/tests/warming-send-pin.test.ts).
+import { toDisplayProviderIdOrNull } from "./provider-overrides.ts";
 import { normalizeLegacyModel } from "./providers.ts";
 
 export interface WarmingPin {
@@ -29,8 +30,10 @@ export function preferRowPin(
 ): WarmingPin {
   if (!row?.provider) return send;
   return {
-    provider: row.provider,
-    model: normalizeLegacyModel(row.model ?? null) ?? undefined,
+    // Rows store pi's CANONICAL id; the pin travels through the app's display
+    // dialect and is re-canonicalized at the wire (`wireTurnPin`).
+    provider: toDisplayProviderIdOrNull(row.provider) ?? undefined,
+    model: normalizeLegacyModel(row.model ?? null, row.provider) ?? undefined,
     effort: send.effort,
   };
 }

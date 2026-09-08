@@ -2,8 +2,10 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import { expect, test } from "vitest";
 import { HoustonAuthStore } from "../auth/credential-store";
+import { config } from "../config";
 import {
   buildOpenAiCompatibleModel,
   localOverrideError,
@@ -94,8 +96,19 @@ test("providerDefaultModel returns each provider's catalog default", () => {
     "global.anthropic.claude-sonnet-4-6",
   );
   expect(providerDefaultModel("minimax")).toBe("MiniMax-M3[1m]");
-  // Unknown falls back to the Codex default (never throws / undefined).
-  expect(providerDefaultModel("nope")).toBe("gpt-5.5");
+});
+
+test("a provider with no catalog default resolves to NO model, never Codex's", () => {
+  // The cross-provider floor: an id neither curated nor known to pi answered
+  // with the Codex default, so an agent on any other provider would have run
+  // (and stored) an OpenAI model id. Empty means "no opinion" — the caller's
+  // own ladder decides, and `setSettings` skips a falsy model rather than
+  // persisting one this provider never offered.
+  expect(providerDefaultModel("nope")).toBe("");
+  expect(providerDefaultModel("nope")).not.toBe(config.codexModel);
+  expect(providerDefaultModel("nope")).not.toBe(DEFAULT_MODEL["openai-codex"]);
+  // Never throws / undefined, exactly as before.
+  expect(typeof providerDefaultModel("nope")).toBe("string");
 });
 
 test("uncurated providers with a hand-picked default skip pi's dead first row (PRODUCT-1411)", () => {

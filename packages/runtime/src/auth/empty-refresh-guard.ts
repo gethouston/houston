@@ -1,4 +1,5 @@
 import type { Credential } from "@earendil-works/pi-ai";
+import { serveModeOn } from "./serve-context";
 
 /**
  * PRODUCT-1317: no empty-string refresh token ever leaves this process.
@@ -59,21 +60,37 @@ export function maskAccessOnly(
   return isAccessOnlyOAuth(cred) ? undefined : cred;
 }
 
-/**
- * serve.ts binds its non-throwing, single-flighted sync here at load — a
- * direct import would cycle (serve → storage → credential-store → serve).
- * Unbound (desktop/self-host, tests) it is a no-op, which is sound: an
- * access-only entry only exists where the serve path wrote one, and the serve
- * path lives in serve.ts.
- */
-let serveSync: (() => Promise<void>) | null = null;
+/** A sync standing in for serve.ts's own — tests drive the guard through it. */
+let serveSyncOverride: (() => Promise<void>) | null = null;
 
+/** Test seam: run the guard against `fn`, or `null` to restore the real sync. */
 export function bindEmptyRefreshServeSync(
   fn: (() => Promise<void>) | null,
 ): void {
-  serveSync = fn;
+  serveSyncOverride = fn;
 }
 
+/**
+ * Re-serve the expiring access-only entry through serve.ts's non-throwing,
+ * single-flighted sync, which serve.ts BINDS here when it loads.
+ *
+ * Not a static import: it would cycle (serve -> storage -> credential-store ->
+ * this module), and a dynamic import closes that same cycle through the one
+ * module with a top-level await (`storage.ts`), which the bundler cannot
+ * order. The binding is safe because serve.ts is on every runtime's boot path
+ * (the turn start and the provider routes import it), so it is in place
+ * before any refresh closure can fire. Off serve mode there is nothing to
+ * re-serve, so the guard is a genuine no-op there; in serve mode an unbound
+ * guard is a wiring fault and says so loudly instead of letting pi POST
+ * `refresh_token=""` (PRODUCT-1317).
+ */
 export async function runEmptyRefreshServeSync(): Promise<void> {
-  await serveSync?.();
+  if (serveSyncOverride) {
+    await serveSyncOverride();
+    return;
+  }
+  if (!serveModeOn()) return;
+  console.error(
+    "[empty-refresh-guard] serve mode is on but no served sync is bound; serve.ts did not load before a refresh fired",
+  );
 }

@@ -11,18 +11,25 @@ import type {
 import { HoustonEngineError } from "../client/errors";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
+/**
+ * Shows the current space, the user's role in it, and the people in it.
+ * @assistant group:org
+ */
 export async function getOrg(cfg: ControlPlaneConfig): Promise<OrgInfo> {
   const res = await cpFetch(cfg, "/v1/org");
   return (await res.json()) as OrgInfo;
 }
 
 /**
+ * Looks up the names and photos of people in this space.
+ *
  * Display profiles (name + photo) for the given member ids — any co-member of
  * the active space (the personal space resolves only the caller). Non-co-member
  * ids are omitted server-side. Degrades to an empty map on a gateway that
  * predates the route (404) — teammate faces then fall back to initials — so a
  * pre-feature host stays byte-identical. Mirrors `getAgentModelChoice`'s 404
  * swallow; every other error throws.
+ * @assistant group:org hidden: UI plumbing; resolves member ids to the names and photos the app's avatars render.
  */
 export async function getOrgProfiles(
   cfg: ControlPlaneConfig,
@@ -42,6 +49,8 @@ export async function getOrgProfiles(
 }
 
 /**
+ * Lists the people the user shares this space with.
+ *
  * The sanitized co-member directory of the active space (the personal space
  * resolves only the caller), named-first: no emails, no roles. It backs the
  * composer's @mention autocomplete and the renderer's chips. Degrades to an
@@ -49,6 +58,7 @@ export async function getOrgProfiles(
  * plainly and no popover ever opens — so a pre-feature host stays
  * byte-identical. Mirrors `getOrgProfiles`'s 404 swallow; every other error
  * throws.
+ * @assistant group:org
  */
 export async function getOrgPeople(
   cfg: ControlPlaneConfig,
@@ -62,6 +72,12 @@ export async function getOrgPeople(
   }
 }
 
+/**
+ * Invites someone to this space with the role the user chooses.
+ * @param email The person's email address, as they gave it.
+ * @param role What they may do in the space.
+ * @assistant group:org confirm
+ */
 export async function addOrgMember(
   cfg: ControlPlaneConfig,
   email: string,
@@ -74,6 +90,12 @@ export async function addOrgMember(
   return (await res.json()) as AddOrgMemberResult;
 }
 
+/**
+ * Cancels a pending invitation to this space.
+ * @param inviteId The pending invitation to cancel, by the id getOrgPeople
+ *   returns.
+ * @assistant group:org confirm
+ */
 export async function deleteOrgInvite(
   cfg: ControlPlaneConfig,
   inviteId: string,
@@ -83,6 +105,11 @@ export async function deleteOrgInvite(
   });
 }
 
+/**
+ * Removes someone from the current space.
+ * @param userId The person to remove, by the user id getOrgPeople returns.
+ * @assistant group:org confirm
+ */
 export async function removeOrgMember(
   cfg: ControlPlaneConfig,
   userId: string,
@@ -92,6 +119,12 @@ export async function removeOrgMember(
   });
 }
 
+/**
+ * Changes what someone is allowed to do in this space.
+ * @param userId The person, by the user id getOrgPeople returns.
+ * @param role What they may do in the space.
+ * @assistant group:org confirm
+ */
 export async function setOrgMemberRole(
   cfg: ControlPlaneConfig,
   userId: string,
@@ -103,6 +136,14 @@ export async function setOrgMemberRole(
   });
 }
 
+/**
+ * Shows the record of who did what in this space, newest first.
+ * @param opts How much history to read: how many entries, and the instant
+ *   to read back from.
+ * @assistant group:org
+ * @assistant unroutable: debt: the query string is assembled into the path from an optional options object; routable once before and limit are plain parameters.
+ * @assistant unschematized: an audit entry's subject varies per event type and carries the changed record verbatim.
+ */
 export async function orgAudit(
   cfg: ControlPlaneConfig,
   opts: { before?: number; limit?: number } = {},
@@ -115,6 +156,11 @@ export async function orgAudit(
   return ((await res.json()) as { entries: AuditEntry[] }).entries;
 }
 
+/**
+ * Shows how much each person and agent used this space over recent days.
+ * @param days How many days back to count, ending today.
+ * @assistant group:org
+ */
 export async function orgUsage(
   cfg: ControlPlaneConfig,
   days: number,
@@ -126,6 +172,11 @@ export async function orgUsage(
   return ((await res.json()) as { rows: UsageRow[] }).rows;
 }
 
+/**
+ * Shows how much running time each agent used over recent days.
+ * @param days How many days back to count, ending today.
+ * @assistant group:org
+ */
 export async function computeUsage(
   cfg: ControlPlaneConfig,
   days: number,

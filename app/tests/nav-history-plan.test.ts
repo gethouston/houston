@@ -20,12 +20,12 @@ const entry = (viewMode: string) =>
 
 describe("syncPlan", () => {
   it("ignores store changes that did not move the stack", () => {
-    const stack = [entry("inbox")];
+    const stack = [entry("agents-home")];
     assert.equal(syncPlan({ index: 0, stack }, { index: 0, stack }), null);
   });
 
   it("echoes a push as pushState at the new index", () => {
-    const prev = [entry("inbox")];
+    const prev = [entry("agents-home")];
     const next = [...prev, entry("settings")];
     assert.deepEqual(
       syncPlan({ index: 0, stack: prev }, { index: 1, stack: next }),
@@ -34,7 +34,7 @@ describe("syncPlan", () => {
   });
 
   it("echoes a pop (same array, cursor back) as history.go", () => {
-    const stack = [entry("inbox"), entry("settings")];
+    const stack = [entry("agents-home"), entry("settings")];
     assert.deepEqual(syncPlan({ index: 1, stack }, { index: 0, stack }), {
       op: "go",
       delta: -1,
@@ -42,7 +42,7 @@ describe("syncPlan", () => {
   });
 
   it("echoes an in-place swap as replaceState", () => {
-    const prev = [entry("inbox")];
+    const prev = [entry("agents-home")];
     const next = [entry("team")];
     assert.deepEqual(
       syncPlan({ index: 0, stack: prev }, { index: 0, stack: next }),
@@ -53,8 +53,8 @@ describe("syncPlan", () => {
   it("echoes a rebuild (reset: cursor back, NEW array) as replaceState", () => {
     // The browser's deeper entries can't be deleted, so a rebuild re-brands
     // the current one and lets the stale entries decay via the clamp.
-    const prev = [entry("inbox"), entry("settings")];
-    const next = [entry("inbox")];
+    const prev = [entry("agents-home"), entry("settings")];
+    const next = [entry("agents-home")];
     assert.deepEqual(
       syncPlan({ index: 1, stack: prev }, { index: 0, stack: next }),
       { op: "replace", index: 0 },

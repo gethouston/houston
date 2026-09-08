@@ -1,6 +1,8 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { before, describe, it } from "node:test";
 import {
+  activityRowPin,
+  definedPins,
   readAgentModelOverrides,
   resolveAgentModelOverrides,
 } from "../src/lib/agent-model-overrides.ts";
@@ -20,6 +22,19 @@ describe("resolveAgentModelOverrides", () => {
         model: "claude-opus-4-8",
       }),
       { providerOverride: "anthropic", modelOverride: "claude-opus-4-8" },
+    );
+  });
+
+  it("reads a provider stored in the ENGINE dialect", () => {
+    // Engine-written configs carry pi's `openai-codex`; the catalog is keyed by
+    // Houston's `openai`. Unmapped, the pin vanished and the kickoff ran on
+    // whatever the runtime had active instead of the agent's own Codex model.
+    deepStrictEqual(
+      resolveAgentModelOverrides({
+        provider: "openai-codex",
+        model: "gpt-6-astra",
+      }),
+      { providerOverride: "openai", modelOverride: "gpt-6-astra" },
     );
   });
 
@@ -68,6 +83,18 @@ describe("resolveAgentModelOverrides", () => {
       model: "opus",
     });
     strictEqual(pins.modelOverride, "claude-opus-5");
+  });
+
+  it("omits the model pin when the provider has no default to give (B4)", () => {
+    // The local OpenAI-compatible provider's model is whatever the user's own
+    // server serves, so `getDefaultModel` answers `""` — and an emitted
+    // `modelOverride: ""` is a half-pin the runtime rejects.
+    deepStrictEqual(
+      resolveAgentModelOverrides({ provider: "openai-compatible" }),
+      {
+        providerOverride: "openai-compatible",
+      },
+    );
   });
 });
 
@@ -148,6 +175,25 @@ describe("resolveAgentModelOverrides + connected providers", () => {
     deepStrictEqual(resolveAgentModelOverrides({}, []), {});
   });
 
+  it("reads a connected set reported in pi's canonical dialect (a Codex user's only connection is a connection)", () => {
+    deepStrictEqual(
+      resolveAgentModelOverrides({ provider: "openai-codex" }, [
+        "openai-codex",
+      ]),
+      {
+        providerOverride: "openai",
+        modelOverride: getDefaultModel("openai"),
+      },
+    );
+  });
+
+  it("never substitutes away from a canonically-reported connection", () => {
+    const pins = resolveAgentModelOverrides({ provider: "anthropic" }, [
+      "openai-codex",
+    ]);
+    strictEqual(pins.providerOverride, "openai");
+  });
+
   it("substitutes for a provider Houston no longer offers, too", () => {
     const pins = resolveAgentModelOverrides({ provider: "gemini-cli" }, [
       "openai",
@@ -191,5 +237,75 @@ describe("readAgentModelOverrides", () => {
       throw new Error("boom");
     }, ["openai"]);
     strictEqual(pins.providerOverride, "openai");
+  });
+});
+
+/**
+ * B3 — the activity row is read back in pi's CANONICAL dialect by every send
+ * path (`resolveActivityOverride`, `preferRowPin`), and three comments already
+ * claimed it was stored that way; the create/pick paths wrote the DISPLAY id.
+ * B4 — an empty model is a half-pin the runtime rejects, so it is omitted.
+ */
+describe("activityRowPin", () => {
+  it("stamps the row in the CANONICAL dialect (B3)", () => {
+    deepStrictEqual(
+      activityRowPin({
+        providerOverride: "openai",
+        modelOverride: "gpt-6-astra",
+      }),
+      { provider: "openai-codex", model: "gpt-6-astra" },
+    );
+  });
+
+  it("is idempotent for an already-canonical id (B3)", () => {
+    // The data layer canonicalizes too; canonicalizing twice must be a no-op.
+    deepStrictEqual(
+      activityRowPin({ providerOverride: "openai-codex" }),
+      activityRowPin({ providerOverride: "openai" }),
+    );
+  });
+
+  it("passes a provider with no dialect twin through untouched", () => {
+    deepStrictEqual(
+      activityRowPin({
+        providerOverride: "anthropic",
+        modelOverride: "claude-opus-5",
+      }),
+      { provider: "anthropic", model: "claude-opus-5" },
+    );
+  });
+
+  it("omits an empty model rather than pinning nothing (B4)", () => {
+    deepStrictEqual(
+      activityRowPin({ providerOverride: "anthropic", modelOverride: "" }),
+      {
+        provider: "anthropic",
+      },
+    );
+    deepStrictEqual(activityRowPin({}), {});
+  });
+});
+
+describe("definedPins", () => {
+  it("drops an empty model from the wire pins (B4)", () => {
+    deepStrictEqual(
+      definedPins({ providerOverride: "anthropic", modelOverride: "" }),
+      { providerOverride: "anthropic" },
+    );
+  });
+
+  it("keeps every value the caller actually resolved", () => {
+    deepStrictEqual(
+      definedPins({
+        providerOverride: "anthropic",
+        modelOverride: "claude-opus-5",
+        effortOverride: "high",
+      }),
+      {
+        providerOverride: "anthropic",
+        modelOverride: "claude-opus-5",
+        effortOverride: "high",
+      },
+    );
   });
 });

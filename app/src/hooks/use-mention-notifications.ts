@@ -102,7 +102,7 @@ function scanForMentions(t: TFunction<readonly ["common"]>): void {
     markConversationMentionNotified(row.agent_path, row.id, latest.at);
     // Mentioning yourself is not news, and this path never sees one:
     // `latestMentionFor` drops self-authored entries at the source, so the
-    // ping, the inbox row and the unread badge all agree about it.
+    // ping and the unread badge agree about it.
     const name = latest.mention.by
       ? mentionerName(row, latest.mention.by)
       : undefined;

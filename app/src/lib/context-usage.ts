@@ -26,6 +26,10 @@ export interface SessionContextUsage {
  * ceiling), so the indicator reads a wrong window and a tiny percentage.
  * `context_compacted` is NOT a reset: it's the same provider, so the
  * pre-compaction peak still proves that provider's window.
+ *
+ * `context_cleared` resets the FILL only: the user emptied the model's context,
+ * so the gauge must read empty again, but the same provider is still in play
+ * and its observed peak still proves its window.
  */
 export function sessionContextUsage(
   items: FeedItem[] | undefined,
@@ -37,6 +41,10 @@ export function sessionContextUsage(
     if (item.feed_type === "provider_switched") {
       latest = null;
       peakContextTokens = 0;
+      continue;
+    }
+    if (item.feed_type === "context_cleared") {
+      latest = null;
       continue;
     }
     if (item.feed_type === "final_result" && item.data.usage) {

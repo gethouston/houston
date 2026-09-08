@@ -1,10 +1,10 @@
 {
   "sidebar": {
-    "aboutMe": "Sobre mí",
     "academy": "Academia",
     "addAgent": "Nuevo agente",
     "agentStore": "Tienda de agentes",
     "aiModels": "Modelos de IA",
+    "assistant": "Houston",
     "changeColor": "Cambiar color",
     "collapse": "Contraer barra lateral",
     "color": "Color",
@@ -25,7 +25,6 @@
     "expand": "Expandir barra lateral",
     "guideMe": "Guíame",
     "help": "Ayuda",
-    "inbox": "Bandeja de entrada",
     "integrations": "Integraciones",
     "myAccounts": "Mis cuentas",
     "needsYouCount_one": "{{count}} asunto necesita tu atención",
@@ -482,24 +481,11 @@
     "stalledTitle": "Seguimos en eso",
     "stalledBody": "Esto está tardando más de lo normal. No nos hemos rendido, tu chat y tus mensajes están a salvo y continuarán en cuanto tu agente responda."
   },
-  "toolRuntimeError": {
-    "title": "Algo se atascó",
-    "body": "Una herramienta local no se inició correctamente. Intenta de nuevo y repórtalo si sigue pasando.",
-    "report": "Reportar error",
-    "reporting": "Enviando reporte...",
+  "reportBug": {
     "reportSuccessTitle": "Reporte enviado",
     "reportSuccessDescription": "Houston recibió los registros.",
     "reportErrorTitle": "No se pudo enviar el reporte",
-    "reportErrorDescription": "Intenta otra vez en un momento.",
-    "retryErrorTitle": "No se pudo intentar de nuevo",
-    "modelUnsupported": {
-      "title": "Tu plan de ChatGPT no incluye GPT-5.5 Codex",
-      "body": "Cambia a GPT-5.5 para continuar. La variante Codex solo está disponible en algunos planes de ChatGPT (Plus, Pro, Team), no en Business ni Enterprise.",
-      "switchAction": "Cambiar a GPT-5.5",
-      "switching": "Cambiando...",
-      "switchErrorTitle": "No se pudo cambiar el modelo",
-      "switchErrorDescription": "Abre el selector de modelo y elige GPT-5.5 manualmente."
-    }
+    "reportErrorDescription": "Intenta otra vez en un momento."
   },
   "updateChecker": {
     "launchLabel": "Actualización de Houston en curso",
@@ -655,8 +641,7 @@
       "newMission": "Iniciar tarea nueva",
       "integrations": "Abrir Integraciones",
       "settings": "Abrir Ajustes",
-      "shortcuts": "Ver atajos de teclado",
-      "inbox": "Ir a la bandeja de entrada"
+      "shortcuts": "Ver atajos de teclado"
     }
   },
   "cheatsheet": {
@@ -669,7 +654,6 @@
     },
     "rows": {
       "palette": "Abrir paleta de comandos",
-      "inbox": "Ir a la bandeja de entrada",
       "newMission": "Iniciar tarea nueva",
       "prevAgent": "Agente anterior",
       "nextAgent": "Agente siguiente",

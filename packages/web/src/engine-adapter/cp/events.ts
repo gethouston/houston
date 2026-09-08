@@ -93,8 +93,15 @@ export function subscribeEvents(
       }
       streamedGateways.add(cfg.baseUrl);
     },
-    // Log-only (no toast): a background stream that auto-reconnects — but it
-    // must never fail silently again.
+    // The platform's "try again now" signals. The loop's backoff is capped, so
+    // a machine that slept through an outage would otherwise wait out the
+    // remaining delay (or the 45s idle watchdog) before noticing the network
+    // came back — while the user is already looking at a stale screen.
+    wake: subscribeWakeSignals,
+    // Log-only (no toast, no Sentry): a background stream that auto-reconnects
+    // is a connectivity state, not a Houston failure — but it must never fail
+    // silently again. The capped backoff is what keeps this off the log's
+    // hot path during a long outage.
     onError: (err) => console.warn("[events] global stream error:", err),
     onEvent: (data) =>
       onEvent(
@@ -104,6 +111,31 @@ export function subscribeEvents(
       ),
   });
   return () => ac.abort();
+}
+
+/**
+ * Push the platform's recovery moments into the stream loop: the network came
+ * back, or the window became visible again after the OS froze the tab (a closed
+ * laptop lid, a switched Wi-Fi). Both leave a socket that is open on paper and
+ * dead in fact, and the loop only force-reconnects one that has actually gone
+ * silent — a wake on a healthy stream costs nothing.
+ *
+ * `window`-guarded so a non-DOM host (tests, the Node-side adapter) simply gets
+ * no wake signals rather than a crash.
+ */
+function subscribeWakeSignals(retryNow: () => void): () => void {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return () => {};
+  }
+  const onVisible = () => {
+    if (document.visibilityState === "visible") retryNow();
+  };
+  window.addEventListener("online", retryNow);
+  document.addEventListener("visibilitychange", onVisible);
+  return () => {
+    window.removeEventListener("online", retryNow);
+    document.removeEventListener("visibilitychange", onVisible);
+  };
 }
 
 /**

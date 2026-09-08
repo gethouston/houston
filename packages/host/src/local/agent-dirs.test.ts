@@ -41,7 +41,19 @@ describe("liveAgentDirFor", () => {
     expect(liveAgentDirFor(root, "Personal/.setup/connect")).toBe(dir);
   });
 
+  it("creates the personal assistant's dir on demand — a synthetic agent has no create path either", () => {
+    const dir = liveAgentDirFor(root, "Personal/.assistant");
+    expect(dir).toBe(join(root, "Personal", ".assistant"));
+    expect(existsSync(dir)).toBe(true);
+    // Idempotent: discovery is called on every app boot.
+    expect(liveAgentDirFor(root, "Personal/.assistant")).toBe(dir);
+  });
+
   it("does NOT extend the carve-out to ordinary dot-less agents nested under real workspaces", () => {
     expect(() => liveAgentDirFor(root, "Personal/setup")).toThrow(/is gone/);
+    expect(() => liveAgentDirFor(root, "Personal/assistant")).toThrow(
+      /is gone/,
+    );
+    expect(existsSync(join(root, "Personal", "assistant"))).toBe(false);
   });
 });

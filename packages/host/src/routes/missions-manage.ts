@@ -8,35 +8,59 @@ import {
 import type { PendingInteraction } from "@houston/protocol";
 import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
+import { liveTurns } from "./live-turn";
+import { type MissionStatusInput, parseMissionStatus } from "./missions-remote";
+import { forwardMissionStatus } from "./missions-remote-forward";
 import {
   fireActivityChanged,
   type MissionsCtx,
   missionSessionKey,
 } from "./missions-sandbox";
+import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
 /**
  * The agent's explicit board move (`POST /sandbox/missions/status`): `done` or
  * `archived`, finished missions only. This is the ONE deliberate exception to
- * "only the user moves a card to done" — the user delegated the review to the
+ * "only the user moves a card to done" - the user delegated the review to the
  * agent (PRODUCT-1244's planning-agent flow), the move is an explicit tool call
  * visible in the parent chat, and the guards below keep it away from anything
  * still running and from the agent's own conversation (which the turn's settle
  * would immediately contradict).
+ *
+ * An optional `agent` moves a card on ANOTHER agent's board - the settle half
+ * of a mission the caller started there. That board is reached wherever it
+ * lives: on this disk, or over the wire in the agent's own pod, which applies
+ * the very same move with the very same guards.
  */
 export async function handleMissionStatus(
-  ctx: MissionsCtx,
+  callerCtx: MissionsCtx,
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
   const body = await readJson(req);
-  const id = typeof body.id === "string" ? body.id : "";
-  const status = body.status;
-  if (!id || (status !== "done" && status !== "archived")) {
-    json(res, 400, {
-      error: "pass the mission's 'id' and 'status': 'done' or 'archived'",
-    });
+  const parsed = parseMissionStatus(body);
+  if (!parsed.ok)
+    return json(res, 400, { error: parsed.error, code: parsed.code });
+  const route = await resolveMissionRoute(callerCtx, body.agent);
+  if (!route.ok) return refuseMissionRoute(route, res);
+  if (route.remote) {
+    await forwardMissionStatus(route.route, parsed.value, res);
     return;
   }
+  await applyMissionStatus(route.ctx, parsed.value, res);
+}
+
+/**
+ * The move itself, on the board this host holds - the half that runs on
+ * whichever side owns the files, so the pod serving a cross-pod move applies
+ * the identical guards (never a running mission, never the conversation the
+ * caller is speaking in) rather than a looser copy of them.
+ */
+export async function applyMissionStatus(
+  ctx: MissionsCtx,
+  { id, status }: MissionStatusInput,
+  res: ServerResponse,
+): Promise<void> {
   const outcome = await withDocLock(`${ctx.root}#activity`, async () => {
     const { items } = await loadActivities(ctx.vfs, ctx.root);
     const current = items.find((a) => a.id === id);
@@ -56,20 +80,20 @@ export async function handleMissionStatus(
     return applied;
   });
   if (outcome === "not_found") {
-    json(res, 404, { error: "no mission with that id — check list_missions" });
+    json(res, 404, { error: "no mission with that id - check list_missions" });
     return;
   }
   if (outcome === "running") {
     json(res, 409, {
       error:
-        "that mission is still running — wait for it to finish before moving it",
+        "that mission is still running - wait for it to finish before moving it",
     });
     return;
   }
   if (outcome === "self") {
     json(res, 409, {
       error:
-        "you can't move the mission this conversation belongs to — the user closes it when they're ready",
+        "you can't move the mission this conversation belongs to - the user closes it when they're ready",
     });
     return;
   }
@@ -99,9 +123,15 @@ export async function handleMissionSettle(
     return;
   }
   // Malformed interaction shapes are dropped by resolveInteractionPatch inside
-  // applyActivityUpdate — pass through as-is; null clears explicitly.
+  // applyActivityUpdate - pass through as-is; null clears explicitly.
   const interaction = (body.pending_interaction ??
     null) as PendingInteraction | null;
+  // THE TURN IS OVER. This report is the one thing the runtime sends at the end
+  // of every turn on every deployment, so it is where the host observes a turn
+  // ending: the live-turn record for that conversation is dropped, and a
+  // /sandbox write arriving after the work finished is refused as out-of-turn
+  // rather than served against a turn that is no longer running.
+  liveTurns.end(ctx.agent.id, cid);
   const settled = await withDocLock(`${ctx.root}#activity`, async () => {
     const { items } = await loadActivities(ctx.vfs, ctx.root);
     const current = items.find((a) => missionSessionKey(a) === cid);

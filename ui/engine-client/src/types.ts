@@ -73,6 +73,20 @@ export interface VersionResponse {
   chatHistoryMigrated?: boolean;
 }
 
+/**
+ * Where the user's personal assistant lives. The assistant is an ordinary
+ * agent conversation as far as this client is concerned — this handle is the
+ * address to open it at, and both fields are OPAQUE: never parse them, never
+ * assume a shape. The deployment decides (a hidden local agent on the desktop,
+ * a dedicated pod on the hosted cloud).
+ */
+export interface AssistantHandle {
+  /** The agent id to pass to every per-agent call (chat, events, files). */
+  agent: string;
+  /** The conversation id to open on that agent. */
+  conversation: string;
+}
+
 export interface Capabilities {
   localModelBridge?: { versions: number[] };
   profile: "local" | "cloud";
@@ -334,6 +348,17 @@ export interface MessageMention {
 }
 
 /**
+ * One approval card's outcome, carried on the message that answers it. Mirrors
+ * the protocol `MessageApproval` (`@houston/protocol/approval`), which is where
+ * the receipt rule lives: only a USER message can mint one, so the host reads
+ * these off the request and never lets a model author them.
+ */
+export interface MessageApproval {
+  requestId: string;
+  decision: "approve" | "deny";
+}
+
+/**
  * A per-agent access level (Teams v2). `manager` may reconfigure the agent
  * (instructions, skills, model, allowed toolkits, assignments); `user` may only
  * use it. Kept in sync (by hand) with the gateway — the server is the source of
@@ -535,6 +560,17 @@ export interface AgentSettings {
 // ---------- Per-user model choice (multiplayer) ----------
 
 /**
+ * How hard a reasoning-capable model thinks, ascending. A CLOSED set: the
+ * composer offers exactly these four, and a value outside them is dropped on
+ * the way to the model rather than clamped, so a caller that invents one gets
+ * the provider default with no sign anything was ignored. Mirrors
+ * `EffortLevel` (app/src/lib/providers.ts) and the levels
+ * `packages/runtime/src/ai/effort.ts` maps onto pi's thinking levels; a
+ * persisted legacy `"max"` is normalized to `"xhigh"` on read.
+ */
+export type AgentEffortLevel = "low" | "medium" | "high" | "xhigh";
+
+/**
  * A member's chosen AI model for one shared agent (Teams v2). The agent runs on
  * the ACTING user's choice per turn; the gateway clamps it to the agent's
  * `allowedModels` ceiling. `effort` is the
@@ -543,7 +579,7 @@ export interface AgentSettings {
 export interface AgentModelChoice {
   provider: string;
   model: string;
-  effort?: string;
+  effort?: AgentEffortLevel;
 }
 
 /**
@@ -789,7 +825,14 @@ export interface UpdateAgent {
 
 // ---------- Agents / agent-data files ----------
 
-export interface InteractionOption {
+/** A choice the agent authored, or a structural approval control whose label
+ *  the surface owns in its own locale (`kind: "approval"`, id-keyed). */
+export type InteractionOption =
+  | InteractionChoiceOption
+  | { kind: "approval"; id: "approve" | "decline" };
+
+export interface InteractionChoiceOption {
+  kind?: "choice";
   id: string;
   label: string;
   /** One muted line of consequence or benefit shown after the label. */
@@ -806,11 +849,20 @@ export type InteractionStep =
       kind: "question";
       id: string;
       question: string;
+      /** Verbatim material the question is ABOUT, when it is too long or too
+       *  multi-line to read inside a sentence. Shown under the question in its
+       *  own scrollable block, so a value the user approves is always visible. */
+      detail?: string;
       options?: InteractionOption[];
       /** Lowercase toolkit slug when the question concerns an integration (e.g.
        *  "gmail"); the app resolves it to the app's identity and BRANDS the
        *  question card's header with the logo + name. Absent = a plain question. */
       toolkit?: string;
+      /** Present ONLY on an approval card for a destructive Houston operation:
+       *  the host-issued id of the pending request this card decides. The
+       *  user's answer travels back carrying it, which binds the approval to
+       *  ONE exact call and makes it usable once. */
+      requestId?: string;
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
@@ -883,10 +935,24 @@ export interface Activity {
   mentioned?: { user_id: string; at: string; by?: string }[];
 }
 
+/**
+ * A mission's board status. The closed set a WRITE may set, mirroring
+ * `ACTIVITY_STATUSES` (@houston/domain) — which this package cannot import, it
+ * being a dependency-free client type mirror. Reads keep `Activity.status` open
+ * on purpose: a status written by a newer host renders neutrally instead of
+ * being dropped.
+ */
+export type ActivityStatus =
+  | "running"
+  | "needs_you"
+  | "done"
+  | "error"
+  | "archived";
+
 export interface ActivityUpdate {
   title?: string;
   description?: string;
-  status?: string;
+  status?: ActivityStatus;
   claude_session_id?: string | null;
   session_key?: string;
   agent?: string;
@@ -1638,6 +1704,16 @@ export interface SessionStartRequest {
    * mentions nobody, and in single-player deployments (no roster to mention).
    */
   mentions?: MessageMention[];
+  /**
+   * The approval cards this message answers: for each, the host-issued request
+   * id and what the person said (`{requestId, decision}`). It rides as its own
+   * field rather than inside the prompt because the prompt is the person's
+   * words; the HOST reads these off the request, records the receipts — the
+   * only thing that turns a request id into a usable approval, and something no
+   * model can author — and drops the field before the runtime sees the turn.
+   * Omitted when the message answers no card; never an empty list.
+   */
+  approvals?: MessageApproval[];
 }
 
 export interface SessionStartResponse {

@@ -139,7 +139,7 @@ export function teamById(
  * HOME: the team whose Mission Control the app opens on, and where every
  * fallback lands. `null` means no team has resolved yet (no workspace, or a
  * server-teams read still in flight), which is the one case the callers answer
- * with the Inbox instead.
+ * with the Agents home instead.
  *
  * The FIRST team, because `teams` arrives in rail order: home is the top of the
  * user's own sidebar, not an alphabetical or server-internal pick. There is no

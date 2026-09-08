@@ -12,13 +12,14 @@
  * Both themes; determinism rules in ../README.md.
  */
 import { expect, test } from "../support/fixtures";
+import { missionCard } from "../support/team-nav";
 import { pinTheme, THEMES } from "./support";
 
 for (const theme of THEMES) {
   test(`chat conversation — ${theme}`, async ({ page }) => {
     await page.goto("/");
 
-    await page.getByText("Plan a trip to Tokyo").click();
+    await missionCard(page, "Plan a trip to Tokyo").click();
     const composer = page.getByPlaceholder("Send a follow-up...");
     await expect(composer).toBeVisible();
 

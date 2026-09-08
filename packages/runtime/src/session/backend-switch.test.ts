@@ -83,8 +83,9 @@ class SpySession implements HarnessSession {
   async setModel(m: ResolvedModel): Promise<void> {
     this.setModels.push(m);
   }
-  async compact(): Promise<void> {
+  async compact(): Promise<undefined> {
     this.compacts++;
+    return undefined;
   }
   setThinkingLevel(): void {}
   getContextUsage(): { tokens: number | null } {

@@ -24,7 +24,7 @@ import {
   navItem,
   openPhoneTeamSection,
 } from "../support/mobile-nav";
-import { navRow, screen } from "../support/team-nav";
+import { missionCard, navRow, screen } from "../support/team-nav";
 import { pinTheme, THEMES } from "./support";
 
 for (const theme of THEMES) {
@@ -32,9 +32,9 @@ for (const theme of THEMES) {
     await page.goto("/");
 
     // Anchor on the shell being fully painted before pinning theme + comparing.
-    await expect(navRow(page, "inbox")).toBeVisible();
-    await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
-    await expect(page.getByText("Draft the launch email")).toBeVisible();
+    await expect(navRow(page, "agent-store")).toBeVisible();
+    await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
+    await expect(missionCard(page, "Draft the launch email")).toBeVisible();
     await pinTheme(page, theme);
 
     await expect(page).toHaveScreenshot(`board-${theme}.png`, {
@@ -209,7 +209,7 @@ for (const theme of THEMES) {
     await navItem(page, "more").click();
     await expect(moreMenu(page)).toBeVisible();
     await expect(
-      moreMenu(page).getByRole("button", { name: "Inbox" }),
+      moreMenu(page).getByRole("button", { name: "Agent Store" }),
     ).toBeVisible();
     await page.mouse.move(0, 0);
     await pinTheme(page, theme);

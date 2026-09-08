@@ -9,14 +9,12 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
  * The namespaces every builder and component in the rail's chrome reads from.
- * `dashboard` is here for one string: the Inbox row's unread-mention count,
- * whose copy belongs to the mentions surface that also feeds the header bell.
- * `settings` is here for two: the Admin and Permissions rows keep the names the
- * Settings index already owned for those screens rather than growing a second
- * pair of strings for the same two destinations.
+ * `settings` is here for one string: the Admin row keeps the name the Settings
+ * index already owned for that screen rather than growing a second string for
+ * the same destination.
  */
 export type SidebarChromeT = TFunction<
-  ["shell", "common", "teams", "dashboard", "settings"]
+  ["shell", "common", "teams", "settings"]
 >;
 
 /**

@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   BRAND_KEYS,
-  hasProviderBrandMark,
   monogramText,
   providerBrandKey,
 } from "../src/components/shell/provider-logo-map.ts";
@@ -139,7 +138,7 @@ describe("providerBrandKey", () => {
       "xiaomi",
       "azure-openai-responses",
     ]) {
-      strictEqual(hasProviderBrandMark(id), true, `expected mark for ${id}`);
+      ok(providerBrandKey(id) !== null, `expected mark for ${id}`);
     }
   });
 

@@ -1,11 +1,34 @@
 import {
+  jsonDoc,
   loadActivities,
   loadLearnings,
   saveLearnings,
   type TextStore,
 } from "@houston/domain";
 import type { Learning } from "@houston/protocol";
+import { ASSISTANT_AGENT_NAME } from "./assistant";
 import { withDocLock } from "./doc-lock";
+
+/**
+ * Byte ceiling on the PERSONAL ASSISTANT's memory doc, and only that one: the
+ * assistant injects its whole memory into every system prompt, so an unbounded
+ * file would silently eat the model's context window and eventually break every
+ * chat. Every other agent recalls learnings on demand and stays uncapped.
+ */
+export const ASSISTANT_LEARNINGS_MAX_BYTES = 12_000;
+
+/**
+ * What the agent is told when the cap is hit. It reaches the model verbatim —
+ * the route turns it into a 400 and `save_learning` relays the body — so it is
+ * written as an instruction to the agent, not as a user-facing error.
+ */
+export const ASSISTANT_LEARNINGS_FULL_MESSAGE =
+  "Your memory is full, so this memory was NOT saved. Consolidate first: read " +
+  ".houston/learnings/learnings.json, merge related entries into fewer and " +
+  "shorter ones, drop what is stale or repeated, write the trimmed list back " +
+  "to that same file, then save this memory again. Never mention files, " +
+  "limits, or how your memory works to the user; if you say anything, just " +
+  "say you are tidying up what you remember.";
 
 /** Stable inputs for an idempotent learning append. */
 export interface AppendLearningInput {
@@ -37,9 +60,29 @@ export async function appendLearningChecked(
     const { items } = await loadLearnings(store, root);
     const existing = items.find((item) => item.id === learning.id);
     if (existing) return { learning: existing };
-    await saveLearnings(store, root, [...items, learning]);
+    const appended = [...items, learning];
+    if (isAssistantRoot(root) && overCap(appended)) {
+      return { error: ASSISTANT_LEARNINGS_FULL_MESSAGE };
+    }
+    await saveLearnings(store, root, appended);
     return { learning };
   });
+}
+
+/**
+ * `root` is a vfs KEY (always "/"-separated, both layouts), so the assistant is
+ * identified by its last segment — the same synthetic agent name discovery
+ * hands out (routes/assistant.ts).
+ */
+function isAssistantRoot(root: string): boolean {
+  return root.split("/").filter(Boolean).at(-1) === ASSISTANT_AGENT_NAME;
+}
+
+/** Measured on the EXACT bytes `saveLearnings` would write, never an estimate. */
+function overCap(items: Learning[]): boolean {
+  return (
+    Buffer.byteLength(jsonDoc(items), "utf8") > ASSISTANT_LEARNINGS_MAX_BYTES
+  );
 }
 
 async function learningMission(

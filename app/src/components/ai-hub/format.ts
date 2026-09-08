@@ -10,7 +10,6 @@ import type {
   CatalogOffer,
   LabId,
 } from "../../lib/ai-hub/catalog-types.ts";
-import { hasProviderBrandMark } from "../shell/provider-logo-map.ts";
 
 /**
  * Token counts as compact labels: `200000 → "200K"`, `1048576 → "1M"`. Values
@@ -103,13 +102,16 @@ export function labName(lab: LabId): string {
 }
 
 /**
- * The id whose brand mark represents this model. Normally the lab, but a lab
- * with no shipped mark (the catch-all `other`, mostly) falls back to the first
- * offering provider's logo — a real, recognizable mark beats a letter monogram.
+ * The id whose brand mark represents this model: its LAB, always.
+ *
+ * Every named lab resolves to a real mark (directly or through
+ * `BRAND_ALIASES`); only the catch-all `other` does not, and it falls to the
+ * monogram. Borrowing an offering PROVIDER's logo there drew, say, the OpenRouter
+ * mark beside the caption "Other" — a row that names one brand and draws
+ * another, which is the one thing a brand mark must never do.
  */
 export function modelMarkId(model: CatalogModel): string {
-  if (hasProviderBrandMark(model.lab)) return model.lab;
-  return model.offers[0]?.providerId ?? model.lab;
+  return model.lab;
 }
 
 const LAB_NAMES: Record<LabId, string> = {

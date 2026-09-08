@@ -137,7 +137,7 @@ components:
   interaction-answers-message:
     status: partial
     ref: "@houston-ai/chat interaction-answers-message (decode) + UserInteractionAnswersMessage; encode in app/"
-    notes: Decode + render are shared; the marker encoder is composed in app/ (interaction-reply), mirroring skill-invocation-message.
+    notes: Decode + render are shared; the marker encoder lives in app/ (lib/interaction-answers-marker.ts, over lib/interaction-reply.ts), mirroring skill-invocation-message.
 
   deliverable-card:
     status: implemented

@@ -62,16 +62,30 @@ describe("override-only seed (before the pi catalog loads)", () => {
     strictEqual(anthropic?.defaultModel, "claude-sonnet-5");
   });
 
-  it("seeds the OpenAI card under the `openai` id (not pi's `openai-codex`)", () => {
+  it("seeds the OpenAI card under the `openai` id, reachable in either dialect", () => {
     strictEqual(getProvider("openai")?.name, "OpenAI");
     strictEqual(getProvider("openai")?.auth, "oauth");
-    strictEqual(getProvider("openai-codex"), undefined);
+    // The catalog is keyed by the DISPLAY id, but a lookup by pi's canonical
+    // id resolves to the same card: a config/activity/routine read carries
+    // `openai-codex`, and `undefined` there is what made those surfaces print
+    // the raw id and inherit another provider's default model.
+    strictEqual(getProvider("openai-codex")?.id, "openai");
   });
 
   it("includes the local OpenAI-compatible provider in the seed", () => {
     const local = getProvider("openai-compatible");
     strictEqual(local?.auth, "openaiCompatible");
     strictEqual(local?.models.length, 0);
+  });
+
+  it("never fabricates a default model it cannot know (B4)", () => {
+    // The seed carries NO models, so a provider without a curated default has
+    // no default to seed — `""` says exactly that, and every caller reads it as
+    // "no model to pin" rather than pinning an empty string.
+    strictEqual(getDefaultModel("groq"), "");
+    strictEqual(getDefaultModel("openai-compatible"), "");
+    // A curated default is still answered, in either dialect.
+    strictEqual(getDefaultModel("openai-codex"), "gpt-6-astra");
   });
 
   it("does not throw from any read helper while models are empty", () => {

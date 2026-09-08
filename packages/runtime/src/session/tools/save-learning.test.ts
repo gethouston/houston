@@ -91,5 +91,33 @@ test("forwards the acting identity and the turn's conversation id", async () => 
 
 test("surfaces a host rejection as a tool error (never a silent success)", async () => {
   mockFetch(() => ({ status: 400, body: { error: "missing 'text'" } }));
-  await expect(run({ text: "" })).rejects.toThrow(/missing 'text'/);
+  const out = await run({ text: "" });
+  const text = out.content[0];
+  expect(text?.type === "text" && text.text).toContain("ERROR host_error");
+  expect(text?.type === "text" && text.text).toContain("missing 'text'");
+  expect(out.details).toMatchObject({
+    ok: false,
+    error: { code: "host_error", status: 400 },
+  });
+});
+
+test("agent-facing learning instructions contain no em dashes", () => {
+  expect(tool.description).not.toContain("\u2014");
+});
+
+test("the host's turn-gate refusals keep their own codes", async () => {
+  // /sandbox/learnings/save answers 400 not_in_turn / 403 plan_mode. Both are
+  // states the model must act on differently from "the server refused".
+  for (const [status, code] of [
+    [400, "not_in_turn"],
+    [403, "plan_mode"],
+  ] as const) {
+    const calls = mockFetch(() => ({
+      status,
+      body: { code, error: "refused" },
+    }));
+    const result = await run({ text: "remember this" });
+    expect(result.details).toMatchObject({ ok: false, error: { code } });
+    expect(calls).toHaveLength(1);
+  }
 });

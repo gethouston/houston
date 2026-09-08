@@ -16,6 +16,7 @@ import type { Activity } from "@houston/protocol";
 import type { ModuleContext } from "../../module-context";
 import { createActivitiesHttp } from "../activities/http";
 import { sessionKeyOf } from "../activities/types";
+import { createAgentsHttp } from "../agents/http";
 import { historyToFeed } from "../turns/history";
 import {
   buildHistorySearchText,
@@ -75,21 +76,14 @@ export function createMissionsSearchModule(
 ): MissionsSearchModule {
   const { config, clientFor, authExpiry } = ctx;
   const { baseUrl, ports } = config;
-  const root = baseUrl.replace(/\/+$/, "");
   const emitTokenExpired = () => authExpiry.notifyExpired();
   const http = createActivitiesHttp(baseUrl, ports, emitTokenExpired);
+  const agents = createAgentsHttp(baseUrl, ports, emitTokenExpired);
 
   /** The agents to search: the one given, else the whole personal workspace. */
   async function resolveAgentIds(agentId?: string): Promise<string[]> {
     if (agentId) return [agentId];
-    const res = await ports.fetch(`${root}/agents`, {
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) {
-      if (res.status === 401) emitTokenExpired();
-      throw new Error(`agents request failed: ${res.status}`);
-    }
-    return ((await res.json()) as { id: string }[]).map((a) => a.id);
+    return (await agents.list()).map((a) => a.id);
   }
 
   function match(

@@ -51,6 +51,12 @@ export const queryKeys = {
       ? (["provider-statuses", ...providers] as const)
       : (["provider-statuses"] as const),
   capabilities: () => ["capabilities"] as const,
+  /**
+   * The personal assistant's address (`GET /v1/assistant`). Space-scoped like
+   * the capabilities beside it: switching space changes which deployment
+   * answers, so the space-cache purge drops it with the rest.
+   */
+  assistant: () => ["assistant"] as const,
 
   /**
    * Durable onboarding flags — USER-scoped and space-INVARIANT (engine prefs on

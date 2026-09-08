@@ -108,7 +108,7 @@ export function searchConversationMoments(
 }
 
 function momentTypeFor(message: ChatMessage): ConversationMomentType | null {
-  if (message.runtimeError || message.providerError) return "error";
+  if (message.providerError) return "error";
   if (message.from === "user" && message.content) return "user";
   if (message.from === "assistant" && message.fileChanges.length > 0)
     return "artifact";

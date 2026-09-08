@@ -66,8 +66,8 @@ async function expectUnderTheSwitcher(page: Page): Promise<void> {
     .boundingBox();
   const section = await inbox(page).boundingBox();
   const card = await inviteCards(page).first().boundingBox();
-  // The Inbox row leads the rail's top-level destinations.
-  const firstNavItem = await navRow(page, "inbox").boundingBox();
+  // The Agent Store row leads the rail's ungated top-level destinations.
+  const firstNavItem = await navRow(page, "agent-store").boundingBox();
   if (!switcher || !section || !card || !firstNavItem)
     throw new Error("sidebar header, inbox or nav is not laid out");
   expect(section.y).toBeGreaterThanOrEqual(switcher.y + switcher.height);

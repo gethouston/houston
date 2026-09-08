@@ -115,10 +115,15 @@ describe("fetchStoreCatalog", () => {
     strictEqual(new URL(calls[0].url).searchParams.get("page"), "3");
   });
 
-  it("returns the page payload as-is", async () => {
-    const page = { items: [{ id: "a1" }], hasMore: true };
-    const { fetchImpl } = capture(page);
-    deepStrictEqual(await fetchStoreCatalog({}, fetchImpl), page);
+  // Relayed verbatim except for the client's own backfill of additive summary
+  // fields (`normalizeAgentSummary`), so a page served by an older gateway
+  // still reaches the UI with every field it renders.
+  it("returns the page payload, with absent summary fields backfilled", async () => {
+    const { fetchImpl } = capture({ items: [{ id: "a1" }], hasMore: true });
+    deepStrictEqual(await fetchStoreCatalog({}, fetchImpl), {
+      items: [{ id: "a1", skills: [] }],
+      hasMore: true,
+    });
   });
 
   it("throws a status-carrying StoreCatalogError on a failed read", async () => {
@@ -260,13 +265,15 @@ describe("fetchStoreCreator", () => {
     strictEqual(url.searchParams.get("page"), null);
   });
 
-  it("returns the creator page payload as-is", async () => {
-    const page = {
+  it("returns the creator page payload, with absent summary fields backfilled", async () => {
+    const { fetchImpl } = capture({
       profile: { handle: "felipe" },
       agents: { items: [{ id: "a1" }], hasMore: true },
-    };
-    const { fetchImpl } = capture(page);
-    deepStrictEqual(await fetchStoreCreator("felipe", {}, fetchImpl), page);
+    });
+    deepStrictEqual(await fetchStoreCreator("felipe", {}, fetchImpl), {
+      profile: { handle: "felipe" },
+      agents: { items: [{ id: "a1", skills: [] }], hasMore: true },
+    });
   });
 
   it("throws a status-carrying StoreCatalogError on a 404", async () => {

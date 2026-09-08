@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { buildClaudeEnv } from "./backend";
 import { resolveClaudeExecutable } from "./binary-path";
+import { buildClaudeEnv } from "./claude-env";
 import { claudeLoginConfigDir } from "./paths";
 
 /**

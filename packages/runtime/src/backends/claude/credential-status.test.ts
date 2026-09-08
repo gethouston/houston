@@ -5,6 +5,8 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { CredentialProbe } from "./credential-status";
 import {
   anthropicCredentialCached,
+  anthropicCredentialSettled,
+  forgetAnthropicCredentialCacheForTest,
   logoutAnthropicCredential,
   refreshAnthropicCredential,
   resetAnthropicCredentialCache,
@@ -289,5 +291,48 @@ test("logout removes the materialized file so the signal flips off", async () =>
     // file removal + cache reset.
     await logoutAnthropicCredential().catch(() => {});
     expect(anthropicCredentialCached()).toBe(false);
+  });
+});
+
+test("a COLD cache settles by AWAITING the first probe, never by reading it as logged out", async () => {
+  // The undelivered-prompt bug: for the ~10s the first probe can take, the sync
+  // signal answers `false` and the turn gate refused an anthropic-pinned turn.
+  forgetAnthropicCredentialCacheForTest();
+  expect(anthropicCredentialCached()).toBe(false);
+  expect(await anthropicCredentialSettled(answers(true))).toBe(true);
+  expect(anthropicCredentialCached()).toBe(true);
+});
+
+test("a COLD cache whose probe answers logged-out settles false (a real refusal)", async () => {
+  forgetAnthropicCredentialCacheForTest();
+  expect(await anthropicCredentialSettled(answers(false))).toBe(false);
+});
+
+test("a COLD cache whose probe cannot ANSWER settles unknown, not logged out", async () => {
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  forgetAnthropicCredentialCacheForTest();
+  const settled = await anthropicCredentialSettled(async () => ({
+    known: false,
+    reason: "probe killed (SIGTERM)",
+  }));
+  expect(settled).toBeUndefined();
+});
+
+test("a WARM cache settles with NO probe (a connected turn pays no latency)", async () => {
+  const { probe, calls } = countingProbe({ known: true, loggedIn: true });
+  resetAnthropicCredentialCache(true);
+  expect(await anthropicCredentialSettled(probe)).toBe(true);
+  resetAnthropicCredentialCache(false);
+  expect(await anthropicCredentialSettled(probe)).toBe(false);
+  expect(calls()).toBe(0);
+});
+
+test("a usable materialized file settles connected without asking the binary", async () => {
+  await withHoustonHomeAsync(async (credFile) => {
+    const { probe, calls } = countingProbe({ known: true, loggedIn: false });
+    forgetAnthropicCredentialCacheForTest();
+    writeCredFile(credFile);
+    expect(await anthropicCredentialSettled(probe)).toBe(true);
+    expect(calls()).toBe(0);
   });
 });

@@ -27,12 +27,12 @@ import type { SandboxFetch } from "./sandbox-fetch";
 const SearchParams = Type.Object({
   query: Type.String({
     description:
-      "Plain-language description of ONE specific thing you want to do (e.g. 'send an email', 'query analytics for the most active users'). A task with several independent steps gets one search per step — do not lump them into one loose query. Include the app name when you know it. Returns matching action slugs + their input parameters.",
+      "Plain-language description of ONE specific thing you want to do (e.g. 'send an email', 'query analytics for the most active users'). A task with several independent steps gets one search per step - do not lump them into one loose query. Include the app name when you know it. Returns matching action slugs + their input parameters.",
   }),
   app: Type.Optional(
     Type.String({
       description:
-        "The app the task names ('posthog', 'gmail', 'google sheets'). When set, results are scoped to ONLY that app's actions — ALWAYS set it when the user names the app. Omit it only when no app was named and you are discovering which app could do the task.",
+        "The app the task names ('posthog', 'gmail', 'google sheets'). When set, results are scoped to ONLY that app's actions - ALWAYS set it when the user names the app. Omit it only when no app was named and you are discovering which app could do the task.",
     }),
   ),
 });
@@ -61,7 +61,7 @@ type ExecuteParams = Static<typeof ExecuteParams>;
 const ConnectParams = Type.Object({
   toolkit: Type.String({
     description:
-      "The app's toolkit slug — the identifier from integration_search results (e.g. 'gmail', 'slack', 'notion').",
+      "The app's toolkit slug - the identifier from integration_search results (e.g. 'gmail', 'slack', 'notion').",
   }),
   reason: Type.Optional(
     Type.String({
@@ -275,7 +275,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           reason: "Sign in to Houston to use your connected apps.",
         });
         throw new Error(
-          "The user is signed out of Houston, so connected apps can't act for them yet. A sign-in card has been queued in the interaction flow. Queue any request_connection you still need (it will follow the sign-in step), then end your turn. Do NOT tell the user to open Settings — Houston sends you a message automatically once they're signed in.",
+          "The user is signed out of Houston, so connected apps can't act for them yet. A sign-in card has been queued in the interaction flow. Queue any request_connection you still need (it will follow the sign-in step), then end your turn. Do NOT tell the user to open Settings - Houston sends you a message automatically once they're signed in.",
         );
       }
       if (code === "grant_expired") {
@@ -326,7 +326,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_search",
     label: "Find an app action",
     description:
-      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute. When the user names an app, pass it as `app` to scope results to it — the result says so with a leading NOTE when this deployment could not apply the scope, and then the matches may belong to other apps. Never conclude an app has no actions from a result where other apps dominate: if the app appears only as an app row (no actions), search again with `app` set to it before reporting any capability gap.",
+      "Search the user's apps (Gmail, Google Calendar, Slack, Notion, and many more) for an action you can run. Returns action slugs with their input parameters; actions marked NOT CONNECTED need the user to connect the app first (the result explains how to offer that). Call this first to discover what's possible, then run one with integration_execute. When the user names an app, pass it as `app` to scope results to it - the result says so with a leading NOTE when this deployment could not apply the scope, and then the matches may belong to other apps. Never conclude an app has no actions from a result where other apps dominate: if the app appears only as an app row (no actions), search again with `app` set to it before reporting any capability gap.",
     promptSnippet: "Search the user's connected apps for an action to run",
     parameters: SearchParams,
     executionMode: "sequential",
@@ -418,7 +418,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
               .join(", ")}`,
         );
         parts.push(
-          `These apps have MULTIPLE accounts connected:\n${lines.join("\n")}\nWhen you run an action on one of these apps, pass integration_execute's \`account\` with the right account id. If the user has said which account to use (or the task implies it), pick it; if the choice matters and is ambiguous, ask the user first via ask_user, naming the accounts in plain words (their email or workspace name) — never show a raw account id to the user.`,
+          `These apps have MULTIPLE accounts connected:\n${lines.join("\n")}\nWhen you run an action on one of these apps, pass integration_execute's \`account\` with the right account id. If the user has said which account to use (or the task implies it), pick it; if the choice matters and is ambiguous, ask the user first via ask_user, naming the accounts in plain words (their email or workspace name) - never show a raw account id to the user.`,
         );
       }
       const connectable = slugsWith("connectable");
@@ -467,7 +467,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_execute",
     label: "Run an app action",
     description:
-      "Run an action on one of the user's connected apps — e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. When the app has several connected accounts (integration_search lists them), pass `account` to pick one.",
+      "Run an action on one of the user's connected apps - e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. When the app has several connected accounts (integration_search lists them), pass `account` to pick one.",
     promptSnippet: "Run an action on one of the user's connected apps",
     parameters: ExecuteParams,
     executionMode: "sequential",
@@ -547,7 +547,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       }
       const text = boundResultText(
         result.data ? JSON.stringify(result.data, null, 2) : "Done.",
-        "Do not rely on the cut-off tail. Re-run the action with tighter parameters — fewer results, specific ids or fields, and without full payloads/bodies — to get what you need within the limit.",
+        "Do not rely on the cut-off tail. Re-run the action with tighter parameters - fewer results, specific ids or fields, and without full payloads/bodies - to get what you need within the limit.",
       );
       return {
         content: [{ type: "text" as const, text }],
@@ -566,7 +566,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: REQUEST_CONNECTION_TOOL_NAME,
     label: "Ask the user to connect an app",
     description:
-      "Ask the user to connect one of their apps (Gmail, Slack, Notion, and many more) when an action needs it. This adds a connect step to the one interaction card Houston shows in place of the chat input; queue any questions you also need (via ask_user) in the SAME turn, then end your turn. Never spell out the app's slug or a link in your reply — Houston sends you a message automatically once the connection is live.",
+      "Ask the user to connect one of their apps (Gmail, Slack, Notion, and many more) when an action needs it. This adds a connect step to the one interaction card Houston shows in place of the chat input; queue any questions you also need (via ask_user) in the SAME turn, then end your turn. Never spell out the app's slug or a link in your reply - Houston sends you a message automatically once the connection is live.",
     promptSnippet: "Ask the user to connect an app so an action can run",
     parameters: ConnectParams,
     executionMode: "sequential",
@@ -586,7 +586,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         content: [
           {
             type: "text" as const,
-            text: "This app was added as a connect step to the one interaction card Houston shows the user in place of the chat input. Queue everything else this task needs now (call ask_user for any questions in this same turn), then end your turn. Do not spell out the app's slug or any link in your reply, and do not ask the user to confirm — Houston sends you a message automatically once the connection is live.",
+            text: "This app was added as a connect step to the one interaction card Houston shows the user in place of the chat input. Queue everything else this task needs now (call ask_user for any questions in this same turn), then end your turn. Do not spell out the app's slug or any link in your reply, and do not ask the user to confirm - Houston sends you a message automatically once the connection is live.",
           },
         ],
         details: { toolkit },

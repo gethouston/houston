@@ -93,3 +93,53 @@ test("replayCharBudget applies the fit fraction at ~4 chars/token", () => {
   expect(replayCharBudget(200_000)).toBe(640_000);
   expect(replayCharBudget(0)).toBe(0);
 });
+
+test("a rebuild after /clear carries only what was said since the clear", () => {
+  const p = renderReplayPreamble(
+    [
+      msg("user", "my passport number is 12345", { turnId: "t1" }),
+      msg("assistant", "noted", { turnId: "t1" }),
+      msg("user", "/clear", { turnId: "t2" }),
+      msg("assistant", "", { turnId: "t2", contextCleared: true }),
+      msg("user", "plan my week", { turnId: "t3" }),
+      msg("assistant", "here is a plan", { turnId: "t3" }),
+      msg("user", "add Friday", { turnId: "t4" }),
+    ],
+    "t4",
+    100_000,
+  );
+  // The cleared era is unreachable to the model, marker line included.
+  expect(p?.text).not.toContain("passport");
+  expect(p?.text).not.toContain("/clear");
+  expect(p?.text).toContain("User: plan my week");
+});
+
+test("only the NEWEST clear marker bounds the carry", () => {
+  const p = renderReplayPreamble(
+    [
+      msg("assistant", "", { turnId: "t1", contextCleared: true }),
+      msg("user", "first era", { turnId: "t2" }),
+      msg("assistant", "", { turnId: "t3", contextCleared: true }),
+      msg("user", "second era", { turnId: "t4" }),
+      msg("user", "now", { turnId: "t5" }),
+    ],
+    "t5",
+    100_000,
+  );
+  expect(p?.text).not.toContain("first era");
+  expect(p?.text).toContain("User: second era");
+});
+
+test("a conversation cleared with nothing said since carries nothing", () => {
+  expect(
+    renderReplayPreamble(
+      [
+        msg("user", "old secret", { turnId: "t1" }),
+        msg("assistant", "", { turnId: "t2", contextCleared: true }),
+        msg("user", "hi", { turnId: "t3" }),
+      ],
+      "t3",
+      100_000,
+    ),
+  ).toBeNull();
+});

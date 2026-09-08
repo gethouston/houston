@@ -1,4 +1,5 @@
 import type { ProviderCatalog } from "@houston/protocol";
+import { retryAfterMsOf } from "../../../../../ui/engine-client/src/retry-after";
 import type { Capabilities } from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
@@ -25,7 +26,11 @@ export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
       )(`${this.ctx.baseUrl}/v1/version`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new HoustonEngineError(res.status, body);
+        throw new HoustonEngineError(
+          res.status,
+          body,
+          retryAfterMsOf(res.headers),
+        );
       }
       return (await res.json()) as never;
     }
@@ -61,7 +66,11 @@ export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
       // caller keeps the seed so the UI still renders — but loudly).
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new HoustonEngineError(res.status, body);
+        throw new HoustonEngineError(
+          res.status,
+          body,
+          retryAfterMsOf(res.headers),
+        );
       }
       return (await res.json()) as ProviderCatalog;
     }

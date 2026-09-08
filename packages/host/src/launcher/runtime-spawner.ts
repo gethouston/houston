@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import type { RuntimeHandle, RuntimeSpawner, SpawnSpec } from "./process";
+import { runtimeParentEnv } from "./runtime-parent-env";
 
 export interface RuntimeSpawnerOptions {
   /**
@@ -9,8 +10,13 @@ export interface RuntimeSpawnerOptions {
    * in the .app.
    */
   command: string[];
-  /** Extra env for every runtime (e.g. HOUSTON_SYSTEM_PROMPT from the app). */
-  env?: Record<string, string>;
+  /**
+   * Extra env for the runtime being spawned, built from its spec (the host's
+   * `runtimeSpawnEnv`). A FUNCTION, not a fixed record: what a child is told
+   * differs per agent — only the assistant's coordinator carries a role — so a
+   * host-wide record would hand every agent the same answer.
+   */
+  env?: (spec: SpawnSpec) => Record<string, string>;
   /** Where child stdio goes. Default: inherit (visible in the app's logs). */
   onLog?: (line: string) => void;
 }
@@ -32,8 +38,8 @@ export class RuntimeProcessSpawner implements RuntimeSpawner {
       throw new Error("RuntimeProcessSpawner: command is empty");
     const child = spawn(cmd, args, {
       env: {
-        ...process.env,
-        ...this.opts.env,
+        ...runtimeParentEnv(process.env),
+        ...this.opts.env?.(spec),
         HOUSTON_HOST: "127.0.0.1",
         HOUSTON_PORT: String(spec.port),
         HOUSTON_WORKSPACE_DIR: spec.workspaceDir,

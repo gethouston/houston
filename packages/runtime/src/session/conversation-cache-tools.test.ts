@@ -47,12 +47,12 @@ vi.mock("../backends/pi/backend", () => ({
 
 /**
  * pi's OWN built-in tools: allowlisted by name but supplied by pi itself, so
- * they legitimately have no Houston tool object. Everything else in the
- * allowlist is a Houston custom tool and MUST be registered. `read/ls/grep/
- * find/edit/write` are NOT here on purpose — Houston shadows pi's builtins with
- * its workspace-clamped versions (tools/clamped-fs.ts), which are registered.
+ * they legitimately have no Houston tool object. It is EMPTY on purpose —
+ * Houston shadows every pi builtin it offers: `read/ls/grep/find/edit/write`
+ * with the workspace-clamped versions (tools/clamped-fs.ts) and `bash` with the
+ * env-scrubbed one (tools/scrubbed-bash.ts), all of them registered.
  */
-const PI_BUILTIN_TOOL_NAMES = new Set(["bash"]);
+const PI_BUILTIN_TOOL_NAMES = new Set<string>();
 
 const unregistered = (tools: string[], customTools: string[]): string[] =>
   tools.filter(
@@ -108,6 +108,10 @@ test("pi's always-on custom tool set is exactly the ungated Houston tools", () =
       "plan_ready",
       "suggest_reusable",
       "suggest_actions",
+      // Houston's own bash, whose child env is scrubbed of every HOUSTON_*
+      // secret. Registering it is what SHADOWS pi's built-in bash, which would
+      // otherwise hand a model-directed shell this runtime's sandbox token.
+      "bash",
     ]),
   );
 });
@@ -168,5 +172,113 @@ test("pi registers every allowlisted custom tool with the host + sandbox gates o
     restoreEnv("HOUSTON_CONTROL_PLANE_URL", prior.controlPlane);
     restoreEnv("HOUSTON_SANDBOX_TOKEN", prior.sandboxToken);
     restoreEnv("HOUSTON_CODE_SANDBOX_URL", prior.codeSandboxUrl);
+  }
+});
+
+/**
+ * Re-import conversation-cache with the host gates open and whatever assistant
+ * environment the case is about. The operation catalog is embedded in the
+ * build, so nothing stages one. Every env is restored exactly as it was.
+ */
+async function reimportWithAssistantEnv(assistant: {
+  HOUSTON_ASSISTANT_ROLE?: string;
+  HOUSTON_ASSISTANT_CP_URL?: string;
+  HOUSTON_ASSISTANT_TOKEN?: string;
+}): Promise<{ tools: string[]; customTools: string[] }> {
+  const keys = [
+    "HOUSTON_CONTROL_PLANE_URL",
+    "HOUSTON_SANDBOX_TOKEN",
+    "HOUSTON_ASSISTANT_ROLE",
+    "HOUSTON_ASSISTANT_CP_URL",
+    "HOUSTON_ASSISTANT_TOKEN",
+  ] as const;
+  const prior = new Map(keys.map((k) => [k, process.env[k]]));
+  process.env.HOUSTON_CONTROL_PLANE_URL = "http://host.local";
+  process.env.HOUSTON_SANDBOX_TOKEN = "sandbox-token";
+  delete process.env.HOUSTON_ASSISTANT_ROLE;
+  delete process.env.HOUSTON_ASSISTANT_CP_URL;
+  delete process.env.HOUSTON_ASSISTANT_TOKEN;
+  for (const [k, v] of Object.entries(assistant)) process.env[k] = v;
+  try {
+    vi.resetModules();
+    await import("./conversation-cache");
+    return {
+      tools: [...captured.tools],
+      customTools: [...captured.customTools],
+    };
+  } finally {
+    for (const k of keys) restoreEnv(k, prior.get(k));
+  }
+}
+
+/**
+ * The assistant family rides a SECOND gate on top of host reachability: this
+ * runtime must BE the coordinator, which only the host can say
+ * (`HOUSTON_ASSISTANT_ROLE`). The open-gate test above leaves it off and its
+ * parity assertion passes vacuously for these names, so this opens the role
+ * gate too and pins that each allowlisted assistant name has a registered tool
+ * object behind it.
+ */
+test("pi registers the assistant family for the coordinator", async () => {
+  const { ASSISTANT_TOOL_NAMES } = await import("./tools/assistant");
+  const open = await reimportWithAssistantEnv({
+    HOUSTON_ASSISTANT_ROLE: "coordinator",
+  });
+  expect(unregistered(open.tools, open.customTools)).toEqual([]);
+  // The gate really opened (else the assertion above passes vacuously).
+  expect(open.tools).toEqual(expect.arrayContaining([...ASSISTANT_TOOL_NAMES]));
+  expect(open.customTools).toEqual(
+    expect.arrayContaining([...ASSISTANT_TOOL_NAMES]),
+  );
+  // Named literally, so dropping it from ASSISTANT_TOOL_NAMES cannot make the
+  // assertions above pass while the assistant loses its own transcript search.
+  expect(open.tools).toContain("houston_recall");
+  expect(open.customTools).toContain("houston_recall");
+  // A coordinator hands work to agents and runs none itself: no shell, on any
+  // deployment, whatever code execution the deployment offers.
+  expect(open.tools).not.toContain("bash");
+  expect(open.customTools).not.toContain("bash");
+});
+
+/**
+ * The account-wide catalog (deleting agents, billing, team membership) is not
+ * something a deployment's environment can hand an ordinary agent. A desktop
+ * host is its own assistant gateway, so a gateway pair sitting in an agent's
+ * environment says nothing about whether that agent is the user's assistant —
+ * and a third-party Agent Store install runs in exactly such an environment.
+ */
+test.each([
+  [
+    "a gateway pair in its environment",
+    {
+      HOUSTON_ASSISTANT_CP_URL: "https://gateway.test",
+      HOUSTON_ASSISTANT_TOKEN: "gw-token",
+    },
+  ],
+  ["a misspelled role", { HOUSTON_ASSISTANT_ROLE: "assistant" }],
+  ["an empty role", { HOUSTON_ASSISTANT_ROLE: "" }],
+  ["no role at all", {}],
+])("the assistant family stays off with %s", async (_label, assistant) => {
+  const { ASSISTANT_TOOL_NAMES } = await import("./tools/assistant");
+  const partial = await reimportWithAssistantEnv(assistant);
+  for (const name of ASSISTANT_TOOL_NAMES) {
+    expect(partial.tools).not.toContain(name);
+    expect(partial.customTools).not.toContain(name);
+  }
+  // The OTHER host-gated tools still registered, so this is the assistant gate
+  // closing rather than the whole re-import having failed.
+  expect(partial.tools).toEqual(expect.arrayContaining(["save_routine"]));
+});
+
+/**
+ * The same gate on the CLAUDE backend: pi and the in-process MCP server must
+ * offer the identical family, or an anthropic-backed agent on the assistant pod
+ * silently cannot do what a pi-backed one can.
+ */
+test("the assistant family stays absent when the deployment did not opt in", async () => {
+  const { ASSISTANT_TOOL_NAMES } = await import("./tools/assistant");
+  for (const name of ASSISTANT_TOOL_NAMES) {
+    expect(base.tools).not.toContain(name);
+    expect(base.customTools).not.toContain(name);
   }
 });

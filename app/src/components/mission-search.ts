@@ -50,8 +50,6 @@ function feedItemToSearchText(item: FeedItem): string {
       return `${item.data.name} ${feedValueToText(item.data.input)}`;
     case "tool_result":
       return item.data.content;
-    case "tool_runtime_error":
-      return "";
     case "file_changes":
       return [...item.data.created, ...item.data.modified].join("\n");
     case "final_result":

@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import { EngineError } from "@houston/runtime-client";
 import * as controlPlane from "../control-plane";
 import { deploymentServes } from "./host-capabilities";
@@ -31,13 +32,13 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       }
     }
     async integrationToolkits(
-      provider: string,
+      provider: IntegrationProviderId,
     ): Promise<controlPlane.IntegrationToolkit[]> {
       if (!this.ctx.cp) return [];
       return controlPlane.integrationToolkits(this.ctx.cp, provider);
     }
     async integrationConnections(
-      provider: string,
+      provider: IntegrationProviderId,
     ): Promise<controlPlane.IntegrationConnection[]> {
       if (!this.ctx.cp) return [];
       return controlPlane.integrationConnections(this.ctx.cp, provider);
@@ -54,7 +55,7 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       return this.ctx.sdk.integrations.connect(provider, toolkit, agent);
     }
     async integrationConnection(
-      provider: string,
+      provider: IntegrationProviderId,
       connectionId: string,
     ): Promise<controlPlane.IntegrationConnection> {
       if (!this.ctx.cp)

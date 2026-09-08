@@ -5,7 +5,7 @@
  * so "home" is the FIRST team's Mission Control. The one exception is a caller
  * with no teams resolved yet (first paint, a workspace still loading, a space
  * with nothing in it): there is no board to send them to, so they land on the
- * Inbox, the one screen that needs no team.
+ * Agents home, the screen that needs no team.
  *
  * Every fallback in the app routes through here rather than naming a view of
  * its own: the dead-view guard, the blocked-team guard, ⌘N and the palette off
@@ -16,7 +16,7 @@
 import { useUIStore } from "../stores/ui.ts";
 import { currentTeams } from "./current-teams.ts";
 import { homeTeam } from "./teams-model.ts";
-import { INBOX_VIEW_ID } from "./top-level-views.ts";
+import { AGENTS_HOME_VIEW_ID } from "./top-level-views.ts";
 
 /**
  * Go home, reading the teams outside React.
@@ -30,7 +30,7 @@ export function openHome(): void {
   const team = homeTeam(currentTeams());
   const ui = useUIStore.getState();
   if (team === null) {
-    ui.setViewMode(INBOX_VIEW_ID);
+    ui.setViewMode(AGENTS_HOME_VIEW_ID);
     return;
   }
   ui.openTeamView(team.id, "mission-control");

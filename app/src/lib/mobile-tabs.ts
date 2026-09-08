@@ -31,9 +31,9 @@ export type MobileNavTabId = Exclude<MobileTabId, "more">;
  * Which item the current location belongs to. A team view lights Teams
  * whatever section is open and whether or not it is narrowed to one agent —
  * the section is a level INSIDE the Teams tree, not a different place.
- * Everything else (Inbox, Store, Skills, Settings, the AI hub, ...) is reached
- * through the More menu, so it lights More and no location leaves the bar
- * dark.
+ * Everything else (the Store, Skills, Settings, the Academy, the AI hub, ...)
+ * is reached through the More menu, so it lights More and no location leaves
+ * the bar dark.
  */
 export function activeMobileTab(ui: { viewMode: string }): MobileTabId {
   if (ui.viewMode === AGENTS_HOME_VIEW_ID) return "agents";

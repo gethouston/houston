@@ -10,13 +10,16 @@
   ],
   "scripts": {
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "typecheck": "tsgo --noEmit"
+    "test:assistant-catalog": "vitest run tests/*.spec.ts",
+    "typecheck": "tsgo --noEmit && tsgo -p scripts/tsconfig.json --noEmit"
   },
   "dependencies": {
     "@houston/agentstore-client": "workspace:*",
     "@houston/protocol": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "5.9.3"
+    "@houston/domain": "workspace:*",
+    "typescript": "5.9.3",
+    "vitest": "3.2.6"
   }
 }

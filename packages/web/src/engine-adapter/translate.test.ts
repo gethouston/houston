@@ -120,9 +120,9 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
     expect(
       configWriteToSettings(
         CONFIG,
-        JSON.stringify({ provider: "openai", model: "gpt-5.5" }),
+        JSON.stringify({ provider: "openai", model: "gpt-6-astra" }),
       ),
-    ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
+    ).toEqual({ activeProvider: "openai-codex", model: "gpt-6-astra" });
     // GitHub Copilot shares one id across frontend and engine: a picked
     // (non-default) Copilot model must mirror to the runtime, or every turn runs
     // the provider default. Copilot uses DOTTED model ids (claude-opus-4.8).
@@ -162,14 +162,16 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
     ).toEqual({ activeProvider: "anthropic", model: "claude-opus-5" });
   });
 
-  test("a new provider id passes through with the universal model floor", () => {
+  test("a new provider id passes through carrying NO other provider's model", () => {
     // The pi-ai catalog is open: a provider id we don't know is NOT invalid and
     // must not be rewritten to the default provider. With no stored model and
-    // no DEFAULT_MODEL entry, the model falls to the universal floor (the
-    // default provider's model) so the turn still resolves.
+    // no DEFAULT_MODEL entry there is no honest default, so the model is left
+    // unset and the runtime picks from THAT provider's own catalog — the
+    // engine's setSettings skips a falsy model rather than storing one. A
+    // universal floor here wrote Codex's id onto every uncurated provider.
     expect(
-      configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
-    ).toEqual({ activeProvider: "gemini", model: "gpt-5.5" });
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "newco" })),
+    ).toEqual({ activeProvider: "newco", model: "" });
   });
 
   test("skips non-config files, missing provider, and bad JSON", () => {

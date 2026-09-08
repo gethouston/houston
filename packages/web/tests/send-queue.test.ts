@@ -237,6 +237,51 @@ describe("merged @mentions (HOU-944)", () => {
   });
 });
 
+/**
+ * A receipt is a person's yes. A merge that dropped one would send the user
+ * back to a card they already answered, so the queue unions them exactly like
+ * mentions — and a repeat of the same request keeps the FIRST answer, because
+ * the host retires a request the moment it is decided.
+ */
+describe("merged approval receipts", () => {
+  it("unions every merged entry's receipts, deduped by requestId", () => {
+    setRunning(true);
+    maybeQueueSend(
+      AGENT,
+      req(key, "Delete it?: Yes, go ahead", {
+        approvals: [{ requestId: "req-1", decision: "approve" }],
+      }),
+      dispatch,
+    );
+    maybeQueueSend(
+      AGENT,
+      req(key, "And the other?: No, don't do it", {
+        approvals: [
+          { requestId: "req-1", decision: "deny" },
+          { requestId: "req-2", decision: "deny" },
+        ],
+      }),
+      dispatch,
+    );
+    setRunning(false);
+
+    expect(dispatched).toHaveLength(1);
+    expect(dispatched[0]?.approvals).toEqual([
+      { requestId: "req-1", decision: "approve" },
+      { requestId: "req-2", decision: "deny" },
+    ]);
+  });
+
+  it("leaves a merge that answered no card without approvals", () => {
+    setRunning(true);
+    maybeQueueSend(AGENT, req(key, "Wait"), dispatch);
+    maybeQueueSend(AGENT, req(key, "about cars"), dispatch);
+    setRunning(false);
+
+    expect(dispatched[0]?.approvals).toBeUndefined();
+  });
+});
+
 describe("removeQueuedSend", () => {
   it("drops one held send by id and updates the VM", () => {
     setRunning(true);

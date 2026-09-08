@@ -27,6 +27,7 @@ import {
   EMPTY_PROVIDER_CAPABILITIES,
   getProvider,
   getVisibleProviders,
+  isOpenCatalogProvider,
 } from "../lib/providers";
 import { useCapabilities } from "./use-capabilities";
 import { useProviderCatalog } from "./use-provider-catalog";
@@ -148,11 +149,20 @@ export function usePickerViewModels(opts: {
 
   const currentProvider = getProvider(provider);
   // The shared label chain (`modelDisplayLabel`): catalog label, then the
-  // engine-reported configured model — a local OpenAI-compatible model isn't in
-  // the static catalog — then the raw selection. The routine screen's model row
-  // names the same pair through the same chain, so the two can't disagree.
+  // engine-reported configured model, then the raw selection. The routine
+  // screen's model row names the same pair through the same chain, so the two
+  // can't disagree.
+  //
+  // `active_model` is offered ONLY for an open-catalog provider (the local
+  // OpenAI-compatible endpoint, the gateways): there it is the model's ONLY
+  // name. For a catalogued provider it is that provider's saved pick, not this
+  // chat's — printing it labelled the trigger with a model the conversation was
+  // never pinned to.
+  const activeModel = isOpenCatalogProvider(provider)
+    ? statuses[provider]?.active_model
+    : undefined;
   const displayLabel =
-    modelDisplayLabel(provider, model, statuses[provider]?.active_model) ??
+    modelDisplayLabel(provider, model, activeModel) ??
     currentProvider?.subtitle ??
     t("modelSelector.selectModel");
 

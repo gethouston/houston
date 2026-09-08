@@ -96,7 +96,7 @@ export function renderReplayPreamble(
 ): ReplayPreamble | null {
   if (charBudget <= 0) return null;
   const lines: string[] = [];
-  for (const m of messages) {
+  for (const m of messagesVisibleToTheModel(messages)) {
     if (m.role === "user" && m.turnId === currentTurnId) continue;
     const line = renderMessage(m);
     if (line) lines.push(line);
@@ -134,4 +134,22 @@ export function renderReplayPreamble(
     ].join("\n"),
     truncated,
   };
+}
+
+/**
+ * The tail of the transcript the MODEL is still allowed to see: everything
+ * after the newest `/clear` marker, or all of it when the user never cleared.
+ *
+ * This is the one place the two audiences of a transcript diverge. The user's
+ * history and `houston_recall` read the whole file; the model reads only what
+ * has not been cleared. Without this window a session rebuild (a provider
+ * switch, a mode flip that lands on the other backend) would replay the
+ * cleared conversation straight back into the model that was told to forget it.
+ */
+function messagesVisibleToTheModel(
+  messages: ReadonlyArray<ChatMessage>,
+): ReadonlyArray<ChatMessage> {
+  for (let i = messages.length - 1; i >= 0; i--)
+    if (messages[i].contextCleared) return messages.slice(i + 1);
+  return messages;
 }

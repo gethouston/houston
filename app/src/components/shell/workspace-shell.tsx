@@ -61,12 +61,18 @@ export function WorkspaceShell({
   // `showOrganization` does the same for Admin (multiplayer owner/admin, and a
   // TEAM active space on a Spaces host). `ready` says whether the gates mean
   // anything yet, so the guard waits instead of bouncing a user mid-load.
-  const { showAiModels, showOrganization, ready } = useSurfaceGates();
+  const { showAiModels, showOrganization, showAssistant, ready } =
+    useSurfaceGates();
   // Keying the kept-alive set by workspace drops every cached screen when the
   // user switches workspace/space: their contents are workspace-scoped.
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
-  useWorkspaceViewGuards({ showAiModels, showOrganization, ready });
+  useWorkspaceViewGuards({
+    showAiModels,
+    showOrganization,
+    showAssistant,
+    ready,
+  });
   useKeyboardShortcuts();
 
   const isMobile = useIsMobile();
@@ -123,6 +129,7 @@ export function WorkspaceShell({
                     views={topLevelScreenViews({
                       showAiModels,
                       showOrganization,
+                      showAssistant,
                     })}
                   />
                 </div>

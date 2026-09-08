@@ -12,9 +12,15 @@
  * carrying the HTTP `status`, which `CommandRegistry.dispatch` surfaces as an
  * `ok: false` result. A `401` additionally fires {@link onUnauthorized} so a
  * lapsed session token becomes a visible `tokenExpired` signal.
+ *
+ * Assistant catalog: `listAgents` and `createAgent` are annotated on the
+ * control-plane side (`packages/web/src/engine-adapter/cp/agents.ts`) and that
+ * copy is the single source of truth — do NOT add a second `@assistant` block
+ * for them here.
  */
 
 import type { SdkPorts } from "../../ports";
+import { type HttpScope, httpRequest } from "../http";
 import type { AgentCreateInput, WireAgent } from "./types";
 
 /** A failed `/agents` request. `status` is the upstream HTTP status. */
@@ -36,51 +42,77 @@ export interface AgentsHttp {
   remove(id: string): Promise<void>;
 }
 
+export async function listAgents(scope: HttpScope): Promise<WireAgent[]> {
+  const res = await httpRequest(scope, "/agents");
+  return (await res.json()) as WireAgent[];
+}
+
+export async function createAgent(
+  scope: HttpScope,
+  input: AgentCreateInput,
+): Promise<WireAgent> {
+  // `JSON.stringify` drops undefined optionals, so a `{ name }` input posts
+  // exactly `{ "name": … }` — byte-identical to the legacy body iOS sends.
+  const res = await httpRequest(scope, "/agents", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return (await res.json()) as WireAgent;
+}
+
+/**
+ * Renames an agent.
+ *
+ * @param id The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param name The new name, in the user's own words.
+ * @assistant group:agents confirm
+ */
+export async function renameAgent(
+  scope: HttpScope,
+  id: string,
+  name: string,
+): Promise<WireAgent> {
+  const res = await httpRequest(scope, `/agents/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+  return (await res.json()) as WireAgent;
+}
+
+/**
+ * Deletes an agent and everything in it.
+ *
+ * @param id The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @assistant group:agents confirm
+ */
+export async function deleteAgent(scope: HttpScope, id: string): Promise<void> {
+  await httpRequest(scope, `/agents/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
 export function createAgentsHttp(
   baseUrl: string,
   ports: SdkPorts,
   onUnauthorized: () => void,
 ): AgentsHttp {
-  const root = baseUrl.replace(/\/+$/, "");
-
-  async function req(path: string, init?: RequestInit): Promise<Response> {
-    const res = await ports.fetch(`${root}${path}`, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
-    });
-    if (!res.ok) {
-      if (res.status === 401) onUnauthorized();
-      const body = await res.text().catch(() => "");
-      throw new AgentsHttpError(
-        body || `agents request failed: ${res.status}`,
-        res.status,
-      );
-    }
-    return res;
-  }
+  const scope: HttpScope = {
+    baseUrl: baseUrl.replace(/\/+$/, ""),
+    ports,
+    onUnauthorized,
+    fail: (message, status) =>
+      new AgentsHttpError(
+        message || `agents request failed: ${status}`,
+        status,
+      ),
+  };
 
   return {
-    async list() {
-      return (await (await req("/agents")).json()) as WireAgent[];
-    },
-    async create(input) {
-      // `JSON.stringify` drops undefined optionals, so a `{ name }` input posts
-      // exactly `{ "name": … }` — byte-identical to the legacy body iOS sends.
-      const res = await req("/agents", {
-        method: "POST",
-        body: JSON.stringify(input),
-      });
-      return (await res.json()) as WireAgent;
-    },
-    async rename(id, name) {
-      const res = await req(`/agents/${encodeURIComponent(id)}`, {
-        method: "PATCH",
-        body: JSON.stringify({ name }),
-      });
-      return (await res.json()) as WireAgent;
-    },
-    async remove(id) {
-      await req(`/agents/${encodeURIComponent(id)}`, { method: "DELETE" });
-    },
+    list: () => listAgents(scope),
+    create: (input) => createAgent(scope, input),
+    rename: (id, name) => renameAgent(scope, id, name),
+    remove: (id) => deleteAgent(scope, id),
   };
 }

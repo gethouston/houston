@@ -8,7 +8,7 @@ import type { Agent, Workspace, WorkspaceRuntime } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { RuntimeChannel } from "../ports";
-import { hostProvider } from "../providers";
+import { hostProvider, routineProviderUnavailable } from "../providers";
 import { fireRoutineRun, RoutineBusyError } from "../schedule/run";
 import type { FiringJob, RoutineFirer } from "../schedule/scheduler";
 import type { Vfs } from "../vfs";
@@ -88,11 +88,8 @@ class TriggerRoutineFirer implements RoutineFirer {
     // A pin resolving to no known provider fails the run HERE with the real
     // reason (parity with ChannelRoutineFirer) rather than as an opaque
     // runtime stream error nobody persists.
-    if (pin.provider && !hostProvider(pin.provider)) {
-      throw new Error(
-        `unknown provider: ${pin.provider} — edit the routine and pick a provider`,
-      );
-    }
+    if (pin.provider && !hostProvider(pin.provider))
+      throw new Error(routineProviderUnavailable(pin.provider));
     await channel.fireTurn(
       { workspace: job.workspace, agent: job.agent },
       job.conversationId,

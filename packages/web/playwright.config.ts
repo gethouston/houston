@@ -115,6 +115,11 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1280, height: 800 },
+        // Freeze motion for the whole visual suite. `toHaveScreenshot`'s
+        // `animations: "disabled"` only halts CSS animations/transitions;
+        // JS-driven motion (framer-motion honors prefers-reduced-motion)
+        // needs the emulation, or baselines flicker frame to frame.
+        contextOptions: { reducedMotion: "reduce" },
       },
       snapshotPathTemplate:
         "{testDir}/__screenshots__/{testFileName}/{arg}{-platform}{ext}",

@@ -34,6 +34,17 @@ export interface ResolvedModel {
 }
 
 /**
+ * What a compaction produced, when the backend produced anything readable. Only
+ * the summary text is modeled: pi's own `CompactionResult` is structurally
+ * assignable to this, so the pi session returns it verbatim without the seam
+ * ever naming a pi type (the rule this whole module exists for). A backend
+ * whose compaction is internal (the Claude SDK auto-compacts) returns nothing.
+ */
+export interface CompactionOutcome {
+  summary: string;
+}
+
+/**
  * One live conversation session against a backend. `prompt` resolves at turn end;
  * a provider failure arrives as a `provider_error` WireEvent on the stream, never
  * a throw. `dispose` is idempotent.
@@ -71,8 +82,15 @@ export interface HarnessSession {
   dispose(): void;
   /** Re-point the live session at a different model (cross-provider allowed). */
   setModel(model: ResolvedModel): Promise<void>;
-  /** Summarize the conversation so it fits a smaller window. */
-  compact(): Promise<void>;
+  /**
+   * Summarize the conversation so it fits a smaller window. `customInstructions`
+   * ride the summarization request, so a caller can ask the summarizer for more
+   * than prose — the assistant's compaction asks it to also list the durable
+   * facts the conversation revealed (session/durable-facts.ts). The returned
+   * summary is what makes that readable; a backend that compacts internally
+   * returns nothing and simply yields no facts.
+   */
+  compact(customInstructions?: string): Promise<CompactionOutcome | undefined>;
   /** Set the reasoning level for subsequent turns (clamped to the model). */
   setThinkingLevel(level: ThinkingLevel): void;
   /** The current context fill, or undefined when unknown. */

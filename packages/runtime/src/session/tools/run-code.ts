@@ -107,7 +107,7 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
       "Execute a short program (python, bash, or node) in a secure, isolated cloud sandbox and return its output. " +
       "Files the program writes are saved into the user's workspace. " +
       "To MODIFY an existing workspace file, list it in input_files; otherwise a same-named output is saved under a new name. " +
-      "Use this whenever a task needs real computation or to produce a file — e.g. building a spreadsheet, a chart, or a PowerPoint.",
+      "Use this whenever a task needs real computation or to produce a file - e.g. building a spreadsheet, a chart, or a PowerPoint.",
     promptSnippet:
       "Run code in a secure cloud sandbox to compute or produce files",
     parameters: Params,

@@ -15,6 +15,7 @@ import {
   loadedClaudeSdk,
   preloadClaudeSdk,
 } from "./sdk-loader";
+import { installClaudeSdkWarningFilter } from "./sdk-warnings";
 import { type ClaudeQuery, ClaudeSession } from "./session";
 import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
@@ -52,6 +53,9 @@ export { ClaudeBackendUnavailableError } from "./sdk-loader";
  * would otherwise re-read that shared dir and finish the turn on the team account.
  */
 export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
+  // Houston pre-approves its own MCP tools, which the SDK warns about on every
+  // single `query()`. Reported once, at INFO, instead of once per turn at ERROR.
+  installClaudeSdkWarningFilter();
   return {
     // The pi provider id this backend serves turns for (the registry maps
     // `model.provider` → backend). Houston's native Anthropic provider is
@@ -78,6 +82,8 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         houstonMcp = buildHoustonMcpServer({
           createSdkMcpServer: sdk.createSdkMcpServer,
           integrations: deps.integrations,
+          assistant: deps.assistant,
+          personalAssistant: deps.personalAssistant,
           tools: deps.tools,
           // The mode does the tool filtering (via `toolNamesForMode`), mirroring
           // the pi path: plan withholds the acting integration tools and keeps
@@ -92,7 +98,11 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       }
 
       const localBash = deps.toolSelection.toolNames.includes("bash");
-      const policy = buildToolPolicy({ localBash, mode: opts.mode });
+      const policy = buildToolPolicy({
+        localBash,
+        mode: opts.mode,
+        personalAssistant: deps.personalAssistant,
+      });
       // undefined on the Node path (self-host / engine-pod / per-turn Docker +
       // dev/tests): the SDK resolves its own native binary. Only set inside the
       // Bun-compiled desktop sidecar, where require.resolve can't reach it.
@@ -138,9 +148,11 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         // End the turn after a tool batch in which an offer tool ran after
         // the closing message — the pi path's `terminate` hint, mirrored.
         hooks: buildTurnEndHooks(),
-        canUseTool: makeCanUseTool(deps.workspaceDir, {
-          sharedRoots: deps.sharedRoots,
-        }),
+        // The role's file policy, whole: an ordinary agent's shared writable
+        // roots, or the coordinator's exact-file allowlist (which replaces root
+        // containment entirely, so its memory document is the only file this
+        // backend's tools can reach).
+        canUseTool: makeCanUseTool(deps.workspaceDir, deps.fileGuard),
         systemPrompt: buildSystemPrompt(
           deps.workspaceDir,
           deps.systemPrompt,

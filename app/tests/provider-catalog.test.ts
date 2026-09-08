@@ -1,5 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { before, describe, it } from "node:test";
+import { DEFAULT_MODEL } from "@houston/sdk/provider-catalog";
 import {
   EFFORT_ORDER,
   getContextWindowConfig,
@@ -22,11 +23,13 @@ before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 describe("hydrateProviderCatalog: rename + drop", () => {
   it("renames pi `openai-codex` → `openai` and keeps its Codex models", () => {
-    strictEqual(getProvider("openai-codex"), undefined);
+    // The renamed card is the ONLY one; a lookup in pi's dialect resolves to it
+    // rather than missing the catalog.
+    strictEqual(getProvider("openai-codex")?.id, "openai");
     const openai = getProvider("openai");
     strictEqual(openai?.name, "OpenAI");
     strictEqual(openai?.auth, "oauth");
-    ok(openai?.models.some((m) => m.id === "gpt-5.5"));
+    ok(openai?.models.some((m) => m.id === "gpt-6-astra"));
   });
 
   it("drops pi's colliding DIRECT api-key `openai` provider entirely", () => {
@@ -192,13 +195,43 @@ describe("helpers read the hydrated cache", () => {
 
   it("normalizeLegacyModel still resolves retired aliases against the cache", () => {
     strictEqual(
-      validModelOrNull("anthropic", normalizeLegacyModel("opus")),
+      validModelOrNull("anthropic", normalizeLegacyModel("opus", "anthropic")),
       "claude-opus-5",
     );
+    // Bare "sonnet" lands on the provider's ONE default, read from the table
+    // the alias itself derives from (`@houston/domain` model-aliases.ts): saying
+    // "sonnet" and saying nothing must pick the same model, and a second copy
+    // of the id here is the drift that rule exists to prevent. The assertion
+    // that earns its keep is that the default is a model the catalog OFFERS —
+    // a default outside VALID_MODELS would null here.
     strictEqual(
-      validModelOrNull("anthropic", normalizeLegacyModel("sonnet")),
-      "claude-sonnet-4-6",
+      validModelOrNull(
+        "anthropic",
+        normalizeLegacyModel("sonnet", "anthropic"),
+      ),
+      DEFAULT_MODEL.anthropic,
     );
+  });
+
+  /**
+   * The reproduction: a Codex pin stored as `gpt-5.5` was read against the
+   * ANTHROPIC alias row, which has no such id, so it survived as a hard pin on
+   * a model the picker never shows and the send answered "model not available".
+   */
+  it("reads each provider's OWN aliases, in either id dialect", () => {
+    strictEqual(normalizeLegacyModel("gpt-5.5", "openai"), "gpt-6-astra");
+    strictEqual(normalizeLegacyModel("gpt-5.5", "openai-codex"), "gpt-6-astra");
+    // The picker shows what the send would run, so both resolve the same way.
+    strictEqual(
+      validModelOrNull("openai", normalizeLegacyModel("gpt-5.5", "openai")),
+      "gpt-6-astra",
+    );
+    // A Codex alias is not an Anthropic one, and the other way round.
+    strictEqual(normalizeLegacyModel("gpt-5.5", "anthropic"), "gpt-5.5");
+    strictEqual(normalizeLegacyModel("opus", "openai"), "opus");
+    strictEqual(normalizeLegacyModel("opus", "anthropic"), "claude-opus-5");
+    // No provider to key on: nothing is a legacy alias of nothing.
+    strictEqual(normalizeLegacyModel("opus", null), "opus");
   });
 });
 

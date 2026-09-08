@@ -1,6 +1,4 @@
 import { ManagedBridgeEndpointSchema } from "@houston/protocol";
-import { parseClaudeOAuthEnvelope } from "@houston/runtime-client";
-import { AZURE_OPENAI, normalizeAzureEndpoint } from "../ai/azure-openai";
 import { refreshEndpointReachability } from "../ai/endpoint-reachability";
 import { customEndpointStatus } from "../ai/openai-compatible";
 import {
@@ -10,26 +8,13 @@ import {
 } from "../ai/providers";
 import { listProviderUsage } from "../ai/usage";
 import { exportCredential } from "../auth/export";
-import {
-  assertApiKeyConnectable,
-  cancelLogin,
-  completeLogin,
-  getAuthStatus,
-  logout,
-  setApiKey,
-  setCustomEndpoint,
-  startLogin,
-} from "../auth/login";
-import {
-  scrubRefreshTokens,
-  serveModeOn,
-  syncServedCredentialSafe,
-} from "../auth/serve";
-import { ApiKeyVerifyError, verifyApiKey } from "../auth/verify-api-key";
+import { getAuthStatus, setCustomEndpoint } from "../auth/login";
+import { scrubRefreshTokens, syncServedCredentialSafe } from "../auth/serve";
 import { refreshAnthropicCredential } from "../backends/claude/credential-status";
-import { writeClaudeOAuthCredentialFile } from "../backends/claude/credentials-file";
-import { claudeLoginConfigDir } from "../backends/claude/paths";
 import { handleApiKeyRollback } from "./api-key-rollback";
+import { handleApiKey } from "./api-key-route";
+import { handleAuthAction } from "./auth-action-route";
+import { handleClaudeOAuthCredential } from "./claude-oauth-route";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
 export async function handleProviderRoute(ctx: RouteContext): Promise<boolean> {
@@ -169,141 +154,5 @@ async function handleOpenAiCompatible(ctx: RouteContext) {
     json(ctx.res, 200, { ok: true });
   } catch (e) {
     json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
-  }
-}
-
-/**
- * Materialize a desktop-pushed Claude subscription OAuth credential (host→pod).
- * Writes the CLI's `<CLAUDE_CONFIG_DIR>/.credentials.json` so the Claude Agent
- * SDK + `claude auth status` read as logged-in. Desktop/self-host keeps the full
- * credential so the SDK self-refreshes; serve mode strips the refresh token so
- * the gateway remains the family's single rotator. The body is the pinned CLI
- * envelope, validated STRICTLY — a malformed push is a clear 400 (the desktop
- * falls back to paste), a write failure a 500. On success the connected signal
- * is warmed so status flips immediately. The token is never logged.
- */
-async function handleClaudeOAuthCredential(ctx: RouteContext) {
-  const parsed = parseClaudeOAuthEnvelope(
-    await readJson(ctx.req).catch(() => ({})),
-  );
-  if (!parsed.ok) {
-    json(ctx.res, 400, { error: parsed.error });
-    return;
-  }
-  try {
-    writeClaudeOAuthCredentialFile(
-      claudeLoginConfigDir(),
-      serveModeOn() ? { ...parsed.value, refreshToken: "" } : parsed.value,
-    );
-  } catch (e) {
-    json(ctx.res, 500, {
-      error: `could not materialize the Claude credential: ${e instanceof Error ? e.message : String(e)}`,
-    });
-    return;
-  }
-  // Warm the shared-dir credential probe so `configured` / `claude auth status`
-  // flips connected on the very next poll instead of after the cache TTL.
-  await refreshAnthropicCredential(undefined, { force: true });
-  json(ctx.res, 200, { ok: true });
-}
-
-/**
- * API-key connect: cheap preconditions first (clean 400), then a LIVE
- * verification request with the candidate key (verify-api-key.ts), and only
- * then the store. A key the provider rejects is a 401 and never persists —
- * "connected" must mean the key actually works, not merely that a string was
- * pasted.
- */
-async function handleApiKey(ctx: RouteContext, provider: string) {
-  let key: string;
-  let endpoint: string | undefined;
-  try {
-    const body = await readJson(ctx.req);
-    // Azure OpenAI carries its per-resource endpoint alongside the key
-    // (PRODUCT-1477); other providers ignore the field.
-    endpoint = typeof body.endpoint === "string" ? body.endpoint : undefined;
-    key = assertApiKeyConnectable(provider, String(body.key || ""), endpoint);
-  } catch (e) {
-    json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
-    return;
-  }
-  try {
-    await verifyApiKey(provider, key, azureVerifyOptions(provider, endpoint));
-  } catch (e) {
-    // `reason` rides the body to the connect dialog, which maps it to
-    // actionable copy (bad key vs restricted key vs provider outage).
-    json(ctx.res, 401, {
-      error: e instanceof Error ? e.message : String(e),
-      ...(e instanceof ApiKeyVerifyError ? { reason: e.reason } : {}),
-    });
-    return;
-  }
-  setApiKey(provider, key, endpoint);
-  json(ctx.res, 200, { ok: true });
-}
-
-/**
- * Aim the verify probe at the pasted Azure endpoint. Explicit (never the
- * stored overlay): at connect time nothing is persisted yet, and a re-connect
- * must verify against the NEW endpoint, not last time's.
- */
-function azureVerifyOptions(provider: string, endpoint: string | undefined) {
-  return provider === AZURE_OPENAI && endpoint
-    ? { azureBaseUrl: normalizeAzureEndpoint(endpoint) }
-    : undefined;
-}
-
-async function handleAuthAction(
-  ctx: RouteContext,
-  provider: string,
-  action: string,
-) {
-  try {
-    if (action === "login") {
-      const deviceAuth = ctx.url.searchParams.get("deviceAuth") !== "false";
-      const enterpriseDomain =
-        ctx.url.searchParams.get("enterpriseDomain") || undefined;
-      json(
-        ctx.res,
-        200,
-        await startLogin(provider, deviceAuth, enterpriseDomain),
-      );
-      return;
-    }
-    if (action === "login/complete") {
-      const { code } = await readJson(ctx.req);
-      completeLogin(provider, String(code || ""));
-      json(ctx.res, 200, { ok: true });
-      return;
-    }
-    if (action === "login/cancel") {
-      cancelLogin(provider);
-      json(ctx.res, 200, { ok: true });
-      return;
-    }
-    // Attribution for the runtime.log: logout is the ONLY writer that clears a
-    // provider's credential — and for openai-compatible it ALSO forgets the
-    // custom endpoint config (auth/login.ts). A wiped endpoint with no user
-    // sign-out means some caller hit this route; this line is what names the
-    // moment in the log instead of the wipe being silent.
-    console.log(
-      `[auth] logout requested for ${provider} (POST /auth/${provider}/logout)${
-        provider === "openai-compatible"
-          ? " — clearing the custom endpoint config too"
-          : ""
-      }`,
-    );
-    await logout(provider);
-    json(ctx.res, 200, { ok: true });
-  } catch (e) {
-    const error = e instanceof Error ? e.message : String(e);
-    // A typed login error (e.g. the Codex callback port is busy) carries a
-    // stable `kind`; forward it so the frontend can route its actionable
-    // message to the sign-in toast instead of flattening it to a generic one.
-    const kind =
-      e && typeof e === "object" && "kind" in e && typeof e.kind === "string"
-        ? e.kind
-        : undefined;
-    json(ctx.res, 400, kind ? { error, kind } : { error });
   }
 }

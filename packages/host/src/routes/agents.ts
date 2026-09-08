@@ -9,9 +9,13 @@ import {
   type CustomEndpoint,
   type HoustonEvent,
   ManagedBridgeEndpointSchema,
+  normalizeTurnMode,
   parseClaudeOAuthEnvelope,
   parseMentions,
+  type TurnMode,
 } from "@houston/protocol";
+import { assistantApprovals } from "../assistant/approvals";
+import { applyApprovalReceiptsToTurnBody } from "../assistant/receipts";
 import {
   ACTING_AS_HEADER,
   actingAuthorFromHeader,
@@ -20,6 +24,7 @@ import {
 import { RevokedRefillBlockedError } from "../credentials/revocation-tombstones";
 import { checkPublicHttpsEndpoint } from "../custom-endpoint-validation";
 import type { Agent, UserId, Workspace } from "../domain/types";
+import { assistantRuntimeRole } from "../launcher/assistant-role";
 import {
   AgentNameConflictError,
   ApiKeyRejectedError,
@@ -30,6 +35,8 @@ import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
 import type { Vfs } from "../vfs";
 import { stampTurnAttribution } from "./activity-attribution";
+import { handleApprovalRead } from "./agent-approval-read";
+import { approvalResponse } from "./agent-approval-stream";
 import {
   type AgentRouteDeps,
   authorizeAgent,
@@ -38,13 +45,22 @@ import {
   noChannel,
   trustedActingAs,
 } from "./agent-authz";
+import {
+  agentColorOrNull,
+  clearAgentColor,
+  moveAgentColor,
+  storeAgentColor,
+} from "./agent-color";
 import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
 import { legacyAgentColor } from "./agent-legacy-color";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
+import { forgetAgentState } from "./agent-state-cleanup";
 import { handleCustomIntegrationsDispatch } from "./custom-integrations-user";
 import { json, readJson } from "./http";
+import { liveTurns } from "./live-turn";
 import { handleMigration } from "./migration";
+import { handleAgentMissions } from "./missions-remote-inbound";
 import { handlePortableExport } from "./portable";
 import { handlePortableAnonymize } from "./portable-anonymize";
 import { handlePortablePreview } from "./portable-preview";
@@ -190,6 +206,20 @@ export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
  * behind one ownership check, all hosting-model-agnostic via RuntimeChannel.
  * Returns true when the request was handled.
  */
+/** The `mode` a turn body pins, when it carries one the host can read. */
+function turnModeOf(body: Buffer): unknown {
+  try {
+    return (JSON.parse(body.toString("utf8") || "{}") as { mode?: unknown })
+      .mode;
+  } catch {
+    // An unparseable body pins nothing; the channel this request is headed for
+    // answers the caller (see the mentions read below, which swallows for the
+    // same reason). "execute" is the safe reading: the plan gate refuses work,
+    // and refusing on a body nobody could parse would be a denial of service.
+    return undefined;
+  }
+}
+
 export async function handleAgents(
   deps: AgentRouteDeps,
   userId: UserId,
@@ -290,6 +320,15 @@ export async function handleAgents(
         throw err;
       }
     }
+    // Optional create-time color, into the SAME `agent_colors` preference the
+    // app's color sync reads (routes/agent-color.ts) — a template, a portable
+    // install or the assistant can birth an agent already colored. Cosmetic, so
+    // an absent or malformed value is simply not stored rather than failing the
+    // create; a real write failure still propagates.
+    const createColor = agentColorOrNull(body.color);
+    if (createColor && deps.vfs) {
+      await storeAgentColor(deps.vfs, ws.id, agent.id, createColor);
+    }
     deps.events?.emit(ws.ownerUserId, {
       type: "AgentsChanged",
       workspaceId: ws.id,
@@ -358,6 +397,16 @@ export async function handleAgents(
         }
         throw err;
       }
+      // The old id is free the moment the directory moves, so nothing this
+      // process still holds under it may outlive the rename
+      // (routes/agent-state-cleanup.ts).
+      if (renamed.id !== agentId) forgetAgentState(agentId);
+      // The id moved with the directory, so the color entry must move too
+      // (routes/agent-color.ts) or the renamed agent renders the default.
+      if (deps.vfs) {
+        const colorWs = await deps.store.getOrCreatePersonalWorkspace(userId);
+        await moveAgentColor(deps.vfs, colorWs.id, agentId, renamed.id);
+      }
       deps.events?.emit(authz.workspace.ownerUserId, {
         type: "AgentsChanged",
         workspaceId: authz.workspace.id,
@@ -384,6 +433,13 @@ export async function handleAgents(
     };
     if (channel.withQuiesced) await channel.withQuiesced(ctx, doDelete);
     else await doDelete();
+    forgetAgentState(agentId);
+    // A local agent's id is its path, so a future agent can reuse it — leaving
+    // the entry behind would hand it a dead agent's color.
+    if (deps.vfs) {
+      const colorWs = await deps.store.getOrCreatePersonalWorkspace(userId);
+      await clearAgentColor(deps.vfs, colorWs.id, agentId);
+    }
     deps.events?.emit(authz.workspace.ownerUserId, {
       type: "AgentsChanged",
       workspaceId: authz.workspace.id,
@@ -773,6 +829,8 @@ export async function handleAgents(
     return true;
   }
 
+  if (await handleApprovalRead(deps, userId, method, path, res)) return true;
+
   // The per-agent runtime surface: /agents/:agentId/<anything> → the agent's
   // runtime, via the workspace's channel. The frontend points its runtime
   // client at `${controlPlaneUrl}/agents/${agentId}`, so chat turns, the SSE
@@ -838,6 +896,29 @@ export async function handleAgents(
     const actingAuthor = deps.gatewayFronted
       ? actingAuthorFromHeader(req.headers[ACTING_AS_HEADER])
       : null;
+    // The pod side of a cross-pod mission (missions-remote-inbound.ts): the
+    // assistant's `start_mission` for an agent that lives in another pod
+    // addresses the gateway, which dispatches `/agents/{id}/missions…` here.
+    // Mounted BEFORE the channel so the whole family is served by the host off
+    // this workspace's vfs — the agent's runtime has no mission routes and
+    // would answer for something else entirely.
+    const dispatchActingAs = trustedActingAs(deps, req);
+    if (
+      await handleAgentMissions(
+        deps,
+        {
+          ...ctx,
+          ...(actingAuthor ? { author: actingAuthor } : {}),
+          ...(dispatchActingAs ? { actingAs: dispatchActingAs } : {}),
+        },
+        method,
+        rest,
+        url,
+        req,
+        res,
+      )
+    )
+      return true;
     if (
       await handleAgentData(
         deps.vfs,
@@ -1011,63 +1092,150 @@ export async function handleAgents(
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    // Teams attribution: a user turn (POST …/conversations/:cid/messages) marks
-    // the acting human as a contributor on the mission it drives, and records
-    // the teammates that message @mentioned (HOU-945). Best-effort metadata
-    // that never blocks the turn (see activity-attribution.ts); runs only when
-    // a gateway vouched for the actor (actingAuthor non-null) — off the gateway
-    // nothing here runs, not even the body read, so desktop/self-host behavior
-    // and activity.json are byte-identical.
+    // The user turn this request may be (POST …/conversations/:cid/messages).
+    // Two seams below read it: Teams attribution and approval receipts.
+    const turnMatch =
+      method === "POST"
+        ? rest.match(/^conversations\/([^/]+)\/messages$/)
+        : null;
+    const turnConversationId = turnMatch?.[1]
+      ? decodeURIComponent(turnMatch[1])
+      : undefined;
     let turnBody: Buffer | undefined;
-    if (actingAuthor && deps.vfs) {
-      const turnMatch =
-        method === "POST"
-          ? rest.match(/^conversations\/([^/]+)\/messages$/)
-          : null;
-      if (turnMatch?.[1]) {
-        // The mentions ride the turn body, which the channel reads next — drain
-        // it ONCE here and hand the buffer down on the ctx (the stream is
-        // exhausted afterwards, so the channel must not re-read it).
-        turnBody = await readBody(req, MAX_JSON_BYTES);
-        let mentionedIds: string[] = [];
-        try {
-          const parsed = JSON.parse(turnBody.toString("utf8") || "{}") as {
-            mentions?: unknown;
-          };
-          // The same shared guard the runtime and the cloud turn parser apply.
-          mentionedIds = (parseMentions(parsed.mentions) ?? []).map(
-            (m) => m.userId,
-          );
-        } catch {
-          // An unparseable body carries no mentions to stamp, and deciding what
-          // to tell the client is not this seam's business — the channel this
-          // request is headed for answers it, and the two channels answer
-          // differently: TurnChannel (cloudrun) parses the buffer below and
-          // returns a clean 400 {error:"invalid JSON body"} (turn/dispatch.ts),
-          // while ProxyChannel forwards the raw bytes to the agent's pi
-          // runtime, whose own body parse is unguarded — that path answers the
-          // runtime's 500 {error:"internal error"}, relayed verbatim. Swallow
-          // here only because the request keeps travelling; it never ends on a
-          // silent success.
-        }
-        await stampTurnAttribution(
-          deps.vfs,
-          paths.agentRoot(ctx.workspace, ctx.agent),
-          ctx.agent.id,
-          decodeURIComponent(turnMatch[1]),
-          actingAuthor,
-          mentionedIds,
-          emit,
-        );
+    // WHICH CONVERSATION THIS AGENT IS WORKING IN, recorded by the host rather
+    // than taken from the runtime's word for it (routes/live-turn.ts): the
+    // mission depth guard and the assistant's plan-mode gate are both about the
+    // runtime, so neither may be answered by it. The mode is read only for the
+    // coordinator, the one agent whose operations the host itself performs -
+    // every other agent's send reaches the channel with its body untouched.
+    if (turnConversationId !== undefined) {
+      const coordinator = assistantRuntimeRole({ agentId: ctx.agent.id });
+      let mode: TurnMode = "execute";
+      if (coordinator) {
+        turnBody ??= await readBody(req, MAX_JSON_BYTES);
+        mode = normalizeTurnMode(turnModeOf(turnBody));
       }
+      // WHO this turn acts as, recorded with it: the gateway-minted token this
+      // request arrived with (undefined off the gateway, where an inbound
+      // acting header is untrusted client input). The `/sandbox/*` routes this
+      // turn calls back into read it from here rather than from their own
+      // request, which the runtime writes and could name anyone in.
+      liveTurns.start(ctx.agent.id, turnConversationId, mode, {
+        actingAs: dispatchActingAs,
+      });
     }
+    // The Mode pill moved WHILE the assistant works (`POST …/mode`, the route
+    // the runtime applies to its live turn): the host reads the same switch on
+    // its way through, so its own plan gate cannot lag the runtime's.
+    const modeSwitch =
+      method === "POST" && assistantRuntimeRole({ agentId: ctx.agent.id })
+        ? rest.match(/^conversations\/([^/]+)\/mode$/)
+        : null;
+    if (modeSwitch?.[1]) {
+      turnBody ??= await readBody(req, MAX_JSON_BYTES);
+      liveTurns.setMode(
+        ctx.agent.id,
+        decodeURIComponent(modeSwitch[1]),
+        normalizeTurnMode(turnModeOf(turnBody)),
+      );
+    }
+    // Teams attribution: a user turn marks the acting human as a contributor on
+    // the mission it drives, and records the teammates that message @mentioned
+    // (HOU-945). Best-effort metadata that never blocks the turn (see
+    // activity-attribution.ts); runs only when a gateway vouched for the actor
+    // (actingAuthor non-null) — off the gateway nothing here runs, not even the
+    // body read, so desktop/self-host behavior and activity.json are identical.
+    if (actingAuthor && deps.vfs && turnConversationId !== undefined) {
+      // The mentions ride the turn body, which the channel reads next — drain
+      // it ONCE here and hand the buffer down on the ctx. The stream is
+      // exhausted after the first read, so this MUST reuse the buffer the mode
+      // pin above may already hold: re-reading a drained request yields an
+      // empty body, and on a managed coordinator pod (fronted, so acting-as is
+      // always present) that is the whole message, its mode pin, its mentions
+      // and its approval receipts, dropped.
+      turnBody ??= await readBody(req, MAX_JSON_BYTES);
+      let mentionedIds: string[] = [];
+      try {
+        const parsed = JSON.parse(turnBody.toString("utf8") || "{}") as {
+          mentions?: unknown;
+        };
+        // The same shared guard the runtime and the cloud turn parser apply.
+        mentionedIds = (parseMentions(parsed.mentions) ?? []).map(
+          (m) => m.userId,
+        );
+      } catch {
+        // An unparseable body carries no mentions to stamp, and deciding what
+        // to tell the client is not this seam's business — the channel this
+        // request is headed for answers it, and the two channels answer
+        // differently: TurnChannel (cloudrun) parses the buffer below and
+        // returns a clean 400 {error:"invalid JSON body"} (turn/dispatch.ts),
+        // while ProxyChannel forwards the raw bytes to the agent's pi
+        // runtime, whose own body parse is unguarded — that path answers the
+        // runtime's 500 {error:"internal error"}, relayed verbatim. Swallow
+        // here only because the request keeps travelling; it never ends on a
+        // silent success.
+      }
+      await stampTurnAttribution(
+        deps.vfs,
+        paths.agentRoot(ctx.workspace, ctx.agent),
+        ctx.agent.id,
+        turnConversationId,
+        actingAuthor,
+        mentionedIds,
+        emit,
+      );
+    }
+    // A deleted conversation takes its pending approvals with it: the card is
+    // gone from the user's screen and there is no message left that could ever
+    // answer it, so leaving the request live would let a stale id be spent.
+    const deletedConversation =
+      method === "DELETE" ? rest.match(/^conversations\/([^/]+)$/) : null;
+    if (deletedConversation?.[1])
+      assistantApprovals.clear(
+        ctx.agent.id,
+        decodeURIComponent(deletedConversation[1]),
+      );
+    // APPROVAL RECEIPTS (assistant/receipts.ts): a destructive Houston operation
+    // is authorized by the person's OWN message, and this is the only seam it
+    // passes through on its way to the runtime — so the yes is recorded here,
+    // where no runtime can author one. The receipts ride the request's own
+    // `approvals` field, which this strips before forwarding. Gated on a live
+    // card for this exact agent + conversation, so an ordinary turn never even
+    // reads its body.
+    if (
+      turnConversationId !== undefined &&
+      assistantApprovals.hasPending(ctx.agent.id, turnConversationId)
+    ) {
+      turnBody ??= await readBody(req, MAX_JSON_BYTES);
+      turnBody =
+        applyApprovalReceiptsToTurnBody({
+          approvals: assistantApprovals,
+          agentId: ctx.agent.id,
+          conversationId: turnConversationId,
+          body: turnBody,
+        }) ?? turnBody;
+    }
+    // The two reads that can carry a pending interaction (the stored history
+    // and the live stream): the runtime's bytes reach the shell only through
+    // the host's approval substitution.
+    const conversationRead =
+      method === "GET"
+        ? rest.match(/^conversations\/([^/]+)\/(messages|events)$/)
+        : null;
+    const clientResponse = conversationRead?.[1]
+      ? approvalResponse(
+          res,
+          ctx.agent.id,
+          decodeURIComponent(conversationRead[1]),
+        )
+      : res;
     await channel.dispatch(
       turnBody ? { ...ctx, body: turnBody } : ctx,
       method,
       rest,
       url,
       req,
-      res,
+      clientResponse,
     );
     return true;
   }

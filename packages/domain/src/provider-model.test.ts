@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import { DEFAULT_PROVIDER, migrateProviderModel } from "./provider-model";
+import { DEFAULT_MODEL, VALID_MODELS } from "./provider-model-catalog";
 
 const VALID_PROVIDERS = [
   "anthropic",
@@ -46,11 +47,13 @@ const PI_MODELS: Record<string, Set<string>> = {
     "claude-sonnet-4-6",
     "claude-sonnet-5",
   ]),
+  // pi's Codex catalog MINUS the rows OpenAI stopped serving a ChatGPT
+  // subscription (gpt-5.4, gpt-5.5 — probed live, see the runtime's
+  // ai/codex-offered.ts): a migration that lands on one produces a first turn
+  // that can only fail `model_not_found`.
   "openai-codex": new Set([
     "gpt-5.3-codex-spark",
-    "gpt-5.4",
     "gpt-5.4-mini",
-    "gpt-5.5",
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
@@ -76,9 +79,11 @@ function assertValid(r: ReturnType<typeof migrateProviderModel>, msg: string) {
 
 test("the real legacy desktop inputs map to valid pi ids with no diagnostic", () => {
   // From the user's actual ~/.houston data: {"provider":"openai","model":"gpt-5.5"}.
+  // gpt-5.5 has since been retired from the ChatGPT subscription, so it is a
+  // legacy id like any other and migrates to Codex's current full tier.
   const codex = migrateProviderModel("openai", "gpt-5.5");
   expect(codex.provider).toBe("openai-codex");
-  expect(codex.model).toBe("gpt-5.5");
+  expect(codex.model).toBe("gpt-6-astra");
   expect(codex.diagnostics).toEqual([]);
   assertValid(codex, "openai/gpt-5.5");
 
@@ -111,8 +116,10 @@ test("bare tier aliases resolve to the pi id at the SAME tier (no upgrade)", () 
   expect(opus.diagnostics).toEqual([]);
   assertValid(opus, "anthropic/opus");
 
+  // Sonnet's bare alias IS the provider's current default (model-aliases.ts):
+  // "sonnet" and "no model" must resolve to the same thing.
   const sonnet = migrateProviderModel("anthropic", "sonnet");
-  expect(sonnet.model).toBe("claude-sonnet-4-6");
+  expect(sonnet.model).toBe(DEFAULT_MODEL.anthropic);
   expect(sonnet.diagnostics).toEqual([]);
   assertValid(sonnet, "anthropic/sonnet");
 
@@ -125,7 +132,7 @@ test("bare tier aliases resolve to the pi id at the SAME tier (no upgrade)", () 
 test("CLI-era codex model ids map to the closest current tier", () => {
   const full = migrateProviderModel("openai", "gpt-5");
   expect(full.provider).toBe("openai-codex");
-  expect(full.model).toBe("gpt-5.5");
+  expect(full.model).toBe("gpt-6-astra");
   expect(full.diagnostics).toEqual([]);
   assertValid(full, "openai/gpt-5");
 
@@ -137,8 +144,8 @@ test("CLI-era codex model ids map to the closest current tier", () => {
 });
 
 test("an already-valid pi provider+model passes through unchanged", () => {
-  const r = migrateProviderModel("openai-codex", "gpt-5.4");
-  expect(r).toMatchObject({ provider: "openai-codex", model: "gpt-5.4" });
+  const r = migrateProviderModel("openai-codex", "gpt-5.6-sol");
+  expect(r).toMatchObject({ provider: "openai-codex", model: "gpt-5.6-sol" });
   expect(r.diagnostics).toEqual([]);
   assertValid(r, "passthrough");
 });
@@ -146,7 +153,10 @@ test("an already-valid pi provider+model passes through unchanged", () => {
 test("an unknown model id falls soft to the provider default WITH a diagnostic", () => {
   const r = migrateProviderModel("anthropic", "totally-made-up-9000");
   expect(r.provider).toBe("anthropic");
-  expect(r.model).toBe("claude-sonnet-4-6"); // anthropic default
+  // The provider's own default, read from the table that owns it rather than
+  // restated here — restating it is how the app, the runtime and this table
+  // came to name three different Anthropic defaults.
+  expect(r.model).toBe(DEFAULT_MODEL.anthropic);
   expect(r.diagnostics).toHaveLength(1);
   expect(r.diagnostics[0]?.message).toContain("totally-made-up-9000");
   assertValid(r, "unknown anthropic model");
@@ -172,10 +182,11 @@ test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)
 test("missing provider/model fall soft to the defaults with provider diagnostic", () => {
   const r = migrateProviderModel(undefined, undefined);
   expect(r.provider).toBe(DEFAULT_PROVIDER);
-  expect(r.model).toBe("gpt-5.5");
-  // Missing provider is reported; a missing model on a defaulted provider just
-  // uses the default (no extra noise needed once the provider is known).
+  expect(r.model).toBe(DEFAULT_MODEL[DEFAULT_PROVIDER]);
+  // Both substitutions are reported: the config gained a provider AND a model
+  // it never carried, and either can surprise the person reading it back.
   expect(r.diagnostics.some((d) => d.message.includes("provider"))).toBe(true);
+  expect(r.diagnostics.some((d) => d.message.includes("model"))).toBe(true);
   assertValid(r, "all missing");
 });
 
@@ -241,4 +252,64 @@ test("the diagnostic key defaults to the config doc path and is overridable", ()
     migrateProviderModel("anthropic", "totally-made-up", "Work/Sales")
       .diagnostics[0]?.key,
   ).toBe("Work/Sales");
+});
+
+test("a stored Codex model the subscription no longer serves migrates to one it does", () => {
+  // The retired full-tier rows. A migration that kept them verbatim handed the
+  // runtime an id whose only outcome is `model_not_found` on the first turn.
+  for (const stale of ["gpt-5.5", "gpt-5.4", "gpt-5.5-codex"]) {
+    const r = migrateProviderModel("openai-codex", stale);
+    expect(r.model, stale).toBe("gpt-6-astra");
+    expect(r.diagnostics, stale).toEqual([]);
+    assertValid(r, `openai-codex/${stale}`);
+  }
+  // The provider's own default is a model it serves — this is what a pin
+  // naming a provider and NO model lands on.
+  expect(DEFAULT_MODEL["openai-codex"]).toBe("gpt-6-astra");
+  expect(VALID_MODELS["openai-codex"]?.has("gpt-6-astra")).toBe(true);
+  for (const gone of ["gpt-5.5", "gpt-5.4"])
+    expect(VALID_MODELS["openai-codex"]?.has(gone), gone).toBe(false);
+});
+
+test("a provider with no catalog default never inherits another provider's model", () => {
+  // DEFAULT_MODEL is Partial over an OPEN ProviderId: twelve shipped providers
+  // (groq, cerebras, mistral, xai, …) have no entry. A universal floor keyed on
+  // DEFAULT_PROVIDER rewrote every one of them to Codex's id and PERSISTED it —
+  // a Groq agent whose stored model became an OpenAI one.
+  expect(DEFAULT_MODEL.groq).toBeUndefined();
+  for (const provider of ["groq", "cerebras", "mistral", "xai", "fireworks"]) {
+    const r = migrateProviderModel(provider, undefined);
+    expect(r.provider, provider).toBe(provider);
+    expect(r.model, provider).toBe("");
+    expect(r.model, provider).not.toBe(DEFAULT_MODEL[DEFAULT_PROVIDER]);
+    expect(r.model, provider).not.toBe(DEFAULT_MODEL.anthropic);
+  }
+});
+
+test("an absent model that GAINS the provider's default says so", () => {
+  // The migration writes the result back to the agent's config, so a config
+  // that silently gained a model it never had must be visible — the same rule
+  // an unknown model already followed.
+  const r = migrateProviderModel("anthropic", undefined);
+  expect(r.model).toBe(DEFAULT_MODEL.anthropic);
+  expect(r.diagnostics).toHaveLength(1);
+  expect(r.diagnostics[0]?.message).toContain(String(DEFAULT_MODEL.anthropic));
+});
+
+test("nothing is gained, so nothing is reported, when the provider has no default", () => {
+  expect(migrateProviderModel("groq", undefined).diagnostics).toEqual([]);
+});
+
+test("a provider with no catalog default is ABSENT, never an empty string", () => {
+  // Readers fall through with `DEFAULT_MODEL[id] ?? <next candidate>` (the app
+  // catalog's `catalogDefaultModel(id) ?? models[0]?.id`). An "" entry is
+  // non-nullish, so it stopped that fallback dead and the picker offered no
+  // model at all for a local OpenAI-compatible server.
+  expect(DEFAULT_MODEL["openai-compatible"]).toBeUndefined();
+  expect("openai-compatible" in DEFAULT_MODEL).toBe(false);
+  expect(DEFAULT_MODEL["openai-compatible"] ?? "first-served-model").toBe(
+    "first-served-model",
+  );
+  // ...and the migration's own floor still answers "no opinion", not a guess.
+  expect(migrateProviderModel("openai-compatible", undefined).model).toBe("");
 });

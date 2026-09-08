@@ -64,7 +64,7 @@ export function SidebarRail({
   gutterChildren,
 }: {
   model: SidebarRailModel;
-  t: TFunction<["shell", "common", "portable", "teams", "agents", "dashboard"]>;
+  t: TFunction<["shell", "common", "portable", "teams", "agents"]>;
   /** Hosted in the mobile drawer (always expanded, no collapse toggle). */
   mobile: boolean;
   /** The floating "screen" the desktop rail sits beside. */

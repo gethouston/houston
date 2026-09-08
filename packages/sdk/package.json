@@ -18,6 +18,10 @@
     "./agent-name": {
       "types": "./src/agent-name.ts",
       "import": "./src/agent-name.ts"
+    },
+    "./provider-catalog": {
+      "types": "./src/provider-catalog.ts",
+      "import": "./src/provider-catalog.ts"
     }
   },
   "files": [

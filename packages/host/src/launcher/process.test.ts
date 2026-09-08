@@ -544,3 +544,26 @@ test("shutdownAllAndWait returns as soon as a draining child exits, never escala
   expect(events).toEqual(["SIGTERM"]);
   expect(Date.now() - started).toBeLessThan(1_000);
 });
+
+test("rename refusal uses agent-facing punctuation without an em dash", async () => {
+  const launcher = new ProcessLauncher({
+    spawner: {
+      spawn: () => {
+        throw new Error("unexpected spawn");
+      },
+    },
+    workspaceDirFor: () => "/agent",
+    dataDirFor: () => "/data",
+    mintToken: () => "token",
+  });
+  const release = launcher.hold("agent");
+  await expect(
+    launcher.ensureAwake({
+      id: "agent",
+      workspaceId: "w",
+      name: "Agent",
+      createdAt: 0,
+    }),
+  ).rejects.toThrow("agent 'agent' is being renamed - retry with its new id");
+  release();
+});

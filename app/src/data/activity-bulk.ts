@@ -10,6 +10,7 @@
 // loads value imports for real, and the package index's extensionless import
 // chain only resolves under bundler resolution.
 import { resolveInteractionPatch } from "@houston/protocol/interaction";
+import { toCanonicalProviderId } from "@houston/sdk/provider-catalog";
 import type { Activity, ActivityUpdate } from "./activity";
 
 /**
@@ -21,6 +22,11 @@ import type { Activity, ActivityUpdate } from "./activity";
  *  - an `undefined` VALUE is not a value: it leaves the stored field alone,
  *    rather than writing `undefined` over a schema-required one (a caller that
  *    spreads an optional into a patch must not blank `status` or `title`).
+ *  - `provider` is canonicalized on the way in, exactly as the CREATE path
+ *    does (`data/activity.ts`): the app speaks display ids ("openai") and pi
+ *    reads canonical ones off the row ("openai-codex"), so a display alias
+ *    merged verbatim by an update leaves a row the engine cannot resolve a pin
+ *    from.
  *  - `pending_interaction` follows the shared rule in @houston/protocol
  *    ({@link resolveInteractionPatch}): `null` deletes the key, a structurally
  *    valid object replaces it, and an absent (or malformed) one leaves it alone
@@ -43,7 +49,8 @@ export function applyActivityPatch(
   // (the schema has no null type) so the mission falls back to the engine's
   // own resolution — the warming flush clears a pin its pod cannot honor.
   if (provider === null) delete merged.provider;
-  else if (provider !== undefined) merged.provider = provider;
+  else if (provider !== undefined)
+    merged.provider = toCanonicalProviderId(provider);
   if (model === null) delete merged.model;
   else if (model !== undefined) merged.model = model;
   const outcome = resolveInteractionPatch({

@@ -15,6 +15,10 @@
  */
 
 import {
+  toCanonicalProviderId,
+  toDisplayProviderIdOrNull,
+} from "./provider-overrides.ts";
+import {
   getDefaultModel,
   normalizeLegacyModel,
   PROVIDERS,
@@ -57,10 +61,18 @@ function usableProvider(
   connected: readonly string[] | null,
 ): string | null {
   if (!connected) return configured;
-  if (configured && connected.includes(configured)) return configured;
+  // Both sides in the DISPLAY dialect before either is compared: a scan can
+  // report pi's canonical `openai-codex` while the catalog (and `configured`,
+  // which came through `validProviderOrNull`) is keyed by `openai`. Matched
+  // raw, a Codex user's only connection reads as no connection at all and the
+  // kickoff is moved off the provider they are actually signed into.
+  const usable = new Set(
+    connected.map((id) => toDisplayProviderIdOrNull(id) ?? id),
+  );
+  if (configured && usable.has(configured)) return configured;
   // Registry order, not scan order, so the substitute is deterministic
   // regardless of how the caller enumerated statuses.
-  return PROVIDERS.find((p) => connected.includes(p.id))?.id ?? configured;
+  return PROVIDERS.find((p) => usable.has(p.id))?.id ?? configured;
 }
 
 /**
@@ -84,22 +96,72 @@ export function resolveAgentModelOverrides(
   cfg: BrainConfig,
   connected: readonly string[] | null = null,
 ): AgentModelOverrides {
-  const configured = validProviderOrNull(cfg.provider);
+  // Configs written by the engine store pi's CANONICAL provider id
+  // (`openai-codex`) while the catalog is keyed by Houston's DISPLAY id
+  // (`openai`), so the id is mapped before it is looked up — unmapped, a
+  // Codex agent's kickoff resolved to no pin at all and ran on whatever the
+  // runtime had active. The wire takes either dialect (`PROVIDER_ALIASES`).
+  const configured = validProviderOrNull(
+    toDisplayProviderIdOrNull(cfg.provider),
+  );
   const provider = usableProvider(configured, connected);
   if (!provider) return {};
   const stored = provider === configured;
   const model =
     (stored
-      ? validModelOrNull(provider, normalizeLegacyModel(cfg.model))
+      ? validModelOrNull(provider, normalizeLegacyModel(cfg.model, provider))
       : null) ?? getDefaultModel(provider);
   const effort =
     stored && cfg.effort
       ? validEffortOrDefault(provider, model, cfg.effort)
       : undefined;
-  return {
+  return definedPins({
     providerOverride: provider,
     modelOverride: model,
-    ...(effort ? { effortOverride: effort } : {}),
+    effortOverride: effort,
+  });
+}
+
+/**
+ * The same pins with every EMPTY value dropped.
+ *
+ * `getDefaultModel` answers `""` for a provider with no catalog default — the
+ * local OpenAI-compatible one always, and every provider before the pi catalog
+ * hydrates. Forwarded verbatim, that `""` becomes a half-pin: a turn that names
+ * a provider and an empty model, which the runtime rejects, and an agent config
+ * that persists the empty string. An absent key is the honest answer; the
+ * runtime then resolves the model itself.
+ */
+export function definedPins(pins: AgentModelOverrides): AgentModelOverrides {
+  return {
+    ...(pins.providerOverride
+      ? { providerOverride: pins.providerOverride }
+      : {}),
+    ...(pins.modelOverride ? { modelOverride: pins.modelOverride } : {}),
+    ...(pins.effortOverride ? { effortOverride: pins.effortOverride } : {}),
+  };
+}
+
+/**
+ * The provider/model an activity ROW is stamped with, from a send's pins.
+ *
+ * Rows are read back in pi's CANONICAL dialect everywhere downstream
+ * (`resolveActivityOverride`, `preferRowPin`), so the display id the picker and
+ * the composer speak is translated on the way in. Canonicalizing an
+ * already-canonical id is a no-op, so it is safe wherever the data layer
+ * normalizes too. An empty model is omitted for the same reason as
+ * {@link definedPins}: a row pinned to no model reads as pinned to nothing.
+ */
+export function activityRowPin(pins: AgentModelOverrides): {
+  provider?: string;
+  model?: string;
+} {
+  const defined = definedPins(pins);
+  return {
+    ...(defined.providerOverride
+      ? { provider: toCanonicalProviderId(defined.providerOverride) }
+      : {}),
+    ...(defined.modelOverride ? { model: defined.modelOverride } : {}),
   };
 }
 

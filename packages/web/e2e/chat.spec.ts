@@ -2,6 +2,7 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { openNewMission } from "./support/mission";
+import { missionCard } from "./support/team-nav";
 
 /**
  * The core loop: open a new conversation, send a message, and watch the streamed
@@ -39,7 +40,7 @@ test("sends a message and renders the streamed reply", async ({ page }) => {
   await composer.press("Enter");
 
   // The user's message renders optimistically.
-  await expect(page.getByText("plan my week").first()).toBeVisible();
+  await expect(userRow(page, "plan my week")).toBeVisible();
 
   // The streamed assistant reply (canned by the fake host). Match without the
   // quotes so a markdown smart-quote transform can't flake the assertion.
@@ -58,7 +59,7 @@ test("sends a message with the Submit button", async ({ page }) => {
     .fill("water the plants");
   await page.getByRole("button", { name: "Submit" }).click();
 
-  await expect(page.getByText("water the plants").first()).toBeVisible();
+  await expect(userRow(page, "water the plants")).toBeVisible();
   await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
     timeout: 15_000,
   });
@@ -103,7 +104,7 @@ test("first message keeps the chat panel mounted while the board refetches", asy
 
   // The user's message renders right away, well before the stalled refetch
   // resolves...
-  const message = page.getByText("no flicker please").first();
+  const message = userRow(page, "no flicker please");
   await expect(message).toBeVisible({ timeout: 1_000 });
 
   // ...and never disappears — neither while the refetch is still pending nor
@@ -234,7 +235,7 @@ test("a dead turn settles as an error with the reaper's message", async ({
 test("sends a follow-up inside an existing mission", async ({ page }) => {
   await page.goto("/");
 
-  await page.getByText("Plan a trip to Tokyo").click();
+  await missionCard(page, "Plan a trip to Tokyo").click();
   const composer = page.getByPlaceholder("Send a follow-up...");
   await expect(composer).toBeVisible();
 
@@ -258,7 +259,7 @@ test("edits a previous user message in place and rewinds the conversation", asyn
   page,
 }) => {
   await page.goto("/");
-  await page.getByText("Plan a trip to Tokyo").click();
+  await missionCard(page, "Plan a trip to Tokyo").click();
   const composer = page.getByPlaceholder("Send a follow-up...");
 
   // Two settled turns.
@@ -334,7 +335,7 @@ test("copies a user and an agent message to the clipboard", async ({
 }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
-  await page.getByText("Plan a trip to Tokyo").click();
+  await missionCard(page, "Plan a trip to Tokyo").click();
   const composer = page.getByPlaceholder("Send a follow-up...");
   await composer.fill("copy me please");
   await composer.press("Enter");
@@ -362,7 +363,7 @@ test("searches and navigates a long conversation with the map", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByText("Plan a trip to Tokyo").click();
+  await missionCard(page, "Plan a trip to Tokyo").click();
 
   // Two exchanges make the map useful enough to exercise both its outline and
   // all-message search modes.

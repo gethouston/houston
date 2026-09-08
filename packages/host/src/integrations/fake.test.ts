@@ -7,7 +7,7 @@ import type { IntegrationProvider } from "./provider";
 const USER = "u1";
 
 test("the full lifecycle runs through the IntegrationProvider port", async () => {
-  const p: IntegrationProvider = new FakeIntegrationProvider({ id: "fake" });
+  const p: IntegrationProvider = new FakeIntegrationProvider({ id: "custom" });
 
   expect(await p.readiness()).toEqual({ ready: true });
 

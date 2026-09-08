@@ -1,0 +1,147 @@
+{
+  "operations": {
+    "acceptOrgInvite": "Aceitar este convite para entrar em um espaço compartilhado.",
+    "addCustomIntegration": "Adicionar um app externo seu a partir de um link.",
+    "addOrgMember": "Convidar alguém para este espaço com a função que você escolheu.",
+    "cancelRoutineRun": "Parar esta execução da rotina enquanto ela está em andamento.",
+    "createAgent": "Criar um novo agente.",
+    "createApiKey": "Criar uma nova chave de API.",
+    "createCheckout": "Iniciar o pagamento que assina um plano pago para este espaço de trabalho.",
+    "createOrg": "Criar um espaço compartilhado para convidar seu time.",
+    "createRoutine": "Criar uma rotina para o agente repetir um trabalho em um horário.",
+    "createSharedSkill": "Criar uma habilidade e compartilhá-la com todo o espaço de trabalho.",
+    "createSkill": "Criar uma habilidade que o agente pode seguir.",
+    "declineOrgInvite": "Recusar este convite para entrar em um espaço compartilhado.",
+    "deleteActivity": "Excluir esta missão do quadro do agente.",
+    "deleteAgent": "Excluir este agente e tudo o que está nele. Isso não pode ser desfeito.",
+    "deleteAgentTeam": "Excluir este time.",
+    "deleteFile": "Excluir este arquivo do espaço do agente para sempre.",
+    "deleteOrg": "Excluir este espaço compartilhado e tudo o que está nele. Isso não pode ser desfeito.",
+    "deleteOrgInvite": "Cancelar este convite pendente para o espaço.",
+    "deleteRoutine": "Excluir esta rotina para que ela pare de rodar no horário dela.",
+    "deleteSharedSkill": "Excluir uma habilidade compartilhada com o espaço de trabalho, tirando-a de todo mundo.",
+    "deleteSkill": "Excluir esta habilidade para que o agente não a tenha mais.",
+    "detectCustomIntegration": "Verificar para que tipo de serviço este link aponta.",
+    "forgetCredential": "Desconectar este espaço de trabalho da conta de IA.",
+    "installAgentFromGithub": "Instalar um agente a partir de um repositório do GitHub.",
+    "installCommunitySkill": "Instalar no agente uma habilidade do diretório da comunidade.",
+    "installSkillsFromRepo": "Instalar no agente habilidades de um repositório do GitHub.",
+    "joinAgentTeam": "Entrar neste time do espaço.",
+    "mintRoutineWebhookKey": "Criar uma chave nova para que um serviço externo possa iniciar esta rotina. Qualquer chave anterior para de funcionar.",
+    "moveAgent": "Mover este agente para um espaço compartilhado para que seu time possa trabalhar com ele.",
+    "moveProjectFile": "Mover este arquivo para outra pasta do espaço do agente.",
+    "promoteSharedSkill": "Compartilhar a habilidade do agente com todo o espaço de trabalho.",
+    "pushClaudeOAuthCredential": "Enviar o login do Claude deste computador para um agente na nuvem.",
+    "putSkillsManifest": "Escolher quais habilidades do agente ficam ativas.",
+    "removeAgentTeamMember": "Remover esta pessoa do time.",
+    "removeCustomIntegration": "Remover um app externo que você mesmo adicionou.",
+    "removeOrgMember": "Remover esta pessoa do espaço.",
+    "renameAgent": "Renomear este agente.",
+    "renameFile": "Renomear este arquivo do espaço do agente.",
+    "revokeApiKey": "Revogar esta chave de API para sempre. Tudo o que ainda a usa para de funcionar.",
+    "runRoutineNow": "Rodar esta rotina agora mesmo em vez de esperar o próximo horário dela.",
+    "saveSharedSkill": "Salvar mudanças em uma habilidade compartilhada com o espaço de trabalho, para todo mundo que a usa.",
+    "saveSkill": "Salvar mudanças nas instruções desta habilidade.",
+    "setAgentAssignments": "Escolher quem pode usar este agente, e com qual nível de acesso.",
+    "setAgentModelChoice": "Mudar qual modelo de IA este agente usa.",
+    "setAgentSettings": "Escolher quais apps e modelos de IA este agente pode usar.",
+    "setAgentTeam": "Mover este agente para outro time deste espaço.",
+    "setAgentTeamMemberOwner": "Dar a alguém a propriedade deste time, ou tirá-la.",
+    "setContext": "Substituir as notas de contexto que o Houston dá ao agente em toda conversa.",
+    "setOrgMemberRole": "Mudar o que esta pessoa pode fazer neste espaço.",
+    "submitCustomIntegrationCredential": "Salvar o segredo que termina de configurar este app.",
+    "updateActivity": "Atualizar os detalhes ou o status desta missão.",
+    "updateAgentTeam": "Renomear este time, reordená-lo, mudar o estilo dele ou atualizar as notas que ele compartilha.",
+    "updateRoutine": "Atualizar o horário ou as instruções desta rotina.",
+    "writeAgentFile": "Substituir o conteúdo de um dos arquivos salvos do agente."
+  },
+  "arguments": {
+    "agentId": "agente",
+    "agentPath": "agente",
+    "agentSlugOrId": "agente",
+    "assignments": "acesso",
+    "body": "detalhes",
+    "choice": "modelo",
+    "color": "cor",
+    "content": "conteúdo",
+    "credentialJson": "login",
+    "email": "e-mail",
+    "githubUrl": "link do GitHub",
+    "id": "id",
+    "input": "detalhes",
+    "interval": "período de cobrança",
+    "inviteId": "convite",
+    "kind": "tipo",
+    "manifest": "habilidades",
+    "name": "nome",
+    "newName": "novo nome",
+    "owner": "propriedade",
+    "patch": "mudanças",
+    "provider": "conta de IA",
+    "relPath": "arquivo",
+    "role": "função",
+    "routineId": "rotina",
+    "runId": "execução",
+    "seed": "instruções iniciais",
+    "settings": "ajustes",
+    "slug": "nome",
+    "teamId": "time",
+    "toDir": "pasta de destino",
+    "toSlug": "espaço",
+    "updates": "mudanças",
+    "url": "link",
+    "userId": "pessoa",
+    "values": "valores",
+    "workspaceId": "espaço de trabalho"
+  },
+  "argumentsByOperation": {
+    "deleteActivity": {
+      "id": "missão"
+    },
+    "deleteAgent": {
+      "id": "agente"
+    },
+    "deleteOrg": {
+      "slug": "espaço"
+    },
+    "deleteRoutine": {
+      "id": "rotina"
+    },
+    "deleteSharedSkill": {
+      "slug": "habilidade"
+    },
+    "deleteSkill": {
+      "slug": "habilidade"
+    },
+    "promoteSharedSkill": {
+      "slug": "habilidade"
+    },
+    "removeCustomIntegration": {
+      "slug": "app"
+    },
+    "renameAgent": {
+      "id": "agente"
+    },
+    "revokeApiKey": {
+      "id": "chave"
+    },
+    "runRoutineNow": {
+      "id": "rotina"
+    },
+    "saveSharedSkill": {
+      "slug": "habilidade"
+    },
+    "saveSkill": {
+      "slug": "habilidade"
+    },
+    "submitCustomIntegrationCredential": {
+      "slug": "app"
+    },
+    "updateActivity": {
+      "id": "missão"
+    },
+    "updateRoutine": {
+      "id": "rotina"
+    }
+  }
+}

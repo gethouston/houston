@@ -11,6 +11,7 @@
  */
 
 import { planAttachmentUploadBatches } from "./attachments.ts";
+import { retryAfterMsOf } from "./retry-after.ts";
 import type {
   Activity,
   ActivityUpdate,
@@ -29,6 +30,7 @@ import type {
   AllConversationsResult,
   ApiKey,
   ApiKeyCreated,
+  AssistantHandle,
   AttachmentManifest,
   AttachmentUploadResult,
   AuditEntry,
@@ -500,7 +502,7 @@ export class HoustonClient {
 
   private async toError(res: Response): Promise<HoustonEngineError> {
     const err = (await res.json().catch(() => null)) as ErrorBody | null;
-    return new HoustonEngineError(res.status, err);
+    return new HoustonEngineError(res.status, err, retryAfterMsOf(res.headers));
   }
 
   private seg(s: string): string {
@@ -517,6 +519,19 @@ export class HoustonClient {
   }
   capabilities(): Promise<Capabilities> {
     return this.request("GET", "/capabilities");
+  }
+
+  // ---------- personal assistant ----------
+
+  /**
+   * Which agent holds the user's personal assistant, and which conversation to
+   * open. The chat itself rides the ordinary per-agent calls — the assistant IS
+   * an agent, a hidden one the deployment creates on the first ask. Both fields
+   * are opaque addresses: pass them through, never parse them. A deployment
+   * that hosts no assistant answers 501.
+   */
+  getAssistant(): Promise<AssistantHandle> {
+    return this.request("GET", "/assistant");
   }
 
   // ---------- workspaces ----------
@@ -3041,11 +3056,19 @@ function isCustomSlugMiss(err: HoustonEngineError): boolean {
 export class HoustonEngineError extends Error {
   status: number;
   body: ErrorBody | null;
+  /**
+   * How long the responder asked us to wait before asking again, in ms, read
+   * from its `Retry-After` header (`./retry-after`). Present only when the
+   * response carried a parseable one AND the browser could see it, so a
+   * scheduler must always keep its own fallback backoff.
+   */
+  retryAfterMs?: number;
 
-  constructor(status: number, body: ErrorBody | null) {
+  constructor(status: number, body: ErrorBody | null, retryAfterMs?: number) {
     super(body?.error?.message ?? `Engine error ${status}`);
     this.status = status;
     this.body = body;
+    this.retryAfterMs = retryAfterMs;
     this.name = "HoustonEngineError";
   }
 

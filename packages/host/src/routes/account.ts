@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { getPreference, loadPreferences, setPreference } from "@houston/domain";
+import {
+  getPreference,
+  loadPreferences,
+  setPreference,
+  updatePreference,
+} from "@houston/domain";
 import type { Workspace as WireWorkspace } from "@houston/protocol";
 import type { UserId, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
@@ -120,15 +125,15 @@ export async function handleAccount(
       json(res, 400, { error: "invalid sidebar layout" });
       return true;
     }
-    const prevLayout = readSidebarLayout(
-      await getPreference(deps.vfs, wsId, "sidebar_layout"),
-    );
-    await setPreference(
+    // One critical section: reading the layout the group-context mirror diffs
+    // against and writing the new one must not straddle another writer.
+    const { previous } = await updatePreference(
       deps.vfs,
       wsId,
       "sidebar_layout",
-      JSON.stringify(layout),
+      () => JSON.stringify(layout),
     );
+    const prevLayout = readSidebarLayout(previous);
     deps.events?.emit(ws.ownerUserId, {
       type: "SidebarLayoutChanged",
       workspaceId: wsId,

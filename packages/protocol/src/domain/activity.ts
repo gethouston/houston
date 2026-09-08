@@ -61,6 +61,21 @@ export interface Activity {
    * tag), and the value links back to the parent chat.
    */
   origin_session_key?: string;
+  /**
+   * WHICH agent started this mission, server-stamped beside
+   * `origin_session_key`. On one machine the parent chat is readable from the
+   * caller's own board; across pods it is not, so without this the only record
+   * of who asked for the work is thrown away at the pod boundary. Provenance
+   * only - nothing is authorized by it.
+   */
+  origin_agent?: string;
+  /**
+   * How deep in the delegation chain this mission sits: 1 for work started from
+   * a person's chat. Server-stamped, and what the next start's depth is counted
+   * from, so the chain stays bounded on a board whose parent lives in another
+   * pod (`routes/missions-start.ts`).
+   */
+  origin_depth?: number;
   /** The human who created this mission (Teams attribution). Server-stamped. */
   created_by?: string;
   /** Humans who started or collaborated on this mission (Teams attribution).

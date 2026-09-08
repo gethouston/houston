@@ -32,7 +32,7 @@ import { tourAnchor } from "./workspace-tour-steps";
  * as while the location behind it belongs to neither tree.
  */
 export function MobileNavBar() {
-  const { t } = useTranslation(["shell", "dashboard"]);
+  const { t } = useTranslation("shell");
   const viewMode = useUIStore((s) => s.viewMode);
   const moreOpen = useUIStore((s) => s.mobileMoreOpen);
   const setMoreOpen = useUIStore((s) => s.setMobileMoreOpen);

@@ -5,7 +5,10 @@ import type { Agent } from "../domain/types";
 const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }));
 vi.mock("node:child_process", () => ({ spawn: spawnMock }));
 
+import { ASSISTANT_AGENT_NAME } from "../routes/assistant";
+import { assistantRuntimeRole } from "./assistant-role";
 import { ProcessLauncher } from "./process";
+import { runtimeSpawnEnv } from "./runtime-env";
 import { RuntimeProcessSpawner } from "./runtime-spawner";
 
 /** A stand-in ChildProcess: an emitter with the bits the spawner touches. */
@@ -24,6 +27,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllEnvs();
 });
 
 test("spawn exposes a configured shared-skills directory to the runtime", () => {
@@ -60,6 +64,49 @@ test("spawn omits the shared-skills env when no filesystem mirror is available",
     env: Record<string, string | undefined>;
   };
   expect(options.env).not.toHaveProperty("HOUSTON_SHARED_SKILLS_DIR");
+});
+
+test("only the coordinator's child carries the assistant role, and no credential", async () => {
+  // The whole point of deciding the role in the host: two agents, one spawner,
+  // and the role variable reaches exactly one child. A gateway token reaches
+  // neither — the credential stays in the host process.
+  const launcher = new ProcessLauncher({
+    spawner: new RuntimeProcessSpawner({
+      command: ["runtime"],
+      env: (spec) =>
+        runtimeSpawnEnv({
+          transcriptDualWrite: false,
+          assistantRole: spec.assistantRole ?? null,
+        }),
+    }),
+    workspaceDirFor: (a) => `/data/${a.name}`,
+    dataDirFor: (a) => `/data/${a.name}/data`,
+    mintToken: () => "secret",
+    assistantRoleFor: (a) =>
+      assistantRuntimeRole({ agentId: a.id, hostEnv: {} }),
+    allocatePort: async () => 4317,
+    waitHealthy: async () => {},
+  });
+
+  const agent = (id: string, name: string): Agent => ({
+    id,
+    workspaceId: "w1",
+    name,
+    createdAt: 0,
+  });
+  await launcher.ensureAwake(agent("w1/Writer", "Writer"));
+  await launcher.ensureAwake(agent(`w1/${ASSISTANT_AGENT_NAME}`, "assistant"));
+
+  const envs = spawnMock.mock.calls.map(
+    (call) => (call[2] as { env: Record<string, string | undefined> }).env,
+  );
+  expect(envs).toHaveLength(2);
+  expect(envs[0]).not.toHaveProperty("HOUSTON_ASSISTANT_ROLE");
+  expect(envs[1]?.HOUSTON_ASSISTANT_ROLE).toBe("coordinator");
+  for (const env of envs) {
+    expect(env).not.toHaveProperty("HOUSTON_ASSISTANT_TOKEN");
+    expect(env).not.toHaveProperty("HOUSTON_ASSISTANT_CP_URL");
+  }
 });
 
 test("a child that fails to spawn ('error', never 'exit') still fires the exit callback, exactly once", () => {
@@ -147,4 +194,52 @@ test("a runtime that fails to spawn aborts the boot instead of burning the healt
     expect(Date.now() - started).toBeLessThan(1_000); // not the 60s budget
     expect(await launcher.status("sales")).toBe("asleep");
   })();
+});
+
+test.each([
+  null,
+  "coordinator",
+] as const)("spawn strips parent host secrets and stamps only trusted role %s", (role) => {
+  const secrets = [
+    "HOUSTON_ASSISTANT_TOKEN",
+    "HOUSTON_ASSISTANT_CP_URL",
+    "HOUSTON_ASSISTANT_USER_ID",
+    "HOUSTON_HOST_TOKEN",
+    "HOUSTON_CREDENTIALS_URL",
+    "HOUSTON_STORE_URL",
+    "HOUSTON_USER_ID",
+    "COMPOSIO_API_KEY",
+  ];
+  for (const key of secrets) vi.stubEnv(key, "host-only");
+  vi.stubEnv("HOUSTON_ASSISTANT_ROLE", "coordinator");
+  new RuntimeProcessSpawner({
+    command: ["runtime"],
+    env: () =>
+      runtimeSpawnEnv({ transcriptDualWrite: false, assistantRole: role }),
+  }).spawn({
+    workspaceDir: "/agent",
+    dataDir: "/data",
+    token: "runtime",
+    port: 4317,
+  });
+  const env = (spawnMock.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv }).env;
+  for (const key of secrets) expect(env).not.toHaveProperty(key);
+  expect(env.HOUSTON_ASSISTANT_ROLE).toBe(role ?? undefined);
+});
+
+test("spawn still hands the runtime the shared Houston home it authenticates from", () => {
+  // HOUSTON_HOME is a path, not a credential: the runtime resolves the SHARED
+  // Claude login dir from it (`<HOUSTON_HOME>/claude-login`), so withholding it
+  // would send every agent to a home with no credential in it.
+  vi.stubEnv("HOUSTON_HOME", "/houston-home");
+  vi.stubEnv("HOUSTON_ASSISTANT_TOKEN", "host-only");
+  new RuntimeProcessSpawner({ command: ["runtime"] }).spawn({
+    workspaceDir: "/agent",
+    dataDir: "/data",
+    token: "runtime",
+    port: 4317,
+  });
+  const env = (spawnMock.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv }).env;
+  expect(env.HOUSTON_HOME).toBe("/houston-home");
+  expect(env).not.toHaveProperty("HOUSTON_ASSISTANT_TOKEN");
 });

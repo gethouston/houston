@@ -11,7 +11,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { afterAll, expect, test } from "vitest";
-import { poolBashEnv } from "../session/tools/pool-bash";
+import { scrubbedBashEnv } from "../session/tools/scrubbed-bash";
 import type { TurnRunner } from "./turn-session";
 
 const scratch = mkdtempSync(join(tmpdir(), "houston-pool-leaks-"));
@@ -209,7 +209,9 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
   expect(await store.list("ws/w1")).not.toContainEqual(
     expect.stringMatching(/auth\.json$/),
   );
-});
+  // Six real runtime spawns: the default 5 s budget trips under machine load
+  // (parallel e2e), never on a leak. The leak assertions above are what matter.
+}, 30_000);
 
 function treeText(root: string): string {
   const values: string[] = [];
@@ -231,7 +233,7 @@ test("a granted turn keeps every operational secret out of pi, tools, bash, and 
     worker: "worker-secret-never-persist",
     storeUrl: "https://store.internal.test",
   };
-  const childEnv = poolBashEnv({
+  const childEnv = scrubbedBashEnv({
     PATH: process.env.PATH,
     HOUSTON_POOL_WORKER_TOKEN: secrets.worker,
     HOUSTON_POOL_STORE_URL: secrets.storeUrl,

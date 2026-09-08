@@ -1,5 +1,6 @@
 import type { SettingsSectionId } from "../../lib/settings-sections";
 import { BackBarScreen } from "../shell/back-bar-screen";
+import { AboutMeSection } from "./sections/about-me";
 import { ApiKeysSection } from "./sections/api-keys";
 import { MigrationSection } from "./sections/migration";
 import { ProfileSection } from "./sections/profile";
@@ -28,6 +29,7 @@ export function SettingsSectionBody({
     <BackBarScreen backLabel={backLabel} onBack={onBack}>
       <div className="mx-auto max-w-xl px-4 pb-10 md:px-8">
         {active === "profile" && <ProfileSection />}
+        {active === "aboutMe" && <AboutMeSection />}
         {/* The API-keys screen is HIDDEN from the index for now (HOU-806: the
             Agents API surface lives in the Routines tab) — its nav row is gone,
             so only a programmatic deep-link pin reaches it. The section and its

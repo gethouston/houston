@@ -1,6 +1,8 @@
 import type { HoustonEvent } from "@houston-ai/core";
 import type { QueryKey } from "@tanstack/react-query";
+import { postTurnAgentKeys } from "./agent-invalidation-keys.ts";
 import { queryKeys } from "./query-keys.ts";
+import { eventTargetsOpenWorkspace } from "./space-id.ts";
 
 /**
  * The set of cache effects a single `HoustonEvent` should produce, expressed
@@ -15,6 +17,13 @@ import { queryKeys } from "./query-keys.ts";
 export interface InvalidationPlan {
   /** Query keys to `invalidateQueries`, in order. */
   invalidate: QueryKey[];
+  /**
+   * Mark EVERY cached query stale (unfiltered `invalidateQueries()`) — for the
+   * one case where the missed changes are unknowable: a transport gap. Only
+   * mounted queries refetch, so the cost is bounded by what is on screen, and
+   * no future query family can be forgotten here.
+   */
+  invalidateAll?: boolean;
   /** Agent paths whose slice of the `all-conversations` caches to patch. */
   patchAllConversations: string[];
   /** When set, reload this workspace's agent roster (silent). */
@@ -58,7 +67,7 @@ const empty = (): InvalidationPlan => ({
  * An agent's missions are read from exactly two places, and an agent-scoped
  * mutation event names both. The per-agent board rides `queryKeys.activity`,
  * which is invalidated outright. Every cross-agent surface (sidebar badges,
- * Mission Control, the command palette, the mentions inbox) rides the
+ * Mission Control, the command palette, the mention notifier) rides the
  * `all-conversations` aggregate, which those events PATCH slice-by-slice
  * instead: invalidating it re-fans-out a read to every agent's pod and wakes
  * the whole fleet, so only a transport-level gap (`EventStreamReconnected`,
@@ -69,6 +78,8 @@ export function planInvalidation(
   ctx: InvalidationContext,
 ): InvalidationPlan {
   const plan = empty();
+  /** The workspace this window has open — the target of every scoped effect. */
+  const open = ctx.workspaceId;
 
   switch (ev.type) {
     case "ActivityChanged":
@@ -82,12 +93,10 @@ export function planInvalidation(
       plan.invalidate.push(["skill-detail", ev.data.agent_path]);
       break;
     case "SharedSkillsChanged":
-      // The server's events carry ITS workspace-id vocabulary (the host's
-      // folder name, the gateway's "Houston"), while shared-skills query keys
-      // are built from the client's (the synthetic "default" for the personal
-      // space — see the adapter's `wireWorkspaceId`). Invalidate the whole
-      // family instead of guessing the mapping; there is at most one
-      // shared-skills list per space in the cache.
+      // Keyed by the CLIENT's workspace vocabulary, which an event never speaks
+      // (see `eventTargetsOpenWorkspace`). The whole family is invalidated
+      // rather than a translated key: there is at most one shared-skills list
+      // per space in the cache.
       plan.invalidate.push(["shared-skills"]);
       break;
     case "FilesChanged":
@@ -118,8 +127,8 @@ export function planInvalidation(
       plan.invalidate.push(queryKeys.learnings(ev.data.agent_path));
       break;
     case "AgentsChanged":
-      if (ctx.workspaceId && ev.data.workspace_id === ctx.workspaceId) {
-        plan.reloadAgentsWorkspace = ctx.workspaceId;
+      if (open && eventTargetsOpenWorkspace(ev.data.workspace_id, open)) {
+        plan.reloadAgentsWorkspace = open;
         // C13: EVERY server-team mutation fans out this same event — a team
         // created, renamed or deleted, someone joining or leaving, an agent
         // moved between teams. So the roster reload alone would leave the rail
@@ -136,8 +145,8 @@ export function planInvalidation(
       // Best-effort cross-surface/multi-tab sync. The acting user's own change
       // already applied via the optimistic mutation; this refetches for
       // everyone else viewing the same workspace.
-      if (ctx.workspaceId && ev.data.workspace_id === ctx.workspaceId) {
-        plan.invalidate.push(queryKeys.sidebarLayout(ctx.workspaceId));
+      if (open && eventTargetsOpenWorkspace(ev.data.workspace_id, open)) {
+        plan.invalidate.push(queryKeys.sidebarLayout(open));
       }
       break;
     // SessionStatus triggers activity invalidation (agent finished → status).
@@ -146,22 +155,7 @@ export function planInvalidation(
         const agentPath = ev.data.agent_path;
         plan.invalidate.push(queryKeys.activity(agentPath));
         plan.patchAllConversations.push(agentPath);
-        // Cloud has NO file watcher and no post-turn sync diff, so a running
-        // agent that writes its own CLAUDE.md / skills / learnings / files
-        // mid-turn never fires a *Changed event. A finished turn is the one
-        // reliable signal that the agent may have edited these surfaces, so
-        // refetch them for this agent — cheap, and it saves the user from
-        // remounting the screen to see self-authored changes (HOU-644). On
-        // desktop this is harmless redundancy with the FS watcher.
-        plan.invalidate.push(queryKeys.instructions(agentPath));
-        plan.invalidate.push(queryKeys.workspaceContext(agentPath));
-        plan.invalidate.push(queryKeys.files(agentPath));
-        plan.invalidate.push(queryKeys.skills(agentPath));
-        plan.invalidate.push(queryKeys.skillsManifest(agentPath));
-        plan.invalidate.push(["skill-detail", agentPath]);
-        plan.invalidate.push(queryKeys.learnings(agentPath));
-        plan.invalidate.push(queryKeys.config(agentPath));
-        plan.invalidate.push(queryKeys.routines(agentPath));
+        plan.invalidate.push(...postTurnAgentKeys(agentPath));
       }
       break;
     // A provider OAuth sign-in (or sign-out) finished — refresh the cached
@@ -187,15 +181,15 @@ export function planInvalidation(
       if (ctx.customOAuthReturn) plan.focusWindow = true;
       break;
     // The global event stream came back after a drop (HOU-981). The feed has no
-    // replay cursor, so every change that happened while it was down — a
-    // routine finishing, a teammate's mission, another device — was never
-    // delivered. The cross-agent aggregate is the one surface that cannot
-    // recover on its own (nothing else re-reads it within its freshness
-    // window), so it is re-swept. Deliberately JUST the aggregate: a re-sweep
-    // already touches every agent's pod, and everything else either rides its
-    // own mount or will be corrected by the next event naming its agent.
+    // replay cursor, so every change that happened while it was down — an agent
+    // created, a routine finishing, a teammate's mission, another device — was
+    // never delivered, and WHICH ones is unknowable. Guessing a key list is how
+    // a surface silently stops tracking reality, so the whole cache is swept —
+    // only mounted queries refetch — and the roster reloads with it (it lives
+    // in a store, outside the cache, so no invalidation would reach it).
     case "EventStreamReconnected":
-      plan.invalidate.push(queryKeys.allConversations([]));
+      plan.invalidateAll = true;
+      if (open) plan.reloadAgentsWorkspace = open;
       break;
   }
 

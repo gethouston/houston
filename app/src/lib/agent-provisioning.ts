@@ -14,7 +14,7 @@
  * below are a type (erased at runtime) and the pure key factory.
  */
 
-import type { MessageMention } from "@houston-ai/engine-client";
+import type { ActivityStatus, MessageMention } from "@houston-ai/engine-client";
 import { queryKeys } from "./query-keys.ts";
 
 /**
@@ -106,7 +106,7 @@ export interface PendingWarmingSend {
      * welcome mission settles its queued row to `needs_you` when the
      * greeting reveals (HOU-713).
      */
-    status?: string;
+    status?: ActivityStatus;
   };
   /**
    * A row-only entry (HOU-713): the board row IS the payload — no bubble, no

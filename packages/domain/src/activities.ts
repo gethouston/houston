@@ -13,6 +13,7 @@ import {
 } from "./contributors";
 import { docKey } from "./layout";
 import { sanitizeMentions } from "./mentions";
+import { toCanonicalProviderId } from "./provider-dialect";
 import {
   type DocDiagnostic,
   loadJson,
@@ -139,7 +140,9 @@ export function createActivity(
     ...(input.worktree_path !== undefined
       ? { worktree_path: input.worktree_path }
       : {}),
-    ...(input.provider !== undefined ? { provider: input.provider } : {}),
+    ...(input.provider !== undefined
+      ? { provider: toCanonicalProviderId(input.provider) }
+      : {}),
     ...(input.model !== undefined ? { model: input.model } : {}),
     ...(input.origin_session_key !== undefined
       ? { origin_session_key: input.origin_session_key }
@@ -173,7 +176,8 @@ export function applyActivityUpdate(
   // the mission falls back to the engine's own resolution (the warming flush
   // clears a pin its pod cannot honor).
   if (provider === null) delete next.provider;
-  else if (provider !== undefined) next.provider = provider;
+  else if (provider !== undefined)
+    next.provider = toCanonicalProviderId(provider);
   if (model === null) delete next.model;
   else if (model !== undefined) next.model = model;
   // PATCH bodies are untrusted at runtime (an old client or a stale message can

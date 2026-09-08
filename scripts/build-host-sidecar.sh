@@ -259,3 +259,19 @@ if [ "$(printf '%s' "$CATALOG" | tr -d '[:space:]')" = "[]" ]; then
   exit 1
 fi
 echo "VERIFIED: host served a non-empty /v1/catalog"
+
+# --- Verify the assistant operation catalog rode INSIDE the binary -----------
+# The catalog is embedded at build time (packages/host/src/assistant/
+# assistant-catalog.generated.json, imported by catalog-source.ts). A build that
+# lost it boots perfectly and then reports "catalog unavailable" for every
+# assistant call on an INSTALLED machine, where no source tree exists to fall
+# back on — invisible to every route probe, so assert the boot line here.
+echo "=== Verifying the compiled host carries the assistant operation catalog ==="
+ASSISTANT_LINE="$(grep -m1 '\[assistant\] operation catalog:' "$LOG" || true)"
+if [ -z "$ASSISTANT_LINE" ]; then
+  echo "ERROR: the host booted with no embedded assistant operation catalog:" >&2
+  grep -i assistant "$LOG" >&2 || true
+  echo "       Run \`pnpm gen:assistant-catalog\` and rebuild the sidecar." >&2
+  exit 1
+fi
+echo "VERIFIED: $ASSISTANT_LINE"

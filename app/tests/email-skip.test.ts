@@ -30,15 +30,15 @@ describe("feedShowsTurnError (HOU-555 onboarding escape hatch)", () => {
     );
   });
 
-  it("a tool runtime error in the feed counts", () => {
+  it("a failed tool result does NOT count as a turn error", () => {
     strictEqual(
       feedShowsTurnError([
         {
-          feed_type: "tool_runtime_error",
-          data: { message: "boom" } as never,
+          feed_type: "tool_result",
+          data: { content: "boom", is_error: true },
         },
       ]),
-      true,
+      false,
     );
   });
 });

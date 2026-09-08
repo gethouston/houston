@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent } from "@houston/protocol";
-import { ACTING_AS_HEADER, actingAuthorFromHeader } from "../auth/acting";
+import { actingAuthorFromHeader } from "../auth/acting";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { CredentialVault, WorkspaceStore } from "../ports";
@@ -9,16 +9,12 @@ import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { bearer, header, json, readJson } from "./http";
 import { appendLearningChecked } from "./learning-write";
+import { authorizeTurnWrite } from "./plan-gate";
 
 /** The header the runtime's `save_learning` tool carries the turn's conversation
  *  id on, so the mission a learning came from can be resolved. Provenance only —
  *  never authorization (the sandbox token is what authenticates the call). */
 export const CONVERSATION_ID_HEADER = "x-houston-conversation-id";
-
-/** The routine creator's Supabase `sub`, forwarded by the runtime when the turn
- *  is a FIRED ROUTINE (no live human, so no acting-as token). Same header the
- *  integrations sandbox route reads for the routine auth mode. */
-const ACTING_USER_HEADER = "x-houston-acting-user";
 
 /**
  * The RUNTIME-facing memory write route (`POST /sandbox/learnings/save`, authed
@@ -31,17 +27,18 @@ const ACTING_USER_HEADER = "x-houston-acting-user";
  *     append → saveLearnings), so a save never clobbers existing memory.
  *  2. PROVENANCE. Every learning should say who taught it and which mission it
  *     came from — facts the agent cannot know and must not be trusted to write.
- *     They are derived HERE: the person from the gateway-minted acting-as
- *     header, the mission from the turn's conversation id.
+ *     They are derived HERE from the host's own record of the running turn
+ *     (routes/live-turn.ts): the person the gateway vouched for when the turn
+ *     began, and the mission that turn's conversation belongs to.
  *
  * Stamping semantics:
  *  - `taught_by` ONLY when `deps.gatewayFronted`. Off the gateway (desktop /
- *    self-host) an inbound acting header is untrusted client input, and there is
- *    only one human anyway — so no identity key is written at all and a
- *    single-player learnings.json keeps exactly the shape it has today. ON the
- *    gateway with no acting-as token (a FIRED ROUTINE has no driving human) the
- *    routine creator's sub — forwarded as `x-houston-acting-user` — is the
- *    author, so a routine-taught learning is never anonymous in Teams.
+ *    self-host) there is only one human anyway — so no identity key is written
+ *    at all and a single-player learnings.json keeps exactly the shape it has
+ *    today. ON the gateway with no acting-as token (a FIRED ROUTINE has no
+ *    driving human) the routine creator's sub, recorded by the fire that started
+ *    the turn, is the author, so a routine-taught learning is never anonymous in
+ *    Teams.
  *  - `mission_id` + `mission_title` whenever the conversation matches a mission,
  *    on EVERY deployment: a mission is not an identity, and "from the Q3
  *    pipeline mission" is the more useful half of provenance for a solo user.
@@ -98,6 +95,21 @@ export async function handleSandboxLearnings(
     return true;
   }
 
+  // A memory write happens during a turn, in the chat the turn runs in: the
+  // runtime names the conversation and the host matches it against its own
+  // record (routes/plan-gate.ts). That record is also WHO the turn acts as, so a
+  // learning cannot be written in a person's name the runtime chose, and a turn
+  // the user asked to PLAN writes nothing at all.
+  const authorized = authorizeTurnWrite(
+    claim.agentId,
+    header(req, CONVERSATION_ID_HEADER),
+  );
+  if (!authorized.ok) {
+    json(res, authorized.status, authorized.body);
+    return true;
+  }
+  const turn = authorized.turn;
+
   const body = await readJson(req);
   const text = typeof body.text === "string" ? body.text.trim() : "";
   if (!text) {
@@ -107,23 +119,22 @@ export async function handleSandboxLearnings(
 
   const paths = deps.paths ?? DEFAULT_PATHS;
   const root = paths.agentRoot(ws, agent);
-  // WHO taught this, same two-rung ladder the integrations sandbox route walks:
-  // the gateway-minted acting-as human, else the routine creator's sub (a FIRED
-  // ROUTINE has no live human, so the runtime forwards `x-houston-acting-user`
-  // instead). Off the gateway: nobody at all. NOT the workspace owner — on a
-  // managed pod that is the placeholder "local-owner", which resolves to no
-  // profile and would only put a junk id in the file.
-  const actingUser = header(req, ACTING_USER_HEADER);
+  // WHO taught this, same two-rung ladder the integrations sandbox route walks,
+  // read off the turn: the gateway-minted acting-as human, else the routine
+  // creator's sub (a FIRED ROUTINE has no live human). Off the gateway: nobody
+  // at all. NOT the workspace owner — on a managed pod that is the placeholder
+  // "local-owner", which resolves to no profile and would only put a junk id in
+  // the file.
   const taughtBy = deps.gatewayFronted
-    ? (actingAuthorFromHeader(req.headers[ACTING_AS_HEADER]) ??
-      (actingUser ? { user_id: actingUser } : null))
+    ? (actingAuthorFromHeader(turn.actingAs) ??
+      (turn.actingUser ? { user_id: turn.actingUser } : null))
     : null;
   const result = await appendLearningChecked(vfs, root, {
     id: randomUUID(),
     text,
     nowIso: new Date().toISOString(),
     ...(taughtBy ? { taughtBy } : {}),
-    conversationId: header(req, CONVERSATION_ID_HEADER),
+    conversationId: turn.conversationId,
   });
   if ("error" in result) {
     json(res, 400, { error: result.error });

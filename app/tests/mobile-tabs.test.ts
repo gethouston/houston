@@ -22,12 +22,10 @@ describe("activeMobileTab", () => {
 
   it("everything the More menu leads to lights More", () => {
     for (const view of [
-      "inbox",
       "store",
       "skills",
       "integrations",
       "academy",
-      "about-me",
       "ai-hub",
       "organization",
       "settings",

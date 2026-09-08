@@ -1,7 +1,10 @@
 import assert from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import { QueryClient } from "@tanstack/react-query";
-import { resetCacheForSpaceChange } from "../src/lib/space-cache.ts";
+import {
+  isSpaceInvariantQueryKey,
+  resetCacheForSpaceChange,
+} from "../src/lib/space-cache.ts";
 
 // C8 §Active space: switching to a different space must DROP the whole query
 // cache, not merely mark it stale. invalidateQueries() leaves every INACTIVE
@@ -64,5 +67,35 @@ describe("resetCacheForSpaceChange", () => {
       queryClient.getQueryData(["onboarding-completed", "u1"]),
       true,
     );
+  });
+});
+
+/**
+ * The same predicate gates the event stream's catch-up sweep
+ * (`use-agent-invalidation.ts`): a reconnect re-reads the world, and identity
+ * plus the first-run flags must stay out of it — no server event is ever about
+ * them, and flapping them would flap App.tsx's auth and onboarding gates over a
+ * dropped stream.
+ */
+describe("isSpaceInvariantQueryKey", () => {
+  it("holds identity and the first-run flags out of any sweep", () => {
+    assert.strictEqual(isSpaceInvariantQueryKey(["session"]), true);
+    assert.strictEqual(isSpaceInvariantQueryKey(["onboarding-pending"]), true);
+    assert.strictEqual(
+      isSpaceInvariantQueryKey(["onboarding-completed", "u1"]),
+      true,
+    );
+  });
+
+  it("lets every event-driven key through", () => {
+    for (const key of [
+      ["agents"],
+      ["capabilities"],
+      ["all-conversations"],
+      ["activity", "Personal/Maya"],
+      ["routines", "Personal/Maya"],
+    ]) {
+      assert.strictEqual(isSpaceInvariantQueryKey(key), false, String(key));
+    }
   });
 });

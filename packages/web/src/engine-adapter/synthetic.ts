@@ -1,4 +1,5 @@
-import { migrateProviderModel } from "@houston/domain";
+import { canonicalProviderId, migrateProviderModel } from "@houston/domain";
+import { toDisplayProviderId } from "@houston/domain/provider-dialect";
 import type { Agent, Workspace } from "../../../../ui/engine-client/src/types";
 
 /**
@@ -49,7 +50,11 @@ export function syntheticAgent(): Agent {
 }
 
 /**
- * Old desktop provider name -> new engine ProviderId.
+ * Old desktop provider name -> new engine ProviderId, through the domain's ONE
+ * alias ladder (`canonicalProviderId`): the display/canonical rename plus the
+ * spoken and CLI-era names ("codex", "chatgpt", "claude", "gemini"). Nothing is
+ * resolved here — a branch beside the domain call is a second table waiting to
+ * disagree with it.
  *
  * The catalog is OPEN: the frontend hydrates its provider list from the host's
  * `/v1/catalog` (the full pi-ai set, ~35 providers), so this mapping must NOT
@@ -64,20 +69,15 @@ export function syntheticAgent(): Agent {
  * Null only for an empty name, so `if (!pid)` guards keep rejecting it.
  */
 export function toNewProvider(name: string): string | null {
-  if (!name) return null;
-  if (name === "openai" || name === "codex") return "openai-codex";
-  return name;
+  return canonicalProviderId(name);
 }
 
 /**
- * New engine ProviderId -> old desktop provider name. Only Codex is renamed
- * (openai-codex -> openai); the OpenCode ids are the same on both sides.
+ * Engine ProviderId -> the display id the desktop UI speaks, through the ONE
+ * dialect map (`@houston/domain` `provider-dialect.ts`). Only Codex is renamed;
+ * every other id is the same on both sides.
  */
-export function toOldProvider(id: string): string {
-  // openrouter/deepseek/google/amazon-bedrock/minimax share one id across frontend and engine;
-  // only codex differs.
-  return id === "openai-codex" ? "openai" : id;
-}
+export const toOldProvider = toDisplayProviderId;
 
 /**
  * An engine ProviderId in the adapter's dialect: any pi-ai provider id (the

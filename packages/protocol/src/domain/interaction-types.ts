@@ -20,7 +20,21 @@
 // follow-up actions. They arrive on the same `done` frame, render above the
 // composer rather than replacing it, and outlive the user's later move to done.
 
-export interface InteractionOption {
+import type { ApprovalArg } from "./approval";
+
+export type InteractionOption =
+  | ChoiceOption
+  | {
+      kind: "approval";
+      id: "approve" | "decline";
+      /** A default the SURFACE overrides with its own locale. The host always
+       *  emits one so a shell that cannot localize (and every decoder that
+       *  requires a label) still renders two readable buttons. */
+      label?: string;
+    };
+
+interface ChoiceOption {
+  kind?: "choice";
   id: string;
   label: string;
   /** One muted line of consequence or benefit shown after the label. */
@@ -44,10 +58,32 @@ export type InteractionStep =
       kind: "question";
       id: string;
       question: string;
+      /** Verbatim material the question is ABOUT, when it is too long or too
+       *  multi-line to read inside a sentence — the exact text a file would be
+       *  written with, the exact arguments an operation would run with. Shown
+       *  under the question in its own scrollable block, so a value the user is
+       *  approving is never one they could not see. */
+      detail?: string;
       options?: InteractionOption[];
       /** Lowercase toolkit slug (e.g. "gmail") when the question concerns a
        *  connected app: the card shows that app's logo. */
       toolkit?: string;
+      /** Present ONLY on an approval card for a destructive Houston operation:
+       *  the host-issued id of the pending request this card decides. The
+       *  user's answer travels back carrying it (see `./approval`), which is
+       *  what makes the approval bound to ONE exact call and usable once. A
+       *  card that carries one is never deduped against another card. */
+      requestId?: string;
+      /** Present ONLY on an approval card, alongside `requestId`: the exact
+       *  call the host is asking about, structurally. It lets a surface author
+       *  the question in the READER's language while the host stays the sole
+       *  authority on what is being approved. `question`/`detail` remain the
+       *  host's English rendering of the same thing, for surfaces that cannot.
+       *
+       *  Trustworthy only WITH `requestId`: a step whose id the host did not
+       *  issue has its `requestId` stripped on the way out, and a surface must
+       *  ignore this block whenever that happened. */
+      approval?: { operation: string; args: ApprovalArg[] };
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }

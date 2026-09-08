@@ -1,8 +1,10 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { ASSISTANT_AGENT_NAME } from "@houston/host/src/routes/assistant";
 import { expect, test, vi } from "vitest";
-import { buildAgentLoader } from "./resource-loader";
+import { learningsDocPath } from "./learnings-context";
+import { buildAgentLoader, makeAgentLoader } from "./resource-loader";
 
 /**
  * The loader is the seam deciding what an agent sees: OUR system prompt, the
@@ -244,6 +246,97 @@ test("a mangled manifest logs a diagnostic and does not crash loader reload", as
   } finally {
     diagnostic.mockRestore();
   }
+});
+
+/**
+ * The assistant's memory injection, pinned on the pi side of the prompt-assembly
+ * parity pair (its twin is backends/claude/system-prompt.test.ts).
+ */
+function agentDirNamed(name: string): string {
+  const dir = join(mkdtempSync(join(tmpdir(), "houston-loader-")), name);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function seedLearnings(cwd: string, text: string): void {
+  const path = learningsDocPath(cwd);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(
+    path,
+    JSON.stringify([
+      { id: "l1", text, created_at: "2026-01-01T00:00:00.000Z" },
+    ]),
+  );
+}
+
+/**
+ * The assistant's memory and rules follow the ROLE the host stamped on this
+ * runtime, not the name of the directory it runs in (the managed pod runs under
+ * `/workspace` with an ordinarily-named agent).
+ */
+async function asCoordinator<T>(fn: () => Promise<T> | T): Promise<T> {
+  const prior = process.env.HOUSTON_ASSISTANT_ROLE;
+  process.env.HOUSTON_ASSISTANT_ROLE = "coordinator";
+  try {
+    return await fn();
+  } finally {
+    if (prior === undefined) delete process.env.HOUSTON_ASSISTANT_ROLE;
+    else process.env.HOUSTON_ASSISTANT_ROLE = prior;
+  }
+}
+
+async function promptFor(cwd: string, mode?: "plan"): Promise<string> {
+  const loader = makeAgentLoader(cwd, mode);
+  await loader.reload();
+  return loader.getSystemPrompt() ?? "";
+}
+
+test("makeAgentLoader injects the assistant's memory, with the mode overlay LAST", async () => {
+  const cwd = agentDirNamed(ASSISTANT_AGENT_NAME);
+  seedLearnings(cwd, "Julian prefers short replies.");
+
+  const prompt = await asCoordinator(() => promptFor(cwd, "plan"));
+  const memoryAt = prompt.indexOf("# What you remember about this user");
+  expect(memoryAt).toBeGreaterThan(-1);
+  expect(prompt).toContain("- Julian prefers short replies.");
+  // Ordering: workspace/user context → memory → mode overlay.
+  expect(memoryAt).toBeGreaterThan(prompt.indexOf("# Workspace Context"));
+  expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(memoryAt);
+});
+
+test("makeAgentLoader puts the assistant's operating rules after its memory", async () => {
+  const cwd = agentDirNamed(ASSISTANT_AGENT_NAME);
+  seedLearnings(cwd, "Julian prefers short replies.");
+
+  const prompt = await asCoordinator(() => promptFor(cwd, "plan"));
+  const memoryAt = prompt.indexOf("# What you remember about this user");
+  const rulesAt = prompt.indexOf("# How you operate in Houston");
+  expect(rulesAt).toBeGreaterThan(memoryAt);
+  expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(rulesAt);
+});
+
+test("the rules are injected for the coordinator with no memory yet", async () => {
+  // Named like any other agent: on the managed pod the coordinator IS one.
+  const prompt = await asCoordinator(() =>
+    promptFor(agentDirNamed("Assistant")),
+  );
+  expect(prompt).toContain("# How you operate in Houston");
+});
+
+test("makeAgentLoader omits the operating rules for a normal agent", async () => {
+  for (const dir of ["Helper", ASSISTANT_AGENT_NAME]) {
+    const prompt = await promptFor(agentDirNamed(dir));
+    expect(prompt).not.toContain("# How you operate in Houston");
+  }
+});
+
+test("makeAgentLoader omits the memory section for a normal agent", async () => {
+  const cwd = agentDirNamed("Helper");
+  seedLearnings(cwd, "Julian prefers short replies.");
+
+  const prompt = await promptFor(cwd);
+  expect(prompt).not.toContain("# What you remember about this user");
+  expect(prompt).not.toContain("Julian prefers short replies.");
 });
 
 test("the shared-skills manifest is read once when the loader is built", async () => {

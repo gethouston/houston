@@ -49,10 +49,13 @@ interface WindowOverride {
  *   gating). `claude-fable-5`, `claude-fable-5-1` and `claude-sonnet-5` are
  *   intentionally omitted (no evidence any is plan-gated — pi's flat 1M
  *   stands for all three).
- * - `openai-codex` — Codex's `/status` reports a 95%-EFFECTIVE window (the number
- *   the user sees), and gpt-5.5/5.4 expose an opt-in 1M variant (× 95%).
- *   `gpt-6-astra` (1.05M window, 272k standard-price tier) follows the
- *   gpt-5.5 shape.
+ * - `openai-codex` — Codex's `/status` reports a 95%-EFFECTIVE window (the
+ *   number the user sees). `gpt-6-astra` (1.05M window, 272k standard-price
+ *   tier) carries the opt-in 1M variant (× 95%).
+ *
+ * Every row here names a model the domain catalog still lists
+ * (`@houston/domain` `VALID_MODELS`); a model the catalog drops is a row no
+ * turn can reach, and a stale ceiling is worse than none.
  */
 export const MODEL_WINDOW_OVERRIDES: Readonly<
   Record<string, Readonly<Record<string, WindowOverride>>>
@@ -65,8 +68,6 @@ export const MODEL_WINDOW_OVERRIDES: Readonly<
   },
   "openai-codex": {
     "gpt-6-astra": { default: 258_400, max: 950_000 },
-    "gpt-5.5": { default: 258_400, max: 950_000 },
-    "gpt-5.4": { default: 258_400, max: 950_000 },
     "gpt-5.4-mini": { default: 258_400 },
     "gpt-5.3-codex-spark": { default: 121_600 },
   },

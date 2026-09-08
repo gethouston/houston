@@ -1,5 +1,5 @@
 import { isAbsolute } from "node:path";
-import type { ClaudeToken } from "./backend";
+import type { ClaudeToken } from "./backend-types";
 
 /**
  * Building the environment for the Claude Agent SDK subprocess.

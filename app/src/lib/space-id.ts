@@ -31,3 +31,48 @@ export function orgSlugFromWorkspaceId(id: string): string | null {
 export function isTeamWorkspace(id: string): boolean {
   return orgSlugFromWorkspaceId(id) !== null;
 }
+
+/**
+ * The personal workspace's client-side id. It is SYNTHETIC: the adapter
+ * substitutes this row for whatever the host serves (`workspaces-mixin.ts`
+ * `listWorkspaces`) because the id is load-bearing for prefs, caches and the
+ * desktop boot path.
+ *
+ * The adapter spells the same value `DEFAULT_WORKSPACE_ID`
+ * (`packages/web/src/engine-adapter/synthetic.ts`) and keeps its own copy for
+ * the same reason `teamSlugFromWorkspaceId` does: `packages/web` never imports
+ * from `app/`. The two must stay equal.
+ */
+export const PERSONAL_WORKSPACE_ID = "default";
+
+/**
+ * Whether a server event's workspace id addresses the workspace the user has
+ * open — the gate on every workspace-scoped invalidation.
+ *
+ * The two sides speak DIFFERENT vocabularies for the personal space and a
+ * string compare between them is always false: the client holds the synthetic
+ * {@link PERSONAL_WORKSPACE_ID}, while an event carries the SERVER's id — the
+ * local host's on-disk folder name (`~/.houston/workspaces/<Name>`) or the
+ * gateway's fixed engine id. An agent that the assistant created therefore
+ * emitted `AgentsChanged`, reached the app, and was dropped by the guard: the
+ * new agent stayed invisible until a manual refresh.
+ *
+ * Team spaces are the only ids both sides spell identically (`org:<slug>`), so
+ * they still match exactly and never leak into another space; anything that is
+ * NOT a team id belongs to the personal space by construction, which is what
+ * makes the personal case decidable without a round trip.
+ *
+ * An event with no workspace id at all names no space to exclude — the open one
+ * is the only one this window can act on, so it applies (a stale surface is the
+ * one outcome this pipeline may never produce).
+ */
+export function eventTargetsOpenWorkspace(
+  eventWorkspaceId: string | undefined,
+  openWorkspaceId: string | undefined,
+): boolean {
+  if (!openWorkspaceId) return false;
+  if (!eventWorkspaceId) return true;
+  if (eventWorkspaceId === openWorkspaceId) return true;
+  if (openWorkspaceId !== PERSONAL_WORKSPACE_ID) return false;
+  return !isTeamWorkspace(eventWorkspaceId);
+}

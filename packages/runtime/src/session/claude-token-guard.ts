@@ -26,9 +26,11 @@ const CLAUDE_BACKEND_ID = "anthropic";
 
 /**
  * Layer 2: does this cached conversation hold a Claude session whose pinned
- * access token is no longer the stored one? A cheap, no-network check — one
- * store read, ambient-scoped exactly like the read the turn itself would make
- * (the whole request runs inside the acting identity, HOU-976). Sessions with
+ * access token is no longer the stored one? A cheap, no-network check — the
+ * store read plus, at most, one `statSync` of the shared login file (its parse
+ * is cached until the file changes), ambient-scoped exactly like the read the
+ * turn itself would make (the whole request runs inside the acting identity,
+ * HOU-976). Sessions with
  * no digest (api_key, config-dir credential) and non-Claude backends never
  * match, so they are never rebuilt from under a working setup.
  */
@@ -36,7 +38,13 @@ export function claudeSessionTokenStale(conv: Conversation): boolean {
   if (conv.backendId !== CLAUDE_BACKEND_ID) return false;
   const pinned = conv.session.getUsedAccessDigest?.();
   if (pinned === undefined) return false;
-  return pinned !== readAnthropicToken(authStorage)?.accessDigest;
+  // READ-ONLY on purpose: no `remove` is handed over, so this probe can never
+  // delete the superseded store entry the full read drops. A staleness question
+  // that mutates a credential is a question that changes its own answer.
+  return (
+    pinned !==
+    readAnthropicToken({ get: (id) => authStorage.get(id) })?.accessDigest
+  );
 }
 
 /**

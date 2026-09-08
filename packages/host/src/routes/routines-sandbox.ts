@@ -1,12 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent } from "@houston/protocol";
-import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
+import { actingSubFromHeader } from "../auth/acting";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
-import { bearer, json, readJson } from "./http";
+import { bearer, header, json, readJson } from "./http";
+import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
+import { liveTurns } from "./live-turn";
 import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
 
 /**
@@ -84,12 +86,19 @@ export async function handleSandboxRoutines(
   const root = paths.agentRoot(ws, agent);
   const nowIso = new Date().toISOString();
   const triggersEnabled = deps.triggersEnabled ?? false;
-  // WHO the routine records as its creator (C2), same policy as agent-data: the
-  // gateway-minted acting sub on a managed pod (falling back to the org owner
-  // when no header decodes — an authorless routine is not fireable by the
-  // control-plane planner), else the workspace owner.
+  // WHO the routine records as its creator (C2): on a managed pod, the person
+  // the HOST recorded when it started the turn this call speaks in
+  // (routes/live-turn.ts, matched by the conversation the runtime names). A
+  // loopback /sandbox call is not gateway-fronted, so an acting-as header on
+  // THIS request is the runtime's own word and is never read. No recorded
+  // turn falls back to the org owner (an authorless routine is not fireable
+  // by the control-plane planner); off the gateway the workspace owner.
+  const claimedConversationId = header(req, CONVERSATION_ID_HEADER);
+  const turn = claimedConversationId
+    ? liveTurns.get(claim.agentId, claimedConversationId)
+    : undefined;
   const createdBy = deps.gatewayFronted
-    ? (actingSubFromHeader(req.headers[ACTING_AS_HEADER]) ?? deps.ownerSub)
+    ? (actingSubFromHeader(turn?.actingAs) ?? deps.ownerSub)
     : ws.ownerUserId;
   // A successful write reacts on the SAME channel a UI or file-watcher write does
   // (saveRoutines writes the file the host watches); scope to the workspace owner.

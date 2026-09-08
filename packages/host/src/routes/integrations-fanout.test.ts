@@ -4,10 +4,10 @@ import { IntegrationRegistry } from "../integrations/registry";
 import { executeIntegration, searchIntegrations } from "./integrations-fanout";
 
 test("search fan-out keeps healthy provider results", async () => {
-  const failed = new FakeIntegrationProvider({ id: "failed" });
+  const failed = new FakeIntegrationProvider({ id: "custom" });
   failed.throwSearchExecute = new Error("offline");
   const healthy = new FakeIntegrationProvider({
-    id: "healthy",
+    id: "composio",
     actions: [
       {
         action: "SLACK_SEND_MESSAGE",

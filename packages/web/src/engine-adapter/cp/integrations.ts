@@ -1,23 +1,23 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import type {
-  AddCustomIntegrationInput,
-  CustomDetectResult,
-  CustomIntegrationView,
-  CustomToolInfo,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
   TriggerType,
 } from "../../../../../ui/engine-client/src/types";
-import { HoustonEngineError } from "../client/errors";
 import { type ControlPlaneConfig, cpFetch } from "./fetch";
 
 // The integration WRITES — connect / disconnect / session / reconnect-notice
 // dismiss — delegate to `sdk.integrations.*` (byte-identical routes, no
 // refetch); see `client/integrations-mixin.ts`. Only the READS stay here.
 
-const integrationPath = (provider: string) =>
+const integrationPath = (provider: IntegrationProviderId) =>
   `/v1/integrations/${encodeURIComponent(provider)}`;
 
+/**
+ * Shows which outside apps can be connected and which ones already are.
+ * @assistant group:integrations
+ */
 export async function integrationStatus(
   cfg: ControlPlaneConfig,
 ): Promise<IntegrationProviderStatus[]> {
@@ -25,9 +25,17 @@ export async function integrationStatus(
   return ((await res.json()) as { items: IntegrationProviderStatus[] }).items;
 }
 
+/**
+ * Checks whether a connection to an outside app has finished.
+ * @param provider Which integration surface to ask: composio for the app
+ *   catalogue, custom for the user's own connectors.
+ * @param connectionId The connection to check, by the id
+ *   integrationConnections returns.
+ * @assistant group:integrations
+ */
 export async function integrationConnection(
   cfg: ControlPlaneConfig,
-  provider: string,
+  provider: IntegrationProviderId,
   connectionId: string,
 ): Promise<IntegrationConnection> {
   const res = await cpFetch(
@@ -37,17 +45,29 @@ export async function integrationConnection(
   return (await res.json()) as IntegrationConnection;
 }
 
+/**
+ * Lists the outside apps available to connect.
+ * @param provider Which integration surface to ask: composio for the app
+ *   catalogue, custom for the user's own connectors.
+ * @assistant group:integrations
+ */
 export async function integrationToolkits(
   cfg: ControlPlaneConfig,
-  provider: string,
+  provider: IntegrationProviderId,
 ): Promise<IntegrationToolkit[]> {
   const res = await cpFetch(cfg, `${integrationPath(provider)}/toolkits`);
   return ((await res.json()) as { items: IntegrationToolkit[] }).items;
 }
 
+/**
+ * Lists the accounts the user has connected for one outside app.
+ * @param provider Which integration surface to ask: composio for the app
+ *   catalogue, custom for the user's own connectors.
+ * @assistant group:integrations
+ */
 export async function integrationConnections(
   cfg: ControlPlaneConfig,
-  provider: string,
+  provider: IntegrationProviderId,
 ): Promise<IntegrationConnection[]> {
   const res = await cpFetch(cfg, `${integrationPath(provider)}/connections`);
   return ((await res.json()) as { items: IntegrationConnection[] }).items;
@@ -59,6 +79,13 @@ export async function integrationConnections(
 // per-routine provisioning status lives in `agentTriggerStatus`
 // (cp/agent-teams.ts).
 
+/**
+ * Lists the events from an outside app that a routine can wake up on.
+ * @param toolkit The outside app's toolkit slug, exactly as
+ *   integrationToolkits returned it.
+ * @assistant group:integrations
+ * @assistant unschematized: a trigger type's config and payload are the outside app's own shapes.
+ */
 export async function triggerTypes(
   cfg: ControlPlaneConfig,
   toolkit: string,
@@ -68,105 +95,4 @@ export async function triggerTypes(
     `/v1/integrations/composio/trigger-types?toolkit=${encodeURIComponent(toolkit)}`,
   );
   return ((await res.json()) as { items: TriggerType[] }).items;
-}
-
-// ---- custom integrations (HOU-550): user-defined API / MCP servers ----
-// A deployment without the custom-integrations surface (older host) answers
-// 404 on the definitions read; that is a legitimate "feature absent" shape, so
-// it maps to null (the section stays hidden) rather than surfacing an error.
-// The write routes have no such fallback — a failure there is a real failure.
-
-export async function customIntegrations(
-  cfg: ControlPlaneConfig,
-): Promise<CustomIntegrationView[] | null> {
-  try {
-    const res = await cpFetch(cfg, "/v1/integrations/custom/definitions");
-    return ((await res.json()) as { items: CustomIntegrationView[] }).items;
-  } catch (err) {
-    if (err instanceof HoustonEngineError && err.status === 404) return null;
-    throw err;
-  }
-}
-
-export async function removeCustomIntegration(
-  cfg: ControlPlaneConfig,
-  slug: string,
-): Promise<void> {
-  await cpFetch(
-    cfg,
-    `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}`,
-    { method: "DELETE" },
-  );
-}
-
-export async function submitCustomIntegrationCredential(
-  cfg: ControlPlaneConfig,
-  slug: string,
-  values: Record<string, string>,
-): Promise<CustomIntegrationView> {
-  const res = await cpFetch(
-    cfg,
-    `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/credential`,
-    { method: "POST", body: JSON.stringify({ values }) },
-  );
-  return (await res.json()) as CustomIntegrationView;
-}
-
-export async function startCustomIntegrationOAuth(
-  cfg: ControlPlaneConfig,
-  slug: string,
-): Promise<{ authorizeUrl: string }> {
-  const res = await cpFetch(
-    cfg,
-    `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/oauth/start`,
-    { method: "POST" },
-  );
-  return (await res.json()) as { authorizeUrl: string };
-}
-
-export async function detectCustomIntegration(
-  cfg: ControlPlaneConfig,
-  url: string,
-): Promise<CustomDetectResult> {
-  const res = await cpFetch(cfg, "/v1/integrations/custom/detect", {
-    method: "POST",
-    body: JSON.stringify({ url }),
-  });
-  return (await res.json()) as CustomDetectResult;
-}
-
-export async function addCustomIntegration(
-  cfg: ControlPlaneConfig,
-  input: AddCustomIntegrationInput,
-): Promise<CustomIntegrationView> {
-  const res = await cpFetch(cfg, "/v1/integrations/custom/definitions", {
-    method: "POST",
-    body: JSON.stringify(input),
-  });
-  return (await res.json()) as CustomIntegrationView;
-}
-
-/** The compiled tools behind one custom integration (the detail card's list).
- *  A bare 404 = the host predates the route → null, mirroring
- *  `customIntegrations`; a `{code:"not_found"}` 404 is an UNKNOWN SLUG (the
- *  definition was removed concurrently) and rethrows as a real failure. */
-export async function customIntegrationTools(
-  cfg: ControlPlaneConfig,
-  slug: string,
-): Promise<CustomToolInfo[] | null> {
-  try {
-    const res = await cpFetch(
-      cfg,
-      `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/tools`,
-    );
-    return ((await res.json()) as { items: CustomToolInfo[] }).items;
-  } catch (err) {
-    if (
-      err instanceof HoustonEngineError &&
-      err.status === 404 &&
-      (err.body as { code?: string } | null)?.code !== "not_found"
-    )
-      return null;
-    throw err;
-  }
 }

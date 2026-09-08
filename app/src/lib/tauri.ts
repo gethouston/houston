@@ -21,6 +21,7 @@ import type {
   ComposioAppEntry as EngineComposioAppEntry,
   ComposioStatus as EngineComposioStatus,
   ProviderStatus as EngineProviderStatus,
+  MessageApproval,
   MessageMention,
   ProviderAuthState,
   ProviderHealth,
@@ -42,6 +43,7 @@ import {
   type WarmingWriteOptions,
 } from "./agent-warming-guard";
 import { isKeyGoneError, isKeyLimitError } from "./api-keys-model";
+import { isAssistantUnavailableError } from "./assistant-availability";
 import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
@@ -70,6 +72,7 @@ import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error"
 import { isOrgAdminRequiredError } from "./org-admin-required-error";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { isProviderLoginSessionLostError } from "./provider-login-session-lost";
+import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
@@ -607,6 +610,13 @@ export const tauriChat = {
        * auto-resume, routine) carries none (see SessionStartRequest).
        */
       mentions?: MessageMention[];
+      /**
+       * Receipts for the approval cards this message answers. Only a USER
+       * message can turn a host-issued request id into a usable approval, so
+       * these ride the send as their own field; the HOST records them and drops
+       * the field before the runtime sees the turn (see SessionStartRequest).
+       */
+      approvals?: MessageApproval[];
     },
   ) =>
     call<string>("send_message", async () => {
@@ -633,6 +643,9 @@ export const tauriChat = {
         // Who this message names (HOU-944). An empty list means what absence
         // means, so never put `[]` on the wire.
         mentions: opts?.mentions?.length ? opts.mentions : undefined,
+        // Which approval cards this message answers. Absence and an empty list
+        // are the same answer, so never put `[]` on the wire.
+        approvals: opts?.approvals?.length ? opts.approvals : undefined,
       });
       return res.sessionKey;
     }),
@@ -1631,6 +1644,23 @@ export function mergeGatewayStatus(
 }
 
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
+
+/**
+ * The stored `default_provider` preference, in the DISPLAY dialect every
+ * catalog lookup downstream is keyed by.
+ *
+ * The ONE read of this key. It can hold either dialect — an install that last
+ * picked Codex stored pi's canonical `openai-codex`, the picker writes
+ * Houston's `openai` — and while only one accessor normalized it, the same
+ * stored value meant two different providers depending on which one asked: the
+ * chat panel's initial pick and the boot connection probe both read the raw id
+ * and missed the catalog entirely.
+ */
+async function storedDefaultProvider(): Promise<string | null> {
+  return toDisplayProviderIdOrNull(
+    await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY),
+  );
+}
 const DEFAULT_MODEL_PREF_KEY = "default_model";
 
 export const tauriProvider = {
@@ -1720,15 +1750,15 @@ export const tauriProvider = {
         return out;
       },
     ),
+  /**
+   * The provider the next chat opens on, in the DISPLAY dialect — the same
+   * value `getLastUsed` answers with, read the same way (see
+   * {@link storedDefaultProvider}). `""` when nothing is stored.
+   */
   getDefault: () =>
     call<string>(
       "get_default_provider",
-      async () =>
-        (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
-    ),
-  setDefault: (provider: string) =>
-    call<void>("set_default_provider", () =>
-      getEngine().setPreference(DEFAULT_PROVIDER_PREF_KEY, provider),
+      async () => (await storedDefaultProvider()) ?? "",
     ),
   /**
    * Last (provider, model) pair the user picked anywhere — agent creation
@@ -1751,15 +1781,15 @@ export const tauriProvider = {
     call<{ provider: string | null; model: string | null }>(
       "get_last_used_provider",
       async () => {
-        const eng = getEngine();
+        // Both halves are normalized on the way out: the provider through the
+        // id dialect (`storedDefaultProvider`), the model through the
+        // legacy-alias table, so a value stored by any older build seeds a
+        // creation dialog as the pair the catalog is keyed by.
         const [provider, model] = await Promise.all([
-          eng.getPreference(DEFAULT_PROVIDER_PREF_KEY),
-          eng.getPreference(DEFAULT_MODEL_PREF_KEY),
+          storedDefaultProvider(),
+          getEngine().getPreference(DEFAULT_MODEL_PREF_KEY),
         ]);
-        return {
-          provider: provider ?? null,
-          model: normalizeLegacyModel(model),
-        };
+        return { provider, model: normalizeLegacyModel(model, provider) };
       },
     ),
   /**
@@ -1991,6 +2021,45 @@ export const tauriProvider = {
    */
   setGeminiApiKey: (apiKey: string) =>
     call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
+};
+
+// ─── Personal assistant ───────────────────────────────────────────────
+
+/** Mirror of the engine `AssistantHandle` — re-exported so callers can import
+ *  it from `lib/tauri.ts` like the other engine DTOs. */
+export type AssistantHandle =
+  import("@houston-ai/engine-client").AssistantHandle;
+
+/**
+ * Where the user's personal assistant lives. The assistant is an ordinary
+ * agent conversation — this is only its address, so every other call it needs
+ * (send, history, events) is the existing per-agent surface above. Both fields
+ * are OPAQUE: the deployment decides what an assistant is, and parsing them
+ * here would bake one deployment's shape into the app.
+ */
+export const tauriAssistant = {
+  /**
+   * Silenced for everything `classifyAssistantDiscoveryFailure` does not call
+   * `unexpected` (`lib/assistant-availability.ts`): a deployment that serves no
+   * assistant (a 501, a gateway older than the route answering 404, or a 503
+   * naming its absence with a code) AND a pod that is simply not awake yet (an
+   * uncoded 503, which the caller retries on the server's own `Retry-After`
+   * hint). Neither is a Houston bug — one has no screen to show, the other
+   * answers moments later — so both are logged and never toasted. Every other
+   * failure stays loud.
+   *
+   * `surface: false` is how `hooks/use-assistant.ts` runs its retry ladder:
+   * every attempt is logged and none is reported, and the hook surfaces the
+   * final error itself through {@link surfaceEngineError}. One user-visible
+   * surface per user-visible action.
+   */
+  discover: (options?: Pick<EngineCallOptions, "surface">) =>
+    call<AssistantHandle>(
+      "get_assistant",
+      () => getEngine().getAssistant(),
+      undefined,
+      { silence: isAssistantUnavailableError, ...options },
+    ),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────

@@ -52,7 +52,7 @@ describe("preferRowPin (a parked follow-up flushes with the mission's own pin)",
     assert.deepEqual(
       preferRowPin(
         { provider: "anthropic", model: "claude-opus-4-7" },
-        { provider: "openai", model: "gpt-5.5", effort: "high" },
+        { provider: "openai", model: "gpt-6-astra", effort: "high" },
       ),
       { provider: "anthropic", model: "claude-opus-4-7", effort: "high" },
     );

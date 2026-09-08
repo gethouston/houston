@@ -1,25 +1,16 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  createActivity,
-  loadActivities,
-  removeById,
-  saveActivities,
-  upsertById,
-} from "@houston/domain";
-import { normalizeTurnMode, TURN_MODES } from "@houston/protocol";
-import { hostProvider } from "../providers";
-import { withDocLock } from "./doc-lock";
+import { loadActivities } from "@houston/domain";
 import { json, readJson } from "./http";
+import { MAX_AGENT_STARTED_MISSIONS, missionFanout } from "./mission-fanout";
 import {
-  fireActivityChanged,
-  type MissionsCtx,
-  missionSessionKey,
-} from "./missions-sandbox";
-
-/** Fan-out guard: refuse new agent-started missions past this many `running`
- *  cards. Keeps a looping agent from flooding the board (the OpenCode
- *  unbounded-recursion failure mode); generous enough for real orchestration. */
-const MAX_RUNNING_MISSIONS = 20;
+  MAX_MISSION_DEPTH,
+  type MissionOrigin,
+  parseMissionStart,
+} from "./missions-remote";
+import { forwardMissionStart } from "./missions-remote-forward";
+import { type MissionsCtx, missionSessionKey } from "./missions-sandbox";
+import { startMission } from "./missions-start-run";
+import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
 /**
  * `POST /sandbox/missions/start` (PRODUCT-1244): create a board mission and
@@ -27,121 +18,92 @@ const MAX_RUNNING_MISSIONS = 20;
  * using the SAME per-workspace channel a routine firing uses so the child turn
  * reaches the runtime exactly like a user message (fire-and-forget 202; the
  * runtime queues it behind the workdir lock until the parent turn finishes).
- *
  * Server-stamped facts the agent cannot author: `origin_session_key` (the
  * parent conversation — the agent-started marker) and Teams attribution.
+ *
+ * An optional `agent` puts the mission on ANOTHER agent's board, exactly as if
+ * the user had created it there; an agent in another pod gets the same start
+ * over the wire (missions-remote-forward.ts) and runs {@link startMission} on
+ * its own side. The two guards keep their own subjects: depth reads the
+ * CALLER's board (where the parent chat lives, remote target or not), the cap
+ * counts the TARGET's (that is the board being flooded).
  */
+
 export async function handleMissionStart(
   ctx: MissionsCtx,
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
   const body = await readJson(req);
-  const title = typeof body.title === "string" ? body.title.trim() : "";
-  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
-  if (!title || !prompt) {
-    json(res, 400, { error: "pass both 'title' and 'prompt'" });
-    return;
-  }
-  if (
-    body.mode !== undefined &&
-    !(TURN_MODES as readonly unknown[]).includes(body.mode)
-  ) {
-    json(res, 400, {
-      error: "'mode' must be one of: plan, execute, auto",
-    });
-    return;
-  }
-  const provider =
-    typeof body.provider === "string" ? body.provider : undefined;
-  const model = typeof body.model === "string" ? body.model : undefined;
-  if (provider && !hostProvider(provider)) {
-    json(res, 400, {
-      error: `unknown provider: ${provider} — omit it to use the agent's current model`,
-    });
-    return;
-  }
-  // The parent conversation is the agent-started marker AND what the depth /
-  // self guards key on; the tool always forwards it during a turn.
+  const parsed = parseMissionStart(body);
+  if (!parsed.ok)
+    return json(res, 400, { error: parsed.error, code: parsed.code });
+  // WHERE THIS CALL COMES FROM: the conversation the caller named, matched
+  // against the HOST's own record of the turn running there before this handler
+  // ever ran (routes/missions-sandbox.ts). The parent conversation is the
+  // agent-started marker AND what the depth chain is counted from, so a caller
+  // that could name a conversation of its own invention would report itself as
+  // a fresh top-level chat forever and the chain would never end.
   const parentCid = ctx.conversationId;
   if (!parentCid) {
-    json(res, 400, { error: "start_mission only works during a turn" });
-    return;
+    return json(res, 400, {
+      error: "start_mission only works during a turn",
+      code: "not_in_turn",
+    });
   }
-
-  const channel = ctx.deps.channels[ctx.ws.runtime];
-  if (!channel) {
-    json(res, 503, { error: "missions can't be started in this install" });
-    return;
-  }
-
-  const id = crypto.randomUUID();
-  const guarded = await withDocLock(`${ctx.root}#activity`, async () => {
-    const { items } = await loadActivities(ctx.vfs, ctx.root);
-    // Depth 1 only: a mission Houston started never starts further missions —
-    // the board stays a flat list the user can actually review, and a
-    // runaway spawn loop is impossible by construction.
-    const parent = items.find((a) => missionSessionKey(a) === parentCid);
-    if (parent?.origin_session_key) return "depth" as const;
-    const running = items.filter((a) => a.status === "running").length;
-    if (running >= MAX_RUNNING_MISSIONS) return "cap" as const;
-    const activity = createActivity(
-      {
-        title,
-        // The board card's preview line, same as a user-created mission whose
-        // description is its first message.
-        description: prompt,
-        ...(provider ? { provider } : {}),
-        ...(model ? { model } : {}),
-        origin_session_key: parentCid,
-      },
-      id,
-      new Date().toISOString(),
-      ctx.author,
-    );
-    await saveActivities(ctx.vfs, ctx.root, upsertById(items, activity));
-    return activity;
-  });
-  if (guarded === "depth") {
-    json(res, 409, {
+  const route = await resolveMissionRoute(ctx, body.agent);
+  if (!route.ok) return refuseMissionRoute(route, res);
+  // The parent chat is on the CALLER's board, hence this read is not the
+  // target's. A parent that is itself a mission carries the depth it was
+  // started at, so the chain is counted rather than guessed - a mission whose
+  // own parent lives in another pod still knows how deep it sits.
+  const { items: callerItems } = await loadActivities(ctx.vfs, ctx.root);
+  const parent = callerItems.find((a) => missionSessionKey(a) === parentCid);
+  const depth = parent?.origin_session_key ? (parent.origin_depth ?? 1) + 1 : 1;
+  if (depth > MAX_MISSION_DEPTH) {
+    return json(res, 409, {
       error:
-        "missions Houston started can't start further missions — ask in the original chat instead",
+        "missions Houston started can't start further missions - ask in the original chat instead",
+      code: "mission_depth",
     });
-    return;
   }
-  if (guarded === "cap") {
-    json(res, 409, {
-      error: `there are already ${MAX_RUNNING_MISSIONS} missions running — wait for some to finish first`,
+  // The CALLER's own budget, which no single target board can see: without it
+  // one agent spreads its starts over every other agent and trips nobody's cap.
+  if (
+    (await missionFanout.running(ctx.agent.id, ctx.vfs)) >=
+    MAX_AGENT_STARTED_MISSIONS
+  ) {
+    return json(res, 409, {
+      error: `you already have ${MAX_AGENT_STARTED_MISSIONS} missions running - wait for some to finish before starting more`,
+      code: "mission_fanout",
     });
-    return;
   }
-  fireActivityChanged(ctx);
-
-  try {
-    await channel.fireTurn(
-      { workspace: ctx.ws, agent: ctx.agent },
-      `activity-${id}`,
-      prompt,
-      {
-        ...(provider ? { provider } : {}),
-        ...(model ? { model } : {}),
-        mode: normalizeTurnMode(body.mode),
-      },
-      // Integration calls in the child act as the human driving the parent
-      // turn (gateway only) — the same acting hand-off a routine firing does.
-      ctx.author?.user_id,
+  const origin: MissionOrigin = {
+    session_key: parentCid,
+    agent: ctx.agent.id,
+    depth,
+  };
+  if (route.remote) {
+    const status = await forwardMissionStart(
+      route.route,
+      parsed.value,
+      origin,
+      res,
     );
-  } catch (err) {
-    // The mission never started: leave no orphan card stuck on Running.
-    await withDocLock(`${ctx.root}#activity`, async () => {
-      const { items } = await loadActivities(ctx.vfs, ctx.root);
-      const result = removeById(items, id);
-      if (result.removed) await saveActivities(ctx.vfs, ctx.root, result.items);
-    });
-    fireActivityChanged(ctx);
-    const reason = err instanceof Error ? err.message : String(err);
-    json(res, 502, { error: `couldn't start the mission: ${reason}` });
+    // The other pod owns the id it minted and never reports the mission ending,
+    // so the slot is charged under an id of this side's own and aged out
+    // (mission-fanout.ts) rather than reconciled.
+    if (status >= 200 && status < 300)
+      missionFanout.record(ctx.agent.id, {
+        missionId: crypto.randomUUID(),
+        boardRoot: null,
+      });
     return;
   }
-  json(res, 201, { id, title, status: "running" });
+  const started = await startMission(route.ctx, parsed.value, origin, res);
+  if (started)
+    missionFanout.record(ctx.agent.id, {
+      missionId: started,
+      boardRoot: route.ctx.root,
+    });
 }

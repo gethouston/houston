@@ -6,6 +6,7 @@ import {
   contentDisposition,
   createWorkspaceFolder,
   deleteWorkspaceFile,
+  FileOpError,
   FilePathError,
   handleFiles,
   listWorkspace,
@@ -115,6 +116,16 @@ test("rename moves a file within its folder, preserving content", async () => {
     base64: false,
   });
   expect(await readWorkspaceFile(objects, ROOT, "data/old.csv")).toBeNull();
+});
+
+test("renaming a file that is gone answers 404, never a 500", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "data/kept.csv", "1,2,3");
+  // The op names the status itself: a source deleted in another tab (or a stale
+  // listing) is the user's state, not a server fault.
+  const rejected = renameWorkspaceFile(objects, ROOT, "data/gone.csv", "x.csv");
+  await expect(rejected).rejects.toBeInstanceOf(FileOpError);
+  await expect(rejected).rejects.toMatchObject({ status: 404 });
 });
 
 test("createFolder makes an empty folder visible via a hidden marker", async () => {
@@ -308,6 +319,27 @@ function fakeReq(body: unknown) {
     yield buf;
   })() as never;
 }
+
+test("POST files/rename on a missing source is a 404 response body", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "data/kept.csv", "1,2,3");
+  const { res, state } = fakeRes();
+  const handled = await handleFiles(
+    objects,
+    PATHS,
+    CTX,
+    "POST",
+    "files/rename",
+    fakeReq({ path: "data/gone.csv", newName: "x.csv" }),
+    res,
+    new URLSearchParams(),
+  );
+  expect(handled).toBe(true);
+  expect(state.status).toBe(404);
+  expect(JSON.parse(String(state.body)) as { error: string }).toEqual({
+    error: "file not found",
+  });
+});
 
 test("every files mutation emits FilesChanged; reads do not", async () => {
   const objects = new MemoryVfs();

@@ -77,7 +77,7 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
       req: UpdateAgent,
     ): Promise<Agent> {
       if (this.ctx.cp)
-        return controlPlane.updateAgentColor(this.ctx.cp, agentId, req.color);
+        return controlPlane.applyAgentColor(this.ctx.cp, agentId, req.color);
       return agents.updateAgentColor(workspaceId, agentId, req.color);
     }
     async deleteAgent(workspaceId: string, agentId: string): Promise<void> {

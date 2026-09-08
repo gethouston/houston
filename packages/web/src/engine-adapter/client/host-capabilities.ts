@@ -1,3 +1,4 @@
+import { retryAfterMsOf } from "../../../../../ui/engine-client/src/retry-after";
 import type { Capabilities } from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
 import type { AdapterContext } from "./context";
@@ -22,7 +23,7 @@ export async function fetchCapabilities(
   )(`${ctx.baseUrl}/v1/capabilities`);
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new HoustonEngineError(res.status, body);
+    throw new HoustonEngineError(res.status, body, retryAfterMsOf(res.headers));
   }
   return (await res.json()) as Capabilities;
 }

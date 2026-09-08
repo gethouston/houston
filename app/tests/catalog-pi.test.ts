@@ -44,7 +44,7 @@ describe("piCatalogToCandidates maps the pi-ai catalog to merge candidates", () 
     provider("openai", "apiKey", [entry("gpt-4o"), entry("gpt-4o-mini")]),
     // OAuth Codex — renamed to `openai`, marked subscription.
     provider("openai-codex", "oauth", [
-      entry("gpt-5.5", {
+      entry("gpt-6-astra", {
         reasoning: true,
         vision: true,
         maxTokens: 64_000,
@@ -74,7 +74,7 @@ describe("piCatalogToCandidates maps the pi-ai catalog to merge candidates", () 
 
   it("preserves the pi model id verbatim as the offer model id", () => {
     const openai = candidates.find((c) => c.providerId === "openai");
-    strictEqual(openai?.raw.id, "gpt-5.5");
+    strictEqual(openai?.raw.id, "gpt-6-astra");
   });
 
   it("maps pi pricing to costIn / costOut", () => {

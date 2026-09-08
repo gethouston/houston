@@ -1,10 +1,10 @@
 {
   "sidebar": {
-    "aboutMe": "About me",
     "academy": "Academy",
     "addAgent": "New agent",
     "agentStore": "Agent Store",
     "aiModels": "AI Models",
+    "assistant": "Houston",
     "changeColor": "Change color",
     "collapse": "Collapse sidebar",
     "color": "Color",
@@ -25,7 +25,6 @@
     "expand": "Expand sidebar",
     "guideMe": "Guide me",
     "help": "Help",
-    "inbox": "Inbox",
     "integrations": "Integrations",
     "myAccounts": "My accounts",
     "needsYouCount_one": "{{count}} issue needs you",
@@ -482,24 +481,11 @@
     "stalledTitle": "Still working on it",
     "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your agent answers."
   },
-  "toolRuntimeError": {
-    "title": "Something got stuck",
-    "body": "A local tool did not start correctly. Try again, and report it if this keeps happening.",
-    "report": "Report bug",
-    "reporting": "Sending report...",
+  "reportBug": {
     "reportSuccessTitle": "Report sent",
     "reportSuccessDescription": "Houston received the logs.",
     "reportErrorTitle": "Could not send report",
-    "reportErrorDescription": "Try again in a moment.",
-    "retryErrorTitle": "Could not try again",
-    "modelUnsupported": {
-      "title": "Your ChatGPT plan doesn't include GPT-5.5 Codex",
-      "body": "Switch to GPT-5.5 to continue. The Codex variant is only available on some ChatGPT plans (Plus, Pro, Team), not on Business or Enterprise.",
-      "switchAction": "Switch to GPT-5.5",
-      "switching": "Switching...",
-      "switchErrorTitle": "Could not switch model",
-      "switchErrorDescription": "Open the model picker and choose GPT-5.5 manually."
-    }
+    "reportErrorDescription": "Try again in a moment."
   },
   "updateChecker": {
     "launchLabel": "Houston update in progress",
@@ -655,8 +641,7 @@
       "newMission": "Start new task",
       "integrations": "Open Integrations",
       "settings": "Open Settings",
-      "shortcuts": "Show keyboard shortcuts",
-      "inbox": "Go to Inbox"
+      "shortcuts": "Show keyboard shortcuts"
     }
   },
   "cheatsheet": {
@@ -669,7 +654,6 @@
     },
     "rows": {
       "palette": "Open command palette",
-      "inbox": "Go to Inbox",
       "newMission": "Start new task",
       "prevAgent": "Previous agent",
       "nextAgent": "Next agent",

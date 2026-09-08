@@ -9,7 +9,7 @@ import {
  * Pure, DOM-free model of the ONE question every relevance-scoped surface asks:
  * does this mission concern ME? (HOU-945.) No React, no store, no Supabase — so
  * the rule is unit-tested once and shared verbatim by the completion
- * notification, the unread badges, and the Mentions inbox, which must never
+ * notification, the unread badges, and the mention notifier, which must never
  * drift apart.
  *
  * Two load-bearing fail-OPEN clauses. Neither may be dropped:
@@ -66,12 +66,12 @@ export function missionIsMine(
 /**
  * Does ONE aggregate entry count as a ping for `selfId`? It has to name me AND
  * have been written by somebody else. Typing your own name in a mission is not
- * news: it would otherwise earn a permanent Mentions-inbox row and a
- * mention-unread badge that no amount of reading can clear, because the mention
- * clause of {@link isUnreadForMe} deliberately has no `since` floor. The OS ping
- * already refuses to fire on a self-authored mention
+ * news: it would otherwise earn a permanent mention-unread badge that no
+ * amount of reading can clear, because the mention clause of
+ * {@link isUnreadForMe} deliberately has no `since` floor. The OS ping already
+ * refuses to fire on a self-authored mention
  * (`hooks/use-mention-notifications.ts`), so applying the same rule at the
- * source is what keeps the three surfaces telling one story instead of leaving a
+ * source is what keeps every surface telling one story instead of leaving a
  * badge behind for a notification that was never sent.
  *
  * `by` is OPTIONAL, and an entry that carries none STILL COUNTS. The gateway
@@ -97,11 +97,11 @@ export function missionMentionsMe(
 
 /**
  * The newest mention of `selfId` on this mission, with its epoch ms — the one
- * derivation of "when was I last pinged here", so the inbox row and the
+ * derivation of "when was I last pinged here", so the unread badge and the
  * notification watermark can never disagree about which entry is newest.
  *
  * Self-authored entries are skipped ({@link isPingForMe}), which is what stops
- * my own typing from filling my own inbox.
+ * my own typing from pinging me.
  *
  * An entry whose `at` does not parse is IGNORED rather than treated as now or
  * as epoch zero: a malformed timestamp from the wire must not fabricate a fresh

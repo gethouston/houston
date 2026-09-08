@@ -13,7 +13,6 @@ import type { SettingsSectionId } from "../lib/settings-sections";
 import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
 import {
   AGENTS_HOME_VIEW_ID,
-  INBOX_VIEW_ID,
   TEAMS_HOME_VIEW_ID,
 } from "../lib/top-level-views.ts";
 
@@ -40,11 +39,11 @@ export interface FilePreviewTarget {
 interface UIState {
   /**
    * The open top-level screen (`lib/top-level-views.ts`). It starts as the
-   * INBOX: there is no global mission board any more, so the app's home is the
-   * first team's Mission Control and no team has resolved on the first paint.
-   * The Inbox is the one screen that needs none, which makes it the honest
-   * landing — and `use-workspace-view-guards.ts`'s boot rule moves the user on
-   * to home the moment the first team lands.
+   * AGENTS HOME: there is no global mission board any more, so the app's home
+   * is the first team's Mission Control and no team has resolved on the first
+   * paint. The Agents home needs none, which makes it the honest landing — and
+   * `use-workspace-view-guards.ts`'s boot rule moves the user on to home the
+   * moment the first team lands.
    */
   viewMode: string;
   /**
@@ -235,8 +234,8 @@ interface UIState {
    * would be teaching two rules for one row shape. Persisted, because a rail
    * that forgets it was folded on every reload is worse than one that never
    * folded, and per-MACHINE rather than per-account, like every other layout
-   * pref here. The two rows that LEAD the rail (Inbox, Agent Store) wear no
-   * band and fold nothing: there is no heading to fold them under.
+   * pref here. The rows that LEAD the rail (the Assistant, the Agent Store)
+   * wear no band and fold nothing: there is no heading to fold them under.
    */
   teamsSectionCollapsed: boolean;
   myAccountsSectionCollapsed: boolean;
@@ -393,7 +392,7 @@ interface UIState {
 /** The initial data state, shared by the store's creator and `reset()` so the
  *  two can never drift. Excludes the action functions. */
 const initialUIState = {
-  viewMode: INBOX_VIEW_ID,
+  viewMode: AGENTS_HOME_VIEW_ID,
   settingsSection: null,
   activityPanelId: null,
   activityPanelForceOpen: false,

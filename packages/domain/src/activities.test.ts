@@ -349,3 +349,18 @@ test("a NON-done patch with a malformed payload leaves the stored one alone", ()
   );
   expect(next.pending_interaction).toEqual({ steps });
 });
+
+test("activity creation and updates persist canonical provider ids", async () => {
+  const activity = createActivity(
+    { title: "Draft", provider: "openai" },
+    "a1",
+    NOW,
+  );
+  expect(activity.provider).toBe("openai-codex");
+  const updated = applyActivityUpdate(activity, { provider: "openai" }, NOW);
+  const store = memStore();
+  await saveActivities(store, ROOT, [updated]);
+  expect(
+    JSON.parse(store.dump().get(docKey(ROOT, "activity")) ?? "[]")[0].provider,
+  ).toBe("openai-codex");
+});

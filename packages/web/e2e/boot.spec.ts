@@ -1,3 +1,4 @@
+import { newAgentRow } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 import { litRows, navRow, rail, screen, teamTab } from "./support/team-nav";
 
@@ -8,9 +9,10 @@ import { litRows, navRow, rail, screen, teamTab } from "./support/team-nav";
  * files-first board data (`.houston/activity/activity.json`) flows through.
  *
  * It is also where the rail's shape is pinned. There is no global Mission
- * Control any more: the top-level rows are the two that belong to nobody
- * (Inbox, Agent Store), then the "My accounts" and "Workspace" bands, then
- * "Your teams" — and boot lands on the FIRST team's Tasks board.
+ * Control any more: the top-level rows are the ones that belong to nobody
+ * (the Assistant, the Agent Store), then the "My accounts" and "Workspace"
+ * bands, then "Your teams", with the Academy and Settings in the footer — and
+ * boot lands on the FIRST team's Tasks board.
  */
 test("boots past every gate onto the first team's Tasks board", async ({
   page,
@@ -19,7 +21,7 @@ test("boots past every gate onto the first team's Tasks board", async ({
 
   // Shell chrome: the whole top-level rail, in the order the user reads it.
   const sidebar = page.locator("[data-tour-target='sidebar']");
-  await expect(navRow(page, "inbox")).toBeVisible();
+  await expect(navRow(page, "agent-store")).toBeVisible();
   await expect(navRow(page, "agent-store")).toBeVisible();
   await expect(sidebar.getByText("My accounts")).toBeVisible();
   await expect(navRow(page, "integrations")).toBeVisible();
@@ -28,7 +30,7 @@ test("boots past every gate onto the first team's Tasks board", async ({
   await expect(navRow(page, "skills")).toBeVisible();
   await expect(navRow(page, "settings")).toBeVisible();
   await expect(sidebar.getByText("Your teams")).toBeVisible();
-  await expect(page.getByRole("button", { name: "New agent" })).toBeVisible();
+  await expect(newAgentRow(page)).toBeVisible();
 
   // The board a user lands on is a TEAM's, and the two halves of the chrome say
   // so between them. The RAIL says which team: its block is a name and its

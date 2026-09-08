@@ -8,15 +8,18 @@ import {
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import type { ProviderHandoffMode } from "../lib/provider-switch";
+import { providerName } from "../lib/providers";
 import { RowCard } from "./cards/row-card";
 import { ProviderGlyph } from "./shell/provider-logos";
 
 interface ProviderSwitchDialogProps {
   open: boolean;
-  /** Id of the provider being switched TO — drives the logo on the card. */
+  /**
+   * Id of the provider being switched TO, in either dialect. The mark AND the
+   * name are both derived from it here: seeded as two separate props, a caller
+   * could hand the glyph one provider and the sentence another.
+   */
   providerId: string;
-  /** Display name of the provider being switched TO. */
-  providerName: string;
   /** How prior context will be carried over, which drives the copy. */
   mode: ProviderHandoffMode;
   onConfirm: () => void;
@@ -41,17 +44,17 @@ interface ProviderSwitchDialogProps {
 export function ProviderSwitchDialog({
   open,
   providerId,
-  providerName,
   mode,
   onConfirm,
   onCancel,
 }: ProviderSwitchDialogProps) {
   const { t } = useTranslation("chat");
   const isSummary = mode === "summarize";
-  const title = t("providerSwitch.title", { provider: providerName });
+  const provider = providerName(providerId);
+  const title = t("providerSwitch.title", { provider });
   const body = t(
     isSummary ? "providerSwitch.summaryBody" : "providerSwitch.replayBody",
-    { provider: providerName },
+    { provider },
   );
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onCancel()}>

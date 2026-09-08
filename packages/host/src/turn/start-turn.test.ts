@@ -23,5 +23,7 @@ test("a non-cloud provider pin throws with the real reason (never a silent fallb
       undefined,
       { provider: "anthropic", model: "claude-opus-4-8" },
     ),
-  ).rejects.toThrow("anthropic is not available for cloud agents");
+    // The catalog NAME, not the wire id: this reason reaches the routine's run
+    // history, where the reader is the person who set the routine up.
+  ).rejects.toThrow("Claude is not available for cloud agents");
 });

@@ -1,28 +1,36 @@
 # @houston-ai/engine-client
 
-The TypeScript front door to the Houston engine. What it provides depends on the
-consumer:
+The TypeScript front door to the Houston engine. The specifier resolves to two
+different things on purpose, and both are load-bearing:
 
-- **`src/types.ts` — the shared v3 wire-type surface.** These types are the
-  TypeScript projection of protocol v3 (`packages/protocol`). The desktop and web
-  builds alias `@houston-ai/engine-client` to the v3 **host adapter**
-  (`packages/web/src/engine-adapter`, via `vite.config.ts`), which re-exports
-  these types and implements the client function surface against `packages/host`
-  over HTTP + SSE. This is the path every shipping build takes.
-- **`src/` v1 REST/WS transport (`HoustonClient`, `EngineWebSocket`) — legacy.**
-  This was the client for the old Rust engine's HTTP+WS protocol. That engine has
-  been deleted, and no build wires this transport in anymore (both surfaces alias
-  the v3 adapter above). It is kept only pending the v3-client consolidation
-  follow-up (`convergence/follow-ups.md`), which folds the remaining consumers
-  onto `@houston/runtime-client` / `@houston/sdk` and removes this v1 code.
+- **At build and run time — the v3 host adapter.** `app/vite.config.ts` and
+  `packages/web/vite.config.ts` both alias `@houston-ai/engine-client` to
+  `packages/web/src/engine-adapter/index.ts`, which implements the client
+  surface against `packages/host` over HTTP + SSE. This is the code every
+  shipping build executes.
+- **At typecheck time — this package's `src/`.** No tsconfig carries a matching
+  `paths` entry, so `tsgo` resolves the specifier through `node_modules` to
+  `src/index.ts`. `src/client.ts` (`HoustonClient`) and `src/ws.ts`
+  (`EngineWebSocket`, `topics`) are therefore the type contract `app/src`
+  compiles against — `app/src/lib/engine.ts` types `getEngine()` as
+  `HoustonClient`. Keep a method here when `app/src` calls it.
 
-## Usage (v3, via the alias)
+`src/types.ts` is the shared v3 wire-type surface — the TypeScript projection of
+protocol v3 (`packages/protocol`) — and the adapter re-exports it, so it means
+the same thing on both resolution paths.
 
-Consumers import from `@houston-ai/engine-client` and get the v3 adapter's
-function surface (workspaces, agents, conversations, files, skills, routines,
-events, …) plus the wire types. Desktop-app bootstrap (reads
-`window.__HOUSTON_ENGINE__` injected by the Tauri shell) lives at
-`app/src/lib/engine.ts`.
+Because the two paths are held in sync by hand, a signature that exists here and
+not on the adapter compiles but throws at run time
+(`packages/web/src/engine-adapter/client/legacy-unsupported-mixin.ts` names the
+operations the adapter deliberately refuses).
+
+## Assistant catalog
+
+The generator under `scripts/` derives the catalog from the LIVE surface only —
+the adapter's `cp/` modules and `client/*-mixin.ts`, plus the SDK's REST modules
+(`scripts/assistant-paths.ts` lists them). It never reads this package's `src/`,
+so `@assistant` annotations belong on the adapter, not here. Gates:
+`pnpm check:assistant-coverage` and `pnpm check:assistant-catalog`.
 
 ## Contract reference
 

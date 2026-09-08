@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   ActingContext,
   IntegrationProvider,
@@ -57,7 +58,7 @@ function readSearchItem(raw: ToolMatch): ToolMatch {
 
 export interface RemoteIntegrationOptions {
   /** Provider id served upstream (and reported locally), e.g. "composio". */
-  id: string;
+  id: IntegrationProviderId;
   /** Base URL of Houston's cloud host, e.g. "https://engine.gethouston.ai". */
   upstreamUrl: string;
   /** The user's current Supabase access token; null when signed out. */
@@ -73,7 +74,7 @@ export interface RemoteIntegrationOptions {
 }
 
 export class RemoteIntegrationProvider implements IntegrationProvider {
-  readonly id: string;
+  readonly id: IntegrationProviderId;
   private readonly upstreamUrl: string;
   private readonly token: () => string | null;
   private readonly podToken?: string;

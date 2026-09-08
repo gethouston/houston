@@ -1,7 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { openTeamSection } from "./support/team-nav";
+import { missionCard, openTeamSection } from "./support/team-nav";
 
 /**
  * Mission cards carry the HUMANS on the mission as an overlapping face stack
@@ -70,7 +70,7 @@ test("a two-person mission shows both faces, no overflow chip", async ({
 }) => {
   await armTeams(request);
   await openTeamBoard(page);
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   const faces = stack(page, "Plan a trip to Tokyo").locator(
     '[data-slot="avatar"]',
@@ -138,7 +138,7 @@ test("initials faces are opaque, so an overlapped face never bleeds through", as
 }) => {
   await armTeams(request);
   await openTeamBoard(page);
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   const fallbacks = stack(page, "Plan a trip to Tokyo").locator(
     '[data-slot="avatar-fallback"]',

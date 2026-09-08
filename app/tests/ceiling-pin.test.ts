@@ -13,10 +13,10 @@ import {
  */
 const catalog: Record<string, string[]> = {
   anthropic: ["claude-opus-5", "claude-sonnet-5"],
-  openai: ["gpt-5.5"],
+  openai: ["gpt-6-astra"],
   openrouter: [
     "anthropic/claude-opus-5",
-    "openai/gpt-5.5",
+    "openai/gpt-6-astra",
     "~anthropic/claude-opus-latest",
   ],
 };
@@ -53,11 +53,11 @@ describe("pickCeilingPin", () => {
     // first): run it on OpenAI, not on the OpenRouter account never connected.
     deepStrictEqual(
       pickCeilingPin(
-        ["gpt-5.5", "openai/gpt-5.5"].sort(),
+        ["gpt-6-astra", "openai/gpt-6-astra"].sort(),
         fallback,
         resolver(["openai"]),
       ),
-      { provider: "openai", model: "gpt-5.5", effort: "high" },
+      { provider: "openai", model: "gpt-6-astra", effort: "high" },
     );
   });
 

@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
-import { closeActivityPanel } from "./support/create-agent";
+import { closeActivityPanel, newAgentRow } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
-import { screen } from "./support/team-nav";
+import { missionCard, screen } from "./support/team-nav";
 
 /**
  * The reworked agent self-setup flow. Creating an agent through the dialog no
@@ -17,7 +17,7 @@ import { screen } from "./support/team-nav";
 /** Open the create dialog and make an agent from scratch (leaves the dialog to
  *  close itself and the setup-mission panel to auto-open). */
 async function createFromScratch(page: Page, name: string) {
-  await page.getByRole("button", { name: "New agent" }).click();
+  await newAgentRow(page).click();
   const scratch = page.getByRole("button", { name: "Create new", exact: true });
   await scratch.waitFor({ state: "visible" });
   await scratch.click();
@@ -31,7 +31,7 @@ test("creating an agent auto-starts its setup mission and opens the chat", async
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   await createFromScratch(page, "Aurora");
 
@@ -47,7 +47,7 @@ test("the welcome chat is live before the board sweep returns its row", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Plan a trip to Tokyo")).toBeVisible();
+  await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
 
   // Hold every activities READ, so the cross-agent sweep cannot return the new
   // mission's row for the whole assertion budget below. That is the co-located
@@ -133,7 +133,7 @@ test("closing the setup panel leaves the shell usable with the agent in the side
   // new agent and its New-agent control is interactive again.
   await closeActivityPanel(page);
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "New agent" })).toBeVisible();
+  await expect(newAgentRow(page)).toBeVisible();
   const sidebar = page.locator("[data-tour-target='agents']");
   await expect(sidebar.getByText("Cirrus").first()).toBeVisible();
 });

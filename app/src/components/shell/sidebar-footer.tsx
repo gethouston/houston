@@ -2,13 +2,23 @@ import { SidebarNavItem } from "@houston-ai/layout";
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRunGuidedSetup } from "../../hooks/use-run-guided-setup";
-import { SETTINGS_VIEW_ID } from "../../lib/top-level-views";
+import { ACADEMY_VIEW_ID, SETTINGS_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import { SidebarHelpMenu } from "./sidebar-help-menu";
+import { academyNavRow } from "./sidebar-nav-rows";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
- * The foot of the rail: Settings and the help control beside it.
+ * The foot of the rail: the Academy, Settings, and the help control beside
+ * Settings.
+ *
+ * **The Academy leads the cluster.** Learning to fly is neither a destination
+ * the user reaches for hourly nor a preference, so it closes the rail rather
+ * than competing with the Assistant and the Agent Store at the top of it —
+ * and it sits directly above Settings, where the two rows a person opens
+ * about their own use of Houston are found together
+ * (`sidebar-nav-rows.tsx` builds the row; the phone's More menu draws the
+ * same one at the tail of its destinations).
  *
  * **Settings lives here, not in the "Workspace" band.** That band is what the
  * SPACE is made of, and it is owner territory; Settings belongs to the
@@ -43,9 +53,33 @@ export function SidebarFooter(props: { collapsed: boolean }) {
   const viewMode = useUIStore((s) => s.viewMode);
   const openSettings = useUIStore((s) => s.openSettings);
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
+  const setViewMode = useUIStore((s) => s.setViewMode);
   const runGuidedSetup = useRunGuidedSetup();
+  const academy = academyNavRow({
+    label: t("sidebar.academy"),
+    onOpen: () => {
+      setViewMode(ACADEMY_VIEW_ID);
+      setMobileMoreOpen(false);
+    },
+  });
   return (
     <div className="flex flex-col">
+      {/* Collapsed, the row is a fixed 36px glyph box rather than a full-width
+          button, so the rail centres it exactly as it centres the Settings
+          cluster below. */}
+      <div
+        className={
+          props.collapsed ? "flex flex-col items-center px-2 pb-1" : "px-2 pb-1"
+        }
+      >
+        <SidebarNavItem
+          icon={academy.icon}
+          label={academy.label}
+          active={viewMode === ACADEMY_VIEW_ID}
+          collapsed={props.collapsed}
+          onClick={academy.onClick}
+        />
+      </div>
       <div
         className={
           props.collapsed

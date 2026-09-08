@@ -29,7 +29,6 @@ export function rail(page: Page): Locator {
 
 /** The top-level rail rows, by the tour anchor the shell stamps on each. */
 export type NavRowId =
-  | "inbox"
   | "agent-store"
   | "integrations"
   | "ai-hub"
@@ -39,12 +38,12 @@ export type NavRowId =
 /**
  * One top-level rail row — a destination that belongs to nobody.
  *
- * The Inbox, About me and the Agent Store lead the rail unlabelled, then the
+ * The Assistant and the Agent Store lead the rail unlabelled, then the
  * "My accounts" band (Integrations, AI Models) and the "Workspace" band (Admin,
- * Skills), with Settings in the footer. **About me is deliberately absent from
- * this union**: it carries no tour anchor, because a target the tour never
- * spotlights is dead weight — address it through `settings-nav.ts`
- * `aboutMeRow` / `openAboutMe`, which go by accessible name.
+ * Skills), with the Academy and Settings in the footer. **The Assistant and the
+ * Academy are deliberately absent from this union**: neither carries a tour
+ * anchor, because a target the tour never spotlights is dead weight — address
+ * them by accessible name (`settings-nav.ts` `assistantRow`).
  *
  * There is NO global mission board among them: every board belongs to a team,
  * so a spec that wants the app's home board asks for
@@ -52,14 +51,6 @@ export type NavRowId =
  */
 export function navRow(page: Page, id: NavRowId): Locator {
   return page.locator(`[data-tour-target='nav-${id}']`);
-}
-
-/**
- * Open the Inbox: the missions a teammate named you in. It is the one screen
- * that needs no team, which is why the app waits there when none has resolved.
- */
-export async function openInbox(page: Page): Promise<void> {
-  await navRow(page, "inbox").click();
 }
 
 /**
@@ -73,6 +64,20 @@ export async function openInbox(page: Page): Promise<void> {
  */
 export function screen(page: Page): Locator {
   return page.locator("[data-screen-active='true']");
+}
+
+/**
+ * A mission's card on the board that is ON THE GLASS, by its title.
+ *
+ * The Agents home is where boot waits and where every fallback lands, so it is
+ * mounted for the whole session and its rows keep each agent's latest task
+ * title in their preview line. A bare `getByText(title)` therefore matches that
+ * hidden preview as well as the card — a strict-mode violation, or worse a
+ * `.first()` that silently drifts onto the invisible copy. Ask for the CARD:
+ * the kanban columns of the screen the user is looking at.
+ */
+export function missionCard(page: Page, title: string): Locator {
+  return screen(page).getByTestId("board-columns").getByText(title);
 }
 
 /**

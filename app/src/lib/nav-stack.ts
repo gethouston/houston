@@ -17,7 +17,7 @@
 
 import type { SettingsSectionId } from "./settings-sections";
 import type { TeamSectionId } from "./teams-model.ts";
-import { INBOX_VIEW_ID } from "./top-level-views.ts";
+import { AGENTS_HOME_VIEW_ID } from "./top-level-views.ts";
 
 /** One place the user has been, at screen granularity. */
 export interface NavEntry {
@@ -66,7 +66,7 @@ export interface NavState {
  * How a navigation lands on the stack:
  * - `push`: a new place (rail click, drill-in, panel open).
  * - `replace`: a redirect — the current entry never counts as a place the user
- *   chose (boot's Inbox→home hop, the dead-view guard's go-home).
+ *   chose (boot's landing→home-team hop, the dead-view guard's go-home).
  * - `retreat`: a "back"-flavored transition (Escape, a back bar, panel close).
  *   It POPS when the previous entry already is the destination, so the browser
  *   history retreats with the UI; anywhere else it replaces, because a close
@@ -138,8 +138,8 @@ export function viewFieldsOf(entry: NavEntry): Omit<NavEntry, "panelOpen"> {
 }
 
 /**
- * The boot stack: one entry, the Inbox — the same honest landing the store's
- * initial `viewMode` names. A refresh re-boots to this single entry on
+ * The boot stack: one entry, the Agents home — the same honest landing the
+ * store's initial `viewMode` names. A refresh re-boots to this single entry on
  * purpose (`viewMode` is deliberately not persisted); pre-refresh history
  * entries decay to it (`nav-history.ts`).
  */
@@ -147,7 +147,7 @@ export function initialNavState(): NavState {
   return {
     navStack: [
       navEntryOf({
-        viewMode: INBOX_VIEW_ID,
+        viewMode: AGENTS_HOME_VIEW_ID,
         settingsSection: null,
         activeTeamId: null,
         teamSection: null,

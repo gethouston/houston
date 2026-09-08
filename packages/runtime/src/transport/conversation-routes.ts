@@ -1,14 +1,11 @@
-import { normalizeTurnMode, parseMentions } from "@houston/protocol";
-import { actingFromHeaders } from "../session/acting-context";
-import { evict, isTurnRunning } from "../session/bus";
+import { normalizeTurnMode } from "@houston/protocol";
+import { evict } from "../session/bus";
 import {
   cancelTurn,
   disposeConversation,
-  ensureProviderForTurn,
-  runTurn,
   setLiveTurnMode,
 } from "../session/chat";
-import { isDraining } from "../session/drain";
+import { conversationCommandBusy } from "../session/conversation-command-gate";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import { truncateConversationTurn } from "../session/truncate-turn";
 import {
@@ -18,6 +15,7 @@ import {
   markConversationStopped,
   renameConversation,
 } from "../store/conversations";
+import { handleStartTurn } from "./conversation-start-turn";
 import { handleConversationEvents } from "./events-route";
 import { json, type RouteContext, readJson } from "./http-helpers";
 
@@ -74,12 +72,17 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "POST" && action === "dismiss-interaction") {
-    // The card that triggers this is never shown mid-turn, so a running turn
-    // here means the user raced a live turn — answer 409 and let them Stop
+    // The card that triggers this is never shown mid-turn, so a busy
+    // conversation here means the user raced one — answer 409 and let them Stop
     // (which retires the turn AND stamps the durable stop) instead of writing a
-    // second marker behind the executing turn. Idle: append the stop marker,
-    // retiring the pending interaction exactly as a real Stop does.
-    if (isTurnRunning(id)) {
+    // second marker behind it. The same gate the commands use
+    // (conversation-command-gate.ts), so an ACCEPTED-but-not-yet-running turn
+    // and an in-flight `/clear` are refused too: this appends a durable marker
+    // that a `/clear` boundary written after it would strand. Nothing is
+    // awaited between the check and the write, so the check IS the whole hold.
+    // Idle: append the stop marker, retiring the pending interaction exactly as
+    // a real Stop does.
+    if (conversationCommandBusy(id)) {
       json(res, 409, { error: "turn running" });
       return true;
     }
@@ -120,25 +123,6 @@ export async function handleConversationRoute(
     return true;
   }
   if (method === "POST" && action === "messages") {
-    // Shutting down: the turns already running finish, new ones do not start
-    // here. The answer is the gateway's own waking shape, byte for byte —
-    // every client reads `503 {"error":"engine unavailable"}` as "the pod is
-    // not there right now", re-sends the same message on its wake ladder,
-    // and never shows an error. A new reason string would be a red toast on
-    // every shipped client.
-    if (isDraining()) {
-      res.writeHead(503, {
-        "Content-Type": "application/json; charset=utf-8",
-        "Retry-After": "2",
-      });
-      res.end(
-        JSON.stringify({
-          error: "engine unavailable",
-          detail: "the agent is restarting",
-        }),
-      );
-      return true;
-    }
     await handleStartTurn(ctx, id);
     return true;
   }
@@ -192,80 +176,6 @@ async function handleConversationTitle(ctx: RouteContext, id: string) {
   } catch (e) {
     json(ctx.res, 400, { error: e instanceof Error ? e.message : String(e) });
   }
-}
-
-async function handleStartTurn(ctx: RouteContext, id: string) {
-  const {
-    text,
-    nonce,
-    model,
-    effort,
-    provider,
-    mode,
-    workspaceContext,
-    userContext,
-    displayText,
-    mentions,
-  } = await readJson(ctx.req);
-  if (!text || typeof text !== "string") {
-    json(ctx.res, 400, { error: "missing 'text'" });
-    return;
-  }
-  // Never trust the wire: only the known mode literals ("plan", "auto") pass;
-  // everything else (absent, garbage, unknown) normalizes to "execute".
-  const turnMode = normalizeTurnMode(mode);
-  // The hosting gateway (cloud) puts the org + caller context on the turn body
-  // from its own store (HOU-711). Either field present means "use these" (each
-  // defaults to ""), so a new session's prompt is built from them instead of the
-  // local WORKSPACE.md / USER.md files. Absent on desktop/self-host → file path.
-  const context =
-    typeof workspaceContext === "string" || typeof userContext === "string"
-      ? {
-          workspace:
-            typeof workspaceContext === "string" ? workspaceContext : "",
-          user: typeof userContext === "string" ? userContext : "",
-        }
-      : undefined;
-  // A provider-pinned turn (a routine) is never auth-gated on the ACTIVE
-  // provider — the pin names its own; a disconnected pin surfaces as the
-  // turn's provider error. The credential sync inside ensureProviderForTurn
-  // still runs either way so the pinned provider's token is fresh.
-  const pinnedProvider =
-    typeof provider === "string" && provider ? provider : undefined;
-  if (!(await ensureProviderForTurn()) && !pinnedProvider) {
-    // `code` is the machine-readable half: the host's scheduler reads it to
-    // demote a routine firing into this expected user state (nothing connected
-    // yet) to a warning instead of a Sentry error (HOUSTON-APP-4XM).
-    json(ctx.res, 409, {
-      error: "No provider connected. Connect an AI provider first.",
-      code: "no_provider",
-    });
-    return;
-  }
-  // WHO is driving this turn (C2): the host forwards the gateway's acting-as
-  // token, or (routine turns) the creator's sub. Captured here and held for the
-  // turn so the integration tools act as that user. Both absent → act as owner.
-  const acting = actingFromHeaders(ctx.req.headers);
-  void runTurn(
-    id,
-    text,
-    typeof nonce === "string" ? nonce : undefined,
-    {
-      provider: pinnedProvider,
-      model: typeof model === "string" ? model : undefined,
-      effort: typeof effort === "string" ? effort : undefined,
-      mode: turnMode,
-    },
-    acting,
-    context,
-    // Presentation-only bubble text (never trusted into the model input): the
-    // model runs on `text`; this only changes what a history reload renders.
-    typeof displayText === "string" ? displayText : undefined,
-    // The @mention sidecar (HOU-944), sanitized before it is persisted or
-    // published: junk entries are dropped and an empty list becomes nothing.
-    parseMentions(mentions),
-  );
-  json(ctx.res, 202, { ok: true, id });
 }
 
 /** Parse an integer query param ≥ `min` (default 1); anything else → undefined. */

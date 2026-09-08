@@ -1,10 +1,34 @@
 import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import {
+  type AssistantRuntimeRole,
+  readAssistantRole,
+} from "@houston/domain/assistant-role";
+import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
+import { CODEX_DEFAULT_MODEL } from "./ai/codex-offered";
 
 const env = process.env;
 
 const host = env.HOUSTON_HOST || "127.0.0.1";
+
+/**
+ * A provider's default model, read from the ONE domain table
+ * (`@houston/domain/provider-default-models`) — the same values the app's model
+ * picker pre-selects and the on-disk migration lands an unplaceable stored model
+ * on. Restating an id here is what let a turn run on one model while the table
+ * that REWRITES user data named another, so nothing below spells one out.
+ *
+ * Throws for a provider the table does not carry: every id this file names is
+ * curated, so a missing key means the table lost one — which must fail loudly at
+ * boot rather than default a turn onto an empty model id.
+ */
+function defaultModel(provider: string): string {
+  const model = DEFAULT_MODEL[provider];
+  if (model === undefined)
+    throw new Error(`no default model for provider: ${provider}`);
+  return model;
+}
 
 function codeExecutionMode(): "local" | "remote" | "disabled" {
   const raw = env.HOUSTON_CODE_EXECUTION?.trim().toLowerCase();
@@ -23,6 +47,17 @@ function codeExecutionMode(): "local" | "remote" | "disabled" {
   }
   return env.HOUSTON_CODE_SANDBOX_URL ? "remote" : "local";
 }
+
+const assistantRole: AssistantRuntimeRole | null = readAssistantRole(env);
+
+/**
+ * Whether this runtime can reach its host's `/sandbox/*` routes at all — the
+ * same pair `session/sandbox-call.ts` builds its transport from, read here so
+ * a tool family can be gated before the transport module is imported.
+ */
+const hostReachable = Boolean(
+  env.HOUSTON_CONTROL_PLANE_URL?.trim() && env.HOUSTON_SANDBOX_TOKEN?.trim(),
+);
 
 /**
  * One houston-runtime instance = one workspace (a single working directory).
@@ -45,58 +80,30 @@ export const config = {
    * already gone. Idle runtimes exit at once regardless.
    */
   shutdownDrainMs: Math.max(0, Number(env.HOUSTON_RUNTIME_DRAIN_MS || 3000)),
-  /** Default Anthropic model (Claude Pro/Max subscription). */
-  model: env.HOUSTON_MODEL || "claude-sonnet-5",
-  /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
-  codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
   /**
-   * Default GitHub Copilot model (subscription OAuth). A pi-ai `github-copilot`
-   * model id — note Copilot's ids use dots (`gpt-5.4`), unlike the native
-   * Anthropic provider's dashes (`claude-sonnet-4-6`).
-   *
-   * `gpt-5-mini` is the cheapest model every Copilot plan serves. The previous
-   * base model, `gpt-4.1`, was retired by GitHub on 2026-06-01 (pi dropped it
-   * from the catalog in 0.85.0). Defaulting to a plan-gated premium model
-   * stranded every Free user on `model_not_supported` (HOU-578), so the default
-   * stays the lowest-cost row; Pro users switch up to Claude in the picker.
-   * Keep in sync with `COPILOT_BASE_FALLBACK` in `ai/provider-error.ts` and
-   * the frontend's `PROVIDER_OVERRIDES["github-copilot"].defaultModel`.
+   * The per-provider default model: what a turn pinned to that provider with NO
+   * model of its own runs on, overridable per deployment by env. Every VALUE —
+   * and the evidence behind it — lives in the domain table `defaultModel` reads
+   * (see above); this file only names which provider each env var overrides.
    */
-  githubCopilotModel: env.HOUSTON_GITHUB_COPILOT_MODEL || "gpt-5-mini",
+  model: env.HOUSTON_MODEL || defaultModel("anthropic"),
   /**
-   * Default Google Gemini model (API-key provider). A pi-ai `google` model id.
-   * 3.8 Flash (GA 2026-09-02) is cheaper than 3.5 Flash and scores higher; it
-   * is also the key-verify probe model, which rides the carried pi-ai patch
-   * (3.7+ Flash reject `MINIMAL`, the level pi sends when thinking is off).
-   * Twin of the frontend override's google `defaultModel`.
+   * Codex reads its default from `ai/codex-offered.ts` instead: that module
+   * owns the live probe deciding which ids a ChatGPT subscription is actually
+   * served, so this default has to move WITH the served set. It is not a second
+   * value — `config.test.ts` and `app/tests/codex-models.test.ts` both pin it to
+   * the domain table's `openai-codex` entry, so the two cannot diverge.
    */
-  geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3.8-flash",
-  /** Default Amazon Bedrock model (API-key provider). A pi-ai `amazon-bedrock`
-   *  model id. MUST be an inference-profile id (`global.` prefix): Bedrock
-   *  serves Claude 4.x only through inference profiles, so the bare foundation
-   *  id fails every on-demand invocation with "Invocation of model ID … with
-   *  on-demand throughput isn't supported" — including the connect-time key
-   *  probe, which made every Bedrock connect fail (PRODUCT-1477). Twin of the
-   *  frontend's `PROVIDER_OVERRIDES["amazon-bedrock"].defaultModel`. */
-  bedrockModel:
-    env.HOUSTON_BEDROCK_MODEL || "global.anthropic.claude-sonnet-4-6",
-  /**
-   * Default MiniMax model (API-key provider). Defaults to the token/coding-plan
-   * SKU `MiniMax-M3[1m]` (1M-context): MiniMax's Anthropic endpoint documents this
-   * id, and a subscription-plan key billed against bare `MiniMax-M3` reads as
-   * "usage ran out" (HOU-1160). Pay-as-you-go keys accept it too (same model,
-   * larger context ceiling). Bare `MiniMax-M3`/`M2.7` stay selectable.
-   */
-  minimaxModel: env.HOUSTON_MINIMAX_MODEL || "MiniMax-M3[1m]",
-  /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
-  openrouterModel:
-    env.HOUSTON_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",
-  /** Default DeepSeek model (API-key provider). A pi-ai `deepseek` model id. */
-  deepseekModel: env.HOUSTON_DEEPSEEK_MODEL || "deepseek-v4-flash",
-  /** Default OpenCode Zen model (pay-as-you-go curated gateway, API key). */
-  opencodeModel: env.HOUSTON_OPENCODE_MODEL || "claude-sonnet-4-6",
-  /** Default OpenCode Go model ($10/mo open-model gateway, API key). */
-  opencodeGoModel: env.HOUSTON_OPENCODE_GO_MODEL || "glm-5.1",
+  codexModel: env.HOUSTON_CODEX_MODEL || CODEX_DEFAULT_MODEL,
+  githubCopilotModel:
+    env.HOUSTON_GITHUB_COPILOT_MODEL || defaultModel("github-copilot"),
+  geminiModel: env.HOUSTON_GEMINI_MODEL || defaultModel("google"),
+  bedrockModel: env.HOUSTON_BEDROCK_MODEL || defaultModel("amazon-bedrock"),
+  minimaxModel: env.HOUSTON_MINIMAX_MODEL || defaultModel("minimax"),
+  openrouterModel: env.HOUSTON_OPENROUTER_MODEL || defaultModel("openrouter"),
+  deepseekModel: env.HOUSTON_DEEPSEEK_MODEL || defaultModel("deepseek"),
+  opencodeModel: env.HOUSTON_OPENCODE_MODEL || defaultModel("opencode"),
+  opencodeGoModel: env.HOUSTON_OPENCODE_GO_MODEL || defaultModel("opencode-go"),
   /**
    * Assumed context window (tokens) for an OpenAI-compatible (local) model when
    * the user doesn't specify one. Local servers (Ollama/vLLM/LM Studio) don't
@@ -147,6 +154,31 @@ export const config = {
   /** File-authoritative transcript writes also enqueue the managed DB shadow. */
   transcriptDualWrite: env.HOUSTON_TRANSCRIPT_DUAL_WRITE === "1",
 
+  /**
+   * WHAT this runtime is. "coordinator" means it is the user's personal
+   * assistant: it operates Houston and hands every piece of work to one of the
+   * user's agents. null means an ordinary agent, which is every runtime on the
+   * machine except that one.
+   *
+   * The HOST decides it and states it in `HOUSTON_ASSISTANT_ROLE`
+   * (`launcher/assistant-role.ts`) because only the host knows which agent it
+   * spawned: locally the coordinator is the synthetic `.assistant`, on a
+   * managed pod it is an ordinarily-named agent under `/workspace`, so nothing
+   * in this process's own directory can tell the two apart.
+   */
+  assistantRole,
+  /**
+   * The assistant tool family (`houston_capabilities` / `houston_describe` /
+   * `houston_call`): performing user-facing Houston operations on the user's
+   * whole account. Two gates, both required — this runtime IS the coordinator,
+   * and it can reach its host (the family proxies to
+   * `/sandbox/assistant/call`, which holds the gateway credential this process
+   * deliberately never sees). An ordinary agent gets none of it, whatever else
+   * is in its environment: the catalog reaches account-wide operations
+   * (deleting agents, billing, team management) that only the user's own
+   * assistant may perform on their behalf.
+   */
+  assistantEnabled: assistantRole === "coordinator" && hostReachable,
   /**
    * Code execution policy for long-lived runtime:
    * - local: clamped file tools + built-in bash

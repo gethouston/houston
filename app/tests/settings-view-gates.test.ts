@@ -68,6 +68,39 @@ describe("settings-view source", () => {
 });
 
 /**
+ * About me is a Settings section: a standing preference about the person, kept
+ * with their name and their language rather than in the rail.
+ */
+describe("the About me section", () => {
+  const src = read("../src/components/settings/sections/about-me.tsx");
+
+  it("reuses the ONE standing-prose editor over the `user` slot", () => {
+    // The stored file does not move with the surface: this reads and writes
+    // the same workspace-context slot the agents' prompt is built from.
+    ok(src.includes('useContextSlot("user")'), "the user slot");
+    ok(src.includes("<ContextEditorBox"), "the shared editor, not a new one");
+    ok(src.includes('t("context:aboutMe.title")'), "the copy it already owned");
+  });
+
+  it("draws the COMPACT card, because the section column scrolls", () => {
+    // A `fill` card claims the height its parents grant, and the Settings
+    // section body grants none: it is a reading column inside the back bar's
+    // own scroller, so a pinned card would collapse to nothing.
+    ok(src.includes("layout={{ rows: 14 }}"), "rows mode");
+    ok(!src.includes('layout="fill"'), "never the pinned page layout");
+    ok(!src.includes("BackBarScreen"), "the section frame owns the back bar");
+  });
+
+  it("is mounted by the section body and listed on the index", () => {
+    const body = read("../src/components/settings/settings-section-body.tsx");
+    ok(body.includes('active === "aboutMe" && <AboutMeSection />'));
+    const index = read("../src/components/settings/settings-index.tsx");
+    ok(index.includes('onClick={() => onSelect("aboutMe")}'), "a row opens it");
+    ok(index.includes('t("settings:nav.aboutMe")'), "named in Settings");
+  });
+});
+
+/**
  * The promoted screens own the whole window, so neither may wrap itself in a
  * back bar at its top level — and Admin has no drill-in left at all: its
  * sections are sibling lozenges in one header cluster (the shared grammar
@@ -81,26 +114,6 @@ describe("the promoted top-level screens", () => {
     ok(
       src.includes("[scrollbar-gutter:stable]"),
       "its section scroller reserves the gutter",
-    );
-  });
-
-  it("About me takes no back-bar props and frames itself", () => {
-    // It was a drill-in behind a door in the Inbox's masthead, so the back bar
-    // it wore then would now be a bar pointing at a level that no longer
-    // exists above it.
-    const src = read("../src/components/about-me/about-me-view.tsx");
-    ok(src.includes("export function AboutMeView() {"), "no props");
-    ok(!src.includes("BackBarScreen"), "no back bar at a top level");
-    // A pinned editor page: the column is exactly the viewport (the card
-    // scrolls internally); the outer scroller stays only as the short-window
-    // fallback and keeps the shared gutter reservation.
-    ok(
-      src.includes("[scrollbar-gutter:stable]"),
-      "the fallback scroller reserves the gutter",
-    );
-    ok(
-      src.includes("flex h-full min-h-0 flex-col"),
-      "the page column hands the viewport height to the pinned card",
     );
   });
 

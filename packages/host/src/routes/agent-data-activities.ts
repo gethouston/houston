@@ -9,13 +9,39 @@ import {
   upsertById,
 } from "@houston/domain";
 import type {
+  Activity,
   ActivityContributor,
   HoustonEvent,
   NewActivity,
 } from "@houston/protocol";
 import { activityUpdateSchema } from "@houston/protocol";
+import { hostOwnedApprovalCards } from "./activity-approval-cards";
 import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
+
+/**
+ * The fields a create DECIDES. A repeat of the same create (HOU-693: the app
+ * posts the card optimistically against a warming engine and re-posts when the
+ * first attempt is lost) matches on every one of them and is answered with the
+ * row already on the board. Anything else with that id is a DIFFERENT mission
+ * asking to take an existing one's place, which would reset its status and
+ * erase its provenance, so it is refused.
+ *
+ * `status` is not compared: the board owns it after the create, and a retry
+ * that lands behind an agent's first status write is still the same mission.
+ */
+const CREATE_FIELDS = [
+  "title",
+  "description",
+  "agent",
+  "worktree_path",
+  "provider",
+  "model",
+] as const satisfies readonly (keyof Activity)[];
+
+function sameCreate(stored: Activity, incoming: Activity): boolean {
+  return CREATE_FIELDS.every((field) => stored[field] === incoming[field]);
+}
 
 export async function handleActivitiesData(
   store: TextStore,
@@ -41,8 +67,12 @@ export async function handleActivitiesData(
   const locked = <T>(fn: () => Promise<T>) =>
     withDocLock(`${root}#activity`, fn);
 
+  // Every row that leaves here goes through the host's approval substitution:
+  // `pending_interaction` is agent-writable file content (activity-approval-cards.ts).
+  const served = (payload: unknown) => hostOwnedApprovalCards(payload, agentId);
+
   if (method === "GET" && !itemId) {
-    json(res, 200, await loadActivities(store, root));
+    json(res, 200, served(await loadActivities(store, root)));
     return;
   }
 
@@ -53,7 +83,7 @@ export async function handleActivitiesData(
       return;
     }
     // Optional client-generated id (optimistic creation against a warming
-    // engine, HOU-693). upsertById makes a same-id retry idempotent.
+    // engine, HOU-693). A repeated id must never overwrite the existing card.
     if (
       body.id !== undefined &&
       (typeof body.id !== "string" ||
@@ -73,12 +103,25 @@ export async function handleActivitiesData(
       nowIso,
       author ?? undefined,
     );
-    await locked(async () => {
+    const landed = await locked(async () => {
       const { items } = await loadActivities(store, root);
-      await saveActivities(store, root, upsertById(items, activity));
+      const existing = items.find((item) => item.id === activity.id);
+      if (existing) return { created: false, activity: existing };
+      await saveActivities(store, root, [...items, activity]);
+      return { created: true, activity };
     });
-    fireChange();
-    json(res, 201, activity);
+    if (!landed.created && !sameCreate(landed.activity, activity)) {
+      json(res, 409, {
+        error: "a different mission already has that id",
+        code: "activity_exists",
+      });
+      return;
+    }
+    // A retry answers with the STORED row, never the one just built: the card
+    // may have moved on (a status the agent settled, contributors it gained)
+    // and the caller must read what is really on the board.
+    if (landed.created) fireChange();
+    json(res, 201, served(landed.activity));
     return;
   }
 
@@ -107,7 +150,7 @@ export async function handleActivitiesData(
       return;
     }
     fireChange();
-    json(res, 200, next);
+    json(res, 200, served(next));
     return;
   }
 

@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRunGuidedSetup } from "../../hooks/use-run-guided-setup";
 import { useTeams } from "../../hooks/use-teams";
+import { ACADEMY_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { mobileMoreFooterRows, mobileMoreItems } from "./mobile-more-items";
@@ -14,6 +15,7 @@ import {
   MobileMoreRowButton,
 } from "./mobile-more-row";
 import { SidebarDialogs } from "./sidebar-dialogs";
+import { academyNavRow } from "./sidebar-nav-rows";
 import { useSidebarNavItems } from "./use-sidebar-nav-items";
 import { useSidebarNavigation } from "./use-sidebar-navigation";
 import { tourAnchor } from "./workspace-tour-steps";
@@ -34,18 +36,19 @@ import { tourAnchor } from "./workspace-tour-steps";
  * element a tour anchor names. They navigate with `nav: "reset"`: reaching a
  * destination from the menu is a tab-level move, not a level pushed onto the
  * tree the user was in.
+ *
+ * The rail's footer cluster is mirrored, not repeated: the Academy closes the
+ * destination list (the same row the rail draws above Settings) and Settings
+ * itself is the round control in the header line, beside the workspace
+ * switcher, where the menu keeps what belongs to the person rather than to the
+ * space.
  */
 export function MobileMoreMenu() {
-  const { t } = useTranslation([
-    "shell",
-    "common",
-    "teams",
-    "dashboard",
-    "settings",
-  ]);
+  const { t } = useTranslation(["shell", "common", "teams", "settings"]);
   const open = useUIStore((s) => s.mobileMoreOpen);
   const setOpen = useUIStore((s) => s.setMobileMoreOpen);
   const openSettings = useUIStore((s) => s.openSettings);
+  const setViewMode = useUIStore((s) => s.setViewMode);
   const close = useCallback(() => setOpen(false), [setOpen]);
   const runGuidedSetup = useRunGuidedSetup();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
@@ -57,6 +60,18 @@ export function MobileMoreMenu() {
     unfolded: true,
   });
   const groups = mobileMoreItems(navSections);
+  // The rail's footer cluster, mirrored: the Academy closes the destinations
+  // here exactly as it closes the rail above Settings, and it is the SAME row
+  // (`sidebar-nav-rows.tsx`) so the two breakpoints cannot drift.
+  const academy = academyNavRow({
+    label: t("shell:sidebar.academy"),
+    onOpen: () => {
+      // `reset`, like every other destination in this menu: reaching one from
+      // the menu is a tab-level move, not a level pushed onto the open tree.
+      setViewMode(ACADEMY_VIEW_ID, { nav: "reset" });
+      close();
+    },
+  });
   const { switchWorkspace } = useSidebarNavigation({
     teams: useTeams(),
     closeMobileMenu: close,
@@ -136,6 +151,9 @@ export function MobileMoreMenu() {
                 ))}
               </div>
             ))}
+            <div className="border-line border-t">
+              <MobileMoreRowButton row={academy} />
+            </div>
             <div className="border-line border-t">
               <MobileMoreBand label={t("shell:moreMenu.help")} />
               {footerRows.map((row) => (

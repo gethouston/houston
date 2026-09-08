@@ -10,6 +10,8 @@
  * and fall back to a monogram (see `monogramText`) for anything unmapped.
  */
 
+import { BRAND_ALIASES } from "../../lib/providers/brand-aliases.ts";
+
 /**
  * Every brand mark Houston ships a real SVG for. Each is a genuine single-color
  * brand logo sourced verbatim from models.dev (github.com/sst/models.dev, MIT)
@@ -21,7 +23,8 @@
  * id with no real mark anywhere falls back to the polished monogram.
  *
  * Keys are the provider ids that resolve to their OWN mark. Regional/variant ids
- * that models.dev serves the default for reuse a parent via `BRAND_ALIASES`.
+ * that models.dev serves the default for borrow a parent's identity through
+ * `lib/providers/brand-aliases.ts`, the table the NAME path reads too.
  */
 export type BrandKey =
   | "anthropic"
@@ -89,56 +92,18 @@ export const BRAND_KEYS: ReadonlySet<BrandKey> = new Set([
 ]);
 
 /**
- * Regional/variant ids and AI-hub lab ids that reuse a parent brand's mark, so a
- * "-cn" spin-off, a "-gateway"/"-workers" edge variant, or a lab alias needs no
- * bespoke art. Keyed by the incoming id, valued by the `BrandKey` it borrows.
- * Only aliases onto a REAL logo live here; an id with no real mark anywhere
- * carries no alias and cleanly falls to the monogram itself.
- */
-export const BRAND_ALIASES: Readonly<Record<string, BrandKey>> = {
-  // Variant ids models.dev serves the generic default for — reuse a parent
-  // brand's real mark rather than a monogram. Retired provider ids (kimi-coding,
-  // moonshotai-cn, xiaomi-token-plan-*) keep their alias: they no longer render
-  // a card (DROP_PI_PROVIDERS) but a legacy conversation pinned to one still
-  // shows the right glyph.
-  "openai-codex": "openai",
-  "minimax-cn": "minimax",
-  "moonshotai-cn": "moonshotai",
-  "kimi-coding": "moonshotai",
-  "zai-coding-cn": "zai",
-  "vercel-ai-gateway": "vercel",
-  "xiaomi-token-plan-ams": "xiaomi",
-  "xiaomi-token-plan-cn": "xiaomi",
-  "xiaomi-token-plan-sgp": "xiaomi",
-  "qwen-token-plan": "qwen",
-  "qwen-token-plan-cn": "qwen",
-  "qwen-token-plan-individual": "qwen",
-  // AI-hub lab ids (see `catalog-lab.ts`) that differ from the provider id.
-  // Most lab ids ARE provider ids (anthropic, openai, mistral, deepseek, xai,
-  // minimax, zai, nvidia, meta, qwen, cohere, ...) so `providerBrandKey`
-  // resolves them directly; only the ids that spell the brand differently need
-  // an alias. The catch-all `other` lab has no mark of its own — the hub falls
-  // back to an offering provider's logo there (see `modelMarkId`).
-  gemini: "google",
-  amazon: "amazon-bedrock",
-  moonshot: "moonshotai",
-  "meta-llama": "meta",
-  llama: "meta",
-};
-
-/**
  * Resolve an id to the brand mark it should draw, or `null` when it has no
  * bespoke art (the caller then renders the monogram tile). Identity match on a
  * `BrandKey` first, then the alias table.
  */
 export function providerBrandKey(id: string): BrandKey | null {
   if (BRAND_KEYS.has(id as BrandKey)) return id as BrandKey;
-  return BRAND_ALIASES[id] ?? null;
-}
-
-/** True when Houston ships a bespoke brand mark for this id (vs a monogram). */
-export function hasProviderBrandMark(id: string): boolean {
-  return providerBrandKey(id) !== null;
+  // An alias onto a provider Houston ships no art for resolves to no mark at
+  // all: the monogram is the honest answer, never another brand's logo.
+  const parent = BRAND_ALIASES[id];
+  return parent !== undefined && BRAND_KEYS.has(parent as BrandKey)
+    ? (parent as BrandKey)
+    : null;
 }
 
 /**

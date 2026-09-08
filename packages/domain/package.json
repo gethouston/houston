@@ -14,6 +14,38 @@
     "./agent-name": {
       "types": "./src/agent-name.ts",
       "import": "./src/agent-name.ts"
+    },
+    "./provider-dialect": {
+      "types": "./src/provider-dialect.ts",
+      "import": "./src/provider-dialect.ts"
+    },
+    "./model-display-names": {
+      "types": "./src/model-display-names.ts",
+      "import": "./src/model-display-names.ts"
+    },
+    "./provider-default-models": {
+      "types": "./src/provider-default-models.ts",
+      "import": "./src/provider-default-models.ts"
+    },
+    "./model-aliases": {
+      "types": "./src/model-aliases.ts",
+      "import": "./src/model-aliases.ts"
+    },
+    "./agent-color-ids": {
+      "types": "./src/agent-color-ids.ts",
+      "import": "./src/agent-color-ids.ts"
+    },
+    "./assistant-role": {
+      "types": "./src/assistant-role.ts",
+      "import": "./src/assistant-role.ts"
+    },
+    "./assistant-capability-index": {
+      "types": "./src/assistant-capability-index.generated.ts",
+      "import": "./src/assistant-capability-index.generated.ts"
+    },
+    "./assistant-catalog-types": {
+      "types": "./src/assistant-catalog-types.ts",
+      "import": "./src/assistant-catalog-types.ts"
     }
   },
   "files": [

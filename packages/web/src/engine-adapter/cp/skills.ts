@@ -5,12 +5,25 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
 
-type HostSkillSummary = Omit<SkillSummary, "inputs" | "promptTemplate">;
+/**
+ * Per-AGENT skills: the skills that live in one agent's own `.agents/skills/`,
+ * plus that agent's skills manifest. The workspace-scoped shared library is a
+ * different family — see `shared-skills.ts`, which reuses the host→client
+ * summary shim exported here.
+ */
 
-function toClientSummary(summary: HostSkillSummary): SkillSummary {
+export type HostSkillSummary = Omit<SkillSummary, "inputs" | "promptTemplate">;
+
+export function toClientSummary(summary: HostSkillSummary): SkillSummary {
   return { ...summary, inputs: [], promptTemplate: null };
 }
 
+/**
+ * Lists the skills an agent can follow.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @assistant group:skills
+ */
 export async function listSkills(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -23,9 +36,15 @@ export async function listSkills(
 }
 
 /**
+ * Reads a skill's instructions.
+ *
  * A single skill's full detail (its SKILL.md content) from the host's
  * `GET /agents/:id/skills/:slug`. Without this the adapter's Proxy fallback
  * stubbed skill detail to `[]`, so clicking any skill showed no content.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param slug The skill's exact slug, from listSkills. Never invent one.
+ * @assistant group:skills
  */
 export async function loadSkill(
   cfg: ControlPlaneConfig,
@@ -39,6 +58,17 @@ export async function loadSkill(
   return (await res.json()) as SkillDetail;
 }
 
+/**
+ * Creates a skill an agent can follow.
+ *
+ * Confirmed: a skill is standing instruction. Once it exists the agent follows
+ * it in every later turn, changing behavior the user never asked for again.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param body The new skill: its name, a one-line description, and the
+ *   instructions themselves.
+ * @assistant group:skills confirm
+ */
 export async function createSkill(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -49,6 +79,18 @@ export async function createSkill(
     body: JSON.stringify(body),
   });
 }
+/**
+ * Saves changes to a skill's instructions.
+ *
+ * Confirmed: irreversible. It overwrites the skill's text in place and Houston
+ * keeps no earlier copy, so what the user wrote cannot be recovered.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param slug The skill's exact slug, from listSkills. Never invent one.
+ * @param content The skill's full new text. It replaces what was there, so
+ *   send the whole thing.
+ * @assistant group:skills confirm
+ */
 export async function saveSkill(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -64,6 +106,13 @@ export async function saveSkill(
     },
   );
 }
+/**
+ * Deletes a skill so the agent no longer has it.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param slug The skill's exact slug, from listSkills. Never invent one.
+ * @assistant group:skills confirm
+ */
 export async function deleteSkill(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -76,88 +125,12 @@ export async function deleteSkill(
   );
 }
 
-export async function listSharedSkills(
-  cfg: ControlPlaneConfig,
-  workspaceId: string,
-): Promise<{
-  items: SkillSummary[];
-  diagnostics: { key: string; message: string }[];
-}> {
-  const res = await cpFetch(
-    cfg,
-    `/v1/workspaces/${encodeURIComponent(workspaceId)}/shared-skills`,
-  );
-  const body = (await res.json()) as {
-    items: HostSkillSummary[];
-    diagnostics: { key: string; message: string }[];
-  };
-  return { ...body, items: body.items.map(toClientSummary) };
-}
-
-export async function loadSharedSkill(
-  cfg: ControlPlaneConfig,
-  workspaceId: string,
-  slug: string,
-): Promise<SkillDetail> {
-  const res = await cpFetch(
-    cfg,
-    `/v1/workspaces/${encodeURIComponent(workspaceId)}/shared-skills/${encodeURIComponent(slug)}`,
-  );
-  return (await res.json()) as SkillDetail;
-}
-
-export async function createSharedSkill(
-  cfg: ControlPlaneConfig,
-  workspaceId: string,
-  body: { name: string; description: string; content: string },
-): Promise<SkillDetail> {
-  const res = await cpFetch(
-    cfg,
-    `/v1/workspaces/${encodeURIComponent(workspaceId)}/shared-skills`,
-    { method: "POST", body: JSON.stringify(body) },
-  );
-  return (await res.json()) as SkillDetail;
-}
-
-export async function promoteSharedSkill(
-  cfg: ControlPlaneConfig,
-  workspaceId: string,
-  slug: string,
-  content: string,
-): Promise<SkillDetail> {
-  const res = await cpFetch(
-    cfg,
-    `/v1/workspaces/${encodeURIComponent(workspaceId)}/shared-skills/${encodeURIComponent(slug)}`,
-    { method: "POST", body: JSON.stringify({ content }) },
-  );
-  return (await res.json()) as SkillDetail;
-}
-
-export async function saveSharedSkill(
-  cfg: ControlPlaneConfig,
-  workspaceId: string,
-  slug: string,
-  content: string,
-): Promise<void> {
-  await cpFetch(
-    cfg,
-    `/v1/workspaces/${encodeURIComponent(workspaceId)}/shared-skills/${encodeURIComponent(slug)}`,
-    { method: "PUT", body: JSON.stringify({ content }) },
-  );
-}
-
-export async function deleteSharedSkill(
-  cfg: ControlPlaneConfig,
-  workspaceId: string,
-  slug: string,
-): Promise<void> {
-  await cpFetch(
-    cfg,
-    `/v1/workspaces/${encodeURIComponent(workspaceId)}/shared-skills/${encodeURIComponent(slug)}`,
-    { method: "DELETE" },
-  );
-}
-
+/**
+ * Reads which of an agent's skills are switched on.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @assistant group:skills
+ */
 export async function getSkillsManifest(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -166,6 +139,18 @@ export async function getSkillsManifest(
   return (await res.json()) as SkillsManifest;
 }
 
+/**
+ * Chooses which of an agent's skills are switched on.
+ *
+ * Not confirmed: trivially reversible. Nothing is created or destroyed, and
+ * switching one back restores exactly the previous state.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param manifest The complete enabled skill list. Every omitted skill is
+ *   disabled. Read getSkillsManifest first and send the full revised
+ *   manifest.
+ * @assistant group:skills confirm
+ */
 export async function putSkillsManifest(
   cfg: ControlPlaneConfig,
   agentId: string,

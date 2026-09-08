@@ -1,7 +1,9 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { ASSISTANT_AGENT_NAME } from "@houston/host/src/routes/assistant";
 import { expect, test } from "vitest";
+import { learningsDocPath } from "../../session/learnings-context";
 import { buildSystemPrompt } from "./system-prompt";
 
 function freshWorkspace(withHouston = true): string {
@@ -91,6 +93,101 @@ test("the skills index lands before the mode overlay", () => {
   const overlayAt = prompt.indexOf("You are in Plan mode.");
   expect(skillsAt).toBeGreaterThan(-1);
   expect(overlayAt).toBeGreaterThan(skillsAt);
+});
+
+/**
+ * The assistant's memory injection, pinned on the claude side of the
+ * prompt-assembly parity pair (its twin is session/loader.test.ts).
+ */
+function agentDirNamed(name: string): string {
+  const dir = join(mkdtempSync(join(tmpdir(), "houston-sysprompt-")), name);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function seedLearnings(cwd: string, text: string): void {
+  const path = learningsDocPath(cwd);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(
+    path,
+    JSON.stringify([
+      { id: "l1", text, created_at: "2026-01-01T00:00:00.000Z" },
+    ]),
+  );
+}
+
+/**
+ * The assistant's memory and rules follow the ROLE the host stamped on this
+ * runtime, not the name of the directory it runs in (the managed pod runs under
+ * `/workspace` with an ordinarily-named agent).
+ */
+async function asCoordinator<T>(fn: () => Promise<T> | T): Promise<T> {
+  const prior = process.env.HOUSTON_ASSISTANT_ROLE;
+  process.env.HOUSTON_ASSISTANT_ROLE = "coordinator";
+  try {
+    return await fn();
+  } finally {
+    if (prior === undefined) delete process.env.HOUSTON_ASSISTANT_ROLE;
+    else process.env.HOUSTON_ASSISTANT_ROLE = prior;
+  }
+}
+
+test("the assistant's memory lands after the context sections and before the overlay", async () => {
+  const dir = agentDirNamed(ASSISTANT_AGENT_NAME);
+  writeFileSync(join(dir, "WORKSPACE.md"), "Acme Corp.");
+  writeSkill(dir, "plan-me", "name: plan-me\ndescription: Plan something");
+  seedLearnings(dir, "Julian prefers short replies.");
+
+  const prompt = await asCoordinator(() =>
+    buildSystemPrompt(dir, "You are Houston.", "plan"),
+  );
+  const memoryAt = prompt.indexOf("# What you remember about this user");
+  expect(memoryAt).toBeGreaterThan(-1);
+  expect(prompt).toContain("- Julian prefers short replies.");
+  expect(memoryAt).toBeGreaterThan(prompt.indexOf("# Workspace Context"));
+  // Skills stay last before the overlay, and the overlay stays last of all.
+  expect(prompt.indexOf("<available_skills>")).toBeGreaterThan(memoryAt);
+  expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(
+    prompt.indexOf("<available_skills>"),
+  );
+});
+
+test("the assistant's operating rules land right after its memory", async () => {
+  const dir = agentDirNamed(ASSISTANT_AGENT_NAME);
+  seedLearnings(dir, "Julian prefers short replies.");
+
+  const prompt = await asCoordinator(() =>
+    buildSystemPrompt(dir, "You are Houston.", "plan"),
+  );
+  const memoryAt = prompt.indexOf("# What you remember about this user");
+  const rulesAt = prompt.indexOf("# How you operate in Houston");
+  expect(rulesAt).toBeGreaterThan(memoryAt);
+  // Skills, then the overlay, still come after both.
+  expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(rulesAt);
+});
+
+test("the rules render for the coordinator even with no memory yet", async () => {
+  const prompt = await asCoordinator(() =>
+    buildSystemPrompt(agentDirNamed("Assistant"), "You are Houston."),
+  );
+  expect(prompt).toContain("# How you operate in Houston");
+});
+
+test("a normal agent gets no operating rules, whatever its directory is called", () => {
+  for (const dir of ["Helper", ASSISTANT_AGENT_NAME]) {
+    const prompt = buildSystemPrompt(agentDirNamed(dir), "You are Houston.");
+    expect(prompt).not.toContain("# How you operate in Houston");
+    expect(prompt).not.toContain("# What you remember about this user");
+  }
+});
+
+test("a normal agent's learnings are never injected", () => {
+  const dir = agentDirNamed("Helper");
+  seedLearnings(dir, "Julian prefers short replies.");
+
+  const prompt = buildSystemPrompt(dir, "You are Houston.");
+  expect(prompt).not.toContain("# What you remember about this user");
+  expect(prompt).not.toContain("Julian prefers short replies.");
 });
 
 test("group context is appended after the workspace/user section", () => {

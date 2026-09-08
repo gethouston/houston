@@ -1,13 +1,22 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { docKey, saveActivities } from "@houston/domain";
-import type { Activity, HoustonEvent } from "@houston/protocol";
+import type { Activity, HoustonEvent, TurnMode } from "@houston/protocol";
 import { beforeEach, expect, test } from "vitest";
+import { ACTING_AS_HEADER } from "../auth/acting";
 import type { Agent, Workspace } from "../domain/types";
 import { LocalPaths } from "../paths";
-import type { CredentialVault, RuntimeChannel, TurnPin } from "../ports";
+import type {
+  CredentialStore,
+  CredentialVault,
+  RuntimeChannel,
+  TurnPin,
+  WorkspaceCredential,
+} from "../ports";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
+import { liveTurns } from "./live-turn";
+import { missionFanout } from "./mission-fanout";
 import { handleSandboxMissions } from "./missions-sandbox";
 
 /**
@@ -31,12 +40,26 @@ let root: string;
 let events: HoustonEvent[];
 let fired: { cid: string; text: string; pin?: TurnPin }[];
 let fireError: Error | null;
+/** Which providers the host's central credential store holds a row for, or
+ *  null for a deployment that has no store to judge with. */
+let connectedProviders: string[] | null;
 
 const vault: CredentialVault = {
   sandboxToken: () => "sb",
   validateSandboxToken: (token) =>
     token === "sb-good" ? { workspaceId: ws.id, agentId: agent.id } : null,
 };
+
+const credentials = {
+  async get(
+    _ws: string,
+    provider: string,
+  ): Promise<WorkspaceCredential | null> {
+    return connectedProviders?.includes(provider)
+      ? ({ provider } as WorkspaceCredential)
+      : null;
+  },
+} as unknown as CredentialStore;
 
 const channel = {
   async fireTurn(
@@ -82,13 +105,34 @@ async function call(
   method: string,
   path: string,
   body: unknown,
-  opts: { conversationId?: string; token?: string } = {},
+  opts: {
+    conversationId?: string;
+    /** A conversation the RUNTIME claims and the host never recorded (S7). */
+    forgedConversationId?: string;
+    token?: string;
+    /** The mode the host recorded for the turn (the Mode pill's answer). */
+    mode?: TurnMode;
+    /** The acting token the GATEWAY stamped on the send that started the turn. */
+    actingAs?: string;
+    /** An acting token the RUNTIME puts on its own loopback call (S16). */
+    spoofedActingAs?: string;
+    gatewayFronted?: boolean;
+  } = {},
 ) {
   const headers: Record<string, string> = {
     authorization: `Bearer ${opts.token ?? "sb-good"}`,
   };
+  // The runtime NAMES the conversation on every mission call; the host matches
+  // it against its own record of the turn (routes/live-turn.ts), which
+  // production writes when the turn starts.
+  const claimed = opts.forgedConversationId ?? opts.conversationId;
+  if (claimed) headers[CONVERSATION_ID_HEADER] = claimed;
+  if (opts.spoofedActingAs) headers[ACTING_AS_HEADER] = opts.spoofedActingAs;
   if (opts.conversationId)
-    headers[CONVERSATION_ID_HEADER] = opts.conversationId;
+    liveTurns.start(agent.id, opts.conversationId, opts.mode ?? "execute", {
+      actingAs: opts.actingAs,
+    });
+  else liveTurns.forget(agent.id);
   const { res, captured } = fakeRes();
   const handled = await handleSandboxMissions(
     {
@@ -100,6 +144,8 @@ async function call(
         emit: (_userId: string, event: HoustonEvent) => events.push(event),
       } as never,
       channels: { local: channel },
+      ...(opts.gatewayFronted ? { gatewayFronted: true } : {}),
+      ...(connectedProviders === null ? {} : { credentials }),
     },
     method,
     path,
@@ -130,10 +176,13 @@ beforeEach(async () => {
   events = [];
   fired = [];
   fireError = null;
+  connectedProviders = null;
   ws = await store.getOrCreatePersonalWorkspace("alice");
   agent = await store.createAgent({ workspaceId: ws.id, name: "Helper" });
   root = paths.agentRoot(ws, agent);
   await saveActivities(vfs, root, [PARENT]);
+  missionFanout.forget(agent.id);
+  liveTurns.forget(agent.id);
 });
 
 test("a bad sandbox token is rejected", async () => {
@@ -199,6 +248,86 @@ test("start validates mode and provider", async () => {
   );
   expect(prov.status).toBe(400);
   expect(fired).toEqual([]);
+});
+
+test("a friendly provider name starts the mission on the real id", async () => {
+  connectedProviders = ["openai-codex"];
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "codex", model: "gpt-5.5" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+  // The pin must reach the TURN, not just the board row: a mission whose first
+  // turn runs on the agent's default provider is a silent substitution.
+  expect(fired[0]?.pin).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-5.5",
+  });
+  const created = (await onDisk()).find((a) => a.id !== PARENT.id);
+  expect(created?.provider).toBe("openai-codex");
+  expect(created?.model).toBe("gpt-5.5");
+});
+
+test("the name a user says for a model reaches the turn as its id", async () => {
+  connectedProviders = ["openai-codex"];
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "codex", model: "Luna" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+  expect(fired[0]?.pin).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-5.6-luna",
+  });
+  const created = (await onDisk()).find((a) => a.id !== PARENT.id);
+  expect(created?.model).toBe("gpt-5.6-luna");
+});
+
+test("an unknown provider is refused with the ids and names that would work", async () => {
+  connectedProviders = ["openai-codex", "google"];
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "gemini-cli" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(400);
+  const error = (r.body as { error: string }).error;
+  expect(error).toContain("openai-codex (ChatGPT / Codex (Plus / Pro))");
+  expect(error).toContain("google (Google Gemini)");
+  expect(error).not.toContain("deepseek");
+  expect(fired).toEqual([]);
+});
+
+test("a real provider nobody connected is refused by name, not started", async () => {
+  connectedProviders = ["openai-codex"];
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "deepseek" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(400);
+  const error = (r.body as { error: string }).error;
+  expect(error).toContain("deepseek (DeepSeek)");
+  expect(error).toMatch(/not connected/i);
+  expect(fired).toEqual([]);
+  expect((await onDisk()).length).toBe(1);
+});
+
+test("with no credential store to judge with, a known provider still starts", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "Claude (Pro / Max)" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+  expect(fired[0]?.pin?.provider).toBe("anthropic");
 });
 
 test("depth 1: an agent-started mission can't start missions", async () => {
@@ -367,4 +496,218 @@ test("a non-matching path is not handled", async () => {
     res,
   );
   expect(handled).toBe(false);
+});
+
+test("the local start echoes resolved provider and model", async () => {
+  const result = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p", provider: "codex", model: "Luna" },
+    { conversationId: "conv-parent" },
+  );
+  expect(result.body).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-5.6-luna",
+  });
+});
+test("mission refusal copy contains no em dash", async () => {
+  const result = await call("POST", "/sandbox/missions/status", {
+    id: PARENT.id,
+    status: "done",
+  });
+  expect(JSON.stringify(result.body)).not.toContain("\u2014");
+});
+
+/**
+ * S7 — PROVENANCE THE CALLER CANNOT AUTHOR. The conversation a start comes
+ * from decides whether it is allowed at all, so it is the host's record of the
+ * turn that answers, never the runtime's header.
+ */
+test("a forged conversation header does not buy a fresh top-level chat", async () => {
+  // The caller IS working inside a mission; it claims a conversation of its own
+  // invention, which the depth guard would read as a person's chat.
+  await saveActivities(vfs, root, [
+    { ...PARENT, origin_session_key: "conv-grandparent", origin_depth: 1 },
+  ]);
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent", forgedConversationId: "conv-invented" },
+  );
+  // Naming a chat the host never started a turn in is refused outright, so the
+  // depth chain is never even reached from an invented parent.
+  expect(r.status).toBe(400);
+  expect(r.body).toMatchObject({ code: "not_in_turn" });
+  expect(fired).toEqual([]);
+});
+
+test("a header with no turn behind it cannot start anything", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { forgedConversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(400);
+  expect(r.body).toMatchObject({ code: "not_in_turn" });
+  expect(fired).toEqual([]);
+});
+
+test("the started row records WHO asked and how deep it sits", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+  const started = (await onDisk()).find((a) => a.origin_session_key);
+  expect(started).toMatchObject({
+    origin_session_key: "conv-parent",
+    origin_agent: agent.id,
+    origin_depth: 1,
+  });
+});
+
+test("the caller's own budget refuses a flood spread across boards", async () => {
+  // Nothing is running on THIS board, so only the caller-side ledger can refuse.
+  for (let i = 0; i < 20; i++)
+    missionFanout.record(agent.id, {
+      missionId: `remote-${i}`,
+      boardRoot: null,
+    });
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(409);
+  expect(r.body).toMatchObject({ code: "mission_fanout" });
+  expect(fired).toEqual([]);
+});
+
+test("a finished local mission gives its caller's slot back", async () => {
+  for (let i = 0; i < 20; i++)
+    missionFanout.record(agent.id, { missionId: `m-${i}`, boardRoot: root });
+  // Not one of them is on the board, so every slot reconciles away.
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(r.status).toBe(201);
+});
+
+/** A gateway-minted acting-as header value for `sub` (the signature is never
+ *  verified pod-side; the gateway is the trust boundary — auth/acting.ts). */
+function actingToken(sub: string, name: string): string {
+  const payload = Buffer.from(JSON.stringify({ sub, name })).toString(
+    "base64url",
+  );
+  return `acting-v1.${payload}.sig`;
+}
+
+test("plan mode refuses a start: the host reads its own record of the turn", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent", mode: "plan" },
+  );
+  expect(r.status).toBe(403);
+  expect(r.body).toMatchObject({ code: "plan_mode" });
+  expect(fired).toEqual([]);
+  expect(await onDisk()).toHaveLength(1);
+});
+
+test("plan mode refuses a board move", async () => {
+  await saveActivities(vfs, root, [
+    PARENT,
+    {
+      id: "child-1",
+      title: "Draft",
+      description: "",
+      status: "needs_you",
+      session_key: "conv-child",
+    },
+  ]);
+  const r = await call(
+    "POST",
+    "/sandbox/missions/status",
+    { id: "child-1", status: "done" },
+    { conversationId: "conv-parent", mode: "plan" },
+  );
+  expect(r.status).toBe(403);
+  expect(r.body).toMatchObject({ code: "plan_mode" });
+  expect((await onDisk()).find((a) => a.id === "child-1")?.status).toBe(
+    "needs_you",
+  );
+});
+
+test("the mission is created in the name the GATEWAY vouched for, not the one the runtime sends", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    {
+      conversationId: "conv-parent",
+      gatewayFronted: true,
+      actingAs: actingToken("alice-sub", "Alice"),
+      // The runtime's own loopback call claims somebody else entirely.
+      spoofedActingAs: actingToken("mallory-sub", "Mallory"),
+    },
+  );
+  expect(r.status).toBe(201);
+  const created = (await onDisk()).find((a) => a.id !== PARENT.id);
+  expect(created?.created_by).toBe("alice-sub");
+  expect(created?.contributors).toEqual([
+    { user_id: "alice-sub", name: "Alice" },
+  ]);
+});
+
+test("a turn the runtime never started acts as nobody", async () => {
+  const r = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    {
+      conversationId: "conv-parent",
+      gatewayFronted: true,
+      spoofedActingAs: actingToken("mallory-sub", "Mallory"),
+    },
+  );
+  expect(r.status).toBe(201);
+  const created = (await onDisk()).find((a) => a.id !== PARENT.id);
+  expect(created?.created_by).toBeUndefined();
+  expect(created?.contributors).toBeUndefined();
+});
+
+test("the settle report ends the turn: a later write is out of turn", async () => {
+  const started = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "t", prompt: "p" },
+    { conversationId: "conv-parent" },
+  );
+  expect(started.status).toBe(201);
+  // The runtime reports its terminal state for the turn it was running.
+  const settled = await call("POST", "/sandbox/missions/settle", {
+    conversation_id: "conv-parent",
+    status: "needs_you",
+  });
+  expect(settled.status).toBe(200);
+  // A second start naming the same (now finished) chat has no live turn behind
+  // it. `call` re-records when `conversationId` is passed, so this one names it
+  // the way a runtime would after its turn ended.
+  const late = await call(
+    "POST",
+    "/sandbox/missions/start",
+    { title: "late", prompt: "p" },
+    { forgedConversationId: "conv-parent" },
+  );
+  expect(late.status).toBe(400);
+  expect(late.body).toMatchObject({ code: "not_in_turn" });
 });

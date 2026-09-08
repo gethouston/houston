@@ -2,6 +2,7 @@ import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import { openNewMission } from "./support/mission";
+import { missionCard } from "./support/team-nav";
 
 /**
  * Sending to an agent whose pod is asleep (PRODUCT-1643).
@@ -44,7 +45,7 @@ test("a follow-up sent to an asleep pod shows the message instantly", async ({
   await page.goto("/");
   // Open an existing mission while the pod answers: the chat panel mounts and
   // caches the board's activity list, like any chat the user had open.
-  await page.getByText("Plan a trip to Tokyo").click();
+  await missionCard(page, "Plan a trip to Tokyo").click();
   const composer = page.getByPlaceholder("Send a follow-up...");
   await expect(composer).toBeVisible();
 

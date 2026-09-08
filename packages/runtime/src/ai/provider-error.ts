@@ -1,4 +1,5 @@
 import { getOverflowPatterns } from "@earendil-works/pi-ai";
+import { toDisplayProviderId } from "@houston/domain/provider-dialect";
 import type { AuthFailureCause, ProviderError } from "@houston/runtime-client";
 import { servedScopeFor } from "../auth/served-scope";
 import { AZURE_OPENAI } from "./azure-openai";
@@ -292,6 +293,18 @@ const PLAN_LIMIT_PATTERNS = [
  */
 const COPILOT_BASE_FALLBACK = "gpt-5-mini";
 
+/**
+ * The Codex model offered as the switch target when a ChatGPT subscription
+ * refuses the one a turn ran on ("The model `gpt-5.5` does not exist or you do
+ * not have access to it."). pi's baked catalog outlives what OpenAI serves, so
+ * a retired id can still reach a turn from a stale saved/pinned value — and the
+ * card is only useful if it names one that RUNS. Duplicated from
+ * `CODEX_DEFAULT_MODEL` (./codex-offered.ts, which carries the live probe and
+ * its verdicts) on purpose, like COPILOT_BASE_FALLBACK, so this classifier
+ * stays pure + unit-testable; keep the two in sync.
+ */
+const CODEX_BROAD_FALLBACK = "gpt-6-astra";
+
 /** Longest excerpt we keep for the `unknown` card / bug report. */
 const EXCERPT_MAX = 300;
 
@@ -410,12 +423,16 @@ function localServedFallback(message: string): string | null {
  * forced OpenRouter's `anthropic/claude-opus-5` onto Anthropic produced for 15
  * users (PRODUCT-1657). The message keeps its long-standing shape — unattended
  * readers (a routine's reconcile) parse it off the persisted assistant message.
+ * Only the provider TOKEN is translated to Houston's display dialect: the run
+ * history prints this sentence verbatim to a non-technical reader, while the
+ * `provider` FIELD stays canonical because every card and switch action keys
+ * off it.
  */
 export class ModelNotOfferedError extends Error {
   readonly providerError: ProviderError;
 
   constructor(provider: string, model: string, fallback: string | null) {
-    const message = `${provider} model "${model}" is not available`;
+    const message = `${toDisplayProviderId(provider)} model "${model}" is not available`;
     super(message);
     this.name = "ModelNotOfferedError";
     this.providerError = stampCredentialScope({
@@ -604,13 +621,15 @@ function broadFallback(provider: string, model: string): string | null {
   const fallback =
     provider === "github-copilot"
       ? COPILOT_BASE_FALLBACK
-      : provider === "moonshotai"
-        ? MOONSHOT_BROAD_FALLBACK
-        : provider === "xiaomi"
-          ? XIAOMI_BROAD_FALLBACK
-          : provider === "amazon-bedrock"
-            ? BEDROCK_BROAD_FALLBACK
-            : null;
+      : provider === "openai-codex"
+        ? CODEX_BROAD_FALLBACK
+        : provider === "moonshotai"
+          ? MOONSHOT_BROAD_FALLBACK
+          : provider === "xiaomi"
+            ? XIAOMI_BROAD_FALLBACK
+            : provider === "amazon-bedrock"
+              ? BEDROCK_BROAD_FALLBACK
+              : null;
   return fallback && fallback !== model ? fallback : null;
 }
 

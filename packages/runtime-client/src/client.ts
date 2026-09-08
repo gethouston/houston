@@ -80,6 +80,15 @@ export interface SendOptions {
    * like `mode` and `effort`.)
    */
   mentions?: { userId: string; name?: string }[];
+  /**
+   * The approval cards this message answers: the host-issued request id and
+   * what the person said about it. The host is the ONLY reader — it records the
+   * receipts as the message passes through and drops the field before the
+   * runtime ever sees it, because a model that could author one could authorize
+   * its own destructive call. Omitted when the message answers no card; never
+   * an empty list. (Kept inline — this package stays zero-dep, like `mode`.)
+   */
+  approvals?: { requestId: string; decision: "approve" | "deny" }[];
   signal?: AbortSignal;
 }
 
@@ -402,6 +411,7 @@ export class HoustonEngineClient {
         mode: opts.mode,
         displayText: opts.displayText,
         mentions: opts.mentions,
+        approvals: opts.approvals,
       }),
       signal: opts.signal,
     });

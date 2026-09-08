@@ -11,7 +11,6 @@ import type {
   MessageAuthor,
   MessageMention,
   ProviderError,
-  ToolRuntimeErrorEntry,
 } from "./types";
 
 export interface ToolEntry {
@@ -25,13 +24,13 @@ export interface FileChangeEntry {
   status: "created" | "modified";
 }
 
-/** Marks a `from: "system"` message as a boundary divider — either a
- *  context compaction or a mid-session provider switch. */
+/** Marks a `from: "system"` message as a boundary divider — a context
+ *  compaction, a mid-session provider switch, or a cleared context. */
 export interface ChatCompactionInfo {
   /** What produced this divider. */
-  kind: "compacted" | "provider_switch";
+  kind: "compacted" | "provider_switch" | "context_cleared";
   /** Compaction trigger. Set only when `kind === "compacted"`. */
-  trigger?: "native" | "proactive";
+  trigger?: "native" | "proactive" | "manual";
   /** Provider switched TO. Set only when `kind === "provider_switch"`. */
   provider?: string;
   /** Whether a switch summarized prior context (`true`) or carried the full
@@ -47,7 +46,6 @@ export interface ChatMessage {
   isStreaming: boolean;
   reasoning?: { content: string; isStreaming: boolean };
   tools: ToolEntry[];
-  runtimeError?: ToolRuntimeErrorEntry;
   /**
    * Typed provider failure (rate-limited, auth-expired, quota-exhausted,
    * etc). When set, the consumer should render a variant-specific card
@@ -100,8 +98,8 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   // mid-turn and BOTH providers fail unauthenticated, the two failures collapse
   // into one card — rare, and a turn ultimately resolves onto one provider.
   let seenProviderErrors = new Map<ProviderError["kind"], number>();
-  // A failed turn surfaces BOTH a typed error card (provider_error /
-  // tool_runtime_error) and the engine's session-status echo, which ui/core
+  // A failed turn surfaces BOTH a typed error card (provider_error) and the
+  // engine's session-status echo, which ui/core
   // (`use-session-events`) materializes as a raw `"Session error: …"`
   // system_message. The typed card is the real, localized surface; the echo is
   // a redundant English duplicate. Suppress the echo ONLY when a card already
@@ -283,21 +281,6 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         break;
       }
 
-      case "tool_runtime_error": {
-        flush();
-        turnHadErrorCard = true;
-        messages.push({
-          key: keyFor("tool-runtime-error", item),
-          from: "system",
-          content: "A local tool failed to start.",
-          isStreaming: false,
-          runtimeError: item.data,
-          tools: [],
-          fileChanges: [],
-        });
-        break;
-      }
-
       case "provider_error": {
         // Cancellation has no UI surface — the runner already signalled
         // SessionStatus::Cancelled via a separate channel, and a card
@@ -379,6 +362,22 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
             trigger: item.data.trigger,
             preTokens: item.data.pre_tokens ?? undefined,
           },
+        });
+        break;
+      }
+
+      case "context_cleared": {
+        flush();
+        messages.push({
+          key: keyFor("context-cleared", item),
+          from: "system",
+          // Empty content — the renderer shows a localized divider keyed off
+          // `compaction`, not this string.
+          content: "",
+          isStreaming: false,
+          tools: [],
+          fileChanges: [],
+          compaction: { kind: "context_cleared" },
         });
         break;
       }

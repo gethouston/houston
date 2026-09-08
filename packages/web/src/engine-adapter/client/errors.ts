@@ -8,12 +8,22 @@
 export class HoustonEngineError extends Error {
   public status: number;
   public body: unknown;
+  /**
+   * How long the responder asked us to wait before asking again, in ms, read
+   * from its `Retry-After` header at the throw site (`retryAfterMsOf`). The
+   * server knows when its pod will be ready better than any client curve, so
+   * schedulers prefer it — `lib/assistant-availability.ts` clamps and uses it
+   * for discovery's retry delay. Absent when the response carried no parseable
+   * hint, or when a cross-origin responder did not expose the header, so every
+   * scheduler keeps its own fallback backoff.
+   */
+  public retryAfterMs?: number;
   /** The agent a per-agent gateway route (`/agents/:id/*`) was scoped to,
    *  stamped by `cpFetch`; absent for every other route. The error-surfacing
    *  layer keys its per-agent stuck-wake tracker on it (PRODUCT-1640). */
   public agentId?: string;
 
-  constructor(status: number, body: unknown) {
+  constructor(status: number, body: unknown, retryAfterMs?: number) {
     // Carry the host's own explanation into the message: the v3 host answers
     // errors as `{error: "reason"}` (some routes as `{error: {message}}`).
     // Dropping it here would reduce every failure to "engine error <status>"
@@ -31,6 +41,7 @@ export class HoustonEngineError extends Error {
     this.name = "HoustonEngineError";
     this.status = status;
     this.body = body;
+    this.retryAfterMs = retryAfterMs;
   }
   get code(): string | undefined {
     return (this.body as { error?: { code?: string } })?.error?.code;

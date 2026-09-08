@@ -116,8 +116,6 @@ function frameToSearchText(frame: FeedFrame): string {
     }
     case "tool_result":
       return (data as { content?: string })?.content ?? "";
-    case "tool_runtime_error":
-      return "";
     case "file_changes": {
       const d = data as { created?: string[]; modified?: string[] };
       return [...(d?.created ?? []), ...(d?.modified ?? [])].join("\n");

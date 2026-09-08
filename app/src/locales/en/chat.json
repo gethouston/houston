@@ -123,10 +123,8 @@
     "missionRowFailed": "We could not save this task to your board. Your message was still sent.",
     "interactionDismissFailed": "Couldn't dismiss the request."
   },
-  "toolRuntimeError": {
-    "retryPrompt": "Try again."
-  },
   "providerError": {
+    "retryPrompt": "Try again.",
     "reconnectedContinue": "I'm signed in again. Please continue where you left off. If my last message hasn't been answered yet, answer it now."
   },
   "attachmentIssues": {
@@ -259,6 +257,12 @@
   "filesUpdated_one": "1 file updated",
   "filesUpdated_other": "{{count}} files updated",
   "contextCompacted": "Earlier conversation summarized so the chat can keep going",
+  "contextCompactedManual": "Conversation compacted to free up space",
+  "contextCleared": "Context cleared. I'll start fresh, and I keep what I've learned about you.",
+  "contextCommands": {
+    "compact": "Compact context",
+    "clear": "Clear context"
+  },
   "conversationMap": {
     "title": "Search chat",
     "moreActions": "Chat actions",
@@ -371,5 +375,15 @@
   },
   "copyMessage": {
     "copy": "Copy message"
+  },
+  "approvalCard": {
+    "approve": "Yes, go ahead",
+    "decline": "No, don't do it",
+    "closing": "Houston cannot undo this for you. Should I go ahead?",
+    "affects": "This affects {{arguments}}.",
+    "argument": "{{name}} \"{{value}}\"",
+    "exactValue": "The exact {{name}}:",
+    "truncated_one": "[and {{formatted}} more character, all of which would be written]",
+    "truncated_other": "[and {{formatted}} more characters, all of which would be written]"
   }
 }

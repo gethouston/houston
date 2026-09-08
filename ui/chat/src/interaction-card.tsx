@@ -27,6 +27,7 @@ import {
   QuestionAnswerRow,
   QuestionStepBody,
 } from "./interaction-card-parts";
+import { InteractionDetail } from "./interaction-detail";
 import {
   InteractionModal,
   type InteractionModalPager,
@@ -358,14 +359,19 @@ export function ChatInteractionCard({
   // scrollable body; the answer row (free-text escape + skip) stays FIXED in
   // the modal's trailing slot so a long option list never scrolls it away.
   const brand = step.brand;
+  // The detail block sits ABOVE the options: it is what the question is about,
+  // so it must be read before the answer is picked.
   const questionBody = (
-    <QuestionStepBody
-      disabled={disabled}
-      onOption={onOption}
-      options={step.options}
-      recommendedLabel={recommendedLabel}
-      selectedId={selectedId}
-    />
+    <div className="flex flex-col gap-2.5">
+      {step.detail ? <InteractionDetail detail={step.detail} /> : null}
+      <QuestionStepBody
+        disabled={disabled}
+        onOption={onOption}
+        options={step.options}
+        recommendedLabel={recommendedLabel}
+        selectedId={selectedId}
+      />
+    </div>
   );
   const questionAnswerRow = (
     <QuestionAnswerRow

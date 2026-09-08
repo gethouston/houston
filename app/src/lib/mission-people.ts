@@ -92,7 +92,7 @@ export function missionMatchesPerson(
  * Is this mission MINE? My id is on the face stack, OR the mission carries no
  * attribution at all. The surviving consumer is `missionIsMine`
  * (`lib/mission-relevance.ts`) — the ONE rule the completion notification, the
- * unread badges and the Mentions inbox all ask, so they can never drift apart.
+ * unread badges and the mention notifier both ask, so they cannot drift apart.
  *
  * The unattributed clause is load-bearing and must never be dropped. Missions
  * created before the gateway stamped `created_by` + `contributors` (legacy /

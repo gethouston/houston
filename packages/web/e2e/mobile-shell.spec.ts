@@ -41,7 +41,6 @@ test("the More menu carries the rail's destinations and closes on navigation", a
   // The rail's own rows, by the rail's own anchors — one destination list for
   // both breakpoints.
   for (const anchor of [
-    "nav-inbox",
     "nav-agent-store",
     "nav-integrations",
     "nav-ai-hub",
@@ -52,9 +51,9 @@ test("the More menu carries the rail's destinations and closes on navigation", a
   }
 
   // Navigating from the menu closes it so the content is visible again.
-  await moreRow(page, "nav-inbox").click();
+  await moreRow(page, "nav-agent-store").click();
   await expect(menu).toBeHidden();
-  await expect(screen(page)).toHaveAttribute("data-screen", "inbox");
+  await expect(screen(page)).toHaveAttribute("data-screen", "agent-store");
 });
 
 test("keeps the document free of horizontal overflow", async ({ page }) => {

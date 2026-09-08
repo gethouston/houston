@@ -73,3 +73,26 @@ test("a send carries no credential field of any kind", async () => {
   expect(bodies[0]).not.toHaveProperty("credentialScope");
   expect(JSON.stringify(bodies[0])).not.toContain("credential");
 });
+
+/**
+ * Approval receipts ride their OWN field, never the message text. The HOST is
+ * the only reader — it records them and drops the field before the runtime sees
+ * the turn — so what this locks is that they leave the client at all, and that
+ * the person's words travel untouched beside them.
+ */
+test("sendMessage carries approval receipts beside the text, not inside it", async () => {
+  const { client, bodies } = capture();
+  await client.sendMessage("c1", "Delete it?: Yes, go ahead", {
+    approvals: [{ requestId: "req-1", decision: "approve" }],
+  });
+  expect(bodies[0]).toEqual({
+    text: "Delete it?: Yes, go ahead",
+    approvals: [{ requestId: "req-1", decision: "approve" }],
+  });
+});
+
+test("a message that answers no card carries no approvals key at all", async () => {
+  const { client, bodies } = capture();
+  await client.sendMessage("c1", "hello");
+  expect("approvals" in (bodies[0] ?? {})).toBe(false);
+});

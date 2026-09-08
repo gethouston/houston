@@ -19,6 +19,7 @@
 
 // Subpath import (like `lib/active-interaction.ts`): value imports from the
 // package index only resolve under bundler resolution.
+import type { MessageApproval } from "@houston/protocol/approval";
 import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
@@ -62,6 +63,7 @@ import {
   useSetAgentModelChoice,
   useSkills,
 } from "../hooks/queries";
+import { useApprovalCardCopy } from "../hooks/use-approval-card-copy";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useConnectAiComposer } from "../hooks/use-connect-ai-composer";
 import {
@@ -82,6 +84,7 @@ import {
   encodeAutoContinueMessage,
   filterAutoContinueFeedItems,
 } from "../lib/auto-continue-message";
+import { coherentPinModel, resolveChatModelPin } from "../lib/chat-model-pin";
 import {
   effectiveContextWindow,
   sessionContextUsage,
@@ -89,15 +92,21 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
-import { genericErrorDescription } from "../lib/error-report";
+import {
+  genericErrorDescription,
+  logAndReportError,
+} from "../lib/error-report";
+
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
+import { encodeInteractionAnswersMessage } from "../lib/interaction-answers-marker";
+import { localizeApprovalQuestion } from "../lib/interaction-approval-labels";
+import { approvalsFromAnswers } from "../lib/interaction-approvals";
 import {
   type ConnectOutcome,
   type CredentialOutcome,
-  encodeInteractionAnswersMessage,
   finalConnectNames,
   finalCredentialNames,
-} from "../lib/interaction-reply";
+} from "../lib/interaction-outcomes";
 import { providerForModel, providerOffersModel } from "../lib/model-labels";
 import {
   isModelAllowed,
@@ -111,6 +120,10 @@ import {
   providerIsConnected,
 } from "../lib/provider-connection";
 import {
+  toCanonicalProviderId,
+  toDisplayProviderIdOrNull,
+} from "../lib/provider-overrides";
+import {
   decideHandoffMode,
   estimateConversationTokens,
   type ProviderHandoffMode,
@@ -118,13 +131,11 @@ import {
 import {
   type EffortLevel,
   getContextWindowConfig,
-  getDefaultModel,
-  getProvider,
   normalizeLegacyModel,
   validEffortOrDefault,
-  validModelOrNull,
 } from "../lib/providers";
 import { queryKeys } from "../lib/query-keys";
+import { reportRejection } from "../lib/report-rejection";
 import { showSendFailedToast } from "../lib/send-error-toast";
 import { hasAgentOutput } from "../lib/setup-mission-greeting";
 import {
@@ -182,10 +193,8 @@ import {
   resolveProviderErrorForChat,
 } from "./shell/provider-error-cards/not-connected";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
-import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { SkillCard } from "./skill-card";
 import { skillIntegrationChips } from "./skill-integration-chips";
-import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
 import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
 import { useChatSenderAvatars } from "./use-chat-sender-avatars";
@@ -345,6 +354,9 @@ export function useAgentChatPanel({
   onOpenChildMission,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t, i18n } = useTranslation(["board", "chat", "dashboard", "teams"]);
+  // Approval cards are worded HERE, from the host's structural account of the
+  // exact call (`lib/interaction-approval-labels.ts`).
+  const approvalCopy = useApprovalCardCopy();
   const { processLabels, getThinkingMessage, thinkingIndicator } =
     useChatDisplayLabels();
   const queryClient = useQueryClient();
@@ -483,6 +495,10 @@ export function useAgentChatPanel({
   // stored alias never falls through to the default model and silently
   // downgrades an Opus agent to Sonnet — activity records in particular are
   // never migrated on disk, so this read-side guard is what covers them.
+  // Provider ids get the same treatment on read: both tiers store pi's
+  // CANONICAL id (`openai-codex`) while the catalog, picker and logos speak
+  // Houston's DISPLAY id (`openai`), so they are mapped here — the seam
+  // `use-agent-model-choice` already applies to a stored model choice.
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
@@ -500,14 +516,20 @@ export function useAgentChatPanel({
       setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
       return;
     }
-    tauriConfig
-      .read(path)
-      .then((cfg) => {
-        setAgentProvider((cfg.provider as string) ?? null);
-        setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
+    reportRejection(
+      tauriConfig.read(path).then((cfg) => {
+        setAgentProvider(toDisplayProviderIdOrNull(cfg.provider as string));
+        setAgentModel(
+          normalizeLegacyModel(
+            (cfg.model as string) ?? null,
+            cfg.provider as string,
+          ),
+        );
         setAgentEffort((cfg.effort as string) ?? null);
-      })
-      .catch(() => {});
+      }),
+      "chat.read-agent-model",
+      logAndReportError,
+    );
   }, [path, initialTurnMode]);
 
   const previousSessionKeyRef = useRef(selectedSessionKey);
@@ -528,10 +550,11 @@ export function useAgentChatPanel({
   // stays only as the last resort, matching the engine's factory default.
   const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
   useEffect(() => {
-    tauriProvider
-      .getDefault()
-      .then((p) => setLastUsedProvider(p || null))
-      .catch(() => {});
+    reportRejection(
+      tauriProvider.getDefault().then((p) => setLastUsedProvider(p || null)),
+      "chat.read-default-provider",
+      logAndReportError,
+    );
   }, []);
 
   const { data: activities } = useActivity(path ?? undefined);
@@ -557,7 +580,10 @@ export function useAgentChatPanel({
     if (!pickedPin) return;
     if (
       selectedActivity?.id === pickedPin.activityId &&
-      selectedActivity.provider === pickedPin.provider &&
+      // The row comes back in the engine dialect while the pick was made in the
+      // display one, so the echo only clears when compared on equal terms.
+      toDisplayProviderIdOrNull(selectedActivity.provider) ===
+        pickedPin.provider &&
       selectedActivity.model === pickedPin.model
     )
       setPickedPin(null);
@@ -565,10 +591,14 @@ export function useAgentChatPanel({
 
   const pinForSelected =
     pickedPin && pickedPin.activityId === selectedActivityId ? pickedPin : null;
-  const activityProvider =
-    pinForSelected?.provider ?? selectedActivity?.provider ?? null;
+  const activityProvider = toDisplayProviderIdOrNull(
+    pinForSelected?.provider ?? selectedActivity?.provider,
+  );
   const activityModel = normalizeLegacyModel(
     pinForSelected?.model ?? selectedActivity?.model ?? null,
+    // The row's own provider, not the picker's: a legacy id is only legacy
+    // against the provider it was stored for.
+    pinForSelected?.provider ?? selectedActivity?.provider,
   );
 
   // Which providers the user is actually logged into (reactive + cached), read
@@ -654,10 +684,15 @@ export function useAgentChatPanel({
     hasMessages,
     unconfirmedProviders,
   );
-  const effectiveModel =
-    validModelOrNull(effectiveProvider, activityModel) ??
-    validModelOrNull(effectiveProvider, agentModel) ??
-    getDefaultModel(effectiveProvider);
+  // The model that belongs beside that provider, from the SAME source that
+  // named it (mission pin → agent choice → the provider's own default). The
+  // glyph and the label can no longer disagree: a model never travels from one
+  // provider onto another. See `chat-model-pin` for the precedence.
+  const effectiveModel = resolveChatModelPin(
+    effectiveProvider,
+    { provider: activityProvider, model: activityModel },
+    { provider: agentProvider, model: agentModel },
+  ).model;
   // Effort is a per-agent setting validated against whatever model is active
   // (activity override or agent default), so it never offers an unsupported
   // level for the model that will actually run.
@@ -741,17 +776,25 @@ export function useAgentChatPanel({
       ceilingResolver,
     ],
   );
-  const displayModelPin = useMemo(
-    () => ({
+  // Last coherence pass over whichever tier won: a model the pinned provider
+  // cannot run falls back to THAT provider's default (the Teams personal
+  // resolution assembles its pair from stored halves, so it needs the same
+  // guarantee the shared path gets from `resolveChatModelPin`).
+  const displayModelPin = useMemo(() => {
+    const model = coherentPinModel(
+      rawDisplayModelPin.provider,
+      rawDisplayModelPin.model,
+    );
+    return {
       ...rawDisplayModelPin,
+      model,
       effort: validEffortOrDefault(
         rawDisplayModelPin.provider,
-        rawDisplayModelPin.model,
+        model,
         rawDisplayModelPin.effort,
       ),
-    }),
-    [rawDisplayModelPin],
-  );
+    };
+  }, [rawDisplayModelPin]);
 
   // Converge legacy pin-less chats (created before per-conversation pins):
   // stamp the shared agent-derived provider/model onto its activity, so a later
@@ -766,14 +809,14 @@ export function useAgentChatPanel({
     if (!hasMessages) return;
     if (stampedActivityIds.current.has(selectedActivity.id)) return;
     stampedActivityIds.current.add(selectedActivity.id);
-    tauriActivity
-      .update(path, selectedActivity.id, {
+    reportRejection(
+      tauriActivity.update(path, selectedActivity.id, {
         provider: effectiveProvider,
         model: effectiveModel,
-      })
-      .catch((err) => {
-        console.error("[chat] failed to pin the conversation's model:", err);
-      });
+      }),
+      "chat.pin-conversation-model",
+      logAndReportError,
+    );
   }, [path, selectedActivity, hasMessages, effectiveProvider, effectiveModel]);
 
   // ── Context-usage indicator ───────────────────────────────────────────
@@ -844,7 +887,7 @@ export function useAgentChatPanel({
             model: mod,
           });
           await tauriActivity.update(path, selectedActivityId, {
-            provider: prov,
+            provider: toCanonicalProviderId(prov),
             model: mod,
           });
         } else if (modelDecision.personal) {
@@ -860,7 +903,9 @@ export function useAgentChatPanel({
             const cfg = await tauriConfig.read(path);
             await tauriConfig.write(path, {
               ...cfg,
-              provider: prov,
+              // config.json is CANONICAL (see `data/config.ts`); `prov` is the
+              // picker's display id.
+              provider: toCanonicalProviderId(prov),
               model: mod,
             });
           }
@@ -1002,7 +1047,11 @@ export function useAgentChatPanel({
         // The device's sticky default too: the create-agent dialog seeds from
         // it, so a hosted pick must register as "last used" like a shared-mode
         // pick does (applyProviderModel writes it on the other branches).
-        tauriProvider.setLastUsed(prov, mod).catch(() => {});
+        reportRejection(
+          tauriProvider.setLastUsed(prov, mod),
+          "chat.save-last-model",
+          logAndReportError,
+        );
         return;
       }
       void handleModelSelect(prov, mod);
@@ -1394,8 +1443,13 @@ export function useAgentChatPanel({
   // follow-up action asks the agent to DO the thing, so it runs in `execute`
   // like the save-as-reusable send, never in plan. Omitted → the pinned mode
   // (an answered question resumes the turn the user was already having).
+  // `approvals` carries the receipts for any approval cards the sequence
+  // answered. They ride the send as their OWN field: only a user message can
+  // turn a host-issued request id into a usable approval, and the HOST — the
+  // process holding the credential — reads them off the request and drops them
+  // before the runtime ever sees the turn.
   const sendInteractionMessage = useCallback(
-    (text: string, mode?: TurnMode) => {
+    (text: string, mode?: TurnMode, approvals?: MessageApproval[]) => {
       if (!path || !selectedSessionKey) return;
       tauriChat
         .send(path, text, selectedSessionKey, {
@@ -1403,6 +1457,7 @@ export function useAgentChatPanel({
           modelOverride: displayModelPin.model,
           effortOverride: displayModelPin.effort,
           modeOverride: mode ?? turnMode,
+          ...(approvals?.length ? { approvals } : {}),
         })
         // Two-arg `then`, not `.then().catch()`: the rejection handler must stay
         // exclusive to the SEND, or a throw inside the handoff callback would
@@ -1771,11 +1826,13 @@ export function useAgentChatPanel({
     // that concerns an integration wears the app's identity in its title. A step
     // with no toolkit passes through unbranded; a catalog miss keeps the question
     // plain-titled with a prettified name and no logo — never a crash.
-    const steps: ChatInteractionStep[] = override.steps.map((step) =>
-      step.kind === "question" && step.toolkit
-        ? { ...step, brand: resolveBrand(step.toolkit) }
-        : step,
-    );
+    const steps: ChatInteractionStep[] = override.steps.map((step) => {
+      if (step.kind !== "question") return step;
+      const question = localizeApprovalQuestion(step, approvalCopy);
+      return step.toolkit
+        ? { ...question, brand: resolveBrand(step.toolkit) }
+        : question;
+    });
     const hasQuestionSteps = steps.some((step) => step.kind === "question");
     // A completed sequence has walked EVERY step, but a signin/connect step may
     // have been SKIPPED — a fact the agent must hear (or it re-asks forever) —
@@ -1893,6 +1950,8 @@ export function useAgentChatPanel({
                   { name: credentialedNames.join(", ") },
                 ),
               }),
+              undefined,
+              approvalsFromAnswers(steps, answers),
             );
           }}
           renderSignin={(step, api) => (
@@ -2035,6 +2094,7 @@ export function useAgentChatPanel({
     dismissInteractionStep,
     dismissActiveInteraction,
     resolveBrand,
+    approvalCopy,
     t,
   ]);
   const composerOverride = composerOverrideState.node;
@@ -2107,37 +2167,6 @@ export function useAgentChatPanel({
     (msg: ChatMessage) => {
       if (msg.compaction)
         return <ContextCompactedDivider info={msg.compaction} />;
-      if (isToolRuntimeErrorMessage(msg)) {
-        const isModelUnsupported =
-          msg.runtimeError.kind === "provider_model_unsupported";
-        return (
-          <ToolRuntimeErrorCard
-            error={msg.runtimeError}
-            onRetry={async () => {
-              if (!path || !selectedSessionKey) return;
-              const text = t("chat:toolRuntimeError.retryPrompt");
-              await tauriChat.send(path, text, selectedSessionKey, {
-                // Retry mirrors the displayed dropdown values, not just
-                // the in-memory chatProvider — see send sites above.
-                providerOverride: displayModelPin.provider,
-                modelOverride: displayModelPin.model,
-                effortOverride: displayModelPin.effort,
-                modeOverride: turnMode,
-              });
-              // The retry starts a turn: this card also renders inside an
-              // ARCHIVED transcript, and the send re-activates that mission, so
-              // the user has to travel with it. A throw above skips this and
-              // surfaces through the card's own error path.
-              onSendReactivatedRef.current?.();
-            }}
-            onSwitchModel={
-              isModelUnsupported
-                ? () => selectModel("openai", "gpt-5.5")
-                : undefined
-            }
-          />
-        );
-      }
       // Typed provider-error card (rate-limit, quota, model-unavailable,
       // UNAUTHENTICATED reconnect button, internal 5xx, …). The engine emits
       // these as `provider_error` FeedItems; feed-to-messages stashes the
@@ -2175,7 +2204,7 @@ export function useAgentChatPanel({
                 ? encodeAutoContinueMessage(continueText)
                 : providerErrorRetryText(
                     providerError,
-                    t("chat:toolRuntimeError.retryPrompt"),
+                    t("chat:providerError.retryPrompt"),
                   );
               // The reconnect resume fires WITHOUT the user typing, so it is an
               // `autoResume` send: if the conversation shows a running turn it
@@ -2193,8 +2222,8 @@ export function useAgentChatPanel({
                 suppressUserBubble: resendsOriginalPrompt(providerError),
                 autoResume: providerError.kind === "unauthenticated",
               });
-              // Same as the tool-error retry: this card renders inside archived
-              // transcripts too, and the send re-activates the mission.
+              // This card renders inside archived transcripts too, and the
+              // send re-activates the mission — travel with it.
               onSendReactivatedRef.current?.();
             }}
             // "Pick another model" pops the MODEL picker (not the Skills picker);
@@ -2484,12 +2513,6 @@ export function useAgentChatPanel({
       <ProviderSwitchDialog
         open={switchDialog !== null}
         providerId={switchDialog?.toProvider ?? ""}
-        providerName={
-          switchDialog
-            ? (getProvider(switchDialog.toProvider)?.name ??
-              switchDialog.toProvider)
-            : ""
-        }
         mode={switchDialog?.mode ?? "replay"}
         onConfirm={confirmProviderSwitch}
         onCancel={() => setSwitchDialog(null)}

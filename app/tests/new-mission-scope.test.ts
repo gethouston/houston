@@ -40,7 +40,7 @@ describe("newMissionScopeFor", () => {
   });
 
   it("every other screen falls back to the shared rule", () => {
-    for (const view of ["inbox", "teams-home", "settings", "store"])
+    for (const view of ["academy", "teams-home", "settings", "store"])
       assert.deepEqual(newMissionScopeFor(at(view, "a1", "t1")), {
         kind: "home",
       });

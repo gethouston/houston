@@ -40,7 +40,7 @@ class FakeSession implements HarnessSession {
     this.listeners.clear();
   }
   async setModel(): Promise<void> {}
-  async compact(): Promise<void> {}
+  async compact(): Promise<undefined> {}
   setThinkingLevel(): void {}
   getContextUsage(): { tokens: number | null } | undefined {
     return undefined;
