@@ -1,0 +1,77 @@
+# TEMPORARY diagnostic — replays the release.yml Windows upgrade check with
+# published MSIs and dumps the verbose MSI logs. Delete before merging.
+name: Windows upgrade probe
+on:
+  workflow_dispatch:
+    inputs:
+      old_tag:
+        default: cloud-v0.6.17
+        type: string
+      new_tag:
+        default: cloud-v0.6.18
+        type: string
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OLD_TAG: ${{ inputs.old_tag }}
+          NEW_TAG: ${{ inputs.new_tag }}
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $root = Join-Path $env:RUNNER_TEMP 'probe'
+          New-Item -ItemType Directory -Path $root | Out-Null
+          gh release download $env:OLD_TAG --repo $env:GITHUB_REPOSITORY --pattern '*_x64_*.msi' --dir (Join-Path $root 'old')
+          gh release download $env:NEW_TAG --repo $env:GITHUB_REPOSITORY --pattern '*_x64_*.msi' --dir (Join-Path $root 'new')
+          $old = (Get-ChildItem (Join-Path $root 'old') -Filter *.msi)[0].FullName
+          $new = (Get-ChildItem (Join-Path $root 'new') -Filter *.msi)[0].FullName
+          Write-Host "old=$old"; Write-Host "new=$new"
+          function Run([string]$op, [string]$path, [string]$log, [string[]]$extra) {
+            $args = @($op, "`"$path`"", '/qn', '/norestart', '/l*v', "`"$log`"") + $extra
+            Write-Host "== msiexec $($args -join ' ')"
+            $p = Start-Process -FilePath 'msiexec.exe' -ArgumentList $args -Wait -PassThru
+            Write-Host "== exit $($p.ExitCode)"
+          }
+          function Listing([string]$label, [string]$dir) {
+            Write-Host "== files under $dir ($label)"
+            if (Test-Path -LiteralPath $dir) { Get-ChildItem -LiteralPath $dir -Recurse -File | ForEach-Object { Write-Host ("   {0,10} {1}" -f $_.Length, $_.FullName.Substring($dir.Length)) } } else { Write-Host '   (missing)' }
+            Write-Host "== Houston.exe anywhere:"
+            foreach ($base in @("$env:ProgramFiles", "$env:LOCALAPPDATA\Programs", "$env:RUNNER_TEMP")) {
+              Get-ChildItem -LiteralPath $base -Recurse -File -Filter 'Houston.exe' -ErrorAction SilentlyContinue | ForEach-Object { Write-Host "   $($_.FullName)" }
+            }
+            Write-Host "== registry:"
+            Get-ChildItem 'HKCU:\Software' -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'Houston|gethouston' } | ForEach-Object { reg query $_.Name /s 2>$null | Select-Object -First 30 | ForEach-Object { Write-Host "   $_" } }
+            Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' -ErrorAction SilentlyContinue | ForEach-Object { $p = Get-ItemProperty $_.PSPath; if ($p.DisplayName -match 'Houston') { Write-Host "   uninstall: $($p.DisplayName) $($p.DisplayVersion) $($p.InstallLocation) $($_.PSChildName)" } }
+          }
+          function Grep([string]$log) {
+            Write-Host "== log $log"
+            Select-String -LiteralPath $log -Pattern 'Houston\.exe|RemoveExistingProducts|PROPERTY CHANGE: (Adding|Modifying) INSTALLDIR|UPGRADINGPRODUCTCODE|Return value 3|Product: Houston|Doing action: (InstallFiles|InstallFinalize|RemoveFiles|CostFinalize|InstallInitialize|InstallValidate)|Disallowing|Executing op: FileCopy|Executing op: FileRemove|Component: |MainEngineThread is returning' | ForEach-Object { Write-Host "   $($_.LineNumber): $($_.Line.Substring(0, [Math]::Min(300, $_.Line.Length)))" } | Select-Object -First 400
+          }
+          # Scenario A: what release.yml's verify does (INSTALLDIR forced on both installs)
+          $dirA = Join-Path $root 'A-installed'
+          Run '/i' $old (Join-Path $root 'A-old.log') @("INSTALLDIR=`"$dirA`"")
+          Listing 'A after old' $dirA
+          Run '/i' $new (Join-Path $root 'A-new.log') @("INSTALLDIR=`"$dirA`"")
+          Listing 'A after upgrade' $dirA
+          Grep (Join-Path $root 'A-new.log')
+          Run '/x' $new (Join-Path $root 'A-x.log') @()
+          Listing 'A after uninstall' $dirA
+          # Scenario C: the real updater path (no INSTALLDIR at all)
+          Run '/i' $old (Join-Path $root 'C-old.log') @()
+          Listing 'C after old' "$env:ProgramFiles\Houston"
+          Run '/i' $new (Join-Path $root 'C-new.log') @()
+          Listing 'C after upgrade' "$env:ProgramFiles\Houston"
+          Grep (Join-Path $root 'C-new.log')
+          Run '/x' $new (Join-Path $root 'C-x.log') @()
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: msi-logs
+          path: ${{ runner.temp }}/probe/*.log
