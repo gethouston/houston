@@ -148,6 +148,31 @@ export function anthropicCredentialCached(): boolean {
   return cache ?? false;
 }
 
+/**
+ * The same signal WITH its unknown state, for the callers that must not read
+ * "we haven't asked yet" as "logged out": `true`/`false` only from a settled
+ * answer, `undefined` while no probe has answered.
+ *
+ * The sync signal above collapses the two, which a STATUS row survives (the
+ * next poll corrects it) but a TURN gate does not: for as long as the first
+ * probe runs (`auth-cli`'s 10s execFile timeout) an anthropic-pinned turn was
+ * refused as not-connected and its prompt never reached the model. So the gate
+ * awaits the first answer here instead — bounded by that same timeout, joining
+ * the boot prime's in-flight probe rather than spawning a second one, and
+ * paying NOTHING once an answer (or a usable materialized file) exists.
+ */
+export async function anthropicCredentialSettled(
+  probe: CredentialProbe = spawnStatusProbe,
+): Promise<boolean | undefined> {
+  if (isPersonalScope(currentCredentialScope().key)) return false;
+  if (claudeCredentialFileUsable(claudeCredentialsFile())) return true;
+  if (cache !== undefined) return cache;
+  await refreshAnthropicCredential(probe);
+  // Still `undefined` when the probe could not answer — an unanswerable probe
+  // is not a sign-out, so the caller must decide without inventing one.
+  return cache;
+}
+
 /** Fire-and-forget cache warm at runtime boot (server mode). */
 export function primeAnthropicCredential(): void {
   void refreshAnthropicCredential();
@@ -166,6 +191,12 @@ export function resetAnthropicCredentialCache(value = false): void {
   inFlight = null;
 }
 
+/** Test seam: return the cache to the COLD (never-asked) state. */
+export function forgetAnthropicCredentialCacheForTest(): void {
+  resetAnthropicCredentialCache();
+  cache = undefined;
+}
+
 /**
  * Drop the materialized shared-dir credential after the CENTRAL store
  * authoritatively disconnected anthropic (a serve probe answered
@@ -182,11 +213,14 @@ export function resetAnthropicCredentialCache(value = false): void {
  * re-probe) happens only when a file was actually removed, so the per-turn
  * not-connected sync of an ordinary disconnected pod stays free of subprocess
  * churn.
+ *
+ * Returns whether a credential was actually dropped, so the sync that asked for
+ * it can name this provider in its own removal log line.
  */
-export function clearGhostClaudeCredential(): void {
-  if (isPersonalScope(currentCredentialScope().key)) return;
+export function clearGhostClaudeCredential(): boolean {
+  if (isPersonalScope(currentCredentialScope().key)) return false;
   const path = claudeCredentialsFile();
-  if (!existsSync(path)) return;
+  if (!existsSync(path)) return false;
   try {
     rmSync(path, { force: true });
   } catch (err) {
@@ -194,12 +228,13 @@ export function clearGhostClaudeCredential(): void {
       `[claude] could not remove the ghost materialized credential at ${path}:`,
       err instanceof Error ? err.message : err,
     );
-    return;
+    return false;
   }
   console.log(
     "[claude] removed ghost materialized credential: the central store no longer holds an anthropic credential for this workspace",
   );
   resetAnthropicCredentialCache(false);
+  return true;
 }
 
 /**

@@ -1571,3 +1571,91 @@ test("a served azure credential lands its endpoint file beside auth.json (PRODUC
     ).toEqual({ baseUrl: "https://acme.openai.azure.com" });
   });
 });
+
+/**
+ * A sync REMOVES credentials as well as applying them — a central sign-out, a
+ * dead served key, a ghost materialized file. Only the applies were on the
+ * record, so the pod-side proof of "why did this workspace go disconnected?"
+ * was a provider silently vanishing from the applied line.
+ */
+const removalLines = (logs: ReturnType<typeof vi.spyOn>) =>
+  logs.mock.calls
+    .map((c) => String(c[0]))
+    .filter((line) => line.startsWith("[serve] removed central credentials:"));
+
+test("a sync that removes a credential logs it with the reason", async () => {
+  const logs = vi.spyOn(console, "log").mockImplementation(() => {});
+  try {
+    const fetchImpl = (async () =>
+      notConnected404()) as unknown as typeof globalThis.fetch;
+    await withServeMode(fetchImpl, async () => {
+      const path = join(config.dataDir, "auth.json");
+      const manifestPath = join(config.dataDir, "served-providers.json");
+      writeFileSync(
+        path,
+        JSON.stringify({
+          "openai-codex": {
+            type: "oauth",
+            access: "AT-served",
+            refresh: "",
+            expires: 1,
+          },
+        }),
+      );
+      writeServedProvidersAt(manifestPath, ["openai-codex"]);
+
+      expect(await syncServedCredential()).toEqual([]);
+      expect(readAuth(path)["openai-codex"]).toBeUndefined();
+      expect(removalLines(logs)).toEqual([
+        "[serve] removed central credentials: openai-codex (reason: central says not connected)",
+      ]);
+      // The applied line still prints, so a reader sees both halves of the sync.
+      expect(
+        logs.mock.calls.some(
+          (c) => String(c[0]) === "[serve] applied central credentials: (none)",
+        ),
+      ).toBe(true);
+    });
+  } finally {
+    logs.mockRestore();
+  }
+});
+
+test("a sync that removes nothing logs no removal line", async () => {
+  const logs = vi.spyOn(console, "log").mockImplementation(() => {});
+  try {
+    const fetchImpl = (async () =>
+      notConnected404()) as unknown as typeof globalThis.fetch;
+    await withServeMode(fetchImpl, async () => {
+      expect(await syncServedCredential()).toEqual([]);
+      expect(removalLines(logs)).toEqual([]);
+    });
+  } finally {
+    logs.mockRestore();
+  }
+});
+
+test("a refused dead served key is logged under its own reason", async () => {
+  resetDeadKeyReportsForTest();
+  const logs = vi.spyOn(console, "log").mockImplementation(() => {});
+  try {
+    const { fetchImpl } = deadGoogleFetch("ya29.a0DeadToken");
+    await withServeMode(fetchImpl, async () => {
+      const manifestPath = join(config.dataDir, "served-providers.json");
+      writeFileSync(
+        join(config.dataDir, "auth.json"),
+        JSON.stringify({
+          google: { type: "api_key", key: "ya29.a0DeadToken" },
+        }),
+      );
+      writeServedProvidersAt(manifestPath, ["google"]);
+
+      expect(await syncServedCredential()).toEqual([]);
+      expect(removalLines(logs)).toEqual([
+        "[serve] removed central credentials: google (reason: the served key cannot authenticate)",
+      ]);
+    });
+  } finally {
+    logs.mockRestore();
+  }
+});

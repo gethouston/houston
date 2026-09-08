@@ -221,7 +221,7 @@ async function runServedSync(): Promise<string[]> {
     );
   }
   const applied: string[] = [];
-  const removed: string[] = [];
+  const removed: Removal[] = [];
   // Provenance gate: an authoritative "not connected" may only remove providers
   // this runtime learned from serve mode. A locally-connected credential the
   // central store never held (the Anthropic setup token, an openai-compatible
@@ -243,7 +243,7 @@ async function runServedSync(): Promise<string[]> {
       forgetServedScope(probe.id);
       if (manifest.has(probe.id)) {
         if (removeServedCredentialAt(authPathFor(), probe.id))
-          removed.push(probe.id);
+          removed.push({ id: probe.id, reason: DEAD_KEY });
         manifest.delete(probe.id);
         manifestDirty = true;
       }
@@ -300,16 +300,17 @@ async function runServedSync(): Promise<string[]> {
       // the desktop/self-host refusal): there the file IS the browser login's
       // legitimate credential and this answer says nothing about the central
       // store — deleting it would disconnect a healthy local Claude.
+      let dropped = false;
       if (probe.id === "anthropic" && !probe.notServedHere)
-        clearGhostClaudeCredential();
+        dropped = clearGhostClaudeCredential();
       if (manifest.has(probe.id)) {
         // A refresh-bearing OAuth entry still survives inside
         // removeServedCredentialAt: that's the device-code connect mid-capture.
-        if (removeServedCredentialAt(authPathFor(), probe.id))
-          removed.push(probe.id);
+        if (removeServedCredentialAt(authPathFor(), probe.id)) dropped = true;
         manifest.delete(probe.id);
         manifestDirty = true;
       }
+      if (dropped) removed.push({ id: probe.id, reason: NOT_CONNECTED });
     }
   }
   if (manifestDirty)
@@ -324,7 +325,32 @@ async function runServedSync(): Promise<string[]> {
   console.log(
     `[serve] applied central credentials: ${applied.join(", ") || "(none)"}`,
   );
+  logRemovals(removed);
   return applied;
+}
+
+/** Why a sync dropped a credential — the second half of its diagnostic. */
+const NOT_CONNECTED = "central says not connected";
+const DEAD_KEY = "the served key cannot authenticate";
+
+type Removal = { id: string; reason: string };
+
+/**
+ * The counterpart of the applied line: what this sync DELETED, and why. Without
+ * it a workspace going disconnected showed up only as a provider silently
+ * absent from the applied line, so the pod-side record could not say whether
+ * the central store disowned it or a probe simply failed to answer. Grouped by
+ * reason (one line each) and printed only when something was actually removed —
+ * every ordinary sync stays a single line.
+ */
+function logRemovals(removed: Removal[]): void {
+  const byReason = new Map<string, string[]>();
+  for (const { id, reason } of removed)
+    byReason.set(reason, [...(byReason.get(reason) ?? []), id]);
+  for (const [reason, ids] of byReason)
+    console.log(
+      `[serve] removed central credentials: ${ids.join(", ")} (reason: ${reason})`,
+    );
 }
 
 /**

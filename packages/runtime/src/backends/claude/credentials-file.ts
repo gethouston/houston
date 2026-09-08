@@ -75,6 +75,35 @@ export function claudeOAuthCredentialUsable(
 }
 
 /**
+ * Read `<configDir>/.credentials.json` back into the credential it carries.
+ *
+ * Absent (the common case: no login yet), unreadable, non-JSON, or not the CLI
+ * envelope all read as `undefined` — a materialized credential file is written
+ * by us and by the CLI, so a broken one is never a state a caller can act on,
+ * only one it must survive. Every caller has a defined next step for
+ * `undefined` (the `claude auth status` probe, or the platform's own config-dir
+ * lookup), so this is a resolution outcome, not a swallowed error.
+ */
+export function readClaudeOAuthCredentialFile(
+  path: string,
+): ClaudeOAuthCredential | undefined {
+  let raw: string;
+  try {
+    raw = readFileSync(path, "utf8");
+  } catch {
+    return undefined; // absent (the common case) or unreadable
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  const parsed = parseClaudeOAuthEnvelope(body);
+  return parsed.ok ? parsed.value : undefined;
+}
+
+/**
  * Read `<configDir>/.credentials.json` and judge it: true only when the file
  * exists, parses as the CLI envelope, AND carries a usable credential. An
  * absent, corrupt, or dead file reads false — the caller falls back to the
@@ -84,18 +113,6 @@ export function claudeCredentialFileUsable(
   path: string,
   now: number = Date.now(),
 ): boolean {
-  let raw: string;
-  try {
-    raw = readFileSync(path, "utf8");
-  } catch {
-    return false; // absent (the common case) or unreadable — defer to the probe
-  }
-  let body: unknown;
-  try {
-    body = JSON.parse(raw);
-  } catch {
-    return false;
-  }
-  const parsed = parseClaudeOAuthEnvelope(body);
-  return parsed.ok && claudeOAuthCredentialUsable(parsed.value, now);
+  const cred = readClaudeOAuthCredentialFile(path);
+  return cred !== undefined && claudeOAuthCredentialUsable(cred, now);
 }
