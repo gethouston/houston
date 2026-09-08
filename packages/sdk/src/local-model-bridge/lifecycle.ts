@@ -1,3 +1,4 @@
+import { cancelledBridgeOperation } from "./errors";
 import { observeBridgeJournal } from "./journal";
 import { BridgeLifetime } from "./lifetime";
 import { discoverBridge } from "./resume";
@@ -110,9 +111,11 @@ export abstract class LocalBridgeLifecycle extends LocalBridgeState {
     // connection stays live (including renewal) until the new settings succeed.
     if (this.snapshot.journal?.phase !== "committed")
       this.lifetime.invalidate();
+    const epoch = this.lifetime.epoch;
     return this.lifetime.enqueue(async () => {
+      if (this.disposed) return cancelledBridgeOperation(true);
       await save();
-      this.lifetime.invalidate();
+      if (epoch === this.lifetime.epoch) this.lifetime.invalidate();
       this.emit({
         ...this.snapshot,
         status: "disabled",

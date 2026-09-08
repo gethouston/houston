@@ -342,3 +342,62 @@ test.each([
   expect(h.endpoint()).toEqual(manual);
   expect(h.ports.report).toHaveBeenCalledWith(failure);
 });
+
+test.each([
+  "disconnect",
+  "connect",
+])("a later %s keeps its intent while a manual save completes", async (action) => {
+  await connectDetectedModel(detected);
+  const entered = deferred<void>();
+  const gate = deferred<void>();
+  mocks.save.mockImplementationOnce(async (value) => {
+    entered.resolve();
+    await gate.promise;
+    await h.save(value);
+  });
+  const replacing = connectManualEndpoint(manual);
+  await entered.promise;
+  const later =
+    action === "disconnect"
+      ? disconnectLocalModel()
+      : connectDetectedModel({ ...detected, model: "new-model" });
+  const result = later.then(
+    () => null,
+    (error: unknown) => error,
+  );
+  await vi.advanceTimersByTimeAsync(0);
+  gate.resolve();
+  await replacing;
+  expect(await result).toBeNull();
+  if (action === "disconnect") {
+    expect(h.endpoint()).toBeNull();
+    expect(h.journal()).toBeNull();
+  } else {
+    expect(h.endpoint()?.model).toBe("new-model");
+    expect(h.journal()?.phase).toBe("committed");
+  }
+});
+
+test("disposing a scope cancels queued manual saves before they reach the provider", async () => {
+  await connectDetectedModel(detected);
+  const entered = deferred<void>();
+  const gate = deferred<void>();
+  mocks.save.mockImplementationOnce(async (value) => {
+    entered.resolve();
+    await gate.promise;
+    await h.save(value);
+  });
+  const first = connectManualEndpoint(manual);
+  await entered.promise;
+  const replacement = { ...manual, model: "queued-replacement" };
+  const second = connectManualEndpoint(replacement).catch(
+    (error: unknown) => error,
+  );
+  await vi.advanceTimersByTimeAsync(0);
+  const disposing = controller.dispose();
+  gate.resolve();
+  await first;
+  await second;
+  await disposing;
+  expect(mocks.save).not.toHaveBeenCalledWith(replacement, "inline");
+});
