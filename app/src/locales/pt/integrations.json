@@ -223,6 +223,12 @@
       "providerTitle": "Conectar HighLevel com Composio",
       "providerDesc": "Todas as funções do HighLevel. Quando o HighLevel abrir, mude de Agency View para Sub-Account View e aprove."
     },
+    "manychat": {
+      "description": "Sua conta do ManyChat: contatos do Instagram, Messenger, WhatsApp, SMS e e-mail, etiquetas, campos personalizados, automações e mensagens.",
+      "keyTitle": "Conectar com uma chave de API do ManyChat",
+      "keyDesc": "Copie a chave de API nas configurações do ManyChat e cole aqui.",
+      "keyHelp": "No ManyChat, abra Configurações (Settings), depois API, e gere sua chave de API (disponível no plano Pro). Copie a chave inteira; ela começa com o número da sua conta seguido de dois-pontos."
+    },
     "connect": {
       "title": "Conectar {{name}}",
       "recommendedBadge": "Recomendado",

@@ -30,6 +30,13 @@ const entries: readonly CuratedEntry[] = [
     keywords: ["crm", "contactos"],
     aliases: ["gohighlevel", "go high level", "ghl", "leadconnector"],
   },
+  {
+    slug: "manychat",
+    name: "ManyChat",
+    description: "ManyChat chat marketing and chatbot platform.",
+    keywords: ["instagram", "whatsapp", "suscriptores"],
+    aliases: ["many chat", "many_chat"],
+  },
 ];
 
 const none = new Set<string>();
@@ -164,4 +171,24 @@ test("shipped entries are slug-safe and self-describing", () => {
     expect(entry.description.length).toBeGreaterThan(20);
     expect(entry.keywords.length).toBeGreaterThan(0);
   }
+});
+
+test("ManyChat is discoverable by channel keywords and by Composio's own slug", () => {
+  for (const tokens of [["manychat"], ["instagram", "dm"], ["suscriptores"]]) {
+    const rows = curatedMatches(tokens, none, entries);
+    expect(rows.map((row) => row.toolkit)).toContain("manychat");
+  }
+  // The model may have learned Composio's `many_chat` slug from its own
+  // catalog (an empty toolkit there); the scope still lands on the curated app.
+  for (const app of ["many_chat", "Many Chat", "manychat"]) {
+    const rows = curatedScoped(app, none, entries);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.toolkit).toBe("manychat");
+  }
+  expect(curatedCanonicalScope("many_chat", entries)).toBe("manychat");
+  expect(curatedScoped("many_chat", new Set(["manychat"]), entries)).toEqual(
+    [],
+  );
+  const shipped = curatedMatches(["chatbot"], none, CURATED_ENTRIES);
+  expect(shipped.map((row) => row.toolkit)).toContain("manychat");
 });
