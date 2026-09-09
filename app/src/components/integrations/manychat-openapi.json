@@ -1,0 +1,2466 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ManyChat API",
+    "description": "ManyChat Page API (Instagram DM, Facebook Messenger, WhatsApp, SMS and email contacts, tags, custom fields, flows and messaging). Help article: https://help.manychat.com/hc/en-us/articles/14959510331420-API-Manychat",
+    "version": "beta"
+  },
+  "servers": [
+    {
+      "url": "https://api.manychat.com"
+    }
+  ],
+  "paths": {
+    "/fb/page/getInfo": {
+      "get": {
+        "tags": ["Page"],
+        "summary": "Get the connected ManyChat account (page): name, username, timezone and plan",
+        "description": "Get the connected ManyChat account (page): name, username, timezone and plan. ***Limit:*** 100 queries per second",
+        "operationId": "getInfo",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Page"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/createTag": {
+      "post": {
+        "tags": ["Page"],
+        "summary": "Create a new tag",
+        "description": "Create a new tag. ***Limit:*** 10 queries per second",
+        "operationId": "createTag",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "My tag",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "required": ["tag"],
+                      "properties": {
+                        "tag": {
+                          "$ref": "#/components/schemas/Tag"
+                        }
+                      },
+                      "type": "object",
+                      "additionalProperties": false,
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/getTags": {
+      "get": {
+        "tags": ["Page"],
+        "summary": "List every tag with its id",
+        "description": "List every tag with its id. ***Limit:*** 100 queries per second",
+        "operationId": "getTags",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Tag"
+                      },
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/removeTag": {
+      "post": {
+        "tags": ["Page"],
+        "summary": "Delete a tag by id, removing it from every contact (cannot be undone)",
+        "description": "Delete a tag by id, removing it from every contact (cannot be undone). ***Limit:*** 10 queries per second. Removes specified tag from the page and the page's subscribers. This action can not be undone.",
+        "operationId": "removeTag",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["tag_id"],
+                "properties": {
+                  "tag_id": {
+                    "type": "integer",
+                    "example": 123,
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/removeTagByName": {
+      "post": {
+        "tags": ["Page"],
+        "summary": "Delete a tag by name, removing it from every contact (cannot be undone)",
+        "description": "Delete a tag by name, removing it from every contact (cannot be undone). ***Limit:*** 10 queries per second. Removes specified tag from the page and the page's subscribers. This action can not be undone.",
+        "operationId": "removeTagByName",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["tag_name"],
+                "properties": {
+                  "tag_name": {
+                    "type": "string",
+                    "example": "MyTagName",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/createCustomField": {
+      "post": {
+        "tags": ["Page"],
+        "summary": "Create a custom user field (text, number, date, datetime or boolean)",
+        "description": "Create a custom user field (text, number, date, datetime or boolean). ***Limit:*** 10 queries per second",
+        "operationId": "createCustomField",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["caption", "type"],
+                "properties": {
+                  "caption": {
+                    "type": "string",
+                    "example": "My custom field name",
+                    "isRequired": true
+                  },
+                  "type": {
+                    "description": "Value from list: text, number, date, datetime, boolean",
+                    "type": "string",
+                    "example": "text",
+                    "isRequired": true
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "This field store my custom field name",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "required": ["field"],
+                      "properties": {
+                        "field": {
+                          "$ref": "#/components/schemas/Custom Field"
+                        }
+                      },
+                      "type": "object",
+                      "additionalProperties": false,
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/getGrowthTools": {
+      "get": {
+        "tags": ["Page"],
+        "summary": "List growth tools (opt-in widgets)",
+        "description": "List growth tools (opt-in widgets). ***Limit:*** 100 queries per second",
+        "operationId": "getGrowthTools",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Growth Tools"
+                      },
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/getFlows": {
+      "get": {
+        "tags": ["Page"],
+        "summary": "List automation flows and their folders; a flow's ns id is what sendFlow needs",
+        "description": "List automation flows and their folders; a flow's ns id is what sendFlow needs. ***Limit:*** 10 queries per second",
+        "operationId": "getFlows",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "required": ["flows", "folders"],
+                      "properties": {
+                        "flows": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Flow"
+                          },
+                          "isRequired": true
+                        },
+                        "folders": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/Folder"
+                          },
+                          "isRequired": true
+                        }
+                      },
+                      "type": "object",
+                      "additionalProperties": false,
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/getCustomFields": {
+      "get": {
+        "tags": ["Page"],
+        "summary": "List custom user fields with their ids and types",
+        "description": "List custom user fields with their ids and types. ***Limit:*** 100 queries per second",
+        "operationId": "getCustomFields",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Custom Field"
+                      },
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/getOtnTopics": {
+      "get": {
+        "tags": ["Page"],
+        "summary": "List one-time notification (OTN) topics",
+        "description": "List one-time notification (OTN) topics. ***Limit:*** 100 queries per second",
+        "operationId": "getOtnTopics",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Otn Topic"
+                      },
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/getBotFields": {
+      "get": {
+        "tags": ["Page"],
+        "summary": "List bot fields (account-wide variables) with values",
+        "description": "List bot fields (account-wide variables) with values. ***Limit:*** 100 queries per second",
+        "operationId": "getBotFields",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Bot Field"
+                      },
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/createBotField": {
+      "post": {
+        "tags": ["Page"],
+        "summary": "Create a bot field (account-wide variable)",
+        "description": "Create a bot field (account-wide variable). ***Limit:*** 10 queries per second",
+        "operationId": "createBotField",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["name", "type"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "My bot name",
+                    "isRequired": true
+                  },
+                  "type": {
+                    "description": "Value from list: text, number, date, datetime, boolean",
+                    "type": "string",
+                    "example": "text",
+                    "isRequired": true
+                  },
+                  "description": {
+                    "type": "string",
+                    "example": "This field store my bot name",
+                    "isRequired": true
+                  },
+                  "value": {
+                    "description": "string, integer or boolean (see method description for setBotField)",
+                    "example": "'string', 123, true, '2018-07-18', '2018-07-02T00:00:00+00:00'",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "required": ["field"],
+                      "properties": {
+                        "field": {
+                          "$ref": "#/components/schemas/Bot Field"
+                        }
+                      },
+                      "type": "object",
+                      "additionalProperties": false,
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/setBotField": {
+      "post": {
+        "tags": ["Page"],
+        "summary": "Set a bot field's value by field id",
+        "description": "Set a bot field's value by field id. ***Limit:*** 10 queries per second",
+        "operationId": "setBotField",
+        "requestBody": {
+          "description": "Depending on the type of Bot Field you will need to use one of the following type of data for \"field_value\".<br>\n***For example:***<br>\nText: \"text\" (string)<br>\nNumber: 123 or 1.23 (integer or float)<br>\nBoolean: true or false (boolean)<br>\nDate: \"2018-07-18\" (string)<br>\nDate and time: \"2018-07-02T00:00:00+00:00\" (string)<br>\n<br>\nData and time format for this API method is YYYY-MM-DDTHH:MM:SSP.  Where P is user’s timezone. For example May 1st 2018 06:30:24 UTC+3:00 should be formatted as 2018-05-01T06:30:24+03:00",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["field_id", "field_value"],
+                "properties": {
+                  "field_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "field_value": {
+                    "description": "string, integer or boolean (see method description)",
+                    "example": "'string', 123, true, '2018-07-18', '2018-07-02T00:00:00+00:00'",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/setBotFieldByName": {
+      "post": {
+        "tags": ["Page"],
+        "summary": "Set a bot field's value by field name",
+        "description": "Set a bot field's value by field name. ***Limit:*** 10 queries per second",
+        "operationId": "setBotFieldByName",
+        "requestBody": {
+          "description": "Depending on the type of Bot Field you will need to use one of the following type of data for \"field_value\".<br>\n***For example:***<br>\nText: \"text\" (string)<br>\nNumber: 123 or 1.23 (integer or float)<br>\nBoolean: true or false (boolean)<br>\nDate: \"2018-07-18\" (string)<br>\nDate and time: \"2018-07-02T00:00:00+00:00\" (string)<br>\n<br>\nData and time format for this API method is YYYY-MM-DDTHH:MM:SSP.  Where P is user’s timezone. For example May 1st 2018 06:30:24 UTC+3:00 should be formatted as 2018-05-01T06:30:24+03:00",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["field_name", "field_value"],
+                "properties": {
+                  "field_name": {
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "field_value": {
+                    "description": "string, integer or boolean (see method description)",
+                    "example": "'string', 123, true, '2018-07-18', '2018-07-02T00:00:00+00:00'",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/page/setBotFields": {
+      "post": {
+        "tags": ["Page"],
+        "summary": "Set several bot fields' values at once",
+        "description": "Set several bot fields' values at once. ***Limit:*** 10 queries per second",
+        "operationId": "setBotFields",
+        "requestBody": {
+          "description": "Set multiple bot fields.<br>\nThe number of bot fields is limited to 20 for one request.<br>\nUse **field_id** OR **field_name** to specify the field.<br>\n***For example:***<br>\n<br>\n```\"fields\": [{\"field_id\": 77777777, \"field_value\": 555}, {\"field_name\": \"count\", \"field_value\": 12}]```",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["fields"],
+                "properties": {
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "required": ["field_id", "field_name", "field_value"],
+                      "properties": {
+                        "field_id": {
+                          "type": "integer",
+                          "isRequired": true
+                        },
+                        "field_name": {
+                          "type": "string",
+                          "isRequired": true
+                        },
+                        "field_value": {
+                          "description": "string, integer or boolean (see method description)",
+                          "example": "'string', 123, true, '2018-07-18', '2018-07-02T00:00:00+00:00'",
+                          "isRequired": true
+                        }
+                      },
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/sending/sendContent": {
+      "post": {
+        "tags": ["Sending"],
+        "summary": "Send a message (text, cards, buttons) to a contact by subscriber id",
+        "description": "Send a message (text, cards, buttons) to a contact by subscriber id. ***Limit:*** 25 queries per second",
+        "operationId": "sendContent",
+        "requestBody": {
+          "description": "Data format: <https://manychat.github.io/dynamic_block_docs/><br>\nSupported message tags: <https://developers.facebook.com/docs/messenger-platform/send-messages/message-tags#supported_tags><br>\nMore about message tags in ManyChat: <https://support.manychat.com/support/solutions/articles/36000195552-message-tags><br>\n<br>\n**Attention! After March 4, 2020 requests without message tag may cause error**",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "data"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "data": {
+                    "type": "object",
+                    "isRequired": true,
+                    "description": "The message in ManyChat dynamic-block format: {\"version\":\"v2\",\"content\":{\"messages\":[{\"type\":\"text\",\"text\":\"Hello!\"}]}}. Messages may also be cards, images, files or buttons; see https://manychat.github.io/dynamic_block_docs/"
+                  },
+                  "message_tag": {
+                    "type": "string",
+                    "example": "ACCOUNT_UPDATE",
+                    "isRequired": true
+                  },
+                  "otn_topic_name": {
+                    "type": "string",
+                    "example": "Сhannel news",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Possible error codes:<br>\n3011 - Content can’t be sent to subscriber without message tag. Subscriber’s last interaction was over 24h ago.<br>\n3021 - Content can’t be sent to subscriber. The subscriber has no One-Time Notification tokens for the selected topic.<br>\n3031 - Content can’t be sent to subscriber without Notification Reason. Subscriber’s last interaction was more than 24 hours ago.<br>\n304X - Content can’t be sent to subscriber via specific channel.<br>",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error With Code"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/sending/sendContentByUserRef": {
+      "post": {
+        "tags": ["Sending"],
+        "summary": "Send a message to a contact identified by a Messenger user_ref",
+        "description": "Send a message to a contact identified by a Messenger user_ref. ***Limit:*** 25 queries per second",
+        "operationId": "sendContentByUserRef",
+        "requestBody": {
+          "description": "Attention! The method doesn't process actions<br>Data format <https://manychat.github.io/dynamic_block_docs/>",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["user_ref", "data"],
+                "properties": {
+                  "user_ref": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "data": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/sending/sendFlow": {
+      "post": {
+        "tags": ["Sending"],
+        "summary": "Trigger an automation flow for a contact (flow_ns from getFlows)",
+        "description": "Trigger an automation flow for a contact (flow_ns from getFlows). ***Limit:*** 20 queries per second, 100 queries per a given subscriber per hour",
+        "operationId": "sendFlow",
+        "requestBody": {
+          "description": "Supported message tags: <https://developers.facebook.com/docs/messenger-platform/send-messages/message-tags#supported_tags>",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "flow_ns"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "flow_ns": {
+                    "type": "string",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/getInfo": {
+      "get": {
+        "tags": ["Subscriber"],
+        "summary": "Get a contact (subscriber) by id: name, email, phone, tags, custom fields, channels",
+        "description": "Get a contact (subscriber) by id: name, email, phone, tags, custom fields, channels. ***Limit:*** 10 queries per second",
+        "operationId": "getInfo",
+        "parameters": [
+          {
+            "name": "subscriber_id",
+            "in": "query",
+            "description": "Get subscriber info.",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Subscriber"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/findByName": {
+      "get": {
+        "tags": ["Subscriber"],
+        "summary": "Find contacts by full name (up to 100 matches)",
+        "description": "Find contacts by full name (up to 100 matches). ***Limit:*** 10 queries per second. This API method search subscribers by full name. List is limited by 100 subscribers.",
+        "operationId": "findByName",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Subscriber"
+                      },
+                      "maxItems": 100,
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/getInfoByUserRef": {
+      "get": {
+        "tags": ["Subscriber"],
+        "summary": "Get a contact by Messenger user_ref",
+        "operationId": "getInfoByUserRef",
+        "parameters": [
+          {
+            "name": "user_ref",
+            "in": "query",
+            "description": "Ref of subscriber",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Subscriber"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Possible error codes:<br>2011 - User_ref isn't registered<br>2012 - User_ref has not been linked with subscriber_id",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error With Code"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "description": "Get a contact by Messenger user_ref"
+      }
+    },
+    "/fb/subscriber/findByCustomField": {
+      "get": {
+        "tags": ["Subscriber"],
+        "summary": "Find contacts whose custom field (text or number) equals a value",
+        "description": "Find contacts whose custom field (text or number) equals a value. ***Limit:*** 10 queries per second. This API method only works with Text and Number types of Custom User Fields. Results are sorted by last Custom User Field value update for a specific user. List is limited by 100 elements.",
+        "operationId": "findByCustomField",
+        "parameters": [
+          {
+            "name": "field_id",
+            "in": "query",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "field_value",
+            "in": "query",
+            "description": "",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Subscriber"
+                      },
+                      "maxItems": 100,
+                      "isRequired": true
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/findBySystemField": {
+      "get": {
+        "tags": ["Subscriber"],
+        "summary": "Find contacts by email or by phone (pass exactly one)",
+        "description": "Find contacts by email or by phone (pass exactly one). ***Limit:*** 50 queries per second. Set one parameter: Email OR Phone.",
+        "operationId": "findBySystemField",
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "description": "E-Mail (example: test@manychat.com)",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "phone",
+            "in": "query",
+            "description": "Phone number (example: +15400000000)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Subscriber"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/addTag": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Add a tag to a contact by tag id",
+        "description": "Add a tag to a contact by tag id. ***Limit:*** 10 queries per second",
+        "operationId": "addTag",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "tag_id"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "tag_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/addTagByName": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Add a tag to a contact by tag name",
+        "description": "Add a tag to a contact by tag name. ***Limit:*** 10 queries per second",
+        "operationId": "addTagByName",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "tag_name"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "tag_name": {
+                    "type": "string",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/removeTag": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Remove a tag from a contact by tag id",
+        "description": "Remove a tag from a contact by tag id. ***Limit:*** 10 queries per second",
+        "operationId": "removeTag",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "tag_id"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "tag_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/removeTagByName": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Remove a tag from a contact by tag name",
+        "description": "Remove a tag from a contact by tag name. ***Limit:*** 10 queries per second",
+        "operationId": "removeTagByName",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "tag_name"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "tag_name": {
+                    "type": "string",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/setCustomField": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Set a contact's custom field value by field id",
+        "description": "Set a contact's custom field value by field id. ***Limit:*** 10 queries per second",
+        "operationId": "setCustomField",
+        "requestBody": {
+          "description": "Depending on the type of Custom User Field you will need to use one of the following type of data for \"field_value\".<br>\n***For example:***<br>\nText: \"text\" (string)<br>\nNumber: 123 or 1.23 (integer or float)<br>\nBoolean: true or false (boolean)<br>\nDate: \"2018-07-18\" (string)<br>\nDate and time: \"2018-07-02T00:00:00+00:00\" (string)<br>\n<br>\nData and time format for this API method is YYYY-MM-DDTHH:MM:SSP.  Where P is user’s timezone. For example May 1st 2018 06:30:24 UTC+3:00 should be formatted as 2018-05-01T06:30:24+03:00",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "field_id", "field_value"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "field_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "field_value": {
+                    "description": "string, integer or boolean (see method description)",
+                    "example": "'string', 123, true, '2018-07-18', '2018-07-02T00:00:00+00:00'",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/setCustomFields": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Set several custom field values on a contact at once",
+        "description": "Set several custom field values on a contact at once. ***Limit:*** 10 queries per second",
+        "operationId": "setCustomFields",
+        "requestBody": {
+          "description": "Set multiple custom fields for a single subscriber.<br>\nThe number of custom fields is limited to 20 for one request.<br>\nUse **field_id** OR **field_name** to specify the field.<br>\n***For example:***<br>\n<br>\n```\"fields\": [{\"field_id\": 77777777, \"field_value\": 555}, {\"field_name\": \"count\", \"field_value\": 12}]```",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "fields"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "fields": {
+                    "type": "array",
+                    "items": {
+                      "required": ["field_id", "field_name", "field_value"],
+                      "properties": {
+                        "field_id": {
+                          "type": "integer",
+                          "isRequired": true
+                        },
+                        "field_name": {
+                          "type": "string",
+                          "isRequired": true
+                        },
+                        "field_value": {
+                          "description": "string, integer or boolean (see method description)",
+                          "example": "'string', 123, true, '2018-07-18', '2018-07-02T00:00:00+00:00'",
+                          "isRequired": true
+                        }
+                      },
+                      "type": "object",
+                      "additionalProperties": false
+                    },
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/setCustomFieldByName": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Set a contact's custom field value by field name",
+        "description": "Set a contact's custom field value by field name. ***Limit:*** 10 queries per second",
+        "operationId": "setCustomFieldByName",
+        "requestBody": {
+          "description": "Depending on the type of Custom User Field you will need to use one of the following type of data for \"field_value\".<br>\n***For example:***<br>\nText: \"text\" (string)<br>\nNumber: 123 or 1.23 (integer or float)<br>\nBoolean: true or false (boolean)<br>\nDate: \"2018-07-18\" (string)<br>\nDate and time: \"2018-07-02T00:00:00+00:00\" (string)<br>\n<br>\nData and time format for this API method is YYYY-MM-DDTHH:MM:SSP.  Where P is user’s timezone. For example May 1st 2018 06:30:24 UTC+3:00 should be formatted as 2018-05-01T06:30:24+03:00",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id", "field_name", "field_value"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "field_name": {
+                    "description": "not case sensitive",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "field_value": {
+                    "description": "string, integer or boolean (see method description)",
+                    "example": "'string', 123, true, '2018-07-18', '2018-07-02T00:00:00+00:00'",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/createSubscriber": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Create a contact from a phone number, WhatsApp number or email (with consent)",
+        "description": "Create a contact from a phone number, WhatsApp number or email (with consent). ***Limit:*** 10 queries per second",
+        "operationId": "createSubscriber",
+        "requestBody": {
+          "description": "",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "first_name": {
+                    "description": "First Name",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "last_name": {
+                    "description": "Last Name",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "phone": {
+                    "description": "Phone Number is required if Email and Whatsapp Phone properties are empty",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "whatsapp_phone": {
+                    "description": "Whatsapp Phone Number is required if Email and Phone Number properties are empty",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "email": {
+                    "description": "Email is required if Phone Number and Whatsapp Phone properties are empty",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "gender": {
+                    "description": "Gender",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "has_opt_in_sms": {
+                    "description": "Has opt-in SMS is required if property Phone Number is not empty",
+                    "type": "boolean",
+                    "isRequired": true
+                  },
+                  "has_opt_in_email": {
+                    "description": "Has opt-in Email is required if property Email is not empty",
+                    "type": "boolean",
+                    "isRequired": true
+                  },
+                  "consent_phrase": {
+                    "description": "Consent phrase is required if property `has_opt_in_sms` equal true",
+                    "type": "string",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Subscriber"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    },
+    "/fb/subscriber/updateSubscriber": {
+      "post": {
+        "tags": ["Subscriber"],
+        "summary": "Update a contact's name, phone, email, gender or messaging consent",
+        "description": "Update a contact's name, phone, email, gender or messaging consent. ***Limit:*** 10 queries per second",
+        "operationId": "updateSubscriber",
+        "requestBody": {
+          "description": "",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "required": ["subscriber_id"],
+                "properties": {
+                  "subscriber_id": {
+                    "type": "integer",
+                    "isRequired": true
+                  },
+                  "first_name": {
+                    "description": "First Name",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "last_name": {
+                    "description": "Last Name",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "phone": {
+                    "description": "Phone Number",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "email": {
+                    "description": "Email",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "gender": {
+                    "description": "Gender",
+                    "type": "string",
+                    "isRequired": true
+                  },
+                  "has_opt_in_sms": {
+                    "description": "Has opt-in SMS is required if property Phone Number is not empty",
+                    "type": "boolean",
+                    "isRequired": true
+                  },
+                  "has_opt_in_email": {
+                    "description": "Has opt-in Email is required if property Email is not empty",
+                    "type": "boolean",
+                    "isRequired": true
+                  },
+                  "consent_phrase": {
+                    "description": "Consent phrase is required if property Has Opt In SMS equal true",
+                    "type": "string",
+                    "isRequired": true
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "example": "success",
+                      "isRequired": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Subscriber"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Response Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Custom Field": {
+        "description": "",
+        "required": ["id", "name", "type", "description"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "type": {
+            "type": "string",
+            "enum": ["text", "number", "date", "datetime", "boolean"],
+            "isRequired": true
+          },
+          "description": {
+            "type": "string",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Bot Field": {
+        "description": "",
+        "required": ["id", "name", "type", "description", "value"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "type": {
+            "type": "string",
+            "enum": ["text", "number", "date", "datetime", "boolean"],
+            "isRequired": true
+          },
+          "description": {
+            "type": "string",
+            "isRequired": true
+          },
+          "value": {
+            "description": "string, integer or boolean",
+            "example": "'string', 123, true, '2018-07-18', '2018-07-02T07:45:00+03:00'",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Page": {
+        "description": "",
+        "required": [
+          "id",
+          "name",
+          "category",
+          "avatar_link",
+          "username",
+          "about",
+          "description",
+          "is_pro",
+          "timezone"
+        ],
+        "properties": {
+          "id": {
+            "description": "This is Facebook Page ID",
+            "type": "integer",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "category": {
+            "type": "string",
+            "isRequired": true
+          },
+          "avatar_link": {
+            "type": "string",
+            "isRequired": true
+          },
+          "username": {
+            "type": "string",
+            "isRequired": true
+          },
+          "about": {
+            "type": "string",
+            "isRequired": true
+          },
+          "description": {
+            "type": "string",
+            "isRequired": true
+          },
+          "is_pro": {
+            "type": "boolean",
+            "isRequired": true
+          },
+          "timezone": {
+            "type": "string",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Subscriber Custom Field": {
+        "description": "",
+        "required": ["id", "name", "type", "description", "value"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "type": {
+            "type": "string",
+            "enum": ["text", "number", "date", "datetime", "boolean"],
+            "isRequired": true
+          },
+          "description": {
+            "type": "string",
+            "isRequired": true
+          },
+          "value": {
+            "description": "string, integer or boolean",
+            "example": "'string', 123, true, '2018-07-18', '2018-07-02T07:45:00+03:00'",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Subscriber Ref Field": {
+        "description": "",
+        "required": ["user_ref", "opted_in"],
+        "properties": {
+          "user_ref": {
+            "type": "string",
+            "example": "-1543835812530302162",
+            "isRequired": true
+          },
+          "opted_in": {
+            "description": "datetime in W3C format",
+            "type": "string",
+            "example": "2018-12-03T11:17:54+00:00",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Tag": {
+        "description": "",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Growth Tools": {
+        "description": "",
+        "required": ["id", "name", "type"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "type": {
+            "type": "string",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Flow": {
+        "description": "",
+        "required": ["ns", "name", "folder_id"],
+        "properties": {
+          "ns": {
+            "description": "Automation namespace - unique Automation ID",
+            "type": "string",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "folder_id": {
+            "type": "integer",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Folder": {
+        "description": "",
+        "required": ["id", "name", "parent_id"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "parent_id": {
+            "type": "integer",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Otn Topic": {
+        "description": "",
+        "required": ["id", "name", "description"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "description": {
+            "type": "string",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Subscriber": {
+        "description": "",
+        "required": [
+          "id",
+          "page_id",
+          "user_refs",
+          "first_name",
+          "last_name",
+          "name",
+          "gender",
+          "profile_pic",
+          "locale",
+          "language",
+          "timezone",
+          "live_chat_url",
+          "last_input_text",
+          "optin_phone",
+          "phone",
+          "optin_email",
+          "email",
+          "subscribed",
+          "last_interaction",
+          "last_seen",
+          "is_followup_enabled",
+          "ig_username",
+          "ig_id",
+          "whatsapp_phone",
+          "whatsapp_bsuid",
+          "whatsapp_username",
+          "optin_whatsapp",
+          "custom_fields",
+          "tags"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "isRequired": true
+          },
+          "page_id": {
+            "description": "This is Facebook Page ID",
+            "type": "string",
+            "isRequired": true
+          },
+          "user_refs": {
+            "description": "array with ref of subscriber; can be empty",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subscriber Ref Field"
+            },
+            "example": "[{ 'user_ref':'-1543835812530302162', 'opted_in':'2018-12-03T11:17:54+00:00' }]",
+            "isRequired": true
+          },
+          "first_name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "last_name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "name": {
+            "type": "string",
+            "isRequired": true
+          },
+          "gender": {
+            "type": "string",
+            "isRequired": true
+          },
+          "profile_pic": {
+            "type": "string",
+            "isRequired": true
+          },
+          "locale": {
+            "type": "string",
+            "isRequired": true
+          },
+          "language": {
+            "type": "string",
+            "isRequired": true
+          },
+          "timezone": {
+            "type": "string",
+            "isRequired": true
+          },
+          "live_chat_url": {
+            "type": "string",
+            "isRequired": true
+          },
+          "last_input_text": {
+            "type": "string",
+            "isRequired": true
+          },
+          "optin_phone": {
+            "type": "boolean",
+            "isRequired": true
+          },
+          "phone": {
+            "type": "string",
+            "isRequired": true
+          },
+          "optin_email": {
+            "type": "boolean",
+            "isRequired": true
+          },
+          "email": {
+            "type": "string",
+            "isRequired": true
+          },
+          "subscribed": {
+            "description": "datetime in W3C format",
+            "type": "string",
+            "example": "'2018-07-02T00:00:00+02:00'",
+            "isRequired": true
+          },
+          "last_interaction": {
+            "description": "datetime in W3C format",
+            "type": "string",
+            "example": "'2018-07-02T00:00:00+02:00'",
+            "nullable": true,
+            "isRequired": true
+          },
+          "last_seen": {
+            "description": "datetime in W3C format",
+            "type": "string",
+            "example": "'2018-07-02T00:00:00+03:00'",
+            "isRequired": true
+          },
+          "is_followup_enabled": {
+            "type": "boolean",
+            "example": true,
+            "isRequired": true
+          },
+          "ig_username": {
+            "type": "string",
+            "example": "user_name",
+            "isRequired": true
+          },
+          "ig_id": {
+            "type": "integer",
+            "example": 6384638,
+            "isRequired": true
+          },
+          "whatsapp_phone": {
+            "type": "string",
+            "isRequired": true
+          },
+          "whatsapp_bsuid": {
+            "type": "string",
+            "example": "US.8234928392384832",
+            "nullable": true,
+            "isRequired": true
+          },
+          "whatsapp_username": {
+            "type": "string",
+            "example": "@username",
+            "nullable": true,
+            "isRequired": true
+          },
+          "optin_whatsapp": {
+            "type": "boolean",
+            "example": true,
+            "isRequired": true
+          },
+          "custom_fields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subscriber Custom Field"
+            },
+            "isRequired": true
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            },
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Response Success": {
+        "description": "",
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "success",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Response Error": {
+        "description": "",
+        "required": ["status", "message", "details"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error",
+            "isRequired": true
+          },
+          "message": {
+            "type": "string",
+            "isRequired": true
+          },
+          "details": {
+            "required": ["messages"],
+            "properties": {
+              "messages": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Response Error Message"
+                },
+                "isRequired": true
+              }
+            },
+            "type": "object",
+            "additionalProperties": false,
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Response Error Message": {
+        "description": "",
+        "required": ["message"],
+        "properties": {
+          "message": {
+            "type": "string",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Response Error With Code": {
+        "description": "",
+        "required": ["status", "message", "code"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "error",
+            "isRequired": true
+          },
+          "message": {
+            "type": "string",
+            "isRequired": true
+          },
+          "code": {
+            "type": "integer",
+            "isRequired": true
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "name": "Authorization",
+        "in": "header",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

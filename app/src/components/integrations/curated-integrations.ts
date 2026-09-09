@@ -3,123 +3,21 @@ import type {
   CustomIntegrationView,
   IntegrationToolkit,
 } from "@houston-ai/engine-client";
-import type en from "../../locales/en/integrations.json";
+import { CURATED_INTEGRATIONS } from "./curated-entries.ts";
+import type { CuratedAuthMode, CuratedIntegration } from "./curated-entry.ts";
 
 /**
- * Hand-curated integrations: services we ship in the browse catalog even
- * though they are not in the Composio catalog — or whose Composio app we
- * want to pair with the service's OWN MCP sign-in. Each one is an MCP server
- * that Houston connects through the EXISTING custom-integration stack:
- * pressing Connect materializes a custom definition (`curatedAddInput`) and
- * then drives the stock sign-in / API-key flows, so the host needs no curated
- * concept at all. Committed data on purpose: the user never types a URL,
- * only picks how to sign in.
+ * The curated catalog's behavior: which entries show in Browse, how one
+ * becomes a custom definition. The entries themselves live in
+ * `curated-entries.ts`, their shape in `curated-entry.ts`; both are
+ * re-exported here so every consumer keeps one import.
  */
-export interface CuratedIntegration {
-  /** The custom-definition slug this entry materializes as (CUSTOM_SLUG-safe).
-   *  When it equals a Composio toolkit slug, the two are ONE card: Composio's
-   *  connect leads the dialog and the MCP sign-in is its second option. */
-  slug: string;
-  name: string;
-  /** The service's MCP endpoint (streamable HTTP). */
-  endpoint: string;
-  /** The BRAND site — feeds the host's icon derivation on the installed row. */
-  website: string;
-  categories: readonly string[];
-  /** Which MCP connect options the service itself offers, lead option first. */
-  authModes: readonly ("oauth" | "credential")[];
-  /** Where a new user registers, and where an existing user copies a key. */
-  signUpUrl: string;
-  apiKeysUrl: string;
-  /** i18n keys (integrations namespace) for the per-service copy, typed
-   *  from the en locale so a key without copy fails to compile. */
-  descriptionKey: CuratedCopyKey<"description">;
-  /** Required when `authModes` offers `credential` (pinned by the app test). */
-  keyHelpKey?: CuratedCopyKey<"keyHelp">;
-  /** Per-service wording for the key option when the service does not call
-   *  it an API key (HighLevel: a "private integration token"). */
-  keyTitleKey?: CuratedCopyKey<"keyTitle">;
-  keyDescKey?: CuratedCopyKey<"keyDesc">;
-  /** A NON-secret value the server wants as a static header on every call,
-   *  collected next to the key (HighLevel's `locationId`, the sub-account).
-   *  Stored on the definition, never in the vault. */
-  extraHeader?: {
-    name: string;
-    labelKey: CuratedCopyKey<"headerLabel">;
-    helpKey: CuratedCopyKey<"headerHelp">;
-  };
-  /** Per-service wording for the MCP sign-in option, when the generic
-   *  "Sign in with {{name}}" would not tell it apart from the provider's own
-   *  connect (HighLevel's consent page says "LeadConnector"). */
-  signInTitleKey?: CuratedCopyKey<"signInTitle">;
-  signInDescKey?: CuratedCopyKey<"signInDesc">;
-  /** Wording for the provider (Composio) connect option the dialog offers
-   *  under the MCP sign-in whenever the deployment's catalog carries this
-   *  slug. */
-  providerTitleKey?: CuratedCopyKey<"providerTitle">;
-  providerDescKey?: CuratedCopyKey<"providerDesc">;
-}
-
-/** The `curated.<slug>.<leaf>` keys that EXIST in the en locale for a leaf:
- *  a curated slug without that copy is simply not assignable. (`t()` itself
- *  does not reject unknown keys at compile time; this is the guard.) */
-type CuratedCopy = (typeof en)["curated"];
-type CuratedCopyKey<Leaf extends string> = {
-  [Slug in keyof CuratedCopy & string]: Leaf extends keyof CuratedCopy[Slug]
-    ? `curated.${Slug}.${Leaf}`
-    : never;
-}[keyof CuratedCopy & string];
-
-const CROMA: CuratedIntegration = {
-  slug: "croma",
-  name: "Croma",
-  endpoint: "https://api.croma.run/mcp",
-  website: "https://usecroma.com",
-  categories: ["legal"],
-  authModes: ["oauth", "credential"],
-  signUpUrl: "https://platform.usecroma.com/sign-up",
-  apiKeysUrl: "https://platform.usecroma.com",
-  descriptionKey: "curated.croma.description",
-  keyHelpKey: "curated.croma.keyHelp",
-};
-
-/**
- * HighLevel (GoHighLevel) through its official MCP server, paired with
- * Composio's `highlevel` app on deployments that have it. Token only, as
- * HighLevel's help center documents: a Private Integration Token created in
- * the sub-account, plus that sub-account's id as the `locationId` header
- * on every call. The server also advertises OAuth (the marketplace docs
- * even recommend it), but its consent page refuses eight of the scopes its
- * own app requests and the flow dies there — not offered until HighLevel
- * fixes it. Trailing slash on the endpoint matters: it is the resource the
- * server names.
- */
-const HIGHLEVEL: CuratedIntegration = {
-  slug: "highlevel",
-  name: "HighLevel",
-  endpoint: "https://services.leadconnectorhq.com/mcp/",
-  website: "https://www.gohighlevel.com",
-  categories: ["crm", "marketing"],
-  authModes: ["credential"],
-  signUpUrl: "https://www.gohighlevel.com/signup",
-  apiKeysUrl: "https://app.gohighlevel.com",
-  descriptionKey: "curated.highlevel.description",
-  keyHelpKey: "curated.highlevel.keyHelp",
-  keyTitleKey: "curated.highlevel.keyTitle",
-  keyDescKey: "curated.highlevel.keyDesc",
-  extraHeader: {
-    name: "locationId",
-    labelKey: "curated.highlevel.headerLabel",
-    helpKey: "curated.highlevel.headerHelp",
-  },
-  providerTitleKey: "curated.highlevel.providerTitle",
-  providerDescKey: "curated.highlevel.providerDesc",
-};
-
-export const CURATED_INTEGRATIONS: readonly CuratedIntegration[] = [
-  CROMA,
-  HIGHLEVEL,
-];
+export { CURATED_INTEGRATIONS } from "./curated-entries.ts";
+export type {
+  CuratedAuthMode,
+  CuratedIntegration,
+  CuratedSource,
+} from "./curated-entry.ts";
 
 export function curatedIntegrationOf(
   slug: string,
@@ -156,7 +54,7 @@ export function curatedToolkits(
 }
 
 /**
- * The browse catalog once a curated entry's MCP definition exists: the
+ * The browse catalog once a curated entry's definition exists: the
  * provider's same-slug toolkit leaves "Available" exactly as a connected app
  * would, because the Installed strip already shows that service.
  */
@@ -175,17 +73,31 @@ export function withoutAddedCurated(
  * `replace: true` makes connect idempotent: a leftover half-connected
  * definition (closed browser mid-sign-in, a concurrent add from chat) is
  * repaired in place instead of 409ing, and the host's service-origin check
- * still guards any stored credential.
+ * still guards any stored credential. An OpenAPI source has no sign-in to
+ * run, so it always lands in credential mode whatever was asked.
  */
 export function curatedAddInput(
   curated: CuratedIntegration,
-  auth: "oauth" | "credential",
+  auth: CuratedAuthMode,
   headers?: Record<string, string>,
 ): AddCustomIntegrationInput {
+  const { source } = curated;
+  if (source.kind === "openapi") {
+    return {
+      kind: "openapi",
+      name: curated.name,
+      spec: source.spec,
+      baseUrl: source.baseUrl,
+      website: curated.website,
+      auth: "credential",
+      slug: curated.slug,
+      replace: true,
+    };
+  }
   return {
     kind: "mcp",
     name: curated.name,
-    endpoint: curated.endpoint,
+    endpoint: source.endpoint,
     website: curated.website,
     ...(headers && Object.keys(headers).length > 0 ? { headers } : {}),
     auth,
