@@ -209,6 +209,12 @@ export interface AIBoardProps {
   /** Render prop for action buttons in the detail panel header (e.g. worktree info, run button). */
   panelActions?: (item: KanbanItem) => React.ReactNode;
   /**
+   * Panel chrome rendered in the header's action area on EVERY panel, item
+   * or not (the new-conversation composer included) — the host's own controls
+   * over the panel itself, e.g. a width toggle. `panelActions` is per item.
+   */
+  panelTrailing?: ReactNode;
+  /**
    * DOM element to portal the detail panel into. When provided, the panel
    * renders via createPortal into this element (for app-level layout).
    * When not provided, falls back to SplitView within AIBoard.
@@ -377,6 +383,7 @@ export function AIBoard({
   onRename,
   actions,
   panelActions,
+  panelTrailing,
   panelContainer,
   panelOnly,
   disableComposerAutoFocus,
@@ -826,10 +833,11 @@ export function AIBoard({
       peopleExpandLabel={cardLabels?.peopleExpand}
       closeLabel={cardLabels?.closePanel}
       actions={
-        conversationMenu || panelItem ? (
+        conversationMenu || panelItem || panelTrailing ? (
           <>
             {panelItem ? panelActions?.(panelItem) : null}
             {conversationMenu}
+            {panelTrailing}
           </>
         ) : undefined
       }

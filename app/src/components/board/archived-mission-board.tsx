@@ -6,6 +6,7 @@ import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import type { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import type { useMissionSearch } from "../use-mission-search";
 import { panelTaskLabel } from "./panel-task-label";
+import { PanelWidthToggle } from "./panel-width-controls";
 import type { useMissionControlArchived } from "./use-mission-control-archived";
 import type { useMissionControlArchivedPanel } from "./use-mission-control-archived-panel";
 
@@ -74,6 +75,7 @@ export function ArchivedMissionBoard({
             />
           }
           onPanelOpenChange={setPanelOpen}
+          panelTrailing={<PanelWidthToggle />}
           onOpenLink={openHref}
           onNotice={(message) => addToast({ title: message })}
           prepareAttachments={attachmentValidation.prepareAttachments}

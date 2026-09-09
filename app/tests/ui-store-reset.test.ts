@@ -47,11 +47,15 @@ describe("useUIStore.reset", () => {
     useUIStore.getState().toggleTeamsSectionCollapsed();
     useUIStore.getState().toggleMyAccountsSectionCollapsed();
     useUIStore.getState().toggleWorkspaceSectionCollapsed();
+    // The wide chat is the same kind of pref: how THIS machine lays out the
+    // chat, not something the next account should have to choose again.
+    useUIStore.getState().setChatWide(true);
 
     useUIStore.getState().reset();
 
     const next = useUIStore.getState();
     strictEqual(next.sidebarCollapsed, true);
+    strictEqual(next.chatWide, true);
     strictEqual(next.teamsSectionCollapsed, true);
     strictEqual(next.myAccountsSectionCollapsed, true);
     strictEqual(next.workspaceSectionCollapsed, true);

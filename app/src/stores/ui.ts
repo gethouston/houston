@@ -1,7 +1,10 @@
 import type { PortableUploadPreviewResponse } from "@houston-ai/engine-client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { setPanelOwner } from "../components/shell/detail-panel-owners.ts";
+import {
+  type PanelOwner,
+  setPanelOwner,
+} from "../components/shell/detail-panel-owners.ts";
 import {
   initialNavState,
   type NavEntry,
@@ -133,8 +136,18 @@ interface UIState {
    * flag while it stops portaling anything into it (PRODUCT-1229). Each
    * surface claims and releases its OWN id via `useShellDetailPanel`, so
    * releasing can never clobber the surface the user just navigated to.
+   * Each claim also records whether its surface allows the wide layout.
    */
-  missionPanelOwners: string[];
+  missionPanelOwners: PanelOwner[];
+  /**
+   * Whether the detail panel's chat fills the whole content row instead of
+   * sitting beside the board (the assistant's own full-width presentation).
+   * A per-machine layout preference like `sidebarCollapsed`: persisted, kept
+   * across identity resets. It only takes effect while a surface that opted
+   * in holds the panel (`detail-panel-owners.ts`), and never below md, where
+   * the panel already covers the screen.
+   */
+  chatWide: boolean;
   /** Whether the phone's "More" menu is open (the floating card the nav bar
    *  raises: the workspace switcher, the long tail of destinations, help).
    *  Session-only, never persisted: a menu restored open after a reload is a
@@ -344,8 +357,15 @@ interface UIState {
   setAgentWarmingNoticeOpen: (open: boolean) => void;
   setNewMissionSheetOpen: (open: boolean, agentIds?: string[]) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
-  /** Claim (`open`) or release the shell detail panel for one surface. */
-  setMissionPanelOwner: (ownerId: string, open: boolean) => void;
+  /** Claim (`open`) or release the shell detail panel for one surface;
+   *  `wide` says whether that surface allows the wide chat layout. */
+  setMissionPanelOwner: (
+    ownerId: string,
+    open: boolean,
+    wide?: boolean,
+  ) => void;
+  setChatWide: (wide: boolean) => void;
+  toggleChatWide: () => void;
   /** Release every claim — the "get me out of this panel" escape hatch. */
   closeMissionPanel: () => void;
   setMobileMoreOpen: (open: boolean) => void;
@@ -431,6 +451,7 @@ const initialUIState = {
   storeCreatorHandle: null,
   creatorEditorOpen: false,
   sidebarCollapsed: false,
+  chatWide: false,
   teamsSectionCollapsed: false,
   myAccountsSectionCollapsed: false,
   workspaceSectionCollapsed: false,
@@ -630,12 +651,13 @@ export const useUIStore = create<UIState>()(
         }),
 
       setOnStartMission: (onStartMission) => set({ onStartMission }),
-      setMissionPanelOwner: (ownerId, open) =>
+      setMissionPanelOwner: (ownerId, open, wide = false) =>
         set((s) => {
           const missionPanelOwners = setPanelOwner(
             s.missionPanelOwners,
             ownerId,
             open,
+            wide,
           );
           if (missionPanelOwners === s.missionPanelOwners) return s;
           const missionPanelOpen = missionPanelOwners.length > 0;
@@ -699,6 +721,8 @@ export const useUIStore = create<UIState>()(
         set({ storeCreatorHandle }),
       setCreatorEditorOpen: (creatorEditorOpen) => set({ creatorEditorOpen }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
+      setChatWide: (chatWide) => set({ chatWide }),
+      toggleChatWide: () => set((s) => ({ chatWide: !s.chatWide })),
       toggleSidebarCollapsed: () =>
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       toggleTeamsSectionCollapsed: () =>
@@ -722,6 +746,7 @@ export const useUIStore = create<UIState>()(
           ...initialUIState,
           // Keep the per-machine layout prefs (not identity-scoped).
           sidebarCollapsed: s.sidebarCollapsed,
+          chatWide: s.chatWide,
           teamsSectionCollapsed: s.teamsSectionCollapsed,
           myAccountsSectionCollapsed: s.myAccountsSectionCollapsed,
           workspaceSectionCollapsed: s.workspaceSectionCollapsed,
@@ -735,6 +760,7 @@ export const useUIStore = create<UIState>()(
       // must NOT survive a reload.
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
+        chatWide: state.chatWide,
         teamsSectionCollapsed: state.teamsSectionCollapsed,
         myAccountsSectionCollapsed: state.myAccountsSectionCollapsed,
         workspaceSectionCollapsed: state.workspaceSectionCollapsed,

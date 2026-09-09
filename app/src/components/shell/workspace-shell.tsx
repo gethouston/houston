@@ -21,10 +21,12 @@ import { DetailPanelProvider } from "./detail-panel-context";
 import { KeepAliveViews } from "./keep-alive-views";
 import { MobileMoreMenu } from "./mobile-more-menu";
 import { MobileNavBar } from "./mobile-nav-bar";
+import { ShellPanelCard } from "./shell-panel-card";
+import { ShellTitleStrip } from "./shell-title-strip";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
 import { topLevelScreenViews } from "./top-level-screen-views";
-import { UpdateChecker } from "./update-checker";
+import { usePanelWide } from "./use-panel-wide";
 import { useWorkspaceViewGuards } from "./use-workspace-view-guards";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
@@ -85,6 +87,9 @@ export function WorkspaceShell({
   const mobileChatOpen = isMobile && chatAgentId !== null;
   const mobileBarsHidden =
     isMobile && phoneChromeHidden({ viewMode, chatAgentId, missionPanelOpen });
+  // The wide chat: the panel takes the row and `<main>` steps out of the
+  // layout (`use-panel-wide.ts` says when).
+  const panelWide = usePanelWide();
 
   return (
     <DetailPanelProvider value={panelContainer}>
@@ -100,29 +105,7 @@ export function WorkspaceShell({
           floating screen card. The desktop keeps the Arc canvas, where the
           transparent frame lets the window background read through. */}
       <div className="flex h-dvh flex-col bg-background text-ink md:bg-transparent">
-        {/* Seamless title bar (macOS titleBarStyle: Overlay). The strip is
-            transparent, so it's the window-background colour in both themes —
-            the traffic lights float over the app's own background with no
-            separate native bar. Draggable so the window still moves by it.
-            Only the macOS desktop build uses the overlay title bar, so the
-            strip is gated to that — on web and other platforms it would just
-            be a dead gap. */}
-        {/* The strip is also where the restart pill lands (`UpdateChecker`):
-            a pill floated over the corner covers whatever control sits there
-            (the board's New task, the phone's new-agent button), so instead
-            the strip makes room for it, growing to fit when a release is
-            waiting. On platforms without the title strip it exists only
-            while the pill is up. The drag region only reacts to a press on
-            the strip itself, so the pill inside it still takes the click. */}
-        <div
-          data-tauri-drag-region={overlayTitleBar ? true : undefined}
-          className={cn(
-            "flex shrink-0 items-center justify-end",
-            overlayTitleBar && "min-h-7",
-          )}
-        >
-          <UpdateChecker />
-        </div>
+        <ShellTitleStrip overlayTitleBar={overlayTitleBar} />
         <div className="flex min-h-0 flex-1">
           <Sidebar>
             {/* Transparent row: on the desktop the window gutter shows in the
@@ -134,7 +117,14 @@ export function WorkspaceShell({
             <div className="relative flex min-w-0 flex-1 gap-0 overflow-hidden md:gap-2">
               <main
                 {...tourAnchor("main")}
-                className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-background canvas-screen md:rounded-2xl"
+                data-panel-wide={panelWide ? "true" : undefined}
+                className={cn(
+                  "flex min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-background canvas-screen md:rounded-2xl",
+                  // Out of the layout, not off-glass: the board stays mounted
+                  // (kept alive like any hidden screen) with its selection,
+                  // so shrinking the chat back lands on the same card.
+                  panelWide && "md:hidden",
+                )}
               >
                 <TeamStatusBanner />
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -150,17 +140,10 @@ export function WorkspaceShell({
                 </div>
               </main>
               {missionPanelOpen && (
-                <div
-                  ref={setPanelContainer}
-                  data-testid="mission-panel"
-                  className={cn(
-                    "h-full overflow-hidden rounded-none bg-background canvas-screen md:rounded-2xl",
-                    // Mobile: the panel takes the whole content area (the
-                    // board stays mounted underneath); its own close button
-                    // returns to the board.
-                    isMobile && "absolute inset-0 z-30 w-full",
-                  )}
-                  style={isMobile ? undefined : { width: "45%", minWidth: 380 }}
+                <ShellPanelCard
+                  isMobile={isMobile}
+                  wide={panelWide}
+                  containerRef={setPanelContainer}
                 />
               )}
               {mobileChatOpen && (

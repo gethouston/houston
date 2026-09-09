@@ -57,7 +57,9 @@ export function MissionControlArchived({
 }) {
   const { t } = useTranslation("board");
   const { t: tTeams } = useTranslation("teams");
-  const { panelContainer, setPanelOpen } = useShellDetailPanel();
+  // An archived mission's chat may go wide too (PRODUCT-1722); its X still
+  // returns to the list.
+  const { panelContainer, setPanelOpen } = useShellDetailPanel({ wide: true });
   const addToast = useUIStore((s) => s.addToast);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 

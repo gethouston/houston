@@ -20,14 +20,20 @@ import { useDetailPanelContainer } from "./detail-panel-context";
  * opened, and a screen that stops rendering the panel can't strand it open and
  * empty.
  * Unmounting releases the claim automatically.
+ *
+ * `wide` opts the surface into the wide chat layout (`chatWide`): while it
+ * holds the panel, the shell may hide `<main>` and let the chat fill the row.
+ * Off by default, because most panel hosts (a setup interview beside its
+ * catalog, the routine editor's companion chat) need their host on screen.
  */
-export function useShellDetailPanel() {
+export function useShellDetailPanel(opts?: { wide?: boolean }) {
   const panelContainer = useDetailPanelContainer();
   const ownerId = useId();
+  const wide = opts?.wide === true;
   const setOwner = useUIStore((s) => s.setMissionPanelOwner);
   const setPanelOpen = useCallback(
-    (open: boolean) => setOwner(ownerId, open),
-    [ownerId, setOwner],
+    (open: boolean) => setOwner(ownerId, open, wide),
+    [ownerId, setOwner, wide],
   );
   useEffect(() => () => setOwner(ownerId, false), [ownerId, setOwner]);
   return { panelContainer, setPanelOpen };
