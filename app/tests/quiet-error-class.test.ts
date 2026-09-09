@@ -1,5 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { StoreApiError } from "../../packages/agentstore-client/src/errors.ts";
 import {
   agentKeyOf,
   classifyQuietError,
@@ -41,6 +42,30 @@ describe("classifyQuietError", () => {
       null,
     );
     strictEqual(classifyQuietError(new TypeError("x is not a function")), null);
+  });
+
+  // PRODUCT-1735: the Agent Store client's status-0 wrapper around a thrown
+  // fetch is the offline class; a real gateway status from the store stays a
+  // bug (a store 5xx is ours to fix).
+  it("names the offline class for the store client's network-failure wrapper", () => {
+    const offline = new StoreApiError(
+      0,
+      "Failed to fetch",
+      null,
+      new TypeError("Failed to fetch"),
+    );
+    strictEqual(classifyQuietError(offline), "offline");
+    strictEqual(
+      classifyQuietError(
+        new StoreApiError(
+          502,
+          "Gateway request failed (502).",
+          null,
+          "Bad Gateway",
+        ),
+      ),
+      null,
+    );
   });
 
   // PRODUCT-1717: a gateway without the local-model bridge answers every
@@ -133,6 +158,15 @@ describe("quietErrorDetails", () => {
         }),
       ),
       { status: 502, body: raw },
+    );
+  });
+
+  it("reads the store client's status-0 wrapper as a transport drop", () => {
+    deepStrictEqual(
+      quietErrorDetails(
+        new StoreApiError(0, "Load failed", null, new TypeError("Load failed")),
+      ),
+      { status: null, body: "Load failed" },
     );
   });
 

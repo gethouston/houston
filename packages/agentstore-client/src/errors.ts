@@ -16,6 +16,9 @@ export class StoreApiError extends Error {
   /**
    * The response payload as observed: the parsed JSON object when the body was
    * JSON, the raw text otherwise, or the thrown error on a network failure.
+   * A network failure's thrown error is ALSO the standard `cause`, so a
+   * classifier that unwraps `Error.cause` (the app's offline gate) sees the
+   * transport `TypeError` instead of reporting an offline device as a bug.
    */
   readonly body: unknown;
 
@@ -25,7 +28,7 @@ export class StoreApiError extends Error {
     code: string | null,
     body: unknown,
   ) {
-    super(message);
+    super(message, body instanceof Error ? { cause: body } : undefined);
     this.name = "StoreApiError";
     this.status = status;
     this.code = code;

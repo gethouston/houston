@@ -85,6 +85,35 @@ describe("isNetworkTransportError", () => {
     );
   });
 
+  // PRODUCT-1735: the Agent Store client wraps a thrown fetch in a status-0
+  // StoreApiError that keeps the transport TypeError as its `cause`. That
+  // wrapper IS the offline drop; one level of cause is unwrapped, no more.
+  it("unwraps one level of `cause` around a transport failure", () => {
+    const wrapped = new Error("Failed to fetch", {
+      cause: new TypeError("Failed to fetch"),
+    });
+    strictEqual(isNetworkTransportError(wrapped), true);
+    strictEqual(
+      isNetworkTransportError(
+        new Error("outer", {
+          cause: new TypeError("undefined is not a function"),
+        }),
+      ),
+      false,
+    );
+    strictEqual(
+      isNetworkTransportError(new Error("outer", { cause: wrapped })),
+      false,
+      "a two-deep chain is not unwrapped",
+    );
+    strictEqual(
+      isNetworkTransportError(
+        new Error("Load failed", { cause: "Load failed" }),
+      ),
+      false,
+    );
+  });
+
   it("requires the TypeError shape — same message on other errors stays a bug", () => {
     strictEqual(isNetworkTransportError(new Error("Load failed")), false);
     strictEqual(isNetworkTransportError("Load failed"), false);
