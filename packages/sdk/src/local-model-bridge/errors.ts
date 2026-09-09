@@ -1,3 +1,5 @@
+export { isBridgeUnsupported } from "./unsupported";
+
 export class BridgeStateError extends Error {
   constructor(
     readonly status:

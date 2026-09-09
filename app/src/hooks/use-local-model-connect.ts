@@ -11,6 +11,7 @@ import {
   detectLocalModels,
 } from "../lib/local-model-connect";
 import {
+  connectFailureMode,
   LOCAL_MODEL_CONNECT_TIMEOUT_MS,
   LOCAL_MODEL_DETECT_TIMEOUT_MS,
   type LocalModelMode,
@@ -150,10 +151,11 @@ export function useLocalModelConnect(opts: {
       if (controller.signal.aborted || !mounted.current) return;
       onConnected?.(model);
       onClose();
-    } catch {
-      // The failing step already toasted (Report-bug); an abort/timeout rolled
-      // the bridge back. Show a calm retry state unless we were cancelled/closed.
-      if (!controller.signal.aborted && mounted.current) setMode("error");
+    } catch (error) {
+      // The failing step already reported; an abort/timeout rolled the bridge
+      // back. Show a calm retry state unless we were cancelled/closed.
+      if (!controller.signal.aborted && mounted.current)
+        setMode(connectFailureMode(error));
     }
   }, [
     servers,

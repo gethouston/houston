@@ -201,6 +201,9 @@
       "body": "Algo deu errado ao conectar. Confira se o app ainda está aberto no seu computador e tente de novo.",
       "retry": "Tentar de novo"
     },
+    "unsupported": {
+      "body": "Modelos locais ainda não estão disponíveis neste servidor. Tente de novo mais tarde ou insira os dados manualmente."
+    },
     "manual": {
       "title": "Inserir dados manualmente",
       "description": "Já tem o endereço de um servidor de modelos? Insira aqui.",

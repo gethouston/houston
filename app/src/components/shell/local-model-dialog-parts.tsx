@@ -100,9 +100,12 @@ export function EmptyScreen({
 
 /** Calm error screen with retry + the manual escape hatch. */
 export function ErrorScreen({
+  body,
   onRetry,
   onManual,
 }: {
+  /** Authored copy for this failure; defaults to the generic connect error. */
+  body?: string;
   onRetry: () => void;
   onManual: () => void;
 }) {
@@ -110,7 +113,7 @@ export function ErrorScreen({
   return (
     <div className="flex flex-col gap-4 py-2">
       <p className="text-[13px] leading-relaxed text-ink-muted">
-        {t("localModel.error.body")}
+        {body ?? t("localModel.error.body")}
       </p>
       <div className="flex items-center justify-between gap-2">
         <ManualLink onClick={onManual} />

@@ -13,13 +13,27 @@
 // class (`quiet-error-report.ts`), so each class is one Sentry issue with a
 // count and searchable bodies, and a deploy roll can never file new issues.
 
+// Dependency-free subpath: the app's node:test entry points cannot load the
+// SDK root (it pulls @houston/domain, whose extensionless imports node rejects).
+import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported";
 import { isEngineWakingError } from "./engine-waking-error.ts";
 import { isNetworkTransportError } from "./network-transport-error.ts";
 
 /** Doubles as the Sentry fingerprint, so the value is the issue's identity. */
-export type QuietErrorClass = "engine_waking" | "offline";
+export type QuietErrorClass =
+  | "engine_waking"
+  | "offline"
+  | "bridge_unsupported";
 
+/**
+ * `bridge_unsupported` is the deployment honestly declining local models: the
+ * gateway advertises no `localModelBridge` capability (relay not activated on
+ * that environment, or an older self-host). Every desktop boot asks, so it is
+ * one fingerprinted warning, never a per-user bug. It is checked before the
+ * waking class because it also rides a 503.
+ */
 export function classifyQuietError(err: unknown): QuietErrorClass | null {
+  if (isBridgeUnsupported(err)) return "bridge_unsupported";
   if (isEngineWakingError(err)) return "engine_waking";
   if (isNetworkTransportError(err)) return "offline";
   return null;

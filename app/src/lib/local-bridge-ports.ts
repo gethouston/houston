@@ -3,6 +3,7 @@ import type {
   LocalBridgeNativeEvent,
   LocalModelBridgePorts,
 } from "@houston/sdk";
+import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported";
 import type { LocalModelBridgeAccess } from "@houston-ai/engine-client";
 import { showErrorToast } from "./error-toast";
 import {
@@ -17,8 +18,27 @@ import {
   osStartLocalBridge,
   osStopLocalBridge,
 } from "./os-bridge";
+import { reportQuietError } from "./quiet-error-report";
 
+/**
+ * A gateway without the bridge capability is an expected deployment state,
+ * not a broken connection: the guided dialog shows its own copy for it and the
+ * boot-time resume stays silent to the user, so it reports only as the quiet
+ * `bridge_unsupported` class instead of one bug per desktop boot.
+ */
 export function reportLocalBridgeError(error: unknown): void {
+  if (isBridgeUnsupported(error)) {
+    console.warn(
+      "[local_model_bridge] this server offers no local model bridge",
+    );
+    reportQuietError(
+      "bridge_unsupported",
+      "local_model_bridge",
+      "Local model bridge not offered by this server",
+      error,
+    );
+    return;
+  }
   showErrorToast("local_model_bridge", "Local model connection failed", error);
 }
 
