@@ -238,8 +238,15 @@ export const config = {
    * process. Past this bound the least-recently-used SETTLED session is disposed;
    * it re-hydrates transparently from its on-disk transcript on the next turn (a
    * session with a queued/running turn is never evicted). Ops can tune it.
+   *
+   * Eight, not more: pi's SessionManager keeps EVERY entry of a session's
+   * JSONL in memory (compaction trims what the model sees, never the heap),
+   * at two to three times the file's size — forty settled sessions were most
+   * of a 1.5 GB runtime on a pod with no user workload. Busy sessions are
+   * pinned regardless, so concurrency is unaffected; the ninth idle chat
+   * re-hydrates from disk on its next turn.
    */
-  sessionCacheMax: Number(env.HOUSTON_SESSION_CACHE_MAX || 40),
+  sessionCacheMax: Number(env.HOUSTON_SESSION_CACHE_MAX || 8),
   /**
    * How long a settled session may sit idle before it is disposed (ms), even
    * under the {@link sessionCacheMax} bound — reclaims memory for conversations
@@ -247,13 +254,23 @@ export const config = {
    * non-positive value) disables idle eviction, leaving only the size bound.
    */
   sessionCacheIdleMs: Number(env.HOUSTON_SESSION_CACHE_IDLE_MS || 1_800_000),
+  /**
+   * The parsed-conversation cache's budget, as the SUM of the cached files'
+   * on-disk sizes (store/conversation-parse-cache.ts). A parsed transcript
+   * costs one to two times its file size in heap, so this bounds the cache at
+   * roughly twice the figure. A single file over the budget is never retained.
+   */
+  conversationParseCacheBytes:
+    Number(env.HOUSTON_CONVERSATION_PARSE_CACHE_MB || 64) * 1024 * 1024,
 
   /**
    * What the engine itself (this runtime, its host, a Claude CLI subprocess)
    * needs of the container's memory limit; the rest is the per-process cap on
    * anything the model spawns (session/child-memory-fence.ts). Sized from
-   * production: an awake engine runs 0.7 to 1.5 GB resident before any user
-   * workload. Only meaningful inside a memory-limited container.
+   * production before the baseline work (an awake engine ran 0.7 to 1.5 GB
+   * resident with no user workload; the Claude CLI alone reaches 0.6 GB); to
+   * be lowered once the fleet's measured peak after that work is known. Only
+   * meaningful inside a memory-limited container.
    */
   engineMemoryReserveBytes:
     Number(env.HOUSTON_ENGINE_MEMORY_RESERVE_MB || 1280) * 1024 * 1024,
