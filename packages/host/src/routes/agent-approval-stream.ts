@@ -4,6 +4,20 @@ import { substituteApprovals } from "../assistant/approval-presentation";
 import { assistantApprovals } from "../assistant/approvals";
 
 /**
+ * Whether a JSON body can hold a `kind: "question"` step at all. The parse,
+ * the substituted clone and the re-serialization cost several times the body
+ * in transient heap — a multi-MB transcript read left a host process a few
+ * hundred MB larger for good — and almost no history carries a question.
+ * A step's kind is the JSON string token `"question"`; the only other way to
+ * spell it is a `\u` escape, so a body with neither is passed through
+ * byte-for-byte. Textual, so a runtime that pads its JSON with whitespace or
+ * escapes the token still reaches the substitution.
+ */
+export function mayCarryQuestion(text: string): boolean {
+  return text.includes('"question"') || text.includes("\\u");
+}
+
+/**
  * Response adapter at the shell boundary: every byte the runtime writes for a
  * conversation read is re-serialized through {@link substituteApprovals}, so an
  * approval card's text and options are always the HOST's record and never the
@@ -23,6 +37,7 @@ export function approvalResponse(
   const isStream = () =>
     String(res.getHeader("content-type")).startsWith("text/event-stream");
   const rewrite = (text: string): string => {
+    if (!mayCarryQuestion(text)) return text;
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
