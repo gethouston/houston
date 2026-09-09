@@ -60,14 +60,28 @@ export function maskAccessOnly(
   return isAccessOnlyOAuth(cred) ? undefined : cred;
 }
 
-/** A sync standing in for serve.ts's own — tests drive the guard through it. */
-let serveSyncOverride: (() => Promise<void>) | null = null;
+/** serve.ts's non-throwing, single-flighted sync once it has loaded; tests bind their own. */
+let servedSync: (() => Promise<void>) | null = null;
 
-/** Test seam: run the guard against `fn`, or `null` to restore the real sync. */
+/**
+ * How long an unbound guard waits for serve.ts before calling the runtime
+ * mis-wired. Boot binds within the same module-evaluation pass as storage.ts
+ * (milliseconds); a runtime still unbound after this never loaded serve.ts.
+ */
+export const BIND_GRACE_MS = 15_000;
+
+/** A report deferred from a read that fired before anything was bound. */
+let pendingReport: ReturnType<typeof setTimeout> | null = null;
+
+/** Bind the served sync the guard re-serves through; `null` unbinds (tests). */
 export function bindEmptyRefreshServeSync(
   fn: (() => Promise<void>) | null,
 ): void {
-  serveSyncOverride = fn;
+  servedSync = fn;
+  if (fn && pendingReport) {
+    clearTimeout(pendingReport);
+    pendingReport = null;
+  }
 }
 
 /**
@@ -77,20 +91,33 @@ export function bindEmptyRefreshServeSync(
  * Not a static import: it would cycle (serve -> storage -> credential-store ->
  * this module), and a dynamic import closes that same cycle through the one
  * module with a top-level await (`storage.ts`), which the bundler cannot
- * order. The binding is safe because serve.ts is on every runtime's boot path
- * (the turn start and the provider routes import it), so it is in place
- * before any refresh closure can fire. Off serve mode there is nothing to
- * re-serve, so the guard is a genuine no-op there; in serve mode an unbound
- * guard is a wiring fault and says so loudly instead of letting pi POST
- * `refresh_token=""` (PRODUCT-1317).
+ * order. Off serve mode there is nothing to re-serve, so the guard is a
+ * genuine no-op there.
+ *
+ * In serve mode a read can legitimately arrive BEFORE the binding: pi's boot
+ * credential pass (`ModelRuntime.create` and the provider registrations that
+ * follow it, inside storage.ts's top-level await) reads every provider, and
+ * serve.ts depends on storage.ts, so it cannot have run yet. A recycled pod
+ * whose restored auth.json holds an access-only entry inside pi's validity
+ * floor lands here on every boot (PRODUCT-1743). Nothing needs re-serving on
+ * that pass: the turn start syncs before the first request and the `modify`
+ * mask still keeps `refresh_token=""` off the wire. So the report is deferred:
+ * serve.ts binding within the grace cancels it, and only a runtime that never
+ * loads serve.ts (the genuine wiring fault that would let pi POST an empty
+ * refresh token, PRODUCT-1317) says so, once.
  */
 export async function runEmptyRefreshServeSync(): Promise<void> {
-  if (serveSyncOverride) {
-    await serveSyncOverride();
+  if (servedSync) {
+    await servedSync();
     return;
   }
-  if (!serveModeOn()) return;
-  console.error(
-    "[empty-refresh-guard] serve mode is on but no served sync is bound; serve.ts did not load before a refresh fired",
-  );
+  if (!serveModeOn() || pendingReport) return;
+  pendingReport = setTimeout(() => {
+    pendingReport = null;
+    if (servedSync) return;
+    console.error(
+      "[empty-refresh-guard] serve mode is on but no served sync is bound; serve.ts never loaded after a refresh fired",
+    );
+  }, BIND_GRACE_MS);
+  pendingReport.unref();
 }
