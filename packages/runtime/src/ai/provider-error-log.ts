@@ -92,3 +92,44 @@ export function logProviderError(
   if (expected) console.warn(line);
   else console.error(line);
 }
+
+/**
+ * pi's own auto-retry of a transient provider failure (a dropped Codex
+ * WebSocket, a 5xx, an overloaded 529). The failed attempt already logged its
+ * `[provider_error]` line, but without these the log reads as a dead turn:
+ * every retried failure looks identical to one that reached the user as a
+ * card. `start` records the re-issue, `recovered` the clean attempt that
+ * followed, `failed` the budget running out or a Stop during the backoff (the card
+ * that follows names the same text). Always a warning: a retry is an expected state.
+ */
+export function logProviderRetry(
+  event:
+    | {
+        type: "auto_retry_start";
+        attempt: number;
+        maxAttempts: number;
+        delayMs: number;
+        errorMessage: string;
+      }
+    | {
+        type: "auto_retry_end";
+        success: boolean;
+        attempt: number;
+        finalError?: string;
+      },
+): void {
+  if (event.type === "auto_retry_start") {
+    console.warn(
+      `[provider_retry] attempt=${event.attempt}/${event.maxAttempts} ` +
+        `delay_ms=${event.delayMs} :: ${event.errorMessage}`,
+    );
+    return;
+  }
+  if (event.success) {
+    console.warn(`[provider_retry] recovered attempt=${event.attempt}`);
+    return;
+  }
+  console.warn(
+    `[provider_retry] failed attempt=${event.attempt} :: ${event.finalError ?? "unknown"}`,
+  );
+}
