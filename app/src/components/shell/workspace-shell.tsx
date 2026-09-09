@@ -141,7 +141,6 @@ export function WorkspaceShell({
               </main>
               {missionPanelOpen && (
                 <ShellPanelCard
-                  isMobile={isMobile}
                   wide={panelWide}
                   containerRef={setPanelContainer}
                 />

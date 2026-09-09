@@ -21,6 +21,7 @@
     "newTask": "New task",
     "expand": "Expand chat",
     "collapse": "Shrink chat",
+    "backToArchived": "Back to archived",
     "backToTasks": "Back to tasks"
   },
   "people": {

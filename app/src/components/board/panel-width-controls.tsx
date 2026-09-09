@@ -25,11 +25,13 @@ export function PanelWidthToggle() {
       type="button"
       data-testid="panel-width-toggle"
       data-state={wide ? "wide" : "side"}
+      // An action name that changes with the state ("Expand" / "Shrink"),
+      // so no `aria-pressed`: a toggle's name must stay put for that to mean
+      // anything, and the state already reads in the name.
       aria-label={label}
       title={label}
-      aria-pressed={wide}
       onClick={toggle}
-      className="hidden size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus md:flex"
+      className="hidden size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus md:flex"
     >
       <Icon className="size-4" strokeWidth={1.75} />
     </button>
@@ -37,24 +39,30 @@ export function PanelWidthToggle() {
 }
 
 /**
- * "Back to tasks", leading the wide panel's header: the board is out of the
- * layout, so the chat needs a named way back to it rather than a bare X.
- * Wears the same words the archive's return button does, because it returns
- * to the same place. Closing is the caller's: it must run AIBoard's own
- * closer (the empty new-task composer lives inside AIBoard), not just clear
- * the selection.
+ * The way back, leading the wide panel's header: the list behind the chat is
+ * out of the layout, so the chat needs a NAMED way back to it rather than a
+ * bare X. `label` names that place — the board's "Back to tasks" (the same
+ * words the archive's return button wears, because it returns to the same
+ * place) or the archive's "Back to archived". Closing is the caller's: the
+ * board must run AIBoard's own closer (the empty new-task composer lives
+ * inside AIBoard), not just clear the selection.
  */
-export function PanelBackToBoard({ onClick }: { onClick: () => void }) {
-  const { t } = useTranslation("board");
+export function PanelBackToBoard({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       data-testid="panel-back-to-board"
       onClick={onClick}
-      className="hidden h-8 shrink-0 items-center gap-1 rounded-full pr-3 pl-2 text-sm text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus md:flex"
+      className="hidden h-8 shrink-0 items-center gap-1 rounded-full pr-3 pl-2 text-sm text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus md:flex"
     >
       <ChevronLeft className="size-4" strokeWidth={1.75} />
-      {t("panel.backToTasks")}
+      {label}
     </button>
   );
 }

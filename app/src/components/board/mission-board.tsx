@@ -158,7 +158,12 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           // the way back to it and drops the X (one exit, as on the phone).
           hidePanelClose={chatWide}
           panelLeading={
-            chatWide ? <PanelBackToBoard onClick={backToBoard} /> : undefined
+            chatWide ? (
+              <PanelBackToBoard
+                label={t("board:panel.backToTasks")}
+                onClick={backToBoard}
+              />
+            ) : undefined
           }
           panelTrailing={<PanelWidthToggle />}
           emptyState={source.emptyState}
