@@ -317,6 +317,13 @@ test("the eager path reports the store's generation capability even when the fil
   expect(plain.generationAware).toBe(false);
 });
 
+test("a claim covers the conversation's archive segments", () => {
+  const include = claimedTurnIncludes("data", "workspace", "c1");
+  expect(include("data/conversations/c1.archive/1.json")).toBe(true);
+  expect(include("data/conversations/c1.archive/2.json")).toBe(true);
+  expect(include("data/conversations/c2.archive/1.json")).toBe(false);
+});
+
 test("a claim syncs only durable Claude conversation state", () => {
   const include = claimedTurnIncludes("data", "workspace", "c1");
   const claude = "data/sessions/c1/claude";

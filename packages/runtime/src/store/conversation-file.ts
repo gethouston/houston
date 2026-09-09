@@ -3,10 +3,18 @@ import {
   mkdirSync,
   renameSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
 import type { ChatMessage } from "@houston/runtime-client";
+import {
+  ARCHIVE_TRIGGER_BYTES,
+  type ArchiveIndex,
+  archiveOlderMessages,
+  totalMessageCount,
+} from "./conversation-archive";
+import { removeArchive } from "./conversation-archive-cut";
 import type { UserMessageMeta } from "./conversation-message-meta";
 import {
   dropParsedFile,
@@ -23,6 +31,7 @@ export {
   getHistoryAt,
   type HistoryWindow,
   listConversationsAt,
+  loadFullConversation,
 } from "./conversation-queries";
 
 /**
@@ -55,6 +64,13 @@ export type StoredConversation = {
    * the compacted history.
    */
   claudeCompaction?: CompactionCheckpoint;
+  /**
+   * Present once older messages were rotated into segment files beside this
+   * one (`conversation-archive.ts`): `messages` is then only the recent tail,
+   * and this records what the segments hold. Absent on every conversation
+   * that never outgrew the live-file budget — byte-identical to before.
+   */
+  archived?: ArchiveIndex;
 };
 
 /** A compaction summary waiting to be carried into the next prompt. */
@@ -78,7 +94,22 @@ export function loadConversation(
   dir: string,
   id: string,
 ): StoredConversation | null {
-  return readParsedFile(fileFor(dir, id));
+  const f = fileFor(dir, id);
+  const conv = readParsedFile(f);
+  // A transcript that outgrew the budget BEFORE rotation existed (or was
+  // written by a writer that bypasses save) rotates on its first load, so a
+  // pod that was dying on it heals itself at boot: one last whole parse, then
+  // never again.
+  if (conv && liveFileSize(f) > ARCHIVE_TRIGGER_BYTES) save(dir, conv);
+  return conv;
+}
+
+function liveFileSize(f: string): number {
+  try {
+    return statSync(f).size;
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -94,7 +125,12 @@ function save(dir: string, conv: StoredConversation) {
   mkdirSync(dir, { recursive: true });
   const f = fileFor(dir, conv.id);
   const tmp = `${f}.tmp`;
-  writeFileSync(tmp, JSON.stringify(conv));
+  let json = JSON.stringify(conv);
+  // Past the budget, rotate the older messages out (mutates `conv`, which is
+  // also the cached object) and write the tail that remains.
+  if (json.length > ARCHIVE_TRIGGER_BYTES && archiveOlderMessages(dir, conv))
+    json = JSON.stringify(conv);
+  writeFileSync(tmp, json);
   renameSync(tmp, f); // atomic swap; never leaves a half-written file
   stampParsedFile(f, conv);
 }
@@ -113,7 +149,9 @@ export function appendUserMessageAt(
     updatedAt: now,
     messages: [],
   };
-  const expectedCount = conv.messages.length;
+  // Absolute, segments included: the transcript shadow compares it against
+  // the remote copy's whole count, not the live tail.
+  const expectedCount = totalMessageCount(conv);
   const needsSessionReplay = conv.needsSessionReplay === true;
   // Stamp the author (C5) only when a token identified one — a single-user /
   // local turn omits the field entirely, keeping the stored record
@@ -157,6 +195,7 @@ export function renameConversationMutationAt(
 export function deleteConversationAt(dir: string, id: string): boolean {
   const f = fileFor(dir, id);
   dropParsedFile(f);
+  removeArchive(dir, id);
   if (!existsSync(f)) return false;
   rmSync(f);
   return true;

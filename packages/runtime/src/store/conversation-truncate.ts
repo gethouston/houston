@@ -1,3 +1,4 @@
+import { restoreArchivedTurn } from "./conversation-archive-cut";
 import { loadConversation, saveConversation } from "./conversation-file";
 
 /**
@@ -23,9 +24,17 @@ export function truncateConversationMutationAt(
   const conv = loadConversation(dir, id);
   if (!conv) return null;
   const at = conv.messages.findIndex((m) => m.turnId === turnId);
-  if (at === -1) return null;
-  const removed = conv.messages.length - at;
-  conv.messages = conv.messages.slice(0, at);
+  let removed: number;
+  if (at === -1) {
+    // Not in the live tail: the turn may sit in an archive segment, in which
+    // case the segment's earlier messages become the tail again.
+    const restored = restoreArchivedTurn(dir, conv, turnId);
+    if (restored === null) return null;
+    removed = restored;
+  } else {
+    removed = conv.messages.length - at;
+    conv.messages = conv.messages.slice(0, at);
+  }
   delete conv.claudeCompaction;
   conv.needsSessionReplay = true;
   conv.updatedAt = Date.now();
