@@ -2,6 +2,7 @@ import { cn, type Toast, ToastContainer, useIsMobile } from "@houston-ai/core";
 import { useState } from "react";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
+import { phoneChromeHidden } from "../../lib/mobile-tabs";
 import { osIsTauri } from "../../lib/os-bridge";
 import { isMac } from "../../lib/platform";
 import { useUIStore } from "../../stores/ui";
@@ -77,13 +78,13 @@ export function WorkspaceShell({
 
   const isMobile = useIsMobile();
   const overlayTitleBar = osIsTauri() && isMac;
-  // The phone's pushed chat screen (PRODUCT-1555 arc): chat is a PLACE below
-  // md — full-screen over the content, both mobile bars hidden while it is
-  // up (a push, not a tab; the back affordances are the way out). Desktop
-  // ignores the pair entirely.
+  // The phone's pushed chat screen: chat is a PLACE below md, full-screen
+  // over the content with the bottom chrome gone (`phoneChromeHidden` says
+  // when). Desktop ignores the pair entirely.
   const chatAgentId = useUIStore((s) => s.chatAgentId);
   const mobileChatOpen = isMobile && chatAgentId !== null;
-  const mobileBarsHidden = mobileChatOpen || (isMobile && missionPanelOpen);
+  const mobileBarsHidden =
+    isMobile && phoneChromeHidden({ viewMode, chatAgentId, missionPanelOpen });
 
   return (
     <DetailPanelProvider value={panelContainer}>
@@ -171,10 +172,10 @@ export function WorkspaceShell({
           </Sidebar>
         </div>
         {/* The floating nav bar (Agents / Teams / More + compose); CSS-hidden
-            at md+ and gone while a chat is up on the phone (pushed screen or
-            the board's full-screen panel): chat is a push, not a tab, so the
-            back affordances are the way out and the composer gets the full
-            height above the keyboard. */}
+            at md+ and gone while a chat is up on the phone (pushed screen,
+            the board's full-screen panel, the assistant): chat is a push, not
+            a tab, so the back affordances are the way out and the composer
+            gets the full height above the keyboard. */}
         {!mobileBarsHidden && <MobileNavBar />}
         <MobileMoreMenu />
         <MobileNewMissionSheet />
