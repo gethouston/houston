@@ -1,5 +1,5 @@
 import { useUIStore } from "../stores/ui";
-import { raiseJavascriptSentrySmokeTest, showErrorToast } from "./error-toast";
+import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { osTriggerNativeSentrySmokeTest } from "./os-bridge";
 import { sentrySuppressedInDev } from "./sentry";
@@ -58,6 +58,14 @@ function triggerNativeSmokeTest(): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       showErrorToast("sentry_native_smoke_failed", message, error);
     });
+}
+
+function raiseJavascriptSentrySmokeTest(): never {
+  return raiseJavascriptSentrySmokeTestLeaf();
+}
+
+function raiseJavascriptSentrySmokeTestLeaf(): never {
+  throw new Error(`sentry-js-stack-smoke-${Date.now()}`);
 }
 
 declare global {

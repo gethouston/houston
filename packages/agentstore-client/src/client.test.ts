@@ -221,6 +221,7 @@ describe("AgentStoreClient — error mapping", () => {
     expect(err).toBeInstanceOf(StoreApiError);
     expect(err.status).toBe(0);
     expect(err.body).toBe(cause);
+    expect(err.cause).toBe(cause);
     expect(err.message).toBe("Failed to fetch");
   });
 
