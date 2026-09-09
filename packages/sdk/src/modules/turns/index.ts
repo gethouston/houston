@@ -169,6 +169,7 @@ export {
   streamKey,
 } from "./stream-registry";
 export {
+  ENGINE_RESTART_MESSAGE,
   isEngineWakingRejection,
   isNotConnectedError,
   isStoppedByUser,

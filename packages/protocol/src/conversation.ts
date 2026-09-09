@@ -416,6 +416,30 @@ export interface ChatMessage {
    * finish. Absent on turns that ran to completion.
    */
   stopped?: true;
+  /**
+   * Set on the assistant message the engine writes at boot for a turn it found
+   * still in flight from its previous life: the process died mid-turn (a pod
+   * OOM-killed, the desktop force-quit) and never persisted a reply. The
+   * runtime cannot stamp it as the turn ends (there is no process left), so the
+   * boot settle writes it, and the SDK renders the authored restart line from
+   * it, both live (settle-from-history) and on a reload. `tool` names what was
+   * running when the process died, when the engine had recorded one.
+   */
+  interrupted?: TurnInterruption;
+}
+
+/**
+ * Why a turn ended without the runtime finishing it. One cause today; a
+ * discriminated field rather than a boolean so the next cause (a drain
+ * deadline, a host-initiated kill) is a value, not another flag.
+ */
+export type TurnInterruptionCause = "engine_restart";
+
+/** How a turn was cut short (see {@link ChatMessage.interrupted}). */
+export interface TurnInterruption {
+  cause: TurnInterruptionCause;
+  /** The tool running when the engine died, when one was recorded. */
+  tool?: string;
 }
 
 /** The most @mentions one message may carry; the rest are dropped. */

@@ -13,7 +13,7 @@
  */
 
 import type { ChatMessage } from "@houston/runtime-client";
-import { STOPPED_BY_USER } from "./turn-errors";
+import { ENGINE_RESTART_MESSAGE, STOPPED_BY_USER } from "./turn-errors";
 import type { FeedAuthor, FeedMention } from "./vm-output";
 
 /**
@@ -186,6 +186,17 @@ export function historyToFeed(
       out.push({
         feed_type: "system_message",
         data: STOPPED_BY_USER,
+        ts,
+        ...turn,
+      });
+    }
+    // A turn the engine died on (`interrupted`, written by the runtime's boot
+    // settle): the same authored restart line the lost-terminal settle shows,
+    // so a reload reads exactly what the user saw when the engine came back.
+    if (m.interrupted) {
+      out.push({
+        feed_type: "system_message",
+        data: ENGINE_RESTART_MESSAGE,
         ts,
         ...turn,
       });

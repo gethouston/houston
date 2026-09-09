@@ -2,6 +2,7 @@ import type { ChatMessage } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 import type { FeedOutput, PendingInteraction } from "./feed-output";
 import { settleFromHistory, TURN_DIED_MESSAGE } from "./settle-from-history";
+import { ENGINE_RESTART_MESSAGE } from "./turn-errors";
 import {
   finishErr,
   finishOk,
@@ -326,6 +327,34 @@ test("a stopped reply with an (illegal) pendingInteraction: stopped wins, no car
     data: "Stopped by user",
     turnId: "t-1",
   });
+});
+
+test("an `interrupted` reply for our turnId settles as the ENGINE RESTART error, never a completed render", () => {
+  const { s, items, statuses } = run(
+    [
+      { role: "user", content: "export it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        interrupted: { cause: "engine_restart", tool: "bash" },
+      },
+    ],
+    "t-1",
+    { streamed: "half a repl" },
+  );
+  expect(s.settled).toBe(true);
+  expect(s.terminal).toBe("error");
+  // The reply's turnId is adopted first, so the settle push carries it.
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: ENGINE_RESTART_MESSAGE,
+    turnId: "t-1",
+  });
+  expect(items.some((i) => i.feed_type === "final_result")).toBe(false);
+  expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
+  expect(statuses).toEqual([["error", ENGINE_RESTART_MESSAGE]]);
 });
 
 test("our user message with NO assistant reply for our turnId settles as the dead-turn ERROR", () => {

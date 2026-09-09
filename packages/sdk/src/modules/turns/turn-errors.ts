@@ -116,6 +116,16 @@ export function isNotConnectedError(message: string): boolean {
 export const STOPPED_BY_USER = "Stopped by user";
 
 /**
+ * The line for a turn the ENGINE died on (a pod OOM-killed mid-turn, the
+ * desktop force-quit): the runtime's boot settle stamps the dead turn's reply
+ * `interrupted` (`ChatMessage.interrupted`), and both the lost-terminal settle
+ * and the history replay render this from it. Product voice: the user's next
+ * move is in the copy, and nothing technical (no "process", "pod", "memory").
+ */
+export const ENGINE_RESTART_MESSAGE =
+  "Your agent had to restart. Say continue and it will pick up where it left off.";
+
+/**
  * Whether a turn's terminal error is the user pressing Stop — the verbatim
  * message the runtime (and the control plane's relay) emit on a cancel. This is
  * an intentional, handled stop, not a turn failure, so the UI shows the message
