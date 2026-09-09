@@ -1,6 +1,5 @@
 import { randomBytes } from "node:crypto";
 import {
-  discoverOAuthServerInfo,
   exchangeAuthorization,
   registerClient,
   startAuthorization,
@@ -11,6 +10,7 @@ import type {
 } from "@modelcontextprotocol/sdk/shared/auth.js";
 import { guardedFetch } from "./fetch-guard";
 import { bundleOf, type CustomOAuthBundle } from "./oauth-bundle";
+import { discoverCustomOAuth } from "./oauth-discovery";
 import type { CustomIntegrationDef } from "./types";
 import { CustomIntegrationError } from "./types";
 
@@ -95,9 +95,9 @@ export async function beginCustomOAuth(
   // for discovery/registration/exchange/refresh alike.
   const fetchFn = opts.fetchFn ?? guardedFetch;
   const { statePrefix } = opts;
-  let info: Awaited<ReturnType<typeof discoverOAuthServerInfo>>;
+  let info: Awaited<ReturnType<typeof discoverCustomOAuth>>;
   try {
-    info = await discoverOAuthServerInfo(def.endpoint, { fetchFn });
+    info = await discoverCustomOAuth(def.endpoint, fetchFn, def.headers);
   } catch (err) {
     throw oauthFailed(`could not discover how ${def.name} signs in`, err);
   }
