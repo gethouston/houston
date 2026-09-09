@@ -248,6 +248,16 @@ export const config = {
    */
   sessionCacheIdleMs: Number(env.HOUSTON_SESSION_CACHE_IDLE_MS || 1_800_000),
 
+  /**
+   * What the engine itself (this runtime, its host, a Claude CLI subprocess)
+   * needs of the container's memory limit; the rest is the per-process cap on
+   * anything the model spawns (session/child-memory-fence.ts). Sized from
+   * production: an awake engine runs 0.7 to 1.5 GB resident before any user
+   * workload. Only meaningful inside a memory-limited container.
+   */
+  engineMemoryReserveBytes:
+    Number(env.HOUSTON_ENGINE_MEMORY_RESERVE_MB || 1280) * 1024 * 1024,
+
   version: "0.0.0",
 };
 

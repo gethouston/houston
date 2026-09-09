@@ -1,5 +1,10 @@
-import { expect, test } from "vitest";
-import { scrubbedBashEnv } from "./scrubbed-bash";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { describe, expect, test } from "vitest";
+import {
+  bashMemoryFenceOptions,
+  makeScrubbedBashTool,
+  scrubbedBashEnv,
+} from "./scrubbed-bash";
 
 /**
  * bash is where a leaked environment becomes an exploit: one `echo` prints
@@ -74,4 +79,60 @@ test("a variable with no value is left out rather than passed as undefined", () 
   expect(scrubbedBashEnv({ PATH: undefined, HOME: "/h" })).toEqual({
     HOME: "/h",
   });
+});
+
+describe("the memory fence", () => {
+  test("no cap adds no prefix, so the unfenced tool is unchanged", () => {
+    expect(bashMemoryFenceOptions(null)).toEqual({});
+  });
+
+  test("a cap becomes the ulimit prefix pi runs ahead of the command", () => {
+    expect(bashMemoryFenceOptions(768 * 1024 * 1024)).toEqual({
+      commandPrefix: "ulimit -d 786432 2>/dev/null",
+    });
+  });
+
+  // Runs a real shell: the fence only counts if it reaches the process that
+  // executes the model's command, not just the option bag. Linux only: macOS
+  // bash refuses to set RLIMIT_DATA at all (the fence is inert there, and no
+  // container limit exists to derive a cap from anyway).
+  test.skipIf(process.platform !== "linux")(
+    "the shell that runs the command sees the cap",
+    async () => {
+      // pi reads the session id/file off the context for its PI_* env vars.
+      const ctx = {
+        sessionManager: {
+          getSessionId: () => "test-session",
+          getSessionFile: () => undefined,
+        },
+      } as unknown as ExtensionContext;
+      const fenced = makeScrubbedBashTool(process.cwd(), {
+        memoryCapBytes: 768 * 1024 * 1024,
+      });
+      const out = await fenced.execute(
+        "call-1",
+        { command: "ulimit -d" },
+        new AbortController().signal,
+        undefined,
+        ctx,
+      );
+      expect(out.content[0]).toMatchObject({
+        text: expect.stringMatching(/^786432\b/),
+      });
+
+      const open = makeScrubbedBashTool(process.cwd(), {
+        memoryCapBytes: null,
+      });
+      const unfenced = await open.execute(
+        "call-2",
+        { command: "ulimit -d" },
+        new AbortController().signal,
+        undefined,
+        ctx,
+      );
+      expect(unfenced.content[0]).toMatchObject({
+        text: expect.stringMatching(/^unlimited\b/),
+      });
+    },
+  );
 });
