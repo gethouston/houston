@@ -76,6 +76,7 @@ export function WorkspaceShell({
   useKeyboardShortcuts();
 
   const isMobile = useIsMobile();
+  const overlayTitleBar = osIsTauri() && isMac;
   // The phone's pushed chat screen (PRODUCT-1555 arc): chat is a PLACE below
   // md — full-screen over the content, both mobile bars hidden while it is
   // up (a push, not a tab; the back affordances are the way out). Desktop
@@ -105,9 +106,22 @@ export function WorkspaceShell({
             Only the macOS desktop build uses the overlay title bar, so the
             strip is gated to that — on web and other platforms it would just
             be a dead gap. */}
-        {osIsTauri() && isMac && (
-          <div data-tauri-drag-region className="h-7 shrink-0" />
-        )}
+        {/* The strip is also where the restart pill lands (`UpdateChecker`):
+            a pill floated over the corner covers whatever control sits there
+            (the board's New task, the phone's new-agent button), so instead
+            the strip makes room for it, growing to fit when a release is
+            waiting. On platforms without the title strip it exists only
+            while the pill is up. The drag region only reacts to a press on
+            the strip itself, so the pill inside it still takes the click. */}
+        <div
+          data-tauri-drag-region={overlayTitleBar ? true : undefined}
+          className={cn(
+            "flex shrink-0 items-center justify-end",
+            overlayTitleBar && "min-h-7",
+          )}
+        >
+          <UpdateChecker />
+        </div>
         <div className="flex min-h-0 flex-1">
           <Sidebar>
             {/* Transparent row: on the desktop the window gutter shows in the
@@ -171,9 +185,6 @@ export function WorkspaceShell({
         <CommandPalette />
         <ShortcutCheatsheet />
         <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
-        {/* Window-level chrome, not a sidebar row: the launch overlay covers
-            the shell and the restart pill holds the window's top corner. */}
-        <UpdateChecker />
       </div>
       {inAppOnboardingActive && <InAppOnboarding />}
       {/* The guided setup OWNS the screen while it runs: both surfaces spotlight
