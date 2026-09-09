@@ -10,6 +10,9 @@ import { useUpdatePreview } from "./update-preview";
  * already running), the restart pill for a mid-session find once the
  * download has landed. A background download in flight, or one that failed
  * and will retry on the next check, shows nothing at all.
+ *
+ * Mounted inside the shell's top strip: the overlay is fixed and covers the
+ * window from anywhere, while the pill is in-flow and the strip sizes to it.
  */
 export function UpdateChecker() {
   const { status, installAndRelaunch, relaunchInstalledApp } =
