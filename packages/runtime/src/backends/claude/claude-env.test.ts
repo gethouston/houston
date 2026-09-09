@@ -34,3 +34,27 @@ test("the credential store remains optional and must be absolute", () => {
     }),
   ).toThrow(/absolute path/);
 });
+
+test("the shell fence rides CLAUDE_CODE_SHELL_PREFIX, and only the fence does", () => {
+  const savedPrefix = process.env.CLAUDE_CODE_SHELL_PREFIX;
+  process.env.CLAUDE_CODE_SHELL_PREFIX = "/ambient/wrapper";
+  try {
+    const fenced = buildClaudeEnv(undefined, {
+      configDir: "/config",
+      shellFencePath: "/data/bin/claude-shell-fence",
+    });
+    expect(fenced.CLAUDE_CODE_SHELL_PREFIX).toBe(
+      "/data/bin/claude-shell-fence",
+    );
+
+    // No container limit → no wrapper; the ambient one never passes through.
+    const open = buildClaudeEnv(undefined, {
+      configDir: "/config",
+      shellFencePath: null,
+    });
+    expect(open.CLAUDE_CODE_SHELL_PREFIX).toBeUndefined();
+  } finally {
+    if (savedPrefix === undefined) delete process.env.CLAUDE_CODE_SHELL_PREFIX;
+    else process.env.CLAUDE_CODE_SHELL_PREFIX = savedPrefix;
+  }
+});

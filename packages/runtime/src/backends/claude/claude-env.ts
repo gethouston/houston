@@ -1,4 +1,5 @@
 import { isAbsolute } from "node:path";
+import { claudeShellFencePath } from "../../session/child-memory-fence";
 import type { ClaudeToken } from "./backend-types";
 
 /**
@@ -127,6 +128,13 @@ function tokenEnv(token: ClaudeToken | undefined): Record<string, string> {
  * `anthropicCredentialStorageDir` (`./scope-guard`), which documents why.
  * Undefined (team / desktop / self-host) sets nothing, leaving this env
  * byte-identical to before that guard existed.
+ *
+ * `shellFencePath` is the wrapper the CLI runs its Bash tool through
+ * (`CLAUDE_CODE_SHELL_PREFIX`), capping the memory of what the model spawns
+ * inside a memory-limited container (session/child-memory-fence.ts). Left
+ * undefined it resolves from the container; null (or no container limit)
+ * sets nothing. An ambient prefix is never copied — it is not in the
+ * allowlist, and the fence is the only wrapper this subprocess may run.
  */
 export function buildClaudeEnv(
   token: ClaudeToken | undefined,
@@ -134,6 +142,7 @@ export function buildClaudeEnv(
     configDir: string;
     credentialStorageDir?: string;
     homeDir?: string;
+    shellFencePath?: string | null;
   },
 ): Record<string, string> {
   const env: Record<string, string> = {};
@@ -143,6 +152,11 @@ export function buildClaudeEnv(
     }
   }
   env.CLAUDE_CONFIG_DIR = opts.configDir;
+  const fence =
+    opts.shellFencePath === undefined
+      ? claudeShellFencePath()
+      : opts.shellFencePath;
+  if (fence !== null) env.CLAUDE_CODE_SHELL_PREFIX = fence;
   if (opts.homeDir !== undefined) env.HOME = opts.homeDir;
   if (opts.credentialStorageDir !== undefined) {
     // The CLI reads an EMPTY `CLAUDE_SECURESTORAGE_CONFIG_DIR` as `~/.houston`'s

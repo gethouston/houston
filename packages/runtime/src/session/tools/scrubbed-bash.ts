@@ -1,4 +1,8 @@
 import { createBashToolDefinition } from "@earendil-works/pi-coding-agent";
+import {
+  bashMemoryFencePrefix,
+  resolveChildMemoryCap,
+} from "../child-memory-fence";
 
 /**
  * The env allowlist for a model-directed bash child.
@@ -76,7 +80,23 @@ export function scrubbedBashEnv(
 }
 
 /**
- * A `bash` tool whose child process env is scrubbed to the allowlist above.
+ * The pi bash options that fence a command's memory: the cap is applied as a
+ * command prefix (pi runs `<prefix>\n<command>` in one shell), so the shell
+ * and every process it spawns inherit it. No cap → no prefix, byte-identical
+ * to the unfenced tool. See child-memory-fence.ts for why.
+ */
+export function bashMemoryFenceOptions(capBytes: number | null): {
+  commandPrefix?: string;
+} {
+  return capBytes === null
+    ? {}
+    : { commandPrefix: bashMemoryFencePrefix(capBytes) };
+}
+
+/**
+ * A `bash` tool whose child process env is scrubbed to the allowlist above,
+ * and whose memory is fenced by the container's limit (child-memory-fence.ts;
+ * `memoryCapBytes` overrides the resolved cap, null = no fence).
  * Registered as a custom tool under the name `bash`, so it SHADOWS pi's
  * built-in bash by name (the same shadow-by-name mechanism the clamped file
  * tools use). Every runtime that offers bash registers it — the long-lived
@@ -84,8 +104,16 @@ export function scrubbedBashEnv(
  * alike; a shell that can read the host credential is the same hole on all of
  * them.
  */
-export function makeScrubbedBashTool(cwd: string) {
+export function makeScrubbedBashTool(
+  cwd: string,
+  opts: { memoryCapBytes?: number | null } = {},
+) {
+  const cap =
+    opts.memoryCapBytes === undefined
+      ? resolveChildMemoryCap()
+      : opts.memoryCapBytes;
   return createBashToolDefinition(cwd, {
+    ...bashMemoryFenceOptions(cap),
     spawnHook: (context) => ({ ...context, env: scrubbedBashEnv() }),
   });
 }
