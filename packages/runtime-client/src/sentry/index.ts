@@ -9,6 +9,7 @@ export {
 export {
   createEngineSentry,
   type EngineSentry,
+  type EngineSentryOptions,
   initEngineSentry,
   type LogCaptureLevel,
 } from "./client";

@@ -15,8 +15,8 @@ import type { Event, StackFrame } from "@sentry/core";
  * Trailing frames from these files are popped so the innermost frame is the
  * code that actually logged. Filename-based: both production stacks are
  * source-mapped back to the original `.ts` paths (the sidecar's embedded bun
- * sourcemap, the pod's `--enable-source-maps`); an unmapped stack just stays
- * untrimmed.
+ * sourcemap; the pod bundles' sibling `.map`, applied per event by
+ * map-frames.ts); an unmapped stack just stays untrimmed.
  */
 const REPORTER_FRAME =
   /(?:sentry[/\\](?:client|console-capture))\.(?:m?[jt]s)$|(?:observability[/\\]logging)\.(?:m?[jt]s)$/;
@@ -28,7 +28,8 @@ function isReporterFrame(frame: StackFrame): boolean {
 /** Exception values and thread values both carry an optional stacktrace. */
 type StackHolder = { stacktrace?: { frames?: StackFrame[] } };
 
-function stackHolders(event: Event): StackHolder[] {
+/** Every frame list an event can carry, in one pass. */
+export function stackHolders(event: Event): StackHolder[] {
   return [...(event.exception?.values ?? []), ...(event.threads?.values ?? [])];
 }
 

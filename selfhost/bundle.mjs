@@ -47,9 +47,10 @@ const shared = {
   banner,
   plugins: [externalNodeModules],
   logLevel: "info",
-  // External .map next to each bundle; node runs with --enable-source-maps
-  // (see the Dockerfile) so stack traces — and the Sentry events built from
-  // them — point at the original TS files instead of bundle offsets.
+  // External .map next to each bundle. Node does NOT load it (no
+  // --enable-source-maps, see the Dockerfile); the Sentry reporter reads it
+  // on demand so events point at the original TS files instead of bundle
+  // offsets.
   sourcemap: true,
 };
 

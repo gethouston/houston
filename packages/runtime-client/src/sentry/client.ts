@@ -19,6 +19,7 @@ import {
   resolveEngineSentryConfig,
 } from "./activation";
 import { addSourceContext, trimReporterFrames } from "./frames";
+import { createBundleFrameMapper, defaultBundlePath } from "./map-frames";
 
 /** Levels as the engine's loggers name them (observability/logging.ts). */
 export type LogCaptureLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
@@ -158,11 +159,20 @@ export function initEngineSentry(
   }
 }
 
+export interface EngineSentryOptions {
+  /**
+   * The esbuild bundle whose frames get source-mapped on demand; defaults to
+   * the running entry (see map-frames.ts). Tests point it at a fixture.
+   */
+  bundlePath?: string;
+}
+
 /** Exported for tests (inject a capturing transport). Use initEngineSentry. */
 export function createEngineSentry(
   engineProcess: EngineProcess,
   config: EngineSentryConfig,
   transport: (options: BaseTransportOptions) => Transport,
+  options: EngineSentryOptions = {},
 ): EngineSentry {
   const stackParser = createStackParser(nodeStackLineParser());
   const client = new ServerRuntimeClient({
@@ -209,8 +219,13 @@ export function createEngineSentry(
       Date.now() - process.uptime() * 1000,
     ).toISOString(),
   });
-  // Order matters: trim the reporter's plumbing frames first, then inline the
-  // source lines around what remains (no file reads for dropped frames).
+  // Order matters: map bundle offsets to `.ts` locations first (the next two
+  // key on mapped filenames), trim the reporter's plumbing frames, then
+  // inline the source lines around what remains (no file reads for dropped
+  // frames).
+  scope.addEventProcessor(
+    createBundleFrameMapper(options.bundlePath ?? defaultBundlePath()),
+  );
   scope.addEventProcessor(trimReporterFrames);
   scope.addEventProcessor(addSourceContext);
   client.init();
