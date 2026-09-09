@@ -43,6 +43,12 @@ export type EventListener = (event: SdkEvent) => void;
  * iteration. A listener removed during a `publish` is not observed on the
  * *next* publish; whether it still receives the in-flight notification is
  * unspecified (it is iterating a snapshot taken before it was removed).
+ *
+ * **Listener isolation.** A throwing listener never reaches the publisher or
+ * its sibling listeners: the snapshot is already stored, every other listener
+ * still runs, and the error is rethrown on its own microtask so it surfaces on
+ * the host's uncaught-error path (log + Sentry) instead of aborting the turn
+ * machinery mid-frame. A UI binding's failure is never the data flow's.
  */
 export class ScopeStore {
   private readonly snapshots = new Map<string, unknown>();
@@ -79,7 +85,13 @@ export class ScopeStore {
     this.snapshots.set(scope, snapshot);
     const subs = this.subscribers.get(scope);
     if (!subs || subs.size === 0) return;
-    for (const listener of [...subs]) listener(snapshot);
+    for (const listener of [...subs]) {
+      try {
+        listener(snapshot);
+      } catch (err) {
+        rethrowAsync(err);
+      }
+    }
   }
 
   /**
@@ -106,7 +118,13 @@ export class ScopeStore {
   /** Broadcast `event` to every global event listener. */
   emitEvent(event: SdkEvent): void {
     if (this.eventListeners.size === 0) return;
-    for (const listener of [...this.eventListeners]) listener(event);
+    for (const listener of [...this.eventListeners]) {
+      try {
+        listener(event);
+      } catch (err) {
+        rethrowAsync(err);
+      }
+    }
   }
 
   /**
@@ -119,4 +137,15 @@ export class ScopeStore {
       this.eventListeners.delete(cb);
     };
   }
+}
+
+/**
+ * Surface a listener's exception without unwinding through the notifier: a
+ * fresh microtask throws it, which lands on the process's uncaught-error
+ * handler (`window.onerror` in a browser) — reported, never swallowed.
+ */
+function rethrowAsync(err: unknown): void {
+  queueMicrotask(() => {
+    throw err;
+  });
 }
