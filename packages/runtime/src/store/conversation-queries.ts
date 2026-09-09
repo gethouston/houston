@@ -4,8 +4,8 @@ import type {
   ConversationHistory,
   ConversationSummary,
 } from "@houston/runtime-client";
-import { loadConversation } from "./conversation-file";
-import { readParsedFile } from "./conversation-parse-cache";
+import { loadConversation, type StoredConversation } from "./conversation-file";
+import { readParsedSummary } from "./conversation-parse-cache";
 
 /**
  * The read side of the conversation store: a windowed transcript and the
@@ -44,21 +44,28 @@ export function getHistoryAt(
   };
 }
 
+function summarize(conv: StoredConversation): ConversationSummary {
+  const last = conv.messages[conv.messages.length - 1];
+  return {
+    id: conv.id,
+    title: conv.title,
+    createdAt: conv.createdAt,
+    updatedAt: conv.updatedAt,
+    lastMessage: last?.content.slice(0, 80),
+  };
+}
+
 export function listConversationsAt(dir: string): ConversationSummary[] {
   if (!existsSync(dir)) return [];
   const out: ConversationSummary[] = [];
   for (const f of readdirSync(dir)) {
     if (!f.endsWith(".json")) continue;
-    const conv = readParsedFile(join(dir, f));
-    if (!conv) continue; // unreadable/foreign file — skipped
-    const last = conv.messages[conv.messages.length - 1];
-    out.push({
-      id: conv.id,
-      title: conv.title,
-      createdAt: conv.createdAt,
-      updatedAt: conv.updatedAt,
-      lastMessage: last?.content.slice(0, 80),
-    });
+    // The summary, not the transcript: a list never needs the messages, and
+    // the derived digest stays cached even for a transcript too large for
+    // the parse cache's byte budget to keep.
+    const summary = readParsedSummary(join(dir, f), summarize);
+    if (!summary) continue; // unreadable/foreign file — skipped
+    out.push(summary);
   }
   return out.sort((a, b) => b.updatedAt - a.updatedAt);
 }
