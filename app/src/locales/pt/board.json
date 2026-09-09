@@ -18,7 +18,11 @@
   },
   "panel": {
     "taskLabel": "Tarefa: {{title}}",
-    "newTask": "Tarefa nova"
+    "newTask": "Tarefa nova",
+    "expand": "Expandir chat",
+    "collapse": "Reduzir chat",
+    "backToArchived": "Voltar para arquivadas",
+    "backToTasks": "Voltar para tarefas"
   },
   "people": {
     "label": "Pessoas nesta tarefa",

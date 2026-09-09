@@ -6,6 +6,7 @@ import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import type { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import type { useMissionSearch } from "../use-mission-search";
 import { panelTaskLabel } from "./panel-task-label";
+import { PanelBackToBoard, PanelWidthToggle } from "./panel-width-controls";
 import type { useMissionControlArchived } from "./use-mission-control-archived";
 import type { useMissionControlArchivedPanel } from "./use-mission-control-archived-panel";
 
@@ -44,6 +45,7 @@ export function ArchivedMissionBoard({
 }) {
   const { t } = useTranslation("board");
   const addToast = useUIStore((s) => s.addToast);
+  const chatWide = useUIStore((s) => s.chatWide);
   const { selectedItem, activeAgent } = data;
   const { panel, attachmentValidation, openHref, onSendMessage } =
     archivedPanel;
@@ -74,6 +76,20 @@ export function ArchivedMissionBoard({
             />
           }
           onPanelOpenChange={setPanelOpen}
+          // Wide: the list is out of the layout, so the header leads with the
+          // way back to it and drops the X, as the board's does. No closer to
+          // run here: the archive has no new-task composer, so clearing the
+          // selection is the whole close.
+          hidePanelClose={chatWide}
+          panelLeading={
+            chatWide ? (
+              <PanelBackToBoard
+                label={t("panel.backToArchived")}
+                onClick={() => data.setSelectedId(null)}
+              />
+            ) : undefined
+          }
+          panelTrailing={<PanelWidthToggle />}
           onOpenLink={openHref}
           onNotice={(message) => addToast({ title: message })}
           prepareAttachments={attachmentValidation.prepareAttachments}

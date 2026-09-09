@@ -25,6 +25,7 @@ const NAV = `${SECTIONS}\n${ROWS}`;
 const HOOK = read("../src/components/shell/use-sidebar-nav-items.tsx");
 const FOOTER = read("../src/components/shell/sidebar-footer.tsx");
 const SHELL = read("../src/components/shell/workspace-shell.tsx");
+const TITLE_STRIP = read("../src/components/shell/shell-title-strip.tsx");
 const HELP = read("../src/components/shell/sidebar-help-menu.tsx");
 const GUIDED_SETUP = read("../src/hooks/use-run-guided-setup.ts");
 const VIEWS = read("../src/lib/top-level-views.ts");
@@ -251,7 +252,9 @@ describe("Settings left the nav for the footer", () => {
     // overlay, restart pill) are window chrome mounted by the shell, not a
     // rail row.
     assert.ok(!FOOTER.includes("<UpdateChecker"));
-    assert.ok(SHELL.includes("<UpdateChecker />"));
+    // The strip above the content row is the shell's, mounted by it.
+    assert.ok(SHELL.includes("<ShellTitleStrip"));
+    assert.ok(TITLE_STRIP.includes("<UpdateChecker />"));
   });
 });
 
