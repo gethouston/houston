@@ -414,3 +414,56 @@ test("an installed tile opens the app detail modal", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Reconnect" })).toHaveCount(0);
 });
+
+test("ManyChat is a curated card that connects with an API key alone and lands in Installed", async ({
+  page,
+  request,
+}) => {
+  await armCapabilities(request, { integrations: ["composio", "custom"] });
+  await request.post(`${FAKE_HOST_URL}/__test__/custom-integrations`, {
+    data: { items: [] },
+  });
+  await openIntegrationsPage(page);
+
+  // Not in the fake Composio catalog; the curated catalog supplies the card.
+  const search = page.getByRole("searchbox", { name: "Search integrations" });
+  await search.fill("ManyChat");
+  const connect = page.getByRole("button", { name: "Connect ManyChat" });
+  await expect(connect).toHaveCount(1);
+  await connect.click();
+
+  // One option: ManyChat has no sign-in server, so the key leads outright,
+  // with the where-to-find-it help and the shortcut into ManyChat.
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("heading", { name: "Connect ManyChat" }),
+  ).toBeVisible();
+  const viaKey = dialog.getByRole("button", {
+    name: /Connect with a ManyChat API key/,
+  });
+  await expect(viaKey).toContainText("Recommended");
+  await expect(dialog.getByRole("button", { name: /Sign in/ })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: /Composio/ })).toHaveCount(0);
+  await viaKey.click();
+  await expect(dialog.getByText(/Settings, then API/)).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "Open ManyChat to get a key" }),
+  ).toBeVisible();
+  await expect(dialog.getByLabel("Sub-account ID")).toHaveCount(0);
+
+  // The key goes through the secure save; the fake host materializes the
+  // OpenAPI definition and flips it active on the credential.
+  await dialog.getByRole("textbox", { name: "API key" }).fill("12345:s3cret");
+  await dialog.getByRole("button", { name: "Save key" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "ManyChat API" })).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(
+    page.getByRole("button", { name: "ManyChat API" }).getByText("Connected"),
+  ).toBeVisible();
+  // Added, the curated card leaves the catalog.
+  await expect(
+    page.getByRole("button", { name: "Connect ManyChat" }),
+  ).toHaveCount(0);
+});

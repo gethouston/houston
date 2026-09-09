@@ -18,7 +18,11 @@
   },
   "panel": {
     "taskLabel": "Task: {{title}}",
-    "newTask": "New task"
+    "newTask": "New task",
+    "expand": "Expand chat",
+    "collapse": "Shrink chat",
+    "backToArchived": "Back to archived",
+    "backToTasks": "Back to tasks"
   },
   "people": {
     "label": "People on this task",

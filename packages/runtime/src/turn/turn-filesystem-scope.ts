@@ -13,11 +13,19 @@ export function claimedTurnIncludes(
     "conversations",
     `${encodeURIComponent(conversationId)}.json`,
   );
+  // The transcript's archive segments (store/conversation-archive.ts) belong
+  // to the same turn as its live file.
+  const archive = posix.join(
+    dataRel,
+    "conversations",
+    `${encodeURIComponent(conversationId)}.archive/`,
+  );
   const session = posix.join(dataRel, "sessions", conversationId);
   const activity = turnActivityKey(workspaceRel);
   const runs = turnRoutineRunsKey(workspaceRel);
   return (relativePath) =>
     relativePath === conversation ||
+    relativePath.startsWith(archive) ||
     turnSessionScopeIncludes(session, relativePath) ||
     relativePath === activity ||
     relativePath === runs ||

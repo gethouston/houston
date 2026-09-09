@@ -13,7 +13,7 @@ import {
   getHistoryAt,
   type HistoryWindow,
   listConversationsAt,
-  loadConversation,
+  loadFullConversation,
   renameConversationMutationAt,
   type UserMessageMeta,
 } from "./conversation-file";
@@ -117,7 +117,9 @@ const shadow =
           config.controlPlaneUrl,
           config.sandboxToken,
         ),
-        (conversationId) => loadConversation(dir, conversationId),
+        // A repair replaces the remote document whole, so it must carry the
+        // archived segments too, not just the live tail.
+        (conversationId) => loadFullConversation(dir, conversationId),
       )
     : undefined;
 const store = createConversationStore(dir, shadow);

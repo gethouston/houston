@@ -1,16 +1,22 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { setPanelOwner } from "../src/components/shell/detail-panel-owners.ts";
+import {
+  type PanelOwner,
+  panelWideCapable,
+  setPanelOwner,
+} from "../src/components/shell/detail-panel-owners.ts";
+
+const ids = (owners: PanelOwner[]) => owners.map((o) => o.id);
 
 describe("shell detail panel ownership", () => {
   it("opens on the first claim and closes only when the last one is released", () => {
-    let owners: string[] = [];
+    let owners: PanelOwner[] = [];
     owners = setPanelOwner(owners, "board", true);
-    deepStrictEqual(owners, ["board"]);
+    deepStrictEqual(ids(owners), ["board"]);
     owners = setPanelOwner(owners, "routines", true);
-    deepStrictEqual(owners, ["board", "routines"]);
+    deepStrictEqual(ids(owners), ["board", "routines"]);
     owners = setPanelOwner(owners, "board", false);
-    deepStrictEqual(owners, ["routines"]);
+    deepStrictEqual(ids(owners), ["routines"]);
     owners = setPanelOwner(owners, "routines", false);
     deepStrictEqual(owners, []);
   });
@@ -25,7 +31,7 @@ describe("shell detail panel ownership", () => {
       true,
     );
     const afterLeave = setPanelOwner(owners, "routines", false);
-    deepStrictEqual(afterLeave, ["board"]);
+    deepStrictEqual(ids(afterLeave), ["board"]);
     strictEqual(afterLeave.length > 0, true);
   });
 
@@ -33,5 +39,18 @@ describe("shell detail panel ownership", () => {
     const owners = setPanelOwner([], "board", true);
     strictEqual(setPanelOwner(owners, "board", true), owners);
     strictEqual(setPanelOwner([], "board", false).length, 0);
+  });
+
+  // PRODUCT-1722: the wide chat is the SURFACE's consent, carried on its
+  // claim. A setup interview beside its catalog never opts in, so the user's
+  // wide preference cannot swallow the catalog under it.
+  it("records whether a claim allows the wide layout", () => {
+    const side = setPanelOwner([], "routines", true);
+    strictEqual(panelWideCapable(side), false);
+    const both = setPanelOwner(side, "board", true, true);
+    strictEqual(panelWideCapable(both), true);
+    // The board leaves: what is left is the side-only claim.
+    strictEqual(panelWideCapable(setPanelOwner(both, "board", false)), false);
+    strictEqual(panelWideCapable([]), false);
   });
 });

@@ -1,6 +1,6 @@
 import { AIBoard } from "@houston-ai/board";
 import { useIsMobile } from "@houston-ai/core";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { perfSpans } from "../../lib/perf-spans";
 import { useUIStore } from "../../stores/ui";
@@ -12,6 +12,7 @@ import {
 import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import type { BoardSource } from "./board-source";
+import { PanelBackToBoard, PanelWidthToggle } from "./panel-width-controls";
 import { TeamTaskList } from "./team-task-list";
 import { useBoardChatWiring } from "./use-board-chat-wiring";
 import { useBoardKeyboard } from "./use-board-keyboard";
@@ -37,7 +38,10 @@ import { useBoardSelectionUI } from "./use-board-selection-ui";
  */
 export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
-  const { panelContainer, setPanelOpen } = useShellDetailPanel();
+  // A mission chat may go wide (PRODUCT-1722): the board is a place to come
+  // back to, not a form the chat is helping to fill in.
+  const { panelContainer, setPanelOpen } = useShellDetailPanel({ wide: true });
+  const chatWide = useUIStore((s) => s.chatWide);
   // Every board is the whole of a kept-alive top-level screen, so the
   // screen-level signal alone says whether this one is on the glass. It gates
   // the keyboard nav and the shell detail panel: a hidden-but-mounted screen
@@ -77,6 +81,10 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     onCloseOpenChat: closeOpenChat,
   });
 
+  // AIBoard's closer, kept here as well as in the keyboard hook: the wide
+  // header's "Back to tasks" must close the empty new-task composer too,
+  // whose open state lives inside AIBoard and is unreachable by selection.
+  const closerRef = useRef<(() => void) | null>(null);
   const { handleCloserReady } = useBoardKeyboard({
     isActive,
     items: source.items,
@@ -95,6 +103,18 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     autoOpenBlocked: source.autoOpenBlocked,
     onAutoOpenEmpty: source.onAutoOpenEmpty,
   });
+
+  const handleCloserReadyWide = useCallback(
+    (close: () => void) => {
+      closerRef.current = close;
+      handleCloserReady(close);
+    },
+    [handleCloserReady],
+  );
+  const backToBoard = useCallback(() => {
+    closerRef.current?.();
+    source.setSelectedId(null);
+  }, [source.setSelectedId]);
 
   const handleSelect = useCallback(
     (id: string | null) => {
@@ -133,7 +153,19 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           archiveStatuses={MISSION_ARCHIVE_STATUSES}
           onRename={source.onRename}
           onNewPanelOpenerReady={source.registerOpener}
-          onPanelCloserReady={handleCloserReady}
+          onPanelCloserReady={handleCloserReadyWide}
+          // Wide: the board is gone from the layout, so the header leads with
+          // the way back to it and drops the X (one exit, as on the phone).
+          hidePanelClose={chatWide}
+          panelLeading={
+            chatWide ? (
+              <PanelBackToBoard
+                label={t("board:panel.backToTasks")}
+                onClick={backToBoard}
+              />
+            ) : undefined
+          }
+          panelTrailing={<PanelWidthToggle />}
           emptyState={source.emptyState}
           panelContainer={panelContainer}
           onPanelOpenChange={setPanelOpen}

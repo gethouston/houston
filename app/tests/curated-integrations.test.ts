@@ -28,10 +28,18 @@ describe("curated catalog data", () => {
       // The host's CUSTOM_SLUG grammar — a violating slug would be rejected
       // at add time, turning the catalog card into a dead end.
       match(c.slug, /^[a-z0-9][a-z0-9_-]{0,63}$/);
-      for (const url of [c.endpoint, c.website, c.signUpUrl, c.apiKeysUrl]) {
+      const endpoint =
+        c.source.kind === "mcp" ? c.source.endpoint : c.source.baseUrl;
+      for (const url of [endpoint, c.website, c.signUpUrl, c.apiKeysUrl]) {
         match(url, /^https:\/\//);
       }
       ok(c.categories.length > 0);
+      // No server to sign in against: an OpenAPI source is key-only, and a
+      // static header is an MCP-transport concept.
+      if (c.source.kind === "openapi") {
+        deepStrictEqual(c.authModes, ["credential"]);
+        strictEqual(c.extraHeader, undefined);
+      }
     }
   });
 
@@ -65,6 +73,7 @@ describe("curated catalog data", () => {
   it("looks up an entry by slug", () => {
     strictEqual(curatedIntegrationOf("croma")?.name, "Croma");
     strictEqual(curatedIntegrationOf("highlevel")?.name, "HighLevel");
+    strictEqual(curatedIntegrationOf("manychat")?.name, "ManyChat");
     strictEqual(curatedIntegrationOf("gmail"), undefined);
   });
 
@@ -74,10 +83,10 @@ describe("curated catalog data", () => {
     // The per-client `/mcp/<client>/v2` family refuses to register unknown
     // OAuth clients; only the original endpoint signs Houston in. The
     // trailing slash is the resource its OAuth metadata names.
-    strictEqual(
-      highlevel.endpoint,
-      "https://services.leadconnectorhq.com/mcp/",
-    );
+    deepStrictEqual(highlevel.source, {
+      kind: "mcp",
+      endpoint: "https://services.leadconnectorhq.com/mcp/",
+    });
     // Token only, as HighLevel's help center documents; its sub-account id
     // rides as a static header next to the token.
     deepStrictEqual(highlevel.authModes, ["credential"]);
@@ -90,6 +99,55 @@ describe("curated catalog data", () => {
     );
     strictEqual("headers" in curatedAddInput(highlevel, "credential"), false);
     deepStrictEqual(highlevel.categories, ["crm", "marketing"]);
+  });
+
+  it("points ManyChat at a committed OpenAPI document the agent can read", () => {
+    const manychat = curatedIntegrationOf("manychat");
+    ok(manychat);
+    strictEqual(manychat.source.kind, "openapi");
+    if (manychat.source.kind !== "openapi") return;
+    strictEqual(manychat.source.baseUrl, "https://api.manychat.com");
+    const doc = JSON.parse(manychat.source.spec) as {
+      openapi: string;
+      servers: { url: string }[];
+      paths: Record<string, Record<string, Record<string, unknown>>>;
+      components: { securitySchemes: Record<string, { scheme?: string }> };
+    };
+    match(doc.openapi, /^3\./);
+    deepStrictEqual(doc.servers, [{ url: "https://api.manychat.com" }]);
+    strictEqual(doc.components.securitySchemes.Bearer?.scheme, "bearer");
+    const ops = Object.entries(doc.paths).flatMap(([path, item]) =>
+      Object.entries(item).map(([method, op]) => ({ path, method, ...op })),
+    );
+    ok(ops.length >= 30, `only ${ops.length} operations`);
+    for (const op of ops) {
+      // ManyChat's published document names every operation by an MD5 hash
+      // with an empty summary; the committed copy exists so the agent sees
+      // `subscriber.findByName`, never `subscriber.e5c671d1…`.
+      match(String(op.operationId), /^[a-z][A-Za-z]+$/, op.path);
+      strictEqual(op.operationId, op.path.split("/").at(-1));
+      ok(String(op.summary).length > 8, `no summary for ${op.path}`);
+      deepStrictEqual(op.security, [{ Bearer: [] }]);
+    }
+    // The message payload must accept real content (the upstream document
+    // declares it as an empty closed object).
+    const send = doc.paths["/fb/sending/sendContent"]?.post as {
+      requestBody: {
+        content: {
+          "application/json": {
+            schema: { properties: { data: Record<string, unknown> } };
+          };
+        };
+      };
+    };
+    const data =
+      send.requestBody.content["application/json"].schema.properties.data;
+    strictEqual(data.additionalProperties, undefined);
+    ok(typeof data.description === "string");
+    deepStrictEqual(manychat.categories, [
+      "marketing-automation",
+      "ai-chatbots",
+    ]);
   });
 
   it("an entry offering a key carries the key help copy", () => {
@@ -136,7 +194,7 @@ describe("curated entries next to a provider catalog", () => {
     const toolkits = curatedToolkits([], describeOf, logoOf, providerCatalog);
     deepStrictEqual(
       toolkits.map((t) => t.slug),
-      ["croma"],
+      ["croma", "manychat"],
     );
   });
 
@@ -162,6 +220,23 @@ describe("curated entries next to a provider catalog", () => {
 });
 
 describe("curatedAddInput", () => {
+  it("materializes an OpenAPI source as a key-only definition, whatever mode was asked", () => {
+    const manychat = curatedIntegrationOf("manychat");
+    ok(manychat);
+    for (const auth of ["oauth", "credential"] as const) {
+      const input = curatedAddInput(manychat, auth, { ignored: "x" });
+      strictEqual(input.kind, "openapi");
+      if (input.kind !== "openapi") return;
+      strictEqual(input.auth, "credential");
+      strictEqual(input.slug, "manychat");
+      strictEqual(input.baseUrl, "https://api.manychat.com");
+      strictEqual(input.website, "https://manychat.com");
+      strictEqual(input.replace, true);
+      ok(input.spec?.startsWith("{"));
+      strictEqual("headers" in input, false);
+    }
+  });
+
   it("materializes the MCP definition idempotently in the chosen mode", () => {
     const croma = curatedIntegrationOf("croma");
     ok(croma);

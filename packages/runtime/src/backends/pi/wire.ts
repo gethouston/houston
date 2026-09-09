@@ -6,7 +6,10 @@ import {
   type WireEvent,
 } from "@houston/runtime-client";
 import { classifyProviderError } from "../../ai/provider-error";
-import { logProviderError } from "../../ai/provider-error-log";
+import {
+  logProviderError,
+  logProviderRetry,
+} from "../../ai/provider-error-log";
 import { canonicalPinProvider } from "../../ai/providers";
 import {
   noteAuthFailure,
@@ -264,6 +267,10 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
       const usage = msg && "usage" in msg ? normalizeUsage(msg.usage) : null;
       return usage ? { type: "usage", data: usage } : null;
     }
+    case "auto_retry_start":
+    case "auto_retry_end":
+      logProviderRetry(e);
+      return null;
     default:
       return null;
   }
