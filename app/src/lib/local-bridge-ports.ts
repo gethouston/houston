@@ -1,7 +1,8 @@
 import type { LocalBridgeIdentity } from "@houston/protocol";
-import type {
-  LocalBridgeNativeEvent,
-  LocalModelBridgePorts,
+import {
+  isBridgeUnsupported,
+  type LocalBridgeNativeEvent,
+  type LocalModelBridgePorts,
 } from "@houston/sdk";
 import type { LocalModelBridgeAccess } from "@houston-ai/engine-client";
 import { showErrorToast } from "./error-toast";
@@ -18,8 +19,21 @@ import {
   osStopLocalBridge,
 } from "./os-bridge";
 
+/**
+ * Report-only (no toast): a bridge failure is background state. A deployment
+ * that serves no local model connections at all is not a failure — the
+ * bridge is simply off there — so it is never reported. The cause rides in
+ * the message: without it every report read as the same bare label.
+ */
 export function reportLocalBridgeError(error: unknown): void {
-  showErrorToast("local_model_bridge", "Local model connection failed", error);
+  if (isBridgeUnsupported(error)) return;
+  const cause =
+    error instanceof Error && error.message ? `: ${error.message}` : "";
+  showErrorToast(
+    "local_model_bridge",
+    `Local model connection failed${cause}`,
+    error,
+  );
 }
 
 export function bridgeIdentityKey(identity: LocalBridgeIdentity): string {

@@ -1,6 +1,7 @@
 import {
   BridgeStateError,
   isAuthorizationFailure,
+  isBridgeUnsupported,
   isPermanentBridgeFailure,
 } from "./errors";
 import type { LocalBridgeStatus } from "./types";
@@ -15,6 +16,9 @@ export function bridgeRetry(
     error !== null &&
     "code" in error &&
     error.code === "migration_requires_reconnect";
+  // An unsupported deployment is terminal and quiet: the bridge is simply
+  // disabled here, nothing reconnects it.
+  if (isBridgeUnsupported(error)) return { status: "disabled", delay: null };
   const status =
     migrationMismatch || isPermanentBridgeFailure(error)
       ? "reconnect_required"

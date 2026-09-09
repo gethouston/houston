@@ -29,6 +29,26 @@ export function isAuthorizationFailure(error: unknown) {
   );
 }
 
+/**
+ * The deployment serves no local model connections at all: the gateway's
+ * capabilities carry no bridge version, or the engine has no control plane
+ * (`bridge_not_supported`, answered 503 by the adapter). That is a fact
+ * about the server, not a failure to retry or report: 0.6.20 desktops on a
+ * gateway without the bridge retried it every 30 s and reported every try,
+ * 13,500 events in two days.
+ */
+export function isBridgeUnsupported(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) return false;
+  if ("code" in error && error.code === "bridge_not_supported") return true;
+  const body = "body" in error ? error.body : undefined;
+  return (
+    typeof body === "object" &&
+    body !== null &&
+    "code" in body &&
+    body.code === "bridge_not_supported"
+  );
+}
+
 export function isPermanentBridgeFailure(error: unknown) {
   if (typeof error !== "object" || error === null || !("status" in error))
     return false;

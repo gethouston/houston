@@ -53,3 +53,45 @@ test("authentication denial and unsupported capabilities never retry", async () 
   ).toBeNull();
   expect(vi.getTimerCount()).toBe(0);
 });
+test("an unsupported deployment is terminal: one attempt, no retry, no report", async () => {
+  vi.useFakeTimers();
+  const report = vi.fn();
+  const unsupported = Object.assign(new Error("not here"), {
+    status: 503,
+    body: { code: "bridge_not_supported" },
+  });
+  const factory = vi.fn().mockRejectedValue(unsupported);
+  await expect(
+    bootstrapLocalModelBridge(factory, new AbortController().signal, {
+      report,
+      random: () => 0,
+    }),
+  ).rejects.toBe(unsupported);
+  expect(factory).toHaveBeenCalledTimes(1);
+  expect(report).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+});
+test("a failing streak is reported once, and again only when its cause changes", async () => {
+  vi.useFakeTimers();
+  const report = vi.fn();
+  const controller = {};
+  const factory = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockRejectedValueOnce(new Error("offline"))
+    .mockRejectedValueOnce(new Error("dns"))
+    .mockResolvedValueOnce(controller);
+  const result = bootstrapLocalModelBridge(
+    factory,
+    new AbortController().signal,
+    { report, random: () => 0 },
+  );
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(await result).toBe(controller);
+  expect(factory).toHaveBeenCalledTimes(5);
+  expect(report.mock.calls.map(([e]) => (e as Error).message)).toEqual([
+    "offline",
+    "dns",
+  ]);
+});
