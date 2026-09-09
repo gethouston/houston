@@ -116,6 +116,63 @@ describe("ScopeStore re-entrancy", () => {
   });
 });
 
+describe("ScopeStore listener isolation", () => {
+  it("a throwing subscriber neither unwinds publish nor starves its siblings", () => {
+    const deferred: Array<() => void> = [];
+    const spy = vi
+      .spyOn(globalThis, "queueMicrotask")
+      .mockImplementation((cb) => {
+        deferred.push(cb as () => void);
+      });
+    try {
+      const store = new ScopeStore();
+      const boom = new Error("Maximum update depth exceeded");
+      const sibling = vi.fn();
+      store.subscribe("conversation/a", () => {
+        throw boom;
+      });
+      store.subscribe("conversation/a", sibling);
+
+      // The publisher (the turn machinery mid-frame) must never see the error.
+      expect(() => store.publish("conversation/a", { n: 1 })).not.toThrow();
+      expect(store.getSnapshot("conversation/a")).toEqual({ n: 1 });
+      expect(sibling).toHaveBeenCalledWith({ n: 1 });
+
+      // …but it is not swallowed: it resurfaces on its own microtask, where
+      // the host's uncaught-error handler reports it.
+      expect(deferred).toHaveLength(1);
+      expect(() => deferred[0]?.()).toThrow(boom);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("a throwing event listener neither unwinds emitEvent nor starves its siblings", () => {
+    const deferred: Array<() => void> = [];
+    const spy = vi
+      .spyOn(globalThis, "queueMicrotask")
+      .mockImplementation((cb) => {
+        deferred.push(cb as () => void);
+      });
+    try {
+      const store = new ScopeStore();
+      const boom = new Error("listener bug");
+      const sibling = vi.fn();
+      store.onEvent(() => {
+        throw boom;
+      });
+      store.onEvent(sibling);
+      const event: SdkEvent = { type: "turn/started" };
+      expect(() => store.emitEvent(event)).not.toThrow();
+      expect(sibling).toHaveBeenCalledWith(event);
+      expect(deferred).toHaveLength(1);
+      expect(() => deferred[0]?.()).toThrow(boom);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
 describe("ScopeStore events", () => {
   it("broadcasts events to all listeners and supports unsubscribe", () => {
     const store = new ScopeStore();
