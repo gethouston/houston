@@ -1,6 +1,7 @@
 {
   "title": "Houston",
   "opening": "Opening Houston",
+  "back": "Back",
   "empty": {
     "heading": "Hi, I'm Houston",
     "capabilities": "I can do anything you can do in Houston: create agents, set up automations, connect your apps, and find what you need.",

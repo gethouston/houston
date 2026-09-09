@@ -1,6 +1,7 @@
 {
   "title": "Houston",
   "opening": "Abrindo o Houston",
+  "back": "Voltar",
   "empty": {
     "heading": "Oi, eu sou o Houston",
     "capabilities": "Eu posso fazer tudo o que você faz no Houston: criar agentes, configurar automações, conectar seus apps e achar o que você precisa.",

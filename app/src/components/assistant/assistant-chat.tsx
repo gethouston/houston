@@ -21,6 +21,7 @@ import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
 import { assistantAgent } from "./assistant-agent";
 import { AssistantEmptyState } from "./assistant-empty-state";
+import { AssistantPhoneHeader } from "./assistant-phone-header";
 import { useContextCommandMenu } from "./use-context-command-menu";
 
 const noop = () => {};
@@ -120,12 +121,13 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
     <div
       ref={rootRef}
       data-testid="assistant-chat"
-      className="flex h-full min-h-0 flex-col"
+      className="flex h-full min-h-0 flex-col pb-safe"
       // iOS does not shrink `dvh` when the keyboard opens, so the composer of a
       // full-height chat would sit under the keys. Zero on desktop and whenever
       // nothing occludes, so the one style serves both breakpoints.
       style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
     >
+      <AssistantPhoneHeader />
       <AIBoard
         panelOnly
         hidePanelClose
