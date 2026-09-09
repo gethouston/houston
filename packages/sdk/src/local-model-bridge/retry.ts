@@ -1,6 +1,7 @@
 import {
   BridgeStateError,
   isAuthorizationFailure,
+  isBridgeUnsupported,
   isPermanentBridgeFailure,
 } from "./errors";
 import type { LocalBridgeStatus } from "./types";
@@ -10,6 +11,7 @@ export function bridgeRetry(
   attempt: number,
   random: () => number,
 ): { status: LocalBridgeStatus; delay: number | null } {
+  if (isBridgeUnsupported(error)) return { status: "disabled", delay: null };
   const migrationMismatch =
     typeof error === "object" &&
     error !== null &&

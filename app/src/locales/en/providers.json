@@ -201,6 +201,9 @@
       "body": "Something went wrong while connecting. Make sure the app is still open on your computer, then try again.",
       "retry": "Try again"
     },
+    "unsupported": {
+      "body": "Local models aren't available on this server yet. Try again later, or enter details manually."
+    },
     "manual": {
       "title": "Enter details manually",
       "description": "Already have a model server address? Enter it here.",

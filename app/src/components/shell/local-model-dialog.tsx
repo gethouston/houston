@@ -130,6 +130,13 @@ export function LocalModelDialog({ provider, onClose, onConnected }: Props) {
         {mode === "error" && (
           <ErrorScreen onRetry={() => void runDetect()} onManual={goManual} />
         )}
+        {mode === "unsupported" && (
+          <ErrorScreen
+            body={t("localModel.unsupported.body")}
+            onRetry={() => void connect()}
+            onManual={goManual}
+          />
+        )}
         {isManual && (
           <LocalModelManualForm
             onConnected={onConnected}

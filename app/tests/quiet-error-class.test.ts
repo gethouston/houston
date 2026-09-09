@@ -43,6 +43,36 @@ describe("classifyQuietError", () => {
     strictEqual(classifyQuietError(new TypeError("x is not a function")), null);
   });
 
+  // PRODUCT-1717: a gateway without the local-model bridge answers every
+  // desktop boot; it is one quiet class, and it wins over the waking 503.
+  it("names the bridge_unsupported class off the adapter's 503 body", () => {
+    strictEqual(
+      classifyQuietError(
+        named(
+          "HoustonEngineError",
+          "This server does not support local model connections. (engine error 503)",
+          {
+            status: 503,
+            body: {
+              code: "bridge_not_supported",
+              error: "This server does not support local model connections.",
+            },
+          },
+        ),
+      ),
+      "bridge_unsupported",
+    );
+    strictEqual(
+      classifyQuietError(
+        named("HoustonEngineError", "engine unavailable (engine error 503)", {
+          status: 503,
+          body: { error: "engine unavailable" },
+        }),
+      ),
+      "engine_waking",
+    );
+  });
+
   // PRODUCT-1666: the three shapes that escaped the waking class.
   it("names the waking class for the still-starting 503 and the activities shape", () => {
     strictEqual(

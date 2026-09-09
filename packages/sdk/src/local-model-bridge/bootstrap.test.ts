@@ -53,3 +53,19 @@ test("authentication denial and unsupported capabilities never retry", async () 
   ).toBeNull();
   expect(vi.getTimerCount()).toBe(0);
 });
+test.each([
+  { status: 503, body: { code: "bridge_not_supported" } },
+  { status: 503, code: "bridge_not_supported" },
+])("a deployment without bridge support is reported once, never polled %j", async (error) => {
+  vi.useFakeTimers();
+  const factory = vi.fn().mockRejectedValue(error);
+  const report = vi.fn();
+  await expect(
+    bootstrapLocalModelBridge(factory, new AbortController().signal, {
+      report,
+    }),
+  ).rejects.toBe(error);
+  expect(factory).toHaveBeenCalledTimes(1);
+  expect(report).not.toHaveBeenCalled();
+  expect(vi.getTimerCount()).toBe(0);
+});

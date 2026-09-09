@@ -22,6 +22,10 @@
     "./provider-catalog": {
       "types": "./src/provider-catalog.ts",
       "import": "./src/provider-catalog.ts"
+    },
+    "./local-model-bridge/unsupported": {
+      "types": "./src/local-model-bridge/unsupported.ts",
+      "import": "./src/local-model-bridge/unsupported.ts"
     }
   },
   "files": [

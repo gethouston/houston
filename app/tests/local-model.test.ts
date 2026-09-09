@@ -8,6 +8,7 @@ import {
   defaultEndpointName,
   defaultModelFor,
 } from "../src/lib/local-model.ts";
+import { connectFailureMode } from "../src/lib/local-model-connect-state.ts";
 import { looksLikeReasoningModel } from "../src/lib/local-model-reasoning.ts";
 
 function server(extra: Partial<DetectedServer> = {}): DetectedServer {
@@ -107,5 +108,31 @@ describe("reasoning model discovery", () => {
   it("does not flag ordinary chat models", () => {
     for (const id of ["llama-3.1", "gemma-2-9b", "mistral-7b", "gpt-4o-mini"])
       strictEqual(looksLikeReasoningModel(id), false, id);
+  });
+});
+
+describe("guided connect failure screen", () => {
+  // PRODUCT-1717: a server without the bridge gets its own copy; "keep the
+  // app open and retry" would blame a local app that was never the problem.
+  it("lands on the unsupported screen only for bridge_not_supported", () => {
+    strictEqual(
+      connectFailureMode(
+        Object.assign(new Error("engine error 503"), {
+          status: 503,
+          body: { code: "bridge_not_supported", error: "unsupported" },
+        }),
+      ),
+      "unsupported",
+    );
+    strictEqual(
+      connectFailureMode(
+        Object.assign(new Error("engine error 503"), {
+          status: 503,
+          body: { error: "engine unavailable" },
+        }),
+      ),
+      "error",
+    );
+    strictEqual(connectFailureMode(new Error("tunnel closed")), "error");
   });
 });

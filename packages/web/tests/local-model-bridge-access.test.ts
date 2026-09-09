@@ -1,3 +1,4 @@
+import { isBridgeUnsupported } from "@houston/sdk";
 import { afterEach, expect, test, vi } from "vitest";
 import { AdapterContext } from "../src/engine-adapter/client/context";
 import { localModelBridgeAccess } from "../src/engine-adapter/client/local-model-bridge";
@@ -41,9 +42,11 @@ test.each([
   ["http://localhost:4318", { profile: "local", tunnel: true }],
 ])("refuses unsupported remote or hosted deployment %s", async (url, capabilities) => {
   responses(capabilities);
-  await expect(
-    localModelBridgeAccess(context(url), "owner"),
-  ).rejects.toMatchObject({ status: 503 });
+  const refusal = localModelBridgeAccess(context(url), "owner");
+  await expect(refusal).rejects.toMatchObject({ status: 503 });
+  // The SDK's discovery stops (no 30s poll) and the app files it as the quiet
+  // bridge_unsupported class only if the thrown shape carries this code.
+  await expect(refusal).rejects.toSatisfy(isBridgeUnsupported);
 });
 
 test("a capability outage does not downgrade to a direct connection", async () => {
