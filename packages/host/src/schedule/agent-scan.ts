@@ -8,6 +8,7 @@ import type { Vfs } from "../vfs";
 import { burnRoutineFireInstant, type FireLock } from "./fire-lock";
 import { type ReconcileDeps, reconcileAgentRuns } from "./reconcile";
 import { fireRoutineRun, RoutineBusyError } from "./run";
+import { clearScanFailure, shouldLogScanFailure } from "./scan-failure-log";
 
 /** A due routine to run, with its resolved conversation + run id. */
 export interface FiringJob {
@@ -87,8 +88,14 @@ export async function scanAgent(
         if (won) await fireRoutine(deps, ws, agent, routine);
       }
     }
+    clearScanFailure(where);
   } catch (err) {
-    console.error(`[scheduler] ${where} routine scan failed:`, reason(err));
+    // Once per failure, not once per tick: a file that stays unreadable is
+    // one problem, not a new one every 30 seconds (scan-failure-log.ts).
+    const why = reason(err);
+    if (shouldLogScanFailure(where, why, Date.now())) {
+      console.error(`[scheduler] ${where} routine scan failed:`, why);
+    }
   }
 
   // Complete runs whose turn has finished (silent/surfaced/timeout). Runs live
