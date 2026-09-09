@@ -161,6 +161,7 @@ export {
   conversationScope,
   type DecodedAttachmentText,
   decodeAttachmentText,
+  ENGINE_RESTART_MESSAGE,
   type FeedAuthor,
   type FeedFrame,
   type FeedItemVM,

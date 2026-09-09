@@ -50,6 +50,7 @@ import {
 import { needsAutocompact } from "./autocompact";
 import { runAutocompact } from "./autocompact-guard";
 import { publish } from "./bus";
+import { resolveChildMemoryCap } from "./child-memory-fence";
 import { evictClaudeSessionOnRevokedToken } from "./claude-token-guard";
 import {
   type Conversation,
@@ -73,6 +74,11 @@ import { reportMissionSettle } from "./mission-settle";
 import { switchNeedsCompaction } from "./provider-switch";
 import { renderReplayPreamble, replayCharBudget } from "./replay-transcript";
 import { createStallWatchdog } from "./stall-watchdog";
+import {
+  clearInflightMarker,
+  noteInflightTool,
+  writeInflightMarker,
+} from "./turn-inflight-marker";
 import { runWithTurnMode, type TurnModeRef } from "./turn-mode-context";
 import { runWithTurnModel } from "./turn-model-context";
 
@@ -148,6 +154,16 @@ export function recordUserTurn(
   // names as plain text inside `text`, so this only travels so a reader can map
   // "@Name" back to a person. Persisted AND published, exactly like `author`.
   appendUserMessage(id, text, { author, turnId, displayText, mentions });
+  // The turn is now in flight on disk (turn-inflight-marker.ts): cleared by
+  // execTurn's finally on every in-process end, so a marker found at the next
+  // boot is a turn this process died on — the boot settle answers it. Written
+  // right after the user message so the store sync ships the two together.
+  writeInflightMarker(config.dataDir, {
+    conversationId: id,
+    turnId,
+    startedAt: Date.now(),
+    fenced: resolveChildMemoryCap() !== null,
+  });
   publish(id, {
     type: "user",
     data: { content: text, ts: Date.now(), nonce, author, mentions },
@@ -245,9 +261,18 @@ export async function execTurn(
         interaction.finish.noteAssistantText(wire.data);
       } else if (wire.type === "thinking") thinkingText += wire.data;
       else if (wire.type === "usage") usage = wire.data;
-      else if (wire.type === "tool_start")
+      else if (wire.type === "tool_start") {
         tools.push({ name: wire.data.name, input: wire.data.args });
-      else if (wire.type === "tool_end") {
+        // Name the running tool on the in-flight marker: a restart during a
+        // shell command is the OOM shape, and the boot report says so. Inside
+        // the backend's emit loop, so a disk fault here degrades the report
+        // (breadcrumb), never the turn.
+        try {
+          noteInflightTool(config.dataDir, id, wire.data.name);
+        } catch (error) {
+          console.warn("[turn] in-flight marker tool note failed:", error);
+        }
+      } else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
         if (t) {
           t.isError = wire.data.isError;
@@ -827,6 +852,9 @@ export async function execTurn(
     reportMissionSettle(id, "error", null);
   } finally {
     conv.turnId = undefined;
+    // Every in-process end of the turn — clean, failed, stopped, thrown —
+    // passes here, so a marker that outlives this process is unambiguous.
+    clearInflightMarker(config.dataDir, id);
     // Retire the live-mode ref with the turn: a Mode-pill switch between turns
     // has nothing to apply to (the next turn's pin carries it instead).
     conv.liveMode = undefined;

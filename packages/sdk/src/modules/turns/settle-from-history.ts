@@ -1,6 +1,6 @@
 import { isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
-import { STOPPED_BY_USER } from "./turn-errors";
+import { ENGINE_RESTART_MESSAGE, STOPPED_BY_USER } from "./turn-errors";
 import {
   finishErr,
   finishOk,
@@ -102,6 +102,15 @@ function adoptReply(
   // so this precedes the adopt below.
   if (reply.stopped) {
     finishErr(s, STOPPED_BY_USER);
+    return;
+  }
+  // A turn the ENGINE died on: the runtime's boot settle wrote this reply in
+  // place of the one the dead process never persisted. Same body as the dead-
+  // turn settle above (`finishErr` → system line + `error` status), with the
+  // authored restart copy instead of the generic one — the client's own
+  // detection never sees this shape, only a reload after the engine is back.
+  if (reply.interrupted) {
+    finishErr(s, ENGINE_RESTART_MESSAGE);
     return;
   }
   s.text = reply.content;

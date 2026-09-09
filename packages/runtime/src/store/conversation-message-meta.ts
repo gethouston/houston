@@ -54,6 +54,12 @@ export interface AssistantMessageMeta {
    * turns.
    */
   stopped?: true;
+  /**
+   * Set by the boot settle (session/settle-interrupted-turns.ts) on the reply
+   * it writes for a turn the previous process died on. Never set by a running
+   * turn — a turn that ends in-process has a real terminal shape instead.
+   */
+  interrupted?: ChatMessage["interrupted"];
   /** The turn's wire id (`WireFrame.turnId`) — same as the user message's. */
   turnId?: string;
 }

@@ -7,6 +7,7 @@ import {
 } from "../session/acting-context";
 import { anyTurnRunning } from "../session/bus";
 import { isDraining } from "../session/drain";
+import { settleInterruptedTurns } from "../session/settle-interrupted-turns";
 import { handleAnonymizeRoute } from "./anonymize-route";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
@@ -75,6 +76,16 @@ export function createRuntimeServer() {
 }
 
 export function startServer() {
+  // Turns the previous process died on (a pod OOM-killed mid-turn, the desktop
+  // force-quit) get their honest reply BEFORE anything can read history: a
+  // client reconnecting the instant this runtime is back settles from it.
+  // Never boot-fatal — a settle that throws must not turn one lost turn into
+  // an engine that will not start (it logs; the marker stays for next boot).
+  try {
+    settleInterruptedTurns({ dataDir: config.dataDir });
+  } catch (error) {
+    console.error("[turn] settling interrupted turns failed:", error);
+  }
   // Warm the anthropic shared-dir credential probe so the turn-time sync path
   // (`activeProvider`) sees a connected credential even before the first
   // /auth/status poll. Fire-and-forget; failures self-log (never connected).

@@ -39,6 +39,7 @@ export function appendAssistantMessageAt(
     fileChanges: meta.fileChanges,
     pendingInteraction: meta.pendingInteraction,
     stopped: meta.stopped,
+    interrupted: meta.interrupted,
     turnId: meta.turnId,
   });
   conv.updatedAt = Date.now();

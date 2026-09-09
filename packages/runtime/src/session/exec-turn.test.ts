@@ -1083,3 +1083,49 @@ test("two different requests raise two cards even when they read alike", async (
     steps.map((s) => (s.kind === "question" ? s.requestId : null)),
   ).toEqual(["req-a", "req-b"]);
 });
+
+// ── The in-flight marker (turn-inflight-marker.ts) ──────────────────────────
+// Written with the user message, named after the running tool, gone on every
+// in-process end — so a marker found at boot is unambiguously a turn the
+// previous process died on (settle-interrupted-turns.ts).
+
+const { readInflightMarker } = await import("./turn-inflight-marker");
+const { config } = await import("../config");
+
+test("the in-flight marker lives from the user message to the turn's end and names the running tool", async () => {
+  const id = "exec-inflight-clean";
+  const seen: Array<ReturnType<typeof readInflightMarker>> = [];
+  const conv = fakeConv((emit) => {
+    seen.push(readInflightMarker(config.dataDir, id));
+    emit({ type: "tool_start", data: { name: "bash", args: { cmd: "ls" } } });
+    seen.push(readInflightMarker(config.dataDir, id));
+    emit({
+      type: "tool_end",
+      data: { name: "bash", isError: false, content: "ok" },
+    });
+    emit({ type: "text", data: "done" });
+  });
+  const recorded = recordUserTurn(conv, id, "turn-inflight", "run it");
+  expect(readInflightMarker(config.dataDir, id)).toMatchObject({
+    conversationId: id,
+    turnId: "turn-inflight",
+  });
+  await execTurn(conv, id, "turn-inflight", "run it", recorded);
+  expect(seen[0]).toMatchObject({ turnId: "turn-inflight" });
+  expect(seen[0]?.tool).toBeUndefined();
+  expect(seen[1]?.tool).toBe("bash");
+  expect(readInflightMarker(config.dataDir, id)).toBeNull();
+});
+
+test("a thrown turn clears the in-flight marker too", async () => {
+  const id = "exec-inflight-thrown";
+  const conv = fakeConv(() => {}, {
+    setModel: () => {
+      throw new Error("boom");
+    },
+  });
+  const recorded = recordUserTurn(conv, id, "turn-thrown", "go");
+  expect(readInflightMarker(config.dataDir, id)).not.toBeNull();
+  await execTurn(conv, id, "turn-thrown", "go", recorded);
+  expect(readInflightMarker(config.dataDir, id)).toBeNull();
+});

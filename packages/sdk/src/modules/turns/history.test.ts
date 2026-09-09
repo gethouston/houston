@@ -299,6 +299,34 @@ describe("historyToFeed", () => {
     });
   });
 
+  it("replays the engine-restart line for a persisted interrupted turn", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "export it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        interrupted: { cause: "engine_restart", tool: "bash" },
+      },
+    ]);
+    expect(feed).toEqual([
+      {
+        feed_type: "user_message",
+        data: "export it",
+        author: undefined,
+        ts: 1,
+        turnId: "t-1",
+      },
+      {
+        feed_type: "system_message",
+        data: "Your agent had to restart. Say continue and it will pick up where it left off.",
+        ts: 2,
+        turnId: "t-1",
+      },
+    ]);
+  });
+
   it("omits the stop line for a turn that ran to completion (no regression)", () => {
     const feed = historyToFeed([
       { role: "user", content: "do it", ts: 1 },
