@@ -5,6 +5,7 @@ import {
   gatewayFetch,
   liveGatewayDeps,
 } from "../src/lib/gateway-fetch.ts";
+import { resetRejectedBearers } from "../src/lib/gateway-refresh.ts";
 
 interface Sent {
   url: string;
@@ -50,6 +51,8 @@ function deps(
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("gatewayFetch", () => {
+  afterEach(() => resetRejectedBearers());
+
   it("identifies the build on every request", async () => {
     const sent: Sent[] = [];
     const res = await gatewayFetch(
@@ -142,6 +145,38 @@ describe("gatewayFetch", () => {
     strictEqual(refreshes, 1);
     strictEqual(res?.status, 401);
     strictEqual(sent.length, 1);
+  });
+
+  it("never replays a bearer a sibling request already had rejected", async () => {
+    // Wake burst (PRODUCT-1737): request 1 mints "b2", replays it and the
+    // gateway refuses it — that one replay stays loud. Request 2, still holding
+    // the old bearer, is handed the same "b2" by the shared refresh: the answer
+    // is already known, so its original 401 stands without a doomed replay.
+    const sent: Sent[] = [];
+    const overrides = { token: () => "b1", refresh: async () => "b2" };
+    const first = await gatewayFetch(
+      deps(
+        [
+          new Response(null, { status: 401 }),
+          new Response(null, { status: 401 }),
+        ],
+        sent,
+        overrides,
+      ),
+      "/v1/me",
+    );
+    strictEqual(first?.status, 401);
+    deepStrictEqual(
+      sent.map((s) => s.bearer),
+      ["Bearer b1", "Bearer b2"],
+    );
+
+    const second = await gatewayFetch(
+      deps([new Response(null, { status: 401 })], sent, overrides),
+      "/v1/workspaces",
+    );
+    strictEqual(second?.status, 401);
+    strictEqual(sent.length, 3);
   });
 
   it("sends nothing at all when there is no session", async () => {
