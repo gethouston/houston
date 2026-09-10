@@ -66,6 +66,9 @@ export interface FlowEntry {
   cancelled: boolean;
   /** The hosted OAuth link, so "Reopen" can reopen the same page. */
   redirectUrl: string | null;
+  /** The pending connection the poll reads, once the link is minted, so a
+   *  disconnect of THAT account (or of the whole app) can stop the poll. */
+  connectionId: string | null;
   /** This flow's run, so a second surface asking for the same app JOINS it
    *  (and observes the same outcome) instead of being turned away. Assigned
    *  synchronously right after {@link beginFlow}, before any await. */
@@ -102,6 +105,7 @@ export function beginFlow(
     waker,
     cancelled: false,
     redirectUrl: null,
+    connectionId: null,
     promise: null,
   };
   reg.set(toolkit, entry);
@@ -128,6 +132,24 @@ export function cancelFlow(reg: FlowRegistry, toolkit: string): void {
   if (!entry) return;
   entry.cancelled = true;
   entry.waker.wake();
+}
+
+/**
+ * A disconnect is about to remove `connectionId` of `toolkit` (every account
+ * of the app when omitted): stop a poll that is waiting on that very
+ * connection, so it never reads the id the user just removed (PRODUCT-1733).
+ * Removing ONE other account leaves a pending sibling's poll running — that
+ * OAuth is still the user's to finish.
+ */
+export function cancelFlowForDisconnect(
+  reg: FlowRegistry,
+  toolkit: string,
+  connectionId?: string,
+): void {
+  const entry = reg.get(toolkit);
+  if (!entry) return;
+  if (connectionId !== undefined && entry.connectionId !== connectionId) return;
+  cancelFlow(reg, toolkit);
 }
 
 /** Wake ONE flow's poll to check right now ("I have finished"). */

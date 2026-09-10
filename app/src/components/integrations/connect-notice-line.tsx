@@ -12,7 +12,10 @@ import type { ConnectNotice } from "./connect-flow-run";
  * repeating the same sentence on the row said one thing three times over. What
  * belongs here is the state: "Connected", "Could not connect". The abandoned
  * case keeps its sentence because it is the actionable one: it says the app can
- * be connected again, right where it sits.
+ * be connected again, right where it sits. A connection that vanished under
+ * the poll (`cancelled`) has NO toast at all: the user disconnected it
+ * themselves, or the provider let it lapse, so this quiet line is the one
+ * surface (PRODUCT-1733).
  *
  * Lives apart from {@link ConnectFlowInline} so a surface can show the outcome
  * without pulling in the whole live-phase block.
@@ -45,6 +48,9 @@ export function ConnectNoticeLine({
         {t("waiting.failed")}
       </NoticeLine>
     );
+  }
+  if (notice === "cancelled") {
+    return <NoticeLine tone="muted">{t("waiting.cancelled")}</NoticeLine>;
   }
   return (
     <NoticeLine tone="muted">

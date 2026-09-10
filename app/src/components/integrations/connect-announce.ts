@@ -16,7 +16,10 @@ import { INTEGRATION_PROVIDER, type PollOutcome } from "./model";
  * neutral toast pointing at the pending row's Finish action, never a red one
  * with a bug report — walking away is normal behavior, not a crash; a
  * provider-side failure is an error toast with no auto bug report either.
- * A cancel is silent by design and never reaches here.
+ * A cancel is silent by design and never reaches here; a connection that
+ * vanished under the poll (`gone`) reaches here and stays silent too — the
+ * user disconnected it themselves (or the provider let it lapse), and the
+ * row's own notice line already says so (PRODUCT-1733).
  */
 export function useConnectAnnounce(): {
   /** The app's real catalog name, never the machine slug. */

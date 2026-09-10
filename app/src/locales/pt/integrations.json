@@ -59,6 +59,7 @@
     "cancel": "Cancelar",
     "connected": "Conectado",
     "failed": "Não foi possível conectar",
+    "cancelled": "Conexão cancelada",
     "stopped": "Paramos de verificar o {{app}}. Conecte de novo quando você acabar."
   },
   "pendingRecovery": {

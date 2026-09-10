@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   beginFlow,
   cancelFlow,
+  cancelFlowForDisconnect,
   createRegistry,
   endFlow,
   flowPromise,
@@ -164,5 +165,54 @@ describe("connect-flow registry — wake + redirect are per slug", () => {
     strictEqual(flowRedirectUrl(reg, "gmail"), "https://oauth.example/gmail");
     // A slug with no live flow reads null (reopen after end is a no-op).
     strictEqual(flowRedirectUrl(reg, "slack"), null);
+  });
+});
+
+describe("connect-flow registry — cancel on disconnect (PRODUCT-1733)", () => {
+  it("removing the whole app stops its pending poll", () => {
+    const reg = createRegistry();
+    const waker = countingWaker();
+    const entry = beginFlow(reg, "gmail", waker);
+    if (!entry) throw new Error("expected an entry");
+    entry.connectionId = "ca_pending";
+    cancelFlowForDisconnect(reg, "gmail");
+    strictEqual(entry.cancelled, true);
+    strictEqual(waker.wakes, 1);
+  });
+
+  it("removing THE account being polled stops the poll", () => {
+    const reg = createRegistry();
+    const entry = beginFlow(reg, "gmail", countingWaker());
+    if (!entry) throw new Error("expected an entry");
+    entry.connectionId = "ca_pending";
+    cancelFlowForDisconnect(reg, "gmail", "ca_pending");
+    strictEqual(entry.cancelled, true);
+  });
+
+  it("removing ANOTHER account of the app leaves the pending poll running", () => {
+    // Two Gmail logins: the user drops the old one while the new one's OAuth is
+    // still open in the browser. That OAuth is still theirs to finish.
+    const reg = createRegistry();
+    const waker = countingWaker();
+    const entry = beginFlow(reg, "gmail", waker);
+    if (!entry) throw new Error("expected an entry");
+    entry.connectionId = "ca_pending";
+    cancelFlowForDisconnect(reg, "gmail", "ca_old");
+    strictEqual(entry.cancelled, false);
+    strictEqual(waker.wakes, 0);
+  });
+
+  it("a single-account removal while the link is still minting leaves the flow alone", () => {
+    const reg = createRegistry();
+    const entry = beginFlow(reg, "gmail", countingWaker());
+    if (!entry) throw new Error("expected an entry");
+    cancelFlowForDisconnect(reg, "gmail", "ca_old");
+    strictEqual(entry.cancelled, false);
+  });
+
+  it("is a no-op for a slug with no flow", () => {
+    const reg = createRegistry();
+    cancelFlowForDisconnect(reg, "gmail");
+    strictEqual(reg.size, 0);
   });
 });

@@ -66,6 +66,7 @@ import {
 import { isEngineWakingError } from "./engine-waking-error";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
+import { isIntegrationConnectionGoneError } from "./integration-connection-gone";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { isNetworkTransportError } from "./network-transport-error";
@@ -2222,9 +2223,16 @@ export const tauriIntegrations = {
           isToolkitOauthUnavailableError(err) || isToolkitNoAuthError(err),
       },
     ),
+  /** The connect poll's status read. A 404 means the pending connection is
+   *  gone (the user disconnected the app mid-OAuth, or the provider expired
+   *  it) — the poll settles as `gone` (PRODUCT-1733), so it is silenced here
+   *  rather than reported as a bug. */
   connection: (provider: string, connectionId: string) =>
-    call("integration_connection", () =>
-      getEngine().integrationConnection(provider, connectionId),
+    call(
+      "integration_connection",
+      () => getEngine().integrationConnection(provider, connectionId),
+      { provider, connectionId },
+      { silence: isIntegrationConnectionGoneError },
     ),
   /** `connectionId` narrows the removal to ONE account of the toolkit (a
    *  toolkit can hold several — two Gmail logins); omitted removes them all. */

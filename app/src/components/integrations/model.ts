@@ -2,6 +2,7 @@ import type {
   Capabilities,
   IntegrationConnection,
 } from "@houston-ai/engine-client";
+import { isIntegrationConnectionGoneError } from "../../lib/integration-connection-gone.ts";
 
 /**
  * The integrations provider (platform mode): Houston holds the platform key
@@ -30,12 +31,15 @@ export const POLL_INTERVAL_MS = 2000;
 export const POLL_MAX_ATTEMPTS = 150; // ~5 min at 2s/attempt.
 
 /**
- * Outcome of the post-connect poll loop. `timeout` and `error` are first-class
- * results, NOT silent fall-throughs: the caller MUST surface them so an
- * abandoned or failed browser OAuth never leaves the user staring at a stopped
- * spinner with no explanation.
+ * Outcome of the post-connect poll loop. `timeout`, `error` and `gone` are
+ * first-class results, NOT silent fall-throughs: the caller MUST surface them
+ * so an abandoned, failed or removed browser OAuth never leaves the user
+ * staring at a stopped spinner with no explanation. `gone` is the pending
+ * connection vanishing under the poll (the user disconnected the app
+ * mid-OAuth, or the provider expired it) — expected, never a bug
+ * (PRODUCT-1733).
  */
-export type PollOutcome = "active" | "error" | "timeout" | "cancelled";
+export type PollOutcome = "active" | "error" | "timeout" | "cancelled" | "gone";
 
 /**
  * Poll one connection until the user finishes the app's OAuth in their browser,
@@ -51,8 +55,12 @@ export type PollOutcome = "active" | "error" | "timeout" | "cancelled";
  *                    immediately instead of running out the full budget.
  *
  * Returns `"active"` on success, `"error"` if the OAuth failed or was revoked,
- * `"cancelled"` if the flow was cancelled mid-wait, and `"timeout"` once the
- * attempt budget is spent while still pending.
+ * `"cancelled"` if the flow was cancelled mid-wait, `"gone"` when the
+ * connection no longer exists (its read answers 404), and `"timeout"` once the
+ * attempt budget is spent while still pending. A 404 landing on a poll that was
+ * ALREADY cancelled (the user's own disconnect raced the in-flight read) is
+ * the cancel, not a second outcome. Any other poll failure still rejects so
+ * the caller's catch surfaces it.
  */
 export async function pollConnectionUntilActive(deps: {
   poll: () => Promise<IntegrationConnection>;
@@ -67,7 +75,13 @@ export async function pollConnectionUntilActive(deps: {
     if (deps.isCancelled()) return "cancelled";
     await deps.sleep(intervalMs);
     if (deps.isCancelled()) return "cancelled";
-    const conn = await deps.poll();
+    let conn: IntegrationConnection;
+    try {
+      conn = await deps.poll();
+    } catch (err) {
+      if (!isIntegrationConnectionGoneError(err)) throw err;
+      return deps.isCancelled() ? "cancelled" : "gone";
+    }
     if (conn.status === "active") return "active";
     if (conn.status === "error") return "error";
   }
