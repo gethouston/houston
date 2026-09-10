@@ -3,7 +3,6 @@ import {
   AvatarGroupCount,
   cn,
   Popover,
-  PopoverContent,
   PopoverTrigger,
 } from "@houston-ai/core";
 import {
@@ -21,6 +20,7 @@ import {
   overflowCount,
   visiblePeople,
 } from "./kanban-people-logic";
+import { KanbanPeopleRoster } from "./kanban-people-roster";
 import type { KanbanPerson } from "./types";
 
 export type { KanbanPeopleSurface };
@@ -44,8 +44,12 @@ export interface KanbanPeopleProps {
    *  by default (a static, non-interactive chip). */
   expandable?: boolean;
   /** Accessible label for the expandable "+N" trigger / popover (e.g. "All
-   *  people"). Only used when `expandable`. */
+   *  people"). Only used when `expandable` or `roster`. */
   expandLabel?: string;
+  /** The WHOLE stack is a button opening the roster popover. The stack has no
+   *  visible label of its own and a hover tooltip is dead on touch, so a
+   *  stack that must work on the phone (the chat header) needs this. */
+  roster?: boolean;
   className?: string;
 }
 
@@ -60,6 +64,7 @@ export function KanbanPeople({
   label = "People",
   expandable = false,
   expandLabel,
+  roster = false,
   className,
 }: KanbanPeopleProps) {
   if (!people || people.length === 0) return null;
@@ -78,7 +83,7 @@ export function KanbanPeople({
     RING_CHIP[surface],
   );
 
-  return (
+  const stack = (
     <AvatarGroup
       role="group"
       aria-label={label}
@@ -115,29 +120,7 @@ export function KanbanPeople({
                 +{extra}
               </button>
             </PopoverTrigger>
-            <PopoverContent
-              align="start"
-              onClick={(e) => e.stopPropagation()}
-              className="w-56 p-1"
-            >
-              <div className="max-h-64 overflow-y-auto">
-                {people.map((person) => (
-                  <div
-                    key={person.id}
-                    className="flex items-center gap-2 rounded-md px-2 py-1.5"
-                  >
-                    <Face
-                      person={person}
-                      faceSize={FACE_SIZE.md}
-                      textSize={TEXT_SIZE.md}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-sm text-ink">
-                      {person.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
+            <KanbanPeopleRoster people={people} />
           </Popover>
         ) : (
           <AvatarGroupCount className={chipClass} title={`+${extra}`}>
@@ -145,5 +128,21 @@ export function KanbanPeople({
           </AvatarGroupCount>
         ))}
     </AvatarGroup>
+  );
+  if (!roster) return stack;
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          aria-label={expandLabel ?? label}
+          className="flex shrink-0 items-center rounded-full transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          {stack}
+        </button>
+      </PopoverTrigger>
+      <KanbanPeopleRoster people={people} />
+    </Popover>
   );
 }

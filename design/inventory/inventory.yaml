@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 82
+version: 83
 
 components:
   - id: custom-integration-details
@@ -110,8 +110,9 @@ components:
     states: [closed, actions-open, open-unfiltered, filtered, no-results, current-message]
     variants: [conversation-overlay]
     behavior: >-
-      The chat header's three-dot menu (left of the people stack and close
-      control) offers Find plus status-aware mission actions. Choosing Find
+      The chat header's three-dot menu (leading the panel controls at the
+      right edge, beside the close control) offers Find plus status-aware
+      mission actions. Choosing Find
       shows the compact conversation map before a query is entered.
       Filtering is case- and accent-insensitive across every loaded message;
       selecting a result scrolls to and briefly highlights that message. Delete
@@ -731,14 +732,19 @@ components:
       everywhere). Past five faces the rest collapse into a solid "+N" chip that
       expands to the full roster, and the card body reserves a right gutter sized
       to the stack so no text ever runs underneath it. Server-stamped attribution
-      only (multiplayer); an unattributed card renders exactly as before.
+      only (multiplayer); an unattributed card renders exactly as before. The
+      open chat's header carries the same stack on the LEFT, beside the agent's
+      name and task line and apart from the panel controls, as a button that
+      opens the full roster; it is absent while nobody but the viewer is on
+      the task, so a solo chat never shows your own face as a dead control.
     a11y: >-
       article/button role; title as label; checkbox labeled; status not
       color-only; each action button is a >=24px hit box whose icon-only glyph
       carries an accessible label naming what it does, so approve and archive
       are told apart by name, not shape; the face stack is a labeled group, each face names its person
       (tooltip + title) and the "+N" chip is a labeled control, so no contributor
-      is reachable by hover alone.
+      is reachable by hover alone; in the chat header the whole stack is one
+      labeled button, so it works by touch.
     since: 1
 
   - id: mission-board

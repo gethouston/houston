@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
   CARD_PEOPLE_MAX,
+  hasPeopleBeyond,
   initialsFor,
   overflowCount,
   peopleGutterClass,
@@ -191,5 +192,28 @@ describe("peopleGutterClass", () => {
         `gutter for ${slots} circles is narrower than the stack`,
       );
     }
+  });
+});
+
+describe("hasPeopleBeyond", () => {
+  it("is false with no stack at all", () => {
+    assert.equal(hasPeopleBeyond(undefined, "me"), false);
+    assert.equal(hasPeopleBeyond([], "me"), false);
+  });
+
+  it("is false when the viewer is the only person", () => {
+    assert.equal(hasPeopleBeyond([person("me", "Me")], "me"), false);
+  });
+
+  it("is true once anyone else is on it, whether or not the viewer is", () => {
+    assert.equal(
+      hasPeopleBeyond([person("me", "Me"), person("u-bob", "Bob")], "me"),
+      true,
+    );
+    assert.equal(hasPeopleBeyond([person("u-bob", "Bob")], "me"), true);
+  });
+
+  it("counts any stamped person when the viewer is unknown", () => {
+    assert.equal(hasPeopleBeyond([person("u-ada", "Ada")], undefined), true);
   });
 });

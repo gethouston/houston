@@ -829,6 +829,7 @@ export function AIBoard({
       agentName={panelAgentName ?? panelItem?.group}
       missionLabelOverride={panelMissionLabel}
       people={panelItem?.people}
+      selfId={currentUserId}
       peopleLabel={cardLabels?.people}
       peopleExpandLabel={cardLabels?.peopleExpand}
       closeLabel={cardLabels?.closePanel}
