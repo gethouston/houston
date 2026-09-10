@@ -10,6 +10,9 @@ pub mod portable;
 pub mod save_file;
 pub mod terminal;
 pub mod update;
+mod update_failure;
+mod update_fetch;
+pub mod update_stage;
 
 /// Expand a leading `~` to the user's home directory.
 ///

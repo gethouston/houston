@@ -35,6 +35,10 @@ tauri-plugin-notification = "2"
 # navigator.clipboard.readText is permission-gated and flaky across platforms).
 arboard = "3"
 tauri-plugin-updater = "2"
+# The shell downloads releases itself (resume + backoff; src/commands/
+# update_fetch.rs) and verifies them against the updater pubkey the way the
+# plugin does. Same crate + version the plugin pulls in.
+minisign-verify = "0.2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-sentry = "0.5"
 sentry = "0.42"
@@ -120,6 +124,9 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Securit
 tauri-winrt-notification = "0.7"
 
 [dev-dependencies]
+# `start_paused` in the resumable-download tests: the backoff sleeps between
+# resume attempts auto-advance instead of running on the wall clock.
+tokio = { version = "1", features = ["full", "test-util"] }
 # `log::error!(target: ...)` in sentry_filter tests: drives the real
 # log → tracing bridge the way Tauri plugins and rustls do in production.
 log = "0.4"

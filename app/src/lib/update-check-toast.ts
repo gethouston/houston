@@ -1,11 +1,13 @@
 import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import i18n from "./i18n";
+import { reportQuietError } from "./quiet-error-report";
 import {
   captureException as sentryCapture,
   sentrySuppressedInDev,
 } from "./sentry";
 import { createSentryReportError } from "./sentry-report-error";
+import { isUpdateNetworkFailure } from "./update-download-failure";
 
 /**
  * Surface a client whose update checks keep failing (PRODUCT-1386). The
@@ -22,7 +24,11 @@ import { createSentryReportError } from "./sentry-report-error";
  *    clients directly);
  *  - a Sentry capture, so stranded clients get an issue with a user count —
  *    this also surfaces any leaked staging QA build, whose no-op updater
- *    endpoint 404s every check by design.
+ *    endpoint 404s every check by design. A network-shaped failure (the
+ *    request never got an answer: offline, DNS, a proxy that drops GitHub)
+ *    is the quiet `offline` class instead (PRODUCT-1727): the toast and the
+ *    analytics event still fire, but Sentry gets one burst-collapsed warning
+ *    in the class's fingerprinted issue, never a per-user error.
  */
 export function showUpdateCheckStuckToast(
   message: string,
@@ -45,6 +51,10 @@ export function showUpdateCheckStuckToast(
     error_kind: classifyAnalyticsError(message),
   });
   if (sentrySuppressedInDev) return;
+  if (isUpdateNetworkFailure(message)) {
+    reportQuietError("offline", command, message, new Error(message));
+    return;
+  }
   void sentryCapture(createSentryReportError(command, message), {
     source: command,
     error_kind: classifyAnalyticsError(message),

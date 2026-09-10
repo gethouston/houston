@@ -477,6 +477,10 @@ pub fn run() {
             commands::save_file::save_download,
             commands::update::current_app_bundle_path,
             commands::update::relaunch_app_from_path,
+            // Resumable release download + staged install over the updater
+            // plugin's `Update` resource (PRODUCT-1727).
+            commands::update_stage::download_update,
+            commands::update_stage::install_update,
             // Hidden Sentry smoke command for native stack verification.
             commands::diagnostics::sentry_native_stack_smoke_test,
             // Logging (writes to local log files).

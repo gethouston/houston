@@ -2088,6 +2088,7 @@ dependencies = [
  "houston-local-model-bridge",
  "keyring",
  "log",
+ "minisign-verify",
  "notify-rust",
  "objc2",
  "objc2-app-kit",
