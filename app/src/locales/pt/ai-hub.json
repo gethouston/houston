@@ -156,7 +156,8 @@
     "noData": "Esta conta não reporta limites no momento.",
     "notMeteredYet": "Ainda não há uso. A Houston vai começar a medir com a sua próxima mensagem.",
     "reconnect": "Entre novamente para ver o uso desta conta.",
-    "error": "Não foi possível carregar o uso. Tente de novo em instantes."
+    "error": "Não foi possível carregar o uso. Tente de novo em instantes.",
+    "staleReading": "Não foi possível atualizar o uso. Mostrando a leitura de {{when}}."
   },
   "timeWorked": {
     "range": {

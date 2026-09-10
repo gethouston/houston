@@ -11,6 +11,7 @@ import {
   matchUsageToProviders,
   type UsageFetchState,
 } from "./provider-usage-model";
+import { formatReadingAge } from "./provider-usage-window";
 
 /**
  * How many connected accounts the strip previews at rest.
@@ -66,7 +67,7 @@ export function ConnectedProvidersStrip({
   searching: boolean;
   onOpen: (provider: ProviderInfo) => void;
 }) {
-  const { t } = useTranslation("aiHub");
+  const { t, i18n } = useTranslation("aiHub");
   const [expanded, setExpanded] = useState(false);
   // The strip's MOUNT is not the gate: this list means "the user's accounts",
   // which by design includes the ones whose probe could not be confirmed, and
@@ -76,7 +77,12 @@ export function ConnectedProvidersStrip({
     () => hasConfirmedAccount(providers, connectionState),
     [providers, connectionState],
   );
-  const { data: usageRows, isLoading, isError } = useProviderUsage(enabled);
+  const {
+    data: usageRows,
+    isLoading,
+    isError,
+    dataUpdatedAt,
+  } = useProviderUsage(enabled);
   // TanStack keeps the last good `data` through a failed BACKGROUND refetch, so
   // a single blip must not blank every meter on the strip: the rows only fall
   // back to the honest error note when there is nothing to show at all.
@@ -85,6 +91,13 @@ export function ConnectedProvidersStrip({
     : isError && !usageRows
       ? "error"
       : "ready";
+  // ...but a retained reading is not a live one. While the refetch keeps
+  // failing (an asleep pod, the device offline) the meters would otherwise
+  // present hours-old numbers as current, so the strip dates them.
+  const staleReadingAge =
+    isError && usageRows
+      ? formatReadingAge(dataUpdatedAt, i18n.language)
+      : null;
 
   // A live query shows every match; at rest the strip caps its rows so a full
   // strip never pushes the discovery tabs below the fold.
@@ -118,6 +131,11 @@ export function ConnectedProvidersStrip({
         <CatalogShowMore onClick={() => setExpanded(true)}>
           {t("search.showAll", { count: providers.length })}
         </CatalogShowMore>
+      )}
+      {staleReadingAge && (
+        <p className="mt-2 text-xs text-ink-muted" role="status">
+          {t("providerUsage.staleReading", { when: staleReadingAge })}
+        </p>
       )}
     </div>
   );
