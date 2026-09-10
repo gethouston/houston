@@ -28,6 +28,10 @@ mod sentry_filter;
 mod shell_env;
 mod store_deep_link;
 mod window_focus;
+// Pure decision logic compiles and tests everywhere; only the Win32 probe
+// and dialog are Windows-only.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+mod window_preflight;
 mod windows_icon_repair;
 
 use engine_supervisor::{
@@ -256,6 +260,12 @@ pub fn run() {
     // here onwards, including engine subprocess spawn logs and plugin setup.
     logging::init(&houston);
     redirection_guard::report_after_logging_init();
+
+    // Windows: tao's event loop asserts (a bare panic, no error code) when
+    // the session cannot create a window. Probe the same calls first so a
+    // broken session ends in a Sentry event that names the Win32 error and
+    // a dialog the user can act on, instead of a silent crash (PRODUCT-1726).
+    window_preflight::ensure_window_creation_works();
 
     let mut builder = tauri::Builder::default();
 
