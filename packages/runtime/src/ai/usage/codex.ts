@@ -4,6 +4,7 @@ import {
   epochSecondsToIso,
   type ProviderUsage,
   type ProviderUsageWindow,
+  settleWindow,
 } from "./types";
 
 /**
@@ -52,10 +53,14 @@ function toWindow(
   };
 }
 
-/** Fetch the connected Codex account's rate-limit windows. */
+/**
+ * Fetch the connected Codex account's rate-limit windows. A window the API
+ * still reports past its own reset is settled to empty (`settleWindow`).
+ */
 export async function fetchCodexUsage(
   fetchImpl: typeof fetch = fetch,
   store: Pick<KeyStore, "get" | "getApiKey"> = keyStore,
+  now: () => number = Date.now,
 ): Promise<ProviderUsage> {
   const provider = "openai-codex";
   // getApiKey auto-refreshes the OAuth token under the store's serialized
@@ -96,7 +101,9 @@ export async function fetchCodexUsage(
   const windows = [
     toWindow(body.rate_limit?.primary_window, "session"),
     toWindow(body.rate_limit?.secondary_window, "week"),
-  ].filter((w): w is ProviderUsageWindow => w !== null);
+  ]
+    .filter((w): w is ProviderUsageWindow => w !== null)
+    .map((w) => settleWindow(w, now()));
   return {
     provider,
     status: "ok",
@@ -104,6 +111,6 @@ export async function fetchCodexUsage(
     ...(typeof body.plan_type === "string" && body.plan_type
       ? { plan: body.plan_type }
       : {}),
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: new Date(now()).toISOString(),
   };
 }

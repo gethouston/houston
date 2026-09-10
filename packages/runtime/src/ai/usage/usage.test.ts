@@ -4,7 +4,7 @@ import { fetchCodexUsage } from "./codex";
 import { fetchCopilotUsage } from "./copilot";
 import { fetchDeepSeekUsage, fetchOpenRouterUsage } from "./credits";
 import { listProviderUsage } from "./index";
-import { clampPercent, epochSecondsToIso } from "./types";
+import { clampPercent, epochSecondsToIso, settleWindow } from "./types";
 
 function jsonResponse(body: unknown, status = 200): typeof fetch {
   return async () =>
@@ -15,6 +15,8 @@ function jsonResponse(body: unknown, status = 200): typeof fetch {
 }
 
 const someToken = async () => "tok-123";
+/** A clock BEFORE every fixture's reset instant, so live windows stay live. */
+const beforeFixtures = () => Date.parse("2026-07-01T00:00:00Z");
 
 describe("fetchAnthropicUsage", () => {
   it("maps the five_hour / seven_day / opus blocks to windows", async () => {
@@ -25,6 +27,7 @@ describe("fetchAnthropicUsage", () => {
         seven_day_opus: null,
       }),
       someToken,
+      beforeFixtures,
     );
     expect(row.status).toBe("ok");
     expect(row.windows).toEqual([
@@ -58,6 +61,31 @@ describe("fetchAnthropicUsage", () => {
     const row = await fetchAnthropicUsage(jsonResponse({}, 500), someToken);
     expect(row.status).toBe("error");
     expect(row.message).toContain("500");
+  });
+
+  it("settles a window the API still reports past its own reset", async () => {
+    // The stuck-strip shape: hours after the 5h window reset, the API keeps
+    // answering with the previous window (49%, a reset instant in the past)
+    // until the account's next request. The weekly lane is still live.
+    const now = Date.parse("2026-09-10T13:46:00Z");
+    const row = await fetchAnthropicUsage(
+      jsonResponse({
+        five_hour: { utilization: 49, resets_at: "2026-09-10T07:00:00Z" },
+        seven_day: { utilization: 65, resets_at: "2026-09-11T00:00:00Z" },
+      }),
+      someToken,
+      () => now,
+    );
+    expect(row.windows).toEqual([
+      { id: "session", usedPercent: 0, resetsAt: null, windowMinutes: 300 },
+      {
+        id: "week",
+        usedPercent: 65,
+        resetsAt: "2026-09-11T00:00:00Z",
+        windowMinutes: 10_080,
+      },
+    ]);
+    expect(row.fetchedAt).toBe(new Date(now).toISOString());
   });
 });
 
@@ -98,7 +126,7 @@ describe("fetchCodexUsage", () => {
         { status: 200 },
       );
     };
-    const row = await fetchCodexUsage(fetchImpl, store);
+    const row = await fetchCodexUsage(fetchImpl, store, beforeFixtures);
     expect(sawAccountHeader).toBe(true);
     expect(row.status).toBe("ok");
     expect(row.plan).toBe("pro");
@@ -115,6 +143,76 @@ describe("fetchCodexUsage", () => {
       getApiKey: async () => undefined,
     });
     expect(row.status).toBe("unauthenticated");
+  });
+
+  it("settles an exhausted session window whose reset has passed", async () => {
+    // "100% used" with a reset instant behind us is the previous window; the
+    // next request opens a fresh one, so the honest reading is empty.
+    const now = 1_784_100_000_000;
+    const row = await fetchCodexUsage(
+      jsonResponse({
+        rate_limit: {
+          primary_window: {
+            used_percent: 100,
+            reset_at: 1_784_000_000,
+            limit_window_seconds: 18_000,
+          },
+          secondary_window: {
+            used_percent: 20,
+            reset_at: 1_784_500_000,
+            limit_window_seconds: 604_800,
+          },
+        },
+      }),
+      store,
+      () => now,
+    );
+    expect(row.windows).toEqual([
+      { id: "session", usedPercent: 0, resetsAt: null, windowMinutes: 300 },
+      {
+        id: "week",
+        usedPercent: 20,
+        resetsAt: new Date(1_784_500_000 * 1000).toISOString(),
+        windowMinutes: 10_080,
+      },
+    ]);
+  });
+});
+
+describe("settleWindow", () => {
+  const now = Date.parse("2026-09-10T12:00:00Z");
+  const live = {
+    id: "session" as const,
+    usedPercent: 49,
+    resetsAt: "2026-09-10T15:00:00Z",
+  };
+
+  it("leaves a live window, a window with no reset, and junk alone", () => {
+    expect(settleWindow(live, now)).toBe(live);
+    const noReset = { ...live, resetsAt: null };
+    expect(settleWindow(noReset, now)).toBe(noReset);
+    const junk = { ...live, resetsAt: "garbage" };
+    expect(settleWindow(junk, now)).toBe(junk);
+  });
+
+  it("empties a window at and after its reset instant", () => {
+    const atReset = { ...live, resetsAt: "2026-09-10T12:00:00Z" };
+    expect(settleWindow(atReset, now)).toEqual({
+      id: "session",
+      usedPercent: 0,
+      resetsAt: null,
+    });
+    const past = {
+      ...live,
+      resetsAt: "2026-09-10T07:00:00Z",
+      windowMinutes: 300,
+    };
+    expect(settleWindow(past, now)).toEqual({
+      id: "session",
+      usedPercent: 0,
+      resetsAt: null,
+      windowMinutes: 300,
+    });
   });
 });
 
