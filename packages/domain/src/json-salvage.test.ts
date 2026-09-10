@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
 import {
   escapeControlCharsInStrings,
+  escapeStrayQuotesInStrings,
   firstJsonValueEnd,
   salvageJsonDoc,
   salvageLeadingJson,
@@ -138,4 +139,49 @@ test("parseJsonDoc strips a BOM, salvages trailing junk, and names the key", () 
   expect(() => parseJsonDoc("{oops", "learnings.json")).toThrow(
     /learnings\.json is not valid JSON/,
   );
+});
+
+// The wild shape behind a routines file that stopped one agent's routines
+// for a day and a half: a prompt pasted in place with a raw newline AND a
+// quoted word. The control-character pass alone left the quote to end the
+// string early; the quote pass finishes the repair.
+const strayQuoted = `[
+  {
+    "id": "r1",
+    "name": "Daily digest",
+    "prompt": "Delete mail from:\\n   - nemu@shop.example.com
+   - anything that contains "Temu" in the sender name or domain (removed)",
+    "schedule": "0 9 * * *"
+  }
+]
+`;
+
+test("escapeStrayQuotesInStrings escapes a quote that cannot end the string and leaves real terminators alone", () => {
+  expect(escapeStrayQuotesInStrings(doc)).toBeUndefined();
+  const fixed = escapeStrayQuotesInStrings('{"p": "say "hi" now", "k": 1}');
+  expect(fixed).toBe('{"p": "say \\"hi\\" now", "k": 1}');
+  expect(JSON.parse(fixed as string)).toEqual({ p: 'say "hi" now', k: 1 });
+  // A stray quote right before a comma reads as a terminator: the text
+  // after it is junk the grammar cannot place, so the parse still fails
+  // instead of guessing.
+  const ambiguous = escapeStrayQuotesInStrings('{"p": "say "hi", now"}');
+  expect(ambiguous).toBe('{"p": "say \\"hi", now"}');
+  expect(() => JSON.parse(ambiguous as string)).toThrow();
+});
+
+test("salvageJsonDoc repairs a raw newline and stray quotes in the same prompt", () => {
+  const value = salvageJsonDoc(strayQuoted) as Array<{ prompt: string }>;
+  expect(value).toHaveLength(1);
+  expect(value[0]?.prompt).toBe(
+    'Delete mail from:\n   - nemu@shop.example.com\n   - anything that contains "Temu" in the sender name or domain (removed)',
+  );
+});
+
+test("loadRoutines reads the stray-quote file and keeps the schedule", async () => {
+  const store = memStore();
+  await store.writeText(`${ROOT}/.houston/routines/routines.json`, strayQuoted);
+  const { items, diagnostics } = await loadRoutines(store, ROOT);
+  expect(items.map((r) => [r.id, r.schedule])).toEqual([["r1", "0 9 * * *"]]);
+  expect(items[0]?.prompt).toContain('"Temu"');
+  expect(diagnostics).toEqual([]);
 });

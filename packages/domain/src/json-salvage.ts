@@ -10,11 +10,17 @@
  *  2. A raw control character (a literal newline or tab) inside a string
  *     literal: an agent's in-place edit of a long `prompt`. `JSON.parse`
  *     rejects the whole file for one byte.
+ *  3. An unescaped `"` inside a string literal: the same in-place edit
+ *     pasting a prompt that quotes a word (`contenga "Temu" en el nombre`).
+ *     The quote ends the string early and the parser trips on the next
+ *     word. Seen together with shape 2 in the same prompt, which is why
+ *     the passes chain.
  *
- * Either way one mangled file 500'd `list_routines` on every poll and bricked
- * the Routines tab for that agent. Both repairs are lossless: the raw newline
- * becomes the newline it meant, the trailing junk was never user data, and the
- * next save rewrites the file clean. Anything else still surfaces as the
+ * Any of them one mangled file 500'd `list_routines` on every poll, bricked
+ * the Routines tab for that agent, and stopped its routines from firing. All
+ * repairs are lossless: the raw newline becomes the newline it meant, the
+ * quote stays the quote it meant, the trailing junk was never user data, and
+ * the next save rewrites the file clean. Anything else still surfaces as the
  * caller's "not valid JSON" throw, because a lossy reset would destroy the
  * user's data on next write.
  */
@@ -77,6 +83,52 @@ export function escapeControlCharsInStrings(text: string): string | undefined {
 }
 
 /**
+ * `text` with every `"` that sits INSIDE a string literal but does not end it
+ * escaped, or `undefined` when there is none. A quote ends a string only
+ * when the next non-whitespace character is one JSON can accept after a
+ * string: `,` `}` `]` `:` or the end of the text. Any other `"` was a literal
+ * the writer forgot to escape. A stray quote that happens to sit before a
+ * comma still reads as a terminator, and the parse fails as before: this
+ * pass guesses nothing that the grammar cannot rule out.
+ */
+export function escapeStrayQuotesInStrings(text: string): string | undefined {
+  let out = "";
+  let last = 0;
+  let inString = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (!inString) {
+      if (ch === '"') inString = true;
+      continue;
+    }
+    if (ch === "\\") i++;
+    else if (ch === '"') {
+      if (closesString(text, i + 1)) inString = false;
+      else {
+        out += `${text.slice(last, i)}\\"`;
+        last = i + 1;
+      }
+    }
+  }
+  if (last === 0) return undefined;
+  return out + text.slice(last);
+}
+
+/** True when the text after a closing quote can legally follow a string. */
+function closesString(text: string, from: number): boolean {
+  let j = from;
+  while (j < text.length && isJsonWhitespace(text[j])) j++;
+  const next = text[j];
+  return (
+    next === undefined ||
+    next === "," ||
+    next === "}" ||
+    next === "]" ||
+    next === ":"
+  );
+}
+
+/**
  * Parse the leading complete value of a doc that has trailing junk after it.
  * Returns `undefined` when there is nothing to salvage (no complete leading
  * value, or the prefix itself is not valid JSON): the caller keeps its throw.
@@ -95,8 +147,9 @@ export function salvageLeadingJson(text: string): unknown {
 
 /**
  * Every lossless repair in turn, for a doc `JSON.parse` already rejected:
- * re-escape raw control characters inside strings, then keep the leading
- * value when trailing junk follows. `undefined` = nothing recoverable.
+ * re-escape raw control characters inside strings, then stray quotes inside
+ * strings, then keep the leading value when trailing junk follows.
+ * `undefined` = nothing recoverable.
  */
 export function salvageJsonDoc(text: string): unknown {
   const escaped = escapeControlCharsInStrings(text);
@@ -104,10 +157,18 @@ export function salvageJsonDoc(text: string): unknown {
     try {
       return JSON.parse(escaped) as unknown;
     } catch {
+      // Still broken elsewhere: keep repairing.
+    }
+  }
+  const quoted = escapeStrayQuotesInStrings(escaped ?? text);
+  if (quoted !== undefined) {
+    try {
+      return JSON.parse(quoted) as unknown;
+    } catch {
       // Still broken elsewhere: fall through to the trailing-junk repair.
     }
   }
-  return salvageLeadingJson(escaped ?? text);
+  return salvageLeadingJson(quoted ?? escaped ?? text);
 }
 
 /** The JSON escape for one control character: `\n`, `\t`, or `\u00XX`. */
