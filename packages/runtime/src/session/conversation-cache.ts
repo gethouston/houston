@@ -45,6 +45,21 @@ export const conversations = new LruCache<string, Conversation>({
   onEvict: (_id, conv) => conv.session.dispose(),
 });
 
+/**
+ * The idle TTL fires on a clock, not only on the next access: a runtime whose
+ * user walked away held every session it had opened until someone opened
+ * another one — the TTL existed but nothing could run it on a quiet process,
+ * which is exactly when the memory should come back. Unref'd, so an idle
+ * process still exits on its own.
+ */
+const IDLE_SWEEP_INTERVAL_MS = 60_000;
+if (config.sessionCacheIdleMs > 0) {
+  setInterval(
+    () => conversations.sweepIdle(),
+    Math.min(IDLE_SWEEP_INTERVAL_MS, config.sessionCacheIdleMs),
+  ).unref();
+}
+
 export async function getConversation(
   id: string,
   pin?: TurnPin,

@@ -1,8 +1,13 @@
 import { retryAfterMsOf } from "../../../../../ui/engine-client/src/retry-after";
 import { appVersionHeader } from "../app-version";
-import { HoustonEngineError, SIGNED_OUT_ERROR } from "../client/errors";
-import { hasSessionRefresher, refreshLiveToken } from "../session-refresh";
+import { HoustonEngineError } from "../client/errors";
+import { refreshLiveToken } from "../session-refresh";
 import { wakingStuckTracker } from "../waking-stuck-tracker";
+import {
+  inControlPlaneMode,
+  settleGatewayResponse,
+  signedOutResponse,
+} from "./bearer-recovery";
 import { transientRetryFetch } from "./transient-retry";
 
 /**
@@ -58,45 +63,29 @@ export function liveToken(fallback: string): string {
   return fallback;
 }
 
-/** True in hosted control-plane mode (the cloud web app and the desktop cloud
- *  profile both set the flag). Local hosts never set it, so the signed-out
- *  short-circuit below cannot affect them. */
-const inControlPlaneMode = (): boolean =>
-  typeof window !== "undefined" &&
-  (window as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ === true;
-
-/** The local answer for a hosted call attempted with no session: the same 401
- *  shape a gateway rejection produces, minted WITHOUT a network round trip.
- *  Signed-out is an expected lifecycle state (the sign-in screen is already the
- *  surface), so hammering the gateway with unauthenticated requests would only
- *  produce console/toast noise — and the error-toast layer recognizes this body
- *  and stays quiet (HOU-1014). */
-const signedOutResponse = () =>
-  new Response(JSON.stringify({ error: SIGNED_OUT_ERROR }), {
-    status: 401,
-    headers: { "Content-Type": "application/json" },
-  });
-
 /**
  * A `fetch` for gateway calls that keeps auth invisible across cloud restarts
  * (HOU-687): the bearer is read LIVE per attempt (never a pinned copy), and a
- * 401 triggers one single-flight session refresh and one replay with the fresh
- * token. A 401 that survives the refresh is returned as-is — a fresh bearer
- * the gateway rejects is a real bug that must surface, not spin. A refresh
- * that answers NULL in hosted mode means the session is terminally gone, and
- * resolves to the same quiet synthetic signed-out 401 as the no-bearer case:
- * signed-out is an expected state and the sign-in screen is its surface. A refresh beaten TRANSIENTLY by the network (a
- * sleep-wake reconnect still settling — HOU-1106) throws the transport-shaped
- * TypeError `refreshLiveToken` mints, exactly as if the request itself had
- * dropped: `transientRetryFetch` re-attempts reads (re-running the refresh
- * each time), and a persistent failure surfaces as connectivity, never as a
- * bogus auth error. With no refresher installed (static tokens, tests) the
- * refresh resolves null and this degrades to a plain live-token fetch.
+ * 401 runs the refresh-and-replay recovery in `./bearer-recovery.ts` — one
+ * single-flight session refresh, one replay with a genuinely new token, and
+ * the quiet synthetic signed-out answer for every 401 whose outcome is already
+ * known (session gone, or a bearer the gateway has already rejected). A 401 to
+ * the replay of a NEW bearer is returned as-is: that is a real bug and must
+ * surface. A refresh beaten TRANSIENTLY by the network (a sleep-wake reconnect
+ * still settling — HOU-1106) throws the transport-shaped TypeError
+ * `refreshLiveToken` mints, exactly as if the request itself had dropped:
+ * `transientRetryFetch` re-attempts reads (re-running the refresh each time),
+ * and a persistent failure surfaces as connectivity, never as a bogus auth
+ * error. With no refresher installed (static tokens, tests) the refresh
+ * resolves null and this degrades to a plain live-token fetch.
  *
  * With NO bearer at all in hosted mode the request is not sent: the refresher
  * is asked once (bridging the boot race where queries fire before the restored
  * session's token is mirrored), and when it confirms there is no session the
- * call resolves to a synthetic signed-out 401 locally.
+ * call resolves to a synthetic signed-out 401 locally. The bearer it DOES hand
+ * back is not trusted blindly: on a wake burst it can be the slept-out token
+ * re-read from storage, so its response settles through the same recovery as
+ * any other attempt (PRODUCT-1737).
  */
 export function gatewayAuthFetch(
   fallbackToken: string,
@@ -129,41 +118,9 @@ export function gatewayAuthFetch(
     if (!bearer && inControlPlaneMode()) {
       const fresh = await refreshLiveToken();
       if (!fresh) return signedOutResponse();
-      return send(fresh);
+      return settleGatewayResponse(await send(fresh), fresh, send);
     }
-    const res = await send(bearer);
-    if (res.status !== 401) return res;
-    const fresh = await refreshLiveToken();
-    // An installed refresher answering null in hosted mode is its terminal
-    // verdict: the session is gone (HOU-1106's three-valued contract) — the
-    // same expected lifecycle state as the no-bearer branch above. Answer with
-    // the quiet synthetic instead of the gateway's raw 401 so the burst of
-    // live queries caught holding the stale bearer doesn't file a Sentry
-    // report per query while the sign-in screen mounts (HOUSTON-APP-4WR).
-    // With NO refresher installed null only means "nobody to ask" (static
-    // tokens, tests, the pre-mount boot window), so the original 401 stands.
-    // A 401 that survives a SUCCESSFUL refresh also returns as-is below — a
-    // fresh bearer the gateway rejects is a real bug and must stay loud.
-    if (!fresh) {
-      return inControlPlaneMode() && hasSessionRefresher()
-        ? signedOutResponse()
-        : res;
-    }
-    // The refresher handed back the SAME bearer the gateway just rejected: no
-    // real mint happened (securetoken returns the still-cached idToken when it
-    // is asked to refresh twice inside one token's lifetime — no network POST,
-    // no breadcrumb), so replaying would only earn the identical 401. On a
-    // wake-from-sleep burst several parallel queries share one such refresh and
-    // each would surface a raw "invalid or expired token" toast + Sentry report
-    // (HOUSTON-APP-4YD/53R/58P, PRODUCT-1664). Treat it as the same quiet
-    // signed-out lifecycle state as the null branch — a genuinely NEW fresh
-    // bearer the gateway rejects still replays below and stays loud.
-    if (fresh === bearer) {
-      return inControlPlaneMode() && hasSessionRefresher()
-        ? signedOutResponse()
-        : res;
-    }
-    return send(fresh);
+    return settleGatewayResponse(await send(bearer), bearer, send);
   };
 }
 

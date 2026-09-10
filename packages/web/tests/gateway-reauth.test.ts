@@ -4,6 +4,7 @@ import {
   gatewayAuthFetch,
   listAgents,
 } from "../src/engine-adapter/control-plane";
+import { resetRejectedBearers } from "../src/engine-adapter/cp/bearer-recovery";
 import { refreshLiveToken } from "../src/engine-adapter/session-refresh";
 
 /**
@@ -22,6 +23,7 @@ afterEach(() => {
     Reflect.deleteProperty(globalThis, "window");
   }
   globalThis.fetch = originalFetch;
+  resetRejectedBearers();
   vi.useRealTimers();
 });
 
@@ -194,4 +196,78 @@ test("writes never blind-retry a transient status", async () => {
     status: 503,
   });
   expect(calls).toHaveLength(1);
+});
+
+test("the boot-race bearer settles through the same 401 recovery (PRODUCT-1737)", async () => {
+  // No bearer on the window yet, so the refresher is asked first. On a wake
+  // burst that answer can be the slept-out token re-read from storage; its
+  // 401 used to be handed back raw. It must refresh again and replay.
+  const refresh = vi
+    .fn<() => Promise<string | null>>()
+    .mockResolvedValueOnce("slept-out")
+    .mockResolvedValueOnce("fresh");
+  setEngineWindow({ token: "", refresh, controlPlane: true });
+  const calls = stubFetch(json(401), json(200, { ok: true }));
+
+  const res = await gatewayAuthFetch("")("https://gateway.example/x");
+
+  expect(res.status).toBe(200);
+  expect(refresh).toHaveBeenCalledTimes(2);
+  expect(calls.map(bearerOf)).toEqual(["Bearer slept-out", "Bearer fresh"]);
+});
+
+test("a bearer a sibling request already had rejected is never replayed (PRODUCT-1737)", async () => {
+  // Request 1 mints "b2", replays it, and the gateway refuses it: that ONE
+  // replay stays loud (a rejected fresh mint is a real bug). Request 2, still
+  // holding the old bearer, is handed the same "b2" by the shared refresh —
+  // the answer is already known, so it goes quiet without a doomed replay.
+  const refresh = vi.fn(async () => "b2");
+  setEngineWindow({ token: "b1", refresh, controlPlane: true });
+  const calls = stubFetch(json(401), json(401), json(401));
+
+  const first = await gatewayAuthFetch("b1")("https://gateway.example/x");
+  expect(first.status).toBe(401);
+  expect(await errorFieldOf(first)).toBe(null); // loud
+  expect(calls.map(bearerOf)).toEqual(["Bearer b1", "Bearer b2"]);
+
+  const second = await gatewayAuthFetch("b1")("https://gateway.example/y");
+  expect(second.status).toBe(401);
+  expect(await errorFieldOf(second)).toBe("signed_out"); // quiet
+  expect(calls).toHaveLength(3); // the sibling's own attempt, no replay
+});
+
+test("a refresher that lands one tick after the 401 is still used (PRODUCT-1737)", async () => {
+  // Field shape: the first 401 processed after a laptop wake found no
+  // refresher on the window while its siblings two milliseconds later did.
+  // The transport waits exactly one macrotask before giving up on it.
+  setEngineWindow({ token: "stale", controlPlane: true });
+  const calls = stubFetch(json(401), json(200, { ok: true }));
+  const refresh = vi.fn(async () => "fresh");
+  setTimeout(() => {
+    (
+      window as { __HOUSTON_SESSION_REFRESH__?: typeof refresh }
+    ).__HOUSTON_SESSION_REFRESH__ = refresh;
+  }, 0);
+
+  const res = await gatewayAuthFetch("stale")("https://gateway.example/x");
+
+  expect(res.status).toBe(200);
+  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(calls.map(bearerOf)).toEqual(["Bearer stale", "Bearer fresh"]);
+});
+
+test("a hosted 401 with no refresher at all stays raw and leaves a breadcrumb", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  setEngineWindow({ token: "stale", controlPlane: true });
+  const calls = stubFetch(json(401, { error: "invalid or expired token" }));
+
+  const res = await gatewayAuthFetch("stale")("https://gateway.example/x");
+
+  expect(res.status).toBe(401);
+  expect(await errorFieldOf(res)).toBe("invalid or expired token");
+  expect(calls).toHaveLength(1);
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining("no session refresher installed"),
+  );
+  warn.mockRestore();
 });

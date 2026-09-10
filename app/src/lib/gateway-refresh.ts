@@ -40,6 +40,42 @@ let inflight: Promise<string | null> | null = null;
  * classification is baked into the SHARED promise, so every joiner reads the
  * same outcome; a caller arriving after it settles starts a new one.
  */
+/**
+ * Bearers the gateway has answered 401 to, newest last — the app-side mirror
+ * of the canonical transport's memory (`cp/bearer-recovery.ts`, PRODUCT-1737).
+ * On a wake burst the refresher can hand a caller a token a SIBLING request
+ * already had refused (the slept-out token re-read from storage, or a mint the
+ * gateway rejected once); replaying it only earns the identical 401 and a
+ * report per caller. Bounded: a session rotates through a handful of tokens
+ * per hour, and anything older is unreachable by a live request anyway.
+ */
+const REJECTED_BEARER_LIMIT = 8;
+const rejectedBearers: string[] = [];
+
+export function noteBearerRejected(bearer: string): void {
+  if (!bearer) return;
+  const at = rejectedBearers.indexOf(bearer);
+  if (at >= 0) rejectedBearers.splice(at, 1);
+  rejectedBearers.push(bearer);
+  if (rejectedBearers.length > REJECTED_BEARER_LIMIT) rejectedBearers.shift();
+}
+
+/** An accepted bearer is the newer fact (a stale verifier key on one gateway
+ *  replica can refuse a token another accepts), so it leaves the memory. */
+export function noteBearerAccepted(bearer: string): void {
+  const at = rejectedBearers.indexOf(bearer);
+  if (at >= 0) rejectedBearers.splice(at, 1);
+}
+
+export function wasBearerRejected(bearer: string): boolean {
+  return rejectedBearers.includes(bearer);
+}
+
+/** Test seam: the memory is module-scoped on purpose (one transport per app). */
+export function resetRejectedBearers(): void {
+  rejectedBearers.length = 0;
+}
+
 export function refreshGatewayBearer(
   refresh: () => Promise<string | null>,
 ): Promise<string | null> {

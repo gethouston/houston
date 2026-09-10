@@ -33,7 +33,19 @@ const TRANSPORT_MESSAGE =
  * (HOU-1085: a sleep-wake burst fails every live gateway query at once with
  * WebKit's "Load failed"). These are an expected, explainable environment
  * state — surfaced as a connectivity toast, never the red bug pair + Sentry.
+ *
+ * A wrapper that kept the thrown transport error as its standard `cause`
+ * (the Agent Store client's status-0 `StoreApiError`) is the same failure:
+ * one level of `cause` is unwrapped, never more, so a wrapper chain cannot
+ * loop and a coding-bug wrapper stays a bug.
  */
 export function isNetworkTransportError(err: unknown): boolean {
+  return (
+    isTransportTypeError(err) ||
+    (err instanceof Error && isTransportTypeError(err.cause))
+  );
+}
+
+function isTransportTypeError(err: unknown): boolean {
   return err instanceof TypeError && TRANSPORT_MESSAGE.test(err.message);
 }

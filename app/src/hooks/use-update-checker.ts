@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { currentAppVersion } from "../lib/app-version";
-import { showUpdateCheckStuckToast } from "../lib/error-toast";
+import { showUpdateCheckStuckToast } from "../lib/update-check-toast";
 import {
   nextCheckFailureStreak,
   shouldRecheckOnFocus,

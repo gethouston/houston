@@ -4,6 +4,7 @@ import { isAgentWarmingRefusal } from "./agent-warming-refusal";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { createBurstGate } from "./error-burst";
 import i18n from "./i18n";
+import { classifyQuietError } from "./quiet-error-class";
 import { reportQuietError } from "./quiet-error-report";
 import {
   captureException as sentryCapture,
@@ -67,52 +68,6 @@ export function showConnectivityErrorToast(
     title: i18n.t("shell:errorToast.offlineTitle"),
     description,
     variant: "info",
-  });
-}
-
-/**
- * Surface a client whose update checks keep failing (PRODUCT-1386). The
- * forced updater is fail-open — a check failure only console.warns — so a
- * client that can NEVER reach the release feed (a proxy or region block
- * between it and GitHub) would strand on an old build invisibly, with no
- * server-side floor to catch it since the 426 gate was retired
- * (PRODUCT-1144). The checker calls this once per failure streak, after
- * `UPDATE_CHECK_STUCK_THRESHOLD` consecutive failures:
- *  - one informational toast pointing at the manual download, so the user
- *    can act;
- *  - a dedicated `update_check_failed` analytics event (its own name, not
- *    `app_error_shown`, so a fleet-staleness dashboard can count stuck
- *    clients directly);
- *  - a Sentry capture, so stranded clients get an issue with a user count —
- *    this also surfaces any leaked staging QA build, whose no-op updater
- *    endpoint 404s every check by design.
- */
-export function showUpdateCheckStuckToast(
-  message: string,
-  consecutiveFailures: number,
-  currentVersion: string,
-): void {
-  const command = "update_check";
-  console.error(
-    `[toast:${command}] ${consecutiveFailures} consecutive check failures: ${message}`,
-  );
-  useUIStore.getState().addToast({
-    title: i18n.t("shell:errorToast.updateStuckTitle"),
-    description: i18n.t("shell:errorToast.updateStuckDescription"),
-    variant: "info",
-  });
-  analytics.track("update_check_failed", {
-    source: command,
-    consecutive_failures: consecutiveFailures,
-    from_version: currentVersion,
-    error_kind: classifyAnalyticsError(message),
-  });
-  if (sentrySuppressedInDev) return;
-  void sentryCapture(createSentryReportError(command, message), {
-    source: command,
-    error_kind: classifyAnalyticsError(message),
-  }).catch((flushErr: unknown) => {
-    console.error("[sentry] failed to flush captured error", flushErr);
   });
 }
 
@@ -199,6 +154,26 @@ export function showErrorToast(
     console.debug(`[toast:${command}] write blocked while the agent warms up`);
     return;
   }
+  // The quiet classes (PRODUCT-1735) — the same gate the engine-call layer,
+  // `reportError` and the global handlers run. A caller that hands a raw
+  // query error here (the store screens: an anonymous catalog read that
+  // never passes through `call()`) used to capture an offline device as a
+  // per-user bug. Each class keeps its own informational surface and its ONE
+  // fingerprinted warning; the bridge class has an inline surface already.
+  switch (classifyQuietError(originalError)) {
+    case "offline":
+      showConnectivityErrorToast(command, message, originalError);
+      return;
+    case "engine_waking":
+      showEngineWakingToast(command, message, originalError);
+      return;
+    case "bridge_unsupported":
+      console.error(`[toast:${command}] ${message}`);
+      reportQuietError("bridge_unsupported", command, message, originalError);
+      return;
+    case null:
+      break;
+  }
 
   // With no toast left, this line is the failure's only trace on the user's
   // machine — guarantee it here rather than trusting each caller to log.
@@ -227,12 +202,4 @@ export function showErrorToast(
   }).catch((flushErr: unknown) => {
     console.error("[sentry] failed to flush captured error", flushErr);
   });
-}
-
-export function raiseJavascriptSentrySmokeTest(): never {
-  return raiseJavascriptSentrySmokeTestLeaf();
-}
-
-function raiseJavascriptSentrySmokeTestLeaf(): never {
-  throw new Error(`sentry-js-stack-smoke-${Date.now()}`);
 }

@@ -101,7 +101,7 @@ ENV NODE_ENV=production \
     HOUSTON_HOME=/data \
     HOUSTON_HOST_BIND=0.0.0.0 \
     HOUSTON_HOST_PORT=4318 \
-    HOUSTON_RUNTIME_COMMAND="node --enable-source-maps /app/dist/runtime/main.mjs"
+    HOUSTON_RUNTIME_COMMAND="node /app/dist/runtime/main.mjs"
 # HOUSTON_HOST_TOKEN is deliberately NOT defaulted: an unset token would leave the
 # host open to anyone who can reach the port. docker-compose.yml requires it.
 
@@ -115,10 +115,19 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 
 # Exec form → node is PID 1 and gets SIGTERM from `docker stop`; local/main.ts
 # handles it (stops the scheduler/watcher and kills spawned runtimes).
-# --enable-source-maps applies the bundle's .map so stack traces (incl. Sentry
-# events) show original TS locations. Set per-command, not NODE_OPTIONS, so it
-# never leaks into node processes the agent's own bash tool runs.
-CMD ["node", "--enable-source-maps", "dist/host/main.mjs"]
+#
+# Deliberately NO --enable-source-maps (here or in HOUSTON_RUNTIME_COMMAND):
+# node decodes the whole .map into memory on the first stack trace and keeps
+# it — measured at +163 MB RSS on the host and +200 MB on the runtime, the
+# largest fixed cost of both processes. The maps still ship beside the bundles
+# and the Sentry reporter applies them per event, on demand
+# (packages/runtime-client/src/sentry/map-frames.ts), so Sentry keeps `.ts`
+# frames and code context. Stack traces in the logs show bundle offsets; map
+# one offline with the same map node would have used:
+#   node -e 'const {SourceMap}=require("node:module");const m=new SourceMap(
+#     JSON.parse(require("fs").readFileSync("/app/dist/host/main.mjs.map","utf8")));
+#     console.log(m.findOrigin(LINE, COLUMN))'
+CMD ["node", "dist/host/main.mjs"]
 
 FROM host-base AS engine-pod
 

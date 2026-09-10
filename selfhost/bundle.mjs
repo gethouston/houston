@@ -47,10 +47,19 @@ const shared = {
   banner,
   plugins: [externalNodeModules],
   logLevel: "info",
-  // External .map next to each bundle; node runs with --enable-source-maps
-  // (see the Dockerfile) so stack traces — and the Sentry events built from
-  // them — point at the original TS files instead of bundle offsets.
+  // External .map next to each bundle. Node does NOT load it (no
+  // --enable-source-maps, see the Dockerfile); the Sentry reporter reads it
+  // on demand so events point at the original TS files instead of bundle
+  // offsets.
   sourcemap: true,
+  // Mappings only, no inlined sources: node parses the whole .map at module
+  // load and keeps it for the life of the process, and `sourcesContent` was
+  // 21-26 MB of the 28-35 MB maps — about 100 MB of resident memory per
+  // engine process (host and runtime each) on the production Node 22 image.
+  // Nothing reads it: the images COPY `packages/*` beside the bundles, and the
+  // Sentry reporter (runtime-client/src/sentry/frames.ts) reads source context
+  // from those files on disk.
+  sourcesContent: false,
 };
 
 await Promise.all([
@@ -85,6 +94,14 @@ await Promise.all([
       throw new Error(
         `bundle self-check: ${specifier} was inlined instead of staying external`,
       );
+    }
+  }
+  // The maps must stay mappings-only (see `sourcesContent` above): an inlined
+  // source tree would silently put the memory back on every engine process.
+  for (const map of ["dist/host/main.mjs.map", "dist/runtime/main.mjs.map"]) {
+    const parsed = JSON.parse(readFileSync(map, "utf8"));
+    if (Array.isArray(parsed.sourcesContent)) {
+      throw new Error(`bundle self-check: ${map} inlines sourcesContent`);
     }
   }
 }

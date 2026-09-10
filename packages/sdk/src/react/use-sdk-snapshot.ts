@@ -25,6 +25,20 @@ export interface SnapshotStoreAdapter<T> {
  * Build the external-store adapter that binds `scope` to `source`'s reactive
  * store. Framework-agnostic on purpose: the hook wraps it, tests drive it
  * directly.
+ *
+ * **One React notification per task, not per publish.** `useSyncExternalStore`
+ * answers every `onStoreChange` with a SYNC-lane render, and React 19 counts
+ * consecutive sync commits that leave other work pending (a passive effect's
+ * setState is default-lane work) as one nested-update chain — it never resets
+ * until a task boundary lets that work commit. A turn stream delivers frames
+ * with only microtask gaps (`await onEvent(frame)` per SSE frame, and a
+ * reconnect replay hands over dozens in one chunk), so notifying per publish
+ * runs 50+ sync commits inside one task and React throws "Maximum update
+ * depth exceeded" (#185) INTO the publisher — failing the turn. Deferring the
+ * notification to a macrotask coalesces the burst into one render; a
+ * microtask would not (it interleaves with the stream's own microtasks).
+ * `getSnapshot` stays synchronous, so any render in between already reads the
+ * latest value — the deferral only delays React learning it changed.
  */
 export function snapshotStoreAdapter<T>(
   source: SnapshotSource,
@@ -34,7 +48,22 @@ export function snapshotStoreAdapter<T>(
     // `useSyncExternalStore` hands us a zero-arg `onStoreChange`; the store's
     // subscriber receives the snapshot too, which we intentionally ignore —
     // React re-reads through `getSnapshot`.
-    subscribe: (onStoreChange) => source.subscribe(scope, onStoreChange),
+    subscribe: (onStoreChange) => {
+      let scheduled = false;
+      let live = true;
+      const unsubscribe = source.subscribe(scope, () => {
+        if (scheduled) return;
+        scheduled = true;
+        setTimeout(() => {
+          scheduled = false;
+          if (live) onStoreChange();
+        }, 0);
+      });
+      return () => {
+        live = false;
+        unsubscribe();
+      };
+    },
     getSnapshot: () => source.getSnapshot(scope) as T | undefined,
   };
 }

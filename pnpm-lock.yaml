@@ -592,6 +592,9 @@ importers:
       '@typescript/native-preview':
         specifier: 7.0.0-dev.20260607.1
         version: 7.0.0-dev.20260607.1
+      esbuild:
+        specifier: 0.25.12
+        version: 0.25.12
       typescript:
         specifier: 6.0.3
         version: 6.0.3
@@ -626,6 +629,9 @@ importers:
       esbuild:
         specifier: 0.25.12
         version: 0.25.12
+      jsdom:
+        specifier: 29.1.1
+        version: 29.1.1(@noble/hashes@2.2.0)
       react:
         specifier: 19.2.7
         version: 19.2.7

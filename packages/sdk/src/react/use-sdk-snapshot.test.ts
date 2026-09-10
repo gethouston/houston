@@ -37,25 +37,55 @@ describe("snapshotStoreAdapter", () => {
     expect(adapter.getSnapshot()).toBe(second);
   });
 
-  it("notifies React's zero-arg callback on every publish to the scope", () => {
+  it("coalesces a burst of publishes into one React notification per task", async () => {
     const store = new ScopeStore();
     const adapter = snapshotStoreAdapter(store, "connection");
     const onStoreChange = vi.fn();
     const unsubscribe = adapter.subscribe(onStoreChange);
 
+    // A stream delivers frames with only microtask gaps between them: React
+    // must hear about the whole burst once, after the task settles — never
+    // once per publish (that is the nested-update chain React aborts, #185).
+    for (let i = 0; i < 60; i++) {
+      store.publish("connection", { online: i % 2 === 0 });
+      await Promise.resolve();
+    }
+    expect(onStoreChange).not.toHaveBeenCalled();
+    await nextTask();
+    expect(onStoreChange).toHaveBeenCalledTimes(1);
+
+    // A publish in a later task is its own notification.
     store.publish("connection", { online: true });
-    store.publish("connection", { online: false });
+    await nextTask();
     expect(onStoreChange).toHaveBeenCalledTimes(2);
 
     // A publish to an unrelated scope must not wake this subscriber.
     store.publish("agents", []);
+    await nextTask();
     expect(onStoreChange).toHaveBeenCalledTimes(2);
 
     unsubscribe();
-    store.publish("connection", { online: true });
+    store.publish("connection", { online: false });
+    await nextTask();
     expect(onStoreChange).toHaveBeenCalledTimes(2);
   });
+
+  it("drops a notification still in flight when React unsubscribes first", async () => {
+    const store = new ScopeStore();
+    const adapter = snapshotStoreAdapter(store, "connection");
+    const onStoreChange = vi.fn();
+    const unsubscribe = adapter.subscribe(onStoreChange);
+    store.publish("connection", { online: true });
+    unsubscribe();
+    await nextTask();
+    expect(onStoreChange).not.toHaveBeenCalled();
+  });
 });
+
+/** Resolve after the pending macrotasks (the adapter's deferred notify) ran. */
+function nextTask(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 1));
+}
 
 describe("useSdkSnapshot (server render)", () => {
   it("renders undefined for an unpublished scope", () => {
