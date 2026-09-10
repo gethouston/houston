@@ -8,9 +8,16 @@ import { useTranslation } from "react-i18next";
  * build.nvidia.com key flow never shows, so without these steps users mint
  * keys that fail on every chat model. Amazon Bedrock second (PRODUCT-1477):
  * the console shows a generated key's VALUE exactly once and afterwards lists
- * only its name, which users then paste as the key.
+ * only its name, which users then paste as the key. Hugging Face third
+ * (PRODUCT-1730): a fine-grained token without "Make calls to Inference
+ * Providers" authenticates but is refused on every model.
  */
 const GUIDES = {
+  huggingface: [
+    "apiKey.guide.huggingface1",
+    "apiKey.guide.huggingface2",
+    "apiKey.guide.huggingface3",
+  ],
   nvidia: [
     "apiKey.guide.nvidia1",
     "apiKey.guide.nvidia2",

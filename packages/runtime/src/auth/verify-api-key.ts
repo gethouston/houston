@@ -3,6 +3,7 @@ import { classifyProviderError } from "../ai/provider-error";
 import { modelFor, safeGetModel } from "../ai/providers";
 import { QWEN_PROVIDER_ID } from "../ai/qwen-dashscope";
 import { XIAOMI_PROVIDER_ID } from "../ai/xiaomi-endpoint";
+import { huggingfaceInferenceGated } from "./huggingface-verify";
 import { nvidiaGated, retryNvidiaFallbacks } from "./nvidia-verify";
 import { verifyQwenRegions } from "./qwen-verify";
 import {
@@ -112,6 +113,11 @@ export async function verifyApiKey(
     );
     if (message === null) return;
   }
+
+  // Hugging Face's permission gate is a 403 the taxonomy reads as plain
+  // auth; it is a token-permission fix, so it carries its own verdict.
+  const hfGated = huggingfaceInferenceGated(providerId, message);
+  if (hfGated) throw hfGated;
 
   const classified = classifyProviderError({
     provider: providerId,

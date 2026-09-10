@@ -95,12 +95,17 @@
       "bedrock3": "Cole o valor da chave abaixo. Ele começa com \"ABSK\". O nome exibido na lista (\"BedrockAPIKey-...\") não é a chave.",
       "azure1": "No portal do Azure, abra seu recurso do Azure OpenAI (ou Foundry) e acesse \"Chaves e endpoint\".",
       "azure2": "Copie uma das duas chaves e a URL do endpoint.",
-      "azure3": "Implante os modelos que quiser usar, cada um com o mesmo nome do modelo (por exemplo \"gpt-5.5\"), e cole aqui o endpoint e a chave."
+      "azure3": "Implante os modelos que quiser usar, cada um com o mesmo nome do modelo (por exemplo \"gpt-5.5\"), e cole aqui o endpoint e a chave.",
+      "huggingface1": "Abra a página de tokens do Hugging Face com o botão acima e faça login, ou crie uma conta grátis.",
+      "huggingface2": "Clique em \"Create new token\". Um token \"Read\" funciona. Se escolher \"Fine-grained\", marque \"Make calls to Inference Providers\" em Inference.",
+      "huggingface3": "Copie o token que começa com \"hf_\" e cole abaixo."
     },
     "errorInvalidKey": "{{name}} não aceitou esta chave. Confira e cole de novo.",
     "errorKeyRestricted": "Esta chave está bloqueada pelas configurações da sua conta {{name}}. Crie uma chave nova sem restrições usando o botão acima e cole aqui.",
     "errorNvidiaAccountGated": "Sua chave é válida, mas a NVIDIA não está servindo modelos de chat para a sua conta neste momento. Confira se sua chave é uma Personal Key de org.ngc.nvidia.com com \"Public API Endpoints\" em Services Included. Se ainda falhar, peça ao suporte da NVIDIA para habilitar o acesso aos modelos na sua conta.",
     "errorBedrockInvalidKey": "A Amazon Bedrock não aceitou esta chave. Confira se você colou o valor da chave (começa com \"ABSK\") e não o nome da lista (\"BedrockAPIKey-...\"). A AWS mostra o valor só uma vez, então gere uma chave nova se você não o tiver mais.",
+    "errorHuggingfaceInferenceGated": "Seu token é válido, mas não tem permissão para executar modelos. Abra a página de tokens do Hugging Face com o botão acima e crie um token com \"Make calls to Inference Providers\" marcado (um token \"Read\" também funciona), depois cole aqui.",
+    "errorGoogleKeyRestricted": "O Google está bloqueando esta chave pelas configurações dela. No Google AI Studio ou no Google Cloud, abra a chave, remova as restrições de aplicativo e de API (ou permita a Generative Language API), ou crie uma chave nova sem restrições com o botão acima, depois cole aqui.",
     "errorProviderUnavailable": "Não conseguimos acessar {{name}} para verificar sua chave, então nada foi salvo. Tente de novo em instantes.",
     "errorOrgAdminRequired": "Só um proprietário ou administrador pode conectar a IA da organização. Peça a um deles para configurar, ou para adicionar você a um agente para conectar sua própria chave."
   },

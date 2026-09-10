@@ -340,3 +340,34 @@ test("google: a non-JSON error body still surfaces, with the raw text", async ()
     message: expect.stringMatching(/Bad Gateway/),
   });
 });
+
+test("huggingface's Inference Providers permission gate reads as key_restricted", async () => {
+  // A fine-grained token without "Make calls to Inference Providers"
+  // (Sentry HOUSTON-APP-5CN, PRODUCT-1730): the token authenticated, the
+  // permission is missing — never "check the key and paste it again".
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        '403 "This authentication method does not have sufficient permissions to call Inference Providers on behalf of user someone"',
+    }),
+  );
+  await expect(verifyApiKey("huggingface", "hf_scoped")).rejects.toMatchObject({
+    name: "ApiKeyVerifyError",
+    reason: "key_restricted",
+    message: expect.stringMatching(/Make calls to Inference Providers/),
+  });
+});
+
+test("a huggingface 401 still reads as an invalid key", async () => {
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        '401 {"error":"Invalid credentials in Authorization header"}',
+    }),
+  );
+  await expect(verifyApiKey("huggingface", "hf_bad")).rejects.toMatchObject({
+    reason: "invalid_key",
+  });
+});

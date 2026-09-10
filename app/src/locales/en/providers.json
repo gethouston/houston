@@ -95,12 +95,17 @@
       "bedrock3": "Paste the key value below. It starts with \"ABSK\". The name shown in the list (\"BedrockAPIKey-...\") is not the key.",
       "azure1": "In the Azure portal, open your Azure OpenAI (or Foundry) resource and go to \"Keys and endpoint\".",
       "azure2": "Copy one of the two keys and the endpoint URL.",
-      "azure3": "Deploy the models you want to use, each named exactly like the model (for example \"gpt-5.5\"), then paste the endpoint and key here."
+      "azure3": "Deploy the models you want to use, each named exactly like the model (for example \"gpt-5.5\"), then paste the endpoint and key here.",
+      "huggingface1": "Open the Hugging Face tokens page with the button above and sign in, or create a free account.",
+      "huggingface2": "Click \"Create new token\". A \"Read\" token works. If you pick \"Fine-grained\", check \"Make calls to Inference Providers\" under Inference.",
+      "huggingface3": "Copy the token that starts with \"hf_\" and paste it below."
     },
     "errorInvalidKey": "{{name}} didn't accept this key. Check it and paste it again.",
     "errorKeyRestricted": "This key is blocked by settings in your {{name}} account. Create a new key without restrictions using the button above, then paste it here.",
     "errorNvidiaAccountGated": "Your key is valid, but NVIDIA isn't serving any chat models to your account right now. Make sure your key is a Personal Key from org.ngc.nvidia.com with \"Public API Endpoints\" under Services Included. If it still fails, ask NVIDIA support to enable model access for your account.",
     "errorBedrockInvalidKey": "Amazon Bedrock didn't accept this key. Make sure you pasted the key value (it starts with \"ABSK\"), not its name from the list (\"BedrockAPIKey-...\"). AWS shows the value only once, so generate a new key if you no longer have it.",
+    "errorHuggingfaceInferenceGated": "Your token is valid, but it isn't allowed to run models. Open the Hugging Face tokens page with the button above and create a token with \"Make calls to Inference Providers\" checked (a \"Read\" token also works), then paste it here.",
+    "errorGoogleKeyRestricted": "Google is blocking this key through its own settings. In Google AI Studio or Google Cloud, open the key, remove its application and API restrictions (or allow the Generative Language API), or create a new key without restrictions with the button above, then paste it here.",
     "errorProviderUnavailable": "We couldn't reach {{name}} to check your key, so nothing was saved. Please try again in a moment.",
     "errorOrgAdminRequired": "Only an owner or admin can connect AI for the organization. Ask one of them to set it up, or to add you to an agent so you can connect your own key."
   },

@@ -10,10 +10,12 @@ import {
 import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { analytics } from "../../lib/analytics";
 import {
-  type ApiKeyConnectReason,
   apiKeyConnectReason,
+  isApiKeyUserRejection,
 } from "../../lib/api-key-connect-error";
+import { apiKeyReasonCopyKey } from "../../lib/api-key-reason-copy";
 import { isOrgAdminRequiredError } from "../../lib/org-admin-required-error";
 import { API_KEY_ENDPOINT_PROVIDERS } from "../../lib/provider-overrides";
 import type { ProviderInfo } from "../../lib/providers";
@@ -45,35 +47,6 @@ function verifyFailureDetail(err: unknown): string {
 interface Props {
   provider: ProviderInfo | null;
   onClose: () => void;
-}
-
-/** Verification verdicts (from the engine's typed `reason`) → inline copy. */
-const REASON_COPY: Record<
-  ApiKeyConnectReason,
-  | "apiKey.errorInvalidKey"
-  | "apiKey.errorKeyRestricted"
-  | "apiKey.errorProviderUnavailable"
-> = {
-  invalid_key: "apiKey.errorInvalidKey",
-  key_restricted: "apiKey.errorKeyRestricted",
-  provider_unavailable: "apiKey.errorProviderUnavailable",
-};
-
-/**
- * NVIDIA's `key_restricted` is an ACCOUNT gate, not key settings: NVIDIA has
- * to enable "Public API Endpoints" on the account's org, so the generic
- * "create a new key" remedy would send users in circles (HOU-890).
- */
-function reasonCopyKey(providerId: string, reason: ApiKeyConnectReason) {
-  if (providerId === "nvidia" && reason === "key_restricted")
-    return "apiKey.errorNvidiaAccountGated" as const;
-  // Bedrock's console lists keys by NAME ("BedrockAPIKey-xxxx-at-<account>")
-  // and reveals the VALUE only once at generation, so a rejected key is
-  // usually the name pasted in place of the value (PRODUCT-1477) — say so
-  // instead of the generic "check it and paste it again".
-  if (providerId === "amazon-bedrock" && reason === "invalid_key")
-    return "apiKey.errorBedrockInvalidKey" as const;
-  return REASON_COPY[reason];
 }
 
 export function ProviderApiKeyDialog({ provider, onClose }: Props) {
@@ -131,7 +104,9 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       // actionable copy. A reason-less failure (transport error, older host)
       // shows the host's REAL sentence instead of generic copy, which turned
       // every provider-QA failure into an undiagnosable "failed to connect".
-      // Sentry capture already happened in the tauri call wrapper.
+      // The tauri call wrapper already captured anything that is not a
+      // user-fixable verdict; those are counted here instead so the provider
+      // mix that confuses users stays visible without filing Sentry bugs.
       const reason = apiKeyConnectReason(err);
       if (isOrgAdminRequiredError(err)) {
         // A plain member on the org-level (pre-agent) connect: the gateway
@@ -139,8 +114,14 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
         // `setApiKey` silences it so nothing else surfaces.
         setError(t("apiKey.errorOrgAdminRequired"));
       } else if (reason) {
+        if (isApiKeyUserRejection(err)) {
+          analytics.track("provider_key_rejected", {
+            provider: provider.id,
+            error_kind: reason,
+          });
+        }
         setError(
-          t(reasonCopyKey(provider.id, reason), { name: provider.name }),
+          t(apiKeyReasonCopyKey(provider.id, reason), { name: provider.name }),
         );
       } else {
         const detail = verifyFailureDetail(err);
