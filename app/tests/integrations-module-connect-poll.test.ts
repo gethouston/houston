@@ -81,6 +81,63 @@ describe("pollConnectionUntilActive (new module)", () => {
     strictEqual(calls, 5);
   });
 
+  it("returns 'gone' when the connection read answers 404 (PRODUCT-1733)", async () => {
+    // The user disconnected the app mid-OAuth, or the provider expired the
+    // pending connection: the id the poll reads no longer exists. Expected,
+    // so the loop settles instead of rejecting into the bug surface.
+    let calls = 0;
+    const outcome = await pollConnectionUntilActive({
+      poll: () => {
+        calls++;
+        return calls < 2
+          ? Promise.resolve(conn("pending"))
+          : Promise.reject(
+              Object.assign(new Error("connection not found"), {
+                status: 404,
+              }),
+            );
+      },
+      sleep: noSleep,
+      isCancelled: () => false,
+      maxAttempts: 10,
+    });
+    strictEqual(outcome, "gone");
+    strictEqual(calls, 2);
+  });
+
+  it("a 404 landing on an already-cancelled poll is the cancel, not a second outcome", async () => {
+    // The Sentry shape (HOUSTON-APP-52Q): the disconnect that cancelled the
+    // flow raced a read already in flight, which then 404s.
+    let cancelled = false;
+    const outcome = await pollConnectionUntilActive({
+      poll: () => {
+        cancelled = true;
+        return Promise.reject(
+          Object.assign(new Error("connection not found"), { status: 404 }),
+        );
+      },
+      sleep: noSleep,
+      isCancelled: () => cancelled,
+      maxAttempts: 10,
+    });
+    strictEqual(outcome, "cancelled");
+  });
+
+  it("propagates a non-404 poll rejection so the caller's catch surfaces it", async () => {
+    await rejects(
+      pollConnectionUntilActive({
+        poll: () =>
+          Promise.reject(
+            Object.assign(new Error("upstream down"), { status: 502 }),
+          ),
+        sleep: noSleep,
+        isCancelled: () => false,
+        maxAttempts: 10,
+      }),
+      /upstream down/,
+    );
+  });
+
   it("propagates a poll rejection so the caller's catch surfaces it", async () => {
     await rejects(
       pollConnectionUntilActive({
@@ -249,6 +306,30 @@ describe("connect surfaces", () => {
     ok(
       hook.includes("flowPromise(connectFlowRegistry"),
       "a second caller joins the running flow",
+    );
+  });
+
+  it("a connection that vanished under the poll is quiet: silenced read, row line, no toast (PRODUCT-1733)", () => {
+    const bridge = read("../src/lib/tauri.ts");
+    ok(
+      bridge.includes("silence: isIntegrationConnectionGoneError"),
+      "the poll read silences the gone 404 so it never reaches Sentry",
+    );
+    const voice = read("../src/components/integrations/connect-announce.ts");
+    ok(
+      !voice.includes('outcome === "gone"'),
+      "the voice has no toast for a connection the user removed themselves",
+    );
+    const line = read("../src/components/integrations/connect-notice-line.tsx");
+    ok(
+      line.includes('notice === "cancelled"') &&
+        line.includes("waiting.cancelled"),
+      "the row says the connection was cancelled, once, quietly",
+    );
+    const hook = read("../src/hooks/queries/use-integrations.ts");
+    ok(
+      hook.includes("cancelFlowForDisconnect(connectFlowRegistry"),
+      "a disconnect stops the poll waiting on the connection it removes",
     );
   });
 

@@ -30,6 +30,7 @@ function harness(
     waker: { wait: () => Promise.resolve(), wake: () => {} },
     cancelled: false,
     redirectUrl: null,
+    connectionId: null,
     promise: null,
   };
   const statuses = overrides.statuses ?? ["active"];
@@ -96,6 +97,37 @@ describe("runConnectFlow — phase order", () => {
 });
 
 describe("runConnectFlow — outcomes", () => {
+  it("records the minted connection id on the entry so a disconnect can find the poll", async () => {
+    const { deps, entry } = harness();
+    await runConnectFlow("slack", deps);
+    strictEqual(entry.connectionId, "ca_1");
+  });
+
+  it("a connection removed under the poll settles as 'cancelled' on the row, with no toast copy of its own", async () => {
+    // PRODUCT-1733: the user disconnected the app while its OAuth was still
+    // pending (or the provider expired it), so the status read 404s. That is
+    // the connect ending, not an engine failure: no `null` return (which would
+    // paint the row "failed" and means "call() already toasted a bug").
+    const { deps, events } = harness({
+      readConnection: () =>
+        Promise.reject(
+          Object.assign(new Error("connection not found"), {
+            status: 404,
+          }),
+        ),
+    });
+    strictEqual(await runConnectFlow("slack", deps), "gone");
+    strictEqual(events.includes("notice:slack=cancelled"), true);
+    strictEqual(events.includes("notice:slack=failed"), false);
+    strictEqual(events.includes("toast:slack=gone"), true);
+    strictEqual(events.includes("invalidate"), true);
+    strictEqual(
+      events.includes("focus"),
+      false,
+      "nothing landed to snap back to",
+    );
+  });
+
   it("a landed OAuth confirms on the row, toasts, dwells, THEN refreshes", async () => {
     const { deps, events } = harness();
     strictEqual(await runConnectFlow("slack", deps), "active");

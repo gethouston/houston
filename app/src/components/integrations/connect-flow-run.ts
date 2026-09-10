@@ -29,9 +29,12 @@ export type ConnectStep = "starting" | "waiting" | "blocked";
  *  - `failed`    — the provider rejected or revoked the OAuth;
  *  - `stopped`   — the poll budget ran out because the user walked away; the
  *    app's own catalog row, now marked "Finishing up", picks it back up.
- * A cancel leaves nothing: the user already knows.
+ *  - `cancelled` — the pending connection vanished under the poll (the user
+ *    disconnected the app mid-OAuth, or the provider expired it); the row
+ *    says so once, quietly, and goes back to Available (PRODUCT-1733).
+ * A cancel the user asked for leaves nothing: the user already knows.
  */
-export type ConnectNotice = "connected" | "failed" | "stopped";
+export type ConnectNotice = "connected" | "failed" | "stopped" | "cancelled";
 
 /**
  * How long the success confirmation stays on the row BEFORE the connections
@@ -71,7 +74,9 @@ export interface ConnectRunDeps {
    * they walked away long ago — yanking focus then would be focus-stealing.
    */
   focus: () => Promise<void>;
-  /** Toast the outcome (success / neutral / error). Never called for a cancel. */
+  /** Toast the outcome (success / neutral / error). Never called for a cancel;
+   *  called for `gone`, where the voice stays silent (the row's notice is the
+   *  one surface). */
   announce: (toolkit: string, outcome: PollOutcome) => void;
   /** Free the slug so it can be connected again. */
   release: (toolkit: string) => void;
@@ -118,6 +123,7 @@ export async function runConnectFlow(
     try {
       const { redirectUrl, connectionId } = await deps.mintLink(toolkit);
       entry.redirectUrl = redirectUrl;
+      entry.connectionId = connectionId;
       // A cancel that landed while the link was still minting must NOT go on to
       // pop the OAuth tab: bail with the same silent outcome the poll yields.
       if (entry.cancelled) {
@@ -194,5 +200,6 @@ export function noticeFor(
 ): ConnectNotice {
   if (outcome === "active") return "connected";
   if (outcome === "timeout") return "stopped";
+  if (outcome === "gone") return "cancelled";
   return "failed";
 }
