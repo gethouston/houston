@@ -132,6 +132,21 @@ describe("isShelfVisible", () => {
   it("hides a ready shelf the cross-shelf dedupe emptied", () => {
     assert.equal(isShelfVisible({ status: "ready", skills: [] }), false);
   });
+  it("hides a ready shelf whose every card was dropped as unavailable (PRODUCT-1729)", () => {
+    const state = {
+      status: "ready" as const,
+      skills: [skill("a"), skill("b")],
+    };
+    const dropped = new Map<string, "unavailable">([
+      ["a", "unavailable"],
+      ["b", "unavailable"],
+    ]);
+    assert.equal(isShelfVisible(state, dropped), false);
+    assert.equal(
+      isShelfVisible(state, new Map([["a", "unavailable" as const]])),
+      true,
+    );
+  });
 });
 
 describe("dedupeAcrossShelves", () => {

@@ -31,6 +31,7 @@ import {
   PublisherChips,
 } from "./skill-marketplace-grid-parts";
 import type { SkillMarketplaceCardLabels } from "./skill-marketplace-row";
+import type { MarketplaceInstallState } from "./skill-marketplace-state-model";
 import { ownerOf } from "./skill-marketplace-util";
 import type { CommunitySkill } from "./types";
 
@@ -75,7 +76,7 @@ export interface SkillMarketplaceGridProps {
   onCategoryChange: (next: string) => void;
   /** Category picker entries (localized), shown only when non-empty. */
   categoryOptions: SkillCategoryOption[];
-  installState: Map<string, "installing" | "installed" | "failed">;
+  installState: MarketplaceInstallState;
   installedSkillNames?: Set<string>;
   onInstall: (skill: CommunitySkill) => void;
   onOpenDetail: (skill: CommunitySkill) => void;

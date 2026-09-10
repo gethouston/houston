@@ -77,6 +77,10 @@ import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
+import {
+  isExpectedSkillPreviewError,
+  isUnavailableSkillError,
+} from "./skill-install-expected-state";
 import { isExpectedSkillSearchError } from "./skill-search-expected-state";
 import { isStaleAttachmentError } from "./stale-attachment";
 import {
@@ -891,15 +895,17 @@ export const tauriSkills = {
       () =>
         getEngine().previewCommunitySkill(agentPath, source, skillId, signal),
       undefined,
-      // `skill_not_in_repo` on a preview is an expected upstream state, not a
-      // Houston bug: the skills.sh index keeps listing skills whose GitHub
-      // repo was deleted, and preview deliberately skips the recursive scan
-      // that install runs (github-lookup.ts), so deeply nested skills miss
-      // here yet install fine. The detail modal already shows its visible
-      // error state (use-skill-preview.ts), so no Sentry capture — that
-      // second surface is what kept HOUSTON-APP-4XZ alive after PRODUCT-1382
-      // fixed every findable layout. Every other failure stays captured.
-      { toast: false, silenceKinds: ["skill_not_in_repo"] },
+      // A missing skill (`skill_not_in_repo`), a deleted repo
+      // (`repo_not_found`), or GitHub not listable right now on a preview is
+      // an expected upstream state, not a Houston bug: the skills.sh index
+      // keeps listing skills whose GitHub repo was deleted, and preview
+      // deliberately skips the recursive scan that install runs
+      // (github-lookup.ts), so deeply nested skills miss here yet install
+      // fine. The detail modal already shows its visible error state
+      // (use-skill-preview.ts), so no Sentry capture — that second surface is
+      // what kept HOUSTON-APP-4XZ alive after PRODUCT-1382 fixed every
+      // findable layout. Every other failure stays captured.
+      { toast: false, silence: isExpectedSkillPreviewError },
     ),
   installCommunity: (
     agentPath: string,
@@ -920,7 +926,11 @@ export const tauriSkills = {
           signal,
         ),
       undefined,
-      { toast: false },
+      // The same expected upstream states as preview (PRODUCT-1729): the host
+      // proved the skill or its repo is gone, the handler shows the authored
+      // "no longer available" state and drops the card. Every other install
+      // failure (rate limit, offline, malformed) stays captured.
+      { toast: false, silence: isUnavailableSkillError },
     );
   },
 };

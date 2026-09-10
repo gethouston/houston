@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import {
   SkillPreviewModal,
   type SkillPreviewState,
@@ -38,6 +38,13 @@ export function SkillMarketplaceDetail({
   const installed =
     entry === "installed" ||
     (slug !== null && (installedSkillNames?.has(slug) ?? false));
+
+  // The skill was just proven gone upstream (PRODUCT-1729): its card is being
+  // dropped, so the modal closes with it rather than re-arming an Install
+  // button that can only fail the same way.
+  useEffect(() => {
+    if (entry === "unavailable") onClose();
+  }, [entry, onClose]);
 
   return (
     <SkillPreviewModal

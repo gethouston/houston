@@ -1,5 +1,6 @@
 import type { CommunitySkill } from "@houston/protocol";
 import { fetchCommunitySearch } from "./community-fetch";
+import { type GoneRegistry, goneRegistry } from "./gone-registry";
 
 /**
  * skills.sh community directory client. The host owns the resilience the KB
@@ -7,6 +8,9 @@ import { fetchCommunitySearch } from "./community-fetch";
  * outbound requests are globally spaced, and stale cached results are
  * returned during a temporary 429/network failure — so a rate-limited
  * marketplace degrades to slightly-old results instead of an error wall.
+ * Results whose repo or skill the install lookup has PROVED gone (the gone
+ * registry, PRODUCT-1729) are dropped on the way out: skills.sh keeps indexing
+ * deleted repos and renamed skills for months.
  */
 
 const SEARCH_ENDPOINT = "https://skills.sh/api/search";
@@ -45,6 +49,8 @@ export interface CommunityDirectoryOptions {
   freshTtlMs?: number;
   staleTtlMs?: number;
   popularFreshTtlMs?: number;
+  /** Proven-gone repos/skills to hide; the process singleton by default. */
+  gone?: GoneRegistry;
 }
 
 /** Per-request overrides that preserve process-wide cache and rate spacing. */
@@ -67,6 +73,7 @@ export class CommunityDirectory {
   private readonly freshTtlMs: number;
   private readonly staleTtlMs: number;
   private readonly popularFreshTtlMs: number;
+  private readonly gone: GoneRegistry;
 
   private readonly entries = new Map<string, CachedSearch>();
   private popularEntry: CachedSearch | null = null;
@@ -84,6 +91,12 @@ export class CommunityDirectory {
     this.freshTtlMs = opts.freshTtlMs ?? SEARCH_FRESH_TTL_MS;
     this.staleTtlMs = opts.staleTtlMs ?? SEARCH_STALE_TTL_MS;
     this.popularFreshTtlMs = opts.popularFreshTtlMs ?? POPULAR_FRESH_TTL_MS;
+    this.gone = opts.gone ?? goneRegistry;
+  }
+
+  /** Drop entries the install lookup has proved gone since they were cached. */
+  private alive(skills: CommunitySkill[]): CommunitySkill[] {
+    return skills.filter((s) => !this.gone.isGone(s.source, s.skillId));
   }
 
   /** Search with shared cache/spacing and optional request-scoped I/O. */
@@ -97,13 +110,13 @@ export class CommunityDirectory {
 
     const cached = this.entries.get(key);
     if (cached && this.now() - cached.fetchedAt <= this.freshTtlMs)
-      return cached.skills;
+      return this.alive(cached.skills);
 
     await this.waitForRequestSlot();
     try {
       const skills = await this.fetchSearch(trimmed, opts);
       this.entries.set(key, { skills, fetchedAt: this.now() });
-      return skills;
+      return this.alive(skills);
     } catch (err) {
       if (opts.signal?.aborted) throw opts.signal.reason ?? err;
       const stale = this.entries.get(key);
@@ -111,7 +124,7 @@ export class CommunityDirectory {
         console.warn(
           `[host-skills] community search failed, returning cached results: ${err}`,
         );
-        return stale.skills;
+        return this.alive(stale.skills);
       }
       throw err;
     }
@@ -121,13 +134,13 @@ export class CommunityDirectory {
   async popular(opts: CommunitySearchOptions = {}): Promise<CommunitySkill[]> {
     const fresh = this.popularEntry;
     if (fresh && this.now() - fresh.fetchedAt <= this.popularFreshTtlMs)
-      return fresh.skills.slice(0, POPULAR_LIMIT);
+      return this.alive(fresh.skills).slice(0, POPULAR_LIMIT);
 
     await this.waitForRequestSlot();
     try {
       const skills = await this.fetchSearch(POPULAR_SEED, opts);
       this.popularEntry = { skills, fetchedAt: this.now() };
-      return skills.slice(0, POPULAR_LIMIT);
+      return this.alive(skills).slice(0, POPULAR_LIMIT);
     } catch (err) {
       if (opts.signal?.aborted) throw opts.signal.reason ?? err;
       const stale = this.popularEntry;
@@ -135,7 +148,7 @@ export class CommunityDirectory {
         console.warn(
           `[host-skills] popular feed fetch failed, returning cached results: ${err}`,
         );
-        return stale.skills.slice(0, POPULAR_LIMIT);
+        return this.alive(stale.skills).slice(0, POPULAR_LIMIT);
       }
       throw err;
     }

@@ -2,7 +2,7 @@ import { parseSkillMd } from "@houston/domain";
 import type { CommunitySkillPreview } from "@houston/protocol";
 import { locateSkillMd } from "./github-lookup";
 import { normalizeSource } from "./github-parse";
-import { SkillRemoteError } from "./remote-error";
+import { SkillRemoteError, type SkillRemoteErrorKind } from "./remote-error";
 
 /**
  * Upper bound on the returned `content` body. A preview modal never needs more
@@ -73,6 +73,12 @@ function clipContent(body: string): string {
   );
 }
 
+const UNCACHED_KINDS: ReadonlySet<SkillRemoteErrorKind> = new Set([
+  "invalid_repo_source",
+  "offline",
+  "github_rate_limited",
+]);
+
 const PREVIEW_FRESH_TTL_MS = 24 * 60 * 60_000;
 const PREVIEW_FAILURE_TTL_MS = 10 * 60_000;
 const PREVIEW_MAX_ENTRIES = 256;
@@ -95,8 +101,10 @@ export interface PreviewDirectoryOptions {
  * (community.ts). Successful previews stay fresh for 24h; thrown
  * `SkillRemoteError`s are NEGATIVELY cached for 10 minutes so repeated clicks on
  * a permanently-missing skill don't refetch — EXCEPT `invalid_repo_source`,
- * which is a client bug (garbage input) not worth a cache slot and is rethrown
- * uncached. Keyed `${source}#${skillId}`. `fetchImpl` is passed per call (the
+ * which is a client bug (garbage input) not worth a cache slot, and the
+ * transient kinds (`offline`, `github_rate_limited`), which say nothing about
+ * the skill and must not pin a "missing" answer on a GitHub hiccup; both are
+ * rethrown uncached. Keyed `${source}#${skillId}`. `fetchImpl` is passed per call (the
  * route already holds it per request), so ONE process-wide instance — held as a
  * module-level singleton in the route layer, like `CommunityDirectory` — serves
  * every request while keeping the class trivially injectable in tests via `now`.
@@ -150,7 +158,7 @@ export class PreviewDirectory {
       this.store(key, { result, fetchedAt: this.now() });
       return result;
     } catch (err) {
-      if (err instanceof SkillRemoteError && err.kind !== "invalid_repo_source")
+      if (err instanceof SkillRemoteError && !UNCACHED_KINDS.has(err.kind))
         this.store(key, {
           result: { error: err },
           fetchedAt: this.now(),

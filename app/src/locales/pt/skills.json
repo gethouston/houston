@@ -78,7 +78,7 @@
       "productivity": "Produtividade"
     },
     "installFailedAlready": "Já instalado",
-    "installFailedRepoMissing": "O autor removeu este skill.",
+    "installUnavailable": "Este skill não está mais disponível do autor.",
     "installFailedMalformed": "O arquivo deste skill está com problema. Tente outro.",
     "installFailedRateLimited": "O Skills.sh está ocupado. Aguarde um momento e clique de novo.",
     "installFailedOffline": "Não foi possível conectar. Verifique sua internet e tente de novo.",

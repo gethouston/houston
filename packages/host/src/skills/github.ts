@@ -32,16 +32,40 @@ export async function fetchSkillMdAtPath(
   source: string,
   path: string,
 ): Promise<string> {
-  const res = await fetchImpl(
-    `https://raw.githubusercontent.com/${source}/HEAD/${path}`,
-    { headers: GH_HEADERS },
-  );
-  if (!res.ok)
+  const read = await readSkillMdAtPath(fetchImpl, source, path);
+  if (read.kind !== "ok")
     throw new SkillRemoteError(
       "offline",
       `Could not fetch '${path}' from ${source}`,
     );
-  return res.text();
+  return read.rawMd;
+}
+
+/**
+ * The non-throwing read the tree scans use, keeping the two misses apart: a
+ * `missing` path (404: the directory simply holds no SKILL.md) is evidence of
+ * absence, a `failed` one (transport, 5xx) is not.
+ */
+export type SkillMdRead =
+  | { kind: "ok"; rawMd: string }
+  | { kind: "missing" }
+  | { kind: "failed" };
+
+export async function readSkillMdAtPath(
+  fetchImpl: typeof fetch,
+  source: string,
+  path: string,
+): Promise<SkillMdRead> {
+  const res = await fetchImpl(
+    `https://raw.githubusercontent.com/${source}/HEAD/${path}`,
+    { headers: GH_HEADERS },
+  ).catch(() => null);
+  if (!res) return { kind: "failed" };
+  if (res.status === 404) return { kind: "missing" };
+  if (!res.ok) return { kind: "failed" };
+  // A body-stream reset after the headers is the same "could not read".
+  const rawMd = await res.text().catch(() => null);
+  return rawMd === null ? { kind: "failed" } : { kind: "ok", rawMd };
 }
 
 /**

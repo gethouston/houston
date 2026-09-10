@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
+import { isUnavailableSkillError } from "../../lib/skill-install-expected-state";
 import { tauriAgent, tauriSkills } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import type { WorkspaceSkillRow } from "../../lib/workspace-skills";
@@ -69,8 +70,15 @@ export function useSkillsViewActions() {
             r.status === "rejected" &&
             classifySkillError(r.reason) === "already_installed",
         );
+        // The skill is gone upstream for EVERY agent alike (PRODUCT-1729):
+        // one expected-state line, not a red toast naming each agent.
+        const allUnavailable = failures.every(({ r }) =>
+          isUnavailableSkillError(r.status === "rejected" ? r.reason : null),
+        );
         if (allAlready && okCount === 0) {
           addToast({ title: t("store.installFailedAlready"), variant: "info" });
+        } else if (allUnavailable) {
+          addToast({ title: t("store.installUnavailable"), variant: "info" });
         } else if (!allAlready) {
           addToast({
             title: t("global.installFailedFor", {
@@ -80,7 +88,15 @@ export function useSkillsViewActions() {
           });
         }
       }
-      if (okCount === 0) throw new Error("install failed for every agent");
+      // Rethrow the FIRST real rejection so its typed `kind` survives: the
+      // marketplace card keys its next state on it (an unavailable skill is
+      // dropped, anything else re-enables the button).
+      if (okCount === 0) {
+        const first = failures[0]?.r;
+        throw first?.status === "rejected"
+          ? first.reason
+          : new Error("install failed for every agent");
+      }
       const first = settled.find((r) => r.status === "fulfilled");
       return first?.status === "fulfilled" ? first.value : skill.skillId;
     },

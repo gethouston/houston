@@ -8,6 +8,10 @@
  * runner, which cannot load `.tsx`.
  */
 
+import {
+  availableSkills,
+  type MarketplaceInstallState,
+} from "./skill-marketplace-state-model.ts";
 import { ownerOf } from "./skill-marketplace-util.ts";
 import type { CommunitySkill } from "./types";
 
@@ -127,11 +131,16 @@ export function dedupeAcrossShelves(
 
 /** A shelf renders only while loading or once it has ready cards — a ready
  *  shelf emptied by {@link dedupeAcrossShelves} hides like an errored one. */
-export function isShelfVisible(state: ShelfState): boolean {
-  return (
-    state.status === "loading" ||
-    (state.status === "ready" && state.skills.length > 0)
-  );
+export function isShelfVisible(
+  state: ShelfState,
+  installState?: MarketplaceInstallState,
+): boolean {
+  if (state.status === "loading") return true;
+  if (state.status !== "ready") return false;
+  const skills = installState
+    ? availableSkills(state.skills, installState)
+    : state.skills;
+  return skills.length > 0;
 }
 
 /**
