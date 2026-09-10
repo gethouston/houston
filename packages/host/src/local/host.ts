@@ -48,8 +48,6 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         state.beginDrain();
         scheduler.stop();
         watcher.stop();
-        standingFrameCapture?.stop();
-        frameForwarder?.stop();
         // Drain the last accrued stretch before the runtimes go down; the
         // sampler swallows report failures, so this never blocks a shutdown.
         await usageSampler?.stop();
@@ -62,6 +60,11 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
             ? opts.shutdownDrainMs + SHUTDOWN_EXIT_SLACK_MS
             : undefined,
         );
+        // Only now: the standing capture pumps the frames of the turns the
+        // runtimes just finished draining, and stopping it before the drain
+        // would drop them (and their terminal frame) from the turn log.
+        standingFrameCapture?.stop();
+        await frameForwarder?.stop();
         await sharedMirror?.stop();
         await syncDaemon?.stop();
         await new Promise<void>((resolve, reject) => {
