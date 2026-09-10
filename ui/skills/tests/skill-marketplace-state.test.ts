@@ -1,8 +1,10 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  availableSkills,
   CATEGORY_ALL,
   effectiveSearchTerm,
+  installOutcome,
   resultsPhase,
   searchErrorPhase,
   searchingPrevious,
@@ -127,5 +129,38 @@ describe("searchingPrevious", () => {
   });
   it("resets to empty from idle", () => {
     assert.deepEqual(searchingPrevious({ kind: "idle" }), []);
+  });
+});
+
+describe("installOutcome (PRODUCT-1729)", () => {
+  it("leaves an aborted install untouched", () => {
+    const aborted = new Error("aborted");
+    aborted.name = "AbortError";
+    assert.equal(installOutcome(aborted), "aborted");
+  });
+  it("marks a skill the author removed or renamed as unavailable", () => {
+    assert.equal(installOutcome({ kind: "skill_not_in_repo" }), "unavailable");
+    assert.equal(installOutcome({ kind: "repo_not_found" }), "unavailable");
+  });
+  it("keeps every other failure retryable", () => {
+    assert.equal(installOutcome({ kind: "offline" }), "failed");
+    assert.equal(installOutcome({ kind: "github_rate_limited" }), "failed");
+    assert.equal(installOutcome(new Error("boom")), "failed");
+  });
+});
+
+describe("availableSkills", () => {
+  it("drops only the cards proven unavailable this session", () => {
+    const a = skill("a");
+    const b = skill("b");
+    const c = skill("c");
+    const state = new Map<
+      string,
+      "installing" | "installed" | "failed" | "unavailable"
+    >([
+      ["a", "unavailable"],
+      ["b", "failed"],
+    ]);
+    assert.deepEqual(availableSkills([a, b, c], state), [b, c]);
   });
 });

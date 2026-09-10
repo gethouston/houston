@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useInstallCommunitySkill } from "../../hooks/queries";
 import { analytics } from "../../lib/analytics";
+import { isUnavailableSkillError } from "../../lib/skill-install-expected-state";
 import { tauriSkills } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 
@@ -58,17 +59,24 @@ export function useCommunitySkillHandlers(agentPath: string) {
               title: t("store.installFailedAlready"),
               variant: "info",
             });
+          } else if (isUnavailableSkillError(err)) {
+            // Expected upstream state, not a bug (PRODUCT-1729): the host
+            // proved the author removed or renamed the skill, or deleted the
+            // repo, and the card is being dropped. Plain info, never the red
+            // "report a bug" pair.
+            addToast({
+              title: t("store.installUnavailable"),
+              variant: "info",
+            });
           } else {
             const key =
-              kind === "skill_not_in_repo"
-                ? "store.installFailedRepoMissing"
-                : kind === "skill_malformed"
-                  ? "store.installFailedMalformed"
-                  : kind === "rate_limited" || kind === "github_rate_limited"
-                    ? "store.installFailedRateLimited"
-                    : kind === "offline"
-                      ? "store.installFailedOffline"
-                      : "store.installFailedGeneric";
+              kind === "skill_malformed"
+                ? "store.installFailedMalformed"
+                : kind === "rate_limited" || kind === "github_rate_limited"
+                  ? "store.installFailedRateLimited"
+                  : kind === "offline"
+                    ? "store.installFailedOffline"
+                    : "store.installFailedGeneric";
             addToast({ title: t(key), variant: "error" });
           }
         }

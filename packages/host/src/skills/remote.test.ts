@@ -8,6 +8,7 @@ import {
   skillIdFromPath,
   slugifyInstallId,
 } from "./github-parse";
+import { GoneRegistry } from "./gone-registry";
 import { installCommunitySkill, installSkillsFromRepo } from "./install";
 import { SkillRemoteError } from "./remote-error";
 
@@ -238,6 +239,37 @@ test("community search maps a persistent 429 to rate_limited when no cache", asy
   expect((err as SkillRemoteError).kind).toBe("rate_limited");
 });
 
+test("community search hides skills the install lookup proved gone, even from a cached result (PRODUCT-1729)", async () => {
+  const clock = fakeClock();
+  const gone = new GoneRegistry({ now: clock.now });
+  const dead = {
+    ...SKILL_HIT,
+    id: "sales-skills/sales/sales-kit",
+    skillId: "sales-kit",
+    source: "sales-skills/sales",
+  };
+  const renamed = { ...SKILL_HIT, id: "owner/repo/ghost", skillId: "ghost" };
+  const dir = new CommunityDirectory({
+    endpoint: "https://x/api/search",
+    now: clock.now,
+    sleep: clock.sleep,
+    gone,
+    fetchImpl: fakeFetch(() => jsonRes({ skills: [SKILL_HIT, dead, renamed] })),
+  });
+  expect((await dir.search("sales")).length).toBe(3);
+
+  gone.markRepoGone("Sales-Skills/sales");
+  gone.markSkillGone("owner/repo", "ghost");
+  // Same fresh cache entry, now filtered on the way out.
+  expect((await dir.search("sales")).map((s) => s.id)).toEqual([SKILL_HIT.id]);
+  expect((await dir.popular()).map((s) => s.id)).toEqual([SKILL_HIT.id]);
+
+  // A day later the marks expire and the cards may return.
+  clock.state.t += 25 * 60 * 60_000;
+  expect(gone.isGone("sales-skills/sales")).toBe(false);
+  expect(gone.isGone("owner/repo", "ghost")).toBe(false);
+});
+
 test("queries under two chars return empty without a network call", async () => {
   const dir = new CommunityDirectory({
     fetchImpl: fakeFetch(() => {
@@ -441,7 +473,22 @@ test("installCommunitySkill finds the skill under common paths and uses the fron
   expect(md).toContain("name: writing-plans");
 });
 
-test("installCommunitySkill surfaces skill_not_in_repo when nothing matches", async () => {
+test("installCommunitySkill surfaces skill_not_in_repo when a live repo holds nothing matching", async () => {
+  const err = await installCommunitySkill(
+    fakeFetch((url) =>
+      url.includes("git/trees/HEAD")
+        ? new Response(JSON.stringify({ tree: [] }), { status: 200 })
+        : new Response("", { status: 404 }),
+    ),
+    new MemoryVfs(),
+    ROOT,
+    "owner/repo",
+    "ghost",
+  ).catch((e) => e);
+  expect((err as SkillRemoteError).kind).toBe("skill_not_in_repo");
+});
+
+test("installCommunitySkill surfaces repo_not_found when GitHub 404s the whole repo", async () => {
   const err = await installCommunitySkill(
     fakeFetch(() => new Response("", { status: 404 })),
     new MemoryVfs(),
@@ -449,7 +496,7 @@ test("installCommunitySkill surfaces skill_not_in_repo when nothing matches", as
     "owner/repo",
     "ghost",
   ).catch((e) => e);
-  expect((err as SkillRemoteError).kind).toBe("skill_not_in_repo");
+  expect((err as SkillRemoteError).kind).toBe("repo_not_found");
 });
 
 test("a wedged skills.sh surfaces the typed upstream_timeout error instead of hanging", async () => {

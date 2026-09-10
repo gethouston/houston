@@ -118,14 +118,27 @@ test("previewCommunitySkill nulls optional fields on a minimal SKILL.md", async 
   });
 });
 
-test("previewCommunitySkill throws skill_not_in_repo when nothing matches", async () => {
+test("previewCommunitySkill throws skill_not_in_repo when a live repo holds nothing matching", async () => {
   const err = await previewCommunitySkill(
-    fakeFetch(() => new Response("", { status: 404 })),
+    fakeFetch((url) =>
+      url.includes("git/trees/HEAD")
+        ? new Response(JSON.stringify({ tree: [] }), { status: 200 })
+        : new Response("", { status: 404 }),
+    ),
     "owner/repo",
     "ghost",
   ).catch((e) => e);
   expect(err).toBeInstanceOf(SkillRemoteError);
   expect((err as SkillRemoteError).kind).toBe("skill_not_in_repo");
+});
+
+test("previewCommunitySkill throws repo_not_found when GitHub 404s the repo itself", async () => {
+  const err = await previewCommunitySkill(
+    fakeFetch(() => new Response("", { status: 404 })),
+    "owner/repo",
+    "ghost",
+  ).catch((e) => e);
+  expect((err as SkillRemoteError).kind).toBe("repo_not_found");
 });
 
 test("previewCommunitySkill rejects an unparseable source before any fetch", async () => {
@@ -150,6 +163,9 @@ test("previewCommunitySkill never runs the expensive RECURSIVE tree scan", async
   const err = await previewCommunitySkill(
     fakeFetch((url) => {
       if (url.includes("recursive=1")) recursiveCalls++;
+      // The shallow scan sees a live repo with nothing at the root.
+      if (url.includes("git/trees/HEAD"))
+        return new Response(JSON.stringify({ tree: [] }), { status: 200 });
       return null;
     }),
     "owner/repo",
@@ -262,7 +278,8 @@ test("PreviewDirectory negatively caches a failure for 10min, then retries", asy
       attempts++;
       return new Response("", { status: 404 });
     }
-    if (url.includes("git/trees")) return new Response("", { status: 404 });
+    if (url.includes("git/trees"))
+      return new Response(JSON.stringify({ tree: [] }), { status: 200 });
     return null;
   });
   const dir = new PreviewDirectory({ now: () => clock.t });
@@ -308,4 +325,25 @@ test("PreviewDirectory does not cache invalid_repo_source", async () => {
   expect((e2 as SkillRemoteError).kind).toBe("invalid_repo_source");
   // Rejected before any fetch, both times — never cached, never fetched.
   expect(fetchCalls).toBe(0);
+});
+
+test("PreviewDirectory does not negatively cache a GitHub rate limit (PRODUCT-1729)", async () => {
+  let treeCalls = 0;
+  const fetchImpl = fakeFetch((url) => {
+    if (url.includes("git/trees")) {
+      treeCalls++;
+      return new Response("", { status: 403 });
+    }
+    return new Response("", { status: 404 });
+  });
+  const dir = new PreviewDirectory({ now: () => 0 });
+  const e1 = await dir
+    .preview(fetchImpl, "owner/repo", "ghost")
+    .catch((e) => e);
+  expect((e1 as SkillRemoteError).kind).toBe("github_rate_limited");
+  const e2 = await dir
+    .preview(fetchImpl, "owner/repo", "ghost")
+    .catch((e) => e);
+  expect((e2 as SkillRemoteError).kind).toBe("github_rate_limited");
+  expect(treeCalls).toBe(2);
 });

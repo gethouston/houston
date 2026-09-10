@@ -10,10 +10,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { classifySkillError } from "./skill-error-kinds";
 import type { SkillMarketplacePhase } from "./skill-marketplace-grid";
 import {
   effectiveSearchTerm,
+  installOutcome,
+  type MarketplaceInstallState,
+  type MarketplaceInstallStatus,
   resultsPhase,
   searchErrorPhase,
   searchingPrevious,
@@ -22,10 +24,7 @@ import type { CommunitySkill } from "./types";
 
 const SEARCH_DEBOUNCE_MS = 350;
 
-export type MarketplaceInstallState = Map<
-  string,
-  "installing" | "installed" | "failed"
->;
+export type { MarketplaceInstallState, MarketplaceInstallStatus };
 
 export interface UseSkillMarketplaceStateArgs {
   /** Section open state — drives reset-on-close. */
@@ -141,8 +140,9 @@ export function useSkillMarketplaceState({
     };
   }, [query, categoryQuery, onSearch, open]);
 
-  // Install with a per-skill state machine. The failure state re-enables the
-  // button; the visible failure reason (toast) is surfaced by the app caller.
+  // Install with a per-skill state machine. `failed` re-enables the button and
+  // `unavailable` drops the card; the visible reason (toast) is surfaced by the
+  // app caller either way.
   const install = useCallback(
     (skill: CommunitySkill) => {
       installAbortsRef.current.get(skill.id)?.abort();
@@ -156,8 +156,9 @@ export function useSkillMarketplaceState({
         })
         .catch((err) => {
           if (controller.signal.aborted) return;
-          if (classifySkillError(err) === "aborted") return;
-          setInstallState((prev) => new Map(prev).set(skill.id, "failed"));
+          const outcome = installOutcome(err);
+          if (outcome === "aborted") return;
+          setInstallState((prev) => new Map(prev).set(skill.id, outcome));
         })
         .finally(() => {
           installAbortsRef.current.delete(skill.id);

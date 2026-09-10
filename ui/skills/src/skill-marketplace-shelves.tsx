@@ -18,6 +18,10 @@ import {
   isShelfVisible,
   type ResolvedShelf,
 } from "./skill-marketplace-shelves-model";
+import {
+  availableSkills,
+  type MarketplaceInstallState,
+} from "./skill-marketplace-state-model";
 import type { CommunitySkill } from "./types";
 
 const SKELETON_KEYS = ["a", "b", "c", "d"];
@@ -34,7 +38,7 @@ export interface SkillMarketplaceShelvesProps {
   shelves: ResolvedShelf[];
   allFailed: boolean;
   onRetry: () => void;
-  installState: Map<string, "installing" | "installed" | "failed">;
+  installState: MarketplaceInstallState;
   installedSkillNames?: Set<string>;
   onInstall: (skill: CommunitySkill) => void;
   onOpenDetail: (skill: CommunitySkill) => void;
@@ -62,7 +66,7 @@ function ShelfCardRow({
   cardLabels,
 }: {
   skills: CommunitySkill[];
-  installState: Map<string, "installing" | "installed" | "failed">;
+  installState: MarketplaceInstallState;
   installedSkillNames?: Set<string>;
   onInstall: (skill: CommunitySkill) => void;
   onOpenDetail: (skill: CommunitySkill) => void;
@@ -70,7 +74,7 @@ function ShelfCardRow({
 }) {
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {skills.map((skill) => {
+      {availableSkills(skills, installState).map((skill) => {
         const slug = (skill.skillId || skill.name).toLowerCase();
         const installed =
           installState.get(skill.id) === "installed" ||
@@ -115,7 +119,7 @@ export function SkillMarketplaceShelves({
   return (
     <div className="flex flex-col gap-5">
       {dedupeAcrossShelves(shelves)
-        .filter((shelf) => isShelfVisible(shelf.state))
+        .filter((shelf) => isShelfVisible(shelf.state, installState))
         .map((shelf) => (
           <section key={shelf.id}>
             <div className="mb-2 flex items-center justify-between gap-3">

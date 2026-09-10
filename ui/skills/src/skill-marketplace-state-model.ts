@@ -12,6 +12,44 @@ import { classifySkillError } from "./skill-error-kinds.ts";
 import type { SkillMarketplacePhase } from "./skill-marketplace-grid";
 import type { CommunitySkill } from "./types";
 
+/**
+ * Per-skill install state as the grid consumes it. `unavailable` is the
+ * install that failed because the skill no longer exists where skills.sh says
+ * it does (the author removed or renamed it, or deleted the repo): the card is
+ * dropped from every list for the rest of the session rather than re-enabling
+ * an install button that can only 404 again (PRODUCT-1729).
+ */
+export type MarketplaceInstallStatus =
+  | "installing"
+  | "installed"
+  | "failed"
+  | "unavailable";
+
+export type MarketplaceInstallState = Map<string, MarketplaceInstallStatus>;
+
+/**
+ * What a rejected install means for the card. `aborted` leaves the state
+ * untouched (the section cancelled it); `unavailable` hides the card; `failed`
+ * re-enables the button so the user can retry after the app's toast.
+ */
+export function installOutcome(
+  err: unknown,
+): "aborted" | "unavailable" | "failed" {
+  const cls = classifySkillError(err);
+  if (cls === "aborted") return "aborted";
+  if (cls === "skill_not_in_repo" || cls === "repo_not_found")
+    return "unavailable";
+  return "failed";
+}
+
+/** The skills still worth showing: everything not proven unavailable. */
+export function availableSkills(
+  skills: CommunitySkill[],
+  installState: MarketplaceInstallState,
+): CommunitySkill[] {
+  return skills.filter((s) => installState.get(s.id) !== "unavailable");
+}
+
 /** The selected-category value that means "no category filter". */
 export const CATEGORY_ALL = "all";
 

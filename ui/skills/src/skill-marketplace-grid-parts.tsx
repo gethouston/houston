@@ -12,6 +12,10 @@ import type { ReactNode } from "react";
 import type { SkillMarketplacePhase } from "./skill-marketplace-grid";
 import type { ResolvedGridLabels } from "./skill-marketplace-grid-model";
 import { SkillMarketplaceRow } from "./skill-marketplace-row";
+import {
+  availableSkills,
+  type MarketplaceInstallState,
+} from "./skill-marketplace-state-model";
 import type { CommunitySkill } from "./types";
 
 const SKELETON_KEYS = ["a", "b", "c", "d", "e", "f"];
@@ -109,7 +113,7 @@ export interface MarketplaceBodyProps {
   /** Visible skills after client-side publisher filtering. */
   filtered: CommunitySkill[];
   labels: ResolvedGridLabels;
-  installState: Map<string, "installing" | "installed" | "failed">;
+  installState: MarketplaceInstallState;
   installedSkillNames?: Set<string>;
   onInstall: (skill: CommunitySkill) => void;
   onOpenDetail: (skill: CommunitySkill) => void;
@@ -148,8 +152,13 @@ export function MarketplaceBody({
   if (phase.kind === "idle") {
     return <MutedNotice>{l.typeToSearch}</MutedNotice>;
   }
-  if (filtered.length === 0) {
-    return null;
+  const shown = availableSkills(filtered, installState);
+  if (shown.length === 0) {
+    // The last visible card was dropped as unavailable: say so rather than
+    // leaving a blank body under a query that did return results.
+    return phase.kind === "results" ? (
+      <MutedNotice>{l.noResults(phase.query)}</MutedNotice>
+    ) : null;
   }
   return (
     <div
@@ -158,7 +167,7 @@ export function MarketplaceBody({
         phase.kind === "searching" && "pointer-events-none opacity-60",
       )}
     >
-      {filtered.map((skill) => {
+      {shown.map((skill) => {
         const slug = (skill.skillId || skill.name).toLowerCase();
         const installed =
           installState.get(skill.id) === "installed" ||
