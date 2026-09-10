@@ -50,7 +50,9 @@ export function resultsPhase(
 /**
  * A failed search. Returns `null` when the failure is an abort (a superseded
  * request), so the caller leaves the current phase untouched instead of
- * flashing an error for a request it deliberately cancelled.
+ * flashing an error for a request it deliberately cancelled. A skills.sh
+ * timeout is its own "slow" reason: the remedy is to retry, not to check the
+ * connection (PRODUCT-1728).
  */
 export function searchErrorPhase(
   err: unknown,
@@ -58,12 +60,14 @@ export function searchErrorPhase(
 ): SkillMarketplacePhase | null {
   const cls = classifySkillError(err);
   if (cls === "aborted") return null;
-  const reason: "rate_limited" | "offline" | "generic" =
+  const reason: "rate_limited" | "offline" | "slow" | "generic" =
     cls === "rate_limited" || cls === "github_rate_limited"
       ? "rate_limited"
       : cls === "offline"
         ? "offline"
-        : "generic";
+        : cls === "upstream_timeout"
+          ? "slow"
+          : "generic";
   return { kind: "search-error", reason, query };
 }
 

@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { clientAbortSignal } from "./client-abort";
 import { json, readJson } from "./http";
 import {
   communityDirectory,
@@ -68,17 +69,20 @@ export async function searchAction(
     json(res, 400, { error: "missing 'queries'" });
     return;
   }
+  const signal = clientAbortSignal(req, res);
   try {
     const result = await searchCommunitySkills(
       {
         directory: deps.directory ?? communityDirectory,
         previews: deps.previews ?? previewDirectory,
         fetchImpl,
+        signal,
       },
       queries,
     );
     json(res, 200, result);
   } catch (err) {
+    if (signal.aborted) return;
     failSkill(res, err);
   }
 }

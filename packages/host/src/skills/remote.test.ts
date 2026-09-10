@@ -172,6 +172,59 @@ test("community search never turns cancellation into a stale-cache success", asy
   ).rejects.toThrow("search cancelled");
 });
 
+test("community search threads the caller's signal into the upstream fetch", async () => {
+  const clock = fakeClock();
+  const controller = new AbortController();
+  let upstreamSignal: AbortSignal | null | undefined;
+  const hangingFetch: typeof fetch = (_input, init) =>
+    new Promise((_resolve, reject) => {
+      upstreamSignal = init?.signal;
+      init?.signal?.addEventListener("abort", () =>
+        reject(init.signal?.reason),
+      );
+    });
+  const dir = new CommunityDirectory({
+    endpoint: "https://x/api/search",
+    now: clock.now,
+    sleep: clock.sleep,
+    fetchImpl: hangingFetch,
+  });
+  const pending = dir.search("writing", { signal: controller.signal });
+  await new Promise((r) => setTimeout(r, 0));
+  expect(upstreamSignal?.aborted).toBe(false);
+  controller.abort(new Error("client hung up"));
+  await expect(pending).rejects.toThrow("client hung up");
+  expect(upstreamSignal?.aborted).toBe(true);
+});
+
+test("community search keeps a real skills.sh 500 apart from the transport kinds", async () => {
+  const clock = fakeClock();
+  const dir = new CommunityDirectory({
+    endpoint: "https://x/api/search",
+    now: clock.now,
+    sleep: clock.sleep,
+    fetchImpl: fakeFetch(() => new Response("boom", { status: 500 })),
+  });
+  const err = await dir.search("writing").catch((e) => e);
+  expect(err).toBeInstanceOf(SkillRemoteError);
+  expect((err as SkillRemoteError).kind).toBe("upstream_error");
+  expect((err as SkillRemoteError).httpStatus).toBe(502);
+});
+
+test("community search maps a transport failure to offline", async () => {
+  const clock = fakeClock();
+  const dir = new CommunityDirectory({
+    endpoint: "https://x/api/search",
+    now: clock.now,
+    sleep: clock.sleep,
+    fetchImpl: async () => {
+      throw new TypeError("fetch failed");
+    },
+  });
+  const err = await dir.search("writing").catch((e) => e);
+  expect((err as SkillRemoteError).kind).toBe("offline");
+});
+
 test("community search maps a persistent 429 to rate_limited when no cache", async () => {
   const clock = fakeClock();
   const dir = new CommunityDirectory({
@@ -399,7 +452,7 @@ test("installCommunitySkill surfaces skill_not_in_repo when nothing matches", as
   expect((err as SkillRemoteError).kind).toBe("skill_not_in_repo");
 });
 
-test("a wedged skills.sh surfaces the typed offline error instead of hanging", async () => {
+test("a wedged skills.sh surfaces the typed upstream_timeout error instead of hanging", async () => {
   const hanging: typeof fetch = (_input, init) =>
     new Promise((_resolve, reject) => {
       init?.signal?.addEventListener("abort", () =>
@@ -412,7 +465,8 @@ test("a wedged skills.sh surfaces the typed offline error instead of hanging", a
     minIntervalMs: 0,
   });
   const err = await dir.search("research").catch((e) => e);
-  expect((err as SkillRemoteError).kind).toBe("offline");
+  expect((err as SkillRemoteError).kind).toBe("upstream_timeout");
+  expect((err as SkillRemoteError).httpStatus).toBe(504);
 });
 
 test("popular threads a request-scoped fetch and never touches global fetch", async () => {

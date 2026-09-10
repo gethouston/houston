@@ -44,6 +44,7 @@ const DEFAULT_LABELS: Required<Omit<SkillMarketplaceGridLabels, "card">> = {
   searchRateLimited:
     "Skills.sh is busy right now. Wait a moment and try again.",
   searchOffline: "Couldn't reach Skills.sh. Check your internet and try again.",
+  searchSlow: "Skill search is slow right now. Try again in a moment.",
   searchGeneric: "Skill search hit a snag. Wait a moment and try again.",
   typeToSearch: "Type to search for skills",
   minQuery: "Type at least 2 characters to search",
