@@ -7,7 +7,10 @@
  * - `launch` — the launch check found it. Nothing is running yet, so the
  *   install runs right away behind a calm "upgrading Houston" overlay and the
  *   app relaunches into the new version. This is what keeps the fleet fresh:
- *   every update lands on the next app open at the latest.
+ *   every update lands on the next app open at the latest. The launch check
+ *   is the first check of the app PROCESS (`update-launch-claim.ts`), never
+ *   the first check of a hook mount: React remounts the updater with
+ *   `<App/>` on every identity change, and that must not re-arm it.
  * - `poll` — a background re-check found it mid-session. The release
  *   downloads silently; nothing is shown until it is on disk. Then a small
  *   "Restart to update" pill sits in the window corner and the user restarts

@@ -14,6 +14,7 @@ import {
   EMPTY_DOWNLOAD_TALLY,
 } from "../lib/update-download-progress";
 import { reportUpdateDownloadFailure } from "../lib/update-download-report";
+import { claimLaunchCheck } from "../lib/update-launch-claim";
 import {
   shouldReportDownloadFailure,
   type UpdateCheckOutcome,
@@ -53,7 +54,6 @@ export function useUpdateMachine() {
   const appPathRef = useRef<string | null>(null);
   // Staged release bytes (a shell resource id) once a download landed.
   const bytesRidRef = useRef<number | null>(null);
-  const firstCheckRef = useRef(true);
   const reportedDownloadFailureRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -61,10 +61,12 @@ export function useUpdateMachine() {
   }, [status]);
 
   const runCheck = useCallback(async (): Promise<CheckResult> => {
-    // The first check of a run is the launch check: the user just opened the
-    // app and hasn't started working. Everything after is mid-session.
-    const origin: UpdateOrigin = firstCheckRef.current ? "launch" : "poll";
-    firstCheckRef.current = false;
+    // The first check of the PROCESS is the launch check: the user just
+    // opened the app and hasn't started working. Everything after is
+    // mid-session. Claimed outside React on purpose: this hook is remounted
+    // with <App/> on every identity change, and a per-mount flag would
+    // re-run the launch-time install on a user mid-task.
+    const origin: UpdateOrigin = claimLaunchCheck();
     if (busyRef.current || updateCheckBlocked(statusRef.current)) {
       return { outcome: "skipped" };
     }
