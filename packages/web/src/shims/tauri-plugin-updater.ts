@@ -19,6 +19,9 @@ export type DownloadEvent =
   | { event: "Finished"; data: Record<string, never> };
 
 export interface Update {
+  /** The plugin's `Update` resource id; the desktop's own download and
+   *  install commands take it (os-bridge `osDownloadUpdate`). */
+  rid: number;
   currentVersion: string;
   version: string;
   body?: string;
