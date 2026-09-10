@@ -41,6 +41,9 @@ enforced: false
 inventoryVersion: 0
 
 components:
+  custom-integration-details:
+    status: not-started
+    notes: Host edit endpoint available; native edit form not implemented.
   agent-avatar:
     status: implemented
     ref: mobile/ios/Houston/DesignSystem/HoustonAvatar.swift

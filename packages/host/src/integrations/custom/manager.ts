@@ -1,5 +1,6 @@
 import { type AddCustomIntegrationInput, defFromAddInput } from "./add-input";
 import { type DetectResult, detectSource } from "./detect";
+import { editDetails } from "./edit-details";
 import type { CustomExecutorHost } from "./executor-host";
 import { TOKEN_VARIABLE } from "./executor-host";
 import { CustomOAuthAttempts } from "./oauth-flow";
@@ -127,6 +128,14 @@ export class CustomIntegrationManager {
 
   add(input: AddCustomIntegrationInput): Promise<CustomIntegrationView> {
     return this.serialize(() => this.addLocked(input));
+  }
+
+  updateDetails(slug: string, input: unknown): Promise<void> {
+    return this.serialize(async () => {
+      const def = editDetails(await this.defOr404(slug), input);
+      await this.store.put(def);
+      this.onChanged();
+    });
   }
 
   private async addLocked(

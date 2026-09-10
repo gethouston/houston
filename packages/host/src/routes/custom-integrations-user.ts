@@ -99,6 +99,13 @@ async function serve(
       json(res, 200, await manager.detect(body.url.trim()));
       return true;
     }
+    if (target.kind === "definition" && method === "PATCH") {
+      const body = await bodyOr400(req, res);
+      if (!body) return true;
+      await manager.updateDetails(target.slug, body);
+      json(res, 200, { ok: true });
+      return true;
+    }
     if (target.kind === "definition" && method === "DELETE") {
       await manager.remove(target.slug);
       json(res, 200, { ok: true });

@@ -112,6 +112,14 @@
     "disconnectAction": "Disconnect account"
   },
   "custom": {
+    "edit": {
+      "title": "Edit details",
+      "description": "Change how this integration appears. Your connection stays the same.",
+      "website": "Website (optional)",
+      "websiteHelp": "Use the app's website, starting with https://. Houston uses it for the icon.",
+      "save": "Save changes",
+      "saving": "Saving..."
+    },
     "description": "Connect an API or MCP server that isn't in the app catalog.",
     "empty": "No custom integrations yet. Add one to connect a tool that isn't in the catalog.",
     "noResults": "No custom integrations match your search.",

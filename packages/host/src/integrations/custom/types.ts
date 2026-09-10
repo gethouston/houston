@@ -108,6 +108,7 @@ export interface CustomToolInfo {
 export interface CustomIntegrationView {
   slug: string;
   name: string;
+  website?: string;
   kind: CustomIntegrationDef["kind"];
   /** How this integration authenticates — `oauth` turns the pending state's
    *  affordance into Sign in (browser flow) instead of Enter key. */
@@ -137,6 +138,7 @@ export class CustomIntegrationError extends Error {
   constructor(
     readonly code:
       | "invalid_slug"
+      | "invalid_details"
       | "duplicate_slug"
       | "not_found"
       | "unsupported_source"

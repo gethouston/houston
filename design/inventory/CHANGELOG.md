@@ -3,6 +3,12 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v82 - 2026-09-10
+
+Custom integration details gain a name and website editor on desktop and phone
+web. Edits preserve the connection. Declared websites provide their conventional
+favicon, with curated logos and the existing initial fallback retained.
+
 ## v81 - 2026-09-07
 
 The composer's attach menu carries the conversation commands under its file

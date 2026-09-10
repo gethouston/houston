@@ -49,7 +49,13 @@ function fakeManager(
   overrides: Partial<
     Pick<
       CustomIntegrationManager,
-      "list" | "setCredential" | "remove" | "add" | "detect" | "tools"
+      | "list"
+      | "setCredential"
+      | "remove"
+      | "add"
+      | "detect"
+      | "tools"
+      | "updateDetails"
     >
   > = {},
 ): CustomIntegrationManager {
@@ -103,6 +109,37 @@ const dispatchUrl = (base: string, agentId: string, sub = "") =>
   `${base}/agents/${encodeURIComponent(agentId)}/integrations/custom/definitions${sub}`;
 const v1Url = (base: string, agentId: string, sub = "") =>
   `${base}/v1/agents/${encodeURIComponent(agentId)}/integrations/custom/definitions${sub}`;
+
+test("detail edits use all user mounts and enforce agent ownership", async () => {
+  const updateDetails = vi.fn(async () => {});
+  const { base, agent, stop } = await setup(fakeManager({ updateDetails }));
+  const details = { name: "Spark", website: "https://spark.studioroda.co" };
+  try {
+    for (const url of [
+      dispatchUrl(base, agent.id, "/acme"),
+      v1Url(base, agent.id, "/acme"),
+      `${base}/v1/integrations/custom/definitions/acme`,
+    ]) {
+      const res = await fetch(url, {
+        method: "PATCH",
+        headers: auth(),
+        body: JSON.stringify(details),
+      });
+      expect(res.status).toBe(200);
+    }
+    expect(updateDetails).toHaveBeenCalledTimes(3);
+    expect(updateDetails).toHaveBeenCalledWith("acme", details);
+    const denied = await fetch(v1Url(base, agent.id, "/acme"), {
+      method: "PATCH",
+      headers: auth("other"),
+      body: JSON.stringify(details),
+    });
+    expect([403, 404]).toContain(denied.status);
+    expect(updateDetails).toHaveBeenCalledTimes(3);
+  } finally {
+    stop();
+  }
+});
 
 test("dispatch surface: GET lists; POST credential validates and saves (the in-chat card's path)", async () => {
   const setCredential = vi.fn(async () => VIEW);

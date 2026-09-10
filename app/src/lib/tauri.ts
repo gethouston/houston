@@ -2208,6 +2208,14 @@ export const tauriIntegrations = {
   // `null` = unsupported host); the two mutations go through `call()` so a
   // failure toasts + reports exactly once.
   customList: () => getEngine().customIntegrations(),
+  customUpdateDetails: (
+    slug: string,
+    details: { name: string; website: string },
+    agentId?: string,
+  ) =>
+    call("custom_integration_update_details", () =>
+      getEngine().updateCustomIntegrationDetails(slug, details, agentId),
+    ),
   customRemove: (slug: string) =>
     call("custom_integration_remove", () =>
       getEngine().removeCustomIntegration(slug),

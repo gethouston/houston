@@ -1,4 +1,5 @@
 import * as controlPlane from "../control-plane";
+import { updateDetails } from "./custom-details";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 
@@ -6,17 +7,19 @@ import type { BaseCtor } from "./mixin";
  * Custom integrations (HOU-550 / HOU-980): user-added API / MCP servers the
  * Composio catalog does not offer. Two route families, one data set:
  *
- * - the TOP-LEVEL `/v1/integrations/custom/*` form (cp-gated) — the global
- *   Integrations page against a direct host. A host without the feature
- *   answers 404 on the reads, which map to null so the custom UI hides.
- * - the PER-AGENT dispatch `/agents/:id/integrations/custom/*` (HOU-823) —
- *   the ONE form a gateway-fronted deployment proxies to the agent's pod (the
- *   gateway's own /v1/integrations subtree is Composio-only, so the top-level
- *   form 404s there). Routed through `authFetch` against `baseUrl`, never
- *   cp-gated. Any surface that knows its agent calls these.
+ * Direct hosts use the cp-gated top-level routes. Hosted deployments require
+ * the per-agent dispatch form, which the gateway proxies to the agent's pod.
  */
 export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
   class CustomIntegrations extends Base {
+    /** @assistant hidden: cosmetic edit form; connection identity is unchanged. */
+    updateCustomIntegrationDetails(
+      slug: string,
+      details: { name: string; website: string },
+      agentId?: string,
+    ): Promise<void> {
+      return updateDetails(this.ctx, slug, details, agentId);
+    }
     // ---- top-level form (direct host) ----
     async customIntegrations(): Promise<
       controlPlane.CustomIntegrationView[] | null
