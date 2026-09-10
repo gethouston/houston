@@ -19,6 +19,7 @@ import { type DictationRecording, startDictationRecording } from "./recorder";
 import {
   DICTATION_UNSUPPORTED_CPU,
   type DictationLangHint,
+  dictationErrorExtra,
   dictationErrorText as errorText,
 } from "./types";
 import {
@@ -109,8 +110,12 @@ export function useDictation({
         } else {
           // Report-only path first, then authored copy: the user spoke and
           // pressed stop, so a silent drop reads as "it sent nothing"
-          // (PRODUCT-1448) — retrying is a real action they can take.
-          showErrorToast("dictation_transcribe", errorText(err), err);
+          // (PRODUCT-1448) — retrying is a real action they can take. A
+          // sidecar crash rides with whisper's stderr tail (PRODUCT-1731):
+          // the exit code alone (0xc0000409) names nothing.
+          showErrorToast("dictation_transcribe", errorText(err), err, {
+            extra: dictationErrorExtra(err),
+          });
           addToast({
             title: t("composer.dictation.failed"),
             variant: "error",

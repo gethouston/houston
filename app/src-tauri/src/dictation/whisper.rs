@@ -8,22 +8,26 @@
 //! (Unix process group + `killpg`, Windows kill-on-close Job Object).
 
 use std::io::{BufReader, Read};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use tauri::ipc::{InvokeBody, Request};
 use tauri::{AppHandle, Manager};
 
+use super::args::{build_args, normalize_lang};
+use super::stderr_tail::drain_tail;
+use super::temp_wav::TempWav;
+use super::types::DictationError;
 use super::{cpu, model, wav};
 use crate::child_guard;
 
-/// Monotonic suffix so concurrent transcriptions never collide on a temp path.
-static TEMP_SEQ: AtomicU64 = AtomicU64::new(0);
-
 #[tauri::command]
-pub async fn transcribe_audio(app: AppHandle, request: Request<'_>) -> Result<String, String> {
+pub async fn transcribe_audio(
+    app: AppHandle,
+    request: Request<'_>,
+) -> Result<String, DictationError> {
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("transcribe_audio expects a raw byte payload".into());
     };
@@ -43,8 +47,9 @@ pub async fn transcribe_audio(app: AppHandle, request: Request<'_>) -> Result<St
     }
 
     let model_path = model::model_path(&app)?;
-    if std::fs::metadata(&model_path).is_err() {
-        // Exact string — the frontend maps it to the "download the model" flow.
+    // Exact string — the frontend maps it to the "download the model" flow,
+    // which also replaces a wrong-size file (see `model::is_ready`).
+    if !model::is_ready(&model_path) {
         return Err("model-not-ready".into());
     }
 
@@ -67,42 +72,19 @@ pub async fn transcribe_audio(app: AppHandle, request: Request<'_>) -> Result<St
     run_whisper(&binary, &args, timeout).await
 }
 
-/// Validate the language hint against the supported set; anything missing or
-/// unrecognized falls through to whisper's autodetect.
-fn normalize_lang(raw: Option<&str>) -> &'static str {
-    match raw.map(str::trim) {
-        Some("en") => "en",
-        Some("es") => "es",
-        Some("pt") => "pt",
-        _ => "auto",
-    }
-}
-
-/// `-nt` (no timestamps) + `-np` (no progress prints) keep stdout to the bare
-/// transcript; no `-o*` flags means whisper writes no output files.
-fn build_args(model: &Path, wav: &Path, lang: &str, threads: usize) -> Vec<String> {
-    vec![
-        "-m".into(),
-        model.to_string_lossy().into_owned(),
-        "-f".into(),
-        wav.to_string_lossy().into_owned(),
-        "-l".into(),
-        lang.into(),
-        "-t".into(),
-        threads.to_string(),
-        "-nt".into(),
-        "-np".into(),
-    ]
-}
-
-/// Spawn the hardened child, drain its stdout, and enforce the timeout by
-/// polling `try_wait`. On timeout the whole process group / job is killed and
-/// `Err("transcription-timeout")` returned.
-async fn run_whisper(binary: &Path, args: &[String], timeout: Duration) -> Result<String, String> {
+/// Spawn the hardened child, drain its stdout and stderr, and enforce the
+/// timeout by polling `try_wait`. On timeout the whole process group / job is
+/// killed and `transcription-timeout` returned. Both failures carry the
+/// stderr tail: whisper-cli names its crash site there and nowhere else.
+async fn run_whisper(
+    binary: &Path,
+    args: &[String],
+    timeout: Duration,
+) -> Result<String, DictationError> {
     let mut cmd = Command::new(binary);
     cmd.args(args)
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .stdin(Stdio::null());
 
     #[cfg(unix)]
@@ -127,16 +109,19 @@ async fn run_whisper(binary: &Path, args: &[String], timeout: Duration) -> Resul
             child
                 .kill()
                 .map_err(|e| format!("dictation: kill after job-bind fail: {e}"))?;
-            return Err(format!("dictation: bind to job object: {e}"));
+            return Err(format!("dictation: bind to job object: {e}").into());
         }
     };
 
-    // Drain stdout on a thread so a full pipe buffer can't deadlock the child.
+    // Drain both pipes on threads so a full pipe buffer can't deadlock the
+    // child (whisper logs its whole model load to stderr).
     let stdout = child.stdout.take().ok_or("dictation: no stdout")?;
-    let reader = std::thread::spawn(move || {
+    let stdout_reader = std::thread::spawn(move || {
         let mut buf = String::new();
         BufReader::new(stdout).read_to_string(&mut buf).map(|_| buf)
     });
+    let stderr = child.stderr.take().ok_or("dictation: no stderr")?;
+    let stderr_reader = std::thread::spawn(move || drain_tail(stderr));
 
     let deadline = Instant::now() + timeout;
     let status = loop {
@@ -152,103 +137,112 @@ async fn run_whisper(binary: &Path, args: &[String], timeout: Duration) -> Resul
                 child
                     .kill()
                     .map_err(|e| format!("dictation: kill on timeout: {e}"))?;
-                return Err("transcription-timeout".into());
+                // Reap so the pipes close and the tail thread reaches EOF: what
+                // whisper printed before it hung is the only clue to why.
+                child
+                    .wait()
+                    .map_err(|e| format!("dictation: reap after timeout: {e}"))?;
+                let tail = join_tail(stderr_reader);
+                tracing::warn!(
+                    "[dictation] whisper timed out after {timeout:?}; stderr tail: {tail}"
+                );
+                return Err(DictationError::sidecar("transcription-timeout", tail));
             }
             None => tokio::time::sleep(Duration::from_millis(50)).await,
         }
     };
 
-    let text = reader
+    let text = stdout_reader
         .join()
         .map_err(|_| "dictation: stdout reader panicked".to_string())?
         .map_err(|e| format!("dictation: read whisper stdout: {e}"))?;
+    let tail = join_tail(stderr_reader);
     if !status.success() {
-        return Err(format!("dictation: whisper exited with {status}"));
+        // Exact wording of the pre-existing message: the Sentry issue per exit
+        // flavor stays continuous, the tail is what is new (PRODUCT-1731).
+        tracing::warn!("[dictation] whisper exited with {status}; stderr tail: {tail}");
+        return Err(DictationError::sidecar(
+            format!("dictation: whisper exited with {status}"),
+            tail,
+        ));
     }
     Ok(text.trim().to_string())
 }
 
-/// A uniquely-named temp WAV whose file is removed when this handle drops,
-/// regardless of how the transcription returns.
-struct TempWav {
-    path: PathBuf,
-}
-
-impl TempWav {
-    fn write(bytes: &[u8]) -> Result<Self, String> {
-        let seq = TEMP_SEQ.fetch_add(1, Ordering::Relaxed);
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0);
-        let path = std::env::temp_dir().join(format!(
-            "houston-dictation-{}-{seq}-{nanos}.wav",
-            std::process::id()
-        ));
-        std::fs::write(&path, bytes)
-            .map_err(|e| format!("dictation: write temp wav {}: {e}", path.display()))?;
-        Ok(Self { path })
-    }
-    fn path(&self) -> &Path {
-        &self.path
-    }
-}
-
-impl Drop for TempWav {
-    fn drop(&mut self) {
-        if let Err(e) = std::fs::remove_file(&self.path) {
-            tracing::debug!("dictation: temp wav cleanup failed: {e}");
-        }
-    }
+/// A panicked tail thread yields a marker, never a lost transcription result:
+/// the tail is context for a failure, not a failure of its own.
+fn join_tail(reader: JoinHandle<String>) -> String {
+    reader
+        .join()
+        .unwrap_or_else(|_| "<stderr reader panicked>".to_string())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn lang_hint_maps_supported_langs() {
-        assert_eq!(normalize_lang(Some("en")), "en");
-        assert_eq!(normalize_lang(Some("es")), "es");
-        assert_eq!(normalize_lang(Some("pt")), "pt");
-        assert_eq!(normalize_lang(Some("auto")), "auto");
-    }
-
-    #[test]
-    fn lang_hint_defaults_to_auto() {
-        assert_eq!(normalize_lang(None), "auto");
-        assert_eq!(normalize_lang(Some("fr")), "auto");
-        assert_eq!(normalize_lang(Some("")), "auto");
-    }
-
-    #[test]
-    fn args_carry_model_wav_lang_threads_and_flags() {
-        let args = build_args(Path::new("/m/model.bin"), Path::new("/t/clip.wav"), "es", 4);
-        assert_eq!(
-            args,
-            vec![
-                "-m",
-                "/m/model.bin",
-                "-f",
-                "/t/clip.wav",
-                "-l",
-                "es",
-                "-t",
-                "4",
-                "-nt",
-                "-np",
-            ]
-        );
-    }
-
-    #[test]
-    fn temp_wav_written_then_removed_on_drop() {
-        let path;
-        {
-            let wav = TempWav::write(b"RIFFdata").unwrap();
-            path = wav.path().to_path_buf();
-            assert_eq!(std::fs::read(&path).unwrap(), b"RIFFdata");
+    /// A real child that writes to stderr and exits non-zero: the failure must
+    /// carry the END of stderr, with the exit-status wording unchanged.
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn nonzero_exit_carries_stderr_tail() {
+        let script = "for i in $(seq 1 300); do echo \"whisper_model_load: line $i\" >&2; done; \
+                      echo 'ggml.c:9: GGML_ASSERT(rc == 0) failed' >&2; exit 3";
+        let args = vec!["-c".to_string(), script.to_string()];
+        let err = run_whisper(Path::new("/bin/sh"), &args, Duration::from_secs(10))
+            .await
+            .unwrap_err();
+        match err {
+            DictationError::SidecarFailure {
+                message,
+                stderr_tail,
+                ..
+            } => {
+                assert_eq!(message, "dictation: whisper exited with exit status: 3");
+                assert!(
+                    stderr_tail.ends_with("GGML_ASSERT(rc == 0) failed"),
+                    "tail: {stderr_tail}"
+                );
+                assert!(stderr_tail.len() <= super::super::stderr_tail::STDERR_TAIL_BYTES);
+            }
+            other => panic!("expected a sidecar failure, got {other:?}"),
         }
-        assert!(!path.exists(), "temp wav removed when handle drops");
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn timeout_kills_the_child_and_carries_stderr_tail() {
+        let script = "echo 'loading model' >&2; sleep 30";
+        let args = vec!["-c".to_string(), script.to_string()];
+        let started = Instant::now();
+        let err = run_whisper(Path::new("/bin/sh"), &args, Duration::from_millis(200))
+            .await
+            .unwrap_err();
+        assert!(
+            started.elapsed() < Duration::from_secs(10),
+            "child was reaped"
+        );
+        match err {
+            DictationError::SidecarFailure {
+                message,
+                stderr_tail,
+                ..
+            } => {
+                assert_eq!(message, "transcription-timeout");
+                assert_eq!(stderr_tail, "loading model");
+            }
+            other => panic!("expected a sidecar failure, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    #[cfg(unix)]
+    async fn success_returns_trimmed_stdout_and_ignores_stderr() {
+        let script = "echo 'noise' >&2; echo '  hello world  '";
+        let args = vec!["-c".to_string(), script.to_string()];
+        let text = run_whisper(Path::new("/bin/sh"), &args, Duration::from_secs(10))
+            .await
+            .unwrap();
+        assert_eq!(text, "hello world");
     }
 }

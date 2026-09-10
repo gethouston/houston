@@ -23,6 +23,9 @@ export interface ErrorToastOptions {
    *  genuinely different failures counted separately while one failure hitting
    *  N callers counts once. */
   userMessage?: string;
+  /** Diagnostic context attached to the Sentry event as `extra` (never a tag:
+   *  free text such as a sidecar's stderr tail must not become a facet). */
+  extra?: Record<string, unknown>;
 }
 
 /**
@@ -196,10 +199,14 @@ export function showErrorToast(
   // Dev build with Sentry suppressed: initSentry already bailed, so don't.
   if (sentrySuppressedInDev) return;
   markReportedToSentry(originalError);
-  void sentryCapture(createSentryReportError(command, message, originalError), {
-    source: command,
-    error_kind: classifyAnalyticsError(message),
-  }).catch((flushErr: unknown) => {
+  void sentryCapture(
+    createSentryReportError(command, message, originalError),
+    {
+      source: command,
+      error_kind: classifyAnalyticsError(message),
+    },
+    options?.extra,
+  ).catch((flushErr: unknown) => {
     console.error("[sentry] failed to flush captured error", flushErr);
   });
 }

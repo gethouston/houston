@@ -10,8 +10,11 @@
 //! staged by Tauri's `externalBin` and resolved via [`crate::child_guard`],
 //! sharing the same orphan-prevention discipline as the engine sidecar.
 
+mod args;
 mod cpu;
 mod model;
+mod stderr_tail;
+mod temp_wav;
 mod types;
 mod verify;
 mod wav;

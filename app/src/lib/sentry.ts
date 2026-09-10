@@ -171,12 +171,13 @@ export function initSentry(): void {
 export async function captureException(
   error: unknown,
   context?: Record<string, string>,
+  extra?: Record<string, unknown>,
 ): Promise<string> {
   if (!initialized) return "";
   const normalized = error instanceof Error ? error : new Error(String(error));
   const eventId = Sentry.captureException(
     normalized,
-    context ? { tags: context } : undefined,
+    context || extra ? { tags: context, extra } : undefined,
   );
   const flushed = await Sentry.flush(5000);
   // By the time flush resolves, the wrapper's send() has run for this envelope
