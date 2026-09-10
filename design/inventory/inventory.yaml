@@ -37,9 +37,18 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 81
+version: 82
 
 components:
+  - id: custom-integration-details
+    title: Custom integration details
+    purpose: Inspect a custom integration and edit its displayed name and brand website without reconnecting.
+    anatomy: [name, icon, status, metadata, edit-action, name-input, website-input, save-action, cancel-action]
+    states: [viewing, editing, saving, invalid-input]
+    variants: [desktop, phone]
+    behavior: Edits preserve the stable integration ID, endpoint and credentials. Host events refresh all observing lists. Declared websites supply their conventional favicon; curated icons retain priority and failed images show an initial.
+    a11y: Labeled fields, dialog focus management, keyboard submission, visible actions and disabled duplicate submission while saving.
+    since: 82
   - id: agent-avatar
     title: Agent avatar
     purpose: Identity badge for an agent -- colored helmet glyph, resting vs running.

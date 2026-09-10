@@ -2,7 +2,6 @@ import {
   Badge,
   Button,
   CatalogDetailDialog,
-  cn,
   StatusBadge,
 } from "@houston-ai/core";
 import type { CustomIntegrationView } from "@houston-ai/engine-client";
@@ -14,34 +13,7 @@ import {
   customAuthMethod,
   customKindBadgeKey,
 } from "./custom-integrations-model";
-
-function MetaRow({
-  label,
-  value,
-  scroll = false,
-}: {
-  label: string;
-  value: string;
-  /** Long unbreakable values (the URL): a quiet horizontal scroll area whose
-   *  scrollbar only exists when the text actually overflows, instead of the
-   *  ellipsis cut (the address is the one field worth reading in full). */
-  scroll?: boolean;
-}) {
-  return (
-    <div className="flex items-baseline gap-3 text-[13px]">
-      <dt className="w-20 shrink-0 text-ink-muted">{label}</dt>
-      <dd
-        className={cn(
-          "min-w-0 flex-1 text-ink",
-          scroll ? "overflow-x-auto whitespace-nowrap" : "truncate",
-        )}
-        title={value}
-      >
-        {value}
-      </dd>
-    </div>
-  );
-}
+import { MetaRow } from "./custom-meta-row";
 
 /**
  * The custom integration's "more info" modal (HOU-980) — what a custom row or
@@ -59,6 +31,7 @@ export function CustomDetailDialog({
   onEnterKey,
   onSignIn,
   onRemove,
+  onEdit,
 }: {
   integration: CustomIntegrationView | null;
   onClose: () => void;
@@ -67,6 +40,7 @@ export function CustomDetailDialog({
    *  pending CTA, and the re-auth affordance once active. */
   onSignIn: (integration: CustomIntegrationView) => void;
   onRemove: (integration: CustomIntegrationView) => void;
+  onEdit: (integration: CustomIntegrationView) => void;
 }) {
   const { t, i18n } = useTranslation("integrations");
   if (!integration) return null;
@@ -128,7 +102,14 @@ export function CustomDetailDialog({
       }
       description={body}
       action={
-        <div className="flex w-full items-center justify-end gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onEdit(integration)}
+          >
+            {t("custom.edit.title")}
+          </Button>
           <Button
             type="button"
             variant="ghost"

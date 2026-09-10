@@ -2369,6 +2369,7 @@ export type AddCustomIntegrationInput =
 export interface CustomIntegrationView {
   slug: string;
   name: string;
+  website?: string;
   kind: "openapi" | "mcp";
   /** How this integration authenticates — `oauth` turns the pending state's
    *  affordance into Sign in (browser flow) instead of Enter key. Optional:

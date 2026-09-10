@@ -112,6 +112,14 @@
     "disconnectAction": "Desconectar cuenta"
   },
   "custom": {
+    "edit": {
+      "title": "Editar detalles",
+      "description": "Cambia cómo aparece esta integración. Tu conexión sigue igual.",
+      "website": "Sitio web (opcional)",
+      "websiteHelp": "Usa el sitio web de la app, empezando con https://. Houston lo usa para el ícono.",
+      "save": "Guardar cambios",
+      "saving": "Guardando..."
+    },
     "description": "Conecta una API o un servidor MCP que no esté en el catálogo de aplicaciones.",
     "empty": "Aún no tienes integraciones personalizadas. Agrega una para conectar una herramienta que no esté en el catálogo.",
     "noResults": "Ninguna integración personalizada coincide con tu búsqueda.",

@@ -72,7 +72,7 @@ describe("iconUrlOf", () => {
         ...mcpDef("https://croma.run/api/mcp"),
         website: "https://usecroma.com",
       }),
-    ).toContain("domain=usecroma.com");
+    ).toBe("https://usecroma.com/favicon.ico");
   });
 
   it("prefers the baseUrl over the spec URL for an API", () => {

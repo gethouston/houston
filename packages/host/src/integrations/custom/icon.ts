@@ -78,5 +78,8 @@ export function iconUrlOf(def: CustomIntegrationDef): string | undefined {
   const host = serviceHost(def);
   const domain = host ? faviconDomain(host) : null;
   if (!domain) return undefined;
+  // A declared brand website can serve an icon before Google has indexed it.
+  // Keep the legacy lookup for definitions that only know a technical endpoint.
+  if (def.website) return `https://${host}/favicon.ico`;
   return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
 }

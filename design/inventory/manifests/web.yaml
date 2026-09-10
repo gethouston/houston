@@ -13,9 +13,12 @@
 
 surface: web
 enforced: true
-inventoryVersion: 56
+inventoryVersion: 82
 
 components:
+  custom-integration-details:
+    status: implemented
+    ref: app/src/components/integrations/custom-edit-dialog.tsx
   agent-avatar:
     status: implemented
     ref: "@houston-ai/core HoustonAvatar / AgentAvatar (resolveAgentColor)"

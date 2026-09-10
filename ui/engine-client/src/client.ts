@@ -1385,6 +1385,19 @@ export class HoustonClient {
       `/integrations/custom/definitions/${this.seg(slug)}`,
     );
   }
+
+  async updateCustomIntegrationDetails(
+    slug: string,
+    details: { name: string; website: string },
+    agentId?: string,
+  ): Promise<void> {
+    const prefix = agentId ? `/agents/${this.seg(agentId)}` : "";
+    await this.request(
+      "PATCH",
+      `${prefix}/integrations/custom/definitions/${this.seg(slug)}`,
+      details,
+    );
+  }
   /**
    * Provide the secret for a `pending` custom integration. The host validates,
    * stores the secret out-of-band, connects, and returns the refreshed view.

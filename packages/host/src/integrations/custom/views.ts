@@ -24,6 +24,7 @@ export function viewOf(
   return {
     slug: def.slug,
     name: def.name,
+    ...(def.website ? { website: def.website } : {}),
     kind: def.kind,
     auth: def.auth,
     ...(displayUrl ? { displayUrl } : {}),
