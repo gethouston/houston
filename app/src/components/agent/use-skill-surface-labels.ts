@@ -96,6 +96,7 @@ export function useSkillMarketplaceSectionLabels(): SkillMarketplaceSectionLabel
     noResults: (query: string) => t("store.noResults", { query }),
     searchRateLimited: t("store.searchRateLimited"),
     searchOffline: t("store.searchOffline"),
+    searchSlow: t("store.searchSlow"),
     searchGeneric: t("store.searchGeneric"),
     typeToSearch: t("store.typeToSearch"),
     minQuery: t("store.minQuery"),

@@ -140,7 +140,9 @@ export function MarketplaceBody({
         ? l.searchRateLimited
         : phase.reason === "offline"
           ? l.searchOffline
-          : l.searchGeneric;
+          : phase.reason === "slow"
+            ? l.searchSlow
+            : l.searchGeneric;
     return <MutedNotice icon>{message}</MutedNotice>;
   }
   if (phase.kind === "idle") {

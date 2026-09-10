@@ -3,6 +3,7 @@ import { CommunityDirectory } from "../skills/community";
 import { listSkillsFromRepo } from "../skills/github";
 import { PreviewDirectory } from "../skills/preview";
 import { SkillRemoteError } from "../skills/remote-error";
+import { clientAbortSignal } from "./client-abort";
 import { json, readJson } from "./http";
 
 /**
@@ -66,20 +67,27 @@ export async function communitySearchAction(
     json(res, 400, { error: "missing 'query'" });
     return;
   }
+  // The client's own cancellation rides into the skills.sh fetch: a search the
+  // user already typed past is dropped upstream, not run to its timeout.
+  const signal = clientAbortSignal(req, res);
   try {
-    json(res, 200, await directory.search(body.query, { fetchImpl }));
+    json(res, 200, await directory.search(body.query, { fetchImpl, signal }));
   } catch (err) {
+    if (signal.aborted) return;
     failSkill(res, err);
   }
 }
 
 export async function communityPopularAction(
+  req: IncomingMessage,
   res: ServerResponse,
   fetchImpl?: typeof fetch,
 ): Promise<void> {
+  const signal = clientAbortSignal(req, res);
   try {
-    json(res, 200, await directory.popular({ fetchImpl }));
+    json(res, 200, await directory.popular({ fetchImpl, signal }));
   } catch (err) {
+    if (signal.aborted) return;
     failSkill(res, err);
   }
 }
@@ -144,7 +152,7 @@ export async function handleSkillsDirectory(
   if (route === "community/search")
     await communitySearchAction(req, res, deps.fetchImpl);
   else if (route === "community/popular")
-    await communityPopularAction(res, deps.fetchImpl);
+    await communityPopularAction(req, res, deps.fetchImpl);
   else if (route === "community/preview")
     await communityPreviewAction(req, res, deps.fetchImpl ?? fetch);
   else await repoListAction(req, res, deps.fetchImpl ?? fetch);

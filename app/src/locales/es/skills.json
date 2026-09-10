@@ -63,6 +63,7 @@
     "noResults": "No se encontraron skills para \"{{query}}\"",
     "searchRateLimited": "Skills.sh está ocupado ahora mismo. Espera un momento e inténtalo de nuevo.",
     "searchOffline": "No se pudo conectar con Skills.sh. Revisa tu internet e inténtalo de nuevo.",
+    "searchSlow": "La búsqueda de skills está lenta ahora mismo. Inténtalo de nuevo en un momento.",
     "searchGeneric": "La búsqueda tuvo un problema. Espera un momento e inténtalo de nuevo.",
     "typeToSearch": "Escribe para buscar skills",
     "minQuery": "Escribe al menos 2 caracteres para buscar",

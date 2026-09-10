@@ -77,6 +77,20 @@ describe("searchErrorPhase", () => {
       query: "sdr",
     });
   });
+  it("maps a skills.sh timeout to the slow reason, not offline", () => {
+    assert.deepEqual(searchErrorPhase({ kind: "upstream_timeout" }, "sdr"), {
+      kind: "search-error",
+      reason: "slow",
+      query: "sdr",
+    });
+  });
+  it("keeps a skills.sh upstream error on the generic reason", () => {
+    assert.deepEqual(searchErrorPhase({ kind: "upstream_error" }, "sdr"), {
+      kind: "search-error",
+      reason: "generic",
+      query: "sdr",
+    });
+  });
   it("maps anything else to the generic reason", () => {
     assert.deepEqual(searchErrorPhase(new Error("boom"), "sdr"), {
       kind: "search-error",
