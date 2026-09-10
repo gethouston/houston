@@ -42,9 +42,17 @@ pub fn model_path(app: &AppHandle) -> Result<PathBuf, String> {
 
 /// Ready = the file exists AND is exactly the expected size. A size check is a
 /// cheap corruption guard that avoids re-hashing 181 MB on every status poll;
-/// the full sha256 is enforced once, at download time.
-fn is_ready(path: &Path) -> bool {
-    matches!(std::fs::metadata(path), Ok(m) if m.len() == MODEL_SIZE_BYTES)
+/// the full sha256 is enforced once, at download time. `transcribe_audio`
+/// gates on the same predicate: a wrong-size file at the final path (a
+/// partial copy from an older layout, disk trouble) answers "model-not-ready"
+/// so the frontend offers the download again, which replaces it, instead of
+/// handing whisper-cli a blob it will refuse or crash on.
+pub(super) fn is_ready(path: &Path) -> bool {
+    has_size(path, MODEL_SIZE_BYTES)
+}
+
+fn has_size(path: &Path, expected: u64) -> bool {
+    matches!(std::fs::metadata(path), Ok(m) if m.len() == expected)
 }
 
 #[tauri::command]
@@ -148,5 +156,27 @@ fn emit(app: &AppHandle, received: u64, total: u64, phase: ModelProgressPhase) {
     // logged (the documented exception to the no-silent-failure rule).
     if let Err(e) = app.emit(PROGRESS_EVENT, payload) {
         tracing::error!("[dictation] failed to emit progress event: {e}");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ready_requires_the_exact_size() {
+        let dir = std::env::temp_dir().join(format!("dict-ready-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("m.bin");
+        std::fs::write(&path, b"12345").unwrap();
+
+        assert!(has_size(&path, 5));
+        assert!(!has_size(&path, 4), "a truncated file is not ready");
+        assert!(!has_size(&path, 6), "an oversized file is not ready");
+        assert!(
+            !has_size(&dir.join("missing.bin"), 0),
+            "absent is not ready"
+        );
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

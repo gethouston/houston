@@ -502,7 +502,9 @@ export function osStopMigrationSourceHost(): Promise<void> {
  *  raw-payload pattern as `osSaveDownload`) so a multi-megabyte clip can't
  *  freeze the webview; the language hint rides the `x-dictation-lang` header.
  *  Rejects with the exact string "model-not-ready" when the model hasn't
- *  been downloaded yet, or "transcription-timeout" on a stalled transcribe. */
+ *  been downloaded (or is the wrong size on disk), or with a
+ *  `DictationSidecarFailure` object (message "transcription-timeout" or
+ *  "dictation: whisper exited with ...") carrying whisper's stderr tail. */
 export function osTranscribeAudio(
   wav: Uint8Array,
   langHint: string,
