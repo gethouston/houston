@@ -120,6 +120,10 @@ export type AnalyticsEventName =
   | "workspace_created"
   | "provider_configured"
   | "provider_not_configured"
+  // A pasted API key the provider refused with a user-fixable verdict
+  // (`error_kind`: invalid_key | key_restricted). Counted, never a Sentry
+  // error: it shows which providers' key pages confuse users (PRODUCT-1730).
+  | "provider_key_rejected"
   | "agent_created"
   | "agent_installed_from_store"
   | "agent_shared"

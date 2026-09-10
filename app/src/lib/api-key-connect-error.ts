@@ -40,3 +40,16 @@ export function apiKeyConnectReason(err: unknown): ApiKeyConnectReason | null {
     ? (reason as ApiKeyConnectReason)
     : null;
 }
+
+/**
+ * A verdict the USER fixes — a bad key or a key blocked by its own account
+ * settings. The connect dialog renders the typed copy inline, so the tauri
+ * wrapper silences these: no red toast, no Sentry (13 events / 11 users of
+ * pasted-wrong keys buried real provider failures, PRODUCT-1730). A
+ * `provider_unavailable` verdict (5xx / timeout / network) and a reason-less
+ * failure stay loud — those may be Houston's or the provider's fault.
+ */
+export function isApiKeyUserRejection(err: unknown): boolean {
+  const reason = apiKeyConnectReason(err);
+  return reason === "invalid_key" || reason === "key_restricted";
+}

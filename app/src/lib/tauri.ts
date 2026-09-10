@@ -42,6 +42,7 @@ import {
   isAgentPathCreating,
   type WarmingWriteOptions,
 } from "./agent-warming-guard";
+import { isApiKeyUserRejection } from "./api-key-connect-error";
 import { isKeyGoneError, isKeyLimitError } from "./api-keys-model";
 import { isAssistantUnavailableError } from "./assistant-availability";
 import {
@@ -1997,12 +1998,20 @@ export const tauriProvider = {
       undefined,
       // The connect dialog surfaces the failure inline with the engine's typed
       // reason (bad key / restricted key / provider outage) — a red bug toast
-      // on top double-surfaces a user-fixable state. Capture stays on so
-      // verification failures keep reaching Sentry. The gateway's owner/admin
-      // refusal of a member's org-level connect is an expected state the
-      // dialog explains inline too, so it is silenced here (no toast, no
-      // Sentry) rather than routed to the surfacing layer's info toast.
-      { toast: false, silence: isOrgAdminRequiredError },
+      // on top double-surfaces a user-fixable state. A bad or under-scoped
+      // key is the USER's state, not a Houston bug: those verdicts are
+      // silenced (the dialog tracks them as `provider_key_rejected` instead,
+      // PRODUCT-1730). A no-verdict outage and a reason-less failure keep
+      // capturing so real provider / host faults still reach Sentry. The
+      // gateway's owner/admin refusal of a member's org-level connect is an
+      // expected state the dialog explains inline too, so it is silenced
+      // here (no toast, no Sentry) rather than routed to the surfacing
+      // layer's info toast.
+      {
+        toast: false,
+        silence: (err) =>
+          isOrgAdminRequiredError(err) || isApiKeyUserRejection(err),
+      },
     ),
   /**
    * Connect an OpenAI-compatible (local / BYO model) server: a base URL + model
