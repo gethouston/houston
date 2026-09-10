@@ -186,7 +186,7 @@ export async function surfaceEngineError(
   label: string,
   err: unknown,
   context?: Record<string, unknown>,
-  options?: Pick<EngineCallOptions, "silence">,
+  options?: Pick<EngineCallOptions, "silence" | "toast">,
 ): Promise<void> {
   await surfaceError(label, err, context, options);
 }
@@ -1510,6 +1510,18 @@ export const tauriActivity = {
       // roster-stale state, not a Houston bug. Both callers catch it: the
       // flush heals + aborts, the mission path keeps its own toast.
       { toast: false, silence: isAgentGoneError },
+    ),
+  /**
+   * `createWithId` for ONE rung of a retry ladder: the log tail records the
+   * attempt, nothing else surfaces. The caller hands the final error to
+   * `surfaceEngineError` (`create-mission-now.ts`, PRODUCT-1736).
+   */
+  createWithIdAttempt: (agentPath: string, input: EngineNewActivity) =>
+    call(
+      "create_activity",
+      () => getEngine().createActivity(agentPath, input),
+      undefined,
+      { surface: false },
     ),
   update: (
     agentPath: string,

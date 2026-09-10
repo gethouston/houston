@@ -23,20 +23,15 @@
  * status writes match the row by session key once it has landed.
  */
 
-import { isAgentGoneError } from "./agent-gone";
 import { analytics } from "./analytics";
 import type {
   CreateMissionAgent,
   CreateMissionOptions,
   CreateMissionResult,
 } from "./create-mission";
-import { getEngine } from "./engine";
-import { showErrorToast } from "./error-toast";
-import i18n from "./i18n";
 import { logger } from "./logger";
-import { missionRowInput } from "./mission-row";
+import { landMissionRow } from "./mission-row-landing";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
-import { healStaleRosterFromError } from "./roster-heal";
 import { showSendFailedToast } from "./send-error-toast";
 import { tauriActivity, tauriChat } from "./tauri";
 
@@ -48,49 +43,6 @@ export interface MissionIdentity {
   description: string;
   /** Source text for the async AI title pass; absent = keep `title`. */
   titleText?: string;
-}
-
-/**
- * Land the board row through the host's single id-honoring POST. Resolves the
- * landed id (differs from ours only under version skew — an engine predating
- * client-supplied ids assigned its own, so its row is stamped with our session
- * key to keep the card opening this chat), or null after toasting: losing the
- * card must never lose the message.
- */
-async function landMissionRow(
-  agent: CreateMissionAgent,
-  opts: CreateMissionOptions,
-  mission: MissionIdentity,
-): Promise<string | null> {
-  try {
-    const created = await tauriActivity.createWithId(
-      agent.folderPath,
-      missionRowInput(mission, opts),
-    );
-    if (created.id !== mission.conversationId) {
-      await getEngine().updateActivity(agent.folderPath, created.id, {
-        session_key: mission.sessionKey,
-      });
-    }
-    return created.id;
-  } catch (e) {
-    // The agent vanished under the send (deleted/unshared elsewhere): an
-    // expected roster-stale state, healed like the warming flush does — not a
-    // bug toast the user can't act on.
-    if (isAgentGoneError(e)) {
-      healStaleRosterFromError(e);
-      return null;
-    }
-    showErrorToast(
-      "create_mission_now",
-      "mission row create/update failed",
-      e,
-      {
-        userMessage: i18n.t("chat:errors.missionRowFailed"),
-      },
-    );
-    return null;
-  }
 }
 
 /**

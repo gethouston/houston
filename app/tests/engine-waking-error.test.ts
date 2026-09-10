@@ -337,6 +337,45 @@ function activitiesHttpError(status: number, body: string): Error {
   return err;
 }
 
+// PRODUCT-1736 (HOUSTON-APP-5CJ/5CF): the gateway's wake hold gave up on a
+// control plane that never answered its ensure-awake, and the 503 it minted
+// carries the cpclient transport error as detail — with Go's sorted map keys
+// putting "detail" BEFORE "error". The body is the wake 503 and must classify
+// quiet through both shapes a mission-row write can throw.
+const CPCLIENT_ENSURE_AWAKE_503 =
+  '{"detail":"cpclient: POST /internal/v1/agents/b095cb5c018ca652/82a19c02c0bd0c5b:ensure-awake: Post \\"http://control-plane.houston-gateway.svc.cluster.local:8081/internal/v1/agents/b095cb5c018ca652/82a19c02c0bd0c5b:ensure-awake\\": context deadline exceeded","error":"engine unavailable"}';
+
+describe("isEngineWakingError (control-plane stall body, PRODUCT-1736)", () => {
+  it("classifies the cpclient deadline 503 quiet on the SDK activity shape", () => {
+    strictEqual(
+      isEngineWakingError(activitiesHttpError(503, CPCLIENT_ENSURE_AWAKE_503)),
+      true,
+    );
+  });
+
+  it("classifies the same answer quiet on the engine-adapter shape", () => {
+    // `HoustonEngineError` keeps the parsed reason in its message; the
+    // cpclient detail lives on `body` and must not change the verdict.
+    const err = engineError(503, "engine unavailable") as Error & {
+      body: unknown;
+    };
+    err.body = JSON.parse(CPCLIENT_ENSURE_AWAKE_503);
+    strictEqual(isEngineWakingError(err), true);
+  });
+
+  it("never lets the cpclient detail promote another reason", () => {
+    strictEqual(
+      isEngineWakingError(
+        activitiesHttpError(
+          503,
+          '{"detail":"cpclient: POST /internal/v1/agents/o/a:ensure-awake: context deadline exceeded","error":"no cluster configured"}',
+        ),
+      ),
+      false,
+    );
+  });
+});
+
 // HOUSTON-APP-51X: a mission created against a pod mid-roll answered the
 // proxy-failed 502 through the SDK activities module, which carries the body
 // exactly like the agents module but was not in the classifier's name list.

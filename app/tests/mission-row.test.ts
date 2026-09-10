@@ -60,10 +60,15 @@ describe("both mission creation paths route their row through it", () => {
     readFileSync(new URL(`../src/lib/${file}`, import.meta.url), "utf8");
 
   it("the optimistic create posts the shared row payload", () => {
+    // The row write lives in its own module since the waking-retry ladder
+    // (PRODUCT-1736); the payload is built once and re-posted per rung.
+    const landing = source("mission-row-landing.ts");
     strictEqual(
-      /createWithId\(\s*agent\.folderPath,\s*missionRowInput\(/.test(
-        source("create-mission-now.ts"),
-      ),
+      /const input = missionRowInput\(mission, opts\)/.test(landing),
+      true,
+    );
+    strictEqual(
+      /createWithIdAttempt\(agent\.folderPath, input\)/.test(landing),
       true,
     );
   });
