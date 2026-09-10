@@ -120,6 +120,7 @@
     "stopSession": "Não foi possível parar a tarefa. Tente novamente.",
     "modelPersistFailed": "Não foi possível salvar a preferência de modelo",
     "modelNotAllowed": "Este modelo não é permitido para este agente",
+    "modelNotAllowedBody": "Os modelos permitidos deste agente mudaram. Escolha outro da lista.",
     "missionRowFailed": "Não conseguimos salvar esta tarefa no seu quadro. Sua mensagem foi enviada.",
     "interactionDismissFailed": "Não foi possível descartar a solicitação."
   },

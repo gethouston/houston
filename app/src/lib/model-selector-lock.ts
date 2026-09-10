@@ -108,12 +108,18 @@ export interface ModelPin {
  * shows what will actually run:
  *  1. an open mission's pin when its model remains inside the ceiling, carrying
  *     the personal resolution's effort because activities have no effort field;
- *  2. the user's stored `choice` when present;
+ *  2. the user's stored `choice` when present AND still inside the ceiling;
  *  3. else, when a ceiling exists and the shared `fallback` model is outside it,
  *     a ceiling model the user can actually run (`pickCeilingPin`: the
  *     fallback provider's own id first, then any connected provider's, then
  *     the first entry on its catalogued provider);
  *  4. else the shared `fallback` (agent / pod default) unchanged.
+ *
+ * A stored choice OUTSIDE the ceiling never wins (PRODUCT-1734): the gateway
+ * hands the stored pick back unclamped after a manager narrows the ceiling, and
+ * showing it would make the composer name a model the next turn cannot run
+ * while every effort click re-sent it and got `model_not_allowed` back. Such a
+ * choice is treated as absent, keeping only its effort as the user's preference.
  */
 export function resolvePersonalModelPin(
   choice: AgentModelChoice | null | undefined,
@@ -122,17 +128,18 @@ export function resolvePersonalModelPin(
   missionPin: ModelPin | null,
   resolver: CeilingResolver,
 ): ModelPin {
-  const personalPin = choice
-    ? {
-        provider: choice.provider,
-        model: choice.model,
-        effort: choice.effort,
-      }
-    : allowedModels != null &&
-        allowedModels.length > 0 &&
-        !allowedModels.includes(fallback.model)
-      ? pickCeilingPin(allowedModels, fallback, resolver)
-      : fallback;
+  const personalPin =
+    choice && isModelAllowed(allowedModels, choice.model)
+      ? {
+          provider: choice.provider,
+          model: choice.model,
+          effort: choice.effort,
+        }
+      : resolveCeilingDefault(
+          allowedModels,
+          choice?.effort ? { ...fallback, effort: choice.effort } : fallback,
+          resolver,
+        );
   if (missionPin && isModelAllowed(allowedModels, missionPin.model)) {
     return {
       provider: missionPin.provider,
@@ -141,4 +148,22 @@ export function resolvePersonalModelPin(
     };
   }
   return personalPin;
+}
+
+/**
+ * The pin when there is no usable stored choice: a ceiling model the user can
+ * run when the fallback sits outside a non-empty ceiling, else the fallback
+ * itself (no ceiling, in-ceiling fallback, or an EMPTY ceiling that leaves
+ * nothing to snap to — the composer guards the write in that last case).
+ */
+function resolveCeilingDefault(
+  allowedModels: string[] | null | undefined,
+  fallback: ModelPin,
+  resolver: CeilingResolver,
+): ModelPin {
+  return allowedModels != null &&
+    allowedModels.length > 0 &&
+    !allowedModels.includes(fallback.model)
+    ? pickCeilingPin(allowedModels, fallback, resolver)
+    : fallback;
 }
