@@ -94,13 +94,20 @@ export const KanbanDetailPanel = forwardRef<
           token ChatPanel and the panes wear, so header, chat, and pane are
           one color — no seam on the light canvas / dark transparent). */}
       {!hideHeader && (
-        <div className="flex shrink-0 items-center gap-3 bg-background px-4 py-3 dark:bg-transparent">
-          {/* The leading slot (a Back control) sits OUTSIDE the capped row, at
-              the panel's own left edge: the way back belongs to the panel, not
-              to the reading column, so a wide chat never strands it mid-screen
-              beside the avatar. The rest of the header centers on the room
-              that remains. */}
-          {leading}
+        <div className="@container relative flex shrink-0 items-center gap-3 bg-background px-4 py-3 dark:bg-transparent">
+          {/* The leading slot (a Back control) belongs to the panel's frame,
+              not to the reading column, so it sits at the panel's own left
+              edge. Once the header is wide enough that the capped row leaves
+              room for it (the 48rem cap plus the widest localized Back), it
+              leaves the flow entirely so the row centers on the FULL width
+              and lines up with the message column and composer beneath. On
+              a narrower header it stays in flow and the row centers on the
+              room that remains, never underneath it. */}
+          {leading && (
+            <div className="shrink-0 @min-[67rem]:absolute @min-[67rem]:top-1/2 @min-[67rem]:left-4 @min-[67rem]:-translate-y-1/2">
+              {leading}
+            </div>
+          )}
           <div className="flex min-w-0 flex-1 items-center gap-3 max-w-3xl mx-auto">
             {avatar}
             <div className="min-w-0">
