@@ -5,6 +5,17 @@ import type { KanbanPerson } from "./types";
  *  detail-panel stack, so it shows more faces (~5) before overflowing. */
 export const CARD_PEOPLE_MAX = 5;
 
+/** Is anyone on this stack OTHER than the viewer? The chat header shows the
+ *  stack only then: "who is on this task" says nothing when the answer is
+ *  just you. With no viewer id (single player, identity off) any stamped
+ *  person counts. */
+export function hasPeopleBeyond(
+  people: KanbanPerson[] | undefined,
+  selfId: string | undefined,
+): boolean {
+  return !!people && people.some((person) => person.id !== selfId);
+}
+
 /** Up-to-two-initials derived from a display label. Splits on whitespace and
  *  takes the first letter of the first and last word (single word → first two
  *  letters); empty/letterless input falls back to "?". Pure, JSX-free so it can

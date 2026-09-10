@@ -3,6 +3,14 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v83 - 2026-09-10
+
+The open chat's header moves the people stack to the left, beside the agent's
+name and task line, and makes it a button that opens the full roster (it was a
+hover-only tooltip, dead on touch). The stack is absent while nobody but the
+viewer is on the task. The right edge is now only panel controls: the chat
+actions menu, the expand toggle, and close.
+
 ## v82 - 2026-09-10
 
 Custom integration details gain a name and website editor on desktop and phone

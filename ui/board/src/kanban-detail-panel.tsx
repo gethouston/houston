@@ -2,6 +2,7 @@ import { cn } from "@houston-ai/core";
 import { Loader2, XIcon } from "lucide-react";
 import { forwardRef } from "react";
 import { KanbanPeople } from "./kanban-people";
+import { hasPeopleBeyond } from "./kanban-people-logic";
 import type { KanbanPerson } from "./types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -35,6 +36,9 @@ export interface KanbanDetailPanelProps {
   missionLabelOverride?: string;
   /** Human contributors shown as an avatar face stack in the header. */
   people?: KanbanPerson[];
+  /** The viewer. A stack that holds nobody BUT the viewer is not rendered:
+   *  "who is on this task" only says something when someone else is. */
+  selfId?: string;
   /** Accessible group label for the people face stack (English default "People"). */
   peopleLabel?: string;
   /** Accessible label for the people stack's expandable "+N" chip. */
@@ -62,6 +66,7 @@ export const KanbanDetailPanel = forwardRef<
     agentName,
     missionLabelOverride,
     people,
+    selfId,
     peopleLabel = "People",
     peopleExpandLabel,
     closeLabel = "Close panel",
@@ -74,6 +79,7 @@ export const KanbanDetailPanel = forwardRef<
   const isRunning = status ? runningStatuses.includes(status) : false;
   const missionLabel =
     missionLabelOverride ?? (title ? `Mission: ${title}` : subtitle);
+  const showPeople = hasPeopleBeyond(people, selfId);
 
   return (
     <div ref={ref} className="flex flex-col h-full min-h-0">
@@ -88,11 +94,23 @@ export const KanbanDetailPanel = forwardRef<
           token ChatPanel and the panes wear, so header, chat, and pane are
           one color — no seam on the light canvas / dark transparent). */}
       {!hideHeader && (
-        <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
-          <div className="flex items-center gap-3 max-w-3xl mx-auto w-full">
-            {leading}
+        <div className="@container relative flex shrink-0 items-center gap-3 bg-background px-4 py-3 dark:bg-transparent">
+          {/* The leading slot (a Back control) belongs to the panel's frame,
+              not to the reading column, so it sits at the panel's own left
+              edge. Once the header is wide enough that the capped row leaves
+              room for it (the 48rem cap plus the widest localized Back), it
+              leaves the flow entirely so the row centers on the FULL width
+              and lines up with the message column and composer beneath. On
+              a narrower header it stays in flow and the row centers on the
+              room that remains, never underneath it. */}
+          {leading && (
+            <div className="shrink-0 @min-[67rem]:absolute @min-[67rem]:top-1/2 @min-[67rem]:left-4 @min-[67rem]:-translate-y-1/2">
+              {leading}
+            </div>
+          )}
+          <div className="flex min-w-0 flex-1 items-center gap-3 max-w-3xl mx-auto">
             {avatar}
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-ink">
                 {agentName ?? title}
               </p>
@@ -112,27 +130,28 @@ export const KanbanDetailPanel = forwardRef<
                 </p>
               )}
             </div>
-            {isRunning && (
-              <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
-            )}
-            {/* Actions sit BEFORE the face stack: the overflow menu reads as
-              panel chrome next to the close button, while the people stack
-              stays glued to the close affordance on the right edge. */}
-            {actions}
-            {people && people.length > 0 && (
-              /* `surface="background"` because this header wears `bg-background`,
-               not the card tier: the default `ring-input` ring would paint a
-               white halo band around each face instead of a cutout. */
+            {/* The people stack sits on the LEFT with the identity block: it
+              is about the task, while the menu and the window controls are
+              about the panel and sit together at the right edge. It is a
+              button (the roster popover) so it works on touch; a hover
+              tooltip alone was dead on a phone. Absent when nobody but the
+              viewer is on the task, where it only ever showed your own face. */}
+            {showPeople && (
               <KanbanPeople
                 people={people}
                 size="md"
                 surface="background"
                 label={peopleLabel}
-                expandable
+                roster
                 expandLabel={peopleExpandLabel}
                 className="shrink-0"
               />
             )}
+            <div className="min-w-0 flex-1" />
+            {isRunning && (
+              <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
+            )}
+            {actions}
             {onClose && (
               <button
                 type="button"
