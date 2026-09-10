@@ -1,5 +1,5 @@
 import type { CommunitySkill } from "@houston/protocol";
-import { SkillRemoteError } from "./remote-error";
+import { fetchCommunitySearch } from "./community-fetch";
 
 /**
  * skills.sh community directory client. The host owns the resilience the KB
@@ -15,7 +15,8 @@ const SEARCH_FRESH_TTL_MS = 10 * 60_000;
 const SEARCH_STALE_TTL_MS = 24 * 60 * 60_000;
 const SEARCH_MIN_INTERVAL_MS = 750;
 /** Upper bound on one skills.sh round-trip. A wedged upstream must surface as
- *  the typed offline error, never hang the host route (or a test) open. */
+ *  the typed `upstream_timeout` error, never hang the host route (or a test)
+ *  open. */
 const SEARCH_REQUEST_TIMEOUT_MS = 10_000;
 
 /**
@@ -100,7 +101,7 @@ export class CommunityDirectory {
 
     await this.waitForRequestSlot();
     try {
-      const skills = await this.fetchSearch(trimmed, opts.fetchImpl);
+      const skills = await this.fetchSearch(trimmed, opts);
       this.entries.set(key, { skills, fetchedAt: this.now() });
       return skills;
     } catch (err) {
@@ -124,10 +125,11 @@ export class CommunityDirectory {
 
     await this.waitForRequestSlot();
     try {
-      const skills = await this.fetchSearch(POPULAR_SEED, opts.fetchImpl);
+      const skills = await this.fetchSearch(POPULAR_SEED, opts);
       this.popularEntry = { skills, fetchedAt: this.now() };
       return skills.slice(0, POPULAR_LIMIT);
     } catch (err) {
+      if (opts.signal?.aborted) throw opts.signal.reason ?? err;
       const stale = this.popularEntry;
       if (stale && this.now() - stale.fetchedAt <= this.staleTtlMs) {
         console.warn(
@@ -147,52 +149,19 @@ export class CommunityDirectory {
     if (target > now) await this.sleep(target - now);
   }
 
-  /** One search round-trip. Retries once after a delay on HTTP 429. */
-  private async fetchSearch(
+  /** One search round-trip, typed by cause (see `community-fetch.ts`). */
+  private fetchSearch(
     query: string,
-    fetchOverride?: typeof fetch,
+    opts: CommunitySearchOptions,
   ): Promise<CommunitySkill[]> {
-    for (let attempt = 0; ; attempt++) {
-      let res: Response;
-      try {
-        res = await (fetchOverride ?? this.fetchImpl)(
-          `${this.endpoint}?q=${encodeURIComponent(query)}`,
-          {
-            headers: { "User-Agent": "houston-skills/1.0" },
-            signal: AbortSignal.timeout(this.requestTimeoutMs),
-          },
-        );
-      } catch (err) {
-        throw new SkillRemoteError(
-          "offline",
-          `skills.sh search failed: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
-
-      if (res.status === 429 && attempt === 0) {
-        await this.sleep(this.retryDelayMs);
-        continue;
-      }
-      if (res.status === 429) {
-        throw new SkillRemoteError(
-          "rate_limited",
-          "skills.sh rate limit hit, wait a moment and try again",
-        );
-      }
-      if (!res.ok) {
-        throw new SkillRemoteError(
-          "offline",
-          `Skills search failed (${res.status})`,
-        );
-      }
-
-      const body = (await res.json().catch(() => null)) as {
-        skills?: unknown;
-      } | null;
-      if (!body || !Array.isArray(body.skills)) {
-        throw new SkillRemoteError("offline", "Failed to parse results");
-      }
-      return body.skills as CommunitySkill[];
-    }
+    return fetchCommunitySearch({
+      endpoint: this.endpoint,
+      query,
+      fetchImpl: opts.fetchImpl ?? this.fetchImpl,
+      signal: opts.signal ?? null,
+      timeoutMs: this.requestTimeoutMs,
+      retryDelayMs: this.retryDelayMs,
+      sleep: this.sleep,
+    });
   }
 }

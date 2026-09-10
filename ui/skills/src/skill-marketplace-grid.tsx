@@ -44,7 +44,7 @@ export type SkillMarketplacePhase =
   | { kind: "no-results"; query: string }
   | {
       kind: "search-error";
-      reason: "rate_limited" | "offline" | "generic";
+      reason: "rate_limited" | "offline" | "slow" | "generic";
       query: string;
     };
 
@@ -58,6 +58,8 @@ export interface SkillMarketplaceGridLabels {
   noResults?: (query: string) => string;
   searchRateLimited?: string;
   searchOffline?: string;
+  /** Skills.sh took too long to answer: try again, nothing to fix locally. */
+  searchSlow?: string;
   searchGeneric?: string;
   typeToSearch?: string;
   minQuery?: string;

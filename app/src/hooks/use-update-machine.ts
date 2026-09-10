@@ -4,6 +4,8 @@ import { analytics } from "../lib/analytics";
 import { reportError } from "../lib/error-report";
 import {
   osCurrentAppBundlePath,
+  osDownloadUpdate,
+  osInstallUpdate,
   osRelaunchAppFromPath,
 } from "../lib/os-bridge";
 import {
@@ -11,6 +13,7 @@ import {
   type DownloadTally,
   EMPTY_DOWNLOAD_TALLY,
 } from "../lib/update-download-progress";
+import { reportUpdateDownloadFailure } from "../lib/update-download-report";
 import { claimLaunchCheck } from "../lib/update-launch-claim";
 import {
   shouldReportDownloadFailure,
@@ -27,6 +30,7 @@ import {
 export type { InstallSource, UpdateInfo, UpdateStatus };
 
 type AvailableUpdate = NonNullable<Awaited<ReturnType<typeof check>>>;
+type CheckResult = { outcome: UpdateCheckOutcome; message?: string };
 
 /**
  * The updater state machine: check → available → downloading → downloaded →
@@ -37,7 +41,9 @@ type AvailableUpdate = NonNullable<Awaited<ReturnType<typeof check>>>;
  * Download and install are two steps on purpose: the release downloads in
  * the background while the user keeps working, and the install (msiexec
  * hand-off + process exit on Windows, bundle swap on macOS) runs only when
- * something explicitly asks for it.
+ * something explicitly asks for it. Both are the shell's own commands over
+ * the plugin's `Update` resource: the plugin's single-shot download died
+ * mid-stream on a 300 MB asset with no resume (PRODUCT-1727).
  */
 export function useUpdateMachine() {
   const [status, setStatus] = useState<UpdateStatus>({ state: "idle" });
@@ -46,16 +52,15 @@ export function useUpdateMachine() {
   const statusRef = useRef<UpdateStatus>(status);
   const busyRef = useRef(false);
   const appPathRef = useRef<string | null>(null);
+  // Staged release bytes (a shell resource id) once a download landed.
+  const bytesRidRef = useRef<number | null>(null);
   const reportedDownloadFailureRef = useRef<string | null>(null);
 
   useEffect(() => {
     statusRef.current = status;
   }, [status]);
 
-  const runCheck = useCallback(async (): Promise<{
-    outcome: UpdateCheckOutcome;
-    message?: string;
-  }> => {
+  const runCheck = useCallback(async (): Promise<CheckResult> => {
     // The first check of the PROCESS is the launch check: the user just
     // opened the app and hasn't started working. Everything after is
     // mid-session. Claimed outside React on purpose: this hook is remounted
@@ -81,8 +86,7 @@ export function useUpdateMachine() {
       };
       updateRef.current = update;
       infoRef.current = info;
-      // `update_offered` fires on the first sighting of a version only, so a
-      // recheck (or a retried download) doesn't double-count.
+      // `update_offered` fires on the first sighting of a version only.
       const previous = statusRef.current;
       if (previous.state === "idle" || previous.info.version !== info.version) {
         analytics.track("update_offered", {
@@ -93,9 +97,8 @@ export function useUpdateMachine() {
       setStatus({ state: "available", info });
       return { outcome: "found" };
     } catch (error) {
-      // Fail-open by design: the staging QA flavor's updater endpoint 404s
-      // forever and a launch must never block on the release feed. The
-      // checker counts these to surface a client whose checks NEVER succeed.
+      // Fail-open by design: a launch must never block on the release feed.
+      // The checker counts these to surface a client that NEVER succeeds.
       console.warn("[updater] check failed", error);
       return {
         outcome: "failed",
@@ -104,9 +107,9 @@ export function useUpdateMachine() {
     }
   }, []);
 
-  /** Fetch the release into the updater's buffer; true once it can be
-   *  installed. A failure is reported (once per version), never shown: the
-   *  next check finds the release again and the download re-runs. */
+  /** Fetch the release into the shell's staging buffer; true once it can
+   *  be installed. A failure is reported (once per version), never shown:
+   *  the next check finds the release again and the download re-runs. */
   const download = useCallback(async (): Promise<boolean> => {
     const update = updateRef.current;
     const info = infoRef.current;
@@ -117,7 +120,7 @@ export function useUpdateMachine() {
     let tally: DownloadTally = EMPTY_DOWNLOAD_TALLY;
     try {
       setStatus({ state: "downloading", info, progress: null });
-      await update.download((event) => {
+      bytesRidRef.current = await osDownloadUpdate(update.rid, (event) => {
         const next = applyDownloadEvent(tally, event);
         tally = next.tally;
         setStatus({ state: "downloading", info, progress: next.progress });
@@ -134,7 +137,7 @@ export function useUpdateMachine() {
       const reported = reportedDownloadFailureRef.current;
       if (shouldReportDownloadFailure(reported, info.version)) {
         reportedDownloadFailureRef.current = info.version;
-        reportError("update_download", `download of ${info.version}`, error);
+        reportUpdateDownloadFailure(info.version, error);
       }
       setStatus({ state: "error", info, phase: "download" });
       return false;
@@ -166,7 +169,8 @@ export function useUpdateMachine() {
         return;
       const update = updateRef.current;
       const info = infoRef.current;
-      if (!update || !info) return;
+      const bytesRid = bytesRidRef.current;
+      if (!update || !info || bytesRid === null) return;
 
       busyRef.current = true;
       analytics.track("update_accepted", {
@@ -178,7 +182,8 @@ export function useUpdateMachine() {
         // Captured BEFORE the install: on macOS the install moves the bundle.
         appPathRef.current = await osCurrentAppBundlePath();
         setStatus({ state: "installing", info });
-        await update.install();
+        await osInstallUpdate(update.rid, bytesRid);
+        bytesRidRef.current = null;
       } catch (error) {
         console.error("[updater] install failed", error);
         reportError("update_install", `install of ${info.version}`, error);

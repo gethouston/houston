@@ -80,6 +80,8 @@ function fakeReq(body: unknown, headers: Record<string, string>) {
   const buf = Buffer.from(JSON.stringify(body));
   return {
     headers,
+    // The route arms a client-gone signal on the pair (client-abort.ts).
+    once() {},
     async *[Symbol.asyncIterator]() {
       if (buf.byteLength) yield buf;
     },
@@ -90,6 +92,7 @@ function fakeReq(body: unknown, headers: Record<string, string>) {
 function fakeRes() {
   const captured: { status: number; body: unknown } = { status: 0, body: null };
   const res = {
+    once() {},
     writeHead(status: number) {
       captured.status = status;
       return res;

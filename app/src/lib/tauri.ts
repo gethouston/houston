@@ -76,6 +76,7 @@ import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
+import { isExpectedSkillSearchError } from "./skill-search-expected-state";
 import { isStaleAttachmentError } from "./stale-attachment";
 import {
   isLastOwnerError,
@@ -874,7 +875,9 @@ export const tauriSkills = {
           }),
         ),
       undefined,
-      { toast: false },
+      // skills.sh slow / unreachable / rate limiting is upstream weather the
+      // grid renders inline (PRODUCT-1728); a real upstream error stays loud.
+      { toast: false, silence: isExpectedSkillSearchError },
     ),
   previewCommunity: (
     agentPath: string,

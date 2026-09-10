@@ -11,6 +11,7 @@ import {
   formatTokensAmount,
   type UsageSlot,
 } from "./provider-usage-model";
+import { settleUsageWindow } from "./provider-usage-window";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -140,7 +141,7 @@ function MeteredTokens({
 }
 
 function UsageWindowBar({
-  window: w,
+  window,
   locale,
   t,
 }: {
@@ -148,6 +149,9 @@ function UsageWindowBar({
   locale: string;
   t: Translate;
 }) {
+  // A reading ages on screen between polls: a window whose reset passed since
+  // the last fetch has rolled over and reads 0%, not its last percentage.
+  const w = settleUsageWindow(window);
   const percent = Math.round(w.usedPercent);
   const when = formatResetWhen(w.resetsAt, locale);
   return (

@@ -1,15 +1,18 @@
 /**
- * Stable machine-readable error kinds emitted by the engine for
- * skill-related routes. UI matches on these to render plain-English
- * copy without parsing error message strings.
+ * Stable machine-readable error kinds emitted by the host for skill-related
+ * routes. UI matches on these to render plain-English copy without parsing
+ * error message strings.
  *
- * Source of truth: `engine/houston-engine-core/src/skills.rs` — keep
- * the union below in sync with the `SkillError` → `CoreError::Labeled`
- * mapping there.
+ * Source of truth: `packages/host/src/skills/remote-error.ts` — keep the
+ * union below in sync with `SkillRemoteErrorKind` there.
  */
 export type SkillErrorKind =
   | "rate_limited"
   | "offline"
+  /** Skills.sh took longer than the host's request budget. */
+  | "upstream_timeout"
+  /** Skills.sh answered with a non-OK status or an unusable body. */
+  | "upstream_error"
   | "already_installed"
   | "skill_not_found"
   | "skill_not_in_repo"

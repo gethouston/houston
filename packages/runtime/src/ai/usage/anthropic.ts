@@ -10,6 +10,7 @@ import {
   clampPercent,
   type ProviderUsage,
   type ProviderUsageWindow,
+  settleWindow,
 } from "./types";
 
 /**
@@ -118,10 +119,14 @@ function toWindow(
   };
 }
 
-/** Fetch the connected Claude account's usage windows. */
+/**
+ * Fetch the connected Claude account's usage windows. A window the API still
+ * reports past its own reset is settled to empty (`settleWindow`).
+ */
 export async function fetchAnthropicUsage(
   fetchImpl: typeof fetch = fetch,
   resolveToken: () => Promise<string | null> = resolveAnthropicToken,
+  now: () => number = Date.now,
 ): Promise<ProviderUsage> {
   const provider = "anthropic";
   const token = await resolveToken();
@@ -155,11 +160,13 @@ export async function fetchAnthropicUsage(
     toWindow("session", body.five_hour, 300),
     toWindow("week", body.seven_day, 10_080),
     toWindow("week_opus", body.seven_day_opus, 10_080),
-  ].filter((w): w is ProviderUsageWindow => w !== null);
+  ]
+    .filter((w): w is ProviderUsageWindow => w !== null)
+    .map((w) => settleWindow(w, now()));
   return {
     provider,
     status: "ok",
     windows,
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: new Date(now()).toISOString(),
   };
 }

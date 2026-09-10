@@ -54,7 +54,7 @@ export async function handleSkillsRemote(
     return true;
   }
   if (family === "community" && action === "popular") {
-    await communityPopularAction(res, fetchImpl);
+    await communityPopularAction(req, res, fetchImpl);
     return true;
   }
   if (family === "community" && action === "preview") {

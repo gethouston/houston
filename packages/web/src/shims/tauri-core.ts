@@ -27,6 +27,19 @@ export function isTauri(): boolean {
 
 type InvokeArgs = Record<string, unknown> | Uint8Array | undefined;
 
+/** Mirror of `@tauri-apps/api`'s `Channel`: a native command's progress
+ * stream. The web build never invokes a command that takes one (the
+ * updater's download is desktop-only), so it only has to type-check. */
+export class Channel<T = unknown> {
+  onmessage: (response: T) => void = () => {};
+  constructor(onmessage?: (response: T) => void) {
+    if (onmessage) this.onmessage = onmessage;
+  }
+  toJSON(): string {
+    return "__CHANNEL__:web";
+  }
+}
+
 /** Mirror of `@tauri-apps/api`'s InvokeOptions (headers ride the raw-payload
  * IPC on desktop). The web shim has no native IPC, so they're ignored. */
 type InvokeOptions = { headers?: Record<string, string> };
@@ -289,6 +302,10 @@ export async function invoke<T = unknown>(
     case "open_file":
     case "current_app_bundle_path":
     case "relaunch_app_from_path":
+    // The shell's resumable release download + staged install; the web tab has
+    // no bundle to update and the updater shim's check() never finds one.
+    case "download_update":
+    case "install_update":
     case "sentry_native_stack_smoke_test":
       return notAvailable(cmd);
 
