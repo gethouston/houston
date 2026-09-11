@@ -25,8 +25,11 @@ import { analytics } from "../../lib/analytics";
 import { signInWithGoogle } from "../../lib/auth";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-report";
+import { showExpectedStateToast } from "../../lib/error-toast";
+import { planFileOpFailure } from "../../lib/file-op-failure";
 import { isIdentityConfigured } from "../../lib/identity";
-import { osRevealPath } from "../../lib/os-bridge";
+import { logger } from "../../lib/logger";
+import { osRevealPath, type WrittenFile } from "../../lib/os-bridge";
 import {
   buildAnonymizeOverrides,
   buildStorePublishRequest,
@@ -186,11 +189,12 @@ export function ExportAgentWizard() {
       });
       const filename = `${agent.name.replace(/[^a-z0-9._-]+/gi, "-")}.houstonagent`;
       const u8 = new Uint8Array(bytes);
-      const savedPath = await invoke<string | null>("save_portable_agent", {
+      const saved = await invoke<WrittenFile | null>("save_portable_agent", {
         default_name: filename,
         bytes: Array.from(u8),
       });
-      if (savedPath) {
+      if (saved) {
+        const savedPath = saved.path;
         analytics.track("agent_shared", {
           agent_slug: agent.id,
           source: "export_wizard",
@@ -202,24 +206,46 @@ export function ExportAgentWizard() {
           action: {
             label: t("export.toasts.revealAction"),
             onClick: () => {
-              void osRevealPath(savedPath).catch((err) =>
+              void osRevealPath(savedPath).catch((err) => {
+                const plan = planFileOpFailure("reveal", err);
+                logger.error(
+                  `[export:reveal] ${plan.failure.kind}: ${plan.failure.message}`,
+                );
+                if (plan.surface === "expected") {
+                  showExpectedStateToast(
+                    t("export.errors.revealFailed"),
+                    t(`export.errors.${plan.copy}`),
+                  );
+                  return;
+                }
                 addToast({
                   variant: "error",
                   title: t("export.errors.revealFailed"),
                   description: genericErrorDescription("export_reveal", err),
-                }),
-              );
+                });
+              });
             },
           },
         });
         handleClose();
       }
     } catch (err) {
-      addToast({
-        variant: "error",
-        title: t("export.errors.saveFailed"),
-        description: genericErrorDescription("export_save", err),
-      });
+      const plan = planFileOpFailure("save", err);
+      logger.error(
+        `[export:save] ${plan.failure.kind}: ${plan.failure.message}`,
+      );
+      if (plan.surface === "expected") {
+        showExpectedStateToast(
+          t("export.errors.saveFailed"),
+          t(`export.errors.${plan.copy}`),
+        );
+      } else {
+        addToast({
+          variant: "error",
+          title: t("export.errors.saveFailed"),
+          description: genericErrorDescription("export_save", err),
+        });
+      }
     } finally {
       setSaving(false);
     }

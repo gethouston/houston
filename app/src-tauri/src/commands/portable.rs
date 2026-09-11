@@ -10,25 +10,26 @@
 use std::path::PathBuf;
 
 use super::dialogs::{open_dialog, save_dialog};
+use super::file_failure::{write_with_fallback, FileOpFailure, WrittenFile};
 
 const WIN_FILTER: &str = "Houston Agent (*.houstonagent)|*.houstonagent|All files (*.*)|*.*";
 
 /// Show a save dialog and write the provided bytes to the chosen path.
-/// Returns the path the user picked, or `None` if cancelled.
+/// Returns where the file landed (a free sibling name when the chosen file
+/// was locked, see `file_failure`), or `None` if cancelled.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn save_portable_agent(
     default_name: String,
     bytes: Vec<u8>,
-) -> Result<Option<String>, String> {
-    let Some(path) = save_dialog("Save shared agent", &default_name, Some(WIN_FILTER)).await?
+) -> Result<Option<WrittenFile>, FileOpFailure> {
+    let Some(path) = save_dialog("Save shared agent", &default_name, Some(WIN_FILTER))
+        .await
+        .map_err(FileOpFailure::other)?
     else {
         return Ok(None);
     };
     let target = PathBuf::from(&path);
-    tokio::fs::write(&target, bytes)
-        .await
-        .map_err(|e| format!("Failed to save file: {e}"))?;
-    Ok(Some(path))
+    write_with_fallback(&target, &bytes).await.map(Some)
 }
 
 /// Show an open dialog and return the bytes of the chosen file. Returns

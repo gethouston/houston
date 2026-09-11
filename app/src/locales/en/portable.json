@@ -66,7 +66,11 @@
       "anonymizeFailed": "Anonymize step failed.",
       "saveFailed": "Could not save the file.",
       "noPreview": "No preview available.",
-      "revealFailed": "Could not open that folder."
+      "revealFailed": "Could not open that folder.",
+      "saveLocked": "That file is open in another program. Close it there and save again.",
+      "savePermission": "Houston isn't allowed to save into that folder. Choose another folder, like Downloads.",
+      "saveDiskFull": "There isn't enough free space on this computer to save the file.",
+      "revealPermission": "Houston isn't allowed to open that folder on this computer. Look for the file where you saved it."
     },
     "toasts": {
       "savedTitle": "File saved",

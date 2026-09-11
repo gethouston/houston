@@ -157,9 +157,10 @@ export async function invoke<T = unknown>(
           : "agent.houstonagent";
       const bytes = Array.isArray(args?.bytes) ? (args.bytes as number[]) : [];
       downloadBytes(name, bytes);
-      // Native returns the saved path; the web download has no path, so echo
-      // the filename — callers only use it for a "saved" confirmation toast.
-      return name as T;
+      // Native returns where the file landed (`WrittenFile`); the web download
+      // has no path, so echo the filename — callers only use it for a "saved"
+      // confirmation toast.
+      return { path: name, fileName: name, renamedFrom: null } as T;
     }
     case "open_portable_agent": {
       const bytes = await pickFileBytes(".houstonagent,application/zip");

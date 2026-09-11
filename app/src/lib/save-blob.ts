@@ -2,7 +2,16 @@ import { isTauri } from "@tauri-apps/api/core";
 import { osSaveDownload } from "./os-bridge";
 
 export type SaveBlobResult =
-  | { kind: "saved"; path: string | null }
+  | {
+      kind: "saved";
+      /** Non-null only on the native path; browsers manage their own
+       *  download location. */
+      path: string | null;
+      /** The name on disk: the requested one, or the free sibling the shell
+       *  fell back to when the requested file was open in another program. */
+      fileName: string;
+      renamedFrom: string | null;
+    }
   | { kind: "cancelled" };
 
 /**
@@ -20,8 +29,10 @@ export async function saveBlob(
 ): Promise<SaveBlobResult> {
   if (isTauri()) {
     const bytes = new Uint8Array(await blob.arrayBuffer());
-    const path = await osSaveDownload(name, bytes);
-    return path === null ? { kind: "cancelled" } : { kind: "saved", path };
+    const written = await osSaveDownload(name, bytes);
+    return written === null
+      ? { kind: "cancelled" }
+      : { kind: "saved", ...written };
   }
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -32,5 +43,5 @@ export async function saveBlob(
   a.remove();
   // Revoke once the download has had time to start.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
-  return { kind: "saved", path: null };
+  return { kind: "saved", path: null, fileName: name, renamedFrom: null };
 }

@@ -66,7 +66,11 @@
       "anonymizeFailed": "Falló la anonimización.",
       "saveFailed": "No pude guardar el archivo.",
       "noPreview": "No hay vista previa.",
-      "revealFailed": "No pude abrir esa carpeta."
+      "revealFailed": "No pude abrir esa carpeta.",
+      "saveLocked": "Ese archivo está abierto en otro programa. Ciérralo ahí y vuelve a guardarlo.",
+      "savePermission": "Houston no tiene permiso para guardar en esa carpeta. Elige otra carpeta, como Descargas.",
+      "saveDiskFull": "No hay suficiente espacio libre en este computador para guardar el archivo.",
+      "revealPermission": "Houston no tiene permiso para abrir esa carpeta en este computador. Busca el archivo donde lo guardaste."
     },
     "toasts": {
       "savedTitle": "Archivo guardado",
