@@ -21,6 +21,11 @@ type Socket = WebSocketStream<TcpStream>;
 mod normalization;
 #[allow(clippy::result_large_err)] // Tungstenite fixes the handshake callback error type.
 async fn relay() -> (String, tokio::task::JoinHandle<Socket>) {
+    relay_expiring(600).await
+}
+/// A relay whose `ready` frame puts the session expiry `seconds` away.
+#[allow(clippy::result_large_err)]
+async fn relay_expiring(seconds: i64) -> (String, tokio::task::JoinHandle<Socket>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let address = format!("ws://{}/bridge", listener.local_addr().unwrap());
     let task = tokio::spawn(async move {
@@ -38,7 +43,7 @@ async fn relay() -> (String, tokio::task::JoinHandle<Socket>) {
         send(
             &mut socket,
             json!({"type":"ready","version":1,"generation":1,
-            "sessionExpiresAt":(chrono::Utc::now()+chrono::Duration::minutes(10)).to_rfc3339()}),
+            "sessionExpiresAt":(chrono::Utc::now()+chrono::Duration::seconds(seconds)).to_rfc3339()}),
         )
         .await;
         socket
@@ -289,6 +294,60 @@ async fn renews_drains_and_drop_closes_the_socket() {
     })
     .await
     .unwrap();
+}
+
+// The desktop webview's timers sleep while the app idles (macOS App Nap), so
+// the native session itself must say when a renewal is due: two minutes before
+// expiry, and again after every renewal moves the expiry.
+#[tokio::test]
+async fn renewal_due_fires_before_expiry_and_rearms_after_renewal() {
+    let (address, relay_task) = relay_expiring(121).await;
+    let (events, mut statuses) = mpsc::unbounded_channel();
+    let handle = connect(
+        config(address, "http://127.0.0.1:1/v1".into()),
+        move |event| {
+            events.send(event).unwrap();
+        },
+    )
+    .await
+    .unwrap();
+    let mut socket = relay_task.await.unwrap();
+    let due = async {
+        loop {
+            if let BridgeStatus::RenewalDue { session_expires_at } = statuses.recv().await.unwrap()
+            {
+                return session_expires_at;
+            }
+        }
+    };
+    let first = tokio::time::timeout(std::time::Duration::from_secs(5), due)
+        .await
+        .expect("renewal due never fired before expiry");
+    assert!(!first.is_empty());
+    let renewal_task = tokio::spawn(async move {
+        handle.renew("renewal-ticket".into()).await.unwrap();
+        handle
+    });
+    assert_eq!(receive(&mut socket).await["type"], "renew");
+    let renewed_at = (chrono::Utc::now() + chrono::Duration::seconds(121)).to_rfc3339();
+    send(
+        &mut socket,
+        json!({"type":"renewed","sessionExpiresAt":renewed_at}),
+    )
+    .await;
+    let again = async {
+        loop {
+            if let BridgeStatus::RenewalDue { session_expires_at } = statuses.recv().await.unwrap()
+            {
+                return session_expires_at;
+            }
+        }
+    };
+    let second = tokio::time::timeout(std::time::Duration::from_secs(5), again)
+        .await
+        .expect("renewal due did not re-arm after the renewal");
+    assert_eq!(second, renewed_at);
+    drop(renewal_task.await.unwrap());
 }
 
 #[tokio::test]

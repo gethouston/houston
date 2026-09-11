@@ -112,6 +112,45 @@ test("connect commits a secret-free journal and explicit bridge descriptor", asy
   expect(h.controller.getSnapshot()).toBe(h.controller.getSnapshot());
   await h.controller.dispose();
 });
+// The desktop webview's timers sleep while the app idles in the background
+// (macOS App Nap): overnight, every session lapsed at the 10-minute mark and
+// the late timer met a 409. The native side now says when a renewal is due.
+test("a native renewal-due notice renews without the timer, once per session", async () => {
+  vi.useFakeTimers();
+  const h = harness();
+  await h.controller.connect(input);
+  const online = h.controller.getSnapshot();
+  // A renewed session carries a later expiry; the fixture's expiry is minted
+  // from the fake clock, so let it move before any renewal is issued.
+  await vi.advanceTimersByTimeAsync(1_000);
+  const renewals = () =>
+    (h.ports.management.session as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (call) => call[3] !== undefined,
+    ).length;
+  expect(renewals()).toBe(0);
+  const notice = {
+    bridgeId,
+    generation: online.generation ?? 0,
+    status: "online" as const,
+    sessionExpiresAt: online.sessionExpiresAt,
+    renewalDue: true,
+  };
+  h.event(notice);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(renewals()).toBe(1);
+  expect(h.ports.native.renew).toHaveBeenCalledTimes(1);
+  expect(h.controller.getSnapshot().status).toBe("online");
+  // The same notice again names the session already renewed: nothing happens.
+  h.event(notice);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(renewals()).toBe(1);
+  // The timer for the renewed session still fires on its own schedule.
+  await vi.advanceTimersByTimeAsync(480_000);
+  expect(renewals()).toBe(2);
+  expect(h.ports.report).not.toHaveBeenCalled();
+  await h.controller.dispose();
+});
+
 test("failed renewal authorization stops all automatic retries", async () => {
   vi.useFakeTimers();
   const h = harness();

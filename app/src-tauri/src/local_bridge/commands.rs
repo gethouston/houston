@@ -82,6 +82,7 @@ pub fn local_bridge_status(identity: Identity) -> Result<Status, String> {
             generation: 0,
             status: StatusKind::Disabled,
             session_expires_at: None,
+            renewal_due: false,
         }),
     }
 }

@@ -70,6 +70,7 @@ pub async fn start(app: AppHandle, args: StartArgs) -> Result<StartResult, Strin
         generation: 0,
         status: StatusKind::Connecting,
         session_expires_at: None,
+        renewal_due: false,
     });
     let identity = args.identity.clone();
     let handle = connect(
@@ -127,9 +128,15 @@ fn update(app: &AppHandle, identity: &Identity, event: BridgeStatus) -> Result<(
                 status.generation = generation;
                 status.session_expires_at = Some(session_expires_at);
                 status.status = StatusKind::Online;
+                status.renewal_due = false;
             }
             BridgeStatus::Renewed { session_expires_at } => {
                 status.session_expires_at = Some(session_expires_at);
+                status.renewal_due = false;
+            }
+            BridgeStatus::RenewalDue { session_expires_at } => {
+                status.session_expires_at = Some(session_expires_at);
+                status.renewal_due = true;
             }
             BridgeStatus::ModelUnavailable => status.status = StatusKind::ModelUnavailable,
             BridgeStatus::Draining => status.status = StatusKind::Reconnecting,
