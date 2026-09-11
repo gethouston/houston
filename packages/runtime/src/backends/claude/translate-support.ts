@@ -1,4 +1,4 @@
-import type { TokenUsage } from "@houston/runtime-client";
+import type { TokenUsage, WireEvent } from "@houston/runtime-client";
 
 /**
  * Normalize the Claude Agent SDK's token usage into Houston's `TokenUsage`,
@@ -43,45 +43,82 @@ export interface ToolBlock {
 }
 
 /**
- * The model occasionally garbles a `\uXXXX` escape in streamed tool input
- * (e.g. `\u22co` — `o` is not hex), which fails JSON.parse for the WHOLE
- * payload and loses every argument. Rewrite any escape with fewer than 4 hex
- * digits to U+FFFD so the rest of the input survives. Only true escapes
- * match: the leading group asserts an even backslash run before `\u`, so a
- * literal `\\u` in the text is left alone.
+ * The Claude Agent SDK's stand-in for tool input the model streamed as invalid
+ * JSON. The CLI never runs such a call: it hands the model an
+ * `InputValidationError` tool_result and lets it retry, and its `assistant`
+ * message carries this marker in place of the arguments (verified against
+ * claude-agent-sdk 0.3.257 with a fake API — PRODUCT-1694).
  */
-export function repairInvalidUnicodeEscapes(json: string): string {
-  return json.replace(
-    /((?:^|[^\\])(?:\\\\)*)\\u([0-9a-fA-F]{0,3})(?![0-9a-fA-F])/g,
-    "$1\\ufffd",
-  );
+export interface UnparsedToolInputMarker {
+  __unparsedToolInput: { raw?: string; len?: number };
 }
 
-/** Parse a completed tool call's accumulated input; never drops silently. */
-export function parseArgs(tb: ToolBlock): unknown {
-  if (!tb.json) return tb.input ?? {};
+export function isUnparsedToolInput(
+  input: unknown,
+): input is UnparsedToolInputMarker {
+  if (typeof input !== "object" || input === null) return false;
+  if (!("__unparsedToolInput" in input)) return false;
+  const marker = (input as UnparsedToolInputMarker).__unparsedToolInput;
+  return typeof marker === "object" && marker !== null;
+}
+
+export type DeltaParse =
+  | { ok: true; args: unknown }
+  | { ok: false; reason: string };
+
+/** Parse a tool call's accumulated `input_json_delta` fragments. */
+export function parseDeltaJson(tb: ToolBlock): DeltaParse {
+  if (!tb.json) return { ok: true, args: tb.input ?? {} };
   try {
-    return JSON.parse(tb.json);
+    return { ok: true, args: JSON.parse(tb.json) };
   } catch (err) {
-    const repaired = repairInvalidUnicodeEscapes(tb.json);
-    if (repaired !== tb.json) {
-      try {
-        const parsed = JSON.parse(repaired);
-        console.warn(
-          `[claude] repaired invalid \\u escape(s) in tool "${tb.name}" input JSON`,
-        );
-        return parsed;
-      } catch {
-        // Still unparseable — fall through to the loud report below.
-      }
-    }
-    console.error(
-      `[claude] failed to parse tool "${tb.name}" input JSON: ${
-        err instanceof Error ? err.message : String(err)
-      } :: ${tb.json}`,
-    );
-    return {};
+    return {
+      ok: false,
+      reason: err instanceof Error ? err.message : String(err),
+    };
   }
+}
+
+/**
+ * The tool_start frame for a completed call, from the SDK's own parse of its
+ * input. The unparsed marker means the CLI skipped the call and asked the model
+ * to retry — an expected model glitch, logged as a breadcrumb (console.warn is
+ * never a Sentry event) with the parse reason, and rendered as empty args.
+ */
+export function toolStartFrame(tb: ToolBlock, sdkInput: unknown): WireEvent {
+  let args = sdkInput;
+  if (isUnparsedToolInput(sdkInput)) {
+    const parsed = parseDeltaJson(tb);
+    const reason = parsed.ok ? "rejected by the SDK" : parsed.reason;
+    const len = sdkInput.__unparsedToolInput.len ?? tb.json.length;
+    console.warn(
+      `[claude] tool "${tb.name}" input was not valid JSON (${len} bytes); the SDK skipped the call and asked the model to retry: ${reason}`,
+    );
+    args = {};
+  }
+  return { type: "tool_start", data: { name: tb.name, args } };
+}
+
+/**
+ * A call whose deltas failed to parse and for which the SDK never delivered its
+ * `assistant` block: an unexpected shape, so it IS a reported error.
+ */
+export function unverifiedToolStart(tb: ToolBlock): WireEvent {
+  const parsed = parseDeltaJson(tb);
+  console.error(
+    `[claude] failed to parse tool "${tb.name}" input JSON and the SDK delivered no assistant block for it: ${
+      parsed.ok ? "parsed late" : parsed.reason
+    } :: ${tb.json.slice(0, 500)}`,
+  );
+  return { type: "tool_start", data: { name: tb.name, args: {} } };
+}
+
+/** A `tool_use` block off an SDK `assistant` message (external `BetaContentBlock`). */
+export interface AssistantContentBlock {
+  type?: string;
+  id?: string;
+  name?: string;
+  input?: unknown;
 }
 
 /**
