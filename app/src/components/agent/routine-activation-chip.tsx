@@ -7,8 +7,10 @@
  *
  * It reads the same per-agent trigger-status query the Routines grid does
  * (shared cache), so opening the chat right after creation streams the live
- * activation. Reconnect routes to the Integrations surface, the same hand-off
- * the grid's row badge uses.
+ * activation, and resolves it through the same verification timeout, so a
+ * routine the host never reports on ends in a concrete error instead of
+ * spinning forever. Reconnect routes to the Integrations surface, the same
+ * hand-off the grid's row badge uses.
  */
 import { Button, cn } from "@houston-ai/core";
 import type { RoutineTriggerBinding } from "@houston-ai/engine-client";
@@ -19,6 +21,7 @@ import { useAgentTriggerStatus } from "../../hooks/queries/use-triggers";
 import { useUIStore } from "../../stores/ui";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view/id";
 import { triggerActivationKind } from "./routine-trigger-maps";
+import { useTriggerStatusTimeouts } from "./use-trigger-status-timeouts";
 import { WebhookActivationChip } from "./webhook-activation-chip";
 
 interface Props {
@@ -36,10 +39,8 @@ export function RoutineActivationChip({ agentId, routineId, trigger }: Props) {
 
   const routineIds = useMemo(() => [routineId], [routineId]);
   const statusQuery = useAgentTriggerStatus(agentId, true, routineIds);
-  const status = useMemo(
-    () => statusQuery.data?.find((s) => s.routine_id === routineId),
-    [statusQuery.data, routineId],
-  );
+  const statuses = useTriggerStatusTimeouts(routineIds, statusQuery.data);
+  const status = statuses[routineId];
 
   const onReconnect = useCallback(() => {
     setViewMode(INTEGRATIONS_VIEW_ID);
