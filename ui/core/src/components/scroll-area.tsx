@@ -22,6 +22,13 @@ function ScrollArea({
         data-slot="scroll-area-viewport"
         className={cn(
           "size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-focus/50 focus-visible:outline-1",
+          // Radix wraps the children in an inline-styled `display: table` div
+          // that grows to the widest child, so a `w-full` + `truncate` row
+          // inside never shrinks and its right edge is clipped by the
+          // viewport's hidden horizontal overflow (PRODUCT-1769). Block keeps
+          // the wrapper at the viewport width; wider content still scrolls
+          // when a horizontal ScrollBar is mounted.
+          "[&>div]:block!",
           viewportClassName,
         )}
       >
