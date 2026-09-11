@@ -1191,6 +1191,11 @@ export interface ConversationEntry {
   agent_name: string;
   agent?: string;
   routine_id?: string;
+  /** The row's provider/model pin (pi's canonical provider id), carried so a
+   *  board seeded from the cross-agent sweep never presents a pinned chat as
+   *  pin-less (PRODUCT-1771). Absent on rows that were never pinned. */
+  provider?: string;
+  model?: string;
   /** The conversation this mission was started from, present only when the
    *  agent created the mission itself (PRODUCT-1244). Server-stamped. */
   origin_session_key?: string;

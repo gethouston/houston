@@ -82,6 +82,32 @@ describe("latestCachedAgentActivities", () => {
     ]);
   });
 
+  it("keeps a row's provider/model pin, and adds no pin keys to a pin-less row (PRODUCT-1771)", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(
+      queryKeys.allConversations(["agent-a"]),
+      [
+        row("pinned", "agent-a", {
+          provider: "anthropic",
+          model: "claude-opus-5",
+        }),
+        row("legacy", "agent-a"),
+      ],
+      { updatedAt: 1_000 },
+    );
+    const rows = latestCachedAgentActivities(qc, "agent-a") ?? [];
+    deepStrictEqual(
+      rows.map((r) => [r.id, r.provider, r.model]),
+      [
+        ["pinned", "anthropic", "claude-opus-5"],
+        ["legacy", undefined, undefined],
+      ],
+    );
+    // A placeholder must never present a pinned chat as pin-less: the chat
+    // panel would fall through to the device's last-used provider.
+    strictEqual("provider" in rows[1], false);
+  });
+
   it("prefers the newest roster variant that actually has rows", () => {
     const qc = new QueryClient();
     // An older roster variant carries a row for this agent; the newer variant

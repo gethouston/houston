@@ -58,6 +58,9 @@ export function activityToConversation(
     agent_name: agentName,
     agent: a.agent,
     routine_id: a.routine_id,
+    // The pin rides along so a placeholder seeded from this sweep keeps it.
+    ...(a.provider !== undefined && { provider: a.provider }),
+    ...(a.model !== undefined && { model: a.model }),
     // Agent-started marker (PRODUCT-1244): drives the card's tag.
     ...(a.origin_session_key !== undefined && {
       origin_session_key: a.origin_session_key,

@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { classifyFileKind } from "../../lib/file-kind";
+import type { ModelPin } from "../../lib/model-selector-lock";
 import { perfSpans } from "../../lib/perf-spans";
 import { showSendFailedToast } from "../../lib/send-error-toast";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
@@ -20,14 +21,13 @@ import type { Agent } from "../../lib/types";
 export function useMissionControlArchivedSend({
   activeAgent,
   selectedItem,
-  providerOverride,
-  modelOverride,
+  resolveSendPin,
   onHandoff,
 }: {
   activeAgent: Agent | null;
   selectedItem: KanbanItem | null;
-  providerOverride: string;
-  modelOverride: string;
+  /** The chat panel's settled pin (PRODUCT-1771), read at send time. */
+  resolveSendPin: () => Promise<ModelPin>;
   /** The archived → active handoff (`useArchivedHandoff`), run once the send
    *  lands and the mission is no longer archived. */
   onHandoff: (missionId: string) => void;
@@ -48,18 +48,19 @@ export function useMissionControlArchivedSend({
           files,
         );
         const prompt = buildAttachmentPrompt(text, files, paths);
+        const pin = await resolveSendPin();
         // The turn stream pushes the user bubble into the conversation VM
         // itself — no app-side optimistic push.
         await tauriChat.send(agentPath, prompt, sessionKey, {
-          providerOverride,
-          modelOverride,
+          providerOverride: pin.provider,
+          modelOverride: pin.model,
           modeOverride: DEFAULT_TURN_MODE,
           mentions,
         });
         perfSpans.messageSent();
         analytics.track("chat_message_sent", {
-          provider: providerOverride,
-          model: modelOverride,
+          provider: pin.provider,
+          model: pin.model,
         });
         for (const f of files)
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });
@@ -72,6 +73,6 @@ export function useMissionControlArchivedSend({
         throw err;
       }
     },
-    [activeAgent, selectedItem, providerOverride, modelOverride, onHandoff],
+    [activeAgent, selectedItem, resolveSendPin, onHandoff],
   );
 }

@@ -57,6 +57,8 @@ interface CachedConversationRow {
   agent_path: string;
   agent?: string;
   routine_id?: string;
+  provider?: string;
+  model?: string;
 }
 
 /** A board activity recovered from a cached conversation row. */
@@ -69,6 +71,8 @@ export interface CachedBoardActivity {
   updated_at?: string;
   agent?: string;
   routine_id?: string;
+  provider?: string;
+  model?: string;
 }
 
 /**
@@ -126,5 +130,9 @@ export function latestCachedAgentActivities(
     updated_at: row.updated_at,
     agent: row.agent,
     routine_id: row.routine_id,
+    // Rows swept before the pin rode along (older persisted caches) stay
+    // pin-less; the chat panel treats a placeholder's pin as unknown anyway.
+    ...(row.provider !== undefined && { provider: row.provider }),
+    ...(row.model !== undefined && { model: row.model }),
   }));
 }
