@@ -116,14 +116,15 @@ test("keeps a long question's footer reachable in a short viewport", async ({
 });
 
 /**
- * PRODUCT-1769: an option label longer than the card must TRUNCATE, never push
- * the row's number badge past the card's edge. The body scrolls inside a Radix
- * viewport whose content wrapper is `display: table` (sized to the widest
- * row), which used to defeat the row's `w-full` + `truncate` so the badge sat
- * beyond the viewport's hidden horizontal overflow. Asserted geometrically —
- * Playwright's visibility check ignores overflow clipping.
+ * PRODUCT-1769: an option label longer than the card WRAPS onto more lines,
+ * fully readable, and never pushes the row's number badge past the card's
+ * edge. The body scrolls inside a Radix viewport whose content wrapper is
+ * `display: table` (sized to the widest row), which used to defeat the row's
+ * `w-full` so the badge sat beyond the viewport's hidden horizontal overflow.
+ * Asserted geometrically — Playwright's visibility check ignores overflow
+ * clipping.
  */
-test("a long option label truncates and keeps its number badge inside the card", async ({
+test("a long option label wraps and keeps its number badge inside the card", async ({
   page,
   request,
 }) => {
@@ -165,8 +166,16 @@ test("a long option label truncates and keeps its number badge inside the card",
   const cardRight = cardBox.x + cardBox.width;
   expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(cardRight);
   expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(cardRight);
-  // The label lost width to the ellipsis, not the badge.
-  await expect(row.getByText(longLabel)).toHaveCSS("text-overflow", "ellipsis");
+  // The label wrapped (the row is taller than its single-line sibling) and
+  // every word stays readable: no ellipsis anywhere in the row.
+  const shortRow = page.getByRole("radio", { name: /Email me whatever/ });
+  const shortBox = await shortRow.boundingBox();
+  if (!shortBox) throw new Error("short row geometry missing");
+  expect(rowBox.height).toBeGreaterThan(shortBox.height * 1.5);
+  await expect(row.getByText(longLabel)).not.toHaveCSS(
+    "text-overflow",
+    "ellipsis",
+  );
   await expect(page.getByText("Recommended")).toBeVisible();
 });
 
