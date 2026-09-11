@@ -137,7 +137,7 @@ pub async fn connect(
     let callback: Arc<dyn Fn(BridgeStatus) + Send + Sync> = Arc::new(status_callback);
     callback(BridgeStatus::Online {
         generation,
-        session_expires_at,
+        session_expires_at: session_expires_at.clone(),
     });
     let cancel = CancellationToken::new();
     let (commands, receiver) = mpsc::channel(2);
@@ -148,6 +148,7 @@ pub async fn connect(
         receiver,
         callback,
         expiry,
+        session_expires_at,
     ));
     Ok(BridgeHandle {
         cancel,

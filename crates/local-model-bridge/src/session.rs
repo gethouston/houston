@@ -35,6 +35,15 @@ pub(crate) fn expiry(value: &str) -> Result<Instant, BridgeError> {
     }
     Ok(Instant::now() + remaining)
 }
+/// When to ask the host for a renewal: two minutes before expiry, never in the
+/// past. Two minutes leaves room for the ticket round trip through the gateway
+/// even when the webview only wakes on our event.
+fn renewal_due(expires: Instant) -> Instant {
+    let now = Instant::now();
+    expires
+        .checked_sub(Duration::from_secs(120))
+        .map_or(now, |due| due.max(now))
+}
 pub(crate) async fn run(
     socket: WebSocketStream<MaybeTlsStream<TcpStream>>,
     target: Arc<Target>,
@@ -42,6 +51,7 @@ pub(crate) async fn run(
     mut commands: mpsc::Receiver<crate::Renewal>,
     callback: Arc<dyn Fn(BridgeStatus) + Send + Sync>,
     mut expires: Instant,
+    mut expires_at: String,
 ) -> Result<(), BridgeError> {
     let (mut sink, mut source) = socket.split();
     let (control, mut controls) = mpsc::channel::<Control>(64);
@@ -75,12 +85,17 @@ pub(crate) async fn run(
     let mut heartbeat = tokio::time::interval(Duration::from_secs(15));
     let mut last_pong = Instant::now();
     let mut renewal_pending = None;
+    let mut renew_at = Some(renewal_due(expires));
     let result = async {
         loop {
             tokio::select! {
                 biased;
                 _ = cancel.cancelled() => return Ok(()),
                 _ = tokio::time::sleep_until(expires) => return Err(BridgeError::Expired),
+                _ = tokio::time::sleep_until(renew_at.unwrap_or(expires)), if renew_at.is_some() => {
+                    renew_at = None;
+                    callback(BridgeStatus::RenewalDue { session_expires_at: expires_at.clone() });
+                }
                 Some(renewal) = commands.recv() => {
                     if renewal_pending.is_some() { return Err(BridgeError::Protocol); }
                     enqueue(&control, Outgoing::Renew { ticket: renewal.ticket })?;
@@ -114,6 +129,8 @@ pub(crate) async fn run(
                             let next = expiry(&session_expires_at)?;
                             if next <= expires { return Err(BridgeError::Protocol); }
                             expires = next;
+                            expires_at = session_expires_at.clone();
+                            renew_at = Some(renewal_due(next));
                             let reply = renewal_pending.take().ok_or(BridgeError::Protocol)?;
                             reply.send(Ok(())).map_err(|_| BridgeError::Closed)?;
                             callback(BridgeStatus::Renewed { session_expires_at });

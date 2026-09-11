@@ -120,6 +120,9 @@ pub struct Status {
     pub status: StatusKind,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_expires_at: Option<String>,
+    /// The native session wants a fresh ticket now (see `BridgeStatus::RenewalDue`).
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub renewal_due: bool,
 }
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]

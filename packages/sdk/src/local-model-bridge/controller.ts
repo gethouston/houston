@@ -129,18 +129,27 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
     clearTimeout(this.lifetime.timer);
     this.lifetime.timer = setTimeout(
       () => {
-        void this.renew(epoch).catch(this.ports.report);
+        void this.renew(epoch, expiresAt).catch(this.ports.report);
       },
       renewalDelay(expiresAt, (this.ports.now ?? Date.now)()),
     );
   }
-  private renew(epoch: number) {
+  /**
+   * Renew the session that expires at `expected`. Two schedules ask for it:
+   * this timer, and the native side's `renewalDue` notice two minutes before
+   * expiry. The webview's timers are suspended while the app idles in the
+   * background (macOS App Nap), so the native notice is what keeps a session
+   * alive overnight; the `expected` fence keeps the two from renewing the
+   * same session twice.
+   */
+  private renew(epoch: number, expected: string | undefined) {
     return this.lifetime.enqueue(async () => {
       if (
         epoch !== this.lifetime.epoch ||
         !this.device ||
         !this.snapshot.descriptor ||
-        this.snapshot.generation === undefined
+        this.snapshot.generation === undefined ||
+        this.snapshot.sessionExpiresAt !== expected
       )
         return;
       try {
@@ -166,7 +175,17 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
       this.snapshot.status === "disabled"
     )
       return;
-    if (event.status === "online") return;
+    if (event.status === "online") {
+      const current = this.snapshot.sessionExpiresAt;
+      if (
+        event.renewalDue &&
+        current &&
+        event.sessionExpiresAt &&
+        Date.parse(event.sessionExpiresAt) === Date.parse(current)
+      )
+        void this.renew(this.lifetime.epoch, current).catch(this.ports.report);
+      return;
+    }
     clearTimeout(this.lifetime.timer);
     if (
       event.status === "revoked" ||

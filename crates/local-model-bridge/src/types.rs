@@ -38,6 +38,14 @@ pub enum BridgeStatus {
     Renewed {
         session_expires_at: String,
     },
+    /// Fired two minutes before the session expires (and again after every
+    /// renewal). The host must mint a fresh ticket and call `renew`: the
+    /// desktop webview's own timers are suspended while the app idles in
+    /// the background, so a schedule kept only there let sessions lapse.
+    #[serde(rename_all = "camelCase")]
+    RenewalDue {
+        session_expires_at: String,
+    },
     Draining,
     ModelUnavailable,
     Offline {
