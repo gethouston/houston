@@ -1,13 +1,14 @@
 ---
 name: linkedin-reaction-to-outreach
-description: "Same end-to-end pipeline as the comment version, but for people who reacted to a LinkedIn post. 5-10x more leads than commenters and the scrape returns full LinkedIn profiles (experience, education, skills, certifications, location, connections count) in one shot. Best for broader-audience plays where you want volume + rich personalization data. Always paused for your review - I never auto-launch."
+description: Same end-to-end pipeline as the comment version, but for people who reacted to a LinkedIn post. 5-10x more leads than commenters and the scrape returns full LinkedIn profiles (experience, education, skills, certifications, location, connections count) in one shot. Best for broader-audience plays where you want volume + rich personalization data. Always paused for your review - I never auto-launch.
 version: 1
+tags: []
+last_used: 2026-06-06
 category: Outbound
 featured: yes
-image: envelope-with-arrow
 integrations: [apify, airtable, apollo, instantly, linkedin]
+image: envelope-with-arrow
 ---
-
 
 # LinkedIn Reaction to Outreach
 
