@@ -16,8 +16,8 @@ use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader, Lines};
 use tokio::process::{Child, ChildStdout};
 
+use super::exit_report::ExitReport;
 use super::resolve::{build_login_command, extract_visit_url};
-use super::shell_gate::is_shell_gate_failure;
 use super::{EVENT_DONE, EVENT_URL};
 
 /// Give up on the login if the CLI never returns (user closed the consent tab,
@@ -101,48 +101,11 @@ where
         }
         Ok(LoginOutcome::Exited(Ok(status))) => {
             let tail = collect_stderr(stderr_task).await;
-            // A signal death is never a user decision (declines exit with a
-            // code; our own cancel/timeout kills take the branches below) —
-            // it means the helper binary cannot run here at all, e.g. SIGILL
-            // from a pre-AVX2 CPU (HOUSTON-APP-543). Flag it so the frontend
-            // can degrade to the runtime's paste flow instead of toasting an
-            // error a retry can only reproduce.
-            let helper_unavailable = status.code().is_none();
-            let code = status
-                .code()
-                .map(|c| c.to_string())
-                .unwrap_or_else(|| signal_label(&status));
-            // The CLI ran but refused its Windows shell gate: the machine
-            // lacks a runnable Git Bash / PowerShell (HOUSTON-APP-4ZP). Same
-            // degrade path as an unrunnable helper; the frontend shows
-            // install-Git copy instead of the raw CLI text.
-            let shell_unavailable = is_shell_gate_failure(&tail);
-            let mut error = format!("Claude sign-in failed (exit {code})");
-            if !tail.trim().is_empty() {
-                error.push_str(": ");
-                error.push_str(tail.trim());
-            }
-            if helper_unavailable || shell_unavailable {
-                // WARN, not error: a signal death means this machine cannot run
-                // the helper (SIGILL on pre-AVX2, OOM kill, hardened kernel),
-                // a shell-gate refusal means it lacks a prerequisite, and the
-                // frontend already degrades both. A Sentry event per attempt
-                // from the same machines is noise (HOUSTON-APP-543 and -4ZP
-                // kept regressing on it); the breadcrumb + backend.log line
-                // keeps the diagnosis trail.
-                tracing::warn!("[claude-login] {error}");
-            } else {
-                tracing::error!("[claude-login] {error}");
-            }
-            emit(
-                EVENT_DONE,
-                json!({
-                    "success": false,
-                    "error": error,
-                    "helperUnavailable": helper_unavailable,
-                    "shellUnavailable": shell_unavailable,
-                }),
-            );
+            // Flavor decides the log level and the flags the frontend degrades
+            // on (unrunnable helper, shell gate, offline); see `exit_report`.
+            let report = ExitReport::classify(&status, &tail);
+            report.log();
+            emit(EVENT_DONE, report.payload());
         }
         Ok(LoginOutcome::Exited(Err(e))) => {
             let error = format!("Claude sign-in could not be monitored: {e}");
@@ -239,24 +202,6 @@ where
             }
         }
     }
-}
-
-/// Diagnostic label for a signal death: "signal <n>" on Unix (which signal
-/// separates SIGILL/pre-AVX2 from OOM kills and sandbox denials in triage),
-/// bare "signal" where the number is unavailable.
-fn signal_label(status: &ExitStatus) -> String {
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::ExitStatusExt;
-        if let Some(sig) = status.signal() {
-            return format!("signal {sig}");
-        }
-    }
-    // Windows ExitStatus::code() is always Some, so this arm is unreachable
-    // there in practice; keep the fn total for any future target.
-    #[cfg(not(unix))]
-    let _ = status;
-    "signal".to_string()
 }
 
 /// Read the next stdout line, or hang forever when there is no pipe. The `None`
@@ -426,6 +371,40 @@ mod tests {
         // helper-can't-run condition — it must never reroute to the paste flow.
         assert_eq!(done.1["helperUnavailable"], json!(false));
         assert_eq!(done.1["shellUnavailable"], json!(false));
+        assert_eq!(done.1["networkUnavailable"], json!(false));
+
+        std::fs::remove_dir_all(&dir).expect("cleanup");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn run_login_flags_an_offline_exit_as_network_unavailable() {
+        // HOUSTON-APP-5E9: with no DNS the CLI exits 1 printing Node's raw
+        // socket error. The payload must carry the flag so the frontend shows
+        // its connectivity toast instead of the raw text, and the helper and
+        // shell verdicts stay clear (a retry once online just works).
+        let dir = unique_tmp_dir("offline");
+        let script = write_fake_claude(
+            &dir,
+            "claude",
+            "#!/bin/sh\n\
+             echo 'Login failed: getaddrinfo ETIMEOUT platform.claude.com' 1>&2\n\
+             exit 1\n",
+        );
+        let config_dir = dir.join("config");
+
+        let (events, emit) = collect();
+        run_login(&script, &config_dir, Arc::new(AtomicBool::new(false)), emit).await;
+
+        let got = events.lock().expect("events lock");
+        let done = got.last().expect("done event");
+        assert_eq!(done.0, EVENT_DONE);
+        assert_eq!(done.1["success"], json!(false));
+        assert_eq!(done.1["networkUnavailable"], json!(true));
+        assert_eq!(done.1["helperUnavailable"], json!(false));
+        assert_eq!(done.1["shellUnavailable"], json!(false));
+        let error = done.1["error"].as_str().expect("error string");
+        assert!(error.contains("getaddrinfo ETIMEOUT"), "error was: {error}");
 
         std::fs::remove_dir_all(&dir).expect("cleanup");
     }

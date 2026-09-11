@@ -14,6 +14,10 @@
  *     its Windows shell gate (no runnable Git Bash / PowerShell;
  *     HOUSTON-APP-4ZP). A missing prerequisite, not a login failure: same
  *     paste-flow degrade on a remote engine, install-Git copy co-located.
+ *   * `networkUnavailable: true` — the CLI could not reach
+ *     `platform.claude.com` (device offline, DNS timeout; HOUSTON-APP-5E9).
+ *     A connectivity state, not a Houston failure: the authored offline toast
+ *     replaces the raw Node socket error, and the pending card clears.
  *   * anything else — a real login failure (declined, timed out); toast the
  *     reason verbatim.
  */
@@ -26,6 +30,8 @@ export interface ClaudeLoginDone {
   helperUnavailable?: boolean;
   /** The CLI refused its Windows shell gate: no runnable Git Bash / PowerShell. */
   shellUnavailable?: boolean;
+  /** The CLI could not reach platform.claude.com: offline or DNS failure. */
+  networkUnavailable?: boolean;
 }
 
 export type ClaudeLoginFailureRoute =
@@ -37,6 +43,8 @@ export type ClaudeLoginFailureRoute =
   | { kind: "helper-unsupported" }
   /** Co-located engine + CLI shell gate: install Git for Windows copy. */
   | { kind: "shell-unavailable" }
+  /** No route to platform.claude.com: the connectivity toast, any engine. */
+  | { kind: "offline"; error: string }
   /** A real login failure: surface the helper's reason. */
   | { kind: "error"; error: string };
 
@@ -53,6 +61,9 @@ export function classifyClaudeLoginFailure(
     return remoteEngine
       ? { kind: "paste-fallback", reason: done.error ?? "shell unavailable" }
       : { kind: "shell-unavailable" };
+  }
+  if (done.networkUnavailable) {
+    return { kind: "offline", error: done.error ?? "network unavailable" };
   }
   if (done.error === null) return { kind: "silent" };
   return { kind: "error", error: done.error };

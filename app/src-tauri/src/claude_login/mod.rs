@@ -34,6 +34,9 @@
 //!     `shellUnavailable: true` means the CLI started but refused its Windows
 //!     shell gate (no runnable Git Bash / PowerShell; [`shell_gate`]) — same
 //!     degrade path, and a co-located engine gets install-Git copy.
+//!     `networkUnavailable: true` means the CLI could not reach
+//!     `platform.claude.com` (offline, DNS; [`network_gate`]) — the frontend
+//!     shows its connectivity toast instead of the raw CLI text.
 //!
 //! Cancel + child kill run through `ClaudeLoginState`; the background task that
 //! owns the child polls a shared cancel flag and tears the child down when set.
@@ -41,7 +44,9 @@
 //! Split across submodules to stay under the 200-line file limit:
 //!   * [`resolve`] — binary/config-dir resolution, command building, URL parse.
 //!   * [`runner`] — the spawn/stream/wait state machine (`run_login_child`).
+//!   * [`exit_report`] — classify a non-zero exit into flags + log level.
 //!   * [`shell_gate`] — classify the CLI's Windows shell-gate refusal.
+//!   * [`network_gate`] — classify an offline / unreachable-host failure.
 //!   * [`credential`] — extract the cached credential to PUSH to a remote pod.
 
 // `pub(crate)` so `generate_handler!` in `lib.rs` can name the command at its
@@ -52,6 +57,8 @@ pub(crate) mod code_input;
 mod cpu;
 pub(crate) mod credential;
 pub(crate) mod discard;
+mod exit_report;
+mod network_gate;
 mod resolve;
 mod runner;
 mod shell_gate;
