@@ -82,7 +82,10 @@ export function isEngineWakingRejection(e: unknown): boolean {
   if (e.status === 503) {
     return (
       reason === "engine unavailable" ||
-      reason === "the agent's runtime is still starting, try again shortly"
+      reason === "the agent's runtime is still starting, try again shortly" ||
+      // A host draining (roll, eviction, app quit): the send belongs to the
+      // replacement pod (PRODUCT-1777).
+      reason === "the host is shutting down; retry shortly"
     );
   }
   return e.status === 502 && reason === "engine proxy failed";

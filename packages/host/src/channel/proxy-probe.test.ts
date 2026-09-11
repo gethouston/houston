@@ -352,8 +352,12 @@ test("a probe against a shutting-down host answers 503 + Retry-After (PRODUCT-13
   );
   expect(r.statusCode).toBe(503);
   expect(r.headers["Retry-After"]).toBe("2");
+  // The gateway's waking pair, not the raw message as the reason: every
+  // client reads `engine unavailable` as "retry against the replacement"
+  // (PRODUCT-1777 / HOUSTON-APP-56Z).
   expect(JSON.parse(r.body)).toEqual({
-    error: "the host is shutting down; retry shortly",
+    error: "engine unavailable",
+    detail: "the host is shutting down; retry shortly",
   });
   expect(forwarded).toEqual([]);
 });
@@ -380,5 +384,10 @@ test("a non-probe route against a shutting-down host answers 503 too, not a 500"
     asServerResponse(r),
   );
   expect(r.statusCode).toBe(503);
+  expect(r.headers["Retry-After"]).toBe("2");
+  expect(JSON.parse(r.body)).toEqual({
+    error: "engine unavailable",
+    detail: "the host is shutting down; retry shortly",
+  });
   expect(forwarded).toEqual([]);
 });

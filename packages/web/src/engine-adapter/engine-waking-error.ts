@@ -45,6 +45,18 @@
 // and it escaped into the red toast + Sentry pipeline because only the two
 // gateway reasons were matched (HOUSTON-APP-54Q).
 //
+// A fourth answer is the HOST refusing because it is DRAINING (a release
+// roll, an autoscaler eviction, the desktop quitting): once the launcher has
+// latched closed (PRODUCT-1399) the per-agent proxy answers every route
+// `503 {"error":"the host is shutting down; retry shortly"}` + `Retry-After`,
+// and the same request succeeds against the replacement pod. Since pods
+// really drain for their whole grace period (PRODUCT-1758) that window is
+// long enough for a chat open to land in it; only the three reasons above
+// were matched, so it rode the handoff budget and then surfaced as a bug
+// (PRODUCT-1777 / HOUSTON-APP-56Z). The host now answers the gateway's
+// `engine unavailable` pair for this state; the raw reason stays matched for
+// pods still on the older host during the roll that ships the change.
+//
 // Four client stacks reach the host, minting different error shapes (same
 // split as `agent-name-conflict.ts`, plus the runtime client):
 //
@@ -80,6 +92,7 @@
 const ENGINE_UNAVAILABLE_503 = "engine unavailable";
 const RUNTIME_STILL_STARTING_503 =
   "the agent's runtime is still starting, try again shortly";
+const HOST_SHUTTING_DOWN_503 = "the host is shutting down; retry shortly";
 const ENGINE_PROXY_FAILED_502 = "engine proxy failed";
 const AGENT_POD_UNUSABLE_502 = "agent pod unusable";
 
@@ -110,7 +123,9 @@ function isWakingAnswer(
 ): boolean {
   if (status === 503) {
     return (
-      matches(ENGINE_UNAVAILABLE_503) || matches(RUNTIME_STILL_STARTING_503)
+      matches(ENGINE_UNAVAILABLE_503) ||
+      matches(RUNTIME_STILL_STARTING_503) ||
+      matches(HOST_SHUTTING_DOWN_503)
     );
   }
   return status === 502 && matches(ENGINE_PROXY_FAILED_502);
