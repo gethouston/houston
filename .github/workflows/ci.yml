@@ -135,22 +135,40 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Stabilize apt sources for Playwright deps
-        run: |
-          # Playwright's --with-deps path runs apt-get update. GitHub's Ubuntu
-          # image includes Microsoft feeds we do not use, and when those feeds
-          # return malformed InRelease files the web job dies before tests run.
-          sudo rm -f /etc/apt/sources.list.d/azure-cli.*
-          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.*
-          # The image's apt mirrorlist tries azure.archive.ubuntu.com before
-          # archive.ubuntu.com; when the Azure mirror is down, every index
-          # fetch burns its retry loop against it first and apt-get update can
-          # eat the whole 30-minute job (shard timeouts on 2026-08-19). Skip
-          # straight to the canonical archive.
-          echo "https://archive.ubuntu.com/ubuntu/	priority:1" | sudo tee /etc/apt/apt-mirrors.txt
+      # No apt in this job. `playwright install --with-deps` ran apt-get on
+      # every shard, and each mirror has now taken the whole 30-minute job
+      # in turn: azure.archive.ubuntu.com on 2026-08-19 (the fix pinned
+      # archive.ubuntu.com), then archive.ubuntu.com itself on 2026-09-11
+      # (run 34598755800: one package every 4-5 minutes, three shards timed
+      # out on three attempts). The runner image already ships every
+      # library Chromium needs - that run's apt transcript installed NINE
+      # packages, all fonts (fonts-freefont-ttf, fonts-ipafont-gothic,
+      # fonts-wqy-zenhei, xfonts-*...), which these functional shards do
+      # not depend on; the pixel-exact visual suite runs inside the pinned
+      # Playwright image below. The browser itself comes from Playwright's
+      # CDN and is cached per Playwright version, so a warm shard downloads
+      # nothing. A library the image stops shipping fails the smoke launch
+      # in seconds with Playwright's own missing-dependency list, never a
+      # silent 30-minute stall.
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('./packages/web/package.json').devDependencies['@playwright/test']")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ steps.playwright.outputs.version }}
 
       - name: Install Playwright Chromium
-        run: pnpm --filter houston-web exec playwright install --with-deps chromium
+        if: ${{ steps.playwright-cache.outputs.cache-hit != 'true' }}
+        timeout-minutes: 5
+        run: pnpm --filter houston-web exec playwright install chromium
+
+      - name: Smoke-launch Chromium (host dependency check)
+        timeout-minutes: 2
+        run: pnpm --filter houston-web exec node -e "require('@playwright/test').chromium.launch().then((b) => b.close())"
 
       - name: Typecheck (web)
         if: ${{ matrix.shard == 1 }}
