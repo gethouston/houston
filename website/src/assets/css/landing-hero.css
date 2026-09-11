@@ -20,62 +20,43 @@
   z-index: 0;
   pointer-events: none;
 }
-/* The astronaut ground. The photo is pinned so the astronaut rides the LEFT
-   edge and the earth horizon the lower right; the centered statement floats
-   over open space, never over the figure. Legibility guards: a radial veil
-   deepens the center column behind the text, a left-to-right wash keeps the
-   middle dark, and the whole field dissolves into the hero ground before the
-   app window. */
+/* The earth-horizon ground. Symmetric photo (dark starfield above, the glowing
+   curve of the earth below), so the centered statement floats over open space
+   with no figure to dodge. The horizon rides the layer's lower third, glowing
+   from behind the app window; a soft top veil keeps the statement crisp and
+   the field dissolves into the hero ground before the white page. */
 .hero-astro {
   position: absolute;
   top: 0;
-  /* The layer hangs 12vw past the LEFT edge of the page, so the astronaut's
-     face slides out of the text column while the photo still covers every
-     visible pixel: no seam on the right, no uncovered strip anywhere. */
-  left: -12vw;
+  left: 0;
   right: 0;
   height: min(100svh, 900px);
-  background: url("/assets/img/hero-astronaut.jpg") no-repeat;
-  background-size: cover;
-  background-position: left top 30%;
-  opacity: 0.9;
+  background: url("/assets/img/hero-space-earth.jpg") no-repeat;
+  /* Zoomed past cover and bottom-anchored, so the horizon's arc rides higher,
+     up behind the CTAs instead of hiding under the app window. */
+  background-size: auto 115%;
+  background-position: center bottom;
+  opacity: 0.95;
+}
+/* On very wide screens cover is already height-oversized (width-driven scale),
+   which raises the horizon by itself; the fixed 115% would leave side gaps. */
+@media (min-width: 1750px) {
+  .hero-astro {
+    background-size: cover;
+  }
 }
 .hero-astro::after {
   content: "";
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(
-      ellipse 52% 58% at 52% 26%,
-      rgba(8, 10, 14, 0.5),
-      rgba(8, 10, 14, 0.16) 62%,
-      transparent 78%
-    ),
-    /* Side dissolves: the photo breathes out into the ground color before
-       either screen edge, so no window width shows a hard border. */
-    linear-gradient(
-      90deg,
-      rgba(13, 13, 13, 0.55) 0%,
-      transparent 18%,
-      transparent 78%,
-      rgba(13, 13, 13, 0.65) 96%,
-      #0d0d0d 100%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(13, 13, 13, 0.16) 0%,
-      rgba(13, 13, 13, 0.24) 42%,
-      rgba(13, 13, 13, 0.88) 74%,
-      #0d0d0d 92%
-    );
-}
-/* On narrow screens no left slice is safe, so show the photo's right side,
-   the window and the earth, and let the figure leave the frame entirely. */
-@media (max-width: 820px) {
-  .hero-astro {
-    background-position: 62% 30%;
-    opacity: 0.75;
-  }
+  background: linear-gradient(
+    180deg,
+    rgba(13, 13, 13, 0.34) 0%,
+    rgba(13, 13, 13, 0.14) 34%,
+    rgba(13, 13, 13, 0.22) 62%,
+    rgba(13, 13, 13, 0.68) 82%,
+    #0d0d0d 97%
+  );
 }
 /* Monochrome light: a single soft white bloom bleeding from the top. */
 .hero-glowfield {
