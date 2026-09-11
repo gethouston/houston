@@ -81,6 +81,26 @@ describe("classifyClaudeLoginFailure", () => {
     );
   });
 
+  it("routes an offline exit to the connectivity toast on any engine", () => {
+    // HOUSTON-APP-5E9: no DNS for platform.claude.com. Not a helper or shell
+    // problem (a retry once online just works), so never the paste flow.
+    const done = {
+      success: false,
+      error:
+        "Claude sign-in failed (exit 1): Login failed: getaddrinfo ETIMEOUT platform.claude.com",
+      helperUnavailable: false,
+      shellUnavailable: false,
+      networkUnavailable: true,
+    };
+    const route = {
+      kind: "offline",
+      error:
+        "Claude sign-in failed (exit 1): Login failed: getaddrinfo ETIMEOUT platform.claude.com",
+    };
+    deepStrictEqual(classifyClaudeLoginFailure(done, true), route);
+    deepStrictEqual(classifyClaudeLoginFailure(done, false), route);
+  });
+
   it("keeps a cancel silent", () => {
     deepStrictEqual(
       classifyClaudeLoginFailure({ success: false, error: null }, true),

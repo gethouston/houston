@@ -47,6 +47,7 @@ import {
   finishRemoteClaudeLogin,
 } from "./claude-login-remote";
 import { isRemoteEngine } from "./engine";
+import { showConnectivityErrorToast } from "./error-toast";
 import { publishLocalHoustonEvent } from "./events";
 import i18n from "./i18n";
 import {
@@ -195,6 +196,13 @@ export async function beginClaudeBrowserLogin(
                 false,
                 i18n.t("providers:claudeLogin.shellUnavailable"),
               );
+              break;
+            case "offline":
+              // The CLI never reached platform.claude.com (HOUSTON-APP-5E9):
+              // the authored connectivity toast, and a null-error announce so
+              // the pending card clears without the red sign-in-failed toast.
+              showConnectivityErrorToast("claude_login", route.error);
+              announce(frontendProviderId, false, null);
               break;
             default:
               announce(frontendProviderId, false, error);
