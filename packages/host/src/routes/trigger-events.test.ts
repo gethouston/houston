@@ -24,10 +24,22 @@ const verifier: TokenVerifier = {
 };
 
 class SpyChannel implements RuntimeChannel {
-  fired: { conversationId: string; text: string }[] = [];
+  fired: {
+    conversationId: string;
+    text: string;
+    actingUser?: string;
+    actingAs?: string;
+  }[] = [];
   async dispatch() {}
-  async fireTurn(_ctx: ChannelCtx, conversationId: string, text: string) {
-    this.fired.push({ conversationId, text });
+  async fireTurn(
+    _ctx: ChannelCtx,
+    conversationId: string,
+    text: string,
+    _pin?: unknown,
+    actingUser?: string,
+    actingAs?: string,
+  ) {
+    this.fired.push({ conversationId, text, actingUser, actingAs });
   }
   async cancelTurn() {
     return false;
@@ -98,13 +110,21 @@ async function seedRoutine(r: Routine): Promise<void> {
   await saveRoutines(vfs, workspaceRoot(ws, agent), [r]);
 }
 
-async function post(events: unknown, who = "alice") {
+async function post(events: unknown, who = "alice", extra: object = {}) {
   return fetch(`${base}/agents/${agentId}/trigger-events`, {
     method: "POST",
     headers: auth(who),
-    body: JSON.stringify({ events }),
+    body: JSON.stringify({ events, ...extra }),
   });
 }
+
+/** A gateway-shaped C2 token; pods decode the payload and never verify. */
+function actingAs(sub: string): string {
+  const payload = Buffer.from(JSON.stringify({ sub })).toString("base64url");
+  return `acting-v1.${payload}.signature`;
+}
+
+const EVENT = { id: "e1", routine_id: "r1", trigger_slug: "HOOK", payload: {} };
 
 beforeEach(async () => {
   store = new MemoryWorkspaceStore();
@@ -244,5 +264,57 @@ test("a gateway-proxied (acting-as) request is refused: 404, nothing fires", asy
     }),
   });
   expect(res.status).toBe(404);
+  expect(channel.fired).toHaveLength(0);
+});
+
+test("the creator's minted acting-as token rides the turn (PRODUCT-1774)", async () => {
+  // The control plane mints the creator's C2 token and sends it in the body;
+  // the firer passes it through so the turn resolves the CREATOR's credential
+  // scope (the same identity a scheduled fire carries) instead of the team's.
+  await seedRoutine(routine({ created_by: "creator-1" }));
+  const token = actingAs("creator-1");
+  const res = await post([EVENT], "alice", { actingAs: token });
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ result: "fired", event_ids: ["e1"] });
+  expect(channel.fired).toEqual([
+    expect.objectContaining({ actingAs: token, actingUser: undefined }),
+  ]);
+});
+
+test("without a token the bare creator sub rides, as before", async () => {
+  // Self-host in-process delivery and an older control plane send no token.
+  await seedRoutine(routine({ created_by: "creator-1" }));
+  await post([EVENT]);
+  expect(channel.fired).toEqual([
+    expect.objectContaining({ actingUser: "creator-1", actingAs: undefined }),
+  ]);
+});
+
+test("a token for someone other than the creator is refused: 400, nothing fires, no lock burned", async () => {
+  await seedRoutine(routine({ created_by: "creator-1" }));
+  const res = await post([EVENT], "alice", {
+    actingAs: actingAs("someone-else"),
+  });
+  expect(res.status).toBe(400);
+  expect(await res.json()).toEqual({
+    error: "acting-as subject does not match the creator of routine r1",
+    code: "routine_creator_mismatch",
+  });
+  expect(channel.fired).toHaveLength(0);
+  // Re-deliverable: the refusal happened before the event's dedup lock was set.
+  expect(await bus.get("trigger-event:e1")).toBeNull();
+});
+
+test("a token on a routine with no recorded creator is refused the same way", async () => {
+  await seedRoutine(routine());
+  const res = await post([EVENT], "alice", { actingAs: actingAs("creator-1") });
+  expect(res.status).toBe(400);
+  expect(channel.fired).toHaveLength(0);
+});
+
+test("a non-string actingAs is a 400", async () => {
+  await seedRoutine(routine({ created_by: "creator-1" }));
+  const res = await post([EVENT], "alice", { actingAs: 42 });
+  expect(res.status).toBe(400);
   expect(channel.fired).toHaveLength(0);
 });

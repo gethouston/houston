@@ -1,5 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { ACTING_AS_HEADER } from "../auth/acting";
+import { TriggerCreatorMismatchError } from "../triggers/acting";
 import {
   fireTriggerEvents,
   type TriggerEvent,
@@ -109,18 +110,34 @@ export async function handleTriggerEvents(
     events.push(parsed);
   }
 
-  const result = await fireTriggerEvents(
-    {
-      vfs: deps.vfs,
-      paths: deps.paths ?? DEFAULT_PATHS,
-      channels: deps.channels,
-      events: deps.events,
-      lock: deps.triggerLock,
-    },
-    authz.workspace,
-    authz.agent,
-    events,
-  );
-  json(res, 200, result);
+  // The creator's minted C2 token rides in the BODY, never the header: the
+  // header is the proxied-user marker refused above, and the internal delivery
+  // is the only caller of this route (same shape as routine-fires). Optional:
+  // an older control plane, or the self-host process, delivers without it.
+  if (body.actingAs !== undefined && typeof body.actingAs !== "string") {
+    json(res, 400, { error: "malformed 'actingAs'" });
+    return true;
+  }
+  const actingAs = body.actingAs || undefined;
+
+  try {
+    const result = await fireTriggerEvents(
+      {
+        vfs: deps.vfs,
+        paths: deps.paths ?? DEFAULT_PATHS,
+        channels: deps.channels,
+        events: deps.events,
+        lock: deps.triggerLock,
+        actingAs,
+      },
+      authz.workspace,
+      authz.agent,
+      events,
+    );
+    json(res, 200, result);
+  } catch (err) {
+    if (!(err instanceof TriggerCreatorMismatchError)) throw err;
+    json(res, 400, { error: err.message, code: err.code });
+  }
   return true;
 }
