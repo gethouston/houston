@@ -73,7 +73,7 @@ import {
 import { reportMissionSettle } from "./mission-settle";
 import { switchNeedsCompaction } from "./provider-switch";
 import { renderReplayPreamble, replayCharBudget } from "./replay-transcript";
-import { createStallWatchdog } from "./stall-watchdog";
+import { createStallWatchdog, isAbortEcho } from "./stall-watchdog";
 import {
   clearInflightMarker,
   noteInflightTool,
@@ -229,6 +229,14 @@ export async function execTurn(
     timeoutMs: config.turnStallTimeoutMs,
     onStall: () => {
       stalled = true;
+      // The only log line a watchdog cut leaves: pi's echo below is logged as
+      // an ordinary (expected) provider_error, so without this a 300 s gap in
+      // the tool log is the sole clue that the turn was aborted here.
+      console.warn(
+        `[turn] stall watchdog aborted the turn: no provider event for ${Math.round(
+          config.turnStallTimeoutMs / 1000,
+        )}s (conversation=${id} turn=${turnId})`,
+      );
       // Fire-and-forget: the awaited prompt() resolves once pi unwinds the
       // aborted stream; that resolution, not this call, advances the turn.
       void conv.session.abort();
@@ -279,7 +287,19 @@ export async function execTurn(
           // Already clipped at the backend — persist for reload replay.
           if (wire.data.content) t.result = wire.data.content;
         }
-      } else if (wire.type === "provider_error") providerError = wire.data;
+      } else if (wire.type === "provider_error") {
+        // Our OWN abort (the watchdog's, or the user's Stop), echoed back by
+        // pi as an unclassifiable error: drop it, never publish it. The turn's
+        // surface is the synthesized "stopped responding" card after prompt()
+        // resolves, or the "Stopped by user" frame cancelTurn already sent
+        // (stall-watchdog.ts, PRODUCT-1778).
+        if (
+          (stalled || conv.stoppedTurnId === turnId) &&
+          isAbortEcho(wire.data)
+        )
+          return;
+        providerError = wire.data;
+      }
       // Every event proves the provider is alive → reset the stall clock (the
       // watchdog suspends itself while a tool runs and re-arms when it ends).
       watchdog.onEvent(wire);
