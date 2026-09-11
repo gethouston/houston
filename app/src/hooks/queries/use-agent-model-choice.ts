@@ -3,6 +3,9 @@ import type {
   AgentModelChoiceInfo,
 } from "@houston-ai/engine-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { showExpectedStateToast } from "../../lib/error-toast";
+import i18n from "../../lib/i18n";
+import { isModelNotAllowedError } from "../../lib/model-not-allowed";
 import {
   toCanonicalProviderId,
   toDisplayProviderId,
@@ -58,10 +61,14 @@ export function useAgentModelChoice(agentId: string, enabled: boolean) {
  * Teams v2: set the ACTING user's model choice for this agent. The gateway
  * validates the model is within the agent's `allowedModels` ceiling (else it
  * answers `model_not_allowed`) and clamps the acting user's turns to it. No
- * `onError` toast: `tauriAgentModelChoice.set` routes through `call()`, which
- * surfaces + reports the failure once; adding one here would double-toast. The
- * cache updates optimistically so a racing send sees the new pin, rolls back on
- * failure, and refetches after the request settles.
+ * generic `onError` toast: `tauriAgentModelChoice.set` routes through `call()`,
+ * which surfaces + reports the failure once; adding one here would double-toast.
+ * The one exception is `model_not_allowed`, which `call()` silences (an expected
+ * state, PRODUCT-1734): the ceiling changed under the user, so THIS hook shows
+ * the plain informational toast and the settle-time refetch below pulls the new
+ * ceiling, snapping the composer to a model that can run. The cache updates
+ * optimistically so a racing send sees the new pin, rolls back on failure, and
+ * refetches after the request settles.
  */
 export function useSetAgentModelChoice(agentId: string) {
   const qc = useQueryClient();
@@ -80,8 +87,14 @@ export function useSetAgentModelChoice(agentId: string) {
       }
       return { prev };
     },
-    onError: (_err, _choice, ctx) => {
+    onError: (err, _choice, ctx) => {
       if (ctx?.prev !== undefined) qc.setQueryData(key, ctx.prev);
+      if (isModelNotAllowedError(err)) {
+        showExpectedStateToast(
+          i18n.t("chat:errors.modelNotAllowed"),
+          i18n.t("chat:errors.modelNotAllowedBody"),
+        );
+      }
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: key });

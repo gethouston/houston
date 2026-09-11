@@ -96,7 +96,7 @@ import {
   genericErrorDescription,
   logAndReportError,
 } from "../lib/error-report";
-
+import { showExpectedStateToast } from "../lib/error-toast";
 import { skillDisplayTitle } from "../lib/humanize-skill-name";
 import { encodeInteractionAnswersMessage } from "../lib/interaction-answers-marker";
 import { localizeApprovalQuestion } from "../lib/interaction-approval-labels";
@@ -108,6 +108,7 @@ import {
   finalCredentialNames,
 } from "../lib/interaction-outcomes";
 import { providerForModel, providerOffersModel } from "../lib/model-labels";
+import { isModelNotAllowedError } from "../lib/model-not-allowed";
 import {
   isModelAllowed,
   modelSelectorDecision,
@@ -912,6 +913,10 @@ export function useAgentChatPanel({
         }
         await tauriProvider.setLastUsed(prov, mod);
       } catch (err) {
+        // A ceiling that moved under the user is already surfaced by the
+        // model-choice mutation as an expected state; a red toast on top would
+        // call it a bug twice (PRODUCT-1734).
+        if (isModelNotAllowedError(err)) return;
         addToast({
           title: t("chat:errors.modelPersistFailed"),
           description: genericErrorDescription("model_persist_failed", err),
@@ -1032,10 +1037,10 @@ export function useAgentChatPanel({
   const selectModel = useCallback(
     (prov: string, mod: string) => {
       if (modelDecision.personal && !isModelAllowed(allowedModels, mod)) {
-        addToast({
-          title: t("chat:errors.modelNotAllowed"),
-          variant: "error",
-        });
+        showExpectedStateToast(
+          t("chat:errors.modelNotAllowed"),
+          t("chat:errors.modelNotAllowedBody"),
+        );
         return;
       }
       if (modelDecision.personal && !selectedActivityId) {
@@ -1059,7 +1064,6 @@ export function useAgentChatPanel({
     [
       modelDecision.personal,
       allowedModels,
-      addToast,
       t,
       selectedActivityId,
       setModelChoice,
@@ -1070,6 +1074,17 @@ export function useAgentChatPanel({
   const selectEffort = useCallback(
     (effort: EffortLevel) => {
       if (modelDecision.personal) {
+        // The effort re-write carries the resolved model, so it is clamped to
+        // the ceiling the same way a model pick is: an EMPTY ceiling ("no model
+        // allowed") leaves the fallback outside it, and the gateway would answer
+        // `model_not_allowed` (PRODUCT-1734).
+        if (!isModelAllowed(allowedModels, personalDefaultPin.model)) {
+          showExpectedStateToast(
+            t("chat:errors.modelNotAllowed"),
+            t("chat:errors.modelNotAllowedBody"),
+          );
+          return;
+        }
         setModelChoice.mutate({
           provider: personalDefaultPin.provider,
           model: personalDefaultPin.model,
@@ -1081,6 +1096,8 @@ export function useAgentChatPanel({
     },
     [
       modelDecision.personal,
+      allowedModels,
+      t,
       setModelChoice,
       personalDefaultPin.provider,
       personalDefaultPin.model,

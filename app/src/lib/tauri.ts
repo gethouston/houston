@@ -69,6 +69,7 @@ import i18n from "./i18n";
 import { isIntegrationConnectionGoneError } from "./integration-connection-gone";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
+import { isModelNotAllowedError } from "./model-not-allowed";
 import { isNetworkTransportError } from "./network-transport-error";
 import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error";
 import { isOrgAdminRequiredError } from "./org-admin-required-error";
@@ -550,7 +551,9 @@ export const tauriAgentSettings = {
  * `allowedModels` ceiling. `get` degrades to `null` on a non-Teams host (the
  * engine-client swallows the 404); `set` 400s `model_not_allowed` outside the
  * ceiling. Both route through `call()` so failures surface as a toast + Report
- * bug, same as the wrappers above.
+ * bug, same as the wrappers above — except `model_not_allowed`, an expected
+ * state (the ceiling moved under the user, PRODUCT-1734) that is logged here
+ * and surfaced by `useSetAgentModelChoice` as a plain informational toast.
  */
 export const tauriAgentModelChoice = {
   get: (agentSlugOrId: string) =>
@@ -561,8 +564,11 @@ export const tauriAgentModelChoice = {
     agentSlugOrId: string,
     choice: import("@houston-ai/engine-client").AgentModelChoice,
   ) =>
-    call<void>("set_agent_model_choice", () =>
-      getEngine().setAgentModelChoice(agentSlugOrId, choice),
+    call<void>(
+      "set_agent_model_choice",
+      () => getEngine().setAgentModelChoice(agentSlugOrId, choice),
+      undefined,
+      { silence: isModelNotAllowedError },
     ),
 };
 

@@ -131,6 +131,54 @@ describe("resolvePersonalModelPin", () => {
     );
   });
 
+  it("drops a stored choice the ceiling no longer allows, keeping its effort (PRODUCT-1734)", () => {
+    // A manager narrowed the ceiling after the choice was stored: the gateway
+    // hands the stale pick back unclamped. The composer must not show it (the
+    // next turn cannot run it) nor re-send it on an effort click.
+    const resolver = {
+      offers: (provider: string, model: string) =>
+        provider === "anthropic" && model === "claude-opus-5",
+      providerFor: () => "anthropic",
+      connected: ["anthropic"],
+    };
+    deepStrictEqual(
+      resolvePersonalModelPin(
+        { provider: "openai", model: "gpt-6-astra", effort: "low" },
+        ["claude-opus-5"],
+        fallback,
+        null,
+        resolver,
+      ),
+      { provider: "anthropic", model: "claude-opus-5", effort: "low" },
+    );
+  });
+
+  it("keeps an in-ceiling fallback over an out-of-ceiling stored choice", () => {
+    deepStrictEqual(
+      resolvePersonalModelPin(
+        { provider: "openai", model: "gpt-6-astra", effort: "low" },
+        ["claude"],
+        fallback,
+        null,
+        blind,
+      ),
+      { provider: "anthropic", model: "claude", effort: "low" },
+    );
+  });
+
+  it("keeps a stored choice when there is no ceiling", () => {
+    deepStrictEqual(
+      resolvePersonalModelPin(
+        { provider: "openai", model: "gpt-6-astra", effort: "low" },
+        null,
+        fallback,
+        null,
+        blind,
+      ),
+      { provider: "openai", model: "gpt-6-astra", effort: "low" },
+    );
+  });
+
   it("keeps the fallback when there is no ceiling", () => {
     deepStrictEqual(
       resolvePersonalModelPin(null, null, fallback, null, blind),
