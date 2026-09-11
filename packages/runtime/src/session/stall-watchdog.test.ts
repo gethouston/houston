@@ -1,6 +1,6 @@
 import type { WireEvent } from "@houston/runtime-client";
 import { afterEach, expect, test, vi } from "vitest";
-import { createStallWatchdog } from "./stall-watchdog";
+import { createStallWatchdog, isAbortEcho } from "./stall-watchdog";
 
 /**
  * The stall watchdog is the stalled-provider backstop: it fires `onStall` when a turn's
@@ -157,4 +157,29 @@ test("touch never re-arms the clock while a tool is running", () => {
   wd.onEvent(toolEnd("bash"));
   vi.advanceTimersByTime(1000);
   expect(stalls).toBe(1);
+});
+
+test("isAbortEcho matches only pi's echo of an abort, never a real provider failure", () => {
+  expect(
+    isAbortEcho({
+      kind: "unknown",
+      provider: "azure-openai-responses",
+      raw_excerpt: "This operation was aborted",
+    }),
+  ).toBe(true);
+  expect(
+    isAbortEcho({
+      kind: "unknown",
+      provider: "azure-openai-responses",
+      raw_excerpt: "The server had an error processing your request.",
+    }),
+  ).toBe(false);
+  expect(
+    isAbortEcho({
+      kind: "provider_internal",
+      provider: "azure-openai-responses",
+      http_status: null,
+      message: "This operation was aborted",
+    }),
+  ).toBe(false);
 });

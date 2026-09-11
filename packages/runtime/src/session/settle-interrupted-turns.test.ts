@@ -128,6 +128,73 @@ describe("settleInterruptedTurns", () => {
     expect(report).not.toHaveBeenCalled();
   });
 
+  it("a marker re-delivered for a turn already settled writes no second reply and reports nothing (PRODUCT-1778)", () => {
+    const { dataDir, write, read } = seed();
+    // The replacement pod settled this turn on its first boot; the evicted pod,
+    // still draining the same turn, then re-shipped the marker through the
+    // store sync. The next boot finds the marker AND the reply it already wrote.
+    write("moved", [
+      { role: "user", content: "render it", ts: 1, turnId: "t-moved" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-moved",
+        interrupted: { cause: "engine_restart", tool: "read" },
+      },
+    ]);
+    writeInflightMarker(dataDir, {
+      conversationId: "moved",
+      turnId: "t-moved",
+      startedAt: 0,
+      tool: "bash",
+      fenced: true,
+    });
+    const report = vi.fn();
+    const settleMission = vi.fn();
+    const settled = settleInterruptedTurns({
+      dataDir,
+      report,
+      settleMission,
+    });
+    expect(settled).toEqual([]);
+    expect(report).not.toHaveBeenCalled();
+    expect(settleMission).not.toHaveBeenCalled();
+    expect(
+      read("moved").messages.filter((m) => m.interrupted !== undefined),
+    ).toHaveLength(1);
+    expect(listInflightMarkers(dataDir)).toEqual([]);
+  });
+
+  it("a marker for a NEW turn on a conversation with an older interrupted reply still settles", () => {
+    const { dataDir, write, read } = seed();
+    write("again", [
+      { role: "user", content: "first", ts: 1, turnId: "t-old" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-old",
+        interrupted: { cause: "engine_restart" },
+      },
+      { role: "user", content: "continue", ts: 3, turnId: "t-new" },
+    ]);
+    writeInflightMarker(dataDir, {
+      conversationId: "again",
+      turnId: "t-new",
+      startedAt: 0,
+      fenced: false,
+    });
+    const report = vi.fn();
+    settleInterruptedTurns({ dataDir, report, settleMission: () => {} });
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(read("again").messages.at(-1)).toMatchObject({
+      role: "assistant",
+      turnId: "t-new",
+      interrupted: { cause: "engine_restart" },
+    });
+  });
+
   it("a second boot after the settle is quiet (idempotent)", () => {
     const { dataDir, write, read } = seed();
     write("once", [{ role: "user", content: "go", ts: 1, turnId: "t-once" }]);

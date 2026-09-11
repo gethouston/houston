@@ -1,5 +1,8 @@
 import { join } from "node:path";
-import { appendAssistantMessageAt } from "../store/conversation-file";
+import {
+  appendAssistantMessageAt,
+  loadConversation,
+} from "../store/conversation-file";
 import { reportMissionSettle } from "./mission-settle";
 import {
   clearInflightMarker,
@@ -82,6 +85,16 @@ export function settleInterruptedTurns(
   const conversationsDir = join(opts.dataDir, "conversations");
   const settled: InflightTurnMarker[] = [];
   for (const marker of listInflightMarkers(opts.dataDir)) {
+    // A marker for a turn this conversation already carries an interrupted
+    // reply for is a re-delivery, not a second death: on a managed pod the
+    // replacement boots while the evicted pod is still draining the turn, and
+    // that pod's store sync re-ships the marker the replacement just cleared.
+    // The next boot found it again and wrote a second "had to restart" line
+    // for the one turn (PRODUCT-1778). Drop the marker, settle nothing twice.
+    if (alreadySettled(conversationsDir, marker)) {
+      clearInflightMarker(opts.dataDir, marker.conversationId);
+      continue;
+    }
     // The reply first, the marker last: a crash between the two re-settles
     // (a second `interrupted` reply) rather than losing the settle. A missing
     // conversation (deleted while the turn ran) has nothing to settle into;
@@ -107,4 +120,19 @@ export function settleInterruptedTurns(
     settled.push(marker);
   }
   return settled;
+}
+
+function alreadySettled(
+  conversationsDir: string,
+  marker: InflightTurnMarker,
+): boolean {
+  const conv = loadConversation(conversationsDir, marker.conversationId);
+  return (
+    conv?.messages.some(
+      (m) =>
+        m.role === "assistant" &&
+        m.turnId === marker.turnId &&
+        m.interrupted !== undefined,
+    ) ?? false
+  );
 }

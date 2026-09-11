@@ -1,4 +1,23 @@
-import type { WireEvent } from "@houston/runtime-client";
+import type { ProviderError, WireEvent } from "@houston/runtime-client";
+
+/**
+ * Whether a provider_error frame is our OWN abort coming back: pi does not
+ * resolve an aborted request as a neutral `aborted` turn when the abort lands
+ * while the response is still pending — it ends the assistant message with
+ * stopReason `error` and the AbortError's text ("This operation was aborted")
+ * as the reason, which the classifier can only call `unknown`. Letting that
+ * frame stand painted "Houston could not classify this Azure OpenAI error"
+ * over a turn the watchdog cut for silence (PRODUCT-1778); the turn's honest
+ * surface is the synthesized "stopped responding" card (or, for a user Stop,
+ * the "Stopped by user" frame). Only ever consulted for an abort THIS turn
+ * issued — a genuine provider abort on an untouched turn still surfaces.
+ */
+export function isAbortEcho(error: ProviderError): boolean {
+  return (
+    error.kind === "unknown" &&
+    /operation was aborted/i.test(error.raw_excerpt ?? "")
+  );
+}
 
 /**
  * Guards a turn's model round-trip against a provider that goes silent — an SSE

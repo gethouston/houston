@@ -94,6 +94,49 @@ class StallSession implements HarnessSession {
   }
 }
 
+/** pi's REAL shape for a watchdog abort that lands while the response is still
+ *  pending: the request's AbortError comes back as an errored assistant turn,
+ *  which the wire classifies as an `unknown` provider_error ("This operation
+ *  was aborted") BEFORE prompt() resolves. Emits nothing until then. */
+class StallEchoSession implements HarnessSession {
+  aborted = false;
+  private listeners = new Set<(e: WireEvent) => void>();
+  private resolvePrompt: (() => void) | undefined;
+  subscribe(l: (e: WireEvent) => void): () => void {
+    this.listeners.add(l);
+    return () => {
+      this.listeners.delete(l);
+    };
+  }
+  prompt(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.resolvePrompt = resolve;
+    });
+  }
+  async abort(): Promise<void> {
+    this.aborted = true;
+    for (const l of this.listeners)
+      l({
+        type: "provider_error",
+        data: {
+          kind: "unknown",
+          provider: "azure-openai-responses",
+          raw_excerpt: "This operation was aborted",
+        },
+      });
+    this.resolvePrompt?.();
+  }
+  dispose(): void {
+    this.listeners.clear();
+  }
+  async setModel(): Promise<void> {}
+  async compact(): Promise<undefined> {}
+  setThinkingLevel(): void {}
+  getContextUsage(): { tokens: number | null } {
+    return { tokens: 100 };
+  }
+}
+
 /** A session whose model spends longer than the stall window streaming a tool
  *  call's INPUT — pure toolcall_delta traffic, which maps to no WireEvent — and
  *  then answers. Only the liveness channel ticks during that stretch. */
@@ -222,6 +265,41 @@ test("a turn whose provider goes silent is aborted at the stall window and surfa
   expect(events.some((e) => e.type === "done")).toBe(false);
 });
 
+test("a stalled turn whose abort echoes back as an unclassifiable provider error still surfaces the typed stall card, once (PRODUCT-1778)", async () => {
+  vi.useFakeTimers();
+  state.model = OPENAI;
+  const session = new StallEchoSession();
+  const conv = convWith(session);
+  appendUserMessage("conv-stall-echo", "hi", { turnId: "turn-echo" });
+
+  const events: WireEvent[] = [];
+  const unsub = subscribe("conv-stall-echo", (e) => events.push(e));
+  const done = execTurn(conv, "conv-stall-echo", "turn-echo", "hi", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  await vi.advanceTimersByTimeAsync(0);
+  await vi.advanceTimersByTimeAsync(STALL_MS);
+  await done;
+  unsub();
+
+  expect(session.aborted).toBe(true);
+  const errors = events.filter(
+    (e): e is Extract<WireEvent, { type: "provider_error" }> =>
+      e.type === "provider_error",
+  );
+  // Exactly one card, and it is the honest one: "stopped responding", not
+  // "Houston could not classify this Azure OpenAI error / This operation was
+  // aborted" (the echo of our own abort).
+  expect(errors).toHaveLength(1);
+  expect(errors[0]?.data.kind).toBe("provider_internal");
+  expect(events.some((e) => e.type === "done")).toBe(false);
+  // The persisted reply carries the same typed error, so a reload agrees.
+  const messages = getHistory("conv-stall-echo")?.messages ?? [];
+  expect(messages.at(-1)?.providerError?.kind).toBe("provider_internal");
+});
+
 test("a turn streaming a long tool input (wire-silent, liveness ticking) is never aborted as stalled (PRODUCT-1632)", async () => {
   vi.useFakeTimers();
   state.model = OPENAI;
@@ -280,6 +358,36 @@ test("a turn both stalled AND stopped settles as a user stop, never a synthesize
   // The persisted message records the stop and carries NO provider error.
   const messages = getHistory("conv-stall-stop")?.messages ?? [];
   const last = messages[messages.length - 1];
+  expect(last?.stopped).toBe(true);
+  expect(last?.providerError).toBeUndefined();
+});
+
+test("a user-stopped turn whose abort echoes back as an unclassifiable provider error settles as a plain stop (PRODUCT-1778)", async () => {
+  vi.useFakeTimers();
+  state.model = OPENAI;
+  const session = new StallEchoSession();
+  const conv = convWith(session);
+  (conv as { stoppedTurnId?: string }).stoppedTurnId = "turn-stop-echo";
+  appendUserMessage("conv-stop-echo", "hi", { turnId: "turn-stop-echo" });
+
+  const events: WireEvent[] = [];
+  const unsub = subscribe("conv-stop-echo", (e) => events.push(e));
+  const done = execTurn(conv, "conv-stop-echo", "turn-stop-echo", "hi", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  await vi.advanceTimersByTimeAsync(0);
+  // cancelTurn's abort resolves the pending prompt() the same way; pi echoes
+  // the AbortError as an errored turn first.
+  await session.abort();
+  await done;
+  unsub();
+
+  // No red card over the stop: not the echo, not a synthesized stall error.
+  expect(events.some((e) => e.type === "provider_error")).toBe(false);
+  expect(events.some((e) => e.type === "done")).toBe(false);
+  const last = (getHistory("conv-stop-echo")?.messages ?? []).at(-1);
   expect(last?.stopped).toBe(true);
   expect(last?.providerError).toBeUndefined();
 });
