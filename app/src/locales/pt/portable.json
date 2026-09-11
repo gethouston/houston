@@ -66,7 +66,11 @@
       "anonymizeFailed": "Falha na anonimização.",
       "saveFailed": "Não consegui salvar o arquivo.",
       "noPreview": "Sem prévia.",
-      "revealFailed": "Não consegui abrir essa pasta."
+      "revealFailed": "Não consegui abrir essa pasta.",
+      "saveLocked": "Esse arquivo está aberto em outro programa. Feche-o lá e salve de novo.",
+      "savePermission": "O Houston não tem permissão para salvar nessa pasta. Escolha outra pasta, como Downloads.",
+      "saveDiskFull": "Não há espaço livre suficiente neste computador para salvar o arquivo.",
+      "revealPermission": "O Houston não tem permissão para abrir essa pasta neste computador. Procure o arquivo onde você o salvou."
     },
     "toasts": {
       "savedTitle": "Arquivo salvo",

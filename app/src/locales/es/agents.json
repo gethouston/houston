@@ -199,7 +199,12 @@
       "revealAction": "Mostrar en el Explorador de Archivos",
       "revealFailed": "No se pudo mostrar el archivo",
       "saveFailedTitle": "No se pudo guardar el archivo",
-      "openFailedTitle": "No se pudo abrir el archivo"
+      "openFailedTitle": "No se pudo abrir el archivo",
+      "savedRenamedDescription": "Se guardó como {{name}} porque {{original}} está abierto en otro programa.",
+      "saveLocked": "Ese archivo está abierto en otro programa. Ciérralo ahí y vuelve a descargarlo.",
+      "savePermission": "Houston no tiene permiso para guardar en esa carpeta. Elige otra carpeta, como Descargas.",
+      "saveDiskFull": "No hay suficiente espacio libre en este computador para guardar el archivo.",
+      "revealPermission": "Houston no tiene permiso para abrir esa carpeta en este computador. Busca el archivo donde lo guardaste."
     },
     "modifiedToday": "Hoy"
   },

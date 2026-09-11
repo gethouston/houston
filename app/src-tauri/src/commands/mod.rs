@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 pub mod diagnostics;
 mod dialogs;
+pub mod file_failure;
 pub mod migration;
 pub mod os;
 pub mod portable;

@@ -290,10 +290,20 @@ export function osRevealPath(path: string): Promise<void> {
 export function osSaveDownload(
   fileName: string,
   bytes: Uint8Array,
-): Promise<string | null> {
-  return invoke<string | null>("save_download", bytes, {
+): Promise<WrittenFile | null> {
+  return invoke<WrittenFile | null>("save_download", bytes, {
     headers: { "x-download-name": encodeURIComponent(fileName) },
   });
+}
+
+/** Where a shell save landed. `renamedFrom` is the name the user chose when
+ *  that file was open in another program and the bytes went to a free
+ *  `name (2).ext` beside it instead (PRODUCT-1732). The save commands reject
+ *  with a `FileOpFailure` (`file-op-failure.ts`), never a raw OS string. */
+export interface WrittenFile {
+  path: string;
+  fileName: string;
+  renamedFrom: string | null;
 }
 
 /** Open an agent-relative file with the user's default application. */

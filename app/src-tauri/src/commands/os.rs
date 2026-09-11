@@ -11,6 +11,8 @@ use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::process::Command;
 
+use super::file_failure::FileOpFailure;
+
 fn expand(p: &str) -> PathBuf {
     super::expand_tilde(&PathBuf::from(p))
 }
@@ -238,18 +240,25 @@ pub async fn reveal_agent(agent_path: String) -> Result<(), String> {
 /// that produce a file outside any agent root (e.g. the portable-agent
 /// exporter writes a `.houstonagent` wherever the user picked in the save
 /// dialog — Desktop, Downloads, USB drive, …).
+///
+/// Rejects typed (`file_failure`): Explorer refusing to launch ("Access is
+/// denied. (os error 5)", HOUSTON-APP-5C6) is a `permission` state the user
+/// can work around, not a bug to report (PRODUCT-1732).
 #[tauri::command(rename_all = "snake_case")]
-pub async fn reveal_path(path: String) -> Result<(), String> {
+pub async fn reveal_path(path: String) -> Result<(), FileOpFailure> {
     let target = expand(&path);
     if !target.exists() {
-        return Err(format!("Path does not exist: {}", target.display()));
+        return Err(FileOpFailure::other(format!(
+            "Path does not exist: {}",
+            target.display()
+        )));
     }
-    reveal_in_file_manager(&target).map_err(|e| format!("Failed to reveal path: {e}"))
+    reveal_in_file_manager(&target).map_err(|e| FileOpFailure::from_io("Failed to reveal path", &e))
 }
 
 /// Open the OS file manager with the given path selected (Finder reveal /
 /// Explorer /select / xdg-open on parent dir).
-fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
+fn reveal_in_file_manager(path: &Path) -> Result<(), std::io::Error> {
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
@@ -257,7 +266,6 @@ fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
             .arg(path)
             .spawn()
             .map(|_| ())
-            .map_err(|e| e.to_string())
     }
     #[cfg(target_os = "windows")]
     {
@@ -272,14 +280,32 @@ fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
         //      the leading quote makes it ignore the verb and open the
         //      default folder (Documents). Use raw_arg so the cmdline goes
         //      out exactly as `/select,C:\path with space\file.txt`.
+        //   3. Some machines refuse to spawn explorer.exe from Houston at all
+        //      ("Access is denied. (os error 5)": an app-control policy, or
+        //      an update-launched instance still under the installer's
+        //      token). The shell verb goes through the running Explorer
+        //      instead of a new process, so opening the parent folder that
+        //      way still gets the user next to the file. The original error
+        //      is what gets reported when both fail.
         use std::os::windows::process::CommandExt;
         let native = path.to_string_lossy().replace('/', "\\");
         let select_arg = format!("/select,{native}");
-        std::process::Command::new("explorer")
+        let spawned = std::process::Command::new("explorer")
             .raw_arg(&select_arg)
             .spawn()
-            .map(|_| ())
-            .map_err(|e| e.to_string())
+            .map(|_| ());
+        let Err(spawn_err) = spawned else {
+            return Ok(());
+        };
+        let parent = path
+            .parent()
+            .unwrap_or(path)
+            .to_string_lossy()
+            .replace('/', "\\");
+        match spawn_default_open(&parent) {
+            Ok(()) => Ok(()),
+            Err(_) => Err(spawn_err),
+        }
     }
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
@@ -289,6 +315,6 @@ fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
         let mut cmd = std::process::Command::new("xdg-open");
         cmd.arg(parent);
         crate::appimage_env::sanitize_std_command(&mut cmd);
-        cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+        cmd.spawn().map(|_| ())
     }
 }

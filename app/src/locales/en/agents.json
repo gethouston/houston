@@ -199,7 +199,12 @@
       "revealAction": "Show in File Manager",
       "revealFailed": "Couldn’t show the file",
       "saveFailedTitle": "Couldn’t save the file",
-      "openFailedTitle": "Couldn’t open the file"
+      "openFailedTitle": "Couldn’t open the file",
+      "savedRenamedDescription": "Saved as {{name}} because {{original}} is open in another program.",
+      "saveLocked": "That file is open in another program. Close it there and download again.",
+      "savePermission": "Houston isn't allowed to save into that folder. Choose another folder, like Downloads.",
+      "saveDiskFull": "There isn't enough free space on this computer to save the file.",
+      "revealPermission": "Houston isn't allowed to open that folder on this computer. Look for the file where you saved it."
     },
     "modifiedToday": "Today"
   },

@@ -199,7 +199,12 @@
       "revealAction": "Mostrar no Explorador de Arquivos",
       "revealFailed": "Não foi possível mostrar o arquivo",
       "saveFailedTitle": "Não foi possível salvar o arquivo",
-      "openFailedTitle": "Não foi possível abrir o arquivo"
+      "openFailedTitle": "Não foi possível abrir o arquivo",
+      "savedRenamedDescription": "Salvo como {{name}} porque {{original}} está aberto em outro programa.",
+      "saveLocked": "Esse arquivo está aberto em outro programa. Feche-o lá e baixe de novo.",
+      "savePermission": "O Houston não tem permissão para salvar nessa pasta. Escolha outra pasta, como Downloads.",
+      "saveDiskFull": "Não há espaço livre suficiente neste computador para salvar o arquivo.",
+      "revealPermission": "O Houston não tem permissão para abrir essa pasta neste computador. Procure o arquivo onde você o salvou."
     },
     "modifiedToday": "Hoje"
   },
