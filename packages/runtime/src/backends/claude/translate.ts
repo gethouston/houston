@@ -75,9 +75,12 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
     if (!msg.error && msg.parent_tool_use_id === null) {
       usage.noteRequestUsage(msg.message?.usage);
     }
-    if (!msg.error || emittedError) return [];
-    emittedError = true;
+    // The message's tool_use blocks carry the SDK's own parse of each tool's
+    // input — the arguments the tool actually ran with (translate-blocks.ts).
     const content = msg.message?.content;
+    const started = blocks.onAssistantMessage(content);
+    if (!msg.error || emittedError) return started;
+    emittedError = true;
     const text = Array.isArray(content)
       ? content
           .filter((b) => b?.type === "text")
@@ -85,6 +88,7 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
           .join("")
       : "";
     return [
+      ...started,
       {
         type: "provider_error",
         data: mapSdkError(msg.error, {
@@ -98,7 +102,7 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
   }
 
   function onResult(msg: ResultMsg): WireEvent[] {
-    const out: WireEvent[] = [];
+    const out: WireEvent[] = blocks.onTurnEnd();
     const turnUsage = usage.turnUsage(msg.usage);
     if (turnUsage) out.push({ type: "usage", data: turnUsage });
     if (msg.subtype !== "success" && !emittedError) {

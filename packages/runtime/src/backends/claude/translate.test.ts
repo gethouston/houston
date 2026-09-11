@@ -2,7 +2,6 @@ import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { WireEvent } from "@houston/runtime-client";
 import { beforeEach, expect, test, vi } from "vitest";
 import { createStreamTranslator, normalizeUsage } from "./translate";
-import { repairInvalidUnicodeEscapes } from "./translate-support";
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});
@@ -83,6 +82,27 @@ function assistantUsage(
     parent_tool_use_id: null,
     ...over,
   } as unknown as SDKMessage;
+}
+
+/** The SDK's `assistant` message for one completed tool_use block. */
+function assistantToolUse(
+  id: string,
+  name: string,
+  input: unknown,
+): SDKMessage {
+  return {
+    type: "assistant",
+    message: {
+      role: "assistant",
+      model: "m",
+      content: [{ type: "tool_use", id, name, input }],
+    },
+    parent_tool_use_id: null,
+  } as unknown as SDKMessage;
+}
+/** What the SDK puts in place of tool input the model streamed as invalid JSON. */
+function unparsedMarker(raw: string): unknown {
+  return { __unparsedToolInput: { raw, len: raw.length } };
 }
 
 function collect(msgs: SDKMessage[]): { events: WireEvent[]; ctx: number[] } {
@@ -197,56 +217,151 @@ test("tool_use: accumulated input_json_delta parses into tool_start args at stop
   ]);
 });
 
-test("a model-garbled \\u escape is repaired instead of dropping the whole tool input", () => {
-  // Real payload shape from prod: Claude streamed `\u22co` — `o` is not hex —
-  // and the parse failure dropped every suggested action for the user.
-  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-  const err = vi.spyOn(console, "error").mockImplementation(() => {});
+test("the SDK's assistant tool_use input is the tool_start args when it precedes the stop", () => {
+  // Observed order on every CLI: the assistant block (with the SDK's parse of
+  // the input) arrives BEFORE our content_block_stop.
   const { events } = collect([
-    toolStart(0, "t1", "mcp__houston__suggest_actions"),
-    jsonDelta(0, '{"actions": [{"label": "Quitar tambi\\u00e9n \\u22co'),
-    jsonDelta(0, 'ALIANZA\\u22cb"}]}'),
+    toolStart(0, "t1", "Read"),
+    jsonDelta(0, '{"file_path":"a.txt"}'),
+    assistantToolUse("t1", "Read", { file_path: "a.txt" }),
     blockStop(0),
   ]);
   expect(events).toEqual([
     {
       type: "tool_start",
-      data: {
-        name: "mcp__houston__suggest_actions",
-        // é and ⋋ are valid and kept; the bad \u22c→ becomes U+FFFD.
-        args: { actions: [{ label: "Quitar también �oALIANZA⋋" }] },
-      },
+      data: { name: "Read", args: { file_path: "a.txt" } },
     },
   ]);
-  expect(warn).toHaveBeenCalled();
+});
+
+test("invalid tool JSON: the SDK's unparsed marker yields args:{} + a warn breadcrumb, never an error (PRODUCT-1694)", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const err = vi.spyOn(console, "error").mockImplementation(() => {});
+  // Real prod shape: the model closed the payload with one `}` too many. The
+  // CLI never runs the tool; it hands the model an InputValidationError
+  // tool_result and the model retries.
+  const raw =
+    '{"action": "GOOGLEDRIVE_EDIT_FILE", "params": {"file_id": "x"}}}';
+  const { events } = collect([
+    toolStart(0, "t1", "mcp__houston__integration_execute"),
+    jsonDelta(0, raw.slice(0, 30)),
+    jsonDelta(0, raw.slice(30)),
+    assistantToolUse(
+      "t1",
+      "mcp__houston__integration_execute",
+      unparsedMarker(raw),
+    ),
+    blockStop(0),
+    toolResult("t1", true),
+  ]);
+  expect(events).toEqual([
+    {
+      type: "tool_start",
+      data: { name: "mcp__houston__integration_execute", args: {} },
+    },
+    {
+      type: "tool_end",
+      data: { name: "mcp__houston__integration_execute", isError: true },
+    },
+  ]);
+  expect(warn).toHaveBeenCalledTimes(1);
+  expect(String(warn.mock.calls[0]?.[0])).toContain(
+    "Unexpected non-whitespace character",
+  );
   expect(err).not.toHaveBeenCalled();
 });
 
-test("repairInvalidUnicodeEscapes touches only true, malformed escapes", () => {
-  // Valid escapes and literal backslash-u text pass through untouched.
-  expect(repairInvalidUnicodeEscapes('{"a":"\\u00e9 \\\\u22co"}')).toBe(
-    '{"a":"\\u00e9 \\\\u22co"}',
+test("a stop whose deltas fail to parse before the SDK's block arrives waits for it", () => {
+  const err = vi.spyOn(console, "error").mockImplementation(() => {});
+  const t = createStreamTranslator({ onContextTokens: () => {} });
+  const first = [
+    toolStart(0, "t1", "mcp__houston__suggest_actions"),
+    jsonDelta(0, '{"actions": [{"label": "Quitar tambi\\u00e9n \\u22co"}]}'),
+    blockStop(0),
+  ].flatMap((m) => t.translate(m));
+  expect(first).toEqual([]);
+  const settled = t.translate(
+    assistantToolUse("t1", "mcp__houston__suggest_actions", {
+      actions: [{ label: "repaired by the SDK" }],
+    }),
   );
-  // Truncated escape at end of string, and adjacent malformed escapes.
-  expect(repairInvalidUnicodeEscapes('"\\u12')).toBe('"\\ufffd');
-  expect(repairInvalidUnicodeEscapes('"\\uZZ\\uZZ"')).toBe(
-    '"\\ufffdZZ\\ufffdZZ"',
-  );
-  // Malformed escape at position 0 (the ^ alternative).
-  expect(repairInvalidUnicodeEscapes("\\uxy")).toBe("\\ufffdxy");
+  expect(settled).toEqual([
+    {
+      type: "tool_start",
+      data: {
+        name: "mcp__houston__suggest_actions",
+        args: { actions: [{ label: "repaired by the SDK" }] },
+      },
+    },
+  ]);
+  expect(err).not.toHaveBeenCalled();
 });
 
-test("tool_start with unparseable JSON emits args:{} and logs (never a silent drop)", () => {
-  const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+test("an assistant tool_use for a block this turn never started (replayed history) is ignored", () => {
+  const { events } = collect([
+    assistantToolUse("old", "Read", { file_path: "history.txt" }),
+    toolStart(0, "t1", "Read"),
+    jsonDelta(0, '{"file_path":"a.txt"}'),
+    blockStop(0),
+  ]);
+  expect(events).toEqual([
+    {
+      type: "tool_start",
+      data: { name: "Read", args: { file_path: "a.txt" } },
+    },
+  ]);
+});
+
+test("a malformed unparsed marker (null payload) still settles to args:{}", () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const { events } = collect([
+    toolStart(0, "t1", "Edit"),
+    jsonDelta(0, "{not json"),
+    assistantToolUse("t1", "Edit", { __unparsedToolInput: null }),
+    blockStop(0),
+  ]);
+  // Not the marker shape → the SDK's input is taken verbatim; nothing throws.
+  expect(events).toEqual([
+    {
+      type: "tool_start",
+      data: { name: "Edit", args: { __unparsedToolInput: null } },
+    },
+  ]);
+  expect(warn).not.toHaveBeenCalled();
+});
+
+test("a tool_result for a call the SDK never verified settles it loudly before the tool_end", () => {
+  const err = vi.spyOn(console, "error").mockImplementation(() => {});
   const { events } = collect([
     toolStart(0, "t9", "Edit"),
     jsonDelta(0, "{not json"),
     blockStop(0),
+    toolResult("t9", true),
   ]);
   expect(events).toEqual([
     { type: "tool_start", data: { name: "Edit", args: {} } },
+    { type: "tool_end", data: { name: "Edit", isError: true } },
   ]);
-  expect(spy).toHaveBeenCalled();
+  expect(err).toHaveBeenCalledTimes(1);
+  expect(String(err.mock.calls[0]?.[0])).toContain(
+    "delivered no assistant block",
+  );
+});
+
+test("the turn result settles an unverified call loudly (never a silent drop)", () => {
+  const err = vi.spyOn(console, "error").mockImplementation(() => {});
+  const { events } = collect([
+    toolStart(0, "t9", "Edit"),
+    jsonDelta(0, "{not json"),
+    blockStop(0),
+    result({ input_tokens: 10, output_tokens: 2 }),
+  ]);
+  expect(events[0]).toEqual({
+    type: "tool_start",
+    data: { name: "Edit", args: {} },
+  });
+  expect(events.map((e) => e.type)).toEqual(["tool_start", "usage"]);
+  expect(err).toHaveBeenCalledTimes(1);
 });
 
 test("tool_result maps to tool_end using the buffered tool_use_id → name map", () => {
