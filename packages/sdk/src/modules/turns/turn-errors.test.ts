@@ -2,6 +2,7 @@ import { EngineError, FatalResumeError } from "@houston/runtime-client";
 import { describe, expect, it, vi } from "vitest";
 import {
   engineVerdictMessage,
+  isEngineWakingRejection,
   TURN_FAILED_MESSAGE,
   turnErrorMessage,
 } from "./turn-errors";
@@ -62,5 +63,44 @@ describe("engineVerdictMessage", () => {
     expect(
       engineVerdictMessage(new EngineError(500, "<html>")),
     ).toBeUndefined();
+  });
+});
+
+// The exact (status, reason) pairs the gateway and host mint for "not here,
+// not now". A bare 503 with another reason is a real failure.
+describe("isEngineWakingRejection", () => {
+  const rejects = (status: number, body: unknown) =>
+    isEngineWakingRejection(new EngineError(status, JSON.stringify(body)));
+
+  it("reads the gateway's and the host's waking reasons", () => {
+    expect(rejects(503, { error: "engine unavailable" })).toBe(true);
+    expect(
+      rejects(503, {
+        error: "the agent's runtime is still starting, try again shortly",
+      }),
+    ).toBe(true);
+    expect(rejects(502, { error: "engine proxy failed" })).toBe(true);
+  });
+
+  // PRODUCT-1777: a draining host (roll, eviction, app quit) refuses the send;
+  // the replacement pod takes it.
+  it("reads a draining host as a wake, on both shapes it answers", () => {
+    expect(
+      rejects(503, { error: "the host is shutting down; retry shortly" }),
+    ).toBe(true);
+    expect(
+      rejects(503, {
+        error: "engine unavailable",
+        detail: "the host is shutting down; retry shortly",
+      }),
+    ).toBe(true);
+  });
+
+  it("never matches a bare status or a neighbouring reason", () => {
+    expect(rejects(503, { error: "the host is shutting down" })).toBe(false);
+    expect(
+      rejects(502, { error: "the host is shutting down; retry shortly" }),
+    ).toBe(false);
+    expect(isEngineWakingRejection(new TypeError("Load failed"))).toBe(false);
   });
 });

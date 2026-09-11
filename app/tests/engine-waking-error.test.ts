@@ -328,6 +328,66 @@ describe("isEngineWakingError (runtime still starting)", () => {
   });
 });
 
+// PRODUCT-1777 (HOUSTON-APP-56Z): the HOST refusing because it is draining.
+// probe-wake.ts answered every per-agent route `503 {"error":"the host is
+// shutting down; retry shortly"}` once the launcher latched closed for a roll
+// or an eviction; the same read answers against the replacement pod. A chat
+// opened in that window escaped into the red toast + Sentry pipeline. The
+// host now answers the `engine unavailable` pair; the raw reason stays
+// matched for pods on the older host during the roll.
+const HOST_SHUTTING_DOWN = "the host is shutting down; retry shortly";
+
+describe("isEngineWakingError (host shutting down)", () => {
+  it("matches on the runtime-client shape, where it was observed", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(503, `{"error":"${HOST_SHUTTING_DOWN}"}`),
+      ),
+      true,
+    );
+  });
+
+  it("matches the newer host's engine-unavailable pair with the reason as detail", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(
+          503,
+          `{"error":"engine unavailable","detail":"${HOST_SHUTTING_DOWN}"}`,
+        ),
+      ),
+      true,
+    );
+  });
+
+  it("matches on the legacy and SDK shapes too", () => {
+    strictEqual(
+      isEngineWakingError(engineError(503, HOST_SHUTTING_DOWN)),
+      true,
+    );
+    strictEqual(
+      isEngineWakingError(
+        agentsHttpError(503, `{"error":"${HOST_SHUTTING_DOWN}"}`),
+      ),
+      true,
+    );
+  });
+
+  it("is a 503 reason only, matched exactly", () => {
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(502, `{"error":"${HOST_SHUTTING_DOWN}"}`),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(503, '{"error":"the host is shutting down"}'),
+      ),
+      false,
+    );
+  });
+});
+
 /** The shape the SDK activity-write path throws (`ActivitiesHttpError`): the
  *  same raw-body-as-message contract as `AgentsHttpError`. */
 function activitiesHttpError(status: number, body: string): Error {

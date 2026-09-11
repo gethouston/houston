@@ -93,9 +93,22 @@ export async function wakeForDispatch(
  * That is not a runtime failure but a "not here, not now": answer 503 +
  * Retry-After so the client retries against the replacement pod (or the next
  * app start) instead of rendering a 500. Any other rejection is the caller's.
+ *
+ * The body is the gateway's waking contract (`engine unavailable` + the
+ * reason as detail), the same shape the server's catch-all mints for this
+ * error: every client reads that pair as "not there yet" (the wake retry
+ * budget, the quiet class). Answering the raw message as the reason instead
+ * left a fourth reason string no client knew, so a chat opened against a
+ * draining pod rode the 2s handoff budget and then surfaced as a bug
+ * (PRODUCT-1777 / HOUSTON-APP-56Z).
  */
 function rejectIfClosed(err: unknown, res: ServerResponse): null {
   if (!(err instanceof LauncherClosedError)) throw err;
-  json(res, 503, { error: err.message }, { "Retry-After": "2" });
+  json(
+    res,
+    503,
+    { error: "engine unavailable", detail: err.message },
+    { "Retry-After": "2" },
+  );
   return null;
 }

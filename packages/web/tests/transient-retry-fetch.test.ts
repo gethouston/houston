@@ -178,6 +178,29 @@ test("the host's probe-route 'runtime is still starting' 503 earns the wake budg
   ).toBe("handoff");
 });
 
+// ── PRODUCT-1777 (HOUSTON-APP-56Z): the host's draining 503 ─────────────────
+
+test("the host's 'shutting down' 503 earns the wake budget", () => {
+  // probe-wake.ts answered every per-agent route this way once the launcher
+  // latched closed for a roll; the read meets the replacement pod, which is a
+  // wake away, not a handoff's second.
+  expect(
+    classifyUnavailableBody({
+      error: "the host is shutting down; retry shortly",
+    }),
+  ).toBe("engine-waking");
+  // The newer host answers the gateway's pair for the same state.
+  expect(
+    classifyUnavailableBody({
+      error: "engine unavailable",
+      detail: "the host is shutting down; retry shortly",
+    }),
+  ).toBe("engine-waking");
+  expect(classifyUnavailableBody({ error: "the host is shutting down" })).toBe(
+    "handoff",
+  );
+});
+
 // ── PRODUCT-1403: the pod-unreachable 502 ───────────────────────────────────
 
 test("the proxy's engine-proxy-failed 502 is a pod-unreachable read, with the wake budget", () => {

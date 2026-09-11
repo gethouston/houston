@@ -83,6 +83,14 @@ const NOT_CONFIGURED = "not_configured";
  */
 const RUNTIME_STILL_STARTING =
   "the agent's runtime is still starting, try again shortly";
+/**
+ * The HOST refusing because it is draining (`packages/host/src/channel/
+ * probe-wake.ts`, PRODUCT-1399): a release roll or an eviction latched the
+ * launcher closed, and the same request answers against the replacement pod.
+ * Newer hosts answer this state as `engine unavailable` + detail; the raw
+ * reason is kept for pods still on the older host during a roll.
+ */
+const HOST_SHUTTING_DOWN = "the host is shutting down; retry shortly";
 export const SHARED_SKILLS_UNCONFIGURED = "shared skills not configured";
 
 /** Why a read got no answer — the typed form of the gateway's 5xx body. */
@@ -141,6 +149,9 @@ export function classifyUnavailableBody(body: unknown): UnavailableReason {
   // a failure of the provider picker (HOUSTON-APP-54Q); it earns the wake
   // budget, which is sized for exactly this boot.
   if (b?.error === RUNTIME_STILL_STARTING) return "engine-waking";
+  // A draining host: the read meets the replacement pod, which is a wake
+  // away, not a second (PRODUCT-1777).
+  if (b?.error === HOST_SHUTTING_DOWN) return "engine-waking";
   return "handoff";
 }
 
