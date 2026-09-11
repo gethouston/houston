@@ -12,6 +12,7 @@ import { hostProvider, routineProviderUnavailable } from "../providers";
 import { fireRoutineRun, RoutineBusyError } from "../schedule/run";
 import type { FiringJob, RoutineFirer } from "../schedule/scheduler";
 import type { Vfs } from "../vfs";
+import { assertActingIsCreator } from "./acting";
 
 /**
  * One external event delivered to a routine. `id` is the DEDUP key — the cloud
@@ -58,6 +59,18 @@ export interface FireTriggerDeps {
   lock: TriggerEventLock;
   /** Dedup-lock TTL (s). Must outlast the redelivery/retry window. Default 1h. */
   dedupTtlSec?: number;
+  /**
+   * The gateway-minted C2 token for the routine's CREATOR, on the control-plane
+   * → pod path. It makes the run resolve the creator's credential scope, the
+   * same identity a scheduled fire (`routine-fires.ts`) and a Run-now press
+   * carry. Without it a pod cannot elevate the bare `created_by` sub (HOU-976
+   * D10) and the turn lands on the TEAM credential: in a team space where the
+   * creator connected a provider personally, every webhook-woken run failed
+   * "creator has no account connected" while chat and Run now worked
+   * (PRODUCT-1774). Absent on the self-host in-process path, which has one
+   * credential scope anyway.
+   */
+  actingAs?: string;
   now?: () => Date;
   newId?: () => string;
 }
@@ -78,6 +91,7 @@ class TriggerRoutineFirer implements RoutineFirer {
       Record<WorkspaceRuntime, RuntimeChannel>
     >,
     private readonly events: TriggerEvent[],
+    private readonly actingAs?: string,
   ) {}
 
   async fire(job: FiringJob): Promise<void> {
@@ -90,12 +104,15 @@ class TriggerRoutineFirer implements RoutineFirer {
     // runtime stream error nobody persists.
     if (pin.provider && !hostProvider(pin.provider))
       throw new Error(routineProviderUnavailable(pin.provider));
+    // The minted token replaces the bare creator header (ChannelRoutineFirer
+    // parity): the runtime reads acting-as for the credential scope.
     await channel.fireTurn(
       { workspace: job.workspace, agent: job.agent },
       job.conversationId,
       routineTriggerPrompt(job.routine, this.events),
       { ...pin, effort: job.routine.effort },
-      job.routine.created_by,
+      this.actingAs ? undefined : job.routine.created_by,
+      this.actingAs,
     );
   }
 }
@@ -140,6 +157,8 @@ export async function fireTriggerEvents(
   for (const [routineId, group] of byRoutine) {
     // `enabled` is keyed by the same ids `byRoutine` was built from.
     const routine = enabled.get(routineId) as Routine;
+    // Before any lock is burned: a refused delivery must stay re-deliverable.
+    if (deps.actingAs) assertActingIsCreator(deps.actingAs, routine);
     const fresh: TriggerEvent[] = [];
     for (const e of group) {
       if (await deps.lock.setNx(lockKey(e.id), "1", ttl)) fresh.push(e);
@@ -149,7 +168,7 @@ export async function fireTriggerEvents(
       for (const e of group) consumed.push(e.id);
       continue;
     }
-    const firer = new TriggerRoutineFirer(deps.channels, fresh);
+    const firer = new TriggerRoutineFirer(deps.channels, fresh, deps.actingAs);
     try {
       await fireRoutineRun(
         {
