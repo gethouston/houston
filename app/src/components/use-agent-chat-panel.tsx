@@ -56,8 +56,10 @@ import {
   useState,
 } from "react";
 import { useTranslation } from "react-i18next";
+import type * as configData from "../data/config";
 import {
   useActivity,
+  useAgentConfig,
   useAgentModelChoice,
   useChatHistory,
   useSetAgentModelChoice,
@@ -72,6 +74,7 @@ import {
 } from "../hooks/use-conversation-vm";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
+import { useSendPin } from "../hooks/use-send-pin";
 import { useSession } from "../hooks/use-session";
 import { useSetupGreetingName } from "../hooks/use-setup-greeting";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
@@ -84,6 +87,7 @@ import {
   encodeAutoContinueMessage,
   filterAutoContinueFeedItems,
 } from "../lib/auto-continue-message";
+import { agentTierFromConfig } from "../lib/chat-agent-tier";
 import { coherentPinModel, resolveChatModelPin } from "../lib/chat-model-pin";
 import {
   effectiveContextWindow,
@@ -111,6 +115,7 @@ import { providerForModel, providerOffersModel } from "../lib/model-labels";
 import { isModelNotAllowedError } from "../lib/model-not-allowed";
 import {
   isModelAllowed,
+  type ModelPin,
   modelSelectorDecision,
   resolvePersonalModelPin,
 } from "../lib/model-selector-lock";
@@ -138,6 +143,7 @@ import {
 import { queryKeys } from "../lib/query-keys";
 import { reportRejection } from "../lib/report-rejection";
 import { showSendFailedToast } from "../lib/send-error-toast";
+import { sendPinSettled } from "../lib/send-pin-gate";
 import { hasAgentOutput } from "../lib/setup-mission-greeting";
 import {
   buildSkillClaudePrompt,
@@ -315,6 +321,8 @@ interface AgentChatPanelProps {
   /** Displayed provider/model for sending. */
   effectiveProvider: string;
   effectiveModel: string;
+  /** The pin a send must carry, settled at send time (PRODUCT-1771). */
+  resolveSendPin: () => Promise<ModelPin>;
   /** The composer's turn mode (execute | plan); consumers forward it as
    *  `modeOverride` on user-typed sends — an unpinned turn is execute. */
   turnMode: TurnMode;
@@ -455,7 +463,7 @@ export function useAgentChatPanel({
   // Integration connect cards are a new-engine feature: the host advertises
   // its wired providers in capabilities; the legacy Rust engine (null) and
   // unconfigured deployments fall back to plain markdown links.
-  const { capabilities } = useCapabilities();
+  const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
   const integrationsEnabled = integrationsSupported(capabilities);
 
   // Teams E8: in a multiplayer Teams org the composer's model + effort pickers
@@ -464,10 +472,8 @@ export function useAgentChatPanel({
   // / self-host keeps the shared-config behavior (personal=false, no ceiling).
   // The gateway is the sole enforcer of the ceiling per turn.
   const modelDecision = modelSelectorDecision(capabilities, agent);
-  const { data: modelChoiceInfo } = useAgentModelChoice(
-    agent?.id ?? "",
-    modelDecision.personal,
-  );
+  const { data: modelChoiceInfo, isFetched: modelChoiceFetched } =
+    useAgentModelChoice(agent?.id ?? "", modelDecision.personal);
   const setModelChoice = useSetAgentModelChoice(agent?.id ?? "");
   const allowedModels = modelDecision.personal
     ? (modelChoiceInfo?.allowedModels ?? null)
@@ -500,9 +506,34 @@ export function useAgentChatPanel({
   // CANONICAL id (`openai-codex`) while the catalog, picker and logos speak
   // Houston's DISPLAY id (`openai`), so they are mapped here — the seam
   // `use-agent-model-choice` already applies to a stored model choice.
-  const [agentProvider, setAgentProvider] = useState<string | null>(null);
-  const [agentModel, setAgentModel] = useState<string | null>(null);
-  const [agentEffort, setAgentEffort] = useState<string | null>(null);
+  // Read through the config QUERY, not a one-shot effect (PRODUCT-1771): a
+  // read refused while a space switch leaves routing pending is retried, a
+  // ConfigChanged invalidation follows the file, and `isFetched` tells the
+  // send gate below that the tier is UNKNOWN (still loading) rather than
+  // absent — the two used to be indistinguishable, and "absent" fell through
+  // to the device-wide last-used provider.
+  const agentConfigQuery = useAgentConfig(path ?? undefined);
+  const agentConfigSettled = !path || agentConfigQuery.isFetched;
+  const {
+    provider: agentProvider,
+    model: agentModel,
+    effort: agentEffort,
+  } = useMemo(
+    () => agentTierFromConfig(agentConfigQuery.data),
+    [agentConfigQuery.data],
+  );
+  // Optimistic flip for a shared-mode pick: lands on the cache the tier reads
+  // from, so the picker moves before the config write round-trips.
+  const setAgentTier = useCallback(
+    (patch: Pick<configData.Config, "provider" | "model" | "effort">) => {
+      if (!path) return;
+      queryClient.setQueryData<configData.Config>(
+        queryKeys.config(path),
+        (prev) => ({ ...(prev ?? {}), ...patch }),
+      );
+    },
+    [path, queryClient],
+  );
   // Composer "Mode" pin (execute/plan/auto). It is session-local and every new
   // mission resets to `initialTurnMode` or Ask First. Existing mission switches
   // keep the current per-send pin until the user changes it.
@@ -510,27 +541,7 @@ export function useAgentChatPanel({
     initialTurnMode ?? DEFAULT_TURN_MODE,
   );
   useEffect(() => {
-    if (!path) {
-      setAgentProvider(null);
-      setAgentModel(null);
-      setAgentEffort(null);
-      setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
-      return;
-    }
-    reportRejection(
-      tauriConfig.read(path).then((cfg) => {
-        setAgentProvider(toDisplayProviderIdOrNull(cfg.provider as string));
-        setAgentModel(
-          normalizeLegacyModel(
-            (cfg.model as string) ?? null,
-            cfg.provider as string,
-          ),
-        );
-        setAgentEffort((cfg.effort as string) ?? null);
-      }),
-      "chat.read-agent-model",
-      logAndReportError,
-    );
+    if (!path) setTurnMode(initialTurnMode ?? DEFAULT_TURN_MODE);
   }, [path, initialTurnMode]);
 
   const previousSessionKeyRef = useRef(selectedSessionKey);
@@ -558,7 +569,14 @@ export function useAgentChatPanel({
     );
   }, []);
 
-  const { data: activities } = useActivity(path ?? undefined);
+  const activityQuery = useActivity(path ?? undefined);
+  const activities = activityQuery.data;
+  // The list is served from the cross-agent cache as a PLACEHOLDER first
+  // (`latestCachedAgentActivities`); its rows carry no provider/model, so until
+  // the agent's own read lands the open row's pin is unknown, not absent.
+  const activitySettled =
+    !selectedSessionKey ||
+    (activityQuery.isFetched && !activityQuery.isPlaceholderData);
   const selectedActivity = useMemo(() => {
     if (!selectedSessionKey || !activities) return null;
     return (
@@ -797,6 +815,30 @@ export function useAgentChatPanel({
     };
   }, [rawDisplayModelPin]);
 
+  // Whether every input above has landed (PRODUCT-1771). Before that the pin is
+  // a guess that bottoms out on the device-wide last-used provider, and a send
+  // must not carry a guess as the turn's pin: `resolveSendPin` holds the send
+  // until the composer settles (bounded), then hands it the pin the picker
+  // shows at that moment.
+  const pinSettled = sendPinSettled({
+    agentConfigSettled,
+    activitySettled,
+    capabilitiesSettled: !capabilitiesLoading,
+    choiceSettled: !modelDecision.personal || modelChoiceFetched,
+    statusesSettled: !providerStatusesLoading,
+  });
+  const reportPinTimeout = useCallback(() => {
+    logAndReportError(
+      "chat.send-pin-settle",
+      new Error("composer pin never settled; sent the current pin"),
+    );
+  }, []);
+  const resolveSendPin = useSendPin(
+    displayModelPin,
+    pinSettled,
+    reportPinTimeout,
+  );
+
   // Converge legacy pin-less chats (created before per-conversation pins):
   // stamp the shared agent-derived provider/model onto its activity, so a later
   // change to the agent
@@ -808,6 +850,10 @@ export function useAgentChatPanel({
   useEffect(() => {
     if (!path || !selectedActivity || selectedActivity.provider) return;
     if (!hasMessages) return;
+    // A placeholder row has no pin field at all, and an unsettled composer
+    // would stamp a guess: both looked like a legacy pin-less row and wrote
+    // the device's last-used provider over the chat's real pin (PRODUCT-1771).
+    if (!pinSettled || activityQuery.isPlaceholderData) return;
     if (stampedActivityIds.current.has(selectedActivity.id)) return;
     stampedActivityIds.current.add(selectedActivity.id);
     reportRejection(
@@ -818,7 +864,15 @@ export function useAgentChatPanel({
       "chat.pin-conversation-model",
       logAndReportError,
     );
-  }, [path, selectedActivity, hasMessages, effectiveProvider, effectiveModel]);
+  }, [
+    path,
+    selectedActivity,
+    hasMessages,
+    effectiveProvider,
+    effectiveModel,
+    pinSettled,
+    activityQuery.isPlaceholderData,
+  ]);
 
   // ── Context-usage indicator ───────────────────────────────────────────
   // Latest turn's normalized usage from this session's feed, divided by a
@@ -898,8 +952,7 @@ export function useAgentChatPanel({
             effort: validEffortOrDefault(prov, mod, displayModelPin.effort),
           });
         } else {
-          setAgentProvider(prov);
-          setAgentModel(mod);
+          setAgentTier({ provider: toCanonicalProviderId(prov), model: mod });
           if (path) {
             const cfg = await tauriConfig.read(path);
             await tauriConfig.write(path, {
@@ -927,6 +980,7 @@ export function useAgentChatPanel({
     [
       path,
       selectedActivityId,
+      setAgentTier,
       modelDecision.personal,
       setModelChoice,
       displayModelPin.effort,
@@ -983,7 +1037,7 @@ export function useAgentChatPanel({
     async (effort: EffortLevel) => {
       // Effort is per-agent (not per-activity): persist to the agent config
       // the engine reads at send time. Optimistic flip for the picker.
-      setAgentEffort(effort);
+      setAgentTier({ effort });
       try {
         if (path) {
           const cfg = await tauriConfig.read(path);
@@ -997,7 +1051,7 @@ export function useAgentChatPanel({
         });
       }
     },
-    [path, addToast, t],
+    [path, addToast, t, setAgentTier],
   );
   const handleModeSelect = useCallback(
     (mode: TurnMode) => {
@@ -1176,17 +1230,18 @@ export function useAgentChatPanel({
         editingTurn.turnId,
       );
       setEditingTurn(null);
+      const pin = await resolveSendPin();
       await tauriChat.send(path, text, editingTurn.sessionKey, {
-        providerOverride: displayModelPin.provider,
-        modelOverride: displayModelPin.model,
-        effortOverride: displayModelPin.effort,
+        providerOverride: pin.provider,
+        modelOverride: pin.model,
+        effortOverride: pin.effort,
         modeOverride: turnMode,
       });
       // An ARCHIVED mission was just re-activated by the resend, exactly as
       // any other send into it would.
       onSendReactivatedRef.current?.();
     },
-    [editingTurn, path, displayModelPin, turnMode],
+    [editingTurn, path, resolveSendPin, turnMode],
   );
   const messageEditing = useMemo<AIBoardProps["messageEditing"]>(
     () =>
@@ -1262,6 +1317,7 @@ export function useAgentChatPanel({
       const claudePrompt = buildSkillClaudePrompt(skill, text);
       const encoded = encodeSkillMessage(skill, text, claudePrompt);
       const friendlyTitle = skillDisplayTitle(skill);
+      const pin = await resolveSendPin();
 
       if (sessionKey) {
         // Mid-conversation: optimistic feed push + send, mirrors the
@@ -1280,9 +1336,9 @@ export function useAgentChatPanel({
         await tauriChat.send(path, encodedWithAttachments, sessionKey, {
           // The wire pin must match the picker. In Teams this may be the open
           // mission's pin rather than the agent's effective default.
-          providerOverride: displayModelPin.provider,
-          modelOverride: displayModelPin.model,
-          effortOverride: displayModelPin.effort,
+          providerOverride: pin.provider,
+          modelOverride: pin.model,
+          effortOverride: pin.effort,
           modeOverride: turnMode,
           // A Skill send still carries whatever the user typed alongside it, so
           // the teammates they named there must ride too (HOU-944).
@@ -1306,9 +1362,9 @@ export function useAgentChatPanel({
           },
           encoded,
           {
-            providerOverride: displayModelPin.provider,
-            modelOverride: displayModelPin.model,
-            effortOverride: displayModelPin.effort,
+            providerOverride: pin.provider,
+            modelOverride: pin.model,
+            effortOverride: pin.effort,
             modeOverride: turnMode,
             mentions,
             buildPrompt: async (activityId) => {
@@ -1337,7 +1393,7 @@ export function useAgentChatPanel({
       setActiveSkill(null);
       return true;
     },
-    [activeSkill, agent, path, displayModelPin, turnMode, queryClient],
+    [activeSkill, agent, path, resolveSendPin, turnMode, queryClient],
   );
 
   // Picking a skill from a card or the picker pins it above the regular
@@ -1365,13 +1421,15 @@ export function useAgentChatPanel({
       const message = encodeAutoContinueMessage(
         t("chat:composio.connectedFollowup", { name: appName }),
       );
-      tauriChat
-        .send(path, message, selectedSessionKey, {
-          providerOverride: displayModelPin.provider,
-          modelOverride: displayModelPin.model,
-          effortOverride: displayModelPin.effort,
-          modeOverride: turnMode,
-        })
+      resolveSendPin()
+        .then((pin) =>
+          tauriChat.send(path, message, selectedSessionKey, {
+            providerOverride: pin.provider,
+            modelOverride: pin.model,
+            effortOverride: pin.effort,
+            modeOverride: turnMode,
+          }),
+        )
         // Two-arg `then`, not `.then().catch()`: the rejection handler stays
         // exclusive to the SEND, so a throw inside the handoff callback is
         // never reported as a failed follow-up.
@@ -1389,7 +1447,7 @@ export function useAgentChatPanel({
           },
         );
     },
-    [path, selectedSessionKey, displayModelPin, turnMode, addToast, t],
+    [path, selectedSessionKey, resolveSendPin, turnMode, addToast, t],
   );
   const renderLink = useCallback<NonNullable<AIBoardProps["renderLink"]>>(
     ({ href }) => {
@@ -1468,14 +1526,16 @@ export function useAgentChatPanel({
   const sendInteractionMessage = useCallback(
     (text: string, mode?: TurnMode, approvals?: MessageApproval[]) => {
       if (!path || !selectedSessionKey) return;
-      tauriChat
-        .send(path, text, selectedSessionKey, {
-          providerOverride: displayModelPin.provider,
-          modelOverride: displayModelPin.model,
-          effortOverride: displayModelPin.effort,
-          modeOverride: mode ?? turnMode,
-          ...(approvals?.length ? { approvals } : {}),
-        })
+      resolveSendPin()
+        .then((pin) =>
+          tauriChat.send(path, text, selectedSessionKey, {
+            providerOverride: pin.provider,
+            modelOverride: pin.model,
+            effortOverride: pin.effort,
+            modeOverride: mode ?? turnMode,
+            ...(approvals?.length ? { approvals } : {}),
+          }),
+        )
         // Two-arg `then`, not `.then().catch()`: the rejection handler must stay
         // exclusive to the SEND, or a throw inside the handoff callback would
         // be reported to the user as a failed message.
@@ -1486,7 +1546,7 @@ export function useAgentChatPanel({
           },
         );
     },
-    [path, selectedSessionKey, displayModelPin, turnMode],
+    [path, selectedSessionKey, resolveSendPin, turnMode],
   );
 
   // Resolves a question step's `toolkit` to the app's presentational brand (logo
@@ -2229,10 +2289,11 @@ export function useAgentChatPanel({
               // resume), dropped when redundant, and held INVISIBLY — no
               // queued bubble; the adapter's watchdog probes immediately so a
               // stale hold clears within one round-trip (HOU-849).
+              const pin = await resolveSendPin();
               await tauriChat.send(path, text, selectedSessionKey, {
-                providerOverride: displayModelPin.provider,
-                modelOverride: displayModelPin.model,
-                effortOverride: displayModelPin.effort,
+                providerOverride: pin.provider,
+                modelOverride: pin.model,
+                effortOverride: pin.effort,
                 modeOverride: turnMode,
                 // A refused not-connected send left its prompt's bubble in
                 // the feed already — resending it must not add a second one.
@@ -2257,6 +2318,7 @@ export function useAgentChatPanel({
     },
     [
       displayModelPin,
+      resolveSendPin,
       cardProvider,
       turnMode,
       selectModel,
@@ -2573,6 +2635,7 @@ export function useAgentChatPanel({
     pickerDialog,
     effectiveProvider: displayModelPin.provider,
     effectiveModel: displayModelPin.model,
+    resolveSendPin,
     turnMode,
     currentUserId,
     authorLabels,

@@ -2,6 +2,7 @@ import type { AIBoardProps, MessageMention } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
+import { isAgentPathWarming } from "../../lib/agent-warming-guard";
 import { childMissionsOf, parentMissionOf } from "../../lib/child-missions";
 import { modelAcceptsImages } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
@@ -88,13 +89,38 @@ export function useBoardChatWiring(source: BoardSource) {
     selectedSessionKey: source.selectedSessionKey,
     selectedAgentPath: source.selectedAgentPath,
     overrides,
+    resolveSendPin: panel.resolveSendPin,
     sendMessageNow: source.sendMessageNow,
   });
 
+  // The first message of a NEW conversation stamps its row with the pin it
+  // ran on, so it waits for the settled pin like a follow-up (PRODUCT-1771).
   const handleCreateConversation = useCallback(
-    (text: string, files: File[], mentions?: MessageMention[]) =>
-      source.createConversation({ text, files, ...overrides, mentions }),
-    [source.createConversation, overrides],
+    async (text: string, files: File[], mentions?: MessageMention[]) => {
+      // Same exemption as the follow-up queue: a warming pod parks the send.
+      const agentPath = source.activeAgent?.folderPath;
+      const pin =
+        agentPath && isAgentPathWarming(agentPath)
+          ? {
+              provider: overrides.providerOverride,
+              model: overrides.modelOverride,
+            }
+          : await panel.resolveSendPin();
+      return source.createConversation({
+        text,
+        files,
+        ...overrides,
+        providerOverride: pin.provider,
+        modelOverride: pin.model,
+        mentions,
+      });
+    },
+    [
+      source.createConversation,
+      source.activeAgent?.folderPath,
+      overrides,
+      panel.resolveSendPin,
+    ],
   );
   const handleNotice = useCallback(
     (message: string) => addToast({ title: message }),

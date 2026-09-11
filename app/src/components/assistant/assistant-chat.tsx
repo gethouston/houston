@@ -90,6 +90,7 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
     selectedSessionKey: sessionKey,
     selectedAgentPath: path,
     overrides,
+    resolveSendPin: panel.resolveSendPin,
     sendMessageNow: send.sendMessageNow,
   });
 

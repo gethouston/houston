@@ -64,8 +64,7 @@ export function useMissionControlArchivedPanel(
   const onSendMessage = useMissionControlArchivedSend({
     activeAgent,
     selectedItem,
-    providerOverride: panel.effectiveProvider,
-    modelOverride: panel.effectiveModel,
+    resolveSendPin: panel.resolveSendPin,
     onHandoff: handoff,
   });
 

@@ -109,6 +109,7 @@ export function RoutineSetupChatBoard({
     selectedSessionKey: sessionKey,
     selectedAgentPath: path,
     overrides,
+    resolveSendPin: panel.resolveSendPin,
     sendMessageNow: send.sendMessageNow,
   });
 
