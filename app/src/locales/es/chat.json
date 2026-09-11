@@ -314,7 +314,10 @@
     "signedInLine": "Inicié sesión en {{name}}.",
     "skippedSignInLine": "Omití el inicio de sesión en {{name}}.",
     "signInRedirectLine": "No inicié sesión en {{name}}. En su lugar, haz esto: {{text}}",
-    "signedInFollowup": "Ya inicié sesión en {{name}}. Continúa, por favor."
+    "signedInFollowup": "Ya inicié sesión en {{name}}. Continúa, por favor.",
+    "signInBlocked": "Tu navegador bloqueó la ventana de inicio de sesión.",
+    "openSignIn": "Abrir la página de inicio de sesión",
+    "signInFailed": "No se pudo iniciar el inicio de sesión. Inténtalo de nuevo en un momento u omite este paso."
   },
   "loadingPhrases": [
     "Houston, ¡tenemos una solución!",

@@ -2303,11 +2303,21 @@ export const tauriIntegrations = {
     ),
   // OAuth sign-in start (PRODUCT-1172): mint the authorize URL for a custom
   // MCP integration's browser sign-in. Same transport-agent rule as add.
-  customOAuthStart: (slug: string, agentId?: string) =>
-    call("custom_integration_oauth_start", () =>
-      agentId
-        ? getEngine().startAgentCustomIntegrationOAuth(agentId, slug)
-        : getEngine().startCustomIntegrationOAuth(slug),
+  // `options.surface: false` for the waking-retry caller
+  // (`startCustomOAuth`), which surfaces the FINAL error itself.
+  customOAuthStart: (
+    slug: string,
+    agentId?: string,
+    options?: Pick<EngineCallOptions, "surface">,
+  ) =>
+    call(
+      "custom_integration_oauth_start",
+      () =>
+        agentId
+          ? getEngine().startAgentCustomIntegrationOAuth(agentId, slug)
+          : getEngine().startCustomIntegrationOAuth(slug),
+      { integration_slug: slug },
+      options,
     ),
 };
 

@@ -2,6 +2,7 @@ import { CatalogShell } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  claimSignInTab,
   useDisconnectIntegration,
   useIntegrationToolkits,
 } from "../../hooks/queries";
@@ -127,7 +128,7 @@ export function IntegrationsReady({
                           `integrations:installed:${slug}`,
                         ),
                     })
-                  : custom.signIn.mutate(slug)
+                  : custom.signIn.mutate({ slug, tab: claimSignInTab() })
               }
               searching={filtering}
             />

@@ -9,6 +9,7 @@ import { createExecutor } from "@executor-js/sdk";
 import { authMethodsOf, TOKEN_VARIABLE } from "./auth-methods";
 import { fallbackAuthTemplate } from "./fallback-auth";
 import { guardedFetch, guardedHttpClientLayer } from "./fetch-guard";
+import { advertisesOAuth } from "./oauth-discovery";
 import type { CustomSecretStore } from "./secrets";
 import {
   HOUSTON_PROVIDER_KEY,
@@ -289,10 +290,15 @@ export class CustomExecutorHost {
       // problem (the reviewed OAuth-only case: the server wants its own
       // sign-in, which Houston cannot connect to yet).
       if (probe.requiresAuthentication && def.auth === "none") {
+        // The executor's OAuth verdict is a well-known-path guess; the
+        // sign-in flow's own discovery decides (detect.ts judges the same way).
+        const oauth =
+          probe.requiresOAuth ||
+          (await advertisesOAuth(def.endpoint, guardedFetch, def.headers));
         return {
           status: "error",
-          message: probe.requiresOAuth
-            ? `the MCP server at ${def.endpoint} only signs in with its own account flow, which Houston cannot connect to yet`
+          message: oauth
+            ? `the MCP server at ${def.endpoint} only signs in with its own account flow - add it again as a service you sign in to`
             : `the MCP server at ${def.endpoint} requires an API key or token - add it again as a service that needs a key`,
         };
       }

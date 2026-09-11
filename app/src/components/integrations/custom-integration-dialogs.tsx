@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  claimSignInTab,
   useCustomIntegrationsFor,
   useRemoveCustomIntegration,
   useStartCustomOAuth,
@@ -104,7 +105,7 @@ export function CustomIntegrationDialogs({
         onSignIn={(integration) => {
           // The browser carries the rest of the flow; the card stays open
           // and flips to active on the CustomIntegrationsChanged event.
-          signIn.mutate(integration.slug);
+          signIn.mutate({ slug: integration.slug, tab: claimSignInTab() });
         }}
         onRemove={(integration) => {
           selection.closeDetail();

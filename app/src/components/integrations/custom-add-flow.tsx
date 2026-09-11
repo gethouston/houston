@@ -78,11 +78,24 @@ export function CustomAddFlow({
             if (view.auth === "oauth") {
               // Chain straight into the browser sign-in (PRODUCT-1172); the
               // row flips to active on the CustomIntegrationsChanged event.
-              signIn.mutate(view.slug);
-              addToast({
-                title: t("custom.oauth.openedToast", { name: view.name }),
-                variant: "info",
-              });
+              // This runs after the add's round-trip, outside any click, so
+              // no tab can be claimed: a refused open names the row's own
+              // Sign in button as the way onward.
+              signIn.mutate(
+                { slug: view.slug },
+                {
+                  onSuccess: ({ opened }) =>
+                    addToast({
+                      title: t(
+                        opened
+                          ? "custom.oauth.openedToast"
+                          : "custom.oauth.blockedToast",
+                        { name: view.name },
+                      ),
+                      variant: "info",
+                    }),
+                },
+              );
             } else onNeedsKey(view.slug);
           } else
             addToast({

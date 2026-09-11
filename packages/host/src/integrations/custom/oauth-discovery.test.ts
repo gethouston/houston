@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { advertisesOAuth } from "./oauth-discovery";
 import { beginCustomOAuth } from "./oauth-flow";
 import type { CustomIntegrationDef } from "./types";
 
@@ -150,5 +151,30 @@ describe("custom MCP OAuth discovery compatibility", () => {
       code: "oauth_failed",
       message: "could not discover how Service signs in: probe unavailable",
     });
+  });
+});
+
+describe("advertisesOAuth", () => {
+  it.each([
+    "challenge",
+    "standard",
+  ] as const)("is true whenever the sign-in flow finds authorization-server metadata (%s)", async (discovery) => {
+    const { fetchFn } = server(discovery);
+    expect(await advertisesOAuth(ENDPOINT, fetchFn)).toBe(true);
+  });
+
+  // The SDK's legacy fallback GUESSES `/authorize` at the origin for a wall
+  // with no metadata anywhere: that is a plain bearer wall (an API key), and
+  // calling it OAuth would send the user into a sign-in that cannot exist.
+  it("is false for a bearer wall with no metadata anywhere (legacy guess)", async () => {
+    const { fetchFn } = server("legacy");
+    expect(await advertisesOAuth(ENDPOINT, fetchFn)).toBe(false);
+  });
+
+  it("is false, never a throw, when the probe cannot run", async () => {
+    const fetchFn: typeof fetch = async () => {
+      throw new Error("probe unavailable");
+    };
+    expect(await advertisesOAuth(ENDPOINT, fetchFn)).toBe(false);
   });
 });

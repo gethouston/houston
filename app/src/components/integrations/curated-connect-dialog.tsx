@@ -11,6 +11,7 @@ import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  claimSignInTab,
   useAddCustomIntegration,
   useStartCustomOAuth,
   useSubmitCustomCredential,
@@ -105,17 +106,29 @@ function CuratedConnectBody({
   const name = curated.name;
 
   const startSignIn = () => {
+    // The tab is claimed HERE, inside the click, because the add's round-trip
+    // comes first and would leave the sign-in open outside the gesture.
+    const tab = claimSignInTab();
     add.mutate(curatedAddInput(curated, "oauth"), {
       onSuccess: () =>
-        signIn.mutate(curated.slug, {
-          onSuccess: () => {
-            addToast({
-              title: t("custom.oauth.openedToast", { name }),
-              variant: "info",
-            });
-            onClose();
+        signIn.mutate(
+          { slug: curated.slug, tab },
+          {
+            onSuccess: ({ opened }) => {
+              addToast({
+                title: t(
+                  opened
+                    ? "custom.oauth.openedToast"
+                    : "custom.oauth.blockedToast",
+                  { name },
+                ),
+                variant: "info",
+              });
+              onClose();
+            },
           },
-        }),
+        ),
+      onError: () => tab?.discard(),
     });
   };
 

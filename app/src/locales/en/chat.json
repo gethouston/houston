@@ -314,7 +314,10 @@
     "signedInLine": "Signed in to {{name}}.",
     "skippedSignInLine": "Skipped signing in to {{name}}.",
     "signInRedirectLine": "I didn't sign in to {{name}}. Instead, do this: {{text}}",
-    "signedInFollowup": "I've signed in to {{name}}. Please continue."
+    "signedInFollowup": "I've signed in to {{name}}. Please continue.",
+    "signInBlocked": "Your browser blocked the sign-in window.",
+    "openSignIn": "Open the sign-in page",
+    "signInFailed": "The sign-in couldn't start. Try again in a moment, or skip this step."
   },
   "loadingPhrases": [
     "Houston, we have a solution!",

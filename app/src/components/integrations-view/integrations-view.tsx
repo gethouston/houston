@@ -1,7 +1,7 @@
 import { CATALOG_PLANE_MAX_W, CatalogGrid, cn } from "@houston-ai/core";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { useIntegrationToolkits } from "../../hooks/queries";
+import { claimSignInTab, useIntegrationToolkits } from "../../hooks/queries";
 import {
   AddCustomButton,
   CustomIntegrationRow,
@@ -135,7 +135,10 @@ export function IntegrationsView() {
                               custom.selection.openKey(value.slug)
                             }
                             onSignIn={(value) =>
-                              custom.signIn.mutate(value.slug)
+                              custom.signIn.mutate({
+                                slug: value.slug,
+                                tab: claimSignInTab(),
+                              })
                             }
                             onRemove={(value) =>
                               custom.selection.openRemove(value.slug)

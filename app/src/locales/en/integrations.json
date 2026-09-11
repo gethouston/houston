@@ -214,7 +214,8 @@
     "signIn": "Sign in",
     "signInAgain": "Sign in again",
     "oauth": {
-      "openedToast": "Finish signing in to {{name}} in your browser"
+      "openedToast": "Finish signing in to {{name}} in your browser",
+      "blockedToast": "Your browser blocked the sign-in window. Open {{name}} and press Sign in to try again."
     }
   },
   "curated": {
