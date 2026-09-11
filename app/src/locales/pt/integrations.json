@@ -214,7 +214,8 @@
     "signIn": "Fazer login",
     "signInAgain": "Fazer login de novo",
     "oauth": {
-      "openedToast": "Conclua o login em {{name}} no seu navegador"
+      "openedToast": "Conclua o login em {{name}} no seu navegador",
+      "blockedToast": "Seu navegador bloqueou a janela de login. Abra {{name}} e toque em Fazer login para tentar de novo."
     }
   },
   "curated": {

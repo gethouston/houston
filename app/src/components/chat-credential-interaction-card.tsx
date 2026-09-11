@@ -5,14 +5,23 @@ import {
   type StepChrome,
 } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
-import { Check, CornerDownLeft, KeyRound, Loader2, LogIn } from "lucide-react";
+import {
+  Check,
+  CornerDownLeft,
+  ExternalLink,
+  KeyRound,
+  Loader2,
+  LogIn,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  claimSignInTab,
   useAgentCustomIntegrations,
   useStartCustomOAuth,
   useSubmitCustomCredential,
 } from "../hooks/queries";
+import { tauriSystem } from "../lib/tauri";
 import { useUIStore } from "../stores/ui";
 import { ChatStepDeclineButton } from "./chat-step-decline-button";
 import { CustomCredentialForm } from "./integrations/custom-credential-form";
@@ -99,11 +108,29 @@ export function ChatCredentialInteractionCard({
   const submit = useSubmitCustomCredential(agentId);
   const signIn = useStartCustomOAuth(agentId);
   const [ready, setReady] = useState(false);
-  // The browser sign-in was opened from THIS card (set on SUCCESS only — a
-  // failed start keeps the plain Sign in button and shows no false waiting
-  // line); the flip to "active" (delivered by CustomIntegrationsChanged) is
-  // then this step's completion.
+  // The browser sign-in was opened from THIS card (set once the browser TOOK
+  // the URL — a failed start or a refused open keeps the plain Sign in button
+  // and shows no false waiting line); the flip to "active" (delivered by
+  // CustomIntegrationsChanged) is then this step's completion.
   const [signInStarted, setSignInStarted] = useState(false);
+  // The web build's popup blocker refused the open after the async mint: the
+  // minted URL is kept for an explicit click, which the browser honors.
+  const blockedUrl =
+    signIn.data && !signIn.data.opened && !signInStarted
+      ? signIn.data.authorizeUrl
+      : null;
+  const openBlocked = () => {
+    if (!blockedUrl) return;
+    void tauriSystem.openUrl(blockedUrl).then((opened) => {
+      if (opened) setSignInStarted(true);
+    });
+  };
+  const startSignIn = () => {
+    signIn.mutate(
+      { slug: toolkit, tab: claimSignInTab() },
+      { onSuccess: ({ opened }) => setSignInStarted(opened) },
+    );
+  };
   // The favicon the Integrations card already wears (PRODUCT-1172); the
   // LogIn glyph is the no-icon (or failed-image) fallback.
   const [iconFailed, setIconFailed] = useState(false);
@@ -238,6 +265,28 @@ export function ChatCredentialInteractionCard({
                 {t("credential.signingIn")}
               </p>
             )}
+            {blockedUrl && (
+              <div className="flex flex-col items-start gap-1.5" role="status">
+                <p className="text-ink text-sm">
+                  {t("credential.signInBlocked")}
+                </p>
+                <Button
+                  className="gap-1.5"
+                  onClick={openBlocked}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <ExternalLink className="size-3.5" />
+                  {t("credential.openSignIn")}
+                </Button>
+              </div>
+            )}
+            {signIn.isError && !signIn.isPending && (
+              <p className="text-ink text-sm" role="alert">
+                {t("credential.signInFailed")}
+              </p>
+            )}
           </div>
         ) : missing ? (
           <p className="text-balance text-ink text-sm leading-snug">
@@ -278,11 +327,7 @@ export function ChatCredentialInteractionCard({
               <Button
                 className="gap-1.5"
                 disabled={signIn.isPending}
-                onClick={() => {
-                  signIn.mutate(toolkit, {
-                    onSuccess: () => setSignInStarted(true),
-                  });
-                }}
+                onClick={startSignIn}
                 size="sm"
                 type="button"
               >

@@ -1,4 +1,6 @@
 import type { CustomExecutor } from "./executor-host";
+import { guardedFetch } from "./fetch-guard";
+import { advertisesOAuth } from "./oauth-discovery";
 import { slugify } from "./slug";
 
 /** What a pasted URL turned out to be — the agent's interview pivot. */
@@ -28,6 +30,7 @@ export interface DetectResult {
 export async function detectSource(
   executor: CustomExecutor,
   url: string,
+  opts: { fetchFn?: typeof fetch } = {},
 ): Promise<DetectResult> {
   const detected = await executor.integrations.detect(url).catch(() => []);
   const first = detected[0];
@@ -40,13 +43,19 @@ export async function detectSource(
   }
   try {
     const probe = await executor.mcp.probeEndpoint(url);
+    // The executor's OAuth verdict is a well-known-path guess; an auth wall
+    // it could not explain gets the sign-in flow's own discovery before it
+    // is called an API key (see advertisesOAuth).
+    const requiresOAuth =
+      probe.requiresOAuth ||
+      (probe.requiresAuthentication &&
+        (await advertisesOAuth(url, opts.fetchFn ?? guardedFetch)));
     return {
       kind: "mcp",
       name: probe.serverName ?? probe.name,
       suggestedSlug: slugify(probe.slug),
-      requiresAuthentication:
-        probe.requiresAuthentication || probe.requiresOAuth,
-      ...(probe.requiresOAuth ? { requiresOAuth: true } : {}),
+      requiresAuthentication: probe.requiresAuthentication || requiresOAuth,
+      ...(requiresOAuth ? { requiresOAuth: true } : {}),
       toolCount: probe.toolCount ?? undefined,
     };
   } catch {

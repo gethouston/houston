@@ -26,3 +26,26 @@ export async function discoverCustomOAuth(
 
   return discoverOAuthServerInfo(endpoint, { fetchFn, resourceMetadataUrl });
 }
+
+/**
+ * Whether an auth-walled MCP endpoint signs in with OAuth — judged by the
+ * SAME discovery the sign-in flow runs, so "detect" and "Sign in" can never
+ * disagree. The executor's own probe only guesses well-known paths and reads
+ * a non-404 answer there as "no OAuth": a gateway that answers every unknown
+ * path with 401 (Supabase Edge Functions, verified live with Spark Agency
+ * Hub) made every such server read as "needs an API key", which the agent
+ * then asked for in a loop. A discovery failure is an honest "not OAuth":
+ * the key path stays the fallback.
+ */
+export async function advertisesOAuth(
+  endpoint: string,
+  fetchFn: typeof fetch,
+  headers?: Record<string, string>,
+): Promise<boolean> {
+  try {
+    const info = await discoverCustomOAuth(endpoint, fetchFn, headers);
+    return info.authorizationServerMetadata !== undefined;
+  } catch {
+    return false;
+  }
+}

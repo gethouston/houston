@@ -214,7 +214,8 @@
     "signIn": "Iniciar sesión",
     "signInAgain": "Iniciar sesión de nuevo",
     "oauth": {
-      "openedToast": "Termina de iniciar sesión en {{name}} en tu navegador"
+      "openedToast": "Termina de iniciar sesión en {{name}} en tu navegador",
+      "blockedToast": "Tu navegador bloqueó la ventana de inicio de sesión. Abre {{name}} y pulsa Iniciar sesión para intentarlo de nuevo."
     }
   },
   "curated": {

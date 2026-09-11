@@ -5,9 +5,17 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
 import { analytics } from "../../lib/analytics";
+import { type ReservedTab, reserveBrowserTab } from "../../lib/browser-tab";
 import { markCustomOAuthStarted } from "../../lib/custom-oauth-return";
+import { startCustomOAuth } from "../../lib/custom-oauth-start";
+import { isEngineWakingError } from "../../lib/engine-waking-error";
+import { osIsTauri } from "../../lib/os-bridge";
 import { queryKeys } from "../../lib/query-keys";
-import { tauriIntegrations, tauriSystem } from "../../lib/tauri";
+import {
+  surfaceEngineError,
+  tauriIntegrations,
+  tauriSystem,
+} from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
 import { useCapabilities } from "../use-capabilities";
 
@@ -119,24 +127,57 @@ export function useSubmitCustomCredential(agentId?: string) {
 }
 
 /**
+ * Claim the browser tab for a sign-in NOW, inside the click's user
+ * activation: the authorize URL is minted over an async hop, and Safari,
+ * Firefox, and Chrome's strict popup setting refuse a `window.open` issued
+ * after it (PRODUCT-1625). Desktop opens URLs natively and never reserves.
+ * Call from the click handler and pass the result to `useStartCustomOAuth`.
+ */
+export function claimSignInTab(): ReservedTab | null {
+  return osIsTauri() ? null : reserveBrowserTab();
+}
+
+export interface StartCustomOAuthVars {
+  slug: string;
+  /** From `claimSignInTab()` in the click; omit outside a user gesture. */
+  tab?: ReservedTab | null;
+}
+
+/**
  * Start the browser sign-in for an OAuth custom integration (PRODUCT-1172):
  * mint the authorize URL and open it. The outcome lands on the host's
  * callback and arrives here as a `CustomIntegrationsChanged` event, which
- * flips the row to active — no client-side poll. Failures toast via the
- * `call()` wrapper.
+ * flips the row to active — no client-side poll. A refused browser open is a
+ * RESULT (`opened: false`, the URL kept for a manual click), a waking pod is
+ * retried, and the final failure surfaces once through `surfaceEngineError`
+ * (the per-attempt wrapper stays silent) — see `startCustomOAuth`.
  */
 export function useStartCustomOAuth(agentId?: string) {
   return useMutation({
-    mutationFn: async (slug: string) => {
-      const { authorizeUrl } = await tauriIntegrations.customOAuthStart(
-        slug,
-        agentId,
-      );
-      await tauriSystem.openUrl(authorizeUrl);
-    },
-    onSuccess: (_data, slug) => {
+    mutationFn: ({ slug, tab }: StartCustomOAuthVars) =>
+      startCustomOAuth({
+        mint: () =>
+          tauriIntegrations.customOAuthStart(slug, agentId, { surface: false }),
+        open: (url) => tauriSystem.openUrl(url),
+        tab: tab ?? null,
+        isWaking: isEngineWakingError,
+        sleep: (ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
+      }).catch((err: unknown) => {
+        void surfaceEngineError("custom_integration_oauth_start", err, {
+          integration_slug: slug,
+        });
+        throw err;
+      }),
+    onSuccess: (outcome, { slug }) => {
       // Arm the return gate: the sign-in's `CustomIntegrationsChanged` landing
-      // may pull the app back over the browser (PRODUCT-1298).
+      // may pull the app back over the browser (PRODUCT-1298). A refused open
+      // started nothing in the browser, so it arms nothing.
+      if (!outcome.opened) {
+        analytics.track("integration_connect_tab_blocked", {
+          integration_slug: slug,
+        });
+        return;
+      }
       markCustomOAuthStarted();
       analytics.track("custom_integration_oauth_started", {
         integration_slug: slug,

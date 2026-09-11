@@ -314,7 +314,10 @@
     "signedInLine": "Fiz login em {{name}}.",
     "skippedSignInLine": "Pulei o login em {{name}}.",
     "signInRedirectLine": "Não fiz login em {{name}}. Em vez disso, faça o seguinte: {{text}}",
-    "signedInFollowup": "Já fiz login em {{name}}. Continue, por favor."
+    "signedInFollowup": "Já fiz login em {{name}}. Continue, por favor.",
+    "signInBlocked": "Seu navegador bloqueou a janela de login.",
+    "openSignIn": "Abrir a página de login",
+    "signInFailed": "Não foi possível iniciar o login. Tente de novo em instantes ou pule esta etapa."
   },
   "loadingPhrases": [
     "Houston, temos uma solução!",

@@ -32,6 +32,7 @@ export {
 export { COMPUTE_USAGE_DAYS, useComputeUsage } from "./use-compute-usage";
 export { useAllConversations, useChatHistory } from "./use-conversations";
 export {
+  claimSignInTab,
   useAddCustomIntegration,
   useAgentCustomIntegrations,
   useCustomIntegrationsFor,
