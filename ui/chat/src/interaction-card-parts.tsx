@@ -130,8 +130,10 @@ export function QuestionAnswerRow({
  *  until hover/selected, when it fills a soft grey and the badge crossfades
  *  into a trailing arrow — the affordance that a click answers and advances —
  *  in the same right slot, so nothing shifts. Selection is carried by that same
- *  fill, not a border. The option's wire `description` is intentionally NOT
- *  rendered: the label + chip say enough. */
+ *  fill, not a border. A label longer than the row WRAPS onto more lines —
+ *  never an ellipsis: the user is choosing between these sentences, so every
+ *  word must be readable at any panel width (PRODUCT-1769). The option's wire
+ *  `description` is intentionally NOT rendered: the label + chip say enough. */
 export function OptionRow({
   option,
   selected,
@@ -163,8 +165,8 @@ export function OptionRow({
       role="radio"
       type="button"
     >
-      <span className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="min-w-0 truncate text-ink text-sm">
+      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="min-w-0 break-words text-ink text-sm leading-snug">
           {option.label}
         </span>
         {option.recommended && (

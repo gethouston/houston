@@ -116,6 +116,70 @@ test("keeps a long question's footer reachable in a short viewport", async ({
 });
 
 /**
+ * PRODUCT-1769: an option label longer than the card WRAPS onto more lines,
+ * fully readable, and never pushes the row's number badge past the card's
+ * edge. The body scrolls inside a Radix viewport whose content wrapper is
+ * `display: table` (sized to the widest row), which used to defeat the row's
+ * `w-full` so the badge sat beyond the viewport's hidden horizontal overflow.
+ * Asserted geometrically — Playwright's visibility check ignores overflow
+ * clipping.
+ */
+test("a long option label wraps and keeps its number badge inside the card", async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 1100, height: 800 });
+  const longLabel =
+    "Look up the case number they send me, check its status in every registry, and reply with the full current state";
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q-long-label",
+            question: "What should I do when they call the webhook?",
+            options: [
+              { id: "lookup", label: longLabel, recommended: true },
+              { id: "notify", label: "Email me whatever they send" },
+            ],
+          },
+        ],
+      },
+    },
+  });
+  await startMission(page, "watch the court registry");
+
+  const row = page.getByRole("radio", {
+    name: new RegExp(longLabel.slice(0, 20)),
+  });
+  await expect(row).toBeVisible({ timeout: 15_000 });
+  const card = page.locator("[data-slot=collapsible]").filter({ has: row });
+  const badge = row.locator("span", { hasText: /^1$/ }).last();
+  const [cardBox, rowBox, badgeBox] = await Promise.all([
+    card.boundingBox(),
+    row.boundingBox(),
+    badge.boundingBox(),
+  ]);
+  if (!cardBox || !rowBox || !badgeBox)
+    throw new Error("card geometry missing");
+  const cardRight = cardBox.x + cardBox.width;
+  expect(rowBox.x + rowBox.width).toBeLessThanOrEqual(cardRight);
+  expect(badgeBox.x + badgeBox.width).toBeLessThanOrEqual(cardRight);
+  // The label wrapped (the row is taller than its single-line sibling) and
+  // every word stays readable: no ellipsis anywhere in the row.
+  const shortRow = page.getByRole("radio", { name: /Email me whatever/ });
+  const shortBox = await shortRow.boundingBox();
+  if (!shortBox) throw new Error("short row geometry missing");
+  expect(rowBox.height).toBeGreaterThan(shortBox.height * 1.5);
+  await expect(row.getByText(longLabel)).not.toHaveCSS(
+    "text-overflow",
+    "ellipsis",
+  );
+  await expect(page.getByText("Recommended")).toBeVisible();
+});
+
+/**
  * The three-question stepper: only ONE step shows at a time with a
  * compact "N of M" pager. Answer step 1 by option, step 2 by free text, step 3
  * by option; the completion composes ONE structured user message carrying all
