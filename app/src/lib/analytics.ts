@@ -30,6 +30,16 @@ const GOAL_PERSON_PROP_MAX = 500;
 // users a tracking surface.
 const SESSION_ID = crypto.randomUUID();
 
+/**
+ * The launch's session id, for the OTHER pipe: the first-party product
+ * analytics ingest stamps the same value on its own events
+ * (`lib/product-analytics/`), so one sit-down reads as one session on both
+ * sides without a join table.
+ */
+export function analyticsSessionId(): string {
+  return SESSION_ID;
+}
+
 export type AnalyticsEventName =
   // Lifecycle / acquisition
   | "app_active"
@@ -230,7 +240,7 @@ export type AnalyticsEventName =
   // (which journey) + `duration_ms`.
   | "perf_span";
 
-type AnalyticsProperty =
+export type AnalyticsProperty =
   | "provider"
   | "model"
   | "config_id"

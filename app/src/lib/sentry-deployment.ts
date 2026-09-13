@@ -1,6 +1,10 @@
 // Explicit `.ts` extension: this module is exercised by the node:test runner
 // (tests/sentry-deployment.test.ts), which resolves imports without a bundler.
-import { isLoopbackHostUrl, type ResolvedEngine } from "./engine-mode.ts";
+import {
+  isLoopbackHostUrl,
+  type ResolvedEngine,
+  resolveEngine,
+} from "./engine-mode.ts";
 
 /**
  * Which Houston deployment this CLIENT belongs to — the same vocabulary the
@@ -55,4 +59,28 @@ export function resolveClientDeployment(input: {
     default:
       return "desktop";
   }
+}
+
+/**
+ * This build's deployment, from the live build flags plus the web build's
+ * window override — the one impure entry point, so the resolver above stays
+ * pure for tests.
+ *
+ * It is the only honest answer to "is this client part of the managed cloud?":
+ * the desktop cloud build says so through its baked gateway URL, while the
+ * cloud WEB app bakes no gateway at all (it injects `window.__HOUSTON_ENGINE__`
+ * from `VITE_CONTROL_PLANE_URL` and announces itself on the override), so a
+ * check against the engine flags alone would answer "no" for every browser user
+ * of the managed cloud.
+ */
+export function currentClientDeployment(): ClientDeployment {
+  return resolveClientDeployment({
+    // Same cast engine.ts uses: the generated ImportMetaEnv type doesn't
+    // structurally match the flags EngineModeEnv declares.
+    engine: resolveEngine(
+      (import.meta.env ?? {}) as unknown as Parameters<typeof resolveEngine>[0],
+    ),
+    override:
+      typeof window !== "undefined" ? window.__HOUSTON_DEPLOYMENT__ : undefined,
+  });
 }

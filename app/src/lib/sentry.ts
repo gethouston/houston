@@ -1,6 +1,5 @@
 import * as Sentry from "@sentry/browser";
-import { resolveEngine } from "./engine-mode";
-import { resolveClientDeployment } from "./sentry-deployment";
+import { currentClientDeployment } from "./sentry-deployment";
 import { sentrySendInDevEnabled } from "./sentry-dev";
 import {
   eventIdFromEnvelope,
@@ -48,24 +47,6 @@ function resolveEnvironment(): string {
     typeof window !== "undefined" ? window.__HOUSTON_DEPLOY_ENV__ : undefined;
   if (injected) return injected;
   return import.meta.env.DEV ? "development" : "production";
-}
-
-/**
- * The `deployment` tag — which Houston deployment this client is part of, in
- * the SAME vocabulary the engine uses, so one filter spans a deployment's whole
- * stack (see ./sentry-deployment). Resolved from the pure build-time engine
- * target; the web build overrides it on `window.__HOUSTON_DEPLOYMENT__`.
- */
-function resolveDeployment(): string {
-  return resolveClientDeployment({
-    // Same cast engine.ts uses: the generated ImportMetaEnv type doesn't
-    // structurally match the flags EngineModeEnv declares.
-    engine: resolveEngine(
-      (import.meta.env ?? {}) as unknown as Parameters<typeof resolveEngine>[0],
-    ),
-    override:
-      typeof window !== "undefined" ? window.__HOUSTON_DEPLOYMENT__ : undefined,
-  });
 }
 
 // Per-event delivery outcome recorded by the confirming transport (below) and
@@ -155,8 +136,10 @@ export function initSentry(): void {
     replaysSessionSampleRate: 0,
     replaysOnErrorSampleRate: 0,
   });
-  // Stamp the deployment AFTER init so it rides every subsequent event.
-  Sentry.setTag("deployment", resolveDeployment());
+  // Stamp the deployment AFTER init so it rides every subsequent event: which
+  // Houston deployment this client is part of, in the SAME vocabulary the
+  // engine uses, so one filter spans a deployment's whole stack.
+  Sentry.setTag("deployment", currentClientDeployment());
 }
 
 /**

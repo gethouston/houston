@@ -3,6 +3,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
+import { useProductAnalyticsSink } from "./hooks/use-product-analytics-sink";
 import { useUsageAccrual } from "./hooks/use-usage-accrual";
 import { IdentityKeyedApp } from "./identity-keyed-app";
 import { queryClient } from "./lib/query-client";
@@ -129,6 +130,9 @@ function StartupEffects({ children }: { children: ReactNode }) {
   // outlive <App/> (remounted on every identity change) and start before the
   // gates, so nothing the user does goes unpaid. Mirrored in the web tree.
   useUsageAccrual();
+  // The first-party product-analytics pipe listens on the same bus, for the
+  // same reason and with the same life span. Mirrored in the web tree.
+  useProductAnalyticsSink();
   useEffect(() => {
     // Wait for the engine handshake before touching engine-backed preferences.
     // `install_id`, the first-install vintage, the daily-active date, and the

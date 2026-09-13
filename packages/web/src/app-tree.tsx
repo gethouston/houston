@@ -21,6 +21,7 @@ import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
 import { useLocalePreference } from "@houston/app/hooks/use-locale-preference";
+import { useProductAnalyticsSink } from "@houston/app/hooks/use-product-analytics-sink";
 import { useSession } from "@houston/app/hooks/use-session";
 import { useUsageAccrual } from "@houston/app/hooks/use-usage-accrual";
 import { IdentityKeyedApp } from "@houston/app/identity-keyed-app";
@@ -187,6 +188,9 @@ export default function AppTree() {
   // `StartupEffects` in app/src/main.tsx. Above every gate and outside
   // <App/> (which remounts per identity), so one instance pays each event once.
   useUsageAccrual();
+  // The first-party product-analytics pipe listens on the same bus, for the
+  // same reason and with the same life span. Mirrors app/src/main.tsx.
+  useProductAnalyticsSink();
   // Cloud web build (Firebase identity baked in): sign-in is the FIRST screen.
   // The first-run language picker + agreement are desktop/self-host concepts —
   // pre-auth they can't even persist (the gateway 401s preference writes, which
