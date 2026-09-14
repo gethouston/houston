@@ -44,6 +44,7 @@ function build(overrides: Partial<UsageSamplerOptions> = {}) {
 
 interface ReportBody {
   bootId: string;
+  busy: boolean;
   days: { day: string; activeMs: number; turns: number; routineRuns: number }[];
 }
 
@@ -157,6 +158,39 @@ describe("UsageSampler", () => {
     // The idle tick's own stretch is never credited (the turn ended somewhere
     // inside it — bounded undercount): 2 busy ticks x 5s.
     expect(lastDay(state).activeMs).toBe(10_000);
+  });
+
+  it("stamps the current busy state on every report so the label follows the turn", async () => {
+    const { sampler, state } = build();
+    await sampler.tick();
+    state.turnBusy = true;
+    state.now += 5_000;
+    await sampler.tick(); // rising edge
+    expect(lastBody(state).busy).toBe(true);
+    state.now += 5_000;
+    await sampler.flush(); // periodic flush while the turn runs
+    expect(lastBody(state).busy).toBe(true);
+    state.turnBusy = false;
+    state.now += 5_000;
+    await sampler.tick(); // falling edge
+    expect(lastBody(state).busy).toBe(false);
+  });
+
+  it("reports a busy edge held back by the floor on the next sample", async () => {
+    const { sampler, state } = build();
+    await sampler.tick();
+    state.turnBusy = true;
+    state.now += 5_000;
+    await sampler.tick(); // rising edge reports at once
+    state.turnBusy = false;
+    state.now += 2_000;
+    await sampler.tick(); // falling edge inside the floor: held
+    expect(state.requests).toHaveLength(1);
+    expect(lastBody(state).busy).toBe(true);
+    state.now += 3_000;
+    await sampler.tick(); // floor elapsed: the held edge reports
+    expect(state.requests).toHaveLength(2);
+    expect(lastBody(state).busy).toBe(false);
   });
 
   it("keeps the accumulator through rejected and failed reports, logging each failure once", async () => {
