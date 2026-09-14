@@ -13,6 +13,12 @@ import type { ChannelCtx } from "../ports";
  * at-least-once flushing exact: a lost response self-heals on the next flush
  * and a crash loses at most one flush interval.
  *
+ * Every report also carries the pod's CURRENT busy state (`busy`): the
+ * control plane labels a busy pod so a PodDisruptionBudget shields it from
+ * node drains (PRODUCT-1782). That is why a busy edge always reports, even
+ * when the floor delays it to the next sample: the label must follow the
+ * turn, not the accounting.
+ *
  * Constructed ONLY on managed cloud pods (the HOUSTON_CREDENTIALS_URL env
  * quadruple); desktop and self-host never build one. Reporting is accounting,
  * never load-bearing: every failure is logged and swallowed — this daemon has
@@ -61,6 +67,8 @@ export class UsageSampler {
   private lastTickAt = 0;
   private lastBusy = false;
   private lastEdgeFlushAt = 0;
+  /** A busy edge the flush floor held back; the next sample reports it. */
+  private edgePending = false;
   private lastFailure: string | null = null;
   private timers: ReturnType<typeof setInterval>[] = [];
   private stopped = false;
@@ -130,14 +138,19 @@ export class UsageSampler {
     // rapid-fire turns from turning every edge into a request.
     if (busy !== this.lastBusy) {
       this.lastBusy = busy;
-      if (now - this.lastEdgeFlushAt >= this.sampleMs) {
-        this.lastEdgeFlushAt = now;
-        await this.flush();
-      }
+      this.edgePending = true;
+    }
+    if (this.edgePending && now - this.lastEdgeFlushAt >= this.sampleMs) {
+      this.lastEdgeFlushAt = now;
+      this.edgePending = false;
+      await this.flush();
     }
   }
 
-  /** Report today's (± yesterday's) cumulative totals. Never throws. */
+  /**
+   * Report today's (± yesterday's) cumulative totals plus the current busy
+   * state. Never throws.
+   */
   async flush(): Promise<void> {
     const today = dayOf(this.now());
     const yesterday = dayOf(this.now() - DAY_MS);
@@ -163,7 +176,11 @@ export class UsageSampler {
           Authorization: `Bearer ${podToken}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify({ bootId: this.bootId, days: entries }),
+        body: JSON.stringify({
+          bootId: this.bootId,
+          busy: this.lastBusy,
+          days: entries,
+        }),
       });
       if (!res.ok) {
         // A 404 is an older gateway that doesn't serve the ingest yet
