@@ -3,7 +3,7 @@ import {
   sharedRevocationTombstones,
 } from "../credentials/revocation-tombstones";
 import { credentialScopeKey } from "../credentials/scope-key";
-import { LauncherClosedError } from "../ports";
+import { AgentRenamingError, LauncherClosedError } from "../ports";
 
 const HEAL_COOLDOWN_MS = 5 * 60_000;
 
@@ -77,6 +77,13 @@ function isNetworkFailure(error: unknown): boolean {
  * runtime logged one Sentry error per provider — the HOUSTON-APP-5AD bucket
  * (PRODUCT-1687). The first failure stays a loud error naming the cause; the
  * rest of the incident is a warn breadcrumb.
+ *
+ * A rename is the drain's small sibling: the launcher sleeps the runtime and
+ * latches its id while the directory moves, and the dying runtime's serve
+ * sync (every provider at once) misses into this healer with the OLD id. The
+ * launcher's `AgentRenamingError` rides to the route's 503 the same way, with
+ * no cooldown spent: the respawned runtime under the new id heals on its
+ * first miss (PRODUCT-1804: 29 Sentry errors for one rename).
  */
 export class CredentialServeHealer {
   private readonly inFlight = new Map<string, Promise<boolean>>();
@@ -126,6 +133,13 @@ export class CredentialServeHealer {
         return healed;
       })
       .catch((error) => {
+        if (error instanceof AgentRenamingError) {
+          this.attemptedAt.delete(key);
+          console.info(
+            `[sandbox/credential] heal deferred provider=${args.provider} agent=${args.agentId}: the agent is being renamed`,
+          );
+          throw error;
+        }
         // The launcher refused (already latched) or the runtime died under the
         // export fetch once the drain began: the same shutdown either way, and
         // never a fault worth a Sentry error.
