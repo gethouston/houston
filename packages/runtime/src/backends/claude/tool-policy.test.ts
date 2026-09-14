@@ -238,6 +238,37 @@ test("Bash: a cwd-bound command is allowed, an absolute/home escape denied", asy
   ).toBe("deny");
 });
 
+test("Bash: a quoted or escaped workspace path with a space is allowed, a quoted escape still denied", async () => {
+  // Most agents have a space in their name, so their workspace path does too.
+  // Splitting the command on whitespace cut `.../neqw copia` into an absolute
+  // `.../neqw` that failed containment (PRODUCT-1809).
+  const root = join(workspace(), "neqw copia");
+  mkdirSync(root);
+  const can = makeCanUseTool(root);
+  for (const command of [
+    `cd "${root}" && ls`,
+    `ls '${root}'`,
+    `ls ${root.replace(" ", "\\ ")}`,
+    `cat "${root}/notes.txt" > "${root}/copy.txt"`,
+  ]) {
+    expect((await decide(can, "Bash", { command })).behavior, command).toBe(
+      "allow",
+    );
+  }
+  // Quoting opens nothing: a quoted absolute path outside is one token, denied.
+  for (const command of [
+    'cat "/etc/passwd"',
+    "cat '/etc/passwd'",
+    "cat /etc/pass\\wd",
+    `cat "${root}/../../etc/passwd"`,
+    `cat "~/secret"`,
+  ]) {
+    expect((await decide(can, "Bash", { command })).behavior, command).toBe(
+      "deny",
+    );
+  }
+});
+
 test("an unknown tool with no path targets is allowed", async () => {
   const can = makeCanUseTool(workspace());
   expect((await decide(can, "SomethingElse", { foo: "bar" })).behavior).toBe(
