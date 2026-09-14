@@ -11,11 +11,31 @@ export const DEFAULT_INTERVAL_MS = 300_000;
 /** Leave headroom in the pod's 10 GiB emptyDir for excluded scratch data. */
 export const DEFAULT_MAX_HYDRATE_BYTES = 9 * 1024 * 1024 * 1024;
 
+/**
+ * What never rides the store. Credentials and the local db, plus every
+ * rebuildable toolchain and cache an agent installs inside its workspace
+ * (PRODUCT-1784): a Remotion render tree carried ~1 GiB of node_modules and a
+ * Chrome download that the prompt already tells the agent to recreate from
+ * its setup script. Shipping them cost minutes per sync and hydrate for bytes
+ * a fresh pod rebuilds in one command. Excluded on hydrate too, so a replaced
+ * pod starts from the setup script rather than a half-synced install.
+ */
 export const STORE_SYNC_EXCLUDES = [
   "credentials.json",
   "claude-login/.credentials.json",
   "db/",
   "shared-mirror/",
+  // Language toolchains.
+  "**/node_modules/",
+  "**/.venv/",
+  "**/venv/",
+  "**/__pycache__/",
+  // Browser downloads and profile caches (Puppeteer, Playwright, Chromium).
+  "**/.cache/",
+  "**/ms-playwright/",
+  "**/Cache/",
+  "**/Code Cache/",
+  "**/GPUCache/",
 ];
 
 export interface StoreSyncOptions {

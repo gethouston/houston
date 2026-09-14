@@ -139,6 +139,24 @@ test("exclusions support basenames, subtrees, temp files, and runtime auth", () 
   expect(excluded("claude-login/projects/cache.json", excludes)).toBe(false);
 });
 
+test("`**/dir/` excludes a directory at any depth, never a file of that name", () => {
+  const excludes = ["**/node_modules/", "**/.venv/", "**/Code Cache/"];
+  expect(
+    excluded("workspaces/W/A/render/node_modules/react/index.js", excludes),
+  ).toBe(true);
+  expect(excluded("node_modules/a.js", excludes)).toBe(true);
+  expect(excluded("workspaces/W/A/.venv/bin/python", excludes)).toBe(true);
+  expect(
+    excluded("workspaces/W/A/profile/Default/Code Cache/js/0", excludes),
+  ).toBe(true);
+  // A FILE called node_modules is content, not a toolchain.
+  expect(excluded("workspaces/W/A/notes/node_modules", excludes)).toBe(false);
+  expect(excluded("workspaces/W/A/node_modules_backup/x", excludes)).toBe(
+    false,
+  );
+  expect(excluded("workspaces/W/A/src/index.js", excludes)).toBe(false);
+});
+
 /**
  * The store-sync daemon's excludes, including the root-relative `auth-users/`
  * entry it used to carry: the per-member credential directory must stay
