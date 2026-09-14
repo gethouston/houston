@@ -15,6 +15,7 @@ import {
   filterPackage,
   type PortablePackage,
   packageSeed,
+  remintRoutineIds,
   scanContent,
   unpackAgent,
 } from "@houston/domain";
@@ -168,7 +169,12 @@ export async function install(
       "The uploaded agent file is no longer available — pick the file again.",
     );
   }
-  const pkg = filterPackage(parked, toWireSelection(req.selection));
+  // The installed agent is a NEW identity: its routines never keep the
+  // package's ids (see remintRoutineIds).
+  const { pkg, routineIds } = remintRoutineIds(
+    filterPackage(parked, toWireSelection(req.selection)),
+    () => crypto.randomUUID(),
+  );
   const agent = await createAgent(
     cfg,
     req.agentName,
@@ -185,6 +191,7 @@ export async function install(
     agentName: agent.name,
     workspaceName: req.workspaceName,
     requiredIntegrations: [],
+    routineIds,
     agent,
   };
 }

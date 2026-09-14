@@ -112,6 +112,7 @@ export function useCopyAgent(): (args: {
               installed.agentPath,
               undefined,
               (err) => isEngineWakingError(err) || isAgentWarmingError(err),
+              installed.routineIds,
             );
             // A rejected file or a board the copy already had (a task was
             // created in it before the chats arrived) is a partial copy, and

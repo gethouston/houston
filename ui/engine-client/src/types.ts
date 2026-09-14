@@ -2117,6 +2117,11 @@ export interface PortableInstalledAgent {
   agentName: string;
   workspaceName: string;
   requiredIntegrations: string[];
+  /** Source routine id → the installed routine's id. An install never reuses
+   *  the package's routine ids (the hosted trigger tables key on them
+   *  globally); a copy that also carries the source's chats follows this map
+   *  so `routine-<id>` conversations stay linked (PRODUCT-1808). */
+  routineIds: Record<string, string>;
   /** The created agent record, so the wizard can reveal it optimistically
    *  (same contract as agent create) instead of re-listing behind a warming
    *  pod (HOU-710). */

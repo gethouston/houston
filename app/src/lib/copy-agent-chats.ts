@@ -110,6 +110,8 @@ export function chatCopyComplete(outcome: ChatCopyOutcome): boolean {
  * batches, then the board. Each archive is rewritten with fresh task and
  * conversation ids before it lands (see `copy-chat-remap.ts`); the map is
  * planned once so the board's rows match the transcripts that went before.
+ * Routine chats follow `routineIds`, the install's source → copy routine id
+ * map (the copy's routines are re-minted, so `routine-<id>` keys move too).
  * Nothing is overwritten: the import route skips a file the target already
  * has, which the outcome reports rather than hides.
  */
@@ -120,6 +122,7 @@ export async function copyAgentChats(
   mint: () => string = () => crypto.randomUUID(),
   /** Refusals to wait out (the copy's engine still waking); none by default. */
   shouldRetry: (err: unknown) => boolean = () => false,
+  routineIds: Readonly<Record<string, string>> = {},
 ): Promise<ChatCopyOutcome> {
   const retry = { attempts: 12, delayMs: 10_000 };
   const conversations = await engine.listConversations(source);
@@ -129,7 +132,7 @@ export async function copyAgentChats(
     boardWritten: false,
     rejected: [],
   };
-  const map = planChatIdMap(conversations, mint);
+  const map = planChatIdMap(conversations, mint, routineIds);
   for (const batch of chatCopyBatches(conversations)) {
     const zip = await engine.migrationExport(source, batch);
     const remapped = remapChatArchive(new Uint8Array(zip), map, mint);
