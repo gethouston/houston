@@ -6,8 +6,11 @@ import {
   runWithActingContext,
 } from "../session/acting-context";
 import { anyTurnRunning } from "../session/bus";
+import { runTurn } from "../session/chat";
 import { isDraining } from "../session/drain";
+import { resumeInterruptedTurns } from "../session/resume-interrupted-turns";
 import { settleInterruptedTurns } from "../session/settle-interrupted-turns";
+import type { ResumeRequest } from "../session/turn-resume-info";
 import { handleAnonymizeRoute } from "./anonymize-route";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
@@ -81,8 +84,9 @@ export function startServer() {
   // client reconnecting the instant this runtime is back settles from it.
   // Never boot-fatal — a settle that throws must not turn one lost turn into
   // an engine that will not start (it logs; the marker stays for next boot).
+  let resumable: ResumeRequest[] = [];
   try {
-    settleInterruptedTurns({ dataDir: config.dataDir });
+    resumable = settleInterruptedTurns({ dataDir: config.dataDir }).resumable;
   } catch (error) {
     console.error("[turn] settling interrupted turns failed:", error);
   }
@@ -101,6 +105,12 @@ export function startServer() {
       url: `http://${config.host}:${config.port}`,
       workspace: config.workspaceDir,
     });
+    // The automatic resume of every turn the settle judged resumable
+    // (PRODUCT-1785), started only once the port is open: a resumed turn is a
+    // normal turn — it streams to whoever is watching, and a client that
+    // reconnects must be able to reach this runtime while it runs.
+    // Fire-and-forget; `resumeInterruptedTurns` never rejects.
+    void resumeInterruptedTurns(resumable, { runTurn });
   });
   return server;
 }

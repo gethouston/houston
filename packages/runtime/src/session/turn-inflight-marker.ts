@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
+import { parseTurnResumeInfo, type TurnResumeInfo } from "./turn-resume-info";
 
 /**
  * The "turn in flight" marker: one small file per conversation, written the
@@ -42,6 +43,18 @@ export interface InflightTurnMarker {
    * up is a kill the fence should have prevented — the report names it.
    */
   fenced: boolean;
+  /**
+   * What the boot settle needs to run this turn AGAIN by itself
+   * (turn-resume-info.ts). Absent on a marker written by an older engine —
+   * that turn settles as before and is never resumed.
+   */
+  resume?: TurnResumeInfo;
+  /**
+   * Set when THIS turn is itself the automatic resume of an interrupted turn,
+   * naming the turn it resumes. The one loop stop: a resume that dies is
+   * settled, reported and left alone.
+   */
+  resumeOf?: string;
 }
 
 export const INFLIGHT_DIR = join("turns", "inflight");
@@ -131,12 +144,17 @@ function parseMarker(raw: string | null): InflightTurnMarker | null {
     typeof m.startedAt !== "number"
   )
     return null;
+  // A resume payload we cannot read costs the turn its resume, never its
+  // settle: the marker is still the one trace of a turn the process died on.
+  const resume = parseTurnResumeInfo(m.resume);
   return {
     conversationId: m.conversationId,
     turnId: m.turnId,
     startedAt: m.startedAt,
     ...(typeof m.tool === "string" ? { tool: m.tool } : {}),
     fenced: m.fenced === true,
+    ...(resume ? { resume } : {}),
+    ...(typeof m.resumeOf === "string" ? { resumeOf: m.resumeOf } : {}),
   };
 }
 

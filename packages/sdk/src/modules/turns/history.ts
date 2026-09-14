@@ -13,7 +13,11 @@
  */
 
 import type { ChatMessage } from "@houston/runtime-client";
-import { ENGINE_RESTART_MESSAGE, STOPPED_BY_USER } from "./turn-errors";
+import {
+  ENGINE_RESTART_MESSAGE,
+  ENGINE_RESUMED_MESSAGE,
+  STOPPED_BY_USER,
+} from "./turn-errors";
 import type { FeedAuthor, FeedMention } from "./vm-output";
 
 /**
@@ -196,7 +200,9 @@ export function historyToFeed(
     if (m.interrupted) {
       out.push({
         feed_type: "system_message",
-        data: ENGINE_RESTART_MESSAGE,
+        data: m.interrupted.resumed
+          ? ENGINE_RESUMED_MESSAGE
+          : ENGINE_RESTART_MESSAGE,
         ts,
         ...turn,
       });

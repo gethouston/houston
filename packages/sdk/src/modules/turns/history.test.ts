@@ -299,6 +299,25 @@ describe("historyToFeed", () => {
     });
   });
 
+  it("replays the RESUMED line for an interruption the engine is already picking up", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "export it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        interrupted: { cause: "engine_restart", resumed: true },
+      },
+    ]);
+    expect(feed).toContainEqual({
+      feed_type: "system_message",
+      data: "Your agent was interrupted by a restart and is picking up where it left off.",
+      ts: 2,
+      turnId: "t-1",
+    });
+  });
+
   it("replays the engine-restart line for a persisted interrupted turn", () => {
     const feed = historyToFeed([
       { role: "user", content: "export it", ts: 1, turnId: "t-1" },
