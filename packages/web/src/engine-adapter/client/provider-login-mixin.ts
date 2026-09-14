@@ -1,8 +1,9 @@
-import { EngineError } from "@houston/runtime-client";
+import { EngineError, type HoustonEngineClient } from "@houston/runtime-client";
 import { emitEvent } from "../bus";
 import * as controlPlane from "../control-plane";
 import { toNewProvider, toOldProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
+import { withProviderAgentRetarget } from "./provider-agent-gone";
 import { surfaceTypedLoginFailure } from "./provider-login-failure";
 import {
   loginKey,
@@ -87,15 +88,22 @@ export function ProviderLoginMixin<TBase extends BaseCtor>(Base: TBase) {
       // Refuse before the space's agent list has settled (HOU-979): the only
       // other candidate is the raw pref, which after a switch names the PREVIOUS
       // space's agent — the login would run in that space's pod.
+      // The target can be an agent the gateway no longer has (a stale known
+      // list after a rename/delete, HOUSTON-APP-52F): a `404 agent not found`
+      // forgets it and the launch runs once more at the re-resolved runtime.
       requireProviderRouting(this.ctx);
-      const agentId = this.ctx.providerAgentId();
+      const cp = this.ctx.cp;
       const old = toOldProvider(pid);
-      const engine = agentId
-        ? controlPlane.runtimeClientFor(this.ctx.cp, agentId)
-        : controlPlane.setupRuntimeClientFor(this.ctx.cp);
-      let info: Awaited<ReturnType<typeof engine.startLogin>>;
+      let agentId: string | null = null;
+      let info: Awaited<ReturnType<HoustonEngineClient["startLogin"]>>;
       try {
-        info = await engine.startLogin(pid, deviceAuth, enterpriseDomain);
+        info = await withProviderAgentRetarget(this.ctx, (target) => {
+          agentId = target;
+          const engine = target
+            ? controlPlane.runtimeClientFor(cp, target)
+            : controlPlane.setupRuntimeClientFor(cp);
+          return engine.startLogin(pid, deviceAuth, enterpriseDomain);
+        });
       } catch (err) {
         if (surfaceTypedLoginFailure(old, err)) return;
         throw err;
