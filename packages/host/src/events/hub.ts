@@ -1,5 +1,6 @@
 import type { HoustonEvent } from "@houston/protocol";
 import type { UserId } from "../domain/types";
+import { noteFilesChanged } from "../turn/files-missing";
 
 /**
  * The publish/subscribe subset of TurnBus. The EventHub depends only on this,
@@ -35,6 +36,7 @@ export class BusEventHub implements EventHub {
   constructor(private readonly bus: PubSub) {}
 
   emit(userId: UserId, event: HoustonEvent): void {
+    noteFilesChanged(event);
     // Fire-and-forget: the user-initiated action is the MUTATION, which already
     // succeeded and returned 2xx. The event is a reactivity nicety — if publish
     // fails the UI still refetches on focus, so we log (no UI thread to toast on,

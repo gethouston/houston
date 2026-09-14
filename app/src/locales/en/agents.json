@@ -141,6 +141,10 @@
     "uploadFolder": "Upload folder",
     "folderDropFailed": "We could not read that folder. Try the Upload button instead.",
     "downloadAll": "Download all",
+    "gone": {
+      "title": "That file is not there anymore",
+      "description": "Your assistant may have renamed, moved, or removed it. Check its Files tab for the latest version."
+    },
     "uploadingBusy": "Uploading…",
     "searchPlaceholder": "Search files",
     "searchClear": "Clear search",
