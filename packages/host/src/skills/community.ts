@@ -1,5 +1,6 @@
 import type { CommunitySkill } from "@houston/protocol";
 import { fetchCommunitySearch } from "./community-fetch";
+import { normalizeSource } from "./github-parse";
 import { type GoneRegistry, goneRegistry } from "./gone-registry";
 
 /**
@@ -10,7 +11,10 @@ import { type GoneRegistry, goneRegistry } from "./gone-registry";
  * marketplace degrades to slightly-old results instead of an error wall.
  * Results whose repo or skill the install lookup has PROVED gone (the gone
  * registry, PRODUCT-1729) are dropped on the way out: skills.sh keeps indexing
- * deleted repos and renamed skills for months.
+ * deleted repos and renamed skills for months. So are results hosted outside
+ * GitHub (PRODUCT-1810): skills.sh indexes third-party registries such as
+ * `skills.volces.com`, but install and preview only know how to read a GitHub
+ * `owner/repo`, so listing such a card can only end in a 400 on install.
  */
 
 const SEARCH_ENDPOINT = "https://skills.sh/api/search";
@@ -94,9 +98,15 @@ export class CommunityDirectory {
     this.gone = opts.gone ?? goneRegistry;
   }
 
-  /** Drop entries the install lookup has proved gone since they were cached. */
+  /** Drop entries install cannot fulfil: sources that are not a GitHub
+   *  `owner/repo`, and repos/skills the install lookup has proved gone since
+   *  they were cached. */
   private alive(skills: CommunitySkill[]): CommunitySkill[] {
-    return skills.filter((s) => !this.gone.isGone(s.source, s.skillId));
+    return skills.filter(
+      (s) =>
+        normalizeSource(s.source) !== null &&
+        !this.gone.isGone(s.source, s.skillId),
+    );
   }
 
   /** Search with shared cache/spacing and optional request-scoped I/O. */
