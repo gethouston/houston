@@ -3,29 +3,38 @@
 // updater's reporting paths need. Dependency-free so it is node-testable
 // directly (app/tests/update-download-failure.test.ts).
 
+/** `network` is the device's link; `upstream` is the release host answering
+ *  a transient status (a 5xx / 429) for the whole retry budget (PRODUCT-1811).
+ *  Both are expected states. `http` is any other status, final on first
+ *  sight. */
 export type UpdateDownloadFailureKind =
   | "network"
+  | "upstream"
   | "http"
   | "signature"
   | "other";
 
 /** What the shell reports when a release download gives up: the class, the
- *  last attempt's message, and where the stream stopped. */
+ *  last attempt's message, where the stream stopped, and the status the
+ *  release host answered (for the status-shaped classes). */
 export interface UpdateDownloadFailure {
   kind: UpdateDownloadFailureKind;
   message: string;
   received: number;
   total: number | null;
   attempts: number;
+  status?: number | null;
 }
 
 /** The failure as an `Error`, so the reporting paths carry the byte position
- *  in the message and the class on the instance. */
+ *  in the message and the class on the instance. `status` is read by
+ *  `quietErrorDetails`, so a quiet event is tagged with it. */
 export class UpdateDownloadError extends Error {
   readonly kind: UpdateDownloadFailureKind;
   readonly received: number;
   readonly total: number | null;
   readonly attempts: number;
+  readonly status: number | null;
 
   constructor(failure: UpdateDownloadFailure) {
     super(describeDownloadFailure(failure));
@@ -34,11 +43,13 @@ export class UpdateDownloadError extends Error {
     this.received = failure.received;
     this.total = failure.total;
     this.attempts = failure.attempts;
+    this.status = failure.status ?? null;
   }
 }
 
 const KINDS: ReadonlySet<string> = new Set([
   "network",
+  "upstream",
   "http",
   "signature",
   "other",
@@ -61,6 +72,7 @@ export function toUpdateDownloadError(err: unknown): UpdateDownloadError {
         received: typeof raw.received === "number" ? raw.received : 0,
         total: typeof raw.total === "number" ? raw.total : null,
         attempts: typeof raw.attempts === "number" ? raw.attempts : 0,
+        status: typeof raw.status === "number" ? raw.status : null,
       });
     }
   }

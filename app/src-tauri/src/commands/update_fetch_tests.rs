@@ -182,8 +182,51 @@ async fn an_http_status_is_final_on_first_sight() {
     let (result, _, ranges) = run(vec![Step::Status(404)]).await;
     let failure = result.unwrap_err();
     assert_eq!(failure.kind, DownloadFailureKind::Http);
+    assert_eq!(failure.status, Some(404));
     assert!(failure.message.contains("404"), "{}", failure.message);
     assert_eq!(ranges.len(), 1, "no retry for a status answer");
+}
+
+// PRODUCT-1811: a 504 from the release host mid-roll is retried like a
+// dropped stream, and a resume after one keeps the bytes already received.
+#[tokio::test(start_paused = true)]
+async fn a_transient_status_is_retried_and_the_resume_keeps_its_bytes() {
+    let steps = vec![
+        Step::Serve { cut: Some(4_000) },
+        Step::Status(504),
+        Step::Status(503),
+        Step::Serve { cut: None },
+    ];
+    let (result, events, ranges) = run(steps).await;
+    assert_eq!(result.unwrap(), body());
+    assert_eq!(
+        ranges,
+        vec![
+            None,
+            Some("4000".into()),
+            Some("4000".into()),
+            Some("4000".into())
+        ]
+    );
+    assert_eq!(
+        started(&events),
+        1,
+        "a status answer never resets the tally"
+    );
+    assert_eq!(events.last(), Some(&DownloadEvent::Finished));
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_transient_status_that_never_clears_reports_as_upstream() {
+    let steps = (0..DOWNLOAD_ATTEMPTS).map(|_| Step::Status(504)).collect();
+    let (result, _, ranges) = run(steps).await;
+    let failure = result.unwrap_err();
+    assert_eq!(failure.kind, DownloadFailureKind::Upstream);
+    assert_eq!(failure.status, Some(504));
+    assert_eq!(failure.attempts, DOWNLOAD_ATTEMPTS);
+    assert_eq!(failure.received, 0);
+    assert!(failure.message.contains("504"), "{}", failure.message);
+    assert_eq!(ranges.len() as u32, DOWNLOAD_ATTEMPTS);
 }
 
 #[test]
