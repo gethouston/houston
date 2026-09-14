@@ -163,7 +163,7 @@ fn fail_closed(failure: Failure, attempts: usize) -> ! {
 }
 
 #[cfg(target_os = "windows")]
-mod win;
+pub(crate) mod win;
 
 #[cfg(test)]
 mod tests {

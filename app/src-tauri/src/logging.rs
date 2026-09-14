@@ -56,6 +56,8 @@ pub fn init(data_dir: &Path) {
     tracing_subscriber::registry()
         .with(filter)
         .with(fmt_layer)
+        // Keeps the runtime's webview creation error for the guard's event.
+        .with(crate::webview_guard::FailureRecorder)
         .with(sentry_tracing::layer().event_mapper(crate::sentry_filter::map_event))
         .init();
 }

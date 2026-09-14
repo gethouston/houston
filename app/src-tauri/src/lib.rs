@@ -32,6 +32,10 @@ mod window_focus;
 // and dialog are Windows-only.
 #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 mod window_preflight;
+// Pure decision logic and the log recorder compile and test everywhere;
+// the relaunch, report and dialog are Windows-only.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+mod webview_guard;
 mod windows_icon_repair;
 
 use engine_supervisor::{
@@ -564,6 +568,13 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(|app_handle, event| {
             match &event {
+                // Windows: the runtime logs a failed WebView2 creation and
+                // still registers `main`, so a broken runtime idles with no
+                // window. Relaunch once, then report + dialog (PRODUCT-1779).
+                #[cfg(target_os = "windows")]
+                tauri::RunEvent::Ready => {
+                    webview_guard::enforce::ensure_main_webview(app_handle);
+                }
                 // App-level activation (cmd+tab, dock click, etc.)
                 tauri::RunEvent::Resumed => {
                     tracing::info!("[app] RunEvent::Resumed — bringing window to front");

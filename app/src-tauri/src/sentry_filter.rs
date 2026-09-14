@@ -42,11 +42,46 @@ where
 pub fn filter_for(event: &Event<'_>) -> EventFilter {
     let normalized = event.normalized_metadata();
     let metadata = normalized.as_ref().unwrap_or_else(|| event.metadata());
-    if demote_error_to_breadcrumb(metadata.target()) {
+    let target = metadata.target();
+    if demote_error_to_breadcrumb(target)
+        || (target.starts_with("tauri_runtime_wry")
+            && demote_webview_creation_error(
+                target,
+                &message_of(event),
+                cfg!(target_os = "windows"),
+            ))
+    {
         EventFilter::Breadcrumb
     } else {
         sentry_tracing::default_event_filter(metadata)
     }
+}
+
+/// The record's `message` field, as `{:?}` of its value renders it (the
+/// `log` bridge stores the formatted line as a string, so the quotes are
+/// stripped).
+pub fn message_of(event: &Event<'_>) -> String {
+    let mut message = String::new();
+    event.record(
+        &mut |field: &tracing::field::Field, value: &dyn std::fmt::Debug| {
+            if field.name() == "message" {
+                message = format!("{value:?}");
+            }
+        },
+    );
+    if message.len() >= 2 && message.starts_with('"') && message.ends_with('"') {
+        message = message[1..message.len() - 1].replace("\\\"", "\"");
+    }
+    message
+}
+
+/// `tauri-runtime-wry` logs a failed webview creation and carries on
+/// (PRODUCT-1779). Where the webview guard is active (Windows) that line is
+/// evidence for the guard's own event, which adds the HRESULT, runtime
+/// version and data folder; two events per broken launch would split one
+/// failure across two Sentry issues.
+pub fn demote_webview_creation_error(target: &str, message: &str, guard_active: bool) -> bool {
+    guard_active && crate::webview_guard::is_webview_creation_error(target, message)
 }
 
 /// Targets whose ERROR logs must NOT become standalone Sentry events.
@@ -89,6 +124,26 @@ mod tests {
     }
 
     #[test]
+    fn webview_creation_error_is_demoted_only_where_the_guard_runs() {
+        let line = "failed to create webview: WebView2 error: WindowsError(Error { code: HRESULT(0x80070057), message: \"The parameter is incorrect.\" })";
+        assert!(demote_webview_creation_error(
+            "tauri_runtime_wry",
+            line,
+            true
+        ));
+        assert!(!demote_webview_creation_error(
+            "tauri_runtime_wry",
+            line,
+            false
+        ));
+        assert!(!demote_webview_creation_error(
+            "tauri_runtime_wry",
+            "failed to send message",
+            true
+        ));
+    }
+
+    #[test]
     fn app_errors_still_become_sentry_events() {
         assert!(!demote_error_to_breadcrumb("houston_app"));
         assert!(!demote_error_to_breadcrumb(
@@ -104,18 +159,10 @@ mod tests {
 
     impl<S: Subscriber> tracing_subscriber::Layer<S> for Recorder {
         fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
-            let mut message = String::new();
-            event.record(
-                &mut |field: &tracing::field::Field, value: &dyn std::fmt::Debug| {
-                    if field.name() == "message" {
-                        message = format!("{value:?}");
-                    }
-                },
-            );
             self.0
                 .lock()
                 .expect("recorder")
-                .push((message, filter_for(event)));
+                .push((message_of(event), filter_for(event)));
         }
     }
 
@@ -161,6 +208,33 @@ mod tests {
         let decision = decision_for(&all, "check for updates");
         assert!(decision.contains(EventFilter::Breadcrumb));
         assert!(!decision.contains(EventFilter::Event));
+    }
+
+    #[test]
+    fn log_bridged_webview_creation_error_follows_the_guard() {
+        let all = decisions(|| {
+            log::error!(
+                target: "tauri_runtime_wry",
+                "failed to create webview: WebView2 error: WindowsError(Error {{ code: HRESULT(0x80070057), message: \"The parameter is incorrect.\" }})"
+            );
+        });
+        let decision = decision_for(&all, "0x80070057");
+        if cfg!(target_os = "windows") {
+            assert!(decision.contains(EventFilter::Breadcrumb));
+            assert!(!decision.contains(EventFilter::Event));
+        } else {
+            assert!(decision.contains(EventFilter::Event));
+        }
+    }
+
+    #[test]
+    fn message_of_strips_the_bridge_quotes() {
+        let all = decisions(|| {
+            log::error!(target: "tauri_runtime_wry", "failed to send message");
+        });
+        assert!(all
+            .iter()
+            .any(|(message, _)| message == "failed to send message"));
     }
 
     #[test]

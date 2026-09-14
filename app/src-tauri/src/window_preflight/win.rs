@@ -118,7 +118,7 @@ unsafe fn failure(step: Step) -> Failure {
 /// Native message box; the only UI this process will ever show. Its own
 /// window creation can fail for the same reason, in which case the
 /// Sentry event and log line already sent are all that remains.
-pub(super) fn show_dialog(title: &str, body: &str) {
+pub(crate) fn show_dialog(title: &str, body: &str) {
     let title = wide(title);
     let body = wide(body);
     // SAFETY: both buffers are NUL-terminated and outlive the call.
