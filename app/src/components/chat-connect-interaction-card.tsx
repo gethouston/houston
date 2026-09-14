@@ -20,6 +20,7 @@ interface ChatConnectInteractionCardProps extends StepChrome {
   toolkit: string;
   /** The agent whose chat hosts the card. */
   agentId: string;
+  accountScope?: boolean;
   /** The reason the agent gave for needing this app, rendered as the body's
    *  foreground "why" line beneath the identity row. When absent, it falls back
    *  to a generic "Connect {app} to continue." line. */
@@ -68,6 +69,7 @@ interface ChatConnectInteractionCardProps extends StepChrome {
 export function ChatConnectInteractionCard({
   toolkit,
   agentId,
+  accountScope,
   reason,
   onConnected,
   onSkip,
@@ -98,6 +100,7 @@ export function ChatConnectInteractionCard({
   } = useChatConnect({
     toolkit,
     agentId,
+    accountScope,
     onConnected,
     autoContinueWhenConnected: !revisited,
   });

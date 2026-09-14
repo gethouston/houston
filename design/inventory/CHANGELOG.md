@@ -3,6 +3,12 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v84 - 2026-09-14
+
+The interaction card supports AI provider connections through the existing
+secure sign-in and key-entry flows. The personal assistant can request app
+and provider connections, with automatic continuation after confirmed success.
+
 ## v83 - 2026-09-10
 
 The open chat's header moves the people stack to the left, beside the agent's

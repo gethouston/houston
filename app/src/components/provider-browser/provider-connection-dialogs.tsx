@@ -1,4 +1,5 @@
 import { ConfirmDialog } from "@houston-ai/core";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnectionDialogProps } from "../../hooks/use-provider-connections";
 import { LocalModelDialog } from "../shell/local-model-dialog";
@@ -26,6 +27,7 @@ export function ProviderConnectionDialogs({
   onCloseCustomEndpointDialog,
   copilotDialog,
   onLocalConnected,
+  onConnectionCancelled,
 }: ProviderConnectionDialogProps & {
   /**
    * Receives the user-typed model id when the local (OpenAI-compatible)
@@ -34,8 +36,11 @@ export function ProviderConnectionDialogs({
    * from the dialog itself; browse surfaces (the hub) omit this.
    */
   onLocalConnected?: (model: string) => void;
+  onConnectionCancelled?: () => void;
 }) {
   const { t } = useTranslation("providers");
+  const apiKeySaved = useRef(false);
+  const localConnected = useRef(false);
 
   return (
     <>
@@ -59,20 +64,37 @@ export function ProviderConnectionDialogs({
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
         instructions={loginDialog?.instructions ?? null}
-        onClose={onCloseLoginDialog}
+        onClose={() => {
+          onConnectionCancelled?.();
+          onCloseLoginDialog();
+        }}
       />
 
       <ProviderApiKeyDialog
         provider={apiKeyDialog}
-        onClose={onCloseApiKeyDialog}
+        onConnected={() => {
+          apiKeySaved.current = true;
+        }}
+        onClose={() => {
+          if (!apiKeySaved.current) onConnectionCancelled?.();
+          apiKeySaved.current = false;
+          onCloseApiKeyDialog();
+        }}
       />
 
       {copilotDialog}
 
       <LocalModelDialog
         provider={customEndpointDialog}
-        onConnected={onLocalConnected}
-        onClose={onCloseCustomEndpointDialog}
+        onConnected={(model) => {
+          localConnected.current = true;
+          onLocalConnected?.(model);
+        }}
+        onClose={() => {
+          if (!localConnected.current) onConnectionCancelled?.();
+          localConnected.current = false;
+          onCloseCustomEndpointDialog();
+        }}
       />
     </>
   );

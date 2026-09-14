@@ -1,3 +1,5 @@
+import type { PendingInteraction } from "@houston/protocol";
+
 /**
  * The one rule that decides whether the chat composer is replaced by the
  * "Connect AI" empty state.
@@ -55,4 +57,15 @@ export function shouldReplaceComposerWithConnectAi(
   if (!signals.catalogReady || !signals.capabilitiesLoaded) return false;
   if (signals.checkingCount > 0) return false;
   return signals.connectedCount === 0;
+}
+
+/** A requested secure provider connection is itself the remedy for no AI. */
+export function shouldShowConnectAiEmptyState(
+  emptyStateAvailable: boolean,
+  interaction: PendingInteraction | null,
+): boolean {
+  return (
+    emptyStateAvailable &&
+    !interaction?.steps.some((step) => step.kind === "provider_connect")
+  );
 }

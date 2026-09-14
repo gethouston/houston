@@ -19,11 +19,9 @@ import {
  * each adapter operation takes, so this builds the call instead of a
  * hand-written table restating it: annotate an operation, regenerate, done.
  *
- * Catalog paths are FULL host paths and nothing is prepended to them. The
- * adapter sends exactly these paths (`cp/fetch.ts` concatenates `baseUrl` and
- * the path, adding no base of its own), and the local host and the gateway
- * serve that one surface — so a base spliced in here would invent a second
- * dialect that neither of them answers.
+ * Catalog paths are full direct-host paths. After authorization and approval,
+ * assistant-deployment-route.ts adapts the custom-integration family to the
+ * gateway's existing per-agent mount using the trusted owning pod identity.
  *
  * Fail closed at every step — an operation that is absent, hidden, or carries
  * no derivable route is refused here, so a sandbox token can never reach a

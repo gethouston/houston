@@ -14,7 +14,7 @@ import { ProviderCopilotConnectDialog } from "./provider-copilot-connect-dialog"
  * other provider, so the caller proceeds with its normal no-domain login. Render
  * the returned `dialog` once in the surface.
  */
-export function useCopilotConnect() {
+export function useCopilotConnect(onCancel?: () => void) {
   const [dialogProvider, setDialogProvider] = useState<ProviderInfo | null>(
     null,
   );
@@ -34,6 +34,7 @@ export function useCopilotConnect() {
     <ProviderCopilotConnectDialog
       provider={dialogProvider}
       onClose={() => {
+        onCancel?.();
         deferred.current = null;
         setDialogProvider(null);
       }}
@@ -46,5 +47,5 @@ export function useCopilotConnect() {
     />
   );
 
-  return { begin, dialog };
+  return { begin, dialog, open: dialogProvider !== null };
 }

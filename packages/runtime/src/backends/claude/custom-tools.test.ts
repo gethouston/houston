@@ -128,6 +128,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "custom_integration_add",
       "custom_integration_remove",
       "request_credential",
+      "request_provider_connection",
     ]),
   );
   expect(new Set(mcp.allowedTools)).toEqual(
@@ -150,6 +151,7 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "mcp__houston__custom_integration_add",
       "mcp__houston__custom_integration_remove",
       "mcp__houston__request_credential",
+      "mcp__houston__request_provider_connection",
     ]),
   );
 });
@@ -315,6 +317,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
       "custom_integration_add",
       "custom_integration_remove",
       "request_credential",
+      "request_provider_connection",
     ]),
   );
   expect(new Set(mcp.allowedTools)).toEqual(
@@ -336,6 +339,7 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
       "mcp__houston__custom_integration_add",
       "mcp__houston__custom_integration_remove",
       "mcp__houston__request_credential",
+      "mcp__houston__request_provider_connection",
     ]),
   );
 });
@@ -648,11 +652,13 @@ test("the assistant's bridged set is the coordinator surface, nothing that works
       "read_mission",
       "update_mission_status",
       ...ASSISTANT_TOOL_NAMES,
+      "request_connection",
+      "request_credential",
+      "request_provider_connection",
     ]),
   );
   for (const banned of [
     "mcp__houston__integration_execute",
-    "mcp__houston__request_connection",
     "mcp__houston__install_skill",
     "mcp__houston__save_routine",
   ]) {

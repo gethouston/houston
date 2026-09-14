@@ -12,6 +12,7 @@ interface IntegrationConnectCardProps {
   toolkit: string;
   /** The agent whose chat hosts the card. */
   agentId: string;
+  accountScope?: boolean;
   /**
    * Fired once when a connection the user started from THIS card lands. The
    * chat panel uses it to nudge the agent ("I've connected X. Please
@@ -33,6 +34,7 @@ interface IntegrationConnectCardProps {
 export function IntegrationConnectCard({
   toolkit,
   agentId,
+  accountScope,
   onConnected,
 }: IntegrationConnectCardProps) {
   const { t } = useTranslation("chat");
@@ -47,6 +49,7 @@ export function IntegrationConnectCard({
   } = useChatConnect({
     toolkit,
     agentId,
+    accountScope,
     onConnected,
   });
 

@@ -47,9 +47,14 @@ function verifyFailureDetail(err: unknown): string {
 interface Props {
   provider: ProviderInfo | null;
   onClose: () => void;
+  onConnected?: () => void;
 }
 
-export function ProviderApiKeyDialog({ provider, onClose }: Props) {
+export function ProviderApiKeyDialog({
+  provider,
+  onClose,
+  onConnected,
+}: Props) {
   const { t } = useTranslation("providers");
   const [key, setKey] = useState("");
   const [endpoint, setEndpoint] = useState("");
@@ -97,6 +102,7 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
       );
       // Success: the parent's ProviderLoginComplete handler flips the card and
       // toasts. Close here so the dialog doesn't linger over the connected state.
+      onConnected?.();
       onClose();
     } catch (err) {
       // The engine sends a typed verdict with the failure (bad key, key

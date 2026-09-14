@@ -1,9 +1,9 @@
 {
-  "title": "Houston",
-  "opening": "Opening Houston",
+  "title": "AI Manager",
+  "opening": "Opening your AI Manager",
   "back": "Back",
   "empty": {
-    "heading": "Hi, I'm Houston",
+    "heading": "Hi, I'm your AI Manager",
     "capabilities": "I can do anything you can do in Houston: create agents, set up automations, connect your apps, and find what you need.",
     "safety": "I'll always ask before anything risky."
   }

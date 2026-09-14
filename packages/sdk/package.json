@@ -19,6 +19,10 @@
       "types": "./src/agent-name.ts",
       "import": "./src/agent-name.ts"
     },
+    "./provider-connection-observer": {
+      "types": "./src/provider-connection-observer.ts",
+      "import": "./src/provider-connection-observer.ts"
+    },
     "./provider-catalog": {
       "types": "./src/provider-catalog.ts",
       "import": "./src/provider-catalog.ts"

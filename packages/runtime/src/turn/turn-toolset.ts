@@ -7,6 +7,7 @@ import {
 import { makeCustomIntegrationTools } from "../session/tools/custom-integrations";
 import { makeSkillDirectoryTools } from "../session/tools/find-skills";
 import { makeIntegrationTools } from "../session/tools/integrations";
+import { makeRequestProviderConnectionTool } from "../session/tools/request-provider-connection";
 import { makeSaveLearningTool } from "../session/tools/save-learning";
 import { makeSaveRoutineTool } from "../session/tools/save-routine";
 import type { TurnSessionRequest } from "./turn-session";
@@ -15,6 +16,8 @@ function capabilities(turn: TurnSessionRequest) {
   const scopes = new Set(turn.grant?.scopes ?? []);
   const callable = turn.sandbox !== undefined;
   return {
+    providerConnections:
+      callable && (scopes.has("integrations") || scopes.has("agent-writes")),
     integrations: callable && scopes.has("integrations"),
     agentWrites: callable && scopes.has("agent-writes"),
   };
@@ -29,6 +32,7 @@ export function buildTurnToolSelection(
   return buildToolSelection({
     codeExecution,
     integrations: enabled.integrations,
+    providerConnections: enabled.providerConnections,
     saveRoutine: enabled.agentWrites,
     saveLearning: enabled.agentWrites,
     skillDirectory: enabled.agentWrites,
@@ -43,6 +47,9 @@ export function buildTurnHostTools(
   if (!turn.sandbox) return [];
   const enabled = capabilities(turn);
   return [
+    ...(enabled.providerConnections
+      ? [makeRequestProviderConnectionTool()]
+      : []),
     ...(enabled.integrations
       ? [
           ...makeIntegrationTools({ call: turn.sandbox.call }),

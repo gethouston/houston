@@ -121,7 +121,9 @@ export function interactionNotificationBodyKey(
     return "sessionComplete.signin";
   if (
     isPendingInteraction(interaction) &&
-    interaction.steps.some((step) => step.kind === "connect")
+    interaction.steps.some(
+      (step) => step.kind === "connect" || step.kind === "provider_connect",
+    )
   )
     return "sessionComplete.connect";
   if (

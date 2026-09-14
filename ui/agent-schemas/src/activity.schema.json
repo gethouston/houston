@@ -81,6 +81,7 @@
                     "signin",
                     "connect",
                     "credential",
+                    "provider_connect",
                     "plan_ready",
                     "suggest_reusable",
                     "suggest_actions",
@@ -103,6 +104,7 @@
                   }
                 },
                 "toolkit": { "type": "string" },
+                "provider": { "type": "string", "minLength": 1 },
                 "reason": { "type": "string" },
                 "summary": { "type": "string" },
                 "reusableKind": {
@@ -148,6 +150,10 @@
                 {
                   "properties": { "kind": { "const": "credential" } },
                   "required": ["toolkit"]
+                },
+                {
+                  "properties": { "kind": { "const": "provider_connect" } },
+                  "required": ["provider"]
                 },
                 {
                   "properties": { "kind": { "const": "plan_ready" } },

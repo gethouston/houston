@@ -10,6 +10,8 @@ export type CodeExecutionMode = "local" | "remote" | "disabled";
 export interface ToolSelectionInput {
   codeExecution: CodeExecutionMode;
   integrations: boolean;
+  /** A host-granted turn can request a secure provider connection. */
+  providerConnections?: boolean;
   /**
    * Whether this runtime can reach its host with a sandbox token (the SAME
    * reachability the integration tools need, but NOT gated on a Composio key —

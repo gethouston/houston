@@ -1,6 +1,10 @@
-import { defineTool } from "@earendil-works/pi-coding-agent";
+import {
+  defineTool,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { recordCredentialRequest } from "../interaction";
+import { assertNotPlanMode } from "../live-mode-gate";
 
 /**
  * The secure key-entry hand-off tool (custom integrations, HOU-550). It
@@ -42,10 +46,11 @@ export interface CredentialTargetStatus {
 
 export interface RequestCredentialToolOptions {
   /** Resolve the slug against the host's registered custom integrations
-   *  (the sandbox `status` route). */
+   *  through its permitted host read. */
   status: (
     slug: string,
     signal: AbortSignal | undefined,
+    context: ExtensionContext,
   ) => Promise<CredentialTargetStatus | null>;
 }
 
@@ -62,14 +67,17 @@ export function makeRequestCredentialTool(opts: RequestCredentialToolOptions) {
       _id: string,
       params: CredentialParams,
       signal: AbortSignal | undefined,
+      _update: unknown,
+      context: ExtensionContext,
     ) {
+      assertNotPlanMode("request an integration connection");
       const toolkit = params.toolkit.trim().toLowerCase();
       if (!toolkit)
         throw new Error("request_credential needs a non-empty toolkit slug.");
       // Pre-flight (PRODUCT-1292): a card for a slug the host has no
       // definition for renders fine but every save 404s — a user-facing dead
       // end. Refuse HERE, where the model can still correct course.
-      const target = await opts.status(toolkit, signal);
+      const target = await opts.status(toolkit, signal, context);
       if (!target) {
         throw new Error(
           `No custom integration '${toolkit}' is set up, so Houston cannot show a secure entry card for it. Use the EXACT slug a custom_integration_add result returned. If this service was never added: when it exists in integration_search, connect it through the normal app connect flow instead; for a custom API or MCP server, run custom_integration_detect and custom_integration_add first, then call request_credential again.`,
@@ -80,6 +88,7 @@ export function makeRequestCredentialTool(opts: RequestCredentialToolOptions) {
           `The custom integration '${toolkit}' is not working (${target.state.message}), so a saved key could not be used. Repair it first with custom_integration_add (replace: true) and a corrected spec, then call request_credential again.`,
         );
       }
+      assertNotPlanMode("request an integration connection");
       const reason = params.reason?.trim();
       recordCredentialRequest({ toolkit, ...(reason ? { reason } : {}) });
       return {

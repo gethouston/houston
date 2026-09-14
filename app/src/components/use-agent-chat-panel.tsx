@@ -89,6 +89,7 @@ import {
 } from "../lib/auto-continue-message";
 import { agentTierFromConfig } from "../lib/chat-agent-tier";
 import { coherentPinModel, resolveChatModelPin } from "../lib/chat-model-pin";
+import { shouldShowConnectAiEmptyState } from "../lib/composer-connect-ai";
 import {
   effectiveContextWindow,
   sessionContextUsage,
@@ -179,6 +180,7 @@ import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
 import { ChatModeSelector } from "./chat-mode-selector";
 import { ChatModelSelector } from "./chat-model-selector";
+import { ChatProviderConnectInteractionCard } from "./chat-provider-connect-interaction-card";
 import { ChatSigninInteractionCard } from "./chat-signin-interaction-card";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
@@ -210,6 +212,8 @@ import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
 import { UserSkillMessage } from "./user-skill-message";
 
 interface UseAgentChatPanelArgs {
+  /** The personal manager connects accounts without an ordinary agent allowlist. */
+  integrationAccountScope?: boolean;
   /** The agent the panel is currently scoped to. Null disables features. */
   agent: Agent | null;
   /** Currently-open session key, if any. Drives Skill routing. */
@@ -353,6 +357,7 @@ interface AgentChatPanelProps {
 
 export function useAgentChatPanel({
   agent,
+  integrationAccountScope = false,
   selectedSessionKey,
   onSelectSession,
   draftScope,
@@ -1457,12 +1462,18 @@ export function useAgentChatPanel({
       return (
         <IntegrationConnectCard
           toolkit={toolkit}
+          accountScope={integrationAccountScope}
           agentId={agent.id}
           onConnected={handleIntegrationConnected}
         />
       );
     },
-    [integrationsEnabled, agent, handleIntegrationConnected],
+    [
+      integrationsEnabled,
+      integrationAccountScope,
+      agent,
+      handleIntegrationConnected,
+    ],
   );
 
   // ── Pending-interaction override (ask_user / request_connection) ──────
@@ -1766,10 +1777,11 @@ export function useAgentChatPanel({
     mode: "above" | "replace";
   }>(() => {
     const none = { node: undefined, mode: "above" as const };
-    // No AI model connected wins over everything: there is no provider to run a
-    // stepper's turn or a plan against either, so the connect CTA is the only
-    // thing the composer slot can honestly offer.
-    if (connectAiComposer.node)
+    // A requested provider connection already offers the remedy for missing AI;
+    // keep its secure flow reachable when the last connected provider signs out.
+    if (
+      shouldShowConnectAiEmptyState(!!connectAiComposer.node, activeInteraction)
+    )
       return { mode: "replace" as const, node: connectAiComposer.node };
     // Mission navigation (PRODUCT-1244): a coordinating chat lists the
     // missions it started; a mission the agent started links back to the chat
@@ -1904,6 +1916,8 @@ export function useAgentChatPanel({
     // with no toolkit passes through unbranded; a catalog miss keeps the question
     // plain-titled with a prettified name and no logo — never a crash.
     const steps: ChatInteractionStep[] = override.steps.map((step) => {
+      if (step.kind === "provider_connect")
+        return { kind: "custom", id: step.id, title: step.provider };
       if (step.kind !== "question") return step;
       const question = localizeApprovalQuestion(step, approvalCopy);
       return step.toolkit
@@ -1958,7 +1972,12 @@ export function useAgentChatPanel({
             // (never a stale "Skipped ..."), and no step is ever named twice.
             const { connectedNames, skippedConnectNames, connectRedirects } =
               finalConnectNames(
-                steps.filter((s) => s.kind === "connect").map((s) => s.id),
+                override.steps
+                  .filter(
+                    (s) =>
+                      s.kind === "connect" || s.kind === "provider_connect",
+                  )
+                  .map((s) => s.id),
                 connectOutcomes,
               );
             // Credential outcomes mirror connects: saved keys name "Added the X
@@ -2031,6 +2050,31 @@ export function useAgentChatPanel({
               approvalsFromAnswers(steps, answers),
             );
           }}
+          renderCustom={(step, api) => {
+            const request = override.steps.find((item) => item.id === step.id);
+            if (request?.kind !== "provider_connect") return null;
+            return (
+              <ChatProviderConnectInteractionCard
+                {...api}
+                key={step.id}
+                stepId={step.id}
+                providerId={request.provider}
+                reason={request.reason}
+                onConnected={(name) => {
+                  connectOutcomes.set(step.id, { name, connected: true });
+                  api.onDone();
+                }}
+                onSkip={(name, message) => {
+                  connectOutcomes.set(step.id, {
+                    name,
+                    connected: false,
+                    message,
+                  });
+                  api.onSkip();
+                }}
+              />
+            );
+          }}
           renderSignin={(step, api) => (
             <ChatSigninInteractionCard
               key={step.id}
@@ -2101,6 +2145,7 @@ export function useAgentChatPanel({
                 api.onSkip();
               }}
               toolkit={step.toolkit}
+              accountScope={integrationAccountScope}
             />
           )}
           renderCredential={(step, api) => (
@@ -2148,6 +2193,7 @@ export function useAgentChatPanel({
     };
   }, [
     connectAiComposer.node,
+    integrationAccountScope,
     agent,
     activeInteraction,
     interactionKey,

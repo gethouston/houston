@@ -1,5 +1,6 @@
 import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
 import { ASSISTANT_TOOL_NAMES } from "./tools/assistant";
+import { REQUEST_CONNECTION_TOOL_NAME } from "./tools/integrations";
 import {
   LIST_MISSIONS_TOOL_NAME,
   START_MISSION_TOOL_NAME,
@@ -7,6 +8,8 @@ import {
 } from "./tools/mission-tool-names";
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
 import { READ_MISSION_TOOL_NAME } from "./tools/read-mission";
+import { REQUEST_CREDENTIAL_TOOL_NAME } from "./tools/request-credential";
+import { REQUEST_PROVIDER_CONNECTION_TOOL_NAME } from "./tools/request-provider-connection";
 import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
 import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
 import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
@@ -20,13 +23,16 @@ import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
  * file, merge it, write the trimmed list back" (routes/learning-write.ts), and
  * both halves are clamped to its own directory by the workspace guard. No
  * `edit`/`ls`/`grep`/`find` — none of them is on that path. No `bash`,
- * `run_code`, integration or skill tools: those DO work, and work belongs on an
+ * `run_code`, integration execution or skill tools: those DO work, and work belongs on an
  * agent's board where the user can see it.
  */
 export const COORDINATOR_TOOL_NAMES: readonly string[] = [
   "read",
   "write",
   ASK_USER_TOOL_NAME,
+  REQUEST_CONNECTION_TOOL_NAME,
+  REQUEST_CREDENTIAL_TOOL_NAME,
+  REQUEST_PROVIDER_CONNECTION_TOOL_NAME,
   SUGGEST_REUSABLE_TOOL_NAME,
   SUGGEST_ACTIONS_TOOL_NAME,
   PLAN_READY_TOOL_NAME,

@@ -32,8 +32,13 @@ export interface SurfaceGates {
   /**
    * The personal assistant, the rail's lead row and a screen of its own. Not a
    * role gate: it asks whether this deployment HOLDS an assistant at all
-   * (`useAssistant`), which only discovery can answer. A deployment that serves
-   * none hides the row and the screen entirely.
+   * (`useAssistant`), which only discovery can answer. The row is up from the
+   * first paint and comes down only once discovery has SETTLED that none
+   * exists: nearly every deployment serves one, and the user opens the app to
+   * talk to it, so the address arriving a beat later is the screen's wait
+   * (its spinner), never the rail's. A deployment that serves none answers
+   * absence at once (a 501/404, no pod to wait on), so the row is gone before
+   * it is read.
    */
   showAssistant: boolean;
   /**
@@ -69,14 +74,10 @@ export function useSurfaceGates(): SurfaceGates {
     showOrganization: canSeeOrganization(capabilities, isTeam),
     showAiModels: canSeeAiModelsPage(capabilities),
     showSkills: isSpaceOwner(capabilities, isTeam),
-    showAssistant: !assistant.isLoading && !assistant.unavailable,
-    // Discovery joins `ready` for the same reason capabilities does: the guard
-    // that sends a blocked view home must not fire while an answer is still on
-    // the way, or opening the assistant on a slow host would bounce the user
-    // out of it a beat later. `assistant.isLoading` covers a REFETCH of a
-    // previously failed discovery too (`lib/assistant-discovery-state.ts`), so
-    // the guard holds while the repair is in flight instead of evicting the
-    // user from the screen it is about to fix.
-    ready: !isLoading && !assistant.isLoading,
+    showAssistant: !assistant.unavailable,
+    // Discovery stays OUT of `ready`: an unanswered discovery keeps
+    // `showAssistant` true, so the guard has nothing to bounce, and a slow or
+    // failing pod must not hold every other gate's verdict for the wait.
+    ready: !isLoading,
   };
 }

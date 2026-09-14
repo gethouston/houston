@@ -46,11 +46,13 @@ import {
 export function useIntegrationConnect({
   toolkit,
   agentId,
+  accountScope = false,
   onConnected,
   autoContinueWhenConnected = false,
 }: {
   toolkit: string;
   agentId: string;
+  accountScope?: boolean;
   /**
    * Fired once when a connection the user started from THIS surface lands (or,
    * in stepper mode, once an already-active toolkit resolves — see
@@ -100,7 +102,9 @@ export function useIntegrationConnect({
     logoUrl: catalog.isFetched ? resolved.logoUrl : "",
   };
 
-  const { states, connect } = useConnectFlow({ agentId });
+  const { states, connect } = useConnectFlow({
+    agentId: accountScope ? undefined : agentId,
+  });
   // This surface is scoped to ONE toolkit, so it is "connecting" only while its
   // own slug's flow runs — a concurrent connect for a different app never lights
   // this card.

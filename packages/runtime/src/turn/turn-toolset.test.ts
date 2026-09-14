@@ -25,11 +25,18 @@ test.each([
       "custom_integration_add",
       "custom_integration_remove",
       "request_credential",
+      "request_provider_connection",
     ],
   },
   {
     scopes: ["agent-writes"] as const,
-    names: ["save_routine", "save_learning", "find_skills", "install_skill"],
+    names: [
+      "save_routine",
+      "save_learning",
+      "find_skills",
+      "install_skill",
+      "request_provider_connection",
+    ],
   },
 ])("$scopes gates both names and registered objects", ({ scopes, names }) => {
   const turn = base({ scopes: [...scopes] });

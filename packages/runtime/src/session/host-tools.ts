@@ -1,5 +1,7 @@
+import { assistantOptions } from "./assistant-family";
 import { personalAssistant } from "./runtime-role";
 import { sandboxCall } from "./sandbox-call";
+import { makeCoordinatorCredentialTool } from "./tools/coordinator-credential";
 import { makeCustomIntegrationTools } from "./tools/custom-integrations";
 import { makeSkillDirectoryTools } from "./tools/find-skills";
 import { makeIntegrationTools } from "./tools/integrations";
@@ -29,7 +31,11 @@ export const integrationTools = sandboxCall
 // Custom-integration setup tools (HOU-550): same reachability gate and trust
 // posture — they proxy to /sandbox/integrations/custom/* and hold no secret.
 export const customIntegrationTools = sandboxCall
-  ? makeCustomIntegrationTools({ call: sandboxCall })
+  ? personalAssistant
+    ? assistantOptions
+      ? [makeCoordinatorCredentialTool(assistantOptions)]
+      : []
+    : makeCustomIntegrationTools({ call: sandboxCall })
   : [];
 
 // The merge-safe scheduled-task write tool: proxies to /sandbox/routines/save so

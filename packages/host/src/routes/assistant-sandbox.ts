@@ -144,6 +144,8 @@ export async function handleSandboxAssistant(
     catalog,
     approvals: deps.approvals ?? assistantApprovals,
     agentId: claim.agentId,
+    gatewayFronted: deps.gatewayFronted,
+    gatewayAgentId: process.env.HOUSTON_AGENT_SLUG,
     conversationId: header(req, CONVERSATION_ID_HEADER),
     // Read lazily: only an operation that actually names an agent pays for the
     // listing, and both handlers resolve against the SAME set.

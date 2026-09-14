@@ -103,3 +103,15 @@ test("the rules stay short and leak no internals beyond tool names", () => {
     expect(rules).not.toContain(banned);
   }
 });
+
+test("coordinator owns secure integration and provider setup", () => {
+  const rules = buildAssistantRulesSection("coordinator") ?? "";
+  for (const tool of [
+    "request_connection",
+    "request_credential",
+    "request_provider_connection",
+  ])
+    expect(rules).toContain(tool);
+  expect(rules).toContain("never delegate connection setup to an agent");
+  expect(rules).toContain("Never collect credentials or sign-in codes in chat");
+});

@@ -9,13 +9,18 @@ import { ASSISTANT_TOOL_NAMES } from "./tools/assistant";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { CUSTOM_INTEGRATION_TOOL_NAMES } from "./tools/custom-integrations";
 import { SKILL_DIRECTORY_TOOL_NAMES } from "./tools/find-skills";
-import { INTEGRATION_TOOL_NAMES } from "./tools/integrations";
+import {
+  INTEGRATION_TOOL_NAMES,
+  REQUEST_CONNECTION_TOOL_NAME,
+} from "./tools/integrations";
 import {
   LIST_MISSIONS_TOOL_NAME,
   START_MISSION_TOOL_NAME,
   UPDATE_MISSION_STATUS_TOOL_NAME,
 } from "./tools/mission-tool-names";
 import { READ_MISSION_TOOL_NAME } from "./tools/read-mission";
+import { REQUEST_CREDENTIAL_TOOL_NAME } from "./tools/request-credential";
+import { REQUEST_PROVIDER_CONNECTION_TOOL_NAME } from "./tools/request-provider-connection";
 import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
 import { SAVE_ROUTINE_TOOL_NAME } from "./tools/save-routine";
 import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
@@ -104,6 +109,14 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
     ...(input.assistant && input.personalAssistant
       ? [...ASSISTANT_TOOL_NAMES]
       : []),
+    ...(input.providerConnections ||
+    input.integrations ||
+    (input.assistant && input.personalAssistant)
+      ? [REQUEST_PROVIDER_CONNECTION_TOOL_NAME]
+      : []),
+    ...(input.assistant && input.personalAssistant && !input.integrations
+      ? [REQUEST_CONNECTION_TOOL_NAME, REQUEST_CREDENTIAL_TOOL_NAME]
+      : []),
     ...executable,
     ...(input.integrations
       ? [...INTEGRATION_TOOL_NAMES, ...CUSTOM_INTEGRATION_TOOL_NAMES]
@@ -111,7 +124,9 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
   ];
   return {
     toolNames: input.personalAssistant
-      ? coordinatorToolNames(toolNames)
+      ? coordinatorToolNames(toolNames).filter(
+          (name) => input.assistant || name !== REQUEST_CREDENTIAL_TOOL_NAME,
+        )
       : toolNames,
     // The coordinator never runs code, whatever the deployment offers.
     includeRunCode:

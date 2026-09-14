@@ -52,8 +52,6 @@ test("no working tool reaches the coordinator, in any mode", () => {
     "install_skill",
     "integration_search",
     "integration_execute",
-    "request_connection",
-    "request_credential",
     "bash",
     "run_code",
   ];
@@ -69,4 +67,16 @@ test("plan is the only mode that offers plan_ready", () => {
   expect(registered("plan")).toContain("plan_ready");
   expect(registered("execute")).not.toContain("plan_ready");
   expect(registered("auto")).not.toContain("plan_ready");
+});
+
+test("secure connection cards survive execute and auto, never plan", () => {
+  for (const name of [
+    "request_connection",
+    "request_credential",
+    "request_provider_connection",
+  ]) {
+    expect(registered("execute")).toContain(name);
+    expect(registered("auto")).toContain(name);
+    expect(registered("plan")).not.toContain(name);
+  }
 });

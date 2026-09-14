@@ -65,3 +65,27 @@ export function recordCredentialRequest(input: {
     ...(input.reason ? { reason: input.reason } : {}),
   });
 }
+
+/** Provider requests keep their first position and refresh a repeated reason. */
+export function recordProviderConnection(input: {
+  provider: string;
+  reason?: string;
+}): void {
+  const holder = currentInteractionHolder();
+  if (!holder) return;
+  const provider = input.provider.trim().toLowerCase();
+  const reason = input.reason?.trim();
+  const existing = holder.providerConnects.find(
+    (step) => step.provider === provider,
+  );
+  if (existing) {
+    if (reason) existing.reason = reason;
+    return;
+  }
+  holder.providerConnects.push({
+    kind: "provider_connect",
+    id: `p${holder.providerConnects.length + 1}`,
+    provider,
+    ...(reason ? { reason } : {}),
+  });
+}

@@ -87,6 +87,7 @@ export type InteractionStep =
     }
   | { kind: "signin"; id: string; reason?: string }
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
+  | { kind: "provider_connect"; id: string; provider: string; reason?: string }
   | { kind: "credential"; id: string; toolkit: string; reason?: string }
   | { kind: "plan_ready"; id: string; summary: string }
   | {
