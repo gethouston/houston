@@ -28,6 +28,8 @@ const verifier: TokenVerifier = {
 
 class SpyChannel implements RuntimeChannel {
   saved: CustomEndpoint[] = [];
+  /** The acting identity each save carried (undefined = none). */
+  actingAs: (string | undefined)[] = [];
   throwMessage: string | null = null;
   async dispatch() {}
   async fireTurn() {}
@@ -47,8 +49,9 @@ class SpyChannel implements RuntimeChannel {
   async forgetCredential() {}
   async saveApiKeyCredential() {}
   async saveClaudeOAuthCredential() {}
-  async saveCustomEndpoint(_ctx: ChannelCtx, endpoint: CustomEndpoint) {
+  async saveCustomEndpoint(ctx: ChannelCtx, endpoint: CustomEndpoint) {
     this.saved.push(endpoint);
+    this.actingAs.push(ctx.actingAs);
     if (this.throwMessage) throw new Error(this.throwMessage);
   }
 }
@@ -113,10 +116,13 @@ async function setup(
   agentId: string;
   channel: SpyChannel;
   sharedEndpoints: SpySharedEndpointStore;
+  /** Every store-sync flush, recorded with how many saves preceded it. */
+  flushes: number[];
 }> {
   const store = new MemoryWorkspaceStore();
   const channel = new SpyChannel();
   const sharedEndpoints = new SpySharedEndpointStore();
+  const flushes: number[] = [];
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -128,6 +134,9 @@ async function setup(
     gatewayFronted,
     loopbackEgress,
     sharedEndpoints,
+    storeSyncFlush: async () => {
+      flushes.push(channel.saved.length);
+    },
   };
   server = createControlPlaneServer(deps);
   await new Promise<void>((r) => server?.listen(0, "127.0.0.1", () => r()));
@@ -139,7 +148,7 @@ async function setup(
     body: JSON.stringify({ name: "Helper" }),
   });
   const agentId = ((await created.json()) as { id: string }).id;
-  return { base, agentId, channel, sharedEndpoints };
+  return { base, agentId, channel, sharedEndpoints, flushes };
 }
 
 const connect = (base: string, agentId: string, body: unknown, who = "alice") =>
@@ -245,6 +254,51 @@ test("managed cloud forwards a valid public HTTPS endpoint to the channel", asyn
     baseUrl: "https://ollama.example.com/v1",
     model: "llama3.1",
   });
+});
+
+test("managed cloud saves under the gateway-minted acting identity and flushes the tree before answering (PRODUCT-1807)", async () => {
+  const { base, agentId, channel, flushes } = await setup(
+    MANAGED_CLOUD_CAPS,
+    true,
+  );
+  const res = await fetch(
+    `${base}/agents/${agentId}/provider/openai-compatible`,
+    {
+      method: "POST",
+      headers: { ...auth("alice"), "x-houston-acting-as": "acting-v1.p.s" },
+      body: JSON.stringify({
+        baseUrl: "https://ollama.example.com/v1",
+        model: "llama3.1",
+      }),
+    },
+  );
+  expect(res.status).toBe(200);
+  expect(channel.actingAs).toEqual(["acting-v1.p.s"]);
+  // The gateway's bridge binding check reads the endpoint file from object
+  // storage the moment the desktop probes the model: one flush, after the
+  // runtime save, before the 200.
+  expect(flushes).toEqual([1]);
+});
+
+test("desktop/self-host ignores a client-supplied acting header and never flushes", async () => {
+  const { base, agentId, channel, flushes } = await setup(LOCAL_CAPS);
+  const res = await fetch(
+    `${base}/agents/${agentId}/provider/openai-compatible`,
+    {
+      method: "POST",
+      headers: { ...auth("alice"), "x-houston-acting-as": "acting-v1.p.s" },
+      body: JSON.stringify({
+        baseUrl: "http://localhost:11434/v1",
+        model: "llama3.1",
+      }),
+    },
+  );
+  expect(res.status).toBe(200);
+  expect(channel.actingAs).toEqual([undefined]);
+  // A local host syncs nothing; the flush hook is wired only on managed pods.
+  // (setup wires one here purely to prove the route still calls it: the
+  // route cannot tell the deployments apart and must not need to.)
+  expect(flushes).toEqual([1]);
 });
 
 test("managed cloud publishes a team-shared endpoint after the runtime save", async () => {

@@ -205,6 +205,8 @@ export interface ControlPlaneDeps {
    *  on-machine "pods"): skips the managed-cloud public-HTTPS endpoint
    *  validation. See AgentRouteDeps.loopbackEgress. */
   loopbackEgress?: boolean;
+  /** Immediate object-storage sync of the pod tree; see AgentRouteDeps.storeSyncFlush. */
+  storeSyncFlush?: () => Promise<void>;
   /**
    * Live /agents/* request count (createControlPlaneServer wires it; see the
    * AgentRouteDeps.agentRequestCount doc for why it exists and why it is

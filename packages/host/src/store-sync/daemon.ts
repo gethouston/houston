@@ -110,6 +110,21 @@ export class StoreSyncDaemon {
     this.quietTimer.unref?.();
   }
 
+  /**
+   * Sync the tree NOW and resolve once it landed. For writes another party
+   * reads back from object storage right away — the gateway's bridge binding
+   * check reads the runtime's `custom-endpoint.json` the moment the desktop
+   * probes a freshly connected local model, while the watcher skips the
+   * workspaces subtree (HOU-1237) and the periodic pass is 5 minutes out
+   * (PRODUCT-1807). A no-op before start, after stop, or once fenced.
+   */
+  async flush(): Promise<void> {
+    if (!this.started || this.stopping || this.fencedLatch) return;
+    this.dirty = true;
+    this.dirtyVersion += 1;
+    await this.requestSync();
+  }
+
   private runInBackground(trigger: string): void {
     if (
       this.stopping ||
