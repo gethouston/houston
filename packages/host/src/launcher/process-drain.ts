@@ -1,6 +1,9 @@
 import type { AgentId } from "../domain/types";
 import type { Running, RuntimeHandle } from "./process-types";
 
+/** The short desktop drain budget, used when no host option supplies one. */
+export const DEFAULT_SHUTDOWN_DRAIN_MS = 5_000;
+
 /**
  * Kill the child and wait for it to ACTUALLY be gone: callers sleep an
  * agent to get its directory quiet (a rename is about to move it; on
@@ -60,7 +63,7 @@ export async function drainUntilExit(
  */
 export async function shutdownAllAndWait(
   running: Map<AgentId, Running>,
-  timeoutMs = 5_000,
+  timeoutMs = DEFAULT_SHUTDOWN_DRAIN_MS,
   forceTimeoutMs = 2_000,
 ): Promise<void> {
   // Latch FIRST: from here on ensureAwake refuses (LauncherClosedError)
