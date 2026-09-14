@@ -1,3 +1,4 @@
+import { isCallableOperation } from "@houston/domain/assistant-catalog-callable";
 import type {
   AssistantCatalog,
   AssistantOperation,
@@ -5,22 +6,12 @@ import type {
 import { findVisibleOperation } from "@houston/host/src/assistant/catalog";
 
 /**
- * Which catalogued operations the assistant family may offer at all.
- *
- * Two separate facts withhold an operation and they must never drift apart, so
- * ONE predicate decides for all three tools:
- *
- * - `hidden` — withheld by policy: never listed, described, or called.
- * - `route: null` — the generator could not derive an HTTP call conservatively,
- *   so the host's dispatcher refuses it (`operation_not_supported`). Listing or
- *   describing one would have the agent promise the user an action this build
- *   cannot perform, and the user hears the refusal as Houston breaking.
+ * The catalog queries the assistant family asks: which operations the agent may
+ * offer at all, and one of them by name. Whether an operation is offerable is
+ * {@link isCallableOperation}, declared beside the catalog's wire shape so the
+ * generator that writes the coordinator's capability index applies the same
+ * rule these tools do.
  */
-
-/** True when the agent may see AND perform this operation. */
-export function isCallableOperation(op: AssistantOperation): boolean {
-  return !op.hidden && op.route !== null;
-}
 
 /** Every operation the agent may see and perform. */
 export function callableOperations(

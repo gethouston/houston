@@ -100,6 +100,8 @@ export function createTurnOperations(
   };
 
   /**
+   * Watches a chat that is already running, so its messages keep arriving.
+   *
    * Passively attach to a conversation with a turn started elsewhere (another
    * client) or before a reload — observer mode. Loads history, folds it, and
    * SEEDS the conversation VM's feed FIRST so a mobile client opening the chat
@@ -109,6 +111,8 @@ export function createTurnOperations(
    * (`messages.length`). An idle conversation self-closes; a no-op if the
    * conversation is already streamed here — in which case we DON'T re-seed
    * (that live feed already owns the VM), which is the double-render guard.
+   * @assistant group:chat
+   * @assistant hidden: it attaches a live stream into the caller's own view of the chat; dispatched on its own it would stream into nothing.
    */
   const observe = async (
     conversationId: string,
@@ -133,9 +137,17 @@ export function createTurnOperations(
   };
 
   /**
+   * Reads back everything said in one chat.
+   *
    * Read-only: fold a conversation's persisted transcript into feed frames (the
    * same fold `observe` seeds the VM with). The `turns/history` command surfaces
    * it to a native shell that wants the transcript without attaching a stream.
+   * @param conversationId The chat to read.
+   * @param agentId The agent this acts on, by the id listAgents returns. An
+   *   agent's name is not its id, so read the id from listAgents first.
+   * @assistant group:chat
+   * @assistant unroutable: debt: the agent defaults to the single-runtime profile when it is left out, so which sandbox the chat is read from is not decided until the call runs.
+   * @assistant unschematized: a replayed message carries the runtime's own frame payloads, which differ per frame type.
    */
   const history = async (
     conversationId: string,
@@ -147,7 +159,14 @@ export function createTurnOperations(
     return historyToFeed(messages);
   };
 
-  /** Abort a conversation's in-flight turn in the agent's sandbox. */
+  /**
+   * Stops whatever an agent is currently doing in one chat.
+   * @param conversationId The chat to stop.
+   * @param agentId The agent this acts on, by the id listAgents returns. An
+   *   agent's name is not its id, so read the id from listAgents first.
+   * @assistant group:chat unconfirmed: Stops work already under way; nothing already said or written is undone.
+   * @assistant unroutable: debt: the agent defaults to the single-runtime profile when it is left out, so which sandbox the turn is stopped in is not decided until the call runs.
+   */
   const cancel = async (
     conversationId: string,
     agentId?: string,

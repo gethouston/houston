@@ -75,6 +75,15 @@ export function schemaForType(
       anyOf: type.types.map((part) => schemaForType(checker, part, node, seen)),
     };
   }
+  // `"a" | "b" | (string & {})` — the widening that keeps literal autocomplete
+  // while accepting any string (ProviderId). The intersection IS a string;
+  // walking its properties would emit the whole String prototype as an object.
+  if (type.isIntersection()) {
+    const primitive = type.types.find((part) =>
+      primitiveFlags.some(([flag]) => part.flags & flag),
+    );
+    if (primitive) return schemaForType(checker, primitive, node, seen);
+  }
   if ((type.aliasSymbol?.name ?? type.getSymbol()?.name) === "Promise") {
     const promised = checker.getTypeArguments(type as ts.TypeReference)[0];
     if (promised) return schemaForType(checker, promised, node, seen);

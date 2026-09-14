@@ -52,6 +52,14 @@ export function createProviderOps(
   // (last-intent wins). Mirrors the activities module's guard.
   const loadSeq = new Map<string, number>();
 
+  /**
+   * Refreshes which AI providers an agent can use and which one it is signed
+   * in to.
+   * @param agentId The agent this acts on, by the id listAgents returns. An
+   *   agent's name is not its id, so read the id from listAgents first.
+   * @assistant group:providers
+   * @assistant unroutable: the provider list and the sign-in status are two reads folded into one view, not one route.
+   */
   async function refresh(agentId: string): Promise<void> {
     const scope = providersScope(agentId);
     const seq = (loadSeq.get(agentId) ?? 0) + 1;
@@ -74,6 +82,12 @@ export function createProviderOps(
       store.publish(scope, mergeProviders(infos, auth));
   }
 
+  /**
+   * Shows which AI provider an agent is signed in to right now.
+   * @param agentId The agent this acts on, by the id listAgents returns. An
+   *   agent's name is not its id, so read the id from listAgents first.
+   * @assistant group:providers
+   */
   async function refreshStatus(agentId: string): Promise<void> {
     const auth = await ctx.clientFor(agentId).authStatus();
     const scope = providersScope(agentId);
@@ -81,6 +95,11 @@ export function createProviderOps(
     store.publish(scope, overlayStatus(prior, auth));
   }
 
+  /**
+   * Starts signing an agent in to an AI provider.
+   * @assistant group:providers
+   * @assistant hidden: starts a provider sign-in only the user can finish, at the provider's own screen.
+   */
   async function login(
     agentId: string,
     provider: ProviderId,
@@ -103,6 +122,11 @@ export function createProviderOps(
     return info;
   }
 
+  /**
+   * Stops a provider sign-in that is still waiting on the user.
+   * @assistant group:providers
+   * @assistant hidden: UI plumbing; it abandons the sign-in the person opened, and only they know they gave up on it.
+   */
   async function cancelLogin(
     agentId: string,
     provider: ProviderId,
@@ -111,6 +135,11 @@ export function createProviderOps(
     await refreshStatus(agentId);
   }
 
+  /**
+   * Finishes a provider sign-in with the code the provider showed the user.
+   * @assistant group:providers
+   * @assistant hidden: takes a one-time sign-in code the provider showed the person, which must not pass through a chat turn.
+   */
   async function completeLogin(
     agentId: string,
     provider: ProviderId,

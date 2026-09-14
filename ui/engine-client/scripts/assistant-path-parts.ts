@@ -1,16 +1,13 @@
 import ts from "typescript";
-import { calleeName, namedValue, unwrap } from "./assistant-ast.ts";
-import type { PathEncoding } from "./assistant-catalog-types.ts";
-
-/** One piece of a resolved path template: fixed text, or a parameter slot. */
-export type PathPart =
-  | { kind: "text"; text: string }
-  | { kind: "param"; name: string; encoding: PathEncoding };
-
-/** What a call site binds one helper parameter to. */
-export type Binding =
-  | { kind: "param"; name: string }
-  | { kind: "parts"; parts: PathPart[] };
+import { calleeName, unwrap } from "./assistant-ast.ts";
+import {
+  type Binding,
+  bindingParts,
+  boundParameter,
+  callerSupplied,
+  type PathPart,
+  type ValueScope,
+} from "./assistant-value-scope.ts";
 
 /** A path-building helper: `const p = (id) => \`/agents/${…}\`` or a private
  *  transport wrapper method whose path argument is such a template. */
@@ -19,39 +16,27 @@ export interface PathHelper {
   template: ts.Expression;
 }
 
-export interface PathContext {
-  /** The operation's own parameter names. */
-  parameters: Set<string>;
+export interface PathContext extends ValueScope {
   /** Helpers visible to the file being extracted. */
   helpers: Map<string, PathHelper>;
-  /** Helper parameter -> what its caller passed. Empty at the top level. */
-  bindings: Map<string, Binding>;
   depth: number;
 }
 
 /** Helpers may nest (a wrapper calling `agentPath`), never without bound. */
 const MAX_DEPTH = 4;
 
+/**
+ * Why a segment that a caller CAN reach still cannot be derived. It survives
+ * the escape wrapper around it, because "not a parameter" would read as the
+ * opposite of what happened: the value is reachable, and that is the problem.
+ */
+const CALLER_OVERRIDE =
+  "path segment depends on a value the caller may override";
+
 const fail = (reason: string): string => reason;
 
 function text(value: string): PathPart[] {
   return value === "" ? [] : [{ kind: "text", text: value }];
-}
-
-/**
- * The parameter an expression denotes, following one level of helper binding.
- * A helper parameter bound to fixed text is not a parameter — it is text, and
- * the caller handles that case separately.
- */
-function boundParameter(
-  expression: ts.Expression,
-  context: PathContext,
-): string | null {
-  const name = namedValue(expression);
-  if (name === null) return null;
-  const binding = context.bindings.get(name);
-  if (binding) return binding.kind === "param" ? binding.name : null;
-  return context.parameters.has(name) ? name : null;
 }
 
 /** `relPath.split("/").map(encodeURIComponent).join("/")` — the one idiom that
@@ -94,10 +79,19 @@ function resolveCall(
     if (parameter !== null)
       return [{ kind: "param", name: parameter, encoding: "segment" }];
     const bound = bindingParts(argument, context);
-    // A helper parameter the caller filled with a fixed segment: escaping it
+    // A callee parameter the caller filled with a fixed segment: escaping it
     // is what the source already did to that literal, so it stands as text.
     if (bound?.every((part) => part.kind === "text")) return bound;
-    return fail("path segment is not a parameter");
+    const inner = resolvePath(argument, context);
+    if (typeof inner === "string")
+      return inner === CALLER_OVERRIDE
+        ? inner
+        : fail("path segment is not a parameter");
+    // An escaped CONSTANT is still one fixed segment — the client's own
+    // `${COMPOSIO}` provider slug — so it reads as the text it escapes.
+    return inner.every((part) => part.kind === "text")
+      ? inner
+      : fail("path segment is not a parameter");
   }
   const multi = multiSegmentSource(call);
   if (multi) {
@@ -134,23 +128,30 @@ function resolveCall(
   });
 }
 
-/** The parts a bound helper parameter stands for, when it is bound to parts. */
-function bindingParts(
-  expression: ts.Expression,
+/**
+ * A default the caller cannot override: `opts?.provider ?? "composio"` where
+ * the caller passed no `opts` at all. The guarded branch is unreachable from
+ * the operation's signature, so the fallback IS the path. The moment the
+ * caller supplies that value, nothing static can say which branch runs.
+ */
+function resolveDefault(
+  node: ts.BinaryExpression,
   context: PathContext,
-): PathPart[] | null {
-  const inner = unwrap(expression);
-  if (!ts.isIdentifier(inner)) return null;
-  const binding = context.bindings.get(inner.text);
-  return binding?.kind === "parts" ? binding.parts : null;
+): PathPart[] | string {
+  if (node.operatorToken.kind !== ts.SyntaxKind.QuestionQuestionToken)
+    return fail("non-literal path");
+  return callerSupplied(node.left, context)
+    ? fail(CALLER_OVERRIDE)
+    : resolvePath(node.right, context);
 }
 
 /**
  * A path expression as an ordered list of parts, or the reason it cannot be
- * derived. Only literals, `encodeURIComponent(param)`, the multi-segment escape
- * idiom, and calls to known path helpers resolve — an unescaped interpolation
- * is refused rather than guessed, because the dispatcher escapes what it
- * substitutes and the two must agree exactly.
+ * derived. Only literals, `const` names the body can read,
+ * `encodeURIComponent(param)`, the multi-segment escape idiom,
+ * caller-unreachable defaults and calls to known path helpers resolve — an
+ * unescaped interpolation is refused rather than guessed, because the
+ * dispatcher escapes what it substitutes and the two must agree exactly.
  */
 export function resolvePath(
   expression: ts.Expression,
@@ -161,9 +162,19 @@ export function resolvePath(
     return text(node.text);
   if (ts.isIdentifier(node)) {
     const parts = bindingParts(node, context);
-    return parts ?? fail("unescaped path interpolation");
+    if (parts) return parts;
+    // A name the caller filled, or the operation's own parameter, is a value —
+    // never text — so it must be escaped to reach the path.
+    if (context.bindings.has(node.text) || context.parameters.has(node.text))
+      return fail("unescaped path interpolation");
+    if (context.depth >= MAX_DEPTH) return fail("path locals nest too deeply");
+    const local = context.locals(node.text);
+    return local
+      ? resolvePath(local, { ...context, depth: context.depth + 1 })
+      : fail("unescaped path interpolation");
   }
   if (ts.isCallExpression(node)) return resolveCall(node, context);
+  if (ts.isBinaryExpression(node)) return resolveDefault(node, context);
   if (!ts.isTemplateExpression(node)) return fail("non-literal path");
   const parts: PathPart[] = [...text(node.head.text)];
   for (const span of node.templateSpans) {

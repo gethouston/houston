@@ -15,13 +15,21 @@ export const fixtureOptions = {
     fixture("assistant-operations.ts"),
     fixture("assistant-cluster-mixin.ts"),
     fixture("assistant-dedup.ts"),
+    fixture("assistant-module.ts"),
   ],
+  isModuleSource: (path: string): boolean =>
+    path.endsWith("assistant-module.ts"),
   transportSource: fixture("assistant-transport.ts"),
+  facadeSource: fixture("assistant-facade.ts"),
+  resolverSources: [fixture("assistant-runtime-client.ts")],
 };
 
 export const realOptions = {
   operationSources: assistantPaths.operationSources,
+  isModuleSource: assistantPaths.isModuleSource,
   transportSource: assistantPaths.transportSource,
+  facadeSource: assistantPaths.facadeSource,
+  resolverSources: assistantPaths.resolverSources,
 };
 
 /** An expected route, spelled as its difference from the plain GET default. */

@@ -32,6 +32,7 @@ export const LOCAL_PROBES: readonly Probe[] = [
   probe("getPreference", { key: "locale" }),
   probe("setPreference", { key: "locale", value: "en" }),
   probe("listAgents"),
+  probe("preferences.setLocale", { ...WORKSPACE, locale: "en" }),
   probe("listInstalledConfigs"),
   probe("updateAgentColor", { agentId: PROBE_AGENT, color: "teal" }),
   probe("listAgentProviders", AGENT, {
@@ -128,4 +129,9 @@ export const LOCAL_PROBES: readonly Probe[] = [
   probe("detectCustomIntegration", { url: "not-a-url" }),
   probe("customIntegrationTools", { slug: "no-such-integration" }),
   probe("removeCustomIntegration", { slug: "no-such-integration" }),
+  probe("integrations.disconnect", { toolkit: "gmail" }),
+  probe("providers.refreshStatus", AGENT, {
+    status: 503,
+    reason: "the probe host's agent has no runtime to report a sign-in from",
+  }),
 ];

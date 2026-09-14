@@ -26,10 +26,12 @@
     "installAgentFromGithub": "Install an agent from a GitHub repository.",
     "installCommunitySkill": "Install a skill from the community directory into the agent.",
     "installSkillsFromRepo": "Install skills from a GitHub repository into the agent.",
+    "integrations.disconnect": "Disconnect an outside app from your account.",
     "joinAgentTeam": "Join this team in the space.",
     "mintRoutineWebhookKey": "Create a fresh key that lets an outside service start this routine. Any key issued before stops working.",
     "moveAgent": "Move this agent into a shared space so teammates can work with it.",
     "moveProjectFile": "Move this file into another folder of the agent's workspace.",
+    "preferences.setLocale": "Change the language this workspace uses.",
     "promoteSharedSkill": "Share the agent's skill with everyone in the workspace.",
     "pushClaudeOAuthCredential": "Send this computer's Claude sign-in to a cloud agent.",
     "putSkillsManifest": "Choose which of the agent's skills are switched on.",
@@ -112,6 +114,12 @@
     },
     "deleteSkill": {
       "slug": "skill"
+    },
+    "integrations.disconnect": {
+      "toolkit": "app"
+    },
+    "preferences.setLocale": {
+      "locale": "language"
     },
     "promoteSharedSkill": {
       "slug": "skill"

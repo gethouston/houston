@@ -43,9 +43,24 @@ export function createIntegrationsWrites(
   run: <T>(fn: () => Promise<T>) => Promise<T>,
 ): IntegrationsWriteOps {
   return {
+    /**
+     * Hands the gateway the caller's session token so it can act for the user.
+     * @assistant group:integrations
+     * @assistant hidden: UI plumbing; the app pushes its own session token on sign-in and clears it on sign-out.
+     */
     setSession: (token) => run(() => client.setSession(token)),
+    /**
+     * Dismisses the one-time notice asking the user to reconnect their apps.
+     * @assistant group:integrations
+     * @assistant hidden: UI plumbing; the notice is dismissed by the person who is looking at it.
+     */
     dismissReconnectNotice: () => run(() => client.dismissReconnectNotice()),
     writes: {
+      /**
+       * Disconnects an outside app without refetching the connection list.
+       * @assistant group:integrations
+       * @assistant hidden: the variant for a surface that owns its own reads; integrations.disconnect is the one to dispatch, and it also refreshes what the user sees.
+       */
       disconnect: (toolkit, opts) =>
         run(() => client.disconnect(toolkit, opts)),
     },

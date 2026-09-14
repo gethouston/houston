@@ -23,6 +23,37 @@ export function callerParameters(declaration: Declaration): Set<string> {
   );
 }
 
+/**
+ * The parameter list a CALLER sees.
+ *
+ * Behind overloads, the implementation signature is written for the body —
+ * `connect(a, b?, agent?)` picking apart which of two call shapes it got — and
+ * publishing those names describes the operation to nobody. The first overload
+ * is the contract, so it names the parameters; routing still reads the
+ * implementation, because the body is where the request is built.
+ */
+function publishedParameters(
+  declaration: Declaration,
+  checker: ts.TypeChecker,
+): readonly ts.ParameterDeclaration[] {
+  const { node } = declaration;
+  const name = ts.isArrowFunction(node) ? undefined : node.name;
+  const overload = name
+    ? checker
+        .getSymbolAtLocation(name)
+        ?.declarations?.find(
+          (other) =>
+            other !== node &&
+            (ts.isFunctionDeclaration(other) ||
+              ts.isMethodDeclaration(other)) &&
+            other.body === undefined,
+        )
+    : undefined;
+  return overload && ts.isFunctionLike(overload)
+    ? overload.parameters
+    : node.parameters;
+}
+
 export interface OperationParameters {
   params: AssistantParameter[];
   /** Parameter names whose schema fell back to a free-form comment. */
@@ -53,7 +84,7 @@ export function parametersOf(
 ): OperationParameters {
   const unschematized: string[] = [];
   const openIdentifiers: string[] = [];
-  const params = declaration.node.parameters
+  const params = publishedParameters(declaration, checker)
     .filter((parameter) => !isPlumbingParameter(parameter))
     .map((parameter) => {
       const name = parameter.name.getText(source);

@@ -99,6 +99,13 @@ describe("assistant route derivation", () => {
       probeThing: "non-assignment request option",
       replaceThing: "multiple request calls",
       tagThing: "body value is not a parameter",
+      "things.audit": "the client method issues several requests",
+      "things.pin": "body value is not a parameter",
+      "things.readLoose":
+        "the agent the client is rooted at is not a parameter",
+      "things.unpin": "path segment depends on a value the caller may override",
+      "things.writes.detach":
+        "path segment depends on a value the caller may override",
     };
     for (const name of Object.keys(expected))
       expect(routes.get(name), `${name} must stay unroutable`).toBeNull();
