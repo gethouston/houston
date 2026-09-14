@@ -14,6 +14,17 @@ function segmentGlobMatches(pattern: string, path: string): boolean {
   return want.every((seg, i) => seg === "*" || seg === have[i]);
 }
 
+/**
+ * `**\/name/` excludes every file under a directory called `name` at ANY
+ * depth: the shape a rebuildable toolchain takes (node_modules, .venv) when an
+ * agent installs it somewhere inside its workspace. Only directories match;
+ * a file that happens to be called `name` is not a toolchain.
+ */
+function anyDepthDirMatches(pattern: string, path: string): boolean {
+  const dir = pattern.slice("**/".length, -1);
+  return path.split("/").slice(0, -1).includes(dir);
+}
+
 export function excluded(rel: string, excludes: string[]): boolean {
   const normalized = norm(rel);
   if (normalized.endsWith(".tmp")) return true;
@@ -23,6 +34,9 @@ export function excluded(rel: string, excludes: string[]): boolean {
   if (normalized.split("/").includes("auth-users")) return true;
   return excludes.some((exclude) => {
     const pattern = norm(exclude);
+    if (pattern.startsWith("**/") && pattern.endsWith("/")) {
+      return anyDepthDirMatches(pattern, normalized);
+    }
     if (pattern.includes("*")) {
       return segmentGlobMatches(pattern, normalized);
     }
