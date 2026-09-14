@@ -123,7 +123,12 @@
     },
     "description": "Conecte uma API ou servidor MCP que não está no catálogo de aplicativos.",
     "empty": "Você ainda não tem integrações personalizadas. Adicione uma para conectar uma ferramenta que não está no catálogo.",
+    "emptyForAgent": "{{agent}} ainda não tem integrações personalizadas. Adicione uma para conectar uma ferramenta que não está no catálogo.",
     "noResults": "Nenhuma integração personalizada corresponde à sua busca.",
+    "scope": {
+      "title": "As integrações personalizadas são configuradas por agente. Escolha quais mostrar.",
+      "label": "De {{agent}}"
+    },
     "catalogUnavailable": "O catálogo de aplicativos não está disponível nesta configuração, mas você ainda pode adicionar integrações personalizadas.",
     "addButton": "Adicionar integração personalizada",
     "loadError": "Não conseguimos carregar suas integrações personalizadas.",
@@ -168,6 +173,7 @@
       "added": "Adicionada",
       "actions": "Ações",
       "activeBody": "Conectada e funcionando. Seus agentes podem usar as ações dela em qualquer chat.",
+      "activeBodyAgent": "Conectada e funcionando. Este agente pode usar as ações dela em qualquer chat.",
       "pendingBody": "Aguardando uma chave de API. Insira a chave para ativá-la.",
       "errorBody": "Ela não está funcionando agora: {{message}}",
       "updateKey": "Atualizar chave",
@@ -196,6 +202,7 @@
     "delete": {
       "title": "Remover {{name}}?",
       "description": "Seus agentes perderão acesso às ações dela. Isso não pode ser desfeito.",
+      "descriptionAgent": "Este agente perderá o acesso às ações dela. Isso não pode ser desfeito.",
       "confirm": "Remover",
       "cancel": "Cancelar"
     },

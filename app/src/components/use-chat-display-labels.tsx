@@ -4,7 +4,9 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useActionBrandResolver } from "./use-action-brand-resolver";
 
-export function useChatDisplayLabels(): Pick<
+export function useChatDisplayLabels(
+  agentId?: string,
+): Pick<
   ChatPanelProps,
   "processLabels" | "getThinkingMessage" | "thinkingIndicator"
 > {
@@ -12,7 +14,7 @@ export function useChatDisplayLabels(): Pick<
   // Resolves an in-flight integration action to the app logo + name + present-
   // tense label the process header shows as a branded row; ui/chat calls it
   // through `processLabels.resolveActionBrand`, staying Composio-unaware.
-  const resolveActionBrand = useActionBrandResolver();
+  const resolveActionBrand = useActionBrandResolver(agentId);
   // The astronaut deck plays ONLY in the standalone connecting indicator
   // below (PRODUCT-1226): once the agent is executing, the mission-log header
   // holds the concrete task (sticky verb/brand, with an "x3" repeat counter),

@@ -40,16 +40,19 @@ import { useToolkitBrandResolver } from "./use-toolkit-brand-resolver";
  *
  * Stable across renders unless the catalog or the custom list moves.
  */
-export function useActionBrandResolver(): (
-  action: string,
-) => ChatActionBrand | undefined {
+export function useActionBrandResolver(
+  /** The chat's own agent when there is one: on a per-agent deployment its
+   *  custom list is the one that names the action (PRODUCT-1773). */
+  agentId?: string,
+): (action: string) => ChatActionBrand | undefined {
   const catalog = useReadyToolkitCatalog();
   const catalogData = catalog.data;
   const slugs = useMemo(
     () => (catalogData ?? []).map((tk) => tk.slug),
     [catalogData],
   );
-  const custom = useCustomIntegrationsFor(useCustomTransportAgentId());
+  const transportAgentId = useCustomTransportAgentId();
+  const custom = useCustomIntegrationsFor(agentId ?? transportAgentId);
   const customDefs = custom.data;
   const resolveBrand = useToolkitBrandResolver();
   return useCallback(

@@ -10,6 +10,7 @@ import {
   AddCustomButton,
   type ConnectedApps,
   type CustomIntegrationsSurface,
+  CustomScopeControl,
   CustomSurfaceSupport,
   INTEGRATION_PROVIDER,
   ReconnectBanner,
@@ -97,7 +98,10 @@ export function IntegrationsReady({
             customAvailable={Array.isArray(custom.items)}
             addCustom={
               Array.isArray(custom.items) ? (
-                <AddCustomButton surface={custom} compact={inStrip} />
+                <>
+                  <CustomScopeControl surface={custom} compact={inStrip} />
+                  <AddCustomButton surface={custom} compact={inStrip} />
+                </>
               ) : undefined
             }
           />
@@ -180,7 +184,11 @@ export function IntegrationsReady({
         shown.custom.length === 0 &&
         !apps.isLoading && (
           <p className="text-sm text-ink-muted">
-            {t(custom.items.length > 0 ? "custom.noResults" : "custom.empty")}
+            {custom.items.length > 0
+              ? t("custom.noResults")
+              : custom.scopeAgent
+                ? t("custom.emptyForAgent", { agent: custom.scopeAgent.name })
+                : t("custom.empty")}
           </p>
         )}
 

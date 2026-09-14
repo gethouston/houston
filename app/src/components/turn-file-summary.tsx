@@ -26,11 +26,11 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
   const { capabilities } = useCapabilities();
   const [openUpdates, setOpenUpdates] = useState(true);
   const [openFiles, setOpenFiles] = useState(false);
-  const resolveBrand = useActionBrandResolver();
   const { openFile } = useOpenAgentFile(agentPath);
   const agent = useAgentStore((s) =>
     s.agents.find((candidate) => candidate.folderPath === agentPath),
   );
+  const resolveBrand = useActionBrandResolver(agent?.id);
   const semanticIsLink = !!agent && canOpenAgentSettings(capabilities, agent);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
 

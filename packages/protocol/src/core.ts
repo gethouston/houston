@@ -44,6 +44,9 @@ export interface VersionResponse {
  */
 export type OrgRole = "owner" | "admin" | "user";
 
+/** See `Capabilities.customIntegrationScope`. */
+export type CustomIntegrationScope = "host" | "agent";
+
 /**
  * What this host deployment can do. The UI gates affordances on capabilities,
  * NEVER on "am I web / desktop / cloud" branches — that's where drift breeds.
@@ -96,6 +99,17 @@ export interface Capabilities {
    * verdict instead of offering a sign-in that can only fail.
    */
   customIntegrationOAuth?: boolean;
+  /**
+   * Where a custom integration's definition + secret live (PRODUCT-1773).
+   * `host`: one definitions file shared by every agent this host serves
+   * (desktop, self-host) — absent means host, so legacy hosts stay valid.
+   * `agent`: one pod per agent, each holding its own definitions and vault
+   * secrets (the hosted gateway) — an integration set up with one agent is
+   * that agent's alone, so a surface with no ambient agent must let the user
+   * choose whose list it shows instead of reading the first agent's as
+   * everyone's.
+   */
+  customIntegrationScope?: CustomIntegrationScope;
   /**
    * Whether this deployment runs in multiplayer (paid org) mode: members,
    * roles, per-agent assignment. Absent/false = single personal workspace.

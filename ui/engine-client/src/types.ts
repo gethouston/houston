@@ -87,6 +87,9 @@ export interface AssistantHandle {
   conversation: string;
 }
 
+/** See `Capabilities.customIntegrationScope`. */
+export type CustomIntegrationScope = "host" | "agent";
+
 export interface Capabilities {
   localModelBridge?: { versions: number[] };
   profile: "local" | "cloud";
@@ -106,6 +109,12 @@ export interface Capabilities {
    * a sign-in that can only fail.
    */
   customIntegrationOAuth?: boolean;
+  /**
+   * Where custom integrations live: `host` (one list shared by every agent
+   * on this host; absent = host) or `agent` (one pod per agent on the hosted
+   * gateway, each with its own list). See the protocol's `Capabilities`.
+   */
+  customIntegrationScope?: CustomIntegrationScope;
   /**
    * Whether this deployment runs in multiplayer (paid org) mode: members,
    * roles, per-agent assignment. Absent/false = single personal workspace.

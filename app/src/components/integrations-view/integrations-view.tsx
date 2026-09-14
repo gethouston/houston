@@ -5,6 +5,7 @@ import { claimSignInTab, useIntegrationToolkits } from "../../hooks/queries";
 import {
   AddCustomButton,
   CustomIntegrationRow,
+  CustomScopeControl,
   CustomSurfaceSupport,
   INTEGRATION_PROVIDER,
   LoadingState,
@@ -101,7 +102,13 @@ export function IntegrationsView() {
                   {Array.isArray(custom.items) && (
                     <PageHeaderTools>
                       {(inStrip) => (
-                        <AddCustomButton surface={custom} compact={inStrip} />
+                        <>
+                          <CustomScopeControl
+                            surface={custom}
+                            compact={inStrip}
+                          />
+                          <AddCustomButton surface={custom} compact={inStrip} />
+                        </>
                       )}
                     </PageHeaderTools>
                   )}
