@@ -1,4 +1,5 @@
 import { isAbsolute } from "node:path";
+import { bashWords } from "./bash-words";
 
 /** The path(s) a tool call would touch, for clamping. */
 export function targetPaths(
@@ -44,10 +45,13 @@ export function targetPaths(
  * redirections, `$HOME`, env expansion, and `$(...)` command substitution all
  * evade flat token inspection. This layer is defense-in-depth that must at least
  * not fail open on the trivial absolute/`~`/`..` cases. Conservative by design:
- * over-denying an odd path token is safer than leaking a read.
+ * over-denying an odd path token is safer than leaking a read — but the words
+ * are split like a shell splits them, so a quoted or escaped path with a space
+ * is judged whole: `"/etc/passwd"` is still one absolute token and still
+ * denied, while `".../Personal/neqw copia"` is contained (PRODUCT-1809).
  */
 function bashEscapeCandidates(command: string): string[] {
-  return command.split(/[\s;|&()<>"'`]+/).filter(isEscapeToken);
+  return bashWords(command).filter(isEscapeToken);
 }
 
 /**
