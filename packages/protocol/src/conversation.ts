@@ -442,6 +442,15 @@ export interface TurnInterruption {
   cause: TurnInterruptionCause;
   /** The tool running when the engine died, when one was recorded. */
   tool?: string;
+  /**
+   * Set when the engine is starting a replacement turn for this one by itself
+   * (PRODUCT-1785): the user does not have to say "continue". Changes the line
+   * the surfaces render AND keeps the turn out of the error/needs_you settle —
+   * the work is still going. Absent when the interrupted turn is dead for good
+   * (a resume that was itself interrupted, a marker from an older engine, an
+   * original message no longer on disk).
+   */
+  resumed?: true;
 }
 
 /** The most @mentions one message may carry; the rest are dropped. */

@@ -35,6 +35,7 @@ export {
   type DismissInteractionOutcome,
   decodeAttachmentText,
   ENGINE_RESTART_MESSAGE,
+  ENGINE_RESUMED_MESSAGE,
   type FeedAuthor,
   type FeedFrame,
   type FeedItemVM,

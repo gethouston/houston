@@ -283,6 +283,10 @@
   "contextCompacted": "Resumimos la conversación anterior para que el chat pueda continuar",
   "contextCompactedManual": "Compactamos la conversación para liberar espacio",
   "contextCleared": "Contexto borrado. Empiezo de cero y conservo lo que aprendí sobre ti.",
+  "engineRestart": {
+    "sayContinue": "Tu agente tuvo que reiniciarse. Dile que continúe y retomará donde se quedó.",
+    "resuming": "Tu agente se interrumpió por un reinicio y está retomando donde se quedó."
+  },
   "contextCommands": {
     "compact": "Compactar contexto",
     "clear": "Borrar contexto"

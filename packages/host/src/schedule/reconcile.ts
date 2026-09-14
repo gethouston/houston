@@ -130,9 +130,26 @@ export async function reconcileAgentRuns(
   for (const [index, { run, routine }] of candidates.entries()) {
     const reply = replies[index] ?? null;
 
+    // An `interrupted.resumed` reply is the engine saying "I died mid-run and
+    // am running this turn again myself" (PRODUCT-1785) — a pause, not the
+    // run's answer. Its 15-minute budget restarts from that interruption: the
+    // work began again there, and timing it out against the ORIGINAL start
+    // would kill a resume that only had seconds of the first window left.
+    const resumedReply = reply?.interrupted?.resumed === true ? reply : null;
+    const clockStartMs = resumedReply
+      ? resumedReply.ts
+      : Date.parse(run.started_at);
     const timedOut =
-      !reply && nowMs - Date.parse(run.started_at) > RUN_TIMEOUT_MS;
+      (!reply || resumedReply !== null) &&
+      nowMs - clockStartMs > RUN_TIMEOUT_MS;
     if (!reply && !timedOut) continue; // turn still in flight
+    if (resumedReply && !timedOut) {
+      // Stays `running`, and deliberately takes NO completion lock: the
+      // resumed turn's real reply still has to win that lock on a later sweep.
+      // Writing the same flag from two replicas is idempotent.
+      if (!run.resumed) updates.push({ run: { ...run, resumed: true } });
+      continue;
+    }
 
     // One replica owns this run's completion.
     if (!(await deps.lock.setNx(`routine:reconcile:${run.id}`, "1", 120)))

@@ -68,6 +68,13 @@ export async function runTurn(
   displayText?: string,
   mentions?: ChatMessage["mentions"],
   acceptedTurnId?: string,
+  /**
+   * Set only by the boot resume (resume-interrupted-turns.ts): the id of the
+   * interrupted turn THIS turn stands in for. Recorded on the in-flight marker
+   * so a restart that kills the resume too settles it and stops — one
+   * automatic resume per interrupted turn (PRODUCT-1785).
+   */
+  options?: { resumeOf?: string },
 ): Promise<void> {
   // Mint the turn's wire identity up front so even a turn that fails before
   // executing (the guards below) terminates under one id.
@@ -144,6 +151,7 @@ export async function runTurn(
       acting,
       displayText,
       mentions,
+      { pin, ...(options?.resumeOf ? { resumeOf: options.resumeOf } : {}) },
     );
     return withWorkdirLock(config.workspaceDir, () =>
       execTurn(conv, id, turnId, text, recorded, pin, acting),

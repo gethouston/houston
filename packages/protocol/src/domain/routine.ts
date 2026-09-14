@@ -180,6 +180,13 @@ export interface RoutineRun {
    * outage) carries only `summary`, exactly as before.
    */
   failure?: RoutineRunFailure;
+  /**
+   * The engine restarted mid-run and is running the turn again by itself
+   * (PRODUCT-1785). The run stays `running` — its reply is still coming — and
+   * this only records that the elapsed time includes a restart, so a reader
+   * knows why the run took longer than the routine usually does.
+   */
+  resumed?: true;
 }
 
 export interface RoutineRunUpdate {
@@ -188,4 +195,5 @@ export interface RoutineRunUpdate {
   summary?: string;
   completed_at?: string;
   paused_until?: string | null;
+  resumed?: true;
 }
