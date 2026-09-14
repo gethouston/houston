@@ -6,6 +6,7 @@ pub mod diagnostics;
 mod dialogs;
 pub mod file_failure;
 pub mod migration;
+pub mod open_url_failure;
 pub mod os;
 pub mod portable;
 pub mod save_file;

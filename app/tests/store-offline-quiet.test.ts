@@ -38,6 +38,7 @@ describe("showErrorToast routes the quiet classes to their own surfaces", () => 
     );
     ok(body.includes("showEngineWakingToast(command, message, originalError)"));
     ok(body.includes('reportQuietError("bridge_unsupported"'));
+    ok(body.includes("showNoBrowserToast(command, message, originalError)"));
   });
 });
 

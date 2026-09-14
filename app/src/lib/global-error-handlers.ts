@@ -12,6 +12,8 @@ import {
 } from "./error-toast";
 import { installForeignDomSafetyNet } from "./foreign-dom-report";
 import { isNetworkTransportError } from "./network-transport-error";
+import { showNoBrowserToast } from "./no-browser-toast";
+import { isNoUrlHandlerError } from "./open-url-failure.ts";
 
 /**
  * Install the process-wide `window.onerror` / `window.onunhandledrejection`
@@ -110,6 +112,15 @@ export function installGlobalErrorHandlers(): void {
       event.preventDefault();
       console.error("[global:unhandledrejection] engine waking:", message);
       showEngineWakingToast("unhandled_rejection", message, event.reason);
+      return;
+    }
+    // The shell answering that nothing on this machine opens a URL (no
+    // default browser, PRODUCT-1814) off a click nobody caught: the remedy
+    // toast and the one fingerprinted `no_url_handler` warning, no bug.
+    if (isNoUrlHandlerError(event.reason)) {
+      event.preventDefault();
+      console.error("[global:unhandledrejection] no URL handler:", message);
+      showNoBrowserToast("unhandled_rejection", message, event.reason);
       return;
     }
     console.error("[global:unhandledrejection]", message, event.reason);

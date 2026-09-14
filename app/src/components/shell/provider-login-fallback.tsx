@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { genericErrorDescription } from "../../lib/error-report";
 import { subscribeHoustonEvents } from "../../lib/events";
+import { surfaceNoBrowser } from "../../lib/no-browser-toast";
 import { osIsTauri } from "../../lib/os-bridge";
 import { getProvider, type ProviderInfo } from "../../lib/providers";
 import { tauriSystem } from "../../lib/tauri";
@@ -76,6 +77,7 @@ export function ProviderLoginFallback() {
           // the exchange; the client only opens the URL. Surface a failed
           // open — the launching card sits in "waiting" otherwise.
           tauriSystem.openUrl(ev.data.url).catch((err) => {
+            if (surfaceNoBrowser("provider_login_open_url", err)) return;
             addToast({
               title: t("toast.signInFailed", {
                 provider: prov?.name ?? ev.data.provider,

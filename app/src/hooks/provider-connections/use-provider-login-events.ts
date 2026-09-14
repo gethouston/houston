@@ -5,6 +5,7 @@ import { shouldOpenLoginUrlDirectly } from "../../components/shell/provider-logi
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
 import { genericErrorDescription } from "../../lib/error-report";
 import { subscribeHoustonEvents } from "../../lib/events";
+import { surfaceNoBrowser } from "../../lib/no-browser-toast";
 import { osIsTauri } from "../../lib/os-bridge";
 import { localizedProviderLoginError } from "../../lib/provider-login-error";
 import { getProvider, type ProviderInfo } from "../../lib/providers";
@@ -103,6 +104,7 @@ export function useProviderLoginEvents({
           // and skip the dialog — there is no code to enter. Surface a failed
           // open so the user isn't left on a silent spinner.
           tauriSystem.openUrl(ev.data.url).catch((err) => {
+            if (surfaceNoBrowser("provider_open_login_url", err)) return;
             addToast({
               title: t("toast.signInFailed", {
                 provider: prov?.name ?? ev.data.provider,

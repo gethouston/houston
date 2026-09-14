@@ -4,6 +4,7 @@ import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
 import { canOpenAgentSettings } from "../lib/agent-nav";
 import { genericErrorDescription } from "../lib/error-report";
+import { surfaceNoBrowser } from "../lib/no-browser-toast";
 import { openAgentSettings } from "../lib/open-agent";
 import { tauriSystem } from "../lib/tauri";
 import {
@@ -52,6 +53,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
   const openUrl = useCallback(
     (url: string) => {
       tauriSystem.openUrl(url).catch((error) => {
+        if (surfaceNoBrowser("open_summary_link", error)) return;
         addToast({
           variant: "error",
           title: t("summary.openLinkFailedTitle"),

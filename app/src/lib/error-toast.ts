@@ -4,6 +4,7 @@ import { isAgentWarmingRefusal } from "./agent-warming-refusal";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { createBurstGate } from "./error-burst";
 import i18n from "./i18n";
+import { showNoBrowserToast } from "./no-browser-toast";
 import { classifyQuietError } from "./quiet-error-class";
 import { reportQuietError } from "./quiet-error-report";
 import {
@@ -173,6 +174,9 @@ export function showErrorToast(
     case "bridge_unsupported":
       console.error(`[toast:${command}] ${message}`);
       reportQuietError("bridge_unsupported", command, message, originalError);
+      return;
+    case "no_url_handler":
+      showNoBrowserToast(command, message, originalError);
       return;
     case null:
       break;

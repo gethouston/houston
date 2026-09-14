@@ -32,6 +32,7 @@ import type {
   DictationModelStatus,
 } from "./dictation/types";
 import type { DetectedServer } from "./local-model";
+import { toOpenUrlError } from "./open-url-failure.ts";
 
 // ── Platform detection ────────────────────────────────────────────────
 
@@ -79,7 +80,15 @@ export function osPickDirectory(): Promise<string | null> {
  * `true` (a failure rejects).
  */
 export async function osOpenUrl(url: string): Promise<boolean> {
-  const opened = await invoke<boolean | undefined>("open_url", { url });
+  let opened: boolean | undefined;
+  try {
+    opened = await invoke<boolean | undefined>("open_url", { url });
+  } catch (err) {
+    // The shell rejects typed (`open_url_failure.rs`); as an Error the quiet
+    // classifier can name a missing default browser on any path, including
+    // a click handler nobody catches (PRODUCT-1814).
+    throw toOpenUrlError(err);
+  }
   return opened !== false;
 }
 
