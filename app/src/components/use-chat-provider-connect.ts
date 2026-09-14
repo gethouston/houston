@@ -10,9 +10,10 @@ import { logAndReportError } from "../lib/error-report";
 import { osIsTauri } from "../lib/os-bridge";
 import {
   cancelProviderConnectStep,
+  claimProviderConnectStepResume,
   providerConnectStepCancelled,
   resumeProviderConnectStep,
-} from "../lib/provider-connect-cancellation";
+} from "../lib/provider-connect-step-memory";
 import { providerConnectionState } from "../lib/provider-connection";
 import {
   EMPTY_PROVIDER_CAPABILITIES,
@@ -62,7 +63,6 @@ export function useChatProviderConnect({
   const monitor = useRef<ReturnType<
     typeof createProviderConnectionMonitor
   > | null>(null);
-  const completed = useRef(false);
   const connectedRef = useRef(onConnected);
   connectedRef.current = onConnected;
   const id = provider?.id;
@@ -80,9 +80,11 @@ export function useChatProviderConnect({
       // lands after the user cancelled must not resume the conversation just
       // because the card was rebuilt in between.
       initiallyPaused: providerConnectStepCancelled(stepId),
+      // The resume lives with the STEP, not with this mount: the interaction is
+      // persisted, so the card is rebuilt after the very turn this nudge starts
+      // — and a second nudge would start another turn, and another card.
       onConnected: () => {
-        if (completed.current) return;
-        completed.current = true;
+        if (!claimProviderConnectStepResume(stepId)) return;
         resumeProviderConnectStep(stepId);
         connectedRef.current(name);
       },

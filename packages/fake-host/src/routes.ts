@@ -168,8 +168,26 @@ export function handleAgents(
       if (method === "GET") return json({ items: [] });
       return noContent(); // create/update/delete/run — accepted no-ops
 
-    case "credential":
-      return noContent(); // capture / forget
+    case "credential": {
+      // `POST /agents/:id/credential/api-key` is the ONLY write an API-key
+      // connect makes — the real host stores the key centrally AND pushes it
+      // into the standing runtime, so `/providers` reads connected at once. No
+      // runtime-side call follows it, so accepting it as a no-op left the
+      // provider unconnected while the dialog reported success. Same validation
+      // as the real route (and the setup-runtime twin): a malformed body 400s.
+      if (method === "POST" && rest[2] === "api-key") {
+        const provider = body?.provider;
+        if (!provider || typeof provider !== "string")
+          return json({ error: "missing 'provider'" }, 400);
+        if (!body?.apiKey || typeof body.apiKey !== "string")
+          return json({ error: "missing 'apiKey'" }, 400);
+        state.setApiKey(id, provider as ProviderId);
+        return json({ ok: true, provider });
+      }
+      // capture / forget: each is paired with a runtime login/logout call the
+      // fake already models, so the slot state is carried there.
+      return noContent();
+    }
 
     case "providers":
       // `/providers/usage` is the live per-account usage the AI Models hub's

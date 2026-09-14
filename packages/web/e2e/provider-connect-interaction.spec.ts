@@ -52,7 +52,7 @@ for (const surface of ["manager", "mission"] as const) {
     await field.fill(secret);
     await page
       .getByRole("dialog")
-      .getByRole("button", { name: "Save", exact: true })
+      .getByRole("button", { name: "Connect", exact: true })
       .click();
     await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
       timeout: 15_000,
@@ -136,13 +136,14 @@ test("picking a Copilot plan starts the sign-in from the connect step", async ({
   await expect(plan).toBeVisible();
   await plan.getByRole("button", { name: "Continue", exact: true }).click();
 
-  // The plan dialog is gone and the step is now WAITING on the sign-in it
-  // started — not back on an idle Connect, which is what an abandoned step
-  // would show.
+  // The plan dialog is gone and the sign-in it started is on screen: the
+  // device-code dialog the fake host's login URL opens. An abandoned step would
+  // show an idle Connect instead. The card underneath is inert while the
+  // dialog is up, so the step's own waiting state is pinned by the unit tests
+  // of closeMeansCancel, not asserted through the modal.
   await expect(plan).toHaveCount(0);
-  await expect(page.getByText("Waiting for you to connect")).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Cancel connection" }),
+    page.getByRole("dialog", { name: "Finish signing in to GitHub Copilot" }),
   ).toBeVisible();
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 });
