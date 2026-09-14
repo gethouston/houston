@@ -7,6 +7,7 @@ import {
   packAgent,
   packageSeed,
   portableInventory,
+  remintRoutineIds,
   seedSchemas,
   unpackAgent,
   validateAgentName,
@@ -168,6 +169,10 @@ export async function handlePortableAccount(
   if (body.selection !== undefined) {
     pkg = filterPackage(pkg, body.selection as PortableSelection);
   }
+  // The installed agent is a NEW identity: its routines never keep the
+  // package's ids (see remintRoutineIds).
+  const identity = remintRoutineIds(pkg, () => crypto.randomUUID());
+  pkg = identity.pkg;
 
   const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
   const agent = await deps.store.createAgent({
@@ -188,6 +193,10 @@ export async function handlePortableAccount(
   // on hosted cloud — one layout, wherever the install lands.
   await writeAgentSeeds(deps.vfs, root, packageSeed(pkg), routineCreatedBy);
 
-  json(res, 201, { agent, installed: portableInventory(pkg) });
+  json(res, 201, {
+    agent,
+    installed: portableInventory(pkg),
+    routineIds: identity.routineIds,
+  });
   return true;
 }

@@ -179,9 +179,16 @@ test("export → preview → install round-trips the agent's content into a new 
   expect(inst.status).toBe(201);
   const installed = (await inst.json()) as {
     agent: { id: string };
-    installed: { skills: unknown[] };
+    installed: { skills: unknown[]; routines: { id: string }[] };
+    routineIds: Record<string, string>;
   };
   expect(installed.installed.skills).toHaveLength(1);
+  // The copy's routine is a NEW identity (PRODUCT-1808): the hosted trigger
+  // tables key on routine id globally, so two agents must never share one.
+  const copiedId = installed.installed.routines[0]?.id;
+  expect(copiedId).toBeDefined();
+  expect(copiedId).not.toBe(routineId);
+  expect(installed.routineIds).toEqual({ [routineId]: copiedId });
 
   // The new agent really has the skill + routine on disk.
   const bobWs = await store.getOrCreatePersonalWorkspace("bob");
@@ -196,8 +203,11 @@ test("export → preview → install round-trips the agent's content into a new 
     await vfs.readText(`${bobRoot}/.agents/skills/research/SKILL.md`),
   ).toContain("## Procedure");
   expect(
-    (await loadRoutines(vfs, bobRoot)).items.map((r: Routine) => r.name),
-  ).toEqual(["Daily"]);
+    (await loadRoutines(vfs, bobRoot)).items.map((r: Routine) => [
+      r.id,
+      r.name,
+    ]),
+  ).toEqual([[copiedId, "Daily"]]);
 });
 
 test("preview of junk bytes is a clean 400, not a crash", async () => {

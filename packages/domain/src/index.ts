@@ -11,6 +11,7 @@ export * from "./layout";
 export * from "./mentions";
 export * from "./portable";
 export * from "./portable-edit";
+export * from "./portable-install-identity";
 export * from "./preferences";
 export * from "./provider-choice";
 export * from "./provider-model";

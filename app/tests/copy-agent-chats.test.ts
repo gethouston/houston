@@ -152,6 +152,50 @@ describe("copyAgentChats", () => {
     ok(!all.some((rel) => rel.includes("activity-t")));
   });
 
+  it("lands a routine chat under the copy's re-minted routine id", async () => {
+    const imported: string[][] = [];
+    const engine: ChatCopyEngine = {
+      async listConversations(agentPath) {
+        if (agentPath === "dst") return [];
+        return [{ id: "b2", session_key: "routine-r9" } as ConversationEntry];
+      },
+      async migrationExport(_agentPath, paths) {
+        const files: Record<string, Uint8Array> = {};
+        for (const rel of paths) {
+          files[rel] = strToU8(
+            rel.endsWith("activity.json")
+              ? JSON.stringify([{ id: "b2", session_key: "routine-r9" }])
+              : JSON.stringify({ id: "routine-r9" }),
+          );
+        }
+        const zip = zipSync(files);
+        return zip.buffer.slice(
+          zip.byteOffset,
+          zip.byteOffset + zip.byteLength,
+        ) as ArrayBuffer;
+      },
+      async migrationImport(_agentPath, bytes) {
+        const names = Object.keys(unzipSync(new Uint8Array(bytes)));
+        imported.push(names);
+        return { written: names.length, skipped: 0, rejected: [] };
+      },
+    };
+    // The install re-minted r9 as q9: the copied chat must follow, or the
+    // copy's routine screen would open an orphaned `routine-r9` chat.
+    const outcome = await copyAgentChats(
+      engine,
+      "src",
+      "dst",
+      () => "n1",
+      () => false,
+      { r9: "q9" },
+    );
+    ok(chatCopyComplete(outcome));
+    deepStrictEqual(imported[0], [
+      ".houston/runtime/conversations/routine-q9.json",
+    ]);
+  });
+
   it("reports a board the target already had, and rejected files, as incomplete", async () => {
     const engine: ChatCopyEngine = {
       async listConversations(agentPath) {

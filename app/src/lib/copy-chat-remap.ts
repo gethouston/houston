@@ -15,6 +15,8 @@ export interface ChatIdMap {
   activity: Map<string, string>;
   /** Source conversation key → the copy's conversation key. */
   session: Map<string, string>;
+  /** Source routine id → the copy's routine id (the install re-mints them). */
+  routine: Map<string, string>;
 }
 
 /** The board file every task row lives in. */
@@ -27,26 +29,47 @@ export function transcriptPath(sessionKey: string): string {
 }
 
 /**
- * The copy's key for a source key. Only the `activity-<id>` family follows
- * the task's new id; any other family (`routine-<rid>`, setup chats) names
- * something the copy carries under the SAME id, so the key must stay for the
- * link to hold.
+ * The copy's key for a source key. The `activity-<id>` family follows the
+ * task's new id; the `routine-<rid>` / `routine-<rid>-<run>` family follows
+ * the routine's re-minted id (an install never keeps the source's routine
+ * ids, PRODUCT-1808); any other family (setup chats) names something the copy
+ * carries under the SAME id, so the key must stay for the link to hold.
  */
-function nextSessionKey(key: string, nextId: string): string {
-  return key.startsWith("activity-") ? `activity-${nextId}` : key;
+function nextSessionKey(
+  key: string,
+  nextId: string,
+  routines: ReadonlyMap<string, string>,
+): string {
+  if (key.startsWith("activity-")) return `activity-${nextId}`;
+  if (key.startsWith("routine-")) {
+    for (const [from, to] of routines) {
+      if (key === `routine-${from}` || key.startsWith(`routine-${from}-`)) {
+        return `routine-${to}${key.slice(`routine-${from}`.length)}`;
+      }
+    }
+  }
+  return key;
 }
 
 /** One fresh id per source conversation, decided once so every batch agrees. */
 export function planChatIdMap(
   conversations: readonly Pick<ConversationEntry, "id" | "session_key">[],
   mint: () => string,
+  routineIds: Readonly<Record<string, string>> = {},
 ): ChatIdMap {
-  const map: ChatIdMap = { activity: new Map(), session: new Map() };
+  const map: ChatIdMap = {
+    activity: new Map(),
+    session: new Map(),
+    routine: new Map(Object.entries(routineIds)),
+  };
   for (const c of conversations) {
     if (map.activity.has(c.id)) continue;
     const next = mint();
     map.activity.set(c.id, next);
-    map.session.set(c.session_key, nextSessionKey(c.session_key, next));
+    map.session.set(
+      c.session_key,
+      nextSessionKey(c.session_key, next, map.routine),
+    );
   }
   return map;
 }
@@ -56,6 +79,7 @@ interface ActivityRow {
   status?: string;
   session_key?: string;
   origin_session_key?: string;
+  routine_id?: string;
   claude_session_id?: unknown;
   routine_run_id?: unknown;
   worktree_path?: unknown;
@@ -73,7 +97,7 @@ function remapActivities(text: string, map: ChatIdMap, mint: () => string) {
       id = mint();
       map.activity.set(row.id, id);
       const key = row.session_key ?? `activity-${row.id}`;
-      map.session.set(key, nextSessionKey(key, id));
+      map.session.set(key, nextSessionKey(key, id, map.routine));
     }
     // Transient state stays behind: no turn is running in the copy, and a
     // routine run or native session id names something only the source has.
@@ -90,7 +114,12 @@ function remapActivities(text: string, map: ChatIdMap, mint: () => string) {
     };
     if (row.session_key !== undefined) {
       next.session_key =
-        map.session.get(row.session_key) ?? nextSessionKey(row.session_key, id);
+        map.session.get(row.session_key) ??
+        nextSessionKey(row.session_key, id, map.routine);
+    }
+    // A task a routine run made points at the copy's routine, not the source's.
+    if (row.routine_id !== undefined) {
+      next.routine_id = map.routine.get(row.routine_id) ?? row.routine_id;
     }
     if (row.origin_session_key !== undefined) {
       const origin = map.session.get(row.origin_session_key);

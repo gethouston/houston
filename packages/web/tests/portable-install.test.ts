@@ -111,15 +111,22 @@ test("install creates the agent with the package as its seed payload", async () 
   ]);
   // The unticked learning stays out of the payload entirely.
   expect(JSON.stringify(body)).not.toContain("Prefers brevity");
-  expect(
-    JSON.parse(body.seeds?.[".houston/routines/routines.json"] ?? ""),
-  ).toEqual([SEEDED_ROUTINE]);
+  // The seeded routine is the source's, under a NEW id: the hosted trigger
+  // tables key on routine id globally, so a copy must never share one with
+  // its source (PRODUCT-1808). The install reports which id became which.
+  const seeded = JSON.parse(
+    body.seeds?.[".houston/routines/routines.json"] ?? "",
+  ) as { id: string }[];
+  const copiedId = seeded[0]?.id ?? "";
+  expect(copiedId).not.toBe("r1");
+  expect(seeded).toEqual([{ ...SEEDED_ROUTINE, id: copiedId }]);
 
   expect(installed).toEqual({
     agentPath: "abcd1234abcd1234",
     agentName: "Sales",
     workspaceName: "Houston",
     requiredIntegrations: [],
+    routineIds: { r1: copiedId },
     // The created record rides along so the wizard can adopt it into the
     // agent store optimistically — same reveal contract as create (HOU-710).
     agent: expect.objectContaining({
