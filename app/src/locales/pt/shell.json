@@ -441,12 +441,15 @@
     "offlineDescription": "Não conseguimos conectar ao Houston agora. Verifique sua conexão com a internet e tente novamente.",
     "engineWakingTitle": "Houston, seu agente está acordando",
     "engineWakingDescription": "Costuma levar cerca de 20 segundos. Você não precisa enviar sua mensagem de novo.",
-    "noBrowserTitle": "Houston, nenhum navegador encontrado",
-    "noBrowserDescription": "Este computador não tem um navegador padrão para abrir links. Defina um nas configurações do sistema, ou copie o link e cole em um navegador.",
     "updateStuckTitle": "Houston, as atualizações não estão chegando",
     "updateStuckDescription": "Não conseguimos verificar atualizações. Sua rede pode estar bloqueando. Você sempre pode baixar a versão mais recente em gethouston.ai.",
     "noAgentTitle": "Houston, você precisa de um agente primeiro",
     "noAgentDescription": "Crie um agente e depois conecte pelas configurações dele. Esta conexão fica em um agente."
+  },
+  "openUrl": {
+    "noBrowserTitle": "Houston, não encontramos um navegador web",
+    "noBrowser": "Este computador não tem um navegador web padrão. Escolha um nas configurações do sistema e tente o link novamente.",
+    "failedTitle": "Houston, esse link não abriu"
   },
   "agentDelete": {
     "title": "Excluir o agente?",

@@ -207,7 +207,7 @@ export default function App() {
       )
         return;
       e.preventDefault();
-      tauriSystem.openUrl(href);
+      void tauriSystem.openUrl(href, { command: "open_anchor_href" });
     };
     document.addEventListener("click", handler);
     return () => document.removeEventListener("click", handler);

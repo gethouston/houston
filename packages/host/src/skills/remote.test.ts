@@ -270,6 +270,37 @@ test("community search hides skills the install lookup proved gone, even from a 
   expect(gone.isGone("owner/repo", "ghost")).toBe(false);
 });
 
+test("community search hides skills hosted outside GitHub, which install cannot fetch (PRODUCT-1810)", async () => {
+  const clock = fakeClock();
+  const volces = {
+    ...SKILL_HIT,
+    id: "skills.volces.com/productivity",
+    skillId: "productivity",
+    source: "skills.volces.com",
+  };
+  const url = {
+    ...SKILL_HIT,
+    id: "https://github.com/owner/repo/writing",
+    source: "https://github.com/owner/repo",
+  };
+  const dir = new CommunityDirectory({
+    endpoint: "https://x/api/search",
+    now: clock.now,
+    sleep: clock.sleep,
+    gone: new GoneRegistry({ now: clock.now }),
+    fetchImpl: fakeFetch(() => jsonRes({ skills: [volces, SKILL_HIT, url] })),
+  });
+  // A GitHub URL form still normalizes to owner/repo, so it stays listed.
+  expect((await dir.search("productivity")).map((s) => s.id)).toEqual([
+    SKILL_HIT.id,
+    url.id,
+  ]);
+  expect((await dir.popular()).map((s) => s.id)).toEqual([
+    SKILL_HIT.id,
+    url.id,
+  ]);
+});
+
 test("queries under two chars return empty without a network call", async () => {
   const dir = new CommunityDirectory({
     fetchImpl: fakeFetch(() => {

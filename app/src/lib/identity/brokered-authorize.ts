@@ -5,7 +5,7 @@
 // of the port/attempt-id lifecycle applies. Both drivers do share the Tauri-free
 // attempt registry in `oauth-attempt.ts`.
 
-import { tauriSystem } from "../tauri";
+import { osOpenUrl } from "../os-bridge";
 import { listenDeepLink } from "./deep-link-listen.ts";
 import type { LoopbackAuthorizeOptions } from "./desktop-oauth.ts";
 import { awaitLoopbackCallback } from "./oauth-attempt.ts";
@@ -40,7 +40,9 @@ export async function runBrokeredDeepLinkAuthorize(
     expectedState: minted.expectedState,
     authorizeUrl: minted.url,
     listen: listenDeepLink,
-    openUrl: tauriSystem.openUrl,
+    // The raw shell call, not `tauriSystem.openUrl`: this flow FAILS the
+    // attempt on a rejected open instead of letting a toast stand in for it.
+    openUrl: osOpenUrl,
     onBrowserOpened: opts?.onBrowserOpened,
     parsePayload: parseCallbackQuery,
     // No loopback port to free — the callback arrives as an OS deep link.

@@ -8,7 +8,6 @@ import {
 } from "../lib/agent-file-paths";
 import { isCoLocatedEngine, newEngineActive } from "../lib/engine";
 import { genericErrorDescription } from "../lib/error-report";
-import { logger } from "../lib/logger";
 import { looksLikeUrl } from "../lib/open-href";
 import { tauriFiles, tauriSystem } from "../lib/tauri";
 import { useAgentStore } from "../stores/agents";
@@ -107,9 +106,7 @@ export function useOpenAgentHref(
       const trimmed = href.trim();
       if (!trimmed) return;
       if (looksLikeUrl(trimmed)) {
-        tauriSystem.openUrl(trimmed).catch((e) => {
-          logger.warn(`[open-href] openUrl(${trimmed}) failed: ${e}`);
-        });
+        void tauriSystem.openUrl(trimmed, { command: "open_href" });
         return;
       }
       openFile(decodeMarkdownHref(trimmed));

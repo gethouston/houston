@@ -20,9 +20,9 @@
 import {
   type OauthLoopbackStart,
   osCancelOauthLoopback,
+  osOpenUrl,
   osStartOauthLoopback,
 } from "../os-bridge";
-import { tauriSystem } from "../tauri";
 import { listenDeepLink } from "./deep-link-listen.ts";
 import { IdentityError, isIdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
@@ -163,7 +163,9 @@ export async function runLoopbackAuthorize(
     expectedState: state,
     authorizeUrl: url.toString(),
     listen: listenDeepLink,
-    openUrl: tauriSystem.openUrl,
+    // The raw shell call, not `tauriSystem.openUrl`: this flow FAILS the
+    // attempt on a rejected open instead of letting a toast stand in for it.
+    openUrl: osOpenUrl,
     onBrowserOpened: opts?.onBrowserOpened,
     // Free the native loopback port the moment the attempt is abandoned
     // (unmount / sign-out / timeout). Scoped to THIS attempt's id, so a late

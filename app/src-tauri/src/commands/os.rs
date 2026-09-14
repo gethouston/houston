@@ -12,7 +12,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::process::Command;
 
 use super::file_failure::FileOpFailure;
-use super::open_url_failure::OpenUrlFailure;
+use super::url_open_failure::{self, UrlOpenFailure};
 
 fn expand(p: &str) -> PathBuf {
     super::expand_tilde(&PathBuf::from(p))
@@ -124,17 +124,16 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
 
 /// Spawn the OS-native "open this in the default app" command. Path-or-URL
 /// flavor — caller passes either a URL or a filesystem path; on every
-/// platform the same shell verb opens both. Rejects typed: `no_handler` is
-/// "nothing on this machine opens that", which for a URL is a missing
-/// default browser (PRODUCT-1814).
-fn spawn_default_open(target: &str) -> Result<(), OpenUrlFailure> {
+/// platform the same shell verb opens both. Rejects typed so `open_url` can
+/// tell "no program registered for this" from a real fault.
+fn spawn_default_open(target: &str) -> Result<(), UrlOpenFailure> {
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
             .arg(target)
             .spawn()
             .map(|_| ())
-            .map_err(|e| OpenUrlFailure::from_spawn("Failed to open", &e))
+            .map_err(|e| url_open_failure::from_spawn_error("open", &e))
     }
     #[cfg(target_os = "windows")]
     {
@@ -181,7 +180,7 @@ fn spawn_default_open(target: &str) -> Result<(), OpenUrlFailure> {
         // ShellExecuteW returns a value > 32 on success; <= 32 is a Win32
         // error code. Surface the failure rather than swallowing it.
         if (result as isize) <= 32 {
-            return Err(OpenUrlFailure::from_shell_execute(result as isize));
+            return Err(url_open_failure::from_shell_execute_code(result as isize));
         }
         Ok(())
     }
@@ -195,19 +194,16 @@ fn spawn_default_open(target: &str) -> Result<(), OpenUrlFailure> {
         crate::appimage_env::sanitize_std_command(&mut cmd);
         cmd.spawn()
             .map(|_| ())
-            .map_err(|e| OpenUrlFailure::from_spawn("Failed to open (install xdg-utils)", &e))
+            .map_err(|e| url_open_failure::from_spawn_error("xdg-open (install xdg-utils)", &e))
     }
 }
 
-/// Rejects typed (`open_url_failure`): a machine with no default browser
-/// (HOUSTON-APP-5EV, Windows `ShellExecuteW` code 31) is a `no_handler`
-/// state the user can fix, not a bug to report.
+/// Rejects typed (`UrlOpenFailure`): a machine with no default browser is a
+/// `no_handler` state the user fixes in the OS settings (HOUSTON-APP-5ES),
+/// not a bug to report.
 #[tauri::command(rename_all = "snake_case")]
-pub async fn open_url(url: String) -> Result<(), OpenUrlFailure> {
-    spawn_default_open(&url).map_err(|e| OpenUrlFailure {
-        kind: e.kind,
-        message: format!("Failed to open URL: {}", e.message),
-    })
+pub async fn open_url(url: String) -> Result<(), UrlOpenFailure> {
+    spawn_default_open(&url).map_err(|e| e.context("Failed to open URL"))
 }
 
 // -- File reveal / open --

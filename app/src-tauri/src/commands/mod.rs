@@ -6,7 +6,6 @@ pub mod diagnostics;
 mod dialogs;
 pub mod file_failure;
 pub mod migration;
-pub mod open_url_failure;
 pub mod os;
 pub mod portable;
 pub mod save_file;
@@ -15,6 +14,7 @@ pub mod update;
 mod update_failure;
 mod update_fetch;
 pub mod update_stage;
+pub mod url_open_failure;
 
 /// Expand a leading `~` to the user's home directory.
 ///

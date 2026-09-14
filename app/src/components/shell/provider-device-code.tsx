@@ -3,7 +3,6 @@ import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { genericErrorDescription } from "../../lib/error-report";
-import { surfaceNoBrowser } from "../../lib/no-browser-toast";
 import { tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 
@@ -66,22 +65,16 @@ export function ProviderDeviceCode({
   }, []);
 
   // Auto-open the verification page on first render. A failed open is
-  // surfaced (never swallowed) so the user knows to use the dialog's
+  // surfaced by `openUrl` itself so the user knows to use the dialog's
   // "Open URL" button instead of staring at a code with nowhere to enter it.
-  // A machine with no default browser gets the remedy toast instead
-  // (PRODUCT-1814): the dialog's "Copy URL" is the way through.
   useEffect(() => {
     if (openedRef.current || !verificationUri) return;
     openedRef.current = true;
-    tauriSystem.openUrl(verificationUri).catch((err) => {
-      if (surfaceNoBrowser("provider_device_open_url", err)) return;
-      addToast({
-        title: t("providerLogin.deviceOpenFailed"),
-        description: genericErrorDescription("provider_device_open_url", err),
-        variant: "error",
-      });
+    void tauriSystem.openUrl(verificationUri, {
+      failedTitle: t("providerLogin.deviceOpenFailed"),
+      command: "provider_device_open_url",
     });
-  }, [verificationUri, addToast, t]);
+  }, [verificationUri, t]);
 
   const copyCode = async () => {
     try {
@@ -100,16 +93,9 @@ export function ProviderDeviceCode({
 
   const openSettings = () => {
     if (!settingsUrl) return;
-    tauriSystem.openUrl(settingsUrl).catch((err) => {
-      if (surfaceNoBrowser("provider_device_open_settings", err)) return;
-      addToast({
-        title: t("providerLogin.deviceSettingsOpenFailed"),
-        description: genericErrorDescription(
-          "provider_device_open_settings",
-          err,
-        ),
-        variant: "error",
-      });
+    void tauriSystem.openUrl(settingsUrl, {
+      failedTitle: t("providerLogin.deviceSettingsOpenFailed"),
+      command: "provider_device_open_settings",
     });
   };
 

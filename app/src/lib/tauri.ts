@@ -2120,9 +2120,10 @@ export const tauriAssistant = {
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────
 
-import { osOpenUrl } from "./os-bridge";
+import { openExternalUrl } from "./open-external-url";
 export const tauriSystem = {
-  openUrl: (url: string) => osOpenUrl(url),
+  /** Never rejects; a failed open is surfaced once inside (`open-external-url.ts`). */
+  openUrl: openExternalUrl,
   /**
    * Whether THIS install carried over a legacy Rust-desktop chat-history db —
    * the signal that the user is migrating from the old desktop build (agents +

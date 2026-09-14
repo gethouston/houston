@@ -11,7 +11,6 @@ import { ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { genericErrorDescription } from "../../lib/error-report";
-import { showErrorToast } from "../../lib/error-toast";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriSystem } from "../../lib/tauri";
 
@@ -193,15 +192,7 @@ export function ProviderLoginBrowserPending({
             variant="link"
             size="sm"
             className="h-auto gap-1.5 p-0 text-ink-muted"
-            onClick={() =>
-              tauriSystem.openUrl(url).catch((err) => {
-                showErrorToast(
-                  "provider_browser_open_url",
-                  err instanceof Error ? err.message : String(err),
-                  err,
-                );
-              })
-            }
+            onClick={() => void tauriSystem.openUrl(url)}
           >
             <ExternalLink className="size-3.5" />
             {t("providerLogin.browserOpen")}

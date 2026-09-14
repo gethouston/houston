@@ -32,7 +32,7 @@ import type {
   DictationModelStatus,
 } from "./dictation/types";
 import type { DetectedServer } from "./local-model";
-import { toOpenUrlError } from "./open-url-failure.ts";
+import { toUrlOpenFailure, UrlOpenError } from "./url-open-failure.ts";
 
 // ── Platform detection ────────────────────────────────────────────────
 
@@ -84,10 +84,10 @@ export async function osOpenUrl(url: string): Promise<boolean> {
   try {
     opened = await invoke<boolean | undefined>("open_url", { url });
   } catch (err) {
-    // The shell rejects typed (`open_url_failure.rs`); as an Error the quiet
-    // classifier can name a missing default browser on any path, including
-    // a click handler nobody catches (PRODUCT-1814).
-    throw toOpenUrlError(err);
+    // The shell rejects typed (`url_open_failure.rs`); as an Error the
+    // report layer can classify a browserless machine on the paths that
+    // keep the rejection (the codex loopback relay, PRODUCT-1814).
+    throw new UrlOpenError(toUrlOpenFailure(err));
   }
   return opened !== false;
 }
