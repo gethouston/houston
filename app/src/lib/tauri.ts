@@ -64,6 +64,7 @@ import {
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
 import { isEngineWakingError } from "./engine-waking-error";
+import { isFileGoneError } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { isIntegrationConnectionGoneError } from "./integration-connection-gone";
@@ -1215,7 +1216,12 @@ export const tauriFiles = {
   reveal: (agentPath: string, relativePath: string) =>
     osRevealFile(agentPath, relativePath),
   /** Raw bytes over HTTP — powers in-browser preview + download (web build).
-   *  Pass `{ toast: false }` when the caller renders the failure inline. */
+   *  Pass `{ toast: false }` when the caller renders the failure inline.
+   *
+   *  A 404 is the user's state, not a bug (PRODUCT-1780): the agent linked a
+   *  file that is not there (never written, renamed, deleted). It is silenced
+   *  for Sentry and, when this call owns the surface, shown as an authored
+   *  expected-state toast; inline callers read `isFileGoneError` themselves. */
   download: (
     agentPath: string,
     relativePath: string,
@@ -1225,8 +1231,17 @@ export const tauriFiles = {
       "download_project_file",
       () => getEngine().downloadProjectFile(agentPath, relativePath),
       { agentPath, relativePath },
-      options,
-    ),
+      { ...options, silence: isFileGoneError },
+    ).catch(async (err: unknown) => {
+      if (options?.toast !== false && isFileGoneError(err)) {
+        const { showExpectedStateToast } = await import("./error-toast");
+        showExpectedStateToast(
+          i18n.t("agents:files.gone.title"),
+          i18n.t("agents:files.gone.description"),
+        );
+      }
+      throw err;
+    }),
   delete: (agentPath: string, relativePath: string) => {
     blockWriteWhileWarming(agentPath);
     return call<void>("delete_file", () =>

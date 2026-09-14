@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { MemoryVfs } from "../vfs";
@@ -253,6 +253,10 @@ test("download honors disposition=inline, 404s on missing, rejects traversal", a
     String(inline.state.headers["Content-Disposition"]).startsWith("inline;"),
   ).toBe(true);
 
+  // The 404 carries a host log line saying why (PRODUCT-1780): here the
+  // agent's absolute pod path is stripped, the root has a sibling, no
+  // FilesChanged was ever seen for this agent.
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const missing = fakeRes();
   await handleFiles(
     objects,
@@ -262,9 +266,16 @@ test("download honors disposition=inline, 404s on missing, rejects traversal", a
     "files/download",
     { url: "/x" } as never,
     missing.res,
-    new URLSearchParams({ path: "missing.pdf" }),
+    new URLSearchParams({ path: `/data/${ROOT}/missing.pdf` }),
   );
   expect(missing.state.status).toBe(404);
+  expect(JSON.parse(String(missing.state.body))).toEqual({
+    error: "file not found",
+  });
+  expect(warn).toHaveBeenCalledWith(
+    "[files] not found: missing.pdf (1 sibling(s): chart.png; no FilesChanged seen)",
+  );
+  warn.mockRestore();
 
   const evil = fakeRes();
   await handleFiles(

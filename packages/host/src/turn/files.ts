@@ -10,6 +10,7 @@ import {
   MAX_UPLOAD_BODY_BYTES,
   parseImportBody,
 } from "./files-import";
+import { logMissingFile } from "./files-missing";
 import { moveWorkspaceEntry } from "./files-move";
 import {
   createWorkspaceFolder,
@@ -122,6 +123,7 @@ export async function handleFiles(
       const rel = workspaceRel(root, query.get("path") ?? "");
       const buf = await vfs.readBytes(fileKey(root, rel));
       if (buf === null) {
+        await logMissingFile(vfs, root, rel, ctx.agent.id);
         json(res, 404, { error: "file not found" });
         return true;
       }
@@ -156,8 +158,10 @@ export async function handleFiles(
       return true;
     }
     if (method === "GET" && rest === "files/read") {
-      const got = await readWorkspaceFile(vfs, root, query.get("path") ?? "");
+      const rel = workspaceRel(root, query.get("path") ?? "");
+      const got = await readWorkspaceFile(vfs, root, rel);
       if (!got) {
+        await logMissingFile(vfs, root, rel, ctx.agent.id);
         json(res, 404, { error: "file not found" });
         return true;
       }

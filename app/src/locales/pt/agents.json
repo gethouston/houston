@@ -141,6 +141,10 @@
     "uploadFolder": "Enviar pasta",
     "folderDropFailed": "Não conseguimos ler essa pasta. Tente o botão Enviar.",
     "downloadAll": "Baixar tudo",
+    "gone": {
+      "title": "Esse arquivo não está mais lá",
+      "description": "Seu assistente pode ter renomeado, movido ou removido o arquivo. Confira a aba Arquivos para ver a versão mais recente."
+    },
     "uploadingBusy": "Enviando…",
     "searchPlaceholder": "Buscar arquivos",
     "searchClear": "Limpar busca",

@@ -16,6 +16,7 @@ import { useOpenAgentHref } from "../hooks/use-open-agent-file";
 import { useSaveDownload } from "../hooks/use-save-download";
 import { genericErrorDescription } from "../lib/error-report";
 import { fetchFileBytes } from "../lib/file-bytes-cache";
+import { isFileGoneError } from "../lib/file-gone";
 import { FilePreviewBody, type Loaded } from "./file-preview-body";
 
 /**
@@ -93,17 +94,21 @@ export function FilePreviewDialog({
         }
       })
       .catch((err: unknown) => {
-        if (!cancelled)
-          setLoaded({
-            state: "error",
-            message: genericErrorDescription("preview_file", err),
-          });
+        if (cancelled) return;
+        // A gone file is the user's state (PRODUCT-1780): authored copy, no
+        // report. Anything else is a fault and keeps the generic + report path.
+        setLoaded({
+          state: "error",
+          message: isFileGoneError(err)
+            ? t("files.gone.description")
+            : genericErrorDescription("preview_file", err),
+        });
       });
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [agentPath, filePath, bytesCacheKey, queryClient]);
+  }, [agentPath, filePath, bytesCacheKey, queryClient, t]);
 
   const blob = "blob" in loaded ? loaded.blob : null;
 

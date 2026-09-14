@@ -141,6 +141,10 @@
     "uploadFolder": "Subir carpeta",
     "folderDropFailed": "No pudimos leer esa carpeta. Intenta con el botón Subir.",
     "downloadAll": "Descargar todo",
+    "gone": {
+      "title": "Ese archivo ya no está",
+      "description": "Tu asistente pudo haberlo renombrado, movido o eliminado. Revisa su pestaña de Archivos para ver la versión más reciente."
+    },
     "uploadingBusy": "Subiendo…",
     "searchPlaceholder": "Buscar archivos",
     "searchClear": "Borrar búsqueda",
