@@ -60,6 +60,11 @@ export {
   type IntegrationsWrites,
   type IntegrationToolkit,
 } from "./modules/integrations";
+export {
+  type CustomTransportChoice,
+  customIntegrationScope,
+  resolveCustomTransportAgent,
+} from "./modules/integrations/custom-scope";
 export type {
   AddCustomIntegrationInput,
   CustomAuthField,

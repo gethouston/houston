@@ -362,7 +362,7 @@ export function useAgentChatPanel({
   // exact call (`lib/interaction-approval-labels.ts`).
   const approvalCopy = useApprovalCardCopy();
   const { processLabels, getThinkingMessage, thinkingIndicator } =
-    useChatDisplayLabels();
+    useChatDisplayLabels(agent?.id);
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
 

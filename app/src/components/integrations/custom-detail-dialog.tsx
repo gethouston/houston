@@ -7,6 +7,7 @@ import {
 } from "@houston-ai/core";
 import { KeyRound, LogIn } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useCustomIntegrationScope } from "../../hooks/queries";
 import { AppLogo } from "./app-logo";
 import { customIntegrationLogoUrl } from "./curated-logos";
 import {
@@ -43,13 +44,20 @@ export function CustomDetailDialog({
   onEdit: (integration: CustomIntegrationView) => void;
 }) {
   const { t, i18n } = useTranslation("integrations");
+  const scope = useCustomIntegrationScope();
   if (!integration) return null;
 
   const state = integration.state;
   const oauth = integration.auth === "oauth";
   const body =
     state.status === "active"
-      ? t("custom.details.activeBody")
+      ? t(
+          // One pod per agent (PRODUCT-1773): only the agent it was set up
+          // with can use it — "your agents" would promise the others.
+          scope === "agent"
+            ? "custom.details.activeBodyAgent"
+            : "custom.details.activeBody",
+        )
       : state.status === "pending"
         ? t(
             oauth
