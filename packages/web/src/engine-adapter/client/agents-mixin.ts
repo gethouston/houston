@@ -54,6 +54,7 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
           claudeMd: req.claudeMd,
           seeds: req.seeds,
         });
+        this.ctx.noteAgentAdded(wire.id);
         return { agent: controlPlane.createdAgentToUi(wire, req.color) };
       }
       return agents.createAgent(workspaceId, req);
@@ -67,6 +68,12 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
         // SDK delegates the PATCH /agents/:id write; web carries the color
         // overlay across the (possibly new) id and maps to the UI shape.
         const wire = await this.ctx.sdk.agents.writes.rename(agentId, newName);
+        // A rename mints a new id: the old one 404s from here on, so provider
+        // routing must stop naming it (HOUSTON-APP-52F).
+        if (wire.id !== agentId) {
+          this.ctx.noteAgentGone(agentId);
+          this.ctx.noteAgentAdded(wire.id);
+        }
         return controlPlane.renamedAgentToUi(agentId, wire);
       }
       return agents.renameAgent(workspaceId, agentId, newName);
@@ -86,10 +93,10 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
         // agent's color overlay (was cp.deleteAgent's clearColor) after.
         await this.ctx.sdk.agents.writes.delete(agentId);
         controlPlane.clearColor(agentId);
-        // The selection pref must not outlive its agent: when the deleted agent
-        // was the remembered one (and it was the last — the app re-points the
-        // pref otherwise), provider connects must fall back to the setup runtime.
-        this.ctx.dropLastAgentPref((id) => id === agentId);
+        // Neither the selection pref nor the known list may outlive the agent:
+        // provider connects fall back to the next known agent, or the setup
+        // runtime when it was the last one.
+        this.ctx.noteAgentGone(agentId);
         return;
       }
       agents.deleteAgent(workspaceId, agentId);

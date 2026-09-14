@@ -229,6 +229,37 @@ export class AdapterContext {
   }
 
   /**
+   * An agent this client just learned exists (its own create, or the new id a
+   * rename minted). Added to the known set so provider routing can pick it
+   * before the next `listAgents` — the pref is re-pointed at it by the app,
+   * and a pref the list does not contain is ignored in favor of `ids[0]`,
+   * which was exactly the stale entry (HOUSTON-APP-52F). No-op while no list
+   * is known: there is nothing to validate against yet.
+   */
+  noteAgentAdded(id: string): void {
+    const list = this._agentList;
+    if (list.kind !== "known" || list.ids.includes(id)) return;
+    this._agentList = { kind: "known", ids: [...list.ids, id] };
+  }
+
+  /**
+   * An agent the server no longer has: this client's own delete or rename
+   * (the old id), or a provider-routed call it answered `404 agent not found`
+   * to. Dropped from the known set AND from the selection pref, so the next
+   * `providerAgentId()` names a live agent (or the setup runtime when none
+   * is left) instead of the same dead pod.
+   */
+  noteAgentGone(id: string): void {
+    const list = this._agentList;
+    if (list.kind === "known" && list.ids.includes(id))
+      this._agentList = {
+        kind: "known",
+        ids: list.ids.filter((x) => x !== id),
+      };
+    this.dropLastAgentPref((pref) => pref === id);
+  }
+
+  /**
    * Record that the active space's agent list could NOT be obtained — a failed
    * `listAgents`, or a boot that resolved no workspace to list agents for.
    *

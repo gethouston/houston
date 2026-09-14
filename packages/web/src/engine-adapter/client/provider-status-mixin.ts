@@ -6,6 +6,7 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import { toNewProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
+import { withProviderAgentRetarget } from "./provider-agent-gone";
 import { providerRoutingSettled } from "./provider-routing";
 
 /**
@@ -72,15 +73,19 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
         // under the new `x-houston-org` 404s, and the catch below would report
         // "unknown" anyway; skipping the request reaches the same honest
         // "checking" answer without a cross-space call.
+        // A target the gateway no longer has (`404 agent not found`) is
+        // forgotten and the probe re-asks the re-resolved runtime once
+        // (HOUSTON-APP-52F) — swallowed into "unknown" it re-asked the same
+        // dead pod on every re-probe for the whole session.
         if (providerRoutingSettled(this.ctx)) {
-          const engine = this.ctx.providerEngine();
-          if (engine) {
-            const list = await engine.listProviders({
-              signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-            });
-            for (const p of list) byId.set(p.id, p);
-            reachable = true;
-          }
+          const list = await withProviderAgentRetarget(this.ctx, (target) =>
+            (target
+              ? this.ctx.providerEngineFor(target)
+              : this.ctx.providerEngine()
+            ).listProviders({ signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) }),
+          );
+          for (const p of list) byId.set(p.id, p);
+          reachable = true;
         }
       } catch {
         /* engine unreachable → every card reports "unknown" below */
