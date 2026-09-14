@@ -145,6 +145,7 @@ export function createHostServer(
     // widen the unauthenticated surface for them.
     metrics: { render: () => boot.render(), contentType: boot.contentType },
     storeFenced: syncDaemon ? () => syncDaemon.fenced : undefined,
+    storeSyncFlush: syncDaemon ? () => syncDaemon.flush() : undefined,
     addressedAgent: docProjector
       ? (agentId) => docProjector.bindAddressed(agentId)
       : undefined,

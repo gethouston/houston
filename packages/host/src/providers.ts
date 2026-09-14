@@ -17,6 +17,7 @@ export {
   isCloudProvider,
   isKnownProvider,
   isTurnServable,
+  LOCAL_PLACEHOLDER_KEY,
   OPENAI_COMPATIBLE,
   providerName,
 } from "./providers/lookup";

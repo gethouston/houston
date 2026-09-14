@@ -753,11 +753,22 @@ export async function handleAgents(
     };
     let endpointSaved = false;
     try {
+      // The acting identity selects WHOSE credential scope the runtime writes
+      // (HOU-976); without it the key landed in the team file while the
+      // user's turns read their own (PRODUCT-1807).
       await channel.saveCustomEndpoint(
-        { workspace: authz.workspace, agent: authz.agent },
+        {
+          workspace: authz.workspace,
+          agent: authz.agent,
+          actingAs: trustedActingAs(deps, req),
+        },
         endpoint,
       );
       endpointSaved = true;
+      // The gateway validates every bridge inference against the endpoint file
+      // in object storage; the desktop probes the model right after this 200,
+      // so the file must be there before we answer — not 5 minutes later.
+      await deps.storeSyncFlush?.();
       if (deps.gatewayFronted && deps.sharedEndpoints) {
         if (endpoint.shared === true) {
           await deps.sharedEndpoints.put(

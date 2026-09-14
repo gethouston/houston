@@ -68,6 +68,13 @@ export interface AgentRouteDeps {
    */
   loopbackEgress?: boolean;
   /**
+   * Push the pod's tree to object storage now (managed pods only). A write
+   * the gateway reads back immediately — the local-model endpoint file its
+   * bridge binding check validates against — must not wait for the periodic
+   * sync pass (PRODUCT-1807). Absent where nothing syncs (desktop/self-host).
+   */
+  storeSyncFlush?: () => Promise<void>;
+  /**
    * How many /agents/* requests this server currently holds open, the asking
    * /activity probe included (server.ts counts them; the reader subtracts
    * itself). Long-lived per-agent SSE streams — a turn reply, a conversation

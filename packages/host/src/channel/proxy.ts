@@ -17,6 +17,7 @@ import {
   type RuntimeLauncher,
   type TurnPin,
 } from "../ports";
+import { LOCAL_PLACEHOLDER_KEY, OPENAI_COMPATIBLE } from "../providers";
 import { liveTurns } from "../routes/live-turn";
 import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
 import { captureRuntimeCredential } from "./capture-credential";
@@ -760,10 +761,22 @@ export class ProxyChannel implements RuntimeChannel {
   }
 
   /**
-   * Persist an OpenAI-compatible (local) endpoint in the standing runtime. The
-   * base URL is the user's own machine, so there's nothing to store centrally —
-   * the runtime owns it (settings.json + a key in auth.json). On the desktop this
-   * proxy reaches the local subprocess; the runtime persists it across restarts.
+   * Persist an OpenAI-compatible (local) endpoint in the standing runtime, then
+   * store its (placeholder) key centrally like any other api-key connect.
+   *
+   * The acting identity rides to the runtime: the runtime keys its auth file
+   * by credential scope (HOU-976), and every later turn, serve probe and heal
+   * for this user resolves THEIR scope. Saving without it wrote the key into
+   * the team file, so a cloud pod answered "Provider is not configured" 400 ms
+   * after a 200 connect, and the heal (which exports the acting scope's file)
+   * never found a key to capture (PRODUCT-1807).
+   *
+   * The central PUT is the same contract as `saveApiKeyCredential`: pods are
+   * stateless, so the runtime's local copy dies at the next recycle, and the
+   * per-turn serve is the only durable source. A plain (non-if-absent) PUT is
+   * the user's "I reconnected" signal that clears a revocation tombstone left
+   * by an earlier disconnect. Desktop/self-host store it in their local
+   * credential store, which the serve path already hands back unchanged.
    */
   async saveCustomEndpoint(
     ctx: ChannelCtx,
@@ -775,6 +788,7 @@ export class ProxyChannel implements RuntimeChannel {
       headers: {
         "content-type": "application/json",
         Authorization: `Bearer ${rt.token}`,
+        ...(ctx.actingAs ? { "x-houston-acting-as": ctx.actingAs } : {}),
       },
       body: JSON.stringify(endpoint),
     });
@@ -786,5 +800,16 @@ export class ProxyChannel implements RuntimeChannel {
         }`,
       );
     }
+    await this.opts.credentials.put(
+      {
+        workspaceId: ctx.agent.workspaceId,
+        provider: OPENAI_COMPATIBLE,
+        accessToken: endpoint.apiKey?.trim() || LOCAL_PLACEHOLDER_KEY,
+        refreshToken: "",
+        expiresAt: 0,
+        kind: "api_key",
+      },
+      { actingAs: ctx.actingAs },
+    );
   }
 }

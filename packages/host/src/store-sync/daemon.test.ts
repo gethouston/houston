@@ -109,6 +109,33 @@ test("a change inside an excluded watch subtree still syncs via the periodic pas
   await daemon.stop();
 });
 
+test("flush() lands a write in an excluded watch subtree immediately, without the periodic pass (PRODUCT-1807)", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "store-sync-remote-"));
+  const localRoot = mkdtempSync(join(tmpdir(), "store-sync-local-"));
+  const excludedDir = join(localRoot, "excluded");
+  mkdirSync(excludedDir, { recursive: true });
+  const daemon = new StoreSyncDaemon({
+    store: new LocalDirStore(remoteRoot),
+    rootDir: localRoot,
+    quietMs: 60_000,
+    intervalMs: 60_000,
+    watchExcludeDirs: [excludedDir],
+    log: () => {},
+  });
+  // Before start: nothing to sync yet, and never a throw.
+  await daemon.flush();
+  await daemon.hydrate();
+  daemon.start();
+  writeFileSync(join(excludedDir, "custom-endpoint.json"), '{"model":"x"}');
+  await daemon.flush();
+  expect(
+    readFileSync(join(remoteRoot, "excluded", "custom-endpoint.json"), "utf8"),
+  ).toBe('{"model":"x"}');
+  await daemon.stop();
+  // After stop: a no-op, never a throw.
+  await daemon.flush();
+});
+
 test("deletes remotely when a hydrated file is deleted locally", async () => {
   const { daemon, localRoot, remoteRoot } = setup();
   writeFileSync(join(remoteRoot, "delete-me.txt"), "old");
