@@ -63,6 +63,15 @@ const hostReachable = Boolean(
  * One houston-runtime instance = one workspace (a single working directory).
  * Everything is single-user; there is no workspace management here.
  */
+/**
+ * An explicit `0` must disable the watchdog, so the env read cannot be the
+ * usual `Number(env.X || default)`: "0" is falsy and would silently restore
+ * the default. Only an absent or empty value takes the default.
+ */
+function stallTimeoutMs(raw: string | undefined): number {
+  return raw === undefined || raw.trim() === "" ? 600_000 : Number(raw);
+}
+
 export const config = {
   /** The working directory the agent operates in. */
   workspaceDir: env.HOUSTON_WORKSPACE_DIR || process.cwd(),
@@ -224,12 +233,16 @@ export const config = {
    * that never returns another byte) emits nothing and, absent this, holds the
    * per-workspace turn lock until the OS socket dies (19 min observed in prod;
    * pi's SSE reader has no idle timeout, only its WebSocket path does).
-   * Defaults to pi's own 5-minute idle default, deliberately generous so it never
-   * clips a long-reasoning turn that streams no intermediate events; ops can lower
-   * it. `0` disables the watchdog. Non-finite/negative also disable (fail-safe:
-   * no false aborts). Tool execution is exempt — a long bash/build is silent.
+   * Defaults to 10 minutes. The earlier 5-minute default (pi's own idle
+   * default) cut a live gpt-6-astra reasoning phase at ~250k context that
+   * streamed nothing for just over 300 s (PRODUCT-1778, PRODUCT-1786): the
+   * whole turn was lost and billed. Ten minutes still bounds the 19-minute
+   * hang from PRODUCT-1632 while leaving one silent think room to finish;
+   * ops can lower it. `0` disables the watchdog. Non-finite/negative also
+   * disable (fail-safe: no false aborts). Tool execution is exempt — a long
+   * bash/build is silent.
    */
-  turnStallTimeoutMs: Number(env.HOUSTON_TURN_STALL_TIMEOUT_MS || 300_000),
+  turnStallTimeoutMs: stallTimeoutMs(env.HOUSTON_TURN_STALL_TIMEOUT_MS),
 
   /**
    * Max live agent sessions kept hot in the in-memory conversation cache. Each

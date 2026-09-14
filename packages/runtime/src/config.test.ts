@@ -36,6 +36,7 @@ const OWNED = [
   "HOUSTON_SANDBOX_TOKEN",
   "HOUSTON_WORKSPACE_DIR",
   "HOUSTON_DATA_DIR",
+  "HOUSTON_TURN_STALL_TIMEOUT_MS",
 ] as const;
 
 const prior = new Map(OWNED.map((key) => [key, process.env[key]]));
@@ -112,6 +113,24 @@ const DEFAULTS_BY_PROVIDER: Record<
   "opencode-go": (c) => c.opencodeGoModel,
 };
 
+// PRODUCT-1786: 300 s cut a live gpt-6-astra reasoning phase; the window must
+// leave one silent think room while still bounding a dead stream.
+test("the stall watchdog defaults to ten minutes and stays overridable", async () => {
+  expect((await loadConfig({})).turnStallTimeoutMs).toBe(600_000);
+  expect(
+    (await loadConfig({ HOUSTON_TURN_STALL_TIMEOUT_MS: "120000" }))
+      .turnStallTimeoutMs,
+  ).toBe(120_000);
+  // The documented off switch: "0" used to be falsy and restore the default.
+  expect(
+    (await loadConfig({ HOUSTON_TURN_STALL_TIMEOUT_MS: "0" }))
+      .turnStallTimeoutMs,
+  ).toBe(0);
+  expect(
+    (await loadConfig({ HOUSTON_TURN_STALL_TIMEOUT_MS: "" }))
+      .turnStallTimeoutMs,
+  ).toBe(600_000);
+});
 test("every provider default IS the domain table's value", async () => {
   // The table is what the app's picker pre-selects and what the on-disk
   // migration rewrites an unplaceable stored model to. A runtime that answered
