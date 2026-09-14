@@ -32,6 +32,7 @@ import type {
   DictationModelStatus,
 } from "./dictation/types";
 import type { DetectedServer } from "./local-model";
+import { toUrlOpenFailure, UrlOpenError } from "./url-open-failure.ts";
 
 // ── Platform detection ────────────────────────────────────────────────
 
@@ -79,7 +80,15 @@ export function osPickDirectory(): Promise<string | null> {
  * `true` (a failure rejects).
  */
 export async function osOpenUrl(url: string): Promise<boolean> {
-  const opened = await invoke<boolean | undefined>("open_url", { url });
+  let opened: boolean | undefined;
+  try {
+    opened = await invoke<boolean | undefined>("open_url", { url });
+  } catch (err) {
+    // The shell rejects typed (`url_open_failure.rs`); as an Error the
+    // report layer can classify a browserless machine on the paths that
+    // keep the rejection (the codex loopback relay, PRODUCT-1814).
+    throw new UrlOpenError(toUrlOpenFailure(err));
+  }
   return opened !== false;
 }
 

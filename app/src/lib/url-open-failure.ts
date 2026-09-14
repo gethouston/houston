@@ -35,6 +35,27 @@ export function toUrlOpenFailure(err: unknown): UrlOpenFailure {
   };
 }
 
+/**
+ * The shell's rejection as an Error, so the layers that only understand
+ * Errors (the codex loopback's `logAndReportError`, the frontend log line,
+ * a `cause` chain) see the diagnostic instead of `[object Object]`, while
+ * `toUrlOpenFailure` still reads `kind` off it. `osOpenUrl` mints it.
+ */
+export class UrlOpenError extends Error {
+  readonly kind: UrlOpenFailureKind;
+
+  constructor(failure: UrlOpenFailure) {
+    super(failure.message);
+    this.name = "UrlOpenError";
+    this.kind = failure.kind;
+  }
+}
+
+/** A machine with no default browser, off any shape of the rejection. */
+export function isNoBrowserFailure(err: unknown): boolean {
+  return toUrlOpenFailure(err).kind === "no_handler";
+}
+
 export type UrlOpenFailurePlan =
   | { surface: "expected"; copy: "noBrowser"; failure: UrlOpenFailure }
   | { surface: "report"; failure: UrlOpenFailure };

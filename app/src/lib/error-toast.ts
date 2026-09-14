@@ -174,6 +174,16 @@ export function showErrorToast(
       console.error(`[toast:${command}] ${message}`);
       reportQuietError("bridge_unsupported", command, message, originalError);
       return;
+    case "no_url_handler":
+      // Same remedy copy `openExternalUrl` shows; a rejection that reached
+      // this surface skipped that seam (a raw `osOpenUrl` caller).
+      console.error(`[toast:${command}] ${message}`);
+      reportQuietError("no_url_handler", command, message, originalError);
+      showExpectedStateToast(
+        i18n.t("shell:openUrl.noBrowserTitle"),
+        i18n.t("shell:openUrl.noBrowser"),
+      );
+      return;
     case null:
       break;
   }
