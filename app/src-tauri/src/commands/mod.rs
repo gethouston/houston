@@ -14,6 +14,7 @@ pub mod update;
 mod update_failure;
 mod update_fetch;
 pub mod update_stage;
+pub mod url_open_failure;
 
 /// Expand a leading `~` to the user's home directory.
 ///

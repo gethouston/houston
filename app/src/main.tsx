@@ -17,10 +17,10 @@ import { showErrorToast } from "./lib/error-toast";
 import { installGlobalErrorHandlers } from "./lib/global-error-handlers";
 import i18n from "./lib/i18n";
 import { initFrontendLogging, logger } from "./lib/logger";
+import { osOpenUrl } from "./lib/os-bridge";
 import { initSentry } from "./lib/sentry";
 import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 import { runStartupAnalytics } from "./lib/startup-analytics";
-import { tauriSystem } from "./lib/tauri";
 import { loadTheme } from "./lib/theme";
 import { applyBootTheme } from "./lib/theme-boot";
 
@@ -144,7 +144,7 @@ function StartupEffects({ children }: { children: ReactNode }) {
     let cancelled = false;
     void whenEngineReady().then(() => {
       if (cancelled) return;
-      void runStartupAnalytics(analytics, (url) => tauriSystem.openUrl(url));
+      void runStartupAnalytics(analytics, osOpenUrl);
       void loadTheme();
     });
     return () => {

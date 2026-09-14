@@ -2,12 +2,10 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { tryBeginCodexLoopbackLogin } from "../../lib/codex-loopback";
-import { genericErrorDescription } from "../../lib/error-report";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { getProvider, type ProviderInfo } from "../../lib/providers";
 import { tauriSystem } from "../../lib/tauri";
-import { useUIStore } from "../../stores/ui";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import {
   providerLoginFallbackAction,
@@ -35,7 +33,6 @@ interface FallbackDialogState {
  */
 export function ProviderLoginFallback() {
   const { t } = useTranslation("providers");
-  const addToast = useUIStore((s) => s.addToast);
   const [dialog, setDialog] = useState<FallbackDialogState | null>(null);
 
   useEffect(() => {
@@ -73,19 +70,14 @@ export function ProviderLoginFallback() {
         const prov = getProvider(ev.data.provider);
         if (action === "open") {
           // Desktop loopback flow: pi's in-process callback server finishes
-          // the exchange; the client only opens the URL. Surface a failed
-          // open — the launching card sits in "waiting" otherwise.
-          tauriSystem.openUrl(ev.data.url).catch((err) => {
-            addToast({
-              title: t("toast.signInFailed", {
-                provider: prov?.name ?? ev.data.provider,
-              }),
-              description: genericErrorDescription(
-                "provider_login_open_url",
-                err,
-              ),
-              variant: "error",
-            });
+          // the exchange; the client only opens the URL. A failed open is
+          // surfaced by `openUrl` — the launching card sits in "waiting"
+          // otherwise.
+          void tauriSystem.openUrl(ev.data.url, {
+            failedTitle: t("toast.signInFailed", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
+            command: "provider_login_open_url",
           });
           return;
         }
@@ -115,7 +107,7 @@ export function ProviderLoginFallback() {
         );
       }
     });
-  }, [addToast, t]);
+  }, [t]);
 
   if (!dialog) return null;
   return (

@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
 import { canOpenAgentSettings } from "../lib/agent-nav";
-import { genericErrorDescription } from "../lib/error-report";
 import { openAgentSettings } from "../lib/open-agent";
 import { tauriSystem } from "../lib/tauri";
 import {
@@ -27,7 +26,6 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
   const { capabilities } = useCapabilities();
   const [openUpdates, setOpenUpdates] = useState(true);
   const [openFiles, setOpenFiles] = useState(false);
-  const addToast = useUIStore((s) => s.addToast);
   const resolveBrand = useActionBrandResolver();
   const { openFile } = useOpenAgentFile(agentPath);
   const agent = useAgentStore((s) =>
@@ -51,15 +49,12 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
 
   const openUrl = useCallback(
     (url: string) => {
-      tauriSystem.openUrl(url).catch((error) => {
-        addToast({
-          variant: "error",
-          title: t("summary.openLinkFailedTitle"),
-          description: genericErrorDescription("open_summary_link", error),
-        });
+      void tauriSystem.openUrl(url, {
+        failedTitle: t("summary.openLinkFailedTitle"),
+        command: "open_summary_link",
       });
     },
-    [addToast, t],
+    [t],
   );
 
   if (items.length === 0) return null;

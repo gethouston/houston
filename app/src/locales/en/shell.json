@@ -446,6 +446,11 @@
     "noAgentTitle": "Houston, you need an agent first",
     "noAgentDescription": "Create an agent, then connect from its settings. This connection lives on an agent."
   },
+  "openUrl": {
+    "noBrowserTitle": "Houston, we couldn't find a web browser",
+    "noBrowser": "This computer has no default web browser. Choose one in your system settings, then try the link again.",
+    "failedTitle": "Houston, that link didn't open"
+  },
   "agentDelete": {
     "title": "Delete agent?",
     "description": "This will permanently delete the agent and all its data. This cannot be undone."
