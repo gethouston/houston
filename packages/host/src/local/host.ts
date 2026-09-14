@@ -1,7 +1,13 @@
 import type { Server } from "node:http";
+import { DEFAULT_SHUTDOWN_DRAIN_MS } from "../launcher/process-drain";
+import {
+  publishDrainStamp,
+  retireDrainStamp,
+} from "../store-sync/predecessor-drain";
 import { createHostBase } from "./host-base";
 import { createHostDaemons } from "./host-daemons";
 import { createHostIntegrations } from "./host-integrations";
+import { severityLog } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
 import { createHostRuntime } from "./host-runtime";
 import { createHostServer } from "./host-server";
@@ -46,6 +52,20 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
       if (stopPromise) return stopPromise;
       stopPromise = (async () => {
         state.beginDrain();
+        // PRODUCT-1783: on an eviction the replacement pod is created ~1s into
+        // this drain. The stamp (flushed to the store immediately) is what
+        // makes it wait instead of hydrating mid-turn and settling the turn
+        // this pod is still running.
+        if (syncDaemon) {
+          await publishDrainStamp({
+            rootDir: syncDaemon.rootDir,
+            windowMs:
+              (opts.shutdownDrainMs ?? DEFAULT_SHUTDOWN_DRAIN_MS) +
+              SHUTDOWN_EXIT_SLACK_MS,
+            flush: () => syncDaemon.flush(),
+            log: severityLog,
+          });
+        }
         scheduler.stop();
         watcher.stop();
         // Drain the last accrued stretch before the runtimes go down; the
@@ -66,6 +86,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         standingFrameCapture?.stop();
         await frameForwarder?.stop();
         await sharedMirror?.stop();
+        // The drain is over: expire the stamp so the FINAL sync ships a closed
+        // window and the next boot hydrates without waiting.
+        if (syncDaemon) await retireDrainStamp(syncDaemon.rootDir, severityLog);
         await syncDaemon?.stop();
         await new Promise<void>((resolve, reject) => {
           if (!server.listening) return resolve();

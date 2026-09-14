@@ -2,16 +2,21 @@ import { mkdir } from "node:fs/promises";
 import {
   type HydrateManifest,
   hydrate,
+  type ObjectStore,
   StoreFencedError,
 } from "@houston/runtime-client/object-sync";
 import type { TreeWatch } from "../watch/watch-tree";
 import {
-  DEFAULT_INTERVAL_MS,
-  DEFAULT_MAX_HYDRATE_BYTES,
-  DEFAULT_QUIET_MS,
+  logFenceLost,
   logHydrated,
   logSyncFailed,
   logSyncResult,
+} from "./daemon-log";
+import {
+  awaitInFlightSync,
+  DEFAULT_INTERVAL_MS,
+  DEFAULT_MAX_HYDRATE_BYTES,
+  DEFAULT_QUIET_MS,
   runFinalSync,
   runSyncBack,
   STORE_SYNC_EXCLUDES,
@@ -40,6 +45,16 @@ export class StoreSyncDaemon {
 
   get fenced(): boolean {
     return this.fencedLatch;
+  }
+
+  /** The synced tree's root. Owned here so the drain handshake (which writes
+   *  and reads ONE object outside the daemon's passes) never recomputes it. */
+  get rootDir(): string {
+    return this.opts.rootDir;
+  }
+
+  get store(): ObjectStore {
+    return this.opts.store;
   }
 
   /** Returns the number of objects restored (the boot telemetry records it). */
@@ -76,16 +91,7 @@ export class StoreSyncDaemon {
     this.stopScheduling();
     if (!this.hydrated) return;
 
-    if (this.syncPromise) {
-      try {
-        await this.syncPromise;
-      } catch (err) {
-        this.opts.log(
-          "[store-sync] in-flight sync failed during shutdown",
-          err,
-        );
-      }
-    }
+    if (this.syncPromise) await awaitInFlightSync(this.opts, this.syncPromise);
     if (this.fencedLatch) {
       this.started = false;
       return;
@@ -178,13 +184,7 @@ export class StoreSyncDaemon {
     this.dirty = false;
     this.rerunRequested = false;
     this.stopScheduling();
-    // No error object: fencing loss is a DESIGNED lifecycle outcome (a newer
-    // boot owns the prefix — setup pods are superseded routinely) and the
-    // halt is the correct response. Passing `err` made every takeover a
-    // Sentry error via the severity log's failure channel.
-    this.opts.log(
-      `[store-sync] write fencing lost: another pod owns this agent's store; halting sync (${err.message})`,
-    );
+    logFenceLost(this.opts, err);
   }
 
   private stopScheduling(): void {

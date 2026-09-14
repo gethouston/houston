@@ -1,4 +1,10 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { createServer as createHttpServer } from "node:http";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -14,6 +20,7 @@ import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
 import { EnvCredentialVault } from "../credentials/vault";
 import type { Agent } from "../domain/types";
 import type { RuntimeSpawner, SpawnSpec } from "../launcher/process";
+import { DRAIN_STAMP_FILE } from "../store-sync/drain-stamp";
 import {
   buildLocalHost,
   formatIntegrationsModeLog,
@@ -53,6 +60,7 @@ async function setup(opts?: {
   spawner?: RuntimeSpawner;
   eagerRuntime?: boolean;
   storeSync?: LocalHostOptions["storeSync"];
+  shutdownDrainMs?: number;
   sharedMirror?: LocalHostOptions["sharedMirror"];
   waitForStart?: boolean;
 }) {
@@ -74,6 +82,7 @@ async function setup(opts?: {
     credentials: opts?.credentials,
     eagerRuntime: opts?.eagerRuntime,
     storeSync: opts?.storeSync,
+    shutdownDrainMs: opts?.shutdownDrainMs,
     sharedMirror: opts?.sharedMirror,
   });
   const startPromise = host.start();
@@ -187,6 +196,71 @@ test("stop uploads local changes before closing the host", async () => {
       "utf8",
     ),
   ).toBe("durable");
+});
+
+// PRODUCT-1783: an evicted pod keeps draining its turn while its replacement
+// boots. The stamp is what makes that replacement wait; the final sync ships
+// it back expired, so a pod that shut down cleanly never makes the next boot
+// wait on a corpse.
+test("stop stamps the drain window and the final sync expires it", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "host-drain-remote-"));
+  const remote = new LocalDirStore(remoteRoot);
+  const stampUploads: string[] = [];
+  const store: ObjectStore = {
+    list: (prefix) => remote.list(prefix),
+    download: (key, dest) => remote.download(key, dest),
+    async upload(source, key, opts) {
+      if (key === DRAIN_STAMP_FILE) {
+        stampUploads.push(readFileSync(source, "utf8"));
+      }
+      await remote.upload(source, key, opts);
+    },
+    delete: (key, opts) => remote.delete(key, opts),
+  };
+  const { host, houstonHome } = await setup({
+    // No watcher/periodic pass in reach: only the drain's explicit flush can
+    // put the stamp in the store.
+    storeSync: { store, quietMs: 60_000, intervalMs: 60_000 },
+    shutdownDrainMs: 480_000,
+  });
+  await host.stop();
+  // Two uploads: the open window on the drain flush, the closed one from the
+  // final sync.
+  expect(stampUploads).toHaveLength(2);
+  const parse = (i: number) =>
+    JSON.parse(stampUploads[i] ?? "{}") as { since: number; until: number };
+  // The advertised window is the drain budget plus the host's exit slack.
+  expect(parse(0).until - parse(0).since).toBe(485_000);
+  expect(parse(1).since).toBe(parse(0).since);
+  expect(parse(1).until).toBeLessThanOrEqual(Date.now());
+  expect(
+    JSON.parse(readFileSync(join(remoteRoot, DRAIN_STAMP_FILE), "utf8")),
+  ).toEqual(parse(1));
+  expect(existsSync(join(houstonHome, DRAIN_STAMP_FILE))).toBe(true);
+});
+
+// The other half of the handshake: an expired stamp in the store is inert.
+// The boot hydrates at once and the tree keeps the stamp as ordinary content.
+test("boot ignores an expired predecessor stamp", async () => {
+  const remoteRoot = mkdtempSync(join(tmpdir(), "host-drain-stale-"));
+  writeFileSync(
+    join(remoteRoot, DRAIN_STAMP_FILE),
+    JSON.stringify({ since: 1, until: 2 }),
+  );
+  const { host, houstonHome } = await setup({
+    storeSync: {
+      store: new LocalDirStore(remoteRoot),
+      quietMs: 60_000,
+      intervalMs: 60_000,
+    },
+  });
+  expect(existsSync(join(houstonHome, DRAIN_STAMP_FILE))).toBe(true);
+  await host.stop();
+  const stamp = JSON.parse(
+    readFileSync(join(remoteRoot, DRAIN_STAMP_FILE), "utf8"),
+  ) as { since: number; until: number };
+  // This host's own drain rewrote it: still closed, never a window to wait on.
+  expect(stamp.until).toBeLessThanOrEqual(Date.now());
 });
 
 test("capabilities report the local profile", async () => {

@@ -45,16 +45,6 @@ export function runSyncBack(
   });
 }
 
-export function logHydrated(
-  opts: StoreSyncOptions,
-  objectCount: number,
-  startedAt: number,
-): void {
-  opts.log(
-    `[store-sync] hydrated ${objectCount} objects in ${Date.now() - startedAt}ms`,
-  );
-}
-
 /**
  * Watch the tree, degrading to the periodic pass alone when the watcher
  * cannot start or later fails. onError fires at most once (ENOSPC on the
@@ -83,32 +73,21 @@ export function startTreeWatch(
   }
 }
 
-/** Consecutive failed passes before a sync failure reports with its error.
- *  At the 5-min periodic interval this is ~15 min of sustained failure. */
-const REPORT_AFTER_FAILURES = 3;
-
 /**
- * One failed pass is a deploy-window blip the next pass absorbs (the gateway
- * restarts, the pod's network tears down): a breadcrumb, not a report
- * (HOUSTON-APP-58V). A streak means the store is actually unreachable — that
- * reports with the error attached.
+ * Let the pass already in flight finish before the final sync starts: its
+ * uploads must not interleave with the shutdown's. A failure here is a
+ * breadcrumb — the final sync (with its own retries) is what actually has to
+ * land the tree.
  */
-export function logSyncFailed(
+export async function awaitInFlightSync(
   opts: StoreSyncOptions,
-  trigger: string,
-  consecutiveFailures: number,
-  err: unknown,
-): void {
-  if (consecutiveFailures >= REPORT_AFTER_FAILURES) {
-    opts.log(
-      `[store-sync] ${trigger} sync failed ${consecutiveFailures} times in a row; will retry`,
-      err,
-    );
-    return;
+  pending: Promise<void>,
+): Promise<void> {
+  try {
+    await pending;
+  } catch (err) {
+    opts.log("[store-sync] in-flight sync failed during shutdown", err);
   }
-  opts.log(
-    `[store-sync] ${trigger} sync failed; will retry (${err instanceof Error ? err.message : String(err)})`,
-  );
 }
 
 /** One delay per retry of the shutdown flush, so attempts = delays + 1. */
@@ -144,29 +123,5 @@ export async function runFinalSync(
       );
       await new Promise((resolve) => setTimeout(resolve, delays[attempt]));
     }
-  }
-}
-
-export function logSyncResult(
-  result: SyncResult,
-  opts: StoreSyncOptions,
-): void {
-  for (const skip of result.skipped) {
-    opts.log(
-      `[store-sync] ${skip.key} exceeds the store's per-object cap and stays pod-local until it changes (${skip.reason})`,
-    );
-  }
-  if (result.conflicts.length > 0) {
-    opts.log(
-      `[store-sync] sync completed with ${result.conflicts.length} write conflicts`,
-    );
-  }
-  const cap = opts.maxHydrateBytes ?? DEFAULT_MAX_HYDRATE_BYTES;
-  if (result.totalBytes > cap * 0.8) {
-    const mb = (bytes: number) => Math.round(bytes / 1024 / 1024);
-    opts.log(
-      `[store-sync] agent data is ${mb(result.totalBytes)} MiB of the ` +
-        `${mb(cap)} MiB hydration cap — past the cap the agent cannot wake`,
-    );
   }
 }
