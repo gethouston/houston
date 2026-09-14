@@ -287,6 +287,7 @@ test("the prompt keeps task work in the workspace, never /tmp, in BOTH mirrors (
     "Your workspace is the only place that survives a restart or a move to another machine.",
     "Never build under `/tmp`.",
     "keep the exact install steps in a small setup script inside the project folder",
+    "When the task is delivered, remove what the user did not ask for",
     "After a restart, check what is actually on disk before redoing anything.",
     "Tell the user in plain words what survived and what you are redoing before you start over.",
   ]) {
