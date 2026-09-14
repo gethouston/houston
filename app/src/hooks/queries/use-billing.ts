@@ -58,7 +58,7 @@ export function useCheckout() {
     mutationFn: (interval: "monthly" | "annual") =>
       tauriOrg.createCheckout(interval),
     onSuccess: ({ url }) => {
-      tauriSystem.openUrl(url);
+      void tauriSystem.openUrl(url, { command: "billing_checkout_open" });
     },
   });
 }
@@ -72,7 +72,7 @@ export function usePortal() {
   return useMutation({
     mutationFn: () => tauriOrg.createPortal(),
     onSuccess: ({ url }) => {
-      tauriSystem.openUrl(url);
+      void tauriSystem.openUrl(url, { command: "billing_portal_open" });
     },
   });
 }

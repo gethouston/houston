@@ -17,8 +17,11 @@
 // microsoft.com provider on the identity project holds the same app's client
 // id + secret (cloud terraform `identity.tf`).
 
-import { osCancelOauthLoopback, osStartOauthLoopback } from "../os-bridge";
-import { tauriSystem } from "../tauri";
+import {
+  osCancelOauthLoopback,
+  osOpenUrl,
+  osStartOauthLoopback,
+} from "../os-bridge";
 import {
   type BrokeredLoopbackResult,
   runBrokeredLoopbackAuthorize,
@@ -60,7 +63,9 @@ export function authorizeMicrosoftDesktop(
         );
       },
       listen: listenDeepLink,
-      openUrl: tauriSystem.openUrl,
+      // The raw shell call, not `tauriSystem.openUrl`: this flow FAILS the
+      // attempt on a rejected open instead of letting a toast stand in for it.
+      openUrl: osOpenUrl,
     },
     opts,
   );

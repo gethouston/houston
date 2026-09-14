@@ -446,6 +446,11 @@
     "noAgentTitle": "Houston, primero necesitas un agente",
     "noAgentDescription": "Crea un agente y luego conéctalo desde su configuración. Esta conexión vive en un agente."
   },
+  "openUrl": {
+    "noBrowserTitle": "Houston, no encontramos un navegador web",
+    "noBrowser": "Esta computadora no tiene un navegador web predeterminado. Elige uno en la configuración del sistema y vuelve a intentar el enlace.",
+    "failedTitle": "Houston, ese enlace no se abrió"
+  },
   "agentDelete": {
     "title": "¿Eliminar el agente?",
     "description": "Se eliminará el agente y todos sus datos de forma permanente. Esta acción no se puede deshacer."
