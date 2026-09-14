@@ -19,11 +19,15 @@ import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported
 import { isEngineWakingError } from "./engine-waking-error.ts";
 import { isNetworkTransportError } from "./network-transport-error.ts";
 
-/** Doubles as the Sentry fingerprint, so the value is the issue's identity. */
+/** Doubles as the Sentry fingerprint, so the value is the issue's identity.
+ *  `release_host_unavailable` is the updater's release host answering a
+ *  transient status for its whole retry budget (PRODUCT-1811); it is only
+ *  ever named by the download report path, never by `classifyQuietError`. */
 export type QuietErrorClass =
   | "engine_waking"
   | "offline"
-  | "bridge_unsupported";
+  | "bridge_unsupported"
+  | "release_host_unavailable";
 
 /**
  * `bridge_unsupported` is the deployment honestly declining local models: the

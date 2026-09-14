@@ -7,8 +7,10 @@
 //! for the rest with a `Range` header (GitHub release assets answer 206),
 //! backing off between attempts. A server that ignores the range (answers
 //! 200) restarts the buffer, so the caller's progress tally is reset by a
-//! fresh `Started` event. Pure over a `reqwest::Client` so the tests can run
-//! it against a local socket.
+//! fresh `Started` event. A transient status from the release host (a 504
+//! from GitHub's asset CDN mid-roll, PRODUCT-1811) is retried the same way,
+//! keeping the bytes already received. Pure over a `reqwest::Client` so the
+//! tests can run it against a local socket.
 
 pub use super::update_failure::{DownloadEvent, DownloadFailure, DownloadFailureKind};
 use futures_util::StreamExt;
@@ -33,6 +35,22 @@ fn classify(err: &reqwest::Error) -> DownloadFailureKind {
     }
 }
 
+/// A status the release host answers while it is briefly unable to serve:
+/// the request may succeed a moment later, so it is retried, and a budget
+/// spent on it reports as the host being unavailable, not as a bug.
+fn is_transient_status(status: StatusCode) -> bool {
+    matches!(
+        status,
+        StatusCode::REQUEST_TIMEOUT
+            | StatusCode::TOO_EARLY
+            | StatusCode::TOO_MANY_REQUESTS
+            | StatusCode::INTERNAL_SERVER_ERROR
+            | StatusCode::BAD_GATEWAY
+            | StatusCode::SERVICE_UNAVAILABLE
+            | StatusCode::GATEWAY_TIMEOUT
+    )
+}
+
 fn failure(
     kind: DownloadFailureKind,
     message: String,
@@ -45,6 +63,24 @@ fn failure(
         received: received as u64,
         total,
         attempts: 0,
+        status: None,
+    }
+}
+
+fn status_failure(status: StatusCode, received: usize, total: Option<u64>) -> DownloadFailure {
+    let kind = if is_transient_status(status) {
+        DownloadFailureKind::Upstream
+    } else {
+        DownloadFailureKind::Http
+    };
+    DownloadFailure {
+        status: Some(status.as_u16()),
+        ..failure(
+            kind,
+            format!("Download request failed with status: {status}"),
+            received,
+            total,
+        )
     }
 }
 
@@ -89,14 +125,14 @@ async fn attempt(
                 content_length: *total,
             });
         }
-        status => {
-            return Err(failure(
-                DownloadFailureKind::Http,
-                format!("Download request failed with status: {status}"),
+        status if is_transient_status(status) => {
+            return Ok(AttemptOutcome::Retry(status_failure(
+                status,
                 buffer.len(),
                 *total,
-            ))
+            )))
         }
+        status => return Err(status_failure(status, buffer.len(), *total)),
     }
     let mut stream = response.bytes_stream();
     while let Some(chunk) = stream.next().await {
@@ -132,7 +168,8 @@ async fn attempt(
 }
 
 /// Download `url` in full, resuming across up to `DOWNLOAD_ATTEMPTS` tries.
-/// A non-network failure (an HTTP status) is final on the first sight.
+/// A dropped stream and a transient status both retry; any other status is
+/// final on the first sight.
 pub async fn fetch_with_resume(
     client: &Client,
     url: &Url,
@@ -159,7 +196,7 @@ pub async fn fetch_with_resume(
                     failure.total.map_or("?".to_string(), |t| t.to_string()),
                     failure.message
                 );
-                if failure.kind != DownloadFailureKind::Network {
+                if !failure.kind.is_retryable() {
                     return Err(failure);
                 }
                 last = Some(failure);

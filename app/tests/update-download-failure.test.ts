@@ -28,6 +28,34 @@ describe("toUpdateDownloadError", () => {
     );
   });
 
+  it("reads the status the release host answered (PRODUCT-1811)", () => {
+    const error = toUpdateDownloadError({
+      kind: "upstream",
+      message: "Download request failed with status: 504 Gateway Timeout",
+      received: 0,
+      total: null,
+      attempts: 4,
+      status: 504,
+    });
+    strictEqual(error.kind, "upstream");
+    strictEqual(error.status, 504);
+    strictEqual(
+      error.message,
+      "stopped at 0/? bytes after 4 attempts: Download request failed with status: 504 Gateway Timeout",
+    );
+  });
+
+  it("reads no status off a transport failure", () => {
+    const error = toUpdateDownloadError({
+      kind: "network",
+      message: "error decoding response body",
+      received: 10,
+      total: 20,
+      attempts: 4,
+    });
+    strictEqual(error.status, null);
+  });
+
   it("wraps an untyped rejection as `other`", () => {
     const error = toUpdateDownloadError("update resource 3 is gone");
     strictEqual(error.kind, "other");

@@ -112,6 +112,7 @@ pub async fn download_update<R: Runtime>(
             received: bytes.len() as u64,
             total: Some(bytes.len() as u64),
             attempts: 0,
+            status: None,
         });
     }
     Ok(webview.resources_table().add(StagedUpdate(bytes)))

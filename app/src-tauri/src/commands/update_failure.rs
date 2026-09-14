@@ -22,14 +22,26 @@ pub enum DownloadEvent {
 
 /// Why a download gave up. `Network` is the transport-shaped class (connect,
 /// TLS, timeout, a body cut mid-stream): expected on a bad link, retried here
-/// and reported quietly by the frontend. Everything else is a bug.
+/// and reported quietly by the frontend. `Upstream` is the release host
+/// answering a transient status (a 5xx, 429, 408: PRODUCT-1811), retried the
+/// same way and reported quietly too. `Http` is any other status, final on
+/// first sight: a 404 is how a leaked staging build surfaces. Everything
+/// else is a bug.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum DownloadFailureKind {
     Network,
+    Upstream,
     Http,
     Signature,
     Other,
+}
+
+impl DownloadFailureKind {
+    /// The classes the download loop retries instead of surfacing.
+    pub fn is_retryable(self) -> bool {
+        matches!(self, Self::Network | Self::Upstream)
+    }
 }
 
 /// The failure the frontend receives: the class, the message of the LAST
@@ -41,6 +53,9 @@ pub struct DownloadFailure {
     pub received: u64,
     pub total: Option<u64>,
     pub attempts: u32,
+    /// The status the release host answered, for the `Upstream` and `Http`
+    /// classes; the frontend tags the Sentry event with it.
+    pub status: Option<u16>,
 }
 
 impl DownloadFailure {
@@ -51,6 +66,7 @@ impl DownloadFailure {
             received: 0,
             total: None,
             attempts: 0,
+            status: None,
         }
     }
 }
