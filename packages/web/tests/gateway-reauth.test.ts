@@ -5,6 +5,7 @@ import {
   listAgents,
 } from "../src/engine-adapter/control-plane";
 import { resetRejectedBearers } from "../src/engine-adapter/cp/bearer-recovery";
+import { REJECTED_MINT_VERIFY_DELAY_MS } from "../src/engine-adapter/cp/rejected-mint";
 import { refreshLiveToken } from "../src/engine-adapter/session-refresh";
 
 /**
@@ -128,18 +129,123 @@ test("a refresh that returns the SAME rejected bearer stays quiet, never replays
   expect(calls).toHaveLength(1); // only the original attempt — no replay
 });
 
-test("a genuinely NEW fresh bearer the gateway still rejects stays LOUD", async () => {
+test("a genuinely NEW fresh bearer the gateway keeps rejecting stays LOUD", async () => {
   // The narrow same-bearer carve-out must not swallow a real bug: a token the
-  // refresher actually minted anew, rejected on replay, is surfaced raw.
-  const refresh = vi.fn(async () => "fresh");
+  // refresher actually minted anew, refused on replay AND on the one delayed
+  // verification re-send, is surfaced raw — with a token-free breadcrumb
+  // naming the refused bearer's timing claims (PRODUCT-1812).
+  vi.useFakeTimers();
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const refresh = vi.fn(async () => "minted-secret");
   setEngineWindow({ token: "stale", refresh, controlPlane: true });
-  const calls = stubFetch(json(401), json(401));
+  const calls = stubFetch(json(401), json(401), json(401));
 
-  const res = await gatewayAuthFetch(CFG.token)("https://gateway.example/x");
+  const pending = gatewayAuthFetch(CFG.token)("https://gateway.example/x");
+  await vi.advanceTimersByTimeAsync(REJECTED_MINT_VERIFY_DELAY_MS);
+  const res = await pending;
 
   expect(res.status).toBe(401);
   expect(await errorFieldOf(res)).toBe(null); // the gateway's raw 401, not signed_out
-  expect(calls.map(bearerOf)).toEqual(["Bearer stale", "Bearer fresh"]);
+  expect(calls.map(bearerOf)).toEqual([
+    "Bearer stale",
+    "Bearer minted-secret",
+    "Bearer minted-secret",
+  ]);
+  expect(warn).toHaveBeenCalledTimes(1);
+  expect(warn.mock.calls[0][0]).toContain("[gateway-bearer]");
+  expect(warn.mock.calls[0][0]).not.toContain("minted-secret");
+  warn.mockRestore();
+});
+
+test("a fresh bearer refused on replay heals on the one delayed re-send (PRODUCT-1812)", async () => {
+  // Field shape after a laptop wake: the gateway refuses the just-minted
+  // bearer and accepts the very same session a second later. The refusal is
+  // verified once after a beat instead of being handed to the caller raw.
+  vi.useFakeTimers();
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const refresh = vi.fn(async () => "fresh");
+  setEngineWindow({ token: "stale", refresh, controlPlane: true });
+  const calls = stubFetch(json(401), json(401), json(200, { ok: true }));
+
+  const pending = gatewayAuthFetch(CFG.token)("https://gateway.example/x");
+  await vi.advanceTimersByTimeAsync(REJECTED_MINT_VERIFY_DELAY_MS);
+  const res = await pending;
+
+  expect(res.status).toBe(200);
+  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(calls.map(bearerOf)).toEqual([
+    "Bearer stale",
+    "Bearer fresh",
+    "Bearer fresh",
+  ]);
+  expect(warn).not.toHaveBeenCalled();
+  warn.mockRestore();
+});
+
+test("N joiners of one refresh whose mint is refused go loud ONCE (PRODUCT-1812)", async () => {
+  // Every joiner of the single-flight refresh resumes in the same microtask
+  // flush, so all of them replay before any sibling's refusal is known. One
+  // owner verifies the bearer; when it is refused again the owner alone keeps
+  // the raw 401 and every sibling takes the quiet known-state answer.
+  vi.useFakeTimers();
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const refresh = vi.fn(async () => "b2");
+  setEngineWindow({ token: "b1", refresh, controlPlane: true });
+  const calls = stubFetch(
+    json(401),
+    json(401),
+    json(401), // three initial 401s
+    json(401),
+    json(401),
+    json(401), // three replays, all refused
+    json(401), // the owner's one verification re-send, refused
+  );
+
+  const pending = Promise.all(
+    ["x", "y", "z"].map((path) =>
+      gatewayAuthFetch("b1")(`https://gateway.example/${path}`),
+    ),
+  );
+  await vi.advanceTimersByTimeAsync(REJECTED_MINT_VERIFY_DELAY_MS);
+  const answers = await Promise.all(
+    (await pending).map((res) => errorFieldOf(res)),
+  );
+
+  expect(refresh).toHaveBeenCalledTimes(1);
+  expect(calls).toHaveLength(7);
+  expect(answers.filter((a) => a === null)).toHaveLength(1); // one loud
+  expect(answers.filter((a) => a === "signed_out")).toHaveLength(2);
+  expect(warn).toHaveBeenCalledTimes(1);
+  warn.mockRestore();
+});
+
+test("siblings of a verified mint replay their own requests and heal (PRODUCT-1812)", async () => {
+  vi.useFakeTimers();
+  const refresh = vi.fn(async () => "b2");
+  setEngineWindow({ token: "b1", refresh, controlPlane: true });
+  const calls = stubFetch(
+    json(401),
+    json(401), // two initial 401s
+    json(401),
+    json(401), // two replays refused
+    json(200, { owner: true }), // the owner's verification re-send, accepted
+    json(200, { sibling: true }), // the sibling's own replay
+  );
+
+  const pending = Promise.all([
+    gatewayAuthFetch("b1")("https://gateway.example/x"),
+    gatewayAuthFetch("b1")("https://gateway.example/y"),
+  ]);
+  await vi.advanceTimersByTimeAsync(REJECTED_MINT_VERIFY_DELAY_MS);
+  const [first, second] = await pending;
+
+  expect(first.status).toBe(200);
+  expect(second.status).toBe(200);
+  expect(calls).toHaveLength(6);
+  expect(calls.slice(4).map((c) => c.url)).toEqual([
+    "https://gateway.example/x",
+    "https://gateway.example/y",
+  ]);
 });
 
 test("concurrent 401s share one refresh (single-flight)", async () => {
@@ -221,19 +327,28 @@ test("a bearer a sibling request already had rejected is never replayed (PRODUCT
   // replay stays loud (a rejected fresh mint is a real bug). Request 2, still
   // holding the old bearer, is handed the same "b2" by the shared refresh —
   // the answer is already known, so it goes quiet without a doomed replay.
+  vi.useFakeTimers();
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
   const refresh = vi.fn(async () => "b2");
   setEngineWindow({ token: "b1", refresh, controlPlane: true });
-  const calls = stubFetch(json(401), json(401), json(401));
+  const calls = stubFetch(json(401), json(401), json(401), json(401));
 
-  const first = await gatewayAuthFetch("b1")("https://gateway.example/x");
+  const pending = gatewayAuthFetch("b1")("https://gateway.example/x");
+  await vi.advanceTimersByTimeAsync(REJECTED_MINT_VERIFY_DELAY_MS);
+  const first = await pending;
   expect(first.status).toBe(401);
   expect(await errorFieldOf(first)).toBe(null); // loud
-  expect(calls.map(bearerOf)).toEqual(["Bearer b1", "Bearer b2"]);
+  expect(calls.map(bearerOf)).toEqual([
+    "Bearer b1",
+    "Bearer b2",
+    "Bearer b2", // the one verification re-send
+  ]);
 
   const second = await gatewayAuthFetch("b1")("https://gateway.example/y");
   expect(second.status).toBe(401);
   expect(await errorFieldOf(second)).toBe("signed_out"); // quiet
-  expect(calls).toHaveLength(3); // the sibling's own attempt, no replay
+  expect(calls).toHaveLength(4); // the sibling's own attempt, no replay
+  warn.mockRestore();
 });
 
 test("a refresher that lands one tick after the 401 is still used (PRODUCT-1737)", async () => {

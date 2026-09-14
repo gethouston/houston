@@ -5,7 +5,10 @@ import {
   gatewayFetch,
   liveGatewayDeps,
 } from "../src/lib/gateway-fetch.ts";
-import { resetRejectedBearers } from "../src/lib/gateway-refresh.ts";
+import {
+  resetRejectedBearers,
+  resetRejectedMints,
+} from "../src/lib/gateway-refresh.ts";
 
 interface Sent {
   url: string;
@@ -28,6 +31,7 @@ function deps(
     refresh: async () => null,
     appVersion: () => "0.5.9+cloud",
     org: () => null,
+    sleep: async () => {},
     fetchFn: async (input, init) => {
       const headers = new Headers(init?.headers);
       sent.push({
@@ -51,7 +55,10 @@ function deps(
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("gatewayFetch", () => {
-  afterEach(() => resetRejectedBearers());
+  afterEach(() => {
+    resetRejectedBearers();
+    resetRejectedMints();
+  });
 
   it("identifies the build on every request", async () => {
     const sent: Sent[] = [];
@@ -159,6 +166,7 @@ describe("gatewayFetch", () => {
         [
           new Response(null, { status: 401 }),
           new Response(null, { status: 401 }),
+          new Response(null, { status: 401 }), // the one verification re-send
         ],
         sent,
         overrides,
@@ -168,7 +176,7 @@ describe("gatewayFetch", () => {
     strictEqual(first?.status, 401);
     deepStrictEqual(
       sent.map((s) => s.bearer),
-      ["Bearer b1", "Bearer b2"],
+      ["Bearer b1", "Bearer b2", "Bearer b2"],
     );
 
     const second = await gatewayFetch(
@@ -176,7 +184,7 @@ describe("gatewayFetch", () => {
       "/v1/workspaces",
     );
     strictEqual(second?.status, 401);
-    strictEqual(sent.length, 3);
+    strictEqual(sent.length, 4);
   });
 
   it("sends nothing at all when there is no session", async () => {
@@ -219,23 +227,88 @@ describe("gatewayFetch", () => {
     strictEqual(thrown, boom);
   });
 
-  it("stops after the replay when the 401 survives it", async () => {
-    // One refresh, one replay, then the caller's problem: a gateway that keeps
-    // answering 401 must not be hammered in a loop.
+  it("stops after the replay and its one verification when the 401 survives", async () => {
+    // One refresh, one replay, one delayed re-send, then the caller's problem:
+    // a gateway that keeps answering 401 must not be hammered in a loop.
     const sent: Sent[] = [];
     const res = await gatewayFetch(
       deps(
-        [
-          new Response(null, { status: 401 }),
-          new Response(null, { status: 401 }),
-        ],
+        [401, 401, 401].map((status) => new Response(null, { status })),
         sent,
         { token: () => "stale", refresh: async () => "fresh" },
       ),
       "/v1/me",
     );
     strictEqual(res?.status, 401);
-    strictEqual(sent.length, 2);
+    strictEqual(sent.length, 3);
+  });
+
+  it("a fresh bearer refused on replay heals on the one delayed re-send (PRODUCT-1812)", async () => {
+    // Wake shape: the gateway refuses the just-minted bearer and accepts the
+    // same session a moment later. The refusal is verified once after a beat
+    // (the injected sleep) instead of being handed to the caller raw.
+    const sent: Sent[] = [];
+    const slept: number[] = [];
+    const res = await gatewayFetch(
+      deps(
+        [401, 401, 200].map((status) => new Response(null, { status })),
+        sent,
+        {
+          token: () => "stale",
+          refresh: async () => "fresh",
+          sleep: async (ms) => {
+            slept.push(ms);
+          },
+        },
+      ),
+      "/v1/me",
+    );
+    strictEqual(res?.status, 200);
+    deepStrictEqual(
+      sent.map((s) => s.bearer),
+      ["Bearer stale", "Bearer fresh", "Bearer fresh"],
+    );
+    ok(slept[0] > 0);
+  });
+
+  it("N joiners of one refused mint verify it ONCE and share the verdict (PRODUCT-1812)", async () => {
+    const sent: Sent[] = [];
+    let refreshes = 0;
+    const shared = deps(
+      [401, 401, 401, 401, 200, 200].map(
+        (status) => new Response(null, { status }),
+      ),
+      sent,
+      {
+        token: () => "b1",
+        refresh: async () => {
+          refreshes++;
+          return "b2";
+        },
+      },
+    );
+    const answers = await Promise.all([
+      gatewayFetch(shared, "/v1/me"),
+      gatewayFetch(shared, "/v1/workspaces"),
+    ]);
+    strictEqual(refreshes, 1);
+    deepStrictEqual(
+      answers.map((res) => res?.status),
+      [200, 200],
+    );
+    // Two initials, two replays, ONE verification re-send by the owner, then
+    // the sibling's own replay once the bearer is proven.
+    deepStrictEqual(
+      sent.map((s) => s.bearer),
+      [
+        "Bearer b1",
+        "Bearer b1",
+        "Bearer b2",
+        "Bearer b2",
+        "Bearer b2",
+        "Bearer b2",
+      ],
+    );
   });
 
   it("carries the caller's headers and body into the replay", async () => {

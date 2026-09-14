@@ -38,6 +38,7 @@ import {
   noteBearerAccepted,
   noteBearerRejected,
   refreshGatewayBearer,
+  settleRejectedMint,
   wasBearerRejected,
 } from "./gateway-refresh.ts";
 
@@ -67,6 +68,9 @@ export interface GatewayFetchDeps {
    *  and REJECTS when the identity service was merely unreachable. */
   refresh: () => Promise<string | null>;
   fetchFn: typeof fetch;
+  /** Wait before the one verification re-send of a refused fresh bearer
+   *  (PRODUCT-1812). Defaults to a real timer; tests inject an immediate one. */
+  sleep?: (ms: number) => Promise<void>;
   /** The pinned team space's org slug, or null/undefined for the personal
    *  space (no header). Defaults to the app-installed global. */
   org?: () => string | null | undefined;
@@ -132,13 +136,27 @@ export async function gatewayFetch(
   // (PRODUCT-1737). Replaying earns the identical 401, so the original stands
   // and the caller reads it as the known state, matching the canonical
   // `cp/fetch` twin. A genuinely new bearer replays once; if the gateway
-  // rejects THAT, the rejection is remembered so its siblings stop replaying.
+  // rejects THAT, the refusal is verified once after a beat and remembered:
+  // one caller per bearer hands back the raw 401, siblings keep their own
+  // answer (`settleRejectedMint`, PRODUCT-1812).
   if (!fresh || fresh === bearer || wasBearerRejected(fresh)) return res;
   const replay = await send(fresh);
-  if (replay.status === 401) noteBearerRejected(fresh);
-  else noteBearerAccepted(fresh);
-  return replay;
+  if (replay.status !== 401) {
+    noteBearerAccepted(fresh);
+    return replay;
+  }
+  noteBearerRejected(fresh);
+  return settleRejectedMint({
+    replay,
+    bearer: fresh,
+    send,
+    quiet: () => res,
+    sleep: deps.sleep ?? realSleep,
+  });
 }
+
+const realSleep = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /** The live-globals deps (`lib/engine.ts` owns the engine target, the session
  *  refresher and the active-space pin; the last is picked up by the defaults
