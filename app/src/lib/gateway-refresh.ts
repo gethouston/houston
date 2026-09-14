@@ -93,3 +93,73 @@ export function refreshGatewayBearer(
     });
   return inflight;
 }
+
+/**
+ * The app-side mirror of `cp/rejected-mint.ts` (PRODUCT-1812): a bearer the
+ * gateway refuses right after the refresher minted it is not believed on the
+ * first answer. One owner per bearer waits a beat and re-sends its own
+ * request; siblings await that verdict instead of each firing a doomed
+ * replay. Accepted → everyone heals. Refused again → the owner alone hands
+ * back the raw 401, siblings return their original answer without a report.
+ */
+export const REJECTED_MINT_VERIFY_DELAY_MS = 1_000;
+
+interface Verdict {
+  accepted: boolean;
+}
+
+const episodes = new Map<string, Promise<Verdict>>();
+const REPORTED_LIMIT = 8;
+const reported: string[] = [];
+
+export function resetRejectedMints(): void {
+  episodes.clear();
+  reported.length = 0;
+}
+
+export interface RejectedMintContext {
+  replay: Response;
+  bearer: string;
+  send: (bearer: string) => Promise<Response>;
+  /** The caller's answer for a bearer already known to be refused. */
+  quiet: () => Response;
+  /** Wait before the verification re-send (injectable for tests). */
+  sleep: (ms: number) => Promise<void>;
+}
+
+export function settleRejectedMint(
+  ctx: RejectedMintContext,
+): Promise<Response> {
+  const existing = episodes.get(ctx.bearer);
+  if (existing) return existing.then((verdict) => answerSibling(ctx, verdict));
+  if (reported.includes(ctx.bearer)) return Promise.resolve(ctx.quiet());
+  const episode = (async () => {
+    await ctx.sleep(REJECTED_MINT_VERIFY_DELAY_MS);
+    const probe = await ctx.send(ctx.bearer);
+    return { accepted: probe.status !== 401, probe };
+  })();
+  episodes.set(
+    ctx.bearer,
+    episode.then(({ accepted }) => ({ accepted })),
+  );
+  return episode.then(({ accepted, probe }) => {
+    episodes.delete(ctx.bearer);
+    if (accepted) {
+      noteBearerAccepted(ctx.bearer);
+      return probe;
+    }
+    noteBearerRejected(ctx.bearer);
+    reported.push(ctx.bearer);
+    if (reported.length > REPORTED_LIMIT) reported.shift();
+    return ctx.replay;
+  });
+}
+
+async function answerSibling(
+  ctx: RejectedMintContext,
+  verdict: Verdict,
+): Promise<Response> {
+  if (!verdict.accepted) return ctx.quiet();
+  const replay = await ctx.send(ctx.bearer);
+  return replay.status === 401 ? ctx.quiet() : replay;
+}

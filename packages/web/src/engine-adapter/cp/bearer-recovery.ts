@@ -1,5 +1,6 @@
 import { SIGNED_OUT_ERROR } from "../client/errors";
 import { hasSessionRefresher, refreshLiveToken } from "../session-refresh";
+import { resetRejectedMints, settleRejectedMint } from "./rejected-mint";
 
 /**
  * The 401 half of `gatewayAuthFetch` (`./fetch.ts`): what to do once the
@@ -49,6 +50,7 @@ export function wasBearerRejected(bearer: string): boolean {
 /** Test seam: the memory is module-scoped on purpose (one transport per page). */
 export function resetRejectedBearers(): void {
   rejectedBearers.length = 0;
+  resetRejectedMints();
 }
 
 /** True in hosted control-plane mode (the cloud web app and the desktop cloud
@@ -129,9 +131,10 @@ export function settleGatewayResponse(
  * asked twice inside one token's lifetime, PRODUCT-1664) or one a sibling
  * request just had refused (PRODUCT-1737) — is not a mint worth replaying: the
  * answer is known. It takes the same quiet path. A genuinely NEW bearer is
- * replayed once, and a 401 to THAT replay is returned raw: a fresh bearer the
- * gateway rejects is a real bug that must surface. It is also remembered, so
- * the siblings sharing that mint go quiet instead of each replaying it.
+ * replayed once; a 401 to THAT replay is verified once more after a beat, and
+ * only a bearer refused twice is returned raw — by one caller, so a fresh mint
+ * the gateway keeps rejecting still surfaces as the real bug it is, without a
+ * report per query (PRODUCT-1812).
  */
 export async function recoverFromUnauthorized(
   res: Response,
@@ -145,13 +148,21 @@ export async function recoverFromUnauthorized(
   if (!fresh) return quiet();
   if (fresh === bearer || wasBearerRejected(fresh)) return quiet();
   const replay = await send(fresh);
-  if (replay.status === 401) {
-    noteBearerRejected(fresh);
-    console.warn(
-      "[gateway-auth] the gateway rejected a freshly minted bearer on replay",
-    );
-  } else {
+  if (replay.status !== 401) {
     noteBearerAccepted(fresh);
+    return replay;
   }
-  return replay;
+  // A refused mint is not believed on its first answer (PRODUCT-1812): one
+  // owner per bearer verifies it after a beat, siblings reuse the verdict, and
+  // a bearer refused twice goes loud exactly once (`./rejected-mint.ts`).
+  noteBearerRejected(fresh);
+  return settleRejectedMint({
+    replay,
+    bearer: fresh,
+    previousBearer: bearer,
+    send,
+    quiet,
+    noteAccepted: noteBearerAccepted,
+    noteRejected: noteBearerRejected,
+  });
 }
