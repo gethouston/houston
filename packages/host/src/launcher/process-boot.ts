@@ -1,5 +1,9 @@
 import type { Agent, AgentId } from "../domain/types";
-import { LauncherClosedError, type RuntimeEndpoint } from "../ports";
+import {
+  AgentRenamingError,
+  LauncherClosedError,
+  type RuntimeEndpoint,
+} from "../ports";
 import type { ProcessLauncherOptions, Running } from "./process-types";
 
 export interface ProcessBootState {
@@ -22,10 +26,7 @@ export async function spawnUntilHealthy(
   // exists (set synchronously below), so this port-allocation gap was the
   // one window where a rename's quiesce could miss a runtime entirely and
   // let it come up bound to the old directory mid-move.
-  if (state.held(agent.id))
-    throw new Error(
-      `agent '${agent.id}' is being renamed - retry with its new id`,
-    );
+  if (state.held(agent.id)) throw new AgentRenamingError(agent.id);
   // Same gap for shutdown: a boot that entered before shutdownAll* ran is
   // not in the live-set yet, so its child would be spawned AFTER the sweep
   // that kills everything - an orphan by construction.

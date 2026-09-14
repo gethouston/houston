@@ -1,6 +1,6 @@
 import { expect, test, vi } from "vitest";
 import { RevocationTombstones } from "../credentials/revocation-tombstones";
-import { LauncherClosedError } from "../ports";
+import { AgentRenamingError, LauncherClosedError } from "../ports";
 import {
   type CredentialHeal,
   CredentialServeHealer,
@@ -161,6 +161,41 @@ test("a launcher refusal mid-shutdown rethrows its closed shape without a Sentry
     healer.attempt({ workspaceId: "ws", agentId: "ws/agent", provider: "xai" }),
   ).rejects.toBeInstanceOf(LauncherClosedError);
   expect(errors).not.toHaveBeenCalled();
+  errors.mockRestore();
+});
+
+test("a heal refused by the rename latch is the rename, not a fault, and spends no cooldown (PRODUCT-1804)", async () => {
+  // The runtime was slept for a rename and its serve sync misses every
+  // provider with the OLD id; ensureAwake refuses each with the latch. That
+  // is expected traffic: the route answers the waking shape, nothing reaches
+  // console.error, and the respawned runtime (new id, same workspace +
+  // provider key) heals on its very next miss instead of waiting 5 minutes.
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  let now = 1_700_000_000_000;
+  let held = true;
+  const seen: string[] = [];
+  const healer = new CredentialServeHealer(
+    async ({ agentId }) => {
+      seen.push(agentId);
+      if (held) throw new AgentRenamingError(agentId);
+      return true;
+    },
+    () => now,
+  );
+  await expect(
+    healer.attempt({ workspaceId: "ws", agentId: "ws/old", provider: "xai" }),
+  ).rejects.toBeInstanceOf(AgentRenamingError);
+  expect(errors).not.toHaveBeenCalled();
+  held = false;
+  now += 1_000;
+  expect(
+    await healer.attempt({
+      workspaceId: "ws",
+      agentId: "ws/new",
+      provider: "xai",
+    }),
+  ).toBe(true);
+  expect(seen).toEqual(["ws/old", "ws/new"]);
   errors.mockRestore();
 });
 
