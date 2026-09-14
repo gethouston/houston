@@ -114,6 +114,16 @@
 </script>
 <script async src="https://www.googletagmanager.com/gtag/js?id={{ env.gaMeasurementId }}"></script>
 {% endif %}
+{# ── First-party funnel capture ───────────────────────────────────────────────
+   Posts four conversion events to the Houston gateway so the product funnel
+   survives ad blockers. The origin comes from _data/api.js (the same
+   `api.gatewayUrl` every /developers page renders) and `landing` is what makes
+   the asset fire landing_viewed on the landing pages only. The asset honours
+   Do Not Track on its own, so it ships on every page unconditionally. #}
+<script>
+  window.HOUSTON_ANALYTICS = { gatewayUrl: "{{ api.gatewayUrl }}", landing: {{ "true" if isLandingPage else "false" }} };
+</script>
+<script defer src="/assets/houston-analytics.js"></script>
 </head>
 <body>
 {% block body %}{% endblock %}

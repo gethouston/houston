@@ -30,6 +30,12 @@
     return window.houstonT ? window.houstonT(path, fallback) : fallback;
   }
 
+  // First-party funnel sink (assets/houston-analytics.js). Optional by design:
+  // the gate keeps working when that asset is blocked or fails to load.
+  function funnel(name, fields) {
+    if (window.HoustonAnalytics) window.HoustonAnalytics.track(name, fields);
+  }
+
   // The landing drives the page with Lenis smooth scroll. Freezing the native
   // scroll alone is not enough: Lenis keeps its own position, so it has to be
   // stopped and restored too, or a wheel over the modal scrolls the page.
@@ -136,39 +142,52 @@
     track("download_os_switched", { to: "all" });
   });
 
-  function trackEnabledClick(button, event, name, props) {
+  // `os` is the platform the button actually downloads, which is not always the
+  // detected one: from the "different OS?" view a Mac visitor can pick the MSI.
+  function trackEnabledClick(button, event, name, props, os) {
     if (button.classList.contains("btn-disabled")) {
       event.preventDefault();
       return;
     }
     track(name, props);
+    funnel("download_started", { os: os });
   }
 
   macButton.addEventListener("click", (event) => {
-    trackEnabledClick(macButton, event, "download_started", {
-      source: currentSource,
-      dmg_url: dmgUrl || "",
-    });
+    trackEnabledClick(
+      macButton,
+      event,
+      "download_started",
+      { source: currentSource, dmg_url: dmgUrl || "" },
+      "mac",
+    );
   });
   x64Button.addEventListener("click", (event) => {
-    trackEnabledClick(x64Button, event, "windows_download_started", {
-      source: currentSource,
-      arch: "x64",
-      msi_url: winX64Url || "",
-    });
+    trackEnabledClick(
+      x64Button,
+      event,
+      "windows_download_started",
+      { source: currentSource, arch: "x64", msi_url: winX64Url || "" },
+      "windows",
+    );
   });
   arm64Button.addEventListener("click", (event) => {
-    trackEnabledClick(arm64Button, event, "windows_download_started", {
-      source: currentSource,
-      arch: "arm64",
-      msi_url: winArm64Url || "",
-    });
+    trackEnabledClick(
+      arm64Button,
+      event,
+      "windows_download_started",
+      { source: currentSource, arch: "arm64", msi_url: winArm64Url || "" },
+      "windows",
+    );
   });
   linuxButton.addEventListener("click", (event) => {
-    trackEnabledClick(linuxButton, event, "linux_download_started", {
-      source: currentSource,
-      appimage_url: appImageUrl || "",
-    });
+    trackEnabledClick(
+      linuxButton,
+      event,
+      "linux_download_started",
+      { source: currentSource, appimage_url: appImageUrl || "" },
+      "linux",
+    );
   });
 
   document.querySelectorAll("[data-dl-trigger]").forEach((element) => {
@@ -200,8 +219,14 @@
   window.HoustonDLForm.init({
     config: window.HOUSTON_DL_CONFIG,
     track: track,
-    onSubmitted: () => {
+    onSubmitted: (payload) => {
       markRegistered();
+      // The address is handed over raw and hashed inside the analytics asset;
+      // only the SHA-256 digest is put on the wire.
+      funnel("download_form_completed", {
+        email: payload.email,
+        os: currentOs,
+      });
       track("download_form_submitted", { source: currentSource });
       track("download_unlocked", { source: currentSource });
       showDownloadStep();

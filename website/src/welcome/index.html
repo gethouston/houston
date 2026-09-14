@@ -72,11 +72,20 @@ rootPath: "../"
   // person_profiles is 'always' in base.njk so the anonymous person
   // exists with UTM props ready to be merged. Without 'always', this
   // identify would create a fresh empty profile.
-  (function () {
-    if (typeof window === 'undefined' || !window.posthog) return;
+  // Runs on DOMContentLoaded because the first-party sink below ships as a
+  // deferred asset: deferred scripts execute after parsing but before this
+  // event, so window.HoustonAnalytics is guaranteed to exist here.
+  window.addEventListener('DOMContentLoaded', function () {
     var params = new URLSearchParams(window.location.search);
     var installId = params.get('install_id');
-    if (!installId || !/^[0-9a-f-]{36}$/i.test(installId)) return;
+    var UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+    if (!installId || !UUID.test(installId)) return;
+    // First-party funnel: ties this browser's visitor id to the install. Fired
+    // independently of PostHog, which an ad blocker can remove entirely.
+    if (window.HoustonAnalytics) {
+      window.HoustonAnalytics.track('welcome_bridged', { install_id: installId });
+    }
+    if (!window.posthog) return;
     try {
       window.posthog.alias(installId);
       window.posthog.identify(installId, {
@@ -87,6 +96,6 @@ rootPath: "../"
       // PostHog blocked or DNT — silent no-op, attribution falls back to
       // app-only events without website UTM properties.
     }
-  })();
+  });
 </script>
 {% endblock %}
