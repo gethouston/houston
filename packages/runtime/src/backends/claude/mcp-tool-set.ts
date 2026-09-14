@@ -9,12 +9,12 @@ import {
   type AssistantToolOptions,
   makeAssistantTools,
 } from "../../session/tools/assistant";
-import { makeCoordinatorCredentialTool } from "../../session/tools/coordinator-credential";
-import { makeCustomIntegrationTools } from "../../session/tools/custom-integrations";
+import { credentialTools } from "../../session/tools/credential-tools";
 import { makeSkillDirectoryTools } from "../../session/tools/find-skills";
 import {
   type IntegrationToolOptions,
   makeIntegrationTools,
+  makeRequestConnectionTool,
 } from "../../session/tools/integrations";
 import { makeMissionTools } from "../../session/tools/missions";
 import { makePlanReadyTool } from "../../session/tools/plan-ready";
@@ -72,6 +72,18 @@ export interface BridgedToolSetInput {
    * auto (it never blocks the turn) but never plan (plan is not a finished task).
    */
   mode?: TurnMode;
+}
+
+/**
+ * The window onto the user's connected apps. An assistant-only runtime has no
+ * `/sandbox/integrations/*` transport, so it cannot search or execute — but the
+ * connect hand-off records a step rather than calling anything, and the shared
+ * system prompt mandates it for every connect, so that runtime still gets it.
+ */
+function integrationTools(input: BridgedToolSetInput) {
+  if (input.integrations) return makeIntegrationTools(input.integrations);
+  if (input.assistant) return [makeRequestConnectionTool()];
+  return [];
 }
 
 /** The pi tools this runtime bridges, after the coordinator clamp and mode filter. */
@@ -133,20 +145,12 @@ export function buildBridgedToolSet(
       ...(input.integrations || input.assistant
         ? [makeRequestProviderConnectionTool()]
         : []),
-      ...(input.integrations
-        ? makeIntegrationTools(input.integrations)
-        : input.assistant
-          ? makeIntegrationTools(input.assistant).filter(
-              (tool) => tool.name === "request_connection",
-            )
-          : []),
-      ...(input.personalAssistant
-        ? input.assistant
-          ? [makeCoordinatorCredentialTool(input.assistant)]
-          : []
-        : input.integrations
-          ? makeCustomIntegrationTools(input.integrations)
-          : []),
+      ...integrationTools(input),
+      ...credentialTools({
+        personalAssistant: input.personalAssistant ?? false,
+        ...(input.assistant ? { assistant: input.assistant } : {}),
+        ...(input.integrations ? { integrations: input.integrations } : {}),
+      }),
       // SAFETY: Houston's tool implementations satisfy BridgedPiTool at runtime;
       // the assertion only widens their heterogeneous TypeBox parameter types.
     ] as unknown as BridgedPiTool[]);

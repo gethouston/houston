@@ -30,13 +30,20 @@ export const connectFlowRegistry = createRegistry();
 /** How long a settled flow's outcome stays on the row it started from. */
 export const CONNECT_NOTICE_MS = 6000;
 
+/**
+ * Every record below is keyed by FLOW KEY — a toolkit slug qualified by the
+ * scope its connect was started for (`integrations/connect-flow-scope.ts`), so
+ * the AI Manager's account-wide hand-off and an agent's own never share a row.
+ * `useConnectFlow` projects its own scope's keys back down to plain slugs, which
+ * is all any surface ever reads.
+ */
 interface ConnectFlowState {
-  /** Toolkit slug -> its live phase. Present only while that flow runs. */
+  /** Flow key -> its live phase. Present only while that flow runs. */
   states: Record<string, ConnectStep>;
-  /** Toolkit slug -> the outcome its last flow settled on (self-expiring). */
+  /** Flow key -> the outcome its last flow settled on (self-expiring). */
   notices: Record<string, ConnectNotice>;
   /**
-   * Toolkit slug -> the ORIGIN key of the row that started its flow, supplied
+   * Flow key -> the ORIGIN key of the row that started its flow, supplied
    * by whoever called `connect()`.
    *
    * The catalog deliberately renders some apps TWICE (the curated "Most used"

@@ -168,7 +168,14 @@ describe("workspace-shell analytics", () => {
 describe("use-surface-gates", () => {
   const src = read("../src/hooks/use-surface-gates.ts");
 
-  it("exposes whether the gates have resolved", () => {
-    ok(src.includes("ready: !isLoading"), "derives ready from the query state");
+  // The rules themselves are EXECUTED in `surface-gates.test.ts`; all that is
+  // left to pin here is that the hook delegates to them instead of deriving a
+  // second copy that could drift.
+  it("composes every gate through the pure model", () => {
+    ok(src.includes("surfaceGatesFor({"), "calls the model");
+    ok(
+      src.includes("capabilitiesLoading: isLoading"),
+      "hands it the query state `ready` is derived from",
+    );
   });
 });

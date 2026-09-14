@@ -101,3 +101,73 @@ test("canceling provider key entry leaves the connection request actionable", as
   ).toBeEnabled();
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
 });
+
+/**
+ * GitHub Copilot is ONE card with two sign-in homes (github.com vs a company
+ * GitHub Enterprise domain), so its Connect asks WHERE before starting the
+ * device-code login. Picking a plan CLOSES that dialog — and a close read as
+ * "the user walked away" cancels the connection observation behind the step, so
+ * the sign-in the pick just started is never observed and the agent never
+ * resumes (Sep 2026 review). `closeMeansCancel` is the unit-level guard; these
+ * pin the user-visible halves.
+ */
+test("picking a Copilot plan starts the sign-in from the connect step", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "provider_connect",
+            id: "pc1",
+            provider: "github-copilot",
+            reason: "Connect GitHub Copilot for this task.",
+          },
+        ],
+      },
+    },
+  });
+  await startMission(page, "Set up GitHub Copilot");
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+
+  const plan = page.getByRole("dialog", { name: "Connect GitHub Copilot" });
+  await expect(plan).toBeVisible();
+  await plan.getByRole("button", { name: "Continue", exact: true }).click();
+
+  // The plan dialog is gone and the step is now WAITING on the sign-in it
+  // started — not back on an idle Connect, which is what an abandoned step
+  // would show.
+  await expect(plan).toHaveCount(0);
+  await expect(page.getByText("Waiting for you to connect")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Cancel connection" }),
+  ).toBeVisible();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+});
+
+test("dismissing the Copilot plan dialog leaves the connection request actionable", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          { kind: "provider_connect", id: "pc1", provider: "github-copilot" },
+        ],
+      },
+    },
+  });
+  await startMission(page, "Set up GitHub Copilot");
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Connect GitHub Copilot" })
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Connect", exact: true }),
+  ).toBeEnabled();
+  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+});

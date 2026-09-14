@@ -88,6 +88,9 @@ export function makeRequestCredentialTool(opts: RequestCredentialToolOptions) {
           `The custom integration '${toolkit}' is not working (${target.state.message}), so a saved key could not be used. Repair it first with custom_integration_add (replace: true) and a corrected spec, then call request_credential again.`,
         );
       }
+      // Re-checked AFTER the awaited pre-flight: the user can flip the Mode
+      // pill mid-turn, so a card cleared before the host round-trip would
+      // otherwise still be queued while planning.
       assertNotPlanMode("request an integration connection");
       const reason = params.reason?.trim();
       recordCredentialRequest({ toolkit, ...(reason ? { reason } : {}) });

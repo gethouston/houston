@@ -153,6 +153,41 @@ test.each([
   expect(result.fetchImpl).not.toHaveBeenCalled();
 });
 
+test("every visible catalogued custom-integration route is rewritten", () => {
+  const catalog = processAssistantCatalog();
+  if (!catalog) throw new Error("missing embedded catalog");
+  const prefix = "/v1/integrations/custom/";
+  const custom = catalog.operations.filter(
+    (op) => op.route?.path.startsWith(prefix) && !op.hidden,
+  );
+  expect(custom.length).toBeGreaterThan(0);
+  for (const op of custom) {
+    const route = op.route;
+    if (!route) throw new Error(`${op.name} lost its route`);
+    const request: AssistantUpstreamRequest = {
+      // The catalog carries `{param}` placeholders; the dispatcher substitutes
+      // them before this route ever sees a path.
+      path: route.path.replace(/\{[^}]+\}/g, "custom-app"),
+      method: route.method,
+      query: {},
+    };
+    const rewritten = assistantDeploymentRoute(request, {
+      gatewayFronted: true,
+      gatewayAgentId: "trusted-pod",
+    });
+    // The hand-listed shapes in assistantDeploymentRoute must keep covering the
+    // GENERATED catalog: a newly catalogued operation the list never learned
+    // about 400s on every gateway-fronted deployment and nowhere else. Hidden
+    // operations are exempt — the secret-bearing credential/oauth pair is
+    // refused before dispatch (see "hidden %s stays refused" above), so
+    // whether a route exists for them decides nothing.
+    expect(
+      rewritten,
+      `${op.name} (${route.method} ${route.path}) is not routed for a gateway-fronted deployment`,
+    ).not.toBeNull();
+  }
+});
+
 test("route mapping escapes trusted target and preserves method, query and body", () => {
   const request: AssistantUpstreamRequest = {
     path: "/v1/integrations/custom/definitions",

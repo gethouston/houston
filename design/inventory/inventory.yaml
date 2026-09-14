@@ -501,7 +501,9 @@ components:
       from each step's FINAL outcome — a step skipped then reconsidered reports
       "Connected {app}." (never a stale "Skipped connecting {app}."), and no step
       is named twice. Disabled while another turn is active.
-      AI provider connection steps show the provider's brand and reuse the
+      AI provider connection steps close the sequence — they follow the
+      credential steps, since the holder appends them last — and they show the
+      provider's brand and reuse the
       secure subscription sign-in, API-key, or local-model setup flow. Houston's
       personal assistant and agent chats share this surface. A fresh connection
       status confirms completion and advances the sequence once; cached status,

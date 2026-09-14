@@ -1,8 +1,7 @@
 import { assistantOptions } from "./assistant-family";
 import { personalAssistant } from "./runtime-role";
 import { sandboxCall } from "./sandbox-call";
-import { makeCoordinatorCredentialTool } from "./tools/coordinator-credential";
-import { makeCustomIntegrationTools } from "./tools/custom-integrations";
+import { credentialTools } from "./tools/credential-tools";
 import { makeSkillDirectoryTools } from "./tools/find-skills";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makeMissionTools } from "./tools/missions";
@@ -30,13 +29,13 @@ export const integrationTools = sandboxCall
 
 // Custom-integration setup tools (HOU-550): same reachability gate and trust
 // posture — they proxy to /sandbox/integrations/custom/* and hold no secret.
-export const customIntegrationTools = sandboxCall
-  ? personalAssistant
-    ? assistantOptions
-      ? [makeCoordinatorCredentialTool(assistantOptions)]
-      : []
-    : makeCustomIntegrationTools({ call: sandboxCall })
-  : [];
+// Which surface this runtime gets is `credentialTools`' call, shared with the
+// Claude backend's bridged set so the two can never disagree.
+export const customIntegrationTools = credentialTools({
+  personalAssistant,
+  ...(assistantOptions ? { assistant: assistantOptions } : {}),
+  ...(sandboxCall ? { integrations: { call: sandboxCall } } : {}),
+});
 
 // The merge-safe scheduled-task write tool: proxies to /sandbox/routines/save so
 // the agent never overwrites routines.json wholesale. Same reachability gate as

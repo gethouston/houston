@@ -1,5 +1,8 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import { toCanonicalProviderId } from "@houston/domain/provider-dialect";
+import { isHiddenProviderId } from "@houston/domain/provider-visibility";
 import { Type } from "typebox";
+import { isPiProvider } from "../../ai/pi-catalog";
 import { isProvider } from "../../ai/providers";
 import { recordProviderConnection } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
@@ -21,9 +24,19 @@ export function makeRequestProviderConnectionTool() {
     async execute(_id: string, params: { provider: string; reason?: string }) {
       assertNotPlanMode("request a provider connection");
       const provider = params.provider.trim().toLowerCase();
-      if (!isProvider(provider))
+      if (!isProvider(toCanonicalProviderId(provider)))
         throw new Error(
           "Unknown AI provider. Read Houston's provider catalog and use its exact provider id.",
+        );
+      // pi's catalog is WIDER than Houston's: it carries providers Houston
+      // surfaces no connect card for (structurally unconnectable ones, retired
+      // cards, regional duplicates). Queuing a card for one renders "unavailable
+      // here" with no Connect button and blocks the composer until the user
+      // presses Skip, so the id is refused HERE, where the model can correct
+      // course. The list is shared with the app's catalog builder.
+      if (isHiddenProviderId(provider, isPiProvider))
+        throw new Error(
+          `Houston cannot connect '${provider}'. Read Houston's provider catalog and use one of the provider ids it lists.`,
         );
       const reason = params.reason?.trim();
       recordProviderConnection({ provider, ...(reason ? { reason } : {}) });

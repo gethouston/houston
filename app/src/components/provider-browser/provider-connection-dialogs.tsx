@@ -2,6 +2,11 @@ import { ConfirmDialog } from "@houston-ai/core";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnectionDialogProps } from "../../hooks/use-provider-connections";
+import {
+  closeMeansCancel,
+  type ProviderConnectDialogClose,
+  type ProviderConnectDialogKind,
+} from "../../lib/provider-connect-dialog-close";
 import { LocalModelDialog } from "../shell/local-model-dialog";
 import { ProviderApiKeyDialog } from "../shell/provider-api-key-dialog";
 import { ProviderLoginDialog } from "../shell/provider-login-dialog";
@@ -12,8 +17,8 @@ import { ProviderLoginDialog } from "../shell/provider-login-dialog";
  * components (api key, copilot plan, remote login-url / paste-code,
  * openai-compatible, sign-out confirm) and is driven entirely by
  * `connections.dialogProps` from `useProviderConnections`. The copilot dialog is
- * passed through as an already-built element (it owns its own plan state via
- * `useCopilotConnect`).
+ * passed through as an already-built element (it owns its own plan state, and
+ * its own `closeMeansCancel` call, via `useCopilotConnect`).
  */
 export function ProviderConnectionDialogs({
   confirmSignOutFor,
@@ -39,8 +44,20 @@ export function ProviderConnectionDialogs({
   onConnectionCancelled?: () => void;
 }) {
   const { t } = useTranslation("providers");
-  const apiKeySaved = useRef(false);
-  const localConnected = useRef(false);
+  // A dialog reports success through `onConnected` and only THEN closes, but
+  // its `onClose` carries no reason of its own — these hold the pending reason
+  // across that hop. Reset on every close so a reopened dialog starts from
+  // "dismissed" again.
+  const apiKeyClose = useRef<ProviderConnectDialogClose>("dismissed");
+  const localModelClose = useRef<ProviderConnectDialogClose>("dismissed");
+
+  /** Cancel the connection observation only for a close that means abandon. */
+  const settle = (
+    kind: ProviderConnectDialogKind,
+    reason: ProviderConnectDialogClose,
+  ) => {
+    if (closeMeansCancel(kind, reason)) onConnectionCancelled?.();
+  };
 
   return (
     <>
@@ -65,7 +82,9 @@ export function ProviderConnectionDialogs({
         userCode={loginDialog?.userCode ?? null}
         instructions={loginDialog?.instructions ?? null}
         onClose={() => {
-          onConnectionCancelled?.();
+          // The sign-in finishes out of band and unmounts this dialog, so a
+          // close the USER drove is always an abandon.
+          settle("login", "dismissed");
           onCloseLoginDialog();
         }}
       />
@@ -73,11 +92,11 @@ export function ProviderConnectionDialogs({
       <ProviderApiKeyDialog
         provider={apiKeyDialog}
         onConnected={() => {
-          apiKeySaved.current = true;
+          apiKeyClose.current = "completed";
         }}
         onClose={() => {
-          if (!apiKeySaved.current) onConnectionCancelled?.();
-          apiKeySaved.current = false;
+          settle("apiKey", apiKeyClose.current);
+          apiKeyClose.current = "dismissed";
           onCloseApiKeyDialog();
         }}
       />
@@ -87,12 +106,12 @@ export function ProviderConnectionDialogs({
       <LocalModelDialog
         provider={customEndpointDialog}
         onConnected={(model) => {
-          localConnected.current = true;
+          localModelClose.current = "completed";
           onLocalConnected?.(model);
         }}
         onClose={() => {
-          if (!localConnected.current) onConnectionCancelled?.();
-          localConnected.current = false;
+          settle("localModel", localModelClose.current);
+          localModelClose.current = "dismissed";
           onCloseCustomEndpointDialog();
         }}
       />

@@ -76,9 +76,12 @@ export interface FlowEntry {
 }
 
 /**
- * Toolkit slug -> its live flow. Concurrent connects each own one entry, so a
- * cancel, wake, or redirect read addresses exactly one flow and never touches
- * its siblings. Deleting an entry (its flow's `finally`) frees only that slug.
+ * Flow key -> its live flow. The key is a toolkit slug qualified by the scope
+ * the connect was started for (`connect-flow-scope.ts`), never the bare slug:
+ * an account-scoped link is minted without an agent, so a per-agent connect must
+ * not be answered by one. Concurrent connects each own one entry, so a cancel,
+ * wake, or redirect read addresses exactly one flow and never touches its
+ * siblings. Deleting an entry (its flow's `finally`) frees only that key.
  *
  * ONE registry exists per app run (`app/src/stores/connect-flow.ts`), shared by
  * every surface: a connect started in chat is the same flow the Integrations

@@ -1,4 +1,8 @@
 import { useRef, useState } from "react";
+import {
+  closeMeansCancel,
+  type ProviderConnectDialogClose,
+} from "../../lib/provider-connect-dialog-close";
 import type { ProviderInfo } from "../../lib/providers";
 import { ProviderCopilotConnectDialog } from "./provider-copilot-connect-dialog";
 
@@ -30,18 +34,21 @@ export function useCopilotConnect(onCancel?: () => void) {
     return true;
   };
 
+  const close = (reason: ProviderConnectDialogClose) => {
+    if (closeMeansCancel("copilot", reason)) onCancel?.();
+    deferred.current = null;
+    setDialogProvider(null);
+  };
+
   const dialog = (
     <ProviderCopilotConnectDialog
       provider={dialogProvider}
-      onClose={() => {
-        onCancel?.();
-        deferred.current = null;
-        setDialogProvider(null);
-      }}
+      onClose={() => close("dismissed")}
       onConnect={(domain) => {
         const run = deferred.current;
-        deferred.current = null;
-        setDialogProvider(null);
+        // Picking a plan STARTS the sign-in, so this close is progress, never
+        // an abandon: `closeMeansCancel` keeps the observation alive for it.
+        close("completed");
         run?.(domain);
       }}
     />

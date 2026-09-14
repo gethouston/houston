@@ -38,12 +38,12 @@ export type NavRowId =
 /**
  * One top-level rail row — a destination that belongs to nobody.
  *
- * The Assistant and the Agent Store lead the rail unlabelled, then the
+ * The AI Manager and the Agent Store lead the rail unlabelled, then the
  * "My accounts" band (Integrations, AI Models) and the "Workspace" band (Admin,
- * Skills), with the Academy and Settings in the footer. **The Assistant and the
+ * Skills), with the Academy and Settings in the footer. **The AI Manager and the
  * Academy are deliberately absent from this union**: neither carries a tour
  * anchor, because a target the tour never spotlights is dead weight — address
- * them by accessible name (`settings-nav.ts` `assistantRow`).
+ * the AI Manager by its own test id (`settings-nav.ts` `assistantRow`).
  *
  * There is NO global mission board among them: every board belongs to a team,
  * so a spec that wants the app's home board asks for

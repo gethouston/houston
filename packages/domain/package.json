@@ -27,6 +27,10 @@
       "types": "./src/provider-default-models.ts",
       "import": "./src/provider-default-models.ts"
     },
+    "./provider-visibility": {
+      "types": "./src/provider-visibility.ts",
+      "import": "./src/provider-visibility.ts"
+    },
     "./model-aliases": {
       "types": "./src/model-aliases.ts",
       "import": "./src/model-aliases.ts"

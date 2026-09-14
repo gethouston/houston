@@ -49,6 +49,32 @@ test("rejects empty and unknown provider ids before queuing", async () => {
   expect(holder.pending).toBeUndefined();
 });
 
+test("refuses providers Houston has no connect card for", async () => {
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, async () => {
+    // Structurally unconnectable + a retired card + a regional duplicate of a
+    // provider that also ships its standard deployment: each renders a card
+    // with no Connect button, blocking the composer until the user hits Skip.
+    for (const provider of [
+      "cloudflare-workers-ai",
+      "cloudflare-ai-gateway",
+      "kimi-coding",
+      "minimax-cn",
+    ])
+      await expect(execute(provider)).rejects.toThrow(
+        `Houston cannot connect '${provider}'`,
+      );
+    // Houston's display id for the Codex subscription still connects, even
+    // though pi's raw api-key `openai` is the id the drop list names.
+    await execute("openai");
+    await execute("anthropic");
+  });
+  expect(holder.pending?.steps).toEqual([
+    { kind: "provider_connect", id: "p1", provider: "openai" },
+    { kind: "provider_connect", id: "p2", provider: "anthropic" },
+  ]);
+});
+
 test("live Plan prevents cards, while auto permits them", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {

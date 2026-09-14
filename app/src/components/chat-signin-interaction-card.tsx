@@ -1,17 +1,11 @@
-import {
-  InlineTextRow,
-  InteractionModal,
-  InteractionModalTitle,
-  type StepChrome,
-} from "@houston-ai/chat";
+import type { StepChrome } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
 import { CornerDownLeft, Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatStepDeclineButton } from "./chat-step-decline-button";
+import { ChatConnectStepShell } from "./chat-connect-step-shell";
 import { useIntegrationsGate } from "./integrations/use-integrations-gate";
 import { HoustonLogo } from "./shell/agent-avatar";
-import { useInteractionStepKeys } from "./use-interaction-step-keys";
 
 interface ChatSigninInteractionCardProps extends StepChrome {
   /** The signin step's stable id — fades the modal body on a step swap. */
@@ -42,20 +36,14 @@ interface ChatSigninInteractionCardProps extends StepChrome {
  * SAME Google SSO the Integrations page uses (via {@link useIntegrationsGate}),
  * and the sequence advances the instant the gate reports `ready`.
  *
- * Following the reference "Coworker card" language, it renders as its OWN
- * `InteractionModal` (wired with the `StepChrome` the stepper hands it): the
- * TITLE is the identity lockup — the Houston helmet beside the "Houston" name at
- * regular weight — over a two-field body: the agent's REASON (or "Sign in to
- * Houston") in foreground tone, then the muted explainer line. A right-aligned
- * footer carries the unified quiet "Not now" + Esc hint beside the single filled
- * "Sign in" pill (with a return-key glyph). Enter signs in, Esc declines, both
- * ignored while focus sits in a text field.
- *
- * The header pager owns Back/Forward, so a REVISITED step needs no navigation
- * button of its own: already signed in -> no footer; skipped -> the Sign in CTA
- * (and its paired "Not now") return so the user can reconsider. "Not now"
- * travels WITH the Sign in CTA so the decline affordance is present wherever
- * signing in is offered.
+ * It renders through the shared {@link ChatConnectStepShell}: the TITLE is the
+ * identity lockup — the Houston helmet beside the "Houston" name — over the
+ * agent's REASON (or "Sign in to Houston") plus the muted explainer line, with
+ * the unified quiet decline beside the single filled "Sign in" pill. Enter signs
+ * in, Esc declines. A signed-in step keeps its body (there is no "done" line for
+ * an identity the user still wants to read) and simply drops the footer, so the
+ * pager's forward chevron is the way onward; a revisited SKIPPED step gets its
+ * CTA back so the user can reconsider.
  *
  * Auto-advance also covers the STALE step: the user may have signed in elsewhere
  * (the Integrations page) between the turn ending and this card rendering, so the
@@ -68,14 +56,7 @@ export function ChatSigninInteractionCard({
   onSkip,
   revisited,
   stepId,
-  pager,
-  onDismiss,
-  dismissLabel,
-  collapseLabel,
-  expandLabel,
-  disabled,
-  open,
-  onOpenChange,
+  ...chrome
 }: ChatSigninInteractionCardProps) {
   const { t } = useTranslation("chat");
   const gate = useIntegrationsGate();
@@ -105,16 +86,6 @@ export function ChatSigninInteractionCard({
   // hold the pending look so the button never invites a second click.
   const pending = signingIn || gate.kind === "loading" || gate.kind === "ready";
 
-  // The identity line is the "Houston" name; the agent's reason becomes the
-  // body's foreground "why" line (falling back to "Sign in to Houston").
-  const reasonLine = reason ?? t("interaction.signinTitle");
-
-  // The CTA shows whenever the user isn't signed in (frontier OR a reconsidered
-  // skip). "Not now" travels WITH the CTA so the decline affordance is present
-  // wherever signing in is offered.
-  const showSignin = !signedIn;
-  const showNotNow = showSignin;
-
   const doSignIn = () => {
     if (gate.kind === "signin") {
       signInInitiated.current = true;
@@ -122,92 +93,46 @@ export function ChatSigninInteractionCard({
     }
   };
 
-  // Enter signs in (only when the CTA is live), Esc declines (only when "Not
-  // now" is offered). Inert while the sign-in / resync is pending; the shared
-  // hook owns the editable-target guard + capture-phase pre-emption of the
-  // global Escape-closes-the-panel shortcut.
-  useInteractionStepKeys({
-    enabled: open && !pending,
-    onEnter: showSignin && gate.kind === "signin" ? doSignIn : undefined,
-    onEscape: showNotNow ? onSkip : undefined,
-  });
-
-  const signInButton = (
-    <Button
-      className="gap-1.5"
-      disabled={pending || gate.kind !== "signin"}
-      onClick={doSignIn}
-      size="sm"
-      type="button"
-    >
-      {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-      {t("interaction.signin")}
-      {pending ? null : <CornerDownLeft className="size-3.5 opacity-70" />}
-    </Button>
-  );
-
   return (
-    <InteractionModal
-      contentKey={stepId}
-      collapseLabel={collapseLabel}
-      collapsedHint={reasonLine}
-      disabled={disabled}
-      dismissLabel={dismissLabel}
-      expandLabel={expandLabel}
-      onDismiss={onDismiss}
-      onOpenChange={onOpenChange}
-      open={open}
-      pager={pager}
-      // Title: the Houston helmet beside the "Houston" name (regular weight).
-      title={
-        <InteractionModalTitle
-          className="flex-1 truncate"
-          icon={
-            <span className="flex size-6 shrink-0 items-center justify-center text-ink">
-              <HoustonLogo size={22} />
-            </span>
-          }
-        >
-          {t("interaction.signinAppName")}
-        </InteractionModalTitle>
-      }
-      // Two-field body: the agent's REASON (foreground "why") over the muted
-      // explainer line. The free-text escape row follows the footer.
-      body={
-        <div className="flex flex-col gap-1">
-          <p className="text-balance text-ink text-sm leading-snug">
-            {reasonLine}
-          </p>
-          <p className="text-ink-muted text-sm">
-            {t("interaction.signinDescription")}
-          </p>
-        </div>
-      }
-      footer={
-        showSignin ? (
-          <>
-            {showNotNow && (
-              <ChatStepDeclineButton
-                disabled={pending}
-                escLabel={t("interaction.esc")}
-                label={t("interaction.skip")}
-                onClick={() => onSkip()}
-              />
+    <ChatConnectStepShell
+      {...chrome}
+      busy={pending}
+      // A signed-in step keeps its body: the identity line still answers "who
+      // is the agent acting as", so there is nothing calmer to swap it for.
+      done={signedIn}
+      cta={
+        signedIn ? undefined : (
+          <Button
+            className="gap-1.5"
+            disabled={pending || gate.kind !== "signin"}
+            onClick={doSignIn}
+            size="sm"
+            type="button"
+          >
+            {pending ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            {t("interaction.signin")}
+            {pending ? null : (
+              <CornerDownLeft className="size-3.5 opacity-70" />
             )}
-            {signInButton}
-          </>
-        ) : undefined
+          </Button>
+        )
       }
-      trailing={
-        showSignin ? (
-          <InlineTextRow
-            disabled={pending}
-            onSubmit={(text) => onSkip(text)}
-            placeholder={t("interaction.declinePlaceholder")}
-            sendLabel={t("questionCard.send")}
-          />
-        ) : undefined
+      icon={
+        <span className="flex size-6 shrink-0 items-center justify-center text-ink">
+          <HoustonLogo size={22} />
+        </span>
       }
-    />
+      onDecline={onSkip}
+      onEnter={!signedIn && gate.kind === "signin" ? doSignIn : undefined}
+      // The identity line is the "Houston" name; the agent's reason becomes the
+      // body's foreground "why" line (falling back to "Sign in to Houston").
+      reason={reason ?? t("interaction.signinTitle")}
+      stepId={stepId}
+      title={t("interaction.signinAppName")}
+    >
+      <p className="text-ink-muted text-sm">
+        {t("interaction.signinDescription")}
+      </p>
+    </ChatConnectStepShell>
   );
 }
