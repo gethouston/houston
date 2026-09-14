@@ -266,3 +266,33 @@ test("event wakes are advertised only where a trigger backend can fire them", ()
 test("the default prompt is schedule-only (the built-in default serves desktop/self-host)", () => {
   expect(houstonSystemPrompt()).toBe(houstonSystemPrompt({ triggers: false }));
 });
+
+test("the prompt keeps task work in the workspace, never /tmp, in BOTH mirrors (PRODUCT-1784)", () => {
+  // A cloud agent's /tmp is the pod's, not the workspace's: a node upgrade
+  // moved an agent mid-render and the replacement found an empty /tmp, so
+  // "continue" reinstalled the toolchain and re-rendered from scratch on the
+  // user's credits. The prompt is the first line of defence.
+  const rust = readFileSync(
+    fileURLToPath(
+      new URL(
+        "../../../app/src-tauri/src/houston_prompt/base.rs",
+        import.meta.url,
+      ),
+    ),
+    "utf8",
+  );
+  const ts = norm(houstonSystemPrompt());
+  const rs = norm(rust);
+  for (const phrase of [
+    "Your workspace is the only place that survives a restart or a move to another machine.",
+    "Never build under `/tmp`.",
+    "keep the exact install steps in a small setup script inside the project folder",
+    "When the task is delivered, remove what the user did not ask for",
+    "After a restart, check what is actually on disk before redoing anything.",
+    "Tell the user in plain words what survived and what you are redoing before you start over.",
+  ]) {
+    const needle = norm(phrase);
+    expect(ts).toContain(needle);
+    expect(rs).toContain(needle);
+  }
+});
