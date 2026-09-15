@@ -1,5 +1,6 @@
 import type { Agent, AgentId } from "../domain/types";
 import {
+  AgentRenamingError,
   LauncherClosedError,
   type RuntimeEndpoint,
   type RuntimeLauncher,
@@ -55,10 +56,7 @@ export class ProcessLauncher implements RuntimeLauncher {
     // provider probes) arrives with the old id during the quiesce window, and
     // a runtime spawned for it would be born pointing at the directory being
     // renamed - its module-eval alone re-mkdirs the old tree (HOU-827).
-    if (this.held.has(agent.id))
-      throw new Error(
-        `agent '${agent.id}' is being renamed - retry with its new id`,
-      );
+    if (this.held.has(agent.id)) throw new AgentRenamingError(agent.id);
     // Single-flight per agent: the `running` entry exists BEFORE the child is
     // healthy (so sleep/shutdown can kill a mid-boot process), so a concurrent
     // caller must not read it as "awake" - it would be handed a port nobody has
