@@ -88,14 +88,13 @@ export async function createActivity(
 /**
  * Updates a mission's details or status.
  *
- * Confirmed: irreversible. It overwrites a mission's fields in place, and no
- * earlier version is kept.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param id The mission to change, by the id listActivities returns.
  * @param updates Only the fields that change. A status is one of running,
  *   needs_you, done, error or archived.
- * @assistant group:missions confirm hidden: its session_key, origin_session_key and pending_interaction fields rewrite mission lineage and author approval cards; a status change belongs to the coordinator's update_mission_status tool.
+ * @assistant group:missions confirm: irreversible. It overwrites a mission's fields in place, and no earlier version is kept.
+ * @assistant hidden: its updates parameter also carries the lineage the runtime owns - session keys, routine run ids, and the pending interaction that authors an approval card - so a dispatched edit could rewrite far more than the mission's own words; a status move belongs to the coordinator's update_mission_status tool.
  */
 export async function updateActivity(
   scope: HttpScope,
@@ -117,7 +116,8 @@ export async function updateActivity(
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param id The mission to delete, by the id listActivities returns.
- * @assistant group:missions confirm
+ * @assistant group:missions
+ * @assistant confirm: irreversible. The mission leaves the board and everything recorded on it goes with it.
  */
 export async function deleteActivity(
   scope: HttpScope,

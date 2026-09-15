@@ -197,13 +197,13 @@ describe("per-agent policy", () => {
     ]);
   });
 
-  it("sends the v1 userIds shape for bare ids, and for an empty list", async () => {
+  it("reads a bare user id as that person with plain access", async () => {
     const { sdk, calls } = ok();
     await sdk.teams.setAgentAssignments("a1", ["u1", "u2"]);
     await sdk.teams.setAgentAssignments("a1", []);
     expect(calls.map((c) => c.body)).toEqual([
-      '{"userIds":["u1","u2"]}',
-      '{"userIds":[]}',
+      '{"assignments":[{"userId":"u1","access":"user"},{"userId":"u2","access":"user"}]}',
+      '{"assignments":[]}',
     ]);
   });
 

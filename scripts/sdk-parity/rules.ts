@@ -82,8 +82,10 @@ export function checkRules(
   sdk: SdkMethod[],
   desktop: DesktopCalls,
 ): Violation[] {
-  const sdkKeys = new Set(sdk.map((method) => method.key));
-  const sdkPaths = new Set(sdk.map((method) => pathOf(method.key)));
+  const sdkKeys = new Set(sdk.flatMap((method) => method.keys));
+  const sdkPaths = new Set(
+    sdk.flatMap((method) => method.keys.map((key) => pathOf(key))),
+  );
   const hostKeys = new Set(
     host.map((route) => keyOf(route.method, route.path)),
   );
@@ -123,12 +125,19 @@ export function checkRules(
     });
   }
 
-  // R2 — an SDK method no server answers.
+  // R2 — an SDK method no server answers. ANY of its keys answering is enough:
+  // a method whose path parameter is closed to a set issues one call per call
+  // site, not one per member, so a deployment that serves `composio` and not
+  // `custom` serves the method. What a member costs is only ever the OTHER
+  // direction — R1 still reports a literal no member names.
   for (const method of sdk) {
     if (
-      hostKeys.has(method.key) ||
-      gatewayKeys.has(method.key) ||
-      gatewayPaths.has(pathOf(method.key))
+      method.keys.some(
+        (key) =>
+          hostKeys.has(key) ||
+          gatewayKeys.has(key) ||
+          gatewayPaths.has(pathOf(key)),
+      )
     )
       continue;
     violations.push({

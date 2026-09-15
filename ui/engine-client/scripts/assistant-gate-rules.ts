@@ -43,7 +43,18 @@ function reachViolations(annotation: OperationAnnotation): Finding[] {
     found.push({
       rule: "unconfirmed-mutation",
       problem: `${annotation.method} changes something and dispatches with no approval card and no authored reason.`,
-      fix: "add `@assistant confirm` (the user answers a card first) or `@assistant unconfirmed: <why this one needs no approval>`.",
+      fix: "add `@assistant confirm: <what the person loses if it goes wrong>` (the user answers a card first) or `@assistant unconfirmed: <why this one needs no approval>`.",
+    });
+  // The other half of the same decision. Every card ends the agent's turn and
+  // asks the person a question, so a `confirm` nobody justified is how the
+  // surface drifts into asking about everything - and a person who is asked
+  // about everything stops reading the cards that matter.
+  if (annotation.confirm && !annotation.confirmed?.trim())
+    found.push({
+      rule: "confirm-unstated",
+      problem:
+        "the caller must confirm it, and nothing says what the person is being protected from.",
+      fix: "add the reason to the tag - `@assistant confirm: <what the person loses if this call goes wrong>`.",
     });
   if (annotation.openIdentifiers.length > 0)
     found.push({
@@ -69,6 +80,24 @@ function reachViolations(annotation: OperationAnnotation): Finding[] {
   return found;
 }
 
+/**
+ * An exception that no longer applies. Judged OUTSIDE reachViolations, so a
+ * hidden operation is not exempt: the whole point of a written acknowledgement
+ * is that it stops being written the day the thing it excuses is fixed, and a
+ * stale one tells the next reader a refactor is still owed when it has landed.
+ */
+function staleExceptions(annotation: OperationAnnotation): Finding[] {
+  return annotation.routable && annotation.unroutableReason
+    ? [
+        {
+          rule: "stale-unroutable" as const,
+          problem: `a route IS derived now, and \`unroutable: ${annotation.unroutableReason}\` still says none can be.`,
+          fix: "delete the `@assistant unroutable:` tag; the route the generator derived is in the catalog.",
+        },
+      ]
+    : [];
+}
+
 /** Everything wrong with ONE operation, rule by rule, in report order. */
 export function violationsFor(annotation: OperationAnnotation): Finding[] {
   return [
@@ -76,7 +105,7 @@ export function violationsFor(annotation: OperationAnnotation): Finding[] {
       (tag): Finding => ({
         rule: "unknown-tag",
         problem: `\`@assistant ${tag}\` is not a tag the grammar defines.`,
-        fix: "use `group:<slug>`, `confirm`, `unconfirmed: <reason>`, `hidden: <reason>`, `unroutable: <reason>`, or `unschematized: <reason>`.",
+        fix: "use `group:<slug>`, `confirm: <reason>`, `unconfirmed: <reason>`, `hidden: <reason>`, `unroutable: <reason>`, or `unschematized: <reason>`.",
       }),
     ),
     ...(annotation.documented
@@ -111,6 +140,7 @@ export function violationsFor(annotation: OperationAnnotation): Finding[] {
           },
         ]
       : []),
+    ...staleExceptions(annotation),
     ...reachViolations(annotation),
   ];
 }

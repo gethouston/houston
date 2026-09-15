@@ -13,10 +13,16 @@ import type { PathEncoding } from "./assistant-catalog-types.ts";
  * can read.
  */
 
-/** One piece of a resolved path template: fixed text, or a parameter slot. */
+/**
+ * One piece of a resolved path template: fixed text, a parameter slot, or a
+ * query key the request carries only when its parameter was supplied (see
+ * ./assistant-query-params.ts). A query part renders no text - it is folded
+ * into the route's `query` map instead.
+ */
 export type PathPart =
   | { kind: "text"; text: string }
-  | { kind: "param"; name: string; encoding: PathEncoding };
+  | { kind: "param"; name: string; encoding: PathEncoding }
+  | { kind: "query"; key: string; name: string };
 
 /**
  * What a call site binds one callee parameter to: the operation parameter it

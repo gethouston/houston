@@ -180,6 +180,11 @@ export class HoustonEngineClient {
   authStatus() {
     return this.json<AuthStatus>("/auth/status");
   }
+  // Every `/auth/:provider/…` path below ESCAPES the provider id rather than
+  // splicing it. A `ProviderId` is a closed union of slugs, so the escape is a
+  // no-op at runtime; what it buys is a path the catalog generator can derive,
+  // because an unescaped interpolation is refused rather than guessed
+  // (ui/engine-client/scripts/assistant-path-parts.ts).
   /**
    * Start login for a provider. Returns a `LoginInfo`: `url` (local Claude or
    * co-located Codex, loopback), `auth_code` (headless Claude — open the url,
@@ -200,7 +205,7 @@ export class HoustonEngineClient {
     if (enterpriseDomain) params.set("enterpriseDomain", enterpriseDomain);
     const qs = params.toString();
     return this.json<LoginInfo>(
-      `/auth/${provider}/login${qs ? `?${qs}` : ""}`,
+      `/auth/${encodeURIComponent(provider)}/login${qs ? `?${qs}` : ""}`,
       { method: "POST" },
     );
   }
@@ -210,17 +215,23 @@ export class HoustonEngineClient {
    * login slot so a retry starts clean. Benign when nothing is in flight.
    */
   cancelLogin(provider: ProviderId) {
-    return this.json<{ ok: boolean }>(`/auth/${provider}/login/cancel`, {
-      method: "POST",
-    });
+    return this.json<{ ok: boolean }>(
+      `/auth/${encodeURIComponent(provider)}/login/cancel`,
+      {
+        method: "POST",
+      },
+    );
   }
   /** Submit a pasted code (the `auth_code` headless Claude path). */
   completeLogin(provider: ProviderId, code: string) {
-    return this.json<{ ok: boolean }>(`/auth/${provider}/login/complete`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code }),
-    });
+    return this.json<{ ok: boolean }>(
+      `/auth/${encodeURIComponent(provider)}/login/complete`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      },
+    );
   }
   /**
    * Store a pasted API key for an api-key provider. No OAuth
@@ -229,11 +240,14 @@ export class HoustonEngineClient {
    * per-resource `endpoint` (PRODUCT-1477); other providers omit it.
    */
   setApiKey(provider: ProviderId, key: string, endpoint?: string) {
-    return this.json<{ ok: boolean }>(`/auth/${provider}/api-key`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, ...(endpoint ? { endpoint } : {}) }),
-    });
+    return this.json<{ ok: boolean }>(
+      `/auth/${encodeURIComponent(provider)}/api-key`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, ...(endpoint ? { endpoint } : {}) }),
+      },
+    );
   }
   /**
    * Connect an OpenAI-compatible (local) server: a base URL + model id, plus an
@@ -248,9 +262,12 @@ export class HoustonEngineClient {
     });
   }
   logout(provider: ProviderId) {
-    return this.json<{ ok: boolean }>(`/auth/${provider}/logout`, {
-      method: "POST",
-    });
+    return this.json<{ ok: boolean }>(
+      `/auth/${encodeURIComponent(provider)}/logout`,
+      {
+        method: "POST",
+      },
+    );
   }
 
   // --- conversations ---

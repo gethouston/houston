@@ -2,6 +2,7 @@ import type {
   Acknowledgement,
   AssistantCatalog,
   ExtractionResult,
+  OperationAnnotation,
   UnroutableOperation,
 } from "./assistant-catalog-types.ts";
 import { acknowledgements } from "./assistant-gate.ts";
@@ -33,6 +34,31 @@ function unroutableSection(values: UnroutableOperation[]): string[] {
     "",
     ...(values.length > 0
       ? values.map(({ name, reason }) => `- \`${name}\`: ${reason}`)
+      : ["None."]),
+  ];
+}
+
+/**
+ * Every operation that ends the agent's turn to ask the person, with what they
+ * are being protected from. Read together it is the confirmation budget: a
+ * surface that asks about everything trains people to answer yes without
+ * looking, so the list is meant to be short and each line is meant to be worth
+ * an interruption.
+ */
+function confirmedSection(
+  annotations: readonly OperationAnnotation[],
+): string[] {
+  const confirmed = annotations.filter((item) => item.confirm);
+  return [
+    `## Confirmed operations (${confirmed.length})`,
+    "",
+    "Each one ends the agent's turn and asks the user before it runs, and states what they lose if the call is wrong. `pnpm check:assistant-coverage` fails a `confirm` that states nothing.",
+    "",
+    ...(confirmed.length > 0
+      ? confirmed.map(
+          ({ name, confirmed: reason }) =>
+            `- \`${name}\`: ${reason ?? "no reason stated."}`,
+        )
       : ["None."]),
   ];
 }
@@ -77,6 +103,7 @@ export function renderCoverage({
     `- Ungrouped: ${coverage.ungrouped.length}`,
     `- Unschematized: ${coverage.unschematized.length}`,
     `- Hidden: ${coverage.hidden.length}`,
+    `- Confirmed: ${annotations.filter((item) => item.confirm).length}`,
     `- Routable: ${catalog.operations.length - coverage.unroutable.length}`,
     `- Unroutable: ${coverage.unroutable.length}`,
     `- Raw-response routes: ${rawResponse}`,
@@ -96,6 +123,8 @@ export function renderCoverage({
       "Exceptions whose author says the operation SHOULD be automatable and is waiting on a refactor.",
       debt,
     ),
+    "",
+    ...confirmedSection(annotations),
     "",
     ...section("Undocumented operations", coverage.undocumented),
     "",

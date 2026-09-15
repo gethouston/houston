@@ -13,6 +13,7 @@ import { violationsFor } from "./assistant-gate-rules.ts";
  */
 export type CoverageRule =
   | "unconfirmed-mutation"
+  | "confirm-unstated"
   | "unresolved-identifier"
   | "unknown-tag"
   | "undocumented"
@@ -20,6 +21,7 @@ export type CoverageRule =
   | "misgrouped"
   | "unjustified-hidden"
   | "unroutable"
+  | "stale-unroutable"
   | "route-conflict"
   | "unschematized";
 

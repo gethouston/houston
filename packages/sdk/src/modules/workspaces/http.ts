@@ -45,7 +45,8 @@ export async function readAgentFile(
 }
 /**
  * Replaces the contents of one of an agent's saved data files.
- * @assistant group:files confirm
+ * @assistant group:files
+ * @assistant confirm: irreversible. It replaces the whole file, and what the user had written there is not kept.
  */
 export async function writeAgentFile(
   scope: HttpScope,
@@ -89,7 +90,8 @@ export async function getContext(
 }
 /**
  * Replaces the background notes Houston gives an agent on every conversation.
- * @assistant group:settings confirm
+ * @assistant group:settings
+ * @assistant confirm: outward. These notes ride every later conversation with every agent, and the text they replace is not kept.
  */
 export async function setContext(
   scope: HttpScope,

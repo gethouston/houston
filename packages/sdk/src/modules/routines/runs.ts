@@ -41,7 +41,8 @@ export async function listRoutineRuns(
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param id The routine to run now, by the id listRoutines returns.
- * @assistant group:routines confirm
+ * @assistant group:routines
+ * @assistant confirm: money. It starts a real run right now, which spends model budget and does whatever the routine instructs.
  */
 export async function runRoutineNow(
   scope: HttpScope,
@@ -63,7 +64,8 @@ export async function runRoutineNow(
  *   agent's name is not its id, so read the id from listAgents first.
  * @param routineId The routine, by the id listRoutines returns.
  * @param runId The run to stop, by the id listRoutineRuns returns.
- * @assistant group:routines confirm
+ * @assistant group:routines
+ * @assistant confirm: irreversible. The run stops part-way, and what it had not finished waits for the next scheduled time.
  */
 export async function cancelRoutineRun(
   scope: HttpScope,
@@ -93,7 +95,8 @@ export async function cancelRoutineRun(
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param routineId The routine, by the id listRoutines returns.
- * @assistant group:routines confirm hidden: returns a secret; the webhook key is revealed once and calling again rotates it.
+ * @assistant group:routines confirm: irreversible. Minting again invalidates the key already in use, so whatever calls this routine from outside stops working.
+ * @assistant hidden: returns a secret; the webhook key is revealed once and calling again rotates it.
  */
 export async function mintRoutineWebhookKey(
   scope: HttpScope,

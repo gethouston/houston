@@ -134,6 +134,24 @@ export class AgentThingsClient {
   probeThing(id: string): Promise<Thing> {
     return this.r.json(`/probes/${encodeURIComponent(id)}`);
   }
+
+  /**
+   * An optional window the CLIENT offers and the module method below does not
+   * pass: no caller of the operation can fill either key, so the route carries
+   * neither rather than publishing keys nothing can supply.
+   */
+  listNotes(
+    id: string,
+    opts: { limit?: number; before?: number } = {},
+  ): Promise<Thing[]> {
+    const params = new URLSearchParams();
+    if (opts.limit !== undefined) params.set("limit", String(opts.limit));
+    if (opts.before !== undefined) params.set("before", String(opts.before));
+    const qs = params.toString();
+    return this.r.json(
+      `/things/${encodeURIComponent(id)}/notes${qs ? `?${qs}` : ""}`,
+    );
+  }
 }
 
 /** A client handed back by a factory that is NOT `ctx.clientFor`. */

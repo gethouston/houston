@@ -69,13 +69,12 @@ export async function loadSkill(
 /**
  * Creates a skill an agent can follow.
  *
- * Confirmed: a skill is standing instruction. Once it exists the agent follows
- * it in every later turn, changing behavior the user never asked for again.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param body The new skill: its name, a one-line description, and the
  *   instructions themselves.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: standing instruction. Once the skill exists the agent follows it in every later turn, changing behavior the user never asked for again.
  */
 export async function createSkill(
   scope: HttpScope,
@@ -91,14 +90,13 @@ export async function createSkill(
 /**
  * Saves changes to a skill's instructions.
  *
- * Confirmed: irreversible. It overwrites the skill's text in place and Houston
- * keeps no earlier copy, so what the user wrote cannot be recovered.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param slug The skill's exact slug, from listSkills. Never invent one.
  * @param content The skill's full new text. It replaces what was there, so
  *   send the whole thing.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: irreversible. It overwrites the skill's text in place and Houston keeps no earlier copy, so what the user wrote cannot be recovered.
  */
 export async function saveSkill(
   scope: HttpScope,
@@ -121,7 +119,8 @@ export async function saveSkill(
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param slug The skill's exact slug, from listSkills. Never invent one.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: irreversible. The skill's instructions are gone and Houston keeps no copy, so what the user wrote cannot be recovered.
  */
 export async function deleteSkill(
   scope: HttpScope,
@@ -155,14 +154,13 @@ export async function getSkillsManifest(
 /**
  * Chooses which of an agent's skills are switched on.
  *
- * Not confirmed: trivially reversible. Nothing is created or destroyed, and
- * switching one back restores exactly the previous state.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param manifest The complete enabled skill list. Every omitted skill is
  *   disabled. Read getSkillsManifest first and send the full revised
  *   manifest.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: outward. It replaces the whole list, so every skill left out of it is switched off in the same call.
  */
 export async function putSkillsManifest(
   scope: HttpScope,

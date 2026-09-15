@@ -91,7 +91,7 @@ export async function setMyProfile(
  * The caller's active API keys, newest first. No secrets — display prefixes only.
  *
  * Not confirmed: a read. It names the user's keys and reveals no secret.
- * @assistant group:api-keys hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
+ * @assistant group:api-keys
  */
 export async function listApiKeys(scope: HttpScope): Promise<ApiKey[]> {
   const res = await httpRequest(scope, "/v1/keys");
@@ -106,7 +106,8 @@ export async function listApiKeys(scope: HttpScope): Promise<ApiKey[]> {
  * never retrievable again, so the caller reveals it once and keeps it out of any
  * cache. ≥20 active keys → `400 {code:"key_limit"}`; every error throws so the UI
  * surfaces the real reason (the limit inline, anything else as a bug toast).
- * @assistant group:api-keys confirm hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
+ * @assistant group:api-keys confirm: outward. It mints a credential that reaches the account's data from anywhere, and the secret is shown once.
+ * @assistant hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
  */
 export async function createApiKey(
   scope: HttpScope,
@@ -125,9 +126,8 @@ export async function createApiKey(
  * Soft-revoke a key by id. Idempotent from the user's view: an unknown, foreign,
  * or already-revoked id answers `404` (no existence leak). No body on success.
  *
- * Confirmed: irreversible. A revoked key never works again, and anything
- * signing with it stops without warning.
- * @assistant group:api-keys confirm hidden: credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway.
+ * @assistant group:api-keys confirm: irreversible. A revoked key never works again, and anything signing with it stops without warning.
+ * @assistant hidden: the hosted gateway's scope wall denies the key routes to this surface, so a dispatched revoke can only fail.
  */
 export async function revokeApiKey(
   scope: HttpScope,

@@ -37,7 +37,8 @@ export async function listAgentTeamMembers(
  * @param teamId The team this acts on, by the id listAgentTeams returns.
  * @param userId The person to remove, by the user id listAgentTeamMembers
  *   returns.
- * @assistant group:teams confirm
+ * @assistant group:teams
+ * @assistant confirm: outward. They lose the team and the agents grouped under it, and only an owner can put them back.
  */
 export async function removeAgentTeamMember(
   scope: HttpScope,
@@ -58,7 +59,8 @@ export async function removeAgentTeamMember(
  * @param teamId The team this acts on, by the id listAgentTeams returns.
  * @param userId The person, by the user id listAgentTeamMembers returns.
  * @param owner True gives them ownership of the team, false takes it away.
- * @assistant group:teams confirm
+ * @assistant group:teams
+ * @assistant confirm: outward. Ownership decides who may change the team and who belongs to it, so the wrong call hands that away.
  */
 export async function setAgentTeamMemberOwner(
   scope: HttpScope,
@@ -79,13 +81,12 @@ export async function setAgentTeamMemberOwner(
  * Move one agent between teams in the same space. Grouping only: assignments,
  * and therefore who may drive the agent, are untouched.
  *
- * Confirmed: outward. Teammates see the agent move, and the grouping they
- * navigate by changes under them.
  * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
  *   returns. Read it from listAgents rather than writing the name the user
  *   says.
  * @param teamId The team this acts on, by the id listAgentTeams returns.
- * @assistant group:teams confirm
+ * @assistant group:teams
+ * @assistant confirm: outward. Teammates see the agent move, and the grouping they navigate by changes under them.
  */
 export async function setAgentTeam(
   scope: HttpScope,

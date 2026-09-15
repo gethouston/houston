@@ -43,7 +43,8 @@ export async function getBilling(scope: HttpScope): Promise<BillingSummary> {
  * Start a Stripe Checkout session for the active team (owner only; admin gets
  * 403 `not_owner`). Returns the hosted `{url}`. Never degrades — a failure throws
  * so the UI surfaces the real reason.
- * @assistant group:billing confirm
+ * @assistant group:billing
+ * @assistant confirm: money. It starts a real subscription, and the card it charges is the user's own.
  */
 export async function createCheckout(
   scope: HttpScope,

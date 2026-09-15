@@ -95,6 +95,13 @@ export function createThingsModule(ctx: FixtureModuleContext) {
     client.unpinThing(id, opts);
 
   /**
+   * Reads the notes on one thing inside an agent's sandbox.
+   * @assistant group:agents
+   */
+  const notes = (agentId: string, id: string): Promise<Thing[]> =>
+    ctx.clientFor(agentId).listNotes(id);
+
+  /**
    * Counts the things in the workspace.
    * @assistant group:agents
    */
@@ -106,6 +113,7 @@ export function createThingsModule(ctx: FixtureModuleContext) {
     rename,
     unpin,
     count,
+    notes,
     inspect,
     read,
     detach,

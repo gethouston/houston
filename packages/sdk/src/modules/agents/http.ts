@@ -61,14 +61,13 @@ export async function listAgents(scope: HttpScope): Promise<WireAgent[]> {
  * `JSON.stringify` drops the undefined optionals, so a plain create posts just
  * `{ name }` and a seeded one posts the fields it was given, in this order.
  *
- * Confirmed: money. An agent is a billed unit with its own workspace and
- * running engine, so creating one adds recurring cost the user has to want.
  * @param name What to call the new agent, in the user's own words.
  * @param color One of Houston's ten palette colours: charcoal, forest,
  *   teal, navy, purple, rose, crimson, orange, golden or umber.
  * @param seed Optional starting files for the new agent. Omit it for a
  *   blank one.
- * @assistant group:agents confirm
+ * @assistant group:agents
+ * @assistant confirm: money. An agent is a billed unit with its own workspace and running engine, so creating one adds recurring cost the user has to want.
  * @assistant unschematized: the seed's seeds map is an open record of file path to contents.
  */
 export async function createAgent(
@@ -98,7 +97,8 @@ export async function createAgent(
  * @param id The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param name The new name, in the user's own words.
- * @assistant group:agents confirm
+ * @assistant group:agents
+ * @assistant confirm: outward. Everyone in the space sees the agent under its new name, and on a desktop its files move with it.
  */
 export async function renameAgent(
   scope: HttpScope,
@@ -117,7 +117,8 @@ export async function renameAgent(
  *
  * @param id The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
- * @assistant group:agents confirm
+ * @assistant group:agents
+ * @assistant confirm: irreversible. The agent goes, and so does every mission, chat and file inside it, with no copy kept.
  */
 export async function deleteAgent(scope: HttpScope, id: string): Promise<void> {
   await httpRequest(scope, `/agents/${encodeURIComponent(id)}`, {

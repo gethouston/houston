@@ -57,30 +57,39 @@ export function stringLiteralText(expression: ts.Expression): string | null {
 }
 
 /**
- * The identifier a value expression names: `x`, `x.toString()` and `String(x)`
- * all denote the parameter `x`. Nothing else resolves — a computed value would
- * make the derived route a guess.
+ * The value an expression carries, with the two stringifications that change
+ * nothing about WHICH value it is stripped off: `x.toString()` and `String(x)`
+ * both carry `x`. Anything else is returned as it stands.
  */
-export function namedValue(expression: ts.Expression): string | null {
+export function valueExpression(expression: ts.Expression): ts.Expression {
   const inner = unwrap(expression);
-  if (ts.isIdentifier(inner)) return inner.text;
-  if (!ts.isCallExpression(inner) || inner.arguments.length > 1) return null;
+  if (!ts.isCallExpression(inner) || inner.arguments.length > 1) return inner;
   const callee = unwrap(inner.expression);
   if (
     ts.isIdentifier(callee) &&
     callee.text === "String" &&
     inner.arguments.length === 1
   ) {
-    return namedValue(inner.arguments[0]);
+    return valueExpression(inner.arguments[0]);
   }
   if (
     ts.isPropertyAccessExpression(callee) &&
     callee.name.text === "toString" &&
     inner.arguments.length === 0
   ) {
-    return namedValue(callee.expression);
+    return valueExpression(callee.expression);
   }
-  return null;
+  return inner;
+}
+
+/**
+ * The identifier a value expression names: `x`, `x.toString()` and `String(x)`
+ * all denote the parameter `x`. Nothing else resolves — a computed value would
+ * make the derived route a guess.
+ */
+export function namedValue(expression: ts.Expression): string | null {
+  const value = valueExpression(expression);
+  return ts.isIdentifier(value) ? value.text : null;
 }
 
 /** The single-expression body of an arrow, or `null` when it has a block. */

@@ -70,6 +70,8 @@ export interface OperationAnnotation {
   hiddenReason?: string;
   method?: HttpMethod;
   confirm: boolean;
+  /** Why the caller is asked first, when the author stated it. */
+  confirmed?: string;
   unconfirmed?: string;
   /** Parameters that address an existing thing with nothing behind them. */
   openIdentifiers: string[];

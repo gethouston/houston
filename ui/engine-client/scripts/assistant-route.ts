@@ -10,6 +10,7 @@ import {
 import type { Declaration, FileSurface } from "./assistant-declarations.ts";
 import { hopRoute } from "./assistant-hop-route.ts";
 import { type PathHelper, resolvePath } from "./assistant-path-parts.ts";
+import { searchParamsIn } from "./assistant-query-params.ts";
 import { extractInit, toPathTemplate } from "./assistant-route-args.ts";
 import { TRANSPORTS } from "./assistant-transport-wrapper.ts";
 import { NO_LOCALS, type ValueScope } from "./assistant-value-scope.ts";
@@ -148,6 +149,7 @@ export function extractRoute(
   const parts = resolvePath(request.path, {
     ...scope,
     helpers: helpersFor(context),
+    searchParams: searchParamsIn(declaration.body, scope),
     depth: 0,
   });
   if (typeof parts === "string") return unroutable(parts);
