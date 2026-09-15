@@ -14,9 +14,9 @@ import { afterEach, expect, test, vi } from "vitest";
  *
  * The control-plane module is mocked so cp-mode writes resolve without a network,
  * letting us observe the echo the client pushes onto the in-process bus. The
- * board read/PATCH (the settle path) and the agent-file PUT go through
- * `@houston/sdk` instead, so those are served by a stubbed `fetch` rather than a
- * module mock.
+ * board read/PATCH (the settle path), the routine create and the agent-file PUT
+ * go through `@houston/sdk` instead, so those are served by a stubbed `fetch`
+ * rather than a module mock.
  */
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
@@ -30,7 +30,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
       setSettings: vi.fn(async () => {}),
     })),
     subscribeEvents: vi.fn(() => () => {}),
-    createRoutine: vi.fn(async () => ({ id: "r1" })),
   };
 });
 
@@ -101,6 +100,7 @@ test("the settle path echoes ActivityChanged with the agent key", async () => {
 });
 
 test("routine CRUD echoes RoutinesChanged with the agent key", async () => {
+  stubHostFetch();
   const client = hostedClient();
   const { events, off } = capture();
   await client.createRoutine("Home/Ada", {

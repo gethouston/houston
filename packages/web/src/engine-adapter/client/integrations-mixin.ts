@@ -1,5 +1,5 @@
 import type { IntegrationProviderId } from "@houston/protocol";
-import * as controlPlane from "../control-plane";
+import type * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
 import { deploymentServes } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
@@ -17,7 +17,11 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       controlPlane.IntegrationProviderStatus[]
     > {
       if (!this.ctx.cp) return [];
-      return controlPlane.integrationStatus(this.ctx.cp);
+      // SDK delegates the byte-identical GET /v1/integrations, unwrapping the
+      // `{items}` envelope exactly as the control-plane copy did.
+      return viaSdk("/v1/integrations", () =>
+        this.ctx.sdk.integrations.reads.status(),
+      );
     }
     async setIntegrationSession(token: string | null): Promise<void> {
       if (!this.ctx.cp) return;
@@ -43,13 +47,17 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       provider: IntegrationProviderId,
     ): Promise<controlPlane.IntegrationToolkit[]> {
       if (!this.ctx.cp) return [];
-      return controlPlane.integrationToolkits(this.ctx.cp, provider);
+      return viaSdk(integrationPath(provider, "toolkits"), () =>
+        this.ctx.sdk.integrations.reads.toolkits(provider),
+      );
     }
     async integrationConnections(
       provider: IntegrationProviderId,
     ): Promise<controlPlane.IntegrationConnection[]> {
       if (!this.ctx.cp) return [];
-      return controlPlane.integrationConnections(this.ctx.cp, provider);
+      return viaSdk(integrationPath(provider, "connections"), () =>
+        this.ctx.sdk.integrations.reads.connections(provider),
+      );
     }
     async connectIntegration(
       provider: string,
@@ -70,10 +78,10 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<controlPlane.IntegrationConnection> {
       if (!this.ctx.cp)
         throw new Error("Integrations require a connected host");
-      return controlPlane.integrationConnection(
-        this.ctx.cp,
-        provider,
-        connectionId,
+      return viaSdk(
+        integrationPath(provider, "connections", connectionId),
+        () =>
+          this.ctx.sdk.integrations.reads.connection(provider, connectionId),
       );
     }
     async disconnectIntegration(
@@ -108,7 +116,9 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
     // ---- triggers (C9 event-driven routines) — hosted gateway only ----
     async triggerTypes(toolkit: string): Promise<controlPlane.TriggerType[]> {
       if (!this.ctx.cp) return [];
-      return controlPlane.triggerTypes(this.ctx.cp, toolkit);
+      return viaSdk("/v1/integrations/composio/trigger-types", () =>
+        this.ctx.sdk.integrations.reads.triggerTypes(toolkit),
+      );
     }
 
     // ---- custom integrations ----

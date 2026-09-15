@@ -1,7 +1,23 @@
 import type { ProjectFile } from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
+import { frameBatch, planAttachmentBatches } from "./attachment-batches";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
+/**
+ * The agent's REAL workspace, and the two ways bytes get into it.
+ *
+ * In cloud the workspace is a GCS prefix the control plane serves at
+ * `/agents/:id/files*`; `agentPath` IS the agent id here (folderPath = agent.id).
+ * In synthetic/local web mode there is no real workspace, so these are inert —
+ * every method keeps that guard, because `sdk.files` throws on every non-2xx
+ * and would turn "there is nothing to list" into an error.
+ *
+ * Uploads are split at the DOM line: the batching and base64 framing of browser
+ * `File`s stay here (`./attachment-batches`), while the requests they produce
+ * ride `sdk.files`. The two BINARY reads keep their own transport — they answer
+ * a `Blob`, which no JSON bridge can carry, so there is no SDK twin to call.
+ */
 export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProjectFiles extends Base {
     // ---- composer attachments ----
@@ -13,21 +29,25 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
     async saveAttachments(scopeId: string, files: File[]): Promise<string[]> {
       if (files.length === 0) return [];
       if (!this.ctx.cp) throw new Error("Attachments need a cloud workspace.");
-      return controlPlane.saveAttachments(
-        this.ctx.cp,
-        this.ctx.requireAgentId(),
-        scopeId,
-        files,
-      );
+      const agentId = this.ctx.requireAgentId();
+      const path = `${controlPlane.agentPath(agentId)}/attachments`;
+      const paths: string[] = [];
+      for (const batch of planAttachmentBatches(files)) {
+        const frames = await frameBatch(batch);
+        paths.push(
+          ...(await viaSdk(path, () =>
+            this.ctx.sdk.files.saveAttachments(agentId, scopeId, frames),
+          )),
+        );
+      }
+      return paths;
     }
 
     // ---- project files (the agent's REAL workspace) ----
-    // In cloud mode the workspace is a GCS prefix served by the control plane at
-    // /agents/:id/files*. agentPath IS the agentId here (folderPath = agent.id).
-    // In synthetic/local web mode there is no real workspace, so these are inert.
-    // Routed through cpFetch so reads ride the same transient-retry path as
-    // every other control-plane call (HOU-1085: a bare gatewayAuthFetch here
-    // gave files listings zero retries through a brief network blip).
+    // The transport the two binary reads still own. Routed through cpFetch so
+    // they ride the same transient-retry path as every other control-plane call
+    // (HOU-1085: a bare gatewayAuthFetch here gave files listings zero retries
+    // through a brief network blip).
     private async cpFilesFetch(
       agentId: string,
       path: string,
@@ -41,24 +61,17 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         init,
       );
     }
-    /** Lists the files in an agent's workspace.
-     * @assistant group:files */
     async listProjectFiles(agentPath: string): Promise<ProjectFile[]> {
       if (!this.ctx.cp) return [];
-      return (await (
-        await this.cpFilesFetch(agentPath, "files")
-      ).json()) as ProjectFile[];
+      return viaSdk(`${controlPlane.agentPath(agentPath)}/files`, () =>
+        this.ctx.sdk.files.listProjectFiles(agentPath),
+      );
     }
-    /** Reads a file from an agent's workspace.
-     * @assistant group:files */
     async readProjectFile(agentPath: string, relPath: string): Promise<string> {
       if (!this.ctx.cp) return "";
-      const res = await this.cpFilesFetch(
-        agentPath,
-        `files/read?path=${encodeURIComponent(relPath)}`,
+      return viaSdk(`${controlPlane.agentPath(agentPath)}/files/read`, () =>
+        this.ctx.sdk.files.readProjectFile(agentPath, relPath),
       );
-      const body = (await res.json()) as { content: string; base64: boolean };
-      return body.base64 ? atob(body.content) : body.content;
     }
     /** Downloads a file from an agent's workspace.
      *
@@ -79,54 +92,35 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
           res.headers.get("content-type") ?? "application/octet-stream",
       };
     }
-    /** Permanently deletes a file from an agent's workspace.
-     * @assistant group:files confirm */
     async deleteFile(agentPath: string, relPath: string): Promise<void> {
       if (!this.ctx.cp) return;
-      await this.cpFilesFetch(
-        agentPath,
-        `files?path=${encodeURIComponent(relPath)}`,
-        { method: "DELETE" },
+      await viaSdk(`${controlPlane.agentPath(agentPath)}/files`, () =>
+        this.ctx.sdk.files.deleteFile(agentPath, relPath),
       );
     }
-    /** Renames a file in an agent's workspace.
-     * @assistant group:files confirm */
     async renameFile(
       agentPath: string,
       relPath: string,
       newName: string,
     ): Promise<void> {
       if (!this.ctx.cp) return;
-      await this.cpFilesFetch(agentPath, "files/rename", {
-        method: "POST",
-        body: JSON.stringify({ path: relPath, newName }),
-      });
+      await viaSdk(`${controlPlane.agentPath(agentPath)}/files/rename`, () =>
+        this.ctx.sdk.files.renameFile(agentPath, relPath, newName),
+      );
     }
-    /** Creates a folder in an agent's workspace.
-     * @assistant group:files unconfirmed: Creates an empty folder without replacing existing content. */
     async createFolder(
       agentPath: string,
       folderName: string,
     ): Promise<{ created: string }> {
       if (!this.ctx.cp) return { created: folderName };
-      return (await (
-        await this.cpFilesFetch(agentPath, "files/folder", {
-          method: "POST",
-          body: JSON.stringify({ path: folderName }),
-        })
-      ).json()) as { created: string };
+      return viaSdk(`${controlPlane.agentPath(agentPath)}/files/folder`, () =>
+        this.ctx.sdk.files.createFolder(agentPath, folderName),
+      );
     }
-    /** Uploads files from the user's device into an agent's workspace.
-     *
-     * Upload browser Files into the workspace (Files section drag-drop /
-     * Browse / folder pick), optionally into a subfolder. Folder-derived files
-     * carry `webkitRelativePath`, forwarded as `relPath` so the host stores them
-     * nested and the folder structure survives (HOU-889); hosts predating it
-     * ignore the field and store the flat name. Small files batch together
-     * (the same size-budgeted plan attachments use) so a many-file folder
-     * doesn't turn into hundreds of round trips, while every request stays
-     * within the host's upload cap.
-     * @assistant group:files hidden: binary upload; browser File objects the Files section hands it. */
+    // Upload browser Files into the workspace (Files section drag-drop /
+    // Browse / folder pick). Batched here, one request per batch, so a
+    // many-file folder doesn't turn into hundreds of round trips and no batch
+    // exceeds the host's upload cap.
     async uploadProjectFiles(
       agentPath: string,
       files: File[],
@@ -135,38 +129,23 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       if (files.length === 0) return;
       if (!this.ctx.cp)
         throw new Error("Uploading files needs a connected host.");
-      for (const batch of controlPlane.planAttachmentBatches(files)) {
-        await this.cpFilesFetch(agentPath, "files/import", {
-          method: "POST",
-          body: JSON.stringify({
-            dir: targetDir ?? null,
-            files: await Promise.all(
-              batch.map(async (f) => ({
-                name: f.name,
-                contentBase64: controlPlane.bytesToBase64(
-                  new Uint8Array(await f.arrayBuffer()),
-                ),
-                relPath: controlPlane.uploadRelPath(f),
-              })),
-            ),
-          }),
-        });
+      const path = `${controlPlane.agentPath(agentPath)}/files/import`;
+      for (const batch of planAttachmentBatches(files)) {
+        const frames = await frameBatch(batch);
+        await viaSdk(path, () =>
+          this.ctx.sdk.files.uploadProjectFiles(agentPath, frames, targetDir),
+        );
       }
     }
-    /** Moves a file into another folder of an agent's workspace.
-     *
-     * Move a file/folder into another folder (null = workspace root).
-     * @assistant group:files confirm */
     async moveProjectFile(
       agentPath: string,
       relPath: string,
       toDir: string | null,
     ): Promise<void> {
       if (!this.ctx.cp) throw new Error("Moving files needs a connected host.");
-      await this.cpFilesFetch(agentPath, "files/move", {
-        method: "POST",
-        body: JSON.stringify({ path: relPath, toDir }),
-      });
+      await viaSdk(`${controlPlane.agentPath(agentPath)}/files/move`, () =>
+        this.ctx.sdk.files.moveProjectFile(agentPath, relPath, toDir),
+      );
     }
     /** Downloads everything in an agent's workspace as one archive.
      *

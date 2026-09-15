@@ -70,7 +70,6 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("createAgentTeam", TEAMS, { input: { name: "Probe" } }),
   cloudOnly("updateAgentTeam", TEAMS, { ...NO_TEAM, patch: {} }),
   cloudOnly("deleteAgentTeam", TEAMS, NO_TEAM),
-  cloudOnly("joinAgentTeam", TEAMS, NO_TEAM),
   cloudOnly("listAgentTeamMembers", TEAMS, NO_TEAM),
   cloudOnly("removeAgentTeamMember", TEAMS, { ...NO_TEAM, ...NO_USER }),
   cloudOnly("setAgentTeamMemberOwner", TEAMS, {

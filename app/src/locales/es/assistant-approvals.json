@@ -1,6 +1,7 @@
 {
   "operations": {
     "acceptOrgInvite": "Aceptar esta invitación para unirte a un espacio compartido.",
+    "addAgentCustomIntegration": "Agregar una app externa tuya a este agente, a partir de un enlace.",
     "addCustomIntegration": "Agregar una app externa tuya a partir de un enlace.",
     "addOrgMember": "Invitar a alguien a este espacio con el rol que elegiste.",
     "cancelRoutineRun": "Detener esta ejecución de la rutina mientras está en curso.",
@@ -21,13 +22,13 @@
     "deleteRoutine": "Eliminar esta rutina para que deje de ejecutarse según su horario.",
     "deleteSharedSkill": "Eliminar una habilidad compartida con el espacio de trabajo, quitándosela a todos.",
     "deleteSkill": "Eliminar esta habilidad para que el agente ya no la tenga.",
+    "detectAgentCustomIntegration": "Revisar a qué tipo de servicio apunta este enlace, usando este agente.",
     "detectCustomIntegration": "Revisar a qué tipo de servicio apunta este enlace.",
     "forgetCredential": "Cerrar la sesión de este espacio de trabajo en la cuenta de IA.",
     "installAgentFromGithub": "Instalar un agente desde un repositorio de GitHub.",
     "installCommunitySkill": "Instalar en el agente una habilidad del directorio de la comunidad.",
     "installSkillsFromRepo": "Instalar en el agente habilidades desde un repositorio de GitHub.",
     "integrations.disconnect": "Desconectar una app externa de tu cuenta.",
-    "joinAgentTeam": "Unirte a este equipo del espacio.",
     "mintRoutineWebhookKey": "Crear una clave nueva para que un servicio externo pueda iniciar esta rutina. Cualquier clave anterior deja de funcionar.",
     "moveAgent": "Mover este agente a un espacio compartido para que tu equipo pueda trabajar con él.",
     "moveProjectFile": "Mover este archivo a otra carpeta del espacio del agente.",
@@ -36,6 +37,7 @@
     "pushClaudeOAuthCredential": "Enviar el inicio de sesión de Claude de esta computadora a un agente en la nube.",
     "putSkillsManifest": "Elegir cuáles de las habilidades del agente están activas.",
     "removeAgentTeamMember": "Quitar a esta persona del equipo.",
+    "removeAgentCustomIntegration": "Quitar una app externa de este agente.",
     "removeCustomIntegration": "Quitar una app externa que agregaste vos.",
     "removeOrgMember": "Quitar a esta persona del espacio.",
     "renameAgent": "Cambiarle el nombre a este agente.",
@@ -51,6 +53,7 @@
     "setAgentTeamMemberOwner": "Darle a alguien la propiedad de este equipo, o quitársela.",
     "setContext": "Reemplazar las notas de contexto que Houston le da al agente en cada conversación.",
     "setOrgMemberRole": "Cambiar lo que esta persona puede hacer en este espacio.",
+    "submitAgentCustomIntegrationCredential": "Guardar el secreto que termina de configurar esta app para este agente.",
     "submitCustomIntegrationCredential": "Guardar el secreto que termina de configurar esta app.",
     "updateActivity": "Actualizar los detalles o el estado de esta misión.",
     "updateAgentTeam": "Cambiarle el nombre a este equipo, reordenarlo, cambiarle el estilo o actualizar las notas que comparte.",
@@ -124,6 +127,9 @@
     "promoteSharedSkill": {
       "slug": "habilidad"
     },
+    "removeAgentCustomIntegration": {
+      "slug": "app"
+    },
     "removeCustomIntegration": {
       "slug": "app"
     },
@@ -141,6 +147,9 @@
     },
     "saveSkill": {
       "slug": "habilidad"
+    },
+    "submitAgentCustomIntegrationCredential": {
+      "slug": "app"
     },
     "submitCustomIntegrationCredential": {
       "slug": "app"

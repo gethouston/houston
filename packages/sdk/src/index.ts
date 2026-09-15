@@ -104,6 +104,15 @@ export {
   type ConversationListVM,
   conversationListScope,
 } from "./modules/conversations";
+// ===== Files module contract ===========================================
+export {
+  FilesCommand,
+  type FilesCommandType,
+  FilesHttpError,
+  type FilesModule,
+  type FileUpload,
+  type ProjectFile,
+} from "./modules/files";
 // ===== Integrations module contract ====================================
 export {
   type ConnectResult,
@@ -117,6 +126,18 @@ export {
   type IntegrationsWrites,
   type IntegrationToolkit,
 } from "./modules/integrations";
+export type {
+  AddCustomIntegrationInput,
+  CustomAuthField,
+  CustomAuthMethod,
+  CustomDetectResult,
+  CustomIntegrationDetails,
+  CustomIntegrationState,
+  CustomIntegrationView,
+  CustomToolInfo,
+} from "./modules/integrations/custom-types";
+export type { TriggerType } from "./modules/integrations/reads";
+export { IntegrationsHttpError } from "./modules/integrations/transport";
 // ===== Mission-search module contract ==================================
 export type {
   MatchedIn,
@@ -167,6 +188,18 @@ export {
   providersScope,
   type SetModelOptions,
 } from "./modules/providers";
+// ===== Routines module contract ========================================
+export {
+  type NewRoutine,
+  type Routine,
+  type RoutineRun,
+  RoutinesCommand,
+  type RoutinesCommandType,
+  RoutinesHttpError,
+  type RoutinesModule,
+  type RoutineUpdate,
+  type WebhookKeyReveal,
+} from "./modules/routines";
 // ===== Session module contract =========================================
 // `createAuthFetch` + `SESSION_TOKEN_KEY` are host-facing: the host composes the
 // auth-fetch into `ports.fetch` before constructing the SDK (see the module).
@@ -180,6 +213,42 @@ export {
   type SessionModule,
   type SetTokenPayload,
 } from "./modules/session";
+// ===== Skills module contract ==========================================
+export {
+  AgentSkillsCommand,
+  type AgentSkillsCommandType,
+  type AgentSkillsFacade,
+  AgentSkillsHttpError,
+  type HostSkillSummary,
+  type NewSkill,
+  type SkillDetail,
+  type SkillInputDef,
+  type SkillSummary,
+  type SkillsManifest,
+  type SkillsModule,
+} from "./modules/skills";
+// ===== Skills marketplace contract =====================================
+export {
+  type CommunitySkill,
+  type CommunitySkillPreview,
+  MarketplaceCommand,
+  type MarketplaceCommandType,
+  MarketplaceHttpError,
+  type RepoSkill,
+  type SkillsMarketplace,
+} from "./modules/skills/types-marketplace";
+// ===== Shared skills contract ==========================================
+export {
+  type NewSharedSkill,
+  type SharedSkillDiagnostic,
+  type SharedSkillInput,
+  type SharedSkillSummary,
+  SharedSkillsCommand,
+  type SharedSkillsCommandType,
+  SharedSkillsHttpError,
+  type SharedSkillsList,
+  type SharedSkillsModule,
+} from "./modules/skills/types-shared";
 // ===== Spaces module contract ==========================================
 export {
   type AgentMoveStart,
@@ -194,6 +263,26 @@ export {
   SpacesHttpError,
   type SpacesModule,
 } from "./modules/spaces";
+// ===== Teams module contract ===========================================
+// `AgentAccess`/`AgentAssignment` are the agents module's; a team assignment
+// carries the same value, so they are exported once, under Agents.
+export {
+  type AgentEffortLevel,
+  type AgentModelChoice,
+  type AgentModelChoiceInfo,
+  type AgentSettings,
+  type AgentSettingsUpdate,
+  type AgentTeam,
+  type AgentTeamInput,
+  type AgentTeamMember,
+  type AgentTeamPatch,
+  TeamsCommand,
+  type TeamsCommandType,
+  TeamsHttpError,
+  type TeamsModule,
+  type TriggerStatusItem,
+  type TriggerStatusState,
+} from "./modules/teams";
 // ===== Turns module public surface =====================================
 // The turn/feed machinery lives in the turns module; it is re-exported here so
 // a host (the web engine-adapter) can drive it with its OWN FeedOutput. The

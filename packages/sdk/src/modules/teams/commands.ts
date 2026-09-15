@@ -1,0 +1,130 @@
+/**
+ * The bridge vocabulary of the teams module: the untrusted-payload readers and
+ * the registration of every {@link TeamsCommand} against the same facade the
+ * typed path calls.
+ *
+ * Kept out of `index.ts` so the module factory there stays a wiring layer, and
+ * so the one place that reads a serialized envelope is the one place that
+ * validates it.
+ */
+
+import type { ModuleContext } from "../../module-context";
+import type { TeamsModule } from "./index";
+import type {
+  AgentAssignment,
+  AgentModelChoice,
+  AgentSettingsUpdate,
+} from "./policy-types";
+import {
+  type AgentTeamInput,
+  type AgentTeamPatch,
+  TeamsCommand,
+} from "./types";
+
+/** The value at `key` of an untrusted command payload, or `undefined`. */
+function field(payload: unknown, key: string): unknown {
+  return typeof payload === "object" && payload !== null
+    ? (payload as Record<string, unknown>)[key]
+    : undefined;
+}
+
+/** A required non-empty string off an untrusted command payload. */
+function requireString(payload: unknown, key: string): string {
+  const value = field(payload, key);
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`missing '${key}'`);
+  }
+  return value;
+}
+
+/** A required boolean off an untrusted command payload. */
+function requireBoolean(payload: unknown, key: string): boolean {
+  const value = field(payload, key);
+  if (typeof value !== "boolean") throw new Error(`missing '${key}'`);
+  return value;
+}
+
+/**
+ * A required object off an untrusted command payload, as `T`.
+ *
+ * The bridge's peer is the app's own shell and the gateway validates the shape
+ * below the top level, so this guards only that something object-shaped
+ * arrived — which is what tells a malformed envelope from an empty patch.
+ */
+function requireObject<T>(payload: unknown, key: string): T {
+  const value = field(payload, key);
+  if (typeof value !== "object" || value === null) {
+    throw new Error(`missing '${key}'`);
+  }
+  return value as T;
+}
+
+/** A required array off an untrusted command payload, as `T[]`. */
+function requireArray<T>(payload: unknown, key: string): T[] {
+  const value = field(payload, key);
+  if (!Array.isArray(value)) throw new Error(`missing '${key}'`);
+  return value as T[];
+}
+
+/** Bind every teams command to `module`, the same facade the typed path uses. */
+export function registerTeamsCommands(
+  ctx: ModuleContext,
+  module: TeamsModule,
+): void {
+  const agent = (p: unknown) => requireString(p, "agentSlugOrId");
+  const team = (p: unknown) => requireString(p, "teamId");
+
+  ctx.registerCommand(TeamsCommand.List, () => module.listAgentTeams());
+  ctx.registerCommand(TeamsCommand.Create, (p) =>
+    module.createAgentTeam(requireObject<AgentTeamInput>(p, "input")),
+  );
+  ctx.registerCommand(TeamsCommand.Update, (p) =>
+    module.updateAgentTeam(team(p), requireObject<AgentTeamPatch>(p, "patch")),
+  );
+  ctx.registerCommand(TeamsCommand.Delete, (p) =>
+    module.deleteAgentTeam(team(p)),
+  );
+  ctx.registerCommand(TeamsCommand.ListMembers, (p) =>
+    module.listAgentTeamMembers(team(p)),
+  );
+  ctx.registerCommand(TeamsCommand.RemoveMember, (p) =>
+    module.removeAgentTeamMember(team(p), requireString(p, "userId")),
+  );
+  ctx.registerCommand(TeamsCommand.SetMemberOwner, (p) =>
+    module.setAgentTeamMemberOwner(
+      team(p),
+      requireString(p, "userId"),
+      requireBoolean(p, "owner"),
+    ),
+  );
+  ctx.registerCommand(TeamsCommand.SetAgentTeam, (p) =>
+    module.setAgentTeam(agent(p), team(p)),
+  );
+  ctx.registerCommand(TeamsCommand.SetAssignments, (p) =>
+    module.setAgentAssignments(
+      agent(p),
+      requireArray<AgentAssignment>(p, "assignments"),
+    ),
+  );
+  ctx.registerCommand(TeamsCommand.GetSettings, (p) =>
+    module.getAgentSettings(agent(p)),
+  );
+  ctx.registerCommand(TeamsCommand.SetSettings, (p) =>
+    module.setAgentSettings(
+      agent(p),
+      requireObject<AgentSettingsUpdate>(p, "settings"),
+    ),
+  );
+  ctx.registerCommand(TeamsCommand.GetModelChoice, (p) =>
+    module.getAgentModelChoice(agent(p)),
+  );
+  ctx.registerCommand(TeamsCommand.SetModelChoice, (p) =>
+    module.setAgentModelChoice(
+      agent(p),
+      requireObject<AgentModelChoice>(p, "choice"),
+    ),
+  );
+  ctx.registerCommand(TeamsCommand.TriggerStatus, (p) =>
+    module.agentTriggerStatus(agent(p)),
+  );
+}

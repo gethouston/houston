@@ -40,9 +40,13 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## integrations
 
+- `addAgentCustomIntegration`: Adds an outside app of the user's own to one agent, from a link. **Confirmation required.**
 - `addCustomIntegration`: Adds an outside app of the user's own from a link. **Confirmation required.**
+- `agentCustomIntegrations`: Lists the outside apps added to one agent.
+- `agentCustomIntegrationTools`: Lists the actions an outside app added to one agent offers.
 - `customIntegrations`: Lists the outside apps the user added themselves.
 - `customIntegrationTools`: Lists the actions an app the user added themselves offers.
+- `detectAgentCustomIntegration`: Checks what kind of service a link the user pasted points to, from one agent's runtime. **Confirmation required.**
 - `detectCustomIntegration`: Checks what kind of service a link the user pasted points to. **Confirmation required.**
 - `integrationConnection`: Checks whether a connection to an outside app has finished.
 - `integrationConnections`: Lists the accounts the user has connected for one outside app.
@@ -50,6 +54,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `integrations.refresh`: Shows which outside apps are available to connect and which ones the user has already connected. (not callable yet)
 - `integrationStatus`: Shows which outside apps can be connected and which ones already are.
 - `integrationToolkits`: Lists the outside apps available to connect.
+- `removeAgentCustomIntegration`: Removes an outside app from one agent. **Confirmation required.**
 - `removeCustomIntegration`: Removes an outside app the user added themselves. **Confirmation required.**
 - `triggerTypes`: Lists the events from an outside app that a routine can wake up on.
 
@@ -132,7 +137,6 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `createAgentTeam`: Creates a team in this space.
 - `deleteAgentTeam`: Deletes a team. **Confirmation required.**
 - `getAgentSettings`: Reads which apps and AI models an agent is allowed to use.
-- `joinAgentTeam`: Joins the user to a team in this space. **Confirmation required.**
 - `listAgentTeamMembers`: Lists the people who joined a team.
 - `listAgentTeams`: Lists the teams of people and agents in this space.
 - `removeAgentTeamMember`: Removes someone from a team, or leaves it. **Confirmation required.**

@@ -1,12 +1,14 @@
-import type { AgentTeamMember } from "../../../../../ui/engine-client/src/types";
-import { type ControlPlaneConfig, cpFetch } from "./fetch";
-
 /**
- * WHO is in a C13 agent team, and which team an agent belongs to. The teams
- * themselves (create, rename, restyle, delete) are in `./org-teams`; the same
- * "never degrade on a 404" rule holds here, for the same reason: callers
- * feature-detect on `capabilities.agentTeams` before they ever arrive.
+ * WHO is in a C13 agent team, and which team an agent belongs to.
+ *
+ * The teams themselves (create, rename, restyle, delete) are in `./http`; the
+ * same "never degrade on a 404" rule holds here, for the same reason: surfaces
+ * feature-detect on `capabilities.agentTeams` before they ever arrive, so a
+ * soft empty answer would render "nobody is on this team" as the truth.
  */
+
+import { type HttpScope, httpRequest } from "../http";
+import type { AgentTeamMember } from "./types";
 
 /**
  * Lists the people who joined a team.
@@ -17,33 +19,14 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * @assistant group:teams
  */
 export async function listAgentTeamMembers(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   teamId: string,
 ): Promise<AgentTeamMember[]> {
-  const res = await cpFetch(
-    cfg,
+  const res = await httpRequest(
+    scope,
     `/v1/org/teams/${encodeURIComponent(teamId)}/members`,
   );
   return ((await res.json()) as { members?: AgentTeamMember[] }).members ?? [];
-}
-
-/**
- * Joins the user to a team in this space.
- *
- * Self-service join (v1 teams are all public). Idempotent, never demotes.
- *
- * Confirmed: outward. Joining puts the user's name in front of the team's
- * other members, and Houston cannot take that back for them.
- * @param teamId The team this acts on, by the id listAgentTeams returns.
- * @assistant group:teams confirm
- */
-export async function joinAgentTeam(
-  cfg: ControlPlaneConfig,
-  teamId: string,
-): Promise<void> {
-  await cpFetch(cfg, `/v1/org/teams/${encodeURIComponent(teamId)}/join`, {
-    method: "POST",
-  });
 }
 
 /**
@@ -57,12 +40,12 @@ export async function joinAgentTeam(
  * @assistant group:teams confirm
  */
 export async function removeAgentTeamMember(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   teamId: string,
   userId: string,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/v1/org/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
     { method: "DELETE" },
   );
@@ -78,13 +61,13 @@ export async function removeAgentTeamMember(
  * @assistant group:teams confirm
  */
 export async function setAgentTeamMemberOwner(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   teamId: string,
   userId: string,
   owner: boolean,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/v1/org/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
     { method: "PUT", body: JSON.stringify({ owner }) },
   );
@@ -105,12 +88,13 @@ export async function setAgentTeamMemberOwner(
  * @assistant group:teams confirm
  */
 export async function setAgentTeam(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
   teamId: string,
 ): Promise<void> {
-  await cpFetch(cfg, `/v1/agents/${encodeURIComponent(agentSlugOrId)}/team`, {
-    method: "PUT",
-    body: JSON.stringify({ teamId }),
-  });
+  await httpRequest(
+    scope,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/team`,
+    { method: "PUT", body: JSON.stringify({ teamId }) },
+  );
 }

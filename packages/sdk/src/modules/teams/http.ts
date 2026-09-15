@@ -1,21 +1,27 @@
-import type { AgentTeam } from "../../../../../ui/engine-client/src/types";
-import { type ControlPlaneConfig, cpFetch } from "./fetch";
-
 /**
- * C13 agent teams: named groups of agents and people INSIDE one space,
- * server-owned. Distinct from `cp/agent-teams.ts`, which is the per-AGENT
- * settings surface (assignments, model choice) and shares only a name.
+ * The C13 team-DIRECTORY calls — named groups of agents and people INSIDE one
+ * space, server-owned — over the injected `fetch`.
  *
- * The teams themselves live here; who is IN one, and which team an agent
- * belongs to, live in `./org-team-members` — the same rail, but one file per
- * question so neither grows past reading.
+ * These are HOSTED-GATEWAY routes: a team is a multi-tenant concept the gateway
+ * resolves from the caller's session plus the active-space header, so no host
+ * serves them and the runtime client has no surface for them. They go straight
+ * through {@link httpRequest} with literal paths, which is also what keeps them
+ * visible to the assistant's operation catalog.
  *
- * NOTHING here degrades on a 404. Callers feature-detect on
+ * NOTHING here degrades on a 404. Surfaces feature-detect on
  * `capabilities.agentTeams` before they ever reach this module, so a 404 means
  * the host advertised a surface it does not serve — and swallowing it would
- * blank the whole rail while presenting "you have no teams" as the truth.
- * Every failure surfaces as a {@link HoustonEngineError} from `cpFetch`.
+ * blank the whole rail while presenting "you have no teams" as the truth. Every
+ * failure throws a `TeamsHttpError` (`scope.ts`) carrying the HTTP `status`. A
+ * `401` additionally fires `onUnauthorized`, so a lapsed session token becomes a
+ * visible `tokenExpired` signal.
+ *
+ * Who is IN a team, and which team an agent belongs to, are in `./members`; the
+ * per-agent policy surface is `./settings`.
  */
+
+import { type HttpScope, httpRequest } from "../http";
+import type { AgentTeam, AgentTeamInput, AgentTeamPatch } from "./types";
 
 /**
  * Lists the teams of people and agents in this space.
@@ -24,10 +30,8 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * `memberCount` are effective values resolved server-side).
  * @assistant group:teams
  */
-export async function listAgentTeams(
-  cfg: ControlPlaneConfig,
-): Promise<AgentTeam[]> {
-  const res = await cpFetch(cfg, "/v1/org/teams");
+export async function listAgentTeams(scope: HttpScope): Promise<AgentTeam[]> {
+  const res = await httpRequest(scope, "/v1/org/teams");
   return ((await res.json()) as { teams?: AgentTeam[] }).teams ?? [];
 }
 
@@ -43,10 +47,10 @@ export async function listAgentTeams(
  * @assistant group:teams unconfirmed: Creates an empty team without moving agents or adding other members.
  */
 export async function createAgentTeam(
-  cfg: ControlPlaneConfig,
-  input: { name: string; icon?: string; color?: string },
+  scope: HttpScope,
+  input: AgentTeamInput,
 ): Promise<AgentTeam> {
-  const res = await cpFetch(cfg, "/v1/org/teams", {
+  const res = await httpRequest(scope, "/v1/org/teams", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -74,18 +78,12 @@ export async function createAgentTeam(
  * @assistant group:teams confirm
  */
 export async function updateAgentTeam(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   teamId: string,
-  patch: {
-    name?: string;
-    sortOrder?: number;
-    icon?: string;
-    color?: string;
-    context?: string;
-  },
+  patch: AgentTeamPatch,
 ): Promise<AgentTeam> {
-  const res = await cpFetch(
-    cfg,
+  const res = await httpRequest(
+    scope,
     `/v1/org/teams/${encodeURIComponent(teamId)}`,
     { method: "PATCH", body: JSON.stringify(patch) },
   );
@@ -100,10 +98,10 @@ export async function updateAgentTeam(
  * @assistant group:teams confirm
  */
 export async function deleteAgentTeam(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   teamId: string,
 ): Promise<void> {
-  await cpFetch(cfg, `/v1/org/teams/${encodeURIComponent(teamId)}`, {
+  await httpRequest(scope, `/v1/org/teams/${encodeURIComponent(teamId)}`, {
     method: "DELETE",
   });
 }

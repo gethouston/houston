@@ -12,7 +12,7 @@ interface ThingSeed {
   claudeMd?: string;
 }
 
-/** A module-scope path helper, like `cp/integrations.ts`'s `integrationPath`. */
+/** A module-scope path helper, like the integrations module's `customRoot`. */
 const integrationPath = (provider: string) =>
   `/v1/integrations/${encodeURIComponent(provider)}`;
 

@@ -7,24 +7,34 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
+import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 /**
  * Scheduled work: a routine's definition, its run history, and the incoming
- * webhook key that lets an outside system fire one (`cp/routines.ts`).
+ * webhook key that lets an outside system fire one (`@houston/sdk`'s routines
+ * module).
  *
  * Routine mutations route to the host (cloud); standalone web has no routine
- * backend, so they no-op there (the UI still navigates).
+ * backend, so they no-op there (the UI still navigates). Every delegated call
+ * is exactly one request: the SDK publishes no routines scope and never
+ * refetches after a write, so the local echo below stays the only invalidation.
  */
 export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
   class Routines extends Base {
     async listRoutines(agentPath: string) {
-      if (this.ctx.cp) return controlPlane.listRoutines(this.ctx.cp, agentPath);
+      if (this.ctx.cp)
+        return viaSdk(`${controlPlane.agentPath(agentPath)}/routines`, () =>
+          this.ctx.sdk.routines.listRoutines(agentPath),
+        );
       return [];
     }
     async listRoutineRuns(agentPath: string) {
       if (this.ctx.cp)
-        return controlPlane.listRoutineRuns(this.ctx.cp, agentPath);
+        return viaSdk(`${controlPlane.agentPath(agentPath)}/routine_runs`, () =>
+          this.ctx.sdk.routines.listRoutineRuns(agentPath),
+        );
       return [];
     }
     async createRoutine(
@@ -32,10 +42,9 @@ export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
       input: NewRoutine,
     ): Promise<Routine> {
       if (!this.ctx.cp) return {} as Routine;
-      const routine = await controlPlane.createRoutine(
-        this.ctx.cp,
-        agentPath,
-        input,
+      const routine = await viaSdk(
+        `${controlPlane.agentPath(agentPath)}/routines`,
+        () => this.ctx.sdk.routines.createRoutine(agentPath, input),
       );
       emitLocalEcho("RoutinesChanged", { agentPath });
       return routine;
@@ -46,25 +55,29 @@ export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
       updates: RoutineUpdate,
     ): Promise<Routine> {
       if (!this.ctx.cp) return {} as Routine;
-      const routine = await controlPlane.updateRoutine(
-        this.ctx.cp,
-        agentPath,
-        id,
-        updates,
+      const routine = await viaSdk(
+        `${controlPlane.agentPath(agentPath)}/routines/${encodeURIComponent(id)}`,
+        () => this.ctx.sdk.routines.updateRoutine(agentPath, id, updates),
       );
       emitLocalEcho("RoutinesChanged", { agentPath });
       return routine;
     }
     async deleteRoutine(agentPath: string, id: string): Promise<void> {
       if (!this.ctx.cp) return;
-      await controlPlane.deleteRoutine(this.ctx.cp, agentPath, id);
+      await viaSdk(
+        `${controlPlane.agentPath(agentPath)}/routines/${encodeURIComponent(id)}`,
+        () => this.ctx.sdk.routines.deleteRoutine(agentPath, id),
+      );
       emitLocalEcho("RoutinesChanged", { agentPath });
     }
     /** Fire a routine on demand: the host records a routine_run and starts the turn now. */
     async runRoutineNow(agentPath: string, routineId: string): Promise<void> {
       if (!this.ctx.cp)
         throw new Error("Running a routine needs a cloud workspace.");
-      await controlPlane.runRoutineNow(this.ctx.cp, agentPath, routineId);
+      await viaSdk(
+        `${controlPlane.agentPath(agentPath)}/routines/${encodeURIComponent(routineId)}/run`,
+        () => this.ctx.sdk.routines.runRoutineNow(agentPath, routineId),
+      );
       emitLocalEcho("RoutineRunsChanged", { agentPath });
     }
     /** Stop an in-flight routine run: the host flips the row terminal, then aborts the turn. */
@@ -75,11 +88,10 @@ export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<RoutineRun> {
       if (!this.ctx.cp)
         throw new Error("Stopping a routine run needs a cloud workspace.");
-      const run = await controlPlane.cancelRoutineRun(
-        this.ctx.cp,
-        agentPath,
-        routineId,
-        runId,
+      const run = await viaSdk(
+        `${controlPlane.agentPath(agentPath)}/routines/${encodeURIComponent(routineId)}/runs/${encodeURIComponent(runId)}/cancel`,
+        () =>
+          this.ctx.sdk.routines.cancelRoutineRun(agentPath, routineId, runId),
       );
       emitLocalEcho("RoutineRunsChanged", { agentPath });
       return run;
@@ -88,17 +100,27 @@ export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
      * Mint (or rotate) a routine's incoming-webhook key. Degrades to `null` when
      * webhook keys are unsupported here: no gateway (standalone web/desktop) or a
      * gateway that 404s the route. Calling again ROTATES the old secret away.
+     *
+     * The SDK throws every non-2xx (it stays honest for iOS), so the 404 is
+     * swallowed HERE — mirroring `agentTriggerStatus`'s degrade — and every
+     * other error still surfaces.
      */
     async mintRoutineWebhookKey(
       agentPath: string,
       routineId: string,
     ): Promise<WebhookKeyReveal | null> {
       if (!this.ctx.cp) return null;
-      return controlPlane.mintRoutineWebhookKey(
-        this.ctx.cp,
-        agentPath,
-        routineId,
-      );
+      try {
+        return await viaSdk(
+          `/v1/agents/${encodeURIComponent(agentPath)}/routines/${encodeURIComponent(routineId)}/webhook-key`,
+          () =>
+            this.ctx.sdk.routines.mintRoutineWebhookKey(agentPath, routineId),
+        );
+      } catch (err) {
+        if (err instanceof HoustonEngineError && err.status === 404)
+          return null;
+        throw err;
+      }
     }
   }
   return Routines;

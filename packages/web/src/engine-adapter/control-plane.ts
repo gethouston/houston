@@ -61,24 +61,14 @@ export type {
 
 export * from "./cp/agent-color";
 export * from "./cp/agent-color-sync";
-export * from "./cp/agent-teams";
 export * from "./cp/agent-ui";
-export * from "./cp/attachments";
 export * from "./cp/billing";
 export * from "./cp/credentials";
-export * from "./cp/custom-integrations";
 export * from "./cp/events";
 export * from "./cp/fetch";
-export * from "./cp/integrations";
-export * from "./cp/marketplace";
-export * from "./cp/org-team-members";
-export * from "./cp/org-teams";
 export * from "./cp/preferences";
 export * from "./cp/retry";
-export * from "./cp/routines";
 export * from "./cp/runtime-clients";
 export * from "./cp/setup-credentials";
-export * from "./cp/shared-skills";
-export * from "./cp/skills";
 export * from "./cp/transient-retry";
 export * from "./cp/unavailable-reason";

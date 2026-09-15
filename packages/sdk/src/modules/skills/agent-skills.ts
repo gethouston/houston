@@ -1,22 +1,27 @@
-import type {
-  SkillDetail,
-  SkillSummary,
-  SkillsManifest,
-} from "../../../../../ui/engine-client/src/types";
-import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
-
 /**
- * Per-AGENT skills: the skills that live in one agent's own `.agents/skills/`,
- * plus that agent's skills manifest. The workspace-scoped shared library is a
- * different family — see `shared-skills.ts`, which reuses the host→client
- * summary shim exported here.
+ * The per-AGENT skill REST calls — the skills that live in one agent's own
+ * `.agents/skills/`, plus that agent's skills manifest — over the injected
+ * `fetch`.
+ *
+ * These are control-plane routes proxied to the agent's pod
+ * (`/agents/:id/skills*`): the runtime client does not serve them, so the module
+ * talks to them through {@link httpRequest} with literal paths, which is also
+ * what keeps them visible to the assistant's operation catalog.
+ *
+ * Nothing is swallowed here: a non-2xx always throws an
+ * {@link AgentSkillsHttpError} carrying the HTTP `status`, so a surface that
+ * wants to degrade a 404 (a host without a skills backend) decides that itself.
  */
 
-export type HostSkillSummary = Omit<SkillSummary, "inputs" | "promptTemplate">;
-
-export function toClientSummary(summary: HostSkillSummary): SkillSummary {
-  return { ...summary, inputs: [], promptTemplate: null };
-}
+import { type HttpScope, httpRequest } from "../http";
+import {
+  type HostSkillSummary,
+  type NewSkill,
+  type SkillDetail,
+  type SkillSummary,
+  type SkillsManifest,
+  toClientSummary,
+} from "./types-agent";
 
 /**
  * Lists the skills an agent can follow.
@@ -25,10 +30,13 @@ export function toClientSummary(summary: HostSkillSummary): SkillSummary {
  * @assistant group:skills
  */
 export async function listSkills(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
 ): Promise<SkillSummary[]> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/skills`);
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/skills`,
+  );
   const items = ((await res.json()) as { items: HostSkillSummary[] }).items;
   // The host dropped the legacy structured-inputs/prompt-template fields (the UI
   // ignores them); restore them as empty so the v1 SkillSummary type is satisfied.
@@ -47,13 +55,13 @@ export async function listSkills(
  * @assistant group:skills
  */
 export async function loadSkill(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   slug: string,
 ): Promise<SkillDetail> {
-  const res = await cpFetch(
-    cfg,
-    `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`,
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/skills/${encodeURIComponent(slug)}`,
   );
   return (await res.json()) as SkillDetail;
 }
@@ -70,15 +78,16 @@ export async function loadSkill(
  * @assistant group:skills confirm
  */
 export async function createSkill(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
-  body: { name: string; description: string; content: string },
+  body: NewSkill,
 ): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/skills`, {
+  await httpRequest(scope, `/agents/${encodeURIComponent(agentId)}/skills`, {
     method: "POST",
     body: JSON.stringify(body),
   });
 }
+
 /**
  * Saves changes to a skill's instructions.
  *
@@ -92,20 +101,21 @@ export async function createSkill(
  * @assistant group:skills confirm
  */
 export async function saveSkill(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   slug: string,
   content: string,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
-    `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`,
+  await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/skills/${encodeURIComponent(slug)}`,
     {
       method: "PUT",
       body: JSON.stringify({ content }),
     },
   );
 }
+
 /**
  * Deletes a skill so the agent no longer has it.
  * @param agentId The agent this acts on, by the id listAgents returns. An
@@ -114,13 +124,13 @@ export async function saveSkill(
  * @assistant group:skills confirm
  */
 export async function deleteSkill(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   slug: string,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
-    `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`,
+  await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/skills/${encodeURIComponent(slug)}`,
     { method: "DELETE" },
   );
 }
@@ -132,10 +142,13 @@ export async function deleteSkill(
  * @assistant group:skills
  */
 export async function getSkillsManifest(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
 ): Promise<SkillsManifest> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/skills-manifest`);
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/skills-manifest`,
+  );
   return (await res.json()) as SkillsManifest;
 }
 
@@ -152,13 +165,17 @@ export async function getSkillsManifest(
  * @assistant group:skills confirm
  */
 export async function putSkillsManifest(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   manifest: SkillsManifest,
 ): Promise<SkillsManifest> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/skills-manifest`, {
-    method: "PUT",
-    body: JSON.stringify(manifest),
-  });
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/skills-manifest`,
+    {
+      method: "PUT",
+      body: JSON.stringify(manifest),
+    },
+  );
   return (await res.json()) as SkillsManifest;
 }

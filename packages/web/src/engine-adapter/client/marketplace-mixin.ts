@@ -6,8 +6,12 @@ import type {
   RepoSkill,
 } from "../../../../../ui/engine-client/src/types";
 import { emitLocalEcho } from "../bus";
-import * as controlPlane from "../control-plane";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
+
+/** The agent-scoped marketplace prefix the gateway proxies to the agent's pod. */
+const marketplacePath = (agentPath: string, leaf: string) =>
+  `/agents/${encodeURIComponent(agentPath)}/skills/${leaf}`;
 
 export function MarketplaceMixin<TBase extends BaseCtor>(Base: TBase) {
   // Marketplace: skills.sh search/install + GitHub repo discovery. Standalone
@@ -20,11 +24,12 @@ export function MarketplaceMixin<TBase extends BaseCtor>(Base: TBase) {
       signal?: AbortSignal,
     ): Promise<CommunitySkill[]> {
       if (!this.ctx.cp) return [];
-      return controlPlane.searchCommunitySkills(
-        this.ctx.cp,
-        agentPath,
-        query,
-        signal,
+      return viaSdk(marketplacePath(agentPath, "community/search"), () =>
+        this.ctx.sdk.skills.marketplace.searchCommunitySkills(
+          agentPath,
+          query,
+          signal,
+        ),
       );
     }
     async previewCommunitySkill(
@@ -35,12 +40,13 @@ export function MarketplaceMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<CommunitySkillPreview> {
       if (!this.ctx.cp)
         throw new Error("Previewing skills needs a cloud workspace.");
-      return controlPlane.previewCommunitySkill(
-        this.ctx.cp,
-        agentPath,
-        source,
-        skillId,
-        signal,
+      return viaSdk(marketplacePath(agentPath, "community/preview"), () =>
+        this.ctx.sdk.skills.marketplace.previewCommunitySkill(
+          agentPath,
+          source,
+          skillId,
+          signal,
+        ),
       );
     }
     async listSkillsFromRepo(
@@ -49,11 +55,12 @@ export function MarketplaceMixin<TBase extends BaseCtor>(Base: TBase) {
       signal?: AbortSignal,
     ): Promise<RepoSkill[]> {
       if (!this.ctx.cp) return [];
-      return controlPlane.listSkillsFromRepo(
-        this.ctx.cp,
-        agentPath,
-        source,
-        signal,
+      return viaSdk(marketplacePath(agentPath, "repo/list"), () =>
+        this.ctx.sdk.skills.marketplace.listSkillsFromRepo(
+          agentPath,
+          source,
+          signal,
+        ),
       );
     }
     async installCommunitySkill(
@@ -62,11 +69,14 @@ export function MarketplaceMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<string> {
       if (!this.ctx.cp)
         throw new Error("Installing skills needs a cloud workspace.");
-      const slug = await controlPlane.installCommunitySkill(
-        this.ctx.cp,
-        req.workspacePath,
-        { source: req.source, skillId: req.skillId },
-        signal,
+      const slug = await viaSdk(
+        marketplacePath(req.workspacePath, "community/install"),
+        () =>
+          this.ctx.sdk.skills.marketplace.installCommunitySkill(
+            req.workspacePath,
+            { source: req.source, skillId: req.skillId },
+            signal,
+          ),
       );
       emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
       return slug;
@@ -77,11 +87,14 @@ export function MarketplaceMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<string[]> {
       if (!this.ctx.cp)
         throw new Error("Installing skills needs a cloud workspace.");
-      const installed = await controlPlane.installSkillsFromRepo(
-        this.ctx.cp,
-        req.workspacePath,
-        { source: req.source, skills: req.skills },
-        signal,
+      const installed = await viaSdk(
+        marketplacePath(req.workspacePath, "repo/install"),
+        () =>
+          this.ctx.sdk.skills.marketplace.installSkillsFromRepo(
+            req.workspacePath,
+            { source: req.source, skills: req.skills },
+            signal,
+          ),
       );
       emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
       return installed;

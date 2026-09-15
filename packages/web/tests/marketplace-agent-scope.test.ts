@@ -1,8 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import {
-  listSkillsFromRepo,
-  searchCommunitySkills,
-} from "../src/engine-adapter/control-plane";
+import { HoustonClient } from "../src/engine-adapter/client";
 
 /**
  * The hosted gateway proxies nothing but `/agents/:slug/*` — a top-level
@@ -12,6 +9,10 @@ import {
  * already use; the host serves those agent-scoped routes too
  * (packages/host/src/routes/skills-remote.ts), so the shape holds for the
  * local sidecar as well.
+ *
+ * Driven through the composed client, which is where the marketplace now
+ * reaches `sdk.skills.marketplace` — the agent scope is a property of the URL
+ * the app puts on the wire, not of whichever layer builds it.
  */
 
 const originalFetch = globalThis.fetch;
@@ -40,12 +41,17 @@ function stubFetch(...responses: Response[]) {
   return calls;
 }
 
-const CFG = { baseUrl: "https://gateway.example", token: "t" };
+const client = () =>
+  new HoustonClient({
+    baseUrl: "https://gateway.example",
+    token: "t",
+    controlPlane: true,
+  });
 
 test("community search rides the agent scope the gateway can proxy", async () => {
   const calls = stubFetch(json(200, []));
 
-  await searchCommunitySkills(CFG, "Houston/Growth", "research");
+  await client().searchCommunitySkills("Houston/Growth", "research");
 
   expect(calls).toEqual([
     "https://gateway.example/agents/Houston%2FGrowth/skills/community/search",
@@ -55,7 +61,7 @@ test("community search rides the agent scope the gateway can proxy", async () =>
 test("GitHub repo listing rides the agent scope the gateway can proxy", async () => {
   const calls = stubFetch(json(200, []));
 
-  await listSkillsFromRepo(CFG, "Houston/Growth", "owner/repo");
+  await client().listSkillsFromRepo("Houston/Growth", "owner/repo");
 
   expect(calls).toEqual([
     "https://gateway.example/agents/Houston%2FGrowth/skills/repo/list",
@@ -66,6 +72,6 @@ test("a marketplace failure surfaces with the host's reason — never swallowed"
   stubFetch(json(502, { error: "skills.sh unavailable" }));
 
   await expect(
-    searchCommunitySkills(CFG, "Houston/Growth", "research"),
+    client().searchCommunitySkills("Houston/Growth", "research"),
   ).rejects.toThrow("skills.sh unavailable (engine error 502)");
 });

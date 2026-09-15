@@ -1,37 +1,37 @@
+/**
+ * The user-scoped custom-integration routes (`/v1/integrations/custom/*`): the
+ * outside apps a user adds themselves from a link — their own API or MCP
+ * servers. The Composio-backed catalog of connectable providers is a different
+ * family; see `reads.ts`.
+ *
+ * A non-2xx always throws (`modules/http.ts`), including the 404 a deployment
+ * without this surface answers the definitions read with. Whether that 404 is
+ * "feature absent" or a real failure is the CALLER's judgement — the web
+ * adapter degrades it to an empty section, iOS surfaces it — so it is decided
+ * at the surface, never swallowed here.
+ *
+ * Assistant catalog: this file is the single source of truth for these eight
+ * operations, so each carries its own `@assistant` block.
+ */
+
+import { type HttpScope, httpRequest } from "../http";
 import type {
   AddCustomIntegrationInput,
   CustomDetectResult,
+  CustomIntegrationDetails,
   CustomIntegrationView,
   CustomToolInfo,
-} from "../../../../../ui/engine-client/src/types";
-import { HoustonEngineError } from "../client/errors";
-import { type ControlPlaneConfig, cpFetch } from "./fetch";
-
-/**
- * Custom integrations (HOU-550): the outside apps a user adds themselves from
- * a link — their own API or MCP servers. The Composio-backed catalog of
- * connectable providers is a different family; see `integrations.ts`.
- */
-
-// A deployment without the custom-integrations surface (older host) answers
-// 404 on the definitions read; that is a legitimate "feature absent" shape, so
-// it maps to null (the section stays hidden) rather than surfacing an error.
-// The write routes have no such fallback — a failure there is a real failure.
+} from "./custom-types";
 
 /**
  * Lists the outside apps the user added themselves.
  * @assistant group:integrations
  */
 export async function customIntegrations(
-  cfg: ControlPlaneConfig,
-): Promise<CustomIntegrationView[] | null> {
-  try {
-    const res = await cpFetch(cfg, "/v1/integrations/custom/definitions");
-    return ((await res.json()) as { items: CustomIntegrationView[] }).items;
-  } catch (err) {
-    if (err instanceof HoustonEngineError && err.status === 404) return null;
-    throw err;
-  }
+  scope: HttpScope,
+): Promise<CustomIntegrationView[]> {
+  const res = await httpRequest(scope, "/v1/integrations/custom/definitions");
+  return ((await res.json()) as { items: CustomIntegrationView[] }).items;
 }
 
 /**
@@ -40,13 +40,31 @@ export async function customIntegrations(
  * @assistant group:integrations confirm
  */
 export async function removeCustomIntegration(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   slug: string,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}`,
     { method: "DELETE" },
+  );
+}
+
+/**
+ * Renames an outside app the user added themselves, or corrects its website.
+ * @param slug The custom integration's exact slug, from customIntegrations.
+ * @param details The display name and website the card shows.
+ * @assistant group:integrations hidden: cosmetic edit form; connection identity is unchanged.
+ */
+export async function updateCustomIntegrationDetails(
+  scope: HttpScope,
+  slug: string,
+  details: CustomIntegrationDetails,
+): Promise<void> {
+  await httpRequest(
+    scope,
+    `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}`,
+    { method: "PATCH", body: JSON.stringify(details) },
   );
 }
 
@@ -61,12 +79,12 @@ export async function removeCustomIntegration(
  * @assistant group:integrations confirm hidden: takes a secret; the user pastes the integration's own credential.
  */
 export async function submitCustomIntegrationCredential(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   slug: string,
   values: Record<string, string>,
 ): Promise<CustomIntegrationView> {
-  const res = await cpFetch(
-    cfg,
+  const res = await httpRequest(
+    scope,
     `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/credential`,
     { method: "POST", body: JSON.stringify({ values }) },
   );
@@ -79,11 +97,11 @@ export async function submitCustomIntegrationCredential(
  * @assistant group:integrations hidden: starts a browser sign-in only the user can finish.
  */
 export async function startCustomIntegrationOAuth(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   slug: string,
 ): Promise<{ authorizeUrl: string }> {
-  const res = await cpFetch(
-    cfg,
+  const res = await httpRequest(
+    scope,
     `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/oauth/start`,
     { method: "POST" },
   );
@@ -99,10 +117,10 @@ export async function startCustomIntegrationOAuth(
  * @assistant group:integrations confirm
  */
 export async function detectCustomIntegration(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   url: string,
 ): Promise<CustomDetectResult> {
-  const res = await cpFetch(cfg, "/v1/integrations/custom/detect", {
+  const res = await httpRequest(scope, "/v1/integrations/custom/detect", {
     method: "POST",
     body: JSON.stringify({ url }),
   });
@@ -117,10 +135,10 @@ export async function detectCustomIntegration(
  * @assistant unschematized: the input's headers is an open record of header name to value.
  */
 export async function addCustomIntegration(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   input: AddCustomIntegrationInput,
 ): Promise<CustomIntegrationView> {
-  const res = await cpFetch(cfg, "/v1/integrations/custom/definitions", {
+  const res = await httpRequest(scope, "/v1/integrations/custom/definitions", {
     method: "POST",
     body: JSON.stringify(input),
   });
@@ -131,29 +149,16 @@ export async function addCustomIntegration(
  * Lists the actions an app the user added themselves offers.
  *
  * The compiled tools behind one custom integration (the detail card's list).
- * A bare 404 = the host predates the route → null, mirroring
- * `customIntegrations`; a `{code:"not_found"}` 404 is an UNKNOWN SLUG (the
- * definition was removed concurrently) and rethrows as a real failure.
  * @param slug The custom integration's exact slug, from customIntegrations.
  * @assistant group:integrations
  */
 export async function customIntegrationTools(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   slug: string,
-): Promise<CustomToolInfo[] | null> {
-  try {
-    const res = await cpFetch(
-      cfg,
-      `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/tools`,
-    );
-    return ((await res.json()) as { items: CustomToolInfo[] }).items;
-  } catch (err) {
-    if (
-      err instanceof HoustonEngineError &&
-      err.status === 404 &&
-      (err.body as { code?: string } | null)?.code !== "not_found"
-    )
-      return null;
-    throw err;
-  }
+): Promise<CustomToolInfo[]> {
+  const res = await httpRequest(
+    scope,
+    `/v1/integrations/custom/definitions/${encodeURIComponent(slug)}/tools`,
+  );
+  return ((await res.json()) as { items: CustomToolInfo[] }).items;
 }

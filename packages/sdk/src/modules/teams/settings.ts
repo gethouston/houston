@@ -1,12 +1,25 @@
+/**
+ * The PER-AGENT policy calls (Teams v2): who may drive one shared agent, the
+ * toolkit and model ceilings a manager sets on it, the acting user's own model
+ * pick underneath that ceiling, and whether its routine triggers are live.
+ *
+ * Gateway-only, like the team directory in `./http`: assignments and ceilings
+ * are multiplayer concepts a single-user host has nothing to resolve them
+ * against. Nothing here degrades — a non-2xx always throws a `TeamsHttpError`
+ * carrying the HTTP `status`, so the two surfaces a pre-Teams gateway answers
+ * `404` for (model choice, trigger status) reach their caller, which decides
+ * for itself whether that hides a control or is a failure.
+ */
+
+import { type HttpScope, httpRequest } from "../http";
 import type {
   AgentAssignment,
   AgentModelChoice,
   AgentModelChoiceInfo,
   AgentSettings,
+  AgentSettingsUpdate,
   TriggerStatusItem,
-} from "../../../../../ui/engine-client/src/types";
-import { HoustonEngineError } from "../client/errors";
-import { type ControlPlaneConfig, cpFetch } from "./fetch";
+} from "./policy-types";
 
 /**
  * Chooses who may use an agent, and at what access level.
@@ -19,7 +32,7 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * @assistant unroutable: debt: the body is chosen client-side between the v1 userIds and v2 assignments shapes; routable once callers pass only assignments.
  */
 export async function setAgentAssignments(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
   assignments: AgentAssignment[] | string[],
 ): Promise<void> {
@@ -27,8 +40,8 @@ export async function setAgentAssignments(
   const body = isV2
     ? { assignments: assignments as AgentAssignment[] }
     : { userIds: assignments as string[] };
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/assignments`,
     { method: "PUT", body: JSON.stringify(body) },
   );
@@ -42,11 +55,11 @@ export async function setAgentAssignments(
  * @assistant group:teams
  */
 export async function getAgentSettings(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
 ): Promise<AgentSettings> {
-  const res = await cpFetch(
-    cfg,
+  const res = await httpRequest(
+    scope,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/settings`,
   );
   return (await res.json()) as AgentSettings;
@@ -66,15 +79,12 @@ export async function getAgentSettings(
  * @assistant group:teams confirm
  */
 export async function setAgentSettings(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
-  settings: {
-    allowedToolkits?: string[] | null;
-    allowedModels?: string[] | null;
-  },
+  settings: AgentSettingsUpdate,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/settings`,
     { method: "PUT", body: JSON.stringify(settings) },
   );
@@ -84,28 +94,24 @@ export async function setAgentSettings(
  * Reads which AI model the user picked for an agent.
  *
  * The ACTING user's model choice for this agent plus its effective
- * `allowedModels` ceiling, or `null` when the gateway does not serve model
- * choices (404) — a non-Teams host — so the composer degrades to single-player
- * behavior. Every other error still throws.
+ * `allowedModels` ceiling. A gateway that does not serve model choices — a
+ * non-Teams host — answers 404 like any other failure, and the caller degrades
+ * that to "no choice to make" so the composer falls back to single-player
+ * behavior.
  * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
  *   returns. Read it from listAgents rather than writing the name the user
  *   says.
  * @assistant group:agents
  */
 export async function getAgentModelChoice(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
-): Promise<AgentModelChoiceInfo | null> {
-  try {
-    const res = await cpFetch(
-      cfg,
-      `/v1/agents/${encodeURIComponent(agentSlugOrId)}/model-choice`,
-    );
-    return (await res.json()) as AgentModelChoiceInfo;
-  } catch (err) {
-    if (err instanceof HoustonEngineError && err.status === 404) return null;
-    throw err;
-  }
+): Promise<AgentModelChoiceInfo> {
+  const res = await httpRequest(
+    scope,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/model-choice`,
+  );
+  return (await res.json()) as AgentModelChoiceInfo;
 }
 
 /**
@@ -125,12 +131,12 @@ export async function getAgentModelChoice(
  * @assistant group:agents confirm
  */
 export async function setAgentModelChoice(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
   choice: AgentModelChoice,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/model-choice`,
     { method: "PUT", body: JSON.stringify(choice) },
   );
@@ -139,26 +145,21 @@ export async function setAgentModelChoice(
 /**
  * Checks whether an agent's routine triggers are ready.
  *
- * One agent's per-routine trigger status (C9), or `null` when the gateway does
- * not serve triggers (404). Callers treat `null` as "triggers unsupported here"
- * and hide the badge; every other error throws.
+ * One agent's per-routine trigger status (C9). A gateway that does not serve
+ * triggers answers 404 like any other failure; the caller reads that as
+ * "triggers unsupported here" and hides the badge.
  * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
  *   returns. Read it from listAgents rather than writing the name the user
  *   says.
  * @assistant group:routines
  */
 export async function agentTriggerStatus(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
-): Promise<TriggerStatusItem[] | null> {
-  try {
-    const res = await cpFetch(
-      cfg,
-      `/v1/agents/${encodeURIComponent(agentSlugOrId)}/trigger-status`,
-    );
-    return ((await res.json()) as { items: TriggerStatusItem[] }).items;
-  } catch (err) {
-    if (err instanceof HoustonEngineError && err.status === 404) return null;
-    throw err;
-  }
+): Promise<TriggerStatusItem[]> {
+  const res = await httpRequest(
+    scope,
+    `/v1/agents/${encodeURIComponent(agentSlugOrId)}/trigger-status`,
+  );
+  return ((await res.json()) as { items: TriggerStatusItem[] }).items;
 }

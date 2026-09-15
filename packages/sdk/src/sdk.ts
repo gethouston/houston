@@ -14,13 +14,17 @@ import { createAccountModule } from "./modules/account";
 import { createActivitiesModule } from "./modules/activities";
 import { createAgentsModule } from "./modules/agents";
 import { createConversationsModule } from "./modules/conversations";
+import { createFilesModule } from "./modules/files";
 import { createIntegrationsModule } from "./modules/integrations";
 import { createMissionsSearchModule } from "./modules/missions-search";
 import { createOrgModule } from "./modules/org";
 import { createPreferencesModule } from "./modules/preferences";
 import { createProvidersModule } from "./modules/providers";
+import { createRoutinesModule } from "./modules/routines";
 import { createSessionModule } from "./modules/session";
+import { createSkillsModule } from "./modules/skills";
 import { createSpacesModule } from "./modules/spaces";
+import { createTeamsModule } from "./modules/teams";
 import { createTurnsModule } from "./modules/turns";
 import { createWorkspacesModule } from "./modules/workspaces";
 import type { SdkConfig } from "./ports";
@@ -97,6 +101,14 @@ export class HoustonSdk {
   readonly account: ReturnType<typeof createAccountModule>;
   /** Org facade (the active space's roster, roles, invitations + usage). */
   readonly org: ReturnType<typeof createOrgModule>;
+  /** Files facade (an agent's workspace listing, reads, moves + uploads). */
+  readonly files: ReturnType<typeof createFilesModule>;
+  /** Teams facade (the space's team directory + per-agent policy). */
+  readonly teams: ReturnType<typeof createTeamsModule>;
+  /** Routines facade (an agent's scheduled work, its runs, its webhook key). */
+  readonly routines: ReturnType<typeof createRoutinesModule>;
+  /** Skills facade (an agent's own skills and the manifest enabling them). */
+  readonly skills: ReturnType<typeof createSkillsModule>;
 
   constructor(config: SdkConfig) {
     this.config = config;
@@ -148,6 +160,10 @@ export class HoustonSdk {
     this.workspaces = createWorkspacesModule(ctx);
     this.account = createAccountModule(ctx);
     this.org = createOrgModule(ctx);
+    this.teams = createTeamsModule(ctx);
+    this.routines = createRoutinesModule(ctx);
+    this.skills = createSkillsModule(ctx);
+    this.files = createFilesModule(ctx);
     // =====================================================================
   }
 

@@ -1,7 +1,13 @@
-import * as controlPlane from "../control-plane";
+import type * as controlPlane from "../control-plane";
 import { updateDetails } from "./custom-details";
-import { HoustonEngineError } from "./errors";
+import {
+  agentCustomPath,
+  customPath,
+  whenServed,
+  whenSlugKnown,
+} from "./custom-routes";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 /**
  * Custom integrations (HOU-550 / HOU-980): user-added API / MCP servers the
@@ -9,10 +15,12 @@ import type { BaseCtor } from "./mixin";
  *
  * Direct hosts use the cp-gated top-level routes. Hosted deployments require
  * the per-agent dispatch form, which the gateway proxies to the agent's pod.
+ * Both delegate to `sdk.integrations.{custom,agentCustom}.*`; the SDK throws on
+ * every non-2xx, and `custom-routes.ts` holds what web makes of a 404.
  */
+
 export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
   class CustomIntegrations extends Base {
-    /** @assistant hidden: cosmetic edit form; connection identity is unchanged. */
     updateCustomIntegrationDetails(
       slug: string,
       details: { name: string; website: string },
@@ -25,172 +33,139 @@ export function CustomIntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       controlPlane.CustomIntegrationView[] | null
     > {
       if (!this.ctx.cp) return null;
-      return controlPlane.customIntegrations(this.ctx.cp);
+      return whenServed(() =>
+        viaSdk(customPath("definitions"), () =>
+          this.ctx.sdk.integrations.custom.list(),
+        ),
+      );
     }
     async removeCustomIntegration(slug: string): Promise<void> {
-      if (!this.ctx.cp)
-        throw new Error("Integrations require a connected host");
-      return controlPlane.removeCustomIntegration(this.ctx.cp, slug);
+      this.requireHost();
+      await viaSdk(customPath("definitions", slug), () =>
+        this.ctx.sdk.integrations.custom.remove(slug),
+      );
     }
     async submitCustomIntegrationCredential(
       slug: string,
       values: Record<string, string>,
     ): Promise<controlPlane.CustomIntegrationView> {
-      if (!this.ctx.cp)
-        throw new Error("Integrations require a connected host");
-      return controlPlane.submitCustomIntegrationCredential(
-        this.ctx.cp,
-        slug,
-        values,
+      this.requireHost();
+      return viaSdk(customPath("definitions", slug, "credential"), () =>
+        this.ctx.sdk.integrations.custom.submitCredential(slug, values),
       );
     }
     async detectCustomIntegration(
       url: string,
     ): Promise<controlPlane.CustomDetectResult> {
-      if (!this.ctx.cp)
-        throw new Error("Integrations require a connected host");
-      return controlPlane.detectCustomIntegration(this.ctx.cp, url);
+      this.requireHost();
+      return viaSdk(customPath("detect"), () =>
+        this.ctx.sdk.integrations.custom.detect(url),
+      );
     }
     async startCustomIntegrationOAuth(
       slug: string,
     ): Promise<{ authorizeUrl: string }> {
-      if (!this.ctx.cp)
-        throw new Error("Integrations require a connected host");
-      return controlPlane.startCustomIntegrationOAuth(this.ctx.cp, slug);
+      this.requireHost();
+      return viaSdk(customPath("definitions", slug, "oauth", "start"), () =>
+        this.ctx.sdk.integrations.custom.startOAuth(slug),
+      );
     }
     async addCustomIntegration(
       input: controlPlane.AddCustomIntegrationInput,
     ): Promise<controlPlane.CustomIntegrationView> {
-      if (!this.ctx.cp)
-        throw new Error("Integrations require a connected host");
-      return controlPlane.addCustomIntegration(this.ctx.cp, input);
+      this.requireHost();
+      return viaSdk(customPath("definitions"), () =>
+        this.ctx.sdk.integrations.custom.add(input),
+      );
     }
     async customIntegrationTools(
       slug: string,
     ): Promise<controlPlane.CustomToolInfo[] | null> {
       if (!this.ctx.cp) return null;
-      return controlPlane.customIntegrationTools(this.ctx.cp, slug);
+      return whenSlugKnown(() =>
+        viaSdk(customPath("definitions", slug, "tools"), () =>
+          this.ctx.sdk.integrations.custom.tools(slug),
+        ),
+      );
     }
 
     // ---- per-agent dispatch form (works in BOTH deployments, HOU-823) ----
-    async agentCustomIntegrations(
+    agentCustomIntegrations(
       agentSlugOrId: string,
     ): Promise<controlPlane.CustomIntegrationView[] | null> {
       // 404 = the host does not serve the feature → the custom UI hides
       // (mirrors `customIntegrations`' null degrade).
-      const res = await this.agentCustomFetch(agentSlugOrId, "/definitions");
-      if (res.status === 404) return null;
-      await this.rejectFailure(res);
-      return (
-        (await res.json()) as { items: controlPlane.CustomIntegrationView[] }
-      ).items;
+      return whenServed(() =>
+        viaSdk(agentCustomPath(agentSlugOrId, "definitions"), () =>
+          this.ctx.sdk.integrations.agentCustom.list(agentSlugOrId),
+        ),
+      );
     }
-    async submitAgentCustomIntegrationCredential(
+    submitAgentCustomIntegrationCredential(
       agentSlugOrId: string,
       slug: string,
       values: Record<string, string>,
     ): Promise<controlPlane.CustomIntegrationView> {
-      const res = await this.agentCustomFetch(
-        agentSlugOrId,
-        `/definitions/${encodeURIComponent(slug)}/credential`,
-        { values },
+      return viaSdk(
+        agentCustomPath(agentSlugOrId, "definitions", slug, "credential"),
+        () =>
+          this.ctx.sdk.integrations.agentCustom.submitCredential(
+            agentSlugOrId,
+            slug,
+            values,
+          ),
       );
-      await this.rejectFailure(res);
-      return (await res.json()) as controlPlane.CustomIntegrationView;
     }
-    async detectAgentCustomIntegration(
+    detectAgentCustomIntegration(
       agentSlugOrId: string,
       url: string,
     ): Promise<controlPlane.CustomDetectResult> {
-      const res = await this.agentCustomFetch(agentSlugOrId, "/detect", {
-        url,
-      });
-      await this.rejectFailure(res);
-      return (await res.json()) as controlPlane.CustomDetectResult;
+      return viaSdk(agentCustomPath(agentSlugOrId, "detect"), () =>
+        this.ctx.sdk.integrations.agentCustom.detect(agentSlugOrId, url),
+      );
     }
-    async startAgentCustomIntegrationOAuth(
+    startAgentCustomIntegrationOAuth(
       agentSlugOrId: string,
       slug: string,
     ): Promise<{ authorizeUrl: string }> {
-      // `{}` forces the POST branch — the start route takes no body.
-      const res = await this.agentCustomFetch(
-        agentSlugOrId,
-        `/definitions/${encodeURIComponent(slug)}/oauth/start`,
-        {},
+      return viaSdk(
+        agentCustomPath(agentSlugOrId, "definitions", slug, "oauth", "start"),
+        () =>
+          this.ctx.sdk.integrations.agentCustom.startOAuth(agentSlugOrId, slug),
       );
-      await this.rejectFailure(res);
-      return (await res.json()) as { authorizeUrl: string };
     }
-    async addAgentCustomIntegration(
+    addAgentCustomIntegration(
       agentSlugOrId: string,
       input: controlPlane.AddCustomIntegrationInput,
     ): Promise<controlPlane.CustomIntegrationView> {
-      const res = await this.agentCustomFetch(
-        agentSlugOrId,
-        "/definitions",
-        input,
+      return viaSdk(agentCustomPath(agentSlugOrId, "definitions"), () =>
+        this.ctx.sdk.integrations.agentCustom.add(agentSlugOrId, input),
       );
-      await this.rejectFailure(res);
-      return (await res.json()) as controlPlane.CustomIntegrationView;
     }
     async removeAgentCustomIntegration(
       agentSlugOrId: string,
       slug: string,
     ): Promise<void> {
-      const res = await this.agentCustomFetch(
-        agentSlugOrId,
-        `/definitions/${encodeURIComponent(slug)}`,
-        undefined,
-        "DELETE",
+      await viaSdk(agentCustomPath(agentSlugOrId, "definitions", slug), () =>
+        this.ctx.sdk.integrations.agentCustom.remove(agentSlugOrId, slug),
       );
-      await this.rejectFailure(res);
     }
-    async agentCustomIntegrationTools(
+    agentCustomIntegrationTools(
       agentSlugOrId: string,
       slug: string,
     ): Promise<controlPlane.CustomToolInfo[] | null> {
-      const res = await this.agentCustomFetch(
-        agentSlugOrId,
-        `/definitions/${encodeURIComponent(slug)}/tools`,
+      return whenSlugKnown(() =>
+        viaSdk(
+          agentCustomPath(agentSlugOrId, "definitions", slug, "tools"),
+          () =>
+            this.ctx.sdk.integrations.agentCustom.tools(agentSlugOrId, slug),
+        ),
       );
-      if (res.status === 404) {
-        // A bare 404 = the route family is absent (feature hidden → null);
-        // `{code:"not_found"}` marks an UNKNOWN SLUG — a real miss (the
-        // definition was removed concurrently), surfaced as an error.
-        const body = (await res.json().catch(() => ({}))) as {
-          code?: string;
-        };
-        if (body?.code === "not_found") throw new HoustonEngineError(404, body);
-        return null;
-      }
-      await this.rejectFailure(res);
-      return ((await res.json()) as { items: controlPlane.CustomToolInfo[] })
-        .items;
     }
 
-    /** One authFetch for the whole per-agent family: GET when no body and no
-     *  method override, POST with a JSON body otherwise. */
-    private agentCustomFetch(
-      agentSlugOrId: string,
-      sub: string,
-      body?: unknown,
-      method?: "DELETE",
-    ): Promise<Response> {
-      const url = `${this.ctx.baseUrl}/agents/${encodeURIComponent(agentSlugOrId)}/integrations/custom${sub}`;
-      if (method) return this.ctx.authFetch(url, { method });
-      if (body === undefined) return this.ctx.authFetch(url);
-      return this.ctx.authFetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-    }
-    private async rejectFailure(res: Response): Promise<void> {
-      if (res.ok) return;
-      throw new HoustonEngineError(
-        res.status,
-        await res.json().catch(() => ({})),
-      );
+    private requireHost(): void {
+      if (!this.ctx.cp)
+        throw new Error("Integrations require a connected host");
     }
   }
   return CustomIntegrations;
