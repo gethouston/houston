@@ -18463,6 +18463,21 @@
               }
             ]
           },
+          "customIntegrationScope": {
+            "anyOf": [
+              {
+                "type": "null"
+              },
+              {
+                "const": "host",
+                "type": "string"
+              },
+              {
+                "const": "agent",
+                "type": "string"
+              }
+            ]
+          },
           "integrations": {
             "type": "array",
             "items": {
