@@ -1,6 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AssistantCatalog } from "@houston/host/src/assistant/catalog";
-import { expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import {
   ASSISTANT_TOOL_NAMES,
   HOUSTON_CALL_TOOL_NAME,
@@ -114,6 +114,10 @@ const describe = makeAssistantDescribeTool(opts);
 
 const text = (result: { content: Array<{ type: string; text?: string }> }) =>
   result.content.map((c) => c.text ?? "").join("");
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 test("the family is exactly the four tools, in find/read/do/recall order", () => {
   expect(ASSISTANT_TOOL_NAMES).toEqual([
@@ -229,4 +233,63 @@ test.each([
     },
   });
   expect(text(result)).toContain("ERROR unknown_operation");
+});
+
+/**
+ * THE DEPLOYMENT GATE, on the two READ tools. An operation this Houston cannot
+ * perform must not be findable or readable either: a model that describes one
+ * has already decided to call it, and the map it was given is the promise it
+ * makes to the user.
+ */
+test("houston_capabilities omits what this Houston cannot perform", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "listRoutines");
+  const result = await capabilities.execute(
+    "c1",
+    { query: "routines" },
+    undefined,
+    undefined,
+    CTX,
+  );
+  expect(text(result)).not.toContain("listRoutines");
+});
+
+test("houston_describe says plainly that it cannot be done here", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "listRoutines");
+  const result = await describe.execute(
+    "d1",
+    { operation: "listRoutines" },
+    undefined,
+    undefined,
+    CTX,
+  );
+  expect(result.details).toMatchObject({
+    ok: false,
+    error: { code: "operation_unavailable_here" },
+  });
+  expect(text(result)).toContain("not available in this Houston");
+});
+
+test("a withheld operation still reads as one that does not exist", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "rotateSecret");
+  const result = await describe.execute(
+    "d1",
+    { operation: "rotateSecret" },
+    undefined,
+    undefined,
+    CTX,
+  );
+  expect(result.details).toMatchObject({
+    error: { code: "unknown_operation" },
+  });
+});
+
+test("no stamp withholds nothing from either read tool", async () => {
+  const listed = await capabilities.execute(
+    "c1",
+    { query: "routines" },
+    undefined,
+    undefined,
+    CTX,
+  );
+  expect(text(listed)).toContain("listRoutines");
 });

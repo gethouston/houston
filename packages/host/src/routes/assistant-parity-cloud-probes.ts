@@ -21,6 +21,7 @@ const SPACES = "spaces and their membership exist only on the hosted gateway";
 const TEAMS =
   "teams group agents for teammates, which a single-user host has none of";
 const PER_AGENT_POLICY = "manager-set per-agent policy is a Teams surface";
+const API_KEYS = "personal API keys authenticate against the hosted public API";
 
 export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   // The space itself, and who is in it.
@@ -107,13 +108,15 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     "the display profile comes from the hosted identity provider",
     { update: {} },
   ),
+  cloudOnly("listApiKeys", API_KEYS),
+  cloudOnly("createApiKey", API_KEYS, { name: "parity probe" }),
+  cloudOnly("revokeApiKey", API_KEYS, { id: "no-such-key" }),
+
+  // A routine's webhook, which arrives at the gateway that mints the key
+  // authenticating it — a local host has no public address to receive one.
   cloudOnly(
-    "listApiKeys",
-    "personal API keys authenticate against the hosted public API",
-  ),
-  cloudOnly(
-    "revokeApiKey",
-    "personal API keys authenticate against the hosted public API",
-    { id: "no-such-key" },
+    "mintRoutineWebhookKey",
+    "a routine webhook arrives at the hosted gateway, which mints the key that authenticates it",
+    { agentId: PROBE_AGENT, routineId: "no-such-routine" },
   ),
 ];

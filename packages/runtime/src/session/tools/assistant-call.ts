@@ -7,6 +7,7 @@ import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import { currentTurnMode } from "../turn-mode-context";
 import { approvalCode, errorFromResponse } from "./assistant-call-errors";
+import { refusedUnavailableHere } from "./assistant-callable";
 import { declinedMessage, requestConfirmation } from "./assistant-confirm";
 import { checkCallParams } from "./assistant-params";
 import {
@@ -78,6 +79,11 @@ export function makeAssistantCallTool(opts: AssistantToolOptions) {
       signal: AbortSignal | undefined,
     ): Promise<AssistantOperationResult> {
       const name = params.operation;
+      // What the HOST told this runtime it cannot perform (spaces, teams and
+      // billing on a desktop). Answered before the catalog lookup, so the model
+      // hears "not here" once instead of an opaque gateway error it will retry.
+      const unavailable = refusedUnavailableHere(opts.catalog, name);
+      if (unavailable) return unavailable;
       const op = findVisibleOperation(opts.catalog, name);
       if (!op) {
         return assistantErrorResult(name, {

@@ -40,6 +40,7 @@ import { type HttpScope, httpRequest } from "../http";
  * credential into the workspace's central store so every agent (existing + new)
  * shares the connection. Idempotent; safe to call on each successful connect.
  * @assistant group:providers hidden: credential plumbing; the device-code connect flow calls it as its own last step.
+ * @assistant hands: request_provider_connection
  */
 export async function captureCredential(
   scope: HttpScope,
@@ -73,6 +74,7 @@ export async function captureCredential(
  *
  * @assistant group:providers confirm: outward. It sends this machine's provider sign-in to a cloud agent, which then holds it.
  * @assistant hidden: carries a secret; the desktop's Anthropic OAuth credential.
+ * @assistant hands: request_provider_connection
  */
 export async function pushClaudeOAuthCredential(
   scope: HttpScope,
@@ -118,6 +120,7 @@ export async function forgetCredential(
  * the host stores centrally for the workspace and pushes into the agent runtime.
  * No OAuth dance, no polling — it returns once the key is accepted.
  * @assistant group:providers hidden: takes a secret; the user pastes the provider key themselves.
+ * @assistant hands: request_provider_connection
  */
 export async function setApiKey(
   scope: HttpScope,
@@ -148,6 +151,7 @@ export async function setApiKey(
  * persists it. LOCAL-only — a non-local deployment 400s on the openaiCompatible
  * capability, and the host's error message surfaces verbatim.
  * @assistant group:providers hidden: takes a secret; the guided local-model setup supplies the server URL and its key.
+ * @assistant hands: request_provider_connection
  */
 export async function setCustomEndpoint(
   scope: HttpScope,

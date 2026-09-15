@@ -77,6 +77,7 @@ export async function updateCustomIntegrationDetails(
  *   field name.
  * @assistant group:integrations confirm: outward. It hands a secret to a third-party service Houston then acts against on the user's behalf, from every agent that app is on.
  * @assistant hidden: takes a secret; the user pastes the integration's own credential.
+ * @assistant hands: request_credential
  */
 export async function submitCustomIntegrationCredential(
   scope: HttpScope,
@@ -95,6 +96,7 @@ export async function submitCustomIntegrationCredential(
  * Starts the browser sign-in for an app the user added themselves.
  * @param slug The custom integration's exact slug, from customIntegrations.
  * @assistant group:integrations hidden: starts a browser sign-in only the user can finish.
+ * @assistant hands: request_credential
  */
 export async function startCustomIntegrationOAuth(
   scope: HttpScope,

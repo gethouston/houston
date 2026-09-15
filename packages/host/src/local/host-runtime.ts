@@ -29,7 +29,12 @@ export function createHostRuntime(
     controlPlaneUrl,
     transcriptShadow,
     standingFrameCapture,
+    assistantUnserved,
   } = base;
+  // The wire form of what this host cannot perform, frozen at boot: the route
+  // table cannot change while the process runs, so a runtime spawned an hour
+  // in is told exactly what the dispatcher will enforce against it.
+  const unserved = [...assistantUnserved];
   const spawner =
     opts.spawner ??
     new RuntimeProcessSpawner({
@@ -48,6 +53,7 @@ export function createHostRuntime(
           transcriptDualWrite: Boolean(transcriptShadow),
           shutdownDrainMs: opts.shutdownDrainMs,
           assistantRole: spec.assistantRole ?? null,
+          unservedOperations: unserved,
         }),
       }),
       onLog: opts.onRuntimeLog,

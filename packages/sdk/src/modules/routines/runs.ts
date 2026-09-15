@@ -97,6 +97,7 @@ export async function cancelRoutineRun(
  * @param routineId The routine, by the id listRoutines returns.
  * @assistant group:routines confirm: irreversible. Minting again invalidates the key already in use, so whatever calls this routine from outside stops working.
  * @assistant hidden: returns a secret; the webhook key is revealed once and calling again rotates it.
+ * @assistant hands: request_hands_on(routineWebhook)
  */
 export async function mintRoutineWebhookKey(
   scope: HttpScope,

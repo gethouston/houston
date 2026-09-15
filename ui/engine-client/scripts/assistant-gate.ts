@@ -23,7 +23,10 @@ export type CoverageRule =
   | "unroutable"
   | "stale-unroutable"
   | "route-conflict"
-  | "unschematized";
+  | "unschematized"
+  | "hands-missing"
+  | "hands-unhidden"
+  | "hands-unknown";
 
 export interface CoverageViolation {
   name: string;

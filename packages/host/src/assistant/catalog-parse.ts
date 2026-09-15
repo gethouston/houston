@@ -1,3 +1,5 @@
+import { ASSISTANT_HANDS_TOOLS } from "@houston/domain/assistant-hands";
+import { HANDS_ON_SURFACES } from "@houston/protocol";
 import { Type } from "typebox";
 import { Value } from "typebox/value";
 import {
@@ -51,6 +53,29 @@ const EntityCollection = Type.Union([
 ]);
 
 /**
+ * The card that reaches a hidden operation, or the author's statement that none
+ * does. A real union, not a loose object: the two arms carry different fields,
+ * and a document that half-spells one would have the host promise the person a
+ * screen with no name to open.
+ *
+ * Both lists are READ from their declarations rather than retyped: the cards
+ * are `@houston/domain`'s, the screens are `@houston/protocol`'s, and the
+ * generator writes documents against those same two. A copy here would refuse
+ * every document carrying a card or a screen added over there — which reads as
+ * the assistant family switching itself off after a regeneration.
+ */
+const HandsEnvelope = Type.Union([
+  Type.Object({
+    kind: Type.Literal("card"),
+    tool: Type.Union(ASSISTANT_HANDS_TOOLS.map((tool) => Type.Literal(tool))),
+    surface: Type.Optional(
+      Type.Union(HANDS_ON_SURFACES.map((surface) => Type.Literal(surface))),
+    ),
+  }),
+  Type.Object({ kind: Type.Literal("unreachable"), reason: Type.String() }),
+]);
+
+/**
  * The envelope shape, checked field for field against the document
  * `@houston/domain` declares. Per-param `schema` / `returns` stay `Unknown` on
  * purpose: they are arbitrary JSON Schema, so the only meaningful check is the
@@ -68,6 +93,10 @@ const CatalogEnvelope = Type.Object({
       hidden: Type.Boolean(),
       hiddenReason: Type.Optional(Type.String()),
       unconfirmed: Type.Optional(Type.String()),
+      // Additive and optional, so a build reading an older catalog (which
+      // carries no `hands` at all) loads it unchanged rather than refusing the
+      // whole document and switching the assistant family off.
+      hands: Type.Optional(HandsEnvelope),
       params: Type.Array(
         Type.Object({
           name: Type.String(),

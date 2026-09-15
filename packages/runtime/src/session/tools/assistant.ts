@@ -6,7 +6,10 @@ import {
   HOUSTON_CALL_TOOL_NAME,
   makeAssistantCallTool,
 } from "./assistant-call";
-import { findCallableOperation } from "./assistant-callable";
+import {
+  findCallableOperation,
+  refusedUnavailableHere,
+} from "./assistant-callable";
 import { describeOperation } from "./assistant-describe";
 import {
   type AssistantOperationResult,
@@ -146,6 +149,11 @@ export function makeAssistantDescribeTool(opts: AssistantToolOptions) {
       _id: string,
       params: DescribeParams,
     ): Promise<AssistantOperationResult> {
+      const unavailable = refusedUnavailableHere(
+        opts.catalog,
+        params.operation,
+      );
+      if (unavailable) return unavailable;
       const op = findCallableOperation(opts.catalog, params.operation);
       if (!op) {
         return assistantErrorResult(params.operation, {

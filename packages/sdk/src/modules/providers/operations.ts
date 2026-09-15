@@ -99,6 +99,7 @@ export function createProviderOps(
    * Starts signing an agent in to an AI provider.
    * @assistant group:providers
    * @assistant hidden: starts a provider sign-in only the user can finish, at the provider's own screen.
+   * @assistant hands: request_provider_connection
    */
   async function login(
     agentId: string,
@@ -126,6 +127,7 @@ export function createProviderOps(
    * Stops a provider sign-in that is still waiting on the user.
    * @assistant group:providers
    * @assistant hidden: UI plumbing; it abandons the sign-in the person opened, and only they know they gave up on it.
+   * @assistant hands: unreachable the person gives up on a sign-in by closing it, which no card can ask them to do.
    */
   async function cancelLogin(
     agentId: string,
@@ -139,6 +141,7 @@ export function createProviderOps(
    * Finishes a provider sign-in with the code the provider showed the user.
    * @assistant group:providers
    * @assistant hidden: takes a one-time sign-in code the provider showed the person, which must not pass through a chat turn.
+   * @assistant hands: request_provider_connection
    */
   async function completeLogin(
     agentId: string,

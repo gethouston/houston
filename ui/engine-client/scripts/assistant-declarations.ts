@@ -70,6 +70,10 @@ function isMixinFactory(node: ts.FunctionDeclaration): boolean {
 
 /** Parameters that are transport plumbing, never something a caller supplies. */
 const PLUMBING_TYPES = new Set([
+  // The web adapter's own context, the `ControlPlaneConfig` twin one rung up:
+  // the client HAS it, and publishing it as a parameter would ask the caller
+  // to hand back the client's entire state to reach a route with no arguments.
+  "AdapterContext",
   "ControlPlaneConfig",
   "HttpScope",
   "AbortSignal",

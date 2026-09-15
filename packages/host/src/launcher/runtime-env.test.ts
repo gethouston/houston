@@ -23,6 +23,7 @@ test("the host's own gateway credential never reaches a spawned runtime", () => 
 
   const env = runtimeSpawnEnv({
     transcriptDualWrite: false,
+    unservedOperations: [],
     assistantRole: assistantRuntimeRole({
       agentId: "ws/Writer",
       hostEnv: {},
@@ -39,6 +40,7 @@ test("only the coordinator's runtime carries the assistant role", () => {
   expect(
     runtimeSpawnEnv({
       transcriptDualWrite: false,
+      unservedOperations: [],
       assistantRole: assistantRuntimeRole({
         agentId: "ws/.assistant",
         hostEnv: {},
@@ -53,6 +55,7 @@ test("only the coordinator's runtime carries the assistant role", () => {
 test("a fronted pod passes no gateway pair down, whatever its own env holds", () => {
   const env = runtimeSpawnEnv({
     transcriptDualWrite: true,
+    unservedOperations: [],
     assistantRole: assistantRuntimeRole({
       agentId: "ws/Assistant",
       hostEnv: {
@@ -76,6 +79,7 @@ test("the product prompt and the sidecar role ride only when they apply", () => 
       systemPrompt: "be kind",
       sidecarBinary: "/Applications/Houston.app/houston-engine",
       transcriptDualWrite: false,
+      unservedOperations: [],
       assistantRole: null,
     }),
   ).toEqual({
@@ -88,12 +92,14 @@ test("the product prompt and the sidecar role ride only when they apply", () => 
 test("shutdownDrainMs becomes HOUSTON_RUNTIME_DRAIN_MS, absent otherwise", () => {
   const withDrain = runtimeSpawnEnv({
     transcriptDualWrite: false,
+    unservedOperations: [],
     shutdownDrainMs: 1500,
     assistantRole: null,
   });
   expect(withDrain.HOUSTON_RUNTIME_DRAIN_MS).toBe("1500");
   const without = runtimeSpawnEnv({
     transcriptDualWrite: false,
+    unservedOperations: [],
     assistantRole: null,
   });
   expect("HOUSTON_RUNTIME_DRAIN_MS" in without).toBe(false);

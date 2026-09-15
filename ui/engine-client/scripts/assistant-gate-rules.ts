@@ -3,6 +3,7 @@ import {
   type OperationAnnotation,
 } from "./assistant-catalog-types.ts";
 import type { CoverageViolation } from "./assistant-gate.ts";
+import { handsViolations } from "./assistant-hands-rules.ts";
 
 /** One rule's verdict, before the operation it belongs to is stamped on it. */
 type Finding = Omit<CoverageViolation, "name" | "location">;
@@ -105,7 +106,7 @@ export function violationsFor(annotation: OperationAnnotation): Finding[] {
       (tag): Finding => ({
         rule: "unknown-tag",
         problem: `\`@assistant ${tag}\` is not a tag the grammar defines.`,
-        fix: "use `group:<slug>`, `confirm: <reason>`, `unconfirmed: <reason>`, `hidden: <reason>`, `unroutable: <reason>`, or `unschematized: <reason>`.",
+        fix: "use `group:<slug>`, `confirm: <reason>`, `unconfirmed: <reason>`, `hidden: <reason>`, `hands: <card>`, `unroutable: <reason>`, or `unschematized: <reason>`.",
       }),
     ),
     ...(annotation.documented
@@ -141,6 +142,9 @@ export function violationsFor(annotation: OperationAnnotation): Finding[] {
         ]
       : []),
     ...staleExceptions(annotation),
+    // Outside reachViolations too: hiding an operation is exactly what raises
+    // the hands question, so a stated `hidden:` reason must not excuse it.
+    ...handsViolations(annotation),
     ...reachViolations(annotation),
   ];
 }

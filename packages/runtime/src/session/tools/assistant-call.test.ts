@@ -1,6 +1,6 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AssistantCatalog } from "@houston/host/src/assistant/catalog";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import { runWithActingContext } from "../acting-context";
 import { makeAssistantCallTool } from "./assistant-call";
 import { httpSandboxFetch } from "./sandbox-fetch";
@@ -87,6 +87,7 @@ const catalog: AssistantCatalog = {
 const realFetch = globalThis.fetch;
 afterEach(() => {
   globalThis.fetch = realFetch;
+  vi.unstubAllEnvs();
 });
 
 interface Captured {
@@ -310,4 +311,58 @@ test("an empty 2xx body reads as a null payload", async () => {
   });
   expect(result.details).toEqual({ ok: true, operation: "listRoutines" });
   expect(text(result)).toBe("null");
+});
+
+/**
+ * THE DEPLOYMENT GATE. The catalog describes desktop and hosted cloud at once,
+ * and the host tells this runtime which half it serves
+ * (`@houston/domain/assistant-deployment`). Refused here so the model gets one
+ * plain, final sentence instead of a 404 the forwarder dresses up as a gateway
+ * error — the shape that has the assistant retry, then tell the user Houston is
+ * broken.
+ */
+test("an operation this Houston cannot perform is refused, unsent", async () => {
+  vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "listRoutines");
+  const calls = mockFetch(() => ({ body: [] }));
+  const result = await run({
+    operation: "listRoutines",
+    params: { agentPath: "Work/Ada" },
+  });
+  expect(errorCode(result)).toBe("operation_unavailable_here");
+  expect(text(result)).toContain("not available in this Houston");
+  expect(calls).toHaveLength(0);
+});
+
+test("a withheld operation is still indistinguishable from a missing one", async () => {
+  // Naming a hidden operation in the stamp must not give it its own answer:
+  // "unavailable here" would confirm that `rotateSecret` exists.
+  vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "rotateSecret");
+  mockFetch(() => ({ body: {} }));
+  expect(errorCode(await run({ operation: "rotateSecret", params: {} }))).toBe(
+    "unknown_operation",
+  );
+});
+
+test("no stamp withholds nothing", async () => {
+  const calls = mockFetch(() => ({ body: [] }));
+  await run({ operation: "listRoutines", params: { agentPath: "Work/Ada" } });
+  expect(calls).toHaveLength(1);
+});
+
+test("the host's own refusal reaches the model with its sentence intact", async () => {
+  // A host one release ahead knows something this runtime was not stamped
+  // with. Its wording is already the sentence the model must act on.
+  mockFetch(() => ({
+    status: 400,
+    body: {
+      error: '"getOrg" is not something this Houston can do.',
+      code: "operation_unavailable_here",
+    },
+  }));
+  const result = await run({
+    operation: "listRoutines",
+    params: { agentPath: "Work/Ada" },
+  });
+  expect(errorCode(result)).toBe("operation_unavailable_here");
+  expect(text(result)).toContain("is not something this Houston can do");
 });

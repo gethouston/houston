@@ -7,6 +7,8 @@
  *                                    the person loses if the call goes wrong
  * @assistant unconfirmed: <reason>   a mutation dispatches unasked, and why
  * @assistant hidden: <reason>        withheld from the assistant, and why
+ * @assistant hands: <card>           the card that DOES reach a hidden
+ *                                    operation, or `unreachable <why not>`
  * @assistant unroutable: <reason>    no route can be derived, and why
  * @assistant unschematized: <reason> the shapes stay free-form, and why
  * ```
@@ -40,6 +42,8 @@ export interface AssistantDocs {
   confirmed?: string;
   hidden: boolean;
   hiddenReason?: string;
+  /** The `hands:` text verbatim; the card vocabulary is the gate's to judge. */
+  handsCard?: string;
   unconfirmed?: string;
   unroutableReason?: string;
   unschematizedReason?: string;
@@ -50,6 +54,7 @@ export interface AssistantDocs {
 const REASON_KEYS = {
   confirm: "confirmed",
   hidden: "hiddenReason",
+  hands: "handsCard",
   unconfirmed: "unconfirmed",
   unroutable: "unroutableReason",
   unschematized: "unschematizedReason",

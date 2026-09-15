@@ -1,3 +1,5 @@
+import { processAssistantCatalog } from "../assistant/catalog-source";
+import { unservedOperations } from "../assistant/served-operations";
 import { FileCredentialStore } from "../credentials/file-store";
 import { RemoteSharedEndpointStore } from "../credentials/remote-shared-endpoint-store";
 import { RemoteCredentialStore } from "../credentials/remote-store";
@@ -8,8 +10,10 @@ import { BusEventHub } from "../events/hub";
 import { LocalPaths } from "../paths";
 import {
   type AssistantWiring,
+  assistantOperationsServedHere,
   resolveAssistantGateway,
 } from "../routes/assistant-wiring";
+import { listRoutes } from "../routes/registry/all";
 import { LocalWorkspaceStore } from "../store/local";
 import { SharedMirrorController } from "../store-sync";
 import { BootTelemetry } from "../telemetry/boot";
@@ -65,9 +69,23 @@ export function createHostBase(opts: LocalHostOptions) {
   // credential stays in this process: a runtime is told its ROLE and reaches
   // operations through `/sandbox/assistant/call` with its own sandbox token.
   const assistantWiring: AssistantWiring = opts.gatewayFronted
-    ? {}
+    ? { gatewayFronted: true }
     : { self: { url: controlPlaneUrl, token: opts.token } };
   const assistantGateway = resolveAssistantGateway(assistantWiring);
+  // WHAT THIS DEPLOYMENT CANNOT DO, worked out ONCE from this host's own route
+  // table (`assistant/served-operations.ts`) — the desktop has no spaces, no
+  // teams, no billing, and the AI Manager must be told so rather than
+  // discovering it as a 404 mid-sentence. Behind a real gateway the question
+  // belongs to the gateway, which serves the whole catalogued surface, so
+  // nothing is withheld. It reaches the dispatcher as a deps seam and the
+  // coordinator's runtime as one environment variable, both from here, so the
+  // two can never disagree about what this Houston can do.
+  const catalog = processAssistantCatalog();
+  const assistantUnserved: ReadonlySet<string> = new Set(
+    catalog && assistantOperationsServedHere(assistantWiring)
+      ? unservedOperations(catalog, listRoutes())
+      : [],
+  );
   const transcriptShadow = opts.durableTurns?.transcriptDualWrite
     ? new HttpTranscriptShadow({ gateway: opts.durableTurns.gateway })
     : undefined;
@@ -105,6 +123,7 @@ export function createHostBase(opts: LocalHostOptions) {
     controlPlaneUrl,
     assistantWiring,
     assistantGateway,
+    assistantUnserved,
     transcriptShadow,
     docShadow,
     docProjector,

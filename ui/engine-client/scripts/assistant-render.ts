@@ -1,4 +1,4 @@
-import { isCallableOperation } from "@houston/domain/assistant-catalog-callable";
+import { renderAssistantCapabilityIndex } from "@houston/domain/assistant-capability-index-render";
 import type { AssistantCatalog } from "./assistant-catalog-types.ts";
 import { ASSISTANT_PROVENANCE } from "./assistant-paths.ts";
 
@@ -39,11 +39,11 @@ export function renderCapabilities(catalog: AssistantCatalog): string {
  * always knows what to reach for; the contract of any one of them is still read
  * with `houston_describe`.
  *
- * It lists exactly what `houston_call` will PERFORM ({@link isCallableOperation}),
- * never merely what is visible: an operation the generator could not route is
- * refused as `operation_not_supported`, and advertising one in the always-on
- * context is how the agent comes to promise a user an action this build cannot
- * do. A group every one of whose operations is unroutable drops out entirely.
+ * It lists exactly what `houston_call` will PERFORM, never merely what is
+ * visible: an operation the generator could not route is refused as
+ * `operation_not_supported`, and advertising one in the always-on context is
+ * how the agent comes to promise a user an action this build cannot do. A
+ * group every one of whose operations is unroutable drops out entirely.
  *
  * Emitted as a TypeScript module in DOMAIN rather than a document: the runtime
  * builds the coordinator's prompt from it, so it must travel inside the bundle
@@ -51,25 +51,15 @@ export function renderCapabilities(catalog: AssistantCatalog): string {
  * to locate on disk. Regenerated with the catalog and drift-gated by
  * `pnpm check:assistant-catalog`, so a new operation reaches the assistant's
  * context the moment it is annotated.
+ *
+ * The TEXT itself is written by {@link renderAssistantCapabilityIndex} in
+ * domain, because the runtime renders it a second time over the operations
+ * this deployment actually serves. This module contributes the module wrapper
+ * and nothing else: two copies of the wording would drift, and the drift would
+ * read to the model as two different Houstons.
  */
 export function renderCapabilityIndex(catalog: AssistantCatalog): string {
-  const callable = catalog.operations.filter(isCallableOperation);
-  const groups = [...new Set(callable.map((operation) => operation.group))];
-  const index = [
-    "# What Houston can do",
-    "",
-    "Every action you can perform for the user, by area. This is the whole list: if something is not here, search houston_capabilities before you tell the user it cannot be done.",
-    "",
-    ...groups.map(
-      (group) =>
-        `- ${group}: ${callable
-          .filter((operation) => operation.group === group)
-          .map((operation) => operation.name)
-          .join(", ")}`,
-    ),
-    "",
-    "Read one with houston_describe before you use it, then perform it with houston_call.",
-  ].join("\n");
+  const index = renderAssistantCapabilityIndex(catalog.operations);
   return `${[
     `// ${ASSISTANT_PROVENANCE}`,
     "",

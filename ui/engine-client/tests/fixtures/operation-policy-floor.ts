@@ -108,6 +108,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   getAgentSettings: { group: "teams", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/settings", rawResponse: true },
   getAssistant: { group: "system", confirm: false, hidden: true, route: "GET /v1/assistant", rawResponse: true },
   getBilling: { group: "billing", confirm: false, hidden: false, route: "GET /v1/org/billing", rawResponse: true },
+  getCapabilities: { group: "system", confirm: false, hidden: false, route: "GET /v1/capabilities", rawResponse: true },
   getContext: { group: "settings", confirm: false, hidden: false, route: "GET /v1/{kind}-context", rawResponse: true },
   getHostSidebarLayout: { group: "workspaces", confirm: false, hidden: true, route: "GET /v1/workspaces/{workspaceId}/sidebar-layout", rawResponse: true },
   getMoveStatus: { group: "spaces", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/move/{moveId}", rawResponse: true },

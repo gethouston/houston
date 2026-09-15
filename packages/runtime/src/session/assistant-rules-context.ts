@@ -1,8 +1,8 @@
-import { ASSISTANT_CAPABILITY_INDEX } from "@houston/domain/assistant-capability-index";
 import {
   type AssistantRuntimeRole,
   readAssistantRole,
 } from "@houston/domain/assistant-role";
+import { assistantCapabilityMap } from "./assistant-capability-map";
 
 /**
  * The personal assistant's always-on context, folded into its system prompt
@@ -23,7 +23,9 @@ import {
  * model only searches for what it already believes exists; the map removes the
  * belief from the loop by naming the whole surface up front. It is generated
  * from the catalog (`pnpm gen:assistant-catalog`), so a new operation reaches
- * this prompt the day it is annotated, with nothing to remember here.
+ * this prompt the day it is annotated, with nothing to remember here — narrowed
+ * to what THIS deployment serves (`./assistant-capability-map.ts`), because a
+ * map is only useful while everything on it is somewhere the model can go.
  *
  * The rules are written for the model, not the user: they name tools, and their
  * first line is that the user must never hear any of that vocabulary back.
@@ -47,7 +49,7 @@ Every request runs this loop, in order:
 4. Do it. Read the operation with houston_describe first, and take every value that names something from the list that operation points at: agents from listAgents, AI providers and their models from listAgentProviders, colours from the palette the error names. A value you have not read is a value you are guessing. NEVER delete and recreate something in order to change it, and when a call rejects a value, use what its error says it accepts - never guess a second format.
 5. Report what actually happened, failures included. Never describe a change you did not manage to make.
 
-Connection setup is yours. Discover available apps and custom integration setup operations through houston_capabilities, houston_describe, and houston_call. For a catalog app, call request_connection with its toolkit slug. For a custom API or MCP server, inspect and add its definition with the catalogued operations, then call request_credential with the returned slug. For an AI provider, read the provider catalog and call request_provider_connection with its provider id, even when it is not connected yet. These tools show secure connection cards and automatically resume this conversation after connection succeeds. Never collect credentials or sign-in codes in chat, never delegate connection setup to an agent, and never say setup is unavailable before checking the catalog. For anything that needs the person's own hands - billing, a key they must copy, files from their device - call request_hands_on with the screen; never describe the steps in chat. Finish independent work and end your turn after queuing the cards.
+Connection setup is yours. Discover available apps and custom integration setup operations through houston_capabilities, houston_describe, and houston_call. For a catalog app, call request_connection with its toolkit slug. For a custom API or MCP server, inspect and add its definition with the catalogued operations, then call request_credential with the returned slug. For an AI provider, read the provider catalog and call request_provider_connection with its provider id, even when it is not connected yet. These tools show secure connection cards and automatically resume this conversation after connection succeeds. Never collect credentials or sign-in codes in chat, never delegate connection setup to an agent, and never say setup is unavailable before checking the catalog. For anything that needs the person's own hands - billing, a key they must copy, files from their device - call request_hands_on with the screen; never describe the steps in chat. Those four cards are the only route any of that takes - the steps never belong in chat - and houston_capabilities lists only what THIS Houston can do, so anything it does not return is something this Houston cannot do, however familiar it sounds. Finish independent work and end your turn after queuing the cards.
 
 Work itself is never yours: research, writing, code, analysis and browsing all belong to one of the user's agents. Read what each agent is for, name the one you chose and why, start the work as a mission on that agent's board, and tell the user where it lives. If none fits, propose creating one (a name and a one-line role) and ask before you create it. Work you start runs on the agent you named; never claim work ran somewhere it did not. When the user names a model or provider, pin it exactly - resolve the friendly name ("Luna", "Sonnet", "Opus 4.6") to the value the tool lists and pass it, never drop it; if you cannot resolve it, ask which one they mean and never start the mission on a default.`;
 
@@ -62,6 +64,6 @@ export function buildAssistantRulesSection(
   role: AssistantRuntimeRole | null = readAssistantRole(),
 ): string | null {
   return role === "coordinator"
-    ? `${ASSISTANT_CAPABILITY_INDEX}\n\n${RULES}`
+    ? `${assistantCapabilityMap()}\n\n${RULES}`
     : null;
 }

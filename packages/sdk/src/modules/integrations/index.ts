@@ -186,6 +186,7 @@ export function createIntegrationsModule(
      * Starts connecting an outside app, answering the sign-in link to open.
      * @assistant group:integrations
      * @assistant hidden: starts a browser sign-in only the user can finish; the assistant queues the connection card with request_connection instead.
+     * @assistant hands: request_connection
      */
     connect,
     pollConnection,

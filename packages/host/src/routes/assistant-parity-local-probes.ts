@@ -28,6 +28,7 @@ const NO_ROUTINE = "no-such-routine";
 
 export const LOCAL_PROBES: readonly Probe[] = [
   // Account and agents.
+  probe("getCapabilities"),
   probe("listWorkspaces"),
   probe("getHostSidebarLayout", WORKSPACE),
   probe("getPreference", { key: "locale" }),

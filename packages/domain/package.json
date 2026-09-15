@@ -47,6 +47,18 @@
       "types": "./src/assistant-capability-index.generated.ts",
       "import": "./src/assistant-capability-index.generated.ts"
     },
+    "./assistant-capability-index-render": {
+      "types": "./src/assistant-capability-index-render.ts",
+      "import": "./src/assistant-capability-index-render.ts"
+    },
+    "./assistant-deployment": {
+      "types": "./src/assistant-deployment.ts",
+      "import": "./src/assistant-deployment.ts"
+    },
+    "./assistant-hands": {
+      "types": "./src/assistant-hands.ts",
+      "import": "./src/assistant-hands.ts"
+    },
     "./assistant-catalog-callable": {
       "types": "./src/assistant-catalog-callable.ts",
       "import": "./src/assistant-catalog-callable.ts"

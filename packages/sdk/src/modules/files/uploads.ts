@@ -64,6 +64,7 @@ export async function saveAttachments(
  * doesn't turn into hundreds of round trips, while every request stays
  * within the host's upload cap.
  * @assistant group:files hidden: the Files section owns the picker that reads files off the person's device; readProjectFile and writeAgentFile are the assistant's way in and out of a workspace.
+ * @assistant hands: request_hands_on(files)
  */
 export async function uploadProjectFiles(
   scope: HttpScope,

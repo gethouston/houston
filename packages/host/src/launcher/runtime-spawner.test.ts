@@ -76,6 +76,7 @@ test("only the coordinator's child carries the assistant role, and no credential
       env: (spec) =>
         runtimeSpawnEnv({
           transcriptDualWrite: false,
+          unservedOperations: [],
           assistantRole: spec.assistantRole ?? null,
         }),
     }),
@@ -215,7 +216,11 @@ test.each([
   new RuntimeProcessSpawner({
     command: ["runtime"],
     env: () =>
-      runtimeSpawnEnv({ transcriptDualWrite: false, assistantRole: role }),
+      runtimeSpawnEnv({
+        transcriptDualWrite: false,
+        unservedOperations: [],
+        assistantRole: role,
+      }),
   }).spawn({
     workspaceDir: "/agent",
     dataDir: "/data",
@@ -225,6 +230,49 @@ test.each([
   const env = (spawnMock.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv }).env;
   for (const key of secrets) expect(env).not.toHaveProperty(key);
   expect(env.HOUSTON_ASSISTANT_ROLE).toBe(role ?? undefined);
+});
+
+test("the unserved stamp is the HOST's answer, never the parent's", async () => {
+  // A managed pod's coordinator runs under a host whose own environment may
+  // already carry this name (the gateway stamped the pod, a supervisor re-
+  // exported it, a desktop host was restarted from a shell that had it). It is
+  // a PER-SPAWN stamp: inherited, a stale list silently narrows what the AI
+  // Manager will offer, and every ordinary agent — which has no tool to consult
+  // it — carries one too.
+  vi.stubEnv("HOUSTON_ASSISTANT_UNSERVED", "createOrg,deleteOrg");
+  const launcher = new ProcessLauncher({
+    spawner: new RuntimeProcessSpawner({
+      command: ["runtime"],
+      env: (spec) =>
+        runtimeSpawnEnv({
+          transcriptDualWrite: false,
+          unservedOperations: ["listOrgs", "moveAgent"],
+          assistantRole: spec.assistantRole ?? null,
+        }),
+    }),
+    workspaceDirFor: (a) => `/data/${a.name}`,
+    dataDirFor: (a) => `/data/${a.name}/data`,
+    mintToken: () => "secret",
+    assistantRoleFor: (a) =>
+      assistantRuntimeRole({ agentId: a.id, hostEnv: {} }),
+    allocatePort: async () => 4317,
+    waitHealthy: async () => {},
+  });
+
+  const agent = (id: string, name: string): Agent => ({
+    id,
+    workspaceId: "w1",
+    name,
+    createdAt: 0,
+  });
+  await launcher.ensureAwake(agent("w1/Writer", "Writer"));
+  await launcher.ensureAwake(agent(`w1/${ASSISTANT_AGENT_NAME}`, "assistant"));
+
+  const envs = spawnMock.mock.calls.map(
+    (call) => (call[2] as { env: NodeJS.ProcessEnv }).env,
+  );
+  expect(envs[0]).not.toHaveProperty("HOUSTON_ASSISTANT_UNSERVED");
+  expect(envs[1]?.HOUSTON_ASSISTANT_UNSERVED).toBe("listOrgs,moveAgent");
 });
 
 test("spawn still hands the runtime the shared Houston home it authenticates from", () => {

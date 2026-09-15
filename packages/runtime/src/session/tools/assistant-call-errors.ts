@@ -1,3 +1,4 @@
+import { ASSISTANT_UNAVAILABLE_HERE } from "@houston/domain/assistant-deployment";
 import type { AssistantError } from "./assistant-result";
 
 /**
@@ -39,6 +40,17 @@ export async function errorFromResponse(
   // so the model acts inside a turn instead of retrying a "gateway error".
   if (code === "not_in_turn") {
     return { code: "not_in_turn", status: res.status, message: detail };
+  }
+  // The host's own deployment gate (routes/assistant-operation-guards.ts). The
+  // runtime normally refuses these before the round trip, so reaching here
+  // means the host knows something this process was not told — its answer is
+  // already the sentence the model must act on, verbatim.
+  if (code === ASSISTANT_UNAVAILABLE_HERE) {
+    return {
+      code: ASSISTANT_UNAVAILABLE_HERE,
+      status: res.status,
+      message: detail,
+    };
   }
   if (code === "operation_not_supported") {
     return {

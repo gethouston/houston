@@ -124,4 +124,21 @@ test("work that needs the person's own hands is handed over, never narrated", ()
   expect(rules).toContain("request_hands_on");
   expect(rules).toContain("needs the person's own hands");
   expect(rules).toContain("never describe the steps in chat");
+  // Every one of the four cards, not just the hands-on one: the operations
+  // behind all of them are hidden, so a card is the ONLY route the errand has.
+  expect(rules).toContain("the only route any of that takes");
+  expect(rules).toContain("the steps never belong in chat");
+});
+
+test("the capability list is read as this deployment's own, not Houston's in general", () => {
+  // A desktop serves part of the surface, and the map is narrowed to it. The
+  // model must read a missing operation as "not here", never as "search again"
+  // or "promise it anyway because Houston is known to do this".
+  const rules = buildAssistantRulesSection("coordinator") ?? "";
+  expect(rules).toContain(
+    "houston_capabilities lists only what THIS Houston can do",
+  );
+  expect(rules).toContain(
+    "anything it does not return is something this Houston cannot do",
+  );
 });

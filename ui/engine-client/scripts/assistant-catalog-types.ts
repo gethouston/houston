@@ -68,6 +68,8 @@ export interface OperationAnnotation {
   group?: string;
   hidden: boolean;
   hiddenReason?: string;
+  /** The `hands:` tag verbatim, unparsed: the gate decides what it says. */
+  handsCard?: string;
   method?: HttpMethod;
   confirm: boolean;
   /** Why the caller is asked first, when the author stated it. */

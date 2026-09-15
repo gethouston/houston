@@ -92,7 +92,8 @@ export async function setMyProfile(
  *
  * Not confirmed: a read. It names the user's keys and reveals no secret.
  * @assistant group:api-keys
- * @assistant hidden: the hosted gateway's scope wall denies the key routes to this surface, so a dispatched listing can only fail.
+ * @assistant hidden: a person's keys are theirs to look at, on the screen that lists them.
+ * @assistant hands: request_hands_on(apiKeys)
  */
 export async function listApiKeys(scope: HttpScope): Promise<ApiKey[]> {
   const res = await httpRequest(scope, "/v1/keys");
@@ -109,6 +110,7 @@ export async function listApiKeys(scope: HttpScope): Promise<ApiKey[]> {
  * surfaces the real reason (the limit inline, anything else as a bug toast).
  * @assistant group:api-keys confirm: outward. It mints a credential that reaches the account's data from anywhere, and the secret is shown once.
  * @assistant hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
+ * @assistant hands: request_hands_on(apiKeys)
  */
 export async function createApiKey(
   scope: HttpScope,
@@ -128,7 +130,8 @@ export async function createApiKey(
  * or already-revoked id answers `404` (no existence leak). No body on success.
  *
  * @assistant group:api-keys confirm: irreversible. A revoked key never works again, and anything signing with it stops without warning.
- * @assistant hidden: the hosted gateway's scope wall denies the key routes to this surface, so a dispatched revoke can only fail.
+ * @assistant hidden: revoking a key is the person's own to do, on the screen that lists their keys.
+ * @assistant hands: request_hands_on(apiKeys)
  */
 export async function revokeApiKey(
   scope: HttpScope,

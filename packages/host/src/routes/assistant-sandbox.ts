@@ -1,13 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { type ApprovalStore, assistantApprovals } from "../assistant/approvals";
-import type { AssistantCatalog } from "../assistant/catalog";
+import { assistantApprovals } from "../assistant/approvals";
 import { processAssistantCatalog } from "../assistant/catalog-source";
 import { ACTING_AS_HEADER } from "../auth/acting";
-import type { WorkspacePaths } from "../paths";
-import type { CredentialVault, WorkspaceStore } from "../ports";
-import type { Vfs } from "../vfs";
 import { assistantClaim } from "./assistant-claim";
-import type { AssistantGateway } from "./assistant-forward";
 import {
   handleAssistantCall,
   handleAssistantPending,
@@ -16,6 +11,7 @@ import {
   type AssistantOperationCtx,
   assistantOperationDirectory,
 } from "./assistant-operation-ctx";
+import type { AssistantSandboxDeps } from "./assistant-sandbox-deps";
 import { resolveAssistantGateway } from "./assistant-wiring";
 import { bearer, header, json, readJson } from "./http";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
@@ -47,37 +43,6 @@ export const ASSISTANT_CALL_PATH = "/sandbox/assistant/call";
 export const ASSISTANT_PENDING_PATH = "/sandbox/assistant/pending";
 
 export type { AssistantGateway } from "./assistant-forward";
-
-export interface AssistantSandboxDeps {
-  vault: CredentialVault;
-  /**
-   * The agents an operation's parameters may name. Identifiers are never
-   * guessed: a reference the caller wrote ("Dobby", "Personal/Dobby", an id) is
-   * resolved against what actually exists for the sandbox's own workspace
-   * before any request is built (`assistant/entity-resolution.ts`).
-   */
-  store: WorkspaceStore;
-  vfs?: Vfs;
-  paths?: WorkspacePaths;
-  /** Injection point for tests; production uses the global fetch. */
-  fetchImpl?: typeof fetch;
-  /**
-   * Where operations are performed. `local/host.ts` sets it from the ONE
-   * resolver (`assistant-wiring.ts`), which is also what the default below
-   * calls — a server built without this seam still reads the configured env
-   * pair, and nothing else.
-   */
-  assistantGateway?: () => AssistantGateway | null;
-  /** Injection point for tests; production reads the embedded catalog once. */
-  assistantCatalog?: () => AssistantCatalog | null;
-  /**
-   * True only when a trusted gateway fronts EVERY request to this host (the
-   * managed cloud pod), where one pod holds one agent — see `assistant-claim.ts`.
-   */
-  gatewayFronted?: boolean;
-  /** Injection point for tests; production shares one per-process store. */
-  approvals?: ApprovalStore;
-}
 
 /**
  * Both paths are owned for EVERY method: the wrong-method 405 carries a `code`
@@ -169,6 +134,7 @@ export async function handleSandboxAssistant(
     gatewayFronted: deps.gatewayFronted,
     gatewayAgentId: process.env.HOUSTON_AGENT_SLUG,
     conversationId: header(req, CONVERSATION_ID_HEADER),
+    unserved: deps.unservedOperations?.() ?? new Set(),
     // Read lazily: only an operation that actually names an agent pays for the
     // listing, and both handlers resolve against the SAME set.
     agents: directory.agents,

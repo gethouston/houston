@@ -22,6 +22,7 @@ import { type HttpScope, httpRequest } from "../http";
  * runtime stores it on the personal workspace, so every agent created or
  * migrated after is already connected.
  * @assistant group:providers hidden: carries a secret; the desktop's Anthropic OAuth credential, before any agent exists.
+ * @assistant hands: unreachable first-run setup happens before any agent exists, so the AI Manager cannot be the one asking.
  */
 export async function pushSetupClaudeOAuthCredential(
   scope: HttpScope,
@@ -38,6 +39,7 @@ export async function pushSetupClaudeOAuthCredential(
  *
  * Connect-once capture on the setup runtime — `captureCredential`, agentless.
  * @assistant group:providers hidden: credential plumbing; first-run capture, before any agent exists.
+ * @assistant hands: unreachable first-run setup happens before any agent exists, so the AI Manager cannot be the one asking.
  */
 export async function captureSetupCredential(
   scope: HttpScope,
@@ -54,6 +56,7 @@ export async function captureSetupCredential(
  *
  * API-key connect on the setup runtime — `setApiKey`, agentless.
  * @assistant group:providers hidden: takes a secret; the user pastes the provider key during first-run setup.
+ * @assistant hands: unreachable first-run setup happens before any agent exists, so the AI Manager cannot be the one asking.
  */
 export async function setSetupApiKey(
   scope: HttpScope,
@@ -79,6 +82,7 @@ export async function setSetupApiKey(
  * the setup runtime is the one runtime that can forget it (PRODUCT-1662).
  *
  * @assistant group:providers hidden: destroys the space's provider sign-in, before any agent exists.
+ * @assistant hands: unreachable first-run setup happens before any agent exists, so the AI Manager cannot be the one asking.
  */
 export async function forgetSetupCredential(
   scope: HttpScope,

@@ -1,3 +1,5 @@
+import { ASSISTANT_HANDS_TOOLS } from "@houston/domain/assistant-hands";
+import { HANDS_ON_SURFACES } from "@houston/protocol";
 import { describe, expect, test } from "vitest";
 import {
   findVisibleOperation,
@@ -150,4 +152,82 @@ test("validates policy reasons in the shared operation envelope", () => {
       ),
     ).not.toBeNull();
   }
+});
+
+/**
+ * The card a withheld operation is handed over with. A half-spelled one would
+ * have the host name a screen the app cannot open, so the envelope takes the
+ * two arms whole or refuses the document.
+ */
+describe("the hands envelope", () => {
+  const withHands = (hands: unknown): string =>
+    JSON.stringify({
+      ...fixture,
+      operations: [{ ...fixture.operations[1], hands }],
+    });
+  const handsOf = (hands: unknown) =>
+    parseAssistantCatalog(withHands(hands))?.operations[0]?.hands;
+
+  test("keeps a card and its surface", () => {
+    expect(
+      handsOf({ kind: "card", tool: "request_hands_on", surface: "billing" }),
+    ).toEqual({
+      kind: "card",
+      tool: "request_hands_on",
+      surface: "billing",
+    });
+    expect(handsOf({ kind: "card", tool: "request_connection" })).toEqual({
+      kind: "card",
+      tool: "request_connection",
+    });
+  });
+
+  test("keeps the written statement that no card reaches it", () => {
+    expect(
+      handsOf({ kind: "unreachable", reason: "Nobody can finish it." }),
+    ).toEqual({
+      kind: "unreachable",
+      reason: "Nobody can finish it.",
+    });
+  });
+
+  test.each([
+    ["an unknown tool", { kind: "card", tool: "request_anything" }],
+    [
+      "a surface the app cannot open",
+      { kind: "card", tool: "request_hands_on", surface: "dashboard" },
+    ],
+    ["an escape with no reason", { kind: "unreachable" }],
+    ["neither arm", { kind: "card" }],
+  ])("refuses the whole document for %s", (_label, hands) => {
+    expect(parseAssistantCatalog(withHands(hands))).toBeNull();
+  });
+
+  /**
+   * The envelope reads what `@houston/domain` declares, so the two lists here
+   * are the LIVE ones: a card or a screen added over there and missing from
+   * the parser would refuse every document carrying it, which reads as the
+   * assistant family switching itself off after a regeneration.
+   */
+  test("every live card passes the envelope", () => {
+    for (const tool of ASSISTANT_HANDS_TOOLS) {
+      const hands =
+        tool === "request_hands_on"
+          ? { kind: "card", tool, surface: HANDS_ON_SURFACES[0] }
+          : { kind: "card", tool };
+      expect(handsOf(hands), tool).toEqual(hands);
+    }
+  });
+
+  test("every live screen passes the envelope", () => {
+    for (const surface of HANDS_ON_SURFACES) {
+      const hands = { kind: "card", tool: "request_hands_on", surface };
+      expect(handsOf(hands), surface).toEqual(hands);
+    }
+  });
+
+  // Additive and optional: a catalog written before the tag existed still loads.
+  test("accepts an operation that names no card", () => {
+    expect(parseAssistantCatalog(JSON.stringify(fixture))).not.toBeNull();
+  });
 });

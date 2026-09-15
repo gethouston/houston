@@ -34,6 +34,10 @@ export {
   type AssistantPathParam,
   type AssistantRouteDocument as AssistantRoute,
 } from "@houston/domain";
+// The LEAF module, not the barrel — the same subpath the generator and the
+// runtime reach it by, because the catalog generator runs under
+// `node --experimental-strip-types` and cannot resolve domain's re-exports.
+export type { AssistantHands } from "@houston/domain/assistant-hands";
 
 export type AssistantOperationParam = AssistantParameterDocument<TSchema>;
 export type AssistantOperation = AssistantOperationDocument<TSchema>;

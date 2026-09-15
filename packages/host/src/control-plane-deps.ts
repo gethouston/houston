@@ -15,7 +15,7 @@ import type {
 } from "./ports";
 import type { AgentConfigsDeps } from "./routes/agent-configs";
 import type { AssistantDeps } from "./routes/assistant";
-import type { AssistantSandboxDeps } from "./routes/assistant-sandbox";
+import type { AssistantSandboxDeps } from "./routes/assistant-sandbox-deps";
 import type { CredentialServeHealer } from "./routes/credential-healer";
 import type { CustomIntegrationDeps } from "./routes/custom-integrations";
 import type { IntegrationDeps } from "./routes/integrations";
@@ -184,4 +184,10 @@ export interface ControlPlaneDeps {
    * dispatcher falls back to reading the configured env pair alone.
    */
   assistantGateway?: AssistantSandboxDeps["assistantGateway"];
+  /**
+   * Operations this deployment cannot perform, from the same boot-time
+   * resolution (`local/host-base.ts`). Absent → nothing is withheld, which is
+   * the right answer behind a gateway that serves the whole surface.
+   */
+  unservedOperations?: AssistantSandboxDeps["unservedOperations"];
 }
