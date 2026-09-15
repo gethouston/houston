@@ -1,10 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { judge, parseExceptions } from "./sdk-parity/gate.ts";
-import {
-  readGatewayInventory,
-  stampAgeInDays,
-} from "./sdk-parity/gateway-inventory.ts";
+import { readGatewayInventory } from "./sdk-parity/gateway-inventory.ts";
 import {
   desktopCalls,
   listRoutes,
@@ -37,10 +34,9 @@ const EXCEPTIONS =
 
 const host = listRoutes();
 const gateway = readGatewayInventory();
-if (gateway.source === "vendored")
-  process.stdout.write(
-    `INFO: gateway inventory vendored from cloud ${gateway.stamp.cloudSha.slice(0, 7)}, ${stampAgeInDays(gateway.stamp)} days old — no cloud checkout beside this repo to cross-check it against.\n`,
-  );
+// A cloud checkout beside this repo never moves the verdict; when it has
+// something to say about the vendored copy's freshness, it says it here.
+if (gateway.sibling.notice) process.stdout.write(`${gateway.sibling.notice}\n`);
 const sdk = sdkMethods();
 const desktop = desktopCalls();
 const violations = checkRules(host, gateway.routes, sdk.routed, desktop);
@@ -52,7 +48,7 @@ const exceptions = parseExceptions(
 const { report, failures } = judge(
   violations,
   exceptions,
-  `SDK parity — ${host.length} host routes registered, ${gateway.routes.length} gateway routes (${gateway.source}), ${sdk.routed.length} routed SDK methods (${sdk.unroutable.length} the extractor cannot route), and the shipped client: ${desktop.sdk.length} adapter methods on the SDK, ${desktop.unbound.length} reaching a server without it, ${desktop.native.length} declared native commands.`,
+  `SDK parity — ${host.length} host routes registered, ${gateway.routes.length} gateway routes (vendored from cloud ${gateway.stamp.cloudSha.slice(0, 7)}), ${sdk.routed.length} routed SDK methods (${sdk.unroutable.length} the extractor cannot route), and the shipped client: ${desktop.sdk.length} adapter methods on the SDK, ${desktop.unbound.length} reaching a server without it, ${desktop.native.length} declared native commands.`,
 );
 process.stdout.write(report);
 if (failures.length) {

@@ -1,12 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, writeFileSync } from "node:fs";
 import { relative } from "node:path";
-import {
-  cloudCheckoutRoot,
-  cloudCheckoutRoutes,
-  VENDORED_ROUTES,
-  VENDORED_STAMP,
-} from "./gateway-inventory.ts";
+import { VENDORED_ROUTES, VENDORED_STAMP } from "./gateway-inventory.ts";
+import { cloudCheckoutRoot, cloudCheckoutRoutes } from "./gateway-sibling.ts";
 
 /**
  * `pnpm vendor:gateway-routes` — refresh this repo's copy of the gateway's

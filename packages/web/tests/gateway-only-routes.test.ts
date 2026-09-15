@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { readGatewayInventory } from "../../../scripts/sdk-parity/gateway-inventory.ts";
+import { readVendoredInventory } from "../../../scripts/sdk-parity/gateway-inventory.ts";
 import { GATEWAY_ONLY_ROUTES } from "./fixtures/gateway-only-routes";
 
 /**
@@ -12,10 +12,11 @@ import { GATEWAY_ONLY_ROUTES } from "./fixtures/gateway-only-routes";
  * That export is vendored into this repo (`scripts/sdk-parity/`) and read
  * through the same resolver the SDK parity gate uses, so the claim is checked
  * on every run — including CI, which holds no checkout of the private cloud
- * repo.
+ * repo. The vendored copy is read on its own: a developer's `cloud` checkout,
+ * wherever it sits and whatever branch it is on, has no say in this suite.
  */
 
-const served = readGatewayInventory().routes;
+const served = readVendoredInventory().routes;
 
 describe("every gateway-only exception names a live route", () => {
   test.each(Object.keys(GATEWAY_ONLY_ROUTES))("%s", (key) => {
