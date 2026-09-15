@@ -1,6 +1,9 @@
 import type {
+  MigrationCounts,
   MigrationImportOptions,
   MigrationImportResult,
+  MigrationMarker,
+  MigrationSource,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableExportRequest,
@@ -80,11 +83,14 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
         return controlPlane.createdAgentToUi(wire, color);
       });
     }
-    // ---- agent data migration (agent-scoped export/import) — host only ----
+    // ---- agent data migration (agent-scoped export/import/marker) — host only ----
     // Delegated to `sdk.migration` (`packages/sdk/src/modules/migration`).
-    // "Copy an agent" runs both halves against this engine; the desktop→cloud
-    // wizard drives the same routes over its own two peers (`app/src/lib/
-    // cloud-migration-transport.ts`), which is why neither half degrades here.
+    // "Copy an agent" runs export and import against this engine; the
+    // desktop→cloud wizard (`app/src/lib/cloud-migration-transport.ts`) runs
+    // its export leg against a passive source host it spawned over the old
+    // tree — its own peer — and everything aimed at the live account through
+    // here. Nothing degrades: a status the pod could not answer is not a
+    // status that says "never imported", and the wizard decides which is which.
     async migrationExport(
       agentPath: string,
       paths: string[],
@@ -106,6 +112,27 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
       return viaSdk(
         `/agents/${encodeURIComponent(agentPath)}/migration/import`,
         () => this.ctx.sdk.migration.migrationImport(agentPath, bytes, opts),
+      );
+    }
+    async migrationComplete(
+      agentPath: string,
+      source: MigrationSource,
+      counts: MigrationCounts,
+    ): Promise<void> {
+      if (!this.ctx.cp)
+        throw new Error("Copying agent data needs a connected host.");
+      return viaSdk(
+        `/agents/${encodeURIComponent(agentPath)}/migration/complete`,
+        () =>
+          this.ctx.sdk.migration.migrationComplete(agentPath, source, counts),
+      );
+    }
+    async migrationStatus(agentPath: string): Promise<MigrationMarker | null> {
+      if (!this.ctx.cp)
+        throw new Error("Copying agent data needs a connected host.");
+      return viaSdk(
+        `/agents/${encodeURIComponent(agentPath)}/migration/status`,
+        () => this.ctx.sdk.migration.migrationStatus(agentPath),
       );
     }
   }

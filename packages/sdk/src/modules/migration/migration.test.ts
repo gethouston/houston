@@ -145,3 +145,96 @@ describe("migrationImport", () => {
     );
   });
 });
+
+const MARKER = {
+  completedAt: "2026-09-15T10:00:00.000Z",
+  source: { workspace: "Personal", agent: "Assistant" },
+  counts: { written: 9, skipped: 2, rejected: 0, sessionsRebuilt: true },
+};
+
+describe("migrationComplete", () => {
+  it("POSTs the source and counts as ONE request", async () => {
+    const { sdk, calls } = makeSdk(() => json({ ok: true }));
+    await sdk.migration.migrationComplete(
+      "a1",
+      { workspace: "Personal", agent: "Assistant" },
+      { written: 9, skipped: 2, rejected: 0, sessionsRebuilt: true },
+    );
+    expect(calls).toEqual([
+      {
+        method: "POST",
+        url: `${BASE}/agents/a1/migration/complete`,
+        contentType: "application/json",
+        body: JSON.stringify({
+          source: { workspace: "Personal", agent: "Assistant" },
+          counts: {
+            written: 9,
+            skipped: 2,
+            rejected: 0,
+            sessionsRebuilt: true,
+          },
+        }),
+      },
+    ]);
+  });
+
+  it("escapes the agent id per segment", async () => {
+    const { sdk, calls } = makeSdk(() => json({ ok: true }));
+    await sdk.migration.migrationComplete(
+      "Team A/Agent",
+      { workspace: "Team A", agent: "Agent" },
+      { written: 0, skipped: 0, rejected: 0, sessionsRebuilt: false },
+    );
+    expect(calls[0].url).toBe(
+      `${BASE}/agents/Team%20A%2FAgent/migration/complete`,
+    );
+  });
+
+  it("throws a MigrationHttpError carrying the status", async () => {
+    const { sdk } = makeSdk(() =>
+      json({ error: "agent data not configured" }, 503),
+    );
+    const err = await sdk.migration
+      .migrationComplete(
+        "a1",
+        { workspace: "Personal", agent: "Assistant" },
+        { written: 0, skipped: 0, rejected: 0, sessionsRebuilt: false },
+      )
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(MigrationHttpError);
+    expect((err as MigrationHttpError).status).toBe(503);
+  });
+});
+
+describe("migrationStatus", () => {
+  it("GETs the route and unwraps the marker", async () => {
+    const { sdk, calls } = makeSdk(() => json({ imported: MARKER }));
+    expect(await sdk.migration.migrationStatus("a1")).toEqual(MARKER);
+    expect(calls).toEqual([
+      {
+        method: "GET",
+        url: `${BASE}/agents/a1/migration/status`,
+        contentType: "application/json",
+        body: undefined,
+      },
+    ]);
+  });
+
+  it("answers null when the server holds no marker", async () => {
+    const { sdk } = makeSdk(() => json({ imported: null }));
+    expect(await sdk.migration.migrationStatus("a1")).toBeNull();
+  });
+
+  // A deployment that cannot be asked is not a deployment that answered "never
+  // imported": the status does NOT soften here, and the surface decides.
+  it.each([
+    404, 500,
+  ])("throws on %i rather than reading it as absent", async (status) => {
+    const { sdk } = makeSdk(() => json({ error: "not found" }, status));
+    const err = await sdk.migration
+      .migrationStatus("a1")
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(MigrationHttpError);
+    expect((err as MigrationHttpError).status).toBe(status);
+  });
+});

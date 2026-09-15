@@ -1,6 +1,6 @@
 {
   "$comment": "Written exceptions for scripts/check-sdk-parity.ts, which FAILS the process on any violation not listed here. An entry is { rule, key, reason } and nothing else; `key` is the violation identity the report prints, and `reason` must be at least 20 characters saying WHY parity stops here. An entry whose violation no longer reproduces fails the gate as stale: the PR that binds the route is the one that deletes its excuse and lowers `baseline`. Keys read as the report prints them: `host|gateway METHOD /path` for a route, `proxy METHOD /path` for a runtime-proxy member, and `client <adapter method>` for a method of the shipped client's mixin chain that reaches a server with no @houston/sdk method behind it. `baseline` may only go down on its own; raising it is a visible diff a reviewer must accept, because it means a new route shipped with no client behind it.",
-  "baseline": 136,
+  "baseline": 134,
   "entries": [
     {
       "rule": "sdk-route-unbound",
@@ -211,16 +211,6 @@
       "rule": "sdk-route-unbound",
       "key": "host POST /agents/{}/migration/import",
       "reason": "sdk.migration.migrationImport issues it, but the catalog cannot route a request that carries a zip content type and spells its query keys conditionally, so the parity join never sees the method; the binding is pinned byte for byte by packages/web/tests/wire-migration.test.ts"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host POST /agents/{}/migration/complete",
-      "reason": "issued by the desktop-to-cloud wizard's own gateway transport (app/src/lib/cloud-migration-transport.ts), which owns the authored signed-out and not-connected copy its per-agent rows render verbatim; binding it means moving that copy into the surface first"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host GET /agents/{}/migration/status",
-      "reason": "issued by the desktop-to-cloud wizard's own gateway transport (app/src/lib/cloud-migration-transport.ts), which owns the authored signed-out and not-connected copy its per-agent rows render verbatim; binding it means moving that copy into the surface first"
     },
     {
       "rule": "sdk-route-unbound",

@@ -9,16 +9,16 @@ import {
 } from "./support/wire-capture";
 
 /**
- * The agent-data migration pair rides `sdk.migration`. What this file pins is
- * the WIRE: the two per-agent routes, their methods, the import's zip content
- * type and its conditional query, the export's body bytes, and the headers that
- * carry auth and the active space — the whole recorded request, because
- * `migration/export` and `migration/import` differ by one segment and a
- * substring match would let one stand in for the other.
+ * The agent-data migration family rides `sdk.migration`. What this file pins is
+ * the WIRE: the four per-agent routes, their methods, the import's zip content
+ * type and its conditional query, the export's and the complete's body bytes,
+ * and the headers that carry auth and the active space — the whole recorded
+ * request, because the four spellings differ by one segment and a substring
+ * match would let one stand in for another.
  *
  * Each case drives the composed `HoustonClient` (what the app holds), not the
- * SDK. Neither call degrades: a copy that quietly wrote nothing would read to
- * the user as a copy that worked, so every status reaches the caller as a
+ * SDK. No call degrades: a copy that quietly wrote nothing would read to the
+ * user as a copy that worked, so every status reaches the caller as a
  * `HoustonEngineError` with the host's parsed body.
  */
 
@@ -61,6 +61,13 @@ function soleCall(): Call {
   expect(call.headers.get("x-houston-org")).toBe(ORG);
   return call;
 }
+
+/** A marker as the target's status route hands it back. */
+const MARKER = {
+  completedAt: "2026-09-15T10:00:00.000Z",
+  source: { workspace: "Personal", agent: "Assistant" },
+  counts: { written: 9, skipped: 2, rejected: 0, sessionsRebuilt: true },
+};
 
 /** The archive bytes a stubbed export answers with. */
 const zip = () => new Response(new Uint8Array([80, 75, 3, 4]), { status: 200 });
@@ -118,7 +125,41 @@ describe("the delegated migration requests", () => {
   });
 });
 
-describe("what neither half softens", () => {
+describe("the delegated marker requests", () => {
+  test("migrationComplete POSTs the source and counts as ONE request", async () => {
+    stubFetch(() => json(200, { ok: true }));
+    await client().migrationComplete(
+      "a1",
+      { workspace: "Personal", agent: "Assistant" },
+      { written: 9, skipped: 2, rejected: 0, sessionsRebuilt: true },
+    );
+    const call = soleCall();
+    expect(call.method).toBe("POST");
+    expect(call.url).toBe(`${BASE}/agents/a1/migration/complete`);
+    expect(call.headers.get("Content-Type")).toBe("application/json");
+    expect(call.body).toBe(
+      JSON.stringify({
+        source: { workspace: "Personal", agent: "Assistant" },
+        counts: { written: 9, skipped: 2, rejected: 0, sessionsRebuilt: true },
+      }),
+    );
+  });
+
+  test("migrationStatus GETs the route and unwraps the marker", async () => {
+    stubFetch(() => json(200, { imported: MARKER }));
+    expect(await client().migrationStatus("a1")).toEqual(MARKER);
+    const call = soleCall();
+    expect(call.method).toBe("GET");
+    expect(call.url).toBe(`${BASE}/agents/a1/migration/status`);
+  });
+
+  test("a server holding no marker answers null, not an error", async () => {
+    stubFetch(() => json(200, { imported: null }));
+    expect(await client().migrationStatus("a1")).toBeNull();
+  });
+});
+
+describe("what no half softens", () => {
   test("an export failure keeps the host's parsed body and status", async () => {
     stubFetch(() => json(503, { error: "agent data not configured" }));
     const err = await client()
@@ -139,5 +180,32 @@ describe("what neither half softens", () => {
     expect(err).toBeInstanceOf(HoustonEngineError);
     expect((err as HoustonEngineError).status).toBe(413);
     expect((err as HoustonEngineError).agentId).toBe("a1");
+  });
+
+  // A pod that cannot answer the probe must not read as "this agent was never
+  // imported": the resume decision belongs to the wizard, which sees the 404.
+  test("a missing status route reaches the caller as a 404, not as null", async () => {
+    stubFetch(() => json(404, { error: "not found" }));
+    const err = await client()
+      .migrationStatus("a1")
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HoustonEngineError);
+    expect((err as HoustonEngineError).status).toBe(404);
+  });
+
+  test("a failed complete keeps the host's status rather than reporting a stamp", async () => {
+    stubFetch(() => json(503, { error: "agent data not configured" }));
+    const err = await client()
+      .migrationComplete(
+        "a1",
+        { workspace: "Personal", agent: "Assistant" },
+        { written: 0, skipped: 0, rejected: 0, sessionsRebuilt: false },
+      )
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(HoustonEngineError);
+    expect((err as HoustonEngineError).status).toBe(503);
+    expect((err as HoustonEngineError).body).toMatchObject({
+      error: "agent data not configured",
+    });
   });
 });

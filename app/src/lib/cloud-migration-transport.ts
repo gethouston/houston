@@ -3,49 +3,36 @@
  *
  * Two peers:
  *  - the SOURCE host — the passive sidecar `start_migration_source_host`
- *    spawned against the old `~/.houston` tree (loopback URL + static bearer);
- *  - the CLOUD GATEWAY — agent-scoped `/agents/:slug/migration/*` routes,
- *    authenticated with the live identity session token (a Firebase ID token).
+ *    spawned against the old `~/.houston` tree (loopback URL + static bearer).
+ *    A different deployment with its own base URL, which the app's one bound
+ *    client — rooted at the live account's engine — cannot address, so this
+ *    half fetches for itself;
+ *  - the CLOUD GATEWAY — the same account and the same engine the whole app
+ *    already talks to, so it rides the bound client (`sdk.migration` behind
+ *    `getEngine()`), which owns the live bearer, the 401 refresh-and-replay and
+ *    the active-space header.
  *
- * Gateway auth, build identity and the update floor are the shared
- * `./gateway-fetch` helper's job — the app-side peer of the engine adapter's
- * `gatewayAuthFetch` (HOU-687), which app code cannot import across the
- * package boundary.
+ * The rows' copy for a failed gateway call lives in `cloud-migration-errors.ts`
+ * — the per-agent row renders the thrown `Error.message` verbatim.
  */
 
+import type {
+  MigrationCounts,
+  MigrationSource,
+} from "@houston-ai/engine-client";
 import type { SourceAgent } from "./cloud-migration";
-import type { MigrationCounts } from "./cloud-migration-progress";
-import { gatewayFetch, liveGatewayDeps } from "./gateway-fetch.ts";
+import {
+  type MigrationCallDeps,
+  type MigrationGatewayEngine,
+  migrationCall,
+  nullOn404,
+} from "./cloud-migration-errors.ts";
+import { getEngine } from "./engine";
 import i18n from "./i18n";
 
 export interface SourceHostHandshake {
   baseUrl: string;
   token: string;
-}
-
-/** One chunk's import outcome, as the gateway reports it. */
-export interface ImportResult {
-  written: number;
-  skipped: number;
-  rejected: Array<{ path: string; reason: string }>;
-  /** Whether the pod anchored re-synthesized chat sessions on this chunk. */
-  sessionsRebuilt: boolean;
-}
-
-/** The persisted "this agent was imported" marker. */
-export interface MigrationMarker {
-  completedAt: string;
-  source: { workspace: string; agent: string };
-  counts: Partial<MigrationCounts>;
-}
-
-async function throwHttpError(label: string, res: Response): Promise<never> {
-  const body = (await res.json().catch(() => ({}))) as { error?: unknown };
-  const detail =
-    typeof body.error === "string" && body.error
-      ? body.error
-      : `HTTP ${res.status}`;
-  throw new Error(`${label}: ${detail}`);
 }
 
 // ── Source host (loopback) ────────────────────────────────────────────
@@ -59,6 +46,15 @@ function sourceFetch(
     ...init,
     headers: { Authorization: `Bearer ${src.token}`, ...init?.headers },
   });
+}
+
+async function throwHttpError(label: string, res: Response): Promise<never> {
+  const body = (await res.json().catch(() => ({}))) as { error?: unknown };
+  const detail =
+    typeof body.error === "string" && body.error
+      ? body.error
+      : `HTTP ${res.status}`;
+  throw new Error(`${label}: ${detail}`);
 }
 
 export interface SourceScan {
@@ -104,69 +100,49 @@ export async function exportSourceZip(
   return await res.arrayBuffer();
 }
 
-// ── Cloud gateway (agent-scoped, live Firebase ID-token bearer) ───────
+// ── Cloud gateway (the app's own bound client) ────────────────────────
 
-// Both messages reach the user verbatim — the wizard's per-agent row renders
-// the thrown `Error.message` (`progress-agent-row.tsx`) — so they are localized
-// here rather than at a UI boundary that never reformats them. `i18n.t` (not
-// the hook) is the established way a non-React lib module speaks, as in
-// `provider-login-error.ts`.
-async function cloudFetch(path: string, init?: RequestInit): Promise<Response> {
-  const deps = liveGatewayDeps();
-  if (!deps) throw new Error(i18n.t("migration:transport.notConnected"));
-  const res = await gatewayFetch(deps, path, init);
-  if (!res) throw new Error(i18n.t("migration:transport.signedOut"));
-  return res;
+/** The live wiring of `cloud-migration-errors.ts`: the bound client, and the
+ *  authored copy the rows render. `i18n.t` (not the hook) is how a non-React
+ *  lib module speaks, as in `provider-login-error.ts`. */
+function gatewayDeps(): MigrationCallDeps {
+  return {
+    engine: getEngine,
+    copy: {
+      notConnected: i18n.t("migration:transport.notConnected"),
+      signedOut: i18n.t("migration:transport.signedOut"),
+    },
+  };
 }
+
+const cloudCall = <T>(
+  label: string,
+  call: (engine: MigrationGatewayEngine) => Promise<T>,
+): Promise<T> => migrationCall(label, gatewayDeps(), call);
 
 /** Upload one raw zip chunk into a cloud agent. `overwrite` on retries so a
  *  re-sent chunk lands cleanly over a partial first attempt. */
-export async function importAgentZip(
+export const importAgentZip = (
   agentId: string,
   zip: ArrayBuffer,
   opts?: { overwrite?: boolean },
-): Promise<ImportResult> {
-  const query = opts?.overwrite ? "?overwrite=1" : "";
-  const res = await cloudFetch(
-    `/agents/${encodeURIComponent(agentId)}/migration/import${query}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/zip" },
-      body: zip,
-    },
+) =>
+  cloudCall("migration import", (engine) =>
+    engine.migrationImport(agentId, zip, opts),
   );
-  if (!res.ok) await throwHttpError("migration import", res);
-  return (await res.json()) as ImportResult;
-}
 
 /** Stamp the import marker once every chunk of an agent has landed. */
-export async function completeAgentMigration(
+export const completeAgentMigration = (
   agentId: string,
-  source: { workspace: string; agent: string },
+  source: MigrationSource,
   counts: MigrationCounts,
-): Promise<void> {
-  const res = await cloudFetch(
-    `/agents/${encodeURIComponent(agentId)}/migration/complete`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source, counts }),
-    },
+) =>
+  cloudCall("migration complete", (engine) =>
+    engine.migrationComplete(agentId, source, counts),
   );
-  if (!res.ok) await throwHttpError("migration complete", res);
-}
 
 /** An existing cloud agent's import marker, `null` when never imported. */
-export async function agentMigrationStatus(
-  agentId: string,
-): Promise<MigrationMarker | null> {
-  const res = await cloudFetch(
-    `/agents/${encodeURIComponent(agentId)}/migration/status`,
+export const agentMigrationStatus = (agentId: string) =>
+  cloudCall("migration status", (engine) =>
+    nullOn404(() => engine.migrationStatus(agentId)),
   );
-  // An older pod without the route reads as "never imported" — resume just
-  // won't skip it, which at worst re-plans an agent under a renamed target.
-  if (res.status === 404) return null;
-  if (!res.ok) await throwHttpError("migration status", res);
-  const body = (await res.json()) as { imported: MigrationMarker | null };
-  return body.imported;
-}

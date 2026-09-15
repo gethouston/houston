@@ -183,6 +183,7 @@ const ENGINE_CALL_BYPASS = new Set([
   "app/src/hooks/use-team-move-resume.ts",
   "app/src/lib/claude-login-remote.ts",
   "app/src/lib/cloud-migration-runner.ts",
+  "app/src/lib/cloud-migration-transport.ts",
   "app/src/lib/local-bridge-binding.ts",
   "app/src/lib/mission-row-landing.ts",
   "app/src/lib/mission-title.ts",
