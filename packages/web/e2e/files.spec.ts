@@ -269,3 +269,42 @@ test("a new folder named after an existing file says the name is taken", async (
   await expect(row(page, "Q3 report.pdf")).toHaveCount(1);
   await expect(row(page, "Q3 report.pdf")).toContainText("9 bytes");
 });
+
+/**
+ * A workspace Houston cannot write to — a read-only mount, a folder whose
+ * permissions were revoked — refuses every write with the host's `read_only`
+ * 403. The person gets authored copy naming the remedy, not the silence of a
+ * row that quietly stays put, and not the generic bug box either: the report
+ * goes to us, the sentence goes to them.
+ */
+test("a read-only workspace says so instead of failing in silence", async ({
+  page,
+  request,
+}) => {
+  await openFiles(page);
+  await expect(row(page, "Q3 report.pdf")).toBeVisible();
+  await request.post(`${FAKE_HOST_URL}/__test__/workspace-read-only`, {
+    data: { agentIds: [SEED_AGENT_ID] },
+  });
+
+  await row(page, "Q3 report.pdf")
+    .getByRole("button", { name: "More actions" })
+    .click();
+  await page.getByRole("menu").getByRole("button", { name: "Rename" }).click();
+  const input = page.getByRole("row").getByRole("textbox");
+  // A FREE name, so nothing the client can see refuses it: only the host can.
+  await input.fill("Q4 report.pdf");
+  await input.press("Enter");
+
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "can’t be changed right now" })
+      .filter({ hasText: "Check the folder’s permissions" }),
+  ).toBeVisible();
+  await expect(page.getByText("Houston, we have a problem!")).toHaveCount(0);
+
+  // The rename did not happen, and the screen is not optimistic about it.
+  await expect(row(page, "Q3 report.pdf")).toHaveCount(1);
+  await expect(row(page, "Q4 report.pdf")).toHaveCount(0);
+});

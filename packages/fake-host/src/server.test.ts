@@ -203,6 +203,65 @@ describe("startFakeHost", () => {
     expect(free.status).toBe(200);
   });
 
+  it("refuses every write once a workspace is armed read-only", async () => {
+    // The real host's `probeKeyCase` fails first on an unwritable volume, so
+    // every write 403s with `read_only` while reads keep answering — the shape
+    // the Files tab's authored copy describes.
+    const files = `${host.url}/agents/${SEED_AGENT_ID}/files`;
+    const post = (sub: string, payload: Record<string, unknown>) =>
+      fetch(`${files}/${sub}`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(payload),
+      });
+    await fetch(`${host.url}/__test__/workspace-read-only`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ agentIds: [SEED_AGENT_ID] }),
+    });
+
+    const rename = await post("rename", {
+      path: "Q3 report.pdf",
+      newName: "Q4 report.pdf",
+    });
+    expect(rename.status).toBe(403);
+    expect(await rename.json()).toEqual({
+      error: "this workspace is read-only",
+      code: "read_only",
+    });
+    for (const write of [
+      post("folder", { path: "Blocked" }),
+      post("move", { path: "Q3 report.pdf", toDir: "Docs" }),
+      post("import", {
+        files: [{ name: "blocked.txt", contentBase64: "" }],
+      }),
+      fetch(`${files}?path=Q3%20report.pdf`, { method: "DELETE" }),
+    ]) {
+      expect((await write).status).toBe(403);
+    }
+
+    // Reading is untouched, and nothing the writes asked for happened.
+    const paths = (
+      (await (await fetch(files)).json()) as Array<{ path: string }>
+    ).map((f) => f.path);
+    expect(paths).toContain("Q3 report.pdf");
+    expect(paths).not.toContain("Blocked");
+    expect(paths).not.toContain("blocked.txt");
+    expect(paths).not.toContain("Docs/Q3 report.pdf");
+
+    // Disarming restores the workspace, so one armed spec cannot poison another.
+    await fetch(`${host.url}/__test__/workspace-read-only`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ agentIds: [] }),
+    });
+    const after = await post("rename", {
+      path: "Q3 report.pdf",
+      newName: "Q4 report.pdf",
+    });
+    expect(after.status).toBe(200);
+  });
+
   it("serves the pi-ai provider catalog at /v1/catalog", async () => {
     // Regression: the route was missing, so the app's `getCatalog()` 404-degraded
     // to `[]` and the picker/AI-Models tab fell back to the override-only seed

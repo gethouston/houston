@@ -4,7 +4,7 @@
  * (upload), move, rename, folder create, delete. Backed by `state-workspace.ts`.
  */
 
-import { mimeFor, NAME_TAKEN } from "@houston/host/src/turn/files";
+import { mimeFor, NAME_TAKEN, READ_ONLY } from "@houston/host/src/turn/files";
 import { type Zippable, zipSync } from "fflate";
 import { CORS, json, noContent } from "./http";
 import * as state from "./state";
@@ -25,6 +25,27 @@ const nameTaken = (path: string) =>
     409,
   );
 
+/**
+ * The real host's refusal when the workspace folder answers EACCES/EPERM/EROFS
+ * (`turn/files-names.ts` `probeKeyCase`): a read-only mount, revoked folder
+ * permissions. Same status and same `{error, code}` body, from the host's own
+ * constant, so the app's authored surface is exercised here too.
+ */
+const readOnly = () =>
+  json({ error: "this workspace is read-only", code: READ_ONLY }, 403);
+
+/** The subroutes that WRITE. The collection's own write is its DELETE. */
+const WRITE_SUBS: ReadonlySet<string> = new Set([
+  "import",
+  "move",
+  "rename",
+  "folder",
+]);
+
+function isWrite(method: string, sub: string | undefined): boolean {
+  return sub === undefined ? method === "DELETE" : WRITE_SUBS.has(sub);
+}
+
 export function handleWorkspaceFiles(
   method: string,
   id: string,
@@ -34,6 +55,11 @@ export function handleWorkspaceFiles(
 ): Response {
   const sub = rest[2];
   const query = new URL(req.url).searchParams;
+
+  // The probe the real host runs before any write is the first thing that
+  // fails on an unwritable volume, so every write refuses and every read still
+  // answers — the asymmetry the Files tab's copy describes.
+  if (isWrite(method, sub) && state.isWorkspaceReadOnly(id)) return readOnly();
 
   if (sub === undefined) {
     if (method === "GET") return json(state.listWorkspaceFiles(id));

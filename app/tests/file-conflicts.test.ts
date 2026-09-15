@@ -4,7 +4,9 @@ import type { FileEntry } from "@houston-ai/agent";
 import {
   detectMoveConflict,
   detectRenameConflict,
+  fileRefusal,
   isNameTakenError,
+  isReadOnlyError,
   keepBothName,
   moveTargetPath,
 } from "../src/lib/file-conflicts.ts";
@@ -187,4 +189,54 @@ test("isNameTakenError reads the host's code, not its status or wording", () => 
   );
   assert.equal(isNameTakenError("already exists there"), false);
   assert.equal(isNameTakenError(null), false);
+});
+
+test("isReadOnlyError reads the host's code, not its status or wording", () => {
+  // The TS host's 403 body (`turn/files-names.ts`, raised when the workspace
+  // folder answers EACCES/EPERM/EROFS), as the engine adapter hands it over.
+  assert.equal(
+    isReadOnlyError({
+      status: 403,
+      body: { error: "this workspace is read-only", code: "read_only" },
+    }),
+    true,
+  );
+  // The gateway's flat body and the adapter's own `kind` say the same thing.
+  assert.equal(isReadOnlyError({ code: "read_only" }), true);
+  assert.equal(isReadOnlyError({ kind: "read_only" }), true);
+  // Every OTHER 403 on the route (an authz refusal, a policy block) must not
+  // inherit this copy — the status cannot identify the state.
+  assert.equal(
+    isReadOnlyError({ status: 403, body: { error: "forbidden" } }),
+    false,
+  );
+  // Nor may the host's English wording stand in for the contract.
+  assert.equal(
+    isReadOnlyError(new Error("this workspace is read-only")),
+    false,
+  );
+  assert.equal(isReadOnlyError(null), false);
+});
+
+test("the two refusals never answer for each other", () => {
+  const taken = { status: 409, body: { code: "name_taken" } };
+  const readOnly = { status: 403, body: { code: "read_only" } };
+  assert.equal(isNameTakenError(readOnly), false);
+  assert.equal(isReadOnlyError(taken), false);
+});
+
+test("fileRefusal routes each host FileOpCode to its own surface", () => {
+  assert.equal(
+    fileRefusal({ status: 409, body: { code: "name_taken" } }),
+    "name_taken",
+  );
+  assert.equal(
+    fileRefusal({ status: 403, body: { code: "read_only" } }),
+    "read_only",
+  );
+  // A code the client does not know is NOT a refusal it can explain: it keeps
+  // the report path rather than borrowing the nearest authored copy.
+  assert.equal(fileRefusal({ status: 409, body: { code: "quota" } }), null);
+  assert.equal(fileRefusal(new Error("boom")), null);
+  assert.equal(fileRefusal(undefined), null);
 });

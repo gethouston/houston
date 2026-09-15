@@ -172,6 +172,17 @@ export async function handle(req: Request): Promise<Response> {
         : null,
     });
   }
+  // Make the named agents' workspaces refuse every files WRITE with the host's
+  // `403 read_only` — a read-only mount or revoked folder permissions, which
+  // the Files tab explains in authored copy instead of failing silently. Reads
+  // keep answering. `{ agentIds: [] }` (and the per-test reset) restores them.
+  if (path === "/__test__/workspace-read-only" && method === "POST") {
+    const body = await parseBody(req);
+    state.setReadOnlyWorkspaces(
+      Array.isArray(body?.agentIds) ? body.agentIds.map(String) : [],
+    );
+    return json({ agentIds: [...state.state.readOnlyWorkspaces] });
+  }
   // Rewind the routine-id counter so the NEXT created routine reuses an id an
   // earlier agent already has (`{ next: 0 }` = start over at `routine-1`).
   // Routine ids are unique per AGENT in the real host, so two agents holding

@@ -79,24 +79,48 @@ export function detectRenameConflict(
 }
 
 /**
- * The host's machine-readable reason for a refused rename or move (`FileOpCode`
- * in `packages/host/src/turn/files-path.ts`, answered beside the 409).
+ * The client mirror of the host's `FileOpCode` union
+ * (`packages/host/src/turn/files-path.ts`): the machine-readable reasons a
+ * files write refused, answered beside the status. One member, one authored
+ * surface — which is the whole point of keying on the code rather than the
+ * status. The day the route grows a second 409 or a second 403, a client that
+ * read the status would explain the new state with the old one's copy and
+ * silence it from Sentry along with it. The English message is no contract
+ * either: the host's wording is untranslated and free to change.
  */
-export const NAME_TAKEN_CODE = "name_taken";
+export type FileRefusal = "name_taken" | "read_only";
+
+/** The destination name is in use — another writer, or the agent itself, took
+ *  it between the listing the UI read and the request it sent. */
+export const NAME_TAKEN_CODE: FileRefusal = "name_taken";
+
+/** The workspace's storage refuses every write: its folder answered
+ *  EACCES/EPERM/EROFS (a read-only mount, a folder whose permissions were
+ *  revoked, a sync client holding it). The person's machine, not the data. */
+export const READ_ONLY_CODE: FileRefusal = "read_only";
 
 /**
- * True when the host refused a rename because the name is taken — the race the
- * listing cannot close: another writer, or the agent itself, took the name
- * between the listing the UI read and the rename it sent.
- *
- * Keyed on the CODE, never the status and never the English message (the
- * host's wording is not a contract). The status is what this used to read, and
- * it cannot identify a state: the day `files/rename` grows a second 409 — a
- * quota, a lock, a read-only workspace — every one of them would be explained
- * to the user as a name collision and silenced from Sentry along with it.
+ * Which refusal the host answered with, or null for anything else — the ONE
+ * place a files-write rejection is classified, so a state the client cannot
+ * explain keeps the report path instead of borrowing the nearest copy.
  */
+export function fileRefusal(err: unknown): FileRefusal | null {
+  switch (engineErrorCode(err)) {
+    case NAME_TAKEN_CODE:
+      return NAME_TAKEN_CODE;
+    case READ_ONLY_CODE:
+      return READ_ONLY_CODE;
+    default:
+      return null;
+  }
+}
+
 export function isNameTakenError(err: unknown): boolean {
-  return engineErrorCode(err) === NAME_TAKEN_CODE;
+  return fileRefusal(err) === NAME_TAKEN_CODE;
+}
+
+export function isReadOnlyError(err: unknown): boolean {
+  return fileRefusal(err) === READ_ONLY_CODE;
 }
 
 /**

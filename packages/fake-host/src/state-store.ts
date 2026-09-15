@@ -491,6 +491,16 @@ export interface HostState {
    */
   failingAgentReadSegments: Set<string> | null;
   /**
+   * Agent ids whose workspace refuses every files WRITE with the host's
+   * `403 read_only`, armed by `/__test__/workspace-read-only`. Models the real
+   * host's refusal when the workspace folder answers EACCES/EPERM/EROFS
+   * (`turn/files-names.ts` `probeKeyCase`): a read-only mount, a folder whose
+   * permissions were revoked. Empty (the default and the reset state) = every
+   * workspace is writable. READS keep answering: the folder is unwritable, not
+   * unreadable, which is exactly the state the Files tab has to explain.
+   */
+  readOnlyWorkspaces: Set<string>;
+  /**
    * Custom integrations (HOU-550), armed by `/__test__/custom-integrations`.
    * `null` (the default) = the host does not serve the feature at all: no
    * `custom` entry in the readiness list and the definitions routes 404 (the
@@ -641,6 +651,7 @@ function freshState(): HostState {
     agentReadHoldMs: 0,
     failingAgentReads: new Set<string>(),
     failingAgentReadSegments: null,
+    readOnlyWorkspaces: new Set<string>(),
     customIntegrations: null,
     orgMembers: null,
     meProfileBase: {},
@@ -681,6 +692,19 @@ export function setFailingAgentReads(
   state.failingAgentReads = new Set(agentIds);
   state.failingAgentReadSegments =
     segments && segments.length > 0 ? new Set(segments) : null;
+}
+
+/**
+ * Arm (or clear, with `[]`) the agent workspaces whose files writes answer
+ * `403 read_only`.
+ */
+export function setReadOnlyWorkspaces(agentIds: string[]): void {
+  state.readOnlyWorkspaces = new Set(agentIds);
+}
+
+/** True when this agent's workspace was armed to refuse writes. */
+export function isWorkspaceReadOnly(agentId: string): boolean {
+  return state.readOnlyWorkspaces.has(agentId);
 }
 
 /**
