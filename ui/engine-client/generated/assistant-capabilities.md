@@ -91,10 +91,10 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## settings
 
-- `getContext`: Reads the background notes Houston gives an agent on every conversation. (not callable yet)
+- `getContext`: Reads the background notes Houston gives an agent on every conversation.
 - `getMyProfile`: Reads the user's own name and photo.
 - `preferences.setLocale`: Sets the language Houston's own screens are shown in, for one workspace. **Confirmation required.**
-- `setContext`: Replaces the background notes Houston gives an agent on every conversation. **Confirmation required.** (not callable yet)
+- `setContext`: Replaces the background notes Houston gives an agent on every conversation. **Confirmation required.**
 - `setMyProfile`: Updates the user's own name or photo.
 
 ## skills

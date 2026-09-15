@@ -1,15 +1,11 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import {
-  applyAgentColor,
-  updateAgentColor,
-} from "../src/engine-adapter/control-plane";
+import { applyAgentColor } from "../src/engine-adapter/control-plane";
 
 /**
- * The two color writes. `updateAgentColor` is the single-request host leaf the
- * personal assistant dispatches (the generated catalog derives its route from
- * this exact call shape, so the path, verb and body are load-bearing);
- * `applyAgentColor` is the app picker's write, which sets the device overlay
- * and answers with the refreshed agent.
+ * The app picker's color write: it sets the device overlay and answers with the
+ * refreshed agent, so its only request is the list re-read. The single-request
+ * host leaf the personal assistant dispatches is `updateAgentColor`, in the
+ * SDK's agents module — pinned by `packages/sdk/src/modules/agents/library.test.ts`.
  */
 
 const originalFetch = globalThis.fetch;
@@ -55,22 +51,6 @@ afterEach(() => {
 });
 
 const cfg = () => ({ baseUrl: "http://cp", token: "t" });
-
-test("updateAgentColor PUTs the color to the agent's own color address", async () => {
-  await updateAgentColor(cfg(), "Home/Bob", "teal");
-  expect(calls).toEqual([
-    {
-      url: "http://cp/v1/agents/Home%2FBob/color",
-      method: "PUT",
-      body: '{"color":"teal"}',
-    },
-  ]);
-});
-
-test("updateAgentColor escapes the agent id into one path segment", async () => {
-  await updateAgentColor(cfg(), "Home/Bob & Co", "crimson");
-  expect(calls[0]?.url).toBe("http://cp/v1/agents/Home%2FBob%20%26%20Co/color");
-});
 
 test("the app picker's write sets the overlay and returns the agent", async () => {
   const agent = await applyAgentColor(cfg(), "Home/Bob", "golden");

@@ -10,6 +10,8 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import * as agents from "../agents";
 import * as controlPlane from "../control-plane";
+import { readAgentList } from "./agent-list";
+import { HoustonEngineError } from "./errors";
 import { deploymentServes } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
@@ -20,7 +22,7 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (this.ctx.cp) {
         let list: Agent[];
         try {
-          list = await controlPlane.listAgents(this.ctx.cp);
+          list = await readAgentList(this.ctx.sdk, this.ctx.cp);
         } catch (e) {
           // A FAILED list is not "not loaded yet" (HOU-979). Left as the latter
           // it never resolves, so the provider probe skipped itself forever
@@ -162,17 +164,34 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
     async listInstalledConfigs(): Promise<InstalledConfig[]> {
       if (!this.ctx.cp) return [];
       // A deployment that advertises `agentConfigLibrary: false` (the hosted
-      // gateway) is skipped outright; the 404 fallback inside stays for
+      // gateway) is skipped outright; the 404 fallback below stays for
       // deployments that predate the flag (PRODUCT-1474).
       if (!(await deploymentServes(this.ctx, "agentConfigLibrary"))) return [];
-      return controlPlane.listInstalledConfigs(this.ctx.cp);
+      // SDK delegates the byte-identical GET /v1/agent-configs. It PROPAGATES
+      // the 404; web keeps swallowing it — the hosted gateway keeps no
+      // account-level config library (one pod per agent, no shared disk) and
+      // answers 404 for the route, the same honest answer as standalone web:
+      // nothing installed, the picker shows the bundled templates (HOU-688).
+      // Every other failure still propagates.
+      try {
+        return await viaSdk("/v1/agent-configs", () =>
+          this.ctx.sdk.agents.library.list(),
+        );
+      } catch (err) {
+        if (err instanceof HoustonEngineError && err.status === 404) return [];
+        throw err;
+      }
     }
     async installAgentFromGithub(
       req: InstallFromGithub,
     ): Promise<{ agentId: string }> {
       if (!this.ctx.cp)
         throw new Error("Installing agents needs a cloud workspace.");
-      return controlPlane.installAgentFromGithub(this.ctx.cp, req.githubUrl);
+      // SDK delegates the byte-identical POST /v1/agents/install-from-github
+      // with the `{ githubUrl }` body.
+      return viaSdk("/v1/agents/install-from-github", () =>
+        this.ctx.sdk.agents.library.installFromGithub(req.githubUrl),
+      );
     }
   }
   return Agents;

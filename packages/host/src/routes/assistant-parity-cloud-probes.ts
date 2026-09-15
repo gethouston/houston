@@ -40,6 +40,16 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("moveAgent", SPACES, { ...AGENT, toSlug: "no-such-space" }),
   cloudOnly("getMoveStatus", SPACES, { ...AGENT, moveId: "no-such-move" }),
 
+  // Workspace and user context: the gateway terminates these itself and keeps
+  // them in its own store, so a local host never sees the route.
+  cloudOnly("getContext", "shared context is stored by the hosted gateway", {
+    kind: "workspace",
+  }),
+  cloudOnly("setContext", "shared context is stored by the hosted gateway", {
+    kind: "workspace",
+    content: "",
+  }),
+
   // Money, which only a hosted subscription has.
   cloudOnly("getBilling", "billing is a hosted-subscription concern"),
   cloudOnly("createCheckout", "billing is a hosted-subscription concern", {

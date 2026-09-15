@@ -4,7 +4,7 @@ import {
   setOverlayWriteListener,
 } from "./agent-color";
 import type { ControlPlaneConfig } from "./fetch";
-import { getPreference, setPreference } from "./files-context";
+import { getPreference, setPreference } from "./preferences";
 
 /**
  * Durable home for agent colors: the `agent_colors` ACCOUNT preference

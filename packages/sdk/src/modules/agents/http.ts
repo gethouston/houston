@@ -13,12 +13,12 @@
  * `ok: false` result. A `401` additionally fires {@link onUnauthorized} so a
  * lapsed session token becomes a visible `tokenExpired` signal.
  *
- * Assistant catalog: `listAgents` and `createAgent` are annotated on the
- * control-plane side (`packages/web/src/engine-adapter/cp/agents.ts`) and that
- * copy is the single source of truth — do NOT add a second `@assistant` block
- * for them here.
+ * Assistant catalog: these four functions are its single source of truth for
+ * the `/agents` routes, so each carries its own `@assistant` block and the
+ * generator reads the route straight off the call it makes here.
  */
 
+import type { AgentColorId } from "@houston/domain";
 import type { SdkPorts } from "../../ports";
 import { type HttpScope, httpRequest } from "../http";
 import type { AgentCreateInput, WireAgent } from "./types";
@@ -42,20 +42,51 @@ export interface AgentsHttp {
   remove(id: string): Promise<void>;
 }
 
+/**
+ * Lists the user's agents.
+ * @assistant group:agents
+ */
 export async function listAgents(scope: HttpScope): Promise<WireAgent[]> {
   const res = await httpRequest(scope, "/agents");
   return (await res.json()) as WireAgent[];
 }
 
+/**
+ * Creates a new agent. Always choose a `color` for it, one of Houston's ten
+ * palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange,
+ * golden, or umber. It is how the new agent is told apart at a glance, and
+ * leaving it out gives every agent the same default color.
+ *
+ * `JSON.stringify` drops the undefined optionals, so a plain create posts just
+ * `{ name }` and a seeded one posts the fields it was given, in this order.
+ *
+ * Confirmed: money. An agent is a billed unit with its own workspace and
+ * running engine, so creating one adds recurring cost the user has to want.
+ * @param name What to call the new agent, in the user's own words.
+ * @param color One of Houston's ten palette colours: charcoal, forest,
+ *   teal, navy, purple, rose, crimson, orange, golden or umber.
+ * @param seed Optional starting files for the new agent. Omit it for a
+ *   blank one.
+ * @assistant group:agents confirm
+ * @assistant unschematized: the seed's seeds map is an open record of file path to contents.
+ */
 export async function createAgent(
   scope: HttpScope,
-  input: AgentCreateInput,
+  name: string,
+  color?: AgentColorId,
+  seed?: {
+    claudeMd?: string;
+    seeds?: Record<string, string>;
+  },
 ): Promise<WireAgent> {
-  // `JSON.stringify` drops undefined optionals, so a `{ name }` input posts
-  // exactly `{ "name": … }` — byte-identical to the legacy body iOS sends.
   const res = await httpRequest(scope, "/agents", {
     method: "POST",
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      name,
+      color,
+      claudeMd: seed?.claudeMd,
+      seeds: seed?.seeds,
+    }),
   });
   return (await res.json()) as WireAgent;
 }
@@ -93,12 +124,17 @@ export async function deleteAgent(scope: HttpScope, id: string): Promise<void> {
   });
 }
 
-export function createAgentsHttp(
+/**
+ * The transport scope every agents request runs on. Shared with `library.ts`
+ * so the account-scoped agent routes fail with the same {@link AgentsHttpError}
+ * and route the same 401 into the module's auth-expiry signal.
+ */
+export function agentsScope(
   baseUrl: string,
   ports: SdkPorts,
   onUnauthorized: () => void,
-): AgentsHttp {
-  const scope: HttpScope = {
+): HttpScope {
+  return {
     baseUrl: baseUrl.replace(/\/+$/, ""),
     ports,
     onUnauthorized,
@@ -108,10 +144,12 @@ export function createAgentsHttp(
         status,
       ),
   };
+}
 
+export function createAgentsHttp(scope: HttpScope): AgentsHttp {
   return {
     list: () => listAgents(scope),
-    create: (input) => createAgent(scope, input),
+    create: ({ name, color, ...seed }) => createAgent(scope, name, color, seed),
     rename: (id, name) => renameAgent(scope, id, name),
     remove: (id) => deleteAgent(scope, id),
   };

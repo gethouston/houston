@@ -1,6 +1,8 @@
 import { packAgent } from "@houston/domain";
+import { agentColorId } from "@houston-ai/core";
 import { afterEach, expect, test, vi } from "vitest";
-import { install, previewUpload } from "../src/engine-adapter/portable";
+import { HoustonClient } from "../src/engine-adapter/client";
+import { previewUpload } from "../src/engine-adapter/portable";
 
 /**
  * The import wizard's confirm step: installing a parked `.houstonagent` is an
@@ -26,7 +28,15 @@ afterEach(() => {
 };
 
 const NOW = "2026-07-06T00:00:00.000Z";
-const CFG = { baseUrl: "https://gateway.example", token: "tok" };
+// Driven through the composed client: the create the install performs is the
+// adapter's SDK-delegated `POST /agents`, which `portable.ts` takes as a
+// parameter because it holds no SDK handle.
+const install = (req: Parameters<HoustonClient["importInstall"]>[0]) =>
+  new HoustonClient({
+    baseUrl: "https://gateway.example",
+    token: "tok",
+    controlPlane: true,
+  }).importInstall(req);
 
 const ROUTINE = {
   id: "r1",
@@ -81,7 +91,7 @@ test("install creates the agent with the package as its seed payload", async () 
     ),
   );
 
-  const installed = await install(CFG, {
+  const installed = await install({
     packageId,
     workspaceName: "Houston",
     agentName: "Sales",
@@ -100,10 +110,14 @@ test("install creates the agent with the package as its seed payload", async () 
   expect(call?.init?.method).toBe("POST");
   const body = JSON.parse(String(call?.init?.body)) as {
     name: string;
+    color?: string;
     claudeMd?: string;
     seeds?: Record<string, string>;
   };
   expect(body.name).toBe("Sales");
+  // The source agent's colour rides the WIRE: an install has no picker to seed
+  // a client overlay from, so the host is what remembers it.
+  expect(body.color).toBe(agentColorId("#ff0000"));
   expect(body.claudeMd).toContain("sales agent");
   expect(Object.keys(body.seeds ?? {}).sort()).toEqual([
     ".agents/skills/research/SKILL.md",
@@ -140,7 +154,7 @@ test("install creates the agent with the package as its seed payload", async () 
 test("installing an evicted packageId fails loudly without a request", async () => {
   const calls = stubFetch();
   await expect(
-    install(CFG, {
+    install({
       packageId: "gone",
       workspaceName: "Houston",
       agentName: "X",

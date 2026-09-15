@@ -54,7 +54,6 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ConfigPrefs extends Base {
     async getPreference(key: string): Promise<string | null> {
       if (ACCOUNT_PREF_KEYS.has(key)) {
-        const cfg = this.ctx.prefConfig();
         // The account-key READ is the SDK's too: the same `GET
         // /v1/preferences/:key` over the same shared gateway fetch, which carries
         // `cpFetch`'s read retry (`sdk-client.ts`), so this boot-path GET still
@@ -71,7 +70,9 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
         // re-deriving it — a deliberately chosen timezone must survive.
         const legacy = readLocalPref(key);
         if (legacy !== null) {
-          await controlPlane.setPreference(cfg, key, legacy);
+          await viaSdk(controlPlane.prefPath(key), () =>
+            this.ctx.sdk.preferences.set(key, legacy),
+          );
           removeLocalPref(key);
           return legacy;
         }

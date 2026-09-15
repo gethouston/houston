@@ -20,8 +20,13 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
     // Cloud: the host serves them off the agent's workspace (.houston/activity).
     // Standalone web: localStorage-backed (no host).
     async listActivities(agentPath: string): Promise<Activity[]> {
+      // SDK delegates the read (byte-identical GET /agents/:id/activities); it
+      // returns the rows without publishing its scope, which nothing on web
+      // subscribes to. Standalone (no host) stays localStorage-backed.
       if (this.ctx.cp)
-        return controlPlane.listActivities(this.ctx.cp, agentPath);
+        return viaSdk(`${controlPlane.agentPath(agentPath)}/activities`, () =>
+          this.ctx.sdk.activities.list(agentPath),
+        );
       return activities.listActivities(agentPath);
     }
     async createActivity(
@@ -44,8 +49,14 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
       id: string,
       updates: ActivityUpdate,
     ): Promise<Activity> {
+      // SDK delegates the wire write (byte-identical PATCH
+      // /agents/:id/activities/:id carrying the caller's whole `updates`, no
+      // refetch); web keeps its own write-through echo below.
       const activity = this.ctx.cp
-        ? await controlPlane.updateActivity(this.ctx.cp, agentPath, id, updates)
+        ? await viaSdk(
+            `${controlPlane.agentPath(agentPath)}/activities/${encodeURIComponent(id)}`,
+            () => this.ctx.sdk.activities.writes.update(agentPath, id, updates),
+          )
         : activities.updateActivity(agentPath, id, updates);
       emitLocalEcho("ActivityChanged", { agentPath });
       return activity;

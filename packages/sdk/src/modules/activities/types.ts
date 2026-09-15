@@ -13,6 +13,7 @@
 
 import type {
   Activity,
+  ActivityUpdate,
   NewActivity,
   PendingInteraction,
 } from "@houston/protocol";
@@ -83,6 +84,18 @@ export interface CreatedActivity {
 export interface ActivitiesWrites {
   /** `POST /agents/:id/activities`; returns the created wire activity. */
   create(agentId: string, input: NewActivity): Promise<Activity>;
+  /**
+   * `PATCH …/:id` with the caller's own {@link ActivityUpdate}; returns the
+   * updated wire activity. The general form the two narrow writes below are
+   * shorthands for — a caller that changes several fields at once (a turn
+   * settling writes `status` AND `pending_interaction` in ONE request) needs it,
+   * and splitting that into two PATCHes would publish a half-settled card.
+   */
+  update(
+    agentId: string,
+    id: string,
+    updates: ActivityUpdate,
+  ): Promise<Activity>;
   /** `PATCH …/:id` with `{ status }`; returns the updated wire activity. */
   setStatus(agentId: string, id: string, status: string): Promise<Activity>;
   /** `PATCH …/:id` with `{ title }`; returns the updated wire activity. */
@@ -97,6 +110,13 @@ export interface ActivitiesModule {
   scope(agentId: string): string;
   /** Refetch the agent's activities and republish its scope snapshot. */
   refresh(agentId: string): Promise<void>;
+  /**
+   * Read an agent's board rows and return them, publishing NOTHING. The read
+   * twin of {@link ActivitiesWrites}: a host that owns its own read model (the
+   * web engine-adapter under `reactivity:false`) wants the wire rows without a
+   * snapshot it never subscribes to. Reactive surfaces use {@link refresh}.
+   */
+  list(agentId: string): Promise<Activity[]>;
   /** Create a mission (status `running`), then refetch. Returns id + sessionKey. */
   create(
     agentId: string,
@@ -154,47 +174,3 @@ export type ActivitiesCommandType =
 
 /** The host wire-event `type` that means an agent's activities changed. */
 export const ACTIVITY_CHANGED_EVENT = "ActivityChanged";
-
-/**
- * The board's session address for an activity: the explicit `session_key`, or
- * the `activity-<id>` convention the board uses for missions with no explicit
- * key (PARITY §6). A routine chat carries its own `session_key`.
- */
-export function sessionKeyOf(a: Activity): string {
-  return a.session_key ?? `activity-${a.id}`;
-}
-
-/**
- * True when `sessionKey` addresses activity `a`: its explicit `session_key` OR
- * the `activity-<id>` board convention. Matches EITHER form (not just
- * {@link sessionKeyOf}'s preferred one), identical to the web adapter's resolver
- * (`engine-adapter/client.ts` `setActivityStatus`), so a turn's board-status
- * write lands on the same card on both surfaces.
- */
-export function matchesActivitySessionKey(
-  a: Activity,
-  sessionKey: string,
-): boolean {
-  return a.session_key === sessionKey || `activity-${a.id}` === sessionKey;
-}
-
-/** Project a wire `Activity` onto the scope view-model item. Lossless for the
- *  fields a surface reads; omits empty optionals so the snapshot stays clean. */
-export function toActivityItem(a: Activity): ActivityItem {
-  return {
-    id: a.id,
-    title: a.title,
-    status: a.status,
-    sessionKey: sessionKeyOf(a),
-    ...(a.description ? { description: a.description } : {}),
-    ...(a.updated_at !== undefined ? { updatedAt: a.updated_at } : {}),
-    ...(a.routine_id !== undefined ? { routineId: a.routine_id } : {}),
-    ...(a.origin_session_key !== undefined
-      ? { originSessionKey: a.origin_session_key }
-      : {}),
-    ...(a.agent !== undefined ? { agent: a.agent } : {}),
-    ...(a.worktree_path !== undefined ? { worktreePath: a.worktree_path } : {}),
-    ...(a.provider !== undefined ? { provider: a.provider } : {}),
-    ...(a.model !== undefined ? { model: a.model } : {}),
-  };
-}

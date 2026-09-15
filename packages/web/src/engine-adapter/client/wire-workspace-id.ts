@@ -1,6 +1,6 @@
-import * as controlPlane from "../control-plane";
 import { DEFAULT_WORKSPACE_ID } from "../synthetic";
 import type { AdapterContext } from "./context";
+import { viaSdk } from "./sdk-error";
 
 /**
  * Translates the workspace id the UI holds into the one the SERVER answers to.
@@ -26,7 +26,9 @@ export class WorkspaceIdResolver {
     if (workspaceId !== DEFAULT_WORKSPACE_ID)
       return Promise.resolve(workspaceId);
     this.#personal ??= (async () => {
-      const rows = await controlPlane.listWorkspaces(this.ctx.prefConfig());
+      const rows = await viaSdk("/v1/workspaces", () =>
+        this.ctx.sdk.workspaces.listWorkspaces(),
+      );
       const personal = rows.find((w) => !w.id.startsWith("org:"));
       if (!personal) throw new Error("The host serves no personal workspace.");
       return personal.id;

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { HoustonClient } from "../src/engine-adapter/client";
 import {
   clearColor,
   flushAgentColorPushes,
-  listAgents,
   mergeColorOverlays,
   parseAccountColors,
   setColor,
@@ -68,9 +68,14 @@ const wireAgents = [
   { id: "bbbb111122223333", workspaceId: "Houston", name: "Ada", createdAt: 0 },
 ];
 
-/** Each test builds a FRESH config object: a new object resets the sync
- *  state, so it starts like a new session. */
+/** Each test builds a FRESH client: its control-plane config is a new object,
+ *  which resets the sync state, so it starts like a new session. The list read
+ *  itself is the SDK's `GET /agents`; the reconcile rides alongside it in the
+ *  adapter (`client/agents-mixin.ts`). */
+const freshClient = () =>
+  new HoustonClient({ baseUrl: "http://cp", token: "t", controlPlane: true });
 const freshCfg = () => ({ baseUrl: "http://cp", token: "t" });
+const WS = "Houston";
 
 const overlay = (): Record<string, string> =>
   JSON.parse(store.get("houston.web.cp.agentColors") ?? "{}");
@@ -113,7 +118,7 @@ test("post-sign-out restore: the account pref repaints an empty device overlay",
       ? json(200, { value: '{"aaaa111122223333":"forest"}' })
       : json(200, wireAgents),
   );
-  const agents = await listAgents(freshCfg());
+  const agents = await freshClient().listAgents(WS);
   expect(agents.find((a) => a.name === "Bob")?.color).toBe("forest");
   expect(agents.find((a) => a.name === "Ada")?.color).toBe(DEFAULT_AGENT_COLOR);
   expect(overlay()).toEqual({ aaaa111122223333: "forest" });
@@ -129,11 +134,11 @@ test("an unsaved device pick outranks the account copy it is replacing", async (
       ? json(500, { error: "boom" })
       : json(200, { value: '{"aaaa111122223333":"forest"}' });
   });
-  const cfg = freshCfg();
-  await listAgents(cfg);
+  const client = freshClient();
+  await client.listAgents(WS);
   setColor("aaaa111122223333", "crimson");
   await flushAgentColorPushes();
-  const agents = await listAgents(cfg);
+  const agents = await client.listAgents(WS);
   expect(agents.find((a) => a.name === "Bob")?.color).toBe("crimson");
   errorSpy.mockRestore();
 });
@@ -148,14 +153,14 @@ test("a color set elsewhere lands on this device once the account has ours", asy
       ? json(200, {})
       : json(200, { value: accountValue });
   });
-  const cfg = freshCfg();
-  expect((await listAgents(cfg)).find((a) => a.name === "Bob")?.color).toBe(
-    "forest",
-  );
+  const client = freshClient();
+  expect(
+    (await client.listAgents(WS)).find((a) => a.name === "Bob")?.color,
+  ).toBe("forest");
   accountValue = '{"aaaa111122223333":"golden"}';
-  expect((await listAgents(cfg)).find((a) => a.name === "Bob")?.color).toBe(
-    "golden",
-  );
+  expect(
+    (await client.listAgents(WS)).find((a) => a.name === "Bob")?.color,
+  ).toBe("golden");
   expect(overlay()).toEqual({ aaaa111122223333: "golden" });
 });
 
@@ -166,7 +171,7 @@ test("pre-fix device colors are healed UP into the account pref", async () => {
       ? json(200, { value: null })
       : json(200, url === prefUrl ? {} : wireAgents),
   );
-  await listAgents(freshCfg());
+  await freshClient().listAgents(WS);
   await flushAgentColorPushes();
   const put = calls.find((c) => c.method === "PUT" && c.url === prefUrl);
   expect(put).toBeDefined();
@@ -182,9 +187,9 @@ test("every list re-reads the account copy; an in-sync map pushes nothing", asyn
       ? json(200, { value: '{"aaaa111122223333":"forest"}' })
       : json(200, wireAgents),
   );
-  const cfg = freshCfg();
-  await listAgents(cfg);
-  await listAgents(cfg);
+  const client = freshClient();
+  await client.listAgents(WS);
+  await client.listAgents(WS);
   await flushAgentColorPushes();
   expect(
     calls.filter((c) => c.url === prefUrl && c.method === "GET").length,
@@ -208,10 +213,10 @@ test("an unreachable pref read degrades to the device copy and retries next list
       ? json(500, { error: "boom" })
       : json(200, { value: null });
   });
-  const cfg = freshCfg();
-  const agents = await listAgents(cfg);
+  const client = freshClient();
+  const agents = await client.listAgents(WS);
   expect(agents.find((a) => a.name === "Bob")?.color).toBe("teal");
-  await listAgents(cfg); // the next list simply reads again
+  await client.listAgents(WS); // the next list simply reads again
   expect(prefReads).toBe(2);
   errorSpy.mockRestore();
 });
@@ -222,7 +227,7 @@ test("a color pick after hydration re-pushes the full map to the account", async
   stubFetch((url) =>
     url === prefUrl ? json(200, { value: null }) : json(200, wireAgents),
   );
-  await listAgents(freshCfg());
+  await freshClient().listAgents(WS);
   setColor("aaaa111122223333", "golden");
   await flushAgentColorPushes();
   const put = calls
@@ -240,7 +245,7 @@ test("a delete clears the agent's entry from the account copy too", async () => 
       ? json(200, { value: '{"aaaa111122223333":"forest"}' })
       : json(200, wireAgents),
   );
-  await listAgents(freshCfg());
+  await freshClient().listAgents(WS);
   clearColor("aaaa111122223333");
   await flushAgentColorPushes();
   const put = calls
@@ -257,7 +262,7 @@ test("a failed account save keeps the device pick and stays quiet", async () => 
       ? json(500, { error: "boom" })
       : json(200, { value: null });
   });
-  await listAgents(freshCfg());
+  await freshClient().listAgents(WS);
   setColor("aaaa111122223333", "umber");
   await flushAgentColorPushes();
   expect(overlay()).toEqual({ aaaa111122223333: "umber" });

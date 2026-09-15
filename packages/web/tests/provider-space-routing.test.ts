@@ -26,13 +26,11 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  *      routing instead of bricking connect + the picker forever.
  */
 
-const { listProviders, cpListAgents, forgetCredential, runtimeLogout } =
-  vi.hoisted(() => ({
-    listProviders: vi.fn(),
-    cpListAgents: vi.fn(),
-    forgetCredential: vi.fn(),
-    runtimeLogout: vi.fn(),
-  }));
+const { listProviders, forgetCredential, runtimeLogout } = vi.hoisted(() => ({
+  listProviders: vi.fn(),
+  forgetCredential: vi.fn(),
+  runtimeLogout: vi.fn(),
+}));
 
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
@@ -41,7 +39,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
-    listAgents: cpListAgents,
     forgetCredential,
     runtimeClientFor: vi.fn(() => ({
       listProviders,
@@ -51,6 +48,11 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
 });
 
 import { HoustonClient } from "../src/engine-adapter/client";
+import {
+  restoreAgentListFetch,
+  stubAgentListFetch,
+  wireAgent,
+} from "./support/agent-list";
 
 const PREF = "houston.pref.last_agent_id";
 
@@ -70,13 +72,14 @@ beforeEach(() => {
   listProviders
     .mockReset()
     .mockResolvedValue([{ id: "anthropic", configured: true }]);
-  cpListAgents.mockReset().mockResolvedValue([{ id: THIS_SPACE_AGENT }]);
+  stubAgentListFetch([wireAgent(THIS_SPACE_AGENT)]);
   forgetCredential.mockReset().mockResolvedValue(undefined);
   runtimeLogout.mockReset().mockResolvedValue(undefined);
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  restoreAgentListFetch();
   vi.clearAllMocks();
 });
 
@@ -158,7 +161,7 @@ test("switching spaces un-settles routing until the NEW space's list lands", asy
 
   // In space A, with A's list loaded: routing is settled and writes work.
   c.setActiveOrg(ORG_A);
-  cpListAgents.mockResolvedValue([{ id: AGENT_IN_A }]);
+  stubAgentListFetch([wireAgent(AGENT_IN_A)]);
   await c.listAgents("ws");
   expect((await c.providerStatuses(["anthropic"]))[0].authState).toBe(
     "authenticated",
@@ -180,7 +183,7 @@ test("switching spaces un-settles routing until the NEW space's list lands", asy
   expect(forgetCredential).not.toHaveBeenCalled();
 
   // Once B's list lands, routing settles again — at B's OWN agent.
-  cpListAgents.mockResolvedValue([{ id: AGENT_IN_B }]);
+  stubAgentListFetch([wireAgent(AGENT_IN_B)]);
   await c.listAgents("ws");
   expect((await c.providerStatuses(["anthropic"]))[0].authState).toBe(
     "authenticated",
@@ -217,7 +220,7 @@ test("re-pinning the SAME space does not un-settle a loaded list", async () => {
 
 test("a FAILED agent list degrades to pref-based routing instead of bricking", async () => {
   const c = client();
-  cpListAgents.mockRejectedValue(new Error("gateway blew up"));
+  stubAgentListFetch({ status: 500, error: "gateway blew up" });
 
   // The failure still reaches the caller — it is surfaced, not swallowed.
   await expect(c.listAgents("ws")).rejects.toThrow(/gateway blew up/);
@@ -237,7 +240,7 @@ test("a FAILED agent list degrades to pref-based routing instead of bricking", a
 
 test("a later SUCCESSFUL list restores strict validation after a failure", async () => {
   const c = client();
-  cpListAgents.mockRejectedValueOnce(new Error("blip"));
+  stubAgentListFetch({ status: 500, error: "blip" }, []);
   await expect(c.listAgents("ws")).rejects.toThrow(/blip/);
 
   // The retry succeeds: the pref is pruned and writes route at the real agent.
@@ -256,7 +259,7 @@ test("a failure never downgrades a list we already have", async () => {
   // still do — the ids from the last good list are still this space's ids.
   const c = client();
   await c.listAgents("ws");
-  cpListAgents.mockRejectedValueOnce(new Error("blip"));
+  stubAgentListFetch({ status: 500, error: "blip" }, []);
   await expect(c.listAgents("ws")).rejects.toThrow(/blip/);
 
   forgetCredential.mockClear();

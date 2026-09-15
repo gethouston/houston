@@ -13,7 +13,10 @@ import { afterEach, expect, test, vi } from "vitest";
  * and that its shape is byte-identical to a server frame's.
  *
  * The control-plane module is mocked so cp-mode writes resolve without a network,
- * letting us observe the echo the client pushes onto the in-process bus.
+ * letting us observe the echo the client pushes onto the in-process bus. The
+ * board read/PATCH (the settle path) and the agent-file PUT go through
+ * `@houston/sdk` instead, so those are served by a stubbed `fetch` rather than a
+ * module mock.
  */
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
@@ -27,19 +30,7 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
       setSettings: vi.fn(async () => {}),
     })),
     subscribeEvents: vi.fn(() => () => {}),
-    listActivities: vi.fn(async () => [
-      {
-        id: "a1",
-        title: "t",
-        description: "",
-        status: "running",
-        session_key: "sk-1",
-        updated_at: 0,
-      },
-    ]),
-    updateActivity: vi.fn(async () => ({})),
     createRoutine: vi.fn(async () => ({ id: "r1" })),
-    writeAgentFile: vi.fn(async () => {}),
   };
 });
 
@@ -63,12 +54,41 @@ function hostedClient() {
   });
 }
 
-afterEach(() => vi.clearAllMocks());
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  vi.clearAllMocks();
+});
+
+/** Serve the board read the settle path matches on, and accept every write. */
+function stubHostFetch() {
+  const row = {
+    id: "a1",
+    title: "t",
+    description: "",
+    status: "running",
+    session_key: "sk-1",
+    updated_at: 0,
+  };
+  globalThis.fetch = vi.fn(async (_url: unknown, init?: RequestInit) =>
+    (init?.method ?? "GET") === "GET"
+      ? new Response(JSON.stringify({ items: [row] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      : new Response(JSON.stringify(row), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+  ) as unknown as typeof fetch;
+}
 
 test("the settle path echoes ActivityChanged with the agent key", async () => {
   // cancelSession is a settle-and-PATCH: the runtime reports no live turn
   // (`cancelled: false`), so the client writes the board status itself — the
   // same setActivityStatus write a turn's own settle performs.
+  stubHostFetch();
   const client = hostedClient();
   const { events, off } = capture();
   await client.cancelSession("Home/Ada", "sk-1");
@@ -94,6 +114,7 @@ test("routine CRUD echoes RoutinesChanged with the agent key", async () => {
 });
 
 test("a files-first write echoes its classified event (learnings)", async () => {
+  stubHostFetch();
   const client = hostedClient();
   const { events, off } = capture();
   await client.writeAgentFile(

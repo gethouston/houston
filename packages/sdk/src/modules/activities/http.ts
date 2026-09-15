@@ -13,10 +13,8 @@
  * `ok: false` result. A `401` additionally fires {@link onUnauthorized} so a
  * lapsed session token becomes a visible `tokenExpired` signal.
  *
- * Assistant catalog: `listActivities` and `updateActivity` are annotated on the
- * control-plane side (`packages/web/src/engine-adapter/cp/board.ts`) and that
- * copy is the single source of truth — do NOT add a second `@assistant` block
- * for them here.
+ * Assistant catalog: the `@assistant` blocks below are the single source of
+ * truth for the board operations — this module is the only copy of them.
  */
 
 import type { Activity, ActivityUpdate, NewActivity } from "@houston/protocol";
@@ -47,6 +45,12 @@ export interface ActivitiesHttp {
   remove(agentId: string, id: string): Promise<void>;
 }
 
+/**
+ * Lists the missions on an agent's board.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @assistant group:missions
+ */
 export async function listActivities(
   scope: HttpScope,
   agentId: string,
@@ -80,16 +84,28 @@ export async function createActivity(
   return (await res.json()) as Activity;
 }
 
+/**
+ * Updates a mission's details or status.
+ *
+ * Confirmed: irreversible. It overwrites a mission's fields in place, and no
+ * earlier version is kept.
+ * @param agentId The agent this acts on, by the id listAgents returns. An
+ *   agent's name is not its id, so read the id from listAgents first.
+ * @param id The mission to change, by the id listActivities returns.
+ * @param updates Only the fields that change. A status is one of running,
+ *   needs_you, done, error or archived.
+ * @assistant group:missions confirm hidden: its session_key, origin_session_key and pending_interaction fields rewrite mission lineage and author approval cards; a status change belongs to the coordinator's update_mission_status tool.
+ */
 export async function updateActivity(
   scope: HttpScope,
   agentId: string,
   id: string,
-  update: ActivityUpdate,
+  updates: ActivityUpdate,
 ): Promise<Activity> {
   const res = await httpRequest(
     scope,
     `/agents/${encodeURIComponent(agentId)}/activities/${encodeURIComponent(id)}`,
-    { method: "PATCH", body: JSON.stringify(update) },
+    { method: "PATCH", body: JSON.stringify(updates) },
   );
   return (await res.json()) as Activity;
 }
@@ -147,6 +163,7 @@ export function createActivitiesHttp(
 export function createActivitiesWrites(http: ActivitiesHttp): ActivitiesWrites {
   return {
     create: (agentId, input) => http.create(agentId, input),
+    update: (agentId, id, updates) => http.update(agentId, id, updates),
     setStatus: (agentId, id, status) => http.update(agentId, id, { status }),
     rename: (agentId, id, title) => http.update(agentId, id, { title }),
     delete: (agentId, id) => http.remove(agentId, id),

@@ -13,13 +13,11 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  * — the stale entry — and every provider call went there.
  */
 
-const { listProviders, startLogin, cpListAgents, runtimeClientFor } =
-  vi.hoisted(() => ({
-    listProviders: vi.fn<(agentId: string) => Promise<unknown[]>>(),
-    startLogin: vi.fn<(agentId: string) => Promise<unknown>>(),
-    cpListAgents: vi.fn(),
-    runtimeClientFor: vi.fn(),
-  }));
+const { listProviders, startLogin, runtimeClientFor } = vi.hoisted(() => ({
+  listProviders: vi.fn<(agentId: string) => Promise<unknown[]>>(),
+  startLogin: vi.fn<(agentId: string) => Promise<unknown>>(),
+  runtimeClientFor: vi.fn(),
+}));
 
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
@@ -28,7 +26,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
-    listAgents: cpListAgents,
     // One fake runtime client PER agent id, so a test can make exactly one
     // agent answer "gone" and assert which id the retry landed on.
     runtimeClientFor: runtimeClientFor.mockImplementation(
@@ -48,6 +45,11 @@ import { bus } from "../src/engine-adapter/bus";
 import { HoustonClient } from "../src/engine-adapter/client";
 import type { AdapterContext } from "../src/engine-adapter/client/context";
 import { isProviderAgentGoneError } from "../src/engine-adapter/client/provider-agent-gone";
+import {
+  restoreAgentListFetch,
+  stubAgentListFetch,
+  wireAgent,
+} from "./support/agent-list";
 
 /** The (protected) shared context, for asserting on routing state. */
 const ctxOf = (c: HoustonClient) =>
@@ -79,11 +81,13 @@ beforeEach(() => {
     if (agentId === GHOST) throw gone();
     return { kind: "device_code", verificationUri: "https://x", userCode: "1" };
   });
-  cpListAgents.mockReset();
   runtimeClientFor.mockClear();
 });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  restoreAgentListFetch();
+  vi.clearAllMocks();
+});
 
 /** A client whose known list is stale: it still names the ghost first. */
 async function staleClient(ids: string[] = [GHOST, LIVE]) {
@@ -92,7 +96,7 @@ async function staleClient(ids: string[] = [GHOST, LIVE]) {
     token: "t",
     controlPlane: true,
   });
-  cpListAgents.mockResolvedValue(ids.map((id) => ({ id })));
+  stubAgentListFetch(ids.map((id) => wireAgent(id)));
   await c.listAgents("ws");
   return c;
 }

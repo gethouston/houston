@@ -8,11 +8,23 @@
  * `getSnapshot`/`subscribe` boundary unchanged.
  */
 
+import type { AgentColorId } from "@houston/domain";
+
+/** Teams v2: how much of a shared agent the caller may do. */
+export type AgentAccess = "manager" | "user";
+
+/** One member's access level for a shared agent. */
+export interface AgentAssignment {
+  userId: string;
+  access: AgentAccess;
+}
+
 /**
  * One agent exactly as the host's `GET /agents` returns it (protocol v3, the
- * `Agent` record in `packages/host/src/domain/types.ts`). Assignment fields
- * are hosted-gateway extras the base host route does not serve, so the SDK
- * does not invent them.
+ * `Agent` record in `packages/host/src/domain/types.ts`), plus the fields only
+ * a richer deployment attaches: `dir` where the host is co-located with the
+ * files, and the teams-v2 assignment fields the hosted gateway adds. All are
+ * optional because the base host route serves the first four and nothing else.
  */
 export interface WireAgent {
   id: string;
@@ -26,6 +38,26 @@ export interface WireAgent {
    * gap for agents whose color was picked before the engine cutover.
    */
   color?: string;
+  /** Absolute on-disk directory, present only when the host holds the files
+   *  (local profile). Feeds the OS reveal/open commands. */
+  dir?: string;
+  /** Teams v2: whether this agent is assigned to anyone at all. */
+  assigned?: boolean;
+  /** Teams v2: the assignees' user ids, mirroring {@link assignments}. */
+  assignedUserIds?: string[];
+  /** Teams v2: the caller's own effective access to this agent. */
+  access?: AgentAccess;
+  /** Teams v2: the full assignee list with per-person access. Served only to
+   *  callers who may manage the agent (its owner, or a managing admin). */
+  assignments?: AgentAssignment[];
+}
+
+/** One agent template installed into the account's library. */
+export interface InstalledConfig {
+  /** The template's own config document, whose shape is the template's. */
+  config: unknown;
+  /** Where the library keeps it, as the install routes address it. */
+  path: string;
 }
 
 /** A single agent inside the `agents` scope snapshot. */
@@ -38,15 +70,22 @@ export interface AgentListItem {
 
 /**
  * The full create body the host's `POST /agents` accepts (protocol v3): a
- * required `name`, plus the optional seed payload a rich create carries —
- * `claudeMd` (the agent's CLAUDE.md) and `seeds` (a relative-path → contents
- * map the host writes into the new agent). `JSON.stringify` drops the undefined
- * optionals, so a `{ name }` create posts exactly `{ name }` on the wire (the
- * shape the existing {@link AgentsModule.create} facade and the bridge command
- * send — unchanged). Used by the no-refetch {@link AgentsWrites.create}.
+ * required `name`, an optional palette `color` the host records in the
+ * account's `agent_colors` preference, plus the optional seed payload a rich
+ * create carries — `claudeMd` (the agent's CLAUDE.md) and `seeds` (a
+ * relative-path → contents map the host writes into the new agent).
+ * `JSON.stringify` drops the undefined optionals, so a `{ name }` create posts
+ * exactly `{ name }` on the wire (the shape the existing
+ * {@link AgentsModule.create} facade and the bridge command send). Used by the
+ * no-refetch {@link AgentsWrites.create}.
+ *
+ * A surface that keeps colour in its own client overlay (the web agent picker)
+ * leaves `color` out and paints from the overlay; one that has no overlay (a
+ * portable install, a template) sends it so the new agent is born coloured.
  */
 export interface AgentCreateInput {
   name: string;
+  color?: AgentColorId;
   claudeMd?: string;
   seeds?: Record<string, string>;
 }
@@ -84,9 +123,23 @@ export const AgentsCommand = {
   Create: "agents/create",
   Rename: "agents/rename",
   Delete: "agents/delete",
+  SetColor: "agents/setColor",
+  InstallFromGithub: "agents/installFromGithub",
 } as const;
 export type AgentsCommandType =
   (typeof AgentsCommand)[keyof typeof AgentsCommand];
 
 /** The host wire-event `type` that means the agent list changed (protocol v3). */
 export const AGENTS_CHANGED_EVENT = "AgentsChanged";
+
+/** Pull a required non-empty string off an untrusted command payload. */
+export function requireString(payload: unknown, key: string): string {
+  const value =
+    typeof payload === "object" && payload !== null
+      ? (payload as Record<string, unknown>)[key]
+      : undefined;
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`missing '${key}'`);
+  }
+  return value;
+}

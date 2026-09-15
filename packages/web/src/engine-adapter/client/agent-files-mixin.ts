@@ -8,11 +8,19 @@ import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
 import { configWriteToSettings } from "../synthetic";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 /** The two workspace-root context files backing Settings on local/self-host
  *  (HOU-711). In cloud the same two blobs live in Supabase, not on the volume. */
 const WORKSPACE_MD = "WORKSPACE.md";
 const USER_MD = "USER.md";
+
+/** The request path each delegated call issues, as the SDK builds it — what
+ *  `viaSdk` needs to key the stuck-wake tracker and stamp an agent id on a
+ *  failure (`client/sdk-error.ts`). */
+const agentFilePath = (agentId: string, relPath: string) =>
+  `/agents/${encodeURIComponent(agentId)}/agentfile/${relPath.split("/").map(encodeURIComponent).join("/")}`;
+const contextPath = (kind: "workspace" | "user") => `/v1/${kind}-context`;
 
 export function AgentFilesMixin<TBase extends BaseCtor>(Base: TBase) {
   class AgentFiles extends Base {
@@ -22,7 +30,9 @@ export function AgentFilesMixin<TBase extends BaseCtor>(Base: TBase) {
     // web: localStorage.
     async readAgentFile(agentPath: string, relPath: string): Promise<string> {
       if (this.ctx.cp)
-        return controlPlane.readAgentFile(this.ctx.cp, agentPath, relPath);
+        return viaSdk(agentFilePath(agentPath, relPath), () =>
+          this.ctx.sdk.workspaces.readAgentFile(agentPath, relPath),
+        );
       return readAgentFileStore(agentPath, relPath);
     }
     async writeAgentFile(
@@ -31,11 +41,8 @@ export function AgentFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       content: string,
     ): Promise<void> {
       if (this.ctx.cp) {
-        await controlPlane.writeAgentFile(
-          this.ctx.cp,
-          agentPath,
-          relPath,
-          content,
+        await viaSdk(agentFilePath(agentPath, relPath), () =>
+          this.ctx.sdk.workspaces.writeAgentFile(agentPath, relPath, content),
         );
       } else {
         writeAgentFileStore(agentPath, relPath, content);
@@ -88,8 +95,12 @@ export function AgentFilesMixin<TBase extends BaseCtor>(Base: TBase) {
     async getWorkspaceContext(agentPath: string): Promise<WorkspaceContext> {
       if (this.ctx.cp) {
         const [workspace, user] = await Promise.all([
-          controlPlane.getContext(this.ctx.cp, "workspace"),
-          controlPlane.getContext(this.ctx.cp, "user"),
+          viaSdk(contextPath("workspace"), () =>
+            this.ctx.sdk.workspaces.getContext("workspace"),
+          ),
+          viaSdk(contextPath("user"), () =>
+            this.ctx.sdk.workspaces.getContext("user"),
+          ),
         ]);
         return { workspace, user };
       }
@@ -106,7 +117,9 @@ export function AgentFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       content: string,
     ): Promise<void> {
       if (this.ctx.cp) {
-        await controlPlane.setContext(this.ctx.cp, slot, content);
+        await viaSdk(contextPath(slot), () =>
+          this.ctx.sdk.workspaces.setContext(slot, content),
+        );
         return;
       }
       await this.writeAgentFile(

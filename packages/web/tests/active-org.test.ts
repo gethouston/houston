@@ -1,7 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import {
+  cpFetch,
   gatewayAuthFetch,
-  listAgents,
   subscribeEvents,
 } from "../src/engine-adapter/control-plane";
 
@@ -14,7 +14,7 @@ import {
  * - `gatewayAuthFetch` injects `x-houston-org` from a live getter (present when
  *   a team space is active, absent for personal), re-read per attempt so a 401
  *   refresh-replay picks up a switch.
- * - `cpFetch` (via `listAgents`) threads the same getter off `cfg.activeOrgSlug`.
+ * - `cpFetch` threads the same getter off `cfg.activeOrgSlug`.
  * - `subscribeEvents` rides the slug as `?org=` beside `?token=` on `/v1/events`
  *   (browsers can't header a stream; the gateway's SSE routes take the query).
  */
@@ -126,21 +126,27 @@ test("gatewayAuthFetch re-reads the org getter per attempt (401 replay)", async 
   expect(orgOf(calls[1])).toBe("bbbbbbbbbbbbbbbb");
 });
 
-test("cpFetch (listAgents) carries the active-space header off cfg", async () => {
+test("cpFetch carries the active-space header off cfg", async () => {
   setEngineWindow({ token: "tok" });
   const calls = stubFetch(json(200, []));
-  await listAgents({
-    baseUrl: "https://gateway.example",
-    token: "tok",
-    activeOrgSlug: SLUG,
-  });
+  await cpFetch(
+    {
+      baseUrl: "https://gateway.example",
+      token: "tok",
+      activeOrgSlug: SLUG,
+    },
+    "/agents",
+  );
   expect(orgOf(calls[0])).toBe(SLUG);
 });
 
 test("cpFetch omits the header for a personal config", async () => {
   setEngineWindow({ token: "tok" });
   const calls = stubFetch(json(200, []));
-  await listAgents({ baseUrl: "https://gateway.example", token: "tok" });
+  await cpFetch(
+    { baseUrl: "https://gateway.example", token: "tok" },
+    "/agents",
+  );
   expect(orgOf(calls[0])).toBeNull();
 });
 

@@ -15,8 +15,8 @@
 import type { Activity } from "@houston/protocol";
 import type { ModuleContext } from "../../module-context";
 import { createActivitiesHttp } from "../activities/http";
-import { sessionKeyOf } from "../activities/types";
-import { createAgentsHttp } from "../agents/http";
+import { sessionKeyOf } from "../activities/view-model";
+import { agentsScope, createAgentsHttp } from "../agents/http";
 import { historyToFeed } from "../turns/history";
 import {
   buildHistorySearchText,
@@ -78,7 +78,9 @@ export function createMissionsSearchModule(
   const { baseUrl, ports } = config;
   const emitTokenExpired = () => authExpiry.notifyExpired();
   const http = createActivitiesHttp(baseUrl, ports, emitTokenExpired);
-  const agents = createAgentsHttp(baseUrl, ports, emitTokenExpired);
+  const agents = createAgentsHttp(
+    agentsScope(baseUrl, ports, emitTokenExpired),
+  );
 
   /** The agents to search: the one given, else the whole personal workspace. */
   async function resolveAgentIds(agentId?: string): Promise<string[]> {

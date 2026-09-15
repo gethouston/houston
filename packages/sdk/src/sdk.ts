@@ -10,15 +10,19 @@ import {
   isCommandEnvelope,
 } from "./commands";
 import type { ModuleContext } from "./module-context";
+import { createAccountModule } from "./modules/account";
 import { createActivitiesModule } from "./modules/activities";
 import { createAgentsModule } from "./modules/agents";
 import { createConversationsModule } from "./modules/conversations";
 import { createIntegrationsModule } from "./modules/integrations";
 import { createMissionsSearchModule } from "./modules/missions-search";
+import { createOrgModule } from "./modules/org";
 import { createPreferencesModule } from "./modules/preferences";
 import { createProvidersModule } from "./modules/providers";
 import { createSessionModule } from "./modules/session";
+import { createSpacesModule } from "./modules/spaces";
 import { createTurnsModule } from "./modules/turns";
+import { createWorkspacesModule } from "./modules/workspaces";
 import type { SdkConfig } from "./ports";
 import { ScopeStore, type SdkEvent } from "./store";
 
@@ -85,6 +89,14 @@ export class HoustonSdk {
   readonly integrations: ReturnType<typeof createIntegrationsModule>;
   /** Preferences facade (key/value preferences + workspace locale). */
   readonly preferences: ReturnType<typeof createPreferencesModule>;
+  /** Spaces facade (memberships, invitations, agent moves between spaces). */
+  readonly spaces: ReturnType<typeof createSpacesModule>;
+  /** Workspaces facade (workspace list, agent docs, context notes, sidebar). */
+  readonly workspaces: ReturnType<typeof createWorkspacesModule>;
+  /** Account facade (the caller's own display profile + personal API keys). */
+  readonly account: ReturnType<typeof createAccountModule>;
+  /** Org facade (the active space's roster, roles, invitations + usage). */
+  readonly org: ReturnType<typeof createOrgModule>;
 
   constructor(config: SdkConfig) {
     this.config = config;
@@ -132,6 +144,10 @@ export class HoustonSdk {
     this.providers = createProvidersModule(ctx);
     this.integrations = createIntegrationsModule(ctx);
     this.preferences = createPreferencesModule(ctx);
+    this.spaces = createSpacesModule(ctx);
+    this.workspaces = createWorkspacesModule(ctx);
+    this.account = createAccountModule(ctx);
+    this.org = createOrgModule(ctx);
     // =====================================================================
   }
 

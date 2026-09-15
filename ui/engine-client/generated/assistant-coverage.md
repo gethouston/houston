@@ -7,11 +7,11 @@
 - Ungrouped: 0
 - Unschematized: 18
 - Hidden: 49
-- Routable: 117
-- Unroutable: 31
-- Raw-response routes: 85
+- Routable: 119
+- Unroutable: 29
+- Raw-response routes: 86
 - Acknowledged exceptions: 73
-- Acknowledged debt: 6
+- Acknowledged debt: 4
 
 A raw-response route reaches the host through an adapter function that post-processes the reply (unwrapping `items`, 404 fallbacks, `.then` transforms). The route itself carries the host's response unchanged.
 
@@ -93,15 +93,13 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `getHostSidebarLayout` - hidden: UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render.
 - `putHostSidebarLayout` - hidden: UI plumbing; the app's drag and drop owns this write, and calling it blind rearranges the user's sidebar.
 
-## Acknowledged debt (6)
+## Acknowledged debt (4)
 
 Exceptions whose author says the operation SHOULD be automatable and is waiting on a refactor.
 
 - `turns.cancel` - unroutable: the agent defaults to the single-runtime profile when it is left out, so which sandbox the turn is stopped in is not decided until the call runs.
 - `turns.history` - unroutable: the agent defaults to the single-runtime profile when it is left out, so which sandbox the chat is read from is not decided until the call runs.
-- `orgAudit` - unroutable: the query string is assembled into the path from an optional options object; routable once before and limit are plain parameters.
-- `getContext` - unroutable: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
-- `setContext` - unroutable: the path interpolates the kind union (/v1/${kind}-context); routable once the extractor accepts a literal-union segment.
+- `orgAudit` - unroutable: both bounds are optional, so the query is assembled conditionally and the path template the generator reads cannot spell a key that is sometimes absent; routable once a route may declare an optional query key, which the dispatcher already drops when the caller omits it.
 - `setAgentAssignments` - unroutable: the body is chosen client-side between the v1 userIds and v2 assignments shapes; routable once callers pass only assignments.
 
 ## Undocumented operations (0)
@@ -118,14 +116,10 @@ None.
 
 ## Unschematized fields (18)
 
-- `createAgent.seed`
-- `listInstalledConfigs.returns`
 - `saveAttachments.files`
 - `submitCustomIntegrationCredential.values`
 - `addCustomIntegration.input`
 - `triggerTypes.returns`
-- `getOrgProfiles.returns`
-- `orgAudit.returns`
 - `listRoutines.returns`
 - `createRoutine.input`
 - `createRoutine.returns`
@@ -135,6 +129,10 @@ None.
 - `downloadProjectFile.returns`
 - `uploadProjectFiles.files`
 - `downloadProjectArchive.returns`
+- `createAgent.seed`
+- `listInstalledConfigs.returns`
+- `getOrgProfiles.returns`
+- `orgAudit.returns`
 - `turns.history.returns`
 
 ## Hidden operations (49)
@@ -189,7 +187,7 @@ None.
 - `getHostSidebarLayout`
 - `putHostSidebarLayout`
 
-## Unroutable operations (31)
+## Unroutable operations (29)
 
 No HTTP route could be derived conservatively from the function body, so the operation is not callable.
 
@@ -197,7 +195,6 @@ No HTTP route could be derived conservatively from the function body, so the ope
 - `captureSetupCredential`: non-assignment request option
 - `downloadProjectArchive`: unescaped path interpolation
 - `generateAgentInstructions`: hop into HoustonEngineClient.generateAgent could not be resolved: the client comes from providerEngine(), which is not clientFor()
-- `getContext`: unescaped path interpolation
 - `getOrgProfiles`: unescaped path interpolation
 - `integrations.connect`: path segment depends on a value the caller may override
 - `integrations.refresh`: multiple request calls
@@ -217,7 +214,6 @@ No HTTP route could be derived conservatively from the function body, so the ope
 - `saveAttachments`: body argument is not a parameter
 - `setAgentAssignments`: body argument is not a parameter
 - `setApiKey`: body holds a field the caller may add
-- `setContext`: unescaped path interpolation
 - `setProviderCustomEndpoint`: hop into HoustonEngineClient.claimActiveProvider could not be resolved: the client comes from runtimeClientFor(), which is not clientFor()
 - `setSetupApiKey`: body holds a field the caller may add
 - `turns.cancel`: hop into HoustonEngineClient.cancel could not be resolved: the agent the client is rooted at is not a parameter

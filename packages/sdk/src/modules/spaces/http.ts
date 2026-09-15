@@ -1,36 +1,39 @@
+/**
+ * The spaces REST calls, over the injected `fetch`.
+ *
+ * These are HOSTED-GATEWAY routes: spaces, their invitations and pod migration
+ * between namespaces exist because the gateway runs many tenants, so no host
+ * serves them and the runtime client has no surface for them. They go straight
+ * through {@link httpRequest} with literal paths, which is also what keeps them
+ * visible to the assistant's operation catalog.
+ *
+ * Nothing here degrades. A non-2xx throws a `SpacesHttpError` (`scope.ts`)
+ * carrying the HTTP `status`, and a surface that wants a softer answer (the web
+ * switcher's empty list on a gateway that predates spaces) decides that for
+ * itself on the status. A `401` additionally fires `onUnauthorized`, so a
+ * lapsed session token becomes a visible `tokenExpired` signal.
+ */
+
+import { type HttpScope, httpRequest } from "../http";
 import type {
   AgentMoveStart,
   AgentMoveStatus,
   OrgSummary,
   OrgsList,
-} from "../../../../../ui/engine-client/src/types";
-import { HoustonEngineError } from "../client/errors";
-import { type ControlPlaneConfig, cpFetch } from "./fetch";
-
-/**
- * Spaces (C8): the caller's personal + team spaces, their lifecycle, the invites
- * addressed to them, and moving an agent between spaces. The subscription behind
- * a team space lives in `billing.ts`.
- */
+} from "./types";
 
 /**
  * Lists the spaces the user belongs to and any invitations waiting for them.
  *
- * The caller's spaces + pending invites. Degrades to an empty result on a
- * gateway that predates spaces (404) — the switcher then shows only the personal
- * workspace, byte-identical to a pre-C8 deployment. Every other error throws.
+ * The caller's spaces + pending invites. Throws on every failure, 404 included:
+ * a gateway that predates spaces answers 404, and it is the SURFACE that turns
+ * that into an empty result (the web switcher then shows only the personal
+ * workspace, byte-identical to a pre-C8 deployment).
  * @assistant group:spaces
  */
-export async function listOrgs(cfg: ControlPlaneConfig): Promise<OrgsList> {
-  try {
-    const res = await cpFetch(cfg, "/v1/orgs");
-    return (await res.json()) as OrgsList;
-  } catch (err) {
-    if (err instanceof HoustonEngineError && err.status === 404) {
-      return { orgs: [], invites: [] };
-    }
-    throw err;
-  }
+export async function listOrgs(scope: HttpScope): Promise<OrgsList> {
+  const res = await httpRequest(scope, "/v1/orgs");
+  return (await res.json()) as OrgsList;
 }
 
 /**
@@ -46,10 +49,10 @@ export async function listOrgs(cfg: ControlPlaneConfig): Promise<OrgsList> {
  * @assistant group:spaces confirm
  */
 export async function createOrg(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   name: string,
 ): Promise<OrgSummary> {
-  const res = await cpFetch(cfg, "/v1/orgs", {
+  const res = await httpRequest(scope, "/v1/orgs", {
     method: "POST",
     body: JSON.stringify({ name }),
   });
@@ -72,11 +75,8 @@ export async function createOrg(
  * @param slug The space to delete, by the slug listOrgs returns.
  * @assistant group:spaces confirm hidden: destroys a shared space and everything inside it for good; that decision stays with the person, and the hosted gateway denies the route to this surface anyway.
  */
-export async function deleteOrg(
-  cfg: ControlPlaneConfig,
-  slug: string,
-): Promise<void> {
-  await cpFetch(cfg, `/v1/orgs/${encodeURIComponent(slug)}`, {
+export async function deleteOrg(scope: HttpScope, slug: string): Promise<void> {
+  await httpRequest(scope, `/v1/orgs/${encodeURIComponent(slug)}`, {
     method: "DELETE",
   });
 }
@@ -96,11 +96,11 @@ export async function deleteOrg(
  * @assistant group:spaces confirm
  */
 export async function acceptOrgInvite(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   inviteId: string,
 ): Promise<OrgSummary> {
-  const res = await cpFetch(
-    cfg,
+  const res = await httpRequest(
+    scope,
     `/v1/org-invites/${encodeURIComponent(inviteId)}/accept`,
     { method: "POST" },
   );
@@ -119,10 +119,10 @@ export async function acceptOrgInvite(
  * @assistant group:spaces confirm
  */
 export async function declineOrgInvite(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   inviteId: string,
 ): Promise<void> {
-  await cpFetch(cfg, `/v1/org-invites/${encodeURIComponent(inviteId)}`, {
+  await httpRequest(scope, `/v1/org-invites/${encodeURIComponent(inviteId)}`, {
     method: "DELETE",
   });
 }
@@ -140,12 +140,12 @@ export async function declineOrgInvite(
  * @assistant group:spaces confirm
  */
 export async function moveAgent(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
   toSlug: string,
 ): Promise<AgentMoveStart> {
-  const res = await cpFetch(
-    cfg,
+  const res = await httpRequest(
+    scope,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/move`,
     { method: "POST", body: JSON.stringify({ to: toSlug }) },
   );
@@ -164,12 +164,12 @@ export async function moveAgent(
  * @assistant group:spaces
  */
 export async function getMoveStatus(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentSlugOrId: string,
   moveId: string,
 ): Promise<AgentMoveStatus> {
-  const res = await cpFetch(
-    cfg,
+  const res = await httpRequest(
+    scope,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/move/${encodeURIComponent(moveId)}`,
   );
   return (await res.json()) as AgentMoveStatus;

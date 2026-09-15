@@ -1,0 +1,210 @@
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { HoustonClient } from "../src/engine-adapter/client";
+
+/**
+ * Wave B2 — byte-identical route parity for the agent READS the web adapter now
+ * delegates to `@houston/sdk`: the agent list, and the account's agent-template
+ * library (list + install-from-GitHub).
+ *
+ * Each delegated call MUST issue the exact request the old `controlPlane.*`
+ * helper did — same method, whole URL, body bytes and headers (`Content-Type`,
+ * `Authorization` bearer, and the live `x-houston-org`). What stays ADAPTER-side
+ * is asserted alongside the wire: the colour overlay reconcile riding the list
+ * read, the `agentConfigLibrary` capability gate, and the library's 404 → `[]`.
+ */
+
+const BASE = "http://host";
+const ORG = "abcdef0123456789"; // [a-f0-9]{16}
+
+interface Call {
+  url: string;
+  method: string;
+  body: string | null;
+  headers: Headers;
+}
+
+let calls: Call[];
+const originalFetch = globalThis.fetch;
+
+beforeEach(() => {
+  const store = new Map<string, string>();
+  (globalThis as { localStorage?: unknown }).localStorage = {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  };
+  calls = [];
+});
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+  vi.clearAllMocks();
+});
+
+function json(status: number, body: unknown = {}): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+/** Answer each request by URL+method, recording every one. */
+function stubFetch(respond: (url: string, method: string) => Response) {
+  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
+    const url = String(input);
+    const method = (init?.method ?? "GET").toUpperCase();
+    calls.push({
+      url,
+      method,
+      body: typeof init?.body === "string" ? init.body : null,
+      headers: new Headers(init?.headers),
+    });
+    return respond(url, method);
+  }) as unknown as typeof fetch;
+}
+
+const client = () =>
+  new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });
+
+const WIRE_AGENT = {
+  id: "aaaa111122223333",
+  workspaceId: "Houston",
+  name: "Ada",
+  createdAt: 0,
+};
+
+const PREF_URL = `${BASE}/v1/preferences/agent_colors`;
+const CAPS_URL = `${BASE}/v1/capabilities`;
+
+/** The list read and the colour-preference reconcile, both answered. */
+const listAndPrefs = (agents: unknown[] = [WIRE_AGENT]) =>
+  stubFetch((url) =>
+    url === PREF_URL ? json(200, { value: null }) : json(200, agents),
+  );
+
+// ---- agent list ----
+
+test("listAgents delegates a byte-identical GET /agents (headers + org)", async () => {
+  listAndPrefs();
+  const c = client();
+  c.setActiveOrg(ORG);
+
+  await c.listAgents("Houston");
+
+  const list = calls.find((call) => call.url === `${BASE}/agents`);
+  expect(list?.method).toBe("GET");
+  expect(list?.body).toBeNull();
+  expect(list?.headers.get("Content-Type")).toBe("application/json");
+  expect(list?.headers.get("Authorization")).toBe("Bearer t");
+  expect(list?.headers.get("x-houston-org")).toBe(ORG);
+});
+
+test("listAgents reads the list ONCE, alongside the colour reconcile", async () => {
+  listAndPrefs();
+
+  await client().listAgents("Houston");
+
+  // Exactly the two requests the old control-plane read made: the list, and the
+  // `agent_colors` preference the overlay reconciles against.
+  expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
+    `GET ${BASE}/agents`,
+    `GET ${PREF_URL}`,
+  ]);
+});
+
+test("listAgents maps the wire agent to the UI shape the app renders", async () => {
+  listAndPrefs([{ ...WIRE_AGENT, dir: "/data/Ada", access: "manager" }]);
+
+  const [agent] = await client().listAgents("Houston");
+
+  expect(agent.id).toBe(WIRE_AGENT.id);
+  expect(agent.folderPath).toBe(WIRE_AGENT.id);
+  // The gateway's extras survive the SDK read: the OS reveal path and the
+  // caller's teams access both come off the same wire record.
+  expect(agent.localDir).toBe("/data/Ada");
+  expect(agent.access).toBe("manager");
+});
+
+test("a failed agent list propagates — never swallowed", async () => {
+  stubFetch((url) =>
+    url === PREF_URL
+      ? json(200, { value: null })
+      : json(500, { error: "boom" }),
+  );
+
+  await expect(client().listAgents("Houston")).rejects.toThrow(
+    "boom (engine error 500)",
+  );
+});
+
+// ---- agent-config library ----
+
+test("listInstalledConfigs delegates a byte-identical GET /v1/agent-configs", async () => {
+  stubFetch((url) =>
+    url === CAPS_URL
+      ? json(200, { profile: "cloud" })
+      : json(200, [{ config: { name: "helper" }, path: "helper" }]),
+  );
+  const c = client();
+  c.setActiveOrg(ORG);
+
+  await expect(c.listInstalledConfigs()).resolves.toEqual([
+    { config: { name: "helper" }, path: "helper" },
+  ]);
+
+  const [, read] = calls;
+  expect(read.method).toBe("GET");
+  expect(read.url).toBe(`${BASE}/v1/agent-configs`);
+  expect(read.body).toBeNull();
+  expect(read.headers.get("Authorization")).toBe("Bearer t");
+  expect(read.headers.get("x-houston-org")).toBe(ORG);
+});
+
+test("a 404 on the library reads as nothing installed, and the SDK still throws it", async () => {
+  stubFetch((url) =>
+    url === CAPS_URL
+      ? json(200, { profile: "cloud" })
+      : json(404, { error: "not found" }),
+  );
+
+  // The degrade is the adapter's: the SDK propagated the 404 and the mixin
+  // caught it on status, so the picker falls back to the bundled templates.
+  await expect(client().listInstalledConfigs()).resolves.toEqual([]);
+  expect(calls).toHaveLength(2);
+});
+
+test("installAgentFromGithub delegates a byte-identical POST with the url body", async () => {
+  stubFetch(() => json(200, { agentId: "aaaa111122223333" }));
+
+  await expect(
+    client().installAgentFromGithub({ githubUrl: "https://github.com/a/b" }),
+  ).resolves.toEqual({ agentId: "aaaa111122223333" });
+
+  expect(calls).toHaveLength(1);
+  const [post] = calls;
+  expect(post.method).toBe("POST");
+  expect(post.url).toBe(`${BASE}/v1/agents/install-from-github`);
+  expect(post.body).toBe(
+    JSON.stringify({ githubUrl: "https://github.com/a/b" }),
+  );
+  expect(post.headers.get("Content-Type")).toBe("application/json");
+  expect(post.headers.get("Authorization")).toBe("Bearer t");
+});
+
+// ---- the colour write that stays adapter-side ----
+
+test("updateAgent still writes the overlay and re-reads the list, one request", async () => {
+  stubFetch(() => json(200, [WIRE_AGENT]));
+
+  const agent = await client().updateAgent("Houston", WIRE_AGENT.id, {
+    color: "golden",
+  });
+
+  // The picker's write stays adapter-side: one list re-read, no colour on the
+  // wire. (The overlay write mirrors the map up to the `agent_colors` account
+  // preference afterwards — that push is the sync layer's, not this call's.)
+  expect(agent.color).toBe("golden");
+  expect(
+    calls.filter((call) => call.url !== PREF_URL).map((call) => call.url),
+  ).toEqual([`${BASE}/agents`]);
+});

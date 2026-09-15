@@ -2,12 +2,7 @@ import type {
   SidebarLayout,
   Workspace,
 } from "../../../../../ui/engine-client/src/types";
-import {
-  listWorkspaces as cpListWorkspaces,
-  deleteOrg,
-  prefPath,
-  retryTransientRead,
-} from "../control-plane";
+import { prefPath, retryTransientRead } from "../control-plane";
 import { syntheticWorkspace } from "../synthetic";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
@@ -39,8 +34,7 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       // personal row REPLACES the served one (its "default" id is load-bearing
       // for prefs, caches, and the desktop boot path); ONLY the `org:*` team
       // rows bridge through, so a local/self-host list (never `org:`-prefixed)
-      // stays byte-identical. `prefConfig()` is the shared seam: the gateway
-      // in cloud mode, the local host otherwise.
+      // stays byte-identical.
       //
       // A 404 is CAPABILITY negotiation, not a failure: a host that predates
       // the surface has no teams to bridge, so personal-only is the honest and
@@ -56,7 +50,9 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       // successful load restores the right space.
       try {
         const rows = await retryTransientRead(() =>
-          cpListWorkspaces(this.ctx.prefConfig()),
+          viaSdk("/v1/workspaces", () =>
+            this.ctx.sdk.workspaces.listWorkspaces(),
+          ),
         );
         const teams = rows.filter((w) => w.id.startsWith("org:"));
         return [personal, ...teams];
@@ -92,7 +88,9 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Your personal workspace can't be deleted.");
       if (!this.ctx.cp)
         throw new Error("Deleting a team needs the hosted gateway.");
-      await deleteOrg(this.ctx.cp, slug);
+      await viaSdk(`/v1/orgs/${encodeURIComponent(slug)}`, () =>
+        this.ctx.sdk.spaces.deleteOrg(slug),
+      );
     }
     // Persist the language pick as the account-level `locale` preference. The
     // workspace id is ignored on purpose: the personal row is the synthetic

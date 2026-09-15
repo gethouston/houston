@@ -53,6 +53,18 @@ export type {
 export { CommandRegistry, isCommandEnvelope } from "./commands";
 export * from "./local-model-bridge";
 export type { ModuleContext } from "./module-context";
+// ===== Account module contract =========================================
+export {
+  AccountCommand,
+  type AccountCommandType,
+  AccountHttpError,
+  type AccountModule,
+  type ApiKey,
+  type ApiKeyCreated,
+  type EditableProfile,
+  type EditableProfileCustom,
+  type EditableProfileUpdate,
+} from "./modules/account";
 // ===== Activities module contract ======================================
 export {
   ACTIVITY_CHANGED_EVENT,
@@ -71,14 +83,19 @@ export {
 export {
   AGENTS_CHANGED_EVENT,
   AGENTS_SCOPE,
+  type AgentAccess,
+  type AgentAssignment,
   type AgentCreateInput,
   type AgentListItem,
+  type AgentsAccount,
   AgentsCommand,
   type AgentsCommandType,
   AgentsHttpError,
+  type AgentsLibrary,
   type AgentsModule,
   type AgentsViewModel,
   type AgentsWrites,
+  type InstalledConfig,
   type WireAgent,
 } from "./modules/agents";
 // ===== Conversations module contract ===================================
@@ -106,6 +123,25 @@ export type {
   MissionMatch,
   MissionsSearchModule,
 } from "./modules/missions-search";
+// ===== Org module contract =============================================
+export {
+  type AddOrgMemberResult,
+  type AuditEntry,
+  type ComputeUsage,
+  type ComputeUsageRow,
+  ORG_ROLES,
+  OrgCommand,
+  type OrgCommandType,
+  OrgHttpError,
+  type OrgInfo,
+  type OrgInvite,
+  type OrgMember,
+  type OrgModule,
+  type OrgPerson,
+  type UsageRow,
+  type UserProfile,
+  type UserProfilesResult,
+} from "./modules/org";
 // ===== Preferences module contract =====================================
 export {
   PreferencesCommand,
@@ -144,6 +180,20 @@ export {
   type SessionModule,
   type SetTokenPayload,
 } from "./modules/session";
+// ===== Spaces module contract ==========================================
+export {
+  type AgentMoveStart,
+  type AgentMoveStatus,
+  type BillingSummary,
+  type OrgInviteSummary,
+  type OrgRole,
+  type OrgSummary,
+  type OrgsList,
+  SpacesCommand,
+  type SpacesCommandType,
+  SpacesHttpError,
+  type SpacesModule,
+} from "./modules/spaces";
 // ===== Turns module public surface =====================================
 // The turn/feed machinery lives in the turns module; it is re-exported here so
 // a host (the web engine-adapter) can drive it with its OWN FeedOutput. The
@@ -197,6 +247,17 @@ export {
   type TurnWirePin,
   turnErrorMessage,
 } from "./modules/turns";
+// ===== Workspaces module contract ======================================
+export {
+  type SidebarGroup,
+  type SidebarLayout,
+  type Workspace,
+  type WorkspaceKind,
+  WorkspacesCommand,
+  type WorkspacesCommandType,
+  WorkspacesHttpError,
+  type WorkspacesModule,
+} from "./modules/workspaces";
 export type {
   Clock,
   KeyValueStore,

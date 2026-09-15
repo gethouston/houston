@@ -2,8 +2,9 @@ import type { BoardStatus } from "@houston/sdk";
 import type { PendingInteraction } from "../../../../../ui/engine-client/src/types";
 import * as activities from "../activities";
 import { emitLocalEcho } from "../bus";
-import { listActivities, updateActivity } from "../control-plane";
+import { agentPath as agentRoute } from "../control-plane";
 import type { AdapterContext } from "./context";
+import { viaSdk } from "./sdk-error";
 
 /**
  * Transition a chat activity's board status, honoring cloud vs standalone mode.
@@ -24,8 +25,7 @@ export async function setActivityStatus(
   status: BoardStatus,
   pendingInteraction: PendingInteraction | null,
 ): Promise<void> {
-  const cp = ctx.cp;
-  if (!cp) {
+  if (!ctx.cp) {
     activities.setStatusBySessionKey(
       agentPath,
       sessionKey,
@@ -45,9 +45,14 @@ export async function setActivityStatus(
   // hiccup is safe. cpFetch deliberately never blind-retries writes; this
   // caller knows its write is replay-safe.
   const retryDelaysMs = [500, 1500, 3000];
+  // The SDK serves both halves (byte-identical GET then PATCH, neither
+  // refetching); `viaSdk` keeps the adapter's error shape and stuck-wake signal.
+  const board = `${agentRoute(agentPath)}/activities`;
   for (let i = 0; ; i++) {
     try {
-      const list = await listActivities(cp, agentPath);
+      const list = await viaSdk(board, () =>
+        ctx.sdk.activities.list(agentPath),
+      );
       const match = list.find(
         (a) =>
           a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
@@ -55,10 +60,12 @@ export async function setActivityStatus(
       if (!match) return; // transient session with no board card — nothing to update
       // `pending_interaction: null` clears it explicitly (the host route +
       // domain applyActivityUpdate honor null); a value records the interaction.
-      await updateActivity(cp, agentPath, match.id, {
-        status,
-        pending_interaction: pendingInteraction,
-      });
+      await viaSdk(`${board}/${encodeURIComponent(match.id)}`, () =>
+        ctx.sdk.activities.writes.update(agentPath, match.id, {
+          status,
+          pending_interaction: pendingInteraction,
+        }),
+      );
       break;
     } catch (err) {
       if (i >= retryDelaysMs.length) throw err;

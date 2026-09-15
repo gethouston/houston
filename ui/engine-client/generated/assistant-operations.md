@@ -73,7 +73,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `getOrg` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgPeople` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgProfiles` | unroutable | unconfirmed: withheld from dispatch | UI plumbing; resolves member ids to the names and photos the app's avatars render. | ids: free text |
-| `orgAudit` | unroutable | unconfirmed: no callable route | visible | opts: free text |
+| `orgAudit` | unroutable | unconfirmed: no callable route | visible | before: free text; limit: free text |
 | `orgUsage` | GET | unconfirmed: read-only HTTP GET | visible | days: free text |
 | `removeOrgMember` | DELETE | confirmed: host approval required | visible | userId: resolved:members |
 | `setOrgMemberRole` | PATCH | confirmed: host approval required | visible | userId: resolved:members; role: enum |
@@ -109,11 +109,11 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `mintRoutineWebhookKey` | POST | confirmed: host approval required | returns a secret; the webhook key is revealed once and calling again rotates it. | agentId: resolved:agents; routineId: resolved:routines |
 | `runRoutineNow` | POST | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines |
 | `updateRoutine` | PATCH | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines; updates: free text |
-| `getContext` | unroutable | unconfirmed: no callable route | visible | kind: enum |
+| `getContext` | GET | unconfirmed: read-only HTTP GET | visible | kind: enum |
 | `getMyProfile` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getPreference` | GET | unconfirmed: read-only HTTP GET | UI plumbing; an untyped key/value store the app reads for its own device settings. | key: free text |
 | `preferences.setLocale` | PATCH | confirmed: host approval required | visible | workspaceId: resolved:workspaces; locale: free text |
-| `setContext` | unroutable | confirmed: host approval required | visible | kind: enum; content: free text |
+| `setContext` | PUT | confirmed: host approval required | visible | kind: enum; content: free text |
 | `setMyProfile` | PUT | unconfirmed: Reversible personal display overrides; costs nothing and changes no permissions. | visible | update: free text |
 | `setPreference` | PUT | unconfirmed: withheld from dispatch | UI plumbing; an open key/value write that can clobber any app setting. | key: free text; value: free text |
 | `createSharedSkill` | POST | confirmed: host approval required | visible | workspaceId: resolved:workspaces; body: free text |
