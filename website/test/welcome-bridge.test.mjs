@@ -110,15 +110,24 @@ test("a PostHog that throws never costs the first-party event", () => {
   assert.equal(analytics.tracked.length, 1);
 });
 
-test("an id the gateway would refuse costs only the first-party event", () => {
-  // The asset owns the id shape because the gateway does: a non-canonical uuid
-  // costs the WHOLE welcome_bridged event. PostHog has no such rule, so it
-  // still merges the person on whatever id the app sent.
+test("an id the gateway would refuse bridges neither sink", () => {
+  // A PostHog alias is irreversible, so a crafted install_id must never merge
+  // the visitor's person onto it; the first-party event is refused by the same rule.
   const analytics = fakeAnalytics({ valid: false });
   const posthog = fakePosthog();
   visit({ analytics, posthog, installId: "not-a-uuid" });
   assert.deepEqual(analytics.tracked, []);
-  assert.equal(posthog.calls.length, 3);
+  assert.equal(posthog.calls.length, 0);
+});
+
+test("without the first-party asset the page still refuses a non-canonical id", () => {
+  const posthog = fakePosthog();
+  visit({
+    analytics: undefined,
+    posthog,
+    installId: "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+  });
+  assert.equal(posthog.calls.length, 0);
 });
 
 test("does nothing at all without an install id", () => {
