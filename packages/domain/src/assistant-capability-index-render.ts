@@ -86,7 +86,9 @@ interface HandsCard {
  * deterministic — no re-sort, so the sentence reads in the order the cards are
  * declared rather than alphabetically. `request_hands_on` drops out entirely
  * when none of its screens survive: a card with nothing to open is a tool the
- * model would reach for and find empty.
+ * model would reach for and find empty. `request_hands_on` must stay LAST in
+ * that constant: its errand is itself a comma list, and only at the end of the
+ * semicolon list does it read unambiguously.
  */
 function handsCards(
   operations: readonly IndexOperation[],
