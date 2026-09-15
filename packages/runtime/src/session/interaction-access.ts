@@ -1,3 +1,4 @@
+import type { HandsOnSurface } from "@houston/runtime-client";
 import { currentInteractionHolder } from "./interaction-holder";
 
 /**
@@ -87,5 +88,36 @@ export function recordProviderConnection(input: {
     id: `p${holder.providerConnects.length + 1}`,
     provider,
     ...(reason ? { reason } : {}),
+  });
+}
+
+/**
+ * Append a hands-on errand for this turn (ids `h1`..`hN`), deduped by the
+ * SCREEN plus what it opens focused on: two routines' webhooks are two errands,
+ * the same one asked for twice is one card. A repeat keeps its id and position
+ * and refreshes the reason. A no-op outside a turn.
+ */
+export function recordHandsOn(input: {
+  surface: HandsOnSurface;
+  reason?: string;
+  target?: string;
+}): void {
+  const holder = currentInteractionHolder();
+  if (!holder) return;
+  const target = input.target?.trim() || undefined;
+  const reason = input.reason?.trim();
+  const existing = holder.handsOn.find(
+    (step) => step.surface === input.surface && step.target === target,
+  );
+  if (existing) {
+    if (reason) existing.reason = reason;
+    return;
+  }
+  holder.handsOn.push({
+    kind: "hands_on",
+    id: `h${holder.handsOn.length + 1}`,
+    surface: input.surface,
+    ...(reason ? { reason } : {}),
+    ...(target ? { target } : {}),
   });
 }

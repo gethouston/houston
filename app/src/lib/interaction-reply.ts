@@ -31,6 +31,11 @@ import { encodeAutoContinueMessage } from "./auto-continue-message.ts";
  * `credentialedFollowup`, like a connect-only one; a skip in the mix falls to the
  * visible/hidden body path so the "Skipped ..." fact survives.
  *
+ * A hands-on errand adds `handsOnLine(screen)` ("Opened X and finished there.")
+ * or `handsOnSkippedLine(screen)` — the person's own word for it, since nothing
+ * can observe the screen they were sent to. A sequence carrying one never takes
+ * the signin-only / credential-only shortcut: that fact must reach the agent.
+ *
  * Every non-question step ALSO offers a free-text decline row: declining a
  * connect / sign-in / credential step WITH typed text records a
  * decline-with-instruction, contributing `connectRedirectLine(name, text)` /
@@ -54,6 +59,12 @@ export function composeInteractionReply(args: {
   /** Custom integrations whose credential step the user skipped, in skip order —
    *  a decline the agent MUST hear, or it waits on a key that never comes. */
   skippedCredentialNames: string[];
+  /** Screens the person said they finished on, in step order. */
+  finishedScreens: string[];
+  /** Screens the person declined to open, in step order. */
+  skippedScreens: string[];
+  /** Hands-on steps declined WITH a typed instruction, in step order. */
+  handsOnRedirects: { name: string; text: string }[];
   /** Connect steps declined WITH a typed instruction (the "or tell it what to do
    *  instead" row): the app name plus the user's verbatim text, in step order.
    *  Like a redirection, the text rides the reply so the agent reacts, and its
@@ -92,12 +103,25 @@ export function composeInteractionReply(args: {
   signinRedirectLine: (text: string) => string;
   /** The hidden resume message for a credential-ONLY sequence (secret saved). */
   credentialedFollowup: string;
+  /** The status line a finished hands-on errand contributes to the reply. */
+  handsOnLine: (screen: string) => string;
+  /** The status line a declined hands-on errand contributes to the reply. */
+  handsOnSkippedLine: (screen: string) => string;
+  /** The line a hands-on step declined-with-text contributes (screen + text). */
+  handsOnRedirectLine: (screen: string, text: string) => string;
 }): string {
+  // A hands-on errand is never "nothing factual to relay": the person either
+  // did the thing on that screen or did not, and only they know.
+  const noHandsOn =
+    args.finishedScreens.length === 0 &&
+    args.skippedScreens.length === 0 &&
+    args.handsOnRedirects.length === 0;
   // Signin-only, actually signed in: no answers to relay, no connection and no
   // skip to name, so send the friendlier hidden followup rather than a lone
   // "Signed in to Houston." line.
   if (
     !args.hasQuestionSteps &&
+    noHandsOn &&
     args.signedIn &&
     args.connectedNames.length === 0 &&
     args.skippedConnectNames.length === 0 &&
@@ -112,6 +136,7 @@ export function composeInteractionReply(args: {
   // the general path below so the agent still hears the "Skipped ..." fact.
   if (
     !args.hasQuestionSteps &&
+    noHandsOn &&
     !args.signedIn &&
     args.connectedNames.length === 0 &&
     args.skippedConnectNames.length === 0 &&
@@ -137,6 +162,12 @@ export function composeInteractionReply(args: {
     lines.push(args.skippedCredentialLine(name));
   for (const r of args.credentialRedirects)
     lines.push(args.credentialRedirectLine(r.name, r.text));
+  for (const screen of args.finishedScreens)
+    lines.push(args.handsOnLine(screen));
+  for (const screen of args.skippedScreens)
+    lines.push(args.handsOnSkippedLine(screen));
+  for (const r of args.handsOnRedirects)
+    lines.push(args.handsOnRedirectLine(r.name, r.text));
   const body = lines.join("\n");
   // A redirection or a decline-with-instruction carries user-typed text, so its
   // sequence resumes VISIBLY (the transcript should show what the user asked),
@@ -145,6 +176,7 @@ export function composeInteractionReply(args: {
     args.hasQuestionSteps ||
     args.connectRedirects.length > 0 ||
     args.credentialRedirects.length > 0 ||
+    args.handsOnRedirects.length > 0 ||
     args.signinDeclineText != null;
   return visible ? body : encodeAutoContinueMessage(body);
 }

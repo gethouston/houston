@@ -5,6 +5,7 @@ import {
   type ChatInteractionStep,
 } from "@houston-ai/chat";
 import type { ReactNode } from "react";
+import { handsOnScreenKey } from "../lib/hands-on-navigation";
 import type { ApprovalCardCopy } from "../lib/interaction-approval-labels";
 import { localizeApprovalQuestion } from "../lib/interaction-approval-labels";
 import { approvalsFromAnswers } from "../lib/interaction-approvals";
@@ -77,6 +78,14 @@ export function chatInteractionStepsNode(
         kind: "custom",
         id: step.id,
         title: resolveProviderName(step.provider),
+      };
+    // A hands-on errand rides the same generic custom step: the app owns every
+    // pixel of its body, so ui/chat needs nothing but its id.
+    if (step.kind === "hands_on")
+      return {
+        kind: "custom",
+        id: step.id,
+        title: t(`chat:${handsOnScreenKey(step.surface)}`),
       };
     if (step.kind !== "question") return step;
     const question = localizeApprovalQuestion(step, approvalCopy);

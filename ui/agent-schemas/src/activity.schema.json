@@ -82,6 +82,7 @@
                     "connect",
                     "credential",
                     "provider_connect",
+                    "hands_on",
                     "plan_ready",
                     "suggest_reusable",
                     "suggest_actions",
@@ -105,6 +106,17 @@
                 },
                 "toolkit": { "type": "string" },
                 "provider": { "type": "string", "minLength": 1 },
+                "surface": {
+                  "type": "string",
+                  "enum": [
+                    "apiKeys",
+                    "billing",
+                    "files",
+                    "routineWebhook",
+                    "orgDanger"
+                  ]
+                },
+                "target": { "type": "string" },
                 "reason": { "type": "string" },
                 "summary": { "type": "string" },
                 "reusableKind": {
@@ -154,6 +166,10 @@
                 {
                   "properties": { "kind": { "const": "provider_connect" } },
                   "required": ["provider"]
+                },
+                {
+                  "properties": { "kind": { "const": "hands_on" } },
+                  "required": ["surface"]
                 },
                 {
                   "properties": { "kind": { "const": "plan_ready" } },

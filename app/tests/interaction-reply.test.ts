@@ -26,6 +26,9 @@ const base = {
   skippedConnectNames: [] as string[],
   credentialedNames: [] as string[],
   skippedCredentialNames: [] as string[],
+  finishedScreens: [] as string[],
+  skippedScreens: [] as string[],
+  handsOnRedirects: [] as { name: string; text: string }[],
   connectRedirects: [] as { name: string; text: string }[],
   credentialRedirects: [] as { name: string; text: string }[],
   signinDeclineText: undefined as string | undefined,
@@ -46,6 +49,10 @@ const base = {
   signedInFollowup: "I've signed in. Please continue.",
   skippedCredentialLine: (name: string) => `Skipped adding the ${name} key.`,
   credentialedFollowup: "I've added the Acme key. Please continue.",
+  handsOnLine: (screen: string) => `Opened ${screen} and finished there.`,
+  handsOnSkippedLine: (screen: string) => `Skipped opening ${screen}.`,
+  handsOnRedirectLine: (screen: string, text: string) =>
+    `I didn't open ${screen}. Instead, do this: ${text}`,
 };
 
 describe("composeInteractionReply", () => {

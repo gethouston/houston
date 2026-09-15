@@ -65,6 +65,23 @@
   "interaction": {
     "providerReason": "Connect {{name}} so I can continue. Your credentials stay out of the conversation.",
     "providerUnavailable": "This AI provider is unavailable here. Skip this step and ask me to use another provider.",
+    "handsOnTitle": "Open {{screen}}",
+    "handsOnReason": "This part needs your own hands. Open {{screen}} and finish it there.",
+    "handsOnExplainer": "Houston takes you to the screen. Come back and tell me when you are finished.",
+    "handsOnOpen": "Open {{screen}}",
+    "handsOnDone": "Done",
+    "handsOnLine": "Opened {{screen}} and finished there.",
+    "handsOnSkippedLine": "Skipped opening {{screen}}.",
+    "handsOnRedirectLine": "I didn't open {{screen}}. Instead, do this: {{text}}",
+    "handsOnUnknownScreen": "this screen",
+    "handsOnUnavailable": "This screen is not available in this version of Houston. Skip this step and ask me for another way.",
+    "handsOnScreens": {
+      "apiKeys": "API keys",
+      "billing": "Billing",
+      "files": "Files",
+      "routineWebhook": "Routines",
+      "orgDanger": "Danger zone"
+    },
     "cancelConnection": "Cancel connection",
     "connectedLine": "Connected {{name}}.",
     "signedInLine": "Signed in to Houston.",

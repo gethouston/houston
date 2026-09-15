@@ -17,6 +17,7 @@ import { makeAskUserTool } from "./tools/ask-user";
 import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
 import { makePlanReadyTool } from "./tools/plan-ready";
+import { makeRequestHandsOnTool } from "./tools/request-hands-on";
 import { makeRequestProviderConnectionTool } from "./tools/request-provider-connection";
 import { makeRunCodeTool } from "./tools/run-code";
 import { makeScrubbedBashTool } from "./tools/scrubbed-bash";
@@ -141,6 +142,8 @@ export const piCustomTools = [
   ...skillDirectoryTools,
   ...assistantTools,
   ...integrationTools,
-  ...(hostReachable ? [makeRequestProviderConnectionTool()] : []),
+  ...(hostReachable
+    ? [makeRequestProviderConnectionTool(), makeRequestHandsOnTool()]
+    : []),
   ...customIntegrationTools,
 ].map(withToolCallLog);

@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 84
+version: 85
 
 components:
   - id: custom-integration-details
@@ -409,7 +409,7 @@ components:
     purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), replacing the composer while pending.
     anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, collapse-chevron, dismiss-action, bounded-scroll-body, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, trailing-free-text-row, app-logo, integration-name, reason-line, explainer-line, connected-check, waiting-note]
     states: [single-step, multi-step, collapsed, with-options, single-option, recommended-option, free-text-only, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled]
-    variants: [choice, open-ended, signin, connect, provider-connect, mixed-sequence]
+    variants: [choice, open-ended, signin, connect, provider-connect, hands-on, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
       then at most one signin step, then connect steps, then approval steps —
@@ -510,6 +510,19 @@ components:
       opening a sign-in page, cancellation, and failed authentication never
       report success. Credentials stay in the secure connection flow, and the
       conversation receives only the provider's human-readable connection outcome.
+      HANDS-ON steps close the sequence, after the provider steps: an errand only
+      the person's own hands can finish on a Houston screen (billing, a key
+      revealed once, files on their device, destroying a shared space). The
+      screen is named from a CLOSED vocabulary, so the card always has a real
+      destination; one it does not recognise says so and leaves Skip as the way
+      on. Nothing can observe such an errand, so the card never claims to detect
+      completion: "Open {screen}" navigates to the screen (tearing this card
+      down and rebuilding it on return, so it holds no state), and "Done" beside
+      it plus the shared decline are the two honest answers. The composed reply
+      states which happened ("Opened {screen} and finished there." / "Skipped
+      opening {screen}.") so the agent is never left guessing, and the errand's
+      free-text decline relays the person's "do this instead" like every other
+      step's.
     a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps and follows the fixed footer on signin/connect/credential steps; the pager's Back/Forward chevrons, collapse chevron, and dismiss X are labeled icon buttons; collapsed cards retain one muted, truncated context line; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines). While collapsed, step shortcuts are inert; while a turn runs, every action except the collapse chevron is disabled. The "N of M" pager copy is visible text.
     since: 4
 

@@ -9,6 +9,7 @@ import {
 import { PLAN_READY_TOOL_NAME } from "./tools/plan-ready";
 import { READ_MISSION_TOOL_NAME } from "./tools/read-mission";
 import { REQUEST_CREDENTIAL_TOOL_NAME } from "./tools/request-credential";
+import { REQUEST_HANDS_ON_TOOL_NAME } from "./tools/request-hands-on";
 import { REQUEST_PROVIDER_CONNECTION_TOOL_NAME } from "./tools/request-provider-connection";
 import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
 import { SUGGEST_ACTIONS_TOOL_NAME } from "./tools/suggest-actions";
@@ -33,6 +34,7 @@ export const COORDINATOR_TOOL_NAMES: readonly string[] = [
   REQUEST_CONNECTION_TOOL_NAME,
   REQUEST_CREDENTIAL_TOOL_NAME,
   REQUEST_PROVIDER_CONNECTION_TOOL_NAME,
+  REQUEST_HANDS_ON_TOOL_NAME,
   SUGGEST_REUSABLE_TOOL_NAME,
   SUGGEST_ACTIONS_TOOL_NAME,
   PLAN_READY_TOOL_NAME,

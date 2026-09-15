@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v85 - 2026-09-14
+
+The interaction card gains a hands-on step: an errand the person finishes on a
+Houston screen themselves (billing, a key shown once, files from their device,
+destroying a shared space). It opens the screen for them and asks whether they
+finished or skipped, since nothing can observe the outcome.
+
 ## v84 - 2026-09-14
 
 The interaction card supports AI provider connections through the existing

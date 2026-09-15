@@ -47,7 +47,8 @@
       "question_other": "Seu agente tem perguntas para você.",
       "signin": "Seu agente precisa que você entre.",
       "connect": "Seu agente precisa que você conecte um aplicativo.",
-      "credential": "Seu agente precisa de uma chave de API para terminar."
+      "credential": "Seu agente precisa de uma chave de API para terminar.",
+      "handsOn": "Seu agente precisa que você termine algo no Houston."
     },
     "mentioned": {
       "title": "{{name}} mencionou você",

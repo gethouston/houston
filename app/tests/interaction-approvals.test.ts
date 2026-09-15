@@ -131,6 +131,9 @@ describe("a composed reply that answered an approval card", () => {
     skippedConnectNames: [],
     credentialedNames: [],
     skippedCredentialNames: [],
+    finishedScreens: [],
+    skippedScreens: [],
+    handsOnRedirects: [],
     connectRedirects: [],
     credentialRedirects: [],
     hasQuestionSteps: true,
@@ -147,6 +150,9 @@ describe("a composed reply that answered an approval card", () => {
     credentialRedirectLine: (n: string) => n,
     signinRedirectLine: (t: string) => t,
     credentialedFollowup: "",
+    handsOnLine: (s: string) => s,
+    handsOnSkippedLine: (s: string) => s,
+    handsOnRedirectLine: (s: string) => s,
   };
 
   it("leaves the reply body untouched: receipts ride their own field, never the text", () => {

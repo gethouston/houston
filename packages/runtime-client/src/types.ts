@@ -15,6 +15,7 @@ export type {
   ConversationSummary,
   CustomEndpoint,
   GenerateAgentResponse,
+  HandsOnSurface,
   InteractionOption,
   InteractionStep,
   LoginInfo,

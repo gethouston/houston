@@ -19,6 +19,7 @@ import {
 import { makeMissionTools } from "../../session/tools/missions";
 import { makePlanReadyTool } from "../../session/tools/plan-ready";
 import { makeReadMissionTool } from "../../session/tools/read-mission";
+import { makeRequestHandsOnTool } from "../../session/tools/request-hands-on";
 import { makeRequestProviderConnectionTool } from "../../session/tools/request-provider-connection";
 import { makeSaveLearningTool } from "../../session/tools/save-learning";
 import { makeSaveRoutineTool } from "../../session/tools/save-routine";
@@ -143,7 +144,7 @@ export function buildBridgedToolSet(
       // has the same reach as save_routine: execute/auto, never plan.
       ...(input.assistant ? makeAssistantTools(input.assistant) : []),
       ...(input.integrations || input.assistant
-        ? [makeRequestProviderConnectionTool()]
+        ? [makeRequestProviderConnectionTool(), makeRequestHandsOnTool()]
         : []),
       ...integrationTools(input),
       ...credentialTools({

@@ -65,6 +65,23 @@
   "interaction": {
     "providerReason": "Conecta {{name}} para que pueda continuar. Tus credenciales no se comparten en la conversación.",
     "providerUnavailable": "Este proveedor de IA no está disponible aquí. Omite este paso y pídeme que use otro proveedor.",
+    "handsOnTitle": "Abrir {{screen}}",
+    "handsOnReason": "Esta parte la tienes que hacer tú. Abre {{screen}} y termínala ahí.",
+    "handsOnExplainer": "Houston te lleva a la pantalla. Vuelve y avísame cuando termines.",
+    "handsOnOpen": "Abrir {{screen}}",
+    "handsOnDone": "Listo",
+    "handsOnLine": "Abriste {{screen}} y terminaste ahí.",
+    "handsOnSkippedLine": "Omitiste abrir {{screen}}.",
+    "handsOnRedirectLine": "No abrí {{screen}}. En vez de eso, haz esto: {{text}}",
+    "handsOnUnknownScreen": "esta pantalla",
+    "handsOnUnavailable": "Esta pantalla no está disponible en esta versión de Houston. Omite este paso y pídeme otra opción.",
+    "handsOnScreens": {
+      "apiKeys": "Claves de API",
+      "billing": "Facturación",
+      "files": "Archivos",
+      "routineWebhook": "Rutinas",
+      "orgDanger": "Zona de peligro"
+    },
     "cancelConnection": "Cancelar conexión",
     "connectedLine": "Conectaste {{name}}.",
     "signedInLine": "Sesión iniciada en Houston.",

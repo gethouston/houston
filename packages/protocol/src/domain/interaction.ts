@@ -17,6 +17,7 @@ import type {
 } from "./interaction-types";
 
 export type {
+  HandsOnSurface,
   InteractionOption,
   InteractionStep,
   PendingInteraction,
@@ -46,6 +47,18 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
       (v.reason === undefined || typeof v.reason === "string")
     );
   if (v.kind === "credential") return typeof v.toolkit === "string";
+  // Structural only, like `provider_connect`: this module carries no runtime
+  // relative imports (the app's node:test runner loads it by subpath and Node
+  // cannot follow an extensionless `./x`), so the closed surface vocabulary
+  // cannot be read here. `request_hands_on` refuses an unknown screen at the
+  // source and the card renders one it cannot open as unavailable.
+  if (v.kind === "hands_on")
+    return (
+      typeof v.surface === "string" &&
+      v.surface.length > 0 &&
+      (v.reason === undefined || typeof v.reason === "string") &&
+      (v.target === undefined || typeof v.target === "string")
+    );
   if (v.kind === "plan_ready") return typeof v.summary === "string";
   if (v.kind === "suggest_reusable")
     return (
