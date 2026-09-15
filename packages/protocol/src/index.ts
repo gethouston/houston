@@ -1,3 +1,4 @@
+export * from "./auto-continue";
 export * from "./claude-oauth";
 export * from "./conversation";
 export * from "./core";

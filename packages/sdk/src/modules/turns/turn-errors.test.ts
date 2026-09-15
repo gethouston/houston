@@ -1,6 +1,8 @@
 import { EngineError, FatalResumeError } from "@houston/runtime-client";
 import { describe, expect, it, vi } from "vitest";
 import {
+  ENGINE_RESTART_MESSAGE,
+  ENGINE_RESUMED_MESSAGE,
   engineVerdictMessage,
   isEngineWakingRejection,
   TURN_FAILED_MESSAGE,
@@ -102,5 +104,24 @@ describe("isEngineWakingRejection", () => {
       rejects(502, { error: "the host is shutting down; retry shortly" }),
     ).toBe(false);
     expect(isEngineWakingRejection(new TypeError("Load failed"))).toBe(false);
+  });
+});
+
+// The app renders these two lines translated, matching on the exact value
+// (`app/src/lib/engine-restart-line.ts`), and its locale suite
+// (`app/tests/engine-restart-copy.test.ts`) pins the same literals from the
+// other side — it cannot import this module. Changing the wording here alone
+// leaves the user reading English, so the literals are pinned.
+describe("engine-restart copy", () => {
+  it("says what the user must do after a restart with no resume", () => {
+    expect(ENGINE_RESTART_MESSAGE).toBe(
+      "Your agent had to restart. Say continue and it will pick up where it left off.",
+    );
+  });
+
+  it("asks for nothing when the engine is already picking the turn back up", () => {
+    expect(ENGINE_RESUMED_MESSAGE).toBe(
+      "Your agent was interrupted by a restart and is picking up where it left off.",
+    );
   });
 });

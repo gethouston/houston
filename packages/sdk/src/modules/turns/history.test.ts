@@ -1,3 +1,4 @@
+import { AUTO_CONTINUE_MARKER } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { describe, expect, it } from "vitest";
 import { historyToFeed } from "./history";
@@ -27,6 +28,30 @@ describe("historyToFeed", () => {
         ts: 2,
       },
     ]);
+  });
+
+  it("folds away a hidden auto-continue prompt — no surface renders the marker", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "render the deck", ts: 1, turnId: "t-1" },
+      {
+        role: "user",
+        content: `${AUTO_CONTINUE_MARKER}\n\nA restart interrupted your reply`,
+        ts: 2,
+        turnId: "t-2",
+      },
+      { role: "assistant", content: "done", ts: 3, turnId: "t-2" },
+    ]);
+    expect(feed.filter((f) => f.feed_type === "user_message")).toEqual([
+      {
+        feed_type: "user_message",
+        data: "render the deck",
+        author: undefined,
+        mentions: undefined,
+        ts: 1,
+        turnId: "t-1",
+      },
+    ]);
+    expect(feed.some((f) => f.feed_type === "assistant_text")).toBe(true);
   });
 
   it("renders displayText as the user bubble when the stored prompt carried hidden text", () => {
@@ -296,6 +321,25 @@ describe("historyToFeed", () => {
       feed_type: "system_message",
       data: "Stopped by user",
       ts: 2,
+    });
+  });
+
+  it("replays the RESUMED line for an interruption the engine is already picking up", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "export it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        interrupted: { cause: "engine_restart", resumed: true },
+      },
+    ]);
+    expect(feed).toContainEqual({
+      feed_type: "system_message",
+      data: "Your agent was interrupted by a restart and is picking up where it left off.",
+      ts: 2,
+      turnId: "t-1",
     });
   });
 

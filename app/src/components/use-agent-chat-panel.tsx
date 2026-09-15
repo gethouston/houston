@@ -95,6 +95,7 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
+import { engineRestartLine } from "../lib/engine-restart-line";
 import {
   genericErrorDescription,
   logAndReportError,
@@ -194,6 +195,7 @@ import {
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { SkillCard } from "./skill-card";
 import { skillIntegrationChips } from "./skill-integration-chips";
+import { SystemNote } from "./system-note";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
 import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
 import { useChatSenderAvatars } from "./use-chat-sender-avatars";
@@ -2090,6 +2092,13 @@ export function useAgentChatPanel({
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
+      // The two engine-restart lines the SDK authors in English (PRODUCT-1785):
+      // render the same centered note with the user's own language.
+      const restart = engineRestartLine(msg.content);
+      if (restart === "sayContinue")
+        return <SystemNote text={t("chat:engineRestart.sayContinue")} />;
+      if (restart === "resuming")
+        return <SystemNote text={t("chat:engineRestart.resuming")} />;
       return undefined;
     },
     [

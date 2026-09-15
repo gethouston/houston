@@ -165,6 +165,7 @@ export {
 } from "./stream-registry";
 export {
   ENGINE_RESTART_MESSAGE,
+  ENGINE_RESUMED_MESSAGE,
   isEngineWakingRejection,
   isNotConnectedError,
   isStoppedByUser,

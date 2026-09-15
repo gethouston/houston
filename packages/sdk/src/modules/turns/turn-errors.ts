@@ -129,6 +129,17 @@ export const ENGINE_RESTART_MESSAGE =
   "Your agent had to restart. Say continue and it will pick up where it left off.";
 
 /**
+ * The line for a turn the engine died on and is ALREADY running again by
+ * itself (`interrupted.resumed`, PRODUCT-1785). Same shape as
+ * {@link ENGINE_RESTART_MESSAGE} and the same product voice, minus the ask:
+ * there is nothing for the user to do, so the copy only accounts for the pause
+ * they saw. A turn that renders this must not settle as an error — the work is
+ * still going (see `finishResumed`).
+ */
+export const ENGINE_RESUMED_MESSAGE =
+  "Your agent was interrupted by a restart and is picking up where it left off.";
+
+/**
  * Whether a turn's terminal error is the user pressing Stop — the verbatim
  * message the runtime (and the control plane's relay) emit on a cancel. This is
  * an intentional, handled stop, not a turn failure, so the UI shows the message
