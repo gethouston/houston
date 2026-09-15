@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { LruCache } from "../lru";
 import type { StoredConversation } from "./conversation-file";
@@ -116,8 +117,9 @@ export function archiveOlderMessages(
   const file = segmentFileFor(dir, conv.id, n);
   mkdirSync(archiveDirFor(dir, conv.id), { recursive: true });
   const body: SegmentFile = { id: conv.id, segment: n, messages: moved };
-  writeFileSync(`${file}.tmp`, JSON.stringify(body));
-  renameSync(`${file}.tmp`, file);
+  const tmp = atomicTempPath(file);
+  writeFileSync(tmp, JSON.stringify(body));
+  renameSync(tmp, file);
   segments.delete(file);
   conv.messages = conv.messages.slice(cut);
   conv.archived = {

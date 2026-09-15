@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import { accessDigestMatches } from "@houston/protocol/access-digest";
 import type { WorkspaceId } from "../domain/types";
 import type {
@@ -73,7 +74,7 @@ export class FileCredentialStore implements CredentialStore {
   }
 
   private flush(): void {
-    const tmp = `${this.path}.tmp`;
+    const tmp = atomicTempPath(this.path);
     writeFileSync(tmp, JSON.stringify([...this.creds.values()], null, 2), {
       encoding: "utf8",
       mode: 0o600,

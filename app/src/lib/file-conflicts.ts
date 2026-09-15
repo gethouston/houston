@@ -1,10 +1,12 @@
 /**
- * Client-side move-conflict detection for the Files section. The listing already
- * holds the whole workspace, so a name collision is known before calling the
- * host's `files/move` (which 409s on clobber) — letting the UI offer
- * Replace / Keep both instead of surfacing an error toast.
+ * Client-side name-collision detection for the Files section. The listing
+ * already holds the whole workspace, so a collision is known before calling the
+ * host's `files/move` or `files/rename` (both 409 on clobber): a move offers
+ * Replace / Keep both, a rename says the name is taken, and neither costs the
+ * user a round trip that could only end in a refusal.
  */
 import type { FileEntry } from "@houston-ai/agent";
+import { engineErrorCode } from "./engine-error-code.ts";
 
 /** Where `sourcePath` would land when moved into `toDir` (null = root). */
 export function moveTargetPath(
@@ -46,6 +48,55 @@ export function detectMoveConflict(
     };
   }
   return { kind: "clear" };
+}
+
+export type RenameConflict =
+  /** The name it already has: silently do nothing. */
+  | { kind: "noop" }
+  /** A sibling (file OR folder) already carries this name. */
+  | { kind: "conflict"; targetPath: string; name: string }
+  /** Free to rename. */
+  | { kind: "clear" };
+
+/**
+ * A rename keeps the item in its folder, so the collision is with a sibling.
+ * `hasEntry` counts a folder as taken too, which is exactly right here: one
+ * name is one entry, and a file cannot share it with a folder.
+ */
+export function detectRenameConflict(
+  files: readonly FileEntry[],
+  sourcePath: string,
+  newName: string,
+): RenameConflict {
+  const slash = sourcePath.lastIndexOf("/");
+  const targetPath =
+    slash === -1 ? newName : `${sourcePath.slice(0, slash + 1)}${newName}`;
+  if (targetPath === sourcePath) return { kind: "noop" };
+  if (hasEntry(files, targetPath)) {
+    return { kind: "conflict", targetPath, name: newName };
+  }
+  return { kind: "clear" };
+}
+
+/**
+ * The host's machine-readable reason for a refused rename or move (`FileOpCode`
+ * in `packages/host/src/turn/files-path.ts`, answered beside the 409).
+ */
+export const NAME_TAKEN_CODE = "name_taken";
+
+/**
+ * True when the host refused a rename because the name is taken — the race the
+ * listing cannot close: another writer, or the agent itself, took the name
+ * between the listing the UI read and the rename it sent.
+ *
+ * Keyed on the CODE, never the status and never the English message (the
+ * host's wording is not a contract). The status is what this used to read, and
+ * it cannot identify a state: the day `files/rename` grows a second 409 — a
+ * quota, a lock, a read-only workspace — every one of them would be explained
+ * to the user as a name collision and silenced from Sentry along with it.
+ */
+export function isNameTakenError(err: unknown): boolean {
+  return engineErrorCode(err) === NAME_TAKEN_CODE;
 }
 
 /**

@@ -18,7 +18,8 @@ export function assistantDeploymentRoute(
       (request.method === "GET" || request.method === "POST")) ||
     (rest === "detect" && request.method === "POST") ||
     (/^definitions\/[^/]+\/tools$/.test(rest) && request.method === "GET") ||
-    (/^definitions\/[^/]+$/.test(rest) && request.method === "DELETE");
+    (/^definitions\/[^/]+$/.test(rest) &&
+      (request.method === "DELETE" || request.method === "PATCH"));
   const slug = deployment.gatewayAgentId;
   if (!allowed || !slug || !safeSegment(slug)) return null;
   return {

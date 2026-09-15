@@ -129,6 +129,72 @@ export async function deleteThing(
   });
 }
 
+/**
+ * The optional window: two keys the caller may omit, assembled conditionally,
+ * which is the only way a source can spell a query key that is sometimes absent.
+ *
+ * @assistant group:agents
+ */
+export async function auditThings(
+  cfg: ControlPlaneConfig,
+  before?: number,
+  limit?: number,
+): Promise<Thing[]> {
+  const q = new URLSearchParams();
+  if (before !== undefined) q.set("before", before.toString());
+  if (limit !== undefined) q.set("limit", limit.toString());
+  const suffix = q.toString();
+  const res = await cpFetch(
+    cfg,
+    `/v1/things/audit${suffix ? `?${suffix}` : ""}`,
+  );
+  return (await res.json()) as Thing[];
+}
+
+/**
+ * A key set under a test that SELECTS a value rather than guarding one: the
+ * query carries `deep=false` exactly when the caller asked for the opposite.
+ *
+ * @assistant group:agents
+ */
+export async function pollThings(
+  cfg: ControlPlaneConfig,
+  id: string,
+  deep = true,
+): Promise<void> {
+  const q = new URLSearchParams();
+  if (!deep) q.set("deep", "false");
+  const suffix = q.toString();
+  await cpFetch(
+    cfg,
+    `/v1/things/${encodeURIComponent(id)}/poll${suffix ? `?${suffix}` : ""}`,
+  );
+}
+
+/** Seeds a params object with whatever the deployment adds to every sweep. */
+declare function seedDefaults(params: URLSearchParams): void;
+
+/**
+ * The params object is handed on, so what its query carries is decided
+ * somewhere this call site cannot read.
+ *
+ * @assistant group:agents
+ */
+export async function sweepThings(
+  cfg: ControlPlaneConfig,
+  id: string,
+  tag?: string,
+): Promise<void> {
+  const q = new URLSearchParams();
+  if (tag !== undefined) q.set("tag", tag);
+  seedDefaults(q);
+  const suffix = q.toString();
+  await cpFetch(
+    cfg,
+    `/v1/things/${encodeURIComponent(id)}/sweep${suffix ? `?${suffix}` : ""}`,
+  );
+}
+
 /** Pure client-side computation: no request, so no operation. */
 export function thingLabel(thing: Thing): string {
   return thing.id.toUpperCase();

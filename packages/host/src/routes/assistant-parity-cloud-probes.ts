@@ -37,6 +37,7 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("deleteOrgInvite", SPACES, NO_INVITE),
   cloudOnly("acceptOrgInvite", SPACES, NO_INVITE),
   cloudOnly("declineOrgInvite", SPACES, NO_INVITE),
+  cloudOnly("deleteOrg", SPACES, { slug: "no-such-space" }),
   cloudOnly("moveAgent", SPACES, { ...AGENT, toSlug: "no-such-space" }),
   cloudOnly("getMoveStatus", SPACES, { ...AGENT, moveId: "no-such-move" }),
 
@@ -64,6 +65,10 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     "usage is metered by the gateway that bills for it",
     { days: 1 },
   ),
+  cloudOnly(
+    "orgAudit",
+    "the record of who did what is written by the gateway that authorizes them",
+  ),
 
   // Teams, and the per-agent ceilings a manager sets through them.
   cloudOnly("listAgentTeams", TEAMS),
@@ -78,6 +83,10 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     owner: false,
   }),
   cloudOnly("setAgentTeam", TEAMS, { ...AGENT, teamId: "no-such-team" }),
+  cloudOnly("setAgentAssignments", PER_AGENT_POLICY, {
+    ...AGENT,
+    assignments: [],
+  }),
   cloudOnly("getAgentSettings", PER_AGENT_POLICY, AGENT),
   cloudOnly("setAgentSettings", PER_AGENT_POLICY, { ...AGENT, settings: {} }),
   cloudOnly("getAgentModelChoice", PER_AGENT_POLICY, AGENT),
@@ -101,5 +110,10 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly(
     "listApiKeys",
     "personal API keys authenticate against the hosted public API",
+  ),
+  cloudOnly(
+    "revokeApiKey",
+    "personal API keys authenticate against the hosted public API",
+    { id: "no-such-key" },
   ),
 ];

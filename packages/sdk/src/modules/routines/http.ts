@@ -47,14 +47,13 @@ export async function listRoutines(
 /**
  * Creates a routine so an agent repeats work on a schedule.
  *
- * Confirmed: money. A routine keeps firing on its own schedule once it exists,
- * spending model budget on every run until someone stops it.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param input The routine to create: a name, the instructions it runs
  *   (`prompt`), and WHEN it runs - either `schedule`, a cron expression, or
  *   `trigger`, an event binding. Exactly one of the two.
- * @assistant group:routines confirm
+ * @assistant group:routines
+ * @assistant confirm: money. A routine keeps firing on its own schedule once it exists, spending model budget on every run until someone stops it.
  * @assistant unschematized: a trigger binding carries the outside app's own event config, whose shape belongs to that app.
  */
 export async function createRoutine(
@@ -73,15 +72,14 @@ export async function createRoutine(
 /**
  * Updates a routine's schedule or instructions.
  *
- * Confirmed: money. A schedule edit retargets recurring spend, changing how
- * often the agent runs and is billed from then on.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param id The routine to change, by the id listRoutines returns.
  * @param updates Only the fields that change; anything omitted is left as
  *   it was. `schedule` and `trigger` are the two wake mechanisms: setting one
  *   replaces the other.
- * @assistant group:routines confirm
+ * @assistant group:routines
+ * @assistant confirm: money. A schedule edit retargets recurring spend, changing how often the agent runs and is billed from then on.
  * @assistant unschematized: a trigger binding carries the outside app's own event config, whose shape belongs to that app.
  */
 export async function updateRoutine(
@@ -103,7 +101,8 @@ export async function updateRoutine(
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @param id The routine to delete, by the id listRoutines returns.
- * @assistant group:routines confirm
+ * @assistant group:routines
+ * @assistant confirm: irreversible. The schedule and the instructions it ran are gone, and the routine has to be written again from scratch.
  */
 export async function deleteRoutine(
   scope: HttpScope,

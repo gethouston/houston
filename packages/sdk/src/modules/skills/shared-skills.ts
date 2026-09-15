@@ -73,7 +73,7 @@ export async function loadSharedSkill(
  *   listWorkspaces returns.
  * @param body The new shared skill: its name, a one-line description, and
  *   the instructions themselves.
- * @assistant group:skills confirm
+ * @assistant group:skills unconfirmed: Adds a new shared skill without changing or removing an existing one.
  */
 export async function createSharedSkill(
   scope: HttpScope,
@@ -95,7 +95,8 @@ export async function createSharedSkill(
  * @param slug The shared skill's exact slug, from listSharedSkills. Never
  *   invent one.
  * @param content The skill's full text as it should be shared.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: outward. It publishes the skill to everyone in the workspace, and a shared skill already under that name is refused rather than replaced.
  */
 export async function promoteSharedSkill(
   scope: HttpScope,
@@ -119,7 +120,8 @@ export async function promoteSharedSkill(
  *   invent one.
  * @param content The skill's full new text. It replaces what was there, so
  *   send the whole thing.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: irreversible. It replaces the shared skill's text for everyone at once, and no earlier version is kept.
  */
 export async function saveSharedSkill(
   scope: HttpScope,
@@ -140,7 +142,8 @@ export async function saveSharedSkill(
  *   listWorkspaces returns.
  * @param slug The shared skill's exact slug, from listSharedSkills. Never
  *   invent one.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: irreversible. The skill disappears for everyone in the workspace and Houston keeps no copy.
  */
 export async function deleteSharedSkill(
   scope: HttpScope,

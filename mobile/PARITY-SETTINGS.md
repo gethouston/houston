@@ -118,13 +118,14 @@ Copy: `integrations.json` — title "Integrations", `.home.description`, `.statu
 Finishing up / Needs reconnecting), `.waiting.*`, disconnect confirms, `.agentTab.*`,
 `.connectMore.title`, `.picker.*`, `.browse.*`, recovery keys.
 
-## 4. SDK gaps (as of extraction)
+## 4. SDK surface these screens bind
 
-- providers: wire exists on runtime-client; NO SDK module → build `providers` module (per-agent).
-- integrations: absent from runtime-client (only ui/engine-client) → add user-scoped methods to
-  runtime-client + SDK `integrations` module (keep 404→null and 503 semantics).
-- preferences/locale: absent from runtime-client → add GET/PUT /preferences/:key +
-  PATCH /workspaces/:id/locale + SDK module.
+- providers: per-agent. `@houston/sdk` `providers` module over the runtime-client `HoustonEngineClient`
+  — `/providers`, `/settings`, and the credential routes on `EngineCredentialClient` (`/auth/*`).
+- integrations: user-scoped. `IntegrationsClient` (`@houston/runtime-client`) under the SDK
+  `integrations` module, which keeps the 404→null and 503 semantics.
+- preferences/locale: user-scoped. `PreferencesClient` (`@houston/runtime-client`) — GET/PUT
+  `/v1/preferences/:key` + PATCH `/v1/workspaces/:id` — under the SDK `preferences` module.
 
 ## 5. iOS IA (mirror desktop nav names/order)
 

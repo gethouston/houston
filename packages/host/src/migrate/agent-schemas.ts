@@ -7,6 +7,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { FAMILIES, schemaDoc } from "@houston/domain";
+import { atomicTempPath } from "@houston/protocol";
 import { agentRoots } from "./chat-history";
 
 /**
@@ -36,7 +37,9 @@ export interface ReseedSchemasResult {
 /** Write via tmp + rename so a crash mid-write never leaves a torn schema. */
 function writeAtomic(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true });
-  const tmp = join(dirname(path), `.${Date.now()}-${Math.random()}.tmp`);
+  const tmp = atomicTempPath(
+    join(dirname(path), `.${Date.now()}-${Math.random()}`),
+  );
   writeFileSync(tmp, content, "utf8");
   renameSync(tmp, path);
 }

@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import type { ProviderUsageTokens, TokenUsage } from "@houston/runtime-client";
 import { config } from "../../config";
 
@@ -78,7 +79,7 @@ export function recordTokenSpend(
     };
     const path = ledgerPath(dataDir);
     mkdirSync(dirname(path), { recursive: true });
-    const tmp = `${path}.tmp`;
+    const tmp = atomicTempPath(path);
     writeFileSync(tmp, JSON.stringify(ledger, null, 2), "utf8");
     renameSync(tmp, path);
   } catch (err) {

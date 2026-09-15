@@ -69,13 +69,12 @@ export async function createAgentTeam(
  * valid, `""` is an empty context rather than a CLEAR, and it is never
  * trimmed.
  *
- * Confirmed: outward. A rename, a restyle or a note edit lands in front of
- * every teammate at once, and the previous values are not kept.
  * @param teamId The team this acts on, by the id listAgentTeams returns.
  * @param patch Only what changes. A colour is one of Houston's ten palette
  *   colours or a literal #rrggbb, an empty string clears one, and an omitted
  *   key leaves the field alone. Omit the icon unless the user named one.
- * @assistant group:teams confirm
+ * @assistant group:teams
+ * @assistant confirm: outward. A rename, a restyle or a note edit lands in front of every teammate at once, and the previous values are not kept.
  */
 export async function updateAgentTeam(
   scope: HttpScope,
@@ -95,7 +94,8 @@ export async function updateAgentTeam(
  *
  * Delete a team; its agents fall back to the default one.
  * @param teamId The team this acts on, by the id listAgentTeams returns.
- * @assistant group:teams confirm
+ * @assistant group:teams
+ * @assistant confirm: irreversible. The team is gone for everyone, and its agents fall back to the default one.
  */
 export async function deleteAgentTeam(
   scope: HttpScope,

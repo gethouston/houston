@@ -1,5 +1,6 @@
 import type { Vfs } from "../vfs";
-import { FileOpError, FilePathError, fileKey, safeRel } from "./files-ops";
+import { loadWorkspaceKeys } from "./files-names";
+import { FileOpError, FilePathError, fileKey, safeRel } from "./files-path";
 
 /**
  * Uploads into an agent's workspace — the upload half of the Files tab
@@ -118,8 +119,11 @@ export function parseImportBody(body: Record<string, unknown>): {
 }
 
 /** Pick a unique rel path, appending " (n)" before the extension while taken. */
-function dedupeRel(rel: string, taken: (r: string) => boolean): string {
-  if (!taken(rel)) return rel;
+async function dedupeRel(
+  rel: string,
+  taken: (r: string) => Promise<boolean>,
+): Promise<string> {
+  if (!(await taken(rel))) return rel;
   const slash = rel.lastIndexOf("/");
   const dirPart = slash === -1 ? "" : rel.slice(0, slash + 1);
   const name = slash === -1 ? rel : rel.slice(slash + 1);
@@ -128,7 +132,7 @@ function dedupeRel(rel: string, taken: (r: string) => boolean): string {
   const ext = dot > 0 ? name.slice(dot) : "";
   for (let n = 1; ; n++) {
     const candidate = `${dirPart}${stem} (${n})${ext}`;
-    if (!taken(candidate)) return candidate;
+    if (!(await taken(candidate))) return candidate;
   }
 }
 
@@ -150,17 +154,28 @@ export async function importWorkspaceFiles(
   files: readonly UploadFile[],
 ): Promise<string[]> {
   const target = dir === null ? "" : safeRel(dir);
-  const existing = new Set((await vfs.listDetailed(root)).map((s) => s.key));
-  const planned = files.map((f) => {
-    const name = f.relPath
-      ? safeUploadRelPath(f.relPath)
-      : safeUploadName(f.name);
-    const rel = dedupeRel(target ? `${target}/${name}` : name, (r) =>
-      existing.has(fileKey(root, r)),
+  // Compared the storage's way: on a case-insensitive disk an upload named
+  // `report.pdf` lands ON the existing `Report.pdf`, so an exact-string dedupe
+  // hands the user a "saved" that silently replaced their file.
+  const existing = await loadWorkspaceKeys(vfs, root);
+  const planned: { file: UploadFile; rel: string }[] = [];
+  for (const file of files) {
+    const name = file.relPath
+      ? safeUploadRelPath(file.relPath)
+      : safeUploadName(file.name);
+    // The key set answers for this batch's own files (nothing is written until
+    // every path is validated) and the storage answers for the disk, because a
+    // volume's fold table is not `toLowerCase()`'s: on APFS an upload named
+    // `STRASSE.txt` opens a stored `straße.txt` and replaces its contents, and
+    // a composed `informe-españa.pdf` opens the decomposed one macOS stored.
+    const rel = await dedupeRel(
+      target ? `${target}/${name}` : name,
+      async (r) =>
+        existing.has(fileKey(root, r)) || (await vfs.exists(fileKey(root, r))),
     );
     existing.add(fileKey(root, rel));
-    return { file: f, rel };
-  });
+    planned.push({ file, rel });
+  }
   for (const { file, rel } of planned) {
     await vfs.writeBytes(
       fileKey(root, rel),

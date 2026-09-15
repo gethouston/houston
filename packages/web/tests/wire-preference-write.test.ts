@@ -64,6 +64,30 @@ test("setPreference carries the live x-houston-org for the active team space", a
   expect(calls[0].headers.get("x-houston-org")).toBe(ORG);
 });
 
+test("clearing an account preference PUTs a null value", async () => {
+  // `null` is a real value on the wire, not "skip the write": the host stores
+  // it, which is how a preference is unset.
+  stubFetch(json(200, { value: null }));
+
+  await client(true).setPreference("locale", null);
+
+  expect(calls).toHaveLength(1);
+  expect(calls[0].method).toBe("PUT");
+  expect(calls[0].url).toBe(`${BASE}/v1/preferences/locale`);
+  expect(calls[0].body).toBe(JSON.stringify({ value: null }));
+});
+
+test("clearing a DEVICE preference removes the entry, never stores 'null'", async () => {
+  const c = client(true);
+  await c.setPreference("theme", "dark");
+  expect(await c.getPreference("theme")).toBe("dark");
+
+  await c.setPreference("theme", null);
+
+  expect(await c.getPreference("theme")).toBeNull();
+  expect(calls).toHaveLength(0); // device keys never reach the gateway
+});
+
 test("a failed preference write propagates — never swallowed", async () => {
   stubFetch(json(500, { error: "boom" }));
 

@@ -17,6 +17,7 @@ import { expect, test } from "vitest";
 import { runVfsContract } from "../testing/vfs-contract";
 import { LazyStoreVfs } from "./lazy-store";
 import { LazyReadRefusedError, UNREAD_HASH } from "./lazy-store-types";
+import { VfsExistsError } from "./vfs";
 
 const PREFIX = "ws/w1/agent-1";
 
@@ -237,4 +238,16 @@ test("an object deleted remotely after the listing reads as absent, not a failur
   await expect(
     vfs.move("workspaces/P/Bob/docs/notes.md", "workspaces/P/Bob/n.md"),
   ).rejects.toThrow("move: source not found");
+});
+
+test("a folder dropped on a NON-EMPTY folder refuses the way the Files tab reads", async () => {
+  // The refusal has to be TYPED: `moveOrRefuse` turns a VfsExistsError into
+  // the 409 "already exists there" the user sees, and anything else escapes as
+  // an unexpected 500 for a collision the user can fix by renaming.
+  const { vfs } = await seeded({ "workspaces/P/Bob/archive/old.md": "old" });
+  await expect(
+    vfs.move("workspaces/P/Bob/docs", "workspaces/P/Bob/archive"),
+  ).rejects.toBeInstanceOf(VfsExistsError);
+  expect(await vfs.readText("workspaces/P/Bob/archive/old.md")).toBe("old");
+  expect(await vfs.readText("workspaces/P/Bob/docs/notes.md")).toBe("notes");
 });

@@ -69,7 +69,8 @@ export async function agentCustomIntegrationTools(
  *   An agent's name is not its id, so read the id from listAgents first.
  * @param input The connector to add: where its API description lives and
  *   how it authenticates.
- * @assistant group:integrations confirm
+ * @assistant group:integrations
+ * @assistant confirm: outward. Houston starts calling an address the user supplied on this agent's behalf, with whatever credential is attached to it.
  * @assistant unschematized: the input's headers is an open record of header name to value.
  */
 export async function addAgentCustomIntegration(
@@ -91,7 +92,8 @@ export async function addAgentCustomIntegration(
  *   An agent's name is not its id, so read the id from listAgents first.
  * @param slug The custom integration's exact slug, from
  *   agentCustomIntegrations.
- * @assistant group:integrations confirm
+ * @assistant group:integrations
+ * @assistant confirm: irreversible. The agent loses that app, and setting it up again means pasting its address and credential from scratch.
  */
 export async function removeAgentCustomIntegration(
   scope: HttpScope,
@@ -112,7 +114,7 @@ export async function removeAgentCustomIntegration(
  * @param slug The custom integration's exact slug, from
  *   agentCustomIntegrations.
  * @param details The display name and website the card shows.
- * @assistant group:integrations hidden: cosmetic edit form; connection identity is unchanged.
+ * @assistant group:integrations unconfirmed: Corrects the name and website on the card; the connection itself, its address and its credential are untouched.
  */
 export async function updateAgentCustomIntegrationDetails(
   scope: HttpScope,
@@ -135,7 +137,8 @@ export async function updateAgentCustomIntegrationDetails(
  *   agentCustomIntegrations.
  * @param values The credential fields the integration asked for, keyed by
  *   field name.
- * @assistant group:integrations confirm hidden: takes a secret; the user pastes the integration's own credential.
+ * @assistant group:integrations confirm: outward. It hands a secret to a third-party service Houston then acts against on this agent's behalf.
+ * @assistant hidden: takes a secret; the user pastes the integration's own credential.
  */
 export async function submitAgentCustomIntegrationCredential(
   scope: HttpScope,
@@ -176,12 +179,11 @@ export async function startAgentCustomIntegrationOAuth(
  * Checks what kind of service a link the user pasted points to, from one
  * agent's runtime.
  *
- * Confirmed: outward. Houston fetches whatever URL it is handed, so a
- * model-supplied address makes Houston's own network reach a stranger's host.
  * @param agentSlugOrId The agent this acts on, by the id listAgents returns.
  *   An agent's name is not its id, so read the id from listAgents first.
  * @param url The full https address of the service's API description.
- * @assistant group:integrations confirm
+ * @assistant group:integrations
+ * @assistant confirm: outward. Houston fetches whatever URL it is handed, so a model-supplied address makes this agent's own network reach a stranger's host.
  */
 export async function detectAgentCustomIntegration(
   scope: HttpScope,

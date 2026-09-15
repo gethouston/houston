@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  atomicTempPath,
   type ManagedBridgeEndpoint,
   ManagedBridgeEndpointSchema,
 } from "@houston/protocol";
@@ -37,7 +38,7 @@ export function load(dataDir: string = config.dataDir): StoredEndpoint {
 
 export function writeEndpointFileIn(dataDir: string, e: StoredEndpoint): void {
   const file = endpointFileIn(dataDir);
-  const tmp = `${file}.tmp`;
+  const tmp = atomicTempPath(file);
   writeFileSync(tmp, JSON.stringify(e, null, 2));
   renameSync(tmp, file);
 }

@@ -69,7 +69,6 @@ export interface ComputeUsage {
  *   starts at the newest entry.
  * @param limit How many entries to read; omitted takes the host's own page size.
  * @assistant group:org
- * @assistant unroutable: debt: both bounds are optional, so the query is assembled conditionally and the path template the generator reads cannot spell a key that is sometimes absent; routable once a route may declare an optional query key, which the dispatcher already drops when the caller omits it.
  * @assistant unschematized: an audit entry's subject varies per event type and carries the changed record verbatim.
  */
 export async function orgAudit(

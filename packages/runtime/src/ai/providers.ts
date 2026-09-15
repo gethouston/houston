@@ -10,6 +10,7 @@ import { type BuiltinProvider, getModel } from "@earendil-works/pi-ai/compat";
 import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import { toCanonicalProviderId } from "@houston/domain/provider-dialect";
 import type { ProviderHealth } from "@houston/protocol";
+import { atomicTempPath } from "@houston/protocol";
 import {
   authFailureActive,
   quotaExhaustedActive,
@@ -221,7 +222,7 @@ function loadSettings(): Settings {
 }
 
 function saveSettings(s: Settings) {
-  const tmp = `${settingsFile}.tmp`;
+  const tmp = atomicTempPath(settingsFile);
   writeFileSync(tmp, JSON.stringify(s, null, 2));
   renameSync(tmp, settingsFile);
 }

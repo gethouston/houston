@@ -104,7 +104,8 @@ export async function listSkillsFromRepo(
  *   agent's name is not its id, so read the id from listAgents first.
  * @param body The skill to install, with the source and id exactly as
  *   searchCommunitySkills returned them.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: standing instruction. The agent starts following instructions written outside the workspace, in every later turn.
  */
 export async function installCommunitySkill(
   scope: HttpScope,
@@ -126,7 +127,8 @@ export async function installCommunitySkill(
  *   agent's name is not its id, so read the id from listAgents first.
  * @param body The repository address, and the skills from
  *   listSkillsFromRepo to install.
- * @assistant group:skills confirm
+ * @assistant group:skills
+ * @assistant confirm: standing instruction. The agent starts following instructions from a repository the user has not read, in every later turn.
  */
 export async function installSkillsFromRepo(
   scope: HttpScope,

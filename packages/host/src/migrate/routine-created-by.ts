@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import { agentRoots } from "./chat-history";
 
 /**
@@ -41,7 +42,9 @@ const isRecord = (v: unknown): v is Record<string, unknown> =>
 /** Write via tmp + rename so a crash mid-write never leaves a torn doc. */
 function writeAtomic(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true });
-  const tmp = join(dirname(path), `.${Date.now()}-${Math.random()}.tmp`);
+  const tmp = atomicTempPath(
+    join(dirname(path), `.${Date.now()}-${Math.random()}`),
+  );
   writeFileSync(tmp, content, "utf8");
   renameSync(tmp, path);
 }

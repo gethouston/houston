@@ -3,9 +3,14 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DESKTOP_NATIVE_COMMANDS } from "../../app/src/lib/desktop-native-commands.ts";
 import { listRoutes } from "../../packages/host/src/routes/registry/all.ts";
+import type {
+  AssistantParameter,
+  AssistantRoute,
+} from "../../ui/engine-client/scripts/assistant-catalog-types.ts";
 import { extractCatalog } from "../../ui/engine-client/scripts/assistant-extractor.ts";
 import { assistantPaths } from "../../ui/engine-client/scripts/assistant-paths.ts";
 import { type AdapterMethod, classifyAdapter } from "./adapter-methods.ts";
+import { routePaths } from "./route-paths.ts";
 
 /** The four client/route sources the parity report joins, and the join key. */
 
@@ -30,7 +35,14 @@ export interface GatewayRoute {
 
 export interface SdkMethod {
   name: string;
+  /** The parameterised key, and the identity an exception addresses. */
   key: string;
+  /**
+   * Every key the method binds: `key`, plus one per member of a path parameter
+   * the catalog closes to a fixed set (see {@link routePaths}). A server that
+   * declares a member literally binds through one of those.
+   */
+  keys: string[];
 }
 
 /**
@@ -71,24 +83,6 @@ export { listRoutes };
 export function readGateway(): GatewayRoute[] | null {
   if (!existsSync(gatewayExport)) return null;
   return JSON.parse(readFileSync(gatewayExport, "utf8")) as GatewayRoute[];
-}
-
-/**
- * The catalog path with its whole-subtree parameters spelled as such: an SDK
- * parameter escaped per segment keeps its `/`s, so `{relPath}` addresses the
- * same slot the host declares as `*rest`, not one segment of it.
- */
-function restSpelled(route: {
-  path: string;
-  pathParams: { name: string; encoding: string }[];
-}): string {
-  return route.pathParams.reduce(
-    (path, param) =>
-      param.encoding === "path"
-        ? path.replaceAll(`{${param.name}}`, "{...}")
-        : path,
-    route.path,
-  );
 }
 
 /**
@@ -142,6 +136,24 @@ export function desktopCalls(): DesktopCalls {
   };
 }
 
+/**
+ * One `@houston/sdk` method as the report joins it: the route it issues, under
+ * every key it binds.
+ */
+export function sdkMethodOf(
+  name: string,
+  route: AssistantRoute,
+  params: AssistantParameter[],
+): SdkMethod {
+  const [path, ...members] = routePaths(route, params);
+  const key = keyOf(route.method, path);
+  return {
+    name,
+    key,
+    keys: [key, ...members.map((member) => keyOf(route.method, member))],
+  };
+}
+
 export function sdkMethods(): {
   routed: SdkMethod[];
   unroutable: { name: string; reason: string }[];
@@ -158,12 +170,7 @@ export function sdkMethods(): {
   return {
     routed: catalog.operations.flatMap((operation) =>
       operation.route
-        ? [
-            {
-              name: operation.name,
-              key: keyOf(operation.route.method, restSpelled(operation.route)),
-            },
-          ]
+        ? [sdkMethodOf(operation.name, operation.route, operation.params)]
         : [],
     ),
     unroutable: coverage.unroutable,

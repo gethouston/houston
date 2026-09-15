@@ -39,7 +39,8 @@ export async function listInstalledConfigs(
  * Installs an agent from a GitHub repository.
  * @param githubUrl The full https address of the GitHub repository to
  *   install the agent from.
- * @assistant group:agents confirm
+ * @assistant group:agents
+ * @assistant confirm: money. It adds a billed agent that then follows instructions and skills from a repository the user has not read.
  */
 export async function installAgentFromGithub(
   scope: HttpScope,

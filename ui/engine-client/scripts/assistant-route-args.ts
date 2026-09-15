@@ -30,7 +30,9 @@ const httpMethods: readonly HttpMethod[] = [
   "DELETE",
 ];
 
-/** `key={param}` and nothing else — a query value must be one whole parameter. */
+/** `key={param}` and nothing else — a query value must be one whole parameter.
+ *  A key the source sends CONDITIONALLY never reaches this pattern; it arrives
+ *  as a `query` path part (./assistant-query-params.ts). */
 const QUERY_PAIR = /^([^=&{}]+)=\{([^{}]+)\}$/;
 
 /**
@@ -40,11 +42,18 @@ const QUERY_PAIR = /^([^=&{}]+)=\{([^{}]+)\}$/;
  */
 export function toPathTemplate(parts: PathPart[]): PathTemplate | string {
   const encodings = new Map<string, PathEncoding>();
+  const query: Record<string, string> = {};
   let rendered = "";
   for (const part of parts) {
     if (part.kind === "text") {
       if (/[{}]/.test(part.text)) return "literal braces in the path";
       rendered += part.text;
+      continue;
+    }
+    // An optional key contributes no text: the dispatcher adds it only when
+    // the parameter behind it arrives.
+    if (part.kind === "query") {
+      query[part.key] = part.name;
       continue;
     }
     const known = encodings.get(part.name);
@@ -61,7 +70,6 @@ export function toPathTemplate(parts: PathPart[]): PathTemplate | string {
     if (encoding && !pathParams.some((param) => param.name === name))
       pathParams.push({ name, encoding });
   }
-  const query: Record<string, string> = {};
   if (mark >= 0) {
     for (const pair of rendered.slice(mark + 1).split("&")) {
       const match = QUERY_PAIR.exec(pair);

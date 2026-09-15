@@ -4,10 +4,26 @@
  * (upload), move, rename, folder create, delete. Backed by `state-workspace.ts`.
  */
 
-import { mimeFor } from "@houston/host/src/turn/files";
+import { mimeFor, NAME_TAKEN } from "@houston/host/src/turn/files";
 import { type Zippable, zipSync } from "fflate";
 import { CORS, json, noContent } from "./http";
 import * as state from "./state";
+
+/**
+ * The real host refuses a taken name rather than overwriting the other entry —
+ * same status and same `{error, code}` body, so the UI's expected-state
+ * handling is exercised here and not just in production. The code comes from
+ * the host's own constant: a drift would make the e2e green while the app
+ * showed a red bug toast against the real thing.
+ */
+const nameTaken = (path: string) =>
+  json(
+    {
+      error: `"${path.split("/").pop() ?? path}" already exists there`,
+      code: NAME_TAKEN,
+    },
+    409,
+  );
 
 export function handleWorkspaceFiles(
   method: string,
@@ -77,24 +93,28 @@ export function handleWorkspaceFiles(
   if (sub === "move" && method === "POST") {
     const toDir =
       typeof body?.toDir === "string" && body.toDir !== "" ? body.toDir : null;
-    return json({
-      moved: state.moveWorkspaceEntry(id, String(body?.path ?? ""), toDir),
-    });
+    const path = String(body?.path ?? "");
+    const moved = state.moveWorkspaceEntry(id, path, toDir);
+    if (moved.kind === "taken") return nameTaken(path);
+    return json({ moved: moved.value });
   }
 
   if (sub === "rename" && method === "POST") {
-    state.renameWorkspaceEntry(
+    const newName = String(body?.newName ?? "");
+    const result = state.renameWorkspaceEntry(
       id,
       String(body?.path ?? ""),
-      String(body?.newName ?? ""),
+      newName,
     );
+    if (result === "taken") return nameTaken(newName);
     return json({ ok: true });
   }
 
   if (sub === "folder" && method === "POST") {
-    return json({
-      created: state.createWorkspaceFolder(id, String(body?.path ?? "")),
-    });
+    const path = String(body?.path ?? "");
+    const created = state.createWorkspaceFolder(id, path);
+    if (created.kind === "taken") return nameTaken(path);
+    return json({ created: created.value });
   }
 
   return noContent(405);

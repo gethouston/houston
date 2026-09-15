@@ -1,4 +1,5 @@
 import { basename, sep } from "node:path";
+import { isAtomicTemp } from "@houston/protocol";
 
 export const DEFAULT_EXCLUDES = ["data/auth.json"];
 
@@ -27,7 +28,21 @@ function anyDepthDirMatches(pattern: string, path: string): boolean {
 
 export function excluded(rel: string, excludes: string[]): boolean {
   const normalized = norm(rel);
-  if (normalized.endsWith(".tmp")) return true;
+  // Unconditional, whatever a caller configures: a half-written file must
+  // never be published as content. Every atomic write in Houston — host,
+  // runtime and this package — names its temp target with ATOMIC_TMP_SUFFIX
+  // precisely so this one line can find it, and finds NOTHING else: excluding
+  // plain `.tmp` also swallowed the user's own `notes.tmp`, listed in the
+  // Files tab and silently dropped at pod teardown.
+  if (isAtomicTemp(normalized)) return true;
+  // A `.tmp` beside an excluded file is that file's half-written twin from
+  // before every atomic write carried ATOMIC_TMP_SUFFIX; a crash could have
+  // left `auth.json.tmp` on a pod, and it stays as private as `auth.json`.
+  if (
+    normalized.endsWith(".tmp") &&
+    excluded(normalized.slice(0, -4), excludes)
+  )
+    return true;
   if (normalized.endsWith(".houston/runtime/auth.json")) return true;
   // Credential paths differ by deployment depth, so segment matching must
   // exclude auth-users unconditionally instead of relying on caller patterns.

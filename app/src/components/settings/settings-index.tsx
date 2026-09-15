@@ -75,8 +75,6 @@ export function SettingsIndex({
         <SettingsIdentityHeader />
 
         <SettingsCard title={t("settings:index.groups.general")}>
-          {/* WorkspaceSection (rename) is deliberately not rendered: the
-              workspace name is fixed for now (HOU-704). */}
           {profileAvailable && (
             <SettingsRow
               icon={CircleUserRound}

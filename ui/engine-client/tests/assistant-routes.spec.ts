@@ -41,6 +41,10 @@ describe("assistant route derivation", () => {
         query: { days: "days" },
         rawResponse: true,
       }),
+      auditThings: route("/v1/things/audit", {
+        query: { before: "before", limit: "limit" },
+        rawResponse: true,
+      }),
       updateThing: route("/v1/things/{id}", {
         method: "PATCH",
         pathParams: segments("id"),
@@ -86,6 +90,26 @@ describe("assistant route derivation", () => {
     expect(routes.get(name)).toEqual(expected);
   });
 
+  it("carries an optional query key the caller may omit", () => {
+    // The dispatcher drops a key whose parameter the caller left out, which is
+    // the same thing the source's `if` does - so optionality needs no marker.
+    expect(routes.get("auditThings")?.query).toEqual({
+      before: "before",
+      limit: "limit",
+    });
+  });
+
+  it("drops an optional key no caller of the operation can fill", () => {
+    // `listNotes` offers a window; the module method never passes one, so the
+    // request can never carry it and a key here would be uncallable noise.
+    expect(routes.get("things.notes")).toEqual(
+      route("/agents/{agentId}/things/{id}/notes", {
+        pathParams: segments("agentId", "id"),
+        rawResponse: true,
+      }),
+    );
+  });
+
   it("never publishes the mixin factory itself", () => {
     expect(routes.has("ThingsMixin")).toBe(false);
   });
@@ -101,6 +125,8 @@ describe("assistant route derivation", () => {
       "gadgets.stray":
         "hop into AgentThingsClient.readThing could not be resolved: the client comes from strayThingsClient(), which is not clientFor()",
       getThingContext: "unescaped path interpolation",
+      pollThings: "query string is assembled from values no route can name",
+      sweepThings: "query string is assembled from values no route can name",
       headThing: "unsupported HTTP method HEAD",
       probeThing: "non-assignment request option",
       replaceThing: "multiple request calls",

@@ -86,7 +86,7 @@ export function createPreferencesModule(ctx: ModuleContext): PreferencesModule {
    * @param workspaceId The workspace this acts on, by the id listWorkspaces
    *   returns.
    * @param locale The language to switch to, or nothing to follow the device.
-   * @assistant group:settings confirm
+   * @assistant group:settings unconfirmed: Reversible display preference; the app's own language picker changes it with one click.
    */
   const setLocale = (
     workspaceId: string,

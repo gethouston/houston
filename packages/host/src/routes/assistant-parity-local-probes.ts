@@ -151,10 +151,27 @@ export const LOCAL_PROBES: readonly Probe[] = [
     agentSlugOrId: PROBE_AGENT,
     slug: "no-such-integration",
   }),
+  probe("updateCustomIntegrationDetails", {
+    slug: "no-such-integration",
+    details: {},
+  }),
+  probe("updateAgentCustomIntegrationDetails", {
+    agentSlugOrId: PROBE_AGENT,
+    slug: "no-such-integration",
+    details: {},
+  }),
   probe("integrations.disconnect", { toolkit: "gmail" }),
   proxied(
     "providers.refreshStatus",
     AGENT,
     "GET auth/status is the engine's own route; the host relays it",
+  ),
+  probe("forgetCredential", { ...AGENT, provider: "openrouter" }),
+
+  // The transcript of one chat, which the agent's own engine holds.
+  proxied(
+    "turns.history",
+    { ...AGENT, conversationId: "no-such-conversation" },
+    "GET conversations/:id/messages is the engine's own route; the host relays it",
   ),
 ];

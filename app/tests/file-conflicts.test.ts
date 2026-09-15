@@ -3,6 +3,8 @@ import test from "node:test";
 import type { FileEntry } from "@houston-ai/agent";
 import {
   detectMoveConflict,
+  detectRenameConflict,
+  isNameTakenError,
   keepBothName,
   moveTargetPath,
 } from "../src/lib/file-conflicts.ts";
@@ -98,4 +100,91 @@ test("keepBothName picks the first free numbered name in both folders", () => {
     keepBothName([...files, entry("stuff/Docs", true)], "stuff/Docs", null),
     "Docs (1)",
   );
+});
+
+test("renaming onto a name the folder already uses is a conflict", () => {
+  assert.deepEqual(
+    detectRenameConflict(files, "Docs/notes.txt", "report.pdf"),
+    {
+      kind: "conflict",
+      targetPath: "Docs/report.pdf",
+      name: "report.pdf",
+    },
+  );
+  // Root level, same story.
+  assert.deepEqual(
+    detectRenameConflict([...files, entry("notes.txt")], "notes.txt", "Docs"),
+    { kind: "conflict", targetPath: "Docs", name: "Docs" },
+  );
+});
+
+test("a folder that exists only through children blocks a rename too", () => {
+  // Nothing lists "Archive" itself, but a file named that would collide with
+  // the folder the children imply: one name, one entry.
+  assert.deepEqual(detectRenameConflict(files, "report.pdf", "Archive"), {
+    kind: "conflict",
+    targetPath: "Archive",
+    name: "Archive",
+  });
+});
+
+test("renaming to the name it already has is a noop", () => {
+  assert.equal(
+    detectRenameConflict(files, "report.pdf", "report.pdf").kind,
+    "noop",
+  );
+  assert.equal(
+    detectRenameConflict(files, "Docs/notes.txt", "notes.txt").kind,
+    "noop",
+  );
+});
+
+test("a free name is clear to rename", () => {
+  assert.equal(
+    detectRenameConflict(files, "Docs/notes.txt", "notes 2.txt").kind,
+    "clear",
+  );
+  // The source's own subtree never blocks its rename.
+  assert.equal(detectRenameConflict(files, "Docs", "Papers").kind, "clear");
+});
+
+test("keepBothName never lands on a name either folder already uses", () => {
+  const crowded = [
+    ...files,
+    entry("report (1).pdf"),
+    entry("Docs/report (2).pdf"),
+    entry("report (3).pdf"),
+  ];
+  const name = keepBothName(crowded, "report.pdf", "Docs");
+  assert.equal(name, "report (4).pdf");
+  // Which is exactly what `detectRenameConflict` would wave through: the
+  // keep-both rename can never hit the host's 409.
+  assert.equal(detectRenameConflict(crowded, "report.pdf", name).kind, "clear");
+});
+
+test("isNameTakenError reads the host's code, not its status or wording", () => {
+  // What the host actually sends (`turn/files.ts`), as the engine adapter
+  // hands it over: status + the parsed body.
+  assert.equal(
+    isNameTakenError({
+      status: 409,
+      body: { error: '"a.pdf" already exists there', code: "name_taken" },
+    }),
+    true,
+  );
+  // A DIFFERENT 409 on the same route must not inherit the taken-name copy.
+  assert.equal(
+    isNameTakenError({
+      status: 409,
+      body: { error: "workspace is read-only" },
+    }),
+    false,
+  );
+  assert.equal(isNameTakenError({ status: 404 }), false);
+  assert.equal(
+    isNameTakenError(new Error('"a.pdf" already exists there')),
+    false,
+  );
+  assert.equal(isNameTakenError("already exists there"), false);
+  assert.equal(isNameTakenError(null), false);
 });

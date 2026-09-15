@@ -168,8 +168,6 @@ export async function createMission(
         agentPath: agent.folderPath,
         activityId: conversationId,
         text: titleText,
-        provider: opts.providerOverride,
-        model: opts.modelOverride,
       });
     }
   } catch (e) {

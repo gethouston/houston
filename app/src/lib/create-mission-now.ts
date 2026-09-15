@@ -93,8 +93,6 @@ export function startMissionNow(
         agentPath: agent.folderPath,
         activityId: landedId,
         text: mission.titleText,
-        provider: opts.providerOverride,
-        model: opts.modelOverride,
       });
     }
   })().catch((e) => {

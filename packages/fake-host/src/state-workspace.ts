@@ -26,7 +26,9 @@ export interface WorkspaceFile {
 }
 
 const KEEP = ".keep";
-const key = (agentId: string, rel: string) => `${agentId}:${rel}`;
+/** Store key of one workspace entry; shared with state-workspace-entries.ts. */
+export const workspaceKey = (agentId: string, rel: string) =>
+  `${agentId}:${rel}`;
 const extOf = (name: string) => {
   const dot = name.lastIndexOf(".");
   return dot > 0 ? name.slice(dot + 1) : "";
@@ -45,8 +47,8 @@ export function writeWorkspaceFile(
   bytes: Buffer,
   ts: number,
 ): void {
-  const existing = state.workspace.get(key(agentId, rel));
-  state.workspace.set(key(agentId, rel), {
+  const existing = state.workspace.get(workspaceKey(agentId, rel));
+  state.workspace.set(workspaceKey(agentId, rel), {
     bytes,
     created: existing?.created ?? ts,
     modified: ts,
@@ -99,7 +101,7 @@ export function readWorkspaceFile(
   agentId: string,
   rel: string,
 ): WorkspaceFile | undefined {
-  return state.workspace.get(key(agentId, rel));
+  return state.workspace.get(workspaceKey(agentId, rel));
 }
 
 /** Finder-style upload: never overwrite, suffix " (n)" instead. */
@@ -116,7 +118,7 @@ export function importWorkspaceFiles(
     const name = f.relPath ?? f.name;
     let rel = dir ? `${dir}/${name}` : name;
     const dot = rel.lastIndexOf(".");
-    for (let n = 1; state.workspace.has(key(agentId, rel)); n++) {
+    for (let n = 1; state.workspace.has(workspaceKey(agentId, rel)); n++) {
       const stem = dot > 0 ? rel.slice(0, dot) : rel;
       const ext = dot > 0 ? rel.slice(dot) : "";
       rel = `${stem} (${n})${ext}`;
@@ -133,58 +135,28 @@ export function importWorkspaceFiles(
   return paths;
 }
 
-/** Delete a file, or a folder with everything under it. */
-export function deleteWorkspaceEntry(agentId: string, rel: string): void {
-  state.workspace.delete(key(agentId, rel));
-  for (const k of [...state.workspace.keys()]) {
-    if (k.startsWith(`${key(agentId, rel)}/`)) state.workspace.delete(k);
-  }
-  emitDomain("FilesChanged", agentId);
+/** A file's own key, or the prefix a folder's children share. */
+export function workspacePathTaken(agentId: string, rel: string): boolean {
+  if (state.workspace.has(workspaceKey(agentId, rel))) return true;
+  const prefix = `${workspaceKey(agentId, rel)}/`;
+  for (const k of state.workspace.keys()) if (k.startsWith(prefix)) return true;
+  return false;
 }
 
-export function renameWorkspaceEntry(
+/** What an op that could land on an occupied name answers. */
+export type NameResult<T> = { kind: "ok"; value: T } | { kind: "taken" };
+
+/**
+ * An empty folder, which exists only through the `.keep` marker under it.
+ * Refuses a name a file already holds, exactly like the real host: writing
+ * `<name>/.keep` beneath a file is ENOTDIR on a real disk.
+ */
+export function createWorkspaceFolder(
   agentId: string,
-  rel: string,
-  newName: string,
-): void {
-  const parent = rel.includes("/")
-    ? rel.slice(0, rel.lastIndexOf("/") + 1)
-    : "";
-  moveKeys(agentId, rel, `${parent}${newName}`);
-}
-
-/** Move a file/folder into `toDir` (null = root), keeping its name. */
-export function moveWorkspaceEntry(
-  agentId: string,
-  rel: string,
-  toDir: string | null,
-): string {
-  const name = rel.split("/").pop() ?? "";
-  const to = toDir ? `${toDir}/${name}` : name;
-  moveKeys(agentId, rel, to);
-  return to;
-}
-
-function moveKeys(agentId: string, from: string, to: string): void {
-  const exact = state.workspace.get(key(agentId, from));
-  if (exact) {
-    state.workspace.delete(key(agentId, from));
-    state.workspace.set(key(agentId, to), exact);
-  }
-  for (const k of [...state.workspace.keys()]) {
-    const prefix = `${key(agentId, from)}/`;
-    if (k.startsWith(prefix)) {
-      const v = state.workspace.get(k);
-      state.workspace.delete(k);
-      if (v)
-        state.workspace.set(`${key(agentId, to)}/${k.slice(prefix.length)}`, v);
-    }
-  }
-  emitDomain("FilesChanged", agentId);
-}
-
-export function createWorkspaceFolder(agentId: string, folder: string): string {
+  folder: string,
+): NameResult<string> {
+  if (workspacePathTaken(agentId, folder)) return { kind: "taken" };
   writeWorkspaceFile(agentId, `${folder}/${KEEP}`, Buffer.alloc(0), Date.now());
   emitDomain("FilesChanged", agentId);
-  return folder;
+  return { kind: "ok", value: folder };
 }

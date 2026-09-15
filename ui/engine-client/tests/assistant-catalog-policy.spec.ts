@@ -25,8 +25,60 @@ describe("approval policy", () => {
       expect(
         coverageViolations([{ ...input, unconfirmed: "Read-only search." }]),
       ).toEqual([]);
-      expect(coverageViolations([{ ...input, confirm: true }])).toEqual([]);
+      expect(
+        coverageViolations([
+          { ...input, confirm: true, confirmed: "Irreversible." },
+        ]),
+      ).toEqual([]);
     }
+  });
+
+  it("requires a written reason for a confirmation too", () => {
+    // The other half of the same decision. Every card ends the turn and asks
+    // the person a question, and a `confirm` nobody justified is how the
+    // surface drifts into asking about everything.
+    const asking = { ...annotation(), method: "POST" as const, confirm: true };
+    expect(coverageViolations([asking]).map((v) => v.rule)).toEqual([
+      "confirm-unstated",
+    ]);
+    expect(
+      coverageViolations([
+        { ...asking, confirmed: "Irreversible. Nothing puts it back." },
+      ]),
+    ).toEqual([]);
+    // Hidden with a reason is exempt from the whole reach family: the
+    // operation raises no card because it is never dispatched at all.
+    expect(
+      coverageViolations([
+        { ...asking, hidden: true, hiddenReason: "Returns a secret." },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("fails an acknowledgement the code has already made untrue", () => {
+    // A `debt:` note that outlives its refactor tells the next reader work is
+    // still owed, and the drift check cannot see it: the generated output is
+    // legitimately unchanged by a tag nobody reads any more.
+    const [violation] = coverageViolations([
+      { ...annotation(), routable: true, unroutableReason: "debt: no query." },
+    ]);
+    expect(violation).toMatchObject({ rule: "stale-unroutable" });
+    expect(
+      coverageViolations([
+        {
+          ...annotation(),
+          routable: false,
+          unroutableReason: "debt: no query.",
+        },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("states one for every confirmation the adapter ships", () => {
+    const unstated = live.annotations.filter(
+      (a) => a.confirm && !a.confirmed?.trim(),
+    );
+    expect(unstated.map((a) => a.name)).toEqual([]);
   });
 
   it("asks nothing more of a hidden operation than its hidden reason", () => {
@@ -52,6 +104,27 @@ describe("approval policy", () => {
       unconfirmed: "Creates an empty folder only.",
       unknownTags: [],
     });
+    expect(
+      parseAssistantDocs(
+        "/**\n * @assistant group:files confirm: Irreversible. Nothing puts the file back.\n */",
+      ),
+    ).toMatchObject({
+      confirm: true,
+      confirmed: "Irreversible. Nothing puts the file back.",
+      unknownTags: [],
+    });
+    // A BARE `confirm` is grammar, not a typo: it raises the flag and files no
+    // unknown tag, so the missing rationale is `confirm-unstated`'s to refuse
+    // (above) with a message naming what is owed — rather than surfacing as an
+    // unparsed tag, which would read as a spelling mistake.
+    //
+    // Written on ONE line on purpose: that block has no leading `*`, and a
+    // parser that only recognises starred lines reads the tag as prose and
+    // reports an operation with no group, no flag and nothing to complain
+    // about — a `hidden:` written this way would publish the operation.
+    expect(
+      parseAssistantDocs("/** @assistant group:files confirm */"),
+    ).toMatchObject({ confirm: true, group: "files", unknownTags: [] });
   });
 
   it("states one for every visible mutation the adapter ships", () => {

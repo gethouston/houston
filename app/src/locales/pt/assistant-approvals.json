@@ -10,7 +10,6 @@
     "createCheckout": "Iniciar o pagamento que assina um plano pago para este espaço de trabalho.",
     "createOrg": "Criar um espaço compartilhado para convidar seu time.",
     "createRoutine": "Criar uma rotina para o agente repetir um trabalho em um horário.",
-    "createSharedSkill": "Criar uma habilidade e compartilhá-la com todo o espaço de trabalho.",
     "createSkill": "Criar uma habilidade que o agente pode seguir.",
     "declineOrgInvite": "Recusar este convite para entrar em um espaço compartilhado.",
     "deleteActivity": "Excluir esta missão do quadro do agente.",
@@ -31,8 +30,6 @@
     "integrations.disconnect": "Desconectar um app externo da sua conta.",
     "mintRoutineWebhookKey": "Criar uma chave nova para que um serviço externo possa iniciar esta rotina. Qualquer chave anterior para de funcionar.",
     "moveAgent": "Mover este agente para um espaço compartilhado para que seu time possa trabalhar com ele.",
-    "moveProjectFile": "Mover este arquivo para outra pasta do espaço do agente.",
-    "preferences.setLocale": "Mudar o idioma que este espaço de trabalho usa.",
     "promoteSharedSkill": "Compartilhar a habilidade do agente com todo o espaço de trabalho.",
     "pushClaudeOAuthCredential": "Enviar o login do Claude deste computador para um agente na nuvem.",
     "putSkillsManifest": "Escolher quais habilidades do agente ficam ativas.",
@@ -41,7 +38,6 @@
     "removeCustomIntegration": "Remover um app externo que você mesmo adicionou.",
     "removeOrgMember": "Remover esta pessoa do espaço.",
     "renameAgent": "Renomear este agente.",
-    "renameFile": "Renomear este arquivo do espaço do agente.",
     "revokeApiKey": "Revogar esta chave de API para sempre. Tudo o que ainda a usa para de funcionar.",
     "runRoutineNow": "Rodar esta rotina agora mesmo em vez de esperar o próximo horário dela.",
     "saveSharedSkill": "Salvar mudanças em uma habilidade compartilhada com o espaço de trabalho, para todo mundo que a usa.",
@@ -120,9 +116,6 @@
     },
     "integrations.disconnect": {
       "toolkit": "app"
-    },
-    "preferences.setLocale": {
-      "locale": "idioma"
     },
     "promoteSharedSkill": {
       "slug": "habilidade"

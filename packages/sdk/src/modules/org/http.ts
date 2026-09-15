@@ -81,7 +81,8 @@ export async function getOrgPeople(scope: HttpScope): Promise<OrgPerson[]> {
  * Invites someone to this space with the role the user chooses.
  * @param email The person's email address, as they gave it.
  * @param role What they may do in the space.
- * @assistant group:org confirm
+ * @assistant group:org
+ * @assistant confirm: outward. It invites a real person into the space, where they can see and drive the agents in it.
  */
 export async function addOrgMember(
   scope: HttpScope,
@@ -99,7 +100,8 @@ export async function addOrgMember(
  * Cancels a pending invitation to this space.
  * @param inviteId The pending invitation to cancel, by the id getOrgPeople
  *   returns.
- * @assistant group:org confirm
+ * @assistant group:org
+ * @assistant confirm: irreversible. The invitation stops working, and the person needs a new one to join.
  */
 export async function deleteOrgInvite(
   scope: HttpScope,
@@ -113,7 +115,8 @@ export async function deleteOrgInvite(
 /**
  * Removes someone from the current space.
  * @param userId The person to remove, by the user id getOrgPeople returns.
- * @assistant group:org confirm
+ * @assistant group:org
+ * @assistant confirm: outward. They lose the space and everything in it at once, including work in progress.
  */
 export async function removeOrgMember(
   scope: HttpScope,
@@ -128,7 +131,8 @@ export async function removeOrgMember(
  * Changes what someone is allowed to do in this space.
  * @param userId The person, by the user id getOrgPeople returns.
  * @param role What they may do in the space.
- * @assistant group:org confirm
+ * @assistant group:org
+ * @assistant confirm: outward. A role decides what someone may see and change in the space, so the wrong one hands out or takes away access.
  */
 export async function setOrgMemberRole(
   scope: HttpScope,

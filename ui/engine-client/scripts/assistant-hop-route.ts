@@ -5,6 +5,7 @@ import type { ClientHop } from "./assistant-client-hop.ts";
 import { requesterCall } from "./assistant-client-hop.ts";
 import type { Declaration } from "./assistant-declarations.ts";
 import { resolvePath } from "./assistant-path-parts.ts";
+import { searchParamsIn } from "./assistant-query-params.ts";
 import { extractInit, toPathTemplate } from "./assistant-route-args.ts";
 import {
   type Binding,
@@ -103,9 +104,12 @@ export function hopRoute(
     bindings: bindArguments(hop.method, call, parameters),
     locals: localInitializers(hop.method.body ?? hop.method, source),
   };
+
+  const body = hop.method.body ?? hop.method;
   const parts = resolvePath(inner.arguments[0], {
     ...scope,
     helpers: new Map(),
+    searchParams: searchParamsIn(body, scope),
     depth: 0,
   });
   if (typeof parts === "string")

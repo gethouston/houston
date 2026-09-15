@@ -13,7 +13,7 @@ Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the
 | `packages/domain` / `packages/protocol` | Domain logic (`.houston` layout, schemas, cron, portable) / v3 wire types + zod |
 | `packages/sdk` | Client behavior layer (turn lifecycle, conversation VM). Every surface binds it |
 | `packages/web` | Web build of `app/src` + Playwright e2e/visual suites (see `packages/web/e2e/README.md`) |
-| `ui/` | `@houston-ai/*` React packages, props-only. `@houston-ai/engine-client` is the TS front door |
+| `ui/` | `@houston-ai/*` React packages, props-only. `@houston-ai/engine-client` ships wire types, the store catalog reads and the local-model-bridge port; the client is `packages/web/src/engine-adapter` |
 | `packages/design-tokens` | Visual values. Tokens win over any hardcoded literal |
 | `mobile/ios` | Native SwiftUI app over `@houston/sdk`. Parity notes: `mobile/PARITY*.md` |
 | `agentstore/` | Agent Store frontend (agents.gethouston.ai) |
@@ -24,7 +24,7 @@ Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the
 
 Non-obvious wiring:
 
-- Every domain call is a `fetch`/SSE through `@houston-ai/engine-client` against the host. Never a Tauri `invoke(...)` for domain.
+- Every domain call is a `fetch`/SSE through the engine adapter (`packages/web/src/engine-adapter`, imported as `@houston-ai/engine-client` by alias in vite and tsconfig) binding `@houston/sdk` against the host. Never a Tauri `invoke(...)` for domain.
 - The host emits `HoustonEvent`s on `/v1/events` (SSE); `app/src/hooks/use-agent-invalidation.ts` maps events to TanStack Query keys. An FS watcher catches direct agent file writes.
 - User data lives at `~/.houston/workspaces/<Workspace>/<Agent>/` (`.houston/` data + `CLAUDE.md` + `.agents/skills/`).
 - The retired multi-tenant control plane (`@houston/host-cloud`) must never reappear, and open code never imports a cloud lib. Rules: `BOUNDARY.md`, enforced by `pnpm check:boundaries` (in CI).

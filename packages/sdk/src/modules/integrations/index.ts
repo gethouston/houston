@@ -152,7 +152,8 @@ export function createIntegrationsModule(
    * connected for it.
    * @param toolkit The outside app to disconnect, by the toolkit slug
    *   integrationToolkits returned.
-   * @assistant group:integrations confirm
+   * @assistant group:integrations
+   * @assistant confirm: irreversible. Every account the user connected for that app is removed, and reconnecting means signing in to it again.
    */
   async function disconnect(toolkit: string): Promise<IntegrationsViewModel> {
     await run(() => client.disconnect(toolkit));

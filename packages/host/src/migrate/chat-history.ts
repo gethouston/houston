@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { atomicTempPath } from "@houston/protocol";
 import { sessionGroupsForAgent } from "./linkage";
 import {
   importedHistoryNote,
@@ -88,7 +89,7 @@ export interface MigrateChatHistoryOptions {
 function writeTranscript(dir: string, conv: StoredConversation): void {
   mkdirSync(dir, { recursive: true });
   const f = join(dir, `${encodeURIComponent(conv.id)}.json`);
-  const tmp = `${f}.tmp`;
+  const tmp = atomicTempPath(f);
   writeFileSync(tmp, JSON.stringify(conv));
   renameSync(tmp, f); // atomic swap; never leaves a half-written file
 }

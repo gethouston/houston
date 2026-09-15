@@ -197,13 +197,20 @@ describe("per-agent policy", () => {
     ]);
   });
 
-  it("sends the v1 userIds shape for bare ids, and for an empty list", async () => {
+  it("sends every row's own access, and an empty roster as an empty list", async () => {
+    // No id-only shorthand exists: a shorthand could only guess ONE level, and
+    // the level it would guess ("user") silently demotes every manager it is
+    // handed. An empty list is a real roster — the gateway reads it as
+    // "everyone" — never a skipped write.
     const { sdk, calls } = ok();
-    await sdk.teams.setAgentAssignments("a1", ["u1", "u2"]);
+    await sdk.teams.setAgentAssignments("a1", [
+      { userId: "u1", access: "manager" },
+      { userId: "u2", access: "user" },
+    ]);
     await sdk.teams.setAgentAssignments("a1", []);
     expect(calls.map((c) => c.body)).toEqual([
-      '{"userIds":["u1","u2"]}',
-      '{"userIds":[]}',
+      '{"assignments":[{"userId":"u1","access":"manager"},{"userId":"u2","access":"user"}]}',
+      '{"assignments":[]}',
     ]);
   });
 

@@ -667,6 +667,8 @@ test("the group-context mirror is a no-op (PUT still 200) without a paths dep", 
 function slowReadVfs(): Vfs {
   const inner = new MemoryVfs();
   return {
+    keyCase: () => inner.keyCase(),
+    exists: (key) => inner.exists(key),
     list: (prefix) => inner.list(prefix),
     listDetailed: (prefix) => inner.listDetailed(prefix),
     readText: async (key) => {

@@ -288,8 +288,6 @@ export async function flushWarmingSends(
           agentPath: entry.agentPath,
           activityId: rowId,
           text: send.titleText,
-          provider: pin.provider,
-          model: pin.model,
         });
       }
     } catch (e) {

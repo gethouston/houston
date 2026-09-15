@@ -25,17 +25,17 @@ Calling an operation returns the host's raw response. Where the adapter function
 ## chat
 
 - `turns.cancel`: Stops whatever an agent is currently doing in one chat.
-- `turns.history`: Reads back everything said in one chat. (not callable yet)
+- `turns.history`: Reads back everything said in one chat.
 
 ## files
 
 - `createFolder`: Creates a folder in an agent's workspace.
 - `deleteFile`: Permanently deletes a file from an agent's workspace. **Confirmation required.**
 - `listProjectFiles`: Lists the files in an agent's workspace.
-- `moveProjectFile`: Moves a file into another folder of an agent's workspace. **Confirmation required.**
+- `moveProjectFile`: Moves a file into another folder of an agent's workspace.
 - `readAgentFile`: Reads one of an agent's saved data files.
 - `readProjectFile`: Reads a file from an agent's workspace.
-- `renameFile`: Renames a file in an agent's workspace. **Confirmation required.**
+- `renameFile`: Renames a file in an agent's workspace.
 - `writeAgentFile`: Replaces the contents of one of an agent's saved data files. **Confirmation required.**
 
 ## integrations
@@ -57,6 +57,8 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `removeAgentCustomIntegration`: Removes an outside app from one agent. **Confirmation required.**
 - `removeCustomIntegration`: Removes an outside app the user added themselves. **Confirmation required.**
 - `triggerTypes`: Lists the events from an outside app that a routine can wake up on.
+- `updateAgentCustomIntegrationDetails`: Renames an outside app added to one agent, or corrects its website.
+- `updateCustomIntegrationDetails`: Renames an outside app the user added themselves, or corrects its website.
 
 ## missions
 
@@ -72,13 +74,14 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `deleteOrgInvite`: Cancels a pending invitation to this space. **Confirmation required.**
 - `getOrg`: Shows the current space, the user's role in it, and the people in it.
 - `getOrgPeople`: Lists the people the user shares this space with.
-- `orgAudit`: Shows the record of who did what in this space, newest first. (not callable yet)
+- `orgAudit`: Shows the record of who did what in this space, newest first.
 - `orgUsage`: Shows how much each person and agent used this space over recent days.
 - `removeOrgMember`: Removes someone from the current space. **Confirmation required.**
 - `setOrgMemberRole`: Changes what someone is allowed to do in this space. **Confirmation required.**
 
 ## providers
 
+- `forgetCredential`: Signs the workspace out of an AI provider. **Confirmation required.**
 - `listAgentProviders`: Lists the AI providers Houston can use, with which ones are connected.
 - `providers.refresh`: Refreshes which AI providers an agent can use and which one it is signed in to. (not callable yet)
 - `providers.refreshStatus`: Shows which AI provider an agent is signed in to right now.
@@ -98,13 +101,13 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 - `getContext`: Reads the background notes Houston gives an agent on every conversation.
 - `getMyProfile`: Reads the user's own name and photo.
-- `preferences.setLocale`: Sets the language Houston's own screens are shown in, for one workspace. **Confirmation required.**
+- `preferences.setLocale`: Sets the language Houston's own screens are shown in, for one workspace.
 - `setContext`: Replaces the background notes Houston gives an agent on every conversation. **Confirmation required.**
 - `setMyProfile`: Updates the user's own name or photo.
 
 ## skills
 
-- `createSharedSkill`: Creates a skill and shares it with everyone in the workspace. **Confirmation required.**
+- `createSharedSkill`: Creates a skill and shares it with everyone in the workspace.
 - `createSkill`: Creates a skill an agent can follow. **Confirmation required.**
 - `deleteSharedSkill`: Deletes a skill shared with the workspace, removing it for everyone. **Confirmation required.**
 - `deleteSkill`: Deletes a skill so the agent no longer has it. **Confirmation required.**
@@ -140,7 +143,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `listAgentTeamMembers`: Lists the people who joined a team.
 - `listAgentTeams`: Lists the teams of people and agents in this space.
 - `removeAgentTeamMember`: Removes someone from a team, or leaves it. **Confirmation required.**
-- `setAgentAssignments`: Chooses who may use an agent, and at what access level. **Confirmation required.** (not callable yet)
+- `setAgentAssignments`: Chooses who may use an agent, and at what access level. **Confirmation required.**
 - `setAgentSettings`: Chooses which apps and AI models an agent is allowed to use. **Confirmation required.**
 - `setAgentTeam`: Moves an agent into another team in this space. **Confirmation required.**
 - `setAgentTeamMemberOwner`: Gives someone ownership of a team, or takes it away. **Confirmation required.**

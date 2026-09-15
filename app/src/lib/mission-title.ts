@@ -11,24 +11,21 @@ export interface RefreshMissionTitleOptions {
   agentPath: string;
   activityId: string;
   text: string;
-  provider?: string;
-  model?: string;
 }
 
+/**
+ * Replace a mission's truncated fallback title with the engine's summary. The
+ * title turn runs on the agent's own runtime, which routes it to the provider
+ * the conversation is already on — the caller has no say in the model.
+ */
 export async function refreshMissionTitle({
   agentPath,
   activityId,
   text,
-  provider,
-  model,
 }: RefreshMissionTitleOptions): Promise<void> {
   const fallback = fallbackMissionTitle(text);
   try {
-    const summary = await getEngine().summarizeActivity(text, {
-      agentPath,
-      provider,
-      model,
-    });
+    const summary = await getEngine().summarizeActivity(text, { agentPath });
     const title = cleanGeneratedTitle(summary.title) ?? fallback;
     if (title === fallback) return;
     await getEngine().updateActivity(agentPath, activityId, { title });

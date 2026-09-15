@@ -73,3 +73,84 @@ test("include still deletes an in-scope object the turn removed", async () => {
   expect(result.outOfScope).toBe(0);
   expect(await store.list("")).toEqual([]);
 });
+
+/**
+ * Houston's scratch files — every atomic write's temp target across host,
+ * runtime and runtime-client, plus the one-off volume probe, all named with
+ * `ATOMIC_TMP_SUFFIX` (`@houston/protocol`) — exist for milliseconds inside
+ * the very directory a sync pass walks. Uploading one would publish a
+ * half-written file, a probe artifact, or a credential mid-rewrite, as
+ * workspace content.
+ */
+test("Houston's scratch files never reach the store", async () => {
+  const storeRoot = await mkdtemp(join(tmpdir(), "sync-store-"));
+  const workRoot = await mkdtemp(join(tmpdir(), "sync-work-"));
+  const store = new LocalDirStore(storeRoot);
+  await mkdir(join(workRoot, "workspace"), { recursive: true });
+  await writeFile(join(workRoot, "workspace", "report.txt"), "real");
+  await writeFile(
+    join(workRoot, "workspace", "report.txt.4821.k3x9f2.houston.tmp"),
+    "half-written",
+  );
+  await writeFile(
+    join(workRoot, "workspace", "houston-case-probe-ñ.4821.k3x9f2.houston.tmp"),
+    "",
+  );
+  // The shape that matters most: a credential caught mid-rewrite. The
+  // destination is excluded by name; its scratch sibling must be excluded by
+  // suffix, or the secret rides the store under a name nobody excluded.
+  await writeFile(join(workRoot, "credentials.json"), "{}");
+  await writeFile(join(workRoot, "credentials.json.houston.tmp"), "{secret}");
+
+  const result = await syncBack(store, "", workRoot, new Map(), {
+    excludes: ["credentials.json"],
+  });
+
+  expect(result.uploaded).toEqual(["workspace/report.txt"]);
+  expect(await store.list("")).toEqual(["workspace/report.txt"]);
+});
+
+/**
+ * The other half of the same rule: `.tmp` is a name PEOPLE give their files,
+ * and a blanket `.tmp` exclusion listed `notes.tmp` in the Files tab while
+ * never syncing it — the user's work vanished at the next pod teardown with no
+ * error anywhere. Only Houston's own suffix is scratch.
+ */
+test("a user's own .tmp file syncs back like any other file", async () => {
+  const storeRoot = await mkdtemp(join(tmpdir(), "sync-store-"));
+  const workRoot = await mkdtemp(join(tmpdir(), "sync-work-"));
+  const store = new LocalDirStore(storeRoot);
+  await mkdir(join(workRoot, "workspace"), { recursive: true });
+  await writeFile(join(workRoot, "workspace", "notes.tmp"), "the user's notes");
+  await writeFile(join(workRoot, "workspace", "backup.1.tmp"), "a backup");
+
+  const result = await syncBack(store, "", workRoot, new Map());
+
+  expect(result.uploaded.sort()).toEqual([
+    "workspace/backup.1.tmp",
+    "workspace/notes.tmp",
+  ]);
+  expect((await store.list("")).sort()).toEqual([
+    "workspace/backup.1.tmp",
+    "workspace/notes.tmp",
+  ]);
+});
+
+test("a legacy .tmp twin of an excluded secret stays out of the store", async () => {
+  const storeRoot = await mkdtemp(join(tmpdir(), "sync-store-"));
+  const workRoot = await mkdtemp(join(tmpdir(), "sync-work-"));
+  const store = new LocalDirStore(storeRoot);
+  await mkdir(join(workRoot, "data"), { recursive: true });
+  await mkdir(join(workRoot, ".houston", "runtime"), { recursive: true });
+  await writeFile(join(workRoot, "data", "auth.json.tmp"), "{secret}");
+  await writeFile(
+    join(workRoot, ".houston", "runtime", "auth.json.tmp"),
+    "{secret}",
+  );
+  await writeFile(join(workRoot, "data", "notes.tmp"), "the user's notes");
+
+  const result = await syncBack(store, "", workRoot, new Map());
+
+  expect(result.uploaded).toEqual(["data/notes.tmp"]);
+  expect(await store.list("")).toEqual(["data/notes.tmp"]);
+});

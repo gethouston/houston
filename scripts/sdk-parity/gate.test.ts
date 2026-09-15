@@ -5,7 +5,13 @@ import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
 import { buildGraph, nodeKey } from "./adapter-graph.ts";
 import { type Exceptions, judge, parseExceptions } from "./gate.ts";
-import { type DesktopCalls, repoRoot } from "./inputs.ts";
+import {
+  type DesktopCalls,
+  type GatewayRoute,
+  repoRoot,
+  type SdkMethod,
+  sdkMethodOf,
+} from "./inputs.ts";
 import { checkRules, type Violation } from "./rules.ts";
 
 const VIOLATION: Violation = {
@@ -169,6 +175,110 @@ test("a callee reached through await is still an edge", () => {
       "  (await ready).refresh();\n}\n",
   );
   expect(edges).toContain(helperKey("refresh"));
+});
+
+/**
+ * The join across a path parameter a server spells out member by member.
+ *
+ * `schema` is the provider parameter's: closed to two spellings as the
+ * extractor writes a string-literal union, or open when it is a plain string.
+ */
+const connections = (schema: Record<string, unknown>): SdkMethod =>
+  sdkMethodOf(
+    "integrationConnections",
+    {
+      method: "GET",
+      path: "/v1/integrations/{provider}/connections",
+      pathParams: [{ name: "provider", encoding: "segment" }],
+      query: {},
+      body: null,
+      bodyFields: null,
+    },
+    [{ name: "provider", required: true, schema }],
+  );
+
+const CLOSED = {
+  anyOf: [
+    { const: "composio", type: "string" },
+    { const: "custom", type: "string" },
+  ],
+};
+
+const served = (pattern: string): GatewayRoute[] => [
+  { pattern, methods: ["GET"], classification: "sdk" },
+];
+
+const NO_CLIENT: DesktopCalls = { sdk: [], native: [], unbound: [] };
+
+test("a closed path parameter binds the literal route naming a member", () => {
+  const sdk = connections(CLOSED);
+  expect(sdk.keys).toEqual([
+    "GET /v1/integrations/{}/connections",
+    "GET /v1/integrations/composio/connections",
+    "GET /v1/integrations/custom/connections",
+  ]);
+  expect(
+    checkRules(
+      [],
+      served("/v1/integrations/composio/connections"),
+      [sdk],
+      NO_CLIENT,
+    ),
+  ).toEqual([]);
+});
+
+test("a literal route no member names is still unbound", () => {
+  const violations = checkRules(
+    [],
+    served("/v1/integrations/stripe/connections"),
+    [connections(CLOSED)],
+    NO_CLIENT,
+  );
+  expect(
+    violations.filter((v) => v.rule === "sdk-route-unbound"),
+  ).toMatchObject([{ key: "gateway GET /v1/integrations/stripe/connections" }]);
+});
+
+test("an open path parameter binds no literal route", () => {
+  const violations = checkRules(
+    [],
+    served("/v1/integrations/composio/connections"),
+    [connections({ type: "string" })],
+    NO_CLIENT,
+  );
+  expect(
+    violations.filter((v) => v.rule === "sdk-route-unbound"),
+  ).toMatchObject([
+    { key: "gateway GET /v1/integrations/composio/connections" },
+  ]);
+});
+
+/**
+ * Expanding a closed parameter must not invent work for the client: the method
+ * issues one call per call site, so a server answering ONE member answers it.
+ */
+test("one member served is enough to serve the method", () => {
+  const violations = checkRules(
+    [],
+    served("/v1/integrations/composio/connections"),
+    [connections(CLOSED)],
+    NO_CLIENT,
+  );
+  expect(violations.filter((v) => v.rule === "sdk-method-unserved")).toEqual(
+    [],
+  );
+});
+
+test("a method no member reaches is still unserved", () => {
+  const violations = checkRules(
+    [],
+    served("/v1/integrations/stripe/connections"),
+    [connections(CLOSED)],
+    NO_CLIENT,
+  );
+  expect(
+    violations.filter((v) => v.rule === "sdk-method-unserved"),
+  ).toMatchObject([{ key: "sdk GET /v1/integrations/{}/connections" }]);
 });
 
 const EXCEPTIONS = resolve(repoRoot, "scripts/sdk-parity-exceptions.json");

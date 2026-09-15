@@ -83,7 +83,8 @@ export async function readProjectFile(
 
 /**
  * Permanently deletes a file from an agent's workspace.
- * @assistant group:files confirm
+ * @assistant group:files
+ * @assistant confirm: irreversible. The file leaves the workspace and Houston keeps no copy to put back.
  */
 export async function deleteFile(
   scope: HttpScope,
@@ -99,7 +100,7 @@ export async function deleteFile(
 
 /**
  * Renames a file in an agent's workspace.
- * @assistant group:files confirm
+ * @assistant group:files unconfirmed: Renames in place; the contents are untouched, a name already in use is refused rather than written over, and the name is changed back the same way.
  */
 export async function renameFile(
   scope: HttpScope,
@@ -135,7 +136,7 @@ export async function createFolder(
  * Moves a file into another folder of an agent's workspace.
  *
  * Move a file/folder into another folder (null = workspace root).
- * @assistant group:files confirm
+ * @assistant group:files unconfirmed: Moves a file inside the same workspace; nothing is overwritten and nothing leaves it.
  */
 export async function moveProjectFile(
   scope: HttpScope,

@@ -64,3 +64,38 @@ export async function fetchObject(
     throw error;
   }
 }
+
+/**
+ * In-flight downloads, deduplicated by key: two concurrent reads of the same
+ * object share one fetch, and a local write never races the rename that lands
+ * one. Owns the vfs's aggregate byte budget, since only a download spends it.
+ */
+export class Materializer {
+  private readonly inflight = new Map<string, Promise<void>>();
+  private readonly budget: LazyBudget = { materializedBytes: 0 };
+
+  constructor(private readonly opts: Parameters<typeof fetchObject>[0]) {}
+
+  /** Download one object into the overlay once; concurrent reads share it. */
+  fetch(key: string, meta: ObjectMetadata): Promise<void> {
+    const pending = this.inflight.get(key);
+    if (pending) return pending;
+    const run = fetchObject(this.opts, this.budget, key, meta).finally(() =>
+      this.inflight.delete(key),
+    );
+    this.inflight.set(key, run);
+    return run;
+  }
+
+  /** Wait out a download of this key, whatever it ends up doing. */
+  settle(key: string): Promise<void> | undefined {
+    return this.inflight.get(key)?.catch(() => undefined);
+  }
+
+  /** Same, for every download landing under `prefix/` (a prefix delete). */
+  async settleUnder(prefix: string): Promise<void> {
+    for (const key of [...this.inflight.keys()]) {
+      if (key.startsWith(`${prefix}/`)) await this.settle(key);
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
+import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
 import { openTeamSection } from "./support/team-nav";
 
@@ -182,4 +182,90 @@ test("Download in the file preview saves the bytes and never opens a tab", async
   for await (const chunk of stream) chunks.push(chunk as Buffer);
   expect(Buffer.concat(chunks).toString()).toBe("a,b\n1,2\n");
   expect(extraPages).toHaveLength(0);
+});
+
+/**
+ * Renaming onto a name the folder already uses is the user's state, not a
+ * failure: the host refuses it with a 409 rather than overwriting the other
+ * file, and the app answers from the listing it already has. The regression
+ * this pins is the shape of the surface — calm authored copy, both files
+ * intact — not the mechanism.
+ */
+test("renaming a file onto a name already in use says so and keeps both files", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/agents/${SEED_AGENT_ID}/files/import`, {
+    data: {
+      files: [
+        {
+          name: "notes.txt",
+          contentBase64: Buffer.from("x").toString("base64"),
+        },
+      ],
+    },
+  });
+  await openFiles(page);
+  await expect(row(page, "notes.txt")).toBeVisible();
+
+  await row(page, "notes.txt")
+    .getByRole("button", { name: "More actions" })
+    .click();
+  await page.getByRole("menu").getByRole("button", { name: "Rename" }).click();
+  const input = page.getByRole("row").getByRole("textbox");
+  await input.fill("Q3 report.pdf");
+  await input.press("Enter");
+
+  // Informational, NOT the red bug pair: nothing is broken, the name is simply
+  // taken. `status` is the calm toast channel a screen reader hears too.
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "already exists here" })
+      .filter({ hasText: "Q3 report.pdf" }),
+  ).toBeVisible();
+  await expect(page.getByText("Houston, we have a problem!")).toHaveCount(0);
+
+  // Neither file was lost: the rename did not happen, and the file that held
+  // the name is untouched.
+  await expect(row(page, "notes.txt")).toHaveCount(1);
+  await expect(row(page, "Q3 report.pdf")).toHaveCount(1);
+  // …and the host agrees: the screen is not just optimistic about it.
+  const listed = (await (
+    await request.get(`${FAKE_HOST_URL}/agents/${SEED_AGENT_ID}/files`)
+  ).json()) as Array<{ path: string }>;
+  expect(listed.map((f) => f.path)).toEqual(
+    expect.arrayContaining(["notes.txt", "Q3 report.pdf"]),
+  );
+});
+
+/**
+ * Naming a new folder after something that is already there is the same
+ * state as a taken rename, and must read the same way: calm authored copy,
+ * nothing lost, no bug report. The host refuses it (`createWorkspaceFolder`)
+ * rather than writing a `.keep` marker under an existing file.
+ */
+test("a new folder named after an existing file says the name is taken", async ({
+  page,
+}) => {
+  await openFiles(page);
+  await expect(row(page, "Q3 report.pdf")).toBeVisible();
+
+  await page.getByRole("button", { name: "New", exact: true }).click();
+  await page.getByRole("menuitem", { name: "New folder" }).click();
+  const input = page.getByPlaceholder("untitled folder");
+  await input.fill("Q3 report.pdf");
+  await input.press("Enter");
+
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "already exists here" })
+      .filter({ hasText: "Q3 report.pdf" }),
+  ).toBeVisible();
+  await expect(page.getByText("Houston, we have a problem!")).toHaveCount(0);
+
+  // The file is still a file, and no folder took its name.
+  await expect(row(page, "Q3 report.pdf")).toHaveCount(1);
+  await expect(row(page, "Q3 report.pdf")).toContainText("9 bytes");
 });

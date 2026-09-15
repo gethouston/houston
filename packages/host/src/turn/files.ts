@@ -4,7 +4,7 @@ import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./deps";
-import { archiveWorkspace } from "./files-archive";
+import { serveArchive, serveFileDownload } from "./files-binary";
 import {
   importWorkspaceFiles,
   MAX_UPLOAD_BODY_BYTES,
@@ -15,14 +15,11 @@ import { moveWorkspaceEntry } from "./files-move";
 import {
   createWorkspaceFolder,
   deleteWorkspaceFile,
-  extOf,
   FileOpError,
   FilePathError,
-  fileKey,
   listWorkspace,
   readWorkspaceFile,
   renameWorkspaceFile,
-  safeRel,
   workspaceRel,
 } from "./files-ops";
 
@@ -45,45 +42,10 @@ import {
  * `files-archive.ts`; this module is the HTTP surface.
  */
 
-// The pure ops are part of this module's public surface (tests, attachments).
+// The pure ops and the download headers are part of this module's public
+// surface (tests, attachments, the fake host).
+export * from "./files-mime";
 export * from "./files-ops";
-
-/** Extension → MIME for the deliverables agents actually produce. */
-const MIME: Record<string, string> = {
-  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  pdf: "application/pdf",
-  csv: "text/csv; charset=utf-8",
-  txt: "text/plain; charset=utf-8",
-  md: "text/plain; charset=utf-8",
-  json: "application/json; charset=utf-8",
-  html: "text/html; charset=utf-8",
-  htm: "text/html; charset=utf-8",
-  png: "image/png",
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  gif: "image/gif",
-  svg: "image/svg+xml",
-  webp: "image/webp",
-  zip: "application/zip",
-  mp3: "audio/mpeg",
-  wav: "audio/wav",
-  mp4: "video/mp4",
-};
-export const mimeFor = (name: string): string =>
-  MIME[extOf(name).toLowerCase()] ?? "application/octet-stream";
-
-/** RFC 6266 Content-Disposition with a safe ASCII fallback + UTF-8 filename*. */
-export const contentDisposition = (
-  kind: "attachment" | "inline",
-  name: string,
-): string => {
-  const ascii = Array.from(name, (c) =>
-    c.charCodeAt(0) < 0x7f && c !== '"' && c !== "\\" ? c : "_",
-  ).join("");
-  return `${kind}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
-};
 
 /**
  * HTTP handler for `files*` routes, intercepted by the host BEFORE the runtime
@@ -118,43 +80,11 @@ export async function handleFiles(
       return true;
     }
     if (method === "GET" && rest === "files/download") {
-      // Chat-driven (file cards, prose links), so `workspaceRel`: agents link
-      // files by the absolute path of their own working directory.
-      const rel = workspaceRel(root, query.get("path") ?? "");
-      const buf = await vfs.readBytes(fileKey(root, rel));
-      if (buf === null) {
-        await logMissingFile(vfs, root, rel, ctx.agent.id);
-        json(res, 404, { error: "file not found" });
-        return true;
-      }
-      const name = rel.split("/").pop() ?? "";
-      const kind =
-        query.get("disposition") === "inline" ? "inline" : "attachment";
-      res.writeHead(200, {
-        "Content-Type": mimeFor(name),
-        "Content-Disposition": contentDisposition(kind, name),
-        "Content-Length": buf.length,
-        "Cache-Control": "no-store",
-      });
-      res.end(buf);
+      await serveFileDownload(vfs, root, ctx.agent.id, query, res);
       return true;
     }
     if (method === "GET" && rest === "files/archive") {
-      // No `path` → the whole workspace ("Download all"); with `path` → just
-      // that folder's subtree (the folder row's Download).
-      const rawFolder = query.get("path");
-      const folder = rawFolder ? safeRel(rawFolder) : undefined;
-      const zip = await archiveWorkspace(vfs, root, folder);
-      const zipName = folder
-        ? `${folder.split("/").pop()}.zip`
-        : `${ctx.agent.name} files.zip`;
-      res.writeHead(200, {
-        "Content-Type": "application/zip",
-        "Content-Disposition": contentDisposition("attachment", zipName),
-        "Content-Length": zip.length,
-        "Cache-Control": "no-store",
-      });
-      res.end(zip);
+      await serveArchive(vfs, root, ctx.agent.name, query, res);
       return true;
     }
     if (method === "GET" && rest === "files/read") {
@@ -197,13 +127,15 @@ export async function handleFiles(
     }
     if (method === "POST" && rest === "files/rename") {
       const b = await readJson(req);
-      await renameWorkspaceFile(
+      // A rename to the name the file already has moved nothing: announcing it
+      // would send every other client's Files tab refetching for no change.
+      const outcome = await renameWorkspaceFile(
         vfs,
         root,
         String(b.path ?? ""),
         String(b.newName ?? ""),
       );
-      changed();
+      if (outcome === "renamed") changed();
       await json(res, 200, { ok: true });
       return true;
     }
@@ -228,7 +160,12 @@ export async function handleFiles(
       return true;
     }
     if (err instanceof FileOpError) {
-      json(res, err.status, { error: err.message });
+      // The code travels beside the sentence: a client that must tell an
+      // EXPECTED refusal from a bug cannot do it on the status alone.
+      json(res, err.status, {
+        error: err.message,
+        ...(err.code ? { code: err.code } : {}),
+      });
       return true;
     }
     throw err;

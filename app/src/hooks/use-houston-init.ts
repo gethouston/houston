@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { analytics } from "../lib/analytics";
 import { providerNotConfirmedDisconnected } from "../lib/provider-connection";
-import { tauriPreferences, tauriProvider, tauriRoutines } from "../lib/tauri";
+import { tauriPreferences, tauriProvider } from "../lib/tauri";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
@@ -55,22 +55,6 @@ export function useHoustonInit() {
 
       if (currentWorkspace) {
         await loadAgents(currentWorkspace.id);
-        // Spin up the routine scheduler for every agent in the workspace so
-        // cron jobs fire even if the user never selects the agent. NOT
-        // awaited: these are per-agent calls, and against a cold/warming
-        // engine each one is held until that engine wakes — blocking here
-        // stalled the last-agent restore below for the whole warm-up
-        // (HOU-693), leaving the wrong agent selected after a relaunch.
-        const agents = useAgentStore.getState().agents;
-        void Promise.all(
-          agents.map((a) =>
-            tauriRoutines
-              .startScheduler(a.folderPath)
-              .catch((e) =>
-                console.error(`[init] scheduler start failed for ${a.id}:`, e),
-              ),
-          ),
-        );
       } else {
         // No space resolved, so `loadAgents` never runs. Settle the store
         // instead of leaving `loaded` false forever: the boot splash and the

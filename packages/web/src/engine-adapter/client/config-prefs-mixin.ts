@@ -86,7 +86,10 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (key === "last_agent_id") return DEFAULT_AGENT_ID;
       return null;
     }
-    async setPreference(key: string, value: string): Promise<void> {
+    /** `null` CLEARS the preference: the host's `PUT /v1/preferences/:key`
+     *  stores a null value, and a device key drops its localStorage entry —
+     *  writing the string "null" is what a naive setItem would leave behind. */
+    async setPreference(key: string, value: string | null): Promise<void> {
       if (ACCOUNT_PREF_KEYS.has(key)) {
         // The account-key WRITE is the SDK's: its PreferencesClient issues the
         // identical `PUT /v1/preferences/:key` with body `{value}` over the SAME
@@ -101,6 +104,7 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
         removeLocalPref(key);
         return;
       }
+      if (value === null) return removeLocalPref(key);
       try {
         localStorage.setItem(`houston.pref.${key}`, value);
       } catch {

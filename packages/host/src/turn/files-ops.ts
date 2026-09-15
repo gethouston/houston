@@ -1,9 +1,11 @@
 import type { Vfs } from "../vfs";
+import { FOLDER_KEEP } from "./files-list";
+import { loadWorkspaceKeys, moveOrRefuse } from "./files-names";
 import {
-  extOf,
   FileOpError,
   FilePathError,
   fileKey,
+  NAME_TAKEN,
   safeRel,
   workspaceRel,
 } from "./files-path";
@@ -15,86 +17,11 @@ import {
  * the vfs (cloud `<prefix>/workspace`, local `<Workspace>/<Agent>`).
  */
 
-// Path validation is part of this module's public surface (handler, tests).
+// Path validation and name comparison are part of this module's public
+// surface (handler, move/import ops, tests).
+export * from "./files-list";
+export * from "./files-names";
 export * from "./files-path";
-
-export const FOLDER_KEEP = ".keep"; // marker that lets an empty folder show up in a listing
-
-/** The desktop ProjectFile shape the FilesBrowser renders. */
-export interface ProjectFile {
-  path: string;
-  name: string;
-  extension: string;
-  size: number;
-  is_directory: boolean;
-  date_modified?: number;
-  date_created?: number;
-}
-
-/**
- * List every file under the agent's workspace, plus a synthesized entry for
- * each directory that contains something — so the browser can render folders.
- * The `.keep` markers that back empty folders are hidden but still surface their
- * directory; internal top-level dot-dirs (`.houston`, `.agents`) are hidden whole.
- */
-export async function listWorkspace(
-  vfs: Vfs,
-  root: string,
-): Promise<ProjectFile[]> {
-  const stats = await vfs.listDetailed(root);
-  const files: ProjectFile[] = [];
-  // dir path -> latest mtime / earliest creation under it
-  const dirs = new Map<string, { updated: number; created?: number }>();
-
-  for (const s of stats) {
-    const rel = s.key.slice(root.length + 1);
-    if (!rel) continue;
-    const segments = rel.split("/");
-    // Hide internal Houston state (top-level .houston / .agents) from the browser.
-    if (segments[0]?.startsWith(".")) continue;
-    // Record every ancestor directory (freshest mtime, oldest creation beneath it).
-    for (let i = 1; i < segments.length; i++) {
-      const dir = segments.slice(0, i).join("/");
-      const cur = dirs.get(dir) ?? { updated: 0 };
-      cur.updated = Math.max(cur.updated, s.updatedMs);
-      if (s.createdMs !== undefined) {
-        cur.created =
-          cur.created === undefined
-            ? s.createdMs
-            : Math.min(cur.created, s.createdMs);
-      }
-      dirs.set(dir, cur);
-    }
-    if (segments[segments.length - 1] === FOLDER_KEEP) continue; // hide the marker file itself
-    const name = segments[segments.length - 1] ?? "";
-    files.push({
-      path: rel,
-      name,
-      extension: extOf(name),
-      size: s.size,
-      is_directory: false,
-      date_modified: s.updatedMs || undefined,
-      date_created: s.createdMs || undefined,
-    });
-  }
-
-  for (const [dir, meta] of dirs) {
-    const name = dir.split("/").pop() ?? "";
-    files.push({
-      path: dir,
-      name,
-      extension: "",
-      size: 0,
-      is_directory: true,
-      date_modified: meta.updated || undefined,
-      date_created: meta.created || undefined,
-    });
-  }
-  return files.sort((a, b) => {
-    if (a.is_directory !== b.is_directory) return a.is_directory ? -1 : 1; // folders first
-    return a.path.localeCompare(b.path);
-  });
-}
 
 /** Read one workspace file. Text comes back as `content`; binary as base64.
  * Chat-driven, so `workspaceRel`: agents link files by absolute path. */
@@ -130,12 +57,19 @@ export async function deleteWorkspaceFile(
   await vfs.deleteKey(key);
 }
 
+/**
+ * Whether a rename actually moved anything. A rename to the name the file
+ * already has is a no-op, and announcing a change that never happened makes
+ * every other client refetch its Files tab for nothing.
+ */
+export type RenameOutcome = "renamed" | "unchanged";
+
 export async function renameWorkspaceFile(
   vfs: Vfs,
   root: string,
   rel: string,
   newName: string,
-): Promise<void> {
+): Promise<RenameOutcome> {
   const from = safeRel(rel);
   if (
     newName.includes("/") ||
@@ -149,22 +83,49 @@ export async function renameWorkspaceFile(
     ? from.slice(0, from.lastIndexOf("/") + 1)
     : "";
   const fromKey = fileKey(root, from);
+  const toKey = fileKey(root, `${parent}${newName}`);
+  if (toKey === fromKey) return "unchanged"; // the name it already has
   // A source that is gone (another tab deleted it, a stale listing) is the
   // user's state, not a server fault: answer 404 like the move op rather than
   // letting the vfs's generic "source not found" surface as a 500.
-  const keys = (await vfs.listDetailed(root)).map((s) => s.key);
-  const exists =
-    keys.includes(fromKey) || keys.some((k) => k.startsWith(`${fromKey}/`));
-  if (!exists) throw new FileOpError(404, "file not found");
-  await vfs.move(fromKey, fileKey(root, `${parent}${newName}`));
+  const keys = await loadWorkspaceKeys(vfs, root);
+  if (!keys.taken(fromKey)) throw new FileOpError(404, "file not found");
+  // Same wall the move op puts up: `rename(2)` and an object-store overwrite
+  // both replace the destination without a word, so a name the user already
+  // uses has to be refused here or their other file is simply gone.
+  //
+  // Except when the destination is the file's OWN slot: on a case-insensitive
+  // disk `readme.md` → `README.md` is a legitimate re-spelling the user asked
+  // for, and reading it as a collision would make the rename impossible.
+  if (!keys.sameSlot(fromKey, toKey) && keys.taken(toKey)) {
+    throw new FileOpError(409, `"${newName}" already exists there`, NAME_TAKEN);
+  }
+  // The volume gets the last word: its fold table is not `toLowerCase()`'s
+  // (APFS resolves `STRASSE.txt` to a stored `straße.txt`) and it may resolve
+  // NFC to NFD, so the check above can pass over a real neighbour. A
+  // re-spelling of the file ITSELF is the same inode there and still renames.
+  await moveOrRefuse(vfs, fromKey, toKey, newName);
+  return "renamed";
 }
 
+/**
+ * Create an empty folder, which exists only through the `.keep` marker under
+ * it. A name a FILE already holds is refused rather than attempted: writing
+ * `<name>/.keep` beneath a file is ENOTDIR on a real disk, which reached the
+ * user as a 500 naming a marker file they never heard of.
+ */
 export async function createWorkspaceFolder(
   vfs: Vfs,
   root: string,
   folder: string,
 ): Promise<string> {
   const norm = safeRel(folder);
+  const key = fileKey(root, norm);
+  const keys = await loadWorkspaceKeys(vfs, root);
+  if (keys.taken(key) || (await vfs.exists(key))) {
+    const name = norm.split("/").pop() ?? norm;
+    throw new FileOpError(409, `"${name}" already exists there`, NAME_TAKEN);
+  }
   await vfs.writeText(fileKey(root, `${norm}/${FOLDER_KEEP}`), "");
   return norm;
 }

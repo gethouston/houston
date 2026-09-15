@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import { config } from "../config";
 
 /**
@@ -58,7 +59,7 @@ export function setQwenRegionIn(dataDir: string, regionId: string): void {
   const region = QWEN_REGIONS.find((r) => r.id === regionId);
   if (!region) throw new Error(`unknown qwen region: ${regionId}`);
   const file = qwenRegionFileIn(dataDir);
-  const tmp = `${file}.tmp`;
+  const tmp = atomicTempPath(file);
   writeFileSync(tmp, JSON.stringify({ region: region.id }, null, 2));
   renameSync(tmp, file);
 }

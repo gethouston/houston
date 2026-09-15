@@ -143,6 +143,7 @@ export function readOperation(
       hiddenReason: docs.hiddenReason,
       method: route?.method,
       confirm: docs.confirm,
+      confirmed: docs.confirmed,
       unconfirmed: docs.unconfirmed,
       unroutableReason: docs.unroutableReason,
       unschematizedReason: docs.unschematizedReason,

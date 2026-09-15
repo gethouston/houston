@@ -1,11 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatBytes } from "../../lib/attachment-validation";
 import { showExpectedStateToast } from "../../lib/error-toast";
+import { isNameTakenError } from "../../lib/file-conflicts";
 import {
   isUploadTooLargeError,
   MAX_UPLOAD_FILE_BYTES,
 } from "../../lib/files-upload-limits";
 import i18n from "../../lib/i18n";
+import { showNameTakenToast } from "../../lib/name-taken-toast";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriFiles } from "../../lib/tauri";
 
@@ -52,6 +54,18 @@ export function useRenameFile(agentPath: string | undefined) {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
     },
+    // The race the listing cannot close: the agent (or another window) took
+    // the name between the listing the UI checked and this request. Callers
+    // detect the collision up front with `detectRenameConflict`, so reaching
+    // the host's 409 means the world moved underneath them — still the user's
+    // state, not a Houston bug, so it gets the same authored copy the up-front
+    // check shows rather than the generic failure path. Lives here so BOTH
+    // rename callers are covered (the Files section's inline rename and the
+    // move dialog's Keep both), and so the awaiting caller still sees the
+    // rejection: `onError` does not swallow it.
+    onError: (err: unknown, { newName }) => {
+      if (isNameTakenError(err)) showNameTakenToast(newName);
+    },
   });
 }
 
@@ -65,6 +79,13 @@ export function useCreateFolder(agentPath: string | undefined) {
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
+    },
+    // A file or folder is already using the name. The same sentence a rename
+    // gets, because to the person it is the same thing.
+    onError: (err: unknown, name: string) => {
+      if (isNameTakenError(err)) {
+        showNameTakenToast(name.split("/").pop() ?? name);
+      }
     },
   });
 }
@@ -123,6 +144,14 @@ export function useMoveFile(agentPath: string | undefined) {
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
+    },
+    // The race `detectMoveConflict` cannot close — the destination folder took
+    // the name between the listing the UI read and this request. Same authored
+    // copy as the up-front Replace / Keep both offer, never the red bug pair.
+    onError: (err: unknown, { relativePath }) => {
+      if (isNameTakenError(err)) {
+        showNameTakenToast(relativePath.split("/").pop() ?? relativePath);
+      }
     },
   });
 }

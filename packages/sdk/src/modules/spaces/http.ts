@@ -43,10 +43,9 @@ export async function listOrgs(scope: HttpScope): Promise<OrgsList> {
  * reconcile via `listOrgs` and reuse the persisted slug (C8). Never degrades: a
  * failure throws so the UI surfaces the real reason.
  *
- * Confirmed: money. A space carries its own subscription, and the call is not
- * idempotent, so a repeat leaves a second billable space standing.
  * @param name What to call the new space, in the user's own words.
- * @assistant group:spaces confirm
+ * @assistant group:spaces
+ * @assistant confirm: money. A space carries its own subscription, so a repeat leaves a second billable space standing.
  */
 export async function createOrg(
   scope: HttpScope,
@@ -70,10 +69,9 @@ export async function createOrg(
  * subscription_active` (a live subscription — cancel it first). A `204` means
  * the space and everything in it is gone for good; the caller must re-list.
  *
- * Confirmed: irreversible. A delete takes the space and everything in it for
- * good.
  * @param slug The space to delete, by the slug listOrgs returns.
- * @assistant group:spaces confirm hidden: destroys a shared space and everything inside it for good; that decision stays with the person, and the hosted gateway denies the route to this surface anyway.
+ * @assistant group:spaces confirm: irreversible. A delete takes the space and everything in it for good.
+ * @assistant hidden: the hosted gateway's scope wall denies the space-delete route to this surface, so a dispatched delete can only fail.
  */
 export async function deleteOrg(scope: HttpScope, slug: string): Promise<void> {
   await httpRequest(scope, `/v1/orgs/${encodeURIComponent(slug)}`, {
@@ -93,7 +91,8 @@ export async function deleteOrg(scope: HttpScope, slug: string): Promise<void> {
  * needs_upgrade` (the team's trial ended).
  * @param inviteId The invitation to accept, by the id listOrgs returns with
  *   the pending invitations.
- * @assistant group:spaces confirm
+ * @assistant group:spaces
+ * @assistant confirm: outward. Accepting joins a shared space under the user's own name, and everyone already in it sees them arrive.
  */
 export async function acceptOrgInvite(
   scope: HttpScope,
@@ -116,7 +115,8 @@ export async function acceptOrgInvite(
  * the UI so the stale row explains itself.
  * @param inviteId The invitation to decline, by the id listOrgs returns
  *   with the pending invitations.
- * @assistant group:spaces confirm
+ * @assistant group:spaces
+ * @assistant confirm: irreversible. A declined invitation stops working, and only whoever sent it can issue another.
  */
 export async function declineOrgInvite(
   scope: HttpScope,
@@ -137,7 +137,8 @@ export async function declineOrgInvite(
  *   returns. Read it from listAgents rather than writing the name the user
  *   says.
  * @param toSlug The space to move it into, by the slug listOrgs returns.
- * @assistant group:spaces confirm
+ * @assistant group:spaces
+ * @assistant confirm: outward. The agent and its whole history move into a shared space, where everyone in that space can work with it.
  */
 export async function moveAgent(
   scope: HttpScope,

@@ -36,7 +36,7 @@ import type { FileUpload } from "./types";
  * `scopeId` is legacy: current hosts ignore it, but engine pods that predate
  * the durable-uploads layout still 400 without it — keep sending it until no
  * pre-HOU-706 pod remains.
- * @assistant group:attachments hidden: binary upload; the composer batches the dropped files and base64 frames them itself.
+ * @assistant group:attachments hidden: the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace.
  */
 export async function saveAttachments(
   scope: HttpScope,
@@ -63,7 +63,7 @@ export async function saveAttachments(
  * (the same size-budgeted plan attachments use) so a many-file folder
  * doesn't turn into hundreds of round trips, while every request stays
  * within the host's upload cap.
- * @assistant group:files hidden: binary upload; browser File objects the Files section hands it.
+ * @assistant group:files hidden: the Files section owns the picker that reads files off the person's device; readProjectFile and writeAgentFile are the assistant's way in and out of a workspace.
  */
 export async function uploadProjectFiles(
   scope: HttpScope,

@@ -130,6 +130,10 @@
     "menuButton": "More actions",
     "expandAgent": "Expand {{name}} files",
     "collapseAgent": "Collapse {{name}} files",
+    "nameTaken": {
+      "title": "That name is already in use",
+      "description": "A file or folder named “{{name}}” already exists here."
+    },
     "conflict": {
       "title": "“{{name}}” already exists",
       "description": "The destination folder already has an item named “{{name}}”. You can replace it or keep both.",

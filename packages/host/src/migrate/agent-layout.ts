@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import { agentRoots } from "./chat-history";
 
 /**
@@ -48,7 +49,9 @@ export interface MigrateLayoutResult {
 /** Write via tmp + rename so a crash mid-write never leaves a torn file. */
 function writeAtomic(path: string, content: string): void {
   mkdirSync(dirname(path), { recursive: true });
-  const tmp = join(dirname(path), `.${Date.now()}-${Math.random()}.tmp`);
+  const tmp = atomicTempPath(
+    join(dirname(path), `.${Date.now()}-${Math.random()}`),
+  );
   writeFileSync(tmp, content, "utf8");
   renameSync(tmp, path);
 }

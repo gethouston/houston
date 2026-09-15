@@ -23,4 +23,5 @@ export * from "./local-model-bridge";
 export * from "./model-windows";
 export * from "./provider-catalog";
 export * from "./provider-error";
+export * from "./scratch";
 export * from "./wire";

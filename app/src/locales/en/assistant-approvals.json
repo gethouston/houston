@@ -10,7 +10,6 @@
     "createCheckout": "Start the checkout that subscribes this workspace to a paid plan.",
     "createOrg": "Create a shared space you can invite teammates into.",
     "createRoutine": "Create a routine so the agent repeats work on a schedule.",
-    "createSharedSkill": "Create a skill and share it with everyone in the workspace.",
     "createSkill": "Create a skill the agent can follow.",
     "declineOrgInvite": "Decline this invitation to join a shared space.",
     "deleteActivity": "Delete this mission from the agent's board.",
@@ -31,8 +30,6 @@
     "integrations.disconnect": "Disconnect an outside app from your account.",
     "mintRoutineWebhookKey": "Create a fresh key that lets an outside service start this routine. Any key issued before stops working.",
     "moveAgent": "Move this agent into a shared space so teammates can work with it.",
-    "moveProjectFile": "Move this file into another folder of the agent's workspace.",
-    "preferences.setLocale": "Change the language this workspace uses.",
     "promoteSharedSkill": "Share the agent's skill with everyone in the workspace.",
     "pushClaudeOAuthCredential": "Send this computer's Claude sign-in to a cloud agent.",
     "putSkillsManifest": "Choose which of the agent's skills are switched on.",
@@ -41,7 +38,6 @@
     "removeCustomIntegration": "Remove an outside app you added yourself.",
     "removeOrgMember": "Remove this person from the space.",
     "renameAgent": "Rename this agent.",
-    "renameFile": "Rename this file in the agent's workspace.",
     "revokeApiKey": "Revoke this API key for good. Anything still using it stops working.",
     "runRoutineNow": "Run this routine right now instead of waiting for its next scheduled time.",
     "saveSharedSkill": "Save changes to a skill shared with the workspace, for everyone who uses it.",
@@ -120,9 +116,6 @@
     },
     "integrations.disconnect": {
       "toolkit": "app"
-    },
-    "preferences.setLocale": {
-      "locale": "language"
     },
     "promoteSharedSkill": {
       "slug": "skill"

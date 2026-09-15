@@ -99,10 +99,14 @@ export interface TeamsModule {
   ): Promise<void>;
   /** File an agent under another team in the same space. Grouping only. */
   setAgentTeam(agentSlugOrId: string, teamId: string): Promise<void>;
-  /** Replace who may drive an agent, and at what access level. */
+  /**
+   * Replace who may drive an agent, and at what access level. Every row states
+   * its own access: there is no id-only shorthand, because a shorthand can only
+   * guess one level and would silently demote every manager it is handed.
+   */
   setAgentAssignments(
     agentSlugOrId: string,
-    assignments: AgentAssignment[] | string[],
+    assignments: AgentAssignment[],
   ): Promise<void>;
   /** The manager-set toolkit and model ceilings on one agent. */
   getAgentSettings(agentSlugOrId: string): Promise<AgentSettings>;

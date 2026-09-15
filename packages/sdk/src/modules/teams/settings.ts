@@ -28,22 +28,18 @@ import type {
  *   says.
  * @param assignments Who may use the agent, by the user ids getOrgPeople
  *   returns.
- * @assistant group:teams confirm
- * @assistant unroutable: debt: the body is chosen client-side between the v1 userIds and v2 assignments shapes; routable once callers pass only assignments.
+ * @assistant group:teams
+ * @assistant confirm: outward. It decides who in the space may use this agent, so the wrong list hands out or takes away access.
  */
 export async function setAgentAssignments(
   scope: HttpScope,
   agentSlugOrId: string,
-  assignments: AgentAssignment[] | string[],
+  assignments: AgentAssignment[],
 ): Promise<void> {
-  const isV2 = assignments.length > 0 && typeof assignments[0] !== "string";
-  const body = isV2
-    ? { assignments: assignments as AgentAssignment[] }
-    : { userIds: assignments as string[] };
   await httpRequest(
     scope,
     `/v1/agents/${encodeURIComponent(agentSlugOrId)}/assignments`,
-    { method: "PUT", body: JSON.stringify(body) },
+    { method: "PUT", body: JSON.stringify({ assignments }) },
   );
 }
 
@@ -76,7 +72,8 @@ export async function getAgentSettings(
  *   says.
  * @param settings The ceilings to set. Pass only what changes: an omitted
  *   key is left alone, and null means no limit.
- * @assistant group:teams confirm
+ * @assistant group:teams
+ * @assistant confirm: outward. These ceilings decide which apps and models every teammate's turns may use, for everyone who shares the agent.
  */
 export async function setAgentSettings(
   scope: HttpScope,
@@ -119,8 +116,6 @@ export async function getAgentModelChoice(
  *
  * Set the ACTING user's model choice for this agent (gateway clamps to ceiling).
  *
- * Confirmed: money. The choice sets the rate every later turn with this agent
- * is billed at.
  * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
  *   returns. Read it from listAgents rather than writing the name the user
  *   says.
@@ -128,7 +123,8 @@ export async function getAgentModelChoice(
  *   (listAgentProviders lists them), one of the models this agent is
  *   allowed (getAgentModelChoice returns the allowed set) and optionally
  *   how hard it should think, one of low, medium, high or xhigh.
- * @assistant group:agents confirm
+ * @assistant group:agents
+ * @assistant confirm: money. The choice sets the rate every later turn with this agent is billed at.
  */
 export async function setAgentModelChoice(
   scope: HttpScope,

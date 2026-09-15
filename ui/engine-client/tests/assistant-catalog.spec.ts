@@ -31,6 +31,7 @@ describe("assistant catalog extraction", () => {
   it("publishes exported functions and public mixin methods, nothing else", () => {
     expect(result.catalog.operations.map(({ name }) => name).sort()).toEqual([
       "allThings",
+      "auditThings",
       "branchedThing",
       "createThing",
       "deleteAgentFileEntry",
@@ -49,17 +50,20 @@ describe("assistant catalog extraction", () => {
       "listAgentThings",
       "listShadowThings",
       "listThings",
+      "pollThings",
       "probeThing",
       "pushCredential",
       "readAgentFileEntry",
       "readThingFile",
       "replaceThing",
+      "sweepThings",
       "tagThing",
       "thingUsage",
       "things.audit",
       "things.count",
       "things.detach",
       "things.inspect",
+      "things.notes",
       "things.pin",
       "things.readLoose",
       "things.rename",
@@ -397,6 +401,17 @@ describe("the live engine adapter", () => {
         name,
       ).toEqual(want);
     }
+  });
+
+  it("reviews the policy of every operation the catalog carries", () => {
+    // A new operation with no floor line is a new confirmation prompt, or a
+    // new visible write, that reached the assistant with nobody reading it.
+    expect(
+      live.catalog.operations
+        .map(({ name }) => name)
+        .filter((name) => !(name in OPERATION_POLICY_FLOOR))
+        .sort(),
+    ).toEqual([]);
   });
 
   it("advertises only what houston_call will perform", () => {

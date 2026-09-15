@@ -15,6 +15,7 @@
  * VPS where those APIs would be meaningless.
  */
 
+import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   AddCustomIntegrationInput,
   AgentAssignment,
@@ -65,6 +66,7 @@ import {
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
 import { isEngineWakingError } from "./engine-waking-error";
+import { isNameTakenError } from "./file-conflicts";
 import { isFileGoneError } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
@@ -392,10 +394,6 @@ export const tauriWorkspaces = {
       undefined,
       options,
     ),
-  rename: (id: string, newName: string) =>
-    call<void>("rename_workspace", async () => {
-      await getEngine().renameWorkspace(id, { newName });
-    }),
   setLocale: (id: string, locale: string | null) =>
     call<Workspace>("set_workspace_locale", () =>
       getEngine().setWorkspaceLocale(id, locale),
@@ -489,13 +487,10 @@ export const tauriAgents = {
       () => getEngine().listInstalledConfigs(),
     ),
   /** Multiplayer: set which org members may use this agent, and at what access
-   *  level. Pass the v2 `AgentAssignment[]` (`{userId, access}`) roster from the
-   *  Share dialog; the legacy `string[]` (userIds → access `user`) shape still
-   *  works for older callers. Empty = everyone. */
-  setAssignments: (
-    agentSlugOrId: string,
-    assignments: AgentAssignment[] | string[],
-  ) =>
+   *  level. Pass the `AgentAssignment[]` (`{userId, access}`) roster from the
+   *  Share dialog — every row states its own access, so nothing can demote a
+   *  manager by omission. Empty = everyone. */
+  setAssignments: (agentSlugOrId: string, assignments: AgentAssignment[]) =>
     call<void>("set_agent_assignments", () =>
       getEngine().setAgentAssignments(agentSlugOrId, assignments),
     ),
@@ -761,14 +756,6 @@ export const tauriAgent = {
       getEngine().writeAgentFile(agentPath, relPath, content),
     );
   },
-  seedSchemas: (agentPath: string) =>
-    call<void>("seed_agent_schemas", () =>
-      getEngine().seedAgentSchemas(agentPath),
-    ),
-  migrateFiles: (agentPath: string) =>
-    call<void>("migrate_agent_files", () =>
-      getEngine().migrateAgentFiles(agentPath),
-    ),
 };
 
 // ─── Skills ───────────────────────────────────────────────────────────
@@ -1110,15 +1097,28 @@ export const tauriFiles = {
   },
   rename: (agentPath: string, relativePath: string, newName: string) => {
     blockWriteWhileWarming(agentPath);
-    return call<void>("rename_file", () =>
-      getEngine().renameFile(agentPath, relativePath, newName),
+    // A taken name is an expected state: `useRenameFile` shows the calm toast,
+    // so the 409 is logged but never filed as a bug.
+    return call<void>(
+      "rename_file",
+      () => getEngine().renameFile(agentPath, relativePath, newName),
+      undefined,
+      { silence: isNameTakenError },
     );
   },
   createFolder: (agentPath: string, name: string) => {
     blockWriteWhileWarming(agentPath);
-    return call<void>("create_agent_folder", async () => {
-      await getEngine().createFolder(agentPath, name);
-    });
+    // A file or folder already carrying that name is an expected state:
+    // `useCreateFolder` shows the calm toast, so the 409 is logged but never
+    // filed as a bug.
+    return call<void>(
+      "create_agent_folder",
+      async () => {
+        await getEngine().createFolder(agentPath, name);
+      },
+      undefined,
+      { silence: isNameTakenError },
+    );
   },
   /** Upload browser Files into the workspace (drag-drop / Browse), optionally
    * into a subfolder.
@@ -1139,8 +1139,13 @@ export const tauriFiles = {
   /** Move a file/folder into another folder (null = workspace root). */
   move: (agentPath: string, relPath: string, toDir: string | null) => {
     blockWriteWhileWarming(agentPath);
-    return call<void>("move_project_file", () =>
-      getEngine().moveProjectFile(agentPath, relPath, toDir),
+    // Same expected state as a rename: the destination folder already holds
+    // that name. `useMoveFile` says so in product copy; no bug report.
+    return call<void>(
+      "move_project_file",
+      () => getEngine().moveProjectFile(agentPath, relPath, toDir),
+      undefined,
+      { silence: isNameTakenError },
     );
   },
   /** One zip of the whole workspace ("Download all") or, with `relPath`, of a
@@ -1285,7 +1290,7 @@ function conversationToRaw(
   };
 }
 
-// ─── Routines (engine-backed: CRUD + scheduler) ───────────────────────
+// ─── Routines (engine-backed) ─────────────────────────────────────────
 
 import type {
   NewActivity as EngineNewActivity,
@@ -1328,11 +1333,11 @@ export const tauriRoutines = {
       getEngine().deleteRoutine(agentPath, routineId),
     );
   },
-  listRuns: (agentPath: string, routineId?: string) =>
+  listRuns: (agentPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve([])
       : passiveAgentRead("list_routine_runs", () =>
-          getEngine().listRoutineRuns(agentPath, routineId),
+          getEngine().listRoutineRuns(agentPath),
         ),
   runNow: (agentPath: string, routineId: string) => {
     blockWriteWhileWarming(agentPath);
@@ -1346,18 +1351,6 @@ export const tauriRoutines = {
       getEngine().cancelRoutineRun(agentPath, routineId, runId),
     );
   },
-  startScheduler: (agentPath: string) =>
-    call<void>("start_routine_scheduler", () =>
-      getEngine().startRoutineScheduler(agentPath),
-    ),
-  stopScheduler: (agentPath: string) =>
-    call<void>("stop_routine_scheduler", () =>
-      getEngine().stopRoutineScheduler(agentPath),
-    ),
-  syncScheduler: (agentPath: string) =>
-    call<void>("sync_routine_scheduler", () =>
-      getEngine().syncRoutineScheduler(agentPath),
-    ),
   /**
    * Mint (or rotate) a routine's incoming-webhook key: the one-time reveal
    * (`url` + `secret` + `key_prefix`), or `null` where webhook keys are
@@ -1959,19 +1952,6 @@ export const tauriSystem = {
     ),
 };
 
-// ─── Claude Code runtime installer ────────────────────────────────────
-
-// ─── Agent file watcher ───────────────────────────────────────────────
-
-export const tauriWatcher = {
-  start: (agentPath: string) =>
-    call<void>("start_agent_watcher", () =>
-      getEngine().startAgentWatcher(agentPath),
-    ),
-  stop: () =>
-    call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
-};
-
 /**
  * Integrations (Composio, platform mode). The user never creates a provider
  * account — they only OAuth apps (Gmail, Slack…); Houston's platform key lives
@@ -1983,11 +1963,11 @@ export const tauriIntegrations = {
     call("integration_status", () => getEngine().integrationStatus()),
   setSession: (token: string | null) =>
     call("integration_session", () => getEngine().setIntegrationSession(token)),
-  toolkits: (provider: string) =>
+  toolkits: (provider: IntegrationProviderId) =>
     call("integration_toolkits", () =>
       getEngine().integrationToolkits(provider),
     ),
-  connections: (provider: string) =>
+  connections: (provider: IntegrationProviderId) =>
     call("integration_connections", () =>
       getEngine().integrationConnections(provider),
     ),
@@ -2012,7 +1992,7 @@ export const tauriIntegrations = {
    *  gone (the user disconnected the app mid-OAuth, or the provider expired
    *  it) — the poll settles as `gone` (PRODUCT-1733), so it is silenced here
    *  rather than reported as a bug. */
-  connection: (provider: string, connectionId: string) =>
+  connection: (provider: IntegrationProviderId, connectionId: string) =>
     call(
       "integration_connection",
       () => getEngine().integrationConnection(provider, connectionId),

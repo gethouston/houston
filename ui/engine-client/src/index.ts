@@ -1,19 +1,14 @@
 /**
- * @houston-ai/engine-client — TypeScript SDK for the Houston Engine.
+ * @houston-ai/engine-client — the shared client surface for the Houston engine.
  *
- * Consumed by:
- * - Houston desktop app (`app/src/`) via `window.__HOUSTON_ENGINE__`
- * - Houston mobile app (direct connect, out of scope until Phase 5)
- * - Third-party integrators (npm package)
- *
- * Single source of truth for the wire protocol, matching
- * `engine/houston-engine-protocol`.
+ * The specifier `@houston-ai/engine-client` resolves to the v3 host adapter
+ * (`packages/web/src/engine-adapter`) in every build AND every typecheck, so
+ * what this package publishes is the deployment-agnostic half the adapter
+ * re-exports: the wire types, the anonymous store-catalog reads, the
+ * local-model-bridge port, and the `Retry-After` parser.
  */
 
-export * from "./client.ts";
 export * from "./local-model-bridge.ts";
 export * from "./retry-after.ts";
 export * from "./store-catalog.ts";
 export * from "./types.ts";
-export * from "./vm.ts";
-export * from "./ws.ts";

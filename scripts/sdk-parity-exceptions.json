@@ -1,6 +1,6 @@
 {
   "$comment": "Written exceptions for scripts/check-sdk-parity.ts, which FAILS the process on any violation not listed here. An entry is { rule, key, reason } and nothing else; `key` is the violation identity the report prints, and `reason` must be at least 20 characters saying WHY parity stops here. An entry whose violation no longer reproduces fails the gate as stale: the PR that binds the route is the one that deletes its excuse and lowers `baseline`. Keys read as the report prints them: `host|gateway METHOD /path` for a route, `proxy METHOD /path` for a runtime-proxy member, and `client <adapter method>` for a method of the shipped client's mixin chain that reaches a server with no @houston/sdk method behind it. `baseline` may only go down on its own; raising it is a visible diff a reviewer must accept, because it means a new route shipped with no client behind it.",
-  "baseline": 152,
+  "baseline": 138,
   "entries": [
     {
       "rule": "sdk-route-unbound",
@@ -40,7 +40,7 @@
     {
       "rule": "sdk-route-unbound",
       "key": "host GET /v1/migration/source",
-      "reason": "the source scan of the desktop-to-cloud wizard, read from the passive host the app spawns over the old ~/.houston tree — a second peer with its own base URL and static bearer, which a module scope rooted at the one engine base cannot address"
+      "reason": "the source scan of the desktop-to-cloud wizard, read from the passive host the app spawns over the old ~/.houston tree \u2014 a second peer with its own base URL and static bearer, which a module scope rooted at the one engine base cannot address"
     },
     {
       "rule": "sdk-route-unbound",
@@ -65,12 +65,12 @@
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /setup-runtime/credential/capture",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /setup-runtime/credential/api-key",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
@@ -110,12 +110,12 @@
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /agents/{}/credential/capture",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /agents/{}/credential/api-key",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
@@ -299,16 +299,6 @@
     },
     {
       "rule": "sdk-route-unbound",
-      "key": "gateway GET /v1/integrations/composio/connections",
-      "reason": "the SDK binds the parameterised /v1/integrations/{provider} form (integrationConnections, integrationToolkits); the gate compares that against this literal composio spelling, so the pair does not fold"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "gateway GET /v1/integrations/composio/toolkits",
-      "reason": "the SDK binds the parameterised /v1/integrations/{provider} form (integrationConnections, integrationToolkits); the gate compares that against this literal composio spelling, so the pair does not fold"
-    },
-    {
-      "rule": "sdk-route-unbound",
       "key": "gateway GET /v1/local-model-bridges/legacy",
       "reason": "permanent: the control surface beside a NATIVE transport, driven from client/local-model-bridge.ts where the bridge itself lives"
     },
@@ -329,28 +319,13 @@
     },
     {
       "rule": "sdk-route-unbound",
-      "key": "gateway GET /v1/org/audit",
-      "reason": "the SDK issues it as orgAudit/getOrgProfiles, each appending a query string it builds at call time, so the extractor cannot route the path (coverage.unroutable)"
-    },
-    {
-      "rule": "sdk-route-unbound",
       "key": "gateway GET /v1/org/profiles",
       "reason": "the SDK issues it as orgAudit/getOrgProfiles, each appending a query string it builds at call time, so the extractor cannot route the path (coverage.unroutable)"
     },
     {
       "rule": "sdk-route-unbound",
-      "key": "gateway GET /v1/user-context",
-      "reason": "getContext/setContext derive the path from kind as /v1/{}-context; the gateway serves the two literal spellings (/v1/user-context, /v1/workspace-context), so neither side folds onto the other"
-    },
-    {
-      "rule": "sdk-route-unbound",
       "key": "gateway GET /v1/version",
       "reason": "permanent: a boot probe the adapter answers before the SDK exists, since the SDK is built inside HoustonClient's own constructor"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "gateway GET /v1/workspace-context",
-      "reason": "getContext/setContext derive the path from kind as /v1/{}-context; the gateway serves the two literal spellings (/v1/user-context, /v1/workspace-context), so neither side folds onto the other"
     },
     {
       "rule": "sdk-route-unbound",
@@ -380,12 +355,12 @@
     {
       "rule": "sdk-route-unbound",
       "key": "gateway POST /setup-runtime/credential/api-key",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
       "key": "gateway POST /setup-runtime/credential/capture",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
@@ -426,21 +401,6 @@
       "rule": "sdk-route-unbound",
       "key": "gateway POST /v1/tunnel/credentials",
       "reason": "permanent: the control surface beside a NATIVE transport, driven from client/local-model-bridge.ts where the bridge itself lives"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "gateway PUT /v1/agents/{}/assignments",
-      "reason": "the SDK binds it as setAgentAssignments, which picks its body between the v1 userIds and the v2 assignments shapes, so the extractor cannot route it (coverage.unroutable)"
-    },
-    {
-      "rule": "sdk-method-unserved",
-      "key": "sdk GET /v1/{}-context",
-      "reason": "getContext/setContext derive the path from kind as /v1/{}-context; the gateway serves the two literal spellings (/v1/user-context, /v1/workspace-context), so neither side folds onto the other"
-    },
-    {
-      "rule": "sdk-method-unserved",
-      "key": "sdk PUT /v1/{}-context",
-      "reason": "getContext/setContext derive the path from kind as /v1/{}-context; the gateway serves the two literal spellings (/v1/user-context, /v1/workspace-context), so neither side folds onto the other"
     },
     {
       "rule": "proxy-drift",
@@ -494,43 +454,18 @@
     },
     {
       "rule": "proxy-drift",
-      "key": "proxy POST /agents/{}/auth/{}/api-key",
-      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
-    },
-    {
-      "rule": "proxy-drift",
       "key": "proxy DELETE /agents/{}/auth/{}/api-key",
       "reason": "no SDK method clears a stored API key: the runtime client writes one (setApiKey) and signs out (logout), and nothing issues this delete"
     },
     {
       "rule": "proxy-drift",
       "key": "proxy POST /agents/{}/auth/{}/login",
-      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
-    },
-    {
-      "rule": "proxy-drift",
-      "key": "proxy POST /agents/{}/auth/{}/login/complete",
-      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
-    },
-    {
-      "rule": "proxy-drift",
-      "key": "proxy POST /agents/{}/auth/{}/login/cancel",
-      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
-    },
-    {
-      "rule": "proxy-drift",
-      "key": "proxy POST /agents/{}/auth/{}/logout",
-      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
+      "reason": "the login start carries an optional query (deviceAuth/enterpriseDomain) whose keys are set from a negated test and a literal rather than from a parameter, so no route can say what fills them (coverage.unroutable)"
     },
     {
       "rule": "proxy-drift",
       "key": "proxy GET /agents/{}/conversations",
       "reason": "the SDK's conversations module reads it through clientFor(agentId).listConversations(), but it publishes the loader as the reactive `refresh`, so the extractor reads the facade member as making no request of its own"
-    },
-    {
-      "rule": "proxy-drift",
-      "key": "proxy GET /agents/{}/conversations/{}/messages",
-      "reason": "the transcript read carries an optional window (limit/before), so its query string is assembled per call and no path template can spell a key that is sometimes absent; turns.history and turns.observe both issue it (coverage.unroutable)"
     },
     {
       "rule": "proxy-drift",
@@ -750,17 +685,12 @@
     {
       "rule": "client-route-unbound",
       "key": "client createWorkspace",
-      "reason": "answers with the synthetic personal workspace, labelled from ctx.activeOld()'s runtime provider read; there is no server workspace to create or rename"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client renameWorkspace",
-      "reason": "answers with the synthetic personal workspace, labelled from ctx.activeOld()'s runtime provider read; there is no server workspace to create or rename"
+      "reason": "answers with the synthetic personal workspace, labelled from ctx.activeOld()'s runtime provider read; there is no server workspace to create"
     },
     {
       "rule": "client-route-unbound",
       "key": "client setWorkspaceProvider",
-      "reason": "answers with the synthetic personal workspace, labelled from ctx.activeOld()'s runtime provider read; there is no server workspace to create or rename"
+      "reason": "answers with the synthetic personal workspace, labelled from ctx.activeOld()'s runtime provider read; there is no server workspace to create"
     }
   ]
 }

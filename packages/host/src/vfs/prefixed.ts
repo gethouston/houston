@@ -1,4 +1,4 @@
-import type { ObjectStat, Vfs } from "./vfs";
+import type { KeyCase, ObjectStat, Vfs } from "./vfs";
 
 /**
  * A Vfs whose keys are re-rooted under `prefix` of another Vfs. The op
@@ -22,6 +22,15 @@ export class PrefixedVfs implements Vfs {
 
   private strip(k: string): string {
     return k.slice(this.prefix.length + 1);
+  }
+
+  /** Re-rooting never changes how the backend compares names. */
+  keyCase(): Promise<KeyCase> {
+    return this.inner.keyCase();
+  }
+
+  exists(key: string): Promise<boolean> {
+    return this.inner.exists(this.key(key));
   }
 
   async list(prefix: string): Promise<string[]> {

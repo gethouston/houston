@@ -9,6 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 
 // NOTE on isolation: `sessions.json` (the conversationId → session_id map) lives
 // per-agent under `dataDir`, but the transcript `projects` tree is SHARED (it
@@ -83,7 +84,7 @@ export function createSessionsStore(input: {
 
   function write(map: Record<string, string>): void {
     mkdirSync(baseDir, { recursive: true });
-    const tmp = `${filePath}.tmp`;
+    const tmp = atomicTempPath(filePath);
     writeFileSync(tmp, JSON.stringify(map), { mode: 0o600 }); // atomic write
     renameSync(tmp, filePath);
   }

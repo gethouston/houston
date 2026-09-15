@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import {
   ARCHIVE_TRIGGER_BYTES,
@@ -124,7 +125,7 @@ export function saveConversation(dir: string, conv: StoredConversation) {
 function save(dir: string, conv: StoredConversation) {
   mkdirSync(dir, { recursive: true });
   const f = fileFor(dir, conv.id);
-  const tmp = `${f}.tmp`;
+  const tmp = atomicTempPath(f);
   let json = JSON.stringify(conv);
   // Past the budget, rotate the older messages out (mutates `conv`, which is
   // also the cached object) and write the tail that remains.

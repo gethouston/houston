@@ -1,6 +1,10 @@
 import ts from "typescript";
 import { calleeName, unwrap } from "./assistant-ast.ts";
 import {
+  type QueryAssemblies,
+  resolveQuerySuffix,
+} from "./assistant-query-params.ts";
+import {
   type Binding,
   bindingParts,
   boundParameter,
@@ -19,6 +23,8 @@ export interface PathHelper {
 export interface PathContext extends ValueScope {
   /** Helpers visible to the file being extracted. */
   helpers: Map<string, PathHelper>;
+  /** The optional query strings the body assembles, by the name it reads. */
+  searchParams: QueryAssemblies;
   depth: number;
 }
 
@@ -175,6 +181,8 @@ export function resolvePath(
   }
   if (ts.isCallExpression(node)) return resolveCall(node, context);
   if (ts.isBinaryExpression(node)) return resolveDefault(node, context);
+  if (ts.isConditionalExpression(node))
+    return resolveQuerySuffix(node, context.searchParams);
   if (!ts.isTemplateExpression(node)) return fail("non-literal path");
   const parts: PathPart[] = [...text(node.head.text)];
   for (const span of node.templateSpans) {

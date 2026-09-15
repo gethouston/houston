@@ -21,9 +21,9 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `setAgentModelChoice` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; choice: free text |
 | `updateAgentColor` | PUT | unconfirmed: Reversible display preference; changes no agent behavior or access. | visible | agentId: resolved:agents; color: enum |
 | `createApiKey` | POST | confirmed: host approval required | returns a secret; the full key is revealed once and must not pass through a chat turn. | name: free text |
-| `listApiKeys` | GET | unconfirmed: read-only HTTP GET | credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway. | none |
-| `revokeApiKey` | DELETE | confirmed: host approval required | credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway. | id: open: API keys are secrets the directory never lists. |
-| `saveAttachments` | POST | unconfirmed: withheld from dispatch | binary upload; the composer batches the dropped files and base64 frames them itself. | agentId: resolved:agents; scopeId: free text; files: free text |
+| `listApiKeys` | GET | unconfirmed: read-only HTTP GET | the hosted gateway's scope wall denies the key routes to this surface, so a dispatched listing can only fail. | none |
+| `revokeApiKey` | DELETE | confirmed: host approval required | the hosted gateway's scope wall denies the key routes to this surface, so a dispatched revoke can only fail. | id: open: API keys are secrets the directory never lists. |
+| `saveAttachments` | POST | unconfirmed: withheld from dispatch | the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace. | agentId: resolved:agents; scopeId: free text; files: free text |
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
 | `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
 | `getBilling` | GET | unconfirmed: read-only HTTP GET | visible | none |
@@ -32,8 +32,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `conversations.suggestTitle` | POST | unconfirmed: withheld from dispatch | it spends a model turn naming a chat the person is in the middle of starting; the title they end up with is theirs to set. | agentId: resolved:agents; text: free text |
 | `turns.cancel` | POST | unconfirmed: Stops work already under way; nothing already said or written is undone. | visible | conversationId: open: A chat is the one the person is looking at, and nothing lists an agent's chats.; agentId: resolved:agents |
 | `turns.dismissInteraction` | POST | unconfirmed: withheld from dispatch | it answers a card the person is looking at by abandoning it, and only they can decide that. | conversationId: open: A chat is the one the person is looking at, and nothing lists an agent's chats.; agentId: resolved:agents |
-| `turns.history` | unroutable | unconfirmed: no callable route | visible | conversationId: open: A chat is the one the person is looking at, and nothing lists an agent's chats.; agentId: resolved:agents |
-| `turns.observe` | unroutable | unconfirmed: withheld from dispatch | it attaches a live stream into the caller's own view of the chat; dispatched on its own it would stream into nothing. | conversationId: open: A chat is the one the person is looking at, and nothing lists an agent's chats.; agentId: resolved:agents |
+| `turns.history` | GET | unconfirmed: read-only HTTP GET | visible | conversationId: open: A chat is the one the person is looking at, and nothing lists an agent's chats.; agentId: resolved:agents |
 | `turns.setMode` | POST | unconfirmed: withheld from dispatch | it changes how the turn the person is watching behaves right now; the mode belongs to the chat they have open, not to a dispatched call. | conversationId: open: A chat is the one the person is looking at, and nothing lists an agent's chats.; agentId: resolved:agents; mode: enum |
 | `turns.truncate` | POST | unconfirmed: withheld from dispatch | it destroys the tail of a transcript to re-ask one message the person is editing in front of them, and nothing lists the turn ids it would need. | conversationId: open: A chat is the one the person is looking at, and nothing lists an agent's chats.; agentId: resolved:agents; turnId: free text |
 | `createFolder` | POST | unconfirmed: Creates an empty folder without replacing existing content. | visible | agentPath: resolved:agents; folderName: free text |
@@ -43,11 +42,11 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `listProjectFiles` | GET | unconfirmed: read-only HTTP GET | visible | agentPath: resolved:agents |
 | `migrationExport` | POST | unconfirmed: withheld from dispatch | answers with a zip as raw bytes, which no chat turn can carry; the copy and migration flows drive it themselves. | agentId: resolved:agents; paths: free text |
 | `migrationImport` | unroutable | unconfirmed: withheld from dispatch | takes a zip as raw bytes, which no chat turn can carry; the copy and migration flows drive it themselves. | agentId: resolved:agents; bytes: free text; opts: free text |
-| `moveProjectFile` | POST | confirmed: host approval required | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; toDir: open: Files are not directory entries, so read the path from listProjectFiles. |
+| `moveProjectFile` | POST | unconfirmed: Moves a file inside the same workspace; nothing is overwritten and nothing leaves it. | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; toDir: open: Files are not directory entries, so read the path from listProjectFiles. |
 | `readAgentFile` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents; relPath: open: An agent document is addressed by its known name, and nothing lists them. |
 | `readProjectFile` | GET | unconfirmed: read-only HTTP GET | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles. |
-| `renameFile` | POST | confirmed: host approval required | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; newName: free text |
-| `uploadProjectFiles` | unroutable | unconfirmed: withheld from dispatch | binary upload; browser File objects the Files section hands it. | agentPath: resolved:agents; files: free text; targetDir: free text |
+| `renameFile` | POST | unconfirmed: Renames in place; the contents are untouched, a name already in use is refused rather than written over, and the name is changed back the same way. | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; newName: free text |
+| `uploadProjectFiles` | unroutable | unconfirmed: withheld from dispatch | the Files section owns the picker that reads files off the person's device; readProjectFile and writeAgentFile are the assistant's way in and out of a workspace. | agentPath: resolved:agents; files: free text; targetDir: free text |
 | `writeAgentFile` | PUT | confirmed: host approval required | visible | agentId: resolved:agents; relPath: open: An agent document is addressed by its known name, and nothing lists them.; content: free text |
 | `addAgentCustomIntegration` | POST | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; input: free text |
 | `addCustomIntegration` | POST | confirmed: host approval required | visible | input: free text |
@@ -75,36 +74,36 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `submitAgentCustomIntegrationCredential` | POST | confirmed: host approval required | takes a secret; the user pastes the integration's own credential. | agentSlugOrId: resolved:agents; slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; values: free text |
 | `submitCustomIntegrationCredential` | POST | confirmed: host approval required | takes a secret; the user pastes the integration's own credential. | slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; values: free text |
 | `triggerTypes` | GET | unconfirmed: read-only HTTP GET | visible | toolkit: open: Toolkits belong to the integration provider, so read the slug from integrationToolkits. |
-| `updateAgentCustomIntegrationDetails` | PATCH | unconfirmed: withheld from dispatch | cosmetic edit form; connection identity is unchanged. | agentSlugOrId: resolved:agents; slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; details: free text |
-| `updateCustomIntegrationDetails` | PATCH | unconfirmed: withheld from dispatch | cosmetic edit form; connection identity is unchanged. | slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; details: free text |
+| `updateAgentCustomIntegrationDetails` | PATCH | unconfirmed: Corrects the name and website on the card; the connection itself, its address and its credential are untouched. | visible | agentSlugOrId: resolved:agents; slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; details: free text |
+| `updateCustomIntegrationDetails` | PATCH | unconfirmed: Corrects the name and website on the card; the connection itself, its address and its credential are untouched. | visible | slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; details: free text |
 | `createActivity` | POST | unconfirmed: Creates a board draft without starting work or spending model tokens. | visible | agentId: resolved:agents; input: free text |
 | `deleteActivity` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:activities |
 | `listActivities` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `missions.search` | unroutable | unconfirmed: no callable route | visible | query: free text; agentId: resolved:agents |
-| `updateActivity` | PATCH | confirmed: host approval required | its session_key, origin_session_key and pending_interaction fields rewrite mission lineage and author approval cards; a status change belongs to the coordinator's update_mission_status tool. | agentId: resolved:agents; id: resolved:activities; updates: free text |
+| `updateActivity` | PATCH | confirmed: host approval required | its updates parameter also carries the lineage the runtime owns - session keys, routine run ids, and the pending interaction that authors an approval card - so a dispatched edit could rewrite far more than the mission's own words; a status move belongs to the coordinator's update_mission_status tool. | agentId: resolved:agents; id: resolved:activities; updates: free text |
 | `addOrgMember` | POST | confirmed: host approval required | visible | email: free text; role: enum |
 | `computeUsage` | GET | unconfirmed: read-only HTTP GET | visible | days: free text |
 | `deleteOrgInvite` | DELETE | confirmed: host approval required | visible | inviteId: resolved:invites |
 | `getOrg` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgPeople` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgProfiles` | unroutable | unconfirmed: withheld from dispatch | UI plumbing; resolves member ids to the names and photos the app's avatars render. | ids: free text |
-| `orgAudit` | unroutable | unconfirmed: no callable route | visible | before: free text; limit: free text |
+| `orgAudit` | GET | unconfirmed: read-only HTTP GET | visible | before: free text; limit: free text |
 | `orgUsage` | GET | unconfirmed: read-only HTTP GET | visible | days: free text |
 | `removeOrgMember` | DELETE | confirmed: host approval required | visible | userId: resolved:members |
 | `setOrgMemberRole` | PATCH | confirmed: host approval required | visible | userId: resolved:members; role: enum |
 | `captureCredential` | unroutable | unconfirmed: withheld from dispatch | credential plumbing; the device-code connect flow calls it as its own last step. | agentId: resolved:agents; provider: free text |
 | `captureSetupCredential` | unroutable | unconfirmed: withheld from dispatch | credential plumbing; first-run capture, before any agent exists. | provider: free text |
-| `forgetCredential` | POST | confirmed: host approval required | destroys the workspace's provider sign-in, including the one serving this conversation. | agentId: resolved:agents; provider: free text |
+| `forgetCredential` | POST | confirmed: host approval required | visible | agentId: resolved:agents; provider: free text |
 | `forgetSetupCredential` | POST | unconfirmed: withheld from dispatch | destroys the space's provider sign-in, before any agent exists. | provider: free text |
 | `listAgentProviders` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `providerLogout` | unroutable | unconfirmed: withheld from dispatch | destroys the provider sign-in every agent runs on, including the one serving this conversation. | name: free text |
-| `providers.cancelLogin` | unroutable | unconfirmed: withheld from dispatch | UI plumbing; it abandons the sign-in the person opened, and only they know they gave up on it. | agentId: resolved:agents; provider: free text |
-| `providers.completeLogin` | unroutable | unconfirmed: withheld from dispatch | takes a one-time sign-in code the provider showed the person, which must not pass through a chat turn. | agentId: resolved:agents; provider: free text; code: free text |
+| `providers.cancelLogin` | POST | unconfirmed: withheld from dispatch | UI plumbing; it abandons the sign-in the person opened, and only they know they gave up on it. | agentId: resolved:agents; provider: free text |
+| `providers.completeLogin` | POST | unconfirmed: withheld from dispatch | takes a one-time sign-in code the provider showed the person, which must not pass through a chat turn. | agentId: resolved:agents; provider: free text; code: free text |
 | `providers.login` | unroutable | unconfirmed: withheld from dispatch | starts a provider sign-in only the user can finish, at the provider's own screen. | agentId: resolved:agents; provider: free text; opts: free text |
 | `providers.refresh` | unroutable | unconfirmed: no callable route | visible | agentId: resolved:agents |
 | `providers.refreshStatus` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
-| `providers.writes.logout` | unroutable | unconfirmed: withheld from dispatch | destroys the agent's provider sign-in, including the one serving this conversation. | agentId: resolved:agents; provider: free text |
-| `providers.writes.setApiKey` | unroutable | unconfirmed: withheld from dispatch | takes a provider credential the person pastes; a key must never pass through a chat turn. | agentId: resolved:agents; provider: free text; key: free text |
+| `providers.writes.logout` | POST | unconfirmed: withheld from dispatch | destroys the agent's provider sign-in, including the one serving this conversation. | agentId: resolved:agents; provider: free text |
+| `providers.writes.setApiKey` | POST | unconfirmed: withheld from dispatch | takes a provider credential the person pastes; a key must never pass through a chat turn. | agentId: resolved:agents; provider: free text; key: free text |
 | `providers.writes.setCustomEndpoint` | POST | unconfirmed: withheld from dispatch | takes the key that server is reached with, and a credential must never pass through a chat turn. | agentId: resolved:agents; endpoint: free text |
 | `providers.writes.setModel` | unroutable | unconfirmed: withheld from dispatch | the agent-wide write the model picker owns; setAgentModelChoice is the one to dispatch, and it names the model with the values that exist. | agentId: resolved:agents; opts: free text |
 | `providerStatusesForAgent` | unroutable | unconfirmed: withheld from dispatch | the provider hub's own per-agent read, shaped for its rows; refreshStatus is the one to dispatch for the same sign-in. | agentId: resolved:agents; names: free text |
@@ -127,11 +126,11 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `getContext` | GET | unconfirmed: read-only HTTP GET | visible | kind: enum |
 | `getMyProfile` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getPreference` | GET | unconfirmed: read-only HTTP GET | UI plumbing; an untyped key/value store the app reads for its own device settings. | key: free text |
-| `preferences.setLocale` | PATCH | confirmed: host approval required | visible | workspaceId: resolved:workspaces; locale: free text |
+| `preferences.setLocale` | PATCH | unconfirmed: Reversible display preference; the app's own language picker changes it with one click. | visible | workspaceId: resolved:workspaces; locale: free text |
 | `setContext` | PUT | confirmed: host approval required | visible | kind: enum; content: free text |
 | `setMyProfile` | PUT | unconfirmed: Reversible personal display overrides; costs nothing and changes no permissions. | visible | update: free text |
 | `setPreference` | PUT | unconfirmed: withheld from dispatch | UI plumbing; an open key/value write that can clobber any app setting. | key: free text; value: free text |
-| `createSharedSkill` | POST | confirmed: host approval required | visible | workspaceId: resolved:workspaces; body: free text |
+| `createSharedSkill` | POST | unconfirmed: Adds a new shared skill without changing or removing an existing one. | visible | workspaceId: resolved:workspaces; body: free text |
 | `createSkill` | POST | confirmed: host approval required | visible | agentId: resolved:agents; body: free text |
 | `deleteSharedSkill` | DELETE | confirmed: host approval required | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills |
 | `deleteSkill` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; slug: resolved:skills |
@@ -152,7 +151,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `acceptOrgInvite` | POST | confirmed: host approval required | visible | inviteId: resolved:invites |
 | `createOrg` | POST | confirmed: host approval required | visible | name: free text |
 | `declineOrgInvite` | DELETE | confirmed: host approval required | visible | inviteId: resolved:invites |
-| `deleteOrg` | DELETE | confirmed: host approval required | destroys a shared space and everything inside it for good; that decision stays with the person, and the hosted gateway denies the route to this surface anyway. | slug: open: The directory covers one organization, so read another one's slug from listOrgs. |
+| `deleteOrg` | DELETE | confirmed: host approval required | the hosted gateway's scope wall denies the space-delete route to this surface, so a dispatched delete can only fail. | slug: open: The directory covers one organization, so read another one's slug from listOrgs. |
 | `getMoveStatus` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents; moveId: open: A move receipt exists only in the answer moveAgent returned. |
 | `listOrgs` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `moveAgent` | POST | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; toSlug: open: The directory covers one organization, so read another one's slug from listOrgs. |
@@ -163,7 +162,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `listAgentTeamMembers` | GET | unconfirmed: read-only HTTP GET | visible | teamId: resolved:teams |
 | `listAgentTeams` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `removeAgentTeamMember` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams; userId: resolved:members |
-| `setAgentAssignments` | unroutable | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; assignments: resolved:members |
+| `setAgentAssignments` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; assignments: resolved:members |
 | `setAgentSettings` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; settings: free text |
 | `setAgentTeam` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; teamId: resolved:teams |
 | `setAgentTeamMemberOwner` | PUT | confirmed: host approval required | visible | teamId: resolved:teams; userId: resolved:members; owner: free text |

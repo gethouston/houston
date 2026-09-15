@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cancelFlowsForDisconnect } from "../../components/integrations/connect-flow-registry";
 import { integrationsSupported } from "../../components/integrations/model";
@@ -35,13 +36,16 @@ export function useIntegrationStatus() {
  * integration provider") straight into a red toast — e.g. a transcript's old
  * connect card mounting its connections query.
  */
-function useProviderRegistered(provider: string): boolean {
+function useProviderRegistered(provider: IntegrationProviderId): boolean {
   const status = useIntegrationStatus();
   return !!status.data?.some((p) => p.provider === provider);
 }
 
 /** The apps the user has connected through a provider. */
-export function useIntegrationConnections(provider: string, enabled: boolean) {
+export function useIntegrationConnections(
+  provider: IntegrationProviderId,
+  enabled: boolean,
+) {
   const registered = useProviderRegistered(provider);
   return useQuery({
     queryKey: queryKeys.integrationConnections(provider),
@@ -56,7 +60,10 @@ export function useIntegrationConnections(provider: string, enabled: boolean) {
  * near-static, so cache it for the session — the app surfaces use it to render
  * real app cards instead of machine slugs.
  */
-export function useIntegrationToolkits(provider: string, enabled: boolean) {
+export function useIntegrationToolkits(
+  provider: IntegrationProviderId,
+  enabled: boolean,
+) {
   const registered = useProviderRegistered(provider);
   return useQuery({
     queryKey: queryKeys.integrationToolkits(provider),

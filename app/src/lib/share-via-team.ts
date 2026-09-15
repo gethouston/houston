@@ -1,4 +1,5 @@
 import type { AgentMoveStatus, OrgSummary } from "@houston-ai/engine-client";
+import { engineErrorCode } from "./engine-error-code.ts";
 
 /**
  * Pure, DOM-free state machine behind {@link ShareViaTeamFlow} — the
@@ -31,36 +32,22 @@ export type MoveErrorKind =
   | "unknown";
 
 /**
- * Best-effort machine-readable reason from a gateway error
- * (kind > code > body.code > body.error). Shared by the wiring layer (to
- * classify a rejection) and {@link isExpectedShareError} (to silence expected C8
- * states from the generic bug toast). Pure + DOM-free so it stays in this
- * unit-tested module.
+ * {@link engineErrorCode}, plus the ENGLISH SENTENCE as a last resort — the
+ * share flow's own concession, kept here and nowhere else.
  *
- * `body.code` is the SHIPPED gateway shape: the Go edge answers a business
- * rejection as a FLAT `{error: "<human sentence>", code: "<machine code>"}`
- * (e.g. `{error: "team needs upgrade", code: "needs_upgrade"}`), while
- * `HoustonEngineError`'s own `.code` getter only reads the NESTED
- * `{error: {code}}` form. Without this step every flat rejection classified as
- * its English sentence, so `needs_upgrade` / `personal_space` / `already_member`
- * silently fell through to the red "report a bug" toast.
+ * The C8 gateway predates the `{error, code}` shape for some rejections and
+ * answers them with a bare `{error: "<sentence>"}`. The share flow's step
+ * machine renders a sentence it does not recognize as a generic failure rather
+ * than classifying it, so falling back to it degrades gracefully. Anywhere
+ * else, matching a code against an English sentence is a bug waiting for the
+ * first reword, so `engineErrorCode` has no such fallback.
  */
 export function shareErrorCode(err: unknown): string | undefined {
-  const e = err as
-    | {
-        kind?: unknown;
-        code?: unknown;
-        body?: { code?: unknown; error?: unknown };
-      }
-    | null
-    | undefined;
-  if (typeof e?.kind === "string") return e.kind;
-  if (typeof e?.code === "string") return e.code;
-  if (typeof e?.body?.code === "string") return e.body.code;
-  const bodyError = e?.body?.error;
-  if (typeof bodyError === "string") return bodyError;
-  const nested = (bodyError as { code?: unknown } | undefined)?.code;
-  return typeof nested === "string" ? nested : undefined;
+  const code = engineErrorCode(err);
+  if (code !== undefined) return code;
+  const bodyError = (err as { body?: { error?: unknown } } | null | undefined)
+    ?.body?.error;
+  return typeof bodyError === "string" ? bodyError : undefined;
 }
 
 /**
