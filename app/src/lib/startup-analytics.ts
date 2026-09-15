@@ -1,4 +1,4 @@
-import type { AnalyticsEventName } from "./analytics";
+import type { AnalyticsEventName } from "./analytics-vocabulary";
 
 /**
  * The minimal analytics surface this routine needs — a structural subset of the

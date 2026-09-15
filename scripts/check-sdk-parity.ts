@@ -40,7 +40,7 @@ if (!gateway)
   );
 const sdk = sdkMethods();
 const desktop = desktopCalls();
-const violations = checkRules(host, gateway ?? [], sdk.routed, desktop);
+const violations = checkRules(host, gateway, sdk.routed, desktop);
 const exceptions = parseExceptions(
   JSON.parse(readFileSync(EXCEPTIONS, "utf8")),
   EXCEPTIONS,
@@ -50,6 +50,7 @@ const { report, failures } = judge(
   violations,
   exceptions,
   `SDK parity — ${host.length} host routes registered, ${gateway?.length ?? 0} gateway routes, ${sdk.routed.length} routed SDK methods (${sdk.unroutable.length} the extractor cannot route), and the shipped client: ${desktop.sdk.length} adapter methods on the SDK, ${desktop.unbound.length} reaching a server without it, ${desktop.native.length} declared native commands.`,
+  gateway ? [] : ["sdk-route-unbound", "sdk-method-unserved"],
 );
 process.stdout.write(report);
 if (failures.length) {

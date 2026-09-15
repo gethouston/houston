@@ -1,431 +1,45 @@
 import posthog from "posthog-js";
+// Imported for its side effect too: PostHog is initialised at module load.
+import {
+  ANALYTICS_KEY as KEY,
+  ANALYTICS_SESSION_ID as SESSION_ID,
+} from "./analytics-bootstrap";
 import { notifyAnalytics } from "./analytics-bus";
-import { getInstallId } from "./install-id";
-import { currentPlatformOs } from "./platform";
+import { analyticsIdentity } from "./analytics-identity";
+import { todayISODate } from "./analytics-install-vintage";
+// The vocabulary (both unions + the property allow-list) lives in its own file
+// so readers that must not drag PostHog in can have it; the two unions are
+// re-exported here because `lib/analytics` is the front door every call site
+// already imports.
+import {
+  ALLOWED_PROPS,
+  type AnalyticsEventName,
+  type AnalyticsProperty,
+} from "./analytics-vocabulary";
 import { tauriPreferences } from "./tauri";
-
-// __POSTHOG_KEY__, __POSTHOG_HOST__, __APP_VERSION__ declared in vite-env.d.ts,
-// baked at build time by Vite from POSTHOG_KEY / POSTHOG_HOST env vars.
-const KEY = typeof __POSTHOG_KEY__ !== "undefined" ? __POSTHOG_KEY__ : "";
-const HOST =
-  typeof __POSTHOG_HOST__ !== "undefined" && __POSTHOG_HOST__
-    ? __POSTHOG_HOST__
-    : "https://us.i.posthog.com";
-const APP_VERSION =
-  typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
 
 export type { AnalyticsListener } from "./analytics-bus";
 export { subscribeAnalytics } from "./analytics-bus";
+export { classifyAnalyticsError } from "./analytics-error-kind";
+export type { AnalyticsEventName, AnalyticsProperty };
 
 const ACTIVE_DATE_KEY = "analytics:last_active_date";
-const FIRST_INSTALL_VERSION_KEY = "analytics:first_install_version";
-const FIRST_INSTALL_DATE_KEY = "analytics:first_install_date";
 
 // Ceiling on the automation goal stored as a person property: enough to read
 // the intent, short enough that a pasted essay can't bloat every person record.
 const GOAL_PERSON_PROP_MAX = 500;
 
-// Per-process session id. Regenerated every app launch — lets us group
-// events that happened in the same "sit-down session" without making
-// users a tracking surface.
-const SESSION_ID = crypto.randomUUID();
-
-export type AnalyticsEventName =
-  // Lifecycle / acquisition
-  | "app_active"
-  | "install_created"
-  | "session_started"
-  | "session_ended"
-  // Auth
-  | "user_signed_in"
-  // First sign-in of a brand-new GCIP account (its `isNewUser` flag). Fires
-  // ONCE per account, ever — the PostHog → Slack new-user notification and
-  // the activation funnel key on this single event.
-  | "user_signed_up"
-  | "user_signed_out"
-  // The user permanently deleted their hosted account (HOU-991). Tracked
-  // BEFORE the sign-out teardown resets the analytics identity.
-  | "account_deleted"
-  // Onboarding
-  | "onboarding_started"
-  | "onboarding_completed"
-  | "onboarding_segment_screen_viewed"
-  | "onboarding_segment_selected"
-  | "onboarding_segment_continued"
-  // The two questions the segment screen grew into (industry + the automation
-  // goal in the user's own words). Same three-beat shape as the segment step —
-  // viewed / selected / continued — so one funnel covers the whole survey, and
-  // `source_screen` says whether it was asked at first run or later, from the
-  // profile-completion prompt.
-  | "onboarding_industry_screen_viewed"
-  | "onboarding_industry_selected"
-  | "onboarding_industry_continued"
-  | "onboarding_goal_screen_viewed"
-  | "onboarding_goal_continued"
-  // The completion prompt appeared for someone who answered the segment before
-  // the survey existed (or bailed mid-way); `missing_steps` names the gaps.
-  | "onboarding_survey_prompted"
-  // One-time "reconnect your AI" moment after upgrading from the legacy build.
-  | "migration_reconnect_completed"
-  // First-run cloud-migration wizard (HOU-719): the cloud desktop build offers
-  // to move the machine's OLD local data into the user's cloud agents.
-  | "cloud_migration_offered"
-  | "cloud_migration_backup_done"
-  | "cloud_migration_started"
-  | "cloud_migration_agent_done"
-  | "cloud_migration_agent_failed"
-  // The user chose "Migrate later" while this agent's task was in flight, so
-  // the task was abandoned, never failed (`step` is where it stood).
-  | "cloud_migration_agent_deferred"
-  | "cloud_migration_completed"
-  | "cloud_migration_skipped"
-  | "cloud_migration_deferred"
-  // The user clicked "Move my data" on the offer (before backup/prepare —
-  // closes the gap between _offered and _backup_done).
-  | "cloud_migration_accepted"
-  // The wizard died BEFORE any per-agent task ran (`step`: backup | prepare).
-  // Per-agent upload failures stay on cloud_migration_agent_failed.
-  | "cloud_migration_failed"
-  // Onboarding funnel (acquisition→activation) — one event per step the user
-  // actually clears, so a single PostHog funnel can show where first-run drops
-  // off (broken down by `app_os` for Mac vs Windows). Action-first: where a
-  // real action exists (provider/apps connected, message/email sent) we fire on
-  // the action, not the Continue click. Each fires exactly ONCE per install
-  // (ref/flag-guarded at the call site).
-  | "onboarding_language_selected"
-  | "onboarding_agreement_accepted"
-  | "ai_provider_connected"
-  | "tools_provider_connected"
-  | "first_message_sent"
-  | "first_email_sent"
-  // Fires once per onboarding screen reached (carries `step`), so a single
-  // funnel shows exactly where people drop off in the redesigned flow.
-  | "onboarding_step_viewed"
-  // Escape hatch: the user bailed out of a stuck onboarding step (HOU-555).
-  // Carries `step`, `provider`, `model` so skip-rate can be broken down by
-  // model — some models send the email but never emit the completion marker.
-  | "onboarding_skipped"
-  // Houston Academy: the learning surface was opened (`source` names where
-  // from) and a chapter was cleared (`chapter` is the chapter id). Chapter
-  // completion is awarded once per account, so the event doubles as the
-  // per-chapter completion rate.
-  | "academy_opened"
-  | "academy_chapter_completed"
-  // A lesson inside a chapter was opened and cleared (`lesson` is the lesson
-  // id, `chapter` the one it belongs to) — the finer grain that shows WHERE
-  // inside a chapter people stop reading.
-  | "academy_lesson_started"
-  | "academy_lesson_completed"
-  // Activation funnel
-  | "workspace_created"
-  | "provider_configured"
-  | "provider_not_configured"
-  // A pasted API key the provider refused with a user-fixable verdict
-  // (`error_kind`: invalid_key | key_restricted). Counted, never a Sentry
-  // error: it shows which providers' key pages confuse users (PRODUCT-1730).
-  | "provider_key_rejected"
-  | "agent_created"
-  | "agent_installed_from_store"
-  | "agent_shared"
-  | "agent_published"
-  | "agent_imported"
-  // A workspace-internal duplicate (`agent_slug` is the SOURCE agent);
-  // `source` names the door: the agent's Settings row or the create dialog.
-  | "agent_copied"
-  // Fired when an agent's self-setup mission auto-starts after it is
-  // created/imported. Carries `source` (created vs imported).
-  | "agent_onboarding_started"
-  | "chat_message_sent"
-  | "chat_message_received"
-  | "mission_created"
-  | "conversation_map_opened"
-  | "conversation_map_closed"
-  | "conversation_map_moment_clicked"
-  | "conversation_map_back_to_latest_clicked"
-  // Feature adoption
-  | "integration_connected"
-  // A connect was refused because Houston has no OAuth app registered for the
-  // toolkit (HOU-1110) — carries `integration_slug`, so demand for a missing
-  // app registration stays visible without a Sentry issue per click.
-  | "integration_connect_unavailable"
-  // The web build's browser refused to open the OAuth tab (popup blocker) and
-  // the row fell back to an explicit "open" click — carries `integration_slug`
-  // so a browser that blocks the hand-off shows up in numbers, not Sentry.
-  | "integration_connect_tab_blocked"
-  | "integration_disconnected"
-  | "custom_integration_started"
-  // A custom integration landed via the manual add form (carries
-  // `integration_slug` + `kind`: openapi / mcp) — distinct from
-  // `custom_integration_started`, the chat-interview kickoff.
-  | "custom_integration_added"
-  | "custom_integration_oauth_started"
-  | "skill_used"
-  // A skill landed in the agent (carries `skill_slug` + `source`:
-  // community / repo / scratch / promoted / workspace-enable / org-default) —
-  // adoption of the skills surface itself, distinct from `skill_used`
-  // (execution in chat).
-  | "skill_installed"
-  | "skill_edited"
-  | "skill_deleted"
-  // A workspace-shared skill was turned off for one agent (a reversible
-  // manifest write, ADR 0003) — the skill itself survives in the store.
-  | "skill_disabled"
-  | "routine_scheduled"
-  | "routine_executed"
-  | "routine_chat_setup_started"
-  // HOU-791: the guided skill-build chat — "Create with AI" was clicked
-  // (`skill_chat_create_clicked`) and the draft chat actually started
-  // (`skill_chat_setup_started`).
-  | "skill_chat_create_clicked"
-  | "skill_chat_setup_started"
-  // Create-intake funnel: the locally-driven question cards (before any model
-  // call) either resolved into a draft (`source`: custom flow / template pick /
-  // composer escape hatch; `template_id` when a template) or were dismissed.
-  | "routine_intake_completed"
-  | "routine_intake_dismissed"
-  | "tab_opened"
-  | "file_attached"
-  | "mobile_paired"
-  // Fires once per search session (empty → non-empty query), not per
-  // keystroke. `surface` says which search box (missions, archived, ...).
-  | "search_performed"
-  | "command_palette_opened"
-  // A dictation capture produced a non-empty transcript the user kept.
-  | "dictation_used"
-  // The user changed the app language from Settings (carries `locale`).
-  // Distinct from onboarding_language_selected (first-run pick).
-  | "language_changed"
-  // AI hub: the model modal was opened (`model` = catalog key).
-  | "model_viewed"
-  // A model-ceiling write landed (`agent_id`, `source`: any | picked).
-  | "models_allowlist_updated"
-  // Organization dashboard membership actions (client-side UI counterparts of
-  // the gateway's server-side team_* events; `role` where it applies).
-  | "org_member_added"
-  | "org_member_removed"
-  | "org_role_changed"
-  | "org_invite_revoked"
-  // The INVITEE's own answer to a pending team invite (C8 spaces).
-  | "org_invite_accepted"
-  | "org_invite_declined"
-  // Update lifecycle (closes the symbolication-coverage feedback loop).
-  // update_offered: the check found a release; update_downloaded: it landed
-  // in the updater's buffer (`source`: launch | poll, which check found it);
-  // update_accepted: the install starting (`source`: user | launch, the
-  // restart pill's click vs the silent launch-time install).
-  | "update_offered"
-  | "update_downloaded"
-  | "update_accepted"
-  // The check itself keeps failing: after UPDATE_CHECK_STUCK_THRESHOLD
-  // consecutive failures the client counts as stuck — it may never see an
-  // update again (release feed unreachable), so it self-reports once per
-  // streak (PRODUCT-1386). `from_version` is the build it is stuck on.
-  | "update_check_failed"
-  // Reliability
-  | "session_completed"
-  | "session_failed"
-  | "app_error_shown"
-  // Client UX timing span (HOU-1011): PostHog mirror of the gateway's
-  // Prometheus histograms, for per-user/session drill-down. Carries `span`
-  // (which journey) + `duration_ms`.
-  | "perf_span";
-
-type AnalyticsProperty =
-  | "provider"
-  | "model"
-  | "config_id"
-  | "agent_mode"
-  | "mission"
-  | "integrations_skipped"
-  | "tutorial_run"
-  | "source"
-  | "error_kind"
-  | "workspace_count"
-  | "agent_count"
-  // New properties
-  | "integration_slug"
-  // Custom integration connection type: openapi / mcp (custom_integration_added)
-  | "integration_kind"
-  | "skill_slug"
-  | "routine_id"
-  | "wake_kind"
-  | "template_id"
-  | "agent_slug"
-  | "tab_name"
-  | "file_kind"
-  | "from_version"
-  | "to_version"
-  // How many update checks failed in a row (update_check_failed)
-  | "consecutive_failures"
-  // Onboarding funnel
-  | "locale"
-  | "detected_locale"
-  | "step"
-  | "agent_id"
-  | "conversation_id"
-  | "moment_type"
-  | "message_position"
-  | "conversation_length"
-  | "surface"
-  // Cloud migration (payload sizes, where already known)
-  | "bytes"
-  | "selected_segment"
-  // Onboarding survey: the industry id, whether the automation goal was given
-  // or skipped, and (on onboarding_survey_prompted) which questions are still
-  // open — "industry", "goal", or "industry,goal".
-  | "selected_industry"
-  | "goal_provided"
-  | "missing_steps"
-  // Which screen asked the question: "first_run_segment" (the onboarding flow)
-  // or "profile_completion" (the later prompt for an unfinished survey).
-  | "source_screen"
-  // The automation goal IN THE USER'S OWN WORDS. Deliberately absent from
-  // ALLOWED_PROPS: it is free text, so it never rides an event (autocapture
-  // masks user content and events must stay content-free). `track` reads it
-  // ONLY to stamp the `onboarding_automation_goal` person property, truncated,
-  // which is where the growth team reads goals from.
-  | "goal_text"
-  // Academy chapter id (academy_chapter_completed) and lesson id
-  // (academy_lesson_started / academy_lesson_completed)
-  | "chapter"
-  | "lesson"
-  // Org membership role (org_member_added / org_role_changed)
-  | "role"
-  // Client UX timing (perf_span)
-  | "span"
-  | "duration_ms";
+/**
+ * The launch's session id, for the OTHER pipe: the first-party product
+ * analytics ingest stamps the same value on its own events
+ * (`lib/product-analytics/`), so one sit-down reads as one session on both
+ * sides without a join table.
+ */
+export function analyticsSessionId(): string {
+  return SESSION_ID;
+}
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
-type UserIdentity = {
-  email?: string | null;
-  /** Provider display name — person property (like email, never an event prop). */
-  name?: string | null;
-  /**
-   * ISO date (YYYY-MM-DD) acquisition cohort. The GCP Identity Platform
-   * session carries no created_at, so post-migration callers pass `null`
-   * and the signup_date person property is simply not stamped (harmless).
-   */
-  signupDate?: string | null;
-};
-
-const ALLOWED_PROPS = new Set<AnalyticsProperty>([
-  "provider",
-  "model",
-  "config_id",
-  "agent_mode",
-  "mission",
-  "integrations_skipped",
-  "tutorial_run",
-  "source",
-  "error_kind",
-  "workspace_count",
-  "agent_count",
-  "integration_slug",
-  "integration_kind",
-  "skill_slug",
-  "routine_id",
-  "wake_kind",
-  "template_id",
-  "agent_slug",
-  "tab_name",
-  "file_kind",
-  "from_version",
-  "to_version",
-  "consecutive_failures",
-  "locale",
-  "detected_locale",
-  "step",
-  "agent_id",
-  "conversation_id",
-  "moment_type",
-  "message_position",
-  "conversation_length",
-  "surface",
-  "bytes",
-  "selected_segment",
-  "selected_industry",
-  "goal_provided",
-  "missing_steps",
-  "source_screen",
-  "chapter",
-  "lesson",
-  "role",
-  "span",
-  "duration_ms",
-]);
-
-// Bootstrap PostHog at module load so a configured build can capture errors
-// before `analytics.init()` resolves. Product events are fired after init.
-let bootstrapped = false;
-
-function rawNavigatorPlatform() {
-  return typeof navigator !== "undefined" ? navigator.platform : "unknown";
-}
-
-function baseSuperProps() {
-  // The web entry injects the runtime deploy environment on
-  // `window.__HOUSTON_DEPLOY_ENV__` (production / preview / development, derived
-  // from the hostname of the ONE promoted bundle). Attach it as a super property
-  // so preview traffic is filterable out of product metrics. Unset on the
-  // desktop, where `is_debug` already separates dev from release.
-  const deployEnv =
-    typeof window !== "undefined" ? window.__HOUSTON_DEPLOY_ENV__ : undefined;
-  return {
-    app_version: APP_VERSION,
-    app_os: currentPlatformOs,
-    os: rawNavigatorPlatform(),
-    is_debug: import.meta.env.DEV,
-    session_id: SESSION_ID,
-    ...(deployEnv ? { environment: deployEnv } : {}),
-  };
-}
-
-function bootstrap() {
-  if (bootstrapped || !KEY) return;
-  bootstrapped = true;
-  posthog.init(KEY, {
-    api_host: HOST,
-    defaults: "2026-01-30",
-    person_profiles: "identified_only",
-    capture_pageview: false,
-    capture_pageleave: false,
-    // Friction signals ($rageclick / $dead_click) require autocapture. Masking
-    // keeps user content (agent names, email subjects, chat text) out of
-    // PostHog — only element selectors/positions leave the app. Specific
-    // question behind enabling (production-infra.md): where does the v0.5.9
-    // onboarding strand users?
-    autocapture: true,
-    mask_all_text: true,
-    mask_all_element_attributes: true,
-    capture_dead_clicks: true,
-    rageclick: true,
-    // Recordings + heatmaps (user-approved 2026-07-16) answer the open
-    // production-infra.md question: where does onboarding strand users?
-    // Both ride the SAME masking as autocapture above — recordings capture
-    // the masked DOM (all text as asterisks), heatmaps only element
-    // selectors/positions — so user content still never leaves the app.
-    // The PostHog project toggles (session_recording_opt_in /
-    // heatmaps_opt_in) must be ON too; either side alone captures nothing.
-    //
-    // Do NOT set `advanced_disable_flags` here. The web recorder does not
-    // start from local config alone: it waits for the remote `/flags`
-    // response, which carries the `sessionRecording` block (endpoint, sample
-    // rate, masking). Suppressing that request means the recorder never
-    // initializes, `recorder.js` is never fetched, and not a single
-    // `$snapshot` is emitted — replay looks enabled on both sides yet
-    // captures nothing, silently. That flag shipped alongside replay in
-    // 0.5.18+ and is why this project has zero recordings.
-    disable_session_recording: false,
-    enable_heatmaps: true,
-    loaded: (ph) => {
-      ph.register({
-        ...baseSuperProps(),
-        auth_status: "anonymous",
-      });
-    },
-  });
-}
-bootstrap();
 
 function cleanProps(props?: Props): Props | undefined {
   if (!props) return undefined;
@@ -436,132 +50,19 @@ function cleanProps(props?: Props): Props | undefined {
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-function activeDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function cleanEmail(email?: string | null): string | undefined {
-  const value = email?.trim().toLowerCase();
-  const at = value?.lastIndexOf("@") ?? -1;
-  return value && at > 0 && at < value.length - 1 ? value : undefined;
-}
-
-function daysBetween(fromISO: string, toISO: string): number {
-  const a = new Date(fromISO).getTime();
-  const b = new Date(toISO).getTime();
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
-  return Math.max(0, Math.floor((b - a) / (1000 * 60 * 60 * 24)));
-}
-
-export function classifyAnalyticsError(message: string): string {
-  const lower = message.toLowerCase();
-  if (
-    lower.includes("auth") ||
-    lower.includes("token") ||
-    lower.includes("login")
-  )
-    return "auth";
-  if (
-    lower.includes("network") ||
-    lower.includes("fetch") ||
-    lower.includes("timeout") ||
-    // WebKit's transport-failure message (HOU-1085) names neither "network"
-    // nor "fetch" — without this line an offline burst classifies as unknown.
-    lower.includes("load failed")
-  )
-    return "network";
-  if (lower.includes("permission") || lower.includes("denied"))
-    return "permission";
-  if (
-    lower.includes("provider") ||
-    lower.includes("openai") ||
-    lower.includes("anthropic")
-  )
-    return "provider";
-  if (
-    lower.includes("unknown option") ||
-    lower.includes("enoent") ||
-    lower.includes("spawn") ||
-    lower.includes("not found") ||
-    lower.includes("claude hit a runtime error") ||
-    lower.includes("codex hit a runtime error")
-  ) {
-    return "cli";
-  }
-  return "unknown";
-}
-
-/**
- * Set or read the first-install-version + first-install-date person
- * properties. Set ONCE per install on the first analytics.init() call;
- * subsequent launches just confirm + read for `days_since_install` math.
- */
-async function ensureFirstInstallProps(): Promise<{
-  firstInstallVersion: string;
-  firstInstallDate: string;
-}> {
-  const today = activeDate();
-  const existingVersion = await tauriPreferences
-    .get(FIRST_INSTALL_VERSION_KEY)
-    .catch(() => null);
-  const existingDate = await tauriPreferences
-    .get(FIRST_INSTALL_DATE_KEY)
-    .catch(() => null);
-
-  const firstInstallVersion = existingVersion ?? APP_VERSION;
-  const firstInstallDate = existingDate ?? today;
-
-  if (!existingVersion) {
-    await tauriPreferences
-      .set(FIRST_INSTALL_VERSION_KEY, firstInstallVersion)
-      .catch(() => {});
-  }
-  if (!existingDate) {
-    await tauriPreferences
-      .set(FIRST_INSTALL_DATE_KEY, firstInstallDate)
-      .catch(() => {});
-  }
-
-  return { firstInstallVersion, firstInstallDate };
-}
-
 /**
  * Fire-and-forget analytics wrapper. Never throws, never blocks.
  * Empty POSTHOG_KEY → silent no-op (local dev without secrets).
+ *
+ * The identity half (init / identifyUser / reset) is `analytics-identity.ts`;
+ * it is spread in here so this stays the one object every call site imports.
  */
 export const analytics = {
-  /**
-   * Resolve the persistent install_id and identify the PostHog distinct_id.
-   * Stamps install-vintage person properties (first_install_version,
-   * first_install_date) on first launch, days_since_install on every
-   * launch. Call once on app mount. Returns `isNew` so callers can track
-   * first install.
-   */
-  init: async (): Promise<{ installId: string; isNew: boolean }> => {
-    if (!KEY) return { installId: "", isNew: false };
-    const { id, isNew } = await getInstallId();
-    const { firstInstallVersion, firstInstallDate } =
-      await ensureFirstInstallProps();
-    try {
-      posthog.identify(id, {
-        first_install_version: firstInstallVersion,
-        first_install_date: firstInstallDate,
-        install_os: currentPlatformOs,
-      });
-      posthog.register({
-        ...baseSuperProps(),
-        install_id: id,
-        days_since_install: daysBetween(firstInstallDate, activeDate()),
-      });
-    } catch {
-      // Analytics unavailable
-    }
-    return { installId: id, isNew };
-  },
+  ...analyticsIdentity,
 
   trackActive: async () => {
     if (!KEY) return;
-    const today = activeDate();
+    const today = todayISODate();
     const last = await tauriPreferences.get(ACTIVE_DATE_KEY).catch(() => null);
     if (last === today) return;
     analytics.track("app_active");
@@ -635,77 +136,12 @@ export const analytics = {
     }
   },
 
-  /**
-   * Tie the signed-in user's Firebase identity to their PostHog person.
-   * Call on sign-in. Does two complementary things:
-   *
-   * 1. `alias(userId)` — adds the Firebase UID as an alias of the current
-   *    install_id person. The distinct_id STAYS install_id (so the website
-   *    `/welcome` UTM bridge and the sequential onboarding funnel are untouched),
-   *    but because every device/reinstall aliases the SAME Firebase UID, PostHog
-   *    stitches a human's separate per-device persons into ONE. alias is the call
-   *    that merges; a second `identify()` with a new distinct_id is ignored once
-   *    a person is identified, so identify is NOT a substitute here.
-   * 2. `setPersonProperties` — also stamps `firebase_uid` (plus email `$set`,
-   *    signup_date `$set_once`) so the id is a queryable join key to the identity
-   *    platform, not only an internal alias. Email is a person property for
-   *    lookup/filtering, never an event prop.
-   *
-   * Finally flips `auth_status` → "authenticated" and stamps `auth_platform`:
-   * "gcp" as super properties so every event going forward is tagged with the
-   * signed-in platform. Identity-platform discontinuity is ACCEPTED: the UID is
-   * a fresh Firebase UID (not the old Supabase id), so historical Supabase-id
-   * joins do not carry over — this is a fresh platform, by design.
-   */
-  identifyUser: (userId: string, identity?: UserIdentity) => {
-    if (!KEY) return;
-    try {
-      const email = cleanEmail(identity?.email);
-      const name = identity?.name?.trim() || undefined;
-      posthog.alias(userId);
-      posthog.setPersonProperties(
-        {
-          firebase_uid: userId,
-          ...(email ? { email } : {}),
-          ...(name ? { name } : {}),
-        },
-        identity?.signupDate ? { signup_date: identity.signupDate } : undefined,
-      );
-      posthog.register({
-        ...baseSuperProps(),
-        auth_status: "authenticated",
-        auth_platform: "gcp",
-      });
-    } catch {
-      // Analytics unavailable
-    }
-  },
-
   captureException: (error: unknown, props?: Props) => {
     if (!KEY) return;
     try {
       const normalized =
         error instanceof Error ? error : new Error(String(error));
       posthog.captureException(normalized, cleanProps(props));
-    } catch {
-      // Analytics unavailable
-    }
-  },
-
-  /**
-   * Reset to a fresh anonymous distinct_id. Call on sign-out.
-   *
-   * `posthog.reset()` clears all previously registered super properties, and we
-   * re-register only `baseSuperProps()` + `auth_status: "anonymous"`. Because
-   * `baseSuperProps()` intentionally omits `auth_platform` (the platform is only
-   * known post-sign-in), that property drops naturally here and never leaks
-   * across a sign-out — no explicit unset needed.
-   */
-  reset: () => {
-    if (!KEY) return;
-    try {
-      posthog.reset();
-      posthog.register({ ...baseSuperProps(), auth_status: "anonymous" });
     } catch {
       // Analytics unavailable
     }

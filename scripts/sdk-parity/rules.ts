@@ -76,12 +76,21 @@ function gatewayEntries(
   ];
 }
 
+/**
+ * `gateway` is null when the sibling cloud checkout is absent (CI has none).
+ * That is a blind spot, not a pass: the gateway-side rules (R1, the gateway
+ * half of R2 and R3) are then not judged at all, and the runner says so — a
+ * method the host does not serve is NOT a violation on that run, because the
+ * server that would serve it simply was not looked at.
+ */
 export function checkRules(
   host: RouteDescriptor[],
-  gateway: GatewayRoute[],
+  gateway: GatewayRoute[] | null,
   sdk: SdkMethod[],
   desktop: DesktopCalls,
 ): Violation[] {
+  const gatewayKnown = gateway !== null;
+  const gatewayRoutes = gateway ?? [];
   const sdkKeys = new Set(sdk.flatMap((method) => method.keys));
   const sdkPaths = new Set(
     sdk.flatMap((method) => method.keys.map((key) => pathOf(key))),
@@ -90,14 +99,14 @@ export function checkRules(
     host.map((route) => keyOf(route.method, route.path)),
   );
   const gatewayKeys = new Set(
-    gateway.flatMap((route) =>
+    gatewayRoutes.flatMap((route) =>
       route.methods.map((method) => keyOf(method, route.pattern)),
     ),
   );
   // A gateway pattern whose methods are `*` dispatches inside its handler, so
   // any method on that path counts as served.
   const gatewayPaths = new Set(
-    gateway.map((route) => normalize(route.pattern)),
+    gatewayRoutes.map((route) => normalize(route.pattern)),
   );
   const violations: Violation[] = [];
 
@@ -112,7 +121,7 @@ export function checkRules(
       message: `host ${key} (${route.source}) is classified sdk but no @houston/sdk method issues it — add one, or reclassify with a written reason`,
     });
   }
-  for (const route of gateway) {
+  for (const route of gatewayRoutes) {
     if (route.classification !== "sdk") continue;
     const keys = route.methods.map((method) => keyOf(method, route.pattern));
     if (keys.some((key) => sdkKeys.has(key))) continue;
@@ -130,6 +139,8 @@ export function checkRules(
   // site, not one per member, so a deployment that serves `composio` and not
   // `custom` serves the method. What a member costs is only ever the OTHER
   // direction — R1 still reports a literal no member names.
+  // Without the gateway inventory only the host can vouch for a method, so a
+  // host miss is left unjudged.
   for (const method of sdk) {
     if (
       method.keys.some(
@@ -137,7 +148,8 @@ export function checkRules(
           hostKeys.has(key) ||
           gatewayKeys.has(key) ||
           gatewayPaths.has(pathOf(key)),
-      )
+      ) ||
+      !gatewayKnown
     )
       continue;
     violations.push({
@@ -156,7 +168,7 @@ export function checkRules(
       })),
       "host",
     ),
-    ...duplicates(gatewayEntries(gateway), "gateway"),
+    ...duplicates(gatewayEntries(gatewayRoutes), "gateway"),
   );
 
   // R4 — a declared runtime-proxy member nothing reaches: the list has gone

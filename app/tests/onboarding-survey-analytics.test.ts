@@ -1,7 +1,12 @@
 import { ok, strictEqual } from "node:assert";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, it } from "node:test";
+import {
+  TRACKED_ALLOWED_PROPS as ALLOWED_PROPS,
+  analyticsBlock as block,
+  TRACKED_EVENTS as EVENTS,
+  TRACKED_PROPERTY_UNION as PROPERTY_UNION,
+  ANALYTICS_SOURCE as SOURCE,
+} from "./fixtures/analytics-source.ts";
 
 // `analytics.ts` can't be imported here (posthog-js + the engine client come
 // with it), so the survey's contract with PostHog is asserted against the
@@ -9,27 +14,6 @@ import { describe, it } from "node:test";
 // is in the AnalyticsEventName union (typos fail the build, absences don't),
 // and every survey prop is in BOTH the property union and ALLOWED_PROPS —
 // `cleanProps` drops anything missing from the Set, silently.
-const SOURCE = readFileSync(
-  join(import.meta.dirname, "../src/lib/analytics.ts"),
-  "utf8",
-);
-
-function block(startsWith: string, endsWith: string): string {
-  const from = SOURCE.indexOf(startsWith);
-  ok(from >= 0, `analytics.ts no longer contains "${startsWith}"`);
-  const to = SOURCE.indexOf(endsWith, from);
-  ok(to > from, `analytics.ts no longer contains "${endsWith}"`);
-  return SOURCE.slice(from, to);
-}
-
-const quoted = (source: string) =>
-  new Set(Array.from(source.matchAll(/"([a-z0-9_$]+)"/g), (m) => m[1]));
-
-const EVENTS = quoted(block("export type AnalyticsEventName =", ";\n"));
-const PROPERTY_UNION = quoted(block("type AnalyticsProperty =", ";\n"));
-const ALLOWED_PROPS = quoted(
-  block("const ALLOWED_PROPS = new Set<AnalyticsProperty>([", "]);"),
-);
 
 describe("onboarding survey analytics", () => {
   it("declares every survey event", () => {

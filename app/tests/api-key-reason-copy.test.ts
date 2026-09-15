@@ -3,6 +3,10 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 import { apiKeyReasonCopyKey } from "../src/lib/api-key-reason-copy.ts";
+import {
+  TRACKED_ALLOWED_PROPS as ALLOWED_PROPS,
+  TRACKED_EVENTS as EVENTS,
+} from "./fixtures/analytics-source.ts";
 
 // The connect dialog's verdict → copy map. Providers with a KNOWN remedy must
 // name it: the generic "check the key" sent Hugging Face users (a token
@@ -78,14 +82,10 @@ describe("apiKeyReasonCopyKey", () => {
   });
 });
 
-// `analytics.ts` can't be imported here (posthog-js comes with it), so the
-// rejection counter's contract is pinned against the source: the event must be
-// in the name union and both its props in ALLOWED_PROPS, or `cleanProps`
-// silently drops them and the dashboard goes quiet.
-const ANALYTICS = readFileSync(
-  join(import.meta.dirname, "../src/lib/analytics.ts"),
-  "utf8",
-);
+// The vocabulary can't be imported here (posthog-js comes with its front
+// door), so the rejection counter's contract is pinned against the source: the
+// event must be in the name union and both its props in ALLOWED_PROPS, or
+// `cleanProps` silently drops them and the dashboard goes quiet.
 const TAURI = readFileSync(
   join(import.meta.dirname, "../src/lib/tauri.ts"),
   "utf8",
@@ -93,12 +93,9 @@ const TAURI = readFileSync(
 
 describe("provider_key_rejected wiring", () => {
   it("declares the analytics event and its props", () => {
-    ok(ANALYTICS.includes('| "provider_key_rejected"'));
-    const allowed = ANALYTICS.slice(
-      ANALYTICS.indexOf("const ALLOWED_PROPS = new Set<AnalyticsProperty>(["),
-    );
-    ok(allowed.includes('"provider",'));
-    ok(allowed.includes('"error_kind",'));
+    ok(EVENTS.has("provider_key_rejected"));
+    ok(ALLOWED_PROPS.has("provider"));
+    ok(ALLOWED_PROPS.has("error_kind"));
   });
 
   it("setApiKey silences user-fixable verdicts so they never reach Sentry", () => {

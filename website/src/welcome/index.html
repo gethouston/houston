@@ -72,11 +72,29 @@ rootPath: "../"
   // person_profiles is 'always' in base.njk so the anonymous person
   // exists with UTM props ready to be merged. Without 'always', this
   // identify would create a fresh empty profile.
-  (function () {
-    if (typeof window === 'undefined' || !window.posthog) return;
+  // Runs on DOMContentLoaded because the first-party sink ships as a deferred
+  // asset: deferred scripts execute after parsing but before this event, so
+  // whichever sinks did load are ready by the time this runs.
+  window.addEventListener('DOMContentLoaded', function () {
     var params = new URLSearchParams(window.location.search);
     var installId = params.get('install_id');
-    if (!installId || !/^[0-9a-f-]{36}$/i.test(installId)) return;
+    if (!installId) return;
+    // The two sinks are bridged independently: an ad blocker (or a 404 on one
+    // asset) can remove either one, and neither one's absence may cost the
+    // other its event.
+    var analytics = window.HoustonAnalytics;
+    // The app only ever mints canonical v4 ids, and a PostHog alias is
+    // irreversible, so a crafted link must never merge this visitor onto an
+    // arbitrary id: both sinks judge the shape, the asset when it loaded and a
+    // local copy of the same rule when it did not.
+    var CANONICAL_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    var valid = analytics ? analytics.isInstallId(installId) : CANONICAL_V4.test(installId);
+    if (!valid) return;
+    if (analytics) {
+      // First-party funnel: ties this browser's visitor id to the install.
+      analytics.track('welcome_bridged', { install_id: installId });
+    }
+    if (!window.posthog) return;
     try {
       window.posthog.alias(installId);
       window.posthog.identify(installId, {
@@ -87,6 +105,6 @@ rootPath: "../"
       // PostHog blocked or DNT — silent no-op, attribution falls back to
       // app-only events without website UTM properties.
     }
-  })();
+  });
 </script>
 {% endblock %}

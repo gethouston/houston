@@ -1,34 +1,29 @@
+// The download modal: opening it, the registration gate in front of it, and
+// closing it again. The buttons inside the download step — platform groups,
+// installer URLs, what a click reports — are download-gate-buttons.js.
 (() => {
   var overlay = document.getElementById("dl-overlay");
   if (!overlay) return;
 
   var REGISTERED_KEY = "houston_dl_registered";
-  var RELEASES_PAGE = "https://github.com/gethouston/houston/releases";
   var closeButton = document.getElementById("dl-close");
   var formStep = document.getElementById("dl-step-form");
   var downloadStep = document.getElementById("dl-step-download");
-  var macGroup = document.getElementById("dl-mac-group");
-  var windowsGroup = document.getElementById("dl-windows-group");
-  var linuxGroup = document.getElementById("dl-linux-group");
-  var windowsSkip = document.getElementById("dl-windows-skip");
-  var osAlt = document.getElementById("dl-os-alt");
-  var macButton = document.getElementById("dl-btn");
-  var x64Button = document.getElementById("dl-windows-x64-btn");
-  var arm64Button = document.getElementById("dl-windows-arm64-btn");
-  var linuxButton = document.getElementById("dl-linux-btn");
-  var currentOs = "other";
   var currentSource = "unknown";
-  var dmgUrl = null;
-  var winX64Url = null;
-  var winArm64Url = null;
-  var appImageUrl = null;
   var savedY = 0;
 
-  // window.houstonT comes from the inline i18n block; fall back to the English
-  // literal if a page ever loads this script without it.
-  function tr(path, fallback) {
-    return window.houstonT ? window.houstonT(path, fallback) : fallback;
+  // First-party funnel sink (assets/houston-analytics.js). Optional by design:
+  // the gate keeps working when that asset is blocked or fails to load.
+  function funnel(name, fields) {
+    if (window.HoustonAnalytics) window.HoustonAnalytics.track(name, fields);
   }
+
+  // The download step's buttons ship as their own asset, so they are optional
+  // the same way the funnel sink is: `buttons` stays null when it did not load.
+  // It is initialised BELOW the listeners, after the modal itself works — an
+  // inert download button on every page is the one failure this gate must not
+  // risk for the sake of the rows inside it.
+  var buttons = null;
 
   // The landing drives the page with Lenis smooth scroll. Freezing the native
   // scroll alone is not enough: Lenis keeps its own position, so it has to be
@@ -66,49 +61,18 @@
     } catch (_error) {}
   }
 
-  function setButtonUrl(button, url) {
-    if (!button) return;
-    if (url) {
-      button.href = url;
-      button.classList.remove("btn-disabled");
-    } else {
-      button.removeAttribute("href");
-      button.classList.add("btn-disabled");
-    }
-  }
-
-  function refreshButtons() {
-    setButtonUrl(macButton, dmgUrl);
-    setButtonUrl(x64Button, winX64Url);
-    setButtonUrl(arm64Button, winArm64Url);
-    setButtonUrl(linuxButton, appImageUrl);
-  }
-
-  function applyOs(os) {
-    currentOs =
-      os === "mac" || os === "windows" || os === "linux" ? os : "other";
-    // A pinned OS shows only its own group plus an escape hatch that reveals
-    // every platform; "other" starts with all of them visible.
-    var pinned = currentOs !== "other";
-    macGroup.hidden = pinned && currentOs !== "mac";
-    windowsGroup.hidden = pinned && currentOs !== "windows";
-    linuxGroup.hidden = pinned && currentOs !== "linux";
-    windowsSkip.hidden = windowsGroup.hidden;
-    osAlt.hidden = !pinned;
-    if (pinned) {
-      osAlt.textContent = tr("gate.needOther", "Need it for a different OS?");
-    }
-  }
-
   function showDownloadStep() {
     formStep.hidden = true;
     downloadStep.hidden = false;
-    applyOs(currentOs);
+    buttons?.applyOs();
   }
 
   function openModal(source, os) {
     currentSource = source || "unknown";
-    applyOs(os || detectOs());
+    var wantedOs = os || detectOs();
+    // The buttons asset settles the platform (it may fall back when a build is
+    // missing for one); without it the page's own detection is the answer.
+    var currentOs = buttons ? buttons.applyOs(wantedOs) : wantedOs;
     track("app_download_clicked", { os: currentOs });
     track("download_clicked", { source: currentSource });
     if (isRegistered()) {
@@ -130,46 +94,6 @@
     overlay.classList.remove("open");
     unlockScroll();
   }
-
-  osAlt.addEventListener("click", () => {
-    applyOs("other");
-    track("download_os_switched", { to: "all" });
-  });
-
-  function trackEnabledClick(button, event, name, props) {
-    if (button.classList.contains("btn-disabled")) {
-      event.preventDefault();
-      return;
-    }
-    track(name, props);
-  }
-
-  macButton.addEventListener("click", (event) => {
-    trackEnabledClick(macButton, event, "download_started", {
-      source: currentSource,
-      dmg_url: dmgUrl || "",
-    });
-  });
-  x64Button.addEventListener("click", (event) => {
-    trackEnabledClick(x64Button, event, "windows_download_started", {
-      source: currentSource,
-      arch: "x64",
-      msi_url: winX64Url || "",
-    });
-  });
-  arm64Button.addEventListener("click", (event) => {
-    trackEnabledClick(arm64Button, event, "windows_download_started", {
-      source: currentSource,
-      arch: "arm64",
-      msi_url: winArm64Url || "",
-    });
-  });
-  linuxButton.addEventListener("click", (event) => {
-    trackEnabledClick(linuxButton, event, "linux_download_started", {
-      source: currentSource,
-      appimage_url: appImageUrl || "",
-    });
-  });
 
   document.querySelectorAll("[data-dl-trigger]").forEach((element) => {
     element.addEventListener("click", (event) => {
@@ -197,39 +121,37 @@
       closeModal();
   });
 
-  window.HoustonDLForm.init({
-    config: window.HOUSTON_DL_CONFIG,
-    track: track,
-    onSubmitted: () => {
-      markRegistered();
-      track("download_form_submitted", { source: currentSource });
-      track("download_unlocked", { source: currentSource });
-      showDownloadStep();
-    },
-  });
-
-  // Installer resolution is resilient to missing assets and network errors.
-  var urlsPromise;
-  try {
-    urlsPromise = window.houstonInstallerUrls();
-  } catch (error) {
-    urlsPromise = Promise.reject(error);
-  }
-  Promise.resolve(urlsPromise)
-    .then((urls) => {
-      dmgUrl = urls?.dmg;
-      winX64Url = urls?.winX64;
-      winArm64Url = urls?.winArm64;
-      appImageUrl = urls?.appImage;
-    })
-    .catch(() => {})
-    .then(() => {
-      dmgUrl = dmgUrl || RELEASES_PAGE;
-      winX64Url = winX64Url || RELEASES_PAGE;
-      winArm64Url = winArm64Url || RELEASES_PAGE;
-      appImageUrl = appImageUrl || RELEASES_PAGE;
-      refreshButtons();
+  if (window.HoustonDLButtons) {
+    buttons = window.HoustonDLButtons.init({
+      track: track,
+      funnel: funnel,
+      // Read per click: which entry point opened the modal changes between opens.
+      source: () => currentSource,
     });
+  }
+
+  // The registration step's own asset, optional for the same reason the two
+  // above are: if it never loaded there is nothing to submit, but the modal and
+  // every way out of it are this file's job and must not go down with it. A
+  // visitor who already registered never needed it — they land on the buttons.
+  if (window.HoustonDLForm) {
+    window.HoustonDLForm.init({
+      config: window.HOUSTON_DL_CONFIG,
+      track: track,
+      onSubmitted: (payload) => {
+        markRegistered();
+        // The address is handed over raw and hashed inside the analytics asset;
+        // only the SHA-256 digest is put on the wire.
+        funnel("download_form_completed", {
+          email: payload.email,
+          os: buttons ? buttons.os() : detectOs(),
+        });
+        track("download_form_submitted", { source: currentSource });
+        track("download_unlocked", { source: currentSource });
+        showDownloadStep();
+      },
+    });
+  }
 
   if (window.location.hash === "#download") openModal("hash", detectOs());
 })();
