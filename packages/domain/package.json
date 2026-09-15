@@ -59,6 +59,10 @@
       "types": "./src/assistant-hands.ts",
       "import": "./src/assistant-hands.ts"
     },
+    "./conversation-keys": {
+      "types": "./src/conversation-keys.ts",
+      "import": "./src/conversation-keys.ts"
+    },
     "./assistant-catalog-callable": {
       "types": "./src/assistant-catalog-callable.ts",
       "import": "./src/assistant-catalog-callable.ts"

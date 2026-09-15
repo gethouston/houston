@@ -3,7 +3,7 @@
  * board reads, so a chat turn flipping a card's status shows up on the board.
  */
 
-import { addressesMission } from "@houston/domain";
+import { addressesMission } from "@houston/domain/conversation-keys";
 import {
   type Activity,
   type ActivityUpdate,
