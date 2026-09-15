@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { judge, parseExceptions } from "./sdk-parity/gate.ts";
 import {
+  readGatewayInventory,
+  stampAgeInDays,
+} from "./sdk-parity/gateway-inventory.ts";
+import {
   desktopCalls,
-  gatewayExport,
   listRoutes,
-  readGateway,
   repoRoot,
   sdkMethods,
 } from "./sdk-parity/inputs.ts";
@@ -17,11 +19,12 @@ import { checkRules } from "./sdk-parity/rules.ts";
  * serves?
  *
  * It runs on every `pnpm check` (`check:sdk-parity`) and FAILS the process on
- * any violation the exceptions file does not excuse: the host's route registry
- * now declares the whole surface, so what the rules report is the real state of
- * the two clients against the two servers rather than an artefact of a
- * migration (PRODUCT-1820). Every remaining violation is written down, with the
- * reason it stands, in scripts/sdk-parity-exceptions.json.
+ * any violation the exceptions file does not excuse. Both servers are always
+ * judged: the host declares its own route registry, and the gateway's is
+ * vendored into scripts/sdk-parity/gateway-routes.generated.json, so a run with
+ * no cloud checkout is a full run rather than a blind spot. Every remaining
+ * violation is written down, with the reason it stands, in
+ * scripts/sdk-parity-exceptions.json.
  *
  * Run with tsx, not `node --experimental-strip-types`: the host's modules
  * import each other extensionlessly, which Node's ESM resolver refuses.
@@ -33,14 +36,14 @@ const EXCEPTIONS =
   resolve(repoRoot, "scripts/sdk-parity-exceptions.json");
 
 const host = listRoutes();
-const gateway = readGateway();
-if (!gateway)
-  process.stderr.write(
-    `WARNING: no gateway route export at ${gatewayExport}. The gateway's routes are NOT checked — point HOUSTON_CLOUD_ROOT at the cloud checkout. This is a blind spot, not a pass.\n`,
+const gateway = readGatewayInventory();
+if (gateway.source === "vendored")
+  process.stdout.write(
+    `INFO: gateway inventory vendored from cloud ${gateway.stamp.cloudSha.slice(0, 7)}, ${stampAgeInDays(gateway.stamp)} days old — no cloud checkout beside this repo to cross-check it against.\n`,
   );
 const sdk = sdkMethods();
 const desktop = desktopCalls();
-const violations = checkRules(host, gateway, sdk.routed, desktop);
+const violations = checkRules(host, gateway.routes, sdk.routed, desktop);
 const exceptions = parseExceptions(
   JSON.parse(readFileSync(EXCEPTIONS, "utf8")),
   EXCEPTIONS,
@@ -49,8 +52,7 @@ const exceptions = parseExceptions(
 const { report, failures } = judge(
   violations,
   exceptions,
-  `SDK parity — ${host.length} host routes registered, ${gateway?.length ?? 0} gateway routes, ${sdk.routed.length} routed SDK methods (${sdk.unroutable.length} the extractor cannot route), and the shipped client: ${desktop.sdk.length} adapter methods on the SDK, ${desktop.unbound.length} reaching a server without it, ${desktop.native.length} declared native commands.`,
-  gateway ? [] : ["sdk-route-unbound", "sdk-method-unserved"],
+  `SDK parity — ${host.length} host routes registered, ${gateway.routes.length} gateway routes (${gateway.source}), ${sdk.routed.length} routed SDK methods (${sdk.unroutable.length} the extractor cannot route), and the shipped client: ${desktop.sdk.length} adapter methods on the SDK, ${desktop.unbound.length} reaching a server without it, ${desktop.native.length} declared native commands.`,
 );
 process.stdout.write(report);
 if (failures.length) {

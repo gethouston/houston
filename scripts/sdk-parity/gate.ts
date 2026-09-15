@@ -74,17 +74,11 @@ export function judge(
   violations: Violation[],
   exceptions: Exceptions,
   summary: string,
-  // Rules this run could not evaluate (the gateway inventory was absent): an
-  // exception for one of them is neither reproduced nor stale — it is unjudged,
-  // and the runner has already said so on stderr.
-  unjudged: readonly Rule[] = [],
 ): Verdict {
   const excused = new Set(exceptions.entries.map(identity));
   const reproduced = new Set(violations.map(identity));
   const open = violations.filter((v) => !excused.has(identity(v)));
-  const stale = exceptions.entries.filter(
-    (e) => !reproduced.has(identity(e)) && !unjudged.includes(e.rule),
-  );
+  const stale = exceptions.entries.filter((e) => !reproduced.has(identity(e)));
 
   const lines = [summary];
   for (const rule of RULES) {

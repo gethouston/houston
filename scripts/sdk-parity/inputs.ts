@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { DESKTOP_NATIVE_COMMANDS } from "../../app/src/lib/desktop-native-commands.ts";
@@ -19,19 +19,8 @@ export const repoRoot = resolve(
   "../..",
 );
 
-/** The sibling cloud checkout; HOUSTON_CLOUD_ROOT overrides the default. */
-export const gatewayExport = resolve(
-  process.env.HOUSTON_CLOUD_ROOT ?? resolve(repoRoot, "..", "cloud"),
-  "internal/edge/routes.generated.json",
-);
-
-export interface GatewayRoute {
-  pattern: string;
-  /** Explicit because the gateway dispatches methods inside its handlers. */
-  methods: string[];
-  classification: string;
-  reason?: string;
-}
+/** The gateway's own routes are the fourth source; `./gateway-inventory.ts`
+ *  resolves them from the copy vendored into this repo. */
 
 export interface SdkMethod {
   name: string;
@@ -75,15 +64,6 @@ export const keyOf = (method: string, path: string): string =>
 export const pathOf = (key: string): string => key.slice(key.indexOf(" ") + 1);
 
 export { listRoutes };
-
-/**
- * The gateway's declared routes, or null when the sibling checkout is absent.
- * Null is a BLIND SPOT, never a pass — the caller must say so out loud.
- */
-export function readGateway(): GatewayRoute[] | null {
-  if (!existsSync(gatewayExport)) return null;
-  return JSON.parse(readFileSync(gatewayExport, "utf8")) as GatewayRoute[];
-}
 
 /**
  * Every `@houston/sdk` method with the route it issues, read by the assistant

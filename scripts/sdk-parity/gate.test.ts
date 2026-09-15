@@ -5,9 +5,9 @@ import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
 import { buildGraph, nodeKey } from "./adapter-graph.ts";
 import { type Exceptions, judge, parseExceptions } from "./gate.ts";
+import type { GatewayRoute } from "./gateway-inventory.ts";
 import {
   type DesktopCalls,
-  type GatewayRoute,
   repoRoot,
   type SdkMethod,
   sdkMethodOf,
@@ -327,29 +327,15 @@ test("the checker exits non-zero when a violation is not excused", () => {
   expect(run()).toContain(dropped.key);
 }, 120_000);
 
-test("without the gateway inventory a host miss is unjudged, not a violation", () => {
+/**
+ * Neither server is ever optional: the gateway's inventory is vendored into
+ * this repo, so a method no server serves is a violation on every run — there
+ * is no configuration in which it goes unjudged.
+ */
+test("a method neither server serves is a violation", () => {
   const hostless = [
     { name: "orgGet", key: "GET /v1/org", keys: ["GET /v1/org"] },
   ];
   const judged = checkRules([], [], hostless, client());
   expect(judged.map((v) => v.rule)).toEqual(["sdk-method-unserved"]);
-  const blind = checkRules([], null, hostless, client());
-  expect(blind).toEqual([]);
-});
-
-test("an exception for a rule this run could not judge is not stale", () => {
-  const gatewayExcuse: Exceptions = {
-    baseline: 1,
-    entries: [
-      {
-        rule: "sdk-route-unbound",
-        key: "gateway POST /v1/analytics/events",
-        reason: "the client's own analytics beacon, not a domain capability",
-      },
-    ],
-  };
-  const blind = judge([], gatewayExcuse, "summary", ["sdk-route-unbound"]);
-  expect(blind.failures).toEqual([]);
-  const sighted = judge([], gatewayExcuse, "summary");
-  expect(sighted.failures).toHaveLength(1);
 });

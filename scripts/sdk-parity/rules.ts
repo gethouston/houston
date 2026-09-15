@@ -1,8 +1,8 @@
 import { relative } from "node:path";
 import type { RouteDescriptor } from "../../packages/host/src/routes/registry/types.ts";
+import type { GatewayRoute } from "./gateway-inventory.ts";
 import {
   type DesktopCalls,
-  type GatewayRoute,
   keyOf,
   normalize,
   pathOf,
@@ -76,21 +76,15 @@ function gatewayEntries(
   ];
 }
 
-/**
- * `gateway` is null when the sibling cloud checkout is absent (CI has none).
- * That is a blind spot, not a pass: the gateway-side rules (R1, the gateway
- * half of R2 and R3) are then not judged at all, and the runner says so — a
- * method the host does not serve is NOT a violation on that run, because the
- * server that would serve it simply was not looked at.
- */
+/** Both servers are always known: the host declares its own registry, and the
+ *  gateway's inventory is vendored into this repo, so every rule is judged on
+ *  every run. */
 export function checkRules(
   host: RouteDescriptor[],
-  gateway: GatewayRoute[] | null,
+  gatewayRoutes: GatewayRoute[],
   sdk: SdkMethod[],
   desktop: DesktopCalls,
 ): Violation[] {
-  const gatewayKnown = gateway !== null;
-  const gatewayRoutes = gateway ?? [];
   const sdkKeys = new Set(sdk.flatMap((method) => method.keys));
   const sdkPaths = new Set(
     sdk.flatMap((method) => method.keys.map((key) => pathOf(key))),
@@ -139,8 +133,6 @@ export function checkRules(
   // site, not one per member, so a deployment that serves `composio` and not
   // `custom` serves the method. What a member costs is only ever the OTHER
   // direction — R1 still reports a literal no member names.
-  // Without the gateway inventory only the host can vouch for a method, so a
-  // host miss is left unjudged.
   for (const method of sdk) {
     if (
       method.keys.some(
@@ -148,8 +140,7 @@ export function checkRules(
           hostKeys.has(key) ||
           gatewayKeys.has(key) ||
           gatewayPaths.has(pathOf(key)),
-      ) ||
-      !gatewayKnown
+      )
     )
       continue;
     violations.push({
