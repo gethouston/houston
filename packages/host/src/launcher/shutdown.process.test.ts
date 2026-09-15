@@ -73,7 +73,10 @@ function realSleeperSpawner() {
             /* already gone */
           }
         },
-        onExit: (cb) => child.once("exit", cb),
+        onExit: (cb) =>
+          child.once("exit", (code, signal) =>
+            cb({ code, signal, stderrTail: [] }),
+          ),
       };
     },
   };

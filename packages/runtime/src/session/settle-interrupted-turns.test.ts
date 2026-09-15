@@ -38,6 +38,43 @@ function seed() {
 }
 
 describe("settleInterruptedTurns", () => {
+  it("reports what the dead turn had to load: the transcript and its pi session files", () => {
+    // A restart that recurs a few seconds into every turn with no tool
+    // running (HOUSTON-APP-5DX) is a load blow-up, not an eviction; the sizes
+    // tell the two apart without parsing anything.
+    const { dataDir, write } = seed();
+    write("big", [
+      {
+        role: "user",
+        content: "x".repeat(3 * 1024 * 1024),
+        ts: 1,
+        turnId: "t",
+      },
+    ]);
+    const sessions = join(dataDir, "sessions", "big");
+    mkdirSync(sessions, { recursive: true });
+    writeFileSync(join(sessions, "2026-a.jsonl"), "y".repeat(1024 * 1024));
+    writeFileSync(join(sessions, "2026-b.jsonl"), "y".repeat(512 * 1024));
+    writeFileSync(join(sessions, "harness.json"), "z".repeat(1024 * 1024));
+    writeInflightMarker(dataDir, {
+      conversationId: "big",
+      turnId: "t",
+      startedAt: 1_000,
+      fenced: true,
+    });
+    const report = vi.fn();
+    settleInterruptedTurns({
+      dataDir,
+      report,
+      settleMission: () => {},
+      now: () => 13_000,
+    });
+    const error = report.mock.calls[0]?.[0] as EngineRestartedMidTurnError;
+    expect(error.message).toContain("ran=12s tool=none");
+    expect(error.message).toContain("transcript=3.0MiB session=1.5MiB");
+    expect(error.footprint.sessionBytes).toBe(1536 * 1024);
+  });
+
   it("writes the interrupted reply for the dead turn, reports once, clears the marker", () => {
     const { dataDir, write, read } = seed();
     write("chat", [
@@ -79,6 +116,8 @@ describe("settleInterruptedTurns", () => {
     expect(error.message).toContain("tool=bash");
     expect(error.message).toContain("fenced=true");
     expect(error.message).toContain("memory fence");
+    // The transcript is a few hundred bytes and no pi session exists yet.
+    expect(error.message).toContain("transcript=0.0MiB session=0.0MiB");
     expect(listInflightMarkers(dataDir)).toEqual([]);
   });
 
