@@ -151,7 +151,13 @@ export async function runTurn(
       acting,
       displayText,
       mentions,
-      { pin, ...(options?.resumeOf ? { resumeOf: options.resumeOf } : {}) },
+      {
+        pin,
+        // The gateway-supplied context rides the in-flight marker too: it is
+        // request-only data a boot resume cannot rebuild from the volume.
+        ...(context ? { context } : {}),
+        ...(options?.resumeOf ? { resumeOf: options.resumeOf } : {}),
+      },
     );
     return withWorkdirLock(config.workspaceDir, () =>
       execTurn(conv, id, turnId, text, recorded, pin, acting),

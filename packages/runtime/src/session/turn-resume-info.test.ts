@@ -40,6 +40,17 @@ describe("buildTurnResumeInfo", () => {
     expect(JSON.stringify(info)).not.toContain("a-gateway-token");
   });
 
+  it("keeps the gateway-provided context the volume cannot rebuild", () => {
+    expect(
+      buildTurnResumeInfo(undefined, undefined, {
+        workspace: "we ship on Fridays",
+        user: "Ada, founder",
+      }),
+    ).toEqual({
+      context: { workspace: "we ship on Fridays", user: "Ada, founder" },
+    });
+  });
+
   it("drops a live local-model transport — it cannot survive a restart", () => {
     expect(
       buildTurnResumeInfo(undefined, {
@@ -60,11 +71,18 @@ describe("parseTurnResumeInfo", () => {
       parseTurnResumeInfo({
         pin: { provider: "openai", model: 4, mode: "sideways" },
         acting: { credentialScopeKey: "team", actingUser: 9 },
+        context: { workspace: "ships weekly", user: 7 },
       }),
     ).toEqual({
       pin: { provider: "openai" },
       acting: { credentialScopeKey: "team" },
     });
+  });
+
+  it("reads a whole context back", () => {
+    expect(
+      parseTurnResumeInfo({ context: { workspace: "w", user: "u" } }),
+    ).toEqual({ context: { workspace: "w", user: "u" } });
   });
 });
 

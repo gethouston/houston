@@ -1,9 +1,7 @@
 import { TURN_MODES, type TurnMode } from "@houston/protocol";
-import type { ChatMessage } from "@houston/runtime-client";
-import { loadConversation } from "../store/conversation-file";
 import { type ActingContext, credentialScopeKeyFor } from "./acting-context";
 import type { TurnPin } from "./exec-turn";
-import type { InflightTurnMarker } from "./turn-inflight-marker";
+import type { ProvidedContext } from "./workspace-context";
 
 /**
  * What an interrupted turn needs in order to be RUN AGAIN by the engine that
@@ -15,6 +13,14 @@ import type { InflightTurnMarker } from "./turn-inflight-marker";
 export interface TurnResumeInfo {
   pin?: TurnPin;
   acting?: PersistedActing;
+  /**
+   * The gateway-supplied workspace/user blobs the original turn ran with
+   * (workspace-context.ts). On cloud they REPLACE the local WORKSPACE.md /
+   * USER.md, and nothing on the volume can rebuild them — a resume that
+   * dropped them would silently run the turn with a different system prompt
+   * than the one the user's request was answered under.
+   */
+  context?: ProvidedContext;
 }
 
 /**
@@ -31,19 +37,6 @@ export interface PersistedActing {
   authPath?: string;
 }
 
-/** One interrupted turn the boot settle decided to run again. */
-export interface ResumeRequest {
-  conversationId: string;
-  /** The interrupted turn's id — the resume turn records it as `resumeOf`. */
-  turnId: string;
-  /** The model-facing text of the original user message, verbatim. */
-  text: string;
-  displayText?: string;
-  mentions?: ChatMessage["mentions"];
-  pin?: TurnPin;
-  acting?: PersistedActing;
-}
-
 /**
  * The resume payload for a starting turn. ALWAYS an object, even an empty one:
  * its presence on the marker is how the boot settle tells a turn started by an
@@ -54,12 +47,15 @@ export interface ResumeRequest {
 export function buildTurnResumeInfo(
   pin?: TurnPin,
   acting?: ActingContext,
+  context?: ProvidedContext,
 ): TurnResumeInfo {
   const persistedActing = persistableActing(acting);
   const persistedPin = persistablePin(pin);
+  const persistedContext = parseProvidedContext(context);
   return {
     ...(persistedPin ? { pin: persistedPin } : {}),
     ...(persistedActing ? { acting: persistedActing } : {}),
+    ...(persistedContext ? { context: persistedContext } : {}),
   };
 }
 
@@ -84,41 +80,21 @@ export function parseTurnResumeInfo(
   const acting = isRecord(value.acting)
     ? persistableActing(value.acting as ActingContext)
     : undefined;
-  return { ...(pin ? { pin } : {}), ...(acting ? { acting } : {}) };
+  const context = parseProvidedContext(value.context);
+  return {
+    ...(pin ? { pin } : {}),
+    ...(acting ? { acting } : {}),
+    ...(context ? { context } : {}),
+  };
 }
 
-/**
- * The resume request for an interrupted turn, or null when it must not be
- * resumed. Three refusals, each deliberate:
- *
- *  - `resumeOf` set: THIS turn was itself a resume that died. Resuming it
- *    again is the loop — one automatic resume per interrupted turn, ever.
- *  - no `resume` payload: a marker from an engine that predates this, so the
- *    pin and credential scope are unknown and a resume would run on the wrong
- *    model or the wrong account.
- *  - no user message on disk for the turn id: nothing to say to the model.
- */
-export function resumeRequestFor(
-  conversationsDir: string,
-  marker: InflightTurnMarker,
-): ResumeRequest | null {
-  if (marker.resumeOf !== undefined || !marker.resume) return null;
-  const conv = loadConversation(conversationsDir, marker.conversationId);
-  const original = conv?.messages.find(
-    (m) => m.role === "user" && m.turnId === marker.turnId,
-  );
-  if (!original?.content) return null;
-  return {
-    conversationId: marker.conversationId,
-    turnId: marker.turnId,
-    text: original.content,
-    ...(original.displayText !== undefined
-      ? { displayText: original.displayText }
-      : {}),
-    ...(original.mentions !== undefined ? { mentions: original.mentions } : {}),
-    ...(marker.resume.pin ? { pin: marker.resume.pin } : {}),
-    ...(marker.resume.acting ? { acting: marker.resume.acting } : {}),
-  };
+/** Two strings or nothing — a half-written blob pair is not a context. */
+function parseProvidedContext(value: unknown): ProvidedContext | undefined {
+  if (!isRecord(value)) return undefined;
+  const { workspace, user } = value;
+  if (typeof workspace !== "string" || typeof user !== "string")
+    return undefined;
+  return { workspace, user };
 }
 
 function persistableActing(

@@ -1,3 +1,4 @@
+import { AUTO_CONTINUE_MARKER } from "@houston/protocol";
 import type {
   ChatMessage,
   EventStreamOptions,
@@ -446,6 +447,28 @@ test("suppressUserBubble pushes no optimistic bubble at all (a resend, no clock)
     output,
     registry,
     { tuning: fast, suppressUserBubble: true },
+  );
+
+  expect(items.some((i) => i.feed_type === "user_message")).toBe(false);
+});
+
+test("an auto-continue prompt pushes no bubble — the user never wrote it", async () => {
+  const { engine } = fakeEngine([
+    (o) => {
+      o.onEvent(sync(false, "", 0));
+      o.onEvent({ type: "done", data: null, seq: 1 });
+    },
+  ]);
+  const { items, output } = makeOutput();
+
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-resume",
+    `${AUTO_CONTINUE_MARKER}\n\nkeep going`,
+    output,
+    registry,
+    { tuning: fast },
   );
 
   expect(items.some((i) => i.feed_type === "user_message")).toBe(false);

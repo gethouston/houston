@@ -1,3 +1,4 @@
+import { AUTO_CONTINUE_MARKER } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { describe, expect, it } from "vitest";
 import { historyToFeed } from "./history";
@@ -27,6 +28,30 @@ describe("historyToFeed", () => {
         ts: 2,
       },
     ]);
+  });
+
+  it("folds away a hidden auto-continue prompt — no surface renders the marker", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "render the deck", ts: 1, turnId: "t-1" },
+      {
+        role: "user",
+        content: `${AUTO_CONTINUE_MARKER}\n\nA restart interrupted your reply`,
+        ts: 2,
+        turnId: "t-2",
+      },
+      { role: "assistant", content: "done", ts: 3, turnId: "t-2" },
+    ]);
+    expect(feed.filter((f) => f.feed_type === "user_message")).toEqual([
+      {
+        feed_type: "user_message",
+        data: "render the deck",
+        author: undefined,
+        mentions: undefined,
+        ts: 1,
+        turnId: "t-1",
+      },
+    ]);
+    expect(feed.some((f) => f.feed_type === "assistant_text")).toBe(true);
   });
 
   it("renders displayText as the user bubble when the stored prompt carried hidden text", () => {

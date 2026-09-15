@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { RESUME_MAX_AGE_MS } from "./resume-request";
 import {
   EngineRestartedMidTurnError,
   fenceBypassed,
@@ -282,6 +283,7 @@ describe("settleInterruptedTurns resume decisions (PRODUCT-1785)", () => {
       dataDir,
       report,
       settleMission,
+      now: () => 60_000,
     });
 
     expect(settled).toHaveLength(1);
@@ -295,7 +297,6 @@ describe("settleInterruptedTurns resume decisions (PRODUCT-1785)", () => {
         conversationId: "chat",
         turnId: "t-1",
         text: "build the deck",
-        displayText: "build the deck",
         pin: { provider: "anthropic", model: "opus" },
       },
     ]);
@@ -367,6 +368,7 @@ describe("settleInterruptedTurns resume decisions (PRODUCT-1785)", () => {
       dataDir,
       report: () => {},
       settleMission: () => {},
+      now: () => 60_000,
     });
     expect(resumable[0]?.acting).toEqual({
       actingUser: "sub-9",
@@ -384,5 +386,29 @@ describe("fenceBypassed", () => {
     expect(fenceBypassed({ ...base, fenced: false, tool: "bash" })).toBe(false);
     expect(fenceBypassed({ ...base, fenced: true, tool: "read" })).toBe(false);
     expect(fenceBypassed({ ...base, fenced: true })).toBe(false);
+  });
+
+  it("does not resume a turn older than the resume window; the user decides", () => {
+    const { dataDir, write, read } = seed();
+    write("chat", [
+      { role: "user", content: "build the deck", ts: 1, turnId: "t-1" },
+    ]);
+    writeInflightMarker(dataDir, {
+      conversationId: "chat",
+      turnId: "t-1",
+      startedAt: 0,
+      fenced: false,
+      resume: {},
+    });
+    const { resumable } = settleInterruptedTurns({
+      dataDir,
+      report: () => {},
+      settleMission: () => {},
+      now: () => RESUME_MAX_AGE_MS + 1,
+    });
+    expect(resumable).toEqual([]);
+    expect(read("chat").messages.at(-1)?.interrupted).toEqual({
+      cause: "engine_restart",
+    });
   });
 });
