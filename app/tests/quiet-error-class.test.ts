@@ -1,6 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { StoreApiError } from "../../packages/agentstore-client/src/errors.ts";
+import { NoAgentForProviderWriteError } from "../../packages/web/src/engine-adapter/no-agent-provider-write-error.ts";
 import {
   agentKeyOf,
   classifyQuietError,
@@ -95,6 +96,29 @@ describe("classifyQuietError", () => {
         }),
       ),
       "engine_waking",
+    );
+  });
+
+  // PRODUCT-1833: the bridge bootstrap in a zero-agent space and the SDK's
+  // own retry states are expected, inline-surfaced states, never a red bug
+  // (HOUSTON-APP-5E0 / -5E1). A same-named error without a state string is
+  // not the SDK's class.
+  it("names the bridge_no_agent and bridge_state classes", () => {
+    strictEqual(
+      classifyQuietError(new NoAgentForProviderWriteError()),
+      "bridge_no_agent",
+    );
+    const unavailable = named("BridgeStateError", "model_unavailable", {
+      status: "model_unavailable",
+    });
+    strictEqual(classifyQuietError(unavailable), "bridge_state");
+    deepStrictEqual(quietErrorDetails(unavailable), {
+      status: null,
+      body: "model_unavailable",
+    });
+    strictEqual(
+      classifyQuietError(named("BridgeStateError", "reconnecting")),
+      null,
     );
   });
 

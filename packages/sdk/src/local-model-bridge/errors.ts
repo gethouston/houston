@@ -10,6 +10,9 @@ export class BridgeStateError extends Error {
       | "reconnecting",
   ) {
     super(status);
+    // Named so the app's dependency-free quiet-class gate can recognize the
+    // SDK's own retry states without importing this module (PRODUCT-1833).
+    this.name = "BridgeStateError";
   }
 }
 export function isAuthorizationFailure(error: unknown) {

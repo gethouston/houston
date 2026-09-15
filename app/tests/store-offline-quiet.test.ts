@@ -37,7 +37,16 @@ describe("showErrorToast routes the quiet classes to their own surfaces", () => 
       ),
     );
     ok(body.includes("showEngineWakingToast(command, message, originalError)"));
-    ok(body.includes('reportQuietError("bridge_unsupported"'));
+    // PRODUCT-1833: the three bridge classes share one report-only branch.
+    for (const kind of [
+      "bridge_unsupported",
+      "bridge_no_agent",
+      "bridge_state",
+    ])
+      ok(body.includes(`case "${kind}":`), `${kind} is a report-only class`);
+    ok(
+      body.includes("reportQuietError(quiet, command, message, originalError)"),
+    );
     ok(body.includes('reportQuietError("no_url_handler"'));
   });
 });
