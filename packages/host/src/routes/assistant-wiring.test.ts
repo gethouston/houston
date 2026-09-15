@@ -86,3 +86,14 @@ test("only a host nothing fronts answers for the catalogued surface itself", () 
     }),
   ).toBe(false);
 });
+
+test("a fronted pod answers no even when its env pair never arrived", () => {
+  // BEING FRONTED IS THE FACT, not the env pair that usually proves it: a pod
+  // whose gateway stamped nothing (a rollout that dropped the variables, a
+  // half-applied manifest) still serves one agent's routes, and reading them
+  // as the catalogued surface would withdraw spaces, teams and billing from a
+  // managed AI Manager that can perform every one of them.
+  expect(assistantOperationsServedHere({ env: {}, gatewayFronted: true })).toBe(
+    false,
+  );
+});

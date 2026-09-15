@@ -27,7 +27,7 @@ import {
  */
 
 /** False when the host that spawned this runtime told us it cannot perform it. */
-export function isServedHere(name: string): boolean {
+function isServedHere(name: string): boolean {
   return !readUnservedOperations().has(name);
 }
 

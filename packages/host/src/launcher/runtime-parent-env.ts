@@ -14,7 +14,8 @@
  * certificate variables a corporate network needs, PATH, HOME, the locale. An
  * allowlist would silently strip the next one and break an agent in a way no
  * test here could see. What CAN be enumerated is the other half: every
- * `HOUSTON_*` / `COMPOSIO_*` name the host itself reads. So each one is
+ * `HOUSTON_*` / `COMPOSIO_*` name the host itself reads, and every one
+ * `@houston/domain` declares for the host to stamp. So each one is
  * classified exactly once — host-only below, or {@link RUNTIME_PASS_THROUGH} —
  * and `runtime-parent-env.source.test.ts` fails the build on a name that is
  * neither, which is what keeps the next host-only secret from defaulting to
@@ -47,7 +48,14 @@ export const HOST_ONLY: ReadonlySet<string> = new Set([
   "HOUSTON_INTEGRATIONS_URL",
   "HOUSTON_EAGER_RUNTIME",
   "HOUSTON_LOOPBACK_EGRESS",
+  // Stamped per-spawn by `runtime-env.ts` from the host's own decision (which
+  // runtime is the coordinator) and its own route table (what this deployment
+  // cannot perform), and read back by that runtime at boot. Inherited, a stale
+  // parent value outranks both: an ordinary agent reads itself as the
+  // coordinator, and a list this host did not compute silently withdraws
+  // working operations from the AI Manager's map.
   "HOUSTON_ASSISTANT_ROLE",
+  "HOUSTON_ASSISTANT_UNSERVED",
   "HOUSTON_ASSISTANT_TOKEN",
   "HOUSTON_ASSISTANT_CP_URL",
   "HOUSTON_ASSISTANT_USER_ID",

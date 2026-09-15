@@ -1,7 +1,30 @@
 import { ASSISTANT_CAPABILITY_INDEX } from "@houston/domain/assistant-capability-index";
 import { ASSISTANT_UNSERVED_ENV } from "@houston/domain/assistant-deployment";
-import { expect, test } from "vitest";
+import { processAssistantCatalog } from "@houston/host/src/assistant/catalog-source";
+import { unservedOperations } from "@houston/host/src/assistant/served-operations";
+import { listRoutes } from "@houston/host/src/routes/registry/all";
+import { expect, test, vi } from "vitest";
 import { assistantCapabilityMap } from "./assistant-capability-map";
+
+/**
+ * The embedded catalog, readable except when a test says otherwise. A build
+ * whose catalog will not parse is the ONE branch nothing else can reach — it
+ * needs a broken artifact — and it is the branch that decides whether a broken
+ * build ships a manager that knows too much or one that knows nothing.
+ */
+const { unreadable } = vi.hoisted(() => ({ unreadable: { value: false } }));
+
+vi.mock("@houston/host/src/assistant/catalog-source", async (importActual) => {
+  const actual =
+    await importActual<
+      typeof import("@houston/host/src/assistant/catalog-source")
+    >();
+  return {
+    ...actual,
+    processAssistantCatalog: () =>
+      unreadable.value ? null : actual.processAssistantCatalog(),
+  };
+});
 
 /**
  * The map the coordinator carries, narrowed to what its own Houston serves.
@@ -54,10 +77,72 @@ test("a group whose every operation is stamped disappears entirely", () => {
   expect(groupLine(map(names), "workspaces")).toBeUndefined();
 });
 
+test("a build whose catalog will not parse keeps the whole generated map", () => {
+  // A coordinator that knows too much writes one wrong sentence; a coordinator
+  // that knows nothing is a product with no assistant in it. The stamp is real
+  // here, so the fallback is the only thing that can return the constant.
+  unreadable.value = true;
+  try {
+    expect(map(["listRoutines"])).toBe(ASSISTANT_CAPABILITY_INDEX);
+  } finally {
+    unreadable.value = false;
+  }
+});
+
 test("a stamp for a name this build does not have changes nothing", () => {
   // The host and the runtime can be one release apart in a managed rollout, so
   // an unknown name must be inert rather than an error or a silent truncation.
   expect(map(["thisOperationDoesNotExist"])).toBe(ASSISTANT_CAPABILITY_INDEX);
+});
+
+/**
+ * What an unfronted desktop host stamps, worked out the way it works it out at
+ * boot (`local/host-base.ts`): its own route table's answer, not a list copied
+ * into a test that would go stale the day a route moves.
+ */
+const CATALOG = processAssistantCatalog();
+if (!CATALOG) throw new Error("the embedded assistant catalog must load");
+
+const DESKTOP_UNSERVED: readonly string[] = unservedOperations(
+  CATALOG,
+  listRoutes(),
+);
+
+/** Every operation some card reaches, whatever the card. */
+const CARD_REACHED: readonly string[] = CATALOG.operations
+  .filter((op) => op.hands?.kind === "card")
+  .map((op) => op.name);
+
+/** The preamble sentence naming what stays the person's own to do. */
+const handsSentence = (index: string): string | undefined =>
+  index
+    .split("\n")
+    .find((line) => line.startsWith("Some things are the person's own to do"));
+
+/**
+ * THE SENTENCE THAT PROMISES A SCREEN. The preamble is the only place the map
+ * describes the hands-on errands, and a desktop has no billing page and no
+ * key list — so a fixed phrase naming them teaches the manager to send the
+ * person somewhere its own Houston cannot open.
+ */
+test("a desktop preamble names only the screens this Houston has", () => {
+  expect(DESKTOP_UNSERVED).toHaveLength(41);
+  const sentence = handsSentence(map([...DESKTOP_UNSERVED]));
+  expect(sentence).toBe(
+    "Some things are the person's own to do and are not in this list: connecting an app; giving an app its own key; signing in to an AI provider; files on their device. Hand those over with request_connection, request_credential, request_provider_connection or request_hands_on.",
+  );
+});
+
+test("the hosted preamble names every screen the gateway serves", () => {
+  expect(handsSentence(ASSISTANT_CAPABILITY_INDEX)).toBe(
+    "Some things are the person's own to do and are not in this list: connecting an app; giving an app its own key; signing in to an AI provider; one-time keys, billing, files on their device, a routine's webhook and destroying a shared space. Hand those over with request_connection, request_credential, request_provider_connection or request_hands_on.",
+  );
+});
+
+test("a deployment that reaches no card at all carries no preamble", () => {
+  // An empty "some things are the person's own to do:" is worse than no
+  // sentence: it names errands and hands the model nothing to reach them with.
+  expect(handsSentence(map([...CARD_REACHED]))).toBeUndefined();
 });
 
 test("the map keeps the wording the generator wrote", () => {

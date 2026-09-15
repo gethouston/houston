@@ -1,3 +1,5 @@
+import { ASSISTANT_HANDS_TOOLS } from "@houston/domain/assistant-hands";
+import { HANDS_ON_SURFACES } from "@houston/protocol";
 import { Type } from "typebox";
 import { Value } from "typebox/value";
 import {
@@ -55,24 +57,19 @@ const EntityCollection = Type.Union([
  * does. A real union, not a loose object: the two arms carry different fields,
  * and a document that half-spells one would have the host promise the person a
  * screen with no name to open.
+ *
+ * Both lists are READ from their declarations rather than retyped: the cards
+ * are `@houston/domain`'s, the screens are `@houston/protocol`'s, and the
+ * generator writes documents against those same two. A copy here would refuse
+ * every document carrying a card or a screen added over there — which reads as
+ * the assistant family switching itself off after a regeneration.
  */
 const HandsEnvelope = Type.Union([
   Type.Object({
     kind: Type.Literal("card"),
-    tool: Type.Union([
-      Type.Literal("request_connection"),
-      Type.Literal("request_credential"),
-      Type.Literal("request_provider_connection"),
-      Type.Literal("request_hands_on"),
-    ]),
+    tool: Type.Union(ASSISTANT_HANDS_TOOLS.map((tool) => Type.Literal(tool))),
     surface: Type.Optional(
-      Type.Union([
-        Type.Literal("apiKeys"),
-        Type.Literal("billing"),
-        Type.Literal("files"),
-        Type.Literal("routineWebhook"),
-        Type.Literal("orgDanger"),
-      ]),
+      Type.Union(HANDS_ON_SURFACES.map((surface) => Type.Literal(surface))),
     ),
   }),
   Type.Object({ kind: Type.Literal("unreachable"), reason: Type.String() }),

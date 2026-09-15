@@ -69,7 +69,7 @@ export function createHostBase(opts: LocalHostOptions) {
   // credential stays in this process: a runtime is told its ROLE and reaches
   // operations through `/sandbox/assistant/call` with its own sandbox token.
   const assistantWiring: AssistantWiring = opts.gatewayFronted
-    ? {}
+    ? { gatewayFronted: true }
     : { self: { url: controlPlaneUrl, token: opts.token } };
   const assistantGateway = resolveAssistantGateway(assistantWiring);
   // WHAT THIS DEPLOYMENT CANNOT DO, worked out ONCE from this host's own route

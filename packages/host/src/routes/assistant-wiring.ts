@@ -37,6 +37,13 @@ export interface AssistantWiring {
    * account-wide.
    */
   self?: AssistantGateway;
+  /**
+   * True on a managed cloud pod. The env pair the gateway stamps is the usual
+   * proof of it, but it is not the FACT — a rollout that dropped the variables
+   * leaves a pod that is still fronted — so the deployment's own answer is
+   * carried rather than inferred (`local/host-base.ts` passes what it knows).
+   */
+  gatewayFronted?: boolean;
 }
 
 /** Strip a trailing slash so a route path never doubles up on the join. */
@@ -75,10 +82,15 @@ export function resolveAssistantGateway(
  * question belongs to the gateway, which serves the whole surface, and a pod
  * that guessed from its OWN routes would withdraw three quarters of the
  * catalog from a managed assistant that can perform every bit of it.
+ *
+ * Being fronted disqualifies a pod on its own, without the env pair: the pair
+ * is how a fronted pod is CONFIGURED, and a pod whose gateway stamped nothing
+ * is still one agent's routes rather than the catalogued surface.
  */
 export function assistantOperationsServedHere(
   wiring: AssistantWiring = {},
 ): boolean {
+  if (wiring.gatewayFronted) return false;
   return envAssistantGateway(wiring.env ?? process.env) === null;
 }
 

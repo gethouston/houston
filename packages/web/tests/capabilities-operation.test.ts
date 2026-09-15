@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
 import { HoustonEngineError } from "../src/engine-adapter/client/errors";
+import { HANDOFF_RETRY_DELAYS_MS } from "../src/engine-adapter/cp/unavailable-reason";
 import {
   createWireCapture,
   expectGatewayHeaders,
@@ -73,6 +74,7 @@ describe("the published capabilities read", () => {
 
     // The handler is attached BEFORE the timers run: a ladder that settles
     // with nobody listening surfaces as an unhandled rejection.
+    const started = Date.now();
     const failed = client()
       .capabilities()
       .catch((e) => e);
@@ -82,7 +84,13 @@ describe("the published capabilities read", () => {
     expect(err).toBeInstanceOf(HoustonEngineError);
     expect(err.status).toBe(503);
     expect(err.message).toBe("capabilities are rolling (engine error 503)");
-    expect(calls).toHaveLength(3);
+    expect(calls).toHaveLength(HANDOFF_RETRY_DELAYS_MS.length + 1);
+    // And the BUDGET, not just the count: this read blocks a boot, so the
+    // ladder must be bounded by the handoff schedule rather than by whatever
+    // a future reason classifier decides this body earns.
+    expect(Date.now() - started).toBe(
+      HANDOFF_RETRY_DELAYS_MS.reduce((total, ms) => total + ms, 0),
+    );
   });
 });
 

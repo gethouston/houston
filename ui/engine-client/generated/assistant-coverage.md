@@ -184,8 +184,8 @@ Each one is withheld from the assistant and still the person's to finish. The ca
 - `createPortal` - `request_hands_on(billing)`
 - `downloadProjectArchive` - `request_hands_on(files)`
 - `downloadProjectFile` - `request_hands_on(files)`
-- `migrationExport` - `request_hands_on(files)`
-- `migrationImport` - `request_hands_on(files)`
+- `migrationExport` - no card: the copy and migration wizards drive it themselves; no screen offers it as an errand, and the Files screen only uploads and downloads.
+- `migrationImport` - no card: the copy and migration wizards drive it themselves; no screen offers it as an errand, and the Files screen only uploads and downloads.
 - `uploadProjectFiles` - `request_hands_on(files)`
 - `integrations.connect` - `request_connection`
 - `integrations.dismissReconnectNotice` - no card: the notice lives on the screen the person is already looking at, so there is no errand to hand over.

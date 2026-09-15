@@ -24,7 +24,23 @@ import {
  * (RUNTIME_PASS_THROUGH). A new variable fails here until somebody decides.
  */
 
-const SRC_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const HOST_SRC = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+
+/**
+ * Domain is scanned BESIDE the host because the per-spawn stamps are declared
+ * there, not here: the handshake needs both halves, so the name the host writes
+ * into a child's environment (`assistant-role.ts`, `assistant-deployment.ts`)
+ * and the name the runtime reads back are one constant in `@houston/domain`.
+ * A stamp declared over there and classified nowhere is inherited by every
+ * runtime exactly as a host-declared one would be, and the scan that only read
+ * this package could not see it.
+ */
+const DOMAIN_SRC = resolve(HOST_SRC, "../../domain/src");
+
+const SRC_ROOTS = [HOST_SRC, DOMAIN_SRC];
+
+/** `packages/`, so a reported file says which package it came from. */
+const PACKAGES_ROOT = resolve(HOST_SRC, "../..");
 
 /**
  * `process.env.NAME`, `process.env["NAME"]`, and any double-quoted Houston /
@@ -47,13 +63,13 @@ function sourceFiles(dir: string): string[] {
 /** Every host-read environment name, with the files that mention it. */
 function hostEnvironmentNames(): Map<string, string[]> {
   const found = new Map<string, string[]>();
-  for (const file of sourceFiles(SRC_ROOT)) {
+  for (const file of SRC_ROOTS.flatMap(sourceFiles)) {
     const text = readFileSync(file, "utf8");
     for (const match of text.matchAll(NAME_PATTERN)) {
       const name = match[1];
       if (!name) continue;
       const files = found.get(name) ?? [];
-      files.push(relative(SRC_ROOT, file));
+      files.push(relative(PACKAGES_ROOT, file));
       found.set(name, files);
     }
   }

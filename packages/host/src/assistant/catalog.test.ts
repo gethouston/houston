@@ -1,3 +1,5 @@
+import { ASSISTANT_HANDS_TOOLS } from "@houston/domain/assistant-hands";
+import { HANDS_ON_SURFACES } from "@houston/protocol";
 import { describe, expect, test } from "vitest";
 import {
   findVisibleOperation,
@@ -199,6 +201,29 @@ describe("the hands envelope", () => {
     ["neither arm", { kind: "card" }],
   ])("refuses the whole document for %s", (_label, hands) => {
     expect(parseAssistantCatalog(withHands(hands))).toBeNull();
+  });
+
+  /**
+   * The envelope reads what `@houston/domain` declares, so the two lists here
+   * are the LIVE ones: a card or a screen added over there and missing from
+   * the parser would refuse every document carrying it, which reads as the
+   * assistant family switching itself off after a regeneration.
+   */
+  test("every live card passes the envelope", () => {
+    for (const tool of ASSISTANT_HANDS_TOOLS) {
+      const hands =
+        tool === "request_hands_on"
+          ? { kind: "card", tool, surface: HANDS_ON_SURFACES[0] }
+          : { kind: "card", tool };
+      expect(handsOf(hands), tool).toEqual(hands);
+    }
+  });
+
+  test("every live screen passes the envelope", () => {
+    for (const surface of HANDS_ON_SURFACES) {
+      const hands = { kind: "card", tool: "request_hands_on", surface };
+      expect(handsOf(hands), surface).toEqual(hands);
+    }
   });
 
   // Additive and optional: a catalog written before the tag existed still loads.
