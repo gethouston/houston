@@ -23,6 +23,18 @@ const PREFIXES: Record<RecordConversationKind, string> = {
   routine: "routine-",
 };
 
+/**
+ * Two spellings of one address.
+ *
+ * A conversation is stored under its id as a file name, and macOS and Windows
+ * resolve `ACTIVITY-m1.json` to `activity-m1.json` — the SAME transcript. So
+ * `ACTIVITY-m1` is not a different chat that happens to look alike; it is the
+ * mission's chat, reached by a caller that typed it differently. Compared
+ * case-sensitively, a guard reading the id would wave that spelling through to
+ * the very conversation it exists to protect.
+ */
+const fold = (conversationId: string): string => conversationId.toLowerCase();
+
 /** The conversation a mission with no explicit `session_key` is talked about in. */
 export function missionConversationId(missionId: string): string {
   return `${PREFIXES.mission}${missionId}`;
@@ -48,9 +60,11 @@ export function addressesMission(
   activity: Pick<Activity, "id" | "session_key">,
   conversationId: string,
 ): boolean {
+  const asked = fold(conversationId);
   return (
-    activity.session_key === conversationId ||
-    missionConversationId(activity.id) === conversationId
+    (activity.session_key !== undefined &&
+      fold(activity.session_key) === asked) ||
+    fold(missionConversationId(activity.id)) === asked
   );
 }
 
@@ -79,9 +93,9 @@ export function routineConversationId(routine: Routine, runId: string): string {
 export function recordConversationKind(
   conversationId: string,
 ): RecordConversationKind | null {
+  const asked = fold(conversationId);
   for (const [kind, prefix] of Object.entries(PREFIXES)) {
-    if (conversationId.startsWith(prefix))
-      return kind as RecordConversationKind;
+    if (asked.startsWith(prefix)) return kind as RecordConversationKind;
   }
   return null;
 }

@@ -3,6 +3,7 @@ import {
   loadRoutines,
   loadSkills,
   loadSkillsFromDir,
+  missionConversationKey,
   sharedSkillsDirKey,
 } from "@houston/domain";
 import type { WorkspacePaths } from "../paths";
@@ -84,7 +85,11 @@ export function localEntityDirectory(
       ),
     activities: async (id) =>
       (await loadActivities(vfs(), await agentRoot(id))).items.map(
-        ({ id, title }) => ({ id, name: title }),
+        (activity) => ({
+          id: activity.id,
+          name: activity.title,
+          sessionKey: missionConversationKey(activity),
+        }),
       ),
     sharedSkills: async (id) => {
       const workspace = (await ownedWorkspaces()).find((w) => w.id === id);

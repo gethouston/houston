@@ -54,6 +54,18 @@ test("a chat the person started belongs to no record", () => {
   ).toBeNull();
 });
 
+test("a differently-cased spelling is the same chat, so it reads as the same record", () => {
+  // The store addresses a conversation by its id as a file name, and macOS and
+  // Windows resolve `ACTIVITY-m1.json` to `activity-m1.json` — the same
+  // transcript. A case-sensitive read here would call it an ordinary chat.
+  expect(recordConversationKind("ACTIVITY-m1")).toBe("mission");
+  expect(recordConversationKind("Routine-r1-run-2")).toBe("routine");
+  expect(addressesMission({ id: "m1" }, "Activity-M1")).toBe(true);
+  expect(
+    addressesMission({ id: "m1", session_key: "Welcome-x" }, "welcome-X"),
+  ).toBe(true);
+});
+
 test("a mission is addressed by its explicit key OR by the convention one", () => {
   const keyed = { id: "m1", session_key: "conv-7" };
   expect(addressesMission(keyed, "conv-7")).toBe(true);

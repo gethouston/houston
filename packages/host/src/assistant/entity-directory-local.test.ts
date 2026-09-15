@@ -30,6 +30,15 @@ test("local directory uses owned live documents and excludes its coordinator ide
   const root = paths.agentRoot(ws, agent);
   await saveActivities(vfs, root, [
     { id: "a", title: "Research", description: "", status: "done" },
+    // A mission whose chat is NOT at the convention address: the board is the
+    // only place that spelling is written down.
+    {
+      id: "b",
+      title: "Welcome",
+      description: "",
+      status: "done",
+      session_key: "welcome-xyz",
+    },
   ]);
   await saveRoutines(vfs, root, [
     {
@@ -68,8 +77,11 @@ test("local directory uses owned live documents and excludes its coordinator ide
   expect(await directory.routines(agent.id)).toEqual([
     { id: "r", name: "Morning" },
   ]);
+  // Each mission carries the chat it is talked about in, so a caller holding
+  // the board can tell that chat apart from one the person started.
   expect(await directory.activities(agent.id)).toEqual([
-    { id: "a", name: "Research" },
+    { id: "a", name: "Research", sessionKey: "activity-a" },
+    { id: "b", name: "Welcome", sessionKey: "welcome-xyz" },
   ]);
   expect(await directory.skills(agent.id)).toEqual([
     { slug: "search", name: "search" },
@@ -95,6 +107,6 @@ test("local directory uses owned live documents and excludes its coordinator ide
     { id: "b", title: "New", description: "", status: "done" },
   ]);
   expect(await directory.activities(agent.id)).toEqual([
-    { id: "b", name: "New" },
+    { id: "b", name: "New", sessionKey: "activity-b" },
   ]);
 });

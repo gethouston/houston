@@ -37,13 +37,26 @@ export async function resolvedParams(
       return null;
     }
     console.error("[assistant] could not read the entity directory", error);
-    json(res, 502, {
-      error: "could not read the available items right now - try again",
-      code: "directory_unavailable",
-    });
+    refusedDirectoryUnavailable(res);
     return null;
   }
   if (resolution.ok) return resolution.params;
   json(res, 400, { error: resolution.message, code: resolution.code });
   return null;
+}
+
+/**
+ * A live list that could not be read at all.
+ *
+ * Answered the same way wherever it happens — resolving an identifier, or
+ * asking a board whether it owns a chat — because to the model these are one
+ * situation: nothing was performed, the failure is Houston's, and the next
+ * attempt may well succeed. Always `true`, so a guard can return it directly.
+ */
+export function refusedDirectoryUnavailable(res: ServerResponse): true {
+  json(res, 502, {
+    error: "could not read the available items right now - try again",
+    code: "directory_unavailable",
+  });
+  return true;
 }

@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Readable } from "node:stream";
-import { createRoutine, saveRoutines } from "@houston/domain";
+import { createRoutine, saveActivities, saveRoutines } from "@houston/domain";
+import type { Activity } from "@houston/protocol";
 import { afterEach, expect, test, vi } from "vitest";
 import { ApprovalStore } from "../assistant/approvals";
 import type { AssistantCatalog } from "../assistant/catalog";
@@ -292,7 +293,7 @@ const CATALOG: AssistantCatalog = {
           source: "listAgents",
         },
         // `source` is how a parameter says it names a chat — the declaration
-        // the protected-chat guard reads (assistant-operation-guards.ts).
+        // the protected-chat guard reads (assistant-protected-chat.ts).
         {
           name: "id",
           required: true,
@@ -567,6 +568,8 @@ interface CallOpts {
   noLiveTurn?: boolean;
   /** Operations THIS deployment cannot perform (local/host-base.ts). */
   unserved?: string[];
+  /** Missions on every agent's board, for the guards that read it. */
+  activities?: Activity[];
 }
 
 async function call(body: unknown, opts: CallOpts = {}) {
@@ -582,6 +585,10 @@ async function call(body: unknown, opts: CallOpts = {}) {
   const vfs = new MemoryVfs();
   const paths = new LocalPaths();
   for (const agent of AGENTS) {
+    if (opts.activities)
+      await saveActivities(vfs, paths.agentRoot(WORKSPACE, agent), [
+        ...opts.activities,
+      ]);
     await saveRoutines(
       vfs,
       paths.agentRoot(WORKSPACE, agent),
@@ -1644,7 +1651,7 @@ test("an empty unserved set withholds nothing", async () => {
 /**
  * THE CHATS THAT ARE NOT THE ASSISTANT'S TO RENAME OR DELETE: the one this turn
  * is running in, and the ones a mission card or a routine owns
- * (assistant-operation-guards.ts).
+ * (assistant-protected-chat.ts).
  */
 test("the chat this turn is running in cannot be renamed from inside itself", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
@@ -1721,6 +1728,85 @@ test("a routine's chat belongs to the routine, and the refusal says so", async (
   expect(out.status).toBe(409);
   expect(String((out.body as { error: string }).error)).toContain(
     "deleteRoutine",
+  );
+  expect(calls).toEqual([]);
+});
+
+/** A mission whose chat is NOT at the convention address — the shape live
+ *  boards carry (a welcome chat, a card whose key was patched after it was
+ *  created). Only the board itself says that this id is a mission's. */
+const WELCOME: Activity = {
+  id: "m9",
+  title: "Welcome",
+  description: "",
+  status: "done",
+  session_key: "welcome-xyz",
+};
+
+test("a mission's chat is protected by what the board says, not by its spelling", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await approvedCall(
+    "conversations.delete",
+    { agentId: "Work/Ada", id: "welcome-xyz" },
+    { fetchImpl: impl, activities: [WELCOME] },
+  );
+  expect(out.status).toBe(409);
+  expect(out.body).toMatchObject({ code: "protected_conversation" });
+  expect(String((out.body as { error: string }).error)).toContain(
+    "deleteActivity",
+  );
+  expect(calls).toEqual([]);
+});
+
+test("a chat no card on the board claims is still the assistant's to delete", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await approvedCall(
+    "conversations.delete",
+    { agentId: "Work/Ada", id: "conv-2" },
+    { fetchImpl: impl, activities: [WELCOME] },
+  );
+  expect(out.status).toBe(200);
+  expect(sent(calls).url).toBe(
+    "https://gateway.test/agents/Work%2FAda/conversations/conv-2",
+  );
+});
+
+test("a differently-cased spelling reaches the same chat, so it is refused too", async () => {
+  // macOS and Windows resolve `ACTIVITY-m1.json` to `activity-m1.json`: the
+  // case is not a different chat, it is the same one asked for differently.
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  for (const id of ["ACTIVITY-m1", "Routine-r1-run-2"]) {
+    const out = await call(
+      {
+        operation: "conversations.rename",
+        params: { agentId: "Work/Ada", id, title: "New" },
+      },
+      { fetchImpl: impl },
+    );
+    expect(out.status).toBe(409);
+    expect(out.body).toMatchObject({ code: "protected_conversation" });
+  }
+  const out = await approvedCall(
+    "conversations.delete",
+    { agentId: "Work/Ada", id: "WELCOME-XYZ" },
+    { fetchImpl: impl, activities: [WELCOME] },
+  );
+  expect(out.status).toBe(409);
+  expect(calls).toEqual([]);
+});
+
+test("the chat this turn runs in is itself, whatever case it is asked for in", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await call(
+    {
+      operation: "conversations.rename",
+      params: { agentId: "Work/Ada", id: "CONV-1", title: "New" },
+    },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(409);
+  expect(String((out.body as { error: string }).error)).toContain(
+    "chat you are talking in",
   );
   expect(calls).toEqual([]);
 });

@@ -17,7 +17,12 @@ test("gateway directory reads every entity family with the acting identity", asy
     "/v1/workspaces/w/shared-skills": {
       items: [{ name: "ss", title: "Shared" }],
     },
-    "/agents/dobby/activities": { items: [{ id: "a", title: "Research" }] },
+    "/agents/dobby/activities": {
+      items: [
+        { id: "a", title: "Research" },
+        { id: "b", title: "Welcome", session_key: "welcome-xyz" },
+      ],
+    },
   };
   const fetchImpl = vi.fn<typeof fetch>(async (url, init) => {
     expect(new Headers(init?.headers).get("authorization")).toBe(
@@ -50,8 +55,11 @@ test("gateway directory reads every entity family with the acting identity", asy
   expect(await directory.sharedSkills("w")).toEqual([
     { slug: "ss", name: "Shared" },
   ]);
+  // A mission's chat address travels with it: an explicit `session_key` where
+  // the board has one, the convention address otherwise.
   expect(await directory.activities("dobby")).toEqual([
-    { id: "a", name: "Research" },
+    { id: "a", name: "Research", sessionKey: "activity-a" },
+    { id: "b", name: "Welcome", sessionKey: "welcome-xyz" },
   ]);
   expect(fetchImpl).toHaveBeenCalledTimes(9);
 });

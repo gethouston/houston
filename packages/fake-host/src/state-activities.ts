@@ -3,6 +3,7 @@
  * board reads, so a chat turn flipping a card's status shows up on the board.
  */
 
+import { addressesMission } from "@houston/domain";
 import {
   type Activity,
   type ActivityUpdate,
@@ -83,8 +84,8 @@ export function updateActivity(
 }
 /**
  * Clear the pending interaction of the activity bound to this conversation —
- * matched by `session_key` or the derived `activity-<id>` key, the same rule the
- * app's activity-status writer uses — mirroring the runtime dismiss passthrough.
+ * matched by the domain's own rule (`addressesMission`), the same one the app's
+ * activity-status writer uses — mirroring the runtime dismiss passthrough.
  * No-op when no activity matches or it had none.
  */
 export function clearActivityInteraction(
@@ -92,9 +93,7 @@ export function clearActivityInteraction(
   sessionKey: string,
 ): void {
   const items = listActivities(agentId);
-  const activity = items.find(
-    (a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
-  );
+  const activity = items.find((a) => addressesMission(a, sessionKey));
   if (!activity?.pending_interaction) return;
   delete activity.pending_interaction;
   activity.updated_at = ISO;

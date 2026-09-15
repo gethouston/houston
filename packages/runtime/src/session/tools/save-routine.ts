@@ -1,4 +1,5 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import { recordConversationKind } from "@houston/domain";
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import { currentTurnMode } from "../turn-mode-context";
@@ -48,7 +49,8 @@ export const ROUTINE_RUN_SAVE_REFUSAL =
 
 /** True while the turn is a routine RUN (never its setup chat). */
 function inRoutineRun(): boolean {
-  return currentConversationId()?.startsWith("routine-") ?? false;
+  const id = currentConversationId();
+  return id !== undefined && recordConversationKind(id) === "routine";
 }
 
 /** The routine the host echoes back on a successful save. */

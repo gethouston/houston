@@ -11,11 +11,11 @@ import type {
 } from "./assistant-operation-ctx";
 import {
   refusedOutsideExecute,
-  refusedProtectedChat,
   refusedUnknownParams,
   refusedUnserved,
 } from "./assistant-operation-guards";
 import { resolvedParams } from "./assistant-operation-params";
+import { refusedProtectedChat } from "./assistant-protected-chat";
 import { json } from "./http";
 
 /**
@@ -63,7 +63,7 @@ export async function handleAssistantPending(
   if (refusedUnknownParams(op, rawParams, res)) return;
   const params = await resolvedParams(ctx, op, rawParams, res);
   if (!params) return;
-  if (refusedProtectedChat(ctx, op, params, res)) return;
+  if (await refusedProtectedChat(ctx, op, params, res)) return;
   // Validate the arguments the SAME way performing them would, so a card can
   // never describe a call that would be refused the moment it is approved.
   const dispatch = dispatchAssistantOperation(ctx.catalog, operation, params);
@@ -122,7 +122,7 @@ export async function handleAssistantCall(
   if (refusedUnknownParams(op, input.params, res)) return;
   const params = await resolvedParams(ctx, op, input.params, res);
   if (!params) return;
-  if (refusedProtectedChat(ctx, op, params, res)) return;
+  if (await refusedProtectedChat(ctx, op, params, res)) return;
   const dispatch = dispatchAssistantOperation(
     ctx.catalog,
     input.operation,

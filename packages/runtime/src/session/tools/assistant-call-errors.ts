@@ -42,7 +42,7 @@ export async function errorFromResponse(
     return { code: "not_in_turn", status: res.status, message: detail };
   }
   // The chat is the assistant's own, or a card's (routes/
-  // assistant-operation-guards.ts). Named for the same reason: the host's
+  // assistant-protected-chat.ts). Named for the same reason: the host's
   // answer already says which other thing to act on, and a "gateway error"
   // would read as a call worth making again.
   if (code === "protected_conversation") {
