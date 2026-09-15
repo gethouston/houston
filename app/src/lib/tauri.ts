@@ -71,6 +71,7 @@ import { isFileGoneError } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { isIntegrationConnectionGoneError } from "./integration-connection-gone";
+import { isTurnRunningError } from "./interaction-busy";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { isModelNotAllowedError } from "./model-not-allowed";
@@ -667,8 +668,15 @@ export const tauriChat = {
   /** Retire a conversation's pending interaction (stepper X / abandon): appends
    *  a durable stop marker, like a real Stop — the model learns nothing. */
   dismissInteraction: (agentPath: string, conversationId: string) =>
-    call<void>("dismiss_interaction", () =>
-      getEngine().dismissInteraction(agentPath, conversationId),
+    call<void>(
+      "dismiss_interaction",
+      () => getEngine().dismissInteraction(agentPath, conversationId),
+      undefined,
+      // `409 turn running` = the card was stale when the X landed (a turn
+      // started elsewhere already retired it): the panel resyncs and shows
+      // the expected-state copy, so it is logged but never a bug toast or a
+      // Sentry report (HOUSTON-APP-5EY). Every other failure stays loud.
+      { silence: isTurnRunningError },
     ),
   /** Edit-and-resend rewind (PRODUCT-1217): drop the transcript tail from the
    *  edited user turn onward; the caller follows with a normal send carrying

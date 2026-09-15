@@ -143,7 +143,9 @@
     "modelNotAllowed": "Este modelo não é permitido para este agente",
     "modelNotAllowedBody": "Os modelos permitidos deste agente mudaram. Escolha outro da lista.",
     "missionRowFailed": "Não conseguimos salvar esta tarefa no seu quadro. Sua mensagem foi enviada.",
-    "interactionDismissFailed": "Não foi possível descartar a solicitação."
+    "interactionDismissFailed": "Não foi possível descartar a solicitação.",
+    "interactionBusyTitle": "Houston já está trabalhando nisso",
+    "interactionBusyBody": "A solicitação foi substituída por uma nova resposta. Aguarde terminar ou pressione Parar para abandoná-la."
   },
   "providerError": {
     "retryPrompt": "Tente de novo.",
