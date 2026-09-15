@@ -9,11 +9,12 @@ import type {
   RuntimeLauncher,
   WorkspaceStore,
 } from "../ports";
+import type { ControlPlaneDeps } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
-import { handleAgents } from "./agents";
 import { liveTurns } from "./live-turn";
 import { missionFanout } from "./mission-fanout";
+import { dispatchGroup } from "./registry/all";
 
 /**
  * PATCH /agents/:id (rename) — the runtime-quiesce contract.
@@ -163,15 +164,15 @@ async function rename(
 ): Promise<{ status: number; json: Record<string, unknown> }> {
   const path = `/agents/${encodeURIComponent(agentId)}`;
   const response = res();
-  const handled = await handleAgents(
-    d,
-    "alice",
-    "PATCH",
+  const handled = await dispatchGroup("agent-crud", {
+    deps: d,
+    userId: "alice",
+    method: "PATCH",
     path,
-    new URL(path, "http://host.local"),
-    reqWithBody({ name }),
-    response,
-  );
+    url: new URL(path, "http://host.local"),
+    req: reqWithBody({ name }),
+    res: response,
+  });
   expect(handled).toBe(true);
   return { status: response.status, json: JSON.parse(response.body || "{}") };
 }
@@ -226,15 +227,17 @@ test("the rename response and the agent list carry the legacy agent.json color",
   expect(json.color).toBe("forest");
 
   const response = res();
-  await handleAgents(
-    deps(),
-    "alice",
-    "GET",
-    "/agents",
-    new URL("/agents", "http://host.local"),
-    reqWithBody({}),
-    response,
-  );
+  // GET /agents is user-phase, so its slot takes the whole deps bag; this test
+  // wires only the per-agent half the two routes under test read.
+  await dispatchGroup("agents", {
+    deps: deps() as unknown as ControlPlaneDeps,
+    userId: "alice",
+    method: "GET",
+    path: "/agents",
+    url: new URL("/agents", "http://host.local"),
+    req: reqWithBody({}),
+    res: response,
+  });
   const list = JSON.parse(response.body) as Array<Record<string, unknown>>;
   expect(list).toHaveLength(1);
   expect(list[0]?.color).toBe("forest");
@@ -296,15 +299,15 @@ test("rename trims the submitted name before storing it", async () => {
 test("DELETE runs inside the quiesced span too (a stale dispatch must not resurrect a deleted agent)", async () => {
   const path = `/agents/${encodeURIComponent(agentId)}`;
   const response = res();
-  const handled = await handleAgents(
-    deps(channel),
-    "alice",
-    "DELETE",
+  const handled = await dispatchGroup("agent-crud", {
+    deps: deps(channel),
+    userId: "alice",
+    method: "DELETE",
     path,
-    new URL(path, "http://host.local"),
-    reqWithBody({}),
-    response,
-  );
+    url: new URL(path, "http://host.local"),
+    req: reqWithBody({}),
+    res: response,
+  });
   expect(handled).toBe(true);
   expect(response.status).toBe(200);
   // The teardown + record drop happen INSIDE the latch: quiesce first, so a
@@ -360,15 +363,15 @@ test("a delete leaves nothing behind for the next agent on that path", async () 
   const requestId = seedAgentState(agentId);
   const path = `/agents/${encodeURIComponent(agentId)}`;
   const response = res();
-  await handleAgents(
-    deps(channel),
-    "alice",
-    "DELETE",
+  await dispatchGroup("agent-crud", {
+    deps: deps(channel),
+    userId: "alice",
+    method: "DELETE",
     path,
-    new URL(path, "http://host.local"),
-    reqWithBody({}),
-    response,
-  );
+    url: new URL(path, "http://host.local"),
+    req: reqWithBody({}),
+    res: response,
+  });
   expect(response.status).toBe(200);
   expect(assistantApprovals.pending(requestId, agentId)).toBeUndefined();
   expect(liveTurns.get(agentId, "conv-1")).toBeUndefined();

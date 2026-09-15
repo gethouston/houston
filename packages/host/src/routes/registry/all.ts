@@ -5,10 +5,7 @@
  * anything imported from HERE sees the whole registry rather than whichever
  * modules the importer happened to pull in. That is what server.ts and the SDK
  * parity gate need: they enter the chain at the top, and a group missing from
- * this list would be silently unreachable and silently unchecked. A module
- * already inside the registry (routes/agents.ts, which hosts an agent-phase
- * group's slot) imports `dispatchGroup` from registry/index.ts directly —
- * importing the barrel from a module the barrel imports would be a cycle.
+ * this list would be silently unreachable and silently unchecked.
  *
  * Import order is documentation, not behaviour: matching order is the group
  * order in registry/groups.ts's GROUP_PHASES, which mirrors server.ts's chain.
@@ -46,8 +43,13 @@ import "../assistant";
 import "../trigger-events";
 import "../routine-fires";
 import "../agent-color";
+import "../agents-crud";
+import "../agents-modify";
+import "../agents-credentials";
+import "../agents-credentials-keys";
+import "../agents-provider";
 import "../routine-runs";
-import "../agents";
+import "../agents-activity";
 import "../missions-remote-inbound";
 import "../skills-manifest";
 import "../skills";
@@ -64,5 +66,9 @@ import "../agent-file";
 
 import "../../turn/files-routes";
 import "../../turn/attachments-routes";
+
+// The catch-all forward to the agent's own engine, last: every host-served
+// per-agent family above is only reachable because it is declared before this.
+import "../agents";
 
 export { dispatchGroup, listRoutes } from "./index";

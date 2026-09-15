@@ -91,7 +91,7 @@ test("a catch-all declared before a specific route shadows it", () => {
   const specific: PatternEntry = {
     path: "/agents/:agentId/activity",
     methods: ["GET"],
-    source: "packages/host/src/routes/agents.ts#agent-activity",
+    source: "packages/host/src/routes/agents-activity.ts#agent-activity",
   };
   expect(shadows([proxy, specific])).toHaveLength(1);
   // The declared order is the whole point: the same pair the other way round
@@ -113,11 +113,9 @@ function recordingResponse(): { res: ServerResponse; status: () => number } {
 }
 
 /**
- * The golden replay cannot see this today: every agent-phase group is reached
- * through routes/agents.ts's fan-out, which has already authorized. The order
- * still has to hold on its own, because a group wired straight into a chain
- * slot would otherwise tell a stranger which methods an agent they cannot see
- * accepts.
+ * The golden replay sees this only where a family 405s, so it is asserted
+ * directly: a group must refuse a stranger before it tells them which methods
+ * an agent they cannot see accepts.
  */
 test("an agent-phase family refuses a stranger before it answers its own 405", async () => {
   const host = await replayHost();
@@ -158,11 +156,8 @@ function dispatchedGroups(module: string): GroupId[] {
   );
 }
 
-test.each([
-  "../../server.ts",
-  "../agents.ts",
-])("%s calls its groups in GROUP_ORDER order", (module) => {
-  const called = dispatchedGroups(module);
+test("server.ts calls its groups in GROUP_ORDER order", () => {
+  const called = dispatchedGroups("../../server.ts");
   expect(called.length).toBeGreaterThan(0);
   for (const group of called) expect(GROUP_PHASES).toHaveProperty(group);
   // Only INVERSIONS fail: a wave that appends a group to the table and wires

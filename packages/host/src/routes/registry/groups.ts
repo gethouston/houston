@@ -49,9 +49,17 @@ export const GROUP_PHASES = {
   // keeps the authz call inside its handler rather than taking the agent
   // phase's (which would answer 403 to a wrong method on someone else's agent).
   "agent-color": "user",
+  agents: "user",
+  "agent-crud": "agent",
+  "agent-credentials": "agent",
   "routine-runs": "agent",
   "agent-activity": "agent",
   "agent-approvals": "agent",
+  // The custom-integration grammar on the PER-AGENT dispatch surface — the one
+  // form the hosted gateway proxies to a pod. It declines a target its grammar
+  // does not know, so the agent's own engine still answers for everything else
+  // under `integrations/`.
+  "agent-integrations": "agent",
   "agent-missions": "agent",
   "agent-data": "agent",
   "trigger-status": "agent",
@@ -66,6 +74,10 @@ export const GROUP_PHASES = {
   "portable-export": "agent",
   migration: "agent",
   "portable-store": "agent",
+  // LAST, and deliberately: it claims every remaining `/agents/:agentId/…`
+  // path for the agent's own engine, so anything the host serves itself has to
+  // be declared above it.
+  "agent-proxy": "agent",
 } as const satisfies Record<string, Phase>;
 
 export type GroupId = keyof typeof GROUP_PHASES;

@@ -126,16 +126,17 @@ export async function handleSkillsRemote(
 }
 
 /**
- * The six marketplace pairs as one family. `methodMismatch: "405"` reproduces
- * the blanket refusal above, which fires before the unwired-vfs check and so
- * gives the identical body from either place.
+ * The six marketplace pairs as one family, plus the BOUNDARY the regex above
+ * owns beyond them: any action under `skills/{community,repo}`, claimed for
+ * every method so the handler is the one thing deciding what belongs here.
+ * That is what keeps its three answers reachable and distinct — a blanket 405
+ * for a wrong method, a 404 for a lower-case action nobody serves, and a
+ * DECLINE for anything `[a-z]+` never matched (`skills/community/Search`, a
+ * percent-escaped slug), which then reaches the agent's own engine.
  *
- * The regex is wider than these six: it claims any `[a-z]+` action under
- * `skills/{community,repo}`, and an unknown one gets the 404 at the end of the
- * handler. The matcher has no character-class segment to state that with, and
- * a `:action` boundary would be WIDER than the regex — it would swallow
- * `skills/community/Search`, which falls through to the agent's runtime today,
- * and a route handler cannot decline once it has been called.
+ * The `:action` boundary is deliberately WIDER than the regex; the handler's
+ * own `return false` is what narrows it back, so the matcher needs no
+ * character class it does not have.
  */
 defineRouteFamily({
   group: "skills-remote",
@@ -147,12 +148,15 @@ defineRouteFamily({
     { method: "POST", path: "/agents/:agentId/skills/repo/list" },
     { method: "POST", path: "/agents/:agentId/skills/repo/install" },
   ],
+  owns: [
+    "/agents/:agentId/skills/community/:action",
+    "/agents/:agentId/skills/repo/:action",
+  ],
   phase: "agent",
   classification: "sdk",
-  methodMismatch: "405",
   source: "packages/host/src/routes/skills-remote.ts",
-  handler: async ({ deps, authz, method, path, req, res, emit }) => {
-    await handleSkillsRemote(
+  handler: ({ deps, authz, method, path, req, res, emit }) =>
+    handleSkillsRemote(
       deps.vfs,
       deps.paths ?? DEFAULT_PATHS,
       authz,
@@ -161,6 +165,5 @@ defineRouteFamily({
       req,
       res,
       emit,
-    );
-  },
+    ),
 });

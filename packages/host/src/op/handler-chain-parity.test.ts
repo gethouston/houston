@@ -3,7 +3,8 @@ import { it } from "vitest";
 /**
  * The pool-worker op chain (op/handler-chain.ts) is a SECOND hand-ordered copy
  * of the per-agent dispatch surface, and its own comment admits the hazard: "A
- * route added to agents.ts must be added here too, or its op answers 404."
+ * per-agent route added to the registry must be added here too, or its op
+ * answers 404."
  *
  * Killing that drift is the registry's strongest internal payoff. Once every
  * per-agent route is declared (waves 5a, 5b and 6), wave 7 derives the op chain

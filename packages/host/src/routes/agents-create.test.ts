@@ -8,7 +8,7 @@ import type { ControlPlaneDeps } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
-import { handleAgents } from "./agents";
+import { dispatchGroup } from "./registry/all";
 
 /**
  * POST /agents create + seed. The create is atomic-enough: when the seed write
@@ -77,29 +77,29 @@ function res() {
 async function post(body: unknown) {
   const path = "/agents";
   const url = new URL(path, "http://host.local");
-  return handleAgents(
+  return dispatchGroup("agents", {
     deps,
-    "alice",
-    "POST",
-    path,
+    userId: "alice",
+    method: "POST",
+    path: "/agents",
     url,
-    req(JSON.stringify(body)),
-    res(),
-  );
+    req: req(JSON.stringify(body)),
+    res: res(),
+  });
 }
 
 test("a healthy create seeds the agent and keeps the record", async () => {
   const response = res();
   const url = new URL("/agents", "http://host.local");
-  const handled = await handleAgents(
+  const handled = await dispatchGroup("agents", {
     deps,
-    "alice",
-    "POST",
-    "/agents",
+    userId: "alice",
+    method: "POST",
+    path: "/agents",
     url,
-    req(JSON.stringify({ name: "Helper", seeds: { "notes.json": "[]" } })),
-    response,
-  );
+    req: req(JSON.stringify({ name: "Helper", seeds: { "notes.json": "[]" } })),
+    res: response,
+  });
   expect(handled).toBe(true);
   expect(response.status).toBe(201);
 
@@ -148,15 +148,15 @@ test("an invalid name answers 400 with a clean message, not a 500 (HOU-1166)", a
     "x".repeat(65),
   ]) {
     const response = res();
-    const handled = await handleAgents(
+    const handled = await dispatchGroup("agents", {
       deps,
-      "alice",
-      "POST",
-      "/agents",
-      new URL("/agents", "http://host.local"),
-      req(JSON.stringify({ name: bad })),
-      response,
-    );
+      userId: "alice",
+      method: "POST",
+      path: "/agents",
+      url: new URL("/agents", "http://host.local"),
+      req: req(JSON.stringify({ name: bad })),
+      res: response,
+    });
     expect(handled).toBe(true);
     expect(response.status).toBe(400);
     expect(String(JSON.parse(response.body).error)).toMatch(/agent name/);
@@ -167,15 +167,15 @@ test("an invalid name answers 400 with a clean message, not a 500 (HOU-1166)", a
 
 test("create trims the submitted name before storing it", async () => {
   const response = res();
-  await handleAgents(
+  await dispatchGroup("agents", {
     deps,
-    "alice",
-    "POST",
-    "/agents",
-    new URL("/agents", "http://host.local"),
-    req(JSON.stringify({ name: "  Padded  " })),
-    response,
-  );
+    userId: "alice",
+    method: "POST",
+    path: "/agents",
+    url: new URL("/agents", "http://host.local"),
+    req: req(JSON.stringify({ name: "  Padded  " })),
+    res: response,
+  });
   expect(response.status).toBe(201);
   expect(JSON.parse(response.body).name).toBe("Padded");
 });

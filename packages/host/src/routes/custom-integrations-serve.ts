@@ -3,9 +3,9 @@ import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import {
   bodyOr400,
   type CustomTarget,
-  parseAddInput,
   relayCustomError,
 } from "./custom-integrations";
+import { parseAddInput } from "./custom-integrations-input";
 import { json } from "./http";
 
 /**

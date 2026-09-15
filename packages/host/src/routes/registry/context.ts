@@ -5,7 +5,7 @@
  * imports a declaration type, so the dependency runs one way.
  */
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { HoustonEvent } from "@houston/protocol";
+import type { ActivityContributor, HoustonEvent } from "@houston/protocol";
 import type { Agent, UserId, Workspace } from "../../domain/types";
 import type { ControlPlaneDeps } from "../../server";
 import type { AgentRouteDeps } from "../agent-authz";
@@ -50,8 +50,21 @@ export interface PublicCtx extends PublicEntry, Matched {}
 export interface UserCtx extends UserEntry, Matched {}
 export interface AgentCtx extends AgentEntry, Matched {
   authz: { agent: Agent; workspace: Workspace };
+  /** The agent the ownership check ran on — the decoded `:agentId` segment. */
+  agentId: string;
   /** Reactivity fan-out to the workspace owner; absent when no hub is wired. */
   emit?: (event: HoustonEvent) => void;
+  /**
+   * WHO this request acts as, decided once by the dispatcher so no per-agent
+   * route can reopen the trust hole by reading the header itself (see
+   * routes/agent-authz.ts `trustedActingAs` and auth/acting.ts): the raw
+   * gateway-minted token a credential write hands the channel, and the same
+   * identity as a contributor for what gets stamped onto the agent's files.
+   * Both are empty off the gateway, where an inbound acting header is
+   * untrusted client input.
+   */
+  actingAs?: string;
+  actingAuthor: ActivityContributor | null;
 }
 
 /**
@@ -66,5 +79,8 @@ export interface DispatchCtx extends Located, Matched {
   deps: AgentRouteDeps;
   userId?: UserId;
   authz?: { agent: Agent; workspace: Workspace };
+  agentId?: string;
   emit?: (event: HoustonEvent) => void;
+  actingAs?: string;
+  actingAuthor?: ActivityContributor | null;
 }

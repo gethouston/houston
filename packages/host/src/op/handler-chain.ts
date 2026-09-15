@@ -34,13 +34,13 @@ export interface AgentOpChainDeps {
 
 /**
  * The pod's own handler chain, run for one op. The same handlers as the
- * dispatch surface in routes/agents.ts (the route families are disjoint, so
+ * per-agent groups server.ts dispatches (the route families are disjoint, so
  * relative order is free) — only the filesystem, and the construction of the
  * custom-integration manager, is different underneath. Deliberately absent:
  * trigger-status (gateway-native for asleep agents) and portable/anonymize
- * (its own op kind — the titles pattern). A route added to agents.ts must be
- * added here too, or its op answers 404. Unknown routes answer 404, never a
- * throw.
+ * (its own op kind — the titles pattern). A per-agent route added to the
+ * registry must be added here too, or its op answers 404. Unknown routes
+ * answer 404, never a throw.
  */
 export async function runAgentOpChain(
   deps: AgentOpChainDeps,

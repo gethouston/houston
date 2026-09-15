@@ -82,10 +82,6 @@ export function customTargetOf(rest: string): CustomTarget | null {
 
 // ── Sandbox (agent-initiated) routes ─────────────────────────────────────────
 
-/** Re-exported for the USER add route (custom-integrations-user.ts), which
- *  must accept the exact same body this one does. */
-export { parseAddInput };
-
 defineRouteFamily({
   group: "sandbox-custom-integrations",
   members: [

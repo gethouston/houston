@@ -21589,9 +21589,9 @@
     "forwarded": []
   },
   "POST /agents/:agentId/provider/openai-compatible [other]": {
-    "status": 400,
+    "status": 403,
     "contentType": "application/json; charset=utf-8",
-    "errorCode": "This deployment doesn't support custom OpenAI-compatible endpoints.",
+    "errorCode": "not your agent",
     "bodyKeys": [
       "error"
     ],
@@ -23455,9 +23455,9 @@
     "forwarded": []
   },
   "GET /agents/%E0%A4%A/activity": {
-    "status": 500,
+    "status": 404,
     "contentType": "application/json; charset=utf-8",
-    "errorCode": "URI malformed",
+    "errorCode": "not found",
     "bodyKeys": [
       "error"
     ],
@@ -23473,9 +23473,9 @@
     "forwarded": []
   },
   "GET /agents/%E0%A4%A/activity [other]": {
-    "status": 500,
+    "status": 404,
     "contentType": "application/json; charset=utf-8",
-    "errorCode": "URI malformed",
+    "errorCode": "not found",
     "bodyKeys": [
       "error"
     ],

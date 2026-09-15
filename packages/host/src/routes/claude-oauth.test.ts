@@ -15,11 +15,12 @@ import type { Agent, Workspace } from "../domain/types";
 import { FakeLauncher } from "../launcher/fake";
 import { forward } from "../proxy/route";
 import { MemoryWorkspaceStore } from "../store/memory";
-import { type AgentRouteDeps, handleAgents } from "./agents";
+import type { AgentRouteDeps } from "./agent-authz";
+import { dispatchGroup } from "./registry/all";
 
 /**
  * The HOSTED Claude-subscription push route: `POST
- * /agents/:id/credential/claude-oauth`. Drives handleAgents over real HTTP
+ * /agents/:id/credential/claude-oauth`. Drives the route over real HTTP
  * through the real ProxyChannel + a fake standing runtime, asserting owner authz,
  * strict validation, the central+runtime DUAL WRITE, loud failure on a runtime
  * reject, and that the token is never logged.
@@ -108,15 +109,15 @@ async function boot(
     const url = new URL(req.url || "/", "http://x");
     // Single-principal host: the bearer names the acting user.
     const userId = req.headers.authorization?.replace(/^Bearer /, "") || "";
-    void handleAgents(
+    void dispatchGroup("agent-credentials", {
       deps,
       userId,
-      req.method || "GET",
-      url.pathname,
+      method: req.method || "GET",
+      path: url.pathname,
       url,
       req,
       res,
-    )
+    })
       .then((handled) => {
         if (!handled) {
           res.writeHead(404);

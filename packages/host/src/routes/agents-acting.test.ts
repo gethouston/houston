@@ -8,7 +8,8 @@ import type {
   RuntimeState,
 } from "../ports";
 import { MemoryWorkspaceStore } from "../store/memory";
-import { type AgentRouteDeps, handleAgents } from "./agents";
+import type { AgentRouteDeps } from "./agent-authz";
+import { dispatchGroup } from "./registry/all";
 
 /**
  * The acting-as trust seam on the four CREDENTIAL routes (C2/C5). The gateway is
@@ -100,7 +101,7 @@ interface Fixture {
   agentId: string;
 }
 
-/** Boot handleAgents over real HTTP so a client-supplied header rides req.headers. */
+/** Boot the credential routes over real HTTP so a client-supplied header rides req.headers. */
 async function boot(opts: { gatewayFronted: boolean }): Promise<Fixture> {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const workspace = await store.getOrCreatePersonalWorkspace("alice");
@@ -119,15 +120,15 @@ async function boot(opts: { gatewayFronted: boolean }): Promise<Fixture> {
     const url = new URL(req.url || "/", "http://x");
     // Single-principal host: the bearer names the acting user.
     const userId = req.headers.authorization?.replace(/^Bearer /, "") || "";
-    void handleAgents(
+    void dispatchGroup("agent-credentials", {
       deps,
       userId,
-      req.method || "GET",
-      url.pathname,
+      method: req.method || "GET",
+      path: url.pathname,
       url,
       req,
       res,
-    )
+    })
       .then((handled) => {
         if (!handled) {
           res.writeHead(404);

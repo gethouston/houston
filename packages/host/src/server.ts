@@ -29,7 +29,6 @@ import {
   type WorkspaceStore,
 } from "./ports";
 import type { AgentConfigsDeps } from "./routes/agent-configs";
-import { handleAgents } from "./routes/agents";
 import type { AssistantDeps } from "./routes/assistant";
 import type { AssistantSandboxDeps } from "./routes/assistant-sandbox";
 import type { CredentialServeHealer } from "./routes/credential-healer";
@@ -405,11 +404,41 @@ async function handle(
 
   // One agent's color. Agent-scoped, but NOT part of the per-agent dispatch
   // below: it writes the same `agent_colors` PREFERENCE the app's color sync
-  // owns, so it is served here, ahead of handleAgents, rather than proxied to
-  // the agent's runtime, which knows nothing about that doc.
+  // owns, so it is served here, ahead of the per-agent surface, rather than
+  // proxied to the agent's runtime, which knows nothing about that doc.
   if (await dispatchGroup("agent-color", authenticated)) return;
 
-  if (await handleAgents(deps, userId, method, path, url, req, res)) return;
+  // The user's own agents, then everything scoped to ONE of them. Every group
+  // past the first is agent-phase: the dispatcher runs the ownership check for
+  // the agent the matched pattern names, so none of them can answer without one.
+  //
+  // ORDER IS THE WHOLE CONTRACT here, because the last group claims the rest of
+  // the subtree: "agent-proxy" forwards ANY `/agents/:agentId/…` path to the
+  // agent's own engine (routes/agents.ts), so a route the HOST serves exists
+  // only by being declared above it. Each group's own module says why it is
+  // host-served; registry/groups.ts is where the order itself is stated.
+  if (await dispatchGroup("agents", authenticated)) return;
+  if (await dispatchGroup("agent-crud", authenticated)) return;
+  if (await dispatchGroup("agent-credentials", authenticated)) return;
+  if (await dispatchGroup("routine-runs", authenticated)) return;
+  if (await dispatchGroup("agent-activity", authenticated)) return;
+  if (await dispatchGroup("agent-approvals", authenticated)) return;
+  if (await dispatchGroup("agent-integrations", authenticated)) return;
+  if (await dispatchGroup("agent-missions", authenticated)) return;
+  if (await dispatchGroup("agent-data", authenticated)) return;
+  if (await dispatchGroup("trigger-status", authenticated)) return;
+  if (await dispatchGroup("agent-file", authenticated)) return;
+  if (await dispatchGroup("skills-manifest", authenticated)) return;
+  if (await dispatchGroup("skills", authenticated)) return;
+  if (await dispatchGroup("skills-remote", authenticated)) return;
+  if (await dispatchGroup("workspace-files", authenticated)) return;
+  if (await dispatchGroup("attachments", authenticated)) return;
+  if (await dispatchGroup("portable-preview", authenticated)) return;
+  if (await dispatchGroup("portable-anonymize", authenticated)) return;
+  if (await dispatchGroup("portable-export", authenticated)) return;
+  if (await dispatchGroup("migration", authenticated)) return;
+  if (await dispatchGroup("portable-store", authenticated)) return;
+  if (await dispatchGroup("agent-proxy", authenticated)) return;
 
   return json(res, 404, { error: "not found" });
 }

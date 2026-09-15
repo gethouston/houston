@@ -1,6 +1,7 @@
 import type { HoustonEvent } from "@houston/protocol";
+import { actingAuthorFor } from "../../auth/acting";
 import type { Agent, UserId, Workspace } from "../../domain/types";
-import { authorizeAgent } from "../agent-authz";
+import { authorizeAgent, trustedActingAs } from "../agent-authz";
 import { json } from "../http";
 import type {
   AgentEntry,
@@ -105,14 +106,15 @@ async function authorize(
   ctx: PublicEntry | UserEntry | AgentEntry,
   matched: PatternMatch,
   userId: UserId | undefined,
-): Promise<{ agent: Agent; workspace: Workspace } | null> {
+): Promise<{ agentId: string; agent: Agent; workspace: Workspace } | null> {
   if (userId === undefined)
     throw new Error(`agent-phase group "${entry.group}" ran unauthenticated`);
   const agentId = matched.params.agentId;
   if (agentId === undefined)
     throw new Error(`agent-phase group "${entry.group}" matched no :agentId`);
   const authz = await authorizeAgent(ctx.deps, userId, agentId);
-  if (authz.ok) return { agent: authz.agent, workspace: authz.workspace };
+  if (authz.ok)
+    return { agentId, agent: authz.agent, workspace: authz.workspace };
   json(ctx.res, authz.status, { error: authz.reason });
   return null;
 }
@@ -143,9 +145,13 @@ async function run(
   const emit = events
     ? (event: HoustonEvent) => events.emit(authz.workspace.ownerUserId, event)
     : undefined;
+  const actingAs = trustedActingAs(ctx.deps, ctx.req);
   const answer = await entry.handler({
     ...base,
     authz: { agent: authz.agent, workspace: authz.workspace },
+    agentId: authz.agentId,
+    actingAuthor: actingAuthorFor(ctx.deps, ctx.req),
+    ...(actingAs ? { actingAs } : {}),
     ...(emit ? { emit } : {}),
   });
   return answer !== false;

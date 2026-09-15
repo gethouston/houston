@@ -3,6 +3,7 @@ import { canUseAgent } from "../domain/access";
 import type { UserId } from "../domain/types";
 import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import type { WorkspaceStore } from "../ports";
+import { agentRest } from "./agent-rest";
 import { customTargetOf } from "./custom-integrations";
 import { serveCustomTarget } from "./custom-integrations-serve";
 import { json } from "./http";
@@ -101,12 +102,10 @@ export async function handleCustomIntegrations(
 }
 
 /**
- * The SAME routes on the per-agent dispatch surface, matched on the dispatch
- * `rest` inside handleAgents — which has ALREADY run the ownership check, so
- * no authz here. This is the surface the hosted gateway proxies to the pod,
- * and the one the shipped clients call in both deployments. Unwired manager →
- * false, and the request falls through toward the runtime channel like any
- * unknown dispatch family.
+ * The SAME routes matched on the per-agent `rest`, for the two chains that run
+ * behind their own ownership check: the dispatch surface below, and the pod's
+ * op chain (op/handler-chain.ts). Unwired manager → false, so the request keeps
+ * travelling toward the agent's engine like any unknown rest.
  */
 export async function handleCustomIntegrationsDispatch(
   manager: CustomIntegrationManager | undefined,
@@ -166,4 +165,29 @@ defineRouteFamily({
   owns: ["/v1/agents/:agentId/integrations/custom/*rest"],
   handler: ({ deps, userId, method, path, req, res }) =>
     handleCustomIntegrations(deps, userId, method, path, req, res),
+});
+
+/**
+ * The same routes on the PER-AGENT dispatch surface, behind the agent phase's
+ * ownership check. It DECLINES — rather than 404ing like the `/v1` mounts —
+ * whenever the manager is unwired or the grammar does not know the target,
+ * because the family behind it here is the agent's own engine: a probe for
+ * something else under `integrations/` belongs to the engine, and on a host
+ * with no custom-integration manager the whole subtree does.
+ */
+defineRouteFamily({
+  group: "agent-integrations",
+  phase: "agent",
+  classification: "sdk",
+  source: SOURCE,
+  members: members("/agents/:agentId/integrations/custom"),
+  owns: ["/agents/:agentId/integrations/custom/*rest"],
+  handler: ({ deps, method, path, req, res }) =>
+    handleCustomIntegrationsDispatch(
+      deps.customIntegrations,
+      method,
+      agentRest(path),
+      req,
+      res,
+    ),
 });

@@ -15,7 +15,8 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
-import { handleAgents, podActivityStatus } from "./agents";
+import { podActivityStatus } from "./agents-activity";
+import { dispatchGroup } from "./registry/all";
 
 /**
  * GET /agents/:id/activity — gateway idle-sleep probe. It reports whether any
@@ -129,19 +130,36 @@ function res() {
   return out as unknown as ServerResponse & typeof out;
 }
 
+/** The two chain slots this probe can be answered from, in server.ts's order. */
+async function probe(
+  d: ControlPlaneDeps,
+  userId: string,
+  method: string,
+  path: string,
+  url: URL,
+  request: IncomingMessage,
+  response: ServerResponse,
+): Promise<boolean> {
+  const entry = {
+    deps: d,
+    userId,
+    method,
+    path,
+    url,
+    req: request,
+    res: response,
+  };
+  return (
+    (await dispatchGroup("agent-activity", entry)) ||
+    (await dispatchGroup("agent-proxy", entry))
+  );
+}
+
 async function activity(who = "alice", id = agentId) {
   const path = `/agents/${encodeURIComponent(id)}/activity`;
   const url = new URL(path, "http://host.local");
   const response = res();
-  const handled = await handleAgents(
-    deps,
-    who,
-    "GET",
-    path,
-    url,
-    req(),
-    response,
-  );
+  const handled = await probe(deps, who, "GET", path, url, req(), response);
   return { handled, response, json: JSON.parse(response.body || "{}") };
 }
 
@@ -223,15 +241,7 @@ test("counts OTHER held /agents/* requests as busy (open SSE stream)", async () 
 test("POST /conversations/:cid/dismiss-interaction reaches the runtime dispatch", async () => {
   const path = `/agents/${encodeURIComponent(agentId)}/conversations/c1/dismiss-interaction`;
   const url = new URL(path, "http://host.local");
-  const handled = await handleAgents(
-    deps,
-    "alice",
-    "POST",
-    path,
-    url,
-    req(),
-    res(),
-  );
+  const handled = await probe(deps, "alice", "POST", path, url, req(), res());
   expect(handled).toBe(true);
   expect(channel.dispatched).toEqual(["conversations/c1/dismiss-interaction"]);
 });

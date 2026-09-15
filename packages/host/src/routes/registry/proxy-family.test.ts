@@ -13,6 +13,8 @@ import { defineProxyFamily, dispatchGroup } from "./index";
  * parity gate reads. This file registers one into the live registry — vitest
  * isolates a file's module graph, so the extra routes exist only here.
  */
+const SOURCE = "packages/host/src/routes/registry/proxy-family.test.ts";
+
 const MEMBERS = [
   { method: "GET", path: "providers" },
   { method: "POST", path: "conversations/:conversationId/messages" },
@@ -27,7 +29,7 @@ defineProxyFamily({
   classification: "runtime-proxy",
   reason:
     "Served by the agent's own runtime; this host only forwards the request and streams the answer back.",
-  source: "packages/host/src/routes/registry/proxy-family.test.ts",
+  source: SOURCE,
   members: MEMBERS.map((member) => ({
     method: member.method,
     rest: member.path,
@@ -87,8 +89,11 @@ const dispatch = async (
 };
 
 test("listRoutes() publishes one entry per declared member", () => {
+  // Scoped to the family declared here: the real one (routes/agents.ts) is in
+  // the same registry, and its members are agents-proxy-members.test.ts's.
   const proxied = listRoutes().filter(
-    (route) => route.classification === "runtime-proxy",
+    (route) =>
+      route.classification === "runtime-proxy" && route.source === SOURCE,
   );
   expect(proxied.map((route) => `${route.method} ${route.path}`)).toEqual([
     "GET /agents/:agentId/providers",
@@ -118,7 +123,7 @@ test("the specific route declared earlier still wins over the family", async () 
     `/agents/${agentId}/activity`,
   );
   expect(handled).toBe(true);
-  // The activity route answered from routes/agents.ts; nothing was forwarded.
+  // The activity route answered from routes/agents-activity.ts; nothing was forwarded.
   expect(seen.length).toBe(before);
   expect(res.status).toBe(503);
 });

@@ -1,4 +1,4 @@
-import { parseAddInput } from "@houston/host/src/routes/custom-integrations";
+import { parseAddInput } from "@houston/host/src/routes/custom-integrations-input";
 import type { TurnCustomContext } from "./turn-custom-context";
 import { customDefinitionsFile } from "./turn-custom-context";
 import { mutateTurnDocument } from "./turn-doc-cas";
