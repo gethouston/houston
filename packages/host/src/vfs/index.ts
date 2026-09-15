@@ -14,6 +14,8 @@ export {
   assertSafeKey,
   decodeText,
   type KeyCase,
+  type KeyFold,
   type ObjectStat,
   type Vfs,
+  VfsExistsError,
 } from "./vfs";

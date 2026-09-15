@@ -4,6 +4,7 @@ import {
   type KeyCase,
   type ObjectStat,
   type Vfs,
+  VfsExistsError,
 } from "./vfs";
 
 interface Entry {
@@ -29,7 +30,7 @@ export class MemoryVfs implements Vfs {
   private readonly mode: KeyCase;
 
   constructor(opts: MemoryVfsOptions = {}) {
-    this.mode = opts.keyCase ?? "exact";
+    this.mode = opts.keyCase ?? { fold: "exact", normalize: false };
   }
 
   async keyCase(): Promise<KeyCase> {
@@ -38,12 +39,14 @@ export class MemoryVfs implements Vfs {
 
   /** The spelling this store compares by. */
   private fold(key: string): string {
-    return this.mode === "folded" ? key.toLowerCase() : key;
+    const cased = this.mode.fold === "folded" ? key.toLowerCase() : key;
+    return this.mode.normalize ? cased.normalize("NFC") : cased;
   }
 
   /** The key an existing object is STORED under, or `key` when there is none. */
   private slot(key: string): string {
-    if (this.mode === "exact" || this.files.has(key)) return key;
+    if (this.files.has(key)) return key;
+    if (this.mode.fold === "exact" && !this.mode.normalize) return key;
     const folded = this.fold(key);
     for (const k of this.files.keys()) if (this.fold(k) === folded) return k;
     return key;
@@ -54,6 +57,10 @@ export class MemoryVfs implements Vfs {
     return [...this.files.entries()].filter(([k]) =>
       this.fold(k).startsWith(p),
     );
+  }
+
+  async exists(key: string): Promise<boolean> {
+    return this.files.has(this.slot(key));
   }
 
   async list(prefix: string): Promise<string[]> {
@@ -105,12 +112,19 @@ export class MemoryVfs implements Vfs {
     const from = this.slot(fromKey);
     const v = this.files.get(from);
     if (!v) throw new Error(`move: source not found: ${fromKey}`);
+    // The same door FsVfs puts in front of `rename(2)`, answered by this
+    // store's own slot resolution: a destination that resolves to a DIFFERENT
+    // stored object would be destroyed without a word. Re-spelling the source
+    // (`readme.md` → `README.md` on a folded store) resolves to the source
+    // itself and is a rename the user asked for.
+    const occupant = this.slot(toKey);
+    if (occupant !== from && this.files.has(occupant)) {
+      throw new VfsExistsError(toKey);
+    }
     this.files.delete(from);
-    // `rename(2)`: whatever occupied the destination is replaced without a
-    // word, and the moved object carries the spelling it was GIVEN — which is
-    // what makes a case-only rename a real rename.
-    this.files.delete(this.slot(toKey));
-    // A move keeps the creation time — renaming a file doesn't re-create it.
+    // A move keeps the creation time — renaming a file doesn't re-create it —
+    // and the object carries the spelling it was GIVEN, which is what makes a
+    // case-only rename a real rename.
     this.files.set(toKey, {
       content: v.content,
       updatedMs: this.clock++,

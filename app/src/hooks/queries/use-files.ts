@@ -80,6 +80,13 @@ export function useCreateFolder(agentPath: string | undefined) {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
     },
+    // A file or folder is already using the name. The same sentence a rename
+    // gets, because to the person it is the same thing.
+    onError: (err: unknown, name: string) => {
+      if (isNameTakenError(err)) {
+        showNameTakenToast(name.split("/").pop() ?? name);
+      }
+    },
   });
 }
 
@@ -137,6 +144,14 @@ export function useMoveFile(agentPath: string | undefined) {
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
+    },
+    // The race `detectMoveConflict` cannot close — the destination folder took
+    // the name between the listing the UI read and this request. Same authored
+    // copy as the up-front Replace / Keep both offer, never the red bug pair.
+    onError: (err: unknown, { relativePath }) => {
+      if (isNameTakenError(err)) {
+        showNameTakenToast(relativePath.split("/").pop() ?? relativePath);
+      }
     },
   });
 }

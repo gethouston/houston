@@ -238,3 +238,34 @@ test("renaming a file onto a name already in use says so and keeps both files", 
     expect.arrayContaining(["notes.txt", "Q3 report.pdf"]),
   );
 });
+
+/**
+ * Naming a new folder after something that is already there is the same
+ * state as a taken rename, and must read the same way: calm authored copy,
+ * nothing lost, no bug report. The host refuses it (`createWorkspaceFolder`)
+ * rather than writing a `.keep` marker under an existing file.
+ */
+test("a new folder named after an existing file says the name is taken", async ({
+  page,
+}) => {
+  await openFiles(page);
+  await expect(row(page, "Q3 report.pdf")).toBeVisible();
+
+  await page.getByRole("button", { name: "New", exact: true }).click();
+  await page.getByRole("menuitem", { name: "New folder" }).click();
+  const input = page.getByPlaceholder("untitled folder");
+  await input.fill("Q3 report.pdf");
+  await input.press("Enter");
+
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ hasText: "already exists here" })
+      .filter({ hasText: "Q3 report.pdf" }),
+  ).toBeVisible();
+  await expect(page.getByText("Houston, we have a problem!")).toHaveCount(0);
+
+  // The file is still a file, and no folder took its name.
+  await expect(row(page, "Q3 report.pdf")).toHaveCount(1);
+  await expect(row(page, "Q3 report.pdf")).toContainText("9 bytes");
+});

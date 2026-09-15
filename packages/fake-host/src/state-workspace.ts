@@ -135,9 +135,28 @@ export function importWorkspaceFiles(
   return paths;
 }
 
-/** An empty folder, which exists only through the `.keep` marker under it. */
-export function createWorkspaceFolder(agentId: string, folder: string): string {
+/** A file's own key, or the prefix a folder's children share. */
+export function workspacePathTaken(agentId: string, rel: string): boolean {
+  if (state.workspace.has(workspaceKey(agentId, rel))) return true;
+  const prefix = `${workspaceKey(agentId, rel)}/`;
+  for (const k of state.workspace.keys()) if (k.startsWith(prefix)) return true;
+  return false;
+}
+
+/** What an op that could land on an occupied name answers. */
+export type NameResult<T> = { kind: "ok"; value: T } | { kind: "taken" };
+
+/**
+ * An empty folder, which exists only through the `.keep` marker under it.
+ * Refuses a name a file already holds, exactly like the real host: writing
+ * `<name>/.keep` beneath a file is ENOTDIR on a real disk.
+ */
+export function createWorkspaceFolder(
+  agentId: string,
+  folder: string,
+): NameResult<string> {
+  if (workspacePathTaken(agentId, folder)) return { kind: "taken" };
   writeWorkspaceFile(agentId, `${folder}/${KEEP}`, Buffer.alloc(0), Date.now());
   emitDomain("FilesChanged", agentId);
-  return folder;
+  return { kind: "ok", value: folder };
 }

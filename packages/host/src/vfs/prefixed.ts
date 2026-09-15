@@ -29,6 +29,10 @@ export class PrefixedVfs implements Vfs {
     return this.inner.keyCase();
   }
 
+  exists(key: string): Promise<boolean> {
+    return this.inner.exists(this.key(key));
+  }
+
   async list(prefix: string): Promise<string[]> {
     return (await this.inner.list(this.key(prefix))).map((k) => this.strip(k));
   }

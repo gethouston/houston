@@ -5,6 +5,7 @@ import { expect, test } from "vitest";
 import { FsVfs } from "../vfs";
 import { importWorkspaceFiles } from "./files-import";
 import {
+  createWorkspaceFolder,
   deleteWorkspaceFile,
   FileOpError,
   listWorkspace,
@@ -78,7 +79,7 @@ test("refuses to rename onto an existing name on disk", async () => {
  */
 test("a rename onto a name differing only in case never destroys the neighbour", async () => {
   const vfs = freshVfs();
-  const folded = (await vfs.keyCase()) === "folded";
+  const folded = (await vfs.keyCase()).fold === "folded";
   await vfs.writeText(`${ROOT}/readme.md`, "kept");
   await vfs.writeText(`${ROOT}/notes.md`, "moved");
 
@@ -121,7 +122,7 @@ test("a case-ONLY rename re-spells the file on any volume", async () => {
 
 test("an upload whose name differs only in case never replaces the file there", async () => {
   const vfs = freshVfs();
-  const folded = (await vfs.keyCase()) === "folded";
+  const folded = (await vfs.keyCase()).fold === "folded";
   await vfs.writeText(`${ROOT}/Report.pdf`, "original");
 
   const saved = await importWorkspaceFiles(vfs, ROOT, null, [
@@ -134,6 +135,50 @@ test("an upload whose name differs only in case never replaces the file there", 
   expect(saved).toEqual([folded ? "report (1).pdf" : "report.pdf"]);
   expect(await readWorkspaceFile(vfs, ROOT, "Report.pdf")).toEqual({
     content: "original",
+    base64: false,
+  });
+});
+
+test("a new folder never takes a name something already has", async () => {
+  // `<name>/.keep` beneath a file is ENOTDIR on a real disk, which reached the
+  // user as a 500 naming a marker file they never heard of.
+  const vfs = freshVfs();
+  await vfs.writeText(`${ROOT}/report.pdf`, "kept");
+  await vfs.writeText(`${ROOT}/Papers/a.txt`, "a");
+
+  for (const taken of ["report.pdf", "Papers"]) {
+    const refused = createWorkspaceFolder(vfs, ROOT, taken);
+    await expect(refused).rejects.toBeInstanceOf(FileOpError);
+    await expect(refused).rejects.toMatchObject({
+      status: 409,
+      code: "name_taken",
+    });
+  }
+  expect(await readWorkspaceFile(vfs, ROOT, "report.pdf")).toEqual({
+    content: "kept",
+    base64: false,
+  });
+  expect(await createWorkspaceFolder(vfs, ROOT, "Archive")).toBe("Archive");
+});
+
+test("a new folder refuses a name the VOLUME resolves to an existing file", async () => {
+  const vfs = freshVfs();
+  await vfs.writeText(`${ROOT}/straße.txt`, "kept");
+  // The key set compares with `toLowerCase()`, which does not fold ß: only the
+  // volume's own answer stops this one.
+  const foldsSharpS = await vfs.exists(`${ROOT}/STRASSE.txt`);
+
+  const created = createWorkspaceFolder(vfs, ROOT, "STRASSE.txt");
+  if (foldsSharpS) {
+    await expect(created).rejects.toMatchObject({
+      status: 409,
+      code: "name_taken",
+    });
+  } else {
+    expect(await created).toBe("STRASSE.txt");
+  }
+  expect(await readWorkspaceFile(vfs, ROOT, "straße.txt")).toEqual({
+    content: "kept",
     base64: false,
   });
 });

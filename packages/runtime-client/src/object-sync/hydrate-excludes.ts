@@ -27,6 +27,11 @@ function anyDepthDirMatches(pattern: string, path: string): boolean {
 
 export function excluded(rel: string, excludes: string[]): boolean {
   const normalized = norm(rel);
+  // Unconditional, whatever a caller configures: a half-written file must
+  // never be published as content. Covers the host's own scratch files, which
+  // live inside the walked directory and end `.houston.tmp` (ATOMIC_TMP_SUFFIX
+  // in `packages/host/src/vfs/fs-scratch.ts` — the atomic write's temp target
+  // and the volume probe).
   if (normalized.endsWith(".tmp")) return true;
   if (normalized.endsWith(".houston/runtime/auth.json")) return true;
   // Credential paths differ by deployment depth, so segment matching must

@@ -1,13 +1,18 @@
 import {
   excluded,
-  type ObjectMetadata,
   ObjectNotFoundError,
 } from "@houston/runtime-client/object-sync";
 import { FsVfs } from "./fs";
-import { fetchObject, type LazyBudget } from "./lazy-store-fetch";
+import { Materializer } from "./lazy-store-fetch";
 import { LazyOwnership } from "./lazy-store-ownership";
 import type { LazyStoreVfsOptions } from "./lazy-store-types";
-import { assertSafeKey, decodeText, type ObjectStat, type Vfs } from "./vfs";
+import {
+  assertSafeKey,
+  decodeText,
+  type ObjectStat,
+  type Vfs,
+  VfsExistsError,
+} from "./vfs";
 
 /**
  * A Vfs over an object store: listings/stats from the store manifest, an
@@ -23,12 +28,12 @@ import { assertSafeKey, decodeText, type ObjectStat, type Vfs } from "./vfs";
 export class LazyStoreVfs implements Vfs {
   private readonly local: FsVfs;
   private readonly state: LazyOwnership;
-  private readonly inflight = new Map<string, Promise<void>>();
-  private readonly budget: LazyBudget = { materializedBytes: 0 };
+  private readonly downloads: Materializer;
 
   constructor(private readonly opts: LazyStoreVfsOptions) {
     this.local = new FsVfs(opts.root);
     this.state = new LazyOwnership(opts.manifest);
+    this.downloads = new Materializer(opts);
     for (const object of opts.objects) {
       const rel = this.relOf(object.key);
       if (!rel || excluded(rel, opts.excludes)) continue;
@@ -62,6 +67,17 @@ export class LazyStoreVfs implements Vfs {
    */
   keyCase = () => this.local.keyCase();
 
+  /**
+   * The overlay OR the store: a remote object nobody has materialized still
+   * occupies its key, and the overlay alone cannot see it.
+   */
+  async exists(key: string): Promise<boolean> {
+    assertSafeKey(key);
+    return (
+      this.state.visible(key) !== undefined || (await this.local.exists(key))
+    );
+  }
+
   list = async (prefix: string) =>
     (await this.listDetailed(prefix)).map((s) => s.key);
 
@@ -92,7 +108,7 @@ export class LazyStoreVfs implements Vfs {
     const meta = this.state.visible(key);
     if (!meta) return null;
     try {
-      await this.materialize(key, meta);
+      await this.downloads.fetch(key, meta);
     } catch (error) {
       if (!(error instanceof ObjectNotFoundError)) throw error;
       // Vanished between the listing and this first read: another writer
@@ -104,35 +120,20 @@ export class LazyStoreVfs implements Vfs {
     return this.local.readBytes(key);
   }
 
-  /** Download one object into the overlay once; concurrent reads share it. */
-  private materialize(key: string, meta: ObjectMetadata): Promise<void> {
-    const pending = this.inflight.get(key);
-    if (pending) return pending;
-    const run = fetchObject(this.opts, this.budget, key, meta).finally(() =>
-      this.inflight.delete(key),
-    );
-    this.inflight.set(key, run);
-    return run;
-  }
-
-  /** Never race a download's rename over a local write of the same key. */
-  private settle = (key: string) =>
-    this.inflight.get(key)?.catch(() => undefined);
-
   writeText = (key: string, content: string) =>
     this.writeBytes(key, Buffer.from(content, "utf8"));
 
   async writeBytes(key: string, content: Buffer): Promise<void> {
     assertSafeKey(key);
     this.state.assertWritable(key);
-    await this.settle(key);
+    await this.downloads.settle(key);
     await this.local.writeBytes(key, content);
     this.state.written(key);
   }
 
   async deleteKey(key: string): Promise<void> {
     assertSafeKey(key);
-    await this.settle(key);
+    await this.downloads.settle(key);
     await this.local.deleteKey(key);
     this.state.tombstone(key);
   }
@@ -170,13 +171,16 @@ export class LazyStoreVfs implements Vfs {
     const meta = this.state.visible(fromKey);
     if ((await this.local.readBytes(fromKey)) === null && meta) {
       try {
-        await this.materialize(fromKey, meta);
+        await this.downloads.fetch(fromKey, meta);
       } catch (error) {
         if (!(error instanceof ObjectNotFoundError)) throw error;
         this.state.remote.delete(fromKey);
         throw new Error(`move: source not found: ${fromKey}`);
       }
     }
+    // The store's half is exact-keyed and invisible to the overlay's own
+    // guard: an object nobody has read yet still occupies the destination.
+    if (this.state.visible(toKey)) throw new VfsExistsError(toKey);
     await this.local.move(fromKey, toKey);
     this.state.written(toKey);
     this.state.tombstone(fromKey);
@@ -184,10 +188,7 @@ export class LazyStoreVfs implements Vfs {
 
   async deletePrefix(prefix: string): Promise<void> {
     assertSafeKey(prefix);
-    const under = `${prefix}/`;
-    for (const key of this.inflight.keys()) {
-      if (key.startsWith(under)) await this.settle(key);
-    }
+    await this.downloads.settleUnder(prefix);
     await this.local.deletePrefix(prefix);
     for (const [rel] of this.state.under(prefix)) this.state.tombstone(rel);
   }

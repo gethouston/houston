@@ -1108,9 +1108,17 @@ export const tauriFiles = {
   },
   createFolder: (agentPath: string, name: string) => {
     blockWriteWhileWarming(agentPath);
-    return call<void>("create_agent_folder", async () => {
-      await getEngine().createFolder(agentPath, name);
-    });
+    // A file or folder already carrying that name is an expected state:
+    // `useCreateFolder` shows the calm toast, so the 409 is logged but never
+    // filed as a bug.
+    return call<void>(
+      "create_agent_folder",
+      async () => {
+        await getEngine().createFolder(agentPath, name);
+      },
+      undefined,
+      { silence: isNameTakenError },
+    );
   },
   /** Upload browser Files into the workspace (drag-drop / Browse), optionally
    * into a subfolder.
@@ -1131,8 +1139,13 @@ export const tauriFiles = {
   /** Move a file/folder into another folder (null = workspace root). */
   move: (agentPath: string, relPath: string, toDir: string | null) => {
     blockWriteWhileWarming(agentPath);
-    return call<void>("move_project_file", () =>
-      getEngine().moveProjectFile(agentPath, relPath, toDir),
+    // Same expected state as a rename: the destination folder already holds
+    // that name. `useMoveFile` says so in product copy; no bug report.
+    return call<void>(
+      "move_project_file",
+      () => getEngine().moveProjectFile(agentPath, relPath, toDir),
+      undefined,
+      { silence: isNameTakenError },
     );
   },
   /** One zip of the whole workspace ("Download all") or, with `relPath`, of a

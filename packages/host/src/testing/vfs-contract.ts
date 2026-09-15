@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import type { Vfs } from "../vfs/vfs";
+import { type Vfs, VfsExistsError } from "../vfs/vfs";
 
 /**
  * The Vfs CONTRACT, run verbatim against every adapter — the anti-drift
@@ -38,10 +38,33 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       // volume: the assertion is the adapter's own claim, checked against it.
       const vfs = make();
       await vfs.writeText(`${P}/workspace/readme.md`, "doc");
-      const folded = (await vfs.keyCase()) === "folded";
+      const { fold, normalize } = await vfs.keyCase();
       expect(await vfs.readText(`${P}/workspace/README.md`)).toBe(
-        folded ? "doc" : null,
+        fold === "folded" ? "doc" : null,
       );
+      // Same question for Unicode: macOS stores a name DECOMPOSED and every
+      // browser sends it COMPOSED, so a backend that resolves the two to one
+      // object has to say so or the guards compare bytes that never match.
+      const nfd = `${P}/workspace/informe-espan\u0303a.pdf`;
+      await vfs.writeText(nfd, "informe");
+      expect(await vfs.readText(nfd.normalize("NFC"))).toBe(
+        normalize ? "informe" : null,
+      );
+    });
+
+    test("exists answers with the backend's own name resolution", async () => {
+      // The upload dedupe decides a WRITE destination with this, and a write
+      // that lands on an object it did not know about replaces it in silence.
+      const vfs = make();
+      await vfs.writeText(`${P}/workspace/report.pdf`, "one");
+      expect(await vfs.exists(`${P}/workspace/report.pdf`)).toBe(true);
+      expect(await vfs.exists(`${P}/workspace/absent.pdf`)).toBe(false);
+      const { fold } = await vfs.keyCase();
+      expect(await vfs.exists(`${P}/workspace/REPORT.pdf`)).toBe(
+        fold === "folded",
+      );
+      await vfs.deleteKey(`${P}/workspace/report.pdf`);
+      expect(await vfs.exists(`${P}/workspace/report.pdf`)).toBe(false);
     });
 
     test("readText drops a leading BOM; readBytes keeps the file verbatim", async () => {
@@ -96,6 +119,33 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       await expect(vfs.move(`${P}/ghost.txt`, `${P}/x.txt`)).rejects.toThrow(
         "source not found",
       );
+    });
+
+    test("move refuses a destination holding a DIFFERENT object", async () => {
+      // `rename(2)` and an object-store overwrite both replace the destination
+      // without a word, and the caller's pre-check cannot know the volume's
+      // fold table. This is the door that has to hold, so every adapter shuts
+      // it: the neighbour survives, and the refusal is typed.
+      const vfs = make();
+      await vfs.writeText(`${P}/workspace/notes.md`, "mine");
+      await vfs.writeText(`${P}/workspace/budget.md`, "theirs");
+      await expect(
+        vfs.move(`${P}/workspace/notes.md`, `${P}/workspace/budget.md`),
+      ).rejects.toBeInstanceOf(VfsExistsError);
+      expect(await vfs.readText(`${P}/workspace/budget.md`)).toBe("theirs");
+      expect(await vfs.readText(`${P}/workspace/notes.md`)).toBe("mine");
+    });
+
+    test("a case-only re-spell of one object is a rename, not a collision", async () => {
+      // On a folded backend the destination "exists" — it IS the source. A
+      // guard that read that as a collision would make the file impossible to
+      // re-capitalize, which is a rename users do all the time.
+      const vfs = make();
+      await vfs.writeText(`${P}/workspace/readme.md`, "doc");
+      await vfs.move(`${P}/workspace/readme.md`, `${P}/workspace/README.md`);
+      expect(await vfs.readText(`${P}/workspace/README.md`)).toBe("doc");
+      const keys = await vfs.list(`${P}/workspace`);
+      expect(keys).toEqual([`${P}/workspace/README.md`]);
     });
 
     test("deleteKey is idempotent; deletePrefix removes only the prefix", async () => {
@@ -155,31 +205,4 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       ).rejects.toThrow();
     });
   });
-}
-
-/**
- * Wrap a Vfs so every key is transparently scoped under `ns/…`. Keeps each
- * contract instance isolated inside one shared test bucket (the GcsVfs live-bucket
- * run needs this; Memory/Fs get a fresh dir each `make()`). Pure key-space
- * rewriting in the test — the adapter under test is untouched.
- */
-export function prefixed(inner: Vfs, ns: string): Vfs {
-  const k = (key: string) => `${ns}/${key}`;
-  const unk = (key: string) => key.slice(ns.length + 1);
-  return {
-    keyCase: () => inner.keyCase(),
-    writeText: (key, c) => inner.writeText(k(key), c),
-    writeBytes: (key, c) => inner.writeBytes(k(key), c),
-    readText: (key) => inner.readText(k(key)),
-    readBytes: (key) => inner.readBytes(k(key)),
-    list: async (prefix) => (await inner.list(k(prefix))).map(unk),
-    listDetailed: async (prefix) =>
-      (await inner.listDetailed(k(prefix))).map((s) => ({
-        ...s,
-        key: unk(s.key),
-      })),
-    move: (from, to) => inner.move(k(from), k(to)),
-    deleteKey: (key) => inner.deleteKey(k(key)),
-    deletePrefix: (prefix) => inner.deletePrefix(k(prefix)),
-  };
 }

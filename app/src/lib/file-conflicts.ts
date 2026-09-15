@@ -6,7 +6,7 @@
  * user a round trip that could only end in a refusal.
  */
 import type { FileEntry } from "@houston-ai/agent";
-import { shareErrorCode } from "./share-via-team.ts";
+import { engineErrorCode } from "./engine-error-code.ts";
 
 /** Where `sourcePath` would land when moved into `toDir` (null = root). */
 export function moveTargetPath(
@@ -96,7 +96,7 @@ export const NAME_TAKEN_CODE = "name_taken";
  * to the user as a name collision and silenced from Sentry along with it.
  */
 export function isNameTakenError(err: unknown): boolean {
-  return shareErrorCode(err) === NAME_TAKEN_CODE;
+  return engineErrorCode(err) === NAME_TAKEN_CODE;
 }
 
 /**

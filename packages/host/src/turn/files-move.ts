@@ -3,6 +3,7 @@ import {
   FileOpError,
   fileKey,
   loadWorkspaceKeys,
+  moveOrRefuse,
   NAME_TAKEN,
   safeRel,
 } from "./files-ops";
@@ -45,8 +46,20 @@ export async function moveWorkspaceEntry(
   }
 
   if (children.length > 0) {
+    // A folder is moved child by child, so nothing would refuse a destination
+    // folder the volume considers the same name (its fold table is its own):
+    // the two would silently MERGE. Ask the storage itself before the first
+    // child lands.
+    if (await vfs.exists(toKey)) {
+      throw new FileOpError(409, `"${name}" already exists there`, NAME_TAKEN);
+    }
     for (const c of children) {
-      await vfs.move(c.key, `${toKey}${c.key.slice(fromKey.length)}`);
+      await moveOrRefuse(
+        vfs,
+        c.key,
+        `${toKey}${c.key.slice(fromKey.length)}`,
+        name,
+      );
     }
     // Per-key moves leave the (now empty) source directory tree behind on a
     // real filesystem; sweep it.
@@ -54,7 +67,7 @@ export async function moveWorkspaceEntry(
     await vfs.deleteKey(fromKey);
   } else {
     if (!existing.has(fromKey)) throw new FileOpError(404, "file not found");
-    await vfs.move(fromKey, toKey);
+    await moveOrRefuse(vfs, fromKey, toKey, name);
   }
   return to;
 }

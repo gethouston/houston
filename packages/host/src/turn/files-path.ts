@@ -21,10 +21,13 @@ export class FilePathError extends Error {
  * explaining the new one with the old one's copy. Clients match the code
  * (`app/src/lib/file-conflicts.ts`).
  */
-export type FileOpCode = "name_taken";
+export type FileOpCode = "name_taken" | "read_only";
 
 /** The destination name is already in use — refusing beats overwriting. */
 export const NAME_TAKEN: FileOpCode = "name_taken";
+
+/** The workspace's storage refuses every write (a read-only mount or disk). */
+export const READ_ONLY: FileOpCode = "read_only";
 
 /** A file operation that failed with a specific HTTP status (409 conflict, 413 too large, …). */
 export class FileOpError extends Error {

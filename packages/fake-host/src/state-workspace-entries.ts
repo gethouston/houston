@@ -6,7 +6,11 @@
  */
 
 import { emitDomain, state } from "./state-store";
-import { workspaceKey as key } from "./state-workspace";
+import {
+  workspaceKey as key,
+  type NameResult,
+  workspacePathTaken,
+} from "./state-workspace";
 
 export function deleteWorkspaceEntry(agentId: string, rel: string): void {
   state.workspace.delete(key(agentId, rel));
@@ -37,24 +41,21 @@ export function renameWorkspaceEntry(
   return "renamed";
 }
 
-/** A file's own key, or the prefix a folder's children share. */
-function workspacePathTaken(agentId: string, rel: string): boolean {
-  if (state.workspace.has(key(agentId, rel))) return true;
-  const prefix = `${key(agentId, rel)}/`;
-  for (const k of state.workspace.keys()) if (k.startsWith(prefix)) return true;
-  return false;
-}
-
-/** Move a file/folder into `toDir` (null = root), keeping its name. */
+/**
+ * Move a file/folder into `toDir` (null = root), keeping its name. Refuses a
+ * destination already in use rather than clobbering it, like the real host's
+ * `moveWorkspaceEntry`.
+ */
 export function moveWorkspaceEntry(
   agentId: string,
   rel: string,
   toDir: string | null,
-): string {
+): NameResult<string> {
   const name = rel.split("/").pop() ?? "";
   const to = toDir ? `${toDir}/${name}` : name;
+  if (to !== rel && workspacePathTaken(agentId, to)) return { kind: "taken" };
   moveKeys(agentId, rel, to);
-  return to;
+  return { kind: "ok", value: to };
 }
 
 function moveKeys(agentId: string, from: string, to: string): void {

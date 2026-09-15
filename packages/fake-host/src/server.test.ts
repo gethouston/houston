@@ -154,6 +154,55 @@ describe("startFakeHost", () => {
     expect(same.status).toBe(200);
   });
 
+  it("refuses a folder or a move onto a name already in use, like the real host", async () => {
+    // Every op that could land on an occupied name refuses it, so the UI's
+    // one calm "that name is taken" surface is exercised for all three.
+    const files = `${host.url}/agents/${SEED_AGENT_ID}/files`;
+    const post = (sub: string, payload: Record<string, unknown>) =>
+      fetch(`${files}/${sub}`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(payload),
+      });
+    await post("import", {
+      files: [{ name: "notes.txt", contentBase64: "" }],
+    });
+    await post("folder", { path: "Papers" });
+    await post("import", {
+      dir: "Papers",
+      files: [{ name: "notes.txt", contentBase64: "" }],
+    });
+
+    // A folder cannot take a file's name…
+    const folderOntoFile = await post("folder", { path: "notes.txt" });
+    expect(folderOntoFile.status).toBe(409);
+    expect(await folderOntoFile.json()).toEqual({
+      error: '"notes.txt" already exists there',
+      code: "name_taken",
+    });
+
+    // …nor can a drag-move land on one.
+    const moveOntoFile = await post("move", {
+      path: "notes.txt",
+      toDir: "Papers",
+    });
+    expect(moveOntoFile.status).toBe(409);
+    expect(await moveOntoFile.json()).toEqual({
+      error: '"notes.txt" already exists there',
+      code: "name_taken",
+    });
+
+    // Nothing was lost, and a free destination still moves.
+    const listed = (await (await fetch(files)).json()) as Array<{
+      path: string;
+    }>;
+    expect(listed.map((f) => f.path)).toEqual(
+      expect.arrayContaining(["notes.txt", "Papers/notes.txt"]),
+    );
+    const free = await post("move", { path: "notes.txt", toDir: "Archive" });
+    expect(free.status).toBe(200);
+  });
+
   it("serves the pi-ai provider catalog at /v1/catalog", async () => {
     // Regression: the route was missing, so the app's `getCatalog()` 404-degraded
     // to `[]` and the picker/AI-Models tab fell back to the override-only seed

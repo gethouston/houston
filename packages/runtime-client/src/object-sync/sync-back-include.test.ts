@@ -73,3 +73,32 @@ test("include still deletes an in-scope object the turn removed", async () => {
   expect(result.outOfScope).toBe(0);
   expect(await store.list("")).toEqual([]);
 });
+
+/**
+ * The host's scratch files — the atomic write's temp target and the one-off
+ * volume probe, both named `<base>.<unique>.houston.tmp` (`ATOMIC_TMP_SUFFIX`
+ * in `packages/host/src/vfs/fs-scratch.ts`, restated here because the two
+ * packages share no code) — exist for milliseconds inside the very directory a
+ * sync pass walks. Uploading one would publish a half-written file, or a probe
+ * artifact, as workspace content.
+ */
+test("the host's scratch files never reach the store", async () => {
+  const storeRoot = await mkdtemp(join(tmpdir(), "sync-store-"));
+  const workRoot = await mkdtemp(join(tmpdir(), "sync-work-"));
+  const store = new LocalDirStore(storeRoot);
+  await mkdir(join(workRoot, "workspace"), { recursive: true });
+  await writeFile(join(workRoot, "workspace", "report.txt"), "real");
+  await writeFile(
+    join(workRoot, "workspace", "report.txt.4821.k3x9f2.houston.tmp"),
+    "half-written",
+  );
+  await writeFile(
+    join(workRoot, "workspace", "houston-case-probe-ñ.4821.k3x9f2.houston.tmp"),
+    "",
+  );
+
+  const result = await syncBack(store, "", workRoot, new Map());
+
+  expect(result.uploaded).toEqual(["workspace/report.txt"]);
+  expect(await store.list("")).toEqual(["workspace/report.txt"]);
+});

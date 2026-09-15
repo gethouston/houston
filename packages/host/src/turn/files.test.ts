@@ -188,7 +188,8 @@ test("renaming a file to the name it already has changes nothing", async () => {
  * case-SENSITIVE CI volume too (`files-ops.fs.test.ts` proves the real disk
  * agrees with whichever kind it is).
  */
-const foldedVfs = () => new MemoryVfs({ keyCase: "folded" });
+const foldedVfs = () =>
+  new MemoryVfs({ keyCase: { fold: "folded", normalize: true } });
 
 test("a folded store refuses a rename that differs only in case from a sibling", async () => {
   const objects = foldedVfs();
