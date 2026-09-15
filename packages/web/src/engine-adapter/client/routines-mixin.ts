@@ -1,20 +1,23 @@
 import type {
-  CreateSkillRequest,
   NewRoutine,
   Routine,
   RoutineRun,
   RoutineUpdate,
-  SaveSkillRequest,
-  SkillDetail,
   WebhookKeyReveal,
 } from "../../../../../ui/engine-client/src/types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
 import type { BaseCtor } from "./mixin";
 
-export function RoutinesSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
-  class RoutinesSkills extends Base {
-    // ---- routines / skills ----
+/**
+ * Scheduled work: a routine's definition, its run history, and the incoming
+ * webhook key that lets an outside system fire one (`cp/routines.ts`).
+ *
+ * Routine mutations route to the host (cloud); standalone web has no routine
+ * backend, so they no-op there (the UI still navigates).
+ */
+export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
+  class Routines extends Base {
     async listRoutines(agentPath: string) {
       if (this.ctx.cp) return controlPlane.listRoutines(this.ctx.cp, agentPath);
       return [];
@@ -24,20 +27,6 @@ export function RoutinesSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
         return controlPlane.listRoutineRuns(this.ctx.cp, agentPath);
       return [];
     }
-    async listSkills(agentPath: string) {
-      if (this.ctx.cp) return controlPlane.listSkills(this.ctx.cp, agentPath);
-      return [];
-    }
-    async loadSkill(agentPath: string, name: string): Promise<SkillDetail> {
-      if (this.ctx.cp)
-        return controlPlane.loadSkill(this.ctx.cp, agentPath, name);
-      // Standalone web has no skill backend (nothing is listed), so this is
-      // unreachable; return an empty detail rather than crash if it ever isn't.
-      return { name, title: null, description: "", version: 1, content: "" };
-    }
-
-    // Routine + skill mutations route to the host (cloud); standalone web has no
-    // routine/skill backend, so they no-op there (the UI still navigates).
     async createRoutine(
       agentPath: string,
       input: NewRoutine,
@@ -111,30 +100,6 @@ export function RoutinesSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
         routineId,
       );
     }
-    async createSkill(req: CreateSkillRequest): Promise<void> {
-      if (!this.ctx.cp) return;
-      await controlPlane.createSkill(this.ctx.cp, req.workspacePath, {
-        name: req.name,
-        description: req.description,
-        content: req.content,
-      });
-      emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
-    }
-    async saveSkill(name: string, req: SaveSkillRequest): Promise<void> {
-      if (!this.ctx.cp) return;
-      await controlPlane.saveSkill(
-        this.ctx.cp,
-        req.workspacePath,
-        name,
-        req.content,
-      );
-      emitLocalEcho("SkillsChanged", { agentPath: req.workspacePath });
-    }
-    async deleteSkill(workspacePath: string, name: string): Promise<void> {
-      if (!this.ctx.cp) return;
-      await controlPlane.deleteSkill(this.ctx.cp, workspacePath, name);
-      emitLocalEcho("SkillsChanged", { agentPath: workspacePath });
-    }
   }
-  return RoutinesSkills;
+  return Routines;
 }

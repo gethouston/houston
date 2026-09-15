@@ -1,6 +1,12 @@
 import * as controlPlane from "../control-plane";
 import type { BaseCtor } from "./mixin";
 
+/**
+ * Per-agent access and model policy — who an agent is assigned to, which
+ * toolkits and models it may use, and whether its triggers are live
+ * (`cp/agent-teams.ts`). The org-wide roster and its usage reads are
+ * {@link OrgsMixin}; the team directory itself is {@link OrgTeamsMixin}.
+ */
 export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Teams extends Base {
     // ---- per-agent assignments (multiplayer) ----
@@ -56,26 +62,6 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
         choice,
       );
     }
-    async orgAudit(
-      opts: { before?: number; limit?: number } = {},
-    ): Promise<controlPlane.AuditEntry[]> {
-      if (!this.ctx.cp)
-        throw new Error("multiplayer requires the hosted gateway");
-      return controlPlane.orgAudit(this.ctx.cp, opts);
-    }
-    async orgUsage(days: number): Promise<controlPlane.UsageRow[]> {
-      if (!this.ctx.cp)
-        throw new Error("multiplayer requires the hosted gateway");
-      return controlPlane.orgUsage(this.ctx.cp, days);
-    }
-    // Tripwire only: the UI gates the compute section (and its query) on
-    // `capabilities.computeUsage`, which no gateway-less deployment advertises.
-    async computeUsage(days: number): Promise<controlPlane.ComputeUsage> {
-      if (!this.ctx.cp)
-        throw new Error("compute usage requires the hosted gateway");
-      return controlPlane.computeUsage(this.ctx.cp, days);
-    }
-
     // Trigger status degrades to `null` (triggers unsupported here): no gateway
     // (desktop) or a host that 404s the route → the UI hides the badge rather than
     // erroring. A gateway that serves triggers answers 200.

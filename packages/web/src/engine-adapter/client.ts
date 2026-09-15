@@ -31,6 +31,7 @@ import { AgentsMixin } from "./client/agents-mixin";
 import { ApiKeysMixin } from "./client/api-keys-mixin";
 import { AssistantMixin } from "./client/assistant-mixin";
 import { HoustonClientBase } from "./client/base";
+import { BillingMixin } from "./client/billing-mixin";
 import { BootMixin } from "./client/boot-mixin";
 import { ChatHistoryMixin } from "./client/chat-history-mixin";
 import { ChatSendMixin } from "./client/chat-send-mixin";
@@ -47,8 +48,10 @@ import { ProjectFilesMixin } from "./client/project-files-mixin";
 import { ProviderCredentialsMixin } from "./client/provider-credentials-mixin";
 import { ProviderLoginMixin } from "./client/provider-login-mixin";
 import { ProviderStatusMixin } from "./client/provider-status-mixin";
-import { RoutinesSkillsMixin } from "./client/routines-skills-mixin";
+import { RoutinesMixin } from "./client/routines-mixin";
 import { SharedSkillsMixin } from "./client/shared-skills-mixin";
+import { SkillsMixin } from "./client/skills-mixin";
+import { SpacesMixin } from "./client/spaces-mixin";
 import { StoreMixin } from "./client/store-mixin";
 import { TeamsMixin } from "./client/teams-mixin";
 import { WorkspacesMixin } from "./client/workspaces-mixin";
@@ -66,24 +69,30 @@ const Composed = BootMixin(
             AgentFilesMixin(
               ProjectFilesMixin(
                 SharedSkillsMixin(
-                  RoutinesSkillsMixin(
-                    MarketplaceMixin(
-                      ChatSendMixin(
-                        ChatHistoryMixin(
-                          ProviderStatusMixin(
-                            ProviderLoginMixin(
-                              ProviderCredentialsMixin(
-                                IntegrationsMixin(
-                                  CustomIntegrationsMixin(
-                                    MeProfileMixin(
-                                      OrgsMixin(
-                                        OrgTeamsMixin(
-                                          TeamsMixin(
-                                            ApiKeysMixin(
-                                              StoreMixin(
-                                                PortableMixin(
-                                                  LegacyUnsupportedMixin(
-                                                    HoustonClientBase,
+                  RoutinesMixin(
+                    SkillsMixin(
+                      MarketplaceMixin(
+                        ChatSendMixin(
+                          ChatHistoryMixin(
+                            ProviderStatusMixin(
+                              ProviderLoginMixin(
+                                ProviderCredentialsMixin(
+                                  IntegrationsMixin(
+                                    CustomIntegrationsMixin(
+                                      MeProfileMixin(
+                                        OrgsMixin(
+                                          SpacesMixin(
+                                            BillingMixin(
+                                              OrgTeamsMixin(
+                                                TeamsMixin(
+                                                  ApiKeysMixin(
+                                                    StoreMixin(
+                                                      PortableMixin(
+                                                        LegacyUnsupportedMixin(
+                                                          HoustonClientBase,
+                                                        ),
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
                                               ),
