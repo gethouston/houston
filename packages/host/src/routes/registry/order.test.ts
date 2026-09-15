@@ -1,7 +1,12 @@
+import { readFileSync } from "node:fs";
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { expect, test } from "vitest";
-import { listRoutes } from "./all";
-import { GROUP_ORDER, GROUP_PHASES } from "./groups";
+import { replayHost } from "../../testing/route-replay-host";
+import { dispatchGroup, listRoutes } from "./all";
+import { GROUP_ORDER, GROUP_PHASES, type GroupId } from "./groups";
+import { registeredRoutes } from "./index";
 import { generalises } from "./match";
+import type { HttpMethod } from "./types";
 
 /**
  * Ordering is the chain's oldest load-bearing secret: registration order IS
@@ -24,30 +29,151 @@ const shadowed = (earlier: string, later: string): boolean =>
     (entry) => entry.earlier === earlier && entry.later === later,
   );
 
-test("no route is shadowed by an earlier, more general one", () => {
-  const routes = listRoutes();
+/**
+ * One pattern the matcher tries. This is what shadowing is decided on, NOT
+ * `listRoutes()`: a proxy family publishes descriptors for the rests it
+ * forwards while MATCHING `/agents/:agentId/*rest` for every method, so a
+ * descriptor list cannot see the pattern that actually swallows a later route.
+ */
+interface PatternEntry {
+  path: string;
+  /** null = every method, as the registry spells "this pattern takes them all". */
+  methods: HttpMethod[] | null;
+  source: string;
+}
+
+function registeredPatterns(): PatternEntry[] {
+  const flat: PatternEntry[] = [];
+  for (const group of GROUP_ORDER)
+    for (const entry of registeredRoutes().get(group) ?? [])
+      for (const pattern of entry.patterns)
+        flat.push({
+          path: pattern.path,
+          methods: pattern.methods,
+          source: `${entry.descriptors[0]?.source ?? "unknown"}#${group}`,
+        });
+  return flat;
+}
+
+const shareAMethod = (
+  a: HttpMethod[] | null,
+  b: HttpMethod[] | null,
+): boolean => a === null || b === null || a.some((m) => b.includes(m));
+
+/** Every later pattern an earlier one makes unreachable, as readable pairs. */
+function shadows(patterns: PatternEntry[]): string[] {
   const unreachable: string[] = [];
-  for (let i = 0; i < routes.length; i++)
-    for (let j = i + 1; j < routes.length; j++) {
-      const earlier = routes[i];
-      const later = routes[j];
+  for (let i = 0; i < patterns.length; i++)
+    for (let j = i + 1; j < patterns.length; j++) {
+      const earlier = patterns[i];
+      const later = patterns[j];
       if (!earlier || !later) continue;
-      if (earlier.method !== later.method) continue;
+      if (!shareAMethod(earlier.methods, later.methods)) continue;
       if (!generalises(earlier.path, later.path)) continue;
-      const pair = `${earlier.method} ${earlier.path} (${earlier.source}) swallows ${later.method} ${later.path} (${later.source})`;
-      if (!shadowed(earlier.path, later.path)) unreachable.push(pair);
+      if (shadowed(earlier.path, later.path)) continue;
+      unreachable.push(
+        `${earlier.path} (${earlier.source}) swallows ${later.path} (${later.source})`,
+      );
     }
-  expect(unreachable).toEqual([]);
+  return unreachable;
+}
+
+test("no route is shadowed by an earlier, more general one", () => {
+  expect(shadows(registeredPatterns())).toEqual([]);
 });
 
-test("every declared shadow states a reason", () => {
-  for (const entry of INTENTIONAL_SHADOWS)
-    expect(entry.reason.length).toBeGreaterThan(20);
+test("a catch-all declared before a specific route shadows it", () => {
+  const proxy: PatternEntry = {
+    path: "/agents/:agentId/*rest",
+    methods: null,
+    source: "packages/host/src/routes/agents.ts#agent-proxy",
+  };
+  const specific: PatternEntry = {
+    path: "/agents/:agentId/activity",
+    methods: ["GET"],
+    source: "packages/host/src/routes/agents.ts#agent-activity",
+  };
+  expect(shadows([proxy, specific])).toHaveLength(1);
+  // The declared order is the whole point: the same pair the other way round
+  // is the arrangement the chain actually has, and it is reachable.
+  expect(shadows([specific, proxy])).toEqual([]);
+});
+
+/** Captures only what the dispatcher's own refusals write. */
+function recordingResponse(): { res: ServerResponse; status: () => number } {
+  let status = 0;
+  const res = {
+    writeHead(code: number) {
+      status = code;
+      return res;
+    },
+    end() {},
+  };
+  return { res: res as unknown as ServerResponse, status: () => status };
+}
+
+/**
+ * The golden replay cannot see this today: every agent-phase group is reached
+ * through routes/agents.ts's fan-out, which has already authorized. The order
+ * still has to hold on its own, because a group wired straight into a chain
+ * slot would otherwise tell a stranger which methods an agent they cannot see
+ * accepts.
+ */
+test("an agent-phase family refuses a stranger before it answers its own 405", async () => {
+  const host = await replayHost();
+  const path = `/agents/${host.ids.agentId}/agentfile/notes.md`;
+  const entry = {
+    deps: host.deps,
+    method: "PATCH",
+    path,
+    url: new URL(`http://127.0.0.1${path}`),
+    req: {} as IncomingMessage,
+  };
+  const stranger = recordingResponse();
+  await dispatchGroup("agent-file", {
+    ...entry,
+    userId: "bob",
+    res: stranger.res,
+  });
+  expect(stranger.status()).toBe(403);
+  const owner = recordingResponse();
+  await dispatchGroup("agent-file", {
+    ...entry,
+    userId: "alice",
+    res: owner.res,
+  });
+  expect(owner.status()).toBe(405);
 });
 
 test("GROUP_ORDER covers every group exactly once", () => {
   expect([...GROUP_ORDER].sort()).toEqual(Object.keys(GROUP_PHASES).sort());
   expect(new Set(GROUP_ORDER).size).toBe(GROUP_ORDER.length);
+});
+
+/** The `dispatchGroup("<id>"` literals one module calls, in source order. */
+function dispatchedGroups(module: string): GroupId[] {
+  const source = readFileSync(new URL(module, import.meta.url), "utf8");
+  return [...source.matchAll(/dispatchGroup\(\s*"([^"]+)"/g)].map(
+    (match) => match[1] as GroupId,
+  );
+}
+
+test.each([
+  "../../server.ts",
+  "../agents.ts",
+])("%s calls its groups in GROUP_ORDER order", (module) => {
+  const called = dispatchedGroups(module);
+  expect(called.length).toBeGreaterThan(0);
+  for (const group of called) expect(GROUP_PHASES).toHaveProperty(group);
+  // Only INVERSIONS fail: a wave that appends a group to the table and wires
+  // its slot adds an entry here, and that must not turn this test red.
+  const positions = called.map((group) => GROUP_ORDER.indexOf(group));
+  expect(positions).toEqual([...positions].sort((a, b) => a - b));
+});
+
+test("every declared shadow states a reason", () => {
+  for (const entry of INTENTIONAL_SHADOWS)
+    expect(entry.reason.length).toBeGreaterThan(20);
 });
 
 test("a non-sdk classification always carries a written reason", () => {

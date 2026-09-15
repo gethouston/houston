@@ -14,9 +14,12 @@ import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
 import type { RuntimeChannel } from "../ports";
 import type { Vfs } from "../vfs";
+import { channelFor, DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
 import { json, readJson } from "./http";
 import { gatherPortableContent } from "./portable-content";
 import { redactSecrets } from "./portable-secrets";
+import { defineRoute } from "./registry";
 
 /**
  * The export wizard's "Help me anonymize" pass. Gathers the selected content
@@ -130,3 +133,33 @@ export async function handlePortableAnonymize(
   json(res, 200, response);
   return true;
 }
+
+/**
+ * A wrong method falls through to the agent's runtime, as it does today — the
+ * check above declines rather than refuses.
+ */
+defineRoute({
+  group: "portable-anonymize",
+  method: "POST",
+  path: "/agents/:agentId/portable/anonymize",
+  phase: "agent",
+  classification: "sdk",
+  methodMismatch: "fallthrough",
+  source: "packages/host/src/routes/portable-anonymize.ts",
+  handler: async ({ deps, authz, method, path, req, res }) => {
+    await handlePortableAnonymize(
+      {
+        vfs: deps.vfs,
+        paths: deps.paths ?? DEFAULT_PATHS,
+        // The channel carries the AI pass into the agent's runtime; absent
+        // (or unsupported) the route falls back to the regex redactor.
+        channel: channelFor(deps, authz.workspace) ?? undefined,
+      },
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+    );
+  },
+});

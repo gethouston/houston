@@ -18,7 +18,7 @@ import { assistantApprovals } from "../assistant/approvals";
 import { applyApprovalReceiptsToTurnBody } from "../assistant/receipts";
 import {
   ACTING_AS_HEADER,
-  actingAuthorFromHeader,
+  actingAuthorFor,
   actingSubFromHeader,
 } from "../auth/acting";
 import { RevokedRefillBlockedError } from "../credentials/revocation-tombstones";
@@ -31,11 +31,8 @@ import {
   type RuntimeChannel,
 } from "../ports";
 import { isApiKeyProvider } from "../providers";
-import { handleAttachments } from "../turn/attachments";
-import { handleFiles } from "../turn/files";
 import type { Vfs } from "../vfs";
 import { stampTurnAttribution } from "./activity-attribution";
-import { handleApprovalRead } from "./agent-approval-read";
 import { approvalResponse } from "./agent-approval-stream";
 import {
   type AgentRouteDeps,
@@ -51,27 +48,14 @@ import {
   moveAgentColor,
   storeAgentColor,
 } from "./agent-color";
-import { handleAgentData } from "./agent-data";
-import { handleAgentFile } from "./agent-file";
 import { legacyAgentColor } from "./agent-legacy-color";
 import { asSeedRecord, writeAgentSeeds } from "./agent-seed";
 import { forgetAgentState } from "./agent-state-cleanup";
 import { handleCustomIntegrationsDispatch } from "./custom-integrations-user";
 import { json, readJson } from "./http";
 import { liveTurns } from "./live-turn";
-import { handleMigration } from "./migration";
-import { handleAgentMissions } from "./missions-remote-inbound";
-import { handlePortableExport } from "./portable";
-import { handlePortableAnonymize } from "./portable-anonymize";
-import { handlePortablePreview } from "./portable-preview";
-import { handlePortableStore } from "./portable-store";
 import { MAX_JSON_BYTES, readBody } from "./read-body";
 import { defineRoute, dispatchGroup } from "./registry";
-import { handleRoutineRuns } from "./routine-runs";
-import { handleSkills } from "./skills";
-import { handleSkillsManifest } from "./skills-manifest";
-import { handleSkillsRemote } from "./skills-remote";
-import { handleTriggerStatus } from "./trigger-status";
 
 // The deps bag + authz helpers moved to agent-authz.ts (shared with
 // routine-runs.ts); re-exported so existing importers keep working.
@@ -151,16 +135,6 @@ async function activityStatus(
 }
 
 /**
- * Pod-level busy aggregate for `GET /activity` (server.ts): every agent in
- * every workspace on this host — engine pods are single-tenant, so the
- * store-wide enumeration IS the pod's population. The control plane's
- * pre-roll probe (same parsing rule as the waker's idle sweep) treats
- * anything but a literal `busy: false` as busy, so `false` must mean
- * provably idle: an agent whose workspace has no channel wired, whose vfs is
- * unconfigured, or that throws while probed counts as busy rather than
- * failing the whole answer.
- */
-/**
  * `GET /agents/:agentId/activity` — the gateway's per-agent idle-sleep probe.
  * It reports whether a runtime turn or a routine run is still active without
  * falling through to the runtime dispatch surface below.
@@ -170,7 +144,9 @@ defineRoute({
   method: "GET",
   path: "/agents/:agentId/activity",
   phase: "agent",
-  classification: "sdk",
+  classification: "infra",
+  reason:
+    "The cloud waker's per-agent idle sweep polls it to decide whether the pod may sleep; no UI reads it.",
   // A POST here must NOT 405: today it falls past this check into the generic
   // dispatch and is proxied to the agent's own runtime.
   methodMismatch: "fallthrough",
@@ -186,6 +162,16 @@ defineRoute({
   },
 });
 
+/**
+ * Pod-level busy aggregate for `GET /activity` (routes/pod-activity.ts): every
+ * agent in every workspace on this host — engine pods are single-tenant, so the
+ * store-wide enumeration IS the pod's population. The control plane's
+ * pre-roll probe (same parsing rule as the waker's idle sweep) treats
+ * anything but a literal `busy: false` as busy, so `false` must mean
+ * provably idle: an agent whose workspace has no channel wired, whose vfs is
+ * unconfigured, or that throws while probed counts as busy rather than
+ * failing the whole answer.
+ */
 export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
   busy: boolean;
   activeRequests: number;
@@ -836,7 +822,17 @@ export async function handleAgents(
 
   // Routine-run routes (run-now / cancel) — matched before the generic
   // dispatch below; the runtime has no routine routes. See routine-runs.ts.
-  if (await handleRoutineRuns(deps, userId, method, path, req, res))
+  if (
+    await dispatchGroup("routine-runs", {
+      deps,
+      userId,
+      method,
+      path,
+      url,
+      req,
+      res,
+    })
+  )
     return true;
 
   if (
@@ -852,7 +848,18 @@ export async function handleAgents(
   )
     return true;
 
-  if (await handleApprovalRead(deps, userId, method, path, res)) return true;
+  if (
+    await dispatchGroup("agent-approvals", {
+      deps,
+      userId,
+      method,
+      path,
+      url,
+      req,
+      res,
+    })
+  )
+    return true;
 
   // The per-agent runtime surface: /agents/:agentId/<anything> → the agent's
   // runtime, via the workspace's channel. The frontend points its runtime
@@ -878,6 +885,10 @@ export async function handleAgents(
       ? (event: HoustonEvent) =>
           deps.events?.emit(authz.workspace.ownerUserId, event)
       : undefined;
+    // What every registry group slot below is dispatched with. The dispatcher
+    // re-runs the ownership check for the agent the pattern names, so each
+    // group answers under exactly the authz this block already established.
+    const agentEntry = { deps, userId, method, path, url, req, res };
 
     // Custom-integration user routes (list / remove / provide-credential) on
     // the dispatch surface — the hosted gateway proxies ONLY this per-agent
@@ -898,217 +909,38 @@ export async function handleAgents(
     // Typed .houston families + skills are served by the HOST off the workspace
     // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.
     const paths = deps.paths ?? DEFAULT_PATHS;
-    // WHO a routine write records as its acting identity (C2). A gateway-fronted
-    // pod authenticates every request as its single local user, and that id has
-    // no membership upstream — a routine stamped with it 401s every integration
-    // call when it fires (HOU-689). The gateway minted the acting-as header for
-    // exactly this: its sub is the identity the gateway re-authorizes at fire
-    // time. On the desktop the header is untrusted client input, so the local
-    // userId stays the recorded creator (routine turns there authenticate with
-    // the frontend session instead). A gateway-fronted request with no
-    // decodable header falls back to the org owner: an authorless routine is
-    // not fireable by the control-plane planner, so SOME real, re-authorizable
-    // identity must always be recorded.
-    const routineActor = deps.gatewayFronted
-      ? (actingSubFromHeader(req.headers[ACTING_AS_HEADER]) ?? deps.ownerSub)
-      : userId;
-    // The acting human as a full contributor, stamped onto missions (activity
-    // create/PATCH + turns). CRITICAL: null off the gateway (desktop/self-host),
-    // so single-player activity.json gains no attribution keys and stays
-    // byte-identical. Does NOT change routineActor.
-    const actingAuthor = deps.gatewayFronted
-      ? actingAuthorFromHeader(req.headers[ACTING_AS_HEADER])
-      : null;
+    const actingAuthor = actingAuthorFor(deps, req);
+    const dispatchActingAs = trustedActingAs(deps, req);
     // The pod side of a cross-pod mission (missions-remote-inbound.ts): the
     // assistant's `start_mission` for an agent that lives in another pod
     // addresses the gateway, which dispatches `/agents/{id}/missions…` here.
     // Mounted BEFORE the channel so the whole family is served by the host off
     // this workspace's vfs — the agent's runtime has no mission routes and
     // would answer for something else entirely.
-    const dispatchActingAs = trustedActingAs(deps, req);
-    if (
-      await handleAgentMissions(
-        deps,
-        {
-          ...ctx,
-          ...(actingAuthor ? { author: actingAuthor } : {}),
-          ...(dispatchActingAs ? { actingAs: dispatchActingAs } : {}),
-        },
-        method,
-        rest,
-        url,
-        req,
-        res,
-      )
-    )
-      return true;
-    if (
-      await handleAgentData(
-        deps.vfs,
-        paths,
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-        emit,
-        routineActor,
-        actingAuthor ?? undefined,
-        deps.triggersEnabled ?? false,
-      )
-    )
-      return true;
+    if (await dispatchGroup("agent-missions", agentEntry)) return true;
+    if (await dispatchGroup("agent-data", agentEntry)) return true;
     // Per-routine trigger health. On a deployment without a trigger backend this
     // reports every trigger-bound routine as a hard error (it can never wake);
-    // where triggers CAN fire it steps aside for the real backend.
-    if (
-      await handleTriggerStatus(
-        deps.vfs,
-        paths,
-        ctx,
-        method,
-        rest,
-        res,
-        deps.triggersEnabled ?? false,
-      )
-    )
-      return true;
-    if (
-      await handleAgentFile(deps.vfs, paths, ctx, method, rest, req, res, emit)
-    )
-      return true;
-    if (
-      await handleSkillsManifest(
-        deps.vfs,
-        paths,
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-        emit,
-      )
-    )
-      return true;
-    if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit))
-      return true;
-    if (
-      await handleSkillsRemote(
-        deps.vfs,
-        paths,
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-        emit,
-      )
-    )
-      return true;
+    // where triggers CAN fire the route declines and the real backend answers.
+    if (await dispatchGroup("trigger-status", agentEntry)) return true;
+    if (await dispatchGroup("agent-file", agentEntry)) return true;
+    if (await dispatchGroup("skills-manifest", agentEntry)) return true;
+    if (await dispatchGroup("skills", agentEntry)) return true;
+    if (await dispatchGroup("skills-remote", agentEntry)) return true;
     // The Files tab: served by the HOST off the workspace vfs for every profile
     // (the runtime has no /files route). Same handler cloud + local — zero drift.
-    if (
-      await handleFiles(
-        deps.vfs,
-        paths,
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-        url.searchParams,
-        emit,
-      )
-    )
-      return true;
+    if (await dispatchGroup("workspace-files", agentEntry)) return true;
     // Composer attachments: uploaded into the workspace's visible `uploads/`
     // folder so the runtime's clamped file tools can Read them during this turn
     // AND any later conversation (the runtime has no /attachments).
-    if (
-      await handleAttachments(
-        deps.vfs,
-        paths,
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-        emit,
-      )
-    )
-      return true;
-    if (
-      await handlePortablePreview(
-        { vfs: deps.vfs, paths },
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-      )
-    )
-      return true;
-    if (
-      await handlePortableAnonymize(
-        // The channel carries the AI pass into the agent's runtime; absent
-        // (or unsupported) the route falls back to the regex redactor.
-        {
-          vfs: deps.vfs,
-          paths,
-          channel: channelFor(deps, authz.workspace) ?? undefined,
-        },
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-      )
-    )
-      return true;
-    if (
-      await handlePortableExport(
-        { vfs: deps.vfs, paths },
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-      )
-    )
-      return true;
+    if (await dispatchGroup("attachments", agentEntry)) return true;
+    if (await dispatchGroup("portable-preview", agentEntry)) return true;
+    if (await dispatchGroup("portable-anonymize", agentEntry)) return true;
+    if (await dispatchGroup("portable-export", agentEntry)) return true;
     // Desktop→cloud migration (HOU-719): export on the source host, import +
-    // completion marker on the target. agentDir anchors re-synthesized pi
-    // sessions on deployments with a real on-disk tree.
-    if (
-      await handleMigration(
-        {
-          vfs: deps.vfs,
-          paths,
-          agentDir: deps.agentDir?.(authz.workspace, authz.agent),
-        },
-        ctx,
-        method,
-        rest,
-        req,
-        res,
-        emit,
-      )
-    )
-      return true;
-    if (
-      await handlePortableStore(
-        {
-          vfs: deps.vfs,
-          paths,
-        },
-        { ...ctx, userId },
-        method,
-        rest,
-        req,
-        res,
-      )
-    )
-      return true;
+    // completion marker on the target.
+    if (await dispatchGroup("migration", agentEntry)) return true;
+    if (await dispatchGroup("portable-store", agentEntry)) return true;
 
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {

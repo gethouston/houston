@@ -1,17 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ActivityContributor } from "@houston/protocol";
+import { ACTING_AS_HEADER, actingAuthorFromHeader } from "../auth/acting";
 import type { Agent, Workspace } from "../domain/types";
-import { DEFAULT_PATHS } from "./agent-authz";
-import { json, readJson } from "./http";
-import { applyMissionStatus } from "./missions-manage";
+import { DEFAULT_PATHS, trustedActingAs } from "./agent-authz";
+import { agentRest } from "./agent-rest";
+import { json } from "./http";
 import { handleList, handleMissionRead } from "./missions-read";
-import {
-  parseMissionOrigin,
-  parseMissionStart,
-  parseMissionStatus,
-} from "./missions-remote";
+import { startInbound, statusInbound } from "./missions-remote-writes";
 import type { MissionsCtx, MissionsDeps } from "./missions-sandbox";
-import { startMission } from "./missions-start-run";
+import { defineRouteFamily } from "./registry";
 
 /**
  * The mission family on the PER-AGENT surface — `/agents/{id}/missions…`,
@@ -115,57 +112,49 @@ export async function handleAgentMissions(
 }
 
 /**
- * The move half: the same body a local move takes, applied to the agent in the
- * path. The guards live in {@link applyMissionStatus}, so a cross-pod move is
- * held to the identical rules as a local one — except the "never the mission
- * this conversation IS" one, which cannot fire here because the calling chat
- * lives in another pod entirely.
+ * The family owns every path under `missions`, not just the four it serves:
+ * falling through would send `missions/anything` to the agent's runtime, which
+ * has no mission routes. Its 404 and its 405 both carry a `code` the
+ * dispatcher's own refusal does not, so the handler answers them itself.
  */
-async function statusInbound(
-  ctx: MissionsCtx,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<void> {
-  const body = await readJson(req);
-  // As with a start: this route serves the agent in its address, and a second
-  // hop would let one move fan out.
-  if (body.agent !== undefined) {
-    return json(res, 400, {
-      error: "this mission call names the agent in its address",
-      code: "invalid_agent",
-    });
-  }
-  const parsed = parseMissionStatus(body);
-  if (!parsed.ok)
-    return json(res, 400, { error: parsed.error, code: parsed.code });
-  await applyMissionStatus(ctx, parsed.value, res);
-}
-
-/** The start half: the same payload a local start parses, plus its origin. */
-async function startInbound(
-  ctx: MissionsCtx,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<void> {
-  const body = await readJson(req);
-  // A caller naming a DIFFERENT agent has the wrong address: this route serves
-  // the agent in its path, and a second hop would let one call fan out.
-  if (body.agent !== undefined) {
-    return json(res, 400, {
-      error: "this mission call names the agent in its address",
-      code: "invalid_agent",
-    });
-  }
-  const parsed = parseMissionStart(body);
-  if (!parsed.ok)
-    return json(res, 400, { error: parsed.error, code: parsed.code });
-  const origin = parseMissionOrigin(body);
-  if (!origin.ok)
-    return json(res, origin.code === "mission_depth" ? 409 : 400, {
-      error: origin.error,
-      code: origin.code,
-    });
-  // The origin travels whole: the target records WHO asked and at what depth,
-  // which is the only trace of either once the parent's pod is out of reach.
-  await startMission(ctx, parsed.value, origin.value, res);
-}
+defineRouteFamily({
+  group: "agent-missions",
+  members: [
+    { method: "GET", path: "/agents/:agentId/missions" },
+    { method: "GET", path: "/agents/:agentId/missions/read" },
+    { method: "POST", path: "/agents/:agentId/missions/start" },
+    { method: "POST", path: "/agents/:agentId/missions/status" },
+  ],
+  owns: [
+    "/agents/:agentId/missions",
+    "/agents/:agentId/missions/",
+    "/agents/:agentId/missions/*rest",
+  ],
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/missions-remote-inbound.ts",
+  handler: async ({ deps, authz, method, path, url, req, res }) => {
+    // The acting human as a full contributor, stamped onto the mission. Null
+    // off the gateway (desktop / self-host), where an inbound acting header is
+    // untrusted client input — single-player activity.json gains no
+    // attribution keys and stays byte-identical.
+    const author = deps.gatewayFronted
+      ? actingAuthorFromHeader(req.headers[ACTING_AS_HEADER])
+      : null;
+    const actingAs = trustedActingAs(deps, req);
+    await handleAgentMissions(
+      deps,
+      {
+        workspace: authz.workspace,
+        agent: authz.agent,
+        ...(author ? { author } : {}),
+        ...(actingAs ? { actingAs } : {}),
+      },
+      method,
+      agentRest(path),
+      url,
+      req,
+      res,
+    );
+  },
+});

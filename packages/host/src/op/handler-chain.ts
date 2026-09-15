@@ -7,7 +7,7 @@ import { handleAgentData } from "../routes/agent-data";
 import { handleAgentFile } from "../routes/agent-file";
 import { handleCustomIntegrationsDispatch } from "../routes/custom-integrations-user";
 import { handleMigration } from "../routes/migration";
-import { handlePortableExport } from "../routes/portable";
+import { handlePortableExport } from "../routes/portable-export";
 import { handlePortablePreview } from "../routes/portable-preview";
 import { handlePortableStore } from "../routes/portable-store";
 import { handleSkills } from "../routes/skills";

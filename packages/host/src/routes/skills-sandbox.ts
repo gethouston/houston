@@ -6,6 +6,7 @@ import type { CommunityDirectory } from "../skills/community";
 import type { PreviewDirectory } from "../skills/preview";
 import type { Vfs } from "../vfs";
 import { bearer, json } from "./http";
+import { defineRouteFamily } from "./registry";
 import { installAction } from "./skills-sandbox-actions";
 import { searchAction } from "./skills-sandbox-search";
 
@@ -48,6 +49,27 @@ export interface SandboxSkillsDeps {
   directory?: Pick<CommunityDirectory, "search">;
   previews?: Pick<PreviewDirectory, "preview">;
 }
+
+/**
+ * Both actions blanket-405 a wrong method instead of falling through: past
+ * here is the bearer wall, whose 401 the agent's tool would read as "your
+ * token is bad" and act on by asking the user to sign in again.
+ */
+defineRouteFamily({
+  group: "sandbox-skills",
+  members: [
+    { method: "POST", path: "/sandbox/skills/search" },
+    { method: "POST", path: "/sandbox/skills/install" },
+  ],
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "The agent's find_skills / install_skill tools call these with a per-sandbox HMAC token, never a client.",
+  methodMismatch: "405",
+  source: "packages/host/src/routes/skills-sandbox.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxSkills(deps, method, path, url, req, res),
+});
 
 export async function handleSandboxSkills(
   deps: SandboxSkillsDeps,

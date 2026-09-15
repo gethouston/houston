@@ -5,6 +5,20 @@ import {
 } from "../credentials/revocation-tombstones";
 import type { CredentialStore, CredentialVault } from "../ports";
 import { bearer, json, readJson } from "./http";
+import { defineRoute } from "./registry";
+
+defineRoute({
+  group: "sandbox-credential-revoked",
+  method: "POST",
+  path: "/sandbox/credential/revoked",
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "The reporter is an agent runtime holding a per-sandbox HMAC token, never a signed-in client.",
+  source: "packages/host/src/routes/credential-revoked.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxCredentialRevoked(deps, method, path, url, req, res),
+});
 
 /**
  * Sandbox-facing: the runtime reporting that a PROVIDER revoked the token this

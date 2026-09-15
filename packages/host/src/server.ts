@@ -28,51 +28,18 @@ import {
   type TokenVerifier,
   type WorkspaceStore,
 } from "./ports";
-import { handleAccount } from "./routes/account";
-import { handleAgentColor } from "./routes/agent-color";
-import {
-  type AgentConfigsDeps,
-  handleAgentConfigs,
-} from "./routes/agent-configs";
+import type { AgentConfigsDeps } from "./routes/agent-configs";
 import { handleAgents } from "./routes/agents";
-import { type AssistantDeps, handleAssistant } from "./routes/assistant";
-import {
-  type AssistantSandboxDeps,
-  handleSandboxAssistant,
-} from "./routes/assistant-sandbox";
-import { handleSandboxCredential } from "./routes/credential";
+import type { AssistantDeps } from "./routes/assistant";
+import type { AssistantSandboxDeps } from "./routes/assistant-sandbox";
 import type { CredentialServeHealer } from "./routes/credential-healer";
-import { handleSandboxCredentialRevoked } from "./routes/credential-revoked";
-import {
-  type CustomIntegrationDeps,
-  handleSandboxCustomIntegrations,
-} from "./routes/custom-integrations";
-import { handleCustomOAuthCallback } from "./routes/custom-integrations-oauth";
-import { handleCustomIntegrations } from "./routes/custom-integrations-user";
+import type { CustomIntegrationDeps } from "./routes/custom-integrations";
 import { bearer, json } from "./routes/http";
-import {
-  handleIntegrations,
-  type IntegrationDeps,
-} from "./routes/integrations";
-import { handleSandboxIntegrations } from "./routes/integrations-sandbox";
-import { handleSandboxLearnings } from "./routes/learnings-sandbox";
-import { handleMigrationSource } from "./routes/migration-source";
-import { handleSandboxMissions } from "./routes/missions-sandbox";
-import { handlePortableAccount } from "./routes/portable";
-import { handlePortableFromStore } from "./routes/portable-from-store";
-import { handleSandboxProviderUsage } from "./routes/provider-usage";
+import type { IntegrationDeps } from "./routes/integrations";
 import { BodyTooLargeError } from "./routes/read-body";
 import { dispatchGroup } from "./routes/registry/all";
-import { handleRoutineFires } from "./routes/routine-fires";
-import { handleSandboxRoutines } from "./routes/routines-sandbox";
 import { refuseOutOfCoordinatorScope } from "./routes/sandbox-scope";
-import { handleSetupRuntime } from "./routes/setup-runtime";
-import { handleSharedSkills } from "./routes/shared-skills";
-import { handleSkillsDirectory } from "./routes/skills-directory";
-import { handleSandboxSkills } from "./routes/skills-sandbox";
 import { handleStoreFenceGate } from "./routes/store-fence-gate";
-import { handleSandboxTranscripts } from "./routes/transcripts-sandbox";
-import { handleTriggerEvents } from "./routes/trigger-events";
 import type { FireLock } from "./schedule/fire-lock";
 import type { TranscriptShadow } from "./transcripts/http-shadow";
 import type { TriggerEventLock } from "./triggers/fire";
@@ -327,52 +294,48 @@ async function handle(
   // the families the coordinator has no tool for before any of them is asked.
   if (refuseOutOfCoordinatorScope(deps, path, url, req, res)) return;
   // Sandbox-facing credential serve (HMAC sandbox token, not a user JWT).
-  if (await handleSandboxCredential(deps, method, path, url, req, res)) return;
+  if (await dispatchGroup("sandbox-credential", entry)) return;
   // Sandbox-facing revoked-token report (HOU-952): the runtime's turn is the
   // only witness to a provider revoking a served token, since a revoked token
   // is not an expired one and the serve path cannot tell them apart.
-  if (await handleSandboxCredentialRevoked(deps, method, path, url, req, res))
-    return;
+  if (await dispatchGroup("sandbox-credential-revoked", entry)) return;
   // Sandbox-facing central usage probe (Copilot quota needs the host-held token).
-  if (await handleSandboxProviderUsage(deps, method, path, url, req, res))
-    return;
+  if (await dispatchGroup("sandbox-provider-usage", entry)) return;
   // Runtime-facing integration proxy (HMAC sandbox token, not a user JWT).
-  if (await handleSandboxIntegrations(deps, method, path, url, req, res))
-    return;
+  if (await dispatchGroup("sandbox-integrations", entry)) return;
   // Runtime-facing custom-integration setup (detect/add; HMAC sandbox token).
-  if (await handleSandboxCustomIntegrations(deps, method, path, url, req, res))
-    return;
+  if (await dispatchGroup("sandbox-custom-integrations", entry)) return;
   // Public custom-integration OAuth callback (PRODUCT-1172): the user's
   // browser lands here from the service's consent screen with no Houston
   // bearer token — the single-use `state` is its authentication.
-  if (await handleCustomOAuthCallback(deps, method, path, url, res)) return;
+  if (await dispatchGroup("custom-oauth-callback", entry)) return;
   // A pod that lost its object-store write fence must not accept writes it
   // can no longer persist (PRODUCT-1706): the runtime's own saves first, the
   // user-facing /agents/ writes after auth below.
   if (handleStoreFenceGate(deps, method, path, res, "sandbox")) return;
   // Runtime-facing scheduled-task save (merge-safe; HMAC sandbox token). The
   // agent's save_routine tool calls this instead of writing routines.json.
-  if (await handleSandboxRoutines(deps, method, path, url, req, res)) return;
+  if (await dispatchGroup("sandbox-routines", entry)) return;
   // Runtime-facing memory save (merge-safe + provenance-stamping; HMAC sandbox
   // token). The agent's save_learning tool calls this instead of editing
   // learnings.json — it is the only path that records who taught a learning.
-  if (await handleSandboxLearnings(deps, method, path, url, req, res)) return;
+  if (await dispatchGroup("sandbox-learnings", entry)) return;
   // Runtime-facing mission board access (PRODUCT-1244; HMAC sandbox token).
   // The agent's start_mission / list_missions / update_mission_status tools
   // call these instead of touching activity.json, and the runtime reports each
   // turn end to /settle so agent-started missions leave Running unobserved.
-  if (await handleSandboxMissions(deps, method, path, url, req, res)) return;
+  if (await dispatchGroup("sandbox-missions", entry)) return;
   // Runtime-facing skills directory (HMAC sandbox token). The agent's
   // find_skills / install_skill tools call this to answer "which skill should
   // I use for X?" and to install the answer into its own skills tree.
-  if (await handleSandboxSkills(deps, method, path, url, req, res)) return;
+  if (await dispatchGroup("sandbox-skills", entry)) return;
   // Runtime-facing Houston operations (HMAC sandbox token → gateway). The
   // agent's houston_call tool dispatches here so the runtime never holds the
   // credential that can act on the user's account; off unless this deployment
   // set HOUSTON_ASSISTANT_CP_URL + HOUSTON_ASSISTANT_TOKEN.
-  if (await handleSandboxAssistant(deps, method, path, url, req, res)) return;
+  if (await dispatchGroup("sandbox-assistant", entry)) return;
   // Runtime transcript shadow facade (HMAC sandbox token → pod-auth gateway).
-  if (await handleSandboxTranscripts(deps, method, path, url, req, res)) return;
+  if (await dispatchGroup("sandbox-transcripts", entry)) return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
@@ -411,51 +374,40 @@ async function handle(
   // Marketplace reads (skills.sh search/popular, GitHub repo discovery) also
   // answer top-level for direct API callers; the shipped clients call them
   // agent-scoped (skills-remote.ts) so the hosted gateway can proxy them.
-  if (await handleSkillsDirectory(method, path, req, res)) return;
-  if (await handleSharedSkills(deps, userId, method, path, req, res)) return;
-  if (await handleAccount(deps, userId, method, path, req, res)) return;
-  if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
-  if (
-    await handlePortableFromStore(
-      { apiUrl: deps.agentStoreApiUrl },
-      method,
-      path,
-      req,
-      res,
-    )
-  )
-    return;
+  if (await dispatchGroup("skills-directory", authenticated)) return;
+  if (await dispatchGroup("shared-skills", authenticated)) return;
+  if (await dispatchGroup("account", authenticated)) return;
+  if (await dispatchGroup("portable-account", authenticated)) return;
+  if (await dispatchGroup("portable-from-store", authenticated)) return;
   // Desktop→cloud migration source listing (HOU-719): every agent across every
   // workspace with its migration manifest. Desktop-local by design — the cloud
   // gateway proxies only agent-scoped routes, so a pod never serves this.
-  if (await handleMigrationSource(deps, userId, method, path, res)) return;
-  if (await handleAgentConfigs(deps, userId, method, path, req, res)) return;
-  // Custom-integration definitions — BEFORE the generic provider routes, whose
-  // `/v1/integrations/:provider/*` catch-all would 404 these subpaths.
-  if (await handleCustomIntegrations(deps, userId, method, path, req, res))
-    return;
-  if (await handleIntegrations(deps, userId, method, path, req, res)) return;
+  if (await dispatchGroup("migration-source", authenticated)) return;
+  if (await dispatchGroup("agent-configs", authenticated)) return;
+  // Custom-integration definitions — BEFORE the generic provider routes, which
+  // claim the whole `/v1/integrations` subtree and would swallow `custom/*`.
+  if (await dispatchGroup("custom-integrations", authenticated)) return;
+  if (await dispatchGroup("integrations", authenticated)) return;
   // Pre-agent provider connect (first-run onboarding): a hidden setup runtime
   // runs the OAuth so the user can connect their AI before any agent exists.
-  if (await handleSetupRuntime(deps, userId, method, path, url, req, res))
-    return;
+  if (await dispatchGroup("setup-runtime", authenticated)) return;
   // Personal-assistant discovery: which hidden agent holds it and which
   // conversation to open. The chat itself rides the ordinary per-agent routes
   // below — this only hands out the address.
-  if (await handleAssistant(deps, userId, method, path, res)) return;
+  if (await dispatchGroup("assistant", authenticated)) return;
 
   // Pod trigger delivery (C9) — matched before the generic per-agent dispatch
   // (the runtime has no trigger routes). The Go control plane POSTs external
   // events here for a managed pod; the pod fires the matching routine.
-  if (await handleTriggerEvents(deps, userId, method, path, req, res)) return;
+  if (await dispatchGroup("trigger-events", authenticated)) return;
   // Pod cron delivery — same internal-only trust posture as trigger-events.
-  if (await handleRoutineFires(deps, userId, method, path, req, res)) return;
+  if (await dispatchGroup("routine-fires", authenticated)) return;
 
   // One agent's color. Agent-scoped, but NOT part of the per-agent dispatch
   // below: it writes the same `agent_colors` PREFERENCE the app's color sync
   // owns, so it is served here, ahead of handleAgents, rather than proxied to
   // the agent's runtime, which knows nothing about that doc.
-  if (await handleAgentColor(deps, userId, method, path, req, res)) return;
+  if (await dispatchGroup("agent-color", authenticated)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

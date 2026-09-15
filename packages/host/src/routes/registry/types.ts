@@ -1,8 +1,11 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-import type { HoustonEvent } from "@houston/protocol";
-import type { Agent, UserId, Workspace } from "../../domain/types";
-import type { ControlPlaneDeps } from "../../server";
-import type { AgentRouteDeps } from "../agent-authz";
+import type {
+  AgentCtx,
+  AgentEntry,
+  PublicCtx,
+  PublicEntry,
+  UserCtx,
+  UserEntry,
+} from "./context";
 import type { GroupId } from "./groups";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD";
@@ -17,12 +20,18 @@ export type Classification =
 /**
  * WHERE in server.ts's fixed pipeline a route is matched. Order INSIDE a phase
  * is the declared array order — identical to the hand-written chain order.
+ *
+ * Only the agent phase gives the dispatcher a principal to enforce: a sandbox
+ * route validates its own HMAC token inside its handler, exactly as it does
+ * today, and the phase marks only the chain slot it answers from. Lifting that
+ * check into the dispatcher would move the refusal for every sandbox family at
+ * once, so it stays where each family owns it.
  */
 export type Phase =
   | "public" // before any auth
-  | "sandbox" // HMAC sandbox token; after the coordinator-scope refusal
+  | "sandbox" // HMAC sandbox token the handler itself validates
   | "user" // after principal()'s 401 wall and the agents store fence
-  | "agent"; // "user" + authorizeAgent(agentId) already ran
+  | "agent"; // "user" + authorizeAgent(agentId) run by the dispatcher
 
 /**
  * What a path match with the WRONG method does. The chain has BOTH answers
@@ -31,67 +40,15 @@ export type Phase =
  * `{ error: "method not allowed" }`; a family whose 405 body carries more than
  * that (routes/missions-remote-inbound.ts adds `code`) declares every method
  * and answers from inside its own handler instead.
+ *
+ * WHEN the 405 is emitted follows the phase, because the hand-written chain
+ * splits there too: an agent-phase family's 405 is written after
+ * authorizeAgent (routes/agent-file.ts, routes/agent-data.ts), so a caller who
+ * does not own the agent sees 403/404 and never learns the method set; a
+ * user-phase one (routes/agent-color.ts) answers before any per-agent check
+ * because its slot sits ahead of the per-agent dispatch entirely.
  */
 export type MethodMismatch = "fallthrough" | "405";
-
-/** The request, before a pattern has claimed it. */
-interface Located {
-  method: string;
-  /** `url.pathname` — the raw, undecoded path the chain matches on. */
-  path: string;
-  url: URL;
-  req: IncomingMessage;
-  res: ServerResponse;
-}
-
-export interface PublicEntry extends Located {
-  deps: ControlPlaneDeps;
-}
-
-export interface UserEntry extends PublicEntry {
-  userId: UserId;
-}
-
-/**
- * The agent phase's entry. Its deps are the narrower per-agent bag because the
- * slot it is called from (routes/agents.ts) holds exactly that — and every
- * ControlPlaneDeps satisfies it, so server.ts can call an agent group too.
- */
-export interface AgentEntry extends Located {
-  deps: AgentRouteDeps;
-  userId: UserId;
-}
-
-/** What the pattern captured. */
-interface Matched {
-  /** Decoded `:name` captures, keyed by the name in the pattern. */
-  params: Record<string, string>;
-  /** The `*rest` capture, RAW (the channel forwards it undecoded); "" if none. */
-  rest: string;
-}
-
-export interface PublicCtx extends PublicEntry, Matched {}
-export interface UserCtx extends UserEntry, Matched {}
-export interface AgentCtx extends AgentEntry, Matched {
-  authz: { agent: Agent; workspace: Workspace };
-  /** Reactivity fan-out to the workspace owner; absent when no hub is wired. */
-  emit?: (event: HoustonEvent) => void;
-}
-
-/**
- * What the dispatcher hands a handler, before the phase narrows it. The
- * optional fields are present exactly when the route's phase says they are:
- * GROUP_PHASES fixes each group's phase, `register()` refuses a route whose
- * phase disagrees, and `dispatchGroup`'s overloads refuse a caller that cannot
- * supply what the phase needs — which is why a `handler(ctx: UserCtx)` may be
- * stored here.
- */
-export interface DispatchCtx extends Located, Matched {
-  deps: AgentRouteDeps;
-  userId?: UserId;
-  authz?: { agent: Agent; workspace: Workspace };
-  emit?: (event: HoustonEvent) => void;
-}
 
 /** The entry context a group's phase requires of its caller. */
 export type EntryFor<P extends Phase> = P extends "agent"
@@ -115,13 +72,25 @@ export type Classified =
   | { classification: "sdk"; reason?: undefined }
   | { classification: Exclude<Classification, "sdk">; reason: string };
 
+/**
+ * What a handler hands back. `false` DECLINES the request: the chain walks on
+ * to the next route exactly as a hand-written `return false` did. It is how a
+ * family that claims a boundary wider than its route list (`owns`) gives back
+ * what turns out not to be its own — routes/custom-integrations-user.ts claims
+ * the whole `custom/` subtree and declines a target its grammar does not know,
+ * which is the only reason `/v1/integrations/custom/connections` still reaches
+ * the generic provider family behind it. Anything else means "answered".
+ */
+// `void` is the point: a handler that answered by writing to the response
+// returns nothing, and only `void` accepts the `Promise<void>` an async
+// handler with no return statement has — `undefined` would reject every one.
+// biome-ignore lint/suspicious/noConfusingVoidType: see above.
+export type Answer = Promise<boolean | void> | boolean | void;
+
 export type Phased =
-  | {
-      phase: "public" | "sandbox";
-      handler(ctx: PublicCtx): Promise<void> | void;
-    }
-  | { phase: "user"; handler(ctx: UserCtx): Promise<void> | void }
-  | { phase: "agent"; handler(ctx: AgentCtx): Promise<void> | void };
+  | { phase: "public" | "sandbox"; handler(ctx: PublicCtx): Answer }
+  | { phase: "user"; handler(ctx: UserCtx): Answer }
+  | { phase: "agent"; handler(ctx: AgentCtx): Answer };
 
 export type { GroupId } from "./groups";
 
@@ -138,7 +107,18 @@ export type RouteDef = RouteCommon & Classified & Phased;
  */
 export type RouteFamilyDef = Omit<RouteCommon, "method" | "path"> &
   Classified &
-  Phased & { members: { method: HttpMethod; path: string }[] };
+  Phased & {
+    members: { method: HttpMethod; path: string }[];
+    /**
+     * Patterns the family answers on for EVERY method while publishing no
+     * descriptor of its own — the boundary the regex owns beyond the pairs it
+     * serves. routes/transcripts-sandbox.ts refuses anything else inside its
+     * conversation prefix with its own 400, and routes/assistant-sandbox.ts
+     * 405s a wrong method with a body that carries a `code`: falling through
+     * either would answer the 401 wall instead.
+     */
+    owns?: string[];
+  };
 
 /** The catch-all forward to the agent's own runtime. Enumerable, not a wildcard. */
 export type ProxyFamilyDef = Omit<

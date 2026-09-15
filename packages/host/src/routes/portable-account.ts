@@ -1,10 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  applyOverrides,
   filterPackage,
   invalidAgentNameMessage,
   type PortablePackage,
-  packAgent,
   packageSeed,
   portableInventory,
   remintRoutineIds,
@@ -12,79 +10,21 @@ import {
   unpackAgent,
   validateAgentName,
 } from "@houston/domain";
-import type {
-  PortableExportOverrides,
-  PortableSelection,
-} from "@houston/protocol";
+import type { PortableSelection } from "@houston/protocol";
 import { ACTING_AS_HEADER, actingSubFromHeader } from "../auth/acting";
-import type { Agent, UserId, Workspace } from "../domain/types";
+import type { UserId } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { writeAgentSeeds } from "./agent-seed";
 import { json, readJson } from "./http";
-import { gatherPortableContent } from "./portable-content";
-
-/** Bumped independently of the wire protocol; rides in the manifest. */
-const HOUSTON_VERSION = "0.0.0";
+import { defineRouteFamily } from "./registry";
 
 async function readBytes(req: IncomingMessage): Promise<Buffer> {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
   return Buffer.concat(chunks);
-}
-
-/**
- * Export an agent as a `.houstonagent` (agent-scoped: POST
- * .../portable/export). The body is either a bare PortableSelection (the
- * original contract) or `{ selection, overrides?, meta? }` — `overrides`
- * carries the anonymize diffs the user accepted, `meta.anonymized` stamps
- * the manifest. Gathers the selected content off the vfs and returns the
- * zip. Returns true when handled.
- */
-export async function handlePortableExport(
-  deps: { vfs?: Vfs; paths?: WorkspacePaths },
-  ctx: { workspace: Workspace; agent: Agent },
-  method: string,
-  rest: string,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<boolean> {
-  if (rest !== "portable/export" || method !== "POST") return false;
-  if (!deps.vfs) {
-    json(res, 503, { error: "agent data not configured" });
-    return true;
-  }
-  const paths = deps.paths ?? new CloudPaths();
-  const root = paths.agentRoot(ctx.workspace, ctx.agent);
-  // Untrusted wizard input; the reads below stay defensive.
-  const body = await readJson(req);
-  const wrapped = body.selection !== undefined;
-  const sel = (wrapped ? body.selection : body) as PortableSelection;
-  const overrides = wrapped
-    ? (body.overrides as PortableExportOverrides | undefined)
-    : undefined;
-  const anonymized = wrapped
-    ? Boolean((body.meta as { anonymized?: boolean } | undefined)?.anonymized)
-    : false;
-
-  const content = applyOverrides(
-    await gatherPortableContent(deps.vfs, root, sel),
-    overrides,
-  );
-
-  const bytes = packAgent(
-    content,
-    { agentName: ctx.agent.name, houstonVersion: HOUSTON_VERSION, anonymized },
-    new Date().toISOString(),
-  );
-  res.writeHead(200, {
-    "Content-Type": "application/zip",
-    "Content-Disposition": `attachment; filename="${ctx.agent.name}.houstonagent"`,
-  });
-  res.end(Buffer.from(bytes));
-  return true;
 }
 
 export interface PortableAccountDeps {
@@ -200,3 +140,21 @@ export async function handlePortableAccount(
   });
   return true;
 }
+
+/**
+ * A non-POST on either path falls through to the chain's 404, as it does
+ * today: the check above declines rather than refuses.
+ */
+defineRouteFamily({
+  group: "portable-account",
+  members: [
+    { method: "POST", path: "/v1/portable/preview" },
+    { method: "POST", path: "/v1/portable/install" },
+  ],
+  phase: "user",
+  classification: "sdk",
+  source: "packages/host/src/routes/portable-account.ts",
+  handler: async ({ deps, userId, method, path, req, res }) => {
+    await handlePortableAccount(deps, userId, method, path, req, res);
+  },
+});

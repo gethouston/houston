@@ -6,8 +6,38 @@ import type {
   TranscriptShadowCommand,
 } from "../transcripts/http-shadow";
 import { bearer, json, readJson } from "./http";
+import { defineRouteFamily } from "./registry";
 
 const ROOT = /^\/sandbox\/transcripts\/conversations\/([^/]+)(?:\/(.*))?$/;
+
+/** The conversation this family addresses; every command hangs off it. */
+const CONVERSATION = "/sandbox/transcripts/conversations/:conversationId";
+
+/**
+ * The six shadow commands, plus the prefix they are the whole of: anything
+ * else under a conversation is a MALFORMED command (400), not somebody else's
+ * route, and saying so is what tells a runtime its shadow write was wrong
+ * rather than unauthenticated.
+ */
+defineRouteFamily({
+  group: "sandbox-transcripts",
+  members: [
+    { method: "PUT", path: CONVERSATION },
+    { method: "DELETE", path: CONVERSATION },
+    { method: "PUT", path: `${CONVERSATION}/turns/:turnId/user` },
+    { method: "PUT", path: `${CONVERSATION}/turns/:turnId/assistant` },
+    { method: "POST", path: `${CONVERSATION}/truncate` },
+    { method: "POST", path: `${CONVERSATION}/repair` },
+  ],
+  owns: [CONVERSATION, `${CONVERSATION}/`, `${CONVERSATION}/*rest`],
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "The runtime mirrors its transcript through here with a per-sandbox HMAC token; no client writes the shadow.",
+  source: "packages/host/src/routes/transcripts-sandbox.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxTranscripts(deps, method, path, url, req, res),
+});
 
 export async function handleSandboxTranscripts(
   deps: {

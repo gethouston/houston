@@ -3,7 +3,10 @@ import { loadRoutines } from "@houston/domain";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
 import { json } from "./http";
+import { defineRoute } from "./registry";
 
 /**
  * The status detail a trigger-bound routine carries when this deployment has NO
@@ -31,6 +34,25 @@ export const NO_TRIGGER_BACKEND_DETAIL =
  * to the real backend (today the gateway edge; a future in-host backend would
  * add its own branch here rather than inherit the unsupported answer).
  */
+defineRoute({
+  group: "trigger-status",
+  method: "GET",
+  path: "/agents/:agentId/trigger-status",
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/trigger-status.ts",
+  handler: ({ deps, authz, method, path, res }) =>
+    handleTriggerStatus(
+      deps.vfs,
+      deps.paths ?? DEFAULT_PATHS,
+      authz,
+      method,
+      agentRest(path),
+      res,
+      deps.triggersEnabled ?? false,
+    ),
+});
+
 export async function handleTriggerStatus(
   vfs: Vfs | undefined,
   paths: WorkspacePaths,

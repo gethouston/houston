@@ -13,6 +13,7 @@ import type { TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { providerForAction } from "./integrations-sandbox";
+import { GROUP_ORDER } from "./registry";
 
 /**
  * The host integration surface end-to-end over real HTTP: the user routes
@@ -1057,4 +1058,17 @@ test("connections carry the account label the provider derived", async () => {
   } finally {
     stop();
   }
+});
+
+/**
+ * The generic provider family claims the WHOLE `/v1/integrations` subtree, so
+ * the custom-integration definitions are reachable only because their group
+ * runs first. Nothing in the two modules enforces that — the chain order does,
+ * and it is one appended line away from being lost.
+ */
+test("custom-integration definitions are matched before the provider family", () => {
+  const custom = GROUP_ORDER.indexOf("custom-integrations");
+  const generic = GROUP_ORDER.indexOf("integrations");
+  expect(custom).toBeGreaterThanOrEqual(0);
+  expect(custom).toBeLessThan(generic);
 });

@@ -10,11 +10,25 @@ import { DEFAULT_PATHS } from "./agent-authz";
 import { bearer, header, json, readJson } from "./http";
 import { appendLearningChecked } from "./learning-write";
 import { authorizeTurnWrite } from "./plan-gate";
+import { defineRoute } from "./registry";
 
 /** The header the runtime's `save_learning` tool carries the turn's conversation
  *  id on, so the mission a learning came from can be resolved. Provenance only —
  *  never authorization (the sandbox token is what authenticates the call). */
 export const CONVERSATION_ID_HEADER = "x-houston-conversation-id";
+
+defineRoute({
+  group: "sandbox-learnings",
+  method: "POST",
+  path: "/sandbox/learnings/save",
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "The agent's save_learning tool calls it with a per-sandbox HMAC token; provenance comes from the host's record of the running turn.",
+  source: "packages/host/src/routes/learnings-sandbox.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxLearnings(deps, method, path, url, req, res),
+});
 
 /**
  * The RUNTIME-facing memory write route (`POST /sandbox/learnings/save`, authed

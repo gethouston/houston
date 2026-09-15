@@ -7,6 +7,20 @@ import {
   type RuntimeChannel,
 } from "../ports";
 import { json, readJson } from "./http";
+import type { HttpMethod } from "./registry";
+
+/**
+ * The credential sub-paths of the setup runtime's connect surface. Declared
+ * here, next to the handler that serves them, and folded into the route family
+ * `setup-runtime.ts` registers — so the surface a pre-agent client can reach is
+ * one enumeration in two halves, never a prefix.
+ */
+export const SETUP_CREDENTIAL_RESTS = [
+  { method: "POST", rest: "credential/capture" },
+  { method: "POST", rest: "credential/forget" },
+  { method: "POST", rest: "credential/api-key" },
+  { method: "POST", rest: "credential/claude-oauth" },
+] as const satisfies readonly { method: HttpMethod; rest: string }[];
 
 /**
  * The setup runtime's CREDENTIAL routes — the agentless mirrors of the

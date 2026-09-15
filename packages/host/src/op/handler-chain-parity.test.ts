@@ -18,3 +18,13 @@ import { it } from "vitest";
 it.todo(
   "the pool-worker op chain equals listRoutes() phase:agent minus OP_EXCLUSIONS (wave 7)",
 );
+
+/**
+ * `pnpm check:sdk-parity` runs on every `pnpm check` today but always exits 0:
+ * the registry holds only the migrated routes, so rules 1 and 2 report counts
+ * that are an artefact of the in-progress migration, not violations. Wave 7
+ * makes an open violation fail the process — stated here for the same reason
+ * as the obligation above: it must not be forgotten between the wave that
+ * makes it possible and the wave that must honour it.
+ */
+it.todo("check-sdk-parity exits non-zero on open violations (wave 7)");

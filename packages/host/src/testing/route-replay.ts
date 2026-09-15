@@ -8,16 +8,28 @@ import {
   replayHost,
 } from "./route-replay-host";
 
-/** What one probe pins. Everything here is stable across runs by construction. */
+/**
+ * What one probe pins. Everything here is stable across runs by construction.
+ *
+ * `status` carries the two non-answers apart on purpose: "timeout" is the host
+ * holding the request open (a stream, a hung handler) and "error" is the
+ * request failing outright (a path the client itself refuses to send). Folding
+ * them together would let a route that started throwing pass as one that
+ * always streamed.
+ */
 export interface ProbeRecord {
-  status: number | "timeout";
+  status: number | "timeout" | "error";
   contentType: string | null;
   /** The `error` field of a JSON body — the chain's own failure vocabulary. */
   errorCode: string | null;
   /** Sorted keys of a JSON object body, `["<array>"]` for an array, else null. */
   bodyKeys: string[] | null;
-  /** `"METHOD rest"` the recording runtime proxy saw — WHICH handler won. */
-  forwarded: string | null;
+  /**
+   * Every `"METHOD rest"` the recording runtime proxy saw — WHICH handler won.
+   * The full list, not the first: a handler that forwards twice (or forwards
+   * after answering) is a routing change the first entry alone would hide.
+   */
+  forwarded: string[];
 }
 
 const EMPTY_BODY = { errorCode: null, bodyKeys: null } as const;
@@ -107,15 +119,17 @@ async function record(
       contentType,
       errorCode: body.errorCode,
       bodyKeys: body.bodyKeys,
-      forwarded: host.forwarded[0] ?? null,
+      forwarded: [...host.forwarded],
     };
   } catch {
     return {
-      status: "timeout",
+      // The abort the timer fired is a timeout; anything else is the request
+      // itself failing, and the two must not read alike in the baseline.
+      status: abort.signal.aborted ? "timeout" : "error",
       contentType: null,
       errorCode: null,
       bodyKeys: null,
-      forwarded: host.forwarded[0] ?? null,
+      forwarded: [...host.forwarded],
     };
   } finally {
     clearTimeout(timer);

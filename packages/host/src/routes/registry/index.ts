@@ -1,31 +1,35 @@
 import type { HoustonEvent } from "@houston/protocol";
-import type { UserId } from "../../domain/types";
+import type { Agent, UserId, Workspace } from "../../domain/types";
 import { authorizeAgent } from "../agent-authz";
 import { json } from "../http";
-import { type RegisteredRoute, registeredRoutes } from "./define";
-import { GROUP_ORDER, type GroupId, type GroupsIn } from "./groups";
-import { matchPath, type PatternMatch } from "./match";
 import type {
   AgentEntry,
   DispatchCtx,
   PublicEntry,
-  RouteDescriptor,
   UserEntry,
-} from "./types";
+} from "./context";
+import { type RegisteredRoute, registeredRoutes } from "./define";
+import { GROUP_ORDER, type GroupId, type GroupsIn } from "./groups";
+import { matchPath, type PatternMatch } from "./match";
+import type { RouteDescriptor } from "./types";
 
-export { defineProxyFamily, defineRoute, defineRouteFamily } from "./define";
+export type { AgentCtx, PublicCtx, UserCtx } from "./context";
+export type { RegisteredPattern, RegisteredRoute } from "./define";
+export {
+  defineProxyFamily,
+  defineRoute,
+  defineRouteFamily,
+  registeredRoutes,
+} from "./define";
 export type { GroupId } from "./groups";
 export { GROUP_ORDER, GROUP_PHASES } from "./groups";
 export { generalises, matchPath, patternParams } from "./match";
 export type {
-  AgentCtx,
   Classification,
   HttpMethod,
   Phase,
-  PublicCtx,
   RouteDef,
   RouteDescriptor,
-  UserCtx,
 } from "./types";
 
 /**
@@ -56,20 +60,35 @@ export async function dispatchGroup(
   if (!entries) return false;
   const userId = "userId" in ctx ? ctx.userId : undefined;
   for (const entry of entries) {
-    let pathMatched = false;
+    let mismatched: PatternMatch | null = null;
+    let declined = false;
     for (const pattern of entry.patterns) {
       const matched = matchPath(pattern.path, ctx.path);
       if (!matched) continue;
       if (pattern.methods && !pattern.methods.some((m) => m === ctx.method)) {
-        pathMatched = true;
+        mismatched ??= matched;
         continue;
       }
-      await run(entry, ctx, matched, userId);
-      return true;
+      if (await run(entry, ctx, matched, userId)) return true;
+      // The handler looked and said the request is not its own, so the chain
+      // walks on — including past this entry's other patterns, which would
+      // reach the same handler for the same answer.
+      declined = true;
+      break;
     }
+    if (declined) continue;
     // The family owns its whole path set, so a wrong method anywhere in it is
     // the family's answer to give — never the next route's request to claim.
-    if (pathMatched && entry.methodMismatch === "405") {
+    if (mismatched && entry.methodMismatch === "405") {
+      // An agent-phase family sits BEHIND the ownership check, so a caller who
+      // does not own the agent gets 403/404 and never learns which methods it
+      // serves — the order routes/agent-file.ts and routes/agent-data.ts
+      // already have, since their 405 is written after authorizeAgent ran.
+      if (
+        entry.phase === "agent" &&
+        !(await authorize(entry, ctx, mismatched, userId))
+      )
+        return true;
       json(ctx.res, 405, { error: "method not allowed" });
       return true;
     }
@@ -77,12 +96,34 @@ export async function dispatchGroup(
   return false;
 }
 
+/**
+ * The agent phase's ownership check. Null means the refusal is already written
+ * to the response and the caller must stop.
+ */
+async function authorize(
+  entry: RegisteredRoute,
+  ctx: PublicEntry | UserEntry | AgentEntry,
+  matched: PatternMatch,
+  userId: UserId | undefined,
+): Promise<{ agent: Agent; workspace: Workspace } | null> {
+  if (userId === undefined)
+    throw new Error(`agent-phase group "${entry.group}" ran unauthenticated`);
+  const agentId = matched.params.agentId;
+  if (agentId === undefined)
+    throw new Error(`agent-phase group "${entry.group}" matched no :agentId`);
+  const authz = await authorizeAgent(ctx.deps, userId, agentId);
+  if (authz.ok) return { agent: authz.agent, workspace: authz.workspace };
+  json(ctx.res, authz.status, { error: authz.reason });
+  return null;
+}
+
+/** Run one matched route; false when its handler declined the request. */
 async function run(
   entry: RegisteredRoute,
   ctx: PublicEntry | UserEntry | AgentEntry,
   matched: PatternMatch,
   userId: UserId | undefined,
-): Promise<void> {
+): Promise<boolean> {
   const base: DispatchCtx = {
     deps: ctx.deps,
     method: ctx.method,
@@ -94,30 +135,20 @@ async function run(
     rest: matched.rest,
     ...(userId === undefined ? {} : { userId }),
   };
-  if (entry.phase !== "agent") {
-    await entry.handler(base);
-    return;
-  }
-  if (userId === undefined)
-    throw new Error(`agent-phase group "${entry.group}" ran unauthenticated`);
-  const agentId = matched.params.agentId;
-  if (agentId === undefined)
-    throw new Error(`agent-phase group "${entry.group}" matched no :agentId`);
-  const authz = await authorizeAgent(ctx.deps, userId, agentId);
-  if (!authz.ok) {
-    json(ctx.res, authz.status, { error: authz.reason });
-    return;
-  }
+  if (entry.phase !== "agent") return (await entry.handler(base)) !== false;
+  const authz = await authorize(entry, ctx, matched, userId);
+  if (!authz) return true;
   const events = ctx.deps.events;
   // Reactivity emits target the workspace owner (the only member, personal tier).
   const emit = events
     ? (event: HoustonEvent) => events.emit(authz.workspace.ownerUserId, event)
     : undefined;
-  await entry.handler({
+  const answer = await entry.handler({
     ...base,
     authz: { agent: authz.agent, workspace: authz.workspace },
     ...(emit ? { emit } : {}),
   });
+  return answer !== false;
 }
 
 /**

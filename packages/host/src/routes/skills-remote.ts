@@ -7,7 +7,10 @@ import {
   installSkillsFromRepo,
 } from "../skills/install";
 import type { Vfs } from "../vfs";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
 import { json, readJson } from "./http";
+import { defineRouteFamily } from "./registry";
 import {
   communityPopularAction,
   communityPreviewAction,
@@ -121,3 +124,43 @@ export async function handleSkillsRemote(
   json(res, 404, { error: "not found" });
   return true;
 }
+
+/**
+ * The six marketplace pairs as one family. `methodMismatch: "405"` reproduces
+ * the blanket refusal above, which fires before the unwired-vfs check and so
+ * gives the identical body from either place.
+ *
+ * The regex is wider than these six: it claims any `[a-z]+` action under
+ * `skills/{community,repo}`, and an unknown one gets the 404 at the end of the
+ * handler. The matcher has no character-class segment to state that with, and
+ * a `:action` boundary would be WIDER than the regex — it would swallow
+ * `skills/community/Search`, which falls through to the agent's runtime today,
+ * and a route handler cannot decline once it has been called.
+ */
+defineRouteFamily({
+  group: "skills-remote",
+  members: [
+    { method: "POST", path: "/agents/:agentId/skills/community/search" },
+    { method: "POST", path: "/agents/:agentId/skills/community/popular" },
+    { method: "POST", path: "/agents/:agentId/skills/community/preview" },
+    { method: "POST", path: "/agents/:agentId/skills/community/install" },
+    { method: "POST", path: "/agents/:agentId/skills/repo/list" },
+    { method: "POST", path: "/agents/:agentId/skills/repo/install" },
+  ],
+  phase: "agent",
+  classification: "sdk",
+  methodMismatch: "405",
+  source: "packages/host/src/routes/skills-remote.ts",
+  handler: async ({ deps, authz, method, path, req, res, emit }) => {
+    await handleSkillsRemote(
+      deps.vfs,
+      deps.paths ?? DEFAULT_PATHS,
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+      emit,
+    );
+  },
+});

@@ -5,6 +5,7 @@ import { PreviewDirectory } from "../skills/preview";
 import { SkillRemoteError } from "../skills/remote-error";
 import { clientAbortSignal } from "./client-abort";
 import { json, readJson } from "./http";
+import { defineRouteFamily } from "./registry";
 
 /**
  * The read-only marketplace surface: skills.sh search/popular and GitHub repo
@@ -158,3 +159,31 @@ export async function handleSkillsDirectory(
   else await repoListAction(req, res, deps.fetchImpl ?? fetch);
   return true;
 }
+
+/**
+ * The four marketplace reads as one family. The handler above owns both the
+ * "not mine" boundary (`/v1/skills/community/install` is agent-scoped and must
+ * reach the chain's 404) and the blanket 405, so its paths are `owns`ed for
+ * every method and the members are enumerated for the route inventory alone.
+ */
+const MARKETPLACE_PATHS = [
+  "/v1/skills/community/search",
+  "/v1/skills/community/popular",
+  "/v1/skills/community/preview",
+  "/v1/skills/repo/list",
+];
+
+defineRouteFamily({
+  group: "skills-directory",
+  members: MARKETPLACE_PATHS.map((path) => ({
+    method: "POST" as const,
+    path,
+  })),
+  owns: MARKETPLACE_PATHS,
+  phase: "user",
+  classification: "sdk",
+  source: "packages/host/src/routes/skills-directory.ts",
+  handler: async ({ method, path, req, res }) => {
+    await handleSkillsDirectory(method, path, req, res);
+  },
+});

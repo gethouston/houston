@@ -1,8 +1,8 @@
+import type { DispatchCtx } from "./context";
 import { GROUP_PHASES } from "./groups";
 import { patternParams } from "./match";
 import type {
   Classification,
-  DispatchCtx,
   GroupId,
   HttpMethod,
   MethodMismatch,
@@ -100,12 +100,16 @@ export function defineRoute(def: RouteDef): void {
 
 /** One handler serving an enumerated set of pairs it owns as a unit. */
 export function defineRouteFamily(def: RouteFamilyDef): void {
-  const byPath = new Map<string, HttpMethod[]>();
+  const byPath = new Map<string, HttpMethod[] | null>();
   for (const member of def.members) {
     const methods = byPath.get(member.path);
     if (methods) methods.push(member.method);
     else byPath.set(member.path, [member.method]);
   }
+  // An owned path answers for EVERY method, so it widens the pattern a member
+  // already declared rather than adding a second one the matcher would reach
+  // only after that member had its say.
+  for (const path of def.owns ?? []) byPath.set(path, null);
   register({
     group: def.group,
     phase: def.phase,

@@ -1,3 +1,9 @@
+/**
+ * The public meta surface: health plus the v3 descriptors the UI reads BEFORE
+ * sign-in to shape itself. Capabilities are not secrets, so none of these sits
+ * behind the bearer wall — which is exactly what makes them `infra` rather
+ * than an SDK surface.
+ */
 import { PROTOCOL_VERSION } from "@houston/protocol";
 // Build-time constant: esbuild inlines the JSON import into the bundle (and
 // vitest/tsx resolve it the same way), so the served version can never drift
@@ -7,12 +13,6 @@ import type { ControlPlaneDeps } from "../server";
 import { json } from "./http";
 import { defineRoute } from "./registry";
 
-/**
- * The public meta surface: health plus the v3 descriptors the UI reads BEFORE
- * sign-in to shape itself. Capabilities are not secrets, so none of these sits
- * behind the bearer wall — which is exactly what makes them `infra` rather
- * than an SDK surface.
- */
 const SOURCE = "packages/host/src/routes/meta.ts";
 
 export function healthBody(deps: Pick<ControlPlaneDeps, "storeFenced">): {

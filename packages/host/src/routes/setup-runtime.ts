@@ -1,8 +1,10 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Agent, UserId, WorkspaceRuntime } from "../domain/types";
-import type { RuntimeChannel, WorkspaceStore } from "../ports";
+import type { Agent } from "../domain/types";
 import { json } from "./http";
-import { handleSetupCredential } from "./setup-runtime-credentials";
+import { defineRouteFamily, type HttpMethod } from "./registry";
+import {
+  handleSetupCredential,
+  SETUP_CREDENTIAL_RESTS,
+} from "./setup-runtime-credentials";
 
 /**
  * User-level provider connection for FIRST-RUN, before any agent exists.
@@ -19,81 +21,71 @@ import { handleSetupCredential } from "./setup-runtime-credentials";
  *    credential lands exactly where `/sandbox/credential` serves every real
  *    agent runtime from — the agent created right after first-run is already
  *    connected.
- *  - Only the connect surface is exposed (providers, auth status, login,
- *    login/complete, cancel, logout, capture, forget, api-key, claude-oauth —
- *    the credential routes live in `setup-runtime-credentials.ts`). Everything
- *    else the runtime serves (chat, files, settings) stays agent-scoped;
- *    notably `auth/export` is NOT reachable here — capture pulls it host-side
- *    and scrubs, so a refresh token never crosses to a client.
+ *  - Only the connect surface is exposed: the family below enumerates every
+ *    reachable sub-path (the credential half lives in
+ *    `setup-runtime-credentials.ts`), so everything else the runtime serves
+ *    (chat, files, settings) stays agent-scoped and 404s here. Notably
+ *    `auth/export` is NOT on the list — capture pulls it host-side and scrubs,
+ *    so a refresh token never crosses to a client.
  *
  * The hosted gateway mirrors this allowlist verbatim in front of the org's
  * setup pod: a route added here is dead on cloud until it is allowed there too.
- *
- * Returns true when the request was handled.
  */
+
+const SOURCE = "packages/host/src/routes/setup-runtime.ts";
 
 /** The hidden runtime's synthetic agent name within the personal workspace. */
 const SETUP_AGENT_NAME = ".setup/connect";
 
-export interface SetupRuntimeDeps {
-  store: WorkspaceStore;
-  channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
-}
+/**
+ * The sub-paths forwarded to the setup runtime, nothing more.
+ *
+ * login/cancel is part of the connect surface: the reconnect card's every press
+ * goes cancel → launch (the runtime keeps one login slot per provider), so
+ * dropping cancel 404s the chain and the login never launches (HOU-676). logout
+ * is the sign-out half of the same surface: a space with no agent signs out
+ * here, clearing this runtime's own auth copy right after `credential/forget`
+ * drops the central one (PRODUCT-1662).
+ */
+export const SETUP_RUNTIME_RESTS = [
+  { method: "GET", rest: "providers" },
+  { method: "GET", rest: "auth/status" },
+  { method: "POST", rest: "auth/:provider/login" },
+  { method: "POST", rest: "auth/:provider/login/complete" },
+  { method: "POST", rest: "auth/:provider/login/cancel" },
+  { method: "POST", rest: "auth/:provider/logout" },
+] as const satisfies readonly { method: HttpMethod; rest: string }[];
 
-/** The runtime sub-paths a pre-agent client may reach, nothing more. */
-function allowedRest(method: string, rest: string): boolean {
-  if (method === "GET") return rest === "providers" || rest === "auth/status";
-  if (method === "POST") {
-    // login/cancel is part of the connect surface: the reconnect card's every
-    // press goes cancel → launch (the runtime keeps one login slot per
-    // provider), so blocking cancel 404s the chain and the login never
-    // launches (HOU-676). logout is the sign-out half of the same surface: a
-    // space with no agent signs out here, clearing this runtime's own auth
-    // copy right after `credential/forget` drops the central one
-    // (PRODUCT-1662).
-    return /^auth\/[^/]+\/(login(\/(complete|cancel))?|logout)$/.test(rest);
-  }
-  return false;
-}
+defineRouteFamily({
+  group: "setup-runtime",
+  members: [...SETUP_CREDENTIAL_RESTS, ...SETUP_RUNTIME_RESTS].map(
+    ({ method, rest }) => ({ method, path: `/setup-runtime/${rest}` }),
+  ),
+  phase: "user",
+  classification: "sdk",
+  source: SOURCE,
+  handler: async ({ deps, userId, method, path, url, req, res }) => {
+    // The runtime is asked for the sub-path exactly as it arrived: the channel
+    // forwards these bytes, and the family's patterns already proved the
+    // sub-path is on the connect surface.
+    const rest = path.slice("/setup-runtime/".length);
 
-export async function handleSetupRuntime(
-  deps: SetupRuntimeDeps,
-  userId: UserId,
-  method: string,
-  path: string,
-  url: URL,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<boolean> {
-  if (path !== "/setup-runtime" && !path.startsWith("/setup-runtime/")) {
-    return false;
-  }
-  const rest = path.slice("/setup-runtime/".length);
+    // Resolve the caller's personal workspace (auto-provisioned on first touch)
+    // and shape the synthetic agent the channel keys the runtime on.
+    const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
+    const agent: Agent = {
+      id: `${ws.id}/${SETUP_AGENT_NAME}`,
+      workspaceId: ws.id,
+      name: SETUP_AGENT_NAME,
+      createdAt: 0,
+    };
+    const channel = deps.channels[ws.runtime];
+    if (!channel)
+      return json(res, 503, { error: `${ws.runtime} runtime not configured` });
+    const ctx = { workspace: ws, agent };
 
-  // Resolve the caller's personal workspace (auto-provisioned on first touch)
-  // and shape the synthetic agent the channel keys the runtime on.
-  const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
-  const agent: Agent = {
-    id: `${ws.id}/${SETUP_AGENT_NAME}`,
-    workspaceId: ws.id,
-    name: SETUP_AGENT_NAME,
-    createdAt: 0,
-  };
-  const channel = deps.channels[ws.runtime];
-  if (!channel) {
-    json(res, 503, { error: `${ws.runtime} runtime not configured` });
-    return true;
-  }
-  const ctx = { workspace: ws, agent };
-
-  if (await handleSetupCredential(channel, ctx, method, rest, url, req, res)) {
-    return true;
-  }
-
-  if (!allowedRest(method, rest)) {
-    json(res, 404, { error: "not found" });
-    return true;
-  }
-  await channel.dispatch(ctx, method, rest, url, req, res);
-  return true;
-}
+    if (await handleSetupCredential(channel, ctx, method, rest, url, req, res))
+      return;
+    await channel.dispatch(ctx, method, rest, url, req, res);
+  },
+});
