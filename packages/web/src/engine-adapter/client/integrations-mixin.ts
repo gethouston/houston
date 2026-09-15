@@ -1,8 +1,14 @@
 import type { IntegrationProviderId } from "@houston/protocol";
-import { EngineError } from "@houston/runtime-client";
 import * as controlPlane from "../control-plane";
+import { HoustonEngineError } from "./errors";
 import { deploymentServes } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
+
+/** A gateway integrations route, spelled as the SDK's client builds it —
+ *  `viaSdk` keys its translation on the path the call actually issues. */
+const integrationPath = (...segments: string[]) =>
+  `/v1/integrations/${segments.map(encodeURIComponent).join("/")}`;
 
 export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Integrations extends Base {
@@ -25,9 +31,11 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       // direct-key) answers 404, which is a legitimate shape, not a failure.
       // Anything else (network, 5xx) rethrows and the caller surfaces it.
       try {
-        await this.ctx.sdk.integrations.setSession(token);
+        await viaSdk(integrationPath("session"), () =>
+          this.ctx.sdk.integrations.setSession(token),
+        );
       } catch (err) {
-        if (err instanceof EngineError && err.status === 404) return;
+        if (err instanceof HoustonEngineError && err.status === 404) return;
         throw err;
       }
     }
@@ -52,7 +60,9 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Integrations require a connected host");
       // SDK delegates the byte-identical POST /v1/integrations/:provider/connect
       // with the `{ toolkit, agent? }` body.
-      return this.ctx.sdk.integrations.connect(provider, toolkit, agent);
+      return viaSdk(integrationPath(provider, "connect"), () =>
+        this.ctx.sdk.integrations.connect(provider, toolkit, agent),
+      );
     }
     async integrationConnection(
       provider: IntegrationProviderId,
@@ -76,10 +86,12 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       // /v1/integrations/:provider/disconnect with the `{ toolkit,
       // connectionId? }` body, no refetch (web owns its reads). `connectionId`
       // narrows the removal to ONE account of the toolkit.
-      await this.ctx.sdk.integrations.writes.disconnect(toolkit, {
-        provider,
-        ...(connectionId ? { connectionId } : {}),
-      });
+      await viaSdk(integrationPath(provider, "disconnect"), () =>
+        this.ctx.sdk.integrations.writes.disconnect(toolkit, {
+          provider,
+          ...(connectionId ? { connectionId } : {}),
+        }),
+      );
     }
     async dismissIntegrationsReconnectNotice(): Promise<void> {
       // The notice only ever renders from a host-reported `reconnect` flag, so
@@ -88,7 +100,9 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Integrations require a connected host");
       // SDK delegates the byte-identical POST
       // /v1/integrations/reconnect-notice/dismiss.
-      await this.ctx.sdk.integrations.dismissReconnectNotice();
+      await viaSdk(integrationPath("reconnect-notice", "dismiss"), () =>
+        this.ctx.sdk.integrations.dismissReconnectNotice(),
+      );
     }
 
     // ---- triggers (C9 event-driven routines) — hosted gateway only ----

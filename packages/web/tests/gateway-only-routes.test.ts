@@ -4,10 +4,10 @@ import { describe, expect, test } from "vitest";
 import { GATEWAY_ONLY_ROUTES } from "./fixtures/gateway-only-routes";
 
 /**
- * The gateway-only exception list is a claim about another repository: that the
- * hosted gateway serves each of these routes and `packages/host` never will.
- * An exception for a route nobody serves is not an exception, it is a hole in
- * the parity gate — so every line is checked against the gateway's own route
+ * The gateway-only list is a claim about another repository: that the hosted
+ * gateway serves each of these routes and `packages/host` never will. A line
+ * for a route nobody serves would send an SDK wave to build against a route
+ * that is not there — so every line is checked against the gateway's own route
  * export.
  *
  * `cloud` is a sibling checkout, not a dependency: contributors without it are
@@ -51,8 +51,8 @@ describe.skipIf(!served)(
       ).toBe(true);
     });
 
-    // A blanket "gateway-only" with no reason is how an exception list rots
-    // into a list of routes nobody remembers exempting.
+    // A blanket "gateway-only" with no reason is how this list rots into
+    // routes nobody remembers listing.
     test("no exception is carried without its own reason", () => {
       const reasons = Object.values(GATEWAY_ONLY_ROUTES);
       for (const [key, reason] of Object.entries(GATEWAY_ONLY_ROUTES)) {

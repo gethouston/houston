@@ -12,6 +12,7 @@ import * as agents from "../agents";
 import * as controlPlane from "../control-plane";
 import { deploymentServes } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Agents extends Base {
@@ -49,11 +50,13 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
         // the full `{ name, claudeMd?, seeds? }` body, no refetch). The RETURNED
         // wire agent carries the id the color overlay needs — layer it on and map
         // to the UI shape callers expect.
-        const wire = await this.ctx.sdk.agents.writes.create({
-          name: req.name,
-          claudeMd: req.claudeMd,
-          seeds: req.seeds,
-        });
+        const wire = await viaSdk("/agents", () =>
+          this.ctx.sdk.agents.writes.create({
+            name: req.name,
+            claudeMd: req.claudeMd,
+            seeds: req.seeds,
+          }),
+        );
         this.ctx.noteAgentAdded(wire.id);
         return { agent: controlPlane.createdAgentToUi(wire, req.color) };
       }
@@ -67,7 +70,9 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (this.ctx.cp) {
         // SDK delegates the PATCH /agents/:id write; web carries the color
         // overlay across the (possibly new) id and maps to the UI shape.
-        const wire = await this.ctx.sdk.agents.writes.rename(agentId, newName);
+        const wire = await viaSdk(controlPlane.agentPath(agentId), () =>
+          this.ctx.sdk.agents.writes.rename(agentId, newName),
+        );
         // A rename mints a new id: the old one 404s from here on, so provider
         // routing must stop naming it (HOUSTON-APP-52F).
         if (wire.id !== agentId) {
@@ -91,7 +96,9 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (this.ctx.cp) {
         // SDK delegates the DELETE /agents/:id write; web forgets the deleted
         // agent's color overlay (was cp.deleteAgent's clearColor) after.
-        await this.ctx.sdk.agents.writes.delete(agentId);
+        await viaSdk(controlPlane.agentPath(agentId), () =>
+          this.ctx.sdk.agents.writes.delete(agentId),
+        );
         controlPlane.clearColor(agentId);
         // Neither the selection pref nor the known list may outlive the agent:
         // provider connects fall back to the next known agent, or the setup

@@ -30,6 +30,13 @@ const TRANSIENT_STATUSES = new Set([502, 503, 504]);
  */
 const CALLER_OWNED_RETRY_PATHS: ReadonlySet<string> = new Set([
   "/v1/assistant",
+  // The reactivity stream. Web's own SSE subscription dials it with a plain
+  // fetch (`cp/events.ts`), but the SDK's event streams ride this transport
+  // through its fetch port the moment a surface turns reactivity on. It is a
+  // long-lived GET whose OWNER reconnects on every drop, with its own catch-up
+  // cursor, so a ladder underneath would re-dial the same stream in parallel
+  // with that loop.
+  "/v1/events",
 ]);
 
 /** The request's path, or null when the input is not a parseable URL (a
@@ -63,7 +70,24 @@ async function reasonFor(res: Response): Promise<UnavailableReason> {
   }
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+/**
+ * Wait `ms`, or stop the instant `signal` aborts. A caller that has given up
+ * (a component unmounting, a superseded query) must not be held for the rest
+ * of a 15s wake ladder before its `AbortError` surfaces.
+ */
+function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) return resolve();
+    let timer: ReturnType<typeof setTimeout>;
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    timer = setTimeout(done, ms);
+    signal?.addEventListener("abort", done, { once: true });
+  });
+}
 
 /**
  * Wrap a fetch so GET/HEAD attempts ride through a rolling deploy, a pod
@@ -72,6 +96,10 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
  * {@link UnavailableReason} earns. Writes never blind-retry — a thrown network
  * error on a POST may have reached the gateway; the caller decides. So does a
  * read on a {@link CALLER_OWNED_RETRY_PATHS} path, for the same reason.
+ *
+ * An ABORTED caller ends the ladder outright: the request it gave up on must
+ * not be re-sent, and its `AbortError` must surface at once rather than after
+ * the remaining backoff.
  */
 export function transientRetryFetch(inner: typeof fetch): typeof fetch {
   return async (input, init) => {
@@ -80,6 +108,7 @@ export function transientRetryFetch(inner: typeof fetch): typeof fetch {
     const retriable =
       (method === "GET" || method === "HEAD") &&
       !(path !== null && CALLER_OWNED_RETRY_PATHS.has(path));
+    const givenUp = () => init?.signal?.aborted === true;
     let res: Response | undefined;
     let failure: unknown;
     for (let i = 0; ; i++) {
@@ -91,12 +120,13 @@ export function transientRetryFetch(inner: typeof fetch): typeof fetch {
         failure = err;
       }
       const transient = res === undefined || TRANSIENT_STATUSES.has(res.status);
-      if (!transient || !retriable) break;
+      if (!transient || !retriable || givenUp()) break;
       // A transport-level drop has no body to read; it is the handoff case by
       // definition (offline, connection reset mid-roll).
       const delays = retryDelaysFor(res ? await reasonFor(res) : "handoff");
       if (i >= delays.length) break;
-      await sleep(delays[i]);
+      await sleep(delays[i], init?.signal);
+      if (givenUp()) break;
     }
     if (res === undefined) throw failure;
     return res;

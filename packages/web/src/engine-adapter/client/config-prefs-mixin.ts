@@ -42,9 +42,6 @@ function readLocalPref(key: string): string | null {
   }
 }
 
-/** The host route an account key reads and writes, as both paths spell it. */
-const prefPath = (key: string) => `/v1/preferences/${encodeURIComponent(key)}`;
-
 function removeLocalPref(key: string): void {
   try {
     localStorage.removeItem(`houston.pref.${key}`);
@@ -59,13 +56,12 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (ACCOUNT_PREF_KEYS.has(key)) {
         const cfg = this.ctx.prefConfig();
         // The account-key READ is the SDK's too: the same `GET
-        // /v1/preferences/:key` over the same shared gateway fetch, which now
-        // carries `cpFetch`'s read retry (`client/context.ts`), so this boot-path
-        // GET still rides out a rolling deploy or a waking pod. The lone wire
-        // difference is a `Content-Type: application/json` header cpFetch stamps
-        // on every request: a GET has no body to describe, and dropping it spares
-        // the read a CORS preflight.
-        const value = await viaSdk(prefPath(key), () =>
+        // /v1/preferences/:key` over the same shared gateway fetch, which carries
+        // `cpFetch`'s read retry (`sdk-client.ts`), so this boot-path GET still
+        // rides out a rolling deploy or a waking pod. The lone wire difference is
+        // a `Content-Type: application/json` header cpFetch stamps on every
+        // request: a GET has no body to describe.
+        const value = await viaSdk(controlPlane.prefPath(key), () =>
           this.ctx.sdk.preferences.get(key),
         );
         if (value !== null) return value;
@@ -98,7 +94,7 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
         // stored value; this caller discards it, so the observable request and
         // the `void` result match the control-plane helper byte for byte. PUTs
         // never transient-retry in either path, so nothing is lost.
-        await viaSdk(prefPath(key), () =>
+        await viaSdk(controlPlane.prefPath(key), () =>
           this.ctx.sdk.preferences.set(key, value),
         );
         removeLocalPref(key);

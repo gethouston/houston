@@ -22,8 +22,8 @@ import {
  *
  * `getPreference` is the proof: it was the one account-key call deliberately
  * held back, because `cpFetch` wraps GETs in the reason-aware read retry and
- * the SDK's fetch port did not. The port carries it now (`client/context.ts`),
- * and these tests pin both halves of that claim — the request the delegated
+ * the SDK's fetch port did not. The port carries it (`sdk-client.ts`), and
+ * these tests pin both halves of that claim — the request the delegated
  * read issues, and the attempts a transient 503 earns it — against the
  * control-plane helper it replaced, in the same file, on the same stub.
  *

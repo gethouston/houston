@@ -12,7 +12,6 @@ import {
   resetAgentColorSync,
   runtimeClientFor,
   setupRuntimeClientFor,
-  transientRetryFetch,
 } from "../control-plane";
 import {
   conversationCacheScope,
@@ -54,19 +53,6 @@ export const LAST_AGENT_PREF = "houston.pref.last_agent_id";
  *    successful list upgrades back to `known` and strict validation returns.
  *  - `known` — the space's own agent ids. The pref is validated against them.
  */
-/**
- * The SDK's transport: the shared gateway auth fetch UNDER the same read retry
- * `cpFetch` gives every control-plane call (`cp/transient-retry.ts`).
- *
- * Composing it here, once, rather than inside each SDK module is what lets a
- * mixin delegate a READ at all: a GET that meets a rolling deploy or a cold
- * engine pod rides it out on the reason-aware ladder instead of surfacing as a
- * boot-path failure. Only GET/HEAD are retried, so no write is ever replayed
- * and a delegated write is still exactly one request on the wire.
- */
-const sdkFetch = (authFetch: typeof fetch): typeof fetch =>
-  transientRetryFetch(authFetch);
-
 export type AgentListState =
   | { readonly kind: "pending" }
   | { readonly kind: "unavailable" }
@@ -141,11 +127,8 @@ export class AdapterContext {
     // INERT: reactivity is off, so constructing the SDK opens NO stream and
     // fires NO request — it only holds the write surface for later waves. It
     // rides the SAME `authFetch`, so bearer/401-refresh/active-space match,
-    // under the SAME read retry (see `sdkFetch`).
-    this.sdk = createEngineSdk({
-      baseUrl: this.baseUrl,
-      fetch: sdkFetch(authFetch),
-    });
+    // under the SAME read retry (`createEngineSdk` wraps it).
+    this.sdk = createEngineSdk({ baseUrl: this.baseUrl, fetch: authFetch });
     // Mark the new TS engine as the active backend so the frontend can surface
     // new-engine-only capabilities (e.g. API-key providers like OpenCode).
     if (typeof window !== "undefined") {
@@ -195,7 +178,7 @@ export class AdapterContext {
     });
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
-      fetch: sdkFetch(this.authFetch),
+      fetch: this.authFetch,
     });
   }
 

@@ -5,11 +5,13 @@ import type {
 import {
   listWorkspaces as cpListWorkspaces,
   deleteOrg,
+  prefPath,
   retryTransientRead,
 } from "../control-plane";
 import { syntheticWorkspace } from "../synthetic";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 import { SidebarLayoutStore } from "./sidebar-layout-store";
 
 /** Exactly `org:` + 16 lowercase hex chars — the C8 team-space id grammar. */
@@ -103,7 +105,9 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       _id: string,
       locale: string | null,
     ): Promise<Workspace> {
-      await this.ctx.sdk.preferences.set("locale", locale);
+      await viaSdk(prefPath("locale"), () =>
+        this.ctx.sdk.preferences.set("locale", locale),
+      );
       const { provider, model } = await this.ctx.activeOld();
       return { ...syntheticWorkspace(provider, model), locale };
     }

@@ -83,6 +83,11 @@ export async function setContext(
   });
 }
 
+/** The route an account preference reads and writes, as EVERY path that
+ *  touches it — this helper pair, the SDK-delegated mixin calls — spells it. */
+export const prefPath = (key: string) =>
+  `/v1/preferences/${encodeURIComponent(key)}`;
+
 /**
  * Reads one of the user's saved preferences.
  * @assistant group:settings hidden: UI plumbing; an untyped key/value store the app reads for its own device settings.
@@ -91,7 +96,7 @@ export async function getPreference(
   cfg: ControlPlaneConfig,
   key: string,
 ): Promise<string | null> {
-  const res = await cpFetch(cfg, `/v1/preferences/${encodeURIComponent(key)}`);
+  const res = await cpFetch(cfg, prefPath(key));
   return ((await res.json()) as { value: string | null }).value;
 }
 /**
@@ -103,7 +108,7 @@ export async function setPreference(
   key: string,
   value: string,
 ): Promise<void> {
-  await cpFetch(cfg, `/v1/preferences/${encodeURIComponent(key)}`, {
+  await cpFetch(cfg, prefPath(key), {
     method: "PUT",
     body: JSON.stringify({ value }),
   });

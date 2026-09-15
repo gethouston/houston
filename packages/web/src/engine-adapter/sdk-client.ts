@@ -26,6 +26,9 @@
  */
 
 import { HoustonSdk, type KeyValueStore, type SdkLogger } from "@houston/sdk";
+// The barrel, never `cp/transient-retry` directly: the web suite mocks
+// `./control-plane` wholesale and a submodule import would bypass the mock.
+import { transientRetryFetch } from "./control-plane";
 
 /** Namespace for every SDK-owned `localStorage` key, so nothing the SDK
  *  persists can collide with the adapter's existing browser state. */
@@ -94,6 +97,7 @@ export interface EngineSdkOptions {
    * engine client runs on, carrying the live bearer, 401-refresh, and the
    * `x-houston-org` header off the live active space. Passing the same instance
    * keeps auth + active-space behavior identical across the adapter and the SDK.
+   * The read retry is added HERE, not by the caller (see {@link createEngineSdk}).
    */
   fetch: typeof fetch;
 }
@@ -104,13 +108,21 @@ export interface EngineSdkOptions {
  * no refetch-on-construct) so it changes nothing at runtime until a later wave
  * delegates a write to `sdk.agents/activities/providers/integrations/
  * preferences`. Constructing it issues NO network request.
+ *
+ * The transport is the shared gateway auth fetch UNDER the same read retry
+ * `cpFetch` gives every control-plane call (`cp/transient-retry.ts`). Composing
+ * it at this ONE construction point, rather than inside each SDK module, is
+ * what lets a mixin delegate a READ at all: a GET that meets a rolling deploy
+ * or a cold engine pod rides it out on the reason-aware ladder instead of
+ * surfacing as a boot-path failure. Only GET/HEAD are retried, so no write is
+ * ever replayed and a delegated write is still exactly one request on the wire.
  */
 export function createEngineSdk(opts: EngineSdkOptions): HoustonSdk {
   return new HoustonSdk({
     baseUrl: opts.baseUrl.replace(/\/+$/, ""),
     reactivity: false,
     ports: {
-      fetch: opts.fetch,
+      fetch: transientRetryFetch(opts.fetch),
       storage: createWebStorage(),
       clock: {
         now: () => Date.now(),

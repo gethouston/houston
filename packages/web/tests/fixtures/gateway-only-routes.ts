@@ -1,24 +1,27 @@
 /**
- * The routes only the hosted gateway serves — the standing exceptions to the
- * SDK-parity gate's R2 rule ("an SDK method whose route the TS host does not
- * serve").
+ * The hosted gateway's client-facing multiplayer surface: the routes the app
+ * reaches that `packages/host` will never serve, each with what it is for.
  *
  * Multiplayer is not a host concept. Spaces, members, roles, teams, per-agent
  * access policy, API keys, billing and the routes that move a pod between
  * namespaces exist because `cloud` runs many tenants; `packages/host` serves
  * one workspace and has nothing to answer with. An SDK module for those
- * families is therefore correct AND permanently unserved by the host, which is
- * the one class of R2 finding that can never be fixed by writing host code.
+ * families is therefore correct AND permanently host-less — so this is the
+ * inventory of what waves A1-A4 + billing must give SDK modules (PRODUCT-1820),
+ * not a list of debt against the host.
  *
- * Kept apart from the gate's other exceptions on purpose: R1/R3/R4 entries are
- * debt and the gate holds them to shrink-only, while these are a description of
- * the deployment and legitimately never shrink.
+ * NOT an input to the SDK-parity gate: that gate reads its own written
+ * exceptions from `scripts/sdk-parity-exceptions.json` and never this file.
+ * While a family has no SDK module, its routes surface there under R1 ("a route
+ * classified `sdk` that no `@houston/sdk` method issues"), and they leave that
+ * report when the wave lands. R2 ("an SDK method no server serves") cannot fire
+ * on any of them: the gateway serves every one.
  *
  * Keys are `"METHOD path"` spelled exactly as the gateway registers the
  * pattern (`cloud/internal/edge/routes.generated.json`) — a route survives the
  * migration, a function name does not. `gateway-only-routes.test.ts` holds
  * every line here to a route the gateway actually serves, so a retired route
- * cannot linger as a blanket excuse.
+ * cannot linger as an entry nobody owns.
  */
 export const GATEWAY_ONLY_ROUTES: Readonly<Record<string, string>> = {
   // ---- org administration (wave A1) ----
