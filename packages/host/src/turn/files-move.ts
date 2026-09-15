@@ -2,9 +2,9 @@ import type { Vfs } from "../vfs";
 import {
   FileOpError,
   fileKey,
-  keyTaken,
+  loadWorkspaceKeys,
+  NAME_TAKEN,
   safeRel,
-  workspaceKeys,
 } from "./files-ops";
 
 /**
@@ -36,9 +36,12 @@ export async function moveWorkspaceEntry(
   const fromKey = fileKey(root, from);
   const toKey = fileKey(root, to);
   const children = await vfs.listDetailed(fromKey); // non-empty ⇒ a directory
-  const existing = await workspaceKeys(vfs, root);
-  if (keyTaken(existing, toKey)) {
-    throw new FileOpError(409, `"${name}" already exists there`);
+  const existing = await loadWorkspaceKeys(vfs, root);
+  // The folder it is already in, spelled differently — nothing to move, and
+  // the guard below would read the entry as its own collision.
+  if (existing.sameSlot(fromKey, toKey)) return from;
+  if (existing.taken(toKey)) {
+    throw new FileOpError(409, `"${name}" already exists there`, NAME_TAKEN);
   }
 
   if (children.length > 0) {

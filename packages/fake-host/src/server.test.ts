@@ -115,6 +115,7 @@ describe("startFakeHost", () => {
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual({
       error: '"Q3 report.pdf" already exists there',
+      code: "name_taken",
     });
 
     // Both files are still there, under their own names.

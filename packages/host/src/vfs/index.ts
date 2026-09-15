@@ -8,6 +8,12 @@ export {
   type LazyStoreVfsOptions,
   UNREAD_HASH,
 } from "./lazy-store-types";
-export { MemoryVfs } from "./memory";
+export { MemoryVfs, type MemoryVfsOptions } from "./memory";
 export { PrefixedVfs } from "./prefixed";
-export { assertSafeKey, decodeText, type ObjectStat, type Vfs } from "./vfs";
+export {
+  assertSafeKey,
+  decodeText,
+  type KeyCase,
+  type ObjectStat,
+  type Vfs,
+} from "./vfs";

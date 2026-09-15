@@ -9,15 +9,14 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
-import { assertSafeKey, decodeText, type ObjectStat, type Vfs } from "./vfs";
-
-/**
- * Suffix of the scratch file `writeBytes` renames into place. Distinctive on
- * purpose: a listing hides exactly these and nothing a user could legitimately
- * name (`notes.tmp`, `backup.1.tmp` stay visible).
- */
-const ATOMIC_TMP_SUFFIX = ".houston.tmp";
-const isAtomicTemp = (name: string) => name.endsWith(ATOMIC_TMP_SUFFIX);
+import { isAtomicTemp, probeKeyCase, scratchPath } from "./fs-scratch";
+import {
+  assertSafeKey,
+  decodeText,
+  type KeyCase,
+  type ObjectStat,
+  type Vfs,
+} from "./vfs";
 
 /**
  * An entry that disappeared (or whose parent turned into a file) between the
@@ -42,8 +41,22 @@ function isVanished(err: unknown): boolean {
  * is traversal-checked; nothing outside `root` is reachable through this port.
  */
 export class FsVfs implements Vfs {
+  private probe?: Promise<KeyCase>;
+
   constructor(private readonly root: string) {
     if (!root) throw new Error("FsVfs requires a root directory");
+  }
+
+  /** Probed ONCE per root and remembered: the answer belongs to the mounted
+   * volume, not to the process, so it cannot change under a running host. A
+   * failed probe is not cached — a transient EIO must not decide every later
+   * rename. */
+  keyCase(): Promise<KeyCase> {
+    this.probe ??= probeKeyCase(this.root).catch((err: unknown) => {
+      this.probe = undefined;
+      throw err;
+    });
+    return this.probe;
   }
 
   private pathFor(key: string): string {
@@ -157,8 +170,7 @@ export class FsVfs implements Vfs {
     // (rename is only atomic within one filesystem) with a unique infix so
     // two concurrent writers never collide on it, and the ATOMIC_TMP_SUFFIX so
     // a concurrent walk knows to skip it.
-    const unique = `${process.pid}.${Math.random().toString(36).slice(2, 8)}`;
-    const tmp = `${path}.${unique}${ATOMIC_TMP_SUFFIX}`;
+    const tmp = scratchPath(path);
     await writeFile(tmp, content);
     await rename(tmp, path);
   }

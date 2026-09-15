@@ -4,7 +4,7 @@
  * (upload), move, rename, folder create, delete. Backed by `state-workspace.ts`.
  */
 
-import { mimeFor } from "@houston/host/src/turn/files";
+import { mimeFor, NAME_TAKEN } from "@houston/host/src/turn/files";
 import { type Zippable, zipSync } from "fflate";
 import { CORS, json, noContent } from "./http";
 import * as state from "./state";
@@ -90,10 +90,15 @@ export function handleWorkspaceFiles(
       newName,
     );
     // The real host refuses a taken name rather than overwriting the other
-    // file — same status and same `{error}` body, so the UI's expected-state
-    // handling is exercised here and not just in production.
+    // file — same status and same `{error, code}` body, so the UI's
+    // expected-state handling is exercised here and not just in production.
+    // The code comes from the host's own constant: a drift would make the e2e
+    // green while the app showed a red bug toast against the real thing.
     if (result === "taken")
-      return json({ error: `"${newName}" already exists there` }, 409);
+      return json(
+        { error: `"${newName}" already exists there`, code: NAME_TAKEN },
+        409,
+      );
     return json({ ok: true });
   }
 

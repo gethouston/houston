@@ -14,6 +14,12 @@ import { MemoryVfs } from "./memory";
  */
 
 runVfsContract("MemoryVfs", () => new MemoryVfs());
+// The `folded` MemoryVfs is the stand-in for a macOS/Windows disk on ANY CI
+// volume, so it has to clear the same bar as the adapters it imitates.
+runVfsContract(
+  "MemoryVfs (case-insensitive disk)",
+  () => new MemoryVfs({ keyCase: "folded" }),
+);
 runVfsContract(
   "FsVfs",
   () => new FsVfs(mkdtempSync(join(tmpdir(), "houston-vfs-"))),

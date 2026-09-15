@@ -54,6 +54,14 @@ export class LazyStoreVfs implements Vfs {
       : null;
   }
 
+  /**
+   * The OVERLAY decides: every write and move this vfs performs lands there,
+   * so its volume is what can silently replace a differently-cased neighbour.
+   * (The remote manifest is exact, but no write reaches it except through the
+   * overlay's sync-back.)
+   */
+  keyCase = () => this.local.keyCase();
+
   list = async (prefix: string) =>
     (await this.listDetailed(prefix)).map((s) => s.key);
 

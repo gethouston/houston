@@ -1,9 +1,11 @@
 import type { Vfs } from "../vfs";
+import { loadWorkspaceKeys } from "./files-names";
 import {
   extOf,
   FileOpError,
   FilePathError,
   fileKey,
+  NAME_TAKEN,
   safeRel,
   workspaceRel,
 } from "./files-path";
@@ -15,7 +17,9 @@ import {
  * the vfs (cloud `<prefix>/workspace`, local `<Workspace>/<Agent>`).
  */
 
-// Path validation is part of this module's public surface (handler, tests).
+// Path validation and name comparison are part of this module's public
+// surface (handler, move/import ops, tests).
+export * from "./files-names";
 export * from "./files-path";
 
 export const FOLDER_KEEP = ".keep"; // marker that lets an empty folder show up in a listing
@@ -130,31 +134,19 @@ export async function deleteWorkspaceFile(
   await vfs.deleteKey(key);
 }
 
-/** Every storage key under `root`, for the existence questions the ops ask. */
-export async function workspaceKeys(
-  vfs: Vfs,
-  root: string,
-): Promise<ReadonlySet<string>> {
-  return new Set((await vfs.listDetailed(root)).map((s) => s.key));
-}
-
 /**
- * Whether `key` names something already there — a file's own key, or the prefix
- * of a directory's children, since a directory has no key of its own in an
- * object store.
+ * Whether a rename actually moved anything. A rename to the name the file
+ * already has is a no-op, and announcing a change that never happened makes
+ * every other client refetch its Files tab for nothing.
  */
-export function keyTaken(keys: ReadonlySet<string>, key: string): boolean {
-  if (keys.has(key)) return true;
-  for (const k of keys) if (k.startsWith(`${key}/`)) return true;
-  return false;
-}
+export type RenameOutcome = "renamed" | "unchanged";
 
 export async function renameWorkspaceFile(
   vfs: Vfs,
   root: string,
   rel: string,
   newName: string,
-): Promise<void> {
+): Promise<RenameOutcome> {
   const from = safeRel(rel);
   if (
     newName.includes("/") ||
@@ -169,18 +161,24 @@ export async function renameWorkspaceFile(
     : "";
   const fromKey = fileKey(root, from);
   const toKey = fileKey(root, `${parent}${newName}`);
-  if (toKey === fromKey) return; // the name it already has: nothing to move
+  if (toKey === fromKey) return "unchanged"; // the name it already has
   // A source that is gone (another tab deleted it, a stale listing) is the
   // user's state, not a server fault: answer 404 like the move op rather than
   // letting the vfs's generic "source not found" surface as a 500.
-  const keys = await workspaceKeys(vfs, root);
-  if (!keyTaken(keys, fromKey)) throw new FileOpError(404, "file not found");
+  const keys = await loadWorkspaceKeys(vfs, root);
+  if (!keys.taken(fromKey)) throw new FileOpError(404, "file not found");
   // Same wall the move op puts up: `rename(2)` and an object-store overwrite
   // both replace the destination without a word, so a name the user already
   // uses has to be refused here or their other file is simply gone.
-  if (keyTaken(keys, toKey))
-    throw new FileOpError(409, `"${newName}" already exists there`);
+  //
+  // Except when the destination is the file's OWN slot: on a case-insensitive
+  // disk `readme.md` → `README.md` is a legitimate re-spelling the user asked
+  // for, and reading it as a collision would make the rename impossible.
+  if (!keys.sameSlot(fromKey, toKey) && keys.taken(toKey)) {
+    throw new FileOpError(409, `"${newName}" already exists there`, NAME_TAKEN);
+  }
   await vfs.move(fromKey, toKey);
+  return "renamed";
 }
 
 export async function createWorkspaceFolder(

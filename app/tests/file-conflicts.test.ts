@@ -162,8 +162,24 @@ test("keepBothName never lands on a name either folder already uses", () => {
   assert.equal(detectRenameConflict(crowded, "report.pdf", name).kind, "clear");
 });
 
-test("isNameTakenError reads the host's 409, not its wording", () => {
-  assert.equal(isNameTakenError({ status: 409, message: "whatever" }), true);
+test("isNameTakenError reads the host's code, not its status or wording", () => {
+  // What the host actually sends (`turn/files.ts`), as the engine adapter
+  // hands it over: status + the parsed body.
+  assert.equal(
+    isNameTakenError({
+      status: 409,
+      body: { error: '"a.pdf" already exists there', code: "name_taken" },
+    }),
+    true,
+  );
+  // A DIFFERENT 409 on the same route must not inherit the taken-name copy.
+  assert.equal(
+    isNameTakenError({
+      status: 409,
+      body: { error: "workspace is read-only" },
+    }),
+    false,
+  );
   assert.equal(isNameTakenError({ status: 404 }), false);
   assert.equal(
     isNameTakenError(new Error('"a.pdf" already exists there')),

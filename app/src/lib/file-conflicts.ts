@@ -6,6 +6,7 @@
  * user a round trip that could only end in a refusal.
  */
 import type { FileEntry } from "@houston-ai/agent";
+import { shareErrorCode } from "./share-via-team.ts";
 
 /** Where `sourcePath` would land when moved into `toDir` (null = root). */
 export function moveTargetPath(
@@ -78,18 +79,24 @@ export function detectRenameConflict(
 }
 
 /**
- * True when the host refused a rename because the name is taken.
+ * The host's machine-readable reason for a refused rename or move (`FileOpCode`
+ * in `packages/host/src/turn/files-path.ts`, answered beside the 409).
+ */
+export const NAME_TAKEN_CODE = "name_taken";
+
+/**
+ * True when the host refused a rename because the name is taken — the race the
+ * listing cannot close: another writer, or the agent itself, took the name
+ * between the listing the UI read and the rename it sent.
  *
- * `files/rename` has exactly one 409 path — `renameWorkspaceFile`'s occupied
- * destination (`packages/host/src/turn/files-ops.ts`) — so the status alone
- * identifies the state, and the classifier never reads the English message
- * (which is the host's wording, not a contract). It is the race the listing
- * cannot close: another writer, or the agent itself, took the name between the
- * listing the UI read and the rename it sent.
+ * Keyed on the CODE, never the status and never the English message (the
+ * host's wording is not a contract). The status is what this used to read, and
+ * it cannot identify a state: the day `files/rename` grows a second 409 — a
+ * quota, a lock, a read-only workspace — every one of them would be explained
+ * to the user as a name collision and silenced from Sentry along with it.
  */
 export function isNameTakenError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
-  return (err as { status?: unknown }).status === 409;
+  return shareErrorCode(err) === NAME_TAKEN_CODE;
 }
 
 /**

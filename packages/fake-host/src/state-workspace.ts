@@ -135,7 +135,7 @@ export function importWorkspaceFiles(
   return paths;
 }
 
-/** Delete a file, or a folder with everything under it. */
+/** An empty folder, which exists only through the `.keep` marker under it. */
 export function createWorkspaceFolder(agentId: string, folder: string): string {
   writeWorkspaceFile(agentId, `${folder}/${KEEP}`, Buffer.alloc(0), Date.now());
   emitDomain("FilesChanged", agentId);

@@ -14,6 +14,7 @@ import {
   readWorkspaceFile,
   renameWorkspaceFile,
 } from "./files";
+import { moveWorkspaceEntry } from "./files-move";
 
 /**
  * The Files tab over an agent's workspace root, served by the host for every
@@ -143,6 +144,7 @@ test("renaming onto a name already in use is refused, both files intact", async 
   await expect(rejected).rejects.toBeInstanceOf(FileOpError);
   await expect(rejected).rejects.toMatchObject({
     status: 409,
+    code: "name_taken",
     message: '"taken.csv" already exists there',
   });
   expect(await readWorkspaceFile(objects, ROOT, "data/old.csv")).toEqual({
@@ -171,9 +173,63 @@ test("renaming onto an existing FOLDER's name is refused too", async () => {
 test("renaming a file to the name it already has changes nothing", async () => {
   const objects = new MemoryVfs();
   await seed(objects, "data/old.csv", "1,2,3");
-  await renameWorkspaceFile(objects, ROOT, "data/old.csv", "old.csv");
+  expect(
+    await renameWorkspaceFile(objects, ROOT, "data/old.csv", "old.csv"),
+  ).toBe("unchanged");
   expect(await readWorkspaceFile(objects, ROOT, "data/old.csv")).toEqual({
     content: "1,2,3",
+    base64: false,
+  });
+});
+
+/**
+ * A store that folds letter case — the macOS/Windows disk every desktop user
+ * runs on. The MemoryVfs stands in for it so these cases hold on a
+ * case-SENSITIVE CI volume too (`files-ops.fs.test.ts` proves the real disk
+ * agrees with whichever kind it is).
+ */
+const foldedVfs = () => new MemoryVfs({ keyCase: "folded" });
+
+test("a folded store refuses a rename that differs only in case from a sibling", async () => {
+  const objects = foldedVfs();
+  await objects.writeText(`${ROOT}/readme.md`, "kept");
+  await objects.writeText(`${ROOT}/notes.md`, "moved");
+  // Without the fold this passed the guard and `readme.md` was gone for good.
+  await expect(
+    renameWorkspaceFile(objects, ROOT, "notes.md", "README.md"),
+  ).rejects.toMatchObject({ status: 409, code: "name_taken" });
+  expect(await readWorkspaceFile(objects, ROOT, "readme.md")).toEqual({
+    content: "kept",
+    base64: false,
+  });
+  expect(await readWorkspaceFile(objects, ROOT, "notes.md")).toEqual({
+    content: "moved",
+    base64: false,
+  });
+});
+
+test("a folded store still performs a case-ONLY rename", async () => {
+  const objects = foldedVfs();
+  await objects.writeText(`${ROOT}/readme.md`, "doc");
+  // The destination is the file's own slot: a re-spelling, not a collision and
+  // not a no-op.
+  expect(
+    await renameWorkspaceFile(objects, ROOT, "readme.md", "README.md"),
+  ).toBe("renamed");
+  expect((await listWorkspace(objects, ROOT)).map((f) => f.name)).toEqual([
+    "README.md",
+  ]);
+});
+
+test("a folded store refuses a move onto a sibling that differs only in case", async () => {
+  const objects = foldedVfs();
+  await objects.writeText(`${ROOT}/Docs/Report.pdf`, "kept");
+  await objects.writeText(`${ROOT}/report.pdf`, "moved");
+  await expect(
+    moveWorkspaceEntry(objects, ROOT, "report.pdf", "Docs"),
+  ).rejects.toMatchObject({ status: 409, code: "name_taken" });
+  expect(await readWorkspaceFile(objects, ROOT, "Docs/Report.pdf")).toEqual({
+    content: "kept",
     base64: false,
   });
 });
@@ -418,9 +474,34 @@ test("POST files/rename onto a taken name is a 409 response body", async () => {
     new URLSearchParams(),
   );
   expect(state.status).toBe(409);
-  expect(JSON.parse(String(state.body)) as { error: string }).toEqual({
+  // The CODE is what the client matches on: a second 409 on this route would
+  // otherwise inherit the taken-name copy (`app/src/lib/file-conflicts.ts`).
+  expect(
+    JSON.parse(String(state.body)) as { error: string; code: string },
+  ).toEqual({
     error: '"taken.csv" already exists there',
+    code: "name_taken",
   });
+});
+
+test("a rename to the name the file already has announces nothing", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "Docs/a.txt", "a");
+  const events: string[] = [];
+  const handled = await handleFiles(
+    objects,
+    PATHS,
+    { workspace: {} as Workspace, agent: { id: "Houston/Bo" } as Agent },
+    "POST",
+    "files/rename",
+    fakeReq({ path: "Docs/a.txt", newName: "a.txt" }),
+    fakeRes().res,
+    new URLSearchParams(),
+    ((e: { type: string }) => events.push(e.type)) as never,
+  );
+  expect(handled).toBe(true);
+  // Nothing moved, so no other client has anything to refetch.
+  expect(events).toEqual([]);
 });
 
 test("every files mutation emits FilesChanged; reads do not", async () => {

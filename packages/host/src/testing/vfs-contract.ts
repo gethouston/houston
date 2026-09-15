@@ -30,6 +30,20 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       expect(await vfs.readBytes(`${P}/nope.bin`)).toBeNull();
     });
 
+    test("keyCase tells the truth about how this backend compares names", async () => {
+      // The collision guards in `turn/files-names.ts` trust this answer to
+      // decide whether a rename would destroy a neighbouring file, so an
+      // adapter that merely REPORTS a fold it does not perform (or hides one
+      // it does) is worse than no answer at all. Runs on either kind of CI
+      // volume: the assertion is the adapter's own claim, checked against it.
+      const vfs = make();
+      await vfs.writeText(`${P}/workspace/readme.md`, "doc");
+      const folded = (await vfs.keyCase()) === "folded";
+      expect(await vfs.readText(`${P}/workspace/README.md`)).toBe(
+        folded ? "doc" : null,
+      );
+    });
+
     test("readText drops a leading BOM; readBytes keeps the file verbatim", async () => {
       // A files-first doc can be written by any editor or agent, and plenty
       // emit a UTF-8 BOM. `JSON.parse` rejects one outright, so a BOM'd
@@ -153,6 +167,7 @@ export function prefixed(inner: Vfs, ns: string): Vfs {
   const k = (key: string) => `${ns}/${key}`;
   const unk = (key: string) => key.slice(ns.length + 1);
   return {
+    keyCase: () => inner.keyCase(),
     writeText: (key, c) => inner.writeText(k(key), c),
     writeBytes: (key, c) => inner.writeBytes(k(key), c),
     readText: (key) => inner.readText(k(key)),

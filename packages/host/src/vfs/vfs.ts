@@ -9,6 +9,17 @@ export interface ObjectStat {
 }
 
 /**
+ * How a backend decides that two keys name the SAME object.
+ *
+ * - `exact` — byte-for-byte: object stores, and Linux filesystems.
+ * - `folded` — letter case ignored, so `readme.md` and `README.md` are ONE
+ *   object. The macOS and Windows defaults, where a caller that checked for a
+ *   collision with an exact string compare walks straight into overwriting the
+ *   user's other file.
+ */
+export type KeyCase = "exact" | "folded";
+
+/**
  * The host's file-store port: keyed blobs under `ws/<workspaceId>/<agentId>/…`
  * prefixes — conversation listings, settings.json, the Files browser, agent
  * deletion. Impls: MemoryVfs (tests/dev), GcsVfs (cloud), FsVfs (local
@@ -19,6 +30,14 @@ export interface ObjectStat {
  * impl rejects traversal rather than trusting callers.
  */
 export interface Vfs {
+  /**
+   * How this backend compares keys — the question every op that must not
+   * destroy an existing object asks before it writes or moves, because
+   * `move`/`writeBytes` replace the destination in silence. Asynchronous
+   * because a real filesystem's answer is a property of the mounted VOLUME
+   * and can only be learned by asking it (see `fs-scratch.ts`).
+   */
+  keyCase(): Promise<KeyCase>;
   /** All keys under `prefix/` (sorted). */
   list(prefix: string): Promise<string[]>;
   /** Keys under `prefix/` with size + mtime (sorted by key) — drives the Files browser. */

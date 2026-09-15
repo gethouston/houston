@@ -1,5 +1,6 @@
 import type { Vfs } from "../vfs";
-import { FileOpError, FilePathError, fileKey, safeRel } from "./files-ops";
+import { loadWorkspaceKeys } from "./files-names";
+import { FileOpError, FilePathError, fileKey, safeRel } from "./files-path";
 
 /**
  * Uploads into an agent's workspace — the upload half of the Files tab
@@ -150,7 +151,10 @@ export async function importWorkspaceFiles(
   files: readonly UploadFile[],
 ): Promise<string[]> {
   const target = dir === null ? "" : safeRel(dir);
-  const existing = new Set((await vfs.listDetailed(root)).map((s) => s.key));
+  // Compared the storage's way: on a case-insensitive disk an upload named
+  // `report.pdf` lands ON the existing `Report.pdf`, so an exact-string dedupe
+  // hands the user a "saved" that silently replaced their file.
+  const existing = await loadWorkspaceKeys(vfs, root);
   const planned = files.map((f) => {
     const name = f.relPath
       ? safeUploadRelPath(f.relPath)
