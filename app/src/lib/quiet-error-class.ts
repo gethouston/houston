@@ -18,6 +18,7 @@
 import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported";
 import { isEngineWakingError } from "./engine-waking-error.ts";
 import { isNetworkTransportError } from "./network-transport-error.ts";
+import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error.ts";
 import { isNoBrowserFailure } from "./url-open-failure.ts";
 
 /** Doubles as the Sentry fingerprint, so the value is the issue's identity.
@@ -28,8 +29,20 @@ export type QuietErrorClass =
   | "engine_waking"
   | "offline"
   | "bridge_unsupported"
+  | "bridge_no_agent"
+  | "bridge_state"
   | "release_host_unavailable"
   | "no_url_handler";
+
+/** The SDK's own bridge retry state (`BridgeStateError`), seen by name and
+ *  shape so this module stays free of the SDK root. */
+function isBridgeStateError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    err.name === "BridgeStateError" &&
+    typeof (err as { status?: unknown }).status === "string"
+  );
+}
 
 /**
  * `bridge_unsupported` is the deployment honestly declining local models: the
@@ -44,10 +57,24 @@ export type QuietErrorClass =
  * fire-and-forget sites; this class catches the paths that keep the
  * rejection and report it, the codex loopback relay above all
  * (HOUSTON-APP-5EV, PRODUCT-1814): one fingerprinted warning, never a bug.
+ *
+ * `bridge_no_agent` is the bridge bootstrap asking for a runtime in a space
+ * whose validated agent list is empty (`NoAgentForProviderWriteError`): the
+ * bootstrap retry curve resolves it once an agent exists, and the connect
+ * dialog already shows "create an agent first". It filed one error per user
+ * per boot (HOUSTON-APP-5E0, PRODUCT-1833).
+ *
+ * `bridge_state` is the SDK's own bridge retry state (`model_unavailable`:
+ * the user's local server does not serve the model; `reconnecting`: the
+ * native session dropped). The bridge status surface shows it inline and the
+ * SDK retries on its own curve; each retry filed a red error
+ * (HOUSTON-APP-5E1, PRODUCT-1833). The state is the event's body.
  */
 export function classifyQuietError(err: unknown): QuietErrorClass | null {
   if (isNoBrowserFailure(err)) return "no_url_handler";
   if (isBridgeUnsupported(err)) return "bridge_unsupported";
+  if (isNoAgentForProviderWriteError(err)) return "bridge_no_agent";
+  if (isBridgeStateError(err)) return "bridge_state";
   if (isEngineWakingError(err)) return "engine_waking";
   if (isNetworkTransportError(err)) return "offline";
   return null;
