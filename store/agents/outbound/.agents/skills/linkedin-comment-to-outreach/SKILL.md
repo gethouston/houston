@@ -1,13 +1,14 @@
 ---
 name: linkedin-comment-to-outreach
-description: "Turn a single LinkedIn post URL into a paused cold email campaign in Instantly. I scrape every commenter, store them in Airtable, find verified emails through Apollo, co-write a 3-email sequence with you, then load it all into Instantly. End to end takes 30-60 minutes, most of it in the email copy. Always paused for your review - I never auto-launch. Use for higher-intent, lower-volume audiences (commenting takes effort)."
+description: Turn a single LinkedIn post URL into a paused cold email campaign in Instantly. I scrape every commenter, store them in Airtable, find verified emails through Apollo, co-write a 3-email sequence with you, then load it all into Instantly. End to end takes 30-60 minutes, most of it in the email copy. Always paused for your review - I never auto-launch. Use for higher-intent, lower-volume audiences (commenting takes effort).
 version: 1
+tags: []
+last_used: 2026-06-06
 category: Outbound
 featured: yes
-image: envelope-with-arrow
 integrations: [apify, airtable, apollo, instantly, linkedin]
+image: envelope-with-arrow
 ---
-
 
 # LinkedIn Comment to Outreach
 

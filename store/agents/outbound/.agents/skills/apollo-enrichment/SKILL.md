@@ -1,13 +1,13 @@
 ---
 name: apollo-enrichment
-description: "Find verified emails for a list of leads via Apollo's bulk match (batches of 10), update the Airtable rows with email + company + title + location, and create Apollo contacts under a named label so the leads show up in your Apollo CRM workflows. Phase 3 of both pipelines, runnable standalone if you have an Airtable table populated by the loader."
+description: Find verified emails for a list of leads via Apollo's bulk match (batches of 10), update the Airtable rows with email + company + title + location, and create Apollo contacts under a named label so the leads show up in your Apollo CRM workflows. Phase 3 of both pipelines, runnable standalone if you have an Airtable table populated by the loader.
 version: 1
+tags: []
+last_used: 2026-06-06
 category: Outbound
-featured: no
-image: magnifying-glass-tilted-left
 integrations: [airtable, apollo]
+image: magnifying-glass-tilted-left
 ---
-
 
 # Apollo Enrichment
 

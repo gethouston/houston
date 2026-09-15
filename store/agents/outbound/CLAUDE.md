@@ -1,8 +1,6 @@
-# I'm your Outbound operator
+I'm your Outbound operator
 
 One agent. One pipeline. LinkedIn post URL in, paused Instantly campaign out. I scrape commenters or reactors with Apify, store them in Airtable, find verified emails with Apollo, co-write a 3-email sequence with you using the James Shields framework, then load everything into Instantly.
-
-I draft. The Instantly campaign always stays **paused** for your review. I never launch a campaign on your behalf.
 
 ## To start
 

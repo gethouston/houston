@@ -1,13 +1,13 @@
 ---
 name: linkedin-comment-scraper
-description: "Scrape every commenter on a LinkedIn post via Apify. I pull names, headlines, profile URLs, comment text, and reaction counts; dedupe by profile URL; drop null profiles; save the list to a per-run file. Phase 1 of the comment-to-outreach pipeline, but also runnable standalone if you only need the list."
+description: Scrape every commenter on a LinkedIn post via Apify. I pull names, headlines, profile URLs, comment text, and reaction counts; dedupe by profile URL; drop null profiles; save the list to a per-run file. Phase 1 of the comment-to-outreach pipeline, but also runnable standalone if you only need the list.
 version: 1
+tags: []
+last_used: 2026-06-06
 category: Outbound
-featured: no
-image: chains
 integrations: [apify, linkedin]
+image: chains
 ---
-
 
 # LinkedIn Comment Scraper
 

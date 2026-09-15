@@ -1,0 +1,76 @@
+{
+  "name": "Outbound",
+  "description": "Turn a single LinkedIn post into a paused cold email campaign in Instantly. Scrape commenters or reactors with Apify, store them in Airtable, find verified emails through Apollo, co-write a 3-email sequence, then load everything into Instantly. The campaign always stays paused for your review - never auto-launched.",
+  "url": "https://outbound-agent-iota.vercel.app/api",
+  "version": "0.1.2",
+  "protocolVersion": "0.3",
+  "provider": {
+    "organization": "G-Forward",
+    "url": "https://g-forward.com"
+  },
+  "capabilities": {
+    "streaming": false,
+    "pushNotifications": false,
+    "stateTransitionHistory": false
+  },
+  "defaultInputModes": ["text"],
+  "defaultOutputModes": ["text"],
+  "skills": [
+    {
+      "id": "linkedin-comment-to-outreach",
+      "name": "LinkedIn Comment to Outreach",
+      "description": "Turn a single LinkedIn post URL into a paused cold email campaign in Instantly. Scrapes every commenter, enriches with Apollo, co-writes a 3-email sequence, loads into Instantly. Always paused for review.",
+      "tags": ["outbound", "cold-email", "linkedin", "prospecting", "instantly", "apollo", "airtable", "apify", "sdr"],
+      "examples": ["Run the LinkedIn pipeline on this post: https://linkedin.com/posts/...", "Scrape and email these commenters"]
+    },
+    {
+      "id": "linkedin-reaction-to-outreach",
+      "name": "LinkedIn Reaction to Outreach",
+      "description": "Same end-to-end pipeline as the comment version but for people who reacted to a LinkedIn post. 5-10x more leads with full LinkedIn profiles attached including experience, education, skills, and certifications.",
+      "tags": ["outbound", "cold-email", "linkedin", "prospecting", "instantly", "apollo", "airtable", "apify", "sdr"],
+      "examples": ["Scrape and email everyone who reacted to this post"]
+    },
+    {
+      "id": "linkedin-comment-scraper",
+      "name": "LinkedIn Comment Scraper",
+      "description": "Scrape every commenter on a LinkedIn post via Apify. Pulls names, headlines, profile URLs, comment text, and reaction counts. Deduped by profile URL.",
+      "tags": ["linkedin", "scraping", "apify", "prospecting", "leads"],
+      "examples": ["Scrape commenters from this LinkedIn post: https://linkedin.com/posts/..."]
+    },
+    {
+      "id": "linkedin-reaction-scraper",
+      "name": "LinkedIn Reaction Scraper",
+      "description": "Scrape every reactor on a LinkedIn post via Apify with full LinkedIn profiles: experience history, education, skills, certifications, location, connections count.",
+      "tags": ["linkedin", "scraping", "apify", "prospecting", "leads"],
+      "examples": ["Pull a list of who reacted to this post with their full profiles"]
+    },
+    {
+      "id": "airtable-lead-loader",
+      "name": "Airtable Lead Loader",
+      "description": "Create a new Airtable table with full lead-tracking schema and batch-load records using 4 parallel agents for 4x faster loading. Works around Airtable one-record-per-call limit.",
+      "tags": ["airtable", "leads", "crm", "outbound", "database"],
+      "examples": ["Load these leads into Airtable", "Create a new Airtable table for this list"]
+    },
+    {
+      "id": "apollo-enrichment",
+      "name": "Apollo Enrichment",
+      "description": "Find verified emails for a list of leads via Apollo bulk match in batches of 10. Updates Airtable rows with email, company, title, location and creates Apollo contacts under named labels.",
+      "tags": ["apollo", "email-enrichment", "prospecting", "outbound", "crm"],
+      "examples": ["Find emails for these leads", "Enrich this list with Apollo"]
+    },
+    {
+      "id": "cold-email-sequence",
+      "name": "Cold Email Sequence",
+      "description": "Co-write a 3-email cold outreach sequence using the James Shields framework: trigger-based subject, 3-sentence body, irresistible no-strings offer, one-word reply CTA. Each email locked with user before moving to next.",
+      "tags": ["cold-email", "copywriting", "outbound", "instantly", "james-shields"],
+      "examples": ["Write me a cold email sequence for these contacts", "Draft 3-email outreach for this audience"]
+    },
+    {
+      "id": "instantly-campaign",
+      "name": "Instantly Campaign",
+      "description": "Create a paused cold email campaign in Instantly with all leads loaded and all sending accounts attached. Sanitizes bodies for Instantly ampersand bug. Always paused for review - never auto-launched.",
+      "tags": ["instantly", "cold-email", "outbound", "campaign", "sdr"],
+      "examples": ["Load this sequence into Instantly", "Create the Instantly campaign for this list"]
+    }
+  ]
+}
