@@ -37,6 +37,31 @@ describe("product analytics catalogue", () => {
     }
   });
 
+  it("gathers the whole first-run funnel", () => {
+    // The steps between "the app opened" and "onboarding finished" are the
+    // funnel activation is read from: a name dropped here turns one stage of
+    // it into a silent gap that nothing in the app would ever complain about.
+    const FUNNEL = [
+      "onboarding_started",
+      "onboarding_step_viewed",
+      "onboarding_agreement_accepted",
+      "onboarding_segment_screen_viewed",
+      "onboarding_segment_continued",
+      "onboarding_industry_screen_viewed",
+      "onboarding_industry_continued",
+      "onboarding_goal_screen_viewed",
+      "onboarding_goal_continued",
+      "onboarding_completed",
+    ] as const;
+    for (const name of FUNNEL) {
+      strictEqual(
+        isProductEvent(name),
+        true,
+        `"${name}" is no longer gathered`,
+      );
+    }
+  });
+
   it("leaves the server-owned facts to the server", () => {
     for (const name of SERVER_OWNED_EVENTS) {
       ok(EVENTS.has(name), `AnalyticsEventName is missing "${name}"`);
@@ -80,6 +105,29 @@ describe("pickProductProps", () => {
   it("returns an empty payload for an event with no properties", () => {
     deepStrictEqual(pickProductProps("dictation_used", { source: "chat" }), {});
     deepStrictEqual(pickProductProps("session_started"), {});
+    deepStrictEqual(pickProductProps("onboarding_agreement_accepted"), {});
+  });
+
+  it("keeps the onboarding funnel's one property per step", () => {
+    deepStrictEqual(
+      pickProductProps("onboarding_started", {
+        source: "in_app_replay",
+        // The same call site's PostHog payload carries more; this is the only
+        // key the funnel reads, so it is the only one that leaves the device.
+        step: "welcome",
+      }),
+      { source: "in_app_replay" },
+    );
+    deepStrictEqual(
+      pickProductProps("onboarding_step_viewed", { step: "connect_ai" }),
+      { step: "connect_ai" },
+    );
+    deepStrictEqual(
+      pickProductProps("onboarding_industry_screen_viewed", {
+        source_screen: "profile_prompt",
+      }),
+      { source_screen: "profile_prompt" },
+    );
   });
 
   it("keeps booleans and finite numbers, drops everything unsendable", () => {

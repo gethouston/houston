@@ -8,10 +8,12 @@
  */
 
 import { analyticsSessionId } from "../analytics";
+import { reportError } from "../error-report";
 import { gatewayFetch, liveGatewayDeps } from "../gateway-fetch.ts";
+import { getInstallId } from "../install-id";
 import { osIsTauri } from "../os-bridge";
+import { createProductAnalyticsContext } from "./context.ts";
 import type {
-  ProductAnalyticsContext,
   ProductAnalyticsEvent,
   ProductAnalyticsSendResult,
   RejectedProductEvent,
@@ -22,13 +24,15 @@ const ROUTE = "/v1/analytics/events";
 const APP_VERSION =
   typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
 
-export function productAnalyticsContext(): ProductAnalyticsContext {
-  return {
-    session_id: analyticsSessionId(),
-    app_version: APP_VERSION,
-    platform: osIsTauri() ? "desktop" : "web",
-  };
-}
+/** This launch's device identity; the policy behind it is in `context.ts`. */
+const productAnalyticsContext = createProductAnalyticsContext({
+  sessionId: analyticsSessionId,
+  appVersion: APP_VERSION,
+  platform: () => (osIsTauri() ? "desktop" : "web"),
+  readInstallId: async () => (await getInstallId()).id,
+  onInstallIdFailure: (error) =>
+    reportError("product-analytics", "the install id could not be read", error),
+});
 
 /**
  * POSTs one batch. Resolves rather than throws for every expected outcome, so

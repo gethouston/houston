@@ -22,6 +22,14 @@ export interface ProductAnalyticsContext {
   readonly session_id: string;
   readonly app_version: string;
   readonly platform: "desktop" | "web";
+  /**
+   * This install's stable anonymous id (`lib/install-id.ts`), the one thing
+   * that tells two launches on the same machine apart from two machines.
+   * Optional because it is read through the engine and arrives an async hop
+   * after the app does: the batches that ship first simply carry no id
+   * (`context.ts`), and a flush never waits for it.
+   */
+  readonly install_id?: string;
 }
 
 export interface RejectedProductEvent {
