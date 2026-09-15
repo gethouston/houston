@@ -1,15 +1,23 @@
-export { isBridgeUnsupported } from "./unsupported";
+// Package self-reference, not a relative path: the app's node:test runner
+// loads this module through the `@houston/sdk/local-model-bridge/errors`
+// subpath, and node resolves no extensionless relative import.
+export { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported";
 
+export type BridgeState =
+  | "model_unavailable"
+  | "revoked"
+  | "authorization_required"
+  | "reconnect_required"
+  | "reconnecting";
+
+// Erasable syntax only (no parameter property): `quiet.ts` imports this class
+// and the app's node:test runner loads it through a package subpath.
 export class BridgeStateError extends Error {
-  constructor(
-    readonly status:
-      | "model_unavailable"
-      | "revoked"
-      | "authorization_required"
-      | "reconnect_required"
-      | "reconnecting",
-  ) {
+  readonly status: BridgeState;
+  constructor(status: BridgeState) {
     super(status);
+    this.name = "BridgeStateError";
+    this.status = status;
   }
 }
 export function isAuthorizationFailure(error: unknown) {
