@@ -1,4 +1,4 @@
-import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
+import type { Capabilities, OrgRole } from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free caps-only role logic for the multiplayer org surface. Mirrors

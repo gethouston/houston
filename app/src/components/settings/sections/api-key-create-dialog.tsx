@@ -1,3 +1,4 @@
+import type { ApiKeyCreated } from "@houston/engine-adapter";
 import {
   AsyncButton,
   Button,
@@ -9,7 +10,6 @@ import {
   DialogTitle,
   Input,
 } from "@houston-ai/core";
-import type { ApiKeyCreated } from "@houston-ai/engine-client";
 import { Check, Copy, TriangleAlert } from "lucide-react";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

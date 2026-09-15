@@ -3,9 +3,9 @@ import {
   hydrateProviderCatalog,
   PROVIDERS,
 } from "@houston/app/lib/providers.ts";
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { FAKE_TOKEN, type FakeHost, startFakeHost } from "@houston/fake-host";
 import { afterAll, beforeAll, expect, test } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
 
 /**
  * End-to-end guard for the AI Models page against the fake host: the app's

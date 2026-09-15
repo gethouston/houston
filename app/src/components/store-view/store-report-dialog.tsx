@@ -1,4 +1,4 @@
-import { reportStoreAgent } from "@houston-ai/engine-client";
+import { reportStoreAgent } from "@houston/engine-adapter";
 import { ReportDialog } from "./report-dialog";
 
 /**

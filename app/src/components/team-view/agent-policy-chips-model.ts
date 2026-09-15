@@ -1,8 +1,4 @@
-import type {
-  Agent,
-  AgentSettings,
-  OrgMember,
-} from "@houston-ai/engine-client";
+import type { Agent, AgentSettings, OrgMember } from "@houston/engine-adapter";
 import { isSharedWithEveryone } from "../agent/agent-access-model.ts";
 import {
   type AgentRosterInput,

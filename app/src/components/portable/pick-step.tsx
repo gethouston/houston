@@ -3,7 +3,7 @@
  * is implicit; skills, routines and learnings get per-item switches.
  */
 
-import type { PortableInventoryPreview } from "@houston-ai/engine-client";
+import type { PortableInventoryPreview } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import type { WizardSelection } from "../../lib/portable-share";
 import { humanize, Section, Subtle, SwitchRow } from "./wizard-parts";

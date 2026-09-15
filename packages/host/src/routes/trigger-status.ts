@@ -19,7 +19,7 @@ export const NO_TRIGGER_BACKEND_DETAIL =
 
 /**
  * GET /agents/:agentId/trigger-status — one item per trigger-bound routine, in
- * the `{ items }` shape the client parses (engine-client `agentTriggerStatus`).
+ * the `{ items }` shape the client parses (the adapter's `agentTriggerStatus`).
  * Schedule-only agents get `[]`.
  *
  * This TS host is never a trigger BACKEND: managed cloud's Go control plane owns

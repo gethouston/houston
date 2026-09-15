@@ -1,4 +1,4 @@
-import type { SidebarGroup, SidebarLayout } from "@houston-ai/engine-client";
+import type { SidebarGroup, SidebarLayout } from "@houston/engine-adapter";
 import type { Agent } from "./types";
 
 /** One resolved named group: the stored group plus its member agents in drag

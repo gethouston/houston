@@ -10,8 +10,8 @@ import { defineRouteFamily } from "./registry";
 /**
  * The read-only marketplace surface: skills.sh search/popular and GitHub repo
  * discovery. These touch no workspace, so they're served both agent-scoped
- * (skills-remote.ts — what the web/desktop adapter and the engine-client wire
- * call; the hosted gateway proxies ONLY /agents/:slug/*, so this is the shape
+ * (skills-remote.ts — what the engine adapter calls; the hosted gateway
+ * proxies ONLY /agents/:slug/*, so this is the shape
  * that works everywhere) and top-level (`/v1/skills/...` — kept for direct
  * host API callers). One directory instance per process so the skills.sh
  * cache + request spacing are global (mirrors the Rust engine's static cache).
@@ -32,9 +32,8 @@ const previews = new PreviewDirectory();
 export { directory as communityDirectory, previews as previewDirectory };
 
 /** Typed errors answer `{error: {code, message, kind, details: {kind}}}` so
- *  both `HoustonEngineError` shapes — the engine-client's (`details.kind`) and
- *  the web adapter's (`error.kind`) — surface the same taxonomy the Add Skills
- *  dialog matches on. */
+ *  both `HoustonEngineError` readings — `details.kind` and `error.kind` —
+ *  surface the same taxonomy the Add Skills dialog matches on. */
 export function failSkill(res: ServerResponse, err: unknown): void {
   if (err instanceof SkillRemoteError) {
     const code =

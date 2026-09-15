@@ -7,8 +7,8 @@ conversation core (`/version` → `protocol: 2`) is re-served by the host
 verbatim under `/v1/agents/:id/conversations/*`.
 
 Consumers: the host (`packages/host`), `@houston/runtime-client`
-(re-exports the conversation subset), `@houston-ai/engine-client` (the UI's
-client, rewritten onto this in convergence P2/P6). See `convergence/README.md`.
+(re-exports the conversation subset) and `@houston/engine-adapter` (the client
+every frontend makes its requests through).
 
 ## Route surface (v3)
 
@@ -52,8 +52,8 @@ v3; it is exposed through the host integration routes above.
 ## Rules
 
 - Shapes that survived from v1 are field-identical to v1 (wire mirrors the
-  on-disk `.houston` schemas; snake_case families stay snake_case) so the
-  engine-client rewrite is transport-only.
+  on-disk `.houston` schemas; snake_case families stay snake_case), so the
+  client rewrite that landed on v3 is transport-only.
 - UI gates affordances on `GET /v1/capabilities`, never on deployment checks.
 - Internal code gets no backwards compat: protocol changes land everywhere in
   one PR. User DATA compat is a different rule and lives in migrations.

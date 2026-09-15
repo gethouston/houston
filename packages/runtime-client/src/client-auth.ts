@@ -36,7 +36,7 @@ export abstract class EngineCredentialClient {
   // slugs, and for an arbitrary id it is what stops a `/` or `?` in the id from
   // splicing the path. It also buys a path the catalog generator can derive,
   // because an unescaped interpolation is refused rather than guessed
-  // (ui/engine-client/scripts/assistant-path-parts.ts).
+  // (scripts/assistant-catalog/assistant-path-parts.ts).
   /**
    * Start login for a provider. Returns a `LoginInfo`: `url` (local Claude or
    * co-located Codex, loopback), `auth_code` (headless Claude — open the url,

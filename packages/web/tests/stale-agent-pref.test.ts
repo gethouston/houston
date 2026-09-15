@@ -24,16 +24,16 @@ const { runtimeClientFor, setupRuntimeClientFor } = vi.hoisted(() => ({
   setupRuntimeClientFor: vi.fn(),
 }));
 
-vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
+vi.mock("@houston/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
     await importOriginal<
-      typeof import("../src/engine-adapter/control-plane")
+      typeof import("@houston/engine-adapter/control-plane")
     >();
   return { ...actual, runtimeClientFor, setupRuntimeClientFor };
 });
 
-import { HoustonClient } from "../src/engine-adapter/client";
-import { DEFAULT_AGENT_ID } from "../src/engine-adapter/synthetic";
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { DEFAULT_AGENT_ID } from "@houston/engine-adapter/synthetic";
 
 const PREF = "houston.pref.last_agent_id";
 const originalFetch = globalThis.fetch;

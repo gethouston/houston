@@ -1,0 +1,139 @@
+import { missionConversationId } from "@houston/domain";
+import type {
+  Activity,
+  ActivityUpdate,
+  AllConversationsResult,
+  ConversationEntry,
+  FailedAgentRead,
+  NewActivity,
+} from "@houston/wire-types";
+import * as activities from "../activities";
+import * as agents from "../agents";
+import { emitLocalEcho } from "../bus";
+import * as controlPlane from "../control-plane";
+import { deleteCachedConversation } from "../conversation-cache";
+import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
+
+export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
+  class Activities extends Base {
+    // ---- activities (board / missions) ----
+    // Cloud: the host serves them off the agent's workspace (.houston/activity).
+    // Standalone web: localStorage-backed (no host).
+    async listActivities(agentPath: string): Promise<Activity[]> {
+      // SDK delegates the read (byte-identical GET /agents/:id/activities); it
+      // returns the rows without publishing its scope, which nothing on web
+      // subscribes to. Standalone (no host) stays localStorage-backed.
+      if (this.ctx.cp)
+        return viaSdk(`${controlPlane.agentPath(agentPath)}/activities`, () =>
+          this.ctx.sdk.activities.list(agentPath),
+        );
+      return activities.listActivities(agentPath);
+    }
+    async createActivity(
+      agentPath: string,
+      input: NewActivity,
+    ): Promise<Activity> {
+      // SDK delegates the wire write (byte-identical POST
+      // /agents/:id/activities, no refetch); web keeps its own write-through
+      // echo. Standalone (no host) stays localStorage-backed.
+      const activity = this.ctx.cp
+        ? await viaSdk(`${controlPlane.agentPath(agentPath)}/activities`, () =>
+            this.ctx.sdk.activities.writes.create(agentPath, input),
+          )
+        : activities.createActivity(agentPath, input);
+      emitLocalEcho("ActivityChanged", { agentPath });
+      return activity;
+    }
+    async updateActivity(
+      agentPath: string,
+      id: string,
+      updates: ActivityUpdate,
+    ): Promise<Activity> {
+      // SDK delegates the wire write (byte-identical PATCH
+      // /agents/:id/activities/:id carrying the caller's whole `updates`, no
+      // refetch); web keeps its own write-through echo below.
+      const activity = this.ctx.cp
+        ? await viaSdk(
+            `${controlPlane.agentPath(agentPath)}/activities/${encodeURIComponent(id)}`,
+            () => this.ctx.sdk.activities.writes.update(agentPath, id, updates),
+          )
+        : activities.updateActivity(agentPath, id, updates);
+      emitLocalEcho("ActivityChanged", { agentPath });
+      return activity;
+    }
+    async deleteActivity(agentPath: string, id: string): Promise<void> {
+      // SDK delegates the wire write (byte-identical DELETE
+      // /agents/:id/activities/:id, no refetch).
+      if (this.ctx.cp)
+        await viaSdk(
+          `${controlPlane.agentPath(agentPath)}/activities/${encodeURIComponent(id)}`,
+          () => this.ctx.sdk.activities.writes.delete(agentPath, id),
+        );
+      else activities.deleteActivity(agentPath, id);
+      // The user deleted the chat — THIS is when its locally cached transcript
+      // goes too (a server 404 alone no longer drops it, HOU-731). Missions
+      // key their conversation `activity-<id>` (see setActivityStatus).
+      if (this.ctx.cp)
+        void deleteCachedConversation(agentPath, missionConversationId(id));
+      emitLocalEcho("ActivityChanged", { agentPath });
+    }
+
+    // ---- conversations (derived from activities) ----
+    async listConversations(agentPath: string): Promise<ConversationEntry[]> {
+      // NEVER a product name: this registry is localStorage-backed while the
+      // ACTIVITIES below come from the host, so a real agent misses here and
+      // the old `?? "Houston"` put the product's name on every card. The path
+      // is at least the agent's own identity; the app resolves the display
+      // name from the workspace roster anyway (`board/mission-card-agent.ts`).
+      const agentName = agents.agentNameByPath(agentPath) ?? agentPath;
+      // The board/missions list is derived from activities; in cloud those live on
+      // the host (this.listActivities un-fakes it), not localStorage.
+      const acts = await this.listActivities(agentPath);
+      return acts.map((a) =>
+        activities.activityToConversation(a, agentPath, agentName),
+      );
+    }
+    /**
+     * The cross-agent sweep: one read per agent, in parallel.
+     *
+     * PARTIAL-TOLERANT by contract (HOU-981). `Promise.all` rejected the whole
+     * sweep when a SINGLE agent's read failed — one pod that never woke blanked
+     * Mission Control, the sidebar badges, and the command palette for everyone
+     * else. `allSettled` keeps every agent that answered and REPORTS the ones
+     * that didn't, so the query layer can hold the failed agents' last-known
+     * rows and schedule a re-sweep instead of freezing a hole in cache.
+     *
+     * A sweep where EVERY agent failed is not partial — it is a failure, and it
+     * throws (the first reason) so the caller's error path runs.
+     */
+    async listAllConversations(
+      agentPaths: string[],
+    ): Promise<AllConversationsResult> {
+      const settled = await Promise.allSettled(
+        agentPaths.map((p) => this.listConversations(p)),
+      );
+      const conversations: ConversationEntry[] = [];
+      const failedAgents: FailedAgentRead[] = [];
+      settled.forEach((outcome, i) => {
+        if (outcome.status === "fulfilled") {
+          conversations.push(...outcome.value);
+          return;
+        }
+        // Never a silent drop: the agent is named in the log, and the caller
+        // gets it — WITH the reason, so the surface layer can tell a waking
+        // pod's 503 from a real failure — in `failedAgents`.
+        failedAgents.push({ agentPath: agentPaths[i], reason: outcome.reason });
+        console.warn(
+          `[activities] conversations read failed for ${agentPaths[i]}: ${String(
+            outcome.reason,
+          )}`,
+        );
+      });
+      if (agentPaths.length > 0 && failedAgents.length === agentPaths.length)
+        throw failedAgents[0].reason;
+      return { conversations, failedAgents };
+    }
+  }
+  return Activities;
+}

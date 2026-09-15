@@ -14,7 +14,7 @@
  *     so this never silently breaks when the disclaimer is bumped).
  *
  * The keys mirror the adapter's localStorage layout
- * (packages/web/src/engine-adapter/client.ts `getPreference` → `houston.pref.*`,
+ * (packages/engine-adapter/src/client.ts `getPreference` → `houston.pref.*`,
  * packages/web/src/engine-config.ts `NEW_ENGINE_STORAGE_KEY`).
  */
 import {

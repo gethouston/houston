@@ -2,7 +2,7 @@
  * Wire + view-model types and the typed string constants for the agents module.
  *
  * The `agents` scope snapshot is the SDK-canonical version of what the web
- * control-plane adapter builds today (`packages/web/src/engine-adapter/
+ * control-plane adapter builds today (`packages/engine-adapter/
  * control-plane.ts` `listAgents`): the host's `GET /agents` list, republished
  * whole on every change. Everything here is plain JSON — it crosses the
  * `getSnapshot`/`subscribe` boundary unchanged.

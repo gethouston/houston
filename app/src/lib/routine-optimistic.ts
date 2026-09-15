@@ -14,7 +14,7 @@
  * (`app/tests/routine-optimistic.test.ts`).
  */
 
-import type { Routine, RoutineUpdate } from "@houston-ai/engine-client";
+import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 
 export function applyOptimisticRoutineUpdate(
   current: Routine,

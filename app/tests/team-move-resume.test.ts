@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { AgentTeam } from "@houston-ai/engine-client";
+import type { AgentTeam } from "@houston/engine-adapter";
 import type { PendingTeamMove } from "../src/lib/pending-team-move.ts";
 import {
   completeTeamMovePostscript,

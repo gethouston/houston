@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   isHoustonEngineError,
   isSignedOutEngineError,
-} from "../src/engine-adapter/client/errors";
-import { cpFetch } from "../src/engine-adapter/cp/fetch";
+} from "@houston/engine-adapter/client/errors";
+import { cpFetch } from "@houston/engine-adapter/cp/fetch";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 // HOU-1106 (Sentry HOUSTON-APP-515): a sleep-wake reconnect leaves every live
 // query holding an expired bearer. The gateway answers 401, and the session

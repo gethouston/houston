@@ -1,4 +1,4 @@
-import type { IntegrationConnection } from "@houston-ai/engine-client";
+import type { IntegrationConnection } from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free derivations for the connected-apps read-model both catalog

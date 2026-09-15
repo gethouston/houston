@@ -1,8 +1,8 @@
 import { packAgent } from "@houston/domain";
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { previewUpload } from "@houston/engine-adapter/portable";
 import { agentColorId } from "@houston-ai/core";
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { previewUpload } from "../src/engine-adapter/portable";
 
 /**
  * The import wizard's confirm step: installing a parked `.houstonagent` is an

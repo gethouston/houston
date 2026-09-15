@@ -5,8 +5,8 @@
  * field, plus the next fire time), and the model pin.
  */
 
+import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { Button, Textarea } from "@houston-ai/core";
-import type { Routine, RoutineUpdate } from "@houston-ai/engine-client";
 import {
   cronSummary,
   describeNextFire,

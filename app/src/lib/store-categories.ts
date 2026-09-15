@@ -1,4 +1,4 @@
-import type { StoreCategory as StoreCategoryEntry } from "@houston-ai/engine-client";
+import type { StoreCategory as StoreCategoryEntry } from "@houston/engine-adapter";
 
 /**
  * The Agent Store's seeded category vocabulary (see the store's `db/seed.ts`).

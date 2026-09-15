@@ -85,7 +85,7 @@ const method = (name: string, bound: boolean) => ({
   name,
   source: resolve(
     repoRoot,
-    "packages/web/src/engine-adapter/client/example-mixin.ts",
+    "packages/engine-adapter/src/client/example-mixin.ts",
   ),
   bound,
   unbound: !bound,

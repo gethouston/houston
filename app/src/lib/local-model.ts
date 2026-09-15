@@ -1,6 +1,7 @@
 /** Discovery metadata and display helpers for the local model picker. */
+
+import type { CustomEndpoint } from "@houston/engine-adapter";
 import type { LocalBridgeStatus } from "@houston/sdk";
-import type { CustomEndpoint } from "@houston-ai/engine-client";
 
 export type LocalModelKind = "lmstudio" | "jan" | "ollama" | "unknown";
 export interface DetectedServer {

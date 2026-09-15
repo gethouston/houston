@@ -31,6 +31,12 @@ importers:
       '@houston/agentstore-contract':
         specifier: workspace:*
         version: link:packages/agentstore-contract
+      '@houston/domain':
+        specifier: workspace:*
+        version: link:packages/domain
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:packages/protocol
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -158,9 +164,6 @@ importers:
       '@houston-ai/core':
         specifier: workspace:*
         version: link:../ui/core
-      '@houston-ai/engine-client':
-        specifier: workspace:*
-        version: link:../ui/engine-client
       '@houston-ai/events':
         specifier: workspace:*
         version: link:../ui/events
@@ -185,6 +188,9 @@ importers:
       '@houston/design-tokens':
         specifier: workspace:*
         version: link:../packages/design-tokens
+      '@houston/engine-adapter':
+        specifier: workspace:*
+        version: link:../packages/engine-adapter
       '@houston/protocol':
         specifier: workspace:*
         version: link:../packages/protocol
@@ -194,6 +200,9 @@ importers:
       '@houston/sdk':
         specifier: workspace:*
         version: link:../packages/sdk
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../packages/wire-types
       '@sentry/browser':
         specifier: 10.63.0
         version: 10.63.0
@@ -409,6 +418,46 @@ importers:
       vitest:
         specifier: 3.2.6
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/engine-adapter:
+    dependencies:
+      '@houston-ai/core':
+        specifier: workspace:*
+        version: link:../../ui/core
+      '@houston/agentstore-client':
+        specifier: workspace:*
+        version: link:../agentstore-client
+      '@houston/agentstore-contract':
+        specifier: workspace:*
+        version: link:../agentstore-contract
+      '@houston/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@houston/runtime-client':
+        specifier: workspace:*
+        version: link:../runtime-client
+      '@houston/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../wire-types
+    devDependencies:
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260607.1
+        version: 7.0.0-dev.20260607.1
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+      vitest:
+        specifier: 3.2.6
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
 
   packages/fake-host:
     dependencies:
@@ -665,9 +714,6 @@ importers:
       '@houston-ai/core':
         specifier: workspace:*
         version: link:../../ui/core
-      '@houston-ai/engine-client':
-        specifier: workspace:*
-        version: link:../../ui/engine-client
       '@houston-ai/events':
         specifier: workspace:*
         version: link:../../ui/events
@@ -692,6 +738,9 @@ importers:
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
+      '@houston/engine-adapter':
+        specifier: workspace:*
+        version: link:../engine-adapter
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -701,6 +750,9 @@ importers:
       '@houston/sdk':
         specifier: workspace:*
         version: link:../sdk
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../wire-types
       '@sentry/browser':
         specifier: 10.63.0
         version: 10.63.0
@@ -795,6 +847,22 @@ importers:
       vitest:
         specifier: 3.2.6
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/wire-types:
+    dependencies:
+      '@houston/agentstore-client':
+        specifier: workspace:*
+        version: link:../agentstore-client
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260607.1
+        version: 7.0.0-dev.20260607.1
+      vitest:
+        specifier: 3.2.6
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
 
   ui/agent:
     dependencies:
@@ -944,25 +1012,6 @@ importers:
       tailwindcss:
         specifier: ^4.0.0
         version: 4.3.2
-
-  ui/engine-client:
-    dependencies:
-      '@houston/agentstore-client':
-        specifier: workspace:*
-        version: link:../../packages/agentstore-client
-      '@houston/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
-    devDependencies:
-      '@houston/domain':
-        specifier: workspace:*
-        version: link:../../packages/domain
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
-      vitest:
-        specifier: 3.2.6
-        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
 
   ui/events:
     dependencies:
@@ -7550,11 +7599,6 @@ packages:
         optional: true
       typeorm-aurora-data-api-driver:
         optional: true
-
-  typescript@5.9.3:
-    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
-    engines: {node: '>=14.17'}
-    hasBin: true
 
   typescript@6.0.3:
     resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
@@ -15236,8 +15280,6 @@ snapshots:
     transitivePeerDependencies:
       - babel-plugin-macros
       - supports-color
-
-  typescript@5.9.3: {}
 
   typescript@6.0.3: {}
 

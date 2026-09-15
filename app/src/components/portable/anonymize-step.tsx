@@ -3,6 +3,7 @@
  * picked content, reviewing every change side by side before it leaves.
  */
 
+import type { PortableAnonymizeResponse } from "@houston/engine-adapter";
 import {
   Button,
   Switch,
@@ -10,7 +11,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import type { PortableAnonymizeResponse } from "@houston-ai/engine-client";
 import { Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AnonymizeAccept } from "../../lib/portable-share";

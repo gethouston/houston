@@ -1,3 +1,4 @@
+import type { WebhookKeyReveal } from "@houston/engine-adapter";
 import {
   Button,
   Dialog,
@@ -7,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import type { WebhookKeyReveal } from "@houston-ai/engine-client";
 import { Check, Copy, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";

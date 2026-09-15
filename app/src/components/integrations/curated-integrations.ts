@@ -2,7 +2,7 @@ import type {
   AddCustomIntegrationInput,
   CustomIntegrationView,
   IntegrationToolkit,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { CURATED_INTEGRATIONS } from "./curated-entries.ts";
 import type { CuratedAuthMode, CuratedIntegration } from "./curated-entry.ts";
 

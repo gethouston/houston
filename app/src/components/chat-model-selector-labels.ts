@@ -5,8 +5,8 @@
  * only thing here.
  */
 
+import type { Capabilities, CredentialScope } from "@houston/engine-adapter";
 import type { ModelPickerLabels } from "@houston-ai/core";
-import type { Capabilities, CredentialScope } from "@houston-ai/engine-client";
 import type { useTranslation } from "react-i18next";
 import { canSeeAiModelsPage } from "../lib/org-roles.ts";
 

@@ -1,14 +1,14 @@
-import { conversationScope } from "@houston/sdk";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
+import { HoustonClient } from "@houston/engine-adapter/client";
 import {
   type CachedFrame,
   type CacheRecord,
   type ConversationCacheBackend,
   setConversationCacheBackend,
   setConversationCacheIdentity,
-} from "../src/engine-adapter/conversation-cache";
-import { conversationStore } from "../src/engine-adapter/vm";
+} from "@houston/engine-adapter/conversation-cache";
+import { conversationStore } from "@houston/engine-adapter/vm";
+import { conversationScope } from "@houston/sdk";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 /**
  * loadChatHistory × the local conversation cache (HOU-712): opening a cloud

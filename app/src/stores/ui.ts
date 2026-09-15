@@ -1,4 +1,4 @@
-import type { PortableUploadPreviewResponse } from "@houston-ai/engine-client";
+import type { PortableUploadPreviewResponse } from "@houston/engine-adapter";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {

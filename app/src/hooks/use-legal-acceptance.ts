@@ -1,7 +1,7 @@
 import {
   LEGAL_ACCEPTANCE_KEY,
   type LegalAcceptance,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useCallback } from "react";

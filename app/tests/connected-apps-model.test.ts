@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { IntegrationConnection } from "@houston-ai/engine-client";
+import type { IntegrationConnection } from "@houston/engine-adapter";
 import {
   catalogHiddenToolkits,
   groupAccounts,

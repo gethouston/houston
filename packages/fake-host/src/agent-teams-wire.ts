@@ -22,7 +22,7 @@ import {
 import type { CpAgent, FakeAgentTeam } from "./state-store";
 import { emitDomain, SELF_USER_ID, state } from "./state-store";
 
-/** The wire shape of one team (`AgentTeam` in `@houston-ai/engine-client`). */
+/** The wire shape of one team (`AgentTeam` in `@houston/engine-adapter`). */
 export interface AgentTeamWire extends FakeAgentTeam {
   agentSlugs: string[];
   memberCount: number;

@@ -8,7 +8,7 @@
  * place, at module scope.
  */
 
-import type { FailedAgentRead } from "@houston-ai/engine-client";
+import type { FailedAgentRead } from "@houston/engine-adapter";
 import type { QueryClient } from "@tanstack/react-query";
 import { isStaleRosterReadError } from "../../lib/agent-gone";
 import {

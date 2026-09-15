@@ -3,7 +3,7 @@
  * rules are unit-testable under node:test.
  */
 
-import type { StoreCatalogAgent } from "@houston-ai/engine-client";
+import type { StoreCatalogAgent } from "@houston/engine-adapter";
 
 /** The art a listing renders: its emoji when it shipped one, else the name's
  *  first grapheme as a letter avatar. URL icons render as letters too — the

@@ -10,7 +10,7 @@ import {
 import { ui } from "./styles";
 
 // The full Houston desktop UI. Lazily imported so its module graph (and the
-// engine-adapter behind @houston-ai/engine-client) only evaluates after the
+// engine-adapter behind @houston/engine-adapter) only evaluates after the
 // engine config global is set and a provider is connected.
 const AppTree = lazy(() => import("../app-tree"));
 

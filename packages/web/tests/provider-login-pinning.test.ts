@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({
   runtimeClientFor: vi.fn(),
 }));
 
-vi.mock("../src/engine-adapter/control-plane", () => ({
+vi.mock("@houston/engine-adapter/control-plane", () => ({
   agentPath: (id: string) => `/agents/${encodeURIComponent(id)}`,
   agentIdOfPath: () => null,
   runtimeClientFor: mocks.runtimeClientFor.mockImplementation(() => ({
@@ -37,10 +37,10 @@ beforeEach(() => {
 });
 
 const { pinnedLoginAgentId, loginKey } = await import(
-  "../src/engine-adapter/client/provider-login-poll"
+  "@houston/engine-adapter/client/provider-login-poll"
 );
 const { ProviderLoginMixin } = await import(
-  "../src/engine-adapter/client/provider-login-mixin"
+  "@houston/engine-adapter/client/provider-login-mixin"
 );
 
 type Ctx = {

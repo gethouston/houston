@@ -12,7 +12,7 @@
  * probes the provider through hooks; the grid's slot takes the rendered node.
  */
 
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import { useRoutineModelResolution } from "../../hooks/use-routine-model-resolution";
 import { useRoutineProviderHealth } from "../../hooks/use-routine-provider-health";
 import { routineHealthBlocksRun } from "../../lib/routine-provider-health";

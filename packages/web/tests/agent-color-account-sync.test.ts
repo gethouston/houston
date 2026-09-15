@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
+import { HoustonClient } from "@houston/engine-adapter/client";
 import {
   clearColor,
   flushAgentColorPushes,
@@ -8,8 +7,9 @@ import {
   setColor,
   setOverlayWriteListener,
   syncAgentColors,
-} from "../src/engine-adapter/control-plane";
-import { DEFAULT_AGENT_COLOR } from "../src/engine-adapter/synthetic";
+} from "@houston/engine-adapter/control-plane";
+import { DEFAULT_AGENT_COLOR } from "@houston/engine-adapter/synthetic";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 /**
  * PRODUCT-1344: an agent's color must survive sign-out and follow the account.

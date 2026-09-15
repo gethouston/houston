@@ -29,8 +29,8 @@ echo "Bumping all packages to v$VERSION..."
 
 # --- npm packages -----------------------------------------------------------
 # Only the packages that share the Houston version line. ui/agent,
-# ui/agent-schemas, ui/engine-client, ui/sync-protocol are versioned
-# independently and are intentionally excluded.
+# ui/agent-schemas, packages/wire-types are versioned independently and are
+# intentionally excluded.
 #
 # Rewrite ONLY the top-level "version" key. Dependencies are keyed by package
 # name (never the literal "version"), so the first `"version":` line is always

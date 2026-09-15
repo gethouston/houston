@@ -1,6 +1,6 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { AuditEntry, Capabilities } from "@houston-ai/engine-client";
+import type { AuditEntry, Capabilities } from "@houston/engine-adapter";
 import {
   AUDIT_PAGE_SIZE,
   canSeeOrganization,

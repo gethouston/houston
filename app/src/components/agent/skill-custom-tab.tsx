@@ -1,5 +1,5 @@
+import type { Activity } from "@houston/engine-adapter";
 import { Button, CatalogGrid, CatalogRow } from "@houston-ai/core";
-import type { Activity } from "@houston-ai/engine-client";
 import { Plus, Sparkles, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";

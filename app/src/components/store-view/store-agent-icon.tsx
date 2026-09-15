@@ -1,4 +1,4 @@
-import type { StoreCatalogAgent } from "@houston-ai/engine-client";
+import type { StoreCatalogAgent } from "@houston/engine-adapter";
 import { storeAgentGlyph } from "./store-view-model";
 
 /**

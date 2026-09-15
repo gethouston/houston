@@ -1,4 +1,4 @@
-import type { IntegrationConnection } from "@houston-ai/engine-client";
+import type { IntegrationConnection } from "@houston/engine-adapter";
 import type { FlowEntry } from "./connect-flow-registry.ts";
 import {
   POLL_INTERVAL_MS,

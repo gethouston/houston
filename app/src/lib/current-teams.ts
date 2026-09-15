@@ -13,7 +13,7 @@
  * importing the other for it would close a cycle.
  */
 
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 import { getCurrentAgentTeams } from "../hooks/queries/use-agent-teams.ts";
 import { getCurrentSidebarLayout } from "../hooks/use-sidebar-layout.ts";
 import { useAgentStore } from "../stores/agents.ts";

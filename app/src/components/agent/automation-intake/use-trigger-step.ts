@@ -1,4 +1,4 @@
-import type { TriggerType } from "@houston-ai/engine-client";
+import type { TriggerType } from "@houston/engine-adapter";
 import type { TriggerApp } from "@houston-ai/routines";
 import { useMemo, useState } from "react";
 import { useTriggerTypes } from "../../../hooks/queries/use-triggers";

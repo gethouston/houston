@@ -1,15 +1,14 @@
-import { afterEach, expect, test, vi } from "vitest";
 import {
   cpFetch,
   gatewayAuthFetch,
   subscribeEvents,
-} from "../src/engine-adapter/control-plane";
+} from "@houston/engine-adapter/control-plane";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
- * Active-space plumbing on the HOSTED path (C8 §Active space). The web adapter
- * is the client every cloud build actually runs, so the `x-houston-org` header
- * and the SSE `?org=` fallback have to land here — not only on the
- * engine-client shim surface.
+ * Active-space plumbing on the HOSTED path (C8 §Active space). The engine
+ * adapter's transport is what every cloud build actually runs, so the
+ * `x-houston-org` header and the SSE `?org=` fallback have to land here.
  *
  * - `gatewayAuthFetch` injects `x-houston-org` from a live getter (present when
  *   a team space is active, absent for personal), re-read per attempt so a 401

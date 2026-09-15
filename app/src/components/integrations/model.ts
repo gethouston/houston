@@ -1,8 +1,8 @@
-import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   Capabilities,
   IntegrationConnection,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import type { IntegrationProviderId } from "@houston/protocol";
 import { isIntegrationConnectionGoneError } from "../../lib/integration-connection-gone.ts";
 
 /**

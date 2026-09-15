@@ -5,7 +5,7 @@
  * `GET /conversations/:id/events` and the global reactivity feed rides
  * `GET /v1/events`. Both are `fetch` + ReadableStream on the client (see
  * packages/runtime-client/src/client.ts `streamEvents` and
- * packages/web/src/engine-adapter/control-plane.ts `subscribeEvents`), framing
+ * packages/engine-adapter/src/control-plane.ts `subscribeEvents`), framing
  * on `\n\n` and reading only `data:` lines. Conversation frames are encoded by
  * the SAME `formatSseFrame` the real servers use (id: <seq> resume line +
  * data: envelope) so the wire can't drift from the contract.

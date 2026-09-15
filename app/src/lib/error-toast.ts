@@ -1,4 +1,4 @@
-import { isSignedOutEngineError } from "@houston-ai/engine-client";
+import { isSignedOutEngineError } from "@houston/engine-adapter";
 import { useUIStore } from "../stores/ui";
 import { isAgentWarmingRefusal } from "./agent-warming-refusal";
 import { analytics, classifyAnalyticsError } from "./analytics";

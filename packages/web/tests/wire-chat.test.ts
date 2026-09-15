@@ -1,6 +1,6 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { CHAT_OPEN_WINDOW } from "@houston/engine-adapter/history-window";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { CHAT_OPEN_WINDOW } from "../src/engine-adapter/history-window";
 import {
   type Call,
   createWireCapture,

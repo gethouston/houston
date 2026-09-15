@@ -1,7 +1,7 @@
 /**
  * Web entry point. The Houston host is the only engine — the full desktop UI
  * (app/src) always runs against it (vite.config aliases
- * `@houston-ai/engine-client` to the host adapter). Which root mounts depends
+ * `@houston/engine-adapter` to the host adapter). Which root mounts depends
  * only on the deployment:
  *
  *  - **Cloud host** (`VITE_CONTROL_PLANE_URL`): the app's own GCIP (Firebase)

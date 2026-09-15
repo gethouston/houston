@@ -1,3 +1,4 @@
+import type { CustomIntegrationView } from "@houston/engine-adapter";
 import {
   Dialog,
   DialogContent,
@@ -5,7 +6,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { MessageCircle, Wrench } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

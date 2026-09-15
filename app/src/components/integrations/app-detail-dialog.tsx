@@ -1,5 +1,5 @@
+import type { IntegrationConnection } from "@houston/engine-adapter";
 import { CatalogDetailDialog } from "@houston-ai/core";
-import type { IntegrationConnection } from "@houston-ai/engine-client";
 import { Plus, RotateCw, Unplug } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { accountRowLabel } from "./account-display";

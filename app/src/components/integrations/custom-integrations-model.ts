@@ -1,7 +1,7 @@
 import type {
   CustomAuthMethod,
   CustomIntegrationView,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 
 /** The i18n badge key for a custom integration's connection type. User-facing
  *  copy says "API" / "MCP server", never "OpenAPI" / "MCP" bare. */

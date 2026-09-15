@@ -1,12 +1,12 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { HoustonEngineError } from "../../packages/web/src/engine-adapter/client/errors.ts";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import {
   isExpectedSkillPreviewError,
   isUnavailableSkillError,
 } from "../src/lib/skill-install-expected-state.ts";
 
-/** The engine-client's error exposes `kind` from `error.details.kind`. */
+/** The engine adapter's error exposes `kind` from `error.details.kind`. */
 function engineClientError(kind: string, status = 404): Error {
   return Object.assign(new Error(`engine error (${kind})`), {
     name: "HoustonEngineError",
@@ -28,7 +28,7 @@ describe("isUnavailableSkillError (PRODUCT-1729)", () => {
     strictEqual(isUnavailableSkillError(err), true);
   });
 
-  it("treats a deleted repo as expected on the engine-client's shape", () => {
+  it("treats a deleted repo as expected on the engine adapter's shape", () => {
     strictEqual(
       isUnavailableSkillError(engineClientError("repo_not_found")),
       true,

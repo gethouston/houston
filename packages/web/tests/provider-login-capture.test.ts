@@ -1,5 +1,5 @@
+import { bus } from "@houston/engine-adapter/bus";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { bus } from "../src/engine-adapter/bus";
 
 const mocks = vi.hoisted(() => ({
   captureCredential: vi.fn<() => Promise<void>>(),
@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   authStatus: vi.fn(),
 }));
 
-vi.mock("../src/engine-adapter/control-plane", () => ({
+vi.mock("@houston/engine-adapter/control-plane", () => ({
   agentPath: (id: string) => `/agents/${encodeURIComponent(id)}`,
   agentIdOfPath: () => null,
   runtimeClientFor: () => ({
@@ -18,7 +18,7 @@ vi.mock("../src/engine-adapter/control-plane", () => ({
 }));
 
 const { pollProviderConnect } = await import(
-  "../src/engine-adapter/client/provider-login-poll"
+  "@houston/engine-adapter/client/provider-login-poll"
 );
 
 beforeEach(() => {

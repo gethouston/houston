@@ -1,9 +1,9 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
+import { HoustonClient } from "@houston/engine-adapter/client";
 import {
   isEmptySidebarLayout,
   shouldSeedHostLayout,
-} from "../src/engine-adapter/client/sidebar-layout-store";
+} from "@houston/engine-adapter/client/sidebar-layout-store";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 /**
  * Where the sidebar's order + grouping is persisted, per deployment.

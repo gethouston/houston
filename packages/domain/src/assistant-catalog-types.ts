@@ -19,7 +19,7 @@ export type AssistantEntityCollection =
  * host imports as a module — embedded at build time, never located on disk —
  * to describe and dispatch user-facing Houston operations.
  *
- * Declared ONCE, here, because the writer (`ui/engine-client/scripts`) and the
+ * Declared ONCE, here, because the writer (`scripts/assistant-catalog`) and the
  * reader (`packages/host/src/assistant`) sit in different packages and nothing
  * else makes them agree: two hand-kept copies of a wire shape drift, and the
  * drift surfaces as a catalog the host silently refuses to load — the whole

@@ -1,6 +1,6 @@
+import { bus } from "@houston/engine-adapter/bus";
+import { createBusFeedOutput } from "@houston/engine-adapter/feed-output";
 import { expect, test } from "vitest";
-import { bus } from "../src/engine-adapter/bus";
-import { createBusFeedOutput } from "../src/engine-adapter/feed-output";
 
 /**
  * The web adapter's bus-backed FeedOutput: it emits the exact FeedItem /

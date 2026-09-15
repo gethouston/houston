@@ -16,6 +16,10 @@
  * agent from scratch.
  */
 
+import type {
+  PortableScanResponse,
+  PortableUploadPreviewResponse,
+} from "@houston/engine-adapter";
 import {
   AGENT_COLORS,
   Button,
@@ -27,10 +31,6 @@ import {
   Input,
   resolveAgentColor,
 } from "@houston-ai/core";
-import type {
-  PortableScanResponse,
-  PortableUploadPreviewResponse,
-} from "@houston-ai/engine-client";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";

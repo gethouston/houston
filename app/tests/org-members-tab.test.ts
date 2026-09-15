@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { OrgMember } from "@houston-ai/engine-client";
+import type { OrgMember } from "@houston/engine-adapter";
 import {
   canEditMember,
   describeAddResult,

@@ -1,4 +1,4 @@
-import type { ProviderUsage } from "@houston-ai/engine-client";
+import type { ProviderUsage } from "@houston/engine-adapter";
 import type { ProviderConnectionState } from "../../lib/provider-connection.ts";
 import { toCanonicalProviderId } from "../../lib/provider-overrides.ts";
 import { type ProviderInfo, providerGatewayIds } from "../../lib/providers.ts";

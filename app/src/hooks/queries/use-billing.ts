@@ -1,4 +1,4 @@
-import type { BillingSummary } from "@houston-ai/engine-client";
+import type { BillingSummary } from "@houston/engine-adapter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { canSeeBillingTab } from "../../lib/billing-gates";
 import { queryKeys } from "../../lib/query-keys";
@@ -23,7 +23,7 @@ import { useCapabilities } from "../use-capabilities";
  * the new space — NOT duplicated here) and returning to the window
  * (`refetchOnWindowFocus`), which catches an expiry that elapsed while away.
  *
- * The wire calls route through `tauriOrg.*` → the engine client's `call()`
+ * The wire calls route through `tauriOrg.*` → the engine adapter's `call()`
  * wrapper, which surfaces any failure once as a red bug toast + Sentry report
  * (the required no-silent-failures path). So these hooks carry no `onError` — a
  * second toast would double up (same as `use-orgs.ts` / `use-spaces.ts`).

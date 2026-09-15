@@ -11,7 +11,7 @@
  * (visibility + the allowed-models ceiling) stays one implementation.
  */
 
-import type { Routine, RoutineUpdate } from "@houston-ai/engine-client";
+import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoutineWritesForAnyAgent } from "../../hooks/queries";

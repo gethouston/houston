@@ -1,4 +1,4 @@
-import type { StoreCatalogAgent } from "@houston-ai/engine-client";
+import type { StoreCatalogAgent } from "@houston/engine-adapter";
 import { ChevronRight, Store } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { PageHeader } from "../shell/page-header/page-header";

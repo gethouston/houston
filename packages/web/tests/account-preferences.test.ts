@@ -1,5 +1,5 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
 
 /**
  * HOU-732: account-level preferences must reach the ENGINE, not this browser's

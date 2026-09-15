@@ -1,4 +1,4 @@
-import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
+import type { AgentTeam, SidebarLayout } from "@houston/engine-adapter";
 import type { Agent } from "./types.ts";
 
 /**

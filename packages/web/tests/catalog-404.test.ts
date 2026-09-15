@@ -1,8 +1,8 @@
-import { afterEach, expect, test, vi } from "vitest";
 import {
   HoustonClient,
   HoustonEngineError,
-} from "../src/engine-adapter/client";
+} from "@houston/engine-adapter/client";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
  * `getCatalog()` must NOT silently degrade a 404 to `[]`. That degrade is what

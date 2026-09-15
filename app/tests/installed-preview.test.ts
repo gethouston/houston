@@ -4,7 +4,7 @@ import type {
   CustomIntegrationView,
   IntegrationConnection,
   IntegrationToolkit,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import type { AppDisplay } from "../src/components/integrations/app-display.ts";
 import {
   filterInstalled,

@@ -1,8 +1,11 @@
+import {
+  cpFetch,
+  gatewayAuthFetch,
+} from "@houston/engine-adapter/control-plane";
+import { resetRejectedBearers } from "@houston/engine-adapter/cp/bearer-recovery";
+import { REJECTED_MINT_VERIFY_DELAY_MS } from "@houston/engine-adapter/cp/rejected-mint";
+import { refreshLiveToken } from "@houston/engine-adapter/session-refresh";
 import { afterEach, expect, test, vi } from "vitest";
-import { cpFetch, gatewayAuthFetch } from "../src/engine-adapter/control-plane";
-import { resetRejectedBearers } from "../src/engine-adapter/cp/bearer-recovery";
-import { REJECTED_MINT_VERIFY_DELAY_MS } from "../src/engine-adapter/cp/rejected-mint";
-import { refreshLiveToken } from "../src/engine-adapter/session-refresh";
 
 /**
  * The 401 → refresh → replay seam (HOU-687): a gateway roll (or an access

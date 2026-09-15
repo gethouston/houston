@@ -13,11 +13,11 @@
  * a relaunch the flush falls back to the message text alone.
  */
 
-import type { ActivityStatus } from "@houston-ai/engine-client";
+import type { ActivityStatus } from "@houston/engine-adapter";
 import {
   type MessageMention,
   pushPendingUserMessage,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { getConversationFeed } from "../hooks/use-conversation-vm";
 import { actingUser } from "./acting-user";
 import { isAgentGoneError } from "./agent-gone";

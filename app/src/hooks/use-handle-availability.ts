@@ -3,7 +3,7 @@ import {
   normalizeHandle,
   RESERVED_HANDLES,
 } from "@houston/agentstore-contract";
-import type { HandleAvailability } from "@houston-ai/engine-client";
+import type { HandleAvailability } from "@houston/engine-adapter";
 import { useEffect, useState } from "react";
 import { getEngine } from "../lib/engine";
 import { reportError } from "../lib/error-report";

@@ -1,4 +1,4 @@
-import type { CreatorLinks } from "@houston-ai/engine-client";
+import type { CreatorLinks } from "@houston/engine-adapter";
 import {
   Github,
   Globe,

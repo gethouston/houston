@@ -1,4 +1,4 @@
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { activityQueryOptions } from "../../../hooks/queries";

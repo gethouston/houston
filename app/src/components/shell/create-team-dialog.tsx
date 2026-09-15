@@ -61,7 +61,7 @@ export function CreateTeamDialog({ open, onOpenChange }: Props) {
     if (!validation.ok || submitting) return;
     // `.mutate` (not `mutateAsync`): its promise is handled inside React Query,
     // so a rejection never leaks as an unhandled rejection. `useCreateTeam`
-    // routes through the engine client's `call()` wrapper, which already
+    // routes through the engine adapter's `call()` wrapper, which already
     // surfaces any failure as a red toast + Sentry report (see
     // hooks/queries/use-org.ts) — an `onError` here would double-toast, and we
     // simply leave the dialog open for a retry. `POST /v1/orgs` is not

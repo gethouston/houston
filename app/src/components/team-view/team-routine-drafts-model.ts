@@ -1,4 +1,4 @@
-import type { Activity, Routine } from "@houston-ai/engine-client";
+import type { Activity, Routine } from "@houston/engine-adapter";
 import { findDraftSetupActivities } from "../../lib/routine-chat-setup.ts";
 import type { Agent } from "../../lib/types.ts";
 import { teamRoutineKey } from "./team-routines-model.ts";

@@ -1,5 +1,5 @@
+import type { CustomAuthMethod } from "@houston/engine-adapter";
 import { Button } from "@houston-ai/core";
-import type { CustomAuthMethod } from "@houston-ai/engine-client";
 import { ExternalLink, KeyRound, Loader2, LogIn } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CustomCredentialForm } from "./integrations/custom-credential-form";

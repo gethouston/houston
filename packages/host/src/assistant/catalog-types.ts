@@ -8,7 +8,7 @@ import type { TSchema } from "typebox";
 /**
  * The host's reading of the generated assistant operation catalog — one entry
  * per user-facing Houston operation (a function carrying an `@assistant` JSDoc
- * tag anywhere in the live client surface: `packages/web/src/engine-adapter`
+ * tag anywhere in the live client surface: `packages/engine-adapter`
  * plus the SDK's REST modules under `packages/sdk/src/modules`), emitted to
  * `./assistant-catalog.generated.json` by `pnpm gen:assistant-catalog` and
  * embedded at build time.

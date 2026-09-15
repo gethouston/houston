@@ -1,7 +1,7 @@
 /**
  * The bearer-refresh half of `./gateway-fetch.ts`, kept apart because it is the
  * app-side twin of ONE canonical module — the engine adapter's
- * `session-refresh.ts` (`packages/web/src/engine-adapter/`) — and the two must
+ * `session-refresh.ts` (`packages/engine-adapter/`) — and the two must
  * stay recognisably the same: three-valued outcome, transient-failure
  * classification, single-flight latch. App code cannot import that one across
  * the package boundary (`pnpm check:boundaries`), so it is mirrored here.

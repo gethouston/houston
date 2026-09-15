@@ -12,11 +12,11 @@
  * in sibling files; this file is the orchestrator + footer.
  */
 
-import { Button, Dialog, DialogContent } from "@houston-ai/core";
 import type {
   PortableInventoryPreview,
   StorePublishIdentity,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import { Button, Dialog, DialogContent } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSession } from "../../hooks/use-session";

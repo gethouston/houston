@@ -1,6 +1,6 @@
 /**
  * Pure builder for the hidden self-setup mission prompt (flow lives in
- * `agent-setup-mission.ts`). Kept free of i18n/store/engine-client imports so
+ * `agent-setup-mission.ts`). Kept free of i18n/store/engine-adapter imports so
  * the node:test suite can load it directly.
  *
  * The language directive must be explicit: the localized kickoff bubble rides

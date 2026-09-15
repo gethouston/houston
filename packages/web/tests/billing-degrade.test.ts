@@ -1,13 +1,12 @@
-import { afterEach, expect, test, vi } from "vitest";
 import {
   HoustonClient,
   HoustonEngineError,
-} from "../src/engine-adapter/client";
+} from "@houston/engine-adapter/client";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
- * `getBilling` on the HOSTED path (C8 §Billing) is the client every cloud build
- * actually runs — the engine-client shim's `getBilling` only matters to the
- * legacy client. So the not-entitled degrade has to land HERE, in the mixin
+ * `getBilling` on the HOSTED path (C8 §Billing) is what every cloud build
+ * actually runs, so the not-entitled degrade has to land HERE, in the mixin
  * that reads the status `sdk.billing` throws: a gateway that
  * predates billing (404), a caller it refuses billing detail (403), and — the
  * HOU-904 regression — a billing-OFF deployment (503 `billing not configured`,

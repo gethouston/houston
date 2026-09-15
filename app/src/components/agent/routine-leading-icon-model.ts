@@ -1,4 +1,4 @@
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 
 /**
  * The Routines grid's per-row leading glyph, decided purely from the

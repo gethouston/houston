@@ -3,9 +3,9 @@
  * (`/v1/agentstore/*`). These are reconciled against the authoritative Go
  * handlers (`cloud/internal/edge/agentstoreroutes` + `cloud/internal/agentstore`)
  * and unify the previously divergent shapes carried by the Next.js frontend
- * (`agentstore/src/lib/*`) and the desktop/web engine client
- * (`ui/engine-client/src/*`). Pure types only — this module is isomorphic and
- * reads no environment.
+ * (`agentstore/src/lib/*`) and `@houston/wire-types`
+ * (`packages/wire-types/src/types.ts`). Pure types only — this module is
+ * isomorphic and reads no environment.
  */
 import type { AgentIR } from "@houston/agentstore-contract";
 

@@ -1,5 +1,5 @@
+import type { CustomIntegrationView } from "@houston/engine-adapter";
 import { Button, StatusDot } from "@houston-ai/core";
-import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { KeyRound, LogIn, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./app-logo";

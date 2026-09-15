@@ -1,10 +1,10 @@
-import { expect, test } from "vitest";
 import {
   CACHE_FRAME_HARD_MAX,
   decideServerSeed,
   type SeedFrame,
   trimForCache,
-} from "../src/engine-adapter/history-window";
+} from "@houston/engine-adapter/history-window";
+import { expect, test } from "vitest";
 
 /**
  * The windowed-seed decision (HOU-819) anchors on USER-MESSAGE CONTENT (the

@@ -9,7 +9,7 @@
  * could not act on. Unit-tested in `app/tests/org-roles.test.ts`.
  */
 
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 import { hasSpaces, orgRole } from "./org-roles.ts";
 
 /**

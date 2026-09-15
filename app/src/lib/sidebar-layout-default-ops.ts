@@ -1,4 +1,4 @@
-import type { SidebarLayout } from "@houston-ai/engine-client";
+import type { SidebarLayout } from "@houston/engine-adapter";
 
 /**
  * The DEFAULT team's own state, which lives on the LAYOUT rather than in

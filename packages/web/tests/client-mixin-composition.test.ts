@@ -1,7 +1,7 @@
+import { HoustonClient, MIXINS } from "@houston/engine-adapter/client";
+import { HoustonClientBase } from "@houston/engine-adapter/client/base";
+import type { BaseCtor } from "@houston/engine-adapter/client/mixin";
 import { expect, test } from "vitest";
-import { HoustonClient, MIXINS } from "../src/engine-adapter/client";
-import { HoustonClientBase } from "../src/engine-adapter/client/base";
-import type { BaseCtor } from "../src/engine-adapter/client/mixin";
 
 /**
  * `HoustonClient` is folded from a flat list of cluster mixins, which is only
@@ -20,7 +20,7 @@ import type { BaseCtor } from "../src/engine-adapter/client/mixin";
  *  listed here: a new cluster must show up in this test without being added
  *  to it, or the list it is missing from proves nothing. */
 const modules = import.meta.glob<Record<string, unknown>>(
-  "../src/engine-adapter/client/*-mixin.ts",
+  "../../engine-adapter/src/client/*-mixin.ts",
   { eager: true },
 );
 

@@ -70,7 +70,7 @@ describe("the analytics bus", () => {
   });
 });
 
-// `analytics.ts` can't be imported here (posthog-js + the engine client come
+// `analytics.ts` can't be imported here (posthog-js + the engine adapter come
 // with it), so its half of the seam is asserted against the source.
 const SOURCE = readFileSync(
   join(import.meta.dirname, "../src/lib/analytics.ts"),

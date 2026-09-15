@@ -8,7 +8,7 @@ import { describe, it } from "node:test";
 // sent / Copy code" follow-up are both gone. Every reporting path stays.
 //
 // Asserted against the source rather than by calling the function: `error-toast`
-// pulls the `@houston-ai/engine-client` barrel and the Zustand store, neither of
+// pulls the `@houston/engine-adapter` barrel and the Zustand store, neither of
 // which loads under this suite's `--experimental-strip-types` runner. The
 // invariant is worth a structural guard anyway — re-adding an `addToast` here is
 // a one-line change that no other test in the repo would catch.

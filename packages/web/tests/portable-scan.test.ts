@@ -1,7 +1,7 @@
 import { packAgent, unpackAgent } from "@houston/domain";
+import { previewUpload, scanUpload } from "@houston/engine-adapter/portable";
+import { packagePreview } from "@houston/engine-adapter/portable-map";
 import { expect, test } from "vitest";
-import { previewUpload, scanUpload } from "../src/engine-adapter/portable";
-import { packagePreview } from "../src/engine-adapter/portable-map";
 
 /**
  * The in-browser half of the import wizard: an uploaded `.houstonagent` is

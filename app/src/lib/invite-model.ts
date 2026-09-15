@@ -1,4 +1,4 @@
-import type { OrgInviteSummary } from "@houston-ai/engine-client";
+import type { OrgInviteSummary } from "@houston/engine-adapter";
 import { shareErrorCode } from "./share-via-team.ts";
 import { orgSlugFromWorkspaceId } from "./space-id.ts";
 

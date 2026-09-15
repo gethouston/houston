@@ -1,5 +1,5 @@
+import type { IntegrationToolkit } from "@houston/engine-adapter";
 import { CatalogSearchField, Spinner } from "@houston-ai/core";
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FilterCombobox } from "../shell/filter-combobox.tsx";

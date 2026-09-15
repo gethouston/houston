@@ -41,6 +41,28 @@ only touch the engine note the engine crate version in parentheses.
   See `store/README.md` for the format.
 
 ### Changed
+- **The engine client is a real package, and the alias is gone.**
+  `@houston-ai/engine-client` was a name four configs redirected to
+  `packages/web/src/engine-adapter` — and that plain Node resolved to a
+  different module entirely. The adapter is now the workspace package
+  `@houston/engine-adapter` (`packages/engine-adapter`), which `app` and
+  `packages/web` both depend on; pnpm's symlink is the only resolution, so
+  vite, tsgo, node, biome and esbuild agree on which package the specifier
+  names, with no configuration. (Plain Node loads the adapter's subpaths,
+  not its barrel — `src/index.ts` imports its siblings extensionless, as
+  nearly every `@houston/*` barrel does, which is why `app/src` re-exports
+  the error predicates by subpath.) The vite aliases, the two tsconfig
+  `paths` entries, `scripts/desktop-native/` and its assertion in
+  `check-desktop-native.mjs` are deleted.
+  The half of the old package that shipped no client — the v3 wire shapes, the
+  local-model-bridge port, the `Retry-After` parser — is now
+  `@houston/wire-types` (`packages/wire-types`), with no I/O left in it: its
+  one fetching module, `store-catalog.ts`, moved into the adapter. The catalog
+  generator that lived there is repo tooling and moved to
+  `scripts/assistant-catalog/`, its documents to `docs/assistant/`; both its
+  specs and the adapter's now run in CI, where neither did before.
+  `CHANGELOG.md` and `convergence/**` keep the old names on purpose — they
+  record what was true then.
 - The in-app Agent Store now renders the same Home, agent detail, and creator
   profile screens as the public website, including shared filtering and
   loading, empty, and retry states.

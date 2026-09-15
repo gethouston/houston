@@ -1,4 +1,4 @@
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import { useCallback, useEffect, useState } from "react";
 import { analytics } from "../../lib/analytics";
 import { encodeRoutineIntakeHandoffMessage } from "../../lib/routine-chat-handoff";

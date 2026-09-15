@@ -1,4 +1,4 @@
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import type { IntegrationToolkit } from "@houston/engine-adapter";
 import {
   byNameAsc,
   categoryLabel,

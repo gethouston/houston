@@ -1,7 +1,7 @@
 import type {
   PortableExportSelection,
   PortableInventoryPreview,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 
 /**
  * The pure rules behind "Copy agent": what a copy carries and what name it is

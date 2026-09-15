@@ -1,0 +1,319 @@
+import type { StorePublishRequest } from "@houston/wire-types";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { HoustonEngineError } from "./client";
+import type { ControlPlaneConfig } from "./control-plane";
+import {
+  deleteStoreAgentById,
+  getPublication,
+  listMyStoreAgents,
+  publishToStore,
+  requestStorePublic,
+  setStoreVisibilityUnlisted,
+  unpublishFromStore,
+  unpublishStoreAgentById,
+  updateStoreAgentIdentity,
+} from "./portable-store";
+
+/**
+ * The account-based Agent Store orchestration in the web adapter, driven with a
+ * fake `fetch` that routes by URL path. In Node (no `window`) both the host
+ * gather routes and the gateway store routes resolve against `cfg.baseUrl`, so
+ * one fake serves both. Asserts publish gathers the IR then POSTs it and records
+ * the pointer, and that manage status merges the pointer with the live listing.
+ */
+
+const cfg: ControlPlaneConfig = { baseUrl: "http://host", token: "tok" };
+
+const req: StorePublishRequest = {
+  selection: {
+    includeClaudeMd: true,
+    includeSkillSlugs: ["mailer"],
+    includeRoutineIds: [],
+    includeLearningIds: [],
+  },
+  identity: {
+    name: "Mailer",
+    description: "Sends mail on your behalf.",
+    category: "productivity",
+    tags: [],
+  },
+  creator: { displayName: "Dana" },
+};
+
+let pointer: unknown = null;
+let posts: { url: string; body: unknown }[] = [];
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+beforeEach(() => {
+  pointer = null;
+  posts = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (method !== "GET") posts.push({ url, body });
+
+      if (url.endsWith("/agents/A/portable/store-ir")) {
+        return jsonResponse({ ir: { irVersion: "2.0.0", from: body } });
+      }
+      if (url.endsWith("/agents/A/portable/store-publication")) {
+        if (method === "GET") return jsonResponse({ pointer });
+        if (method === "DELETE") {
+          pointer = null;
+          return jsonResponse({ ok: true });
+        }
+        pointer = body;
+        return jsonResponse({ ok: true });
+      }
+      if (url.endsWith("/v1/agentstore/agents") && method === "POST") {
+        return jsonResponse({
+          agentId: "S1",
+          slug: "mailer",
+          shareUrl: "https://agents.gethouston.ai/a/mailer",
+        });
+      }
+      if (url.includes("/v1/agentstore/agents/S1") && method === "PATCH") {
+        // The real gateway answers with the resulting agent summary.
+        return jsonResponse({
+          agent: {
+            id: "S1",
+            slug: "mailer",
+            name: "Mailer",
+            description: "Sends mail on your behalf.",
+            category: "productivity",
+            tags: [],
+            state: "published",
+          },
+        });
+      }
+      if (url.includes("/v1/agentstore/agents/S1") && method === "DELETE") {
+        return new Response(null, { status: 204 });
+      }
+      if (url.endsWith("/v1/agentstore/me/agents")) {
+        return jsonResponse({
+          items: [
+            {
+              id: "S1",
+              slug: "mailer",
+              name: "Mailer",
+              description: "Sends mail on your behalf.",
+              category: "productivity",
+              tags: [],
+              state: "published",
+            },
+          ],
+        });
+      }
+      return jsonResponse({ error: "unexpected" }, 500);
+    }),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+test("publish gathers the IR, POSTs it to the gateway, and records the pointer", async () => {
+  const res = await publishToStore(cfg, "A", req);
+  expect(res).toEqual({
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
+    slug: "mailer",
+    storeAgentId: "S1",
+  });
+  // The gateway POST carried the gathered IR + publish flag.
+  const post = posts.find((p) => p.url.endsWith("/v1/agentstore/agents"));
+  expect((post?.body as { publish: boolean }).publish).toBe(true);
+  expect((post?.body as { ir: { irVersion: string } }).ir.irVersion).toBe(
+    "2.0.0",
+  );
+  // The token-free pointer was written to the host.
+  expect(pointer).toMatchObject({
+    storeAgentId: "S1",
+    slug: "mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
+  });
+});
+
+test("a kept pointer re-publishes the SAME store agent (no duplicate POST)", async () => {
+  pointer = {
+    storeAgentId: "S1",
+    slug: "mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
+    publishedAt: "2026-07-09T00:00:00.000Z",
+  };
+  const res = await publishToStore(cfg, "A", req);
+  expect(res.storeAgentId).toBe("S1");
+  expect(posts.some((p) => p.url.endsWith("/v1/agentstore/agents"))).toBe(
+    false,
+  );
+  expect(posts.some((p) => p.url.includes("/v1/agentstore/agents/S1"))).toBe(
+    true,
+  );
+});
+
+test("getPublication merges the pointer with the live listing", async () => {
+  pointer = {
+    storeAgentId: "S1",
+    slug: "mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
+    publishedAt: "2026-07-09T00:00:00.000Z",
+  };
+  const status = await getPublication(cfg, "A");
+  expect(status.published).toBe(true);
+  expect(status.linked).toBe(true);
+  expect(status.storeAgentId).toBe("S1");
+  expect(status.identity?.name).toBe("Mailer");
+});
+
+test("getPublication on a never-published agent needs no store call", async () => {
+  const status = await getPublication(cfg, "A");
+  expect(status).toEqual({
+    published: false,
+    linked: false,
+    storeUrl: "https://agents.gethouston.ai",
+  });
+});
+
+test("a gateway HTTP failure re-maps to a HoustonEngineError", async () => {
+  // Host gather + pointer routes succeed; the store POST answers non-OK, so
+  // `asEngineError` must translate the SDK's StoreApiError onto the engine
+  // error class publish callers branch on — carrying the same status.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (url.endsWith("/agents/A/portable/store-ir")) {
+        return jsonResponse({ ir: { irVersion: "2.0.0", from: body } });
+      }
+      if (
+        url.endsWith("/agents/A/portable/store-publication") &&
+        method === "GET"
+      ) {
+        return jsonResponse({ pointer: null });
+      }
+      if (url.endsWith("/v1/agentstore/agents") && method === "POST") {
+        return jsonResponse({ error: "over_quota" }, 429);
+      }
+      return jsonResponse({ error: "unexpected" }, 500);
+    }),
+  );
+  const err = await publishToStore(cfg, "A", req).then(
+    () => null,
+    (e: unknown) => e,
+  );
+  expect(err).toBeInstanceOf(HoustonEngineError);
+  expect((err as HoustonEngineError).status).toBe(429);
+});
+
+test("a network failure rethrows the underlying cause verbatim (status 0)", async () => {
+  // A thrown fetch surfaces as StoreApiError(status 0, body: cause); the shim's
+  // status-0 branch must re-raise that original cause unchanged, exactly as the
+  // former hand-rolled fetch propagated it.
+  const cause = new Error("connection refused");
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      const method = (init?.method ?? "GET").toUpperCase();
+      const body = init?.body ? JSON.parse(init.body as string) : undefined;
+      if (url.endsWith("/agents/A/portable/store-ir")) {
+        return jsonResponse({ ir: { irVersion: "2.0.0", from: body } });
+      }
+      if (
+        url.endsWith("/agents/A/portable/store-publication") &&
+        method === "GET"
+      ) {
+        return jsonResponse({ pointer: null });
+      }
+      if (url.endsWith("/v1/agentstore/agents") && method === "POST") {
+        throw cause;
+      }
+      return jsonResponse({ error: "unexpected" }, 500);
+    }),
+  );
+  await expect(publishToStore(cfg, "A", req)).rejects.toBe(cause);
+});
+
+test("unpublish PATCHes the gateway and keeps the pointer", async () => {
+  pointer = {
+    storeAgentId: "S1",
+    slug: "mailer",
+    shareUrl: "https://agents.gethouston.ai/a/mailer",
+    publishedAt: "2026-07-09T00:00:00.000Z",
+  };
+  const res = await unpublishFromStore(cfg, "A");
+  expect(res.ok).toBe(true);
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect((patch?.body as { unpublish: boolean }).unpublish).toBe(true);
+  expect(pointer).not.toBeNull();
+});
+
+// ── Owner management (the "my agents" panel) ──────────────────────────────
+
+test("listMyStoreAgents reads the live listing off /me/agents", async () => {
+  const agents = await listMyStoreAgents(cfg);
+  expect(agents).toHaveLength(1);
+  expect(agents[0]?.id).toBe("S1");
+  expect(agents[0]?.state).toBe("published");
+});
+
+test("requestStorePublic PATCHes {requestPublic:true} by store id", async () => {
+  await requestStorePublic(cfg, "S1");
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect(patch?.url).toContain("/v1/agentstore/agents/S1");
+  expect((patch?.body as { requestPublic: boolean }).requestPublic).toBe(true);
+});
+
+test("setStoreVisibilityUnlisted PATCHes {visibility:'unlisted'}", async () => {
+  await setStoreVisibilityUnlisted(cfg, "S1");
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect((patch?.body as { visibility: string }).visibility).toBe("unlisted");
+});
+
+test("unpublishStoreAgentById PATCHes {unpublish:true} by store id", async () => {
+  await unpublishStoreAgentById(cfg, "S1");
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect((patch?.body as { unpublish: boolean }).unpublish).toBe(true);
+});
+
+test("updateStoreAgentIdentity PATCHes {identity} by store id", async () => {
+  const identity = {
+    name: "Mailer Pro",
+    tagline: "",
+    description: "Sends better mail.",
+    category: "productivity",
+    tags: ["email"],
+  };
+  await updateStoreAgentIdentity(cfg, "S1", identity);
+  const patch = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect((patch?.body as { identity: unknown }).identity).toEqual(identity);
+});
+
+test("deleteStoreAgentById DELETEs the store agent by id", async () => {
+  await deleteStoreAgentById(cfg, "S1");
+  const del = posts.find((p) => p.url.includes("/v1/agentstore/agents/S1"));
+  expect(del?.url).toContain("/v1/agentstore/agents/S1");
+});
+
+test("an owner-action HTTP failure re-maps to a HoustonEngineError", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => jsonResponse({ error: "forbidden" }, 403)),
+  );
+  const err = await requestStorePublic(cfg, "S1").then(
+    () => null,
+    (e: unknown) => e,
+  );
+  expect(err).toBeInstanceOf(HoustonEngineError);
+  expect((err as HoustonEngineError).status).toBe(403);
+});

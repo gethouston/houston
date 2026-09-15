@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { UsageRow } from "@houston-ai/engine-client";
+import type { UsageRow } from "@houston/engine-adapter";
 import {
   aggregateUsage,
   usageMax,

@@ -12,9 +12,9 @@ import {
  * it on their own.
  *
  * The adapter's mixin classes are the surface `app/src` calls — on desktop and
- * on web alike, because `app/vite.config.ts` aliases `@houston-ai/engine-client`
- * to this adapter and `packages/web` composes `app/src` verbatim. Classifying a
- * mixin method IS therefore classifying a desktop request site.
+ * on web alike, because both surfaces depend on `@houston/engine-adapter` and
+ * `packages/web` composes `app/src` verbatim. Classifying a mixin method IS
+ * therefore classifying a desktop request site.
  *
  * `AdapterContext` is the transport: `cp`, `engine`, `baseUrl`, `token` and the
  * per-agent runtime clients are how a method reaches a server; `sdk` is how it

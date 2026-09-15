@@ -1,6 +1,6 @@
 import type { LocalBridgeNativeEvent } from "@houston/sdk";
+import type { LocalModelBridgeAccess } from "@houston/wire-types";
 import { beforeEach, expect, test, vi } from "vitest";
-import type { LocalModelBridgeAccess } from "../../../ui/engine-client/src/local-model-bridge";
 
 const native = vi.hoisted(() => ({
   listen: vi.fn(),

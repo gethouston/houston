@@ -6,9 +6,9 @@ import { listRoutes } from "../../packages/host/src/routes/registry/all.ts";
 import type {
   AssistantParameter,
   AssistantRoute,
-} from "../../ui/engine-client/scripts/assistant-catalog-types.ts";
-import { extractCatalog } from "../../ui/engine-client/scripts/assistant-extractor.ts";
-import { assistantPaths } from "../../ui/engine-client/scripts/assistant-paths.ts";
+} from "../assistant-catalog/assistant-catalog-types.ts";
+import { extractCatalog } from "../assistant-catalog/assistant-extractor.ts";
+import { assistantPaths } from "../assistant-catalog/assistant-paths.ts";
 import { type AdapterMethod, classifyAdapter } from "./adapter-methods.ts";
 import { routePaths } from "./route-paths.ts";
 
@@ -101,13 +101,13 @@ function sourcesUnder(directory: string): string[] {
  * The adapter is read WHOLE (`cp/` and the helper modules beside the mixins,
  * not just `client/*-mixin.ts`) because a mixin method's request is usually
  * made one or two calls deeper; only the mixin classes publish methods, so
- * only they are classified. One adapter covers both surfaces — the desktop
- * aliases `@houston-ai/engine-client` to it and `packages/web` composes the
- * same `app/src` — so there is no separate desktop input to keep in step.
+ * only they are classified. One adapter covers both surfaces — desktop and
+ * `packages/web` both depend on `@houston/engine-adapter`, and `packages/web`
+ * composes the same `app/src` — so there is no separate desktop input.
  */
 export function desktopCalls(): DesktopCalls {
   const methods = classifyAdapter(
-    sourcesUnder(resolve(repoRoot, "packages/web/src/engine-adapter")),
+    sourcesUnder(resolve(repoRoot, "packages/engine-adapter/src")),
   );
   return {
     sdk: methods.filter((method) => method.bound),

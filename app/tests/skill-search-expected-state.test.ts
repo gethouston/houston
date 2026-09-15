@@ -1,9 +1,9 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { HoustonEngineError } from "../../packages/web/src/engine-adapter/client/errors.ts";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import { isExpectedSkillSearchError } from "../src/lib/skill-search-expected-state.ts";
 
-/** The engine-client's error exposes `kind` from `error.details.kind`. */
+/** The engine adapter's error exposes `kind` from `error.details.kind`. */
 function engineClientError(kind: string): Error {
   return Object.assign(new Error(`engine error (${kind})`), {
     name: "HoustonEngineError",
@@ -25,7 +25,7 @@ describe("isExpectedSkillSearchError (PRODUCT-1728)", () => {
     strictEqual(isExpectedSkillSearchError(err), true);
   });
 
-  it("treats a skills.sh timeout as expected on the engine-client's shape", () => {
+  it("treats a skills.sh timeout as expected on the engine adapter's shape", () => {
     strictEqual(
       isExpectedSkillSearchError(engineClientError("upstream_timeout")),
       true,

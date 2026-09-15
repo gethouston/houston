@@ -1,6 +1,6 @@
-/** Engine client bootstrap for the Houston desktop app. */
+/** Engine adapter bootstrap for the Houston desktop app. */
 
-import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
+import { EngineWebSocket, HoustonClient } from "@houston/engine-adapter";
 import {
   appUpdateChannel,
   currentAppVersion,
@@ -24,7 +24,8 @@ declare global {
     /** Active-space selector (C8, `cloud/docs/contracts/C8-spaces-billing.md`),
      *  the frontend-side record of the current space — the same role
      *  `__HOUSTON_ENGINE__` plays for baseUrl/token. `setActiveOrg` below writes
-     *  it AND pushes the value into the live engine client (`_client.setActiveOrg`),
+     *  it AND pushes the value into the live engine adapter
+     *  (`_client.setActiveOrg`),
      *  which is what actually pins `x-houston-org` on every gateway request and
      *  `?org=` on the two SSE routes (`/v1/events`, `/agents/:slug/events`) —
      *  browsers can't set headers on the event stream. A team org slug
@@ -86,16 +87,16 @@ const HOSTED_ENGINE_URL: string | undefined =
 const HOSTED_OAUTH = RESOLVED.kind === "hosted-oauth";
 const REMOTE_HOST_MODE = Boolean(STATIC_HOST_URL || HOSTED_ENGINE_URL);
 
-// The v3 host adapter is the only engine client (aliased in unconditionally —
-// see app/vite.config.ts), so flip it into host mode. This must be set HERE, at
-// module load, before any HoustonClient is constructed: the adapter reads
-// window.__HOUSTON_CP__ in its constructor, and the sidecar handshake can arrive
-// via the get_engine_handshake poll or the houston-engine-ready event — neither
-// of which sets this flag. On a cold first launch that poll can win the race
-// against the Tauri window.eval injection; without the flag a mis-moded client
-// gets built against the v3 host -> every turn fails with "Session error" until
-// the next launch. Setting it as a build constant closes that race for all
-// delivery paths. HOU-546.
+// The v3 host adapter is the only engine adapter (a plain workspace dependency,
+// no alias — see app/package.json), so flip it into host mode. This must be set
+// HERE, at module load, before any HoustonClient is constructed: the adapter
+// reads window.__HOUSTON_CP__ in its constructor, and the sidecar handshake can
+// arrive via the get_engine_handshake poll or the houston-engine-ready event —
+// neither of which sets this flag. On a cold first launch that poll can win the
+// race against the Tauri window.eval injection; without the flag a mis-moded
+// client gets built against the v3 host -> every turn fails with "Session
+// error" until the next launch. Setting it as a build constant closes that race
+// for all delivery paths. HOU-546.
 if (typeof window !== "undefined") {
   (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
 }
@@ -255,7 +256,8 @@ export function setHostedEngineSessionToken(token: string | null): void {
  * `slug` is a team org slug (`[a-f0-9]{16}`, from `orgSlugFromWorkspaceId`) or
  * `null` for the personal space (no header). Mirrors `setHostedEngineSessionToken`:
  * it records the value on the `window.__HOUSTON_ACTIVE_ORG__` global AND pushes
- * it into the live engine client via `_client.setActiveOrg` — the latter is what
+ * it into the live engine adapter via `_client.setActiveOrg` — the latter is
+ * what
  * actually pins `x-houston-org` on every gateway request (read live per attempt)
  * and `?org=` on the SSE routes (read per (re)connect). The client mutates its
  * config in place, so the switch takes effect without rebuilding anything.

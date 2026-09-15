@@ -18,11 +18,11 @@ const { streamGlobalEvents } = vi.hoisted(() => ({
   streamGlobalEvents: vi.fn(),
 }));
 vi.mock("@houston/runtime-client", () => ({ streamGlobalEvents }));
-vi.mock("../src/engine-adapter/session-refresh", () => ({
+vi.mock("@houston/engine-adapter/session-refresh", () => ({
   refreshLiveToken: vi.fn(),
 }));
 
-import { subscribeEvents } from "../src/engine-adapter/cp/events";
+import { subscribeEvents } from "@houston/engine-adapter/cp/events";
 
 /**
  * "Has this feed ever streamed?" is remembered per GATEWAY for the page's

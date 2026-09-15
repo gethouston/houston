@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import type {
   ConversationEntry,
   MigrationImportResult,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { strToU8, unzipSync, zipSync } from "fflate";
 import {
   ACTIVITY_PATH,

@@ -1,14 +1,14 @@
-import { conversationScope } from "@houston/sdk";
-import { beforeEach, describe, expect, it } from "vitest";
-import type { SessionStartRequest } from "../src/engine-adapter";
+import type { SessionStartRequest } from "@houston/engine-adapter";
 import {
   flushQueuedSends,
   maybeQueueSend,
   noteAutoResumeEnded,
   noteAutoResumeStarted,
   removeQueuedSend,
-} from "../src/engine-adapter/send-queue";
-import { conversationStore, conversationVm } from "../src/engine-adapter/vm";
+} from "@houston/engine-adapter/send-queue";
+import { conversationStore, conversationVm } from "@houston/engine-adapter/vm";
+import { conversationScope } from "@houston/sdk";
+import { beforeEach, describe, expect, it } from "vitest";
 
 /**
  * Queue-while-running: sends into a RUNNING conversation are held (visible as

@@ -12,10 +12,10 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const cancelLogin = vi.fn();
 
-vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
+vi.mock("@houston/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
     await importOriginal<
-      typeof import("../src/engine-adapter/control-plane")
+      typeof import("@houston/engine-adapter/control-plane")
     >();
   return {
     ...actual,
@@ -23,8 +23,8 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   };
 });
 
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { EngineError } from "@houston/runtime-client";
-import { HoustonClient } from "../src/engine-adapter/client";
 
 beforeEach(() => {
   // cp-mode `providerEngine()` needs a selected agent id; the adapter reads it

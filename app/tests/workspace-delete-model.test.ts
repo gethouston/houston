@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { BillingSummary, OrgMember } from "@houston-ai/engine-client";
+import type { BillingSummary, OrgMember } from "@houston/engine-adapter";
 import type { Workspace } from "../src/lib/types.ts";
 import {
   canDeleteOptimistically,

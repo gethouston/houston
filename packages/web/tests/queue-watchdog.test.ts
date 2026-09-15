@@ -1,12 +1,12 @@
-import type { ChatMessage } from "@houston/runtime-client";
-import { conversationScope } from "@houston/sdk";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SessionStartRequest } from "../src/engine-adapter";
+import type { SessionStartRequest } from "@houston/engine-adapter";
 import {
   maybeQueueSend,
   removeQueuedSend,
-} from "../src/engine-adapter/send-queue";
-import { conversationStore, conversationVm } from "../src/engine-adapter/vm";
+} from "@houston/engine-adapter/send-queue";
+import { conversationStore, conversationVm } from "@houston/engine-adapter/vm";
+import type { ChatMessage } from "@houston/runtime-client";
+import { conversationScope } from "@houston/sdk";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
  * The queue watchdog (HOU-849): the ground-truth flush trigger for a held send

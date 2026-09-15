@@ -1,4 +1,4 @@
-import { pingStoreInstall } from "@houston-ai/engine-client";
+import { pingStoreInstall } from "@houston/engine-adapter";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentStore } from "../stores/agents";

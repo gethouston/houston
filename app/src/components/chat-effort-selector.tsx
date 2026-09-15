@@ -1,4 +1,4 @@
-import type { Agent } from "@houston-ai/engine-client";
+import type { Agent } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { nextEffort } from "../lib/effort-cycle";

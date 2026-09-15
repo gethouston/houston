@@ -1,4 +1,4 @@
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import type { RoutineRun } from "@houston-ai/routines";
 import type { Agent } from "../../lib/types";
 import { AutomationIntake, type IntakeResult } from "./automation-intake";

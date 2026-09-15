@@ -1,3 +1,4 @@
+import type { ApiKey } from "@houston/engine-adapter";
 import {
   Badge,
   Button,
@@ -10,7 +11,6 @@ import {
   EmptyTitle,
   Skeleton,
 } from "@houston-ai/core";
-import type { ApiKey } from "@houston-ai/engine-client";
 import { KeyRound, Plus, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

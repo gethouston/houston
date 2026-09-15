@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { AgentMoveStatus } from "@houston-ai/engine-client";
+import type { AgentMoveStatus } from "@houston/engine-adapter";
 import { type MoveWire, resumePendingMove } from "../src/lib/move-resume.ts";
 import type { PendingAgentMove } from "../src/lib/pending-move.ts";
 

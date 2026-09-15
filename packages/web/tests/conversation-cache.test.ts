@@ -1,4 +1,3 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   type CachedFrame,
   type CacheRecord,
@@ -12,7 +11,8 @@ import {
   setConversationCacheBackend,
   setConversationCacheIdentity,
   writeCachedConversation,
-} from "../src/engine-adapter/conversation-cache";
+} from "@houston/engine-adapter/conversation-cache";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 /**
  * The local conversation cache (HOU-712): per-gateway+user scoping, round

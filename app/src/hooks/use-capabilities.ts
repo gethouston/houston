@@ -1,4 +1,4 @@
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 import { useQuery } from "@tanstack/react-query";
 import { getEngine, newEngineActive } from "../lib/engine";
 import i18n from "../lib/i18n";

@@ -75,7 +75,7 @@ export interface SdkModules {
  * them stays the kernel constructor's job: the order it calls them in is a
  * dependency, and `sdk.<property> = create<Name>Module(ctx)` there is also what
  * names each namespace for the generated assistant catalog
- * (`ui/engine-client/scripts/assistant-facade-surface.ts`).
+ * (`scripts/assistant-catalog/assistant-facade-surface.ts`).
  */
 export const moduleFactories = {
   createAccountModule,

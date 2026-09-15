@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { ComputeUsageRow } from "@houston-ai/engine-client";
+import type { ComputeUsageRow } from "@houston/engine-adapter";
 import {
   bucketCompute,
   durationParts,

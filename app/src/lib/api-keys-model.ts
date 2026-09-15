@@ -1,4 +1,4 @@
-import type { ApiKey, Capabilities } from "@houston-ai/engine-client";
+import type { ApiKey, Capabilities } from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free logic behind the API-keys settings section (C9). Kept out of
@@ -34,7 +34,7 @@ export function isValidKeyName(name: string): boolean {
  * slot), NOT a Houston bug, so the create flow silences it from the red
  * "report a bug" toast and renders it inline instead. Reads the raw top-level
  * `code` on the error body (the gateway's flat `{error, code}` shape), not the
- * nested `error.code` that the engine-client `.code` getter looks at.
+ * nested `error.code` that the engine adapter's `.code` getter looks at.
  */
 export function isKeyLimitError(err: unknown): boolean {
   const e = err as { status?: unknown; body?: unknown } | null | undefined;

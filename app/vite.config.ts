@@ -37,19 +37,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
-      // The Houston host (packages/host) is the only engine, so
-      // `@houston-ai/engine-client` always resolves to the v3 host adapter.
-      // The desktop talks to a spawned local host sidecar, an external host
-      // (VITE_NEW_ENGINE_URL), or a hosted gateway (VITE_HOSTED_ENGINE_URL) —
-      // all v3. Mirrors packages/web.
       alias: [
-        {
-          find: "@houston-ai/engine-client",
-          replacement: path.resolve(
-            __dirname,
-            "../packages/web/src/engine-adapter/index.ts",
-          ),
-        },
         // The web-only Firebase Auth surface. Desktop resolves the STUB so
         // firebase-js-sdk never ships to desktop; the web bundle points this
         // same specifier at the real module (packages/web/vite.config.ts).
@@ -118,6 +106,7 @@ export default defineConfig(({ mode }) => {
     // are picked up immediately without stale cache issues.
     optimizeDeps: {
       exclude: [
+        "@houston/engine-adapter",
         "@houston-ai/chat",
         "@houston-ai/core",
         "@houston-ai/board",

@@ -1,6 +1,6 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 import {
   apiKeysSupported,
   isKeyGoneError,
@@ -59,7 +59,7 @@ describe("isKeyLimitError", () => {
       isKeyLimitError({ status: 400, body: { code: "other" } }),
       false,
     );
-    // The engine-client nests reasons under error.code; a flat key_limit must
+    // The engine adapter nests reasons under error.code; a flat key_limit must
     // NOT be found there, and a nested one must NOT match (it is not top-level).
     strictEqual(
       isKeyLimitError({ status: 400, body: { error: { code: "key_limit" } } }),

@@ -1,6 +1,6 @@
+import { HoustonEngineError } from "@houston/engine-adapter/client";
+import { cpFetch } from "@houston/engine-adapter/control-plane";
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonEngineError } from "../src/engine-adapter/client";
-import { cpFetch } from "../src/engine-adapter/control-plane";
 
 /**
  * The producer half of the `Retry-After` contract.

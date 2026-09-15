@@ -2,7 +2,7 @@ import type {
   Routine,
   RoutineRun,
   TriggerStatusItem,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import type { Agent } from "../../lib/types.ts";
 import { latestRunByRoutine } from "../agent/routines-tab-model.ts";
 

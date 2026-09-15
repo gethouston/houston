@@ -1,5 +1,5 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
 
 /**
  * HOU-981, the fan-out half.

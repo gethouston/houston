@@ -1,4 +1,4 @@
-import type { AgentIdentityPatch, MyAgent } from "@houston-ai/engine-client";
+import type { AgentIdentityPatch, MyAgent } from "@houston/engine-adapter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

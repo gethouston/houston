@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Capabilities, SidebarLayout } from "@houston-ai/engine-client";
+import type { Capabilities, SidebarLayout } from "@houston/engine-adapter";
 import {
   teamDeletePresentation,
   teamDisplayColor,

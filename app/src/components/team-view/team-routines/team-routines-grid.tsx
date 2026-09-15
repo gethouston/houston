@@ -1,4 +1,4 @@
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import { RoutinesGrid } from "@houston-ai/routines";
 import type { ReactNode } from "react";
 import { useRoutineLabels } from "../../../hooks/use-routine-labels";

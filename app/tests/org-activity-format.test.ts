@@ -1,6 +1,6 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { AuditEntry } from "@houston-ai/engine-client";
+import type { AuditEntry } from "@houston/engine-adapter";
 import {
   type AuditResolvers,
   formatAuditEntry,

@@ -6,9 +6,9 @@
 // re-deriving it from a dozen call sites would guarantee the two drift apart.
 //
 // Deliberately dependency-free — the event names come from the vocabulary, not
-// from analytics.ts, which drags in PostHog and the engine client and so cannot
-// be loaded outside a browser — and deliberately SYNCHRONOUS, so a listener
-// sees the event in the same tick the user acted.
+// from analytics.ts, which drags in PostHog and the engine adapter and so
+// cannot be loaded outside a browser — and deliberately SYNCHRONOUS, so a
+// listener sees the event in the same tick the user acted.
 
 import type { AnalyticsEventName } from "./analytics-vocabulary";
 

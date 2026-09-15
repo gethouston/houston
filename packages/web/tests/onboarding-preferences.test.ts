@@ -1,5 +1,5 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
 
 /**
  * `houston_onboarding_segment` and `houston_onboarding_survey` are

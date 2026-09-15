@@ -216,7 +216,7 @@ indicator off during every thinking stretch).
 ### Queued messages while a turn runs (`ConversationVM.queued`, `vm-output.ts:35-58`)
 Additive optional `queued?: QueuedMessageVM[]` (`{ id, text, attachmentNames? }`): messages typed
 while a turn runs are HELD and flushed as ONE combined send at settle. **Queueing is SDK/engine-
-adapter behavior, never the surface** (desktop: `packages/web/src/engine-adapter/send-queue.ts`) —
+adapter behavior, never the surface** (desktop: `packages/engine-adapter/src/send-queue.ts`) —
 the surface only renders the published list (client-architecture.md invariant 1).
 - **iOS**: `QueuedMessageVM` model + `ConversationVM.queued`; `QueuedMessagesView` renders each as a
   dimmed, pending, right-aligned bubble (clock glyph) above the composer. **Populate path deferred**:

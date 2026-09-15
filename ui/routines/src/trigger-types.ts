@@ -4,7 +4,7 @@
  * mirrors the routine record itself — because the two answer different
  * questions and together they outgrew one file.
  *
- * Like every type in this package these MIRROR the engine-client wire shapes
+ * Like every type in this package these MIRROR the `@houston/wire-types` shapes
  * rather than importing them, so `ui/` stays free of app/engine imports.
  * Re-exported from `./types` so existing import paths are unchanged.
  */

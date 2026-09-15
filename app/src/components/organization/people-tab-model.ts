@@ -2,7 +2,7 @@ import type {
   AddOrgMemberResult,
   OrgMember,
   OrgRole,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free logic for the Organization > People tab (Teams v2). Extracted

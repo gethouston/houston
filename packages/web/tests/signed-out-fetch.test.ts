@@ -1,7 +1,7 @@
+import { isSignedOutEngineError } from "@houston/engine-adapter/client";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
+import { cpFetch } from "@houston/engine-adapter/cp/fetch";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { isSignedOutEngineError } from "../src/engine-adapter/client";
-import { HoustonEngineError } from "../src/engine-adapter/client/errors";
-import { cpFetch } from "../src/engine-adapter/cp/fetch";
 
 /**
  * HOU-1014: a hosted gateway call attempted with NO session must not go to the

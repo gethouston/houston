@@ -1,4 +1,4 @@
-import type { UsageRow } from "@houston-ai/engine-client";
+import type { UsageRow } from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free aggregation for the Organization Usage tab (Teams v2). Rolls

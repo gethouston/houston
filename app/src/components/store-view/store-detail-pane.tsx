@@ -1,9 +1,9 @@
-import { Button, Spinner } from "@houston-ai/core";
 import {
   fetchStoreAgent,
   fetchStoreCreator,
   type StoreCatalogAgent,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import { Button, Spinner } from "@houston-ai/core";
 import { AgentDetailScreen, CreatorBlock, SkillList } from "@houston-ai/store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";

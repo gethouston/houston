@@ -1,4 +1,4 @@
-import type { CustomEndpoint } from "@houston-ai/engine-client";
+import type { CustomEndpoint } from "@houston/engine-adapter";
 import { peekSession } from "./identity/session-store";
 import {
   localBridgeController,

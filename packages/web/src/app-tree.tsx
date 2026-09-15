@@ -113,7 +113,7 @@ class ErrorBoundary extends Component<
 }
 
 /**
- * Blocks render until the engine client is bootstrapped. On web the handshake
+ * Blocks render until the engine adapter is bootstrapped. On web the handshake
  * is set synchronously (window.__HOUSTON_ENGINE__) before this chunk loads, so
  * this resolves on the first tick — but we keep the gate for parity and for the
  * (defensive) restart-rebuild path in engine.ts.

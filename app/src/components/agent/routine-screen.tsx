@@ -8,7 +8,7 @@
  * the shell panel. Layout only — the header and sections own their pieces.
  */
 
-import type { Routine, RoutineUpdate } from "@houston-ai/engine-client";
+import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import type { RoutineRun } from "@houston-ai/routines";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";

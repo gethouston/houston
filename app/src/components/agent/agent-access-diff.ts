@@ -1,4 +1,4 @@
-import type { Agent, OrgMember } from "@houston-ai/engine-client";
+import type { Agent, OrgMember } from "@houston/engine-adapter";
 import { buildSharePeople } from "./agent-access-model.ts";
 
 /**

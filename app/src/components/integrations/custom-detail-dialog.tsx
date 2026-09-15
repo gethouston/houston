@@ -1,10 +1,10 @@
+import type { CustomIntegrationView } from "@houston/engine-adapter";
 import {
   Badge,
   Button,
   CatalogDetailDialog,
   StatusBadge,
 } from "@houston-ai/core";
-import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { KeyRound, LogIn } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AppLogo } from "./app-logo";

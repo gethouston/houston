@@ -1,4 +1,4 @@
-import type { TriggerStatusItem, TriggerType } from "@houston-ai/engine-client";
+import type { TriggerStatusItem, TriggerType } from "@houston/engine-adapter";
 import { type Query, useQuery } from "@tanstack/react-query";
 import { triggerStatusPollInterval } from "../../components/agent/routine-trigger-maps";
 import { getEngine } from "../../lib/engine";

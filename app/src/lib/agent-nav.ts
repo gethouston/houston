@@ -14,7 +14,7 @@
  * the stores and dispatches, is `lib/open-agent.ts`.
  */
 
-import type { Agent, Capabilities } from "@houston-ai/engine-client";
+import type { Agent, Capabilities } from "@houston/engine-adapter";
 import { isAgentManager } from "./agent-access.ts";
 import {
   type TeamSectionId,

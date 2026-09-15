@@ -1,5 +1,5 @@
+import { isProviderLoginComplete } from "@houston/engine-adapter/client";
 import { expect, test } from "vitest";
-import { isProviderLoginComplete } from "../src/engine-adapter/client";
 
 test("does not treat a stale stored credential as a completed OAuth login", () => {
   expect(

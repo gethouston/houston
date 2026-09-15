@@ -1,10 +1,10 @@
-import { expect, test } from "vitest";
 import {
   removeColorOverlay,
   renameColorOverlay,
   toUiAgent,
-} from "../src/engine-adapter/control-plane";
-import { DEFAULT_AGENT_COLOR } from "../src/engine-adapter/synthetic";
+} from "@houston/engine-adapter/control-plane";
+import { DEFAULT_AGENT_COLOR } from "@houston/engine-adapter/synthetic";
+import { expect, test } from "vitest";
 
 /**
  * In host mode an agent's color lives in a client-side overlay keyed by

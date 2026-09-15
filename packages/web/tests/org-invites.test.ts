@@ -1,8 +1,8 @@
-import { afterEach, expect, test, vi } from "vitest";
 import {
   HoustonClient,
   HoustonEngineError,
-} from "../src/engine-adapter/client";
+} from "@houston/engine-adapter/client";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
  * The INVITEE half of C8 invites on the HOSTED path — the client every cloud

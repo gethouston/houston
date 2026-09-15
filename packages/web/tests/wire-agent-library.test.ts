@@ -1,5 +1,5 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
 import {
   createWireCapture,
   installLocalStorage,

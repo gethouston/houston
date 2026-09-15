@@ -1,4 +1,4 @@
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import type { IntegrationToolkit } from "@houston/engine-adapter";
 
 /**
  * The catalog-BROWSE pure layer: query filtering, A-Z ordering, category

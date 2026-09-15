@@ -127,7 +127,7 @@ export type HostedGateState =
   | "loading"
   /** No session — prompt "Continue with Google". */
   | "sign-in"
-  /** Signed in and the engine client is bootstrapped — render the app. */
+  /** Signed in and the engine adapter is bootstrapped — render the app. */
   | "ready";
 
 /**

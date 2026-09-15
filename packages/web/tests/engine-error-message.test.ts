@@ -1,5 +1,5 @@
+import { HoustonEngineError } from "@houston/engine-adapter/client";
 import { expect, test } from "vitest";
-import { HoustonEngineError } from "../src/engine-adapter/client";
 
 // The host's own explanation must survive into the error message — it is what
 // the red toast, the frontend log, and the Sentry report show. A bare

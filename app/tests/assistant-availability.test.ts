@@ -40,7 +40,7 @@ describe("isAssistantUnavailableError", () => {
     assert.equal(isAssistantUnavailableError(err), true);
   });
 
-  it("matches whatever the engine-client's nested body shape carries", () => {
+  it("matches whatever the engine adapter's nested body shape carries", () => {
     // The other adapter wraps the body under `error`; only the status is the
     // same across both, which is exactly why the predicate reads the status.
     assert.equal(
@@ -123,7 +123,7 @@ describe("classifyAssistantDiscoveryFailure", () => {
         { kind: "unsupported" },
         `flat ${code}`,
       );
-      // Nested: the engine-client wraps the body under `error`.
+      // Nested: the engine adapter wraps the body under `error`.
       assert.deepEqual(
         classifyAssistantDiscoveryFailure({
           status: 503,

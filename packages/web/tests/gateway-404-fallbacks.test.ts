@@ -1,8 +1,8 @@
-import { afterEach, expect, test, vi } from "vitest";
 import {
   HoustonClient,
   HoustonEngineError,
-} from "../src/engine-adapter/client";
+} from "@houston/engine-adapter/client";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
  * HOU-688: two desktop calls 404'd against the hosted gateway and red-toasted

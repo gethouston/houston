@@ -3,7 +3,7 @@ import {
   fetchStoreCategories,
   fetchStoreCreators,
   type StoreCatalogAgent,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import {
   CatalogControls,
   StoreHomeScreen,

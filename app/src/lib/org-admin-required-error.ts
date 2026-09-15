@@ -2,4 +2,4 @@
 // of that file: the adapter is bundled by the desktop app, which cannot resolve
 // `@houston/app/*`, so app code must never be imported from there). This
 // module keeps the app's import path and the node:test entry point stable.
-export { isOrgAdminRequiredError } from "../../../packages/web/src/engine-adapter/org-admin-required-error.ts";
+export { isOrgAdminRequiredError } from "@houston/engine-adapter/org-admin-required-error";

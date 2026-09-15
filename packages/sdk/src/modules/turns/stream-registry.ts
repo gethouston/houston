@@ -155,7 +155,7 @@ export class StreamRegistry {
 
   /**
    * Abort every live conversation stream (turns and observers alike). Wired to
-   * the engine-client teardown seam (`EngineWebSocket.disconnect`, i.e. logout /
+   * the engine adapter's teardown seam (`EngineWebSocket.disconnect`, i.e. logout /
    * mode change) so an orphaned subscription never outlives its client. Sinks
    * are NOT settled: the UI is going away with the client.
    */

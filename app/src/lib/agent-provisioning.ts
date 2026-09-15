@@ -8,13 +8,13 @@
  * reachable and then answered, so a cheap side-effect-free read doubles as a
  * readiness long-poll. This module owns that probe loop plus the persistence
  * shape; the Zustand store (`stores/agent-provisioning.ts`) wires it to the
- * real engine client, toast, and localStorage.
+ * real engine adapter, toast, and localStorage.
  *
  * Kept dependency-free so `node --test` can exercise it directly: the imports
  * below are a type (erased at runtime) and the pure key factory.
  */
 
-import type { ActivityStatus, MessageMention } from "@houston-ai/engine-client";
+import type { ActivityStatus, MessageMention } from "@houston/engine-adapter";
 import { queryKeys } from "./query-keys.ts";
 
 /**
@@ -134,7 +134,7 @@ export interface PendingWarmingSend {
 
 export interface ProvisioningEntry {
   agentId: string;
-  /** What the engine client addresses the agent by (`agent.folderPath`). */
+  /** What the engine adapter addresses the agent by (`agent.folderPath`). */
   agentPath: string;
   /** Epoch ms of the create call — the TTL anchor. */
   since: number;

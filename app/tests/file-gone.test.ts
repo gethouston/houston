@@ -11,7 +11,7 @@ import { isFileGoneError } from "../src/lib/file-gone.ts";
  * status both engine adapters carry; every other status stays loud.
  */
 describe("isFileGoneError", () => {
-  it("matches the engine-client 404 for a missing workspace file", () => {
+  it("matches the engine adapter's 404 for a missing workspace file", () => {
     const err = Object.assign(new Error("file not found (engine error 404)"), {
       status: 404,
       body: { error: "file not found" },

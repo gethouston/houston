@@ -1,7 +1,7 @@
 import type {
   AddCustomIntegrationInput,
   CustomIntegrationView,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { integrationsSupported } from "../../components/integrations/model";
 import { analytics } from "../../lib/analytics";

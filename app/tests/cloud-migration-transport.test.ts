@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { HoustonEngineError } from "../../packages/web/src/engine-adapter/client/errors.ts";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import {
   type MigrationErrorCopy,
   type MigrationGatewayEngine,

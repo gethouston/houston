@@ -1,4 +1,4 @@
-import type { OrgInviteSummary } from "@houston-ai/engine-client";
+import type { OrgInviteSummary } from "@houston/engine-adapter";
 import { Mail } from "lucide-react";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
+import type { Capabilities, OrgRole } from "@houston/engine-adapter";
 import { pickerEmptyState } from "../src/components/chat-model-selector-labels.ts";
 
 /**

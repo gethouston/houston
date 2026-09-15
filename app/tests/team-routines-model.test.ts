@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Routine, RoutineRun } from "@houston-ai/engine-client";
+import type { Routine, RoutineRun } from "@houston/engine-adapter";
 import {
   aggregateTeamRoutines,
   parseTeamRoutineKey,

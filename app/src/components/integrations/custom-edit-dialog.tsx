@@ -1,3 +1,4 @@
+import type { CustomIntegrationView } from "@houston/engine-adapter";
 import {
   Button,
   Dialog,
@@ -7,7 +8,6 @@ import {
   DialogTitle,
   Input,
 } from "@houston-ai/core";
-import type { CustomIntegrationView } from "@houston-ai/engine-client";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useEditCustomIntegration } from "../../hooks/queries/use-edit-custom-integration";

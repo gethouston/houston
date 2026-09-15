@@ -1,5 +1,5 @@
+import type { OrgInviteSummary } from "@houston/engine-adapter";
 import { AsyncButton } from "@houston-ai/core";
-import type { OrgInviteSummary } from "@houston-ai/engine-client";
 import { Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {

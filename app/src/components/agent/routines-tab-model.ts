@@ -1,5 +1,5 @@
+import type { Activity, Routine } from "@houston/engine-adapter";
 import type { KanbanItem } from "@houston-ai/board";
-import type { Activity, Routine } from "@houston-ai/engine-client";
 import type { RoutineRun } from "@houston-ai/routines";
 
 /**

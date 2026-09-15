@@ -1,4 +1,4 @@
-import type { AgentTeam } from "@houston-ai/engine-client";
+import type { AgentTeam } from "@houston/engine-adapter";
 import { useQuery } from "@tanstack/react-query";
 import {
   applyTeamContext,

@@ -1,4 +1,4 @@
-import type { SidebarGroup, SidebarLayout } from "@houston-ai/engine-client";
+import type { SidebarGroup, SidebarLayout } from "@houston/engine-adapter";
 
 /**
  * The entry an UPSERTING op appends for a group the stored layout has never
