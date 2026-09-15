@@ -11,7 +11,8 @@ import type { ConversationVM } from "./vm-output";
 import { conversationScope } from "./vm-output";
 
 /**
- * The turns module: `turns/send`/`turns/cancel` command registration, the
+ * The turns module: `turns/send` and the conversation-control command
+ * registrations, the
  * built-in conversation VM, model/effort application, and the multiplexed
  * external output (one machinery, many outputs, single settle).
  */
@@ -36,6 +37,9 @@ function harness(frames: WireFrame[] = doneTurn) {
     sends: 0,
     sendOpts: [] as unknown[],
     cancels: [] as string[],
+    modes: [] as Array<{ id: string; mode: string }>,
+    dismissed: [] as string[],
+    truncated: [] as Array<{ id: string; turnId: string }>,
     settings: [] as unknown[],
     providersListed: 0,
     boardPersists: [] as Array<{ sessionKey: string; status: string }>,
@@ -54,6 +58,18 @@ function harness(frames: WireFrame[] = doneTurn) {
     async cancel(id: string) {
       calls.cancels.push(id);
       return { ok: true, cancelled: true };
+    },
+    async setMode(id: string, mode: string) {
+      calls.modes.push({ id, mode });
+      return { ok: true, applied: true };
+    },
+    async dismissInteraction(id: string) {
+      calls.dismissed.push(id);
+      return { ok: true };
+    },
+    async truncateConversation(id: string, turnId: string) {
+      calls.truncated.push({ id, turnId });
+      return { ok: true, removed: 1 };
     },
     async setSettings(input: unknown) {
       calls.settings.push(input);
@@ -113,14 +129,17 @@ async function waitFor(cond: () => boolean, ms = 2_000): Promise<void> {
   }
 }
 
-test("registers the turns/send, turns/cancel, turns/observe, turns/history and turns/attachments/save commands", () => {
+test("registers every turns command: send, the four conversation controls, observe, history and attachments/save", () => {
   const { commands } = harness();
   expect([...commands.keys()].sort()).toEqual([
     "turns/attachments/save",
     "turns/cancel",
+    "turns/dismissInteraction",
     "turns/history",
     "turns/observe",
     "turns/send",
+    "turns/setMode",
+    "turns/truncate",
   ]);
 });
 
@@ -164,7 +183,7 @@ test("turns/send pushes the user bubble pending, then confirms it (clock -> chec
 
 test("an observed (resumed) conversation never shows a pending bubble", async () => {
   const { mod, vm } = harness(runningTurn);
-  await mod.observe("c1");
+  await mod.observe("c1", "");
   await waitFor(() => vm()?.sessionStatus === "completed");
   // observe pushes no optimistic bubble — nothing is unconfirmed on the surface.
   expect(vm().feed.some((f) => f.pending)).toBe(false);
@@ -261,14 +280,14 @@ test("a plain send (no pick) carries no pin — the runtime resolves the convers
 
 test("observe surfaces an in-flight turn into the conversation VM", async () => {
   const { mod, vm } = harness(runningTurn);
-  await mod.observe("c1");
+  await mod.observe("c1", "");
   await waitFor(() => vm()?.sessionStatus === "completed");
   expect(vm().feed.some((f) => f.data === "observed reply")).toBe(true);
 });
 
 test("the turns/observe command drives the same observe path", async () => {
   const { commands, vm } = harness(runningTurn);
-  await commands.get("turns/observe")?.({ conversationId: "c1" });
+  await commands.get("turns/observe")?.({ conversationId: "c1", agentId: "" });
   await waitFor(() => vm()?.sessionStatus === "completed");
   expect(vm().feed.some((f) => f.data === "observed reply")).toBe(true);
 });
@@ -315,7 +334,7 @@ test("observe replays the running turn's thinking + tools from the sync, deduped
     { type: "done", data: null, seq: 5 },
   ];
   const { mod, vm } = harness(activityTurn);
-  await mod.observe("c1");
+  await mod.observe("c1", "");
   await waitFor(() => vm()?.sessionStatus === "completed");
   const feed = vm().feed;
   const thinking = feed.filter((f) => f.feed_type === "thinking");
@@ -334,10 +353,62 @@ test("observe replays the running turn's thinking + tools from the sync, deduped
   ]);
 });
 
-test("turns/cancel aborts the conversation's turn", async () => {
+test("turns/cancel aborts the conversation's turn and reports what it stopped", async () => {
   const { commands, calls } = harness();
-  await commands.get("turns/cancel")?.({ conversationId: "c1" });
+  const result = await commands.get("turns/cancel")?.({
+    conversationId: "c1",
+    agentId: "a1",
+  });
   expect(calls.cancels).toEqual(["c1"]);
+  // The runtime's own answer reaches the caller: a surface settles its own
+  // stuck card when nothing was actually in flight.
+  expect(result).toEqual({ ok: true, cancelled: true });
+});
+
+test("the conversation controls each issue their one runtime call", async () => {
+  const { mod, calls } = harness();
+  await mod.setMode("c1", "a1", "plan");
+  await mod.dismissInteraction("c1", "a1");
+  await mod.truncate("c1", "a1", "t-9");
+  expect(calls.modes).toEqual([{ id: "c1", mode: "plan" }]);
+  expect(calls.dismissed).toEqual(["c1"]);
+  expect(calls.truncated).toEqual([{ id: "c1", turnId: "t-9" }]);
+});
+
+test("the control commands drive the same path as the typed facade", async () => {
+  const { commands, calls } = harness();
+  await commands.get("turns/setMode")?.({
+    conversationId: "c1",
+    agentId: "a1",
+    mode: "auto",
+  });
+  await commands.get("turns/dismissInteraction")?.({
+    conversationId: "c1",
+    agentId: "a1",
+  });
+  await commands.get("turns/truncate")?.({
+    conversationId: "c1",
+    agentId: "a1",
+    turnId: "t-9",
+  });
+  expect(calls.modes).toEqual([{ id: "c1", mode: "auto" }]);
+  expect(calls.dismissed).toEqual(["c1"]);
+  expect(calls.truncated).toEqual([{ id: "c1", turnId: "t-9" }]);
+});
+
+test("a one-conversation command without an agent is refused, never guessed", () => {
+  const { commands } = harness();
+  // The agent IS the sandbox the chat lives in; defaulting it would stop a turn
+  // in the single local runtime while the caller meant an agent's pod.
+  expect(() =>
+    commands.get("turns/cancel")?.({ conversationId: "c1" }),
+  ).toThrow(/agentId/);
+  expect(() =>
+    commands.get("turns/setMode")?.({ conversationId: "c1", agentId: "a1" }),
+  ).toThrow(/mode/);
+  expect(() =>
+    commands.get("turns/truncate")?.({ conversationId: "c1", agentId: "a1" }),
+  ).toThrow(/turnId/);
 });
 
 test("a malformed turns/send payload throws (the registry's dispatch turns it into ok:false)", () => {

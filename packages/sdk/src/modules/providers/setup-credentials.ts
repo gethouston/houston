@@ -1,11 +1,17 @@
-import { type ControlPlaneConfig, cpFetch } from "./fetch";
-
 /**
  * SETUP-RUNTIME credential writes (`/setup-runtime/credential/*`): the agentless
  * mirrors of the per-agent writes in `credentials.ts`, for the flows that land
  * before any agent exists. They carry no scope either — the space the request
  * lands in decides whose account the write hits.
+ *
+ * The host keeps ONE hidden setup runtime per space, alive until the space's
+ * first agent is created; it is the only runtime that can hold a credential
+ * while no agent does. First-run onboarding connects the AI ahead of agent
+ * creation, and a space whose last agent was deleted still holds the credential
+ * the user connected (PRODUCT-1662) — both reach the central store through here.
  */
+
+import { type HttpScope, httpRequest } from "../http";
 
 /**
  * Sends this computer's Claude sign-in to the workspace before any agent exists.
@@ -18,10 +24,10 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * @assistant group:providers hidden: carries a secret; the desktop's Anthropic OAuth credential, before any agent exists.
  */
 export async function pushSetupClaudeOAuthCredential(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   credentialJson: string,
 ): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/claude-oauth`, {
+  await httpRequest(scope, `/setup-runtime/credential/claude-oauth`, {
     method: "POST",
     body: credentialJson,
   });
@@ -34,10 +40,10 @@ export async function pushSetupClaudeOAuthCredential(
  * @assistant group:providers hidden: credential plumbing; first-run capture, before any agent exists.
  */
 export async function captureSetupCredential(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   provider?: string,
 ): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/capture`, {
+  await httpRequest(scope, `/setup-runtime/credential/capture`, {
     method: "POST",
     ...(provider ? { body: JSON.stringify({ provider }) } : {}),
   });
@@ -50,12 +56,12 @@ export async function captureSetupCredential(
  * @assistant group:providers hidden: takes a secret; the user pastes the provider key during first-run setup.
  */
 export async function setSetupApiKey(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   provider: string,
   apiKey: string,
   endpoint?: string,
 ): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/api-key`, {
+  await httpRequest(scope, `/setup-runtime/credential/api-key`, {
     method: "POST",
     body: JSON.stringify({
       provider,
@@ -75,10 +81,10 @@ export async function setSetupApiKey(
  * @assistant group:providers hidden: destroys the space's provider sign-in, before any agent exists.
  */
 export async function forgetSetupCredential(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   provider: string,
 ): Promise<void> {
-  await cpFetch(cfg, `/setup-runtime/credential/forget`, {
+  await httpRequest(scope, `/setup-runtime/credential/forget`, {
     method: "POST",
     body: JSON.stringify({ provider }),
   });

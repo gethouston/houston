@@ -18,7 +18,12 @@
  */
 
 import type { ModuleContext } from "../../module-context";
-import { parseDelete, parseRefresh, parseRename } from "./payloads";
+import {
+  parseDelete,
+  parseRefresh,
+  parseRename,
+  parseSuggestTitle,
+} from "./payloads";
 import {
   type ConversationListVM,
   conversationListScope,
@@ -82,6 +87,24 @@ export function createConversationsModule(ctx: ModuleContext) {
       .deleteConversation(id)
       .then(() => loadList(agentId));
 
+  /**
+   * Names a chat from what was said in it, in a few words.
+   *
+   * Runs a one-shot title turn on the agent's runtime over an excerpt — the
+   * composer's first message — with no stored conversation of its own. Answers
+   * `""` when the model emits nothing, which the caller replaces with its own
+   * truncation rather than blocking on a cosmetic value.
+   * @param agentId The agent this acts on, by the id listAgents returns. An
+   *   agent's name is not its id, so read the id from listAgents first.
+   * @param text The excerpt to title.
+   * @assistant group:chat
+   * @assistant hidden: it spends a model turn naming a chat the person is in the middle of starting; the title they end up with is theirs to set.
+   */
+  const suggestTitle = (
+    agentId: string,
+    text: string,
+  ): Promise<{ title: string }> => clientFor(agentId).summarizeText(text);
+
   registerCommand("conversations/refresh", (payload) =>
     loadList(parseRefresh(payload).agentId),
   );
@@ -92,6 +115,10 @@ export function createConversationsModule(ctx: ModuleContext) {
   registerCommand("conversations/delete", (payload) => {
     const { agentId, id } = parseDelete(payload);
     return remove(agentId, id);
+  });
+  registerCommand("conversations/suggestTitle", (payload) => {
+    const { agentId, text } = parseSuggestTitle(payload);
+    return suggestTitle(agentId, text);
   });
 
   return {
@@ -119,5 +146,6 @@ export function createConversationsModule(ctx: ModuleContext) {
      * @assistant hidden: it acts on the chat the person has open, and nothing lists an agent's chats, so a dispatched call has no id it could name.
      */
     delete: remove,
+    suggestTitle,
   };
 }

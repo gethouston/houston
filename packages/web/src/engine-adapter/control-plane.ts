@@ -62,13 +62,10 @@ export type {
 export * from "./cp/agent-color";
 export * from "./cp/agent-color-sync";
 export * from "./cp/agent-ui";
-export * from "./cp/billing";
-export * from "./cp/credentials";
 export * from "./cp/events";
 export * from "./cp/fetch";
 export * from "./cp/preferences";
 export * from "./cp/retry";
 export * from "./cp/runtime-clients";
-export * from "./cp/setup-credentials";
 export * from "./cp/transient-retry";
 export * from "./cp/unavailable-reason";

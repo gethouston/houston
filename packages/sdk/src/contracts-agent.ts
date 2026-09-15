@@ -72,6 +72,13 @@ export type {
 } from "./modules/integrations/custom-types";
 export type { TriggerType } from "./modules/integrations/reads";
 export { IntegrationsHttpError } from "./modules/integrations/types";
+// ===== Migration module contract =======================================
+export {
+  MigrationHttpError,
+  type MigrationImportOptions,
+  type MigrationImportResult,
+  type MigrationModule,
+} from "./modules/migration";
 // ===== Providers module contract =======================================
 export {
   type AuthStatus,
@@ -81,9 +88,11 @@ export {
   type LoginState,
   mergeProviders,
   overlayStatus,
+  type ProviderCredentialWrites,
   type ProviderId,
   ProvidersCommand,
   type ProvidersCommandType,
+  ProvidersHttpError,
   type ProvidersModule,
   type ProvidersViewModel,
   type ProvidersWrites,

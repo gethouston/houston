@@ -35,6 +35,12 @@ export interface DeletePayload {
   id: string;
 }
 
+/** Arguments for `conversations/suggestTitle`. */
+export interface SuggestTitlePayload {
+  agentId: string;
+  text: string;
+}
+
 export function parseRefresh(payload: unknown): RefreshPayload {
   const rec = asRecord(payload);
   return { agentId: requireString(rec, "agentId") };
@@ -54,5 +60,13 @@ export function parseDelete(payload: unknown): DeletePayload {
   return {
     agentId: requireString(rec, "agentId"),
     id: requireString(rec, "id"),
+  };
+}
+
+export function parseSuggestTitle(payload: unknown): SuggestTitlePayload {
+  const rec = asRecord(payload);
+  return {
+    agentId: requireString(rec, "agentId"),
+    text: requireString(rec, "text"),
   };
 }

@@ -7,8 +7,11 @@
  * the command registry and returns the typed facade — one implementation backs
  * both the facade and the bridge `dispatch` path.
  *
- * Provider credentials are per-agent-pod in hosted mode, so every call is routed
- * through `ctx.clientFor(agentId)` (`/agents/<id>/…`). 401s need no handling
+ * A runtime's credentials are per-agent-pod in hosted mode, so every read and
+ * login call is routed through `ctx.clientFor(agentId)` (`/agents/<id>/…`). The
+ * separate `credentials` facade (`./credential-store`) writes the WORKSPACE's
+ * central store over the gateway's own control routes instead — that header
+ * says which surface serves whom. 401s need no handling
  * here: `ctx.config.ports.fetch` is the shared auth-fetch, which classifies a
  * 401 and reports it to the `session/tokenExpired` notifier for EVERY request it
  * stamps — the engine client the module calls runs on that same fetch, so a
@@ -25,6 +28,7 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { createProviderCredentials } from "./credential-store";
 import { createProviderOps } from "./operations";
 import {
   parseCompleteLogin,
@@ -41,6 +45,10 @@ import {
 } from "./types";
 import { createProviderWrites } from "./writes";
 
+export {
+  type ProviderCredentialWrites,
+  ProvidersHttpError,
+} from "./credential-store";
 export { mergeProviders, overlayStatus } from "./merge";
 export type {
   AuthStatus,
@@ -63,6 +71,7 @@ export {
 
 export function createProvidersModule(ctx: ModuleContext): ProvidersModule {
   const writes = createProviderWrites(ctx);
+  const credentials = createProviderCredentials(ctx);
   const ops = createProviderOps(ctx, writes);
 
   ctx.registerCommand(ProvidersCommand.Refresh, (p) =>
@@ -96,5 +105,5 @@ export function createProvidersModule(ctx: ModuleContext): ProvidersModule {
     return ops.setModel(agentId, { model, effort, provider });
   });
 
-  return { scope: providersScope, ...ops, writes };
+  return { scope: providersScope, ...ops, writes, credentials };
 }

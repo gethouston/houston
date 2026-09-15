@@ -14,7 +14,8 @@
  *     cloud lib or `@houston/host-cloud`. Staying cloud-lib-free is what keeps
  *     this code deployment-agnostic (desktop, engine pod, self-host).
  *
- * Three protections, all fail the build (exit 1):
+ * Four protections, all fail the build (exit 1). A-C guard the open/closed
+ * seam; D guards the app's own error-surfacing layer:
  *
  *   Rule A — no OPEN-package file reaches the closed package or a cloud lib. A
  *     reach is ANY of:
@@ -46,6 +47,15 @@
  *     default, but a dependency must be declared to resolve, and a declaration is
  *     a small, reviewable surface. The runtime's `@google-cloud/storage` is the
  *     one documented exception.
+ *
+ *   Rule D — a boundary INSIDE the app, not across the open/closed seam: only
+ *     `app/src/lib/tauri.ts` may reach the engine client freely, because that
+ *     module is the error-surfacing policy layer (`call()`: the Sentry grouping
+ *     label, the per-call toast/silence options, the expected-state ladder).
+ *     Every other `getEngine()` caller is a failure with NO toast, NO Sentry
+ *     and NO expected-state classification, so the set is frozen to a written
+ *     allowlist: a new bypass is a deliberate, reviewable diff, and the list
+ *     shrinks as callers move onto a `tauri.ts` namespace.
  *
  * No new npm deps: a regex import extractor (comments stripped first) over
  * .ts/.tsx + node:fs.
@@ -137,6 +147,52 @@ const MANIFEST_CLOUD_ALLOW = new Map([
  * caught by Rule A(a), which runs before (d).
  */
 const REPO_SCOPES = ["@houston/", "@houston-ai/"];
+
+/**
+ * Rule D's frozen set. `app/src/lib/engine.ts` DECLARES `getEngine`, and
+ * `app/src/lib/tauri.ts` is the error-surfacing layer it exists for; every file
+ * below calls it directly instead, so a failure there reaches no toast, no
+ * Sentry and no expected-state classification. They are allowed because they
+ * already ship, not because the bypass is right — the list may shrink (route a
+ * caller through a `tauri.ts` namespace and delete its line) and may only grow
+ * with a reviewer's agreement. Repo-relative, with extension.
+ */
+const ENGINE_CLIENT_OWNERS = new Set([
+  "app/src/lib/engine.ts",
+  "app/src/lib/tauri.ts",
+]);
+const ENGINE_CALL_BYPASS = new Set([
+  "app/src/components/agent-actions/use-copy-agent.ts",
+  "app/src/components/copy-agent/use-copy-agent-wizard.ts",
+  "app/src/components/portable/export-wizard.tsx",
+  "app/src/components/portable/import-wizard.tsx",
+  "app/src/components/portable/install-from-link.tsx",
+  "app/src/components/portable/use-anonymize.ts",
+  "app/src/components/portable/use-store-publication.ts",
+  "app/src/components/store-view/profile/creator-profile-editor.tsx",
+  "app/src/components/store-view/use-my-store-agents.ts",
+  "app/src/components/store-view/use-store-install.ts",
+  "app/src/hooks/queries/use-triggers.ts",
+  "app/src/hooks/queries/use-workspace-context.ts",
+  "app/src/hooks/use-capabilities.ts",
+  "app/src/hooks/use-handle-availability.ts",
+  "app/src/hooks/use-move-resume.ts",
+  "app/src/hooks/use-my-analytics.ts",
+  "app/src/hooks/use-my-store-profile.ts",
+  "app/src/hooks/use-provider-catalog.ts",
+  "app/src/hooks/use-team-move-resume.ts",
+  "app/src/lib/claude-login-remote.ts",
+  "app/src/lib/cloud-migration-runner.ts",
+  "app/src/lib/local-bridge-binding.ts",
+  "app/src/lib/mission-row-landing.ts",
+  "app/src/lib/mission-title.ts",
+  "app/src/lib/store-install-deeplink.ts",
+  "app/src/lib/theme-boot.ts",
+  "app/src/lib/warming-sends.ts",
+  "app/src/main.tsx",
+  "app/src/stores/agent-provisioning.ts",
+  "app/src/stores/agents.ts",
+]);
 
 /** Node + Bun builtins are always fine to import from open code. */
 const BUILTINS = new Set([
@@ -469,6 +525,34 @@ for (const pkg of OPEN_PACKAGES) {
   }
 }
 
+// Rule D — the getEngine() bypass set is frozen. Counted on the RAW source: a
+// `getEngine()` inside a comment is still a reader being told this file talks
+// to the engine, and a commented-out call is one paste from being live.
+// Only where there IS an app: the boundary fixture tree
+// (scripts/test/check-boundaries.test.sh) is packages-only, and the real repo
+// cannot lose app/src without losing the product, so the skip is stated rather
+// than assumed.
+const appSrc = join(root, "app", "src");
+const hasApp = existsSync(appSrc);
+let bypassesChecked = 0;
+const bypassSeen = new Set();
+for (const abs of hasApp ? walk(appSrc) : []) {
+  const rel = repoRel(abs);
+  if (ENGINE_CLIENT_OWNERS.has(rel)) continue;
+  if (!readFileSync(abs, "utf8").includes("getEngine()")) continue;
+  bypassesChecked++;
+  if (ENGINE_CALL_BYPASS.has(rel)) bypassSeen.add(rel);
+  else
+    violations.push(
+      `[D] ${rel} calls getEngine() directly, outside app/src/lib/tauri.ts — its failures get no toast, no Sentry and no expected-state classification; route it through a tauri.ts namespace, or add it to ENGINE_CALL_BYPASS with a reviewer's agreement`,
+    );
+}
+for (const rel of hasApp ? ENGINE_CALL_BYPASS : [])
+  if (!bypassSeen.has(rel))
+    violations.push(
+      `[D] ${rel} no longer calls getEngine() (or no longer exists) — delete its ENGINE_CALL_BYPASS line; the list only stays meaningful while it is exact`,
+    );
+
 // ---------------------------------------------------------------------------
 // Report.
 // ---------------------------------------------------------------------------
@@ -487,5 +571,8 @@ console.log(
   `Boundary OK — ${openFilesChecked} open file(s) clean across ${OPEN_PACKAGES.length} package root(s); ` +
     `no ${CLOSED_PACKAGE} present (retired); ` +
     `${crossingsAllowed} allowlisted cloud crossing(s); ` +
-    `${manifestsChecked} open manifest(s) clean.`,
+    `${manifestsChecked} open manifest(s) clean; ` +
+    (hasApp
+      ? `${bypassesChecked} app/src getEngine() bypass(es), all declared.`
+      : "no app/src here, so Rule D does not apply."),
 );

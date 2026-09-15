@@ -1,11 +1,14 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonEngineError } from "../src/engine-adapter/client";
-import { getBilling } from "../src/engine-adapter/control-plane";
+import {
+  HoustonClient,
+  HoustonEngineError,
+} from "../src/engine-adapter/client";
 
 /**
  * `getBilling` on the HOSTED path (C8 §Billing) is the client every cloud build
  * actually runs — the engine-client shim's `getBilling` only matters to the
- * legacy client. So the not-entitled degrade has to land HERE: a gateway that
+ * legacy client. So the not-entitled degrade has to land HERE, in the mixin
+ * that reads the status `sdk.billing` throws: a gateway that
  * predates billing (404), a caller it refuses billing detail (403), and — the
  * HOU-904 regression — a billing-OFF deployment (503 `billing not configured`,
  * every prod gateway with no `GW_STRIPE_*`) all resolve to `null` so the billing
@@ -15,6 +18,10 @@ import { getBilling } from "../src/engine-adapter/control-plane";
  */
 
 const CFG = { baseUrl: "https://host.example", token: "t" };
+
+/** The read as the app makes it: the composed cloud client's own method. */
+const getBilling = (cfg: { baseUrl: string; token: string }) =>
+  new HoustonClient({ ...cfg, controlPlane: true }).getBilling();
 
 const originalFetch = globalThis.fetch;
 

@@ -2,7 +2,6 @@ import type {
   SessionStartRequest,
   SessionStartResponse,
 } from "../../../../../ui/engine-client/src/types";
-import * as controlPlane from "../control-plane";
 import {
   flushQueuedSends,
   maybeQueueSend,
@@ -12,26 +11,23 @@ import {
 } from "../send-queue";
 import { DEFAULT_AGENT_PATH } from "../synthetic";
 import { wireTurnPin } from "../turn-pin";
-import {
-  observeConversation,
-  streamTurn,
-  truncateConversationVm,
-} from "../turn-stream";
+import { observeConversation, streamTurn } from "../turn-stream";
 import { setActivityStatus } from "./activity-status";
 import type { BaseCtor } from "./mixin";
 
 export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
   class ChatSend extends Base {
-    // ---- sessions / chat (send + cancel) ----
+    // ---- sessions / chat (send) ----
     async startSession(
       agentPath: string,
       req: SessionStartRequest,
     ): Promise<SessionStartResponse> {
       const path = agentPath || DEFAULT_AGENT_PATH;
-      // In cloud mode, talk to this agent's sandbox via the control plane's proxy;
-      // locally, the single runtime. Either way `streamTurn` is identical.
+      // In cloud mode, talk to this agent's sandbox through the SDK's own
+      // per-agent client (the same one its turn modules use); locally, the
+      // single runtime. Either way `streamTurn` is identical.
       const engine = this.ctx.cp
-        ? controlPlane.runtimeClientFor(this.ctx.cp, path)
+        ? this.ctx.sdk.clientFor(path)
         : this.ctx.engine;
       // Queue-while-running: a send into a conversation whose turn is still
       // streaming is held and flushed as ONE combined send at settle (see
@@ -119,83 +115,6 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
       id: string,
     ): void {
       removeQueuedSend(agentPath || DEFAULT_AGENT_PATH, sessionKey, id);
-    }
-
-    async cancelSession(agentPath: string, sessionKey: string) {
-      const engine = this.ctx.cp
-        ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
-        : this.ctx.engine;
-      // Abort the agent's in-flight turn. The engine reports whether a turn was
-      // ACTUALLY in flight. `false` means there was nothing to abort: the turn is
-      // orphaned — its board card is stuck "running" because the turn died without
-      // settling (an error that never reached a terminal frame, or an app restart
-      // that dropped the in-memory turn). Stop is the user's escape hatch, so in
-      // that case settle the card ourselves. A genuinely live turn (`true`) is
-      // settled by its own `streamTurn` when the abort lands, so we leave its
-      // status alone — writing it here too would race that terminal write.
-      const { cancelled } = await engine.cancel(sessionKey);
-      if (cancelled !== true) {
-        // Orphan rescue: a user Stop on a dead turn — never a pending interaction.
-        await setActivityStatus(
-          this.ctx,
-          agentPath,
-          sessionKey,
-          "needs_you",
-          null,
-        );
-      }
-      return { cancelled: cancelled === true };
-    }
-
-    /**
-     * Apply a Mode-pill switch to a conversation's EXECUTING turn (Claude
-     * Code's shift+tab): the runtime mutates the running turn's live-mode ref
-     * so its tools adopt the new mode at their next decision. `applied: false`
-     * is benign — no turn was running, and the next send pins the mode itself.
-     */
-    async setLiveTurnMode(
-      agentPath: string,
-      conversationId: string,
-      mode: "execute" | "plan" | "auto",
-    ): Promise<{ ok: boolean; applied: boolean }> {
-      const engine = this.ctx.cp
-        ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
-        : this.ctx.engine;
-      return engine.setMode(conversationId, mode);
-    }
-
-    async dismissInteraction(
-      agentPath: string,
-      conversationId: string,
-    ): Promise<void> {
-      const engine = this.ctx.cp
-        ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
-        : this.ctx.engine;
-      // The stepper X / abandon appends the durable stop marker on the runtime,
-      // retiring the pending interaction. This matches a real Stop — the model
-      // learns nothing from it.
-      await engine.dismissInteraction(conversationId);
-    }
-
-    /**
-     * Edit-and-resend rewind (PRODUCT-1217): the runtime cuts the transcript
-     * at the edited user turn (and resets the model's session so the next
-     * turn replays the kept context), then the VM fold drops the same tail so
-     * the feed rewinds immediately. The caller follows up with a normal send
-     * carrying the edited text. Throws on 409 (a turn raced the edit) — the
-     * caller surfaces it; nothing was cut.
-     */
-    async truncateConversation(
-      agentPath: string,
-      sessionKey: string,
-      turnId: string,
-    ): Promise<void> {
-      const path = agentPath || DEFAULT_AGENT_PATH;
-      const engine = this.ctx.cp
-        ? controlPlane.runtimeClientFor(this.ctx.cp, path)
-        : this.ctx.engine;
-      await engine.truncateConversation(sessionKey, turnId);
-      truncateConversationVm(path, sessionKey, turnId);
     }
 
     async startOnboarding(

@@ -1,6 +1,5 @@
 import { historyToFeed as sdkHistoryToFeed } from "@houston/sdk";
 import type { ChatHistoryEntry } from "../../../../../ui/engine-client/src/types";
-import * as controlPlane from "../control-plane";
 import {
   type CachedFrame,
   writeCachedConversation,
@@ -56,7 +55,7 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
       }
       try {
         const engine = this.ctx.cp
-          ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
+          ? this.ctx.sdk.clientFor(agentPath)
           : this.ctx.engine;
         // Every read is windowed. A conversation OPEN reads the tail window
         // (HOU-819) — long missions used to fetch and fold their entire
@@ -152,7 +151,7 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
       sessionKey: string,
     ): Promise<{ hasOlder: boolean }> {
       const engine = this.ctx.cp
-        ? controlPlane.runtimeClientFor(this.ctx.cp, agentPath)
+        ? this.ctx.sdk.clientFor(agentPath)
         : this.ctx.engine;
       return loadOlderPage(engine, agentPath, sessionKey);
     }
@@ -173,13 +172,14 @@ export function ChatHistoryMixin<TBase extends BaseCtor>(Base: TBase) {
       try {
         const agentId =
           opts.agentPath || this.ctx.currentAgentId() || undefined;
-        const engine = this.ctx.cp
-          ? agentId
-            ? controlPlane.runtimeClientFor(this.ctx.cp, agentId)
-            : null
-          : this.ctx.engine;
-        if (engine) {
-          const { title } = await engine.summarizeText(message);
+        // Cloud with no agent selected has no sandbox to run the title turn in;
+        // local names its single runtime with the empty id.
+        const scope = this.ctx.cp ? agentId : "";
+        if (scope !== undefined) {
+          const { title } = await this.ctx.sdk.conversations.suggestTitle(
+            scope,
+            message,
+          );
           const clean = title.trim();
           if (clean) return { title: clean, description: "" };
         }

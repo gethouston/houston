@@ -15,7 +15,8 @@
  *    existing toast pipeline surfaces (beta policy: no silent failures).
  *
  * The set of handled commands is asserted complete by
- * scripts/check-tauri-shims.mjs (every invoke("X") in app/src must appear here).
+ * scripts/check-desktop-native.mjs (every command declared in
+ * app/src/lib/desktop-native-commands.ts must appear here, keychain aside).
  */
 
 import { gatewayAuthFetch } from "../engine-adapter/cp/fetch";

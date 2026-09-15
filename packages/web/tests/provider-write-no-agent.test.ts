@@ -41,9 +41,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
-    forgetCredential,
-    forgetSetupCredential,
-    setCustomEndpoint,
     runtimeClientFor: vi.fn(() => ({
       logout: runtimeLogout,
       claimActiveProvider: agentClaim,
@@ -89,12 +86,27 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+/**
+ * A hosted client with the three central-credential writes recorded. They are
+ * `sdk.providers.credentials`', so the client's own SDK is the seam; the
+ * per-agent pair takes the agent id first, the agentless one the provider.
+ */
 async function zeroAgentClient() {
   const c = new HoustonClient({
     baseUrl: "http://gateway",
     token: "t",
     controlPlane: true,
   });
+  const credentials = c.engineSdk.providers.credentials;
+  vi.spyOn(credentials, "forgetCredential").mockImplementation(
+    forgetCredential,
+  );
+  vi.spyOn(credentials, "forgetSetupCredential").mockImplementation(
+    forgetSetupCredential,
+  );
+  vi.spyOn(credentials, "setCustomEndpoint").mockImplementation(
+    setCustomEndpoint,
+  );
   await c.listAgents("ws");
   return c;
 }
@@ -105,7 +117,7 @@ test("sign-out with no agent routes through the setup runtime, never a per-agent
   await c.providerLogout("anthropic");
 
   expect(forgetSetupCredential).toHaveBeenCalledTimes(1);
-  expect(forgetSetupCredential.mock.calls[0]?.[1]).toBe("anthropic");
+  expect(forgetSetupCredential.mock.calls[0]?.[0]).toBe("anthropic");
   expect(setupLogout).toHaveBeenCalledWith("anthropic");
   // The stale pref must not turn into `/agents/<dead>/credential/forget`.
   expect(forgetCredential).not.toHaveBeenCalled();
@@ -117,7 +129,7 @@ test("sign-out with no agent clears every sibling gateway, like the per-agent pa
 
   await c.providerLogout("opencode");
 
-  const forgotten = forgetSetupCredential.mock.calls.map((call) => call[1]);
+  const forgotten = forgetSetupCredential.mock.calls.map((call) => call[0]);
   expect(forgotten).toEqual(
     expect.arrayContaining(["opencode", "opencode-go"]),
   );
@@ -159,12 +171,12 @@ test("with an agent, sign-out and the endpoint still take the per-agent routes",
   const c = await zeroAgentClient();
 
   await c.providerLogout("anthropic");
-  expect(forgetCredential.mock.calls[0]?.[1]).toBe("agent-1");
+  expect(forgetCredential.mock.calls[0]?.[0]).toBe("agent-1");
   expect(forgetSetupCredential).not.toHaveBeenCalled();
 
   await c.setProviderCustomEndpoint({
     baseUrl: "https://tunnel.example/v1",
     model: "local",
   });
-  expect(setCustomEndpoint.mock.calls[0]?.[1]).toBe("agent-1");
+  expect(setCustomEndpoint.mock.calls[0]?.[0]).toBe("agent-1");
 });

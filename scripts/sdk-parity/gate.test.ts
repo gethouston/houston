@@ -4,8 +4,8 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
 import { type Exceptions, judge, parseExceptions } from "./gate.ts";
-import { repoRoot } from "./inputs.ts";
-import type { Violation } from "./rules.ts";
+import { type DesktopCalls, repoRoot } from "./inputs.ts";
+import { checkRules, type Violation } from "./rules.ts";
 
 const VIOLATION: Violation = {
   rule: "proxy-drift",
@@ -71,6 +71,61 @@ test("the same violation cannot be excused twice", () => {
   expect(() =>
     parseExceptions(excusing(VIOLATION.key, VIOLATION.key), "fixture"),
   ).toThrow(/a second time/);
+});
+
+/** One classified adapter method, as `desktopCalls()` reports it. */
+const method = (name: string, bound: boolean) => ({
+  name,
+  source: resolve(
+    repoRoot,
+    "packages/web/src/engine-adapter/client/example-mixin.ts",
+  ),
+  bound,
+  unbound: !bound,
+});
+
+const client = (...unbound: string[]): DesktopCalls => ({
+  sdk: [],
+  native: [],
+  unbound: unbound.map((name) => method(name, false)),
+});
+
+const UNBOUND_EXCUSE = {
+  rule: "client-route-unbound" as const,
+  key: "client rawRead",
+  reason: "written down so a reader knows why this one stays off the SDK",
+};
+
+test("an adapter method that reaches a server without the SDK is a violation", () => {
+  const violations = checkRules([], [], [], client("rawRead"));
+  expect(violations).toHaveLength(1);
+  expect(violations[0]).toMatchObject({
+    rule: "client-route-unbound",
+    key: "client rawRead",
+  });
+  const verdict = judge(violations, { baseline: 0, entries: [] }, "summary");
+  expect(verdict.failures).toHaveLength(1);
+  expect(verdict.failures[0]).toContain("client rawRead");
+});
+
+test("an adapter method that delegates to the SDK is no violation", () => {
+  const bound: DesktopCalls = {
+    sdk: [method("rawRead", true)],
+    native: [],
+    unbound: [],
+  };
+  expect(checkRules([], [], [], bound)).toEqual([]);
+});
+
+test("an excuse for an adapter method that now delegates fails as stale", () => {
+  const bound: DesktopCalls = { sdk: [], native: [], unbound: [] };
+  const verdict = judge(
+    checkRules([], [], [], bound),
+    { baseline: 1, entries: [UNBOUND_EXCUSE] },
+    "summary",
+  );
+  expect(verdict.failures).toHaveLength(1);
+  expect(verdict.failures[0]).toContain("no longer reproduces");
 });
 
 const EXCEPTIONS = resolve(repoRoot, "scripts/sdk-parity-exceptions.json");

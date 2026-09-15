@@ -22,6 +22,7 @@ import type {
   LoginState,
   ProviderId,
 } from "@houston/runtime-client";
+import type { ProviderCredentialWrites } from "./credential-store";
 
 export type { AuthStatus, CustomEndpoint, LoginInfo, LoginState, ProviderId };
 
@@ -171,4 +172,11 @@ export interface ProvidersModule {
    * plus `setCustomEndpoint`. iOS keeps using the refetching methods above.
    */
   writes: ProvidersWrites;
+  /**
+   * The workspace-CENTRAL credential store the gateway serves
+   * (`/agents/:id/credential/*`, `/setup-runtime/credential/*`), which every
+   * agent in the space serves from. A different surface from {@link writes},
+   * whose calls land on one pod's own `auth.json` — see `credential-store.ts`.
+   */
+  credentials: ProviderCredentialWrites;
 }

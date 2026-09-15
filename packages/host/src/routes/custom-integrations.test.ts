@@ -6,7 +6,6 @@ import {
   CustomIntegrationError,
   type CustomIntegrationView,
 } from "../integrations/custom/types";
-import { MemoryWorkspaceStore } from "../store/memory";
 import {
   type CustomIntegrationDeps,
   handleSandboxCustomIntegrations,
@@ -53,29 +52,18 @@ function fakeManager(
 
 type Deps = CustomIntegrationDeps & { vault: EnvCredentialVault };
 
-/** The mini harness serves as user "u1"; the agent-scoped `/v1` form and the
- *  dispatch surface are covered by custom-integrations-user.test.ts against
+/** The mini harness mounts the top-level `/v1` form only; the per-agent
+ *  dispatch surface is covered by custom-integrations-user.test.ts against
  *  the FULL server (real mounting order + ownership checks). */
 async function startServer(
   deps: Deps,
 ): Promise<{ server: Server; base: string }> {
-  const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const server = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://test.local");
     const method = req.method || "GET";
     const path = url.pathname;
     (async () => {
-      if (
-        await handleCustomIntegrations(
-          { ...deps, store },
-          "u1",
-          method,
-          path,
-          req,
-          res,
-        )
-      )
-        return;
+      if (await handleCustomIntegrations(deps, method, path, req, res)) return;
       if (
         await handleSandboxCustomIntegrations(deps, method, path, url, req, res)
       )

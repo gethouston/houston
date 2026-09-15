@@ -398,6 +398,40 @@ describe("conversations module — facade surface", () => {
     expect(mod.scope("alice")).toBe("conversations/alice");
   });
 
+  it("suggestTitle posts the excerpt to the agent's own title route", async () => {
+    const calls: RecordedCall[] = [];
+    const fetchImpl = (async (input: unknown, init?: RequestInit) => {
+      calls.push({
+        url: String(input),
+        method: (init?.method ?? "GET").toUpperCase(),
+        body: init?.body ? JSON.parse(init.body as string) : undefined,
+      });
+      return json({ title: "Trip to Lisbon" });
+    }) as unknown as typeof fetch;
+    const { ctx, registry } = makeCtx(fetchImpl);
+    const mod = createConversationsModule(ctx);
+
+    await expect(mod.suggestTitle("alice", "plan a trip")).resolves.toEqual({
+      title: "Trip to Lisbon",
+    });
+    expect(calls).toEqual([
+      {
+        url: `${BASE}/agents/alice/title`,
+        method: "POST",
+        body: { text: "plan a trip" },
+      },
+    ]);
+
+    // The bridge path lands on the same function, so nothing exists twice.
+    const dispatched = await registry.dispatch({
+      id: "1",
+      type: "conversations/suggestTitle",
+      payload: { agentId: "alice", text: "plan a trip" },
+    });
+    expect(dispatched.ok).toBe(true);
+    expect(calls).toHaveLength(2);
+  });
+
   it("surfaces an engine error from refresh (no swallow)", async () => {
     const failing = vi.fn(async () => new Response("boom", { status: 500 }));
     const { ctx } = makeCtx(failing as unknown as typeof fetch);

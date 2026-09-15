@@ -118,7 +118,21 @@ the open packages' `package.json` files. It then enforces:
   declaration is a small, reviewable surface. The runtime's `@google-cloud/storage`
   is the one documented exception.
 
-Violations print as `[A|B|C] file -> reason` and exit 1. On success it prints a
+## Rule D — the app's error-surfacing layer
+
+Not an open/closed rule; the same script enforces it because it is the other
+boundary a file can cross silently. `app/src/lib/engine.ts` declares
+`getEngine()`, and `app/src/lib/tauri.ts` is the module it exists for: every
+`call()` there carries an authored Sentry label, per-call toast/silence options
+and the expected-state ladder. A file that calls `getEngine()` itself gets none
+of that, so its failures are invisible to the user AND to us.
+
+The existing callers are frozen in `ENGINE_CALL_BYPASS` (30 files). A new one
+fails the check; a listed file that stops calling `getEngine()` fails too, so
+the list can only ever describe the real set. Route a caller through a
+`tauri.ts` namespace and delete its line.
+
+Violations print as `[A|B|C|D] file -> reason` and exit 1. On success it prints a
 one-line OK with the open file count, the allowlisted-crossing count, and the
 number of clean open manifests.
 

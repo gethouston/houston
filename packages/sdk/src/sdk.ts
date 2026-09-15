@@ -18,6 +18,7 @@
  * crossing `getSnapshot`/`subscribe`/`dispatch`/`on` is plain JSON.
  */
 
+import type { HoustonEngineClient } from "@houston/runtime-client";
 import {
   type AuthExpiryNotifier,
   createAuthExpiryNotifier,
@@ -34,9 +35,11 @@ import type { ModuleContext } from "./module-context";
 import { createAccountModule } from "./modules/account";
 import { createActivitiesModule } from "./modules/activities";
 import { createAgentsModule } from "./modules/agents";
+import { createBillingModule } from "./modules/billing";
 import { createConversationsModule } from "./modules/conversations";
 import { createFilesModule } from "./modules/files";
 import { createIntegrationsModule } from "./modules/integrations";
+import { createMigrationModule } from "./modules/migration";
 import { createMissionsSearchModule } from "./modules/missions-search";
 import { createOrgModule } from "./modules/org";
 import { createPreferencesModule } from "./modules/preferences";
@@ -85,22 +88,30 @@ export class HoustonSdk {
   readonly org: ReturnType<typeof createOrgModule>;
   /** Teams facade (the space's team directory + per-agent policy). */
   readonly teams: ReturnType<typeof createTeamsModule>;
+  /** Billing facade (the team's subscription + the Stripe hand-offs). */
+  readonly billing: ReturnType<typeof createBillingModule>;
   /** Routines facade (an agent's scheduled work, its runs, its webhook key). */
   readonly routines: ReturnType<typeof createRoutinesModule>;
   /** Skills facade (an agent's own skills and the manifest enabling them). */
   readonly skills: ReturnType<typeof createSkillsModule>;
   /** Files facade (an agent's workspace listing, reads, moves + uploads). */
   readonly files: ReturnType<typeof createFilesModule>;
+  /** Migration facade (an agent's data out as zip chunks, and into another). */
+  readonly migration: ReturnType<typeof createMigrationModule>;
+  /** The per-agent engine client every module resolves its calls through — the
+   *  seam a host binds when it drives the re-exported turn machinery itself. */
+  readonly clientFor: (agentId: string) => HoustonEngineClient;
 
   constructor(config: SdkConfig) {
     this.store = new ScopeStore();
     this.authExpiry = createAuthExpiryNotifier(this.store);
     this.commands = new CommandRegistry();
+    this.clientFor = createEngineClients(config);
 
     const ctx: ModuleContext = {
       config,
       store: this.store,
-      clientFor: createEngineClients(config),
+      clientFor: this.clientFor,
       authExpiry: this.authExpiry,
       registerCommand: (type, handler) => this.commands.register(type, handler),
     };
@@ -142,9 +153,11 @@ export class HoustonSdk {
     this.account = createAccountModule(ctx);
     this.org = createOrgModule(ctx);
     this.teams = createTeamsModule(ctx);
+    this.billing = createBillingModule(ctx);
     this.routines = createRoutinesModule(ctx);
     this.skills = createSkillsModule(ctx);
     this.files = createFilesModule(ctx);
+    this.migration = createMigrationModule(ctx);
     // =====================================================================
   }
 

@@ -47,28 +47,29 @@ export interface TurnSendInput {
   mentions?: FeedMention[];
 }
 
-/** The `turns/cancel` command payload. */
-export interface TurnCancelInput {
-  /** The agent whose sandbox holds the turn (omit for the single local runtime). */
-  agentId?: string;
-  /** The conversation whose in-flight turn to abort. */
+/**
+ * What every command that acts on ONE existing conversation carries: backs
+ * `turns/cancel`, `turns/observe`, `turns/history` and
+ * `turns/dismissInteraction`. The agent is required — it is the sandbox the
+ * conversation lives in, and the single local runtime names itself with `""`.
+ */
+export interface TurnConversationInput {
+  /** The agent whose sandbox holds the conversation. */
+  agentId: string;
+  /** The conversation the command acts on. */
   conversationId: string;
 }
 
-/** The `turns/observe` command payload. */
-export interface TurnObserveInput {
-  /** The agent whose sandbox holds the conversation (omit for the single local runtime). */
-  agentId?: string;
-  /** The conversation to passively attach to. */
-  conversationId: string;
+/** The `turns/setMode` command payload. */
+export interface TurnSetModeInput extends TurnConversationInput {
+  /** The execution mode the running turn adopts at its next decision point. */
+  mode: "execute" | "plan" | "auto";
 }
 
-/** The `turns/history` command payload. */
-export interface TurnHistoryInput {
-  /** The agent whose sandbox holds the conversation (omit for the single local runtime). */
-  agentId?: string;
-  /** The conversation whose persisted transcript to fold into feed frames. */
-  conversationId: string;
+/** The `turns/truncate` command payload. */
+export interface TurnTruncateInput extends TurnConversationInput {
+  /** The user turn the transcript is cut at; it and everything after it go. */
+  turnId: string;
 }
 
 const str = (v: unknown): string | undefined =>
@@ -117,32 +118,26 @@ export function asSendInput(payload: unknown): TurnSendInput {
   };
 }
 
-export function asCancelInput(payload: unknown): TurnCancelInput {
-  const id = (payload as { conversationId?: unknown })?.conversationId;
-  if (typeof id !== "string")
-    throw new Error("turns/cancel requires a string conversationId");
-  return {
-    conversationId: id,
-    agentId: str((payload as TurnCancelInput)?.agentId),
-  };
+/** Guard for every one-conversation command; `command` names it in the throw. */
+export function asConversationInput(
+  payload: unknown,
+  command: string,
+): TurnConversationInput {
+  const p = (payload ?? {}) as Record<string, unknown>;
+  if (typeof p.conversationId !== "string" || typeof p.agentId !== "string")
+    throw new Error(`${command} requires string agentId and conversationId`);
+  return { agentId: p.agentId, conversationId: p.conversationId };
 }
 
-export function asObserveInput(payload: unknown): TurnObserveInput {
-  const id = (payload as { conversationId?: unknown })?.conversationId;
-  if (typeof id !== "string")
-    throw new Error("turns/observe requires a string conversationId");
-  return {
-    conversationId: id,
-    agentId: str((payload as TurnObserveInput)?.agentId),
-  };
+export function asSetModeInput(payload: unknown): TurnSetModeInput {
+  const picked = mode((payload as { mode?: unknown })?.mode);
+  if (!picked) throw new Error("turns/setMode requires a known mode");
+  return { ...asConversationInput(payload, "turns/setMode"), mode: picked };
 }
 
-export function asHistoryInput(payload: unknown): TurnHistoryInput {
-  const id = (payload as { conversationId?: unknown })?.conversationId;
-  if (typeof id !== "string")
-    throw new Error("turns/history requires a string conversationId");
-  return {
-    conversationId: id,
-    agentId: str((payload as TurnHistoryInput)?.agentId),
-  };
+export function asTruncateInput(payload: unknown): TurnTruncateInput {
+  const turnId = str((payload as { turnId?: unknown })?.turnId);
+  if (turnId === undefined)
+    throw new Error("turns/truncate requires a string turnId");
+  return { ...asConversationInput(payload, "turns/truncate"), turnId };
 }

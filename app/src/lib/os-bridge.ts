@@ -1,8 +1,8 @@
 /**
  * OS-native Tauri IPC bridge.
  *
- * Post-Phase-4 this module is the ONLY place in `app/src/` that may call
- * `invoke(...)`. Two classes of calls live here:
+ * This module is the ONLY place in `app/src/` that may call `invoke(...)`.
+ * Two classes of calls live here:
  *
  *  1. **OS-native helpers** (`osRevealFile`, `osPickDirectory`, …). These
  *     probe the user's local machine (file manager, open URL, terminal, local
@@ -13,8 +13,11 @@
  *     `events.ts` for events that never leave the desktop process —
  *     e.g. `app-activated` (OS window resume).
  *
- * Invariant enforced by CI: `grep -rn "invoke(" app/src/` only matches
- * this file.
+ * Both halves of the boundary are enforced by `scripts/check-desktop-native.mjs`
+ * (root `pnpm check`): no other file under `app/src/` may contain `invoke(`,
+ * and every command named below must be declared in
+ * `desktop-native-commands.ts`, registered in the Rust `generate_handler!`
+ * block, and answered by the web shim.
  */
 
 import type { LocalBridgeDevice, LocalBridgeIdentity } from "@houston/protocol";
@@ -27,12 +30,26 @@ import {
   type UnlistenFn,
 } from "@tauri-apps/api/event";
 import type { DownloadEvent } from "@tauri-apps/plugin-updater";
+import type { DesktopNativeCommand } from "./desktop-native-commands";
 import type {
   DictationModelProgress,
   DictationModelStatus,
 } from "./dictation/types";
 import type { DetectedServer } from "./local-model";
 import { toUrlOpenFailure, UrlOpenError } from "./url-open-failure.ts";
+
+/**
+ * `invoke`, narrowed to the declared native surface. Reaching for a command
+ * that is not in `desktop-native-commands.ts` is a TYPE error here, so the
+ * boundary is stated where the call is written rather than only in CI.
+ */
+function invokeNative<T>(
+  command: DesktopNativeCommand,
+  args?: Parameters<typeof invoke>[1],
+  options?: Parameters<typeof invoke>[2],
+): Promise<T> {
+  return invoke<T>(command, args, options);
+}
 
 // ── Platform detection ────────────────────────────────────────────────
 
@@ -69,7 +86,7 @@ export function legacyEmit(event: string, payload?: unknown): Promise<void> {
 
 /** macOS folder picker (osascript). */
 export function osPickDirectory(): Promise<string | null> {
-  return invoke<string | null>("pick_directory");
+  return invokeNative<string | null>("pick_directory");
 }
 
 /**
@@ -82,7 +99,7 @@ export function osPickDirectory(): Promise<string | null> {
 export async function osOpenUrl(url: string): Promise<boolean> {
   let opened: boolean | undefined;
   try {
-    opened = await invoke<boolean | undefined>("open_url", { url });
+    opened = await invokeNative<boolean | undefined>("open_url", { url });
   } catch (err) {
     // The shell rejects typed (`url_open_failure.rs`); as an Error the
     // report layer can classify a browserless machine on the paths that
@@ -137,7 +154,7 @@ export function osStartOauthLoopback(
   expectedState: string,
   exactPort?: number,
 ): Promise<OauthLoopbackStart> {
-  return invoke<OauthLoopbackStart>("start_oauth_loopback", {
+  return invokeNative<OauthLoopbackStart>("start_oauth_loopback", {
     expected_state: expectedState,
     ...(exactPort === undefined ? {} : { exact_port: exactPort }),
   });
@@ -149,7 +166,7 @@ export function osStartOauthLoopback(
  * the current listener, so a stale cancel cannot kill the next attempt.
  * Desktop only. */
 export function osCancelOauthLoopback(attemptId: number): Promise<void> {
-  return invoke<void>("cancel_oauth_loopback", { attempt_id: attemptId });
+  return invokeNative<void>("cancel_oauth_loopback", { attempt_id: attemptId });
 }
 
 // ── Identity session persistence (Keychain / DPAPI, via Rust `auth_*`) ──────
@@ -162,17 +179,17 @@ export function osCancelOauthLoopback(attemptId: number): Promise<void> {
 
 /** Read the identity session blob for `key`; null when there is no entry. */
 export function osAuthGetItem(key: string): Promise<string | null> {
-  return invoke<string | null>("auth_get_item", { key });
+  return invokeNative<string | null>("auth_get_item", { key });
 }
 
 /** Write the identity session blob for `key`. Rejects on a storage failure. */
 export function osAuthSetItem(key: string, value: string): Promise<void> {
-  return invoke<void>("auth_set_item", { key, value });
+  return invokeNative<void>("auth_set_item", { key, value });
 }
 
 /** Remove the identity session blob for `key`. Rejects on a storage failure. */
 export function osAuthRemoveItem(key: string): Promise<void> {
-  return invoke<void>("auth_remove_item", { key });
+  return invokeNative<void>("auth_remove_item", { key });
 }
 
 /** Bind a one-shot localhost listener for the Codex/OpenAI OAuth redirect. On
@@ -183,7 +200,7 @@ export function osAuthRemoveItem(key: string): Promise<void> {
  * LOCAL 1455 can't collide) — keeps ChatGPT sign-in zero-code even remotely.
  * Mirrors {@link osStartOauthLoopback} (the GCIP/Google sign-in loopback). */
 export function osStartCodexOauthLoopback(): Promise<void> {
-  return invoke<void>("start_codex_oauth_loopback");
+  return invokeNative<void>("start_codex_oauth_loopback");
 }
 
 /** Run `claude auth login --claudeai` FOR the user on the desktop (zero
@@ -197,7 +214,7 @@ export function osStartCodexOauthLoopback(): Promise<void> {
  * fallback for the "didn't open" link) and `claude-login://done`
  * (`{ success, error }`). Rejects only on an up-front spawn failure. */
 export function osStartClaudeLogin(handoff: boolean): Promise<void> {
-  return invoke<void>("start_claude_login", { handoff });
+  return invokeNative<void>("start_claude_login", { handoff });
 }
 
 /** Extract the Anthropic OAuth credential the `claude` CLI just cached, as the
@@ -209,7 +226,7 @@ export function osStartClaudeLogin(handoff: boolean): Promise<void> {
  * (never a silent empty) on not-found / parse failure so the caller can fall
  * back to the paste flow. */
 export function osReadClaudeCredential(handoff: boolean): Promise<string> {
-  return invoke<string>("read_claude_credential", { handoff });
+  return invokeNative<string>("read_claude_credential", { handoff });
 }
 
 /** Destroy the handoff dir's cached Claude credential (file + Keychain item)
@@ -219,7 +236,7 @@ export function osReadClaudeCredential(handoff: boolean): Promise<string> {
  * genuine deletion failure (the leftover is inert — nothing reads the handoff
  * dir outside the login flow — so callers log rather than toast). */
 export function osDiscardClaudeHandoffCredential(): Promise<void> {
-  return invoke<void>("discard_claude_handoff_credential");
+  return invokeNative<void>("discard_claude_handoff_credential");
 }
 
 /** Relay a pasted authorization code to the in-flight desktop Claude sign-in.
@@ -229,7 +246,7 @@ export function osDiscardClaudeHandoffCredential(): Promise<void> {
  * its own exchange — the outcome still arrives via `claude-login://done`.
  * Rejects with the real reason when nothing is in flight or the write fails. */
 export function osSubmitClaudeLoginCode(code: string): Promise<void> {
-  return invoke<void>("submit_claude_login_code", { code });
+  return invokeNative<void>("submit_claude_login_code", { code });
 }
 
 /** Opportunistically finish the in-flight Claude sign-in from the clipboard:
@@ -239,7 +256,7 @@ export function osSubmitClaudeLoginCode(code: string): Promise<void> {
  * (completion still arrives via `claude-login://done`), false otherwise (no
  * pending login / no matching clipboard text). Never rejects in practice. */
 export function osCompleteClaudeLoginFromClipboard(): Promise<boolean> {
-  return invoke<boolean>("complete_claude_login_from_clipboard");
+  return invokeNative<boolean>("complete_claude_login_from_clipboard");
 }
 
 /** Cancel an in-flight desktop Claude sign-in (kills the `claude` child). The
@@ -247,7 +264,7 @@ export function osCompleteClaudeLoginFromClipboard(): Promise<boolean> {
  * dismissal). No-op outside Tauri / when nothing is in flight. */
 export function osCancelClaudeLogin(): Promise<void> {
   if (!isTauri()) return Promise.resolve();
-  return invoke<void>("cancel_claude_login");
+  return invokeNative<void>("cancel_claude_login");
 }
 
 /** Drain the cold-start `houston://store/install` deep link the Rust shell
@@ -256,7 +273,7 @@ export function osCancelClaudeLogin(): Promise<void> {
  * Desktop only — a plain browser has no native stash. */
 export function osTakePendingStoreDeepLink(): Promise<string | null> {
   if (!isTauri()) return Promise.resolve(null);
-  return invoke<string | null>("take_pending_store_deep_link");
+  return invokeNative<string | null>("take_pending_store_deep_link");
 }
 
 /** Pull the Houston window to the front. Used when a flow finishes in the
@@ -265,7 +282,7 @@ export function osTakePendingStoreDeepLink(): Promise<string | null> {
  * No-op outside Tauri. */
 export function osFocusWindow(): Promise<void> {
   if (!isTauri()) return Promise.resolve();
-  return invoke<void>("focus_main_window");
+  return invokeNative<void>("focus_main_window");
 }
 
 /** Reveal an agent-relative file in Finder / Explorer. */
@@ -273,7 +290,7 @@ export function osRevealFile(
   agentPath: string,
   relativePath: string,
 ): Promise<void> {
-  return invoke<void>("reveal_file", {
+  return invokeNative<void>("reveal_file", {
     agent_path: agentPath,
     relative_path: relativePath,
   });
@@ -281,13 +298,13 @@ export function osRevealFile(
 
 /** Reveal the agent's folder in Finder / Explorer. */
 export function osRevealAgent(agentPath: string): Promise<void> {
-  return invoke<void>("reveal_agent", { agent_path: agentPath });
+  return invokeNative<void>("reveal_agent", { agent_path: agentPath });
 }
 
 /** Reveal an arbitrary absolute path in Finder / Explorer. For files written
  * outside any agent root (e.g. the portable-agent exporter's save dialog). */
 export function osRevealPath(path: string): Promise<void> {
-  return invoke<void>("reveal_path", { path });
+  return invokeNative<void>("reveal_path", { path });
 }
 
 /** Native "Save as…" for downloaded bytes — the desktop webview ignores
@@ -300,7 +317,7 @@ export function osSaveDownload(
   fileName: string,
   bytes: Uint8Array,
 ): Promise<WrittenFile | null> {
-  return invoke<WrittenFile | null>("save_download", bytes, {
+  return invokeNative<WrittenFile | null>("save_download", bytes, {
     headers: { "x-download-name": encodeURIComponent(fileName) },
   });
 }
@@ -315,12 +332,44 @@ export interface WrittenFile {
   renamedFrom: string | null;
 }
 
+/** Native "Save as…" for an exported portable agent. Same raw-payload reason
+ * as {@link osSaveDownload}: the archive is megabytes, and the desktop webview
+ * has no download delegate. Resolves null when the user cancelled the dialog. */
+export function osSavePortableAgent(
+  defaultName: string,
+  bytes: Uint8Array,
+): Promise<WrittenFile | null> {
+  return invokeNative<WrittenFile | null>("save_portable_agent", {
+    default_name: defaultName,
+    bytes: Array.from(bytes),
+  });
+}
+
+/** Native "Open…" for a `.houstonagent` file on disk. Resolves null when the
+ * user cancelled the dialog. The bytes cross as a JSON number array — the same
+ * shape the shell writes — and the caller wraps them in a `Uint8Array`. */
+export function osOpenPortableAgent(): Promise<number[] | null> {
+  return invokeNative<number[] | null>("open_portable_agent");
+}
+
+/** Where the host sidecar this shell spawned is listening. Pulled when the
+ * one-shot ready event raced ahead of the webview's listener; the address and
+ * token are properties of THIS machine's process, not of Houston. */
+export function osEngineHandshake(): Promise<{
+  baseUrl: string;
+  token: string;
+}> {
+  return invokeNative<{ baseUrl: string; token: string }>(
+    "get_engine_handshake",
+  );
+}
+
 /** Open an agent-relative file with the user's default application. */
 export function osOpenFile(
   agentPath: string,
   relativePath: string,
 ): Promise<void> {
-  return invoke<void>("open_file", {
+  return invokeNative<void>("open_file", {
     agent_path: agentPath,
     relative_path: relativePath,
   });
@@ -328,7 +377,7 @@ export function osOpenFile(
 
 /** Resolve the app bundle/executable path before updater install moves it. */
 export function osCurrentAppBundlePath(): Promise<string> {
-  return invoke<string>("current_app_bundle_path");
+  return invokeNative<string>("current_app_bundle_path");
 }
 
 /** Download the release the updater plugin's `check()` found, through the
@@ -343,18 +392,18 @@ export function osDownloadUpdate(
 ): Promise<number> {
   const channel = new Channel<DownloadEvent>();
   channel.onmessage = onEvent;
-  return invoke<number>("download_update", { rid, on_event: channel });
+  return invokeNative<number>("download_update", { rid, on_event: channel });
 }
 
 /** Install a release staged by `osDownloadUpdate`. On Windows the installer
  * hand-off exits this process, so the promise never settles there. */
 export function osInstallUpdate(rid: number, bytesRid: number): Promise<void> {
-  return invoke<void>("install_update", { rid, bytes_rid: bytesRid });
+  return invokeNative<void>("install_update", { rid, bytes_rid: bytesRid });
 }
 
 /** Relaunch the installed app from a path captured before update install. */
 export function osRelaunchAppFromPath(appPath: string): Promise<void> {
-  return invoke<void>("relaunch_app_from_path", { app_path: appPath });
+  return invokeNative<void>("relaunch_app_from_path", { app_path: appPath });
 }
 
 /** Append a line to `~/Library/Application Support/houston/logs/frontend.log`. */
@@ -363,7 +412,7 @@ export function osWriteFrontendLog(
   message: string,
   context?: string,
 ): Promise<void> {
-  return invoke<void>("write_frontend_log", { level, message, context });
+  return invokeNative<void>("write_frontend_log", { level, message, context });
 }
 
 /** Show a native "agent finished" notification on Linux/Windows whose click
@@ -374,7 +423,7 @@ export function osShowSessionNotification(
   title: string,
   body: string,
 ): Promise<void> {
-  return invoke<void>("show_session_notification", { title, body });
+  return invokeNative<void>("show_session_notification", { title, body });
 }
 
 /** Open the OS notification-settings pane so a user whose OS/browser blocked
@@ -384,90 +433,95 @@ export function osShowSessionNotification(
  * the button". Rejects only on an unexpected native failure so it surfaces. */
 export async function osOpenNotificationSettings(): Promise<boolean> {
   if (!isTauri()) return false;
-  return invoke<boolean>("open_notification_settings");
+  return invokeNative<boolean>("open_notification_settings");
 }
 
 /** Read the last N lines from backend + frontend log files. */
 export function osReadRecentLogs(
   lines = 50,
 ): Promise<{ backend: string; frontend: string }> {
-  return invoke<{ backend: string; frontend: string }>("read_recent_logs", {
-    lines,
-  });
+  return invokeNative<{ backend: string; frontend: string }>(
+    "read_recent_logs",
+    {
+      lines,
+    },
+  );
 }
 
 /** Send a prepared bug report to Houston's native bug-report intake.
  * Resolves with the Linear issue identifier (e.g. "BUG-123") when known. */
 export function osReportBug(payload: unknown): Promise<string | null> {
-  return invoke<string | null>("report_bug", { payload });
+  return invokeNative<string | null>("report_bug", { payload });
 }
 
 /** Hidden diagnostics command: intentionally panic in native code so release
  * builds can verify Rust/Tauri symbol upload and native stack rendering. */
 export function osTriggerNativeSentrySmokeTest(): Promise<void> {
-  return invoke<void>("sentry_native_stack_smoke_test");
+  return invokeNative<void>("sentry_native_stack_smoke_test");
 }
 
 // ── Local model bridge ────────────────────────────────────────────────
 
 export function osDetectLocalModels(): Promise<DetectedServer[]> {
-  return invoke<DetectedServer[]>("detect_local_models");
+  return invokeNative<DetectedServer[]>("detect_local_models");
 }
 
 export function osLocalBridgeDevice(
   identity: LocalBridgeIdentity,
 ): Promise<LocalBridgeDevice> {
-  return invoke<LocalBridgeDevice>("local_bridge_device", { identity });
+  return invokeNative<LocalBridgeDevice>("local_bridge_device", { identity });
 }
 
 export function osLocalBridgeLegacyCandidate(
   identity: LocalBridgeIdentity,
 ): ReturnType<LocalBridgeNativePort["legacyCandidate"]> {
-  return invoke("local_bridge_legacy_candidate", { identity });
+  return invokeNative("local_bridge_legacy_candidate", { identity });
 }
 
 export function osCompleteBridgeMigration(
   identity: LocalBridgeIdentity,
 ): Promise<void> {
-  return invoke<void>("local_bridge_complete_migration", { identity });
+  return invokeNative<void>("local_bridge_complete_migration", { identity });
 }
 
 export function osStartLocalBridge(
   args: Parameters<LocalBridgeNativePort["start"]>[0],
 ): ReturnType<LocalBridgeNativePort["start"]> {
-  return invoke("start_local_bridge", { args });
+  return invokeNative("start_local_bridge", { args });
 }
 
 export function osRenewLocalBridge(
   identity: LocalBridgeIdentity,
   ticket: string,
 ): Promise<void> {
-  return invoke<void>("renew_local_bridge", { identity, ticket });
+  return invokeNative<void>("renew_local_bridge", { identity, ticket });
 }
 
 export function osSavedBridgeTarget(
   identity: LocalBridgeIdentity,
 ): Promise<LocalBridgeJournal | null> {
-  return invoke<LocalBridgeJournal | null>("saved_bridge_target", { identity });
+  return invokeNative<LocalBridgeJournal | null>("saved_bridge_target", {
+    identity,
+  });
 }
 
 export function osSaveBridgeTarget(
   identity: LocalBridgeIdentity,
   journal: LocalBridgeJournal,
 ): Promise<void> {
-  return invoke<void>("save_bridge_target", { identity, journal });
+  return invokeNative<void>("save_bridge_target", { identity, journal });
 }
 
 export function osForgetBridgeTarget(
   identity: LocalBridgeIdentity,
 ): Promise<void> {
-  return invoke<void>("forget_bridge_target", { identity });
+  return invokeNative<void>("forget_bridge_target", { identity });
 }
 
 export function osStopLocalBridge(
   identity: LocalBridgeIdentity,
 ): Promise<void> {
-  return invoke<void>("stop_local_bridge", { identity });
+  return invokeNative<void>("stop_local_bridge", { identity });
 }
 
 // ── First-run cloud migration (HOU-719) ──────────────────────────────────
@@ -479,7 +533,7 @@ import type { LegacyDetection } from "./cloud-migration";
 
 /** Scan for legacy desktop data worth migrating. Fast, read-only. */
 export function osDetectLegacyHouston(): Promise<LegacyDetection> {
-  return invoke<LegacyDetection>("detect_legacy_houston");
+  return invokeNative<LegacyDetection>("detect_legacy_houston");
 }
 
 export interface HoustonBackup {
@@ -493,7 +547,7 @@ export interface HoustonBackup {
  *  Can block on a large tree (the copy runs on the blocking pool). Rejects
  *  with "nothing to back up" when there's no legacy data to copy. */
 export function osBackupHoustonData(): Promise<HoustonBackup> {
-  return invoke<HoustonBackup>("backup_houston_data");
+  return invokeNative<HoustonBackup>("backup_houston_data");
 }
 
 /** Spawn (or return the already-running) passive migration-source host against
@@ -503,14 +557,14 @@ export function osStartMigrationSourceHost(): Promise<{
   baseUrl: string;
   token: string;
 }> {
-  return invoke<{ baseUrl: string; token: string }>(
+  return invokeNative<{ baseUrl: string; token: string }>(
     "start_migration_source_host",
   );
 }
 
 /** Kill the migration-source host. Idempotent — absent is success. */
 export function osStopMigrationSourceHost(): Promise<void> {
-  return invoke<void>("stop_migration_source_host");
+  return invokeNative<void>("stop_migration_source_host");
 }
 
 // ── On-device dictation (bundled whisper.cpp sidecar) ──────────────────────
@@ -528,14 +582,14 @@ export function osTranscribeAudio(
   wav: Uint8Array,
   langHint: string,
 ): Promise<string> {
-  return invoke<string>("transcribe_audio", wav, {
+  return invokeNative<string>("transcribe_audio", wav, {
     headers: { "x-dictation-lang": langHint },
   });
 }
 
 /** Whether the pinned dictation model is on disk. */
 export function osDictationModelStatus(): Promise<DictationModelStatus> {
-  return invoke<DictationModelStatus>("dictation_model_status");
+  return invokeNative<DictationModelStatus>("dictation_model_status");
 }
 
 /** Download (and sha256-verify) the pinned dictation model. Idempotent —
@@ -543,7 +597,7 @@ export function osDictationModelStatus(): Promise<DictationModelStatus> {
  *  `dictation-model-progress` event; subscribe via
  *  {@link onDictationModelProgress} before calling this. */
 export function osDownloadDictationModel(): Promise<void> {
-  return invoke<void>("download_dictation_model");
+  return invokeNative<void>("download_dictation_model");
 }
 
 /** Subscribe to `dictation-model-progress` ticks emitted while
@@ -563,7 +617,7 @@ export function onDictationModelProgress(
 export async function osLaunchT0Ms(): Promise<number | null> {
   if (!osIsTauri()) return null;
   try {
-    return (await invoke<number | null>("launch_t0_ms")) ?? null;
+    return (await invokeNative<number | null>("launch_t0_ms")) ?? null;
   } catch {
     // Older shell without the command — the webview clock is close enough.
     return null;

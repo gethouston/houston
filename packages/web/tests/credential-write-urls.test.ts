@@ -1,13 +1,6 @@
 import { afterEach, expect, test } from "vitest";
-import {
-  captureCredential,
-  forgetCredential,
-  pushClaudeOAuthCredential,
-  setApiKey,
-  setCustomEndpoint,
-} from "../src/engine-adapter/cp/credentials";
+import { HoustonClient } from "../src/engine-adapter/client";
 import { runtimeClientFor } from "../src/engine-adapter/cp/runtime-clients";
-import { forgetSetupCredential } from "../src/engine-adapter/cp/setup-credentials";
 
 /**
  * HOU-976 personal-only, the URL contract: a credential write NEVER names an
@@ -23,9 +16,17 @@ import { forgetSetupCredential } from "../src/engine-adapter/cp/setup-credential
  * This is a BYTE-IDENTITY test, not a shape test. Every URL below is asserted
  * whole, so a scope re-entering as a query param, a path segment or a second
  * query is a failure whichever form it takes.
+ *
+ * The writes are `sdk.providers.credentials`', reached through the composed
+ * client the app holds — the same object every provider mixin calls.
  */
 
 const cfg = { baseUrl: "http://gw.test", token: "t" };
+
+/** The credential facade of a hosted client rooted at `cfg.baseUrl`. */
+const credentials = () =>
+  new HoustonClient({ ...cfg, controlPlane: true }).engineSdk.providers
+    .credentials;
 
 let restore: (() => void) | undefined;
 afterEach(() => {
@@ -52,15 +53,16 @@ function capture() {
 
 test("every credential write sends a bare, query-less URL", async () => {
   const urls = capture();
-  await captureCredential(cfg, "agent-1", "anthropic");
-  await pushClaudeOAuthCredential(cfg, "agent-1", "{}");
-  await forgetCredential(cfg, "agent-1", "anthropic");
-  await setApiKey(cfg, "agent-1", "openrouter", "k");
-  await setCustomEndpoint(cfg, "agent-1", {
+  const writes = credentials();
+  await writes.captureCredential("agent-1", "anthropic");
+  await writes.pushClaudeOAuthCredential("agent-1", "{}");
+  await writes.forgetCredential("agent-1", "anthropic");
+  await writes.setApiKey("agent-1", "openrouter", "k");
+  await writes.setCustomEndpoint("agent-1", {
     baseUrl: "http://localhost:1234/v1",
     model: "local",
   });
-  await forgetSetupCredential(cfg, "anthropic");
+  await writes.forgetSetupCredential("anthropic");
   expect(urls).toEqual([
     "http://gw.test/agents/agent-1/credential/capture",
     "http://gw.test/agents/agent-1/credential/claude-oauth",
@@ -97,7 +99,7 @@ test("the agent id is percent-encoded, and that is the whole URL", async () => {
   // A slash-bearing agent id must stay inside its own path segment; nothing is
   // appended after it, so there is no suffix for it to swallow.
   const urls = capture();
-  await forgetCredential(cfg, "Houston/Bo", "anthropic");
+  await credentials().forgetCredential("Houston/Bo", "anthropic");
   expect(urls).toEqual([
     "http://gw.test/agents/Houston%2FBo/credential/forget",
   ]);

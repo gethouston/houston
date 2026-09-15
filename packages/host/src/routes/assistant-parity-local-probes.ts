@@ -5,6 +5,7 @@ import {
   PROBE_WORKSPACE,
   type Probe,
   probe,
+  proxied,
 } from "./assistant-parity-probes";
 
 /**
@@ -30,15 +31,21 @@ export const LOCAL_PROBES: readonly Probe[] = [
   probe("listWorkspaces"),
   probe("getHostSidebarLayout", WORKSPACE),
   probe("getPreference", { key: "locale" }),
+  proxied(
+    "turns.cancel",
+    { ...AGENT, conversationId: "no-such-conversation" },
+    "POST conversations/:id/cancel is the engine's own route; the host relays it",
+  ),
   probe("setPreference", { key: "locale", value: "en" }),
   probe("listAgents"),
   probe("preferences.setLocale", { ...WORKSPACE, locale: "en" }),
   probe("listInstalledConfigs"),
   probe("updateAgentColor", { agentId: PROBE_AGENT, color: "teal" }),
-  probe("listAgentProviders", AGENT, {
-    status: 503,
-    reason: "the probe host's agent has no runtime up to list providers from",
-  }),
+  proxied(
+    "listAgentProviders",
+    AGENT,
+    "GET providers is the engine's own route; the host relays it",
+  ),
   probe(
     "installAgentFromGithub",
     { githubUrl: "not-a-github-url" },
@@ -145,8 +152,9 @@ export const LOCAL_PROBES: readonly Probe[] = [
     slug: "no-such-integration",
   }),
   probe("integrations.disconnect", { toolkit: "gmail" }),
-  probe("providers.refreshStatus", AGENT, {
-    status: 503,
-    reason: "the probe host's agent has no runtime to report a sign-in from",
-  }),
+  proxied(
+    "providers.refreshStatus",
+    AGENT,
+    "GET auth/status is the engine's own route; the host relays it",
+  ),
 ];

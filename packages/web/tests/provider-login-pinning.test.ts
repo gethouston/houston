@@ -16,8 +16,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../src/engine-adapter/control-plane", () => ({
-  captureCredential: vi.fn(),
-  captureSetupCredential: vi.fn(),
+  agentPath: (id: string) => `/agents/${encodeURIComponent(id)}`,
+  agentIdOfPath: () => null,
   runtimeClientFor: mocks.runtimeClientFor.mockImplementation(() => ({
     completeLogin: mocks.agentComplete,
     cancelLogin: mocks.agentCancel,

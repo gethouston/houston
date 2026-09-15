@@ -39,14 +39,8 @@ import type {
   BillingSummary,
   Capabilities,
   ChatHistoryEntry,
-  ClaudeStatus,
   CommunitySkill,
   CommunitySkillPreview,
-  ComposioAppEntry,
-  ComposioReconnectResponse,
-  ComposioStartLinkResponse,
-  ComposioStartLoginResponse,
-  ComposioStatus,
   ComputeUsage,
   ConversationEntry,
   CreateAgent,
@@ -54,7 +48,6 @@ import type {
   CreateAttachmentUploadsResponse,
   CreateSkillRequest,
   CreateWorkspace,
-  CreateWorktreeRequest,
   CreatorAnalytics,
   CreatorProfile,
   CreatorProfilePatch,
@@ -77,7 +70,6 @@ import type {
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
-  ListWorktreesRequest,
   MigrationImportOptions,
   MigrationImportResult,
   MyAgent,
@@ -88,7 +80,6 @@ import type {
   OrgRole,
   OrgSummary,
   OrgsList,
-  PairingCode,
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableExportRequest,
@@ -103,14 +94,12 @@ import type {
   ProviderStatus,
   ProviderUsage,
   PushRegisterRequest,
-  RemoveWorktreeRequest,
   RenameWorkspace,
   RepoSkill,
   Routine,
   RoutineRun,
   RoutineRunUpdate,
   RoutineUpdate,
-  RunShellRequest,
   SaveSkillRequest,
   SessionCancelResponse,
   SessionStartRequest,
@@ -129,7 +118,6 @@ import type {
   SummarizeResult,
   TriggerStatusItem,
   TriggerType,
-  TunnelStatus,
   UpdateAgent,
   UpdateProvider,
   UsageRow,
@@ -138,7 +126,6 @@ import type {
   WebhookKeyReveal,
   Workspace,
   WorkspaceContext,
-  WorktreeInfo,
 } from "./types.ts";
 
 /**
@@ -1202,19 +1189,6 @@ export class HoustonClient {
    */
   cancelProviderLogin(name: string): Promise<void> {
     return this.request("POST", `/providers/${this.seg(name)}/login/cancel`);
-  }
-  /**
-   * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
-   * the key shape, writes atomically, and chmods 0600 on Unix. The
-   * next `providerStatus("gemini")` poll will return `Authenticated`
-   * without requiring a Houston restart.
-   *
-   * Gemini-specific: other providers use the CLI's own OAuth flow via
-   * `providerLogin`. Do NOT generalize this route until a second
-   * provider needs it.
-   */
-  setGeminiApiKey(apiKey: string): Promise<void> {
-    return this.request("POST", "/providers/gemini/credentials", { apiKey });
   }
   /**
    * Connect an API-key provider (OpenCode Zen / Go) by submitting a pasted key.
@@ -2340,41 +2314,6 @@ export class HoustonClient {
     return this.request("GET", `/attachments/${this.seg(scopeId)}`);
   }
 
-  // ---------- worktree / shell ----------
-
-  createWorktree(req: CreateWorktreeRequest): Promise<WorktreeInfo> {
-    return this.request("POST", "/worktrees", req);
-  }
-  listWorktrees(req: ListWorktreesRequest): Promise<WorktreeInfo[]> {
-    // Read-only listing POST → replay-safe.
-    return this.request(
-      "POST",
-      "/worktrees/list",
-      req,
-      undefined,
-      undefined,
-      true,
-    );
-  }
-  removeWorktree(req: RemoveWorktreeRequest): Promise<void> {
-    return this.request("POST", "/worktrees/remove", req);
-  }
-  runShell(req: RunShellRequest): Promise<string> {
-    return this.request("POST", "/shell", req);
-  }
-
-  // ---------- tunnel (mobile pairing + device-token management) ----------
-
-  tunnelStatus(): Promise<TunnelStatus> {
-    return this.request("GET", "/tunnel/status");
-  }
-  mintPairingCode(): Promise<PairingCode> {
-    return this.request("POST", "/tunnel/pairing");
-  }
-  resetPhoneAccess(): Promise<PairingCode> {
-    return this.request("POST", "/tunnel/reset-access");
-  }
-
   // ---------- push (mobile notification registration) ----------
 
   registerPushDevice(req: PushRegisterRequest): Promise<{ ok: boolean }> {
@@ -2524,85 +2463,6 @@ export class HoustonClient {
   }
   stopAgentWatcher(): Promise<void> {
     return this.request("POST", "/watcher/stop");
-  }
-
-  // ---------- claude (runtime installer) ----------
-
-  /**
-   * Snapshot of the runtime Claude Code install — used by the
-   * onboarding "Sign in with Anthropic" card so it can show a clear
-   * "couldn't reach Anthropic" / "Retry" instead of the misleading
-   * "install it yourself" hint that fires for every other
-   * `cli_installed=false` case (issue #231).
-   */
-  claudeStatus(): Promise<ClaudeStatus> {
-    return this.request("GET", "/claude/status");
-  }
-  /**
-   * Kick off a fresh install in the background. The HTTP request
-   * returns immediately; progress + completion stream over the WS
-   * firehose as `ClaudeCliInstalling` / `ClaudeCliReady` /
-   * `ClaudeCliFailed` events.
-   */
-  claudeInstall(): Promise<void> {
-    return this.request("POST", "/claude/install");
-  }
-
-  // ---------- composio ----------
-
-  composioStatus(): Promise<ComposioStatus> {
-    return this.request("GET", "/composio/status");
-  }
-  composioCliInstalled(): Promise<boolean> {
-    return this.request<{ installed: boolean }>(
-      "GET",
-      "/composio/cli-installed",
-    ).then((r) => r.installed);
-  }
-  composioInstallCli(): Promise<void> {
-    return this.request("POST", "/composio/cli");
-  }
-  composioStartLogin(): Promise<ComposioStartLoginResponse> {
-    return this.request("POST", "/composio/login");
-  }
-  composioCompleteLogin(cliKey: string): Promise<void> {
-    return this.request("POST", "/composio/login/complete", { cliKey });
-  }
-  composioLogout(): Promise<void> {
-    return this.request("POST", "/composio/logout");
-  }
-  composioListApps(): Promise<ComposioAppEntry[]> {
-    return this.request("GET", "/composio/apps");
-  }
-  composioListConnections(): Promise<string[]> {
-    return this.request("GET", "/composio/connections");
-  }
-  composioConnectApp(toolkit: string): Promise<ComposioStartLinkResponse> {
-    return this.request("POST", "/composio/connections", { toolkit });
-  }
-  /** Disconnect a toolkit: removes its connected account(s). */
-  composioDisconnect(toolkit: string): Promise<void> {
-    return this.request("POST", "/composio/connections/disconnect", {
-      toolkit,
-    });
-  }
-  /**
-   * Reconnect a toolkit by refreshing its auth. Resolves to a browser URL
-   * the user must open to complete OAuth re-consent, or `null` when the
-   * auth scheme refreshed silently.
-   */
-  composioReconnect(toolkit: string): Promise<ComposioReconnectResponse> {
-    return this.request("POST", "/composio/connections/reconnect", { toolkit });
-  }
-  /**
-   * Ask the engine to actively watch for `toolkit` to land in the
-   * consumer connections list and emit `ComposioConnectionAdded` over
-   * the WS firehose when it does. Idempotent — duplicate calls while
-   * a watch is active are no-ops on the engine. Returns immediately;
-   * the result arrives as a WS event.
-   */
-  composioWatchConnection(toolkit: string): Promise<void> {
-    return this.request("POST", "/composio/connections/watch", { toolkit });
   }
 
   // ---------- portable agent share / import ----------

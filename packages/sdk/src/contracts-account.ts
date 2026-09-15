@@ -1,7 +1,7 @@
 /**
  * The account's contract: who the caller is (session, profile, API keys), the
- * space they work in (org roster, spaces, teams, workspaces) and the
- * preferences that follow them across surfaces.
+ * space they work in (org roster, spaces, teams, workspaces, the subscription
+ * behind a team) and the preferences that follow them across surfaces.
  *
  * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
  */
@@ -17,6 +17,17 @@ export {
   type EditableProfileCustom,
   type EditableProfileUpdate,
 } from "./modules/account";
+// ===== Billing module contract =========================================
+// `BillingSummary` is the spaces module's — a space carries the same value on
+// `OrgSummary.billing` — so it is exported once, under Spaces.
+export {
+  BILLING_INTERVALS,
+  type BillingCheckout,
+  BillingCommand,
+  type BillingCommandType,
+  BillingHttpError,
+  type BillingModule,
+} from "./modules/billing";
 // ===== Org module contract =============================================
 export {
   type AddOrgMemberResult,

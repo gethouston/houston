@@ -1,9 +1,12 @@
+import { relative } from "node:path";
 import type { RouteDescriptor } from "../../packages/host/src/routes/registry/types.ts";
 import {
+  type DesktopCalls,
   type GatewayRoute,
   keyOf,
   normalize,
   pathOf,
+  repoRoot,
   type SdkMethod,
 } from "./inputs.ts";
 
@@ -11,7 +14,8 @@ export type Rule =
   | "sdk-route-unbound"
   | "sdk-method-unserved"
   | "route-served-twice"
-  | "proxy-drift";
+  | "proxy-drift"
+  | "client-route-unbound";
 
 /** Every rule, in the order the report states them. */
 export const RULES: Rule[] = [
@@ -19,6 +23,7 @@ export const RULES: Rule[] = [
   "sdk-method-unserved",
   "route-served-twice",
   "proxy-drift",
+  "client-route-unbound",
 ];
 
 export interface Violation {
@@ -75,6 +80,7 @@ export function checkRules(
   host: RouteDescriptor[],
   gateway: GatewayRoute[],
   sdk: SdkMethod[],
+  desktop: DesktopCalls,
 ): Violation[] {
   const sdkKeys = new Set(sdk.map((method) => method.key));
   const sdkPaths = new Set(sdk.map((method) => pathOf(method.key)));
@@ -154,6 +160,19 @@ export function checkRules(
       rule: "proxy-drift",
       key: `proxy ${key}`,
       message: `runtime-proxy member ${key} (${route.source}) is reached by no @houston/sdk method`,
+    });
+  }
+
+  // R5 — the inverse of R1, read from the client instead of the servers: a
+  // method the shipped app calls that reaches a server on its own. R1 asks
+  // whether every reachable route has an SDK method; this asks whether every
+  // request the app issues IS one. Both surfaces are covered at once, because
+  // the desktop and the web app run this same adapter.
+  for (const method of desktop.unbound) {
+    violations.push({
+      rule: "client-route-unbound",
+      key: `client ${method.name}`,
+      message: `${relative(repoRoot, method.source)} ${method.name} reaches the host without @houston/sdk — delegate it, or write down why it cannot`,
     });
   }
   return violations;

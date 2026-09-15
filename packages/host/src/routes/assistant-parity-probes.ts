@@ -10,7 +10,9 @@
  * Three tables, because there are three honest answers to "what happens when
  * the local host is asked to perform this?":
  *
- * - `LOCAL_PROBES` (./assistant-parity-local-probes) — it answers.
+ * - `LOCAL_PROBES` (./assistant-parity-local-probes) — it answers, out of its
+ *   own handler or, for a route it publishes as the agent engine's
+ *   (`proxied`), by relaying to that engine.
  * - `CLOUD_ONLY_PROBES` (./assistant-parity-cloud-probes) — it legitimately
  *   does not, and the probe asserts the miss so a path that starts resolving
  *   locally shows up as the drift it is.
@@ -41,6 +43,15 @@ export interface Probe {
    * asserts that status instead of the usual "below 500".
    */
   serviceState?: { status: number; reason: string };
+  /**
+   * Set when the operation's route is a declared member of the per-agent
+   * RUNTIME-PROXY family (routes/agents-proxy-members.ts). The host does not
+   * author these answers — it relays the request to the agent's own engine —
+   * so the stand-in runtime's sentinel coming back IS the proof the address
+   * resolved into that family and was forwarded verbatim. The string says
+   * which engine route answers it.
+   */
+  runtimeProxied?: { reason: string };
 }
 
 /** A probe the local host is expected to MISS, with the reason it may. */
@@ -53,6 +64,13 @@ export const probe = (
   params: Record<string, unknown> = {},
   serviceState?: Probe["serviceState"],
 ): Probe => ({ operation, params, ...(serviceState ? { serviceState } : {}) });
+
+/** A probe whose route the host relays to the agent's engine, and which one. */
+export const proxied = (
+  operation: string,
+  params: Record<string, unknown>,
+  reason: string,
+): Probe => ({ operation, params, runtimeProxied: { reason } });
 
 export const cloudOnly = (
   operation: string,

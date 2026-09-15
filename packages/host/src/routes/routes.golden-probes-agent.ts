@@ -4,14 +4,6 @@
  * proxy's forwarded surface included.
  */
 export const AGENT_PROBES: string[] = [
-  "GET /v1/agents/:agentId/integrations/custom/definitions",
-  "POST /v1/agents/:agentId/integrations/custom/definitions",
-  "POST /v1/agents/:agentId/integrations/custom/detect",
-  "PATCH /v1/agents/:agentId/integrations/custom/definitions/:slug",
-  "DELETE /v1/agents/:agentId/integrations/custom/definitions/:slug",
-  "GET /v1/agents/:agentId/integrations/custom/definitions/:slug/tools",
-  "POST /v1/agents/:agentId/integrations/custom/definitions/:slug/oauth/start",
-  "POST /v1/agents/:agentId/integrations/custom/definitions/:slug/credential",
   "POST /agents/:agentId/trigger-events",
   "POST /agents/:agentId/routine-fires",
   "PUT /v1/agents/:agentId/color",

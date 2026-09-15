@@ -20,9 +20,9 @@ protocol v3 (`packages/protocol`) — and the adapter re-exports it, so it means
 the same thing on both resolution paths.
 
 Because the two paths are held in sync by hand, a signature that exists here and
-not on the adapter compiles but throws at run time
-(`packages/web/src/engine-adapter/client/legacy-unsupported-mixin.ts` names the
-operations the adapter deliberately refuses).
+not on the adapter compiles but throws a `TypeError` at run time. So a method
+`app/src` stops calling is deleted here in the same change — that is what keeps
+"compiles" and "runs" the same answer.
 
 ## Assistant catalog
 
