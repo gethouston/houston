@@ -3,8 +3,8 @@ import type {
   AssistantPathParam,
   AssistantRoute,
   OperationAnnotation,
-} from "../scripts/assistant-catalog-types.ts";
-import { assistantPaths } from "../scripts/assistant-paths.ts";
+} from "../assistant-catalog-types.ts";
+import { assistantPaths } from "../assistant-paths.ts";
 
 const fixture = (name: string): string =>
   resolve(import.meta.dirname, "fixtures", name);

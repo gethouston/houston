@@ -1,5 +1,5 @@
 import ts from "typescript";
-import { unwrap } from "./adapter-ast.ts";
+import { unwrap } from "../assistant-catalog/assistant-ast.ts";
 import { importedFrom, localNames } from "./adapter-scope.ts";
 
 /**

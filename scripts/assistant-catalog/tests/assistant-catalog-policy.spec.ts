@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { extractCatalog } from "../scripts/assistant-extractor.ts";
-import { coverageViolations } from "../scripts/assistant-gate.ts";
-import { parseAssistantDocs } from "../scripts/assistant-jsdoc.ts";
-import { renderOperations } from "../scripts/assistant-render-docs.ts";
+import { extractCatalog } from "../assistant-extractor.ts";
+import { coverageViolations } from "../assistant-gate.ts";
+import { parseAssistantDocs } from "../assistant-jsdoc.ts";
+import { renderOperations } from "../assistant-render-docs.ts";
 import { annotation, realOptions } from "./assistant-catalog-support.ts";
 
 /**

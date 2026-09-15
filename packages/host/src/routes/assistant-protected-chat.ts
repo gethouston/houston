@@ -22,7 +22,7 @@ import { json } from "./http";
 export const PROTECTED_CONVERSATION = "protected_conversation";
 
 /** The read every chat-naming parameter declares as where its value comes from
- *  (`ui/engine-client/scripts/assistant-entity-rules.ts`). */
+ *  (`scripts/assistant-catalog/assistant-entity-rules.ts`). */
 const CHAT_ID_SOURCE = "conversations.list";
 
 /**

@@ -2,13 +2,13 @@ import { readdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const repoRoot = resolve(packageRoot, "../..");
+const scriptRoot = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(scriptRoot, "../..");
 const adapter = join(repoRoot, "packages/web/src/engine-adapter");
 const sdk = join(repoRoot, "packages/sdk/src");
 const sdkModules = join(sdk, "modules");
 const runtimeClient = join(repoRoot, "packages/runtime-client/src");
-const generatedDocs = join(packageRoot, "generated");
+const generatedDocs = join(repoRoot, "docs/assistant");
 const hostAssistant = join(repoRoot, "packages/host/src/assistant");
 const domainSource = join(repoRoot, "packages/domain/src");
 
@@ -101,8 +101,8 @@ export const ASSISTANT_PROVENANCE =
  * desktop sidecar alike, so no artifact has to locate a file it cannot reach.
  * The capability index lands in DOMAIN for the same reason: the runtime folds
  * it into the coordinator's system prompt, so it must be a module both the
- * container bundle and the desktop sidecar carry. The two documents are for
- * people and stay beside the client they describe.
+ * container bundle and the desktop sidecar carry. The three documents are for
+ * people and live under `docs/assistant/`.
  */
 export const assistantOutputs = [
   { file: "assistant-catalog.generated.json", directory: hostAssistant },

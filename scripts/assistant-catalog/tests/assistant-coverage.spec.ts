@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { extractCatalog } from "../scripts/assistant-extractor.ts";
+import { extractCatalog } from "../assistant-extractor.ts";
 import {
   acknowledgements,
   type CoverageRule,
   coverageViolations,
   formatViolations,
-} from "../scripts/assistant-gate.ts";
-import { parseAssistantDocs } from "../scripts/assistant-jsdoc.ts";
+} from "../assistant-gate.ts";
+import { parseAssistantDocs } from "../assistant-jsdoc.ts";
 import { annotation, realOptions } from "./assistant-catalog-support.ts";
 
 const block = (...lines: string[]): string =>

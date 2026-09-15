@@ -21,11 +21,12 @@ which the adapter re-exports verbatim:
 
 ## Assistant catalog
 
-The generator under `scripts/` derives the catalog from the LIVE surface only —
-the adapter's `cp/` modules and `client/*-mixin.ts`, plus the SDK's REST modules
-(`scripts/assistant-paths.ts` lists them). It never reads this package's `src/`,
-so `@assistant` annotations belong on the adapter, not here. Gates:
-`pnpm check:assistant-coverage` and `pnpm check:assistant-catalog`.
+The generator lives in `scripts/assistant-catalog/` and derives the catalog from
+the LIVE surface only — the adapter's `cp/` modules and `client/*-mixin.ts`, plus
+the SDK's REST modules (`scripts/assistant-catalog/assistant-paths.ts` lists
+them). It never reads this package's `src/`, so `@assistant` annotations belong
+on the adapter, not here. The documents it renders are in `docs/assistant/`.
+Gates: `pnpm check:assistant-coverage` and `pnpm check:assistant-catalog`.
 
 ## Contract reference
 

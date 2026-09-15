@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractCatalog } from "../scripts/assistant-extractor.ts";
+import { extractCatalog } from "../assistant-extractor.ts";
 import {
   fixtureOptions,
   route,

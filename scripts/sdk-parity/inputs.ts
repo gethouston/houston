@@ -6,9 +6,9 @@ import { listRoutes } from "../../packages/host/src/routes/registry/all.ts";
 import type {
   AssistantParameter,
   AssistantRoute,
-} from "../../ui/engine-client/scripts/assistant-catalog-types.ts";
-import { extractCatalog } from "../../ui/engine-client/scripts/assistant-extractor.ts";
-import { assistantPaths } from "../../ui/engine-client/scripts/assistant-paths.ts";
+} from "../assistant-catalog/assistant-catalog-types.ts";
+import { extractCatalog } from "../assistant-catalog/assistant-extractor.ts";
+import { assistantPaths } from "../assistant-catalog/assistant-paths.ts";
 import { type AdapterMethod, classifyAdapter } from "./adapter-methods.ts";
 import { routePaths } from "./route-paths.ts";
 

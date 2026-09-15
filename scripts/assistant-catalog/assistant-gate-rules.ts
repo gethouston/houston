@@ -61,7 +61,7 @@ function reachViolations(annotation: OperationAnnotation): Finding[] {
     found.push({
       rule: "unresolved-identifier",
       problem: `${annotation.openIdentifiers.join(", ")} name something that already exists, and nothing says which values are accepted.`,
-      fix: "add the collection to ui/engine-client/scripts/assistant-entity-rules.ts: a `collection` the host resolves the value against live, or an `unlisted` reason naming the operation that lists it.",
+      fix: "add the collection to scripts/assistant-catalog/assistant-entity-rules.ts: a `collection` the host resolves the value against live, or an `unlisted` reason naming the operation that lists it.",
     });
   if (!annotation.routable && !annotation.unroutableReason)
     found.push({

@@ -2,7 +2,7 @@ import type {
   AssistantParameter,
   AssistantRoute,
   JsonSchema,
-} from "../../ui/engine-client/scripts/assistant-catalog-types.ts";
+} from "../assistant-catalog/assistant-catalog-types.ts";
 
 /** The paths one SDK route addresses, parameters closed to a set expanded. */
 

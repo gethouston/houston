@@ -100,7 +100,7 @@ export function formatViolations(
   }
   lines.push(
     "Every user-facing adapter operation is a routable assistant tool or says why it is not.",
-    "Tag grammar: ui/engine-client/scripts/assistant-jsdoc.ts - exceptions: ui/engine-client/generated/assistant-coverage.md",
+    "Tag grammar: scripts/assistant-catalog/assistant-jsdoc.ts - exceptions: docs/assistant/assistant-coverage.md",
   );
   return `${lines.join("\n")}\n`;
 }

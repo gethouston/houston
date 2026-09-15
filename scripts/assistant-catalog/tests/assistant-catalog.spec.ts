@@ -1,11 +1,8 @@
 import { isCallableOperation } from "@houston/domain/assistant-catalog-callable";
 import { describe, expect, it } from "vitest";
-import { extractCatalog } from "../scripts/assistant-extractor.ts";
-import { coverageViolations } from "../scripts/assistant-gate.ts";
-import {
-  renderCapabilityIndex,
-  renderCatalog,
-} from "../scripts/assistant-render.ts";
+import { extractCatalog } from "../assistant-extractor.ts";
+import { coverageViolations } from "../assistant-gate.ts";
+import { renderCapabilityIndex, renderCatalog } from "../assistant-render.ts";
 import {
   fixtureOptions,
   realOptions,

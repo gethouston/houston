@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { AssistantRoute } from "../scripts/assistant-catalog-types.ts";
-import { ENTITY_SOURCES } from "../scripts/assistant-entity-rules.ts";
+import type { AssistantRoute } from "../assistant-catalog-types.ts";
+import { ENTITY_SOURCES } from "../assistant-entity-rules.ts";
 import {
   entityRuleFor,
   entitySourceFor,
   namesEntity,
-} from "../scripts/assistant-entity-sources.ts";
-import { parseAssistantDocs } from "../scripts/assistant-jsdoc.ts";
-import { nestedFieldsFor } from "../scripts/assistant-nested-fields.ts";
+} from "../assistant-entity-sources.ts";
+import { parseAssistantDocs } from "../assistant-jsdoc.ts";
+import { nestedFieldsFor } from "../assistant-nested-fields.ts";
 import { route } from "./assistant-catalog-support.ts";
 
 /**

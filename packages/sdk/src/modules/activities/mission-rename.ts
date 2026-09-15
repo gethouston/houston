@@ -15,7 +15,7 @@
  *
  * It issues the request itself rather than delegating to `updateActivity`: the
  * catalog's route is read off the annotated function's OWN body
- * (`ui/engine-client/scripts/assistant-route.ts`), so a one-line delegation
+ * (`scripts/assistant-catalog/assistant-route.ts`), so a one-line delegation
  * here would leave this operation with no derivable route and the assistant
  * with no way to perform it.
  */
