@@ -76,6 +76,19 @@ export function engineVerdictMessage(e: unknown): string | undefined {
  * The web adapter's `isEngineWakingError` reads the same pairs across every
  * client error shape; this is the one shape the turn stream sees.
  */
+/**
+ * The runtime refused a control because a turn is accepted, queued or running
+ * on the conversation (`409 turn running`, its one 409). For a dismiss this
+ * means the card the surface showed was stale: a turn started elsewhere (a
+ * member's send, another device, a routine, a webhook) had already retired
+ * that interaction, so nothing broke and the running turn is the truth the
+ * surface must catch up to. Read by `dismissInteraction`, which turns it into
+ * a typed outcome instead of a throw (HOUSTON-APP-5EY / PRODUCT-1827).
+ */
+export function isTurnRunningRejection(e: unknown): boolean {
+  return e instanceof EngineError && e.status === 409;
+}
+
 export function isEngineWakingRejection(e: unknown): boolean {
   if (!(e instanceof EngineError)) return false;
   const reason = engineVerdictMessage(e);

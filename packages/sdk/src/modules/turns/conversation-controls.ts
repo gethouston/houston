@@ -11,11 +11,23 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { isTurnRunningRejection } from "./turn-errors";
 import {
   asConversationInput,
   asSetModeInput,
   asTruncateInput,
 } from "./turn-inputs";
+
+/**
+ * What a dismiss came to. `turn_running`: the runtime refused because a turn
+ * is accepted, queued or running on the chat, so the card the caller showed was
+ * already retired by that turn. The caller catches its view up to the running
+ * turn (the interaction is gone either way) and must NOT clear a persisted
+ * copy of the card, which would race the running turn's own settle write.
+ */
+export type DismissInteractionOutcome =
+  | { ok: true }
+  | { ok: false; refusal: "turn_running" };
 
 export function createConversationControls(ctx: ModuleContext) {
   /**
@@ -61,18 +73,27 @@ export function createConversationControls(ctx: ModuleContext) {
    *
    * The stepper's X / abandon: the runtime appends the durable stop marker,
    * which reads to the model exactly like a real Stop — it learns nothing from
-   * the dismissal.
+   * the dismissal. Answers `{ ok: false, refusal: "turn_running" }` instead of
+   * throwing when a turn raced the dismiss: that turn already retired the
+   * question, the caller's view was stale, and nothing is wrong.
    * @param conversationId The chat whose pending question is retired.
    * @param agentId The agent this acts on, by the id listAgents returns. An
    *   agent's name is not its id, so read the id from listAgents first.
    * @assistant group:chat
    * @assistant hidden: it answers a card the person is looking at by abandoning it, and only they can decide that.
    */
-  const dismissInteraction = (
+  const dismissInteraction = async (
     conversationId: string,
     agentId: string,
-  ): Promise<{ ok: boolean }> =>
-    ctx.clientFor(agentId).dismissInteraction(conversationId);
+  ): Promise<DismissInteractionOutcome> => {
+    try {
+      await ctx.clientFor(agentId).dismissInteraction(conversationId);
+      return { ok: true };
+    } catch (err) {
+      if (!isTurnRunningRejection(err)) throw err;
+      return { ok: false, refusal: "turn_running" };
+    }
+  };
 
   /**
    * Cuts a chat's transcript at one of the person's own messages.

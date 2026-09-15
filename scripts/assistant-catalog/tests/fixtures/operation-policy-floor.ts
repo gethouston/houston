@@ -59,7 +59,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   "providers.writes.setCustomEndpoint": { group: "providers", confirm: false, hidden: true, route: "POST /agents/{agentId}/providers/openai-compatible", rawResponse: false },
   "providers.writes.setModel": { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
   "turns.cancel": { group: "chat", confirm: false, hidden: false, route: "POST /agents/{agentId}/conversations/{conversationId}/cancel", rawResponse: false },
-  "turns.dismissInteraction": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/dismiss-interaction", rawResponse: false },
+  "turns.dismissInteraction": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/dismiss-interaction", rawResponse: true },
   "turns.history": { group: "chat", confirm: false, hidden: false, route: "GET /agents/{agentId}/conversations/{conversationId}/messages", rawResponse: true },
   "turns.setMode": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/mode", rawResponse: false },
   "turns.truncate": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/truncate", rawResponse: false },

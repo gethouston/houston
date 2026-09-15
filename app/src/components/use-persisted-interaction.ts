@@ -37,6 +37,14 @@ export interface PersistedInteractionWriters {
     interaction: PendingInteraction,
     stepId: string,
   ) => Promise<void>;
+  /**
+   * Repaint only, no write: the runtime refused the dismiss because a turn is
+   * running on this chat, so the card was stale. Refetching the activity and
+   * the transcript brings this window up to the turn the runtime sees; a
+   * clear here would race that turn's settle write and wipe the card it is
+   * about to leave.
+   */
+  resyncInteraction: () => void;
 }
 
 export function usePersistedInteraction(args: {
@@ -48,6 +56,17 @@ export function usePersistedInteraction(args: {
   const { t } = useTranslation(["chat"]);
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
+
+  const resyncInteraction = useCallback(() => {
+    if (!agentPath) return;
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.activity(agentPath),
+    });
+    if (sessionKey)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chatHistory(agentPath, sessionKey),
+      });
+  }, [agentPath, sessionKey, queryClient]);
 
   // Keyed on the STABLE id strings (never the activity object), so an activity
   // query refetch mid-sequence hands the panel the same callbacks.
@@ -67,15 +86,9 @@ export function usePersistedInteraction(args: {
           });
         }
       }
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.activity(agentPath),
-      });
-      if (sessionKey)
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.chatHistory(agentPath, sessionKey),
-        });
+      resyncInteraction();
     },
-    [agentPath, activityId, sessionKey, queryClient, addToast, t],
+    [agentPath, activityId, resyncInteraction, addToast, t],
   );
 
   const clearPersistedInteraction = useCallback(() => persist(null), [persist]);
@@ -97,5 +110,9 @@ export function usePersistedInteraction(args: {
     [persist],
   );
 
-  return { clearPersistedInteraction, dismissInteractionStep };
+  return {
+    clearPersistedInteraction,
+    dismissInteractionStep,
+    resyncInteraction,
+  };
 }

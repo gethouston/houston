@@ -144,6 +144,7 @@ export {
   type TurnAttachmentsSaveInput,
   type TurnAttachmentsSaveResult,
 } from "./attachments";
+export type { DismissInteractionOutcome } from "./conversation-controls";
 export {
   type BoardStatus,
   type FeedOutput,
@@ -168,6 +169,7 @@ export {
   isEngineWakingRejection,
   isNotConnectedError,
   isStoppedByUser,
+  isTurnRunningRejection,
   TURN_FAILED_MESSAGE,
   turnErrorMessage,
 } from "./turn-errors";

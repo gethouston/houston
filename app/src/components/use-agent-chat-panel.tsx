@@ -1640,12 +1640,15 @@ export function useAgentChatPanel({
   // independent clean-finish offers (dismissing the bubbles must not take the
   // save-as-reusable card with them). Both persist, then repaint the board +
   // transcript — see `use-persisted-interaction.ts`.
-  const { clearPersistedInteraction, dismissInteractionStep } =
-    usePersistedInteraction({
-      agentPath: path,
-      activityId: selectedActivityId,
-      sessionKey: selectedSessionKey,
-    });
+  const {
+    clearPersistedInteraction,
+    dismissInteractionStep,
+    resyncInteraction,
+  } = usePersistedInteraction({
+    agentPath: path,
+    activityId: selectedActivityId,
+    sessionKey: selectedSessionKey,
+  });
 
   // The stepper's X on ANY step kind (question/signin/connect/credential): "the
   // user interrupted, nothing was decided" — exactly a Stop. Hide the card at
@@ -1653,18 +1656,40 @@ export function useAgentChatPanel({
   // runtime (its own toast on failure via `call()`; swallow the re-throw so the
   // clear still runs), then clear the persisted interaction + repaint. The model
   // learns nothing from an interrupt, deliberately.
+  //
+  // The SDK's `turn_running` outcome is the user's state, not a failure: a
+  // turn started elsewhere (another device, a member, a routine) already
+  // retired this card and this window had not caught up (HOUSTON-APP-5EY).
+  // Then: no clear (it would race that turn's settle write), un-abandon the key
+  // so the resync decides what shows, and say so in authored copy.
   const dismissActiveInteraction = useCallback(() => {
     if (!path || !selectedSessionKey || !interactionKey) return;
     setAbandonedInteractionKey(interactionKey);
     void (async () => {
-      // The marker surfaces its own failure through `call()`; swallow the
-      // re-throw so a failed marker never blocks clearing the persisted card.
-      await tauriChat
+      // A real failure surfaces through `call()`; swallow the re-throw so a
+      // failed marker never blocks clearing the persisted card.
+      const outcome = await tauriChat
         .dismissInteraction(path, selectedSessionKey)
-        .catch(() => {});
+        .catch(() => null);
+      if (outcome && !outcome.ok) {
+        setAbandonedInteractionKey(null);
+        resyncInteraction();
+        showExpectedStateToast(
+          t("chat:errors.interactionBusyTitle"),
+          t("chat:errors.interactionBusyBody"),
+        );
+        return;
+      }
       await clearPersistedInteraction();
     })();
-  }, [path, selectedSessionKey, interactionKey, clearPersistedInteraction]);
+  }, [
+    path,
+    selectedSessionKey,
+    interactionKey,
+    clearPersistedInteraction,
+    resyncInteraction,
+    t,
+  ]);
 
   // Start a turn from the plan-ready card: flip the composer's Mode pill (and
   // persist it) to the chosen mode, then send the confirming message with an

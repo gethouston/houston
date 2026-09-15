@@ -143,7 +143,9 @@
     "modelNotAllowed": "Este modelo no está permitido para este empleado de IA",
     "modelNotAllowedBody": "Los modelos permitidos de este empleado de IA cambiaron. Elige otro de la lista.",
     "missionRowFailed": "No pudimos guardar esta tarea en tu tablero. Tu mensaje sí fue enviado.",
-    "interactionDismissFailed": "No pudimos descartar la solicitud."
+    "interactionDismissFailed": "No pudimos descartar la solicitud.",
+    "interactionBusyTitle": "Houston ya está trabajando en esto",
+    "interactionBusyBody": "La solicitud fue reemplazada por una respuesta nueva. Espera a que termine o presiona Detener para abandonarla."
   },
   "providerError": {
     "retryPrompt": "Intenta de nuevo.",
