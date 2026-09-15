@@ -1,10 +1,10 @@
+import {
+  type QuietErrorClass,
+  quietBurstKey,
+} from "@houston/sdk/quiet-error-class";
 import { classifyAnalyticsError } from "./analytics";
 import { createBurstGate } from "./error-burst";
-import {
-  agentKeyOf,
-  type QuietErrorClass,
-  quietErrorDetails,
-} from "./quiet-error-class";
+import { agentKeyOf, quietErrorDetails } from "./quiet-error-class";
 import { captureQuietEvent } from "./sentry-quiet";
 import { createSentryReportError } from "./sentry-report-error";
 import { markReportedToSentry } from "./sentry-reported-mark";
@@ -16,11 +16,12 @@ import { wakingStuckTracker } from "./waking-stuck-tracker";
  * get ONE warning-level event per burst in the class's single fingerprinted
  * issue, carrying the command, agent, status and raw gateway body.
  *
- * Burst-collapsed on (class, command, agent) with the toast layer's window:
- * a dozen concurrent reads of one waking agent are one occurrence of one
- * problem, and counting them twelve times would only inflate the issue's
- * numbers against a Sentry quota. Distinct commands and distinct agents still
- * count separately, so the issue's event list reads as a per-agent timeline.
+ * Burst-collapsed with the toast layer's window (`quietBurstKey`): a dozen
+ * concurrent reads of one waking agent are one occurrence of one problem, and
+ * counting them twelve times would only inflate the issue's numbers against a
+ * Sentry quota. For the waking class distinct commands and distinct agents
+ * still count separately, so the issue's event list reads as a per-agent
+ * timeline; the offline class is one event per drop, whatever fell with it.
  *
  * For the waking class the answer also feeds the per-agent stuck-wake tracker;
  * an agent answering nothing but waking past the threshold escalates once, as
@@ -39,7 +40,7 @@ export function reportQuietError(
   const { status, body } = quietErrorDetails(err);
   const agent = agentKeyOf(err, context);
   const now = Date.now();
-  if (captureBurst.isFirst(`${kind}:${command}:${agent ?? ""}`, now)) {
+  if (captureBurst.isFirst(quietBurstKey(kind, command, agent), now)) {
     captureQuietEvent(createSentryReportError(command, message, err), {
       level: "warning",
       fingerprint: [kind],

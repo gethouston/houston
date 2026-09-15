@@ -31,6 +31,10 @@
       "types": "./src/local-model-bridge/unsupported.ts",
       "import": "./src/local-model-bridge/unsupported.ts"
     },
+    "./quiet-error-class": {
+      "types": "./src/quiet-error-class.ts",
+      "import": "./src/quiet-error-class.ts"
+    },
     "./provider-connection-observer": {
       "types": "./src/provider-connection-observer.ts",
       "import": "./src/provider-connection-observer.ts"

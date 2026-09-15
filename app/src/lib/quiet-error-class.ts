@@ -1,7 +1,7 @@
-// The two "quiet" failure classes of the error-surfacing layer, and the
-// context a low-noise Sentry event for one of them carries. Dependency-free
-// (only the two classifiers) so it is node-testable directly
-// (app/tests/quiet-error-class.test.ts).
+// The classifiers that NAME a quiet class (the vocabulary and the burst rule
+// are the SDK's `@houston/sdk/quiet-error-class`), and the context a low-noise
+// Sentry event for one of them carries. Dependency-free (only the classifiers)
+// so it is node-testable directly (app/tests/quiet-error-class.test.ts).
 //
 // A quiet class is an expected environment state — the agent's pod waking
 // (`isEngineWakingError`) or the device offline (`isNetworkTransportError`) —
@@ -15,24 +15,13 @@
 
 // Dependency-free subpath: the app's node:test entry points cannot load the
 // SDK root (it pulls @houston/domain, whose extensionless imports node rejects).
-import {
-  type BridgeQuietClass,
-  bridgeQuietClass,
-} from "@houston/sdk/local-model-bridge/quiet";
+import { bridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
+import type { QuietErrorClass } from "@houston/sdk/quiet-error-class";
 import { isEngineWakingError } from "./engine-waking-error.ts";
 import { isNetworkTransportError } from "./network-transport-error.ts";
 import { isNoBrowserFailure } from "./url-open-failure.ts";
 
-/** Doubles as the Sentry fingerprint, so the value is the issue's identity.
- *  `release_host_unavailable` is the updater's release host answering a
- *  transient status for its whole retry budget (PRODUCT-1811); it is only
- *  ever named by the download report path, never by `classifyQuietError`. */
-export type QuietErrorClass =
-  | "engine_waking"
-  | "offline"
-  | BridgeQuietClass
-  | "release_host_unavailable"
-  | "no_url_handler";
+export type { QuietErrorClass } from "@houston/sdk/quiet-error-class";
 
 /**
  * The bridge classes (`bridge_unsupported`, `bridge_no_agent`, `bridge_state`)
