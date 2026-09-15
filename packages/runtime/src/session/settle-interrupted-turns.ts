@@ -1,3 +1,4 @@
+import { readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
   appendAssistantMessageAt,
@@ -36,13 +37,60 @@ export class EngineRestartedMidTurnError extends Error {
   constructor(
     readonly marker: InflightTurnMarker,
     readonly ranForMs: number,
+    readonly footprint: TurnFootprint = { transcriptBytes: 0, sessionBytes: 0 },
   ) {
     super(
-      `engine restarted mid-turn: conversation=${marker.conversationId} turn=${marker.turnId} ran=${Math.round(ranForMs / 1000)}s tool=${marker.tool ?? "none"} fenced=${marker.fenced}${fenceBypassed(marker) ? " (bash ran under the memory fence and the engine still died)" : ""}`,
+      `engine restarted mid-turn: conversation=${marker.conversationId} turn=${marker.turnId} ran=${Math.round(ranForMs / 1000)}s tool=${marker.tool ?? "none"} fenced=${marker.fenced} transcript=${mib(footprint.transcriptBytes)} session=${mib(footprint.sessionBytes)}${fenceBypassed(marker) ? " (bash ran under the memory fence and the engine still died)" : ""}`,
     );
     this.name = "EngineRestartedMidTurnError";
   }
 }
+
+/**
+ * What the dead turn had to load before it could speak: the live transcript
+ * file and every pi session file of the conversation. Both are read whole
+ * into the heap at turn start, so a restart that recurs at the same few
+ * seconds into every turn with no tool running (HOUSTON-APP-5DX, 348 times
+ * on one routine) is told apart from an eviction by these two numbers.
+ * Stat-only: never parse anything while diagnosing a memory death.
+ */
+export interface TurnFootprint {
+  transcriptBytes: number;
+  sessionBytes: number;
+}
+
+export function turnFootprint(
+  dataDir: string,
+  conversationId: string,
+): TurnFootprint {
+  const key = encodeURIComponent(conversationId);
+  return {
+    transcriptBytes: sizeOf(join(dataDir, "conversations", `${key}.json`)),
+    sessionBytes: dirBytes(join(dataDir, "sessions", conversationId), ".jsonl"),
+  };
+}
+
+function sizeOf(file: string): number {
+  try {
+    return statSync(file).size;
+  } catch {
+    return 0;
+  }
+}
+
+function dirBytes(dir: string, suffix: string): number {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    return 0;
+  }
+  return names
+    .filter((n) => n.endsWith(suffix))
+    .reduce((sum, n) => sum + sizeOf(join(dir, n)), 0);
+}
+
+const mib = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)}MiB`;
 
 /**
  * Whether the fence should have caught this: a shell tool was running and the
@@ -114,6 +162,7 @@ export function settleInterruptedTurns(
       new EngineRestartedMidTurnError(
         marker,
         Math.max(0, now() - marker.startedAt),
+        turnFootprint(opts.dataDir, marker.conversationId),
       ),
     );
     clearInflightMarker(opts.dataDir, marker.conversationId);
