@@ -12,24 +12,37 @@ import {
 import { runWithTurnMode } from "../turn-mode-context";
 import { makeRequestHandsOnTool } from "./request-hands-on";
 
-const tool = makeRequestHandsOnTool();
-const execute = (surface: string, reason?: string, target?: string) =>
-  tool.execute(
+const tool = makeRequestHandsOnTool({ personalAssistant: false });
+const managerTool = makeRequestHandsOnTool({ personalAssistant: true });
+const run = (
+  which: typeof tool,
+  surface: string,
+  reason?: string,
+): Promise<unknown> =>
+  which.execute(
     "id",
-    { surface, reason, target },
+    { surface, reason },
     undefined,
     undefined,
     {} as ExtensionContext,
   );
+const execute = (surface: string, reason?: string) =>
+  run(tool, surface, reason);
+const asManager = (surface: string, reason?: string) =>
+  run(managerTool, surface, reason);
+/** The queued errands' screens. Read off `handsOn`, whose element type carries
+ *  `surface`, rather than off the mixed-kind `pending.steps` union. */
+const screens = (holder: ReturnType<typeof newInteractionHolder>) =>
+  holder.handsOn.map((step) => step.surface);
 
-test("errands are deduped by screen AND target, keeping the first position", async () => {
+test("errands are deduped by screen, keeping the first position", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {
     await execute(" apiKeys ", "  Copy the key Houston shows once  ");
-    await execute("routineWebhook", "Copy the webhook", "routine-7");
-    // The same routine again is the SAME errand; a different one is its own.
-    await execute("routineWebhook", "Updated reason", "routine-7");
-    await execute("routineWebhook", "The nightly one", "routine-9");
+    await execute("routineWebhook", "Copy the webhook");
+    // The same screen again is the SAME errand: the card's only job is to send
+    // the person there, so a second one would be the same trip twice.
+    await execute("routineWebhook", "Updated webhook reason");
     await execute("apiKeys", "Updated reason");
   });
   expect(holder.pending?.steps).toEqual([
@@ -43,15 +56,7 @@ test("errands are deduped by screen AND target, keeping the first position", asy
       kind: "hands_on",
       id: "h2",
       surface: "routineWebhook",
-      reason: "Updated reason",
-      target: "routine-7",
-    },
-    {
-      kind: "hands_on",
-      id: "h3",
-      surface: "routineWebhook",
-      reason: "The nightly one",
-      target: "routine-9",
+      reason: "Updated webhook reason",
     },
   ]);
 });
@@ -61,20 +66,51 @@ test("a screen Houston cannot open is refused where the model can correct it", a
   await runWithInteractionCapture(holder, async () => {
     for (const surface of [" ", "settings", "api_keys", "Billing"])
       await expect(execute(surface)).rejects.toThrow(
-        "screen to hand over. Use one of: apiKeys, billing, files, routineWebhook, orgDanger.",
+        "screen to hand over. Use one of: apiKeys, files, routineWebhook.",
       );
   });
   expect(holder.pending).toBeUndefined();
+});
+
+test("only the AI Manager may send the person to their money or their space", async () => {
+  // The reason on the card is MODEL-authored text in Houston's own chrome, so
+  // an ordinary agent that read a hostile page could dress a trip to Billing
+  // as Houston's idea.
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, async () => {
+    for (const surface of ["billing", "orgDanger"])
+      await expect(execute(surface)).rejects.toThrow(
+        "is the user's own to open, not yours to hand over",
+      );
+    expect(holder.pending).toBeUndefined();
+    // The screens that are plainly the work, not the account, stay broad.
+    for (const surface of ["apiKeys", "files", "routineWebhook"])
+      await execute(surface);
+  });
+  expect(screens(holder)).toEqual(["apiKeys", "files", "routineWebhook"]);
+});
+
+test("the AI Manager keeps every screen, offered and accepted", async () => {
+  expect(tool.description).not.toContain("billing");
+  expect(managerTool.description).toContain("billing, ");
+  expect(managerTool.description).toContain("orgDanger");
+  const holder = newInteractionHolder();
+  await runWithInteractionCapture(holder, async () => {
+    await asManager("billing", "Only you can put a card on file.");
+    await asManager("orgDanger");
+    await asManager("apiKeys");
+  });
+  expect(screens(holder)).toEqual(["billing", "orgDanger", "apiKeys"]);
 });
 
 test("live Plan prevents errands, while auto permits them", async () => {
   const holder = newInteractionHolder();
   await runWithInteractionCapture(holder, async () => {
     await expect(
-      runWithTurnMode({ current: "plan" }, () => execute("billing")),
+      runWithTurnMode({ current: "plan" }, () => execute("files")),
     ).rejects.toThrow("Plan mode");
     expect(holder.pending).toBeUndefined();
-    await runWithTurnMode({ current: "auto" }, () => execute("billing"));
+    await runWithTurnMode({ current: "auto" }, () => execute("files"));
   });
   expect(holder.pending?.steps[0]?.kind).toBe("hands_on");
 });
@@ -100,7 +136,7 @@ test("errands close the sequence and are turn scoped", () => {
   expect(holder.handsOn).toHaveLength(1);
 });
 
-test("wire parser validates the screen and the optional fields structurally", () => {
+test("wire parser validates the screen and the optional reason structurally", () => {
   const valid = {
     kind: "hands_on",
     id: "h1",
@@ -114,7 +150,6 @@ test("wire parser validates the screen and the optional fields structurally", ()
     { ...valid, surface: "" },
     { ...valid, surface: 3 },
     { ...valid, reason: 3 },
-    { ...valid, target: 3 },
     { ...valid, id: null },
   ])
     expect(isInteractionStep(malformed)).toBe(false);

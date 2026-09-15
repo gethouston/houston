@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { unwrap } from "./adapter-ast.ts";
 import { importedFrom, localNames } from "./adapter-scope.ts";
 
 /**
@@ -35,14 +36,20 @@ interface FileScope {
 }
 
 /** Every node a body may run. `this.ctx.*` is deliberately NOT an edge: the
- *  context is the transport, and its members are read as markers instead. */
+ *  context is the transport, and its members are read as markers instead.
+ *
+ *  A callee and the object it hangs off are both read through {@link unwrap}:
+ *  `(helper as Fn)()` and `(await ready).refresh()` name the same helper as
+ *  their bare spellings, and a wrapper that swallowed the edge would make a
+ *  method look like it does LESS — the direction this graph must never err in. */
 function edgesOf(
   body: ts.Node,
   scope: FileScope,
   enclosingClass: string | null,
 ): string[] {
   const edges: string[] = [];
-  const target = (expression: ts.Expression): void => {
+  const target = (callee: ts.Expression): void => {
+    const expression = unwrap(callee);
     if (ts.isIdentifier(expression)) {
       const from = scope.imports.get(expression.text);
       if (from) edges.push(nodeKey(from, expression.text));
@@ -51,7 +58,7 @@ function edgesOf(
       return;
     }
     if (!ts.isPropertyAccessExpression(expression)) return;
-    const object = expression.expression;
+    const object = unwrap(expression.expression);
     if (ts.isIdentifier(object)) {
       const from = scope.imports.get(object.text);
       if (from) edges.push(nodeKey(from, expression.name.text));

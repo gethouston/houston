@@ -109,7 +109,7 @@ describe("the connect-once capture", () => {
     );
   });
 
-  test("sends NO body when no provider is named, as the control-plane copy did", async () => {
+  test("sends NO body when no provider is named", async () => {
     const client = await withAgent();
 
     await client.engineSdk.providers.credentials.captureCredential(AGENT);

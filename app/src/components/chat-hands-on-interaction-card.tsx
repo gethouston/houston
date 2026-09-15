@@ -4,6 +4,8 @@ import type { StepChrome } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
 import { Check, CornerDownLeft, Hand } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useSurfaceGates } from "../hooks/use-surface-gates";
+import { handsOnSurfaceReachable } from "../lib/hands-on-gates";
 import {
   handsOnScreenKey,
   openHandsOnSurface,
@@ -36,8 +38,10 @@ interface Props extends StepChrome {
  * the person returns, so the card keeps no state of its own: the outcome log
  * behind the stepper is the memory, and re-answering simply overwrites it.
  *
- * A screen this build does not know (a newer engine named it) says so and
- * leaves Skip as the way on, rather than offering a button to nowhere.
+ * A screen this build does not know (a newer engine named it), and one this
+ * person's own Houston does not hold (Billing for a plain member, the Danger
+ * zone for anyone but the space owner), both say so and leave Skip as the way
+ * on, rather than offering a button to nowhere.
  */
 export function ChatHandsOnInteractionCard({
   stepId,
@@ -48,7 +52,9 @@ export function ChatHandsOnInteractionCard({
   ...chrome
 }: Props) {
   const { t } = useTranslation("chat");
+  const gates = useSurfaceGates();
   const known = isHandsOnSurface(surface);
+  const openable = known && handsOnSurfaceReachable(surface, gates);
   const name = known
     ? t(handsOnScreenKey(surface as HandsOnSurface))
     : t("interaction.handsOnUnknownScreen");
@@ -59,7 +65,7 @@ export function ChatHandsOnInteractionCard({
       {...chrome}
       busy={false}
       cta={
-        known ? (
+        openable ? (
           <>
             <Button
               className="gap-1.5"
@@ -72,7 +78,7 @@ export function ChatHandsOnInteractionCard({
               {t("interaction.handsOnDone")}
             </Button>
             <Button className="gap-1.5" onClick={open} size="sm" type="button">
-              {t("interaction.handsOnOpen", { screen: name })}
+              {t("interaction.handsOnOpen")}
               <CornerDownLeft className="size-3.5 opacity-70" />
             </Button>
           </>
@@ -81,20 +87,18 @@ export function ChatHandsOnInteractionCard({
       done={false}
       icon={<Hand className="size-5 shrink-0 text-ink" />}
       onDecline={(message) => onSkip(name, message)}
-      onEnter={known ? open : undefined}
+      onEnter={openable ? open : undefined}
       reason={reason ?? t("interaction.handsOnReason", { screen: name })}
       stepId={stepId}
       title={t("interaction.handsOnTitle", { screen: name })}
     >
-      {known ? (
-        <p className="text-ink-muted text-sm">
-          {t("interaction.handsOnExplainer")}
-        </p>
-      ) : (
-        <p className="text-ink-muted text-sm">
-          {t("interaction.handsOnUnavailable")}
-        </p>
-      )}
+      <p className="text-ink-muted text-sm">
+        {openable
+          ? t("interaction.handsOnExplainer")
+          : known
+            ? t("interaction.handsOnNotYours")
+            : t("interaction.handsOnUnavailable")}
+      </p>
     </ChatConnectStepShell>
   );
 }

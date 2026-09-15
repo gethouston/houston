@@ -23,7 +23,6 @@ test("the activity schema and wire parser accept every hands-on screen", () => {
       id: "h1",
       surface,
       reason: "Only you can do this part.",
-      target: "routine-7",
     };
     expect(validate(activity(step)), JSON.stringify(validate.errors)).toBe(
       true,

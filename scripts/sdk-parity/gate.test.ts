@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
+import { buildGraph, nodeKey } from "./adapter-graph.ts";
 import { type Exceptions, judge, parseExceptions } from "./gate.ts";
 import { type DesktopCalls, repoRoot } from "./inputs.ts";
 import { checkRules, type Violation } from "./rules.ts";
@@ -126,6 +127,48 @@ test("an excuse for an adapter method that now delegates fails as stale", () => 
   );
   expect(verdict.failures).toHaveLength(1);
   expect(verdict.failures[0]).toContain("no longer reproduces");
+});
+
+/**
+ * The edges one adapter function publishes, read off a throwaway module —
+ * `buildGraph` parses files, so the fixture is written to disk. `helpers.ts`
+ * has to exist for the import to resolve; only `mixin.ts` is parsed.
+ */
+function edgesOf(body: string): {
+  edges: string[];
+  helperKey: (name: string) => string;
+} {
+  const directory = mkdtempSync(join(tmpdir(), "adapter-graph-"));
+  writeFileSync(
+    join(directory, "helpers.ts"),
+    "export const helper = { run: () => {} };\n" +
+      "export const ready = Promise.resolve({ refresh: () => {} });\n",
+  );
+  const mixin = join(directory, "mixin.ts");
+  writeFileSync(
+    mixin,
+    `import { helper, ready } from "./helpers.ts";\n${body}`,
+  );
+  const graph = buildGraph([mixin]);
+  return {
+    edges: graph.nodes.get(nodeKey(mixin, "call"))?.edges ?? [],
+    helperKey: (name) => nodeKey(join(directory, "helpers.ts"), name),
+  };
+}
+
+test("a callee behind a cast is still an edge", () => {
+  const { edges, helperKey } = edgesOf(
+    "export function call(): void {\n  (helper.run as () => void)();\n}\n",
+  );
+  expect(edges).toContain(helperKey("run"));
+});
+
+test("a callee reached through await is still an edge", () => {
+  const { edges, helperKey } = edgesOf(
+    "export async function call(): Promise<void> {\n" +
+      "  (await ready).refresh();\n}\n",
+  );
+  expect(edges).toContain(helperKey("refresh"));
 });
 
 const EXCEPTIONS = resolve(repoRoot, "scripts/sdk-parity-exceptions.json");

@@ -51,7 +51,10 @@ export function buildTurnHostTools(
   const enabled = capabilities(turn);
   return [
     ...(enabled.providerConnections
-      ? [makeRequestProviderConnectionTool(), makeRequestHandsOnTool()]
+      ? [
+          makeRequestProviderConnectionTool(),
+          makeRequestHandsOnTool({ personalAssistant }),
+        ]
       : []),
     ...(enabled.integrations
       ? [

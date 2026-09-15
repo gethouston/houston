@@ -889,8 +889,6 @@ export type InteractionStep =
       id: string;
       surface: HandsOnSurface;
       reason?: string;
-      /** What the screen opens focused on, e.g. a routine id. */
-      target?: string;
     }
   /** The model finished planning: a short plan summary the user approves by
    *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */

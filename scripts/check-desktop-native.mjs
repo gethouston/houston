@@ -10,15 +10,16 @@
  * (`packages/web` reuses `app/src` verbatim in a browser, where an unhandled
  * command throws at runtime).
  *
- * Five assertions, all fatal except where noted:
+ * Five assertions, all fatal:
  *
  *   1. Every `invoke("X")` reachable from `app/src` is declared, and every
  *      declared command is actually invoked (a stale entry rots the list).
- *   2. Every declared command is registered in `app/src-tauri/src/lib.rs`.
- *      Registered-but-never-invoked is a WARNING: a command may land before
- *      its caller. Invoked-but-unregistered is fatal — it throws at runtime.
- *   3. Every declared command has a case in `packages/web/src/shims/
- *      tauri-core.ts`, or is on the documented identity-session exemption.
+ *   2. The declared set and the `app/src-tauri/src/lib.rs` `generate_handler!`
+ *      block match exactly: an invoke with no registration throws at runtime,
+ *      and a registration with no caller is native code nobody can reach.
+ *   3. Every declared command is a `case` label of the dispatch in
+ *      `packages/web/src/shims/tauri-core.ts`, or is on the documented
+ *      identity-session exemption.
  *   4. No file under `app/src/` other than `os-bridge.ts` contains `invoke(`
  *      or imports `invoke` at all.
  *   5. Every `@tauri-apps/<specifier>` imported by `app/src` has a shim alias
@@ -39,7 +40,6 @@ const BRIDGE = join(appSrc, "lib", "os-bridge.ts");
 const files = readSources(appSrc);
 
 const errors = [];
-const warnings = [];
 
 // The declared surface. Parsed rather than imported: this script runs under
 // plain node from `pnpm check` and from packages/web's typecheck, neither of
@@ -74,8 +74,8 @@ for (const command of declared.keys())
       `desktop-native-commands.ts declares "${command}" but nothing in app/src invokes it — delete the entry`,
     );
 
-// 2. The Rust side. Registered-without-a-caller is allowed and warned about;
-// a call with no registration throws at runtime, so it fails.
+// 2. The Rust side, in both directions: a call with no registration throws at
+// runtime, and a registration with no caller is unreachable native code.
 const lib = readFileSync(
   join(root, "app", "src-tauri", "src", "lib.rs"),
   "utf8",
@@ -99,7 +99,9 @@ for (const command of declared.keys())
     );
 for (const command of registered)
   if (!declared.has(command))
-    warnings.push(`lib.rs registers "${command}", which app/src never invokes`);
+    errors.push(
+      `app/src-tauri/src/lib.rs registers "${command}", which app/src never invokes — delete the command and its generate_handler! entry`,
+    );
 
 // 3. The web shim. The identity-session store intentionally never runs on web
 // (browser storage is forced there), so these three are covered by the shim's
@@ -115,8 +117,14 @@ const shim = readFileSync(
   join(webDir, "src", "shims", "tauri-core.ts"),
   "utf8",
 );
+// The `case` labels of the shim's `switch (cmd)`, not the file's text: a
+// command named in a comment (or in the error copy) is documentation, not a
+// handler, and would otherwise pass this assertion while throwing on web.
+const shimmed = new Set(
+  [...shim.matchAll(/^\s*case\s+"([a-z0-9_]+)"\s*:/gm)].map((m) => m[1]),
+);
 for (const command of declared.keys())
-  if (!SHIM_EXEMPT.has(command) && !shim.includes(`"${command}"`))
+  if (!SHIM_EXEMPT.has(command) && !shimmed.has(command))
     errors.push(
       `packages/web/src/shims/tauri-core.ts has no case for invoke("${command}")`,
     );
@@ -160,8 +168,6 @@ for (const spec of specifiers) {
     );
 }
 
-for (const warning of warnings) console.warn(`  ! ${warning}`);
-
 if (errors.length) {
   console.error("✗ Desktop native boundary check FAILED:\n");
   for (const e of errors.sort()) console.error(`  - ${e}`);
@@ -179,6 +185,6 @@ const byCategory = [...new Set(declared.values())]
   .join(", ");
 console.log(
   `✓ Desktop native boundary OK — ${declared.size} commands (${byCategory}); ` +
-    `${registered.size} registered in lib.rs, ${warnings.length} with no caller; ` +
+    `${registered.size} registered in lib.rs; ` +
     `${specifiers.size} @tauri-apps specifiers shimmed.`,
 );

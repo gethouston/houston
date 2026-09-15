@@ -1,9 +1,10 @@
 // What a discovery QUERY's state means to the surfaces that read it — the
 // sibling of `assistant-availability.ts`, which reads a discovery FAILURE.
 //
-// Dependency-free so it is node-testable directly
-// (app/tests/assistant-discovery-state.test.ts) and cannot drift from the rail
-// row, the screen and the view guard, which all read the same four answers.
+// Only sibling-module and type imports, so node runs it as it stands — the reason
+// app/tests/assistant-discovery-state.test.ts exercises it under the app's
+// node:test runner with no bundler — and it cannot drift from the rail row,
+// the screen and the view guard, which all read the same four answers.
 
 import type { AssistantHandle } from "@houston-ai/engine-client";
 import { classifyAssistantDiscoveryFailure } from "./assistant-availability.ts";

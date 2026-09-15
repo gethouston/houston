@@ -42,9 +42,9 @@ export interface InteractionHolder {
   /** Credential steps appended by `request_credential` (custom integrations),
    *  deduped by toolkit — the user enters the secret in a secure card. */
   readonly credentials: CredentialStep[];
-  /** Hands-on errands appended by `request_hands_on`, deduped by screen +
-   *  target. They close the sequence: a connection unblocks the agent's own
-   *  work, an errand on a screen only the user can operate does not. */
+  /** Hands-on errands appended by `request_hands_on`, deduped by screen. They
+   *  close the sequence: a connection unblocks the agent's own work, an errand
+   *  on a screen only the user can operate does not. */
   readonly handsOn: HandsOnStep[];
   /** The single plan-ready step, once the model called `plan_ready` (plan mode
    *  only). When set it OWNS the interaction exclusively — see {@link pending}. */

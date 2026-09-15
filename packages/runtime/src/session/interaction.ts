@@ -18,7 +18,7 @@
  *   a repeat call for the same toolkit updates its reason (ids `c1`..`cN` in
  *   first-seen order).
  * - `request_hands_on` APPENDS an errand the user must finish on a Houston
- *   screen themselves, deduped by screen + target (ids `h1`..`hN`). It closes
+ *   screen themselves, deduped by screen (ids `h1`..`hN`). It closes
  *   the sequence: a connection unblocks the agent's own work, an errand does
  *   not.
  * - The recorded {@link PendingInteraction} is the question steps THEN the

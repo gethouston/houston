@@ -144,7 +144,12 @@ export function buildBridgedToolSet(
       // has the same reach as save_routine: execute/auto, never plan.
       ...(input.assistant ? makeAssistantTools(input.assistant) : []),
       ...(input.integrations || input.assistant
-        ? [makeRequestProviderConnectionTool(), makeRequestHandsOnTool()]
+        ? [
+            makeRequestProviderConnectionTool(),
+            makeRequestHandsOnTool({
+              personalAssistant: input.personalAssistant ?? false,
+            }),
+          ]
         : []),
       ...integrationTools(input),
       ...credentialTools({

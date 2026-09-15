@@ -124,8 +124,6 @@ export type InteractionStep =
       /** Which Houston screen the person is being sent to. */
       surface: HandsOnSurface;
       reason?: string;
-      /** What the screen opens focused on, e.g. a routine id. */
-      target?: string;
     }
   | { kind: "plan_ready"; id: string; summary: string }
   | {

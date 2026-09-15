@@ -1,5 +1,5 @@
 //! Identity-scoped native commands; SDK owns remote registration and reconnect.
-use super::{detection, lifecycle, state, types::*, BRIDGE_OP, STATUS};
+use super::{detection, lifecycle, state, types::*, BRIDGE_OP};
 use tauri::AppHandle;
 
 #[tauri::command]
@@ -69,30 +69,4 @@ pub async fn stop_local_bridge(identity: Identity) -> Result<(), String> {
     let _op = BRIDGE_OP.lock().await;
     identity.key("journal")?;
     lifecycle::stop(&identity).await
-}
-#[tauri::command]
-pub fn local_bridge_status(identity: Identity) -> Result<Status, String> {
-    identity.key("journal")?;
-    let guard = STATUS.lock().map_err(|_| "Bridge status unavailable")?;
-    match guard.as_ref().filter(|status| status.identity == identity) {
-        Some(status) => Ok(status.clone()),
-        None => Ok(Status {
-            bridge_id: uuid::Uuid::nil(),
-            identity,
-            generation: 0,
-            status: StatusKind::Disabled,
-            session_expires_at: None,
-            renewal_due: false,
-        }),
-    }
-}
-/// Old descriptors have no trusted principal. Expose only their presence; never
-/// attach their credentials to a newly signed-in identity automatically.
-#[tauri::command]
-pub fn local_bridge_migration_needed() -> Result<bool, String> {
-    match std::fs::metadata(crate::houston_dir().join("local-bridge/state.json")) {
-        Ok(metadata) => Ok(metadata.is_file()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(false),
-        Err(_) => Err("Cannot inspect local bridge migration state".into()),
-    }
 }

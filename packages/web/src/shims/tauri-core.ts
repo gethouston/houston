@@ -277,11 +277,9 @@ export async function invoke<T = unknown>(
     case "save_bridge_target":
     case "forget_bridge_target":
     case "renew_local_bridge":
-    case "local_bridge_migration_needed":
     case "local_bridge_legacy_candidate":
     case "local_bridge_complete_migration":
     case "stop_local_bridge":
-    case "local_bridge_status":
     // On-device dictation runs a bundled whisper.cpp sidecar — desktop-only,
     // no browser equivalent. `useDictation` gates on `osIsTauri()` so the web
     // build never triggers these; surface a clear error if it somehow does.

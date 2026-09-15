@@ -143,7 +143,10 @@ export const piCustomTools = [
   ...assistantTools,
   ...integrationTools,
   ...(hostReachable
-    ? [makeRequestProviderConnectionTool(), makeRequestHandsOnTool()]
+    ? [
+        makeRequestProviderConnectionTool(),
+        makeRequestHandsOnTool({ personalAssistant }),
+      ]
     : []),
   ...customIntegrationTools,
 ].map(withToolCallLog);

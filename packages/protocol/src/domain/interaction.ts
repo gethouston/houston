@@ -56,8 +56,7 @@ export const isInteractionStep = (v: unknown): v is InteractionStep => {
     return (
       typeof v.surface === "string" &&
       v.surface.length > 0 &&
-      (v.reason === undefined || typeof v.reason === "string") &&
-      (v.target === undefined || typeof v.target === "string")
+      (v.reason === undefined || typeof v.reason === "string")
     );
   if (v.kind === "plan_ready") return typeof v.summary === "string";
   if (v.kind === "suggest_reusable")

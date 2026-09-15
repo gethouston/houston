@@ -116,7 +116,6 @@
                     "orgDanger"
                   ]
                 },
-                "target": { "type": "string" },
                 "reason": { "type": "string" },
                 "summary": { "type": "string" },
                 "reusableKind": {

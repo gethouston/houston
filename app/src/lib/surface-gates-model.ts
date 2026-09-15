@@ -1,7 +1,12 @@
 import type { Capabilities } from "@houston-ai/engine-client";
 import { canSeeOrganization } from "../components/organization/org-view-model.ts";
 import type { AssistantDiscovery } from "./assistant-discovery-state.ts";
-import { canSeeAiModelsPage, isSpaceOwner } from "./org-roles.ts";
+import { canSeeBillingTab } from "./billing-gates.ts";
+import {
+  canDeleteWorkspace,
+  canSeeAiModelsPage,
+  isSpaceOwner,
+} from "./org-roles.ts";
 
 /** The Teams gates that decide which non-agent surfaces this caller can reach. */
 export interface SurfaceGates {
@@ -11,6 +16,20 @@ export interface SurfaceGates {
    * shows Admin because its sole caller owns that space.
    */
   showOrganization: boolean;
+  /**
+   * The Billing section INSIDE Admin: a Spaces host, a team space, and
+   * owner/admin (`canSeeBillingTab`). Read it together with
+   * {@link showOrganization}, which decides whether Admin renders at all.
+   */
+  showBilling: boolean;
+  /**
+   * The Danger zone, a block on the Settings index rather than a screen of its
+   * own: a deployment that can delete a space at all, an active space that is a
+   * team, and an owner. Everyone else opens Settings to find nothing there,
+   * which is why anything that SENDS a person to the Danger zone asks this
+   * first.
+   */
+  showWorkspaceDanger: boolean;
   /**
    * The AI Models hub, which is also where each connected account's usage lives
    * (HOU-789). In a Teams workspace it is owner/admin territory (provider
@@ -71,6 +90,11 @@ export function surfaceGatesFor(inputs: SurfaceGateInputs): SurfaceGates {
   const { capabilities, capabilitiesLoading, isTeam, assistant } = inputs;
   return {
     showOrganization: canSeeOrganization(capabilities, isTeam),
+    showBilling: canSeeBillingTab(capabilities, isTeam),
+    showWorkspaceDanger:
+      capabilities?.workspaceDelete === true &&
+      isTeam &&
+      canDeleteWorkspace(capabilities),
     showAiModels: canSeeAiModelsPage(capabilities),
     showSkills: isSpaceOwner(capabilities, isTeam),
     showAssistant: !assistant.unavailable,

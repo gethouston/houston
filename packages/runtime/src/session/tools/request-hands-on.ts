@@ -1,4 +1,5 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import type { HandsOnSurface } from "@houston/protocol";
 import { HANDS_ON_SURFACES, isHandsOnSurface } from "@houston/protocol";
 import { Type } from "typebox";
 import { recordHandsOn } from "../interaction";
@@ -6,7 +7,28 @@ import { assertNotPlanMode } from "../live-mode-gate";
 
 export const REQUEST_HANDS_ON_TOOL_NAME = "request_hands_on";
 
-const SURFACE_LIST = HANDS_ON_SURFACES.join(", ");
+/**
+ * The screens that are the person's OWN to open: what they pay and what they
+ * can destroy. Every other errand is Houston asking for a hand with work the
+ * agent was already given; these two are the person's standing over their
+ * money and their space.
+ *
+ * The card carries a MODEL-AUTHORED reason rendered in Houston's own chrome, so
+ * an ordinary mission agent — one that reads web pages, mail and documents all
+ * turn — could be talked into dressing a trip to Billing or the Danger zone as
+ * Houston's own idea. The AI Manager is the one runtime the HOST itself named
+ * to operate the account, which is the same structural line `credentialTools`
+ * draws, so it alone may hand these two over.
+ */
+const ACCOUNT_OWNER_SURFACES: ReadonlySet<HandsOnSurface> = new Set([
+  "billing",
+  "orgDanger",
+]);
+
+export interface RequestHandsOnToolOptions {
+  /** True when this runtime IS the user's personal assistant (the AI Manager). */
+  personalAssistant: boolean;
+}
 
 /**
  * Hand a Houston screen to the person because the work there needs THEIR hands:
@@ -21,21 +43,23 @@ const SURFACE_LIST = HANDS_ON_SURFACES.join(", ");
  * ends with nothing on screen. Accepted: the alternative is the model narrating
  * the clicks in chat, which is exactly what this tool exists to replace.
  */
-export function makeRequestHandsOnTool() {
+export function makeRequestHandsOnTool({
+  personalAssistant,
+}: RequestHandsOnToolOptions) {
+  const offered = HANDS_ON_SURFACES.filter(
+    (surface) => personalAssistant || !ACCOUNT_OWNER_SURFACES.has(surface),
+  );
+  const surfaceList = offered.join(", ");
   return defineTool({
     name: REQUEST_HANDS_ON_TOOL_NAME,
     label: "Hand a Houston screen to the user",
-    description: `Send the user to a Houston screen to finish something only they can do there: pay or change a plan, copy a key Houston shows once, pick files from their device, or destroy a shared space. Houston shows a card that opens the screen for them and asks them to confirm when they are finished. Valid screens: ${SURFACE_LIST}. Never describe the clicks in chat and never ask them to paste a secret into the conversation. Queue the card, finish independent work, then end your turn.`,
+    description: `Send the user to a Houston screen to finish something only they can do there: ${personalAssistant ? "pay or change a plan, copy a key Houston shows once, pick files from their device, copy a routine's webhook, or destroy a shared space" : "copy a key Houston shows once, pick files from their device, or copy a routine's webhook"}. Houston shows a card that opens the screen for them and asks them to confirm when they are finished. Valid screens: ${surfaceList}. Never describe the clicks in chat and never ask them to paste a secret into the conversation. Queue the card, finish independent work, then end your turn.`,
     parameters: Type.Object({
       surface: Type.String(),
       reason: Type.Optional(Type.String()),
-      target: Type.Optional(Type.String()),
     }),
     executionMode: "sequential",
-    async execute(
-      _id: string,
-      params: { surface: string; reason?: string; target?: string },
-    ) {
+    async execute(_id: string, params: { surface: string; reason?: string }) {
       assertNotPlanMode("hand a screen to the user");
       const surface = params.surface.trim();
       // Refused HERE, where the model can correct course: a screen the app
@@ -43,15 +67,14 @@ export function makeRequestHandsOnTool() {
       // until the user hits Skip (the same lesson as the hidden provider ids).
       if (!isHandsOnSurface(surface))
         throw new Error(
-          `Houston has no '${params.surface}' screen to hand over. Use one of: ${SURFACE_LIST}.`,
+          `Houston has no '${params.surface}' screen to hand over. Use one of: ${surfaceList}.`,
+        );
+      if (!personalAssistant && ACCOUNT_OWNER_SURFACES.has(surface))
+        throw new Error(
+          `Houston's '${surface}' screen is the user's own to open, not yours to hand over. Say what you need and why in your reply and let them decide. Screens you may hand over: ${surfaceList}.`,
         );
       const reason = params.reason?.trim();
-      const target = params.target?.trim();
-      recordHandsOn({
-        surface,
-        ...(reason ? { reason } : {}),
-        ...(target ? { target } : {}),
-      });
+      recordHandsOn({ surface, ...(reason ? { reason } : {}) });
       return {
         content: [
           {

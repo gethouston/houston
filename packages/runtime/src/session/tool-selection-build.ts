@@ -116,7 +116,9 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
       ? // request_hands_on shares this reach exactly: both are a REQUEST TO THE
         // PERSON rendered as a card in their own session, never authority of
         // the agent's own, so whoever may ask for a provider may ask for an
-        // errand on a screen.
+        // errand on a screen. WHICH screens an agent may ask for is a second,
+        // narrower question the tool itself answers (`request-hands-on.ts`):
+        // Billing and the Danger zone are the AI Manager's alone.
         [REQUEST_PROVIDER_CONNECTION_TOOL_NAME, REQUEST_HANDS_ON_TOOL_NAME]
       : []),
     ...(input.assistant && input.personalAssistant && !input.integrations

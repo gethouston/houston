@@ -1,14 +1,16 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import type { PendingInteraction } from "@houston/protocol";
+import type { HandsOnSurface, PendingInteraction } from "@houston/protocol";
 import {
   deriveActiveInteraction,
   interactionNotificationBodyKey,
 } from "../src/lib/active-interaction.ts";
+import { handsOnSurfaceReachable } from "../src/lib/hands-on-gates.ts";
 import { finalHandsOnNames } from "../src/lib/interaction-outcomes.ts";
 import { composeInteractionReply } from "../src/lib/interaction-reply.ts";
 import { resolvePlanReadyOverride } from "../src/lib/plan-ready.ts";
+import type { SurfaceGates } from "../src/lib/surface-gates-model.ts";
 
 const interaction: PendingInteraction = {
   steps: [
@@ -148,8 +150,60 @@ test("the card keeps no state across the navigation it triggers", () => {
   );
   ok(card.includes("openHandsOnSurface(surface as HandsOnSurface)"));
   ok(
-    card.includes("isHandsOnSurface(surface)"),
-    "a screen this build cannot open never gets a button",
+    card.includes("handsOnSurfaceReachable(surface, gates)"),
+    "a screen this person cannot open never gets a button",
+  );
+});
+
+const gates = (over: Partial<SurfaceGates> = {}): SurfaceGates => ({
+  showOrganization: true,
+  showBilling: true,
+  showWorkspaceDanger: true,
+  showAiModels: true,
+  showSkills: true,
+  showAssistant: true,
+  ready: true,
+  ...over,
+});
+
+test("an errand to a screen this person does not hold offers no way in", () => {
+  // The AI Manager speaks for the ACCOUNT, so it can queue Billing at a plain
+  // member who has no Billing section: an Open button there blocks the
+  // composer in front of a screen that will not be found.
+  for (const [surface, denied] of [
+    ["billing", { showBilling: false }],
+    ["billing", { showOrganization: false }],
+    ["orgDanger", { showWorkspaceDanger: false }],
+  ] as const satisfies [HandsOnSurface, Partial<SurfaceGates>][])
+    strictEqual(handsOnSurfaceReachable(surface, gates(denied)), false);
+  // The rest is ordinary work anyone in the space can finish.
+  for (const surface of ["apiKeys", "files", "routineWebhook"] as const)
+    strictEqual(
+      handsOnSurfaceReachable(
+        surface,
+        gates({
+          showOrganization: false,
+          showBilling: false,
+          showWorkspaceDanger: false,
+        }),
+      ),
+      true,
+    );
+});
+
+test("an unsettled gate never calls a screen missing", () => {
+  // Every flag is false while capabilities load; declaring the screen gone on
+  // that evidence would flash "unavailable" at the person who owns it.
+  strictEqual(
+    handsOnSurfaceReachable(
+      "billing",
+      gates({ ready: false, showOrganization: false, showBilling: false }),
+    ),
+    true,
+  );
+  strictEqual(
+    handsOnSurfaceReachable("billing", gates({ showBilling: true })),
+    true,
   );
 });
 

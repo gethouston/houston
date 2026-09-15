@@ -1,6 +1,5 @@
 {
   "$comment": "Written exceptions for scripts/check-sdk-parity.ts, which FAILS the process on any violation not listed here. An entry is { rule, key, reason } and nothing else; `key` is the violation identity the report prints, and `reason` must be at least 20 characters saying WHY parity stops here. An entry whose violation no longer reproduces fails the gate as stale: the PR that binds the route is the one that deletes its excuse and lowers `baseline`. Keys read as the report prints them: `host|gateway METHOD /path` for a route, `proxy METHOD /path` for a runtime-proxy member, and `client <adapter method>` for a method of the shipped client's mixin chain that reaches a server with no @houston/sdk method behind it. `baseline` may only go down on its own; raising it is a visible diff a reviewer must accept, because it means a new route shipped with no client behind it.",
-  "$waves": "The waves named in these reasons are the SDK binding waves of PRODUCT-1820 step 4: each wave moves one family of routes behind a @houston/sdk module, so naming a wave says which family a route belongs to. A1 org, A2 spaces, A3 teams, A4 account, B1 workspaces, B2 agent library, B3 board, C1 routines, C2 skills, C3 integrations, C4 credentials/providers, C5 files, D1 chat/turns. Every wave is bound, and a route of theirs that still has no SDK method says below what keeps it unbound.",
   "baseline": 152,
   "entries": [
     {
@@ -121,12 +120,12 @@
     {
       "rule": "sdk-route-unbound",
       "key": "host GET /agents/{}/approvals/{}",
-      "reason": "a pending approval re-read served on both spellings; nothing in the shipped clients issues it, so no SDK wave binds it"
+      "reason": "a pending approval re-read served on both spellings; nothing in the shipped clients issues it, so no SDK method binds it"
     },
     {
       "rule": "sdk-route-unbound",
       "key": "host GET /v1/agents/{}/approvals/{}",
-      "reason": "a pending approval re-read served on both spellings; nothing in the shipped clients issues it, so no SDK wave binds it"
+      "reason": "a pending approval re-read served on both spellings; nothing in the shipped clients issues it, so no SDK method binds it"
     },
     {
       "rule": "sdk-route-unbound",
@@ -356,7 +355,7 @@
     {
       "rule": "sdk-route-unbound",
       "key": "gateway POST /feedback",
-      "reason": "the Send feedback intake the app posts directly to the gateway; no SDK wave covers it"
+      "reason": "the Send feedback intake the app posts directly to the gateway; no SDK method covers it"
     },
     {
       "rule": "sdk-route-unbound",

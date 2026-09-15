@@ -26,7 +26,6 @@ test("a hands-on errand survives persistence and clears when its mission closes"
         id: "h1",
         surface: "routineWebhook",
         reason: "Copy the webhook Houston shows you once.",
-        target: "routine-7",
       },
     ],
   };
@@ -38,7 +37,8 @@ test("a hands-on errand survives persistence and clears when its mission closes"
   await saveActivities(store, "workspace", [activity]);
   const { items, diagnostics } = await loadActivities(store, "workspace");
   expect(diagnostics).toEqual([]);
-  // Stored VERBATIM, `target` included: the app opens the screen focused on it.
+  // Stored VERBATIM: the card the person comes back to is the one the agent
+  // queued, reason and all.
   expect(items[0]?.pending_interaction).toEqual(pending);
   const restored = items[0];
   if (!restored) throw new Error("Expected the saved mission to survive");

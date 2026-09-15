@@ -13,11 +13,11 @@ import {
 /**
  * The chat surface on the wire, byte for byte.
  *
- * Chat is the one family the web adapter never reached through `cpFetch`: it
- * drives the agent's own runtime directly, so the SDK flip rebound the CLIENT
+ * Chat is the one family the web adapter does not reach through `cpFetch`: it
+ * drives the agent's own runtime directly, so the SDK binds the CLIENT
  * (`sdk.clientFor`, and `sdk.turns` / `sdk.conversations` for the one-shot
  * commands) rather than the request builder. Nothing else in the suite would
- * notice that rebind putting a turn on a different path, sending a different
+ * notice that binding putting a turn on a different path, sending a different
  * body, or losing the active-space header that picks which pod answers — the
  * requests below ARE that record.
  *

@@ -440,16 +440,16 @@ test("resolveInteractionPatch: a MALFORMED payload is absent, never 'keep what's
   ).toEqual({ kind: "keep" });
 });
 
-test("a hands-on errand survives the wire guard and keeps its optional fields", () => {
+test("a hands-on errand survives the wire guard and keeps its optional reason", () => {
   const step = {
     kind: "hands_on",
     id: "h1",
     surface: "apiKeys",
     reason: "Copy the key Houston shows you once.",
-    target: "routine-7",
   };
   expect(isPendingInteraction({ steps: [step] })).toBe(true);
-  // Stored VERBATIM, target and all: the app opens the screen focused on it.
+  // Stored VERBATIM: the reason is the model's own words to the person, so a
+  // round trip through the wire must not reword or drop it.
   expect(parsePendingInteraction({ steps: [step] })).toEqual({ steps: [step] });
   expect(
     isPendingInteraction({
@@ -461,7 +461,6 @@ test("a hands-on errand survives the wire guard and keeps its optional fields", 
     { ...step, surface: "" },
     { ...step, surface: 3 },
     { ...step, reason: 3 },
-    { ...step, target: 3 },
   ])
     expect(isInteractionStep(malformed)).toBe(false);
 });

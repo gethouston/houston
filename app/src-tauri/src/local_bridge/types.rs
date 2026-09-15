@@ -127,7 +127,6 @@ pub struct Status {
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StatusKind {
-    Disabled,
     Connecting,
     Online,
     Reconnecting,

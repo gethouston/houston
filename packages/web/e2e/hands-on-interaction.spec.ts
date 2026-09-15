@@ -68,10 +68,12 @@ for (const surface of ["manager", "mission"] as const) {
     await expect(composer(page)).toHaveCount(0);
 
     // The CTA is real navigation, not a link in prose: it lands the person on
-    // the API keys screen itself.
-    await page
-      .getByRole("button", { name: "Open API keys", exact: true })
-      .click();
+    // the API keys screen itself. The card's title names the screen; the button
+    // carries the bare verb, the way the connect cards do.
+    await expect(
+      page.getByText("Open API keys", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Open", exact: true }).click();
     await expect(
       page.getByRole("heading", { name: "API keys", level: 2 }),
     ).toBeVisible();

@@ -32,72 +32,37 @@ import {
 } from "./commands";
 import { createEngineClients } from "./engine-clients";
 import type { ModuleContext } from "./module-context";
-import { createAccountModule } from "./modules/account";
-import { createActivitiesModule } from "./modules/activities";
-import { createAgentsModule } from "./modules/agents";
-import { createBillingModule } from "./modules/billing";
-import { createConversationsModule } from "./modules/conversations";
-import { createFilesModule } from "./modules/files";
-import { createIntegrationsModule } from "./modules/integrations";
-import { createMigrationModule } from "./modules/migration";
-import { createMissionsSearchModule } from "./modules/missions-search";
-import { createOrgModule } from "./modules/org";
-import { createPreferencesModule } from "./modules/preferences";
-import { createProvidersModule } from "./modules/providers";
-import { createRoutinesModule } from "./modules/routines";
-import { createSessionModule } from "./modules/session";
-import { createSkillsModule } from "./modules/skills";
-import { createSpacesModule } from "./modules/spaces";
-import { createTeamsModule } from "./modules/teams";
-import { createTurnsModule } from "./modules/turns";
-import { createWorkspacesModule } from "./modules/workspaces";
 import type { SdkConfig } from "./ports";
+import { moduleFactories, type SdkModules } from "./sdk-modules";
 import { ScopeStore, type SdkEvent } from "./store";
 
 /** The client every Houston surface binds. See the module header. */
-export class HoustonSdk {
+export class HoustonSdk implements SdkModules {
   private readonly store: ScopeStore;
   private readonly authExpiry: AuthExpiryNotifier;
   private readonly commands: CommandRegistry;
 
-  /** Session/connection facade (auth, connection state). */
-  readonly session: ReturnType<typeof createSessionModule>;
-  /** Agent-list facade. */
-  readonly agents: ReturnType<typeof createAgentsModule>;
-  /** Conversation facade (history, per-conversation streams). */
-  readonly conversations: ReturnType<typeof createConversationsModule>;
-  /** Turn facade (send message, drive a turn). */
-  readonly turns: ReturnType<typeof createTurnsModule>;
-  /** Board/missions facade (per-agent activities read + CRUD). */
-  readonly activities: ReturnType<typeof createActivitiesModule>;
-  /** Mission-search facade (ranked full-text search across missions). */
-  readonly missions: ReturnType<typeof createMissionsSearchModule>;
-  /** Per-agent AI-provider facade (connect, status, active model). */
-  readonly providers: ReturnType<typeof createProvidersModule>;
-  /** Integrations facade (Composio readiness + connections). */
-  readonly integrations: ReturnType<typeof createIntegrationsModule>;
-  /** Preferences facade (key/value preferences + workspace locale). */
-  readonly preferences: ReturnType<typeof createPreferencesModule>;
-  /** Spaces facade (memberships, invitations, agent moves between spaces). */
-  readonly spaces: ReturnType<typeof createSpacesModule>;
-  /** Workspaces facade (workspace list, agent docs, context notes, sidebar). */
-  readonly workspaces: ReturnType<typeof createWorkspacesModule>;
-  /** Account facade (the caller's own display profile + personal API keys). */
-  readonly account: ReturnType<typeof createAccountModule>;
-  /** Org facade (the active space's roster, roles, invitations + usage). */
-  readonly org: ReturnType<typeof createOrgModule>;
-  /** Teams facade (the space's team directory + per-agent policy). */
-  readonly teams: ReturnType<typeof createTeamsModule>;
-  /** Billing facade (the team's subscription + the Stripe hand-offs). */
-  readonly billing: ReturnType<typeof createBillingModule>;
-  /** Routines facade (an agent's scheduled work, its runs, its webhook key). */
-  readonly routines: ReturnType<typeof createRoutinesModule>;
-  /** Skills facade (an agent's own skills and the manifest enabling them). */
-  readonly skills: ReturnType<typeof createSkillsModule>;
-  /** Files facade (an agent's workspace listing, reads, moves + uploads). */
-  readonly files: ReturnType<typeof createFilesModule>;
-  /** Migration facade (an agent's data out as zip chunks, and into another). */
-  readonly migration: ReturnType<typeof createMigrationModule>;
+  // The facades, mounted by the constructor below. What each one covers, and
+  // the factory whose return type it is, live in `./sdk-modules`.
+  readonly session: SdkModules["session"];
+  readonly agents: SdkModules["agents"];
+  readonly conversations: SdkModules["conversations"];
+  readonly turns: SdkModules["turns"];
+  readonly activities: SdkModules["activities"];
+  readonly missions: SdkModules["missions"];
+  readonly providers: SdkModules["providers"];
+  readonly integrations: SdkModules["integrations"];
+  readonly preferences: SdkModules["preferences"];
+  readonly spaces: SdkModules["spaces"];
+  readonly workspaces: SdkModules["workspaces"];
+  readonly account: SdkModules["account"];
+  readonly org: SdkModules["org"];
+  readonly teams: SdkModules["teams"];
+  readonly billing: SdkModules["billing"];
+  readonly routines: SdkModules["routines"];
+  readonly skills: SdkModules["skills"];
+  readonly files: SdkModules["files"];
+  readonly migration: SdkModules["migration"];
   /** The per-agent engine client every module resolves its calls through — the
    *  seam a host binds when it drives the re-exported turn machinery itself. */
   readonly clientFor: (agentId: string) => HoustonEngineClient;
@@ -126,15 +91,15 @@ export class HoustonSdk {
     // so the stream can 401 while the token is still null. The real guard is the
     // notifier's tokenless-401 suppression — a 401 with no token set is not a
     // token EXPIRY, so it never emits. The rest are dependency-neutral.
-    this.session = createSessionModule(ctx);
-    this.agents = createAgentsModule(ctx);
-    this.conversations = createConversationsModule(ctx);
+    this.session = moduleFactories.createSessionModule(ctx);
+    this.agents = moduleFactories.createAgentsModule(ctx);
+    this.conversations = moduleFactories.createConversationsModule(ctx);
     // Activities BEFORE turns: the turns module's default board-status output
     // persists a card by session key through the activities module, so that
     // capability must exist first. Injected as a bound function (not the whole
     // module) so turns depends on one activities method, never the reverse.
-    this.activities = createActivitiesModule(ctx);
-    this.turns = createTurnsModule(
+    this.activities = moduleFactories.createActivitiesModule(ctx);
+    this.turns = moduleFactories.createTurnsModule(
       ctx,
       (agentId, sessionKey, status, pendingInteraction) =>
         this.activities.setStatusBySessionKey(
@@ -144,20 +109,20 @@ export class HoustonSdk {
           pendingInteraction,
         ),
     );
-    this.missions = createMissionsSearchModule(ctx);
-    this.providers = createProvidersModule(ctx);
-    this.integrations = createIntegrationsModule(ctx);
-    this.preferences = createPreferencesModule(ctx);
-    this.spaces = createSpacesModule(ctx);
-    this.workspaces = createWorkspacesModule(ctx);
-    this.account = createAccountModule(ctx);
-    this.org = createOrgModule(ctx);
-    this.teams = createTeamsModule(ctx);
-    this.billing = createBillingModule(ctx);
-    this.routines = createRoutinesModule(ctx);
-    this.skills = createSkillsModule(ctx);
-    this.files = createFilesModule(ctx);
-    this.migration = createMigrationModule(ctx);
+    this.missions = moduleFactories.createMissionsSearchModule(ctx);
+    this.providers = moduleFactories.createProvidersModule(ctx);
+    this.integrations = moduleFactories.createIntegrationsModule(ctx);
+    this.preferences = moduleFactories.createPreferencesModule(ctx);
+    this.spaces = moduleFactories.createSpacesModule(ctx);
+    this.workspaces = moduleFactories.createWorkspacesModule(ctx);
+    this.account = moduleFactories.createAccountModule(ctx);
+    this.org = moduleFactories.createOrgModule(ctx);
+    this.teams = moduleFactories.createTeamsModule(ctx);
+    this.billing = moduleFactories.createBillingModule(ctx);
+    this.routines = moduleFactories.createRoutinesModule(ctx);
+    this.skills = moduleFactories.createSkillsModule(ctx);
+    this.files = moduleFactories.createFilesModule(ctx);
+    this.migration = moduleFactories.createMigrationModule(ctx);
     // =====================================================================
   }
 

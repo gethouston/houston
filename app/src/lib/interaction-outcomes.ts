@@ -34,8 +34,8 @@ interface SplitOutcomes {
  * resumes visibly); a plain skip lands in `skippedNames`.
  *
  * One fold for every kind: connect, credential and hands-on differ only in the
- * word they call "completed", and three copies of this loop drifted apart the
- * last time they were three copies.
+ * word they call "completed", so they share this loop rather than each keeping
+ * a copy free to answer the same question differently.
  */
 function splitOutcomes<T extends StepOutcome>(
   stepIds: string[],
