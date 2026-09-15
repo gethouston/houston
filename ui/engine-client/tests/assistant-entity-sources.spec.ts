@@ -174,6 +174,12 @@ describe("entityRuleFor", () => {
     }
   });
 
+  it("names the read that lists an agent's chats", () => {
+    const chat = at("/agents/{agentId}/conversations/{id}");
+    expect(entitySourceFor("id", chat)).toBe("conversations.list");
+    expect(entityRuleFor("id", chat)?.discovery).toBe("conversations.list");
+  });
+
   it("claims a value by the body key or query key that carries it", () => {
     expect(
       entityRuleFor(

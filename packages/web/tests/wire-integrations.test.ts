@@ -93,6 +93,41 @@ test("integrationConnection percent-encodes the connection id", async () => {
   onlyCall("GET", `${BASE}/v1/integrations/composio/connections/c%2F1`);
 });
 
+test("connectIntegration posts the named provider's connect route", async () => {
+  stubFetch(
+    json(200, { redirectUrl: "https://acme.test/oauth", connectionId: "c1" }),
+  );
+
+  const c = client();
+  c.setActiveOrg(ORG);
+  const out = await c.connectIntegration("composio", "gmail", "a1");
+
+  const call = onlyCall(
+    "POST",
+    `${BASE}/v1/integrations/composio/connect`,
+    JSON.stringify({ toolkit: "gmail", agent: "a1" }),
+  );
+  expect(call.headers.get("x-houston-org")).toBe(ORG);
+  expect(out).toEqual({
+    redirectUrl: "https://acme.test/oauth",
+    connectionId: "c1",
+  });
+});
+
+test("connectIntegration omits agent from the body when none is given", async () => {
+  stubFetch(
+    json(200, { redirectUrl: "https://acme.test/oauth", connectionId: "c1" }),
+  );
+
+  await client().connectIntegration("composio", "gmail");
+
+  onlyCall(
+    "POST",
+    `${BASE}/v1/integrations/composio/connect`,
+    JSON.stringify({ toolkit: "gmail" }),
+  );
+});
+
 test("triggerTypes carries the toolkit as an escaped query value", async () => {
   stubFetch(json(200, { items: [] }));
 

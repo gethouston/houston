@@ -24,6 +24,9 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## chat
 
+- `conversations.delete`: Deletes one of an agent's chats, with everything said in it. **Confirmation required.**
+- `conversations.list`: Lists an agent's chats.
+- `conversations.rename`: Retitles one of an agent's chats.
 - `turns.cancel`: Stops whatever an agent is currently doing in one chat.
 - `turns.history`: Reads back everything said in one chat.
 
@@ -66,6 +69,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `deleteActivity`: Deletes a mission from an agent's board. **Confirmation required.**
 - `listActivities`: Lists the missions on an agent's board.
 - `missions.search`: Finds missions whose title, description or chat mentions a phrase. (not callable yet)
+- `renameMission`: Renames a mission on an agent's board.
 
 ## org
 

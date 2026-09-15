@@ -10,6 +10,7 @@
  * there is one way this package talks to the engine.
  */
 
+import type { IntegrationProviderId } from "@houston/protocol";
 import { createRequester, type Requester } from "./requester";
 import type {
   EngineClientConfig,
@@ -25,17 +26,6 @@ const JSON_HEADERS = { "Content-Type": "application/json" } as const;
 /** Composio is the only integration provider today; the gateway keys every
  *  route on this segment (`/v1/integrations/composio/*`). */
 const COMPOSIO = "composio";
-
-/** Options for a provider-scoped {@link IntegrationsClient.connect} /
- *  {@link IntegrationsClient.disconnect}. `provider` defaults to composio (the
- *  only provider today, so an omitted value keeps the exact legacy route);
- *  `agent` scopes an OAuth connect to a single agent slug (the gateway's
- *  per-agent allowlist enforcement). Both optional and additive — a bare
- *  `connect(toolkit)` is byte-for-byte the pre-existing call. */
-export interface IntegrationConnectOptions {
-  provider?: string;
-  agent?: string;
-}
 
 /** Integrations (C1). All calls carry the session JWT. */
 export class IntegrationsClient {
@@ -79,24 +69,24 @@ export class IntegrationsClient {
     );
   }
 
-  /** Start an OAuth connect. The caller opens `redirectUrl`, then polls
-   *  {@link getConnection} on `connectionId` until it is `active`. `opts`
-   *  (provider/agent) is additive — omitted, this is the legacy composio call
-   *  with a `{ toolkit }` body. */
+  /** Start an OAuth connect against one provider. The caller opens
+   *  `redirectUrl`, then polls {@link getConnection} on `connectionId` until it
+   *  is `active`. `provider` and `agent` are plain arguments, not an option
+   *  bag, so the request this issues — path segment and body alike — is fixed
+   *  by the signature. `agent` scopes the connection to one agent slug, which
+   *  is what makes the gateway apply that agent's allowlist; omitted, it drops
+   *  out of the body and the connection is the user's account-wide one. */
   connect(
+    provider: IntegrationProviderId,
     toolkit: string,
-    opts?: IntegrationConnectOptions,
+    agent?: string,
   ): Promise<{ redirectUrl: string; connectionId: string }> {
-    const provider = opts?.provider ?? COMPOSIO;
     return this.r.json(
       `/v1/integrations/${encodeURIComponent(provider)}/connect`,
       {
         method: "POST",
         headers: JSON_HEADERS,
-        body: JSON.stringify({
-          toolkit,
-          ...(opts?.agent ? { agent: opts.agent } : {}),
-        }),
+        body: JSON.stringify({ toolkit, agent }),
       },
     );
   }
@@ -107,9 +97,7 @@ export class IntegrationsClient {
    *  toolkit can hold several — two Gmail logins); omitted removes them all. */
   async disconnect(
     toolkit: string,
-    opts?: Pick<IntegrationConnectOptions, "provider"> & {
-      connectionId?: string;
-    },
+    opts?: { provider?: string; connectionId?: string },
   ): Promise<void> {
     const provider = opts?.provider ?? COMPOSIO;
     await this.r.request(

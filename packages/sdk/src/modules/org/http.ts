@@ -50,6 +50,8 @@ export async function getOrg(scope: HttpScope): Promise<OrgInfo> {
  * failure; the caller degrades that to an empty map (teammate faces then fall
  * back to initials) so a pre-feature host stays byte-identical.
  * @assistant group:org hidden: UI plumbing; resolves member ids to the names and photos the app's avatars render.
+ * @assistant unroutable: the ids are one comma-joined query value, and a route can only map a query key to a whole scalar parameter - so the address is not derivable, and getOrgPeople is the roster read to dispatch.
+ * @assistant unschematized: a profile map is keyed by user id, so its shape is an open record rather than a declared object.
  */
 export async function getOrgProfiles(
   scope: HttpScope,

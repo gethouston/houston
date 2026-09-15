@@ -17,6 +17,7 @@
  * a client itself.
  */
 
+import type { ConversationSummary } from "@houston/runtime-client";
 import type { ModuleContext } from "../../module-context";
 import {
   parseDelete,
@@ -55,6 +56,16 @@ export function createConversationsModule(ctx: ModuleContext) {
   // dropped, never published.
   const loadSeq = new Map<string, number>();
 
+  /**
+   * Lists an agent's chats.
+   *
+   * @param agentId The agent this acts on, by the id listAgents returns. An
+   *   agent's name is not its id, so read the id from listAgents first.
+   * @assistant group:chat
+   */
+  const list = (agentId: string): Promise<ConversationSummary[]> =>
+    clientFor(agentId).listConversations();
+
   /** Fetch the agent's conversations and publish the resulting VM. */
   const loadList = async (agentId: string): Promise<ConversationListVM> => {
     const scope = conversationListScope(agentId);
@@ -63,7 +74,7 @@ export function createConversationsModule(ctx: ModuleContext) {
     // Signal loading while keeping any prior items to avoid a flush-to-empty.
     const prior = currentVm(agentId);
     store.publish(scope, { loaded: false, items: prior?.items ?? [] });
-    const summaries = await clientFor(agentId).listConversations();
+    const summaries = await list(agentId);
     const vm: ConversationListVM = {
       loaded: true,
       items: summaries.map(toListItem),
@@ -124,6 +135,7 @@ export function createConversationsModule(ctx: ModuleContext) {
   return {
     /** Scope string for `sdk.subscribe(...)` / `sdk.getSnapshot(...)`. */
     scope: conversationListScope,
+    list,
     /** Fetch + publish the agent's conversation list. */
     refresh: (agentId: string): Promise<ConversationListVM> =>
       loadList(agentId),
@@ -134,7 +146,7 @@ export function createConversationsModule(ctx: ModuleContext) {
      * @param id The chat to retitle.
      * @param title The new title.
      * @assistant group:chat
-     * @assistant hidden: it acts on the chat the person has open, and nothing lists an agent's chats, so a dispatched call has no id it could name.
+     * @assistant unconfirmed: Retitles a chat; everything said in it is untouched, and the title is changed back the same way.
      */
     rename,
     /**
@@ -143,7 +155,7 @@ export function createConversationsModule(ctx: ModuleContext) {
      *   agent's name is not its id, so read the id from listAgents first.
      * @param id The chat to delete.
      * @assistant group:chat
-     * @assistant hidden: it acts on the chat the person has open, and nothing lists an agent's chats, so a dispatched call has no id it could name.
+     * @assistant confirm: irreversible. The chat and everything said in it are gone, and Houston keeps no copy.
      */
     delete: remove,
     suggestTitle,

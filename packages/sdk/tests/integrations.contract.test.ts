@@ -104,8 +104,10 @@ describe("integrations VM", () => {
   });
 
   it("connect → poll pending → activate → poll active", async () => {
-    const { redirectUrl, connectionId } =
-      await h.sdk.integrations.connect("slack");
+    const { redirectUrl, connectionId } = await h.sdk.integrations.connect(
+      "composio",
+      "slack",
+    );
     expect(redirectUrl).toBe("https://connect.test/slack");
     expect(connectionId).toMatch(/^conn-slack-/);
 

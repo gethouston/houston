@@ -64,6 +64,11 @@ export const LOCAL_PROBES: readonly Probe[] = [
     id: "no-such-activity",
     updates: {},
   }),
+  probe("renameMission", {
+    ...AGENT,
+    id: "no-such-activity",
+    title: "Parity probe",
+  }),
   probe("listRoutines", AGENT),
   probe("listRoutineRuns", AGENT),
   probe("createRoutine", { ...AGENT, input: {} }),
@@ -169,7 +174,23 @@ export const LOCAL_PROBES: readonly Probe[] = [
   ),
   probe("forgetCredential", { ...AGENT, provider: "openrouter" }),
 
-  // The transcript of one chat, which the agent's own engine holds.
+  // The chats of one agent, and the transcript of one, which the agent's own
+  // engine holds.
+  proxied(
+    "conversations.list",
+    AGENT,
+    "GET conversations is the engine's own route; the host relays it",
+  ),
+  proxied(
+    "conversations.rename",
+    { ...AGENT, id: "no-such-conversation", title: "Parity probe" },
+    "PATCH conversations/:id is the engine's own route; the host relays it",
+  ),
+  proxied(
+    "conversations.delete",
+    { ...AGENT, id: "no-such-conversation" },
+    "DELETE conversations/:id is the engine's own route; the host relays it",
+  ),
   proxied(
     "turns.history",
     { ...AGENT, conversationId: "no-such-conversation" },

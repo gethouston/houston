@@ -5,6 +5,7 @@
     "addCustomIntegration": "Add an outside app of your own from a link.",
     "addOrgMember": "Invite someone to this space with the role you chose.",
     "cancelRoutineRun": "Stop this routine run while it is under way.",
+    "conversations.delete": "Delete this chat and everything said in it. This cannot be undone.",
     "createAgent": "Create a new agent.",
     "createApiKey": "Create a new API key.",
     "createCheckout": "Start the checkout that subscribes this workspace to a paid plan.",
@@ -96,6 +97,9 @@
     "workspaceId": "workspace"
   },
   "argumentsByOperation": {
+    "conversations.delete": {
+      "id": "chat"
+    },
     "deleteActivity": {
       "id": "mission"
     },

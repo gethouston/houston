@@ -1,6 +1,5 @@
 export type { EventStreamOptions, SendOptions } from "./client";
 export { EngineError, HoustonEngineClient } from "./client";
-export type { IntegrationConnectOptions } from "./client-integrations";
 export { IntegrationsClient, PreferencesClient } from "./client-integrations";
 export { streamGlobalEvents } from "./global-events";
 export type { GlobalEventsOptions } from "./global-events-contract";

@@ -1978,7 +1978,7 @@ export const tauriIntegrations = {
    *  HOU-1110) and no-auth (nothing to connect, its tools already work) — are
    *  expected + explainable: the connect flow surfaces its own copy, so no raw
    *  toast and no bug report. */
-  connect: (provider: string, toolkit: string, agent?: string) =>
+  connect: (provider: IntegrationProviderId, toolkit: string, agent?: string) =>
     call(
       "integration_connect",
       () => getEngine().connectIntegration(provider, toolkit, agent),

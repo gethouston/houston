@@ -39,10 +39,10 @@ function makeClient() {
 
 const I = "/v1/integrations";
 
-describe("IntegrationsClient — additive connect/disconnect options", () => {
-  it("connect(toolkit) keeps the legacy composio route + { toolkit } body", async () => {
+describe("IntegrationsClient — the provider is the connect argument", () => {
+  it("connect(provider, toolkit) addresses the provider with a { toolkit } body", async () => {
     const { client, calls } = makeClient();
-    await client.connect("gmail");
+    await client.connect("composio", "gmail");
     expect(calls).toEqual([
       {
         method: "POST",
@@ -52,9 +52,21 @@ describe("IntegrationsClient — additive connect/disconnect options", () => {
     ]);
   });
 
-  it("connect(toolkit, { provider, agent }) routes to the provider and adds agent", async () => {
+  it("connect builds the path segment from the provider it was given", async () => {
     const { client, calls } = makeClient();
-    await client.connect("gmail", { provider: "composio", agent: "ag_1" });
+    await client.connect("custom", "gmail");
+    expect(calls).toEqual([
+      {
+        method: "POST",
+        path: `${I}/custom/connect`,
+        body: { toolkit: "gmail" },
+      },
+    ]);
+  });
+
+  it("connect carries agent in the body only when one is given", async () => {
+    const { client, calls } = makeClient();
+    await client.connect("composio", "gmail", "ag_1");
     expect(calls).toEqual([
       {
         method: "POST",
