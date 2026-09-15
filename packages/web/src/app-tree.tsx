@@ -181,6 +181,16 @@ function LocaleSyncOnce() {
   return null;
 }
 
+// The first-party product-analytics pipe listens on the same bus as the usage
+// economy, with the same whole-page life span, but it reads the session through
+// a query, so it must sit INSIDE QueryClientProvider — still above every gate
+// and outside <App/>, so one instance pays each event once (mirrors
+// `StartupEffects` in app/src/main.tsx, which is already inside the provider).
+function ProductAnalyticsSinkMount() {
+  useProductAnalyticsSink();
+  return null;
+}
+
 // No StrictMode — matches app/src/main.tsx (portal/listener double-mount churn).
 export default function AppTree() {
   useEngineTheme();
@@ -188,9 +198,6 @@ export default function AppTree() {
   // `StartupEffects` in app/src/main.tsx. Above every gate and outside
   // <App/> (which remounts per identity), so one instance pays each event once.
   useUsageAccrual();
-  // The first-party product-analytics pipe listens on the same bus, for the
-  // same reason and with the same life span. Mirrors app/src/main.tsx.
-  useProductAnalyticsSink();
   // Cloud web build (Firebase identity baked in): sign-in is the FIRST screen.
   // The first-run language picker + agreement are desktop/self-host concepts —
   // pre-auth they can't even persist (the gateway 401s preference writes, which
@@ -209,6 +216,7 @@ export default function AppTree() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ProductAnalyticsSinkMount />
       <ErrorBoundary>
         <TooltipProvider>
           <EngineGate>

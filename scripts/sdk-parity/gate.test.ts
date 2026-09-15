@@ -326,3 +326,30 @@ test("the checker exits non-zero when a violation is not excused", () => {
   };
   expect(run()).toContain(dropped.key);
 }, 120_000);
+
+test("without the gateway inventory a host miss is unjudged, not a violation", () => {
+  const hostless = [
+    { name: "orgGet", key: "GET /v1/org", keys: ["GET /v1/org"] },
+  ];
+  const judged = checkRules([], [], hostless, client());
+  expect(judged.map((v) => v.rule)).toEqual(["sdk-method-unserved"]);
+  const blind = checkRules([], null, hostless, client());
+  expect(blind).toEqual([]);
+});
+
+test("an exception for a rule this run could not judge is not stale", () => {
+  const gatewayExcuse: Exceptions = {
+    baseline: 1,
+    entries: [
+      {
+        rule: "sdk-route-unbound",
+        key: "gateway POST /v1/analytics/events",
+        reason: "the client's own analytics beacon, not a domain capability",
+      },
+    ],
+  };
+  const blind = judge([], gatewayExcuse, "summary", ["sdk-route-unbound"]);
+  expect(blind.failures).toEqual([]);
+  const sighted = judge([], gatewayExcuse, "summary");
+  expect(sighted.failures).toHaveLength(1);
+});
