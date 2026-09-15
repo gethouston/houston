@@ -1,10 +1,10 @@
+import { NAME_TAKEN } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 import {
   FileOpError,
   fileKey,
   loadWorkspaceKeys,
   moveOrRefuse,
-  NAME_TAKEN,
   safeRel,
 } from "./files-ops";
 

@@ -11,6 +11,7 @@ import {
 import { dirname, join } from "node:path";
 import { isVanished, statsUnder } from "./fs-listing";
 import { probeKeyCase, scratchPath } from "./fs-scratch";
+import { writable } from "./fs-writable";
 import {
   assertSafeKey,
   decodeText,
@@ -39,7 +40,7 @@ export class FsVfs implements Vfs {
    * rename — and neither is an answer borrowed from an ancestor because `root`
    * did not exist yet. */
   keyCase(): Promise<KeyCase> {
-    this.probe ??= probeKeyCase(this.root)
+    this.probe ??= writable(this.root, () => probeKeyCase(this.root))
       .then((result) => {
         if (!result.memoizable) this.probe = undefined;
         return result.keyCase;
@@ -88,22 +89,24 @@ export class FsVfs implements Vfs {
     await this.writeBytes(key, Buffer.from(content, "utf8"));
   }
 
-  async writeBytes(key: string, content: Buffer): Promise<void> {
+  writeBytes(key: string, content: Buffer): Promise<void> {
     const path = this.pathFor(key);
-    await mkdir(dirname(path), { recursive: true });
-    // Atomic tmp+rename: a plain in-place write let concurrent readers catch a
-    // TRUNCATED file — list_conversations 500'd ("not valid JSON") whenever a
-    // read raced an activity.json write. The tmp lives in the same directory
-    // (rename is only atomic within one filesystem) with a unique infix so
-    // two concurrent writers never collide on it, and the ATOMIC_TMP_SUFFIX so
-    // a concurrent walk knows to skip it.
-    const tmp = scratchPath(path);
-    await writeFile(tmp, content);
-    await rename(tmp, path);
+    return writable(key, async () => {
+      await mkdir(dirname(path), { recursive: true });
+      // Atomic tmp+rename: a plain in-place write let concurrent readers catch
+      // a TRUNCATED file — list_conversations 500'd ("not valid JSON")
+      // whenever a read raced an activity.json write. The tmp lives in the
+      // same directory (rename is only atomic within one filesystem) with a
+      // unique infix so two concurrent writers never collide on it, and the
+      // ATOMIC_TMP_SUFFIX so a concurrent walk knows to skip it.
+      const tmp = scratchPath(path);
+      await writeFile(tmp, content);
+      await rename(tmp, path);
+    });
   }
 
-  async deleteKey(key: string): Promise<void> {
-    await rm(this.pathFor(key), { force: true });
+  deleteKey(key: string): Promise<void> {
+    return writable(key, () => rm(this.pathFor(key), { force: true }));
   }
 
   async move(fromKey: string, toKey: string): Promise<void> {
@@ -143,12 +146,23 @@ export class FsVfs implements Vfs {
     // are unsupported on exFAT and SMB (the volumes a workspace can legally
     // sit on) and illegal for directories, so it would trade a microsecond
     // race for moves that simply fail.
-    await mkdir(dirname(to), { recursive: true });
-    await rename(from, to);
+    //
+    // Only this tail is the write, so only this tail is asked whether the
+    // storage refuses writes: the two `lstat` guards above are reads, and an
+    // untraversable parent fails them with the same EACCES a locked volume
+    // raises. Under one wrapper around the whole move, that read failure would
+    // reach the person as "we could not save there, check the folder's
+    // permissions" for a file Houston could not even look at.
+    await writable(toKey, async () => {
+      await mkdir(dirname(to), { recursive: true });
+      await rename(from, to);
+    });
   }
 
-  async deletePrefix(prefix: string): Promise<void> {
-    await rm(this.pathFor(prefix), { recursive: true, force: true });
+  deletePrefix(prefix: string): Promise<void> {
+    return writable(prefix, () =>
+      rm(this.pathFor(prefix), { recursive: true, force: true }),
+    );
   }
 }
 

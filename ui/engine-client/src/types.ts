@@ -2081,6 +2081,33 @@ export interface MigrationImportResult {
   sessionsRebuilt: boolean;
 }
 
+/** The counters one agent's chunks accumulated, as the marker records them. */
+export interface MigrationCounts {
+  written: number;
+  skipped: number;
+  rejected: number;
+  sessionsRebuilt: boolean;
+}
+
+/** Which agent on which deployment this agent's data came from. */
+export interface MigrationSource {
+  workspace: string;
+  agent: string;
+}
+
+/**
+ * The server-authoritative "this agent was imported" marker.
+ *
+ * `source` and `counts` are nullable because the route writes what the caller
+ * sent through verbatim: a marker stamped by a caller that sent neither still
+ * says WHEN the import completed.
+ */
+export interface MigrationMarker {
+  completedAt: string;
+  source: MigrationSource | null;
+  counts: MigrationCounts | null;
+}
+
 export interface PortableUploadPreviewResponse {
   packageId: string;
   manifest: PortableManifestSummary;

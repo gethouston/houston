@@ -134,6 +134,10 @@
       "title": "That name is already in use",
       "description": "A file or folder named “{{name}}” already exists here."
     },
+    "readOnly": {
+      "title": "These files can’t be changed right now",
+      "description": "Houston can’t save changes there. Check the folder’s permissions and try again."
+    },
     "conflict": {
       "title": "“{{name}}” already exists",
       "description": "The destination folder already has an item named “{{name}}”. You can replace it or keep both.",

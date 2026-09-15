@@ -127,7 +127,7 @@ boundary a file can cross silently. `app/src/lib/engine.ts` declares
 and the expected-state ladder. A file that calls `getEngine()` itself gets none
 of that, so its failures are invisible to the user AND to us.
 
-The existing callers are frozen in `ENGINE_CALL_BYPASS` (30 files). A new one
+The existing callers are frozen in `ENGINE_CALL_BYPASS` (31 files). A new one
 fails the check; a listed file that stops calling `getEngine()` fails too, so
 the list can only ever describe the real set. Route a caller through a
 `tauri.ts` namespace and delete its line.

@@ -32,5 +32,6 @@ export * from "./state-skills";
 export * from "./state-spaces";
 export * from "./state-store";
 export * from "./state-teams";
+export * from "./state-test-arming";
 export * from "./state-workspace";
 export * from "./state-workspace-entries";

@@ -50,6 +50,29 @@ export class VfsExistsError extends Error {
 }
 
 /**
+ * The storage itself refuses to be written to — it answered EACCES, EPERM or
+ * EROFS. A read-only mount, a recovered disk image, a folder whose permissions
+ * were revoked, a sync client holding it: the person's storage, never a
+ * Houston fault, and reads keep answering.
+ *
+ * Raised at THIS seam rather than at each caller because every writer passes
+ * through it — the Files tab's delete, rename, upload and folder create, the
+ * skills saves, the `.houston/` document writes — so the callers that never
+ * thought about permissions are covered too. A route that owns a user-facing
+ * surface turns it into its own refusal (the files ops answer 403 `read_only`);
+ * left raw it is a 500 naming a scratch file the person never heard of.
+ */
+export class VfsReadOnlyError extends Error {
+  constructor(
+    readonly key: string,
+    options?: { cause?: unknown },
+  ) {
+    super(`vfs storage refuses writes: ${key}`, options);
+    this.name = "VfsReadOnlyError";
+  }
+}
+
+/**
  * The host's file-store port: keyed blobs under `ws/<workspaceId>/<agentId>/…`
  * prefixes — conversation listings, settings.json, the Files browser, agent
  * deletion. Impls: MemoryVfs (tests/dev), GcsVfs (cloud), FsVfs (local
@@ -58,6 +81,10 @@ export class VfsExistsError extends Error {
  *
  * Keys are forward-slash paths and never contain `.` / `..` segments — every
  * impl rejects traversal rather than trusting callers.
+ *
+ * Every write primitive — `writeText`/`writeBytes`, `move`, `deleteKey`,
+ * `deletePrefix` — plus the `keyCase` probe (which has to write to answer)
+ * throws {@link VfsReadOnlyError} when the storage refuses writes outright.
  */
 export interface Vfs {
   /**

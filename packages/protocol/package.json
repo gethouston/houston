@@ -27,6 +27,10 @@
       "types": "./src/domain/approval.ts",
       "import": "./src/domain/approval.ts"
     },
+    "./file-refusal": {
+      "types": "./src/domain/file-refusal.ts",
+      "import": "./src/domain/file-refusal.ts"
+    },
     "./interaction": {
       "types": "./src/domain/interaction.ts",
       "import": "./src/domain/interaction.ts"

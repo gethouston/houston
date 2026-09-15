@@ -3,7 +3,8 @@
  * `state`, and the `/v1/events` domain-reactivity feed.
  *
  * The agent / activity / file / history mutation helpers live in the sibling
- * `state-agents.ts`, `state-activities.ts`, and `state-history.ts` modules;
+ * `state-agents.ts`, `state-activities.ts`, and `state-history.ts` modules, and
+ * the faults a spec arms through `/__test__/*` live in `state-test-arming.ts`;
  * they all read and write the `state` binding exported here and fan changes out
  * through {@link emitDomain}. One process serves every test; `reset()` restores
  * the seed between tests.
@@ -27,6 +28,7 @@ import { SEED_AGENT_ID, SEED_AGENT_NAME, SEED_WORKSPACE_ID } from "./config";
 import { resetProviders } from "./state-providers";
 import { resetSharedSkills } from "./state-shared-skills";
 import { resetSkills } from "./state-skills";
+import { resetArming } from "./state-test-arming";
 
 /**
  * Gateway integrations readiness, toggled by `/__test__/integrations-mode`:
@@ -466,31 +468,6 @@ export interface HostState {
   /** Composio readiness, toggled by the `/__test__/integrations-mode` control. */
   integrationsMode: IntegrationsMode;
   /**
-   * Cold-start hold (ms) on per-agent reads, armed by
-   * `/__test__/hold-agent-reads`. Models the cloud gateway's `ensureAwake`
-   * hold: every `GET /agents/:id/*` stalls this long before answering, the
-   * way an asleep pod's reads stall until it wakes. `0` (the default and the
-   * reset state) answers instantly.
-   */
-  agentReadHoldMs: number;
-  /**
-   * Agent ids whose per-agent READS answer `500`, armed by
-   * `/__test__/fail-agent-reads`. Models the half-broken fleet the cross-agent
-   * sweep must survive (HOU-981): one agent's pod is unreachable while every
-   * other agent answers normally. Empty (the default and the reset state) =
-   * every agent is healthy.
-   */
-  failingAgentReads: Set<string>;
-  /**
-   * Which sub-resources of those agents fail (`routines`, `routine_runs`,
-   * `activities`, `files`, ...). `null` (the default) = the whole pod is
-   * unreachable, every read 500s. A NAMED set is the subtler half-broken state
-   * a surface must also survive: one route down while the rest of that same
-   * agent answers, e.g. routines fine and their run history 500ing, which
-   * leaves every row without its last-run line.
-   */
-  failingAgentReadSegments: Set<string> | null;
-  /**
    * Custom integrations (HOU-550), armed by `/__test__/custom-integrations`.
    * `null` (the default) = the host does not serve the feature at all: no
    * `custom` entry in the readiness list and the definitions routes 404 (the
@@ -638,9 +615,6 @@ function freshState(): HostState {
     teamsSettings: { ...DEFAULT_TEAMS_SETTINGS },
     computeUsage: null,
     integrationsMode: "ready",
-    agentReadHoldMs: 0,
-    failingAgentReads: new Set<string>(),
-    failingAgentReadSegments: null,
     customIntegrations: null,
     orgMembers: null,
     meProfileBase: {},
@@ -664,25 +638,6 @@ function freshState(): HostState {
 
 export let state: HostState = freshState();
 
-/** Arm (or clear, with 0) the cold-start hold on per-agent reads. */
-export function setAgentReadHoldMs(ms: number): void {
-  state.agentReadHoldMs = Math.max(0, ms);
-}
-
-/**
- * Arm (or clear, with `[]`) the agents whose per-agent reads answer 500.
- * `segments` narrows it to named sub-resources (`["routine_runs"]`); omitting
- * it fails every read those agents serve.
- */
-export function setFailingAgentReads(
-  agentIds: string[],
-  segments?: string[] | null,
-): void {
-  state.failingAgentReads = new Set(agentIds);
-  state.failingAgentReadSegments =
-    segments && segments.length > 0 ? new Set(segments) : null;
-}
-
 /**
  * Rewind the routine-id counter, so the NEXT routine created on ANY agent takes
  * an id an earlier agent already used. Routine ids are unique per agent in the
@@ -697,6 +652,7 @@ export function setRoutineSeq(next: number): void {
 /** Restore the seed. Called by the harness before each test. */
 export function reset(): void {
   state = freshState();
+  resetArming();
   resetProviders();
   resetSharedSkills();
   resetSkills();

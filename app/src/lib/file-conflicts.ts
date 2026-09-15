@@ -5,6 +5,15 @@
  * Replace / Keep both, a rename says the name is taken, and neither costs the
  * user a round trip that could only end in a refusal.
  */
+
+// Subpath import (like @houston/protocol/interaction): the app's node:test
+// runner loads value imports for real, and the package index's extensionless
+// import chain only resolves under bundler resolution.
+import {
+  type FileOpCode,
+  NAME_TAKEN,
+  READ_ONLY,
+} from "@houston/protocol/file-refusal";
 import type { FileEntry } from "@houston-ai/agent";
 import { engineErrorCode } from "./engine-error-code.ts";
 
@@ -79,24 +88,37 @@ export function detectRenameConflict(
 }
 
 /**
- * The host's machine-readable reason for a refused rename or move (`FileOpCode`
- * in `packages/host/src/turn/files-path.ts`, answered beside the 409).
- */
-export const NAME_TAKEN_CODE = "name_taken";
-
-/**
- * True when the host refused a rename because the name is taken — the race the
- * listing cannot close: another writer, or the agent itself, took the name
- * between the listing the UI read and the rename it sent.
+ * Which refusal the host answered with, or null for anything else — the ONE
+ * place a files-write rejection is classified, so a state the client cannot
+ * explain keeps the report path instead of borrowing the nearest authored copy.
  *
- * Keyed on the CODE, never the status and never the English message (the
- * host's wording is not a contract). The status is what this used to read, and
- * it cannot identify a state: the day `files/rename` grows a second 409 — a
- * quota, a lock, a read-only workspace — every one of them would be explained
- * to the user as a name collision and silenced from Sentry along with it.
+ * The vocabulary is the host's own (`@houston/protocol`), not a mirror of it:
+ * keying on the code rather than the status is only worth anything while the
+ * two ends cannot drift. The English message is no contract either — the
+ * host's wording is untranslated and free to change.
  */
+export function fileRefusal(err: unknown): FileOpCode | null {
+  switch (engineErrorCode(err)) {
+    case NAME_TAKEN:
+      return NAME_TAKEN;
+    case READ_ONLY:
+      return READ_ONLY;
+    default:
+      return null;
+  }
+}
+
+/** The destination name is in use — another writer, or the agent itself, took
+ *  it between the listing the UI read and the request it sent. */
 export function isNameTakenError(err: unknown): boolean {
-  return engineErrorCode(err) === NAME_TAKEN_CODE;
+  return fileRefusal(err) === NAME_TAKEN;
+}
+
+/** The workspace's storage refuses every write: its folder answered
+ *  EACCES/EPERM/EROFS (a read-only mount, a folder whose permissions were
+ *  revoked, a sync client holding it). The person's machine, not the data. */
+export function isReadOnlyError(err: unknown): boolean {
+  return fileRefusal(err) === READ_ONLY;
 }
 
 /**

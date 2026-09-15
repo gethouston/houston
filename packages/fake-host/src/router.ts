@@ -151,7 +151,7 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/__test__/hold-agent-reads" && method === "POST") {
     const body = await parseBody(req);
     state.setAgentReadHoldMs(Number(body?.ms ?? 0));
-    return json({ ms: state.state.agentReadHoldMs });
+    return json({ ms: state.arming.agentReadHoldMs });
   }
   // Fail every per-agent read (`GET /agents/:id/*`) for the named agents with a
   // 500, leaving the rest healthy — the half-broken fleet the cross-agent
@@ -166,11 +166,22 @@ export async function handle(req: Request): Promise<Response> {
       Array.isArray(body?.segments) ? body.segments.map(String) : null,
     );
     return json({
-      agentIds: [...state.state.failingAgentReads],
-      segments: state.state.failingAgentReadSegments
-        ? [...state.state.failingAgentReadSegments]
+      agentIds: [...state.arming.failingAgentReads],
+      segments: state.arming.failingAgentReadSegments
+        ? [...state.arming.failingAgentReadSegments]
         : null,
     });
+  }
+  // Make the named agents' workspaces refuse every files WRITE with the host's
+  // `403 read_only` — a read-only mount or revoked folder permissions, which
+  // the Files tab explains in authored copy instead of failing silently. Reads
+  // keep answering. `{ agentIds: [] }` (and the per-test reset) restores them.
+  if (path === "/__test__/workspace-read-only" && method === "POST") {
+    const body = await parseBody(req);
+    state.setReadOnlyWorkspaces(
+      Array.isArray(body?.agentIds) ? body.agentIds.map(String) : [],
+    );
+    return json({ agentIds: [...state.arming.readOnlyWorkspaces] });
   }
   // Rewind the routine-id counter so the NEXT created routine reuses an id an
   // earlier agent already has (`{ next: 0 }` = start over at `routine-1`).
@@ -416,22 +427,22 @@ export async function handle(req: Request): Promise<Response> {
     // six-connection budget against the dev server, stalling even unheld
     // boot routes — an artifact the real HTTP/2 gateway doesn't have.
     if (
-      state.state.agentReadHoldMs > 0 &&
+      state.arming.agentReadHoldMs > 0 &&
       method === "GET" &&
       segs.length > 1 &&
       segs[2] !== "providers"
     )
-      await new Promise((r) => setTimeout(r, state.state.agentReadHoldMs));
+      await new Promise((r) => setTimeout(r, state.arming.agentReadHoldMs));
     // Armed per-agent read failure: this agent's pod is unreachable while the
     // rest of the fleet answers. Same shape the gateway returns for a pod it
     // cannot reach, so the client's own error path runs unchanged. With
     // `segments` armed only those sub-resources fail, which is the subtler
     // half-broken state: one route down while the same agent answers the rest.
-    const failingSegments = state.state.failingAgentReadSegments;
+    const failingSegments = state.arming.failingAgentReadSegments;
     if (
       method === "GET" &&
       segs.length > 1 &&
-      state.state.failingAgentReads.has(decodeURIComponent(segs[1])) &&
+      state.arming.failingAgentReads.has(decodeURIComponent(segs[1])) &&
       (failingSegments === null ||
         (segs.length > 2 && failingSegments.has(decodeURIComponent(segs[2]))))
     )

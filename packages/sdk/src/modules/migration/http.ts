@@ -1,8 +1,9 @@
 /**
  * The agent-scoped migration requests — zip a set of one agent's files out,
- * unpack that zip into another — over the injected `fetch`.
+ * unpack that zip into another, then stamp and read back the marker that says
+ * the transfer finished — over the injected `fetch`.
  *
- * Both are HOST routes (`packages/host/src/routes/migration.ts`), and on cloud
+ * All four are HOST routes (`packages/host/src/routes/migration.ts`), and on cloud
  * the gateway proxies them to the agent's pod, so the pair moves an agent's
  * data between any two Houston deployments the caller can reach. "Copy an
  * agent" runs both halves against the same engine; the desktop-to-cloud wizard
@@ -20,7 +21,13 @@
  */
 
 import { type HttpScope, httpRequest } from "../http";
-import type { MigrationImportOptions, MigrationImportResult } from "./types";
+import type {
+  MigrationCounts,
+  MigrationImportOptions,
+  MigrationImportResult,
+  MigrationMarker,
+  MigrationSource,
+} from "./types";
 
 /**
  * Copies a chosen set of an agent's files out as one archive.
@@ -69,4 +76,45 @@ export async function migrationImport(
     },
   );
   return (await res.json()) as MigrationImportResult;
+}
+
+/**
+ * Records that an agent's data finished arriving from somewhere else.
+ *
+ * Write the import marker on an agent (the migration complete route).
+ * @assistant group:files hidden: the migration wizard stamps and reads this marker itself; it is bookkeeping about a transfer, not an errand a chat turn can run.
+ * @assistant hands: unreachable the copy and migration wizards drive it themselves; no screen offers it as an errand.
+ */
+export async function migrationComplete(
+  scope: HttpScope,
+  agentId: string,
+  source: MigrationSource,
+  counts: MigrationCounts,
+): Promise<void> {
+  await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/migration/complete`,
+    { method: "POST", body: JSON.stringify({ source, counts }) },
+  );
+}
+
+/**
+ * Says whether an agent's data was imported from somewhere else, and from where.
+ *
+ * Read the import marker of an agent (the migration status route).
+ * @assistant group:files hidden: the migration wizard stamps and reads this marker itself; it is bookkeeping about a transfer, not an errand a chat turn can run.
+ * @assistant hands: unreachable the copy and migration wizards drive it themselves; no screen offers it as an errand.
+ */
+export async function migrationStatus(
+  scope: HttpScope,
+  agentId: string,
+): Promise<MigrationMarker | null> {
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/migration/status`,
+  );
+  // `null` here is the SERVER's answer that it holds no marker — a 404 has
+  // already thrown, because a deployment that cannot be asked is not the same
+  // answer as one that says this agent was never imported.
+  return ((await res.json()) as { imported: MigrationMarker | null }).imported;
 }

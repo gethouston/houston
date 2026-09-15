@@ -1,5 +1,11 @@
-import { type KeyCase, type Vfs, VfsExistsError } from "../vfs";
-import { FileOpError, NAME_TAKEN, READ_ONLY } from "./files-path";
+import { NAME_TAKEN, READ_ONLY } from "@houston/protocol";
+import {
+  type KeyCase,
+  type Vfs,
+  VfsExistsError,
+  VfsReadOnlyError,
+} from "../vfs";
+import { FileOpError } from "./files-path";
 
 /**
  * The names an agent's workspace already holds, compared the way its STORAGE
@@ -78,7 +84,7 @@ export async function loadWorkspaceKeys(
   root: string,
 ): Promise<WorkspaceKeys> {
   const [keyCase, stats] = await Promise.all([
-    probeKeyCase(vfs),
+    vfs.keyCase(),
     vfs.listDetailed(root),
   ]);
   return new WorkspaceKeys(
@@ -88,22 +94,20 @@ export async function loadWorkspaceKeys(
 }
 
 /**
- * Learning how the volume compares names costs one scratch file, so a
- * workspace mounted read-only (a recovered disk image, a `:ro` bind mount)
- * answers EACCES here — the user's storage, not a Houston fault. Left raw it
- * 500s the request with the scratch file's name in it; named as its own state
- * it can be explained.
+ * The files ops' refusal for a storage that refuses every write, or null when
+ * `err` is anything else.
+ *
+ * The vfs raises {@link VfsReadOnlyError} from every write primitive, so ONE
+ * mapping at the route's catch covers every op at once — the case probe that
+ * fails first, the delete, the rename, the upload, the folder create — instead
+ * of each op having to remember permissions. Left raw the user gets a 500
+ * naming a scratch file they never heard of; named as its own state it can be
+ * explained (`app/src/lib/read-only-toast.ts`).
  */
-async function probeKeyCase(vfs: Vfs): Promise<KeyCase> {
-  try {
-    return await vfs.keyCase();
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException).code;
-    if (code === "EACCES" || code === "EPERM" || code === "EROFS") {
-      throw new FileOpError(403, "this workspace is read-only", READ_ONLY);
-    }
-    throw err;
-  }
+export function readOnlyRefusal(err: unknown): FileOpError | null {
+  return err instanceof VfsReadOnlyError
+    ? new FileOpError(403, "this workspace is read-only", READ_ONLY)
+    : null;
 }
 
 /**
