@@ -17,6 +17,7 @@
 
 import { TOKEN_EXPIRED_EVENT } from "../auth-expiry";
 import type { CommandEnvelope } from "../commands";
+import { envelopeId } from "../commands";
 import type { SdkConfig } from "../ports";
 import type { HoustonSdk } from "../sdk";
 import type { SdkEvent } from "../store";
@@ -38,12 +39,6 @@ export interface Bridge {
   receive(message: string): void;
   /** Tear down the SDK, subscriptions, and in-flight port ops. */
   dispose(): void;
-}
-
-/** Best-effort correlation id from an untrusted command envelope. */
-function envelopeId(value: unknown): string {
-  const id = asRecord(value)?.id;
-  return typeof id === "string" ? id : "";
 }
 
 export function createBridge(sdkFactory: SdkFactory, send: SendFn): Bridge {

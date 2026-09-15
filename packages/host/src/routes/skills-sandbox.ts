@@ -5,7 +5,7 @@ import type { CredentialVault, WorkspaceStore } from "../ports";
 import type { CommunityDirectory } from "../skills/community";
 import type { PreviewDirectory } from "../skills/preview";
 import type { Vfs } from "../vfs";
-import { bearer, json } from "./http";
+import { bearer, json, methodNotAllowed } from "./http";
 import { defineRouteFamily } from "./registry";
 import { installAction } from "./skills-sandbox-actions";
 import { searchAction } from "./skills-sandbox-search";
@@ -87,7 +87,7 @@ export async function handleSandboxSkills(
         : null;
   if (!action) return false;
   if (method !== "POST") {
-    json(res, 405, { error: "method not allowed" });
+    methodNotAllowed(res);
     return true;
   }
 

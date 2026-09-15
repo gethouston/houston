@@ -4,16 +4,9 @@
  * (`CommandRegistry.dispatch` turns the throw into an `ok: false` result).
  */
 
+import { requireString } from "../payload";
+
 /** Pull a required non-empty string off an untrusted command payload. */
-function requireString(payload: unknown, key: string): string {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (typeof value !== "string" || value.length === 0)
-    throw new Error(`missing '${key}'`);
-  return value;
-}
 
 /** Pull an optional string off an untrusted command payload. */
 function optionalString(payload: unknown, key: string): string | undefined {

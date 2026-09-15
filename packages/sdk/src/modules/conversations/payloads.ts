@@ -8,19 +8,13 @@
  * surfaces to the caller.
  */
 
+import { requireString } from "../payload";
+
 function asRecord(payload: unknown): Record<string, unknown> {
   if (typeof payload !== "object" || payload === null) {
     throw new Error("conversations: payload must be an object");
   }
   return payload as Record<string, unknown>;
-}
-
-function requireString(rec: Record<string, unknown>, key: string): string {
-  const value = rec[key];
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`conversations: "${key}" must be a non-empty string`);
-  }
-  return value;
 }
 
 /** Arguments for `conversations/refresh`. */

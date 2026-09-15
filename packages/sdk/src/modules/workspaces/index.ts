@@ -9,7 +9,7 @@
  * facade and the bridge `dispatch` path.
  *
  * SEAM — these routes are host/gateway-scoped, NOT per-conversation, so the
- * module runs them on the flat {@link workspacesScope} rooted at the base URL,
+ * module runs them on its own {@link moduleScope} rooted at the base URL,
  * never `clientFor(agentId)`. A 401 routes through the shared
  * {@link ModuleContext.authExpiry} notifier, as it does for every module.
  *
@@ -21,6 +21,8 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { moduleScope, SdkHttpError } from "../http";
+import { requireString } from "../payload";
 import {
   getContext,
   getHostSidebarLayout,
@@ -30,17 +32,14 @@ import {
   setContext,
   writeAgentFile,
 } from "./http";
-import { workspacesScope } from "./scope";
 import {
   requireContextKind,
   requireSidebarLayout,
-  requireString,
   type SidebarLayout,
   type Workspace,
   WorkspacesCommand,
 } from "./types";
 
-export { WorkspacesHttpError } from "./scope";
 export type {
   SidebarGroup,
   SidebarLayout,
@@ -75,11 +74,15 @@ export interface WorkspacesModule {
   ): Promise<SidebarLayout>;
 }
 
+/** A failed workspaces request. `status` is the upstream HTTP status. */
+export class WorkspacesHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "WorkspacesHttpError");
+  }
+}
+
 export function createWorkspacesModule(ctx: ModuleContext): WorkspacesModule {
-  const { baseUrl, ports } = ctx.config;
-  const scope = workspacesScope(baseUrl, ports, () =>
-    ctx.authExpiry.notifyExpired(),
-  );
+  const scope = moduleScope(ctx, "workspaces", WorkspacesHttpError);
 
   const facade: WorkspacesModule = {
     listWorkspaces: () => listWorkspaces(scope),

@@ -5,6 +5,7 @@ import {
   isSignedOutEngineError,
 } from "../src/engine-adapter/client/errors";
 import { wakingStuckTracker } from "../src/engine-adapter/waking-stuck-tracker";
+import { installLocalStorage, json } from "./support/wire-capture";
 
 /**
  * Every delegated SDK call wears `cpFetch`'s two observable behaviors, because
@@ -25,16 +26,11 @@ import { wakingStuckTracker } from "../src/engine-adapter/waking-stuck-tracker";
 const BASE = "http://host";
 const AGENT = "a1";
 
-let calls: string[];
 const originalFetch = globalThis.fetch;
+let calls: string[];
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
+  installLocalStorage();
   calls = [];
 });
 
@@ -50,12 +46,6 @@ function stubFetch(make: () => Response) {
     return make();
   }) as unknown as typeof fetch;
 }
-
-const json = (status: number, body: unknown): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });

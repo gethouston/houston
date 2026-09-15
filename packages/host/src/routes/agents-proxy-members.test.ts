@@ -1,6 +1,10 @@
+import { readdirSync } from "node:fs";
 import { expect, test } from "vitest";
 import { VIEW_RESTS } from "../docs/view-capture";
-import { runtimeTransportRoutes } from "../testing/runtime-transport-routes";
+import {
+  runtimeTransportFiles,
+  runtimeTransportRoutes,
+} from "../testing/runtime-transport-routes";
 import { HOST_SERVED_RESTS, PROXY_MEMBERS } from "./agents-proxy-members";
 import { listRoutes } from "./registry/all";
 
@@ -21,6 +25,17 @@ const shapeOf = (rest: string): string =>
     .split("/")
     .map((segment) => (segment.startsWith(":") ? ":param" : segment))
     .join("/");
+
+test("the scan reads every source file of the transport", () => {
+  // The guard below is only as wide as the files it reads, so this pins that
+  // set to the directory itself: a transport file added tomorrow is scanned,
+  // never silently skipped.
+  const onDisk = readdirSync(TRANSPORT)
+    .filter((name) => name.endsWith(".ts") && !name.endsWith(".test.ts"))
+    .sort();
+  expect(onDisk.length).toBeGreaterThan(0);
+  expect(runtimeTransportFiles(TRANSPORT)).toEqual(onDisk);
+});
 
 test("the declared members are exactly what the runtime transport serves", () => {
   const declared = new Set([

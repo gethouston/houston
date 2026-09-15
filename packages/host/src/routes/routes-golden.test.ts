@@ -3,7 +3,8 @@ import { expect, test } from "vitest";
 import { replayRoutes } from "../testing/route-replay";
 
 /**
- * THE proof that the route registry changes no behaviour.
+ * THE routing baseline: what every probed pair answers, for every route the
+ * host serves.
  *
  * Every probe in testing/route-probes.ts is replayed against a real host and
  * its answer recorded — status, content type, error vocabulary, body shape and
@@ -12,10 +13,10 @@ import { replayRoutes } from "../testing/route-replay";
  * is why this is stronger than asserting on a chosen handler: it also pins the
  * answer a handler gives when its dependency is unwired.
  *
- * The baseline was recorded on the hand-written if-chain, BEFORE the first
- * route moved into the registry. Every migration wave must leave it identical.
- * A wave that intends a change re-records with `HOUSTON_ROUTES_GOLDEN=update`
- * and justifies the diff in its PR body — never to make a red test go green.
+ * routes.golden.json IS that answer set, committed. A diff in it is a diff in
+ * what some caller receives, so re-record with `HOUSTON_ROUTES_GOLDEN=update`
+ * only for a difference the PR body justifies — never to make a red test go
+ * green.
  */
 const BASELINE = new URL("./routes.golden.json", import.meta.url);
 

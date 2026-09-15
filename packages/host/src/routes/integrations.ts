@@ -48,7 +48,7 @@ export interface IntegrationDeps {
 
 const SOURCE = "packages/host/src/routes/integrations.ts";
 
-export async function handleIntegrations(
+async function handleIntegrations(
   deps: { integrations?: IntegrationDeps },
   userId: UserId,
   method: string,

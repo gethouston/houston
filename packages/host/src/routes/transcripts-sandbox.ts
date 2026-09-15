@@ -29,7 +29,16 @@ defineRouteFamily({
     { method: "POST", path: `${CONVERSATION}/truncate` },
     { method: "POST", path: `${CONVERSATION}/repair` },
   ],
-  owns: [CONVERSATION, `${CONVERSATION}/`, `${CONVERSATION}/*rest`],
+  // The last pattern claims the prefix WITHOUT decoding the conversation id:
+  // an id `decodeURIComponent` throws on would otherwise match nothing here
+  // and meet the 401 wall, telling a runtime whose sandbox token is perfectly
+  // valid that it is unauthenticated.
+  owns: [
+    CONVERSATION,
+    `${CONVERSATION}/`,
+    `${CONVERSATION}/*rest`,
+    "/sandbox/transcripts/conversations/*rest",
+  ],
   phase: "sandbox",
   classification: "internal-sandbox",
   reason:

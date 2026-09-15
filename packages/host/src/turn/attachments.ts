@@ -3,7 +3,7 @@ import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
-import { json, readJson } from "./deps";
+import { json, methodNotAllowed, readJson } from "./deps";
 import { MAX_UPLOAD_BODY_BYTES, MAX_UPLOAD_BYTES } from "./files-import";
 
 /**
@@ -260,7 +260,7 @@ export async function handleAttachments(
       json(res, 200, { paths: saved });
       return true;
     }
-    json(res, 405, { error: "method not allowed" });
+    methodNotAllowed(res);
     return true;
   } catch (err) {
     if (err instanceof AttachmentError) {

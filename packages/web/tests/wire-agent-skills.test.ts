@@ -1,13 +1,19 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
 import { HoustonEngineError } from "../src/engine-adapter/client/errors";
+import {
+  createWireCapture,
+  expectGatewayHeaders,
+  installLocalStorage,
+  json,
+  ORG,
+} from "./support/wire-capture";
 
 /**
- * Migration wave C2a — an agent's OWN skills and its skills manifest move to
- * `sdk.skills.agent`, and `cp/skills.ts` is gone.
+ * An agent's OWN skills and its skills manifest ride `sdk.skills.agent`.
  *
- * What these tests pin is the wire: the delegated mixin method must issue the
- * request the control-plane helper issued, down to the URL, the method, the
+ * What these tests pin is the wire: the mixin method must issue exactly the
+ * request recorded here, down to the URL, the method, the
  * body bytes and the auth/active-space headers — one request, never two. A slug
  * and an agent id are spliced into the path, so the percent-encoding is pinned
  * too: a slug with a slash must stay inside its own segment instead of forging
@@ -21,52 +27,19 @@ import { HoustonEngineError } from "../src/engine-adapter/client/errors";
  */
 
 const BASE = "http://host";
-const ORG = "abcdef0123456789"; // [a-f0-9]{16}
 const AGENT = "a1";
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
-  calls = [];
+  installLocalStorage();
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
-
-/** Answer every request with `make()`, recording what was asked. */
-function stubFetch(make: () => Response) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    return make();
-  }) as unknown as typeof fetch;
-}
-
-const json = (status: number, body: unknown = {}): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 
 /** A hosted client with an active space pinned, as the app runs in cloud. */
 function client(): HoustonClient {
@@ -80,12 +53,6 @@ function client(): HoustonClient {
 }
 
 /** Every header `cpFetch` stamped on a skills call, on the delegated one. */
-function expectGatewayHeaders(call: Call) {
-  expect(call.headers.get("Content-Type")).toBe("application/json");
-  expect(call.headers.get("Authorization")).toBe("Bearer t");
-  expect(call.headers.get("x-houston-org")).toBe(ORG);
-}
-
 /** A skill summary as the HOST sends it — without the two legacy fields. */
 const HOST_SUMMARY = {
   name: "triage",

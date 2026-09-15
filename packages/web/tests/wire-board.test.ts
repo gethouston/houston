@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
+import { createWireCapture, json, ORG } from "./support/wire-capture";
 
 /**
- * Migration wave B3 — byte-identical route parity for the board READS now
- * delegated to `@houston/sdk`: `listActivities` and the generic
- * `updateActivity` PATCH (create/delete moved in wave 2b).
+ * The board READS delegated to `@houston/sdk`: `listActivities` and the
+ * generic `updateActivity` PATCH (create and delete are pinned in
+ * `wire-writes.test.ts`).
  *
- * `cp/board.ts` is gone, so these assertions ARE the record of what the deleted
- * `cpFetch` calls put on the wire: same method, whole URL, body bytes, and
+ * These assertions ARE the record of what those calls put on the wire: same
+ * method, whole URL, body bytes, and
  * headers (`Content-Type`, the `Authorization` bearer, the live `x-houston-org`)
  * over the ONE shared gateway fetch. A read publishes no SDK scope and a write
  * never refetches, so each call is exactly one request.
@@ -18,47 +19,17 @@ import { HoustonClient } from "../src/engine-adapter/client";
  */
 
 const BASE = "http://host";
-const ORG = "abcdef0123456789"; // [a-f0-9]{16}
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubResponses: stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  calls = [];
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
-
-function stubFetch(...responses: Response[]) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    const next = responses.shift();
-    if (!next) throw new Error("stubFetch: no responses left");
-    return next;
-  }) as unknown as typeof fetch;
-}
-
-function json(status: number, body: unknown = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });

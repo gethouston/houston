@@ -8,6 +8,8 @@
  * surface; what crosses into this module is the JSON the host already accepts.
  */
 
+import { field, requireString } from "../payload";
+
 /**
  * One entry of an agent's workspace listing. Snake-cased because it is the
  * host's wire shape, rendered as-is by the Files section.
@@ -51,22 +53,6 @@ export const FilesCommand = {
 } as const;
 
 export type FilesCommandType = (typeof FilesCommand)[keyof typeof FilesCommand];
-
-/** The raw value of `key` off an untrusted command payload. */
-function field(payload: unknown, key: string): unknown {
-  return typeof payload === "object" && payload !== null
-    ? (payload as Record<string, unknown>)[key]
-    : undefined;
-}
-
-/** A required non-empty string off an untrusted command payload. */
-export function requireString(payload: unknown, key: string): string {
-  const value = field(payload, key);
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
-}
 
 /**
  * A folder off an untrusted command payload, where absent means the workspace

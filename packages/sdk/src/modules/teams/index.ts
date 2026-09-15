@@ -11,7 +11,7 @@
  *
  * SEAM — space-scoped, never a sandbox call. Even the per-agent routes are
  * gateway control routes ABOUT an agent rather than calls into it, so they run
- * on the flat {@link teamsScope} rooted at the base URL and never
+ * on the module's own {@link moduleScope} rooted at the base URL and never
  * `clientFor(agentId)`. A 401 routes through the shared
  * {@link ModuleContext.authExpiry} notifier.
  *
@@ -20,6 +20,7 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { moduleScope, SdkHttpError } from "../http";
 import { registerTeamsCommands } from "./commands";
 import {
   createAgentTeam,
@@ -41,7 +42,6 @@ import type {
   AgentSettingsUpdate,
   TriggerStatusItem,
 } from "./policy-types";
-import { teamsScope } from "./scope";
 import {
   agentTriggerStatus,
   getAgentModelChoice,
@@ -68,7 +68,6 @@ export type {
   TriggerStatusItem,
   TriggerStatusState,
 } from "./policy-types";
-export { TeamsHttpError } from "./scope";
 export type {
   AgentTeam,
   AgentTeamInput,
@@ -123,11 +122,15 @@ export interface TeamsModule {
   agentTriggerStatus(agentSlugOrId: string): Promise<TriggerStatusItem[]>;
 }
 
+/** A failed teams request. `status` is the upstream HTTP status. */
+export class TeamsHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "TeamsHttpError");
+  }
+}
+
 export function createTeamsModule(ctx: ModuleContext): TeamsModule {
-  const { baseUrl, ports } = ctx.config;
-  const scope = teamsScope(baseUrl, ports, () =>
-    ctx.authExpiry.notifyExpired(),
-  );
+  const scope = moduleScope(ctx, "teams", TeamsHttpError);
 
   const module: TeamsModule = {
     listAgentTeams: () => listAgentTeams(scope),

@@ -19,7 +19,8 @@
  */
 
 import type { ModuleContext } from "../../module-context";
-import type { HttpScope } from "../http";
+import { moduleScope } from "../http";
+import { requireString, requireStrings } from "../payload";
 import {
   addOrgMember,
   deleteOrgInvite,
@@ -39,8 +40,6 @@ import {
   optionalNumber,
   requireNumber,
   requireRole,
-  requireString,
-  requireStrings,
   type UserProfilesResult,
 } from "./types";
 import {
@@ -96,16 +95,7 @@ export interface OrgModule {
 }
 
 export function createOrgModule(ctx: ModuleContext): OrgModule {
-  const { authExpiry } = ctx;
-  const { baseUrl, ports } = ctx.config;
-
-  const scope: HttpScope = {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized: () => authExpiry.notifyExpired(),
-    fail: (message, status) =>
-      new OrgHttpError(message || `org request failed: ${status}`, status),
-  };
+  const scope = moduleScope(ctx, "org", OrgHttpError);
 
   ctx.registerCommand(OrgCommand.Get, () => getOrg(scope));
   ctx.registerCommand(OrgCommand.GetProfiles, (p) =>

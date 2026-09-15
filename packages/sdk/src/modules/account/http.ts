@@ -16,8 +16,13 @@
  * session token becomes a visible `tokenExpired` signal.
  */
 
-import type { SdkPorts } from "../../ports";
-import { type HttpScope, httpRequest } from "../http";
+import {
+  type HttpScope,
+  httpRequest,
+  moduleScope,
+  type ScopeContext,
+  SdkHttpError,
+} from "../http";
 import type {
   ApiKey,
   ApiKeyCreated,
@@ -26,13 +31,9 @@ import type {
 } from "./types";
 
 /** A failed account request. `status` is the upstream HTTP status. */
-export class AccountHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "AccountHttpError";
+export class AccountHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "AccountHttpError");
   }
 }
 
@@ -137,21 +138,8 @@ export async function revokeApiKey(
   });
 }
 
-export function createAccountHttp(
-  baseUrl: string,
-  ports: SdkPorts,
-  onUnauthorized: () => void,
-): AccountHttp {
-  const scope: HttpScope = {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized,
-    fail: (message, status) =>
-      new AccountHttpError(
-        message || `account request failed: ${status}`,
-        status,
-      ),
-  };
+export function createAccountHttp(ctx: ScopeContext): AccountHttp {
+  const scope = moduleScope(ctx, "account", AccountHttpError);
 
   return {
     getMyProfile: () => getMyProfile(scope),

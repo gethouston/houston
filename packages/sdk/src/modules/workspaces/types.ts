@@ -9,6 +9,7 @@
  */
 
 import type { Workspace as WorkspaceCore } from "@houston/runtime-client";
+import { requireString } from "../payload";
 
 /**
  * Which kind of space a workspace row bridges (C8 §Workspaces bridge). Present
@@ -74,18 +75,6 @@ export const WorkspacesCommand = {
 
 export type WorkspacesCommandType =
   (typeof WorkspacesCommand)[keyof typeof WorkspacesCommand];
-
-/** A required non-empty string off an untrusted command payload. */
-export function requireString(payload: unknown, key: string): string {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
-}
 
 /** The context slot off an untrusted payload — the union, never a free string:
  *  the value becomes part of the address this call acts on. */

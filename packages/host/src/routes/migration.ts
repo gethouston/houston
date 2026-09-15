@@ -152,7 +152,7 @@ defineRouteFamily({
     { method: "GET", path: "/agents/:agentId/migration/status" },
   ],
   // `/agents/:agentId/migration` alone is NOT in the prefix (the check above
-  // requires the separator), so it keeps falling through as it does today.
+  // requires the separator), so it falls through to the agent's runtime.
   owns: ["/agents/:agentId/migration/", "/agents/:agentId/migration/*rest"],
   phase: "agent",
   classification: "sdk",

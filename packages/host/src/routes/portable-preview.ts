@@ -78,7 +78,7 @@ export async function handlePortablePreview(
 }
 
 /**
- * A wrong method here must NOT 405: today the check above declines it and the
+ * A wrong method here must NOT 405: the check above declines it, so the
  * request carries on down the dispatch chain to the agent's runtime.
  */
 defineRoute({

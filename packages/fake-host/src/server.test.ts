@@ -1217,40 +1217,6 @@ describe("agent teams (C13)", () => {
     }
   });
 
-  it("joins idempotently, never demotes an owner, and no-ops on the default team", async () => {
-    await armCaps({ multiplayer: true, teams: true, role: "user" });
-    await arm({
-      teams: [
-        { id: "t-default", name: "Acme", isDefault: true },
-        { id: "t-design", name: "Design" },
-        {
-          id: "t-ops",
-          name: "Ops",
-          members: [{ userId: "u-self", owner: true }],
-        },
-      ],
-    });
-
-    expect((await send("POST", "/v1/org/teams/t-design/join")).status).toBe(
-      204,
-    );
-    expect((await send("POST", "/v1/org/teams/t-design/join")).status).toBe(
-      204,
-    );
-    expect(await members("t-design")).toEqual([
-      { userId: "u-self", owner: false },
-    ]);
-    // Re-joining a team you already own must not demote you to a plain member.
-    expect((await send("POST", "/v1/org/teams/t-ops/join")).status).toBe(204);
-    expect(await members("t-ops")).toEqual([{ userId: "u-self", owner: true }]);
-    // The default team is a no-op: everyone is already in it, and a row there
-    // is one the remove path could never delete.
-    expect((await send("POST", "/v1/org/teams/t-default/join")).status).toBe(
-      204,
-    );
-    expect(await members("t-default")).toEqual([]);
-  });
-
   it("refuses a default-team MEMBER write with default_team, ahead of the ownership gate", async () => {
     // A plain member with no rows: were the gates ordered the other way round,
     // each of these would answer `not_team_owner` instead. The default team
@@ -1505,9 +1471,9 @@ describe("agent teams (C13)", () => {
     ).toEqual({ status: 403, code: "not_team_owner" });
 
     await withEvents(async (nextEvent) => {
-      // The no-op still fans out, exactly like the no-op join: a client that
-      // wrote optimistically is reconciled against the server's truth either
-      // way, so nothing depends on the write having been consequential.
+      // The no-op still fans out: a client that wrote optimistically is
+      // reconciled against the server's truth either way, so nothing depends
+      // on the write having been consequential.
       const event = await nextEvent(() =>
         send("PUT", "/v1/agents/a-one/team", { teamId: "t-design" }),
       );
@@ -1589,7 +1555,7 @@ describe("agent teams (C13)", () => {
     ]);
   });
 
-  it("refuses only the three people routes in a personal space", async () => {
+  it("refuses only the two people routes in a personal space", async () => {
     // The half it may NOT do: manage PEOPLE. One human is in the space, so a
     // membership row there is meaningless and growing past yourself means
     // creating an organization.
@@ -1602,7 +1568,6 @@ describe("agent teams (C13)", () => {
     });
 
     const people = (teamId: string): Array<[string, string, unknown?]> => [
-      ["POST", `/v1/org/teams/${teamId}/join`],
       ["DELETE", `/v1/org/teams/${teamId}/members/u-self`],
       ["PUT", `/v1/org/teams/${teamId}/members/u-self`, { owner: true }],
     ];
@@ -1636,10 +1601,7 @@ describe("agent teams (C13)", () => {
       );
       expect(created.type).toBe("AgentsChanged");
       const id = (await teamNamed("Design")).id;
-      // Even a no-op join fans out, so a client that wrote optimistically is
-      // always reconciled against the server's truth.
       for (const act of [
-        () => send("POST", `/v1/org/teams/${id}/join`),
         () => send("PATCH", `/v1/org/teams/${id}`, { sortOrder: 9 }),
         () => send("PUT", `/v1/agents/${SEED_AGENT_ID}/team`, { teamId: id }),
         () => send("DELETE", `/v1/org/teams/${id}`),

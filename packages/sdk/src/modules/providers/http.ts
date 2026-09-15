@@ -1,5 +1,17 @@
+/**
+ * The provider status READ, declared where the providers family lives.
+ *
+ * The picker and the AI Models screen reach this same route through the runtime
+ * client (`listProviders()`), because they must also work against a LOCAL
+ * engine with no gateway in front of it. Declaring the read here is what
+ * publishes it to the assistant's operation catalog: every WRITE in the
+ * providers group is credential plumbing and hidden, so without this the
+ * assistant could change an agent's provider without ever being able to ask
+ * which providers exist — which is how it ends up guessing ids.
+ */
+
 import type { ProviderInfo } from "@houston/protocol";
-import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
+import { type HttpScope, httpRequest } from "../http";
 
 /**
  * A provider row with its id as a plain string. `ProviderInfo["id"]` is an OPEN
@@ -8,18 +20,6 @@ import { agentPath, type ControlPlaneConfig, cpFetch } from "./fetch";
  * the whole `String` interface. The wire value is a provider id either way.
  */
 type ProviderRow = Omit<ProviderInfo, "id"> & { id: string };
-
-/**
- * The provider status READ, as an adapter operation.
- *
- * The picker and the AI Models screen reach the same route through the runtime
- * client (`listProviders()`), because they must also work against a LOCAL
- * engine that has no control plane in front of it. Declaring the read here is
- * what publishes it to the assistant catalog: every WRITE in the providers
- * group is credential plumbing and hidden, so without this the assistant could
- * change an agent's provider without ever being able to ask which providers
- * exist — which is how it ends up guessing ids.
- */
 
 /**
  * Lists the AI providers Houston can use, with which ones are connected.
@@ -32,9 +32,12 @@ type ProviderRow = Omit<ProviderInfo, "id"> & { id: string };
  * @assistant group:providers
  */
 export async function listAgentProviders(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
 ): Promise<ProviderRow[]> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/providers`);
+  const res = await httpRequest(
+    scope,
+    `/agents/${encodeURIComponent(agentId)}/providers`,
+  );
   return (await res.json()) as ProviderRow[];
 }

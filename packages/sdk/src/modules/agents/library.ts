@@ -18,7 +18,8 @@
 import { AGENT_COLOR_IDS, type AgentColorId } from "@houston/domain";
 import type { ModuleContext } from "../../module-context";
 import { type HttpScope, httpRequest } from "../http";
-import { AgentsCommand, type InstalledConfig, requireString } from "./types";
+import { requireString } from "../payload";
+import { AgentsCommand, type InstalledConfig } from "./types";
 
 // Agent-config library: user-scoped like the marketplace reads — a template
 // belongs to the account, not to any existing agent.

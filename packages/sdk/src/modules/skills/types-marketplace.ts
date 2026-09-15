@@ -9,38 +9,14 @@
  * agent-scoped skill types and a change to one never travels to the other.
  */
 
-import type { HttpScope } from "../http";
+import { SdkHttpError } from "../http";
+import { field, requireString } from "../payload";
 
 /** A failed marketplace request. `status` is the upstream HTTP status. */
-export class MarketplaceHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "MarketplaceHttpError";
+export class MarketplaceHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "MarketplaceHttpError");
   }
-}
-
-/**
- * The transport scope every marketplace call shares: the engine base, the
- * injected `fetch`, the 401 signal, and the module's own error type.
- */
-export function marketplaceScope(
-  baseUrl: string,
-  ports: HttpScope["ports"],
-  onUnauthorized: () => void,
-): HttpScope {
-  return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized,
-    fail: (message, status) =>
-      new MarketplaceHttpError(
-        message || `marketplace request failed: ${status}`,
-        status,
-      ),
-  };
 }
 
 /** One hit from the community directory, as the catalogue returns it. */
@@ -75,15 +51,15 @@ export interface RepoSkill {
 
 /**
  * The marketplace vocabulary — the same constants back the facade and the
- * bridge. Each name is the request function's own, so a dispatched command and
- * the assistant's catalog operation are one vocabulary, not two.
+ * bridge. `skills.marketplace` is the family half of `<family>/<verb>`, which
+ * is what keeps these apart from an agent's own `skills/*`.
  */
 export const MarketplaceCommand = {
-  SearchCommunity: "skills/searchCommunitySkills",
-  PreviewCommunity: "skills/previewCommunitySkill",
-  ListFromRepo: "skills/listSkillsFromRepo",
-  InstallCommunity: "skills/installCommunitySkill",
-  InstallFromRepo: "skills/installSkillsFromRepo",
+  SearchCommunity: "skills.marketplace/searchCommunity",
+  PreviewCommunity: "skills.marketplace/previewCommunity",
+  ListFromRepo: "skills.marketplace/listFromRepo",
+  InstallCommunity: "skills.marketplace/installCommunity",
+  InstallFromRepo: "skills.marketplace/installFromRepo",
 } as const;
 
 export type MarketplaceCommandType =
@@ -124,14 +100,6 @@ export interface SkillsMarketplace {
   ): Promise<string[]>;
 }
 
-/** The string at `key`, or a throw — a bridge payload arrives untyped. */
-export function requireString(payload: unknown, key: string): string {
-  const value = (payload as Record<string, unknown> | null)?.[key];
-  if (typeof value !== "string" || value === "")
-    throw new Error(`'${key}' is required`);
-  return value;
-}
-
 /**
  * The string at `key`, empty included, or a throw. Separate from
  * {@link requireString} because a repository skill legitimately carries an
@@ -139,16 +107,16 @@ export function requireString(payload: unknown, key: string): string {
  * SKILL.md says nothing about itself.
  */
 function requireText(payload: unknown, key: string): string {
-  const value = (payload as Record<string, unknown> | null)?.[key];
-  if (typeof value !== "string") throw new Error(`'${key}' is required`);
+  const value = field(payload, key);
+  if (typeof value !== "string") throw new Error(`missing '${key}'`);
   return value;
 }
 
 /** The record at `key`, or a throw. Narrowed further by the callers below. */
 function requireObject(payload: unknown, key: string): Record<string, unknown> {
-  const value = (payload as Record<string, unknown> | null)?.[key];
+  const value = field(payload, key);
   if (typeof value !== "object" || value === null || Array.isArray(value))
-    throw new Error(`'${key}' is required`);
+    throw new Error(`missing '${key}'`);
   return value as Record<string, unknown>;
 }
 
@@ -175,7 +143,7 @@ export function requireRepoInstall(
 ): { source: string; skills: RepoSkill[] } {
   const body = requireObject(payload, key);
   const skills = body.skills;
-  if (!Array.isArray(skills)) throw new Error("'skills' is required");
+  if (!Array.isArray(skills)) throw new Error("missing 'skills'");
   return {
     source: requireString(body, "source"),
     skills: skills.map((skill) => ({

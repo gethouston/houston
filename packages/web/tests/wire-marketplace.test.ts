@@ -1,10 +1,16 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
+import {
+  type Call,
+  createWireCapture,
+  json,
+  ORG as ORG_SLUG,
+} from "./support/wire-capture";
 
 /**
- * Wave C2c — the skills MARKETPLACE moves to `sdk.skills.marketplace`, and
- * `cp/marketplace.ts` is gone. What has to survive that is the WIRE: five
- * agent-scoped POSTs, their bodies byte for byte, and the headers that carry
+ * The skills MARKETPLACE rides `sdk.skills.marketplace`. What this file pins
+ * is the WIRE: five agent-scoped POSTs, their bodies byte for byte, and the
+ * headers that carry
  * auth and the active space.
  *
  * Every case drives the composed `HoustonClient` (what the app holds), not the
@@ -18,47 +24,19 @@ import { HoustonClient } from "../src/engine-adapter/client";
  */
 
 const BASE = "https://gw.example";
-const ORG_SLUG = "abcdef0123456789"; // [a-f0-9]{16}
 const AGENT = "Houston/Growth";
 const AGENT_PATH = `${BASE}/agents/Houston%2FGrowth/skills`;
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  calls = [];
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
-
-const json = (status: number, body: unknown = {}): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-
-/** Answer every request with `make()`, recording what was asked. */
-function stubFetch(make: () => Response) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    return make();
-  }) as unknown as typeof fetch;
-}
 
 /** A cloud client with a team space active, so `x-houston-org` is live. */
 function client(): HoustonClient {

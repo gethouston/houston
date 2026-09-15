@@ -1,66 +1,40 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
+import {
+  createWireCapture,
+  installLocalStorage,
+  json,
+  ORG,
+} from "./support/wire-capture";
 
 /**
- * Wave B2 — byte-identical route parity for the agent READS the web adapter now
- * delegates to `@houston/sdk`: the agent list, and the account's agent-template
- * library (list + install-from-GitHub).
+ * The agent READS the web adapter delegates to `@houston/sdk`: the agent list,
+ * and the account's agent-template library (list + install-from-GitHub).
  *
- * Each delegated call MUST issue the exact request the old `controlPlane.*`
- * helper did — same method, whole URL, body bytes and headers (`Content-Type`,
+ * Each call MUST issue exactly the request recorded here — same method, whole
+ * URL, body bytes and headers (`Content-Type`,
  * `Authorization` bearer, and the live `x-houston-org`). What stays ADAPTER-side
  * is asserted alongside the wire: the colour overlay reconcile riding the list
  * read, the `agentConfigLibrary` capability gate, and the library's 404 → `[]`.
  */
 
 const BASE = "http://host";
-const ORG = "abcdef0123456789"; // [a-f0-9]{16}
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubRouted } = createWireCapture();
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
-  calls = [];
+  installLocalStorage();
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
 
-function json(status: number, body: unknown = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
 /** Answer each request by URL+method, recording every one. */
 function stubFetch(respond: (url: string, method: string) => Response) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    const url = String(input);
-    const method = (init?.method ?? "GET").toUpperCase();
-    calls.push({
-      url,
-      method,
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    return respond(url, method);
-  }) as unknown as typeof fetch;
+  stubRouted((call) => respond(call.url, call.method));
 }
 
 const client = () =>

@@ -11,7 +11,7 @@ import {
 import { ownsWorkspace } from "../domain/access";
 import { CloudPaths } from "../paths";
 import type { Vfs } from "../vfs";
-import { json, readJson } from "./http";
+import { json, methodNotAllowed, readJson } from "./http";
 import { defineRouteFamily, type UserCtx } from "./registry";
 
 const COLLECTION = "/v1/workspaces/:workspaceId/shared-skills";
@@ -86,7 +86,7 @@ async function serveSharedSkills(ctx: UserCtx): Promise<void> {
       return replace(vfs, dir, slug, await readJson(req), res, fireChange);
     if (method === "DELETE") return remove(vfs, dir, slug, res, fireChange);
   }
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
 }
 
 async function remove(

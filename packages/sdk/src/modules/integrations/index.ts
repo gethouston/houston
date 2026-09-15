@@ -29,18 +29,19 @@ import {
   IntegrationsClient,
 } from "@houston/runtime-client";
 import type { ModuleContext } from "../../module-context";
+import { moduleScope } from "../http";
+import { requireString } from "../payload";
 import type { ConnectResult, IntegrationsModule } from "./facade";
 import {
   createAgentCustomIntegrations,
   createCustomIntegrations,
   createIntegrationsReads,
 } from "./facade";
-import { createIntegrationsScope } from "./transport";
 import {
   INTEGRATIONS_SCOPE,
   IntegrationsCommand,
+  IntegrationsHttpError,
   type IntegrationsViewModel,
-  requireString,
   unavailableVm,
 } from "./types";
 import { createIntegrationsWrites } from "./writes";
@@ -64,7 +65,7 @@ export function createIntegrationsModule(
 
   const client = new IntegrationsClient({ baseUrl, fetch: ports.fetch });
   const emitTokenExpired = () => authExpiry.notifyExpired();
-  const scope = createIntegrationsScope(baseUrl, ports, emitTokenExpired);
+  const scope = moduleScope(ctx, "integrations", IntegrationsHttpError);
 
   /** Run a client call, surfacing a 401 as the shared token-expiry signal. */
   async function run<T>(fn: () => Promise<T>): Promise<T> {

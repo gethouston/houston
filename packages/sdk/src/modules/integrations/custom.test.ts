@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SdkConfig, SdkPorts } from "../../ports";
 import { HoustonSdk } from "../../sdk";
-import { IntegrationsHttpError } from "./transport";
+import { IntegrationsHttpError } from "./types";
 
 /**
  * The SDK contract for the provider-scoped reads and the custom-connector

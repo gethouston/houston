@@ -15,17 +15,17 @@
  */
 
 import type { ModuleContext } from "../../module-context";
-import { type HttpScope, httpRequest } from "../http";
+import { type HttpScope, httpRequest, moduleScope } from "../http";
+import { requireString } from "../payload";
 import {
   type HostSharedSkillsList,
   type NewSharedSkill,
   requireNewSharedSkill,
-  requireString,
   SharedSkillsCommand,
+  SharedSkillsHttpError,
   type SharedSkillsList,
   type SharedSkillsModule,
   type SkillDetail,
-  sharedSkillsScope,
   toSharedSummary,
 } from "./types-shared";
 
@@ -156,10 +156,7 @@ export async function deleteSharedSkill(
 
 /** Bind the requests above to one scope and the bridge's command registry. */
 export function createSharedSkills(ctx: ModuleContext): SharedSkillsModule {
-  const { baseUrl, ports } = ctx.config;
-  const scope = sharedSkillsScope(baseUrl, ports, () =>
-    ctx.authExpiry.notifyExpired(),
-  );
+  const scope = moduleScope(ctx, "shared-skills", SharedSkillsHttpError);
 
   const wid = (p: unknown) => requireString(p, "workspaceId");
   const slug = (p: unknown) => requireString(p, "slug");

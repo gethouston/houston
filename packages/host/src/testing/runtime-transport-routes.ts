@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 /**
  * WHAT THE PI RUNTIME'S TRANSPORT ACTUALLY SERVES, read back out of its own
@@ -8,8 +8,8 @@ import { readFileSync } from "node:fs";
  * links, so this reads the implementation and the member list is compared
  * against it (routes/agents-proxy-members.test.ts).
  *
- * The five transport files share one grammar, which is the whole reason a
- * source pass is possible instead of booting the runtime:
+ * The transport files share one grammar, which is the whole reason a source
+ * pass is possible instead of booting the runtime:
  *
  *  - `method === "M" && path === "/p"` — a literal pair.
  *  - `method !== "M" || path !== "/p"` — the same pair as an early return.
@@ -22,14 +22,6 @@ import { readFileSync } from "node:fs";
  * is an equality against a hand-written list rather than a subset check: a
  * transport route added in a shape this does not know makes the test fail.
  */
-const TRANSPORT_FILES = [
-  "server.ts",
-  "provider-routes.ts",
-  "conversation-routes.ts",
-  "generate-route.ts",
-  "anonymize-route.ts",
-];
-
 /** `METHOD path`, with every capture spelled `:param` so only shape matters. */
 export type RoutePair = string;
 
@@ -112,10 +104,28 @@ function pairsIn(file: string): RoutePair[] {
   return pairs;
 }
 
+/**
+ * Every source file of the transport, read off the directory so a file added
+ * there cannot be invisible to the scan. The directory is flat, so entries that
+ * are not `.ts` files are skipped rather than descended into; `*.test.ts` is
+ * excluded because a test asserting a 404 would otherwise read as a route.
+ */
+export function runtimeTransportFiles(transportDir: URL): string[] {
+  return readdirSync(transportDir, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        entry.name.endsWith(".ts") &&
+        !entry.name.endsWith(".test.ts"),
+    )
+    .map((entry) => entry.name)
+    .sort();
+}
+
 /** Every `METHOD rest` pair packages/runtime's transport server answers. */
 export function runtimeTransportRoutes(transportDir: URL): Set<RoutePair> {
   const pairs = new Set<RoutePair>();
-  for (const name of TRANSPORT_FILES)
+  for (const name of runtimeTransportFiles(transportDir))
     for (const found of pairsIn(
       readFileSync(new URL(name, transportDir), "utf8"),
     ))

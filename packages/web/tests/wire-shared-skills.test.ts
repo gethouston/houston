@@ -2,11 +2,16 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { bus } from "../src/engine-adapter/bus";
 import { HoustonClient } from "../src/engine-adapter/client";
 import { HoustonEngineError } from "../src/engine-adapter/client/errors";
+import {
+  type Call,
+  createWireCapture,
+  ORG as ORG_SLUG,
+} from "./support/wire-capture";
 
 /**
- * Wave C2b — the workspace-shared skill library moves to `sdk.skills.shared`,
- * and `cp/shared-skills.ts` is gone. What has to survive that is the WIRE: six
- * routes over one collection and one item path, their methods, their exact
+ * The workspace-shared skill library rides `sdk.skills.shared`. What this file
+ * pins is the WIRE: six routes over one collection and one item path, their
+ * methods, their exact
  * bodies, the headers carrying auth and the active space, and the encoding of
  * the two ids spliced into every path — a team workspace id (`org:<slug>`) and
  * a slug, neither of which is URL-safe on its own.
@@ -21,7 +26,6 @@ import { HoustonEngineError } from "../src/engine-adapter/client/errors";
  */
 
 const BASE = "https://gw.example";
-const ORG_SLUG = "abcdef0123456789"; // [a-f0-9]{16}
 const WS = "org:acme";
 const WS_PATH = `${BASE}/v1/workspaces/org%3Aacme/shared-skills`;
 
@@ -33,21 +37,14 @@ const DETAIL = {
   content: "# Brand voice",
 };
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
 /** Invalidation echoes the adapter pushed onto its own bus, newest last. */
 let echoes: string[];
 let unsubscribe: () => void;
-const originalFetch = globalThis.fetch;
+
+const { calls, reset, restore, stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  calls = [];
+  reset();
   echoes = [];
   unsubscribe = bus.on((event) => {
     const type = (event as { type?: unknown }).type;
@@ -57,23 +54,11 @@ beforeEach(() => {
 
 afterEach(() => {
   unsubscribe();
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
 
-/** Answer every request with `make()`, recording what was asked. */
-function stubFetch(make: () => Response) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    return make();
-  }) as unknown as typeof fetch;
-}
-
+/** Local: this family answers its mutations `204`, with no body and no type. */
 const json = (status: number, body: unknown = {}): Response =>
   new Response(status === 204 ? null : JSON.stringify(body), {
     status,

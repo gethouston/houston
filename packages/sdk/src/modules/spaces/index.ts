@@ -10,11 +10,14 @@
  *
  * SEAM — user-scoped, NOT per-agent. Even the agent-move routes are gateway
  * control routes about WHICH namespace an agent lives in, so they run on the
- * flat {@link spacesScope} rooted at the base URL, never `clientFor(agentId)`.
+ * module's own {@link moduleScope} rooted at the base URL, never
+ * `clientFor(agentId)`.
  * A 401 routes through the shared {@link ModuleContext.authExpiry} notifier.
  */
 
 import type { ModuleContext } from "../../module-context";
+import { moduleScope, SdkHttpError } from "../http";
+import { requireString } from "../payload";
 import {
   acceptOrgInvite,
   createOrg,
@@ -24,23 +27,19 @@ import {
   listOrgs,
   moveAgent,
 } from "./http";
-import { spacesScope } from "./scope";
 import {
   type AgentMoveStart,
   type AgentMoveStatus,
   type OrgSummary,
   type OrgsList,
-  requireString,
   SpacesCommand,
 } from "./types";
 
-export { SpacesHttpError } from "./scope";
 export type {
   AgentMoveStart,
   AgentMoveStatus,
   BillingSummary,
   OrgInviteSummary,
-  OrgRole,
   OrgSummary,
   OrgsList,
   SpacesCommandType,
@@ -68,11 +67,15 @@ export interface SpacesModule {
   ): Promise<AgentMoveStatus>;
 }
 
+/** A failed spaces request. `status` is the upstream HTTP status. */
+export class SpacesHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "SpacesHttpError");
+  }
+}
+
 export function createSpacesModule(ctx: ModuleContext): SpacesModule {
-  const { baseUrl, ports } = ctx.config;
-  const scope = spacesScope(baseUrl, ports, () =>
-    ctx.authExpiry.notifyExpired(),
-  );
+  const scope = moduleScope(ctx, "spaces", SpacesHttpError);
 
   const module: SpacesModule = {
     listOrgs: () => listOrgs(scope),

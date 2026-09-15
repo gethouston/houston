@@ -11,7 +11,7 @@ import { defineRoute } from "./registry";
  * client disconnects. Strictly scoped to `userId` — a tenant receives only
  * their own agents' change events. Each frame is `data: <HoustonEvent JSON>`.
  */
-export function handleEventStream(
+function handleEventStream(
   hub: EventHub,
   userId: UserId,
   res: ServerResponse,

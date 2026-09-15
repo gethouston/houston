@@ -1,12 +1,11 @@
 /**
- * C13 agent teams — the nine gateway routes, mirroring
+ * C13 agent teams — the eight gateway routes, mirroring
  * `cloud/docs/contracts/C13-agent-teams.md`:
  *
  *   GET|POST     /v1/org/teams                     · list | create
  *   PATCH|DELETE /v1/org/teams/:id                 · rename/reorder/restyle
  *                                                    | delete
  *   GET          /v1/org/teams/:id/members         · EXPLICIT rows only
- *   POST         /v1/org/teams/:id/join            · self-service, idempotent
  *   DELETE|PUT   /v1/org/teams/:id/members/:userId · leave/remove | upsert
  *   PUT          /v1/agents/:slug/team             · move one agent
  *
@@ -24,7 +23,6 @@
  *                            `invalid_sort_order` -> `invalid_icon` ->
  *                            `invalid_color`
  *   DELETE /teams/:id        ownership -> `default_team`
- *   POST   /teams/:id/join   `personal_space` -> the team 404
  *   PUT|DELETE .../members/:userId
  *                            `personal_space` -> the team 404 ->
  *                            `default_team` -> ownership (self-DELETE = leave,
@@ -37,8 +35,8 @@
  * The line a personal space draws is PEOPLE, not teams: teams are how a solo
  * user groups their own agents, so create, patch, delete and the agent move all
  * behave there exactly as they do in a team space, and the read serves the real
- * list. Only join, the owner write and the member remove refuse, because the
- * space holds exactly one human. That refusal precedes both the `:id` resolve
+ * list. Only the owner write and the member remove refuse, because the space
+ * holds exactly one human. That refusal precedes both the `:id` resolve
  * and `default_team`, as it does in the gateway (`requirePeopleManagement`,
  * `cloud/internal/edge/team_routes.go`): "there is nobody to manage" is the
  * accurate answer, where `default_team` would send a client hunting for another
@@ -194,7 +192,7 @@ function moveAgent(
   // A move that changes nothing is not a mutation to authorize, so it short-
   // circuits ahead of the ownership gate: refusing it would teach the client
   // that the state the agent is ALREADY in is forbidden. It answers through
-  // `mutated()`, so the no-op fans out exactly like the no-op join.
+  // `mutated()`, so a client that wrote optimistically is still reconciled.
   if (source === target.id) return mutated();
   // Moving an agent OUT of a team is as consequential to that team as moving
   // one in, so one-sided authority would let any team owner raid another's.
@@ -205,15 +203,14 @@ function moveAgent(
 }
 
 /**
- * The three MEMBER-management routes — join, the owner write, the member
- * remove — and only those. They are the whole of what a personal space refuses,
- * so the test is made once here rather than restated at each of them.
+ * The two MEMBER-management routes — the owner write and the member remove —
+ * and only those. They are the whole of what a personal space refuses, so the
+ * test is made once here rather than restated at each of them.
  *
  * `GET /teams/:id/members` is deliberately NOT one: reading a roster manages
  * nobody, and the contract serves it in every space.
  */
 function isPeopleManagement(method: string, segs: string[]): boolean {
-  if (segs.length === 5) return segs[4] === "join" && method === "POST";
   return (
     segs.length === 6 &&
     segs[4] === "members" &&
@@ -280,11 +277,6 @@ export function handleAgentTeamsRoutes(
     return json({ error: "not found" }, 404);
   }
 
-  if (segs.length === 5 && segs[4] === "join" && method === "POST") {
-    // A no-op on the default team: everyone is already in it.
-    if (!team.isDefault) state.joinAgentTeamRow(team.id, SELF_USER_ID);
-    return mutated();
-  }
   if (segs.length === 5 && segs[4] === "members" && method === "GET") {
     return json({ members: state.agentTeamMemberRows(team.id) });
   }

@@ -12,18 +12,20 @@
  */
 
 import type { SkillDetail, SkillSummary } from "@houston/protocol";
-import type { HttpScope } from "../http";
+import { SdkHttpError } from "../http";
+import { field, requireString } from "../payload";
+import type { SkillInputDef } from "./types-agent";
 
 export type { SkillDetail };
 
 /** The command vocabulary — the same constants back the facade and the bridge. */
 export const SharedSkillsCommand = {
-  List: "sharedSkills/list",
-  Load: "sharedSkills/load",
-  Create: "sharedSkills/create",
-  Promote: "sharedSkills/promote",
-  Save: "sharedSkills/save",
-  Delete: "sharedSkills/delete",
+  List: "skills.shared/list",
+  Load: "skills.shared/load",
+  Create: "skills.shared/create",
+  Promote: "skills.shared/promote",
+  Save: "skills.shared/save",
+  Delete: "skills.shared/delete",
 } as const;
 
 export type SharedSkillsCommandType =
@@ -34,36 +36,16 @@ export type SharedSkillsCommandType =
  * caller that wants a degradation (an absent library, an unknown slug) reads
  * it and decides for itself.
  */
-export class SharedSkillsHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "SharedSkillsHttpError";
+export class SharedSkillsHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "SharedSkillsHttpError");
   }
-}
-
-/**
- * A legacy structured input declared by a skill. Parsed for compatibility and
- * ignored by every send; kept so the row a shared skill presents is the one v1
- * surfaces already read.
- */
-export interface SharedSkillInput {
-  name: string;
-  label: string;
-  placeholder?: string;
-  type: "text" | "textarea" | "select";
-  required: boolean;
-  default?: string;
-  /** Options for `type: select`. Empty for text/textarea. */
-  options?: string[];
 }
 
 /** One shared skill as the workspace library lists it. */
 export interface SharedSkillSummary extends SkillSummary {
   /** Legacy structured inputs. Always empty — the host keeps none. */
-  inputs: SharedSkillInput[];
+  inputs: SkillInputDef[];
   /** Legacy prompt template. Always null, for the same reason. */
   promptTemplate: string | null;
 }
@@ -84,24 +66,6 @@ export interface SharedSkillsList {
 export interface HostSharedSkillsList {
   items: SkillSummary[];
   diagnostics: SharedSkillDiagnostic[];
-}
-
-/** The one HTTP scope every shared-skill request in this module rides. */
-export function sharedSkillsScope(
-  baseUrl: string,
-  ports: HttpScope["ports"],
-  onUnauthorized: () => void,
-): HttpScope {
-  return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized,
-    fail: (message, status) =>
-      new SharedSkillsHttpError(
-        message || `shared-skills request failed: ${status}`,
-        status,
-      ),
-  };
 }
 
 /** The three fields a new shared skill is created from. */
@@ -141,22 +105,6 @@ export interface SharedSkillsModule {
   ): Promise<void>;
   /** Remove a shared skill from the workspace. */
   deleteSharedSkill(workspaceId: string, slug: string): Promise<void>;
-}
-
-/** The raw value of `key` off an untrusted command payload. */
-function field(payload: unknown, key: string): unknown {
-  return typeof payload === "object" && payload !== null
-    ? (payload as Record<string, unknown>)[key]
-    : undefined;
-}
-
-/** A required non-empty string off an untrusted command payload. */
-export function requireString(payload: unknown, key: string): string {
-  const value = field(payload, key);
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
 }
 
 /**

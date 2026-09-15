@@ -1,14 +1,19 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
+import {
+  createWireCapture,
+  installLocalStorage,
+  json,
+  ORG,
+} from "./support/wire-capture";
 
 /**
- * Migration wave C3 — byte-identical route parity for the integrations family
- * now served by `@houston/sdk`: the provider-scoped reads, the trigger catalog,
- * the user's own custom connectors, and the per-agent dispatch form of the same
- * connectors.
+ * The integrations family served by `@houston/sdk`: the provider-scoped reads,
+ * the trigger catalog, the user's own custom connectors, and the per-agent
+ * dispatch form of the same connectors.
  *
- * Each delegated call MUST issue the exact request the `controlPlane.*` helper
- * did — same method, path, body bytes, and headers (`Content-Type`,
+ * Each call MUST issue exactly the request recorded here — same method, path,
+ * body bytes, and headers (`Content-Type`,
  * `Authorization` bearer, the live `x-houston-org`) — over the ONE shared
  * gateway fetch, as a SINGLE request (no post-write refetch).
  *
@@ -19,53 +24,18 @@ import { HoustonClient } from "../src/engine-adapter/client";
  */
 
 const BASE = "http://host";
-const ORG = "abcdef0123456789"; // [a-f0-9]{16}
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubResponses: stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
-  calls = [];
+  installLocalStorage();
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
-
-function stubFetch(...responses: Response[]) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    const next = responses.shift();
-    if (!next) throw new Error("stubFetch: no responses left");
-    return next;
-  }) as unknown as typeof fetch;
-}
-
-function json(status: number, body: unknown = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
-}
 
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });

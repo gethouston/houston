@@ -17,6 +17,7 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { requireString } from "../payload";
 import { startAgentsEventStream } from "./events-stream";
 import { agentsScope, createAgentsHttp } from "./http";
 import { type AgentsAccount, createAgentsAccount } from "./library";
@@ -26,7 +27,6 @@ import {
   AgentsCommand,
   type AgentsViewModel,
   type AgentsWrites,
-  requireString,
   type WireAgent,
 } from "./types";
 
@@ -94,7 +94,7 @@ export function createAgentsModule(ctx: ModuleContext): AgentsModule {
 
   const emitTokenExpired = () => authExpiry.notifyExpired();
 
-  const scope = agentsScope(baseUrl, ports, emitTokenExpired);
+  const scope = agentsScope(ctx);
   const http = createAgentsHttp(scope);
   const account = createAgentsAccount(ctx, scope);
 

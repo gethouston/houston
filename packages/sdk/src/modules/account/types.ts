@@ -79,18 +79,6 @@ export interface ApiKeyCreated extends ApiKey {
   key: string;
 }
 
-/** A required non-empty string off an untrusted command payload. */
-export function requireString(payload: unknown, key: string): string {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
-}
-
 /**
  * The profile update off an untrusted command payload.
  *

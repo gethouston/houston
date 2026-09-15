@@ -13,7 +13,7 @@ import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { agentRest } from "./agent-rest";
-import { json, readJson } from "./http";
+import { json, methodNotAllowed, readJson } from "./http";
 import { defineRouteFamily } from "./registry";
 
 /**
@@ -124,12 +124,12 @@ export async function handleSkills(
     return true;
   }
 
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
   return true;
 }
 
 /**
- * The five pairs one regex serves today. The family owns both of its paths for
+ * The five pairs one regex serves. The family owns both of its paths for
  * every method, so a wrong verb still reaches the handler — which answers the
  * unwired-vfs 503 BEFORE its 405, an order the dispatcher's own 405 would skip.
  *

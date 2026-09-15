@@ -22,8 +22,8 @@ import type { TurnBody } from "./turn-body";
  * of them is a route: the request is forwarded either way (routes/agents.ts),
  * and these run first. They are written as one function per concern so the body
  * memo (turn-body.ts) is the only thing they share and their order is the only
- * thing that couples them — the order they are listed in below, which is the
- * order the hand-written dispatch ran them in.
+ * thing that couples them — the order they are listed in below is the order
+ * they must run in.
  */
 export interface TurnSeamCtx {
   readonly vfs?: Vfs;

@@ -34,7 +34,11 @@ function scope(respond: (url: string) => Response = () => ok()) {
     return respond(url);
   }) as unknown as typeof fetch;
   const ports = { fetch: fetchImpl } as unknown as SdkPorts;
-  return { calls, scope: agentsScope("http://cp", ports, () => {}) };
+  const ctx = {
+    config: { baseUrl: "http://cp", ports },
+    authExpiry: { notifyExpired: () => {} },
+  };
+  return { calls, scope: agentsScope(ctx) };
 }
 
 function ok(body: unknown = {}): Response {

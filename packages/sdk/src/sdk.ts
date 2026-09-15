@@ -1,4 +1,23 @@
-import { HoustonEngineClient } from "@houston/runtime-client";
+/**
+ * The SDK kernel — the single Houston client implementation under every
+ * surface: web, desktop, and (via the bridge path) native.
+ *
+ * It owns exactly one of each collaborator and threads them to its modules: a
+ * `ScopeStore` (the reactive read side), a per-agent engine-client cache (the
+ * typed HTTP/SSE transport), an `AuthExpiryNotifier` (the one 401 →
+ * `tokenExpired` signal), and a `CommandRegistry` (the write side).
+ *
+ * Modules are INTERNAL: each `create<Name>Module` is composed once in the
+ * constructor, registers its command handlers, and returns the typed facade
+ * surfaced as a property (`sdk.agents`, `sdk.conversations`, …). The kernel
+ * does not constrain that facade's type, so a module owns its own shape.
+ *
+ * TWO WAYS TO CALL THE SAME CODE: a facade method is the in-process path,
+ * `dispatch` is the bridge path a native shell serializes into — both land on
+ * the same registered handler, so no write logic exists twice. Everything
+ * crossing `getSnapshot`/`subscribe`/`dispatch`/`on` is plain JSON.
+ */
+
 import {
   type AuthExpiryNotifier,
   createAuthExpiryNotifier,
@@ -7,8 +26,10 @@ import {
   type CommandEnvelope,
   CommandRegistry,
   type CommandResult,
+  envelopeId,
   isCommandEnvelope,
 } from "./commands";
+import { createEngineClients } from "./engine-clients";
 import type { ModuleContext } from "./module-context";
 import { createAccountModule } from "./modules/account";
 import { createActivitiesModule } from "./modules/activities";
@@ -30,50 +51,11 @@ import { createWorkspacesModule } from "./modules/workspaces";
 import type { SdkConfig } from "./ports";
 import { ScopeStore, type SdkEvent } from "./store";
 
-/** Best-effort extraction of a correlation id from a malformed envelope. */
-function envelopeId(value: unknown): string {
-  if (typeof value === "object" && value !== null) {
-    const id = (value as Record<string, unknown>).id;
-    if (typeof id === "string") return id;
-  }
-  return "";
-}
-
-/**
- * The single Houston client implementation that sits under every surface —
- * web, desktop, and (via the bridge path) native.
- *
- * It owns exactly one of each collaborator and threads them to its modules:
- *  - a {@link ScopeStore} — the reactive read side (scope snapshots + events),
- *  - a per-agent {@link HoustonEngineClient} cache (see `clientFor`) — the typed
- *    HTTP/SSE engine transport, each rooted at an agent's sandbox and wired to
- *    the injected `fetch`,
- *  - an {@link AuthExpiryNotifier} — the one 401 → `tokenExpired` signal shared
- *    by every module, and
- *  - a {@link CommandRegistry} — the write side shared by the typed facade and
- *    the bridge.
- *
- * **Modules are internal.** They are composed once in the constructor; each
- * `create<Name>Module` registers its command handlers and returns a typed
- * facade exposed as a property (`sdk.agents`, `sdk.conversations`, …). The
- * facade type is whatever the module returns — the kernel does not constrain
- * it, so a module owns its own public shape.
- *
- * **Two ways to call the same code.** Typed facade methods are the ergonomic,
- * in-process path. {@link dispatch} is the bridge path: a native shell serializes
- * a {@link CommandEnvelope}, and it routes to the exact same registered handler.
- * No write logic is duplicated between the two.
- *
- * Everything crossing {@link getSnapshot}/{@link subscribe}/{@link dispatch}/
- * {@link on} is plain JSON.
- */
+/** The client every Houston surface binds. See the module header. */
 export class HoustonSdk {
-  private readonly config: SdkConfig;
   private readonly store: ScopeStore;
   private readonly authExpiry: AuthExpiryNotifier;
   private readonly commands: CommandRegistry;
-  /** Per-agent engine clients, keyed by agent id (`""` = the base client). */
-  private readonly clients = new Map<string, HoustonEngineClient>();
 
   /** Session/connection facade (auth, connection state). */
   readonly session: ReturnType<typeof createSessionModule>;
@@ -101,17 +83,16 @@ export class HoustonSdk {
   readonly account: ReturnType<typeof createAccountModule>;
   /** Org facade (the active space's roster, roles, invitations + usage). */
   readonly org: ReturnType<typeof createOrgModule>;
-  /** Files facade (an agent's workspace listing, reads, moves + uploads). */
-  readonly files: ReturnType<typeof createFilesModule>;
   /** Teams facade (the space's team directory + per-agent policy). */
   readonly teams: ReturnType<typeof createTeamsModule>;
   /** Routines facade (an agent's scheduled work, its runs, its webhook key). */
   readonly routines: ReturnType<typeof createRoutinesModule>;
   /** Skills facade (an agent's own skills and the manifest enabling them). */
   readonly skills: ReturnType<typeof createSkillsModule>;
+  /** Files facade (an agent's workspace listing, reads, moves + uploads). */
+  readonly files: ReturnType<typeof createFilesModule>;
 
   constructor(config: SdkConfig) {
-    this.config = config;
     this.store = new ScopeStore();
     this.authExpiry = createAuthExpiryNotifier(this.store);
     this.commands = new CommandRegistry();
@@ -119,7 +100,7 @@ export class HoustonSdk {
     const ctx: ModuleContext = {
       config,
       store: this.store,
-      clientFor: (agentId) => this.clientFor(agentId),
+      clientFor: createEngineClients(config),
       authExpiry: this.authExpiry,
       registerCommand: (type, handler) => this.commands.register(type, handler),
     };
@@ -165,27 +146,6 @@ export class HoustonSdk {
     this.skills = createSkillsModule(ctx);
     this.files = createFilesModule(ctx);
     // =====================================================================
-  }
-
-  /**
-   * Memoized engine client rooted at agent `agentId`'s sandbox
-   * (`/agents/<id>`), or the base client for an empty id (flat single-runtime
-   * routes). Every client shares the injected `fetch`, which carries auth.
-   */
-  private clientFor(agentId: string): HoustonEngineClient {
-    let client = this.clients.get(agentId);
-    if (!client) {
-      const baseUrl =
-        agentId === ""
-          ? this.config.baseUrl
-          : `${this.config.baseUrl}/agents/${encodeURIComponent(agentId)}`;
-      client = new HoustonEngineClient({
-        baseUrl,
-        fetch: this.config.ports.fetch,
-      });
-      this.clients.set(agentId, client);
-    }
-    return client;
   }
 
   /** Latest snapshot for `scope`, or `undefined` if none has been published. */

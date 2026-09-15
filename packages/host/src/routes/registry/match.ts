@@ -1,10 +1,17 @@
 /**
  * The matcher. Deliberately dumb: segment-wise comparison, registration order
- * is match order, and NOTHING is normalised. Every departure from that would
- * change which handler wins for some path the hand-written chain already
- * answers — `/agents/` matches nothing today because routes/agents.ts's
- * dispatch regex needs `(.+)`, and a matcher that folded the trailing slash
- * away would start proxying it.
+ * is match order, and NOTHING is normalised. Every departure from that moves
+ * which handler wins for some path — `/agents/` matches nothing, because
+ * routes/agents.ts's dispatch needs a non-empty rest, and a matcher that
+ * folded the trailing slash away would start proxying it.
+ *
+ * The undecodable-`:name` rule below is the one that reaches EVERY declared
+ * route: a percent escape `decodeURIComponent` throws on makes the pattern
+ * miss, so such a path falls through to whatever claims it next — the chain's
+ * 404 for a user-level path, the agent's own engine for an agent-scoped one
+ * (`/agents/{id}/skills/%E0%A4%A` is forwarded). Authorization is unaffected:
+ * an undecodable agent id misses every agent-phase pattern, so nothing that
+ * needs an owner ever runs without one.
  */
 
 export interface PatternMatch {
@@ -70,7 +77,7 @@ export function matchPath(pattern: string, path: string): PatternMatch | null {
   }
   // No `*rest` consumed the tail, so the path must end exactly here. A
   // trailing slash leaves one extra (empty) segment and is therefore a
-  // non-match — the chain's behaviour today.
+  // non-match: a family that wants it says so with an `owns` entry.
   if (pathSegments.length !== patternSegments.length) return null;
   return { params, rest: "" };
 }

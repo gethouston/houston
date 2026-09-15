@@ -72,9 +72,9 @@ export class AdapterContext {
   engine: HoustonEngineClient;
   baseUrl: string;
   token: string;
-  /** The single web-side {@link HoustonSdk} (migration wave 1), built INERT
-   *  (reactivity off) over the shared `authFetch`. Later waves delegate
-   *  control-plane WRITES to its modules. */
+  /** The single web-side {@link HoustonSdk}, built over the shared `authFetch`
+   *  with reactivity off (web owns its read model). Every mixin's domain call
+   *  lands on one of its modules. */
   sdk: HoustonSdk;
   /** Live-token auth fetch (not a pinned `token`): hosted mode rotates the
    *  bearer mid-session and a 401 refreshes + replays (HOU-687). Shared by

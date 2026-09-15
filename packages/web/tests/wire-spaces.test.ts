@@ -1,10 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
 import { HoustonEngineError } from "../src/engine-adapter/client/errors";
+import {
+  type Call,
+  createWireCapture,
+  ORG as ORG_SLUG,
+} from "./support/wire-capture";
 
 /**
- * Wave A2 — the spaces family moves to `sdk.spaces`, and `cp/spaces.ts` is
- * gone. What has to survive that is the WIRE: the seven gateway routes, their
+ * The spaces family rides `sdk.spaces`. What this file pins is the WIRE: the
+ * seven gateway routes, their
  * methods, their bodies, the headers that carry auth and the active space, and
  * the percent-encoding of every id spliced into a path.
  *
@@ -19,40 +24,19 @@ import { HoustonEngineError } from "../src/engine-adapter/client/errors";
  */
 
 const BASE = "https://gw.example";
-const ORG_SLUG = "abcdef0123456789"; // [a-f0-9]{16}
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  calls = [];
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
 
-/** Answer every request with `make()`, recording what was asked. */
-function stubFetch(make: () => Response) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    return make();
-  }) as unknown as typeof fetch;
-}
-
+/** Local: this family answers its mutations `204`, with no body and no type. */
 const json = (status: number, body: unknown = {}): Response =>
   new Response(status === 204 ? null : JSON.stringify(body), {
     status,

@@ -42,7 +42,7 @@ defineRouteFamily({
     handleSandboxIntegrations(deps, method, path, url, req, res),
 });
 
-export async function handleSandboxIntegrations(
+async function handleSandboxIntegrations(
   deps: {
     vault: CredentialVault;
     store: WorkspaceStore;

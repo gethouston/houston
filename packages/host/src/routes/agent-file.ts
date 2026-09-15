@@ -8,7 +8,7 @@ import type { Vfs } from "../vfs";
 import { hostOwnedApprovalCards } from "./activity-approval-cards";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { agentRest } from "./agent-rest";
-import { json, readJson } from "./http";
+import { json, methodNotAllowed, readJson } from "./http";
 import { defineRoute } from "./registry";
 
 /**
@@ -187,6 +187,6 @@ export async function handleAgentFile(
     return true;
   }
 
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
   return true;
 }

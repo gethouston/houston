@@ -18,18 +18,19 @@
  */
 
 import type { Activity, ActivityUpdate, NewActivity } from "@houston/protocol";
-import type { SdkPorts } from "../../ports";
-import { type HttpScope, httpRequest } from "../http";
+import {
+  type HttpScope,
+  httpRequest,
+  moduleScope,
+  type ScopeContext,
+  SdkHttpError,
+} from "../http";
 import type { ActivitiesWrites } from "./types";
 
 /** A failed `/activities` request. `status` is the upstream HTTP status. */
-export class ActivitiesHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "ActivitiesHttpError";
+export class ActivitiesHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "ActivitiesHttpError");
   }
 }
 
@@ -130,21 +131,8 @@ export async function deleteActivity(
   );
 }
 
-export function createActivitiesHttp(
-  baseUrl: string,
-  ports: SdkPorts,
-  onUnauthorized: () => void,
-): ActivitiesHttp {
-  const scope: HttpScope = {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized,
-    fail: (message, status) =>
-      new ActivitiesHttpError(
-        message || `activities request failed: ${status}`,
-        status,
-      ),
-  };
+export function createActivitiesHttp(ctx: ScopeContext): ActivitiesHttp {
+  const scope = moduleScope(ctx, "activities", ActivitiesHttpError);
 
   return {
     list: (agentId) => listActivities(scope, agentId),

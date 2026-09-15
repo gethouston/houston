@@ -9,16 +9,7 @@
  */
 
 import type { ProviderId } from "@houston/runtime-client";
-
-function requireString(payload: unknown, key: string): string {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (typeof value !== "string" || value.length === 0)
-    throw new Error(`missing '${key}'`);
-  return value;
-}
+import { requireString } from "../payload";
 
 function optionalString(payload: unknown, key: string): string | undefined {
   const value =

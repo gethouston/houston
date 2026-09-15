@@ -4,8 +4,7 @@ import { AGENT_GROUPS, type GroupsIn } from "../routes/registry/groups";
  * The per-agent groups a pool worker does NOT answer, each with why it cannot.
  * Everything else in the registry's agent segment is served here — the Record
  * below has no key to hold a new group's handler until one is written, so the
- * pod and the worker cannot drift apart silently the way two hand-ordered
- * chains did.
+ * pod and the worker cannot drift apart silently.
  */
 export const OP_EXCLUSIONS = {
   "agent-crud":

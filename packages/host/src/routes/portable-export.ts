@@ -70,8 +70,8 @@ export async function handlePortableExport(
 }
 
 /**
- * A wrong method falls through to the agent's runtime, as it does today — the
- * check above declines rather than refuses.
+ * A wrong method falls through to the agent's runtime: the check above
+ * declines rather than refuses.
  */
 defineRoute({
   group: "portable-export",

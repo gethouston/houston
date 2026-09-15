@@ -10,7 +10,7 @@ import { handleActivitiesData } from "./agent-data-activities";
 import { handleDocsData } from "./agent-data-docs";
 import { handleRoutinesData } from "./agent-data-routines";
 import { agentRest } from "./agent-rest";
-import { json } from "./http";
+import { json, methodNotAllowed } from "./http";
 import { defineRouteFamily } from "./registry";
 
 // The cloud-layout root, kept as a convenience for cloud tests + callers that
@@ -137,7 +137,7 @@ export async function handleAgentData(
   )
     return true;
 
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
   return true;
 }
 
@@ -164,6 +164,15 @@ defineRouteFamily({
     { method: "PUT", path: "/agents/:agentId/config" },
     { method: "GET", path: "/agents/:agentId/learnings" },
     { method: "PUT", path: "/agents/:agentId/learnings" },
+  ],
+  // The item shapes the regex claims and the family does not serve: config and
+  // learnings are whole documents with no items, and routine runs are listed
+  // only as a whole. Each is this family's 405 to give — forwarding it would
+  // wake the agent's runtime for a route it has never had.
+  owns: [
+    "/agents/:agentId/config/:itemId",
+    "/agents/:agentId/learnings/:itemId",
+    "/agents/:agentId/routine_runs/:runId",
   ],
   methodMismatch: "405",
   phase: "agent",

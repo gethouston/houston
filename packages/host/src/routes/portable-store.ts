@@ -4,7 +4,7 @@ import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { agentRest } from "./agent-rest";
-import { json, readJson } from "./http";
+import { json, methodNotAllowed, readJson } from "./http";
 import { buildStoreIr, parseStoreIrRequest } from "./portable-store-ir";
 import { defineRouteFamily } from "./registry";
 import {
@@ -62,7 +62,10 @@ export async function handlePortableStore(
   );
 
   if (rest === "portable/store-ir") {
-    if (method !== "POST") return methodNotAllowed(res);
+    if (method !== "POST") {
+      methodNotAllowed(res);
+      return true;
+    }
     const request = parseStoreIrRequest(await readJson(req));
     if (typeof request === "string") return badRequest(res, request);
     const ir = await buildStoreIr(vfs, root, request);
@@ -88,7 +91,8 @@ export async function handlePortableStore(
     json(res, 200, { ok: true });
     return true;
   }
-  return methodNotAllowed(res);
+  methodNotAllowed(res);
+  return true;
 }
 
 const isNonEmptyString = (v: unknown): v is string =>
@@ -114,11 +118,6 @@ function parsePointerBody(
 
 function badRequest(res: ServerResponse, error: string): boolean {
   json(res, 400, { error });
-  return true;
-}
-
-function methodNotAllowed(res: ServerResponse): boolean {
-  json(res, 405, { error: "method not allowed" });
   return true;
 }
 

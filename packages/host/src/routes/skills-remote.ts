@@ -9,7 +9,7 @@ import {
 import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { agentRest } from "./agent-rest";
-import { json, readJson } from "./http";
+import { json, methodNotAllowed, readJson } from "./http";
 import { defineRouteFamily } from "./registry";
 import {
   communityPopularAction,
@@ -47,7 +47,7 @@ export async function handleSkillsRemote(
   if (!m) return false;
   const [, family, action] = m;
   if (method !== "POST") {
-    json(res, 405, { error: "method not allowed" });
+    methodNotAllowed(res);
     return true;
   }
   const fetchImpl = deps.fetchImpl ?? fetch;

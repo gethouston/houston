@@ -16,17 +16,13 @@
  * `tokenExpired` signal.
  */
 
-import { type HttpScope, httpRequest } from "../http";
+import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type { NewRoutine, Routine, RoutineUpdate } from "./types";
 
 /** A failed routine request. `status` is the upstream HTTP status. */
-export class RoutinesHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "RoutinesHttpError";
+export class RoutinesHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "RoutinesHttpError");
   }
 }
 

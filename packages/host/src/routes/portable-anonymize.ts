@@ -97,7 +97,7 @@ export async function runPortableAnonymize(
 
 /** POST .../portable/anonymize on the pod's dispatch surface. Returns true
  *  when handled. */
-export async function handlePortableAnonymize(
+async function handlePortableAnonymize(
   deps: { vfs?: Vfs; paths?: WorkspacePaths; channel?: RuntimeChannel },
   ctx: { workspace: Workspace; agent: Agent },
   method: string,
@@ -135,8 +135,8 @@ export async function handlePortableAnonymize(
 }
 
 /**
- * A wrong method falls through to the agent's runtime, as it does today — the
- * check above declines rather than refuses.
+ * A wrong method falls through to the agent's runtime: the check above
+ * declines rather than refuses.
  */
 defineRoute({
   group: "portable-anonymize",

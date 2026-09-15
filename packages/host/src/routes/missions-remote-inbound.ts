@@ -142,7 +142,9 @@ defineRouteFamily({
       ? actingAuthorFromHeader(req.headers[ACTING_AS_HEADER])
       : null;
     const actingAs = trustedActingAs(deps, req);
-    await handleAgentMissions(
+    // The handler's own answer, not a discarded one: its `false` is a decline,
+    // and swallowing it would report "handled" for a response never written.
+    return handleAgentMissions(
       deps,
       {
         workspace: authz.workspace,

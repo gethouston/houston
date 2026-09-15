@@ -44,7 +44,7 @@ export interface PortableAccountDeps {
  * manifest + inventory) and POST /v1/portable/install (zip bytes + agentName →
  * a new agent with the selected content written in). Returns true when handled.
  */
-export async function handlePortableAccount(
+async function handlePortableAccount(
   deps: PortableAccountDeps,
   userId: UserId,
   method: string,
@@ -142,8 +142,8 @@ export async function handlePortableAccount(
 }
 
 /**
- * A non-POST on either path falls through to the chain's 404, as it does
- * today: the check above declines rather than refuses.
+ * A non-POST on either path falls through to the chain's 404: the check above
+ * declines rather than refuses.
  */
 defineRouteFamily({
   group: "portable-account",

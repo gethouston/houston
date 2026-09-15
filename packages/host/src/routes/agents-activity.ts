@@ -81,7 +81,7 @@ defineRoute({
   classification: "infra",
   reason:
     "The cloud waker's per-agent idle sweep polls it to decide whether the pod may sleep; no UI reads it.",
-  // A POST here must NOT 405: today it falls past this check into the generic
+  // A POST here must NOT 405: it falls past this check into the generic
   // dispatch and is proxied to the agent's own runtime.
   methodMismatch: "fallthrough",
   source: "packages/host/src/routes/agents-activity.ts",

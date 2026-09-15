@@ -20,7 +20,8 @@
  */
 
 import type { ModuleContext } from "../../module-context";
-import type { HttpScope } from "../http";
+import { moduleScope } from "../http";
+import { requireString } from "../payload";
 import {
   createFolder,
   deleteFile,
@@ -35,7 +36,6 @@ import {
   type FileUpload,
   nullableString,
   type ProjectFile,
-  requireString,
   requireUploads,
 } from "./types";
 import { saveAttachments, uploadProjectFiles } from "./uploads";
@@ -88,16 +88,7 @@ export interface FilesModule {
 }
 
 export function createFilesModule(ctx: ModuleContext): FilesModule {
-  const { authExpiry } = ctx;
-  const { baseUrl, ports } = ctx.config;
-
-  const scope: HttpScope = {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized: () => authExpiry.notifyExpired(),
-    fail: (message, status) =>
-      new FilesHttpError(message || `files request failed: ${status}`, status),
-  };
+  const scope = moduleScope(ctx, "files", FilesHttpError);
 
   ctx.registerCommand(FilesCommand.List, (p) =>
     listProjectFiles(scope, requireString(p, "agentPath")),

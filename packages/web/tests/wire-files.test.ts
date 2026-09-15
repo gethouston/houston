@@ -1,15 +1,20 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
 import { LAST_AGENT_PREF } from "../src/engine-adapter/client/context";
+import {
+  createWireCapture,
+  expectGatewayHeaders,
+  installLocalStorage,
+  json,
+  ORG,
+} from "./support/wire-capture";
 
 /**
- * Migration wave C5 — byte-identical route parity for the agent's WORKSPACE
- * FILES, now delegated to `sdk.files`: the listing, the read, every
- * rearrangement, and the two uploads.
+ * The agent's WORKSPACE FILES, delegated to `sdk.files`: the listing, the
+ * read, every rearrangement, and the two uploads.
  *
- * `cp/attachments.ts` is gone and the mixin's own `cpFilesFetch` calls are gone
- * with it, so these assertions ARE the record of what those requests put on the
- * wire: same method, whole URL (the `?path=` query included, escaped character
+ * These assertions ARE the record of what those requests put on the wire: same
+ * method, whole URL (the `?path=` query included, escaped character
  * by character — a path escaped one way deletes a different file than the
  * other), body bytes, and headers over the ONE shared gateway fetch. Each call
  * is exactly one request: these publish no SDK scope and never refetch.
@@ -22,51 +27,18 @@ import { LAST_AGENT_PREF } from "../src/engine-adapter/client/context";
  */
 
 const BASE = "http://host";
-const ORG = "abcdef0123456789"; // [a-f0-9]{16}
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
-  calls = [];
+  installLocalStorage();
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
-
-/** Answer every request with `make()`, recording what was asked. */
-function stubFetch(make: () => Response) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    return make();
-  }) as unknown as typeof fetch;
-}
-
-const json = (status: number, body: unknown = {}): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });
@@ -94,12 +66,6 @@ const ENTRY = {
 };
 
 /** The four headers every delegated call must still carry. */
-function expectGatewayHeaders(call: Call) {
-  expect(call.headers.get("Content-Type")).toBe("application/json");
-  expect(call.headers.get("Authorization")).toBe("Bearer t");
-  expect(call.headers.get("x-houston-org")).toBe(ORG);
-}
-
 // ---- reads ----
 
 test("listProjectFiles delegates a byte-identical single GET /agents/:id/files", async () => {

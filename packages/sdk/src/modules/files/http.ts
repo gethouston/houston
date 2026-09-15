@@ -20,17 +20,13 @@
  */
 
 import { base64ToBytes } from "../../bridge/base64";
-import { type HttpScope, httpRequest } from "../http";
+import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type { ProjectFile } from "./types";
 
 /** A failed `/agents/:id/files*` request. `status` is the upstream HTTP status. */
-export class FilesHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "FilesHttpError";
+export class FilesHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "FilesHttpError");
   }
 }
 

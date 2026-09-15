@@ -15,7 +15,7 @@
  * `tokenExpired` signal.
  */
 
-import { type HttpScope, httpRequest } from "../http";
+import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type {
   AddOrgMemberResult,
   OrgInfo,
@@ -25,13 +25,9 @@ import type {
 } from "./types";
 
 /** A failed `/v1/org*` request. `status` is the upstream HTTP status. */
-export class OrgHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "OrgHttpError";
+export class OrgHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "OrgHttpError");
   }
 }
 

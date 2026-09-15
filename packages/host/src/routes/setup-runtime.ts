@@ -1,6 +1,6 @@
 import type { Agent } from "../domain/types";
 import { json } from "./http";
-import { defineRouteFamily, type HttpMethod } from "./registry";
+import { defineRouteFamily, type HttpMethod, matchPath } from "./registry";
 import {
   handleSetupCredential,
   SETUP_CREDENTIAL_RESTS,
@@ -56,18 +56,30 @@ export const SETUP_RUNTIME_RESTS = [
   { method: "POST", rest: "auth/:provider/logout" },
 ] as const satisfies readonly { method: HttpMethod; rest: string }[];
 
+const MEMBERS = [...SETUP_CREDENTIAL_RESTS, ...SETUP_RUNTIME_RESTS].map(
+  ({ method, rest }) => ({ method, path: `/setup-runtime/${rest}` }),
+);
+
+/** Whether the pair is on the connect surface — the allowlist, as a predicate. */
+const onConnectSurface = (method: string, path: string): boolean =>
+  MEMBERS.some(
+    (member) => member.method === method && matchPath(member.path, path),
+  );
+
 defineRouteFamily({
   group: "setup-runtime",
-  members: [...SETUP_CREDENTIAL_RESTS, ...SETUP_RUNTIME_RESTS].map(
-    ({ method, rest }) => ({ method, path: `/setup-runtime/${rest}` }),
-  ),
+  members: MEMBERS,
+  // The whole subtree, because both refusals below belong to this family: a
+  // sub-path it does not serve is its 404 (the onboarding learns the route is
+  // closed, not that the host lost it), and an unwired runtime is its 503 —
+  // named after the runtime, and owed for every sub-path, allowed or not.
+  owns: ["/setup-runtime", "/setup-runtime/", "/setup-runtime/*rest"],
   phase: "user",
   classification: "sdk",
   source: SOURCE,
   handler: async ({ deps, userId, method, path, url, req, res }) => {
     // The runtime is asked for the sub-path exactly as it arrived: the channel
-    // forwards these bytes, and the family's patterns already proved the
-    // sub-path is on the connect surface.
+    // forwards these bytes.
     const rest = path.slice("/setup-runtime/".length);
 
     // Resolve the caller's personal workspace (auto-provisioned on first touch)
@@ -86,6 +98,10 @@ defineRouteFamily({
 
     if (await handleSetupCredential(channel, ctx, method, rest, url, req, res))
       return;
+    // The allowlist is what keeps the rest of the runtime's surface (chat,
+    // files, settings) agent-scoped: only the connect pairs are forwarded.
+    if (!onConnectSurface(method, path))
+      return json(res, 404, { error: "not found" });
     await channel.dispatch(ctx, method, rest, url, req, res);
   },
 });

@@ -5,9 +5,9 @@ import type { HttpMethod } from "./registry";
  *
  * The per-agent catch-all (routes/agents.ts) matches `*rest` and forwards
  * whatever it is handed, so this list never decides a match. It is the
- * published surface: the SDK parity gate reads it, and routes-proxy-drift.test
- * proves it against packages/runtime's own transport tables, which are the only
- * place these pairs are implemented.
+ * published surface: the SDK parity gate reads it, and
+ * routes/agents-proxy-members.test.ts proves it against packages/runtime's own
+ * transport tables, which are the only place these pairs are implemented.
  *
  * Two engines answer them. The STANDING runtime (channel/proxy.ts → the pi
  * runtime's transport server) serves all of them; the CLOUDRUN dispatch

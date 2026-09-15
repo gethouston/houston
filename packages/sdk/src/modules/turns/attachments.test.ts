@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import type { ModuleContext } from "../../module-context";
+import { FilesHttpError } from "../files/http";
 import {
   AttachmentTooLargeError,
   asAttachmentsSaveInput,
@@ -7,9 +8,9 @@ import {
 } from "./attachments";
 
 /**
- * The attachments save operation: it POSTs to the host's `attachments` route
- * through the injected `ports.fetch` seam (which carries auth), rooted at the
- * per-agent sandbox exactly like `clientFor`, and surfaces a 413 as a typed
+ * The attachments save operation: it hands the files to the files module's
+ * upload request — one wire body, one owner — so the POST lands on the agent's
+ * `attachments` route with `relPath` intact, and surfaces a 413 as a typed
  * too-large error. No silent failures.
  */
 
@@ -31,6 +32,7 @@ function ctxWith(
   }) as unknown as typeof fetch;
   const ctx = {
     config: { baseUrl, ports: { fetch: fetchImpl } },
+    authExpiry: { notifyExpired: () => {} },
   } as unknown as ModuleContext;
   return { ctx, calls };
 }
@@ -61,13 +63,17 @@ test("posts to the per-agent attachments route and returns the paths", async () 
   });
 });
 
-test("an empty agentId hits the flat base route", async () => {
-  const { ctx, calls } = ctxWith(() => okPaths([]));
+test("forwards relPath, so a dropped folder keeps its nesting", async () => {
+  const { ctx, calls } = ctxWith(() => okPaths(["uploads/deck/a.png"]));
   await createAttachmentsOperation(ctx).save({
+    agentId: "a1",
     scopeId: "s",
-    files: [{ name: "a", contentBase64: "" }],
+    files: [{ name: "a.png", contentBase64: "QQ==", relPath: "deck/a.png" }],
   });
-  expect(calls[0].url).toBe("http://host.test/attachments");
+  expect(JSON.parse(String(calls[0].init?.body))).toEqual({
+    scopeId: "s",
+    files: [{ name: "a.png", contentBase64: "QQ==", relPath: "deck/a.png" }],
+  });
 });
 
 test("a 413 surfaces as a typed AttachmentTooLargeError with status 413", async () => {
@@ -76,7 +82,11 @@ test("a 413 surfaces as a typed AttachmentTooLargeError with status 413", async 
   );
   const op = createAttachmentsOperation(ctx);
   const err = await op
-    .save({ scopeId: "s", files: [{ name: "a", contentBase64: "x" }] })
+    .save({
+      agentId: "a1",
+      scopeId: "s",
+      files: [{ name: "a", contentBase64: "x" }],
+    })
     .catch((e) => e);
   expect(err).toBeInstanceOf(AttachmentTooLargeError);
   expect((err as AttachmentTooLargeError).status).toBe(413);
@@ -84,12 +94,16 @@ test("a 413 surfaces as a typed AttachmentTooLargeError with status 413", async 
 
 test("a non-413 failure throws with the status and body (no silent failure)", async () => {
   const { ctx } = ctxWith(() => new Response("boom", { status: 500 }));
-  await expect(
-    createAttachmentsOperation(ctx).save({
+  const err = await createAttachmentsOperation(ctx)
+    .save({
+      agentId: "a1",
       scopeId: "s",
       files: [{ name: "a", contentBase64: "x" }],
-    }),
-  ).rejects.toThrow(/attachments upload failed \(500\): boom/);
+    })
+    .catch((e) => e);
+  expect(err).toBeInstanceOf(FilesHttpError);
+  expect(err.status).toBe(500);
+  expect(err.message).toBe("boom");
 });
 
 test("a malformed 200 body throws rather than returning junk", async () => {
@@ -102,6 +116,7 @@ test("a malformed 200 body throws rather than returning junk", async () => {
   );
   await expect(
     createAttachmentsOperation(ctx).save({
+      agentId: "a1",
       scopeId: "s",
       files: [{ name: "a", contentBase64: "x" }],
     }),
@@ -109,18 +124,23 @@ test("a malformed 200 body throws rather than returning junk", async () => {
 });
 
 test("asAttachmentsSaveInput validates the untrusted envelope", () => {
-  expect(() => asAttachmentsSaveInput({ files: [] })).toThrow(/scopeId/);
-  expect(() => asAttachmentsSaveInput({ scopeId: "s", files: [] })).toThrow(
-    /non-empty files/,
+  expect(() => asAttachmentsSaveInput({ files: [] })).toThrow(/agentId/);
+  expect(() => asAttachmentsSaveInput({ agentId: "ag", files: [] })).toThrow(
+    /scopeId/,
   );
   expect(() =>
+    asAttachmentsSaveInput({ agentId: "ag", scopeId: "s", files: [] }),
+  ).toThrow(/non-empty files/);
+  expect(() =>
     asAttachmentsSaveInput({
+      agentId: "ag",
       scopeId: "s",
       files: [{ name: "", contentBase64: "x" }],
     }),
   ).toThrow(/non-empty string name/);
   expect(() =>
     asAttachmentsSaveInput({
+      agentId: "ag",
       scopeId: "s",
       files: [{ name: "a", contentBase64: 5 }],
     }),
@@ -129,11 +149,11 @@ test("asAttachmentsSaveInput validates the untrusted envelope", () => {
     asAttachmentsSaveInput({
       scopeId: "s",
       agentId: "ag",
-      files: [{ name: "a.pdf", contentBase64: "QQ==" }],
+      files: [{ name: "a.pdf", contentBase64: "QQ==", relPath: "d/a.pdf" }],
     }),
   ).toEqual({
     scopeId: "s",
     agentId: "ag",
-    files: [{ name: "a.pdf", contentBase64: "QQ==" }],
+    files: [{ name: "a.pdf", contentBase64: "QQ==", relPath: "d/a.pdf" }],
   });
 });

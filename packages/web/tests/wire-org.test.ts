@@ -1,12 +1,18 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
+import {
+  type Call,
+  createWireCapture,
+  installLocalStorage,
+  json,
+  ORG,
+} from "./support/wire-capture";
 
 /**
- * Migration wave A1 — org administration moves from `cp/orgs.ts` to
- * `sdk.org.*`.
+ * Org administration rides `sdk.org.*`.
  *
- * The control-plane copy is GONE, so there is no helper left to diff against:
- * what the cp copy put on the wire is pinned here literally instead — the whole
+ * There is no second copy of these calls to diff against, so what the family
+ * puts on the wire is pinned here literally — the whole
  * URL, the method, the body BYTES, and the three headers the gateway routes on
  * (`Content-Type`, `Authorization`, `x-houston-org`). A delegated call that
  * changes any of them changes what the hosted gateway does, and nothing else in
@@ -19,51 +25,18 @@ import { HoustonClient } from "../src/engine-adapter/client";
  */
 
 const BASE = "http://host";
-const ORG = "abcdef0123456789"; // [a-f0-9]{16}
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
-  calls = [];
+  installLocalStorage();
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
-
-/** Answer every request with `make()`, recording what was asked. */
-function stubFetch(make: () => Response) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    return make();
-  }) as unknown as typeof fetch;
-}
-
-const json = (status: number, body: unknown = {}): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 
 /** What the gateway answers a successful member/invite mutation with. */
 const noContent = (): Response => new Response(null, { status: 204 });
@@ -201,11 +174,11 @@ describe("the delegated activity + usage reads", () => {
     await client().orgAudit();
     expect(onlyCall().url).toBe(`${BASE}/v1/org/audit`);
 
-    calls = [];
+    reset();
     await client().orgAudit({ limit: 50 });
     expect(onlyCall().url).toBe(`${BASE}/v1/org/audit?limit=50`);
 
-    calls = [];
+    reset();
     await client().orgAudit({ before: 1700, limit: 50 });
     expect(onlyCall().url).toBe(`${BASE}/v1/org/audit?before=1700&limit=50`);
   });
@@ -249,7 +222,7 @@ describe("the degradations the mixin keeps", () => {
     });
     expect(calls).toHaveLength(1);
 
-    calls = [];
+    reset();
     await expect(client().getOrgPeople()).resolves.toEqual([]);
     expect(calls).toHaveLength(1);
   });

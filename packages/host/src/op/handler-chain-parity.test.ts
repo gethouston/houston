@@ -14,11 +14,11 @@ function agentGroups(): string[] {
 }
 
 /**
- * The pool-worker op chain used to be a SECOND hand-ordered copy of the
- * per-agent dispatch surface, and its own comment admitted the hazard: a route
- * added to one chain and not the other answered 404 as an op. It is now derived
- * from the registry, and this is what holds the derivation honest — the served
- * set is exactly the agent segment minus the groups the worker cannot answer.
+ * The pool-worker op chain is DERIVED from the registry's agent segment, and
+ * this is what holds the derivation honest: the served set is exactly that
+ * segment minus the groups the worker cannot answer. A second, hand-ordered
+ * copy of the per-agent surface would answer 404 as an op for every route
+ * added to one list and not the other.
  */
 it("the op chain serves every agent-phase group except the declared exclusions", () => {
   const expected = agentGroups().filter((group) => !(group in OP_EXCLUSIONS));

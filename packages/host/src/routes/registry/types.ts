@@ -1,11 +1,4 @@
-import type {
-  AgentCtx,
-  AgentEntry,
-  PublicCtx,
-  PublicEntry,
-  UserCtx,
-  UserEntry,
-} from "./context";
+import type { AgentCtx, PublicCtx, UserCtx } from "./context";
 import type { GroupId } from "./groups";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD";
@@ -19,13 +12,13 @@ export type Classification =
 
 /**
  * WHERE in server.ts's fixed pipeline a route is matched. Order INSIDE a phase
- * is the declared array order — identical to the hand-written chain order.
+ * is the declared array order.
  *
  * Only the agent phase gives the dispatcher a principal to enforce: a sandbox
- * route validates its own HMAC token inside its handler, exactly as it does
- * today, and the phase marks only the chain slot it answers from. Lifting that
- * check into the dispatcher would move the refusal for every sandbox family at
- * once, so it stays where each family owns it.
+ * route validates its own HMAC token inside its handler, and the phase marks
+ * only the chain slot it answers from. Lifting that check into the dispatcher
+ * would move the refusal for every sandbox family at once, so it stays where
+ * each family owns it.
  */
 export type Phase =
   | "public" // before any auth
@@ -41,21 +34,14 @@ export type Phase =
  * that (routes/missions-remote-inbound.ts adds `code`) declares every method
  * and answers from inside its own handler instead.
  *
- * WHEN the 405 is emitted follows the phase, because the hand-written chain
- * splits there too: an agent-phase family's 405 is written after
- * authorizeAgent (routes/agent-file.ts, routes/agent-data.ts), so a caller who
- * does not own the agent sees 403/404 and never learns the method set; a
- * user-phase one (routes/agent-color.ts) answers before any per-agent check
- * because its slot sits ahead of the per-agent dispatch entirely.
+ * WHEN the 405 is emitted follows the phase: an agent-phase family's 405 is
+ * written after authorizeAgent (routes/agent-file.ts, routes/agent-data.ts),
+ * so a caller who does not own the agent sees 403/404 and never learns the
+ * method set; a user-phase one (routes/agent-color.ts) answers before any
+ * per-agent check because its slot sits ahead of the per-agent dispatch
+ * entirely.
  */
 export type MethodMismatch = "fallthrough" | "405";
-
-/** The entry context a group's phase requires of its caller. */
-export type EntryFor<P extends Phase> = P extends "agent"
-  ? AgentEntry
-  : P extends "user"
-    ? UserEntry
-    : PublicEntry;
 
 interface RouteCommon {
   group: GroupId;
@@ -74,12 +60,12 @@ export type Classified =
 
 /**
  * What a handler hands back. `false` DECLINES the request: the chain walks on
- * to the next route exactly as a hand-written `return false` did. It is how a
- * family that claims a boundary wider than its route list (`owns`) gives back
- * what turns out not to be its own — routes/custom-integrations-user.ts claims
- * the whole `custom/` subtree and declines a target its grammar does not know,
- * which is the only reason `/v1/integrations/custom/connections` still reaches
- * the generic provider family behind it. Anything else means "answered".
+ * to the next route. It is how a family that claims a boundary wider than its
+ * route list (`owns`) gives back what turns out not to be its own —
+ * routes/custom-integrations-user.ts claims the whole `custom/` subtree and
+ * declines a target its grammar does not know, which is the only reason
+ * `/v1/integrations/custom/connections` still reaches the generic provider
+ * family behind it. Anything else means "answered".
  */
 // `void` is the point: a handler that answered by writing to the response
 // returns nothing, and only `void` accepts the `Promise<void>` an async
@@ -132,8 +118,8 @@ export type ProxyFamilyDef = Omit<
   /**
    * The rests the agent's runtime serves, from the two tables that already
    * exist (packages/runtime's transport routes and turn/dispatch.ts). Matching
-   * stays `*rest`, so an unlisted rest reaches the channel exactly as today —
-   * this LIST is what the parity gate reads, and rule R4 proves it against the
+   * stays `*rest`, so an unlisted rest reaches the channel all the same — this
+   * LIST is what the parity gate reads, and rule R4 proves it against the
    * client that actually calls it.
    */
   members: { method: HttpMethod; rest: string }[];

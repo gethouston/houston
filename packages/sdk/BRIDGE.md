@@ -445,8 +445,9 @@ INTO the agent's workspace and returns the RELATIVE paths the agent's Read tool
 opens. Files land in the agent's visible, durable `uploads/` folder; colliding
 names are disambiguated (`report.csv` → `report (1).csv`). `scopeId` is a legacy
 per-conversation key the current host ignores — still send it for compatibility
-with not-yet-updated cloud pods. `agentId` targets the agent's sandbox (omit for
-the single local runtime).
+with not-yet-updated cloud pods. `agentId` is required: it names the agent whose
+sandbox receives the files, and the host serves the upload only under that
+agent's route.
 
 ```json
 → { "kind": "command", "envelope": { "id": "c8", "type": "turns/attachments/save",
@@ -458,8 +459,8 @@ the single local runtime).
 
 The request is capped (100 MB); an oversized upload fails with a **typed**
 `AttachmentTooLargeError` surfaced as `{ ok: false, error: { message, status: 413 } }`
-— never a silent drop. Missing/empty `files`, a blank file `name`, or a
-non-string `contentBase64` fail validation the same way (no `status`).
+— never a silent drop. A missing `agentId`, missing/empty `files`, a blank file
+`name`, or a non-string `contentBase64` fail validation the same way (no `status`).
 
 **Step 2 — send.** Weave the returned paths into the message text with the
 SDK-exported pure helper `buildAttachmentText(text, paths, names?)`, then pass

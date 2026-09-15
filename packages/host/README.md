@@ -19,10 +19,12 @@ compiling the desktop host-sidecar binary.
 
 ```
 src/
-  server.ts            createControlPlaneServer; shared HTTP router
+  server.ts            createControlPlaneServer; CORS, the 401 wall, the chain
+  server-phases.ts     walks the group table: public+sandbox -> user -> agent
+  routes/registry/     the group table, the matcher, the dispatcher
+  routes/              account, agents, data families, skills, portable, integrations
   ports.ts             WorkspaceStore, RuntimeChannel, CredentialStore, Vfs seams
   domain/              workspace, agent, access types
-  routes/              account, agents, data families, skills, portable, integrations
   local/               local profile entry + FS/subprocess adapters
   store/               open memory/local workspace stores
   credentials/         file/memory credential stores + sandbox-token vault
@@ -36,6 +38,25 @@ src/
 
 The exported builder is still named `createControlPlaneServer`; renaming the
 internal symbol is tracked in `convergence/follow-ups.md`.
+
+Route modules declare themselves beside their handler; `server.ts` holds no
+route list. It walks `routes/registry/groups.ts`'s `GROUP_PHASES` table
+(`server-phases.ts`), and `routes/registry/` matches and dispatches whatever the
+modules registered.
+
+## Adding a route
+
+1. Declare it beside its handler with `defineRoute`, `defineRouteFamily` or
+   `defineProxyFamily` (`routes/registry/define.ts`).
+2. Import the module in `routes/registry/all.ts`. A module missing from that
+   barrel is unreachable and unchecked.
+3. Its chain slot is its group's line in `routes/registry/groups.ts`'s
+   `GROUP_PHASES`: position there is match order, and the last agent-phase group
+   claims every remaining `/agents/:agentId/…` path for the agent's engine.
+4. `routes/routes-golden.test.ts` pins the routing answers. Re-record with
+   `HOUSTON_ROUTES_GOLDEN=update` only alongside a diff justified in the PR body.
+5. `pnpm check` runs `check:sdk-parity`; `scripts/sdk-parity-exceptions.json`
+   may only shrink.
 
 ## Design Rules
 

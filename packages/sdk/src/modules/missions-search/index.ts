@@ -74,13 +74,10 @@ interface Candidate {
 export function createMissionsSearchModule(
   ctx: ModuleContext,
 ): MissionsSearchModule {
-  const { config, clientFor, authExpiry } = ctx;
-  const { baseUrl, ports } = config;
-  const emitTokenExpired = () => authExpiry.notifyExpired();
-  const http = createActivitiesHttp(baseUrl, ports, emitTokenExpired);
-  const agents = createAgentsHttp(
-    agentsScope(baseUrl, ports, emitTokenExpired),
-  );
+  const { clientFor } = ctx;
+  const { ports } = ctx.config;
+  const http = createActivitiesHttp(ctx);
+  const agents = createAgentsHttp(agentsScope(ctx));
 
   /** The agents to search: the one given, else the whole personal workspace. */
   async function resolveAgentIds(agentId?: string): Promise<string[]> {

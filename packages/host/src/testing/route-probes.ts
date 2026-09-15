@@ -66,8 +66,8 @@ const QUERY_PROBES: { method: string; path: string; phase: string }[] = [
 
 /**
  * Paths the matcher must refuse structurally rather than by luck: a percent
- * escape decodeURIComponent throws on, and an empty segment. Both reach the
- * per-agent dispatch regex today, so what they answer is behaviour.
+ * escape decodeURIComponent throws on, and an empty segment. Both address the
+ * per-agent dispatch surface, so what they answer is behaviour, not luck.
  */
 const MALFORMED_PROBES: { method: string; path: string }[] = [
   { method: "GET", path: "/agents/%E0%A4%A/activity" },

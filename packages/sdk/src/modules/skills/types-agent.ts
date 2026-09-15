@@ -8,24 +8,25 @@
  * their own types in this module.
  */
 
-import type { HttpScope } from "../http";
+import { SdkHttpError } from "../http";
+import { requireString } from "../payload";
 
 /**
  * The write vocabulary — the same constants back the facade and the bridge.
  *
- * Each value spells the operation's own function name rather than a short verb
- * (`skills/listSkills`, not `skills/list`), because the sibling shared-skill
- * and marketplace families dispatch under the same `skills/` prefix and a short
- * verb would collide with theirs.
+ * Every command in the SDK is `<family>/<verb>`, so an agent's own skills are
+ * plain `skills/*`. The two sibling families name themselves apart in the
+ * family half (`skills.shared/*`, `skills.marketplace/*`) rather than by
+ * repeating the noun in each verb.
  */
 export const AgentSkillsCommand = {
-  List: "skills/listSkills",
-  Load: "skills/loadSkill",
-  Create: "skills/createSkill",
-  Save: "skills/saveSkill",
-  Delete: "skills/deleteSkill",
-  GetManifest: "skills/getSkillsManifest",
-  PutManifest: "skills/putSkillsManifest",
+  List: "skills/list",
+  Load: "skills/load",
+  Create: "skills/create",
+  Save: "skills/save",
+  Delete: "skills/delete",
+  GetManifest: "skills/getManifest",
+  PutManifest: "skills/putManifest",
 } as const;
 
 export type AgentSkillsCommandType =
@@ -114,48 +115,10 @@ export interface NewSkill {
 }
 
 /** A failed agent-skills request. `status` is the upstream HTTP status. */
-export class AgentSkillsHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "AgentSkillsHttpError";
+export class AgentSkillsHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "AgentSkillsHttpError");
   }
-}
-
-/**
- * The scope every agent-skills request runs in: the engine base (trailing
- * slashes trimmed), the injected ports, the shared 401 signal, and the error
- * type a caller catches.
- */
-export function agentSkillsScope(
-  baseUrl: string,
-  ports: HttpScope["ports"],
-  onUnauthorized: () => void,
-): HttpScope {
-  return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized,
-    fail: (message, status) =>
-      new AgentSkillsHttpError(
-        message || `skills request failed: ${status}`,
-        status,
-      ),
-  };
-}
-
-/** A required non-empty string off an untrusted command payload. */
-export function requireString(payload: unknown, key: string): string {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
 }
 
 /** A required object off an untrusted command payload, by key. */

@@ -19,18 +19,19 @@
  */
 
 import type { AgentColorId } from "@houston/domain";
-import type { SdkPorts } from "../../ports";
-import { type HttpScope, httpRequest } from "../http";
+import {
+  type HttpScope,
+  httpRequest,
+  moduleScope,
+  type ScopeContext,
+  SdkHttpError,
+} from "../http";
 import type { AgentCreateInput, WireAgent } from "./types";
 
 /** A failed `/agents` request. `status` is the upstream HTTP status. */
-export class AgentsHttpError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message);
-    this.name = "AgentsHttpError";
+export class AgentsHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "AgentsHttpError");
   }
 }
 
@@ -126,24 +127,11 @@ export async function deleteAgent(scope: HttpScope, id: string): Promise<void> {
 
 /**
  * The transport scope every agents request runs on. Shared with `library.ts`
- * so the account-scoped agent routes fail with the same {@link AgentsHttpError}
- * and route the same 401 into the module's auth-expiry signal.
+ * and mission search so the account-scoped agent routes fail with the same
+ * {@link AgentsHttpError} and route the same 401 into the auth-expiry signal.
  */
-export function agentsScope(
-  baseUrl: string,
-  ports: SdkPorts,
-  onUnauthorized: () => void,
-): HttpScope {
-  return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized,
-    fail: (message, status) =>
-      new AgentsHttpError(
-        message || `agents request failed: ${status}`,
-        status,
-      ),
-  };
+export function agentsScope(ctx: ScopeContext): HttpScope {
+  return moduleScope(ctx, "agents", AgentsHttpError);
 }
 
 export function createAgentsHttp(scope: HttpScope): AgentsHttp {

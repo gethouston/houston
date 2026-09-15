@@ -14,6 +14,7 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { requireString } from "../payload";
 import { createAccountHttp } from "./http";
 import {
   AccountCommand,
@@ -22,7 +23,6 @@ import {
   type EditableProfile,
   type EditableProfileUpdate,
   profileUpdate,
-  requireString,
 } from "./types";
 
 export { AccountHttpError } from "./http";
@@ -50,12 +50,7 @@ export interface AccountModule {
 }
 
 export function createAccountModule(ctx: ModuleContext): AccountModule {
-  const { authExpiry } = ctx;
-  const { baseUrl, ports } = ctx.config;
-
-  const http = createAccountHttp(baseUrl, ports, () =>
-    authExpiry.notifyExpired(),
-  );
+  const http = createAccountHttp(ctx);
 
   ctx.registerCommand(AccountCommand.GetProfile, () => http.getMyProfile());
   ctx.registerCommand(AccountCommand.SetProfile, (p) =>

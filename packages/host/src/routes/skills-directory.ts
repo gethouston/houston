@@ -4,7 +4,7 @@ import { listSkillsFromRepo } from "../skills/github";
 import { PreviewDirectory } from "../skills/preview";
 import { SkillRemoteError } from "../skills/remote-error";
 import { clientAbortSignal } from "./client-abort";
-import { json, readJson } from "./http";
+import { json, methodNotAllowed, readJson } from "./http";
 import { defineRouteFamily } from "./registry";
 
 /**
@@ -146,7 +146,7 @@ export async function handleSkillsDirectory(
   );
   if (!m) return false;
   if (method !== "POST") {
-    json(res, 405, { error: "method not allowed" });
+    methodNotAllowed(res);
     return true;
   }
   const route = m[1];

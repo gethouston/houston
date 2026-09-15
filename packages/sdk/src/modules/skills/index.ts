@@ -21,6 +21,8 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { moduleScope } from "../http";
+import { requireString } from "../payload";
 import {
   createSkill,
   deleteSkill,
@@ -34,11 +36,10 @@ import { createMarketplace } from "./marketplace";
 import { createSharedSkills } from "./shared-skills";
 import {
   AgentSkillsCommand,
-  agentSkillsScope,
+  AgentSkillsHttpError,
   type NewSkill,
   requireManifest,
   requireNewSkill,
-  requireString,
   type SkillDetail,
   type SkillSummary,
   type SkillsManifest,
@@ -92,10 +93,7 @@ export interface SkillsModule {
 }
 
 export function createSkillsModule(ctx: ModuleContext): SkillsModule {
-  const { baseUrl, ports } = ctx.config;
-  const scope = agentSkillsScope(baseUrl, ports, () =>
-    ctx.authExpiry.notifyExpired(),
-  );
+  const scope = moduleScope(ctx, "skills", AgentSkillsHttpError);
 
   const agent: AgentSkillsFacade = {
     listSkills: (agentId) => listSkills(scope, agentId),

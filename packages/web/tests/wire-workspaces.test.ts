@@ -1,56 +1,39 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { HoustonClient } from "../src/engine-adapter/client";
+import {
+  type Call,
+  createWireCapture,
+  installLocalStorage,
+  json,
+  ORG,
+} from "./support/wire-capture";
 
 /**
- * Migration wave B1 — the workspaces family moves from the adapter's `cp/*`
- * copies to `sdk.workspaces`, and the wire may not move with it.
+ * The workspaces family rides `sdk.workspaces`, and the wire is pinned here.
  *
- * The control-plane helpers these calls replaced are gone, so the request each
- * one issued is pinned HERE instead of diffed against a surviving copy: the
- * whole URL, the verb, the body bytes, and the three headers the gateway acts
- * on (`Content-Type` from the transport, `Authorization` + `x-houston-org`
- * from the shared auth fetch). Both transports stamp a JSON content type on
- * every request, so unlike the preferences read (wave 0) there is no header
- * difference left to account for.
+ * There is no second copy of these calls to diff against, so each request is
+ * recorded whole: the URL, the verb, the body bytes, and the three headers the
+ * gateway acts on (`Content-Type` from the transport, `Authorization` +
+ * `x-houston-org` from the shared auth fetch).
  *
  * Percent-encoding is pinned wherever an id or a document path is spliced into
  * the address — an agent named `a/b` must not reach a different agent's file.
  */
 
 const BASE = "http://host";
-const ORG = "abcdef0123456789"; // [a-f0-9]{16}
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubRouted } = createWireCapture();
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
-  calls = [];
+  installLocalStorage();
+  reset();
   vi.spyOn(console, "warn").mockImplementation(() => {});
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.restoreAllMocks();
 });
-
-const json = (status: number, body: unknown = {}): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 
 /**
  * Record every request and answer it from `route`. A path the test did not
@@ -58,18 +41,11 @@ const json = (status: number, body: unknown = {}): Response =>
  * unexpected call cannot pass as a silent success.
  */
 function stubFetch(route: (path: string) => Response | undefined) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    const url = String(input);
-    calls.push({
-      url,
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    const res = route(new URL(url).pathname);
-    if (!res) throw new TypeError(`not stubbed: ${url}`);
+  stubRouted((call) => {
+    const res = route(new URL(call.url).pathname);
+    if (!res) throw new TypeError(`not stubbed: ${call.url}`);
     return res;
-  }) as unknown as typeof fetch;
+  });
 }
 
 const client = () => {
@@ -94,14 +70,16 @@ function only(): Call {
 
 describe("the delegated workspace list", () => {
   test("issues one GET /v1/workspaces", async () => {
+    // The provider probe that labels the synthetic personal row answers a 404:
+    // a definitive status, so it fails harmlessly WITHOUT climbing the
+    // transient-retry ladder the way an unstubbed route's throw does.
     stubFetch((path) =>
-      path === "/v1/workspaces" ? json(200, [{ id: "ws" }]) : undefined,
+      path === "/v1/workspaces" ? json(200, [{ id: "ws" }]) : json(404, {}),
     );
 
     await client().listWorkspaces();
 
-    // The provider probe that labels the synthetic personal row is not stubbed
-    // and fails harmlessly, so the list read is the only request on the wire.
+    // The list read is the only request on the wire for the workspace list.
     const list = calls.filter((c) => c.url === `${BASE}/v1/workspaces`);
     expect(list).toHaveLength(1);
     expect(list[0].method).toBe("GET");

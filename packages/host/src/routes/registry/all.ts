@@ -71,4 +71,4 @@ import "../../turn/attachments-routes";
 // per-agent family above is only reachable because it is declared before this.
 import "../agents";
 
-export { dispatchGroup, listRoutes } from "./index";
+export { dispatchGroup, listRoutes } from "./dispatch";

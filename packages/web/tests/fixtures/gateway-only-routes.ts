@@ -5,17 +5,15 @@
  * Multiplayer is not a host concept. Spaces, members, roles, teams, per-agent
  * access policy, API keys, billing and the routes that move a pod between
  * namespaces exist because `cloud` runs many tenants; `packages/host` serves
- * one workspace and has nothing to answer with. An SDK module for those
- * families is therefore correct AND permanently host-less — so this is the
- * inventory of what waves A1-A4 + billing must give SDK modules (PRODUCT-1820),
- * not a list of debt against the host.
+ * one workspace and has nothing to answer with. Each family here has its SDK
+ * module, and that module is permanently host-less — which is what this
+ * inventory records, not debt against the host.
  *
  * NOT an input to the SDK-parity gate: that gate reads its own written
  * exceptions from `scripts/sdk-parity-exceptions.json` and never this file.
- * While a family has no SDK module, its routes surface there under R1 ("a route
- * classified `sdk` that no `@houston/sdk` method issues"), and they leave that
- * report when the wave lands. R2 ("an SDK method no server serves") cannot fire
- * on any of them: the gateway serves every one.
+ * Neither of its rules fires on these routes — R1 ("a route classified `sdk`
+ * that no `@houston/sdk` method issues") because every one is issued, and R2
+ * ("an SDK method no server serves") because the gateway serves every one.
  *
  * Keys are `"METHOD path"` spelled exactly as the gateway registers the
  * pattern (`cloud/internal/edge/routes.generated.json`) — a route survives the
@@ -24,7 +22,7 @@
  * cannot linger as an entry nobody owns.
  */
 export const GATEWAY_ONLY_ROUTES: Readonly<Record<string, string>> = {
-  // ---- org administration (wave A1) ----
+  // ---- org administration ----
   "GET /v1/org": "the active space's own record; only the gateway knows orgs",
   "GET /v1/org/profiles":
     "teammate display names and photos, from the gateway's user directory",
@@ -39,7 +37,7 @@ export const GATEWAY_ONLY_ROUTES: Readonly<Record<string, string>> = {
   "GET /v1/org/usage": "per-member turn usage the gateway meters",
   "GET /v1/org/compute-usage": "engine-pod compute the gateway meters",
 
-  // ---- spaces (wave A2) ----
+  // ---- spaces ----
   "GET /v1/orgs": "the spaces this user belongs to, plus pending invitations",
   "POST /v1/orgs": "creates a team space, which provisions a namespace",
   "DELETE /v1/orgs/{slug}":
@@ -51,7 +49,7 @@ export const GATEWAY_ONLY_ROUTES: Readonly<Record<string, string>> = {
   "GET /v1/agents/{slug}/move/{moveId}":
     "polls that migration until the agent answers in its new space",
 
-  // ---- teams + per-agent policy (wave A3) ----
+  // ---- teams + per-agent policy ----
   "GET /v1/org/teams": "the space's team directory",
   "POST /v1/org/teams": "creates a team inside the space",
   "PATCH /v1/org/teams/{teamId}": "renames or restyles a team",
@@ -70,21 +68,21 @@ export const GATEWAY_ONLY_ROUTES: Readonly<Record<string, string>> = {
   "GET /v1/agents/{slug}/trigger-status":
     "whether the agent's integration triggers are live, which only the gateway subscribes",
 
-  // ---- account (wave A4) ----
+  // ---- account ----
   "GET /v1/me/profile": "the signed-in person's directory entry",
   "PUT /v1/me/profile": "edits that entry",
   "GET /v1/keys": "the account's API keys, minted and hashed by the gateway",
   "POST /v1/keys": "mints an API key",
   "DELETE /v1/keys/{id}": "revokes an API key",
 
-  // ---- billing (the billing wave) ----
+  // ---- billing ----
   "GET /v1/org/billing": "the space's subscription, read from Stripe",
   "POST /v1/org/billing/checkout": "opens a Stripe checkout session",
   "POST /v1/org/billing/portal": "opens the Stripe customer portal",
 
   // ---- gateway control routes inside otherwise-host families ----
   "POST /v1/agents/{agentSlug}/routines/{routineId}/webhook-key":
-    "mints the incoming-webhook secret the gateway itself authenticates (wave C1)",
+    "mints the incoming-webhook secret the gateway itself authenticates",
   "GET /v1/integrations/composio/trigger-types":
-    "the trigger catalogue read with the gateway's own Composio project key (wave C3)",
+    "the trigger catalogue read with the gateway's own Composio project key",
 };

@@ -2,9 +2,9 @@ import { expect, test } from "vitest";
 import { generalises, matchPath, patternParams } from "./match";
 
 /**
- * The matcher reproduces the hand-written regexes exactly, including the parts
- * that look like bugs and are behaviour: no trailing-slash normalisation, no
- * empty captures, and a fall-through (not a 400) when a segment will not decode.
+ * The matcher's rules include the parts that look like bugs and are behaviour:
+ * no trailing-slash normalisation, no empty captures, and a fall-through (not a
+ * 400) when a segment will not decode.
  */
 
 test("a literal path matches only itself", () => {
@@ -31,7 +31,7 @@ test(":name captures exactly one segment and decodes it", () => {
 
 test("a segment that will not decode makes the route NOT match", () => {
   // routes/custom-integrations.ts returns null on URIError rather than 400, so
-  // the request must keep travelling down the chain to the same 404 it gets today.
+  // the request keeps travelling down the chain to the 404 at the end of it.
   expect(matchPath("/agents/:agentId", "/agents/%E0%A4%A")).toBeNull();
 });
 

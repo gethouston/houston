@@ -16,16 +16,16 @@
  */
 
 import type { ModuleContext } from "../../module-context";
-import { type HttpScope, httpRequest } from "../http";
+import { type HttpScope, httpRequest, moduleScope } from "../http";
+import { requireString } from "../payload";
 import {
   type CommunitySkill,
   type CommunitySkillPreview,
   MarketplaceCommand,
-  marketplaceScope,
+  MarketplaceHttpError,
   type RepoSkill,
   requireCommunityInstall,
   requireRepoInstall,
-  requireString,
   type SkillsMarketplace,
 } from "./types-marketplace";
 
@@ -143,10 +143,7 @@ export async function installSkillsFromRepo(
 }
 
 export function createMarketplace(ctx: ModuleContext): SkillsMarketplace {
-  const { baseUrl, ports } = ctx.config;
-  const scope = marketplaceScope(baseUrl, ports, () =>
-    ctx.authExpiry.notifyExpired(),
-  );
+  const scope = moduleScope(ctx, "marketplace", MarketplaceHttpError);
 
   ctx.registerCommand(MarketplaceCommand.SearchCommunity, (p) =>
     searchCommunitySkills(

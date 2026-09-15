@@ -16,6 +16,7 @@ import type {
   RoutineRun,
   RoutineUpdate,
 } from "@houston/protocol";
+import { field } from "../payload";
 
 export type { NewRoutine, Routine, RoutineRun, RoutineUpdate };
 
@@ -48,20 +49,6 @@ export type RoutinesCommandType =
   (typeof RoutinesCommand)[keyof typeof RoutinesCommand];
 
 /** The raw value of `key` off an untrusted command payload. */
-function field(payload: unknown, key: string): unknown {
-  return typeof payload === "object" && payload !== null
-    ? (payload as Record<string, unknown>)[key]
-    : undefined;
-}
-
-/** A required non-empty string off an untrusted command payload. */
-export function requireString(payload: unknown, key: string): string {
-  const value = field(payload, key);
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
-}
 
 /**
  * A new routine off an untrusted payload, shape-checked down to the two fields

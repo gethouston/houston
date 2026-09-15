@@ -22,7 +22,8 @@
  */
 
 import type { ModuleContext } from "../../module-context";
-import type { HttpScope } from "../http";
+import { moduleScope } from "../http";
+import { requireString } from "../payload";
 import {
   createRoutine,
   deleteRoutine,
@@ -44,7 +45,6 @@ import {
   type RoutineUpdate,
   requireNewRoutine,
   requireRoutineUpdate,
-  requireString,
   type WebhookKeyReveal,
 } from "./types";
 
@@ -90,19 +90,7 @@ export interface RoutinesModule {
 }
 
 export function createRoutinesModule(ctx: ModuleContext): RoutinesModule {
-  const { authExpiry } = ctx;
-  const { baseUrl, ports } = ctx.config;
-
-  const scope: HttpScope = {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
-    ports,
-    onUnauthorized: () => authExpiry.notifyExpired(),
-    fail: (message, status) =>
-      new RoutinesHttpError(
-        message || `routines request failed: ${status}`,
-        status,
-      ),
-  };
+  const scope = moduleScope(ctx, "routines", RoutinesHttpError);
 
   ctx.registerCommand(RoutinesCommand.List, (p) =>
     listRoutines(scope, requireString(p, "agentId")),

@@ -15,68 +15,39 @@ import {
   WAKING_STUCK_THRESHOLD_MS,
   wakingStuckTracker,
 } from "../src/engine-adapter/waking-stuck-tracker";
+import {
+  createWireCapture,
+  installLocalStorage,
+  json,
+  ORG,
+} from "./support/wire-capture";
 
 /**
- * Migration wave 0 — the SDK transport becomes a strict superset of `cpFetch`,
- * so a READ may be delegated at all.
+ * The account-preference READ, and the transport property that lets a READ be
+ * delegated at all: the SDK's fetch port wraps GETs in the same reason-aware
+ * read retry `cpFetch` does (`sdk-client.ts`).
  *
- * `getPreference` is the proof: it was the one account-key call deliberately
- * held back, because `cpFetch` wraps GETs in the reason-aware read retry and
- * the SDK's fetch port did not. The port carries it (`sdk-client.ts`), and
- * these tests pin both halves of that claim — the request the delegated
- * read issues, and the attempts a transient 503 earns it — against the
- * control-plane helper it replaced, in the same file, on the same stub.
+ * `getPreference` pins both halves — the request the delegated read issues, and
+ * the attempts a transient 503 earns it — against the control-plane helper, in
+ * the same file, on the same stub.
  *
  * `client/sdk-error.ts` is the other half: the SDK's transports throw their own
  * error classes carrying a TEXT body, and the app catches `HoustonEngineError`.
  */
 
 const BASE = "http://host";
-const ORG = "abcdef0123456789"; // [a-f0-9]{16}
 
-interface Call {
-  url: string;
-  method: string;
-  body: string | null;
-  headers: Headers;
-}
-
-let calls: Call[];
-const originalFetch = globalThis.fetch;
+const { calls, reset, restore, stubFetch } = createWireCapture();
 
 beforeEach(() => {
-  const store = new Map<string, string>();
-  (globalThis as { localStorage?: unknown }).localStorage = {
-    getItem: (k: string) => store.get(k) ?? null,
-    setItem: (k: string, v: string) => void store.set(k, v),
-    removeItem: (k: string) => void store.delete(k),
-  };
-  calls = [];
+  installLocalStorage();
+  reset();
 });
 
 afterEach(() => {
-  globalThis.fetch = originalFetch;
+  restore();
   vi.clearAllMocks();
 });
-
-/** Answer every request with `make()`, recording what was asked. */
-function stubFetch(make: () => Response) {
-  globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) => {
-    calls.push({
-      url: String(input),
-      method: (init?.method ?? "GET").toUpperCase(),
-      body: typeof init?.body === "string" ? init.body : null,
-      headers: new Headers(init?.headers),
-    });
-    return make();
-  }) as unknown as typeof fetch;
-}
-
-const json = (status: number, body: unknown = {}): Response =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { "Content-Type": "application/json" },
-  });
 
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });
@@ -91,7 +62,7 @@ describe("the delegated account-preference read", () => {
     expect(calls).toHaveLength(1);
     const [delegated] = calls;
 
-    calls = [];
+    reset();
     await controlPlane.getPreference(
       { baseUrl: BASE, token: "t", activeOrgSlug: ORG },
       "timezone",
@@ -122,19 +93,35 @@ describe("the delegated account-preference read", () => {
 
   test("a transient 503 earns the same attempts cpFetch would", async () => {
     // A 5xx body the gateway vocabulary does not recognise reads as the
-    // `handoff` reason: two brief blind retries, three attempts in all.
-    stubFetch(() => json(503, { error: "gateway rolling" }));
+    // `handoff` reason: two brief blind retries, three attempts in all. The
+    // ladder runs on fake timers — what is pinned is the COUNT of attempts,
+    // and sleeping the real delays buys nothing but four seconds.
+    vi.useFakeTimers();
+    try {
+      stubFetch(() => json(503, { error: "gateway rolling" }));
 
-    await expect(client().getPreference("timezone")).rejects.toThrow();
-    const delegated = calls.length;
+      // The rejection handler is attached BEFORE the timers run: a ladder that
+      // settles inside `runAllTimersAsync` with nobody listening surfaces as an
+      // unhandled rejection and fails the whole file.
+      const delegated = expect(
+        client().getPreference("timezone"),
+      ).rejects.toThrow();
+      await vi.runAllTimersAsync();
+      await delegated;
+      const attempts = calls.length;
 
-    calls = [];
-    await expect(
-      controlPlane.getPreference({ baseUrl: BASE, token: "t" }, "timezone"),
-    ).rejects.toThrow();
+      reset();
+      const viaControlPlane = expect(
+        controlPlane.getPreference({ baseUrl: BASE, token: "t" }, "timezone"),
+      ).rejects.toThrow();
+      await vi.runAllTimersAsync();
+      await viaControlPlane;
 
-    expect(delegated).toBe(calls.length);
-    expect(delegated).toBe(HANDOFF_RETRY_DELAYS_MS.length + 1);
+      expect(attempts).toBe(calls.length);
+      expect(attempts).toBe(HANDOFF_RETRY_DELAYS_MS.length + 1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("the account-key WRITE is still exactly one request", async () => {

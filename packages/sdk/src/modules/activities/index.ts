@@ -50,7 +50,7 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
   const { store, authExpiry } = ctx;
   const { baseUrl, ports } = ctx.config;
   const emitTokenExpired = () => authExpiry.notifyExpired();
-  const http = createActivitiesHttp(baseUrl, ports, emitTokenExpired);
+  const http = createActivitiesHttp(ctx);
 
   /** Agents we've loaded at least once — the set the reactivity stream refetches. */
   const known = new Set<string>();

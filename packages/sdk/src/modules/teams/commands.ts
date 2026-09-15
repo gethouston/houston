@@ -9,6 +9,7 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { field, requireString } from "../payload";
 import type { TeamsModule } from "./index";
 import type {
   AgentAssignment,
@@ -20,22 +21,6 @@ import {
   type AgentTeamPatch,
   TeamsCommand,
 } from "./types";
-
-/** The value at `key` of an untrusted command payload, or `undefined`. */
-function field(payload: unknown, key: string): unknown {
-  return typeof payload === "object" && payload !== null
-    ? (payload as Record<string, unknown>)[key]
-    : undefined;
-}
-
-/** A required non-empty string off an untrusted command payload. */
-function requireString(payload: unknown, key: string): string {
-  const value = field(payload, key);
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
-}
 
 /** A required boolean off an untrusted command payload. */
 function requireBoolean(payload: unknown, key: string): boolean {

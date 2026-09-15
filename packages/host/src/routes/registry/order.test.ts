@@ -19,19 +19,36 @@ import type { HttpMethod } from "./types";
  * declared after them. This turns that implicit arrangement into a stated one.
  *
  * A route is unreachable when an EARLIER route's pattern covers every path it
- * covers for a method they share. Declaring the pair below is the way to say
- * "the earlier one is meant to answer for both" — anything undeclared is dead
- * code that a reader would take for a live route.
+ * covers for a method they share. Listing that pair in INTENTIONAL_SHADOWS is
+ * the way to say "the earlier one is meant to answer for both" — anything
+ * undeclared is dead code that a reader would take for a live route.
  */
-const INTENTIONAL_SHADOWS: {
+interface Shadow {
   earlier: string;
   later: string;
   reason: string;
-}[] = [];
+}
 
-const shadowed = (earlier: string, later: string): boolean =>
-  INTENTIONAL_SHADOWS.some(
-    (entry) => entry.earlier === earlier && entry.later === later,
+const INTENTIONAL_SHADOWS: Shadow[] = [];
+
+/**
+ * The reason is what makes a declaration reviewable, so it is load-bearing:
+ * a pair listed with nothing written against it excuses nothing, and the
+ * unreachable route is reported as if it had never been declared.
+ */
+const statesAReason = (entry: Shadow): boolean =>
+  entry.reason.trim().length > 20;
+
+const shadowed = (
+  earlier: string,
+  later: string,
+  declared: Shadow[] = INTENTIONAL_SHADOWS,
+): boolean =>
+  declared.some(
+    (entry) =>
+      entry.earlier === earlier &&
+      entry.later === later &&
+      statesAReason(entry),
   );
 
 /**
@@ -66,7 +83,10 @@ const shareAMethod = (
 ): boolean => a === null || b === null || a.some((m) => b.includes(m));
 
 /** Every later pattern an earlier one makes unreachable, as readable pairs. */
-function shadows(patterns: PatternEntry[]): string[] {
+function shadows(
+  patterns: PatternEntry[],
+  declared: Shadow[] = INTENTIONAL_SHADOWS,
+): string[] {
   const unreachable: string[] = [];
   for (let i = 0; i < patterns.length; i++)
     for (let j = i + 1; j < patterns.length; j++) {
@@ -75,7 +95,7 @@ function shadows(patterns: PatternEntry[]): string[] {
       if (!earlier || !later) continue;
       if (!shareAMethod(earlier.methods, later.methods)) continue;
       if (!generalises(earlier.path, later.path)) continue;
-      if (shadowed(earlier.path, later.path)) continue;
+      if (shadowed(earlier.path, later.path, declared)) continue;
       unreachable.push(
         `${earlier.path} (${earlier.source}) swallows ${later.path} (${later.source})`,
       );
@@ -102,6 +122,41 @@ test("a catch-all declared before a specific route shadows it", () => {
   // The declared order is the whole point: the same pair the other way round
   // is the arrangement the chain actually has, and it is reachable.
   expect(shadows([specific, proxy])).toEqual([]);
+});
+
+/**
+ * The escape hatch is only ever reached by whoever first needs it, so a typo
+ * in it would land as a silently-ignored declaration — a route left dead while
+ * the gate reports clean. It is exercised here on a synthetic list so the
+ * production INTENTIONAL_SHADOWS stays empty.
+ */
+test("a shadow is excused only when it is declared with a stated reason", () => {
+  const proxy: PatternEntry = {
+    path: "/agents/:agentId/*rest",
+    methods: null,
+    source: "packages/host/src/routes/agents.ts#agent-proxy",
+  };
+  const specific: PatternEntry = {
+    path: "/agents/:agentId/activity",
+    methods: ["GET"],
+    source: "packages/host/src/routes/agents-activity.ts#agent-activity",
+  };
+  const withReason: Shadow = {
+    earlier: proxy.path,
+    later: specific.path,
+    reason: "the proxy answers activity for both, by design",
+  };
+  expect(shadows([proxy, specific], [withReason])).toEqual([]);
+  // A declaration naming any other pair leaves this one dead code.
+  expect(
+    shadows(
+      [proxy, specific],
+      [{ ...withReason, later: "/agents/:agentId/x" }],
+    ),
+  ).toHaveLength(1);
+  expect(
+    shadows([proxy, specific], [{ ...withReason, reason: "n/a" }]),
+  ).toHaveLength(1);
 });
 
 /** Captures only what the dispatcher's own refusals write. */
@@ -148,9 +203,19 @@ test("an agent-phase family refuses a stranger before it answers its own 405", a
   expect(owner.status()).toBe(405);
 });
 
-test("GROUP_ORDER covers every group exactly once", () => {
-  expect([...GROUP_ORDER].sort()).toEqual(Object.keys(GROUP_PHASES).sort());
-  expect(new Set(GROUP_ORDER).size).toBe(GROUP_ORDER.length);
+/**
+ * A line in GROUP_PHASES books a chain slot; only a route module filing its
+ * registration fills one. A slot no module registers into is dead: server.ts
+ * calls it on every request and it can never answer, while a reader of the
+ * table takes it for a live surface. `./all` is imported at the top of this
+ * file, so every route module has registered by the time this runs.
+ */
+test("every group in GROUP_PHASES has a route registered into it", () => {
+  const registered = registeredRoutes();
+  const dead = GROUP_ORDER.filter(
+    (group) => (registered.get(group)?.length ?? 0) === 0,
+  ).map((group) => `${group} (${GROUP_PHASES[group]} phase)`);
+  expect(dead, "groups with a chain slot but no registered route").toEqual([]);
 });
 
 /**
@@ -171,9 +236,20 @@ test("GROUP_ORDER's phase segments are contiguous and in phase order", () => {
   for (const group of AGENT_GROUPS) expect(GROUP_PHASES[group]).toBe("agent");
 });
 
-test("every declared shadow states a reason", () => {
+/**
+ * Catches a shadow waved through on a placeholder — "n/a", "see above", a
+ * pasted path. The rule has to hold for the rule's own sake: the production
+ * list can be empty and still leave the next entry unreviewable.
+ */
+test("a shadow's reason has to be written, not gestured at", () => {
   for (const entry of INTENTIONAL_SHADOWS)
-    expect(entry.reason.length).toBeGreaterThan(20);
+    expect(statesAReason(entry)).toBe(true);
+  const pair = { earlier: "/a/*rest", later: "/a/b" };
+  expect(statesAReason({ ...pair, reason: "see above" })).toBe(false);
+  expect(statesAReason({ ...pair, reason: " ".repeat(40) })).toBe(false);
+  expect(
+    statesAReason({ ...pair, reason: "the proxy answers /a/b for both" }),
+  ).toBe(true);
 });
 
 test("a non-sdk classification always carries a written reason", () => {

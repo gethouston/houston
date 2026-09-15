@@ -72,11 +72,10 @@ export class HoustonClientBase {
   }
 
   /**
-   * The web-side {@link HoustonSdk} (migration wave 1). Exposes the SDK's write
-   * modules — `agents`, `activities`, `providers`, `integrations`,
-   * `preferences` — so later waves delegate control-plane WRITES here (matching
-   * iOS) instead of re-implementing them in this adapter. It is INERT: no
-   * `/v1/events` stream, no request until a write is dispatched.
+   * The web-side {@link HoustonSdk} — the one implementation of Houston's
+   * client behavior this adapter delegates every domain call to, the same one
+   * iOS binds. Reactivity is off: no `/v1/events` stream of its own, and no
+   * request until a mixin makes one.
    */
   get engineSdk(): HoustonSdk {
     return this.ctx.sdk;

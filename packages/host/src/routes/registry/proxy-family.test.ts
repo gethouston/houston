@@ -3,14 +3,14 @@ import { Readable } from "node:stream";
 import { expect, test } from "vitest";
 import { MemoryWorkspaceStore } from "../../store/memory";
 import type { AgentRouteDeps } from "../agent-authz";
-import { listRoutes } from "./all";
-import { defineProxyFamily, dispatchGroup } from "./index";
+import { dispatchGroup, listRoutes } from "./all";
+import { defineProxyFamily } from "./index";
 
 /**
  * `defineProxyFamily` is how the catch-all forward to an agent's own runtime
  * stays enumerable: matching is still `*rest`, so an unlisted rest reaches the
- * channel exactly as it does today, while the declared members are what the SDK
- * parity gate reads. This file registers one into the live registry — vitest
+ * channel all the same, while the declared members are what the SDK parity
+ * gate reads. This file registers one into the live registry — vitest
  * isolates a file's module graph, so the extra routes exist only here.
  */
 const SOURCE = "packages/host/src/routes/registry/proxy-family.test.ts";
@@ -103,8 +103,8 @@ test("listRoutes() publishes one entry per declared member", () => {
 
 test("any method on any rest reaches the family, with the rest raw", async () => {
   const { deps, agentId } = await host();
-  // Undeclared rest, undeclared method: today's chain forwards it, so the
-  // family must claim it too — the member list is for the gate, not the match.
+  // Undeclared rest, undeclared method: the chain forwards it, so the family
+  // claims it too — the member list is for the gate, not for the match.
   const { handled } = await dispatch(
     deps,
     "PATCH",

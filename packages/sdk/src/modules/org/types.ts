@@ -10,6 +10,7 @@
  */
 
 import type { OrgRole } from "@houston/protocol";
+import { field, requireString } from "../payload";
 
 export type { OrgRole };
 
@@ -126,32 +127,6 @@ export interface AddOrgMemberResult {
 }
 
 /** The raw value of `key` off an untrusted command payload. */
-function field(payload: unknown, key: string): unknown {
-  return typeof payload === "object" && payload !== null
-    ? (payload as Record<string, unknown>)[key]
-    : undefined;
-}
-
-/** A required non-empty string off an untrusted command payload. */
-export function requireString(payload: unknown, key: string): string {
-  const value = field(payload, key);
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
-}
-
-/** A required array of non-empty strings off an untrusted command payload. */
-export function requireStrings(payload: unknown, key: string): string[] {
-  const value = field(payload, key);
-  if (
-    !Array.isArray(value) ||
-    value.some((item) => typeof item !== "string" || item.length === 0)
-  ) {
-    throw new Error(`'${key}' must be an array of ids`);
-  }
-  return value as string[];
-}
 
 /** A required finite number off an untrusted command payload. */
 export function requireNumber(payload: unknown, key: string): number {

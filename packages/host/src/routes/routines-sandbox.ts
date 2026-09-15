@@ -41,7 +41,7 @@ defineRoute({
     handleSandboxRoutines(deps, method, path, url, req, res),
 });
 
-export async function handleSandboxRoutines(
+async function handleSandboxRoutines(
   deps: {
     vault: CredentialVault;
     store: WorkspaceStore;
