@@ -32,11 +32,13 @@ import { useIntegrationConnect } from "./use-integration-connect";
 export function useChatConnect({
   toolkit,
   agentId,
+  accountScope,
   onConnected,
   autoContinueWhenConnected = false,
 }: {
   toolkit: string;
   agentId: string;
+  accountScope?: boolean;
   onConnected?: (toolkit: string, appName: string) => void;
   autoContinueWhenConnected?: boolean;
 }): {
@@ -73,6 +75,7 @@ export function useChatConnect({
   const composio = useIntegrationConnect({
     toolkit,
     agentId,
+    accountScope,
     ...(curated
       ? { onConnected: speakOnce, autoContinueWhenConnected: false }
       : { onConnected, autoContinueWhenConnected }),

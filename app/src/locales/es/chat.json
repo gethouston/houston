@@ -63,6 +63,9 @@
     "progress": "{{current}} de {{total}}"
   },
   "interaction": {
+    "providerReason": "Conecta {{name}} para que pueda continuar. Tus credenciales no se comparten en la conversación.",
+    "providerUnavailable": "Este proveedor de IA no está disponible aquí. Omite este paso y pídeme que use otro proveedor.",
+    "cancelConnection": "Cancelar conexión",
     "connectedLine": "Conectaste {{name}}.",
     "signedInLine": "Sesión iniciada en Houston.",
     "signedInFollowup": "Ya inicié sesión. Continúa, por favor.",

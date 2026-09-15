@@ -27,6 +27,10 @@
       "types": "./src/provider-default-models.ts",
       "import": "./src/provider-default-models.ts"
     },
+    "./provider-visibility": {
+      "types": "./src/provider-visibility.ts",
+      "import": "./src/provider-visibility.ts"
+    },
     "./model-aliases": {
       "types": "./src/model-aliases.ts",
       "import": "./src/model-aliases.ts"
@@ -42,6 +46,10 @@
     "./assistant-capability-index": {
       "types": "./src/assistant-capability-index.generated.ts",
       "import": "./src/assistant-capability-index.generated.ts"
+    },
+    "./assistant-catalog-callable": {
+      "types": "./src/assistant-catalog-callable.ts",
+      "import": "./src/assistant-catalog-callable.ts"
     },
     "./assistant-catalog-types": {
       "types": "./src/assistant-catalog-types.ts",

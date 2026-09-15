@@ -19,6 +19,9 @@ export interface AssistantOperationCtx {
   catalog: AssistantCatalog;
   approvals: ApprovalStore;
   agentId: string;
+  gatewayFronted?: boolean;
+  /** Trusted pod identity, never an operation parameter. */
+  gatewayAgentId?: string;
   /** The calling turn's conversation. Absent = nowhere for an answer to arrive. */
   conversationId: string | undefined;
   /** Every agent this caller may address, for resolving the identifiers an

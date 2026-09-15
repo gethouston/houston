@@ -154,6 +154,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
       "custom_integration_add",
       "custom_integration_remove",
       "request_credential",
+      "request_provider_connection",
     ]),
   );
   expect(exposed).not.toContain("ask_user");
@@ -176,6 +177,7 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
       "mcp__houston__custom_integration_add",
       "mcp__houston__custom_integration_remove",
       "mcp__houston__request_credential",
+      "mcp__houston__request_provider_connection",
     ]),
   );
   // Built-ins keep the full execute policy — auto acts with everything else.

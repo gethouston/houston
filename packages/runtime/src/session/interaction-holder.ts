@@ -9,6 +9,10 @@ export type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
 export type QuestionOptions = NonNullable<QuestionStep["options"]>;
 type SigninStep = Extract<InteractionStep, { kind: "signin" }>;
 type ConnectStep = Extract<InteractionStep, { kind: "connect" }>;
+type ProviderConnectStep = Extract<
+  InteractionStep,
+  { kind: "provider_connect" }
+>;
 type CredentialStep = Extract<InteractionStep, { kind: "credential" }>;
 type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
 type SuggestReusableStep = Extract<
@@ -32,6 +36,8 @@ export interface InteractionHolder {
   readonly signin: SigninStep | undefined;
   /** Connect steps appended by `request_connection`, deduped by toolkit. */
   readonly connects: ConnectStep[];
+  /** Provider connection cards, deduped by provider id. */
+  readonly providerConnects: ProviderConnectStep[];
   /** Credential steps appended by `request_credential` (custom integrations),
    *  deduped by toolkit — the user enters the secret in a secure card. */
   readonly credentials: CredentialStep[];
@@ -64,6 +70,7 @@ export class MutableInteractionHolder implements InteractionHolder {
   readonly questions: QuestionStep[] = [];
   signin: SigninStep | undefined;
   readonly connects: ConnectStep[] = [];
+  readonly providerConnects: ProviderConnectStep[] = [];
   readonly credentials: CredentialStep[] = [];
   planReady: PlanReadyStep | undefined;
   suggestReusable: SuggestReusableStep | undefined;
@@ -83,6 +90,7 @@ export class MutableInteractionHolder implements InteractionHolder {
       ...this.connects,
       // Credentials sit with connects (entering a key is a form of connecting).
       ...this.credentials,
+      ...this.providerConnects,
     ];
     if (steps.length > 0) return { steps };
     // Optional offers may compose on the clean frame. Actions render first,

@@ -1,52 +1,40 @@
 import ts from "typescript";
-import { arrowExpressionBody, calleeName } from "./assistant-ast.ts";
+import { arrowExpressionBody } from "./assistant-ast.ts";
+import {
+  type FunctionNode,
+  returnedObject,
+} from "./assistant-module-locals.ts";
 import type { PathHelper } from "./assistant-path-parts.ts";
+import {
+  asWrapper,
+  type TransportWrapper,
+} from "./assistant-transport-wrapper.ts";
 
 /**
- * The functions that put a request on the wire. Both take `(scope, path,
- * init?)` — the web adapter's control-plane transport and the SDK's own REST
- * seam — so one set of rules reads both surfaces.
+ * An operation candidate: an exported module function, a public method, or one
+ * member of the object an SDK module factory publishes.
  */
-export const TRANSPORTS: ReadonlySet<string> = new Set([
-  "cpFetch",
-  "httpRequest",
-]);
-
-/** An operation candidate: an exported module function or a public method. */
 export interface Declaration {
   name: string;
-  node: ts.FunctionDeclaration | ts.MethodDeclaration;
-  body: ts.Block;
-}
-
-/**
- * A private helper that wraps a transport: it builds the path from its
- * own parameters and forwards its caller's request options untouched, so a
- * method calling it makes exactly one request through it.
- */
-export interface TransportWrapper extends PathHelper {
-  /** The wrapper parameter carrying the caller's request options, if any. */
-  initParameter: number | null;
+  node: FunctionNode;
+  /** The function body: a block, or a concise arrow's single expression. */
+  body: ts.Node;
+  /** Nodes whose leading JSDoc may document it, nearest first. */
+  docs: ts.Node[];
+  /** What the factory publishing it was called with (facade members only). */
+  substitutions: Map<string, ts.Expression>;
 }
 
 export interface FileSurface {
   declarations: Declaration[];
   helpers: Map<string, PathHelper>;
   wrappers: Map<string, TransportWrapper>;
-}
-
-/** Every direct transport call in a body, at any nesting. */
-export function transportCalls(body: ts.Node): ts.CallExpression[] {
-  const calls: ts.CallExpression[] = [];
-  const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node)) {
-      const callee = calleeName(node);
-      if (callee !== null && TRANSPORTS.has(callee)) calls.push(node);
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(body);
-  return calls;
+  /**
+   * Exported functions that answer with an object literal — the shape a module
+   * factory has. Whether one IS wiring is settled by the facade walk, which
+   * needs every candidate in hand before it can tell.
+   */
+  factories: { name: string; node: FunctionNode }[];
 }
 
 function hasModifier(
@@ -62,41 +50,6 @@ function isPublicMethod(node: ts.MethodDeclaration): boolean {
     ts.SyntaxKind.ProtectedKeyword,
     ts.SyntaxKind.StaticKeyword,
   ].some((kind) => hasModifier(node, kind));
-}
-
-function parameterNames(
-  parameters: ts.NodeArray<ts.ParameterDeclaration>,
-): string[] | null {
-  const names: string[] = [];
-  for (const parameter of parameters) {
-    if (!ts.isIdentifier(parameter.name)) return null;
-    names.push(parameter.name.text);
-  }
-  return names;
-}
-
-/**
- * The wrapper a declaration is, or `null`. It qualifies only when its single
- * transport call receives request options it did not build itself — a bare
- * parameter it passes straight through — so nothing about the caller's request
- * is lost.
- */
-function asWrapper(
-  node: ts.FunctionDeclaration | ts.MethodDeclaration,
-  body: ts.Block,
-): TransportWrapper | null {
-  const calls = transportCalls(body);
-  if (calls.length !== 1) return null;
-  const [, path, init] = calls[0].arguments;
-  const parameters = parameterNames(node.parameters);
-  if (!path || !parameters) return null;
-  let initParameter: number | null = null;
-  if (init) {
-    if (!ts.isIdentifier(init)) return null;
-    initParameter = parameters.indexOf(init.text);
-    if (initParameter < 0) return null;
-  }
-  return { parameters, template: path, initParameter };
 }
 
 /**
@@ -135,10 +88,14 @@ export function isPlumbingParameter(
  * path helpers its templates call, and the private transport wrappers its
  * methods reach the wire through.
  */
-export function readFileSurface(source: ts.SourceFile): FileSurface {
+export function readFileSurface(
+  source: ts.SourceFile,
+  isModuleSource: boolean,
+): FileSurface {
   const declarations: Declaration[] = [];
   const helpers = new Map<string, PathHelper>();
   const wrappers = new Map<string, TransportWrapper>();
+  const factories: { name: string; node: FunctionNode }[] = [];
 
   const record = (
     node: ts.FunctionDeclaration | ts.MethodDeclaration,
@@ -147,14 +104,20 @@ export function readFileSurface(source: ts.SourceFile): FileSurface {
   ): void => {
     if (!node.body) return;
     if (published) {
-      declarations.push({ name, node, body: node.body });
+      declarations.push({
+        name,
+        node,
+        body: node.body,
+        docs: [node],
+        substitutions: new Map(),
+      });
       return;
     }
     const wrapper = asWrapper(node, node.body);
     if (wrapper) wrappers.set(name, wrapper);
   };
 
-  const visit = (node: ts.Node): void => {
+  const visit = (node: ts.Node, inClass: boolean): void => {
     if (ts.isVariableStatement(node)) {
       for (const declaration of node.declarationList.declarations) {
         const arrow = declaration.initializer
@@ -165,17 +128,25 @@ export function readFileSurface(source: ts.SourceFile): FileSurface {
       }
     }
     if (ts.isFunctionDeclaration(node) && node.name && !isMixinFactory(node)) {
-      record(
-        node,
-        node.name.text,
-        hasModifier(node, ts.SyntaxKind.ExportKeyword),
-      );
+      const exported = hasModifier(node, ts.SyntaxKind.ExportKeyword);
+      if (isModuleSource && exported && returnedObject(node))
+        factories.push({ name: node.name.text, node });
+      record(node, node.name.text, exported);
     }
-    if (ts.isMethodDeclaration(node) && ts.isIdentifier(node.name)) {
+    // A CLASS method is published under its own name; a method written inside
+    // an object literal is one member of what a factory returns, and is
+    // reached under the facade path that mounts it, never bare.
+    if (ts.isMethodDeclaration(node) && ts.isIdentifier(node.name) && inClass) {
       record(node, node.name.text, isPublicMethod(node));
     }
-    ts.forEachChild(node, visit);
+    const nested =
+      ts.isClassDeclaration(node) || ts.isClassExpression(node)
+        ? true
+        : ts.isObjectLiteralExpression(node)
+          ? false
+          : inClass;
+    ts.forEachChild(node, (child) => visit(child, nested));
   };
-  visit(source);
-  return { declarations, helpers, wrappers };
+  visit(source, false);
+  return { declarations, helpers, wrappers, factories };
 }

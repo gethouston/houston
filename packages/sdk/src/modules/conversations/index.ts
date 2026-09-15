@@ -100,9 +100,24 @@ export function createConversationsModule(ctx: ModuleContext) {
     /** Fetch + publish the agent's conversation list. */
     refresh: (agentId: string): Promise<ConversationListVM> =>
       loadList(agentId),
-    /** Rename a conversation, then refetch the list. */
+    /**
+     * Retitles one of an agent's chats.
+     * @param agentId The agent this acts on, by the id listAgents returns. An
+     *   agent's name is not its id, so read the id from listAgents first.
+     * @param id The chat to retitle.
+     * @param title The new title.
+     * @assistant group:chat
+     * @assistant hidden: it acts on the chat the person has open, and nothing lists an agent's chats, so a dispatched call has no id it could name.
+     */
     rename,
-    /** Delete a conversation, then refetch the list. */
+    /**
+     * Deletes one of an agent's chats, with everything said in it.
+     * @param agentId The agent this acts on, by the id listAgents returns. An
+     *   agent's name is not its id, so read the id from listAgents first.
+     * @param id The chat to delete.
+     * @assistant group:chat
+     * @assistant hidden: it acts on the chat the person has open, and nothing lists an agent's chats, so a dispatched call has no id it could name.
+     */
     delete: remove,
   };
 }

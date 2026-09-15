@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { analytics } from "../../lib/analytics";
 import { reserveBrowserTab } from "../../lib/browser-tab";
 import { logAndReportError } from "../../lib/error-report";
@@ -22,6 +22,11 @@ import {
   wakeFlow,
 } from "./connect-flow-registry";
 import { type ConnectRunDeps, runConnectFlow } from "./connect-flow-run";
+import {
+  connectFlowKey,
+  connectFlowScope,
+  scopedBySlug,
+} from "./connect-flow-scope";
 import { useMintConnectLink } from "./connect-mint-link";
 import { createWaker, INTEGRATION_PROVIDER } from "./model";
 
@@ -34,9 +39,14 @@ export type { ConnectNotice, ConnectStep } from "./connect-flow-run";
  * The connect / reconnect hand-off. It binds this surface to the ONE shared
  * flow state (`stores/connect-flow.ts`) rather than owning a private copy, so:
  *
- *  - a connect started in chat is the SAME flow the Integrations page renders,
- *    and per-toolkit single-flight holds across every surface (a second caller
- *    for the same app JOINS the running flow and observes its outcome);
+ *  - per-toolkit single-flight holds across every surface within one SCOPE — a
+ *    second caller for the same app JOINS the running flow and observes its
+ *    outcome, so a chat card and the Integrations page share one hand-off when
+ *    they ask on behalf of the same caller. The scope is the agent the connect
+ *    is for, or the account when there is none (`connect-flow-scope.ts`): an
+ *    account-scoped link is minted WITHOUT an agent, so the gateway never
+ *    consults that agent's app allowlist, and an agent's card must never be
+ *    answered by one. Each scope also reads only its own live rows;
  *  - flows are PER TOOLKIT and genuinely concurrent — connecting Slack never
  *    disables Notion's row, on this surface or any other;
  *  - leaving a surface no longer cancels anything. The poll belongs to the
@@ -57,31 +67,49 @@ export type { ConnectNotice, ConnectStep } from "./connect-flow-run";
 export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
   const { agentId } = opts;
   const qc = useQueryClient();
-  const states = useConnectFlowStore((s) => s.states);
-  const notices = useConnectFlowStore((s) => s.notices);
-  const origins = useConnectFlowStore((s) => s.origins);
+  const scope = connectFlowScope(agentId);
+  const allStates = useConnectFlowStore((s) => s.states);
+  const allNotices = useConnectFlowStore((s) => s.notices);
+  const allOrigins = useConnectFlowStore((s) => s.origins);
   const setOrigin = useConnectFlowStore((s) => s.setOrigin);
   const setStep = useConnectFlowStore((s) => s.setStep);
   const setNotice = useConnectFlowStore((s) => s.setNotice);
   const { announce } = useConnectAnnounce();
   const mintLink = useMintConnectLink(agentId);
+  // The shared store is keyed by scope+slug; every surface reads plain slugs,
+  // so each hook sees ONLY the flows minted for its own caller.
+  const states = useMemo(
+    () => scopedBySlug(allStates, scope),
+    [allStates, scope],
+  );
+  const notices = useMemo(
+    () => scopedBySlug(allNotices, scope),
+    [allNotices, scope],
+  );
+  const origins = useMemo(
+    () => scopedBySlug(allOrigins, scope),
+    [allOrigins, scope],
+  );
 
   const connect = useCallback(
     async (toolkit: string, origin: string): Promise<ConnectAttempt> => {
-      // Global per-slug single flight: a live flow for THIS toolkit already owns
-      // its registry entry and poll loop, so join it rather than starting a
-      // rival hand-off that would overwrite the waker and leave the first loop
-      // polling invisibly. A DIFFERENT toolkit gets its own entry, concurrently.
-      // A joiner does NOT re-home the flow: the state stays on the row that
-      // actually started it, and `initiated: false` keeps this caller from
-      // repeating side effects the starter already owns.
-      const running = flowPromise(connectFlowRegistry, toolkit);
+      // Per-slug single flight WITHIN this scope: a live flow for THIS toolkit
+      // and THIS caller already owns its registry entry and poll loop, so join
+      // it rather than starting a rival hand-off that would overwrite the waker
+      // and leave the first loop polling invisibly. A DIFFERENT toolkit — or the
+      // same one for a different agent, whose allowlist the running flow never
+      // consulted — gets its own entry, concurrently. A joiner does NOT re-home
+      // the flow: the state stays on the row that actually started it, and
+      // `initiated: false` keeps this caller from repeating side effects the
+      // starter already owns.
+      const key = connectFlowKey(scope, toolkit);
+      const running = flowPromise(connectFlowRegistry, key);
       if (running) return { outcome: await running, initiated: false };
 
       const waker = createWaker();
-      const entry = beginFlow(connectFlowRegistry, toolkit, waker);
+      const entry = beginFlow(connectFlowRegistry, key, waker);
       if (entry === null) return { outcome: null, initiated: false };
-      setOrigin(toolkit, origin);
+      setOrigin(key, origin);
       // Claim the OAuth tab NOW, still inside the click's user activation: the
       // link is minted over an async hop, and Safari, Firefox, and Chrome's
       // strict popup setting refuse a `window.open` issued after it, leaving
@@ -106,8 +134,9 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
         },
         readConnection: (connectionId) =>
           tauriIntegrations.connection(INTEGRATION_PROVIDER, connectionId),
-        setStep,
-        setNotice,
+        setStep: (slug, step) => setStep(connectFlowKey(scope, slug), step),
+        setNotice: (slug, notice) =>
+          setNotice(connectFlowKey(scope, slug), notice),
         invalidate: () =>
           qc.invalidateQueries({
             queryKey: queryKeys.integrationConnections(INTEGRATION_PROVIDER),
@@ -120,7 +149,7 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
           // An empty tab whose link never came (mint failed, cancelled while
           // minting) must not linger; a navigated one is the OAuth page.
           tab?.discard();
-          endFlow(connectFlowRegistry, slug);
+          endFlow(connectFlowRegistry, connectFlowKey(scope, slug));
         },
         wait: (ms) => waker.wait(ms),
         sleep: (ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)),
@@ -131,12 +160,13 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
       entry.promise = run;
       return { outcome: await run, initiated: true };
     },
-    [announce, mintLink, qc, setNotice, setOrigin, setStep],
+    [announce, mintLink, qc, scope, setNotice, setOrigin, setStep],
   );
 
   const reopen = useCallback(
     async (toolkit: string) => {
-      const url = flowRedirectUrl(connectFlowRegistry, toolkit);
+      const key = connectFlowKey(scope, toolkit);
+      const url = flowRedirectUrl(connectFlowRegistry, key);
       if (!url) return;
       const opened = await tauriSystem.openUrl(url);
       // A reopen IS a click, so it passes the popup blocker that refused the
@@ -145,20 +175,26 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
       // a reopen racing its own settle never resurrects a finished slug (the
       // runner releases the slug and clears the step in one synchronous
       // `finally`).
-      if (opened && flowRedirectUrl(connectFlowRegistry, toolkit) !== null) {
-        setStep(toolkit, "waiting");
+      if (opened && flowRedirectUrl(connectFlowRegistry, key) !== null) {
+        setStep(key, "waiting");
       }
     },
-    [setStep],
+    [scope, setStep],
   );
 
-  const checkNow = useCallback((toolkit: string) => {
-    wakeFlow(connectFlowRegistry, toolkit);
-  }, []);
+  const checkNow = useCallback(
+    (toolkit: string) => {
+      wakeFlow(connectFlowRegistry, connectFlowKey(scope, toolkit));
+    },
+    [scope],
+  );
 
-  const cancel = useCallback((toolkit: string) => {
-    cancelFlow(connectFlowRegistry, toolkit);
-  }, []);
+  const cancel = useCallback(
+    (toolkit: string) => {
+      cancelFlow(connectFlowRegistry, connectFlowKey(scope, toolkit));
+    },
+    [scope],
+  );
 
   return { states, notices, origins, connect, reopen, checkNow, cancel };
 }

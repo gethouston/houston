@@ -24,25 +24,10 @@
  *   (Azure OpenAI sat here briefly for the same reason; its connect dialog now
  *   collects the resource endpoint alongside the key — PRODUCT-1477.)
  */
-export const DROP_PI_PROVIDERS: ReadonlySet<string> = new Set([
-  "openai",
-  "ant-ling",
-  "kimi-coding",
-  "moonshotai-cn",
-  "xiaomi-token-plan-ams",
-  "xiaomi-token-plan-cn",
-  "xiaomi-token-plan-sgp",
-  "cloudflare-ai-gateway",
-  "cloudflare-workers-ai",
-]);
-
-/**
- * Regional-deployment id suffixes (China / Singapore / Amsterdam). Providers
- * carrying one are hidden from the catalog whenever their standard (unsuffixed)
- * deployment also ships — one card per provider, no regional duplicates (see
- * `buildCatalog`).
- */
-export const REGIONAL_SUFFIX = /-(cn|sgp|ams)$/;
+export {
+  DROP_PI_PROVIDERS,
+  REGIONAL_SUFFIX,
+} from "@houston/sdk/provider-catalog";
 
 /**
  * Curated per-provider VISIBLE model sets, keyed by Houston (display) provider

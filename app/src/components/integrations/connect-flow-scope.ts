@@ -1,0 +1,61 @@
+/**
+ * WHOSE connect a flow is — the other half of the single-flight key.
+ *
+ * A connect started without an agent is ACCOUNT-scoped: the gateway mints its
+ * link with no agent, so it never consults an agent's app allowlist. That is
+ * what the AI Manager's own connect wants, and it is exactly what an agent's
+ * chat card must NOT inherit. Keyed on the toolkit alone, a card that opened
+ * while the manager's flow ran simply JOINED it and the agent's allowlist was
+ * never checked; the scope makes the two different flows, so each is minted for
+ * the caller that asked.
+ *
+ * Within ONE scope the single-flight is unchanged: a second surface asking for
+ * the same app still joins the running hand-off.
+ */
+
+/**
+ * Separator that can occur in neither an agent id nor a toolkit slug, so one
+ * scope's prefix can never straddle into another's key (an agent id that is a
+ * prefix of a second agent's id would otherwise project the wrong rows).
+ */
+const SEP = "\u0000";
+
+/** The scope an account-wide connect (no agent) runs under. */
+const ACCOUNT_SCOPE = `account${SEP}`;
+
+/** The scope a connect runs under: one per agent, plus the account's own. */
+export function connectFlowScope(agentId: string | undefined): string {
+  return agentId === undefined ? ACCOUNT_SCOPE : `agent${SEP}${agentId}${SEP}`;
+}
+
+/** The single-flight key for one toolkit inside one scope. */
+export function connectFlowKey(scope: string, toolkit: string): string {
+  return `${scope}${toolkit}`;
+}
+
+/**
+ * Whether `key` is this toolkit's flow, in WHICHEVER scope it was started under.
+ * A disconnect names the app, never a scope — the user removed Gmail, not "the
+ * agent's Gmail" — so every scope's Gmail poll is theirs to stop. The separator
+ * bounds the slug, so `drive` never matches a `google-drive` key.
+ */
+export function connectFlowKeyIsFor(key: string, toolkit: string): boolean {
+  return key.endsWith(`${SEP}${toolkit}`);
+}
+
+/**
+ * One scope's slice of a scope-keyed record, re-keyed by plain toolkit slug —
+ * what every surface reads (`slug in states`). A flow belonging to another
+ * scope is invisible here, which is the point: the manager's Slack connect must
+ * not light an agent's Slack card, and vice versa.
+ */
+export function scopedBySlug<T>(
+  record: Record<string, T>,
+  scope: string,
+): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if (key.startsWith(scope)) out[key.slice(scope.length)] = value;
+  }
+  return out;
+}

@@ -59,6 +59,7 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
 
   const panel = useAgentChatPanel({
     agent,
+    integrationAccountScope: true,
     selectedSessionKey: sessionKey,
     onSelectSession: noop,
   });

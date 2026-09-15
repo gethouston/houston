@@ -14,7 +14,7 @@ import { screen } from "./team-nav";
  * Neither carries a tour anchor (the tour walks neither), so each is addressed
  * by its accessible name inside the rail; English is forced by the boot seed,
  * so the labels are stable (`app/src/locales/en/settings.json`
- * `nav.organization` = "Admin", `shell:sidebar.assistant` = "Houston").
+ * `nav.organization` = "Admin", `shell:sidebar.assistant` = "AI Manager").
  * Settings is the exception and keeps its `nav-settings` anchor.
  *
  * Scoped to the WHOLE rail (`sidebar`), not to `agents`: that inner anchor wraps
@@ -51,13 +51,14 @@ export function aboutMeRow(page: Page): Locator {
 }
 
 /**
- * The rail's Assistant row, leading the unlabelled run. Gated on DISCOVERY
+ * The rail's AI Manager row, leading the unlabelled run. Gated on DISCOVERY
  * (`GET /v1/assistant`), not on a role: a deployment that serves none has no
- * row at all. It carries no tour anchor, so its name is the handle.
+ * row at all. It carries no tour anchor.
  */
 export function assistantRow(page: Page): Locator {
-  // By test id, never by name: the seeded agent is also called "Houston", and
-  // the assistant row only appears once discovery has answered.
+  // By test id, never by name: the row's label is product copy that moves
+  // (`shell:sidebar.assistant`), and the test id also appears only once
+  // discovery has answered, so a click waits for the gate rather than racing it.
   return page.getByTestId("rail-assistant");
 }
 

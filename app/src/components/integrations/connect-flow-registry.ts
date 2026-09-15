@@ -1,4 +1,5 @@
 import type { ConnectNotice, ConnectStep } from "./connect-flow-run";
+import { connectFlowKeyIsFor } from "./connect-flow-scope.ts";
 import type { PollOutcome, Waker } from "./model";
 
 export interface ConnectFlow {
@@ -76,9 +77,12 @@ export interface FlowEntry {
 }
 
 /**
- * Toolkit slug -> its live flow. Concurrent connects each own one entry, so a
- * cancel, wake, or redirect read addresses exactly one flow and never touches
- * its siblings. Deleting an entry (its flow's `finally`) frees only that slug.
+ * Flow key -> its live flow. The key is a toolkit slug qualified by the scope
+ * the connect was started for (`connect-flow-scope.ts`), never the bare slug:
+ * an account-scoped link is minted without an agent, so a per-agent connect must
+ * not be answered by one. Concurrent connects each own one entry, so a cancel,
+ * wake, or redirect read addresses exactly one flow and never touches its
+ * siblings. Deleting an entry (its flow's `finally`) frees only that key.
  *
  * ONE registry exists per app run (`app/src/stores/connect-flow.ts`), shared by
  * every surface: a connect started in chat is the same flow the Integrations
@@ -91,16 +95,17 @@ export function createRegistry(): FlowRegistry {
 }
 
 /**
- * Claim `toolkit` for a new flow. Returns the fresh entry, or `null` when that
- * slug already owns a flow — the per-slug single-flight guard: a second connect
- * for the same app is a no-op, while a DIFFERENT app connects concurrently.
+ * Claim `key` (scope + toolkit) for a new flow. Returns the fresh entry, or
+ * `null` when that key already owns a flow — the single-flight guard: a second
+ * connect for the same app IN THE SAME SCOPE is a no-op, while a different app
+ * (or the same app for a different caller) connects concurrently.
  */
 export function beginFlow(
   reg: FlowRegistry,
-  toolkit: string,
+  key: string,
   waker: Waker,
 ): FlowEntry | null {
-  if (reg.has(toolkit)) return null;
+  if (reg.has(key)) return null;
   const entry: FlowEntry = {
     waker,
     cancelled: false,
@@ -108,59 +113,61 @@ export function beginFlow(
     connectionId: null,
     promise: null,
   };
-  reg.set(toolkit, entry);
+  reg.set(key, entry);
   return entry;
 }
 
-/** The live run for ONE slug, or `null` when that slug has no flow — the
- *  cross-surface single-flight join point. */
+/** The live run for ONE key, or `null` when it has no flow — the cross-surface
+ *  single-flight join point. */
 export function flowPromise(
   reg: FlowRegistry,
-  toolkit: string,
+  key: string,
 ): Promise<PollOutcome | null> | null {
-  return reg.get(toolkit)?.promise ?? null;
+  return reg.get(key)?.promise ?? null;
 }
 
-/** Release the slug once its flow settles (success, cancel, timeout, error). */
-export function endFlow(reg: FlowRegistry, toolkit: string): void {
-  reg.delete(toolkit);
+/** Release the key once its flow settles (success, cancel, timeout, error). */
+export function endFlow(reg: FlowRegistry, key: string): void {
+  reg.delete(key);
 }
 
 /** Cancel ONE flow: flag it and wake its poll to observe the flag at once. */
-export function cancelFlow(reg: FlowRegistry, toolkit: string): void {
-  const entry = reg.get(toolkit);
+export function cancelFlow(reg: FlowRegistry, key: string): void {
+  const entry = reg.get(key);
   if (!entry) return;
   entry.cancelled = true;
   entry.waker.wake();
 }
 
 /**
- * A disconnect is about to remove `connectionId` of `toolkit` (every account
- * of the app when omitted): stop a poll that is waiting on that very
- * connection, so it never reads the id the user just removed (PRODUCT-1733).
- * Removing ONE other account leaves a pending sibling's poll running — that
- * OAuth is still the user's to finish.
+ * A disconnect is about to remove `connectionId` of `toolkit` (every account of
+ * the app when omitted): stop a poll that is waiting on that very connection, so
+ * it never reads the id the user just removed (PRODUCT-1733).
+ *
+ * It scans EVERY scope, because a disconnect names the app alone: the agent's
+ * Gmail flow and the account's are separate entries, and the removal takes the
+ * connection out from under both. Removing ONE other account leaves a pending
+ * sibling's poll running — that OAuth is still the user's to finish.
  */
-export function cancelFlowForDisconnect(
+export function cancelFlowsForDisconnect(
   reg: FlowRegistry,
   toolkit: string,
   connectionId?: string,
 ): void {
-  const entry = reg.get(toolkit);
-  if (!entry) return;
-  if (connectionId !== undefined && entry.connectionId !== connectionId) return;
-  cancelFlow(reg, toolkit);
+  for (const [key, entry] of reg) {
+    if (!connectFlowKeyIsFor(key, toolkit)) continue;
+    if (connectionId !== undefined && entry.connectionId !== connectionId)
+      continue;
+    cancelFlow(reg, key);
+  }
 }
 
 /** Wake ONE flow's poll to check right now ("I have finished"). */
-export function wakeFlow(reg: FlowRegistry, toolkit: string): void {
-  reg.get(toolkit)?.waker.wake();
+export function wakeFlow(reg: FlowRegistry, key: string): void {
+  reg.get(key)?.waker.wake();
 }
 
-/** The hosted link for ONE flow, or `null` if that slug has no live flow. */
-export function flowRedirectUrl(
-  reg: FlowRegistry,
-  toolkit: string,
-): string | null {
-  return reg.get(toolkit)?.redirectUrl ?? null;
+/** The hosted link for ONE flow, or `null` if that key has no live flow. */
+export function flowRedirectUrl(reg: FlowRegistry, key: string): string | null {
+  return reg.get(key)?.redirectUrl ?? null;
 }

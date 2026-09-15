@@ -124,6 +124,26 @@ describe("the coverage gate's rules", () => {
     ).toEqual([]);
   });
 
+  it("fails an undecidable route claim even on a reasoned hidden operation", () => {
+    // `hidden` excuses how an operation would have been routed. It cannot
+    // excuse leaving the catalog's entry for a route to source order.
+    const conflict = {
+      route: "GET /agents/{agentId}/auth/status",
+      others: ["providers.refreshStatus"],
+    };
+    expect(rulesFor({ routeConflict: conflict })).toEqual(["route-conflict"]);
+    expect(
+      rulesFor({
+        routeConflict: conflict,
+        hidden: true,
+        hiddenReason: "the no-refetch primitive.",
+      }),
+    ).toEqual(["route-conflict"]);
+    expect(
+      coverageViolations([annotation({ routeConflict: conflict })])[0].problem,
+    ).toContain("providers.refreshStatus");
+  });
+
   it("fails an unknown tag, one violation per tag", () => {
     expect(rulesFor({ unknownTags: ["hiden:", "unschematized"] })).toEqual([
       "unknown-tag",

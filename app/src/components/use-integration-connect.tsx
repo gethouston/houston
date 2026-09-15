@@ -46,11 +46,13 @@ import {
 export function useIntegrationConnect({
   toolkit,
   agentId,
+  accountScope = false,
   onConnected,
   autoContinueWhenConnected = false,
 }: {
   toolkit: string;
   agentId: string;
+  accountScope?: boolean;
   /**
    * Fired once when a connection the user started from THIS surface lands (or,
    * in stepper mode, once an already-active toolkit resolves — see
@@ -100,10 +102,17 @@ export function useIntegrationConnect({
     logoUrl: catalog.isFetched ? resolved.logoUrl : "",
   };
 
-  const { states, connect } = useConnectFlow({ agentId });
+  // The agent is part of the flow's identity, not just of its minted link: an
+  // account-scoped connect (`accountScope`, the AI Manager's) skips the agent
+  // allowlist at the gateway, so it gets its own single-flight key and an
+  // agent's card can never JOIN it and inherit a link its allowlist never
+  // gated.
+  const { states, connect } = useConnectFlow({
+    agentId: accountScope ? undefined : agentId,
+  });
   // This surface is scoped to ONE toolkit, so it is "connecting" only while its
-  // own slug's flow runs — a concurrent connect for a different app never lights
-  // this card.
+  // own slug's flow runs — a concurrent connect for a different app, or for the
+  // same app under another scope, never lights this card.
   const connecting = slug in states;
   // The nudge fires at most once per surface, and only for a connection the
   // user drove from HERE — a connection landing via the Integrations page or

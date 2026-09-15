@@ -3,6 +3,11 @@ import type { JsonSchema } from "./assistant-catalog-types.ts";
 
 const primitiveFlags: Array<[ts.TypeFlags, string]> = [
   [ts.TypeFlags.String, "string"],
+  // A template-literal type (`sk-${string}`) and a mapped one
+  // (`Uppercase<string>`) ARE strings: they carry no properties of their own,
+  // so walking them emits the String prototype as a ~50-property object.
+  [ts.TypeFlags.TemplateLiteral, "string"],
+  [ts.TypeFlags.StringMapping, "string"],
   [ts.TypeFlags.Number, "number"],
   [ts.TypeFlags.Boolean, "boolean"],
   [ts.TypeFlags.Null, "null"],
@@ -42,6 +47,37 @@ function isSymbolNamed(property: ts.Symbol): boolean {
   return property.escapedName.toString().startsWith("__@");
 }
 
+/**
+ * The schema a type carries ON ITS OWN, without reading any property off it, or
+ * `null` when it is not a scalar. A type PARAMETER answers through its
+ * constraint (`T extends string` is a string to every caller), which is the
+ * only thing a caller can rely on.
+ */
+function scalarSchema(
+  checker: ts.TypeChecker,
+  type: ts.Type,
+  node: ts.Node,
+): JsonSchema | null {
+  if (type.isStringLiteral()) return { const: type.value, type: "string" };
+  if (type.isNumberLiteral()) return { const: type.value, type: "number" };
+  if (type.flags & ts.TypeFlags.BooleanLiteral)
+    return {
+      const:
+        checker.typeToString(type, node, ts.TypeFormatFlags.NoTruncation) ===
+        "true",
+      type: "boolean",
+    };
+  for (const [flag, schemaType] of primitiveFlags)
+    if (type.flags & flag) return { type: schemaType };
+  if (type.flags & ts.TypeFlags.TypeParameter) {
+    const constraint = checker.getBaseConstraintOfType(type);
+    return constraint && constraint !== type
+      ? scalarSchema(checker, constraint, node)
+      : null;
+  }
+  return null;
+}
+
 export function schemaForType(
   checker: ts.TypeChecker,
   type: ts.Type,
@@ -59,21 +95,22 @@ export function schemaForType(
   ) {
     return fallbackSchema(text);
   }
-  if (type.isStringLiteral()) return { const: type.value, type: "string" };
-  if (type.isNumberLiteral()) return { const: type.value, type: "number" };
-  if (type.flags & ts.TypeFlags.BooleanLiteral) {
-    return {
-      const: text === "true",
-      type: "boolean",
-    };
-  }
-  for (const [flag, schemaType] of primitiveFlags) {
-    if (type.flags & flag) return { type: schemaType };
-  }
+  const scalar = scalarSchema(checker, type, node);
+  if (scalar) return scalar;
   if (type.isUnion()) {
     return {
       anyOf: type.types.map((part) => schemaForType(checker, part, node, seen)),
     };
+  }
+  // `"a" | "b" | (string & {})` — the widening that keeps literal autocomplete
+  // while accepting any string (ProviderId). The intersection IS its scalar
+  // constituent; walking its properties would emit the whole String prototype
+  // as an object.
+  if (type.isIntersection()) {
+    for (const part of type.types) {
+      const scalarPart = scalarSchema(checker, part, node);
+      if (scalarPart) return scalarPart;
+    }
   }
   if ((type.aliasSymbol?.name ?? type.getSymbol()?.name) === "Promise") {
     const promised = checker.getTypeArguments(type as ts.TypeReference)[0];

@@ -56,6 +56,7 @@ export interface ProviderConnectionDialogProps {
   customEndpointDialog: ProviderInfo | null;
   onCloseCustomEndpointDialog(): void;
   copilotDialog: ReactNode;
+  copilotDialogOpen?: boolean;
 }
 
 /**

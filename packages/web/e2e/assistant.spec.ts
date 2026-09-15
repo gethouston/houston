@@ -42,7 +42,7 @@ test("opens from the rail onto a welcoming empty chat", async ({ page }) => {
 
   // The intro, not a skill showcase: what it can reach, and the promise that
   // keeps a "can do anything" agent trustworthy.
-  await expect(screen(page).getByText("Hi, I'm Houston")).toBeVisible();
+  await expect(screen(page).getByText("Hi, I'm your AI Manager")).toBeVisible();
   await expect(
     screen(page).getByText(/ask before anything risky/),
   ).toBeVisible();
@@ -122,7 +122,9 @@ test("the row is absent where the deployment serves no assistant", async ({
   await page.goto("/");
 
   // A positive signal first, so the absence below cannot pass on an unpainted
-  // rail: the Agent Store row is unconditional in every deployment.
+  // rail: the Agent Store row is unconditional in every deployment. The row is
+  // up from the first paint and comes down when discovery settles absence, so
+  // the count is asserted on the settled rail, not the first one.
   await expect(
     page.locator("[data-tour-target='nav-agent-store']"),
   ).toBeVisible();

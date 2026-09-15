@@ -1,4 +1,5 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
+import { isCallableOperation } from "@houston/domain/assistant-catalog-callable";
 import type { AssistantCatalog } from "@houston/host/src/assistant/catalog";
 import { findVisibleOperation } from "@houston/host/src/assistant/catalog";
 import { type Static, Type } from "typebox";
@@ -6,7 +7,6 @@ import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import { currentTurnMode } from "../turn-mode-context";
 import { approvalCode, errorFromResponse } from "./assistant-call-errors";
-import { isCallableOperation } from "./assistant-callable";
 import { declinedMessage, requestConfirmation } from "./assistant-confirm";
 import { checkCallParams } from "./assistant-params";
 import {

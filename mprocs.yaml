@@ -12,14 +12,14 @@ procs:
   # The Go gateway (sibling cloud/ checkout) on :9080 — real GCIP sign-in,
   # multiplayer/Teams/Spaces capabilities, billing off.
   gateway:
-    shell: scripts/dev/gateway.sh
+    shell: scripts/dev/logged.sh gateway scripts/dev/gateway.sh
   # The Go control-plane in dev-launcher mode: spawns one engine process per
   # agent from THIS checkout (no Kubernetes).
   control-plane:
-    shell: scripts/dev/control-plane.sh
+    shell: scripts/dev/logged.sh control-plane scripts/dev/control-plane.sh
   # The local single-player host on :4318 — what the desktop app talks to.
   host:
-    shell: pnpm dev:host
+    shell: scripts/dev/logged.sh host pnpm dev:host
   # The desktop app (Tauri) against the host above: LOCAL profile (terminal,
   # reveal-in-OS, dictation, local models). Desktop login/logout are REAL when
   # GOOGLE_DESKTOP_CLIENT_ID(+_SECRET) are in .env.local; otherwise the pane

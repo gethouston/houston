@@ -184,6 +184,52 @@ describe("startFakeHost", () => {
     expect(noExport.status).toBe(404);
   });
 
+  it("gates the per-agent api-key connect on the real route's rules", async () => {
+    // Provider slots are process-global, so start from the seed.
+    await fetch(`${host.url}/__test__/reset`, { method: "POST" });
+    const connect = (body: Record<string, unknown>) =>
+      fetch(`${host.url}/agents/${SEED_AGENT_ID}/credential/api-key`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(body),
+      });
+    const configured = async (provider: string) => {
+      const list = (await (
+        await fetch(`${host.url}/agents/${SEED_AGENT_ID}/providers`)
+      ).json()) as Array<{ id: string; configured: boolean }>;
+      return list.find((p) => p.id === provider)?.configured;
+    };
+
+    // An api-key provider connects and reads back connected at once.
+    const ok = await connect({ provider: "openrouter", apiKey: " sk-or-e2e " });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ ok: true, provider: "openrouter" });
+    expect(await configured("openrouter")).toBe(true);
+
+    // Same 400s as `POST /agents/:id/credential/api-key` on the real host
+    // (packages/host/src/routes/agents.ts): an OAuth provider and an id no
+    // catalog knows are both "unknown API-key provider" — the fake accepted
+    // either and reported a connect the UI could never observe.
+    for (const provider of ["anthropic", "github-copilot", "not-a-provider"]) {
+      const res = await connect({ provider, apiKey: "sk-whatever" });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "unknown API-key provider" });
+    }
+    expect(await configured("github-copilot")).toBe(false);
+    const noProvider = await connect({ apiKey: "sk-whatever" });
+    expect(noProvider.status).toBe(400);
+    expect(await noProvider.json()).toEqual({
+      error: "unknown API-key provider",
+    });
+
+    // A key that is only whitespace is no key.
+    for (const apiKey of ["", "   \t ", 42]) {
+      const res = await connect({ provider: "openrouter", apiKey });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({ error: "missing 'apiKey'" });
+    }
+  });
+
   it("exposes the __test__ reset control endpoint", async () => {
     const res = await fetch(`${host.url}/__test__/reset`, { method: "POST" });
     expect(res.status).toBe(200);

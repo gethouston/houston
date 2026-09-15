@@ -63,6 +63,9 @@
     "progress": "{{current}} of {{total}}"
   },
   "interaction": {
+    "providerReason": "Connect {{name}} so I can continue. Your credentials stay out of the conversation.",
+    "providerUnavailable": "This AI provider is unavailable here. Skip this step and ask me to use another provider.",
+    "cancelConnection": "Cancel connection",
     "connectedLine": "Connected {{name}}.",
     "signedInLine": "Signed in to Houston.",
     "signedInFollowup": "I've signed in. Please continue.",

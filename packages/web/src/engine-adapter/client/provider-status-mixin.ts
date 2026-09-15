@@ -121,6 +121,12 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
       });
     }
 
+    /**
+     * Shows which of the named AI providers one agent is signed in to.
+     *
+     * @assistant group:providers
+     * @assistant hidden: the provider hub's own per-agent read, shaped for its rows; refreshStatus is the one to dispatch for the same sign-in.
+     */
     async providerStatusesForAgent(
       agentId: string,
       names: readonly string[],
@@ -147,6 +153,11 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
       });
     }
     /**
+     * Shows how much of each connected AI provider's allowance is left.
+     *
+     * @assistant group:providers
+     * @assistant hidden: the provider hub's live probe, which throws the moment an engine is unreachable; it is polled behind a confirmed connection, never dispatched.
+     *
      * Live per-account usage for every connected provider (rate-limit windows
      * + prepaid balances), served by the runtime's `GET /providers/usage`.
      * Rides the SAME per-agent runtime routing as provider status: any real

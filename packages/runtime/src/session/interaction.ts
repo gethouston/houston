@@ -48,6 +48,7 @@
 export {
   recordConnection,
   recordCredentialRequest,
+  recordProviderConnection,
   recordSignin,
 } from "./interaction-access";
 export {

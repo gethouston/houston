@@ -1,4 +1,8 @@
 import { useRef, useState } from "react";
+import {
+  closeMeansCancel,
+  type ProviderConnectDialogClose,
+} from "../../lib/provider-connect-dialog-close";
 import type { ProviderInfo } from "../../lib/providers";
 import { ProviderCopilotConnectDialog } from "./provider-copilot-connect-dialog";
 
@@ -14,7 +18,7 @@ import { ProviderCopilotConnectDialog } from "./provider-copilot-connect-dialog"
  * other provider, so the caller proceeds with its normal no-domain login. Render
  * the returned `dialog` once in the surface.
  */
-export function useCopilotConnect() {
+export function useCopilotConnect(onCancel?: () => void) {
   const [dialogProvider, setDialogProvider] = useState<ProviderInfo | null>(
     null,
   );
@@ -30,21 +34,25 @@ export function useCopilotConnect() {
     return true;
   };
 
+  const close = (reason: ProviderConnectDialogClose) => {
+    if (closeMeansCancel("copilot", reason)) onCancel?.();
+    deferred.current = null;
+    setDialogProvider(null);
+  };
+
   const dialog = (
     <ProviderCopilotConnectDialog
       provider={dialogProvider}
-      onClose={() => {
-        deferred.current = null;
-        setDialogProvider(null);
-      }}
+      onClose={() => close("dismissed")}
       onConnect={(domain) => {
         const run = deferred.current;
-        deferred.current = null;
-        setDialogProvider(null);
+        // Picking a plan STARTS the sign-in, so this close is progress, never
+        // an abandon: `closeMeansCancel` keeps the observation alive for it.
+        close("completed");
         run?.(domain);
       }}
     />
   );
 
-  return { begin, dialog };
+  return { begin, dialog, open: dialogProvider !== null };
 }

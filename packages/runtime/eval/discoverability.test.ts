@@ -1,4 +1,5 @@
 import { ASSISTANT_CAPABILITY_INDEX } from "@houston/domain/assistant-capability-index";
+import { isCallableOperation } from "@houston/domain/assistant-catalog-callable";
 import { readEmbeddedCatalog } from "@houston/host/src/assistant/catalog-source";
 import { expect, test } from "vitest";
 import { buildBridgedToolSet } from "../src/backends/claude/mcp-tool-set";
@@ -26,8 +27,27 @@ if (!catalog) throw new Error("the embedded assistant catalog is unreadable");
 const visible = new Set(
   catalog.operations.filter((op) => !op.hidden).map((op) => op.name),
 );
+// The map advertises what houston_call can actually perform: a visible
+// operation with no route would only ever answer "not supported", and naming
+// it teaches the assistant to promise what it cannot do.
+const callable = new Set(
+  catalog.operations.filter(isCallableOperation).map((op) => op.name),
+);
 
 const section = buildAssistantRulesSection("coordinator") ?? "";
+
+/**
+ * Whether the capability map names this operation as a WHOLE name. A substring
+ * test is vacuous for prefix pairs in both directions: `providers.refresh`
+ * would read as present because `providers.refreshStatus` is listed, and a
+ * hidden `providers.refresh` would read as leaked for the same reason.
+ */
+function mapNames(operation: string): boolean {
+  const escaped = operation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^\\w.])${escaped}(?![\\w.])`).test(
+    ASSISTANT_CAPABILITY_INDEX,
+  );
+}
 
 test("every case is either an operation to find or a refusal to make", () => {
   const ids = DISCOVERABILITY_CASES.map((one) => one.id);
@@ -50,11 +70,15 @@ test("every operation a fixture expects exists and is visible", () => {
   }
 });
 
-test("the capability map names every visible operation", () => {
+test("the capability map names every callable operation and no other", () => {
   // The map is what removes "I did not know it existed" from the loop, so it
-  // has to be the WHOLE surface, not a curated excerpt of it.
+  // has to be the WHOLE callable surface, not a curated excerpt of it.
+  for (const operation of callable) {
+    expect(mapNames(operation), operation).toBe(true);
+  }
   for (const operation of visible) {
-    expect(ASSISTANT_CAPABILITY_INDEX, operation).toContain(operation);
+    if (callable.has(operation)) continue;
+    expect(mapNames(operation), operation).toBe(false);
   }
   expect(section).toContain(ASSISTANT_CAPABILITY_INDEX);
 });

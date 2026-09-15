@@ -54,4 +54,21 @@ export const CATALOG: ProviderSpec[] = [
   },
 ];
 
-export const SPEC = new Map(CATALOG.map((s) => [s.id, s]));
+/** Keyed by raw string so an untrusted request body can be looked up without
+ *  being cast to {@link ProviderId} first. */
+export const SPEC: ReadonlyMap<string, ProviderSpec> = new Map(
+  CATALOG.map((s) => [s.id, s]),
+);
+
+/**
+ * The spec for a provider that connects with a pasted key — `undefined` for an
+ * id the catalog doesn't know and for one that signs in through OAuth. The only
+ * narrowing path from a request body to a {@link ProviderId}, mirroring the
+ * `isApiKeyProvider` gate the real `POST /agents/:id/credential/api-key` applies
+ * (packages/host/src/routes/agents.ts).
+ */
+export function apiKeyProviderSpec(value: unknown): ProviderSpec | undefined {
+  if (typeof value !== "string") return undefined;
+  const spec = SPEC.get(value);
+  return spec?.connect === "apiKey" ? spec : undefined;
+}

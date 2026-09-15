@@ -3,6 +3,7 @@ export * from "./agent-color-ids";
 export * from "./agent-name";
 export * from "./anonymize";
 export * from "./anonymize-ai";
+export * from "./assistant-catalog-callable";
 export * from "./assistant-catalog-types";
 export * from "./config";
 export * from "./contributors";

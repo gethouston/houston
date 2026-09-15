@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   type ConnectAiComposerSignals,
   shouldReplaceComposerWithConnectAi,
+  shouldShowConnectAiEmptyState,
 } from "../src/lib/composer-connect-ai.ts";
 
 /**
@@ -113,7 +114,7 @@ test("the empty state replaces the composer rather than stacking above it", () =
   const src = read("../src/components/use-agent-chat-panel.tsx");
   assert.match(
     src,
-    /if \(connectAiComposer\.node\)\s*\n?\s*return \{ mode: "replace" as const, node: connectAiComposer\.node \};/,
+    /shouldShowConnectAiEmptyState\([\s\S]*?return \{ mode: "replace" as const, node: connectAiComposer\.node \};/,
     "the connect-AI branch returns replace mode, which hides the whole ChatInput",
   );
 });
@@ -157,4 +158,24 @@ test("the empty state reuses the picker's no-providers copy", () => {
     src.includes("onConnect ? ("),
     "no button at all for a viewer who cannot reach the AI Hub",
   );
+});
+
+test("a pending provider connection stays reachable with no AI connected", () => {
+  const providerStep = {
+    kind: "provider_connect" as const,
+    id: "pc1",
+    provider: "openrouter",
+  };
+  assert.equal(
+    shouldShowConnectAiEmptyState(true, { steps: [providerStep] }),
+    false,
+  );
+  assert.equal(shouldShowConnectAiEmptyState(true, null), true);
+  assert.equal(
+    shouldShowConnectAiEmptyState(true, {
+      steps: [{ kind: "connect", id: "c1", toolkit: "gmail" }],
+    }),
+    true,
+  );
+  assert.equal(shouldShowConnectAiEmptyState(false, null), false);
 });

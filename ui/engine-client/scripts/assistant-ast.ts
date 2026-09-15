@@ -26,6 +26,24 @@ export function calleeName(call: ts.CallExpression): string | null {
   return null;
 }
 
+/**
+ * Whether a function body is nothing but `return`/`await` of one call — the
+ * signal that a caller driving the route directly gets exactly what the
+ * function returns, with no post-processing in between.
+ */
+export function isBareCall(body: ts.Node, call: ts.CallExpression): boolean {
+  if (!ts.isBlock(body)) return ts.isExpression(body) && unwrap(body) === call;
+  const [statement, ...rest] = body.statements;
+  if (!statement || rest.length > 0) return false;
+  const expression =
+    ts.isReturnStatement(statement) && statement.expression
+      ? statement.expression
+      : ts.isExpressionStatement(statement)
+        ? statement.expression
+        : undefined;
+  return expression !== undefined && unwrap(expression) === call;
+}
+
 export function isUndefined(expression: ts.Expression): boolean {
   return ts.isIdentifier(expression) && expression.text === "undefined";
 }

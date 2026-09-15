@@ -49,7 +49,7 @@ test("records the credential step for a slug the host knows (normalized to lower
   const out = await runWithInteractionCapture(holder, () =>
     run({ toolkit: "  Acme_CRM ", reason: "To sync your records." }),
   );
-  expect(status).toHaveBeenCalledWith("acme_crm", undefined);
+  expect(status).toHaveBeenCalledWith("acme_crm", undefined, ctx);
   expect(holder.pending).toEqual({
     steps: [
       {

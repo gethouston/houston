@@ -1,21 +1,21 @@
 import ts from "typescript";
-import { calleeName, isUndefined, unwrap } from "./assistant-ast.ts";
+import { isUndefined, unwrap } from "./assistant-ast.ts";
 import type {
   AssistantPathParam,
   HttpMethod,
   PathEncoding,
 } from "./assistant-catalog-types.ts";
-import type { PathPart } from "./assistant-path-parts.ts";
+import {
+  type BodyParts,
+  extractBody,
+  isJsonContentType,
+} from "./assistant-route-body.ts";
+import type { PathPart, ValueScope } from "./assistant-value-scope.ts";
 
 export interface PathTemplate {
   path: string;
   pathParams: AssistantPathParam[];
   query: Record<string, string>;
-}
-
-export interface BodyParts {
-  body: string | null;
-  bodyFields: Record<string, string> | null;
 }
 
 export interface InitParts extends BodyParts {
@@ -73,91 +73,14 @@ export function toPathTemplate(parts: PathPart[]): PathTemplate | string {
 }
 
 /**
- * The parameter a body value reads: the parameter itself (`name`), or one of
- * its fields reached by plain (or optional) property access — `seed?.claudeMd`
- * reads as `"seed.claudeMd"`. Anything computed resolves to `null`.
- */
-function parameterReference(
-  expression: ts.Expression,
-  parameters: Set<string>,
-): string | null {
-  const keys: string[] = [];
-  let node = unwrap(expression);
-  while (ts.isPropertyAccessExpression(node)) {
-    keys.unshift(node.name.text);
-    node = unwrap(node.expression);
-  }
-  if (!ts.isIdentifier(node) || !parameters.has(node.text)) return null;
-  return [node.text, ...keys].join(".");
-}
-
-/** `{ key: param, key: param.field, shorthandParam }` — every value must read
- *  a parameter. */
-function identifierMap(
-  expression: ts.ObjectLiteralExpression,
-  parameters: Set<string>,
-): Record<string, string> | string {
-  const map: Record<string, string> = {};
-  for (const property of expression.properties) {
-    if (ts.isShorthandPropertyAssignment(property)) {
-      if (!parameters.has(property.name.text))
-        return "body value is not a parameter";
-      map[property.name.text] = property.name.text;
-      continue;
-    }
-    if (!ts.isPropertyAssignment(property)) return "non-assignment body entry";
-    const key = ts.isIdentifier(property.name)
-      ? property.name.text
-      : ts.isStringLiteral(property.name)
-        ? property.name.text
-        : null;
-    if (key === null) return "computed body key";
-    const value = parameterReference(property.initializer, parameters);
-    if (value === null) return "body value is not a parameter";
-    map[key] = value;
-  }
-  return map;
-}
-
-/** The JSON body of one `body:` property: `JSON.stringify(…)` or a raw string
- *  parameter (the pre-serialized credential blobs). */
-function extractBody(
-  expression: ts.Expression,
-  parameters: Set<string>,
-): BodyParts | string {
-  const node = unwrap(expression);
-  if (ts.isIdentifier(node)) {
-    return parameters.has(node.text)
-      ? { body: node.text, bodyFields: null }
-      : "body is not a parameter";
-  }
-  if (!ts.isCallExpression(node) || calleeName(node) !== "stringify")
-    return "body is neither JSON.stringify nor a parameter";
-  const [argument] = node.arguments;
-  if (!argument || node.arguments.length !== 1)
-    return "JSON.stringify takes more than the value";
-  const value = unwrap(argument);
-  if (ts.isObjectLiteralExpression(value)) {
-    const bodyFields = identifierMap(value, parameters);
-    return typeof bodyFields === "string"
-      ? bodyFields
-      : { body: null, bodyFields };
-  }
-  if (!ts.isIdentifier(value)) return "non-identifier body argument";
-  return parameters.has(value.text)
-    ? { body: value.text, bodyFields: null }
-    : "body argument is not a parameter";
-}
-
-/**
- * The verb and body of a `cpFetch` init object. Only `method`, `body` and
- * `signal` may appear — `signal` never reaches the wire shape, and any other
- * key (or a spread) means the request is assembled conditionally, which no
- * static route can honestly describe.
+ * The verb and body of a request's init object. Only `method`, `body`,
+ * `signal` and a JSON-content-type `headers` may appear — the last two never
+ * reach the wire shape, and any other key (or a spread) means the request is
+ * assembled conditionally, which no static route can honestly describe.
  */
 export function extractInit(
   expression: ts.Expression | undefined,
-  parameters: Set<string>,
+  scope: ValueScope,
 ): InitParts | string {
   const empty: InitParts = { method: "GET", body: null, bodyFields: null };
   if (!expression) return empty;
@@ -186,8 +109,13 @@ export function extractInit(
       method = known;
       continue;
     }
+    if (key === "headers") {
+      if (!isJsonContentType(property.initializer, scope))
+        return "request headers carry more than the JSON content type";
+      continue;
+    }
     if (key !== "body") return `unsupported request option ${key}`;
-    const parts = extractBody(property.initializer, parameters);
+    const parts = extractBody(property.initializer, scope);
     if (typeof parts === "string") return parts;
     body = parts;
   }

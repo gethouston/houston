@@ -80,10 +80,25 @@ export function createPreferencesModule(ctx: ModuleContext): PreferencesModule {
     }
   }
 
+  /**
+   * Reads one of the user's saved preferences.
+   * @assistant group:settings hidden: UI plumbing; an untyped key/value store the app reads for its own device settings.
+   */
   const get = (key: string): Promise<string | null> =>
     run(() => client.getPreference(key));
+  /**
+   * Changes one of the user's saved preferences.
+   * @assistant group:settings hidden: UI plumbing; an open key/value write that can clobber any app setting.
+   */
   const set = (key: string, value: string | null): Promise<string | null> =>
     run(() => client.setPreference(key, value));
+  /**
+   * Sets the language Houston's own screens are shown in, for one workspace.
+   * @param workspaceId The workspace this acts on, by the id listWorkspaces
+   *   returns.
+   * @param locale The language to switch to, or nothing to follow the device.
+   * @assistant group:settings confirm
+   */
   const setLocale = (
     workspaceId: string,
     locale: string | null,

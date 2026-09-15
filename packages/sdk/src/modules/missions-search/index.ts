@@ -170,5 +170,15 @@ export function createMissionsSearchModule(
     );
   });
 
-  return { search };
+  return {
+    /**
+     * Finds missions whose title, description or chat mentions a phrase.
+     * @param query The words to look for.
+     * @param agentId The agent to search, by the id listAgents returns; every
+     *   agent is searched when it is left out.
+     * @assistant group:missions
+     * @assistant unroutable: it reads every agent's missions and then each unmatched mission's transcript, which is a search over many reads, not one route.
+     */
+    search,
+  };
 }

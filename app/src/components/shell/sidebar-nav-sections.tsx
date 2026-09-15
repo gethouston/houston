@@ -55,7 +55,7 @@ export function buildSidebarNavItems(args: {
   showOrganization: boolean;
   /** The Skills row: the SPACE OWNER's, per `useSurfaceGates`. */
   showSkills: boolean;
-  /** The Assistant row: true where discovery hands out an address for one. */
+  /** The Assistant row: false only where discovery settled that none exists. */
   showAssistant: boolean;
   /** The persisted fold of each LABELLED band, and its toggle. Same shape and
    *  same persistence as "Your teams" below them: one band anatomy, one rule. */

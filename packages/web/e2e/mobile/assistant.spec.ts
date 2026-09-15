@@ -12,7 +12,7 @@ import { screen } from "../support/team-nav";
 
 async function openPhoneAssistant(page: Page): Promise<Locator> {
   const menu = await openMoreMenu(page);
-  await menu.getByRole("button", { name: "Houston" }).tap();
+  await menu.getByRole("button", { name: "AI Manager" }).tap();
   const chat = page.getByTestId("assistant-chat");
   await expect(chat).toBeVisible();
   return chat;
@@ -25,7 +25,7 @@ test("opens from More as a full-height chat with no nav bar under it", async ({
   await expect(navBar(page)).toBeVisible();
 
   const chat = await openPhoneAssistant(page);
-  await expect(chat.getByText("Hi, I'm Houston")).toBeVisible();
+  await expect(chat.getByText("Hi, I'm your AI Manager")).toBeVisible();
   await expect(navBar(page)).toHaveCount(0);
 
   // The composer is the last thing on the screen: nothing sits below it.

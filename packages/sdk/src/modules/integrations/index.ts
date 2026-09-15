@@ -98,6 +98,12 @@ export function createIntegrationsModule(
     return vm;
   };
 
+  /**
+   * Shows which outside apps are available to connect and which ones the user
+   * has already connected.
+   * @assistant group:integrations
+   * @assistant unroutable: readiness, the toolkit catalogue and the user's connections are three reads folded into one view, not one route.
+   */
   async function refresh(): Promise<IntegrationsViewModel> {
     let statuses: Awaited<ReturnType<typeof client.listIntegrations>>;
     try {
@@ -146,12 +152,24 @@ export function createIntegrationsModule(
     );
   }
 
+  /**
+   * Checks whether a connection the user is signing in to has finished.
+   * @assistant group:integrations
+   * @assistant hidden: the poll a sign-in screen runs while the user finishes it; integrationConnection reads the same connection once.
+   */
   function pollConnection(
     connectionId: string,
   ): Promise<IntegrationConnection> {
     return run(() => client.getConnection(connectionId));
   }
 
+  /**
+   * Disconnects an outside app from Houston, removing every account the user
+   * connected for it.
+   * @param toolkit The outside app to disconnect, by the toolkit slug
+   *   integrationToolkits returned.
+   * @assistant group:integrations confirm
+   */
   async function disconnect(toolkit: string): Promise<IntegrationsViewModel> {
     await run(() => client.disconnect(toolkit));
     return refresh();
@@ -179,6 +197,11 @@ export function createIntegrationsModule(
   return {
     scope: INTEGRATIONS_SCOPE,
     refresh,
+    /**
+     * Starts connecting an outside app, answering the sign-in link to open.
+     * @assistant group:integrations
+     * @assistant hidden: starts a browser sign-in only the user can finish; the assistant queues the connection card with request_connection instead.
+     */
     connect,
     pollConnection,
     disconnect,

@@ -869,6 +869,7 @@ export type InteractionStep =
   /** The user must enter a custom integration's API key in a secure field (never
    *  into the chat). `toolkit` is the custom integration's slug (HOU-550). */
   | { kind: "credential"; id: string; toolkit: string; reason?: string }
+  | { kind: "provider_connect"; id: string; provider: string; reason?: string }
   /** The model finished planning: a short plan summary the user approves by
    *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */
   | { kind: "plan_ready"; id: string; summary: string }

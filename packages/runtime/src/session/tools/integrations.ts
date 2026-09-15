@@ -217,7 +217,7 @@ interface ActionResult {
   error?: string;
 }
 
-/** Both integration tools, or `[]` when the host can't be reached (no creds). */
+/** Search, execute and the connect hand-off, built on one host transport. */
 export function makeIntegrationTools(opts: IntegrationToolOptions) {
   async function post<T>(
     path: "search" | "execute",
@@ -556,13 +556,21 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     },
   });
 
-  // The in-chat connect hand-off. Appends a connect step to this turn's
-  // interaction sequence (carried on the terminal `done` frame → a card rendered
-  // in place of the chat input that walks the user through every queued step).
-  // Gated with the integration tools because it only makes sense where the user
-  // can actually connect apps. Holds no credential and makes no network call —
-  // it just records the request.
-  const requestConnection = defineTool({
+  return [search, execute, makeRequestConnectionTool()];
+}
+
+/**
+ * The in-chat connect hand-off. Appends a connect step to this turn's
+ * interaction sequence (carried on the terminal `done` frame → a card rendered
+ * in place of the chat input that walks the user through every queued step).
+ *
+ * Standalone because it holds no credential and makes no network call — it just
+ * records the request — so an assistant-only runtime, which has no
+ * `/sandbox/integrations/*` transport to search or execute with, can still
+ * expose the hand-off without building the two tools that need one.
+ */
+export function makeRequestConnectionTool() {
+  return defineTool({
     name: REQUEST_CONNECTION_TOOL_NAME,
     label: "Ask the user to connect an app",
     description:
@@ -593,8 +601,6 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       };
     },
   });
-
-  return [search, execute, requestConnection];
 }
 
 /**

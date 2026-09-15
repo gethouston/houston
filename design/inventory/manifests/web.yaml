@@ -104,7 +104,7 @@ components:
 
   interaction-card:
     status: implemented
-    ref: "@houston-ai/chat ChatInteractionCard (interaction-card + interaction-card-logic)"
+    ref: "@houston-ai/chat ChatInteractionCard + app/src/components/chat-provider-connect-interaction-card.tsx"
 
   interaction-approval-card:
     status: partial

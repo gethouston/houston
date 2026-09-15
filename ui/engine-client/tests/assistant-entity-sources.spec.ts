@@ -164,6 +164,8 @@ describe("entityRuleFor", () => {
       ],
       ["/v1/integrations/custom/definitions/{slug}", "slug"],
       ["/agents/{agentId}/agentfile/{relPath}", "relPath"],
+      // The chat a rename or delete acts on is spelled `id` in the path.
+      ["/agents/{agentId}/conversations/{id}", "id"],
     ];
     for (const [path, parameter] of cases) {
       const rule = entityRuleFor(parameter, at(path));

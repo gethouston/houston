@@ -328,7 +328,7 @@ describe("connect surfaces", () => {
     );
     const hook = read("../src/hooks/queries/use-integrations.ts");
     ok(
-      hook.includes("cancelFlowForDisconnect(connectFlowRegistry"),
+      hook.includes("cancelFlowsForDisconnect(connectFlowRegistry"),
       "a disconnect stops the poll waiting on the connection it removes",
     );
   });

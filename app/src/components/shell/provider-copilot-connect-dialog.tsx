@@ -74,7 +74,10 @@ export function ProviderCopilotConnectDialog({
     } else {
       onConnect(undefined);
     }
-    onClose();
+    // `onConnect` is what closes this dialog (the caller drops the provider).
+    // Calling `onClose` here too would report a DISMISSAL on the success path,
+    // and a dismissal cancels the connection observation behind the dialog —
+    // killing it at the exact moment the sign-in it just started begins.
   };
 
   return (

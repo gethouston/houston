@@ -28,28 +28,23 @@ export type {
 } from "./provider-connections/types";
 
 /**
- * The shared provider-connections layer for the AI models hub. A faithful
- * extraction of the connection logic that lived inline in
- * `provider-settings.tsx`, exposed as a reusable hook so the hub view (and its
- * dialog stack) can drive connect / sign-out without owning any of the
- * event/async plumbing. See `ProviderConnections` for the public surface.
- *
- * Status probing, the OAuth event relay, and the connect actions are split into
- * `./provider-connections/*` to keep each unit small; this file composes them and
- * owns the dialog state.
- *
- * Rendered once by the hub view; `dialogProps` feeds a single
- * `<ProviderConnectionDialogs>`.
+ * Shared provider connection actions, event ownership and secure dialog state.
+ * Embedded flows explicitly bind visibility; the AI hub follows its active view.
  */
 export function useProviderConnections(options?: {
   /** Non-top-level flows unmount when hidden, so they own login events while mounted. */
   alwaysActive?: boolean;
+  /** Explicit ownership for a kept-alive embedded connection surface. */
+  active?: boolean;
+  onConnectionCancelled?: () => void;
 }): ProviderConnections {
   const { t } = useTranslation("providers");
   const addToast = useUIStore((s) => s.addToast);
   const providerSurfaceActive = useUIStore(
     (s) =>
-      options?.alwaysActive || isActiveTopLevelView(s.viewMode, AI_HUB_VIEW_ID),
+      options?.active ??
+      (options?.alwaysActive ||
+        isActiveTopLevelView(s.viewMode, AI_HUB_VIEW_ID)),
   );
   const { capabilities } = useCapabilities();
   const newEngine = newEngineActive();
@@ -82,7 +77,11 @@ export function useProviderConnections(options?: {
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
   const [customEndpointDialog, setCustomEndpointDialog] =
     useState<ProviderInfo | null>(null);
-  const { begin: beginCopilot, dialog: copilotDialog } = useCopilotConnect();
+  const {
+    begin: beginCopilot,
+    dialog: copilotDialog,
+    open: copilotDialogOpen,
+  } = useCopilotConnect(options?.onConnectionCancelled);
 
   useEffect(() => {
     loadStatuses();
@@ -165,6 +164,7 @@ export function useProviderConnections(options?: {
       customEndpointDialog,
       onCloseCustomEndpointDialog: () => setCustomEndpointDialog(null),
       copilotDialog,
+      copilotDialogOpen,
     }),
     [
       confirmSignOutFor,
@@ -172,6 +172,7 @@ export function useProviderConnections(options?: {
       apiKeyDialog,
       customEndpointDialog,
       copilotDialog,
+      copilotDialogOpen,
       signOutConfirmed,
     ],
   );

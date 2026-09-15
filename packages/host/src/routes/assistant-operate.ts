@@ -8,6 +8,7 @@ import {
 } from "../assistant/entity-resolution";
 import { confirmationSummary } from "../assistant/summary";
 import { approved } from "./assistant-approval-gate";
+import { assistantDeploymentRoute } from "./assistant-deployment-route";
 import { dispatchAssistantOperation } from "./assistant-dispatch";
 import { forwardAssistantCall } from "./assistant-forward";
 import type {
@@ -170,10 +171,18 @@ export async function handleAssistantCall(
   // The receipt is keyed by the RESOLVED arguments, which is what the card was
   // issued for: the user approved an operation on one agent, not on a spelling.
   if (op.confirm && !approved(ctx, input, params, res)) return;
+  const request = assistantDeploymentRoute(dispatch.request, ctx);
+  if (!request) {
+    json(res, 400, {
+      error: "this host cannot address that operation",
+      code: "gateway_address",
+    });
+    return;
+  }
 
   await forwardAssistantCall(
     input.gateway,
-    dispatch.request,
+    request,
     {
       operation: input.operation,
       actingAs: input.actingAs,

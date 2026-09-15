@@ -30,3 +30,8 @@ export {
   toDisplayProviderId,
   toDisplayProviderIdOrNull,
 } from "@houston/domain/provider-dialect";
+export {
+  DROP_PI_PROVIDERS,
+  isHiddenProviderId,
+  REGIONAL_SUFFIX,
+} from "@houston/domain/provider-visibility";

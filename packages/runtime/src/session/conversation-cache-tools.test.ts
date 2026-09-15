@@ -232,6 +232,14 @@ test("pi registers the assistant family for the coordinator", async () => {
   );
   // Named literally, so dropping it from ASSISTANT_TOOL_NAMES cannot make the
   // assertions above pass while the assistant loses its own transcript search.
+  for (const name of [
+    "request_connection",
+    "request_credential",
+    "request_provider_connection",
+  ]) {
+    expect(open.tools).toContain(name);
+    expect(open.customTools).toContain(name);
+  }
   expect(open.tools).toContain("houston_recall");
   expect(open.customTools).toContain("houston_recall");
   // A coordinator hands work to agents and runs none itself: no shell, on any

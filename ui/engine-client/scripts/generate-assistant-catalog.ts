@@ -7,9 +7,8 @@ import {
   renderCapabilities,
   renderCapabilityIndex,
   renderCatalog,
-  renderCoverage,
-  renderOperations,
 } from "./assistant-render.ts";
+import { renderCoverage, renderOperations } from "./assistant-render-docs.ts";
 
 /** The generated file names, so a missing body is a compile error. */
 type AssistantOutputFile = (typeof assistantOutputs)[number]["file"];
@@ -39,7 +38,10 @@ function format(file: AssistantOutputFile, body: string): string {
 export function generateAssistantCatalog(outputDirectory?: string): void {
   const result = extractCatalog({
     operationSources: assistantPaths.operationSources,
+    isModuleSource: assistantPaths.isModuleSource,
     transportSource: assistantPaths.transportSource,
+    facadeSource: assistantPaths.facadeSource,
+    resolverSources: assistantPaths.resolverSources,
   });
   const bodies: Record<AssistantOutputFile, string> = {
     "assistant-catalog.generated.json": format(

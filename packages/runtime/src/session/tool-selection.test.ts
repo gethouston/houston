@@ -80,6 +80,7 @@ describe("buildToolSelection", () => {
       "ask_user",
       "suggest_reusable",
       SUGGEST_ACTIONS_TOOL_NAME,
+      "request_provider_connection",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -251,6 +252,9 @@ describe("assistant family gating", () => {
       SUGGEST_REUSABLE_TOOL_NAME,
       SUGGEST_ACTIONS_TOOL_NAME,
       ...ASSISTANT_TOOL_NAMES,
+      "request_provider_connection",
+      "request_connection",
+      "request_credential",
     ]);
     // `houston_recall` (searching the assistant's own conversation) reaches the
     // model on this flag alone — it is named literally so it cannot fall out of
@@ -330,6 +334,7 @@ describe("autoToolNames", () => {
       ...CLAMPED_FILE_TOOL_NAMES,
       "suggest_reusable",
       SUGGEST_ACTIONS_TOOL_NAME,
+      "request_provider_connection",
       "bash",
       "integration_search",
       "integration_execute",
@@ -524,6 +529,9 @@ describe("the personal assistant's tool set", () => {
       "read_mission",
       "update_mission_status",
       ...ASSISTANT_TOOL_NAMES,
+      "request_provider_connection",
+      "request_connection",
+      "request_credential",
     ]);
   });
 
@@ -538,7 +546,6 @@ describe("the personal assistant's tool set", () => {
       "find",
       "integration_search",
       "integration_execute",
-      "request_connection",
       "find_skills",
       "install_skill",
       "save_routine",
@@ -582,4 +589,15 @@ describe("the personal assistant's tool set", () => {
       }).toolNames,
     );
   });
+});
+
+test("coordinator without an assistant catalog cannot offer custom credential preflight", () => {
+  const selected = buildToolSelection({
+    codeExecution: "disabled",
+    integrations: true,
+    personalAssistant: true,
+  });
+  expect(selected.toolNames).not.toContain("request_credential");
+  expect(selected.toolNames).toContain("request_connection");
+  expect(selected.toolNames).toContain("request_provider_connection");
 });

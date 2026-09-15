@@ -88,11 +88,14 @@ const BRAND_LOGOS: Record<BrandKey, (props?: LogoProps) => ReactElement> = {
 /**
  * The brand mark for a provider id / lab id, or `null` when it has none. Callers
  * pair this with `<Monogram>` for the fallback: `providerLogo(id) ?? <Monogram
- * seed={...} />`.
+ * seed={...} />`. `className` overrides the mark's default 20px box.
  */
-export function providerLogo(id: string): ReactElement | null {
+export function providerLogo(
+  id: string,
+  className?: string,
+): ReactElement | null {
   const key = providerBrandKey(id);
-  return key ? BRAND_LOGOS[key]() : null;
+  return key ? BRAND_LOGOS[key]({ className }) : null;
 }
 
 /**
@@ -147,7 +150,21 @@ export function Monogram({
  * Monochrome provider mark by id — the shared dispatcher used across chat,
  * onboarding, reconnect/error cards, and the AI hub. Resolves the id to a brand
  * mark, else falls back to the `Monogram` tile seeded from the id.
+ *
+ * `className` replaces the default 20px box for callers that need a different
+ * size or, in a flex title row, `shrink-0` so a long provider name can't squash
+ * the mark at phone width.
  */
-export function ProviderGlyph({ providerId }: { providerId: string }) {
-  return providerLogo(providerId) ?? <Monogram seed={providerId} />;
+export function ProviderGlyph({
+  providerId,
+  className,
+}: {
+  providerId: string;
+  className?: string;
+}) {
+  return (
+    providerLogo(providerId, className) ?? (
+      <Monogram className={className} seed={providerId} />
+    )
+  );
 }
