@@ -29,7 +29,21 @@ export interface EntityDirectory {
   /** Shared skills of one workspace, by slug. */
   sharedSkills(workspaceId: string): Promise<readonly SlugEntity[]>;
   /** Missions (activities) on one agent's board. */
-  activities(agentId: string): Promise<readonly NamedEntity[]>;
+  activities(agentId: string): Promise<readonly ActivityEntity[]>;
+}
+
+/**
+ * A mission, plus the chat it is talked about in.
+ *
+ * The address is carried HERE because the board is the only place it is
+ * written down: a mission's `session_key` is usually the `activity-<id>`
+ * convention but does not have to be (a welcome chat, a card created before
+ * the key was stored), and a caller holding nothing but a conversation id
+ * cannot tell such a chat from one the person started. The protected-chat
+ * guard (`routes/assistant-protected-chat.ts`) is that caller.
+ */
+export interface ActivityEntity extends NamedEntity {
+  readonly sessionKey: string;
 }
 
 export interface NamedEntity {

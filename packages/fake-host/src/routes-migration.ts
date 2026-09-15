@@ -8,6 +8,7 @@
  * only this fake reads it back.
  */
 
+import { missionConversationKey } from "@houston/domain/conversation-keys";
 import type { ChatMessage } from "@houston/runtime-client";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { CORS, json, noContent } from "./http";
@@ -22,9 +23,7 @@ interface FakeTranscript {
 }
 
 function conversationKeys(agentId: string): string[] {
-  return state
-    .listActivities(agentId)
-    .map((a) => a.session_key ?? `activity-${a.id}`);
+  return state.listActivities(agentId).map(missionConversationKey);
 }
 
 function exportZip(agentId: string, paths: string[]): Response {

@@ -7,6 +7,7 @@ export * from "./assistant-catalog-callable";
 export * from "./assistant-catalog-types";
 export * from "./config";
 export * from "./contributors";
+export * from "./conversation-keys";
 export * from "./doc-lock";
 export * from "./layout";
 export * from "./mentions";

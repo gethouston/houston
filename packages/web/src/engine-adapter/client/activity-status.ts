@@ -1,3 +1,4 @@
+import { addressesMission } from "@houston/domain";
 import type { BoardStatus } from "@houston/sdk";
 import type { PendingInteraction } from "../../../../../ui/engine-client/src/types";
 import * as activities from "../activities";
@@ -53,10 +54,7 @@ export async function setActivityStatus(
       const list = await viaSdk(board, () =>
         ctx.sdk.activities.list(agentPath),
       );
-      const match = list.find(
-        (a) =>
-          a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
-      );
+      const match = list.find((a) => addressesMission(a, sessionKey));
       if (!match) return; // transient session with no board card — nothing to update
       // `pending_interaction: null` clears it explicitly (the host route +
       // domain applyActivityUpdate honor null); a value records the interaction.

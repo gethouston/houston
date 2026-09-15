@@ -125,11 +125,10 @@ export interface IntegrationsModule {
   readonly scope: string;
   /** Refetch readiness + catalog + connections and republish the VM. */
   refresh(): Promise<IntegrationsViewModel>;
-  /** Start an OAuth connect (composio); the surface opens `redirectUrl`, then polls. */
-  connect(toolkit: string): Promise<ConnectResult>;
-  /** Provider-scoped connect (additive): `agent` scopes it to one agent slug. */
+  /** Start an OAuth connect against one provider; the surface opens
+   *  `redirectUrl`, then polls. `agent` scopes it to one agent slug. */
   connect(
-    provider: string,
+    provider: IntegrationProviderId,
     toolkit: string,
     agent?: string,
   ): Promise<ConnectResult>;

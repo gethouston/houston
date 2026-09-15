@@ -74,3 +74,22 @@ test("a host with no live turn recorded is a named state, not a gateway error", 
       "this only works during a turn, in the chat the turn is running in",
   });
 });
+
+test("a chat the assistant may not change is a named state, not a gateway error", async () => {
+  // The host refuses a rename or delete aimed at the chat the turn is running
+  // in, or at a chat a mission card or a routine owns (routes/
+  // assistant-protected-chat.ts). Its sentence already names the thing to act
+  // on instead, so the model must hear the refusal, never "retry this".
+  const sentence =
+    "that chat belongs to a mission's card, not to the user's list of chats.";
+  const error = await refusal(409, {
+    code: "protected_conversation",
+    error: sentence,
+  });
+
+  expect(error).toEqual({
+    code: "protected_conversation",
+    status: 409,
+    message: sentence,
+  });
+});

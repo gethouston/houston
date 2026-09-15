@@ -36,10 +36,11 @@ export interface OperationPolicy {
 
 // biome-ignore format: one operation per line - the policy diff IS the review.
 export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> = {
-  "conversations.delete": { group: "chat", confirm: false, hidden: true, route: "DELETE /agents/{agentId}/conversations/{id}", rawResponse: true },
-  "conversations.rename": { group: "chat", confirm: false, hidden: true, route: "PATCH /agents/{agentId}/conversations/{id}", rawResponse: true },
+  "conversations.delete": { group: "chat", confirm: true, hidden: false, route: "DELETE /agents/{agentId}/conversations/{id}", rawResponse: true },
+  "conversations.list": { group: "chat", confirm: false, hidden: false, route: "GET /agents/{agentId}/conversations", rawResponse: false },
+  "conversations.rename": { group: "chat", confirm: false, hidden: false, route: "PATCH /agents/{agentId}/conversations/{id}", rawResponse: true },
   "conversations.suggestTitle": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/title", rawResponse: false },
-  "integrations.connect": { group: "integrations", confirm: false, hidden: true, route: null, rawResponse: null },
+  "integrations.connect": { group: "integrations", confirm: false, hidden: true, route: "POST /v1/integrations/{provider}/connect", rawResponse: true },
   "integrations.disconnect": { group: "integrations", confirm: true, hidden: false, route: "POST /v1/integrations/composio/disconnect", rawResponse: true },
   "integrations.dismissReconnectNotice": { group: "integrations", confirm: false, hidden: true, route: "POST /v1/integrations/reconnect-notice/dismiss", rawResponse: true },
   "integrations.pollConnection": { group: "integrations", confirm: false, hidden: true, route: "GET /v1/integrations/composio/connections/{connectionId}", rawResponse: true },
@@ -166,6 +167,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   removeOrgMember: { group: "org", confirm: true, hidden: false, route: "DELETE /v1/org/members/{userId}", rawResponse: false },
   renameAgent: { group: "agents", confirm: true, hidden: false, route: "PATCH /agents/{id}", rawResponse: true },
   renameFile: { group: "files", confirm: false, hidden: false, route: "POST /agents/{agentPath}/files/rename", rawResponse: false },
+  renameMission: { group: "missions", confirm: false, hidden: false, route: "PATCH /agents/{agentId}/activities/{id}", rawResponse: true },
   revokeApiKey: { group: "api-keys", confirm: true, hidden: true, route: "DELETE /v1/keys/{id}", rawResponse: false },
   runRoutineNow: { group: "routines", confirm: true, hidden: false, route: "POST /agents/{agentId}/routines/{id}/run", rawResponse: false },
   saveAttachments: { group: "attachments", confirm: false, hidden: true, route: "POST /agents/{agentId}/attachments", rawResponse: true },

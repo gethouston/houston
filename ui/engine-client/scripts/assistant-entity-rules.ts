@@ -152,14 +152,16 @@ export const ENTITY_SOURCES: readonly EntityRule[] = [
     unlisted:
       "The community catalogue is outside Houston, so read both values from searchCommunitySkills.",
   },
-  // A chat: the surface always acts on the one the person has open, so the id
-  // never comes from a list. `after` claims the `{id}` the rename and delete
-  // routes carry; `names` claims the body and query spellings.
+  // A chat: it lives in the agent's own engine, which no directory collection
+  // covers, so the id comes from the `conversations.list` read. `after` claims
+  // the `{id}` the rename and delete routes carry; `names` claims the body and
+  // query spellings.
   {
     after: "conversations",
     names: ["conversationId"],
+    discovery: "conversations.list",
     unlisted:
-      "A chat is the one the person is looking at, and nothing lists an agent's chats.",
+      "A chat lives in the agent's own engine, not in the directory, so read its id from conversations.list.",
   },
   // The toolkit slug a trigger catalog is asked for: a query key, so the path
   // says nothing about it.

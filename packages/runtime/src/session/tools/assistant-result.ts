@@ -39,6 +39,10 @@ export type AssistantErrorCode =
    *  performed nothing. The correction is to act inside a turn, never to retry
    *  the same call. */
   | "not_in_turn"
+  /** The chat named is the one this turn is running in, or one a mission card
+   *  or a routine owns. Final: it is renamed and deleted where it belongs, and
+   *  the host's sentence says where that is. */
+  | "protected_conversation"
   /** The gateway answered a 4xx/5xx. */
   | "gateway_error"
   /** The host could not be reached, or answered something unreadable. */

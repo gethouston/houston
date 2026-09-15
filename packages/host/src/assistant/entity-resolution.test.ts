@@ -247,7 +247,7 @@ const directory = () => ({
   },
   activities: async (agentId: string) => {
     expect(agentId).toBe("a-legal");
-    return [{ id: "m1", name: "Review" }];
+    return [{ id: "m1", name: "Review", sessionKey: "activity-m1" }];
   },
 });
 

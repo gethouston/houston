@@ -60,7 +60,7 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       );
     }
     async connectIntegration(
-      provider: string,
+      provider: IntegrationProviderId,
       toolkit: string,
       agent?: string,
     ): Promise<{ redirectUrl: string; connectionId: string }> {
@@ -85,7 +85,7 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       );
     }
     async disconnectIntegration(
-      provider: string,
+      provider: IntegrationProviderId,
       toolkit: string,
       connectionId?: string,
     ): Promise<void> {

@@ -10,7 +10,6 @@ import {
   nextRun,
   pruneRoutineRuns,
   responseIsSilent,
-  routineConversationId,
   routinePrompt,
   routineRunPreamble,
   routineTriggerPrompt,
@@ -113,16 +112,6 @@ test("dueAt returns null for a schedule-less (trigger) routine, never throws", (
   expect(
     dueAt(r, new Date(NOW), new Date("2026-06-12T13:00:00.000Z"), "UTC"),
   ).toBeNull();
-});
-
-test("routineConversationId: shared reuses one chat, per_run is unique per run", () => {
-  const shared = routine({ chat_mode: "shared" });
-  expect(routineConversationId(shared, "run-1")).toBe("routine-r1");
-  expect(routineConversationId(shared, "run-2")).toBe("routine-r1");
-
-  const perRun = routine({ chat_mode: "per_run" });
-  expect(routineConversationId(perRun, "run-1")).toBe("routine-r1-run-1");
-  expect(routineConversationId(perRun, "run-2")).toBe("routine-r1-run-2");
 });
 
 test("createRoutineRun starts as running with the run's conversation as session_key", () => {

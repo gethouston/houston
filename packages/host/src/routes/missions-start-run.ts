@@ -2,6 +2,7 @@ import type { ServerResponse } from "node:http";
 import {
   createActivity,
   loadActivities,
+  missionConversationId,
   removeById,
   saveActivities,
   upsertById,
@@ -104,7 +105,7 @@ export async function startMission(
   try {
     await channel.fireTurn(
       { workspace: target.ws, agent: target.agent },
-      `activity-${id}`,
+      missionConversationId(id),
       input.prompt,
       {
         ...(provider ? { provider } : {}),

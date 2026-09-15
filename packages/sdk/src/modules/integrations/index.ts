@@ -23,6 +23,7 @@
  * `custom.ts` and `custom-agent.ts`, bound here through `facade.ts`.
  */
 
+import type { IntegrationProviderId } from "@houston/protocol";
 import {
   EngineError,
   type IntegrationConnection,
@@ -114,26 +115,12 @@ export function createIntegrationsModule(
     return publish({ loaded: true, ready: true, toolkits, connections });
   }
 
-  function connect(toolkit: string): Promise<ConnectResult>;
   function connect(
-    provider: string,
+    provider: IntegrationProviderId,
     toolkit: string,
     agent?: string,
-  ): Promise<ConnectResult>;
-  function connect(
-    a: string,
-    b?: string,
-    agent?: string,
   ): Promise<ConnectResult> {
-    // 1-arg = legacy `connect(toolkit)` (composio, `{ toolkit }` body — what the
-    // bridge command / iOS send, unchanged); 3-arg = `(provider, toolkit, agent?)`.
-    const [provider, toolkit] = b === undefined ? [undefined, a] : [a, b];
-    return run(() =>
-      client.connect(toolkit, {
-        ...(provider ? { provider } : {}),
-        ...(agent ? { agent } : {}),
-      }),
-    );
+    return run(() => client.connect(provider, toolkit, agent));
   }
 
   /**
@@ -162,7 +149,7 @@ export function createIntegrationsModule(
 
   ctx.registerCommand(IntegrationsCommand.Refresh, () => refresh());
   ctx.registerCommand(IntegrationsCommand.Connect, (p) =>
-    connect(requireString(p, "toolkit")),
+    connect("composio", requireString(p, "toolkit")),
   );
   ctx.registerCommand(IntegrationsCommand.PollConnection, (p) =>
     pollConnection(requireString(p, "connectionId")),

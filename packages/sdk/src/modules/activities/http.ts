@@ -14,7 +14,10 @@
  * lapsed session token becomes a visible `tokenExpired` signal.
  *
  * Assistant catalog: the `@assistant` blocks below are the single source of
- * truth for the board operations — this module is the only copy of them.
+ * truth for the board operations they sit on. The board's other two
+ * declarations live with the calls they describe — the rename in
+ * `./mission-rename.ts` and the search in `../missions-search/index.ts` — so a
+ * board operation is annotated once, where it is written.
  */
 
 import type { Activity, ActivityUpdate, NewActivity } from "@houston/protocol";

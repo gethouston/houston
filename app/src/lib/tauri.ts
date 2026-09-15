@@ -1978,7 +1978,7 @@ export const tauriIntegrations = {
    *  HOU-1110) and no-auth (nothing to connect, its tools already work) — are
    *  expected + explainable: the connect flow surfaces its own copy, so no raw
    *  toast and no bug report. */
-  connect: (provider: string, toolkit: string, agent?: string) =>
+  connect: (provider: IntegrationProviderId, toolkit: string, agent?: string) =>
     call(
       "integration_connect",
       () => getEngine().connectIntegration(provider, toolkit, agent),
@@ -2001,7 +2001,11 @@ export const tauriIntegrations = {
     ),
   /** `connectionId` narrows the removal to ONE account of the toolkit (a
    *  toolkit can hold several — two Gmail logins); omitted removes them all. */
-  disconnect: (provider: string, toolkit: string, connectionId?: string) =>
+  disconnect: (
+    provider: IntegrationProviderId,
+    toolkit: string,
+    connectionId?: string,
+  ) =>
     call("integration_disconnect", () =>
       getEngine().disconnectIntegration(provider, toolkit, connectionId),
     ),

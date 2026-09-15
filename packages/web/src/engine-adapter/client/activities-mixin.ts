@@ -1,3 +1,4 @@
+import { missionConversationId } from "@houston/domain";
 import type {
   Activity,
   ActivityUpdate,
@@ -74,7 +75,7 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
       // goes too (a server 404 alone no longer drops it, HOU-731). Missions
       // key their conversation `activity-<id>` (see setActivityStatus).
       if (this.ctx.cp)
-        void deleteCachedConversation(agentPath, `activity-${id}`);
+        void deleteCachedConversation(agentPath, missionConversationId(id));
       emitLocalEcho("ActivityChanged", { agentPath });
     }
 

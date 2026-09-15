@@ -1,3 +1,5 @@
+import { missionConversationKey } from "@houston/domain";
+
 /** Parse only identity fields; malformed directories must fail, never look empty. */
 export function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -51,7 +53,12 @@ export const inviteEntity = (row: Record<string, unknown>) => ({
   email: textField(row, "email"),
 });
 
-export const activityEntity = (row: Record<string, unknown>) => ({
-  id: textField(row, "id"),
-  name: textField(row, "title"),
-});
+export const activityEntity = (row: Record<string, unknown>) => {
+  const id = textField(row, "id");
+  const key = optionalText(row, "session_key");
+  return {
+    id,
+    name: textField(row, "title"),
+    sessionKey: missionConversationKey(key ? { id, session_key: key } : { id }),
+  };
+};

@@ -1,5 +1,6 @@
 import type { Activity, Routine, RoutineRun } from "@houston/protocol";
 import { Cron } from "croner";
+import { routineConversationId } from "./conversation-keys";
 
 /**
  * Cron evaluation for routines — pure, timezone-aware, no I/O. The Scheduler
@@ -64,17 +65,6 @@ export function dueAt(
   const next = nextRun(routine.schedule, timezone, since);
   if (next && next.getTime() <= now.getTime()) return next;
   return null;
-}
-
-/**
- * The conversation a routine run uses. `shared` (default) → one conversation
- * per routine, so every run continues the same chat; `per_run` → a fresh
- * conversation per run. Matches the RoutineChatMode contract.
- */
-export function routineConversationId(routine: Routine, runId: string): string {
-  return routine.chat_mode === "per_run"
-    ? `routine-${routine.id}-${runId}`
-    : `routine-${routine.id}`;
 }
 
 /** A fresh "running" run record. Caller supplies id + clock (domain stays pure). */

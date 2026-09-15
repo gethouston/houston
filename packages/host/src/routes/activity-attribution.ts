@@ -1,4 +1,5 @@
 import {
+  addressesMission,
   loadActivities,
   saveActivities,
   type TextStore,
@@ -37,9 +38,7 @@ export async function stampTurnAttribution(
 ): Promise<void> {
   try {
     const { items } = await loadActivities(store, root);
-    const activity = items.find(
-      (a) => a.session_key === cid || `activity-${a.id}` === cid,
-    );
+    const activity = items.find((a) => addressesMission(a, cid));
     if (!activity) return;
     const next = upsertMentions(
       upsertContributor(activity, author),

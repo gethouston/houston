@@ -92,7 +92,9 @@ export interface Activity {
 
 export const activityUpdateSchema = z
   .object({
-    title: z.string().optional(),
+    // A card shows its title and nothing else: an empty one is a mission nobody
+    // can name again. Trimmed first, so whitespace is not a title either.
+    title: z.string().trim().min(1).optional(),
     description: z.string().optional(),
     status: z.string().optional(),
     claude_session_id: z.string().nullable().optional(),

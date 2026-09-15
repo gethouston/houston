@@ -56,10 +56,10 @@ function makeSdk() {
 const I = "/v1/integrations";
 const gets = (c: Recorded[]) => c.filter((x) => x.method === "GET");
 
-describe("integrations module — connect overload", () => {
-  it("connect(toolkit) posts { toolkit } to the composio route (legacy, iOS-safe)", async () => {
+describe("integrations module — connect", () => {
+  it("connect(provider, toolkit) posts { toolkit } to the provider's route", async () => {
     const { sdk, calls } = makeSdk();
-    const res = await sdk.integrations.connect("gmail");
+    const res = await sdk.integrations.connect("composio", "gmail");
     expect(res).toEqual({ redirectUrl: "u", connectionId: "c1" });
     expect(calls).toEqual([
       {

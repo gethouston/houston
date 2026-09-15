@@ -5,6 +5,7 @@
     "addCustomIntegration": "Agregar una app externa tuya a partir de un enlace.",
     "addOrgMember": "Invitar a alguien a este espacio con el rol que elegiste.",
     "cancelRoutineRun": "Detener esta ejecución de la rutina mientras está en curso.",
+    "conversations.delete": "Eliminar este chat y todo lo que se dijo en él. Esto no se puede deshacer.",
     "createAgent": "Crear un agente nuevo.",
     "createApiKey": "Crear una clave de API nueva.",
     "createCheckout": "Iniciar el pago que suscribe este espacio de trabajo a un plan pago.",
@@ -96,6 +97,9 @@
     "workspaceId": "espacio de trabajo"
   },
   "argumentsByOperation": {
+    "conversations.delete": {
+      "id": "chat"
+    },
     "deleteActivity": {
       "id": "misión"
     },

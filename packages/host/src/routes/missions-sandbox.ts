@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Activity, HoustonEvent } from "@houston/protocol";
+import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace, WorkspaceRuntime } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
@@ -87,10 +87,6 @@ export interface MissionsCtx {
    */
   actingAs?: string;
 }
-
-/** A mission's chat address: explicit `session_key`, else `activity-<id>`. */
-export const missionSessionKey = (a: Activity): string =>
-  a.session_key ?? `activity-${a.id}`;
 
 defineRouteFamily({
   group: "sandbox-missions",

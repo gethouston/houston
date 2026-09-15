@@ -41,6 +41,17 @@ export async function errorFromResponse(
   if (code === "not_in_turn") {
     return { code: "not_in_turn", status: res.status, message: detail };
   }
+  // The chat is the assistant's own, or a card's (routes/
+  // assistant-protected-chat.ts). Named for the same reason: the host's
+  // answer already says which other thing to act on, and a "gateway error"
+  // would read as a call worth making again.
+  if (code === "protected_conversation") {
+    return {
+      code: "protected_conversation",
+      status: res.status,
+      message: detail,
+    };
+  }
   // The host's own deployment gate (routes/assistant-operation-guards.ts). The
   // runtime normally refuses these before the round trip, so reaching here
   // means the host knows something this process was not told — its answer is
