@@ -136,7 +136,7 @@
     },
     "readOnly": {
       "title": "Estos archivos no se pueden cambiar por ahora",
-      "description": "Houston no puede escribir en el espacio de trabajo de tu asistente. Revisa los permisos de la carpeta e inténtalo de nuevo."
+      "description": "Houston no puede guardar cambios ahí. Revisa los permisos de la carpeta e inténtalo de nuevo."
     },
     "conflict": {
       "title": "“{{name}}” ya existe",

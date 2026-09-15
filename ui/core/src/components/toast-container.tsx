@@ -17,7 +17,13 @@ export function ToastContainer({
   onDismiss: (id: string) => void;
 }) {
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div
+      // The stack's own handle, so a test can ask what THIS surface raised
+      // instead of counting every live region on the page (an sr-only status,
+      // a busy spinner) as if it were a toast.
+      data-testid="toast-container"
+      className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm"
+    >
       <AnimatePresence mode="popLayout">
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onDismiss={onDismiss} />

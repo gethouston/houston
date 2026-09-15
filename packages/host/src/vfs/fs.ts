@@ -109,11 +109,7 @@ export class FsVfs implements Vfs {
     return writable(key, () => rm(this.pathFor(key), { force: true }));
   }
 
-  move(fromKey: string, toKey: string): Promise<void> {
-    return writable(toKey, () => this.renameInPlace(fromKey, toKey));
-  }
-
-  private async renameInPlace(fromKey: string, toKey: string): Promise<void> {
+  async move(fromKey: string, toKey: string): Promise<void> {
     const from = this.pathFor(fromKey);
     const to = this.pathFor(toKey);
     // `lstat`, never `stat`, on BOTH sides: `rename(2)` moves the link itself,
@@ -150,8 +146,17 @@ export class FsVfs implements Vfs {
     // are unsupported on exFAT and SMB (the volumes a workspace can legally
     // sit on) and illegal for directories, so it would trade a microsecond
     // race for moves that simply fail.
-    await mkdir(dirname(to), { recursive: true });
-    await rename(from, to);
+    //
+    // Only this tail is the write, so only this tail is asked whether the
+    // storage refuses writes: the two `lstat` guards above are reads, and an
+    // untraversable parent fails them with the same EACCES a locked volume
+    // raises. Under one wrapper around the whole move, that read failure would
+    // reach the person as "we could not save there, check the folder's
+    // permissions" for a file Houston could not even look at.
+    await writable(toKey, async () => {
+      await mkdir(dirname(to), { recursive: true });
+      await rename(from, to);
+    });
   }
 
   deletePrefix(prefix: string): Promise<void> {

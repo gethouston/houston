@@ -296,15 +296,20 @@ test("a read-only workspace says so instead of failing in silence", async ({
   await input.fill("Q4 report.pdf");
   await input.press("Enter");
 
-  await expect(
-    page
-      .getByRole("status")
-      .filter({ hasText: "can’t be changed right now" })
-      .filter({ hasText: "Check the folder’s permissions" }),
-  ).toBeVisible();
-  // ONE toast: the authored sentence, and no generic bug box beside it. A
-  // count of zero bug boxes would pass on a screen showing nothing at all.
-  await expect(page.getByRole("status")).toHaveCount(1);
+  // Scoped to the toast stack itself: a `status` role anywhere else on the page
+  // (an sr-only live region, a busy spinner) is not a toast and must not stand
+  // in for one, nor inflate the count below.
+  const toasts = page.getByTestId("toast-container");
+  const refusal = toasts
+    .getByRole("status")
+    .filter({ hasText: "can’t be changed right now" })
+    .filter({ hasText: "Check the folder’s permissions" });
+  await expect(refusal).toBeVisible();
+  // The authored sentence, raised ONCE — not a stack of identical toasts, one
+  // per query the refusal knocked over — and alone: the red bug channel
+  // (`alert`) stays empty, because nothing in Houston broke.
+  await expect(refusal).toHaveCount(1);
+  await expect(toasts.getByRole("alert")).toHaveCount(0);
 
   // The rename did not happen, and the screen is not optimistic about it.
   await expect(row(page, "Q3 report.pdf")).toHaveCount(1);

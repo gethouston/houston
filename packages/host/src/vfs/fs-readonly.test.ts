@@ -106,6 +106,36 @@ test.skipIf(isRoot)(
   },
 );
 
+test.skipIf(isRoot)(
+  "a move that cannot even look at its source stays a read failure",
+  async () => {
+    // A move is two reads (the `lstat` guards that decide whether `rename(2)`
+    // would eat a neighbour) and then one write. Only the write half can be
+    // refused BY the storage; a parent the process may not traverse fails the
+    // reads with the very same EACCES. Labelling that a refusal to write would
+    // put "check the folder's permissions, we could not save there" in front of
+    // a person whose file Houston could not so much as look at, and would hide
+    // the real fault from the log.
+    const root = join(mkdtempSync(join(tmpdir(), "houston-sealed-")), "store");
+    const vfs = new FsVfs(root);
+    await vfs.writeText(`${ROOT}/sealed/report.txt`, "kept");
+    const sealed = join(root, ...ROOT.split("/"), "sealed");
+    // rw- : readable and writable, but NOT traversable, so `lstat` on anything
+    // inside it answers EACCES while the directory itself still takes writes.
+    chmodSync(sealed, 0o600);
+    try {
+      await expect(
+        vfs.move(`${ROOT}/sealed/report.txt`, `${ROOT}/report.txt`),
+      ).rejects.toMatchObject({ code: "EACCES" });
+      await expect(
+        vfs.move(`${ROOT}/sealed/report.txt`, `${ROOT}/report.txt`),
+      ).rejects.not.toBeInstanceOf(VfsReadOnlyError);
+    } finally {
+      chmodSync(sealed, 0o700);
+    }
+  },
+);
+
 test.skipIf(isRoot)("the refusal survives a re-rooting adapter", async () => {
   // The cloud op path addresses every workspace file through PrefixedVfs. An
   // adapter that swallowed or re-typed the refusal would leave the pod

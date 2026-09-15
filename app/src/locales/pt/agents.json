@@ -136,7 +136,7 @@
     },
     "readOnly": {
       "title": "Estes arquivos não podem ser alterados agora",
-      "description": "O Houston não consegue gravar no espaço de trabalho do seu assistente. Confira as permissões da pasta e tente de novo."
+      "description": "O Houston não consegue salvar alterações aí. Confira as permissões da pasta e tente de novo."
     },
     "conflict": {
       "title": "“{{name}}” já existe",
