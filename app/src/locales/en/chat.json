@@ -143,7 +143,9 @@
     "modelNotAllowed": "This model isn't allowed for this agent",
     "modelNotAllowedBody": "This agent's allowed models changed. Pick another one from the list.",
     "missionRowFailed": "We could not save this task to your board. Your message was still sent.",
-    "interactionDismissFailed": "Couldn't dismiss the request."
+    "interactionDismissFailed": "Couldn't dismiss the request.",
+    "interactionBusyTitle": "Houston is already working on this",
+    "interactionBusyBody": "The request was replaced by a new reply. Wait for it to finish, or press Stop to abandon it."
   },
   "providerError": {
     "retryPrompt": "Try again.",
