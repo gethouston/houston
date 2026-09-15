@@ -32,6 +32,7 @@ export async function drainUntilExit(
       const timer = setTimeout(() => resolve(false), ms);
       timer.unref?.();
     });
+  r.stopRequested = true;
   r.handle.kill();
   let gone = await Promise.race([exited, expire(timeoutMs)]);
   if (!gone) {
@@ -77,6 +78,7 @@ export async function shutdownAllAndWait(
         exited: new Promise<void>((resolve) => onExit(() => resolve())),
       });
     }
+    r.stopRequested = true;
     r.handle.kill();
   }
   running.clear();
