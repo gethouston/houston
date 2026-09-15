@@ -1,6 +1,7 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { WireEvent } from "@houston/runtime-client";
 import { classifyText, mapSdkError } from "./errors";
+import { isAssistantMessageStart } from "./sdk-message-shapes";
 import { createContentBlockTracker } from "./translate-blocks";
 import type { EventLike } from "./translate-support";
 import { createUsageTracker } from "./translate-usage";
@@ -44,6 +45,7 @@ export function createStreamTranslator(cb: TranslatorCallbacks) {
   function translate(msg: SDKMessage): WireEvent[] {
     switch (msg.type) {
       case "stream_event":
+        if (isAssistantMessageStart(msg)) blocks.onMessageStart();
         return blocks.onStreamEvent(msg.event as EventLike);
       case "user":
         return blocks.onUserMessage(msg.message?.content);
