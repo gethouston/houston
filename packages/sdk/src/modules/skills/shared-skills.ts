@@ -96,7 +96,7 @@ export async function createSharedSkill(
  *   invent one.
  * @param content The skill's full text as it should be shared.
  * @assistant group:skills
- * @assistant confirm: outward. It publishes the skill to everyone in the workspace, and a shared skill already under that name is replaced.
+ * @assistant confirm: outward. It publishes the skill to everyone in the workspace, and a shared skill already under that name is refused rather than replaced.
  */
 export async function promoteSharedSkill(
   scope: HttpScope,

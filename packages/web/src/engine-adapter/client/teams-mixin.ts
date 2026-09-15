@@ -21,7 +21,7 @@ export function TeamsMixin<TBase extends BaseCtor>(Base: TBase) {
     // ---- per-agent assignments (multiplayer) ----
     async setAgentAssignments(
       agentSlugOrId: string,
-      assignments: controlPlane.AgentAssignment[] | string[],
+      assignments: controlPlane.AgentAssignment[],
     ): Promise<void> {
       if (!this.ctx.cp)
         throw new Error("multiplayer requires the hosted gateway");

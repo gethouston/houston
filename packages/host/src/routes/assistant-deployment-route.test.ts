@@ -222,3 +222,19 @@ test("route mapping escapes trusted target and preserves method, query and body"
     ),
   ).toBeNull();
 });
+
+// The allowlist pairs a SHAPE with its methods, so a method the pod never
+// serves on that shape must be declined rather than forwarded: a rewrite that
+// looked only at the path would send these to the agent's engine, where they
+// land on no handler at all.
+test.each([
+  "/v1/integrations/custom/definitions/app/credential",
+  "/v1/integrations/custom/definitions/app/detect",
+])("PATCH %s is declined", (path) => {
+  expect(
+    assistantDeploymentRoute(
+      { path, method: "PATCH", query: {} },
+      { gatewayFronted: true, gatewayAgentId: "trusted-pod" },
+    ),
+  ).toBeNull();
+});

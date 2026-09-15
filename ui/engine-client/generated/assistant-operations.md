@@ -21,7 +21,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `setAgentModelChoice` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; choice: free text |
 | `updateAgentColor` | PUT | unconfirmed: Reversible display preference; changes no agent behavior or access. | visible | agentId: resolved:agents; color: enum |
 | `createApiKey` | POST | confirmed: host approval required | returns a secret; the full key is revealed once and must not pass through a chat turn. | name: free text |
-| `listApiKeys` | GET | unconfirmed: read-only HTTP GET | visible | none |
+| `listApiKeys` | GET | unconfirmed: read-only HTTP GET | the hosted gateway's scope wall denies the key routes to this surface, so a dispatched listing can only fail. | none |
 | `revokeApiKey` | DELETE | confirmed: host approval required | the hosted gateway's scope wall denies the key routes to this surface, so a dispatched revoke can only fail. | id: open: API keys are secrets the directory never lists. |
 | `saveAttachments` | POST | unconfirmed: withheld from dispatch | the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace. | agentId: resolved:agents; scopeId: free text; files: free text |
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
@@ -45,7 +45,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `moveProjectFile` | POST | unconfirmed: Moves a file inside the same workspace; nothing is overwritten and nothing leaves it. | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; toDir: open: Files are not directory entries, so read the path from listProjectFiles. |
 | `readAgentFile` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents; relPath: open: An agent document is addressed by its known name, and nothing lists them. |
 | `readProjectFile` | GET | unconfirmed: read-only HTTP GET | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles. |
-| `renameFile` | POST | unconfirmed: Renames in place; the contents are untouched and the name is changed back the same way. | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; newName: free text |
+| `renameFile` | POST | unconfirmed: Renames in place; the contents are untouched, a name already in use is refused rather than written over, and the name is changed back the same way. | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; newName: free text |
 | `uploadProjectFiles` | unroutable | unconfirmed: withheld from dispatch | the Files section owns the picker that reads files off the person's device; readProjectFile and writeAgentFile are the assistant's way in and out of a workspace. | agentPath: resolved:agents; files: free text; targetDir: free text |
 | `writeAgentFile` | PUT | confirmed: host approval required | visible | agentId: resolved:agents; relPath: open: An agent document is addressed by its known name, and nothing lists them.; content: free text |
 | `addAgentCustomIntegration` | POST | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; input: free text |

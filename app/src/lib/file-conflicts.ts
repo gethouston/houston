@@ -1,8 +1,9 @@
 /**
- * Client-side move-conflict detection for the Files section. The listing already
- * holds the whole workspace, so a name collision is known before calling the
- * host's `files/move` (which 409s on clobber) — letting the UI offer
- * Replace / Keep both instead of surfacing an error toast.
+ * Client-side name-collision detection for the Files section. The listing
+ * already holds the whole workspace, so a collision is known before calling the
+ * host's `files/move` or `files/rename` (both 409 on clobber): a move offers
+ * Replace / Keep both, a rename says the name is taken, and neither costs the
+ * user a round trip that could only end in a refusal.
  */
 import type { FileEntry } from "@houston-ai/agent";
 
@@ -46,6 +47,49 @@ export function detectMoveConflict(
     };
   }
   return { kind: "clear" };
+}
+
+export type RenameConflict =
+  /** The name it already has: silently do nothing. */
+  | { kind: "noop" }
+  /** A sibling (file OR folder) already carries this name. */
+  | { kind: "conflict"; targetPath: string; name: string }
+  /** Free to rename. */
+  | { kind: "clear" };
+
+/**
+ * A rename keeps the item in its folder, so the collision is with a sibling.
+ * `hasEntry` counts a folder as taken too, which is exactly right here: one
+ * name is one entry, and a file cannot share it with a folder.
+ */
+export function detectRenameConflict(
+  files: readonly FileEntry[],
+  sourcePath: string,
+  newName: string,
+): RenameConflict {
+  const slash = sourcePath.lastIndexOf("/");
+  const targetPath =
+    slash === -1 ? newName : `${sourcePath.slice(0, slash + 1)}${newName}`;
+  if (targetPath === sourcePath) return { kind: "noop" };
+  if (hasEntry(files, targetPath)) {
+    return { kind: "conflict", targetPath, name: newName };
+  }
+  return { kind: "clear" };
+}
+
+/**
+ * True when the host refused a rename because the name is taken.
+ *
+ * `files/rename` has exactly one 409 path — `renameWorkspaceFile`'s occupied
+ * destination (`packages/host/src/turn/files-ops.ts`) — so the status alone
+ * identifies the state, and the classifier never reads the English message
+ * (which is the host's wording, not a contract). It is the race the listing
+ * cannot close: another writer, or the agent itself, took the name between the
+ * listing the UI read and the rename it sent.
+ */
+export function isNameTakenError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  return (err as { status?: unknown }).status === 409;
 }
 
 /**

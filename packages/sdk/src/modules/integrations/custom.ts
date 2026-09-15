@@ -75,7 +75,7 @@ export async function updateCustomIntegrationDetails(
  * @param slug The custom integration's exact slug, from customIntegrations.
  * @param values The credential fields the integration asked for, keyed by
  *   field name.
- * @assistant group:integrations confirm: outward. It hands a secret to a third-party service Houston then acts against on the user's behalf.
+ * @assistant group:integrations confirm: outward. It hands a secret to a third-party service Houston then acts against on the user's behalf, from every agent that app is on.
  * @assistant hidden: takes a secret; the user pastes the integration's own credential.
  */
 export async function submitCustomIntegrationCredential(

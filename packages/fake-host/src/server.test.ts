@@ -93,6 +93,66 @@ describe("startFakeHost", () => {
     expect(caps.sharedSkills).toBe(true);
   });
 
+  it("refuses a rename onto a name already in use, like the real host", async () => {
+    // The real host 409s rather than clobbering the other file
+    // (`turn/files-ops.ts`), and the UI treats that as an expected state. A
+    // fake host that silently overwrote would make the collision untestable
+    // AND would lose a file in every e2e that renames.
+    const files = `${host.url}/agents/${SEED_AGENT_ID}/files`;
+    await fetch(`${files}/import`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        files: [{ name: "notes.txt", contentBase64: "" }],
+      }),
+    });
+
+    const res = await fetch(`${files}/rename`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ path: "notes.txt", newName: "Q3 report.pdf" }),
+    });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({
+      error: '"Q3 report.pdf" already exists there',
+    });
+
+    // Both files are still there, under their own names.
+    const listed = (await (await fetch(files)).json()) as Array<{
+      path: string;
+    }>;
+    const paths = listed.map((f) => f.path);
+    expect(paths).toContain("notes.txt");
+    expect(paths).toContain("Q3 report.pdf");
+
+    // A folder name is taken too: it exists only through its children's keys.
+    await fetch(`${files}/folder`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ path: "Papers" }),
+    });
+    const ontoFolder = await fetch(`${files}/rename`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ path: "notes.txt", newName: "Papers" }),
+    });
+    expect(ontoFolder.status).toBe(409);
+
+    // A free name still renames, and the name it already has is a no-op.
+    const free = await fetch(`${files}/rename`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ path: "notes.txt", newName: "notes 2.txt" }),
+    });
+    expect(free.status).toBe(200);
+    const same = await fetch(`${files}/rename`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ path: "notes 2.txt", newName: "notes 2.txt" }),
+    });
+    expect(same.status).toBe(200);
+  });
+
   it("serves the pi-ai provider catalog at /v1/catalog", async () => {
     // Regression: the route was missing, so the app's `getCatalog()` 404-degraded
     // to `[]` and the picker/AI-Models tab fell back to the override-only seed

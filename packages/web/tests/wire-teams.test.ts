@@ -169,21 +169,27 @@ describe("the delegated membership calls", () => {
 });
 
 describe("the delegated per-agent policy", () => {
-  test("assignments send rows as given and bare ids as plain access", async () => {
+  test("assignments send every row's access verbatim, manager included", async () => {
     stubFetch(() => new Response(null, { status: 204 }));
 
     await client().setAgentAssignments("ag 1", [
       { userId: "u1", access: "manager" },
+      { userId: "u2", access: "user" },
     ]);
-    await client().setAgentAssignments("ag 1", ["u1"]);
+    await client().setAgentAssignments("ag 1", []);
 
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
       `PUT ${BASE}/v1/agents/ag%201/assignments`,
       `PUT ${BASE}/v1/agents/ag%201/assignments`,
     ]);
     expect(calls.map((c) => c.body)).toEqual([
-      JSON.stringify({ assignments: [{ userId: "u1", access: "manager" }] }),
-      JSON.stringify({ assignments: [{ userId: "u1", access: "user" }] }),
+      JSON.stringify({
+        assignments: [
+          { userId: "u1", access: "manager" },
+          { userId: "u2", access: "user" },
+        ],
+      }),
+      JSON.stringify({ assignments: [] }),
     ]);
     for (const call of calls) expectGatewayHeaders(call);
   });

@@ -71,7 +71,7 @@ export async function captureCredential(
  * clients). Resolves on 200; throws the host's reason otherwise so the caller
  * can degrade to the paste flow.
  *
- * @assistant group:providers confirm: outward. It sends this machine's provider sign-in to a remote pod, which then holds it.
+ * @assistant group:providers confirm: outward. It sends this machine's provider sign-in to a cloud agent, which then holds it.
  * @assistant hidden: carries a secret; the desktop's Anthropic OAuth credential.
  */
 export async function pushClaudeOAuthCredential(
@@ -94,7 +94,7 @@ export async function pushClaudeOAuthCredential(
  * runtime's local auth.json and the next turn re-served the credential from the
  * central store — so the provider reconnected itself. Idempotent.
  *
- * @assistant group:providers confirm: irreversible. The sign-in is gone, including the one serving this conversation, and the user has to authenticate with the provider again to get it back.
+ * @assistant group:providers confirm: irreversible. Every agent in the workspace loses that sign-in, including the one serving this conversation, and the user has to authenticate with the provider again to get it back.
  */
 export async function forgetCredential(
   scope: HttpScope,

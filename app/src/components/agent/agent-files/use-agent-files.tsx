@@ -5,11 +5,11 @@ import {
   useCreateFolder,
   useDeleteFile,
   useFiles,
-  useRenameFile,
   useUploadFiles,
 } from "../../../hooks/queries";
 import { useFilePreviewLoader } from "../../../hooks/use-file-preview-loader";
 import { useMoveWithConflict } from "../../../hooks/use-move-with-conflict";
+import { useRenameWithConflict } from "../../../hooks/use-rename-with-conflict";
 import { newEngineActive } from "../../../lib/engine";
 import { sharedBytesKey } from "../../../lib/file-bytes-cache";
 import { tauriFiles } from "../../../lib/tauri";
@@ -87,7 +87,7 @@ export function useAgentFiles(
     refetch,
   } = useFiles(path, options?.enabled);
   const deleteFile = useDeleteFile(path);
-  const renameFile = useRenameFile(path);
+  const requestRename = useRenameWithConflict(path, files);
   const createFolder = useCreateFolder(path);
   const uploadFiles = useUploadFiles(path);
   const move = useMoveWithConflict(path, files);
@@ -128,8 +128,7 @@ export function useAgentFiles(
     onDownloadFolder: canUseLocalFiles ? undefined : downloadFolder,
     onDelete: deleteConfirm.requestDelete,
     onDeleteMany: deleteConfirm.requestDeleteMany,
-    onRename: (file, newName) =>
-      renameFile.mutate({ relativePath: file.path, newName }),
+    onRename: (file, newName) => requestRename(file.path, newName),
     onCreateFolder: (name) => createFolder.mutate(name),
     onFilesDropped: (dropped, targetFolder) =>
       ingest(dropped, targetFolder ?? null),

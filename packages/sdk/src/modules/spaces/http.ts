@@ -45,7 +45,7 @@ export async function listOrgs(scope: HttpScope): Promise<OrgsList> {
  *
  * @param name What to call the new space, in the user's own words.
  * @assistant group:spaces
- * @assistant confirm: money. A space carries its own subscription, and the call is not idempotent, so a repeat leaves a second billable space standing.
+ * @assistant confirm: money. A space carries its own subscription, so a repeat leaves a second billable space standing.
  */
 export async function createOrg(
   scope: HttpScope,

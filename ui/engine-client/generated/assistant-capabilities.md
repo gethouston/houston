@@ -17,10 +17,6 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `setAgentModelChoice`: Chooses which AI model an agent uses. **Confirmation required.**
 - `updateAgentColor`: Change an agent's color. Pick one of Houston's ten palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange, golden, or umber. The new color shows up everywhere that agent appears.
 
-## api-keys
-
-- `listApiKeys`: Lists the user's active API keys.
-
 ## billing
 
 - `createCheckout`: Starts the checkout that subscribes the team workspace to a paid plan. **Confirmation required.**

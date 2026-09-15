@@ -130,6 +130,10 @@
     "menuButton": "Más acciones",
     "expandAgent": "Expandir archivos de {{name}}",
     "collapseAgent": "Contraer archivos de {{name}}",
+    "nameTaken": {
+      "title": "Ese nombre ya está en uso",
+      "description": "Ya hay un archivo o una carpeta con el nombre “{{name}}” aquí."
+    },
     "conflict": {
       "title": "“{{name}}” ya existe",
       "description": "La carpeta de destino ya tiene un elemento llamado “{{name}}”. Puedes reemplazarlo o conservar ambos.",

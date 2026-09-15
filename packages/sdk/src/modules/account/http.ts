@@ -92,6 +92,7 @@ export async function setMyProfile(
  *
  * Not confirmed: a read. It names the user's keys and reveals no secret.
  * @assistant group:api-keys
+ * @assistant hidden: the hosted gateway's scope wall denies the key routes to this surface, so a dispatched listing can only fail.
  */
 export async function listApiKeys(scope: HttpScope): Promise<ApiKey[]> {
   const res = await httpRequest(scope, "/v1/keys");

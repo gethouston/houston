@@ -83,11 +83,17 @@ export function handleWorkspaceFiles(
   }
 
   if (sub === "rename" && method === "POST") {
-    state.renameWorkspaceEntry(
+    const newName = String(body?.newName ?? "");
+    const result = state.renameWorkspaceEntry(
       id,
       String(body?.path ?? ""),
-      String(body?.newName ?? ""),
+      newName,
     );
+    // The real host refuses a taken name rather than overwriting the other
+    // file — same status and same `{error}` body, so the UI's expected-state
+    // handling is exercised here and not just in production.
+    if (result === "taken")
+      return json({ error: `"${newName}" already exists there` }, 409);
     return json({ ok: true });
   }
 

@@ -6,17 +6,17 @@
 - Undocumented: 0
 - Ungrouped: 0
 - Unschematized: 20
-- Hidden: 54
+- Hidden: 55
 - Confirmed: 55
 - Routable: 141
 - Unroutable: 20
 - Raw-response routes: 95
-- Acknowledged exceptions: 86
+- Acknowledged exceptions: 87
 - Acknowledged debt: 0
 
 A raw-response route reaches the host through an adapter function that post-processes the reply (unwrapping `items`, 404 fallbacks, `.then` transforms). The route itself carries the host's response unchanged.
 
-## Acknowledged exceptions (86)
+## Acknowledged exceptions (87)
 
 Every operation the assistant cannot drive states why in its `@assistant` tag, and `pnpm check:assistant-coverage` fails the build on any that does not. These are the human-owned exceptions.
 
@@ -26,6 +26,7 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `listInstalledConfigs` - unschematized: an installed template carries its raw config document, whose shape is the template's own.
 - `updateAgentColor` - unconfirmed: Reversible display preference; changes no agent behavior or access.
 - `createApiKey` - hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
+- `listApiKeys` - hidden: the hosted gateway's scope wall denies the key routes to this surface, so a dispatched listing can only fail.
 - `revokeApiKey` - hidden: the hosted gateway's scope wall denies the key routes to this surface, so a dispatched revoke can only fail.
 - `saveAttachments` - hidden: the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace.
 - `createPortal` - hidden: answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model.
@@ -44,7 +45,7 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `migrationExport` - hidden: answers with a zip as raw bytes, which no chat turn can carry; the copy and migration flows drive it themselves.
 - `migrationImport` - hidden: takes a zip as raw bytes, which no chat turn can carry; the copy and migration flows drive it themselves.
 - `moveProjectFile` - unconfirmed: Moves a file inside the same workspace; nothing is overwritten and nothing leaves it.
-- `renameFile` - unconfirmed: Renames in place; the contents are untouched and the name is changed back the same way.
+- `renameFile` - unconfirmed: Renames in place; the contents are untouched, a name already in use is refused rather than written over, and the name is changed back the same way.
 - `uploadProjectFiles` - hidden: the Files section owns the picker that reads files off the person's device; readProjectFile and writeAgentFile are the assistant's way in and out of a workspace.
 - `addAgentCustomIntegration` - unschematized: the input's headers is an open record of header name to value.
 - `addCustomIntegration` - unschematized: the input's headers is an open record of header name to value.
@@ -129,21 +130,21 @@ Each one ends the agent's turn and asks the user before it runs, and states what
 - `writeAgentFile`: irreversible. It replaces the whole file, and what the user had written there is not kept.
 - `addAgentCustomIntegration`: outward. Houston starts calling an address the user supplied on this agent's behalf, with whatever credential is attached to it.
 - `addCustomIntegration`: outward. Houston starts calling an address the user supplied on their behalf, with whatever credential is attached to it.
-- `detectAgentCustomIntegration`: outward. Houston fetches whatever URL it is handed, so a model-supplied address makes Houston's own network reach a stranger's host.
+- `detectAgentCustomIntegration`: outward. Houston fetches whatever URL it is handed, so a model-supplied address makes this agent's own network reach a stranger's host.
 - `detectCustomIntegration`: outward. Houston fetches whatever URL it is handed, so a model-supplied address makes Houston's own network reach a stranger's host.
 - `integrations.disconnect`: irreversible. Every account the user connected for that app is removed, and reconnecting means signing in to it again.
 - `removeAgentCustomIntegration`: irreversible. The agent loses that app, and setting it up again means pasting its address and credential from scratch.
 - `removeCustomIntegration`: irreversible. Every agent loses that app, and setting it up again means pasting its address and credential from scratch.
-- `submitAgentCustomIntegrationCredential`: outward. It hands a secret to a third-party service Houston then acts against on the user's behalf.
-- `submitCustomIntegrationCredential`: outward. It hands a secret to a third-party service Houston then acts against on the user's behalf.
+- `submitAgentCustomIntegrationCredential`: outward. It hands a secret to a third-party service Houston then acts against on this agent's behalf.
+- `submitCustomIntegrationCredential`: outward. It hands a secret to a third-party service Houston then acts against on the user's behalf, from every agent that app is on.
 - `deleteActivity`: irreversible. The mission leaves the board and everything recorded on it goes with it.
 - `updateActivity`: irreversible. It overwrites a mission's fields in place, and no earlier version is kept.
 - `addOrgMember`: outward. It invites a real person into the space, where they can see and drive the agents in it.
 - `deleteOrgInvite`: irreversible. The invitation stops working, and the person needs a new one to join.
 - `removeOrgMember`: outward. They lose the space and everything in it at once, including work in progress.
 - `setOrgMemberRole`: outward. A role decides what someone may see and change in the space, so the wrong one hands out or takes away access.
-- `forgetCredential`: irreversible. The sign-in is gone, including the one serving this conversation, and the user has to authenticate with the provider again to get it back.
-- `pushClaudeOAuthCredential`: outward. It sends this machine's provider sign-in to a remote pod, which then holds it.
+- `forgetCredential`: irreversible. Every agent in the workspace loses that sign-in, including the one serving this conversation, and the user has to authenticate with the provider again to get it back.
+- `pushClaudeOAuthCredential`: outward. It sends this machine's provider sign-in to a cloud agent, which then holds it.
 - `cancelRoutineRun`: irreversible. The run stops part-way, and what it had not finished waits for the next scheduled time.
 - `createRoutine`: money. A routine keeps firing on its own schedule once it exists, spending model budget on every run until someone stops it.
 - `deleteRoutine`: irreversible. The schedule and the instructions it ran are gone, and the routine has to be written again from scratch.
@@ -156,12 +157,12 @@ Each one ends the agent's turn and asks the user before it runs, and states what
 - `deleteSkill`: irreversible. The skill's instructions are gone and Houston keeps no copy, so what the user wrote cannot be recovered.
 - `installCommunitySkill`: standing instruction. The agent starts following instructions written outside the workspace, in every later turn.
 - `installSkillsFromRepo`: standing instruction. The agent starts following instructions from a repository the user has not read, in every later turn.
-- `promoteSharedSkill`: outward. It publishes the skill to everyone in the workspace, and a shared skill already under that name is replaced.
+- `promoteSharedSkill`: outward. It publishes the skill to everyone in the workspace, and a shared skill already under that name is refused rather than replaced.
 - `putSkillsManifest`: outward. It replaces the whole list, so every skill left out of it is switched off in the same call.
 - `saveSharedSkill`: irreversible. It replaces the shared skill's text for everyone at once, and no earlier version is kept.
 - `saveSkill`: irreversible. It overwrites the skill's text in place and Houston keeps no earlier copy, so what the user wrote cannot be recovered.
 - `acceptOrgInvite`: outward. Accepting joins a shared space under the user's own name, and everyone already in it sees them arrive.
-- `createOrg`: money. A space carries its own subscription, and the call is not idempotent, so a repeat leaves a second billable space standing.
+- `createOrg`: money. A space carries its own subscription, so a repeat leaves a second billable space standing.
 - `declineOrgInvite`: irreversible. A declined invitation stops working, and only whoever sent it can issue another.
 - `deleteOrg`: irreversible. A delete takes the space and everything in it for good.
 - `moveAgent`: outward. The agent and its whole history move into a shared space, where everyone in that space can work with it.
@@ -208,11 +209,12 @@ None.
 - `updateRoutine.returns`
 - `turns.history.returns`
 
-## Hidden operations (54)
+## Hidden operations (55)
 
 - `applyAgentColor`
 - `generateAgentInstructions`
 - `createApiKey`
+- `listApiKeys`
 - `revokeApiKey`
 - `saveAttachments`
 - `createPortal`
@@ -278,8 +280,8 @@ No HTTP route could be derived conservatively from the function body, so the ope
 - `integrations.refresh`: multiple request calls
 - `integrations.writes.disconnect`: path segment depends on a value the caller may override
 - `migrationImport`: unescaped path interpolation
-- `missions.search`: hop into HoustonEngineClient.getHistory could not be resolved: the agent the client is rooted at is not a parameter
-- `providerLogout`: hop into HoustonEngineClient.logout could not be resolved: the client comes from setupRuntimeClientFor(), which is not clientFor()
+- `missions.search`: hop into EngineConversationsClient.getHistory could not be resolved: the agent the client is rooted at is not a parameter
+- `providerLogout`: hop into EngineCredentialClient.logout could not be resolved: the client comes from setupRuntimeClientFor(), which is not clientFor()
 - `providers.login`: query string is assembled from values no route can name
 - `providers.refresh`: multiple request calls
 - `providers.writes.setModel`: body argument is not a parameter

@@ -113,6 +113,18 @@ describe("approval policy", () => {
       confirmed: "Irreversible. Nothing puts the file back.",
       unknownTags: [],
     });
+    // A BARE `confirm` is grammar, not a typo: it raises the flag and files no
+    // unknown tag, so the missing rationale is `confirm-unstated`'s to refuse
+    // (above) with a message naming what is owed — rather than surfacing as an
+    // unparsed tag, which would read as a spelling mistake.
+    //
+    // Written on ONE line on purpose: that block has no leading `*`, and a
+    // parser that only recognises starred lines reads the tag as prose and
+    // reports an operation with no group, no flag and nothing to complain
+    // about — a `hidden:` written this way would publish the operation.
+    expect(
+      parseAssistantDocs("/** @assistant group:files confirm */"),
+    ).toMatchObject({ confirm: true, group: "files", unknownTags: [] });
   });
 
   it("states one for every visible mutation the adapter ships", () => {

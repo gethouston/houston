@@ -130,6 +130,25 @@ export async function deleteWorkspaceFile(
   await vfs.deleteKey(key);
 }
 
+/** Every storage key under `root`, for the existence questions the ops ask. */
+export async function workspaceKeys(
+  vfs: Vfs,
+  root: string,
+): Promise<ReadonlySet<string>> {
+  return new Set((await vfs.listDetailed(root)).map((s) => s.key));
+}
+
+/**
+ * Whether `key` names something already there — a file's own key, or the prefix
+ * of a directory's children, since a directory has no key of its own in an
+ * object store.
+ */
+export function keyTaken(keys: ReadonlySet<string>, key: string): boolean {
+  if (keys.has(key)) return true;
+  for (const k of keys) if (k.startsWith(`${key}/`)) return true;
+  return false;
+}
+
 export async function renameWorkspaceFile(
   vfs: Vfs,
   root: string,
@@ -149,14 +168,19 @@ export async function renameWorkspaceFile(
     ? from.slice(0, from.lastIndexOf("/") + 1)
     : "";
   const fromKey = fileKey(root, from);
+  const toKey = fileKey(root, `${parent}${newName}`);
+  if (toKey === fromKey) return; // the name it already has: nothing to move
   // A source that is gone (another tab deleted it, a stale listing) is the
   // user's state, not a server fault: answer 404 like the move op rather than
   // letting the vfs's generic "source not found" surface as a 500.
-  const keys = (await vfs.listDetailed(root)).map((s) => s.key);
-  const exists =
-    keys.includes(fromKey) || keys.some((k) => k.startsWith(`${fromKey}/`));
-  if (!exists) throw new FileOpError(404, "file not found");
-  await vfs.move(fromKey, fileKey(root, `${parent}${newName}`));
+  const keys = await workspaceKeys(vfs, root);
+  if (!keyTaken(keys, fromKey)) throw new FileOpError(404, "file not found");
+  // Same wall the move op puts up: `rename(2)` and an object-store overwrite
+  // both replace the destination without a word, so a name the user already
+  // uses has to be refused here or their other file is simply gone.
+  if (keyTaken(keys, toKey))
+    throw new FileOpError(409, `"${newName}" already exists there`);
+  await vfs.move(fromKey, toKey);
 }
 
 export async function createWorkspaceFolder(

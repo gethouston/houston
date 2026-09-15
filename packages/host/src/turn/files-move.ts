@@ -1,5 +1,11 @@
 import type { Vfs } from "../vfs";
-import { FileOpError, fileKey, safeRel } from "./files-ops";
+import {
+  FileOpError,
+  fileKey,
+  keyTaken,
+  safeRel,
+  workspaceKeys,
+} from "./files-ops";
 
 /**
  * Drag-moves within an agent's workspace — the move half of the Files tab
@@ -30,10 +36,8 @@ export async function moveWorkspaceEntry(
   const fromKey = fileKey(root, from);
   const toKey = fileKey(root, to);
   const children = await vfs.listDetailed(fromKey); // non-empty ⇒ a directory
-  const existing = new Set((await vfs.listDetailed(root)).map((s) => s.key));
-  const targetTaken =
-    existing.has(toKey) || [...existing].some((k) => k.startsWith(`${toKey}/`));
-  if (targetTaken) {
+  const existing = await workspaceKeys(vfs, root);
+  if (keyTaken(existing, toKey)) {
     throw new FileOpError(409, `"${name}" already exists there`);
   }
 

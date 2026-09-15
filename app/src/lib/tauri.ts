@@ -66,6 +66,7 @@ import {
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
 import { isEngineWakingError } from "./engine-waking-error";
+import { isNameTakenError } from "./file-conflicts";
 import { isFileGoneError } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
@@ -486,13 +487,10 @@ export const tauriAgents = {
       () => getEngine().listInstalledConfigs(),
     ),
   /** Multiplayer: set which org members may use this agent, and at what access
-   *  level. Pass the v2 `AgentAssignment[]` (`{userId, access}`) roster from the
-   *  Share dialog; the legacy `string[]` (userIds → access `user`) shape still
-   *  works for older callers. Empty = everyone. */
-  setAssignments: (
-    agentSlugOrId: string,
-    assignments: AgentAssignment[] | string[],
-  ) =>
+   *  level. Pass the `AgentAssignment[]` (`{userId, access}`) roster from the
+   *  Share dialog — every row states its own access, so nothing can demote a
+   *  manager by omission. Empty = everyone. */
+  setAssignments: (agentSlugOrId: string, assignments: AgentAssignment[]) =>
     call<void>("set_agent_assignments", () =>
       getEngine().setAgentAssignments(agentSlugOrId, assignments),
     ),
@@ -1099,8 +1097,13 @@ export const tauriFiles = {
   },
   rename: (agentPath: string, relativePath: string, newName: string) => {
     blockWriteWhileWarming(agentPath);
-    return call<void>("rename_file", () =>
-      getEngine().renameFile(agentPath, relativePath, newName),
+    // A taken name is an expected state: `useRenameFile` shows the calm toast,
+    // so the 409 is logged but never filed as a bug.
+    return call<void>(
+      "rename_file",
+      () => getEngine().renameFile(agentPath, relativePath, newName),
+      undefined,
+      { silence: isNameTakenError },
     );
   },
   createFolder: (agentPath: string, name: string) => {

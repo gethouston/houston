@@ -129,7 +129,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   listAgents: { group: "agents", confirm: false, hidden: false, route: "GET /agents", rawResponse: true },
   listAgentTeamMembers: { group: "teams", confirm: false, hidden: false, route: "GET /v1/org/teams/{teamId}/members", rawResponse: true },
   listAgentTeams: { group: "teams", confirm: false, hidden: false, route: "GET /v1/org/teams", rawResponse: true },
-  listApiKeys: { group: "api-keys", confirm: false, hidden: false, route: "GET /v1/keys", rawResponse: true },
+  listApiKeys: { group: "api-keys", confirm: false, hidden: true, route: "GET /v1/keys", rawResponse: true },
   listInstalledConfigs: { group: "agents", confirm: false, hidden: false, route: "GET /v1/agent-configs", rawResponse: true },
   listOrgs: { group: "spaces", confirm: false, hidden: false, route: "GET /v1/orgs", rawResponse: true },
   listProjectFiles: { group: "files", confirm: false, hidden: false, route: "GET /agents/{agentPath}/files", rawResponse: true },

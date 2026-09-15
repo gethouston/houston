@@ -128,6 +128,56 @@ test("renaming a file that is gone answers 404, never a 500", async () => {
   await expect(rejected).rejects.toMatchObject({ status: 404 });
 });
 
+test("renaming onto a name already in use is refused, both files intact", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "data/old.csv", "old");
+  await seed(objects, "data/taken.csv", "taken");
+  // Same conflict the move op names (files-move.ts): a rename that silently
+  // overwrote the other file would destroy content the user never chose to lose.
+  const rejected = renameWorkspaceFile(
+    objects,
+    ROOT,
+    "data/old.csv",
+    "taken.csv",
+  );
+  await expect(rejected).rejects.toBeInstanceOf(FileOpError);
+  await expect(rejected).rejects.toMatchObject({
+    status: 409,
+    message: '"taken.csv" already exists there',
+  });
+  expect(await readWorkspaceFile(objects, ROOT, "data/old.csv")).toEqual({
+    content: "old",
+    base64: false,
+  });
+  expect(await readWorkspaceFile(objects, ROOT, "data/taken.csv")).toEqual({
+    content: "taken",
+    base64: false,
+  });
+});
+
+test("renaming onto an existing FOLDER's name is refused too", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "notes.txt", "n");
+  await seed(objects, "Reports/q1.csv", "1");
+  await expect(
+    renameWorkspaceFile(objects, ROOT, "notes.txt", "Reports"),
+  ).rejects.toMatchObject({ status: 409 });
+  expect(await readWorkspaceFile(objects, ROOT, "Reports/q1.csv")).toEqual({
+    content: "1",
+    base64: false,
+  });
+});
+
+test("renaming a file to the name it already has changes nothing", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "data/old.csv", "1,2,3");
+  await renameWorkspaceFile(objects, ROOT, "data/old.csv", "old.csv");
+  expect(await readWorkspaceFile(objects, ROOT, "data/old.csv")).toEqual({
+    content: "1,2,3",
+    base64: false,
+  });
+});
+
 test("createFolder makes an empty folder visible via a hidden marker", async () => {
   const objects = new MemoryVfs();
   expect(await createWorkspaceFolder(objects, ROOT, "Reports")).toBe("Reports");
@@ -349,6 +399,27 @@ test("POST files/rename on a missing source is a 404 response body", async () =>
   expect(state.status).toBe(404);
   expect(JSON.parse(String(state.body)) as { error: string }).toEqual({
     error: "file not found",
+  });
+});
+
+test("POST files/rename onto a taken name is a 409 response body", async () => {
+  const objects = new MemoryVfs();
+  await seed(objects, "data/old.csv", "old");
+  await seed(objects, "data/taken.csv", "taken");
+  const { res, state } = fakeRes();
+  await handleFiles(
+    objects,
+    PATHS,
+    CTX,
+    "POST",
+    "files/rename",
+    fakeReq({ path: "data/old.csv", newName: "taken.csv" }),
+    res,
+    new URLSearchParams(),
+  );
+  expect(state.status).toBe(409);
+  expect(JSON.parse(String(state.body)) as { error: string }).toEqual({
+    error: '"taken.csv" already exists there',
   });
 });
 

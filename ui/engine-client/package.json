@@ -1,7 +1,7 @@
 {
   "name": "@houston-ai/engine-client",
   "version": "0.4.0",
-  "description": "TypeScript client for the Houston Engine HTTP+WS protocol. Consumed by the desktop app, mobile app, and third-party integrators.",
+  "description": "The deployment-agnostic half of the Houston engine client surface: protocol v3 wire types, anonymous Agent Store catalog reads, the local-model-bridge port, and the Retry-After parser. The client itself is the engine adapter in packages/web/src/engine-adapter, which this specifier resolves to.",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",

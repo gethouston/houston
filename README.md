@@ -242,8 +242,12 @@ See `CLAUDE.md` for the repo map and conventions.
 ## Build on Houston Host (custom frontends)
 
 The host is frontend-agnostic. You don't have to ship inside the Houston App,
-any web or native runtime can drive it over protocol v3 HTTP + SSE using
-[`@houston-ai/engine-client`](ui/engine-client/).
+any web or native runtime can drive it over protocol v3 HTTP + SSE. The wire
+types and their zod schemas are [`packages/protocol`](packages/protocol/); the
+reference client that speaks them is the engine adapter in
+[`packages/web/src/engine-adapter`](packages/web/src/engine-adapter/), and the
+behavior layer every Houston surface binds on top of it is
+[`@houston/sdk`](packages/sdk/).
 
 The canonical non-Tauri consumer is `packages/web`, the full desktop UI in a
 browser tab over the host's protocol v3.

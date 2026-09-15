@@ -100,12 +100,13 @@ export interface TeamsModule {
   /** File an agent under another team in the same space. Grouping only. */
   setAgentTeam(agentSlugOrId: string, teamId: string): Promise<void>;
   /**
-   * Replace who may drive an agent, and at what access level. A bare user id
-   * stands for plain access, which is the shorthand the desktop bridge passes.
+   * Replace who may drive an agent, and at what access level. Every row states
+   * its own access: there is no id-only shorthand, because a shorthand can only
+   * guess one level and would silently demote every manager it is handed.
    */
   setAgentAssignments(
     agentSlugOrId: string,
-    assignments: (AgentAssignment | string)[],
+    assignments: AgentAssignment[],
   ): Promise<void>;
   /** The manager-set toolkit and model ceilings on one agent. */
   getAgentSettings(agentSlugOrId: string): Promise<AgentSettings>;
@@ -132,10 +133,6 @@ export class TeamsHttpError extends SdkHttpError {
   }
 }
 
-/** The assignment a bare user id names: that person, with plain access. */
-const asAssignment = (entry: AgentAssignment | string): AgentAssignment =>
-  typeof entry === "string" ? { userId: entry, access: "user" } : entry;
-
 export function createTeamsModule(ctx: ModuleContext): TeamsModule {
   const scope = moduleScope(ctx, "teams", TeamsHttpError);
 
@@ -152,7 +149,7 @@ export function createTeamsModule(ctx: ModuleContext): TeamsModule {
     setAgentTeam: (agentSlugOrId, teamId) =>
       setAgentTeam(scope, agentSlugOrId, teamId),
     setAgentAssignments: (agentSlugOrId, assignments) =>
-      setAgentAssignments(scope, agentSlugOrId, assignments.map(asAssignment)),
+      setAgentAssignments(scope, agentSlugOrId, assignments),
     getAgentSettings: (agentSlugOrId) => getAgentSettings(scope, agentSlugOrId),
     setAgentSettings: (agentSlugOrId, settings) =>
       setAgentSettings(scope, agentSlugOrId, settings),

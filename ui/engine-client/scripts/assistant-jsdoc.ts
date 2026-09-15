@@ -64,12 +64,19 @@ function isReasonTag(name: string): name is ReasonTag {
   return name in REASON_KEYS;
 }
 
+/**
+ * The block's lines with their comment furniture off. The leading `*` is
+ * OPTIONAL: a one-line block (`/** @assistant group:files hidden: … *\/`) has
+ * no star on the only line it has, and a tag left behind its own indentation
+ * there would be read as prose — withholding nothing, grouping nothing, and
+ * publishing the operation as if the author had written no tag at all.
+ */
 function cleanBlock(block: string): string[] {
   return block
     .replace(/^\s*\/\*\*/, "")
     .replace(/\*\/\s*$/, "")
     .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*\* ?/, "").trimEnd());
+    .map((line) => line.replace(/^\s*\*? ?/, "").trimEnd());
 }
 
 function parseTags(line: string, docs: AssistantDocs): void {

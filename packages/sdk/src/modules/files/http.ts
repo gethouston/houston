@@ -100,7 +100,7 @@ export async function deleteFile(
 
 /**
  * Renames a file in an agent's workspace.
- * @assistant group:files unconfirmed: Renames in place; the contents are untouched and the name is changed back the same way.
+ * @assistant group:files unconfirmed: Renames in place; the contents are untouched, a name already in use is refused rather than written over, and the name is changed back the same way.
  */
 export async function renameFile(
   scope: HttpScope,

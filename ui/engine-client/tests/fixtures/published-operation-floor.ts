@@ -219,7 +219,6 @@ export const CALLABLE_OPERATION_FLOOR: readonly string[] = [
   "listAgentTeamMembers",
   "listAgentTeams",
   "listAgents",
-  "listApiKeys",
   "listInstalledConfigs",
   "listOrgs",
   "listProjectFiles",
