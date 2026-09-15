@@ -5,6 +5,7 @@ import type {
 } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
+import { resetCodexRefusalMemory } from "../../ai/codex-terse-refusal";
 import {
   authFailureActive,
   resetAuthFailures,
@@ -538,4 +539,119 @@ test("toWire clips an oversized tool result to the preview cap", () => {
   >;
   expect(wire.data.content?.length).toBeLessThan(4_100);
   expect(wire.data.content?.endsWith("… (truncated)")).toBe(true);
+});
+
+// --- ChatGPT's terse refusals (PRODUCT-1832) ---------------------------------
+
+const TERSE = '{"detail":"Bad Request"}';
+
+const terseTurnEnd = (model: string) =>
+  turnEnd(
+    failedAssistantMessage("error", TERSE, { provider: "openai-codex", model }),
+  );
+
+const autoRetryStart = (errorMessage: string): AgentSessionEvent => ({
+  type: "auto_retry_start",
+  attempt: 1,
+  maxAttempts: 3,
+  delayMs: 2000,
+  errorMessage,
+});
+
+test("translator reads a terse final attempt from the retry attempt that explained it (PRODUCT-1832)", () => {
+  // The gpt-6-astra flavor: pi retried a usage-limit 429 three times with the
+  // friendly text, and the final attempt got the bare `Bad Request`. The card
+  // must be the usage-limit one, and the log a warning, not a Sentry error.
+  resetCodexRefusalMemory();
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  const translate = createWireTranslator();
+  translate(agentStart());
+  translate(
+    autoRetryStart(
+      "You have hit your ChatGPT usage limit (plus plan). Try again in ~7524 min.",
+    ),
+  );
+  expect(translate(terseTurnEnd("gpt-6-astra"))).toBeNull();
+  const flushed = translate(agentSettled());
+  expect(flushed && "data" in flushed && flushed.data).toMatchObject({
+    kind: "quota_exhausted",
+    provider: "openai-codex",
+    model: "gpt-6-astra",
+  });
+  expect(error).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining("kind=quota_exhausted ::"),
+  );
+  vi.restoreAllMocks();
+  resetAuthFailures();
+  resetCodexRefusalMemory();
+});
+
+test("toWire reads a terse refusal from the plan gate the same model hit a turn earlier", () => {
+  // The gpt-5.4-mini storm: a routine firing every minute alternates between
+  // the explained gate and the bare 400. The explained one is remembered, so
+  // the bare one renders the same switch-model card.
+  resetCodexRefusalMemory();
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  toWire(
+    turnEnd(
+      failedAssistantMessage(
+        "error",
+        '{"detail":"The \'gpt-5.4-mini\' model is not supported when using Codex with a ChatGPT account."}',
+        { provider: "openai-codex", model: "gpt-5.4-mini" },
+      ),
+    ),
+  );
+  expect(toWire(terseTurnEnd("gpt-5.4-mini"))).toMatchObject({
+    type: "provider_error",
+    data: {
+      kind: "model_unavailable",
+      model: "gpt-5.4-mini",
+      suggested_fallback: "gpt-6-astra",
+    },
+  });
+  expect(error).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledTimes(2);
+  vi.restoreAllMocks();
+  resetCodexRefusalMemory();
+});
+
+test("a terse refusal nothing can explain stays unknown on the card but logs as a warning", () => {
+  resetCodexRefusalMemory();
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  expect(toWire(terseTurnEnd("gpt-5.5"))).toMatchObject({
+    type: "provider_error",
+    data: { kind: "unknown", provider: "openai-codex", raw_excerpt: TERSE },
+  });
+  expect(error).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringContaining(`kind=unknown :: ${TERSE}`),
+  );
+  vi.restoreAllMocks();
+});
+
+test("translator forgets a retry attempt's text once the turn ends or a new prompt starts", () => {
+  resetCodexRefusalMemory();
+  resetAuthFailures();
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+  const translate = createWireTranslator();
+  translate(
+    autoRetryStart(
+      "You have hit your ChatGPT usage limit (plus plan). Try again in ~10 min.",
+    ),
+  );
+  // A clean turn consumes the attempt; nothing remembered for the next prompt.
+  translate(turnEnd(assistantMessage(usage({ totalTokens: 5, output: 1 }))));
+  translate(agentSettled());
+  translate(agentStart());
+  expect(translate(terseTurnEnd("gpt-6-astra"))).toBeNull();
+  const flushed = translate(agentSettled());
+  expect(flushed && "data" in flushed && flushed.data).toMatchObject({
+    kind: "unknown",
+  });
+  vi.restoreAllMocks();
+  resetCodexRefusalMemory();
 });
