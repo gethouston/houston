@@ -662,6 +662,52 @@ test("a resumed interruption keeps the run running and records the restart (PROD
   expect((items[0] as RoutineRun).completed_at).toBeUndefined();
 });
 
+test("the resumed flag merges onto the fresh row — a concurrent pause survives it", async () => {
+  const r = routine();
+  const env = await setup(r);
+  await seedMessages(env.vfs, env.ws, env.agent, env.run.session_key, [
+    { role: "user", content: "go", ts: STARTED.getTime() },
+    interruptedReply(STARTED.getTime() + 1000, true),
+  ]);
+
+  // A writer touches the STILL-RUNNING row while this sweep awaits I/O (a
+  // usage-limit pause, an activity id). The resumed flag is a one-field write:
+  // applying the sweep's pre-await snapshot instead would revert both.
+  const root = workspaceRoot(env.ws, env.agent);
+  const convKey = conversationKey(
+    prefixFor(env.ws as never, env.agent as never),
+    env.run.session_key,
+  );
+  const origRead = env.vfs.readText.bind(env.vfs);
+  let paused = false;
+  env.vfs.readText = async (key: string) => {
+    const text = await origRead(key);
+    if (!paused && key === convKey) {
+      paused = true;
+      const { items } = await loadRoutineRuns(env.vfs, root);
+      await saveRoutineRuns(
+        env.vfs,
+        root,
+        items.map((run) =>
+          run.id === env.run.id
+            ? { ...run, paused_until: "in 2 hours", activity_id: "act-7" }
+            : run,
+        ),
+      );
+    }
+    return text;
+  };
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+
+  const { items } = await loadRoutineRuns(env.vfs, root);
+  const run = items[0] as RoutineRun;
+  expect(run.status).toBe("running");
+  expect(run.resumed).toBe(true);
+  expect(run.paused_until).toBe("in 2 hours");
+  expect(run.activity_id).toBe("act-7");
+});
+
 test("the resumed turn's real reply settles the run on a later sweep", async () => {
   const r = routine();
   const env = await setup(r);

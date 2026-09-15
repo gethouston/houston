@@ -68,6 +68,14 @@ export interface ReconcileDeps {
 /** One sweep's decision for a run, applied only if the row is still `running`. */
 interface RunUpdate {
   run: RoutineRun;
+  /**
+   * A NON-terminal field write. `run` is a snapshot taken before this sweep's
+   * awaits, so writing it back would revert whatever else changed on a row
+   * that stays `running` (a pause, an activity id). A patch is merged onto the
+   * FRESH row instead. Terminal updates keep replacing the row wholesale:
+   * there, the snapshot IS the decision and nothing may survive it.
+   */
+  patch?: Partial<RoutineRun>;
   /** Set when the update surfaces content — drives the board Activity. */
   surfacedRoutine?: Routine;
 }
@@ -147,7 +155,7 @@ export async function reconcileAgentRuns(
       // Stays `running`, and deliberately takes NO completion lock: the
       // resumed turn's real reply still has to win that lock on a later sweep.
       // Writing the same flag from two replicas is idempotent.
-      if (!run.resumed) updates.push({ run: { ...run, resumed: true } });
+      if (!run.resumed) updates.push({ run, patch: { resumed: true } });
       continue;
     }
 
@@ -243,7 +251,10 @@ export async function reconcileAgentRuns(
     for (const u of updates) {
       const current = fresh.items.find((r) => r.id === u.run.id);
       if (current?.status !== "running") continue;
-      nextRuns = upsertById(nextRuns, u.run);
+      nextRuns = upsertById(
+        nextRuns,
+        u.patch ? { ...current, ...u.patch } : u.run,
+      );
       count++;
     }
     if (count > 0) await saveRoutineRuns(deps.vfs, root, nextRuns);

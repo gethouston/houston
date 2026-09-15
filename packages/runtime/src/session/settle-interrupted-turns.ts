@@ -4,12 +4,12 @@ import {
   loadConversation,
 } from "../store/conversation-file";
 import { reportMissionSettle } from "./mission-settle";
+import { type ResumeRequest, resumeRequestFor } from "./resume-request";
 import {
   clearInflightMarker,
   type InflightTurnMarker,
   listInflightMarkers,
 } from "./turn-inflight-marker";
-import { type ResumeRequest, resumeRequestFor } from "./turn-resume-info";
 
 /**
  * Boot-time settle of the turns the previous process died on (see
@@ -114,7 +114,7 @@ export function settleInterruptedTurns(
     // Decided BEFORE the reply is written, because the reply says which of the
     // two lines the user reads: "say continue" for a turn that is over for
     // good, "picking up where it left off" for one this boot will run again.
-    const resume = resumeRequestFor(conversationsDir, marker);
+    const resume = resumeRequestFor(conversationsDir, marker, now());
     appendAssistantMessageAt(conversationsDir, marker.conversationId, "", {
       interrupted: {
         cause: "engine_restart",

@@ -82,6 +82,7 @@ import {
 import { runWithTurnMode, type TurnModeRef } from "./turn-mode-context";
 import { runWithTurnModel } from "./turn-model-context";
 import { buildTurnResumeInfo } from "./turn-resume-info";
+import type { ProvidedContext } from "./workspace-context";
 
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
@@ -131,7 +132,7 @@ export function recordUserTurn(
   acting?: ActingContext,
   displayText?: string,
   mentions?: ChatMessage["mentions"],
-  resume?: { pin?: TurnPin; resumeOf?: string },
+  resume?: { pin?: TurnPin; resumeOf?: string; context?: ProvidedContext },
 ): RecordedUserTurn {
   // Stamp the executing turn's id up front so a cancel/stop settles this turn.
   conv.turnId = turnId;
@@ -160,7 +161,7 @@ export function recordUserTurn(
   // execTurn's finally on every in-process end, so a marker found at the next
   // boot is a turn this process died on — the boot settle answers it. Written
   // right after the user message so the store sync ships the two together.
-  const resumeInfo = buildTurnResumeInfo(resume?.pin, acting);
+  const resumeInfo = buildTurnResumeInfo(resume?.pin, acting, resume?.context);
   writeInflightMarker(config.dataDir, {
     conversationId: id,
     turnId,

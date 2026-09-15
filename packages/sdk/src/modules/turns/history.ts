@@ -12,6 +12,7 @@
  * passes a `mapProvider`.
  */
 
+import { isAutoContinue } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import {
   ENGINE_RESTART_MESSAGE,
@@ -87,6 +88,12 @@ export function historyToFeed(
     const ts = m.ts;
     const turn = m.turnId !== undefined ? { turnId: m.turnId } : {};
     if (m.role === "user") {
+      // A hidden auto-continue prompt is a message the USER never wrote — the
+      // engine minted it (a boot resume, a continue directive). It is model
+      // input only, so it never becomes a bubble on any surface. Folded away
+      // HERE, in the shared behaviour layer, because iOS and every other SDK
+      // binder would otherwise render the raw marker text.
+      if (isAutoContinue(m.content)) continue;
       out.push({
         feed_type: "user_message",
         // Render displayText when the stored prompt carried text the user should

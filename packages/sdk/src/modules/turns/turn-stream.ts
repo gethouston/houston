@@ -1,4 +1,4 @@
-import type { MessageApproval } from "@houston/protocol";
+import { isAutoContinue, type MessageApproval } from "@houston/protocol";
 import type { HoustonEngineClient } from "@houston/runtime-client";
 import { streamEventsResumable } from "@houston/runtime-client";
 import type { FeedOutput } from "./feed-output";
@@ -200,7 +200,9 @@ export async function streamTurn(
   // strips that on the first server evidence (any later push, or a terminal
   // status). Every early return below pushes a system_message afterward, so no
   // path leaves the bubble stuck pending.
-  if (!opts.suppressUserBubble) {
+  // A hidden auto-continue prompt has no bubble to push, exactly as history
+  // folds it away (history.ts): the user never wrote it.
+  if (!opts.suppressUserBubble && !isAutoContinue(prompt)) {
     output.pushFeedItem(agentPath, sessionKey, {
       feed_type: "user_message",
       // The bubble renders displayText when the real prompt carries text the
