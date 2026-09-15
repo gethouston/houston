@@ -14,16 +14,26 @@ const discovering: AssistantDiscovery = {
   handle: null,
   isLoading: true,
   unavailable: false,
+  failure: null,
 };
 const settledAbsent: AssistantDiscovery = {
   handle: null,
   isLoading: false,
   unavailable: true,
+  failure: null,
+};
+/** Discovery's ladder spent on a pod that never woke. */
+const settledFailed: AssistantDiscovery = {
+  handle: null,
+  isLoading: false,
+  unavailable: false,
+  failure: "transient",
 };
 const present: AssistantDiscovery = {
   handle: { agentId: "a", workspaceId: "w" } as never,
   isLoading: false,
   unavailable: false,
+  failure: null,
 };
 
 describe("surfaceGatesFor", () => {
@@ -33,6 +43,21 @@ describe("surfaceGatesFor", () => {
         capabilities: owner,
         isTeam: false,
         assistant: discovering,
+        capabilitiesLoading: false,
+      }).showAssistant,
+      true,
+    );
+  });
+
+  it("keeps the assistant row up when discovery keeps FAILING", () => {
+    // A manager that cannot start still exists. Dropping the row here left the
+    // user with no way back to it at all (PRODUCT-1795); the screen behind the
+    // row is what says what went wrong.
+    strictEqual(
+      surfaceGatesFor({
+        capabilities: owner,
+        isTeam: false,
+        assistant: settledFailed,
         capabilitiesLoading: false,
       }).showAssistant,
       true,

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { isAssistantUnavailableError } from "../lib/assistant-availability.ts";
 import {
   type AssistantDiscovery,
@@ -17,7 +18,21 @@ import {
   tauriAssistant,
 } from "../lib/tauri.ts";
 
-export type { AssistantDiscovery } from "../lib/assistant-discovery-state.ts";
+export type {
+  AssistantDiscovery,
+  AssistantFailure,
+} from "../lib/assistant-discovery-state.ts";
+
+/** Discovery's answer, plus the one thing a screen can DO about a bad one. */
+export interface AssistantAccess extends AssistantDiscovery {
+  /**
+   * Ask again now. Resolves when the attempt (ladder and all) settles, so a
+   * button can await it and show the wait instead of looking inert. The 60s
+   * background beat keeps running either way — this only shortens the wait to
+   * the next ask, it never replaces it.
+   */
+  retry: () => Promise<void>;
+}
 
 /**
  * Ask for the assistant's address, retrying on the budget the failure earns.
@@ -68,18 +83,22 @@ async function discoverAssistant(): Promise<AssistantHandle> {
  *    feature ABSENCE: it settles hidden and is never asked again.
  *  - **Not yet** — the gateway's answer while an engine pod provisions, wakes
  *    or is replaced. Recoverable, so it is retried with backoff (honouring a
- *    retry hint the failure advertises) and, once the budget is spent, left in
- *    a state TanStack refetches on the next mount, window focus or reconnect.
- *    The rail row comes back on its own; nothing asks the user to reload.
- *  - **Anything else** — a real failure, kept on the loud path (the user sees
- *    nothing; the log and Sentry get it) with one blind retry so a gateway
- *    handoff does not cost a session's assistant.
+ *    retry hint the failure advertises) and, once the budget is spent, polled
+ *    on a slow beat while the screen says so and offers `retry`.
+ *  - **Anything else** — a real failure, kept on the loud path (the log and
+ *    Sentry get it) with one blind retry so a gateway handoff does not cost a
+ *    session's assistant. The user is told the same honest thing as above and
+ *    never sees the failure's shape.
+ *
+ * Neither of the last two takes the assistant off the screen: a deployment
+ * that HAS an assistant and cannot start it must stay somewhere the user can
+ * ask again, not vanish until the next app launch (PRODUCT-1795).
  *
  * `staleTime` is infinite for the SUCCESS case only: an address does not
  * change under us. A query holding no data is stale whatever that value says,
  * which is exactly what makes an unanswered discovery keep trying.
  */
-export function useAssistant(): AssistantDiscovery {
+export function useAssistant(): AssistantAccess {
   const enabled = newEngineActive();
   const query = useQuery({
     queryKey: queryKeys.assistant(),
@@ -97,10 +116,20 @@ export function useAssistant(): AssistantDiscovery {
     refetchInterval: (q) => assistantRefetchIntervalMs(q.state.error),
   });
 
-  return assistantDiscoveryState({
-    enabled,
-    handle: query.data ?? null,
-    isError: query.isError,
-    isFetching: query.isFetching,
-  });
+  // `refetch` on a query already in its error state keeps that error until the
+  // new attempt settles, so the screen holds its honest state (with a pending
+  // button) rather than blinking back to the starting spinner on every ask.
+  const { refetch } = query;
+  const retry = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  return {
+    ...assistantDiscoveryState({
+      enabled,
+      handle: query.data ?? null,
+      error: query.error,
+    }),
+    retry,
+  };
 }

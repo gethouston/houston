@@ -9,7 +9,7 @@ import { openTeamSection, screen } from "./support/team-nav";
  *
  * The assistant is an ORDINARY agent conversation reached at an address
  * discovery hands out (`GET /v1/assistant`), so what is worth pinning here is
- * not the chat pipeline (chat.spec.ts owns that) but the three things this
+ * not the chat pipeline (chat.spec.ts owns that) but the four things this
  * surface adds:
  *
  * 1. the rail row leads the unlabelled run and opens a full-window chat;
@@ -18,7 +18,33 @@ import { openTeamSection, screen } from "./support/team-nav";
  * 3. the conversation creates NO activity, so it never appears as a board card.
  *    That is the whole of "it stays out of the board, unread counts and
  *    mentions": every one of those surfaces reads activity rows.
+ * 4. what discovery's own answers do to the surface: absence takes the row away
+ *    silently, a failure keeps it and says so.
  */
+
+/**
+ * Discovery is a CROSS-ORIGIN read of the worker's fake host, so a fulfilled
+ * response must carry the allow/expose headers the fake host sends itself
+ * (`packages/fake-host/src/http.ts`). Without them the browser rejects the
+ * response and the app sees a network error instead of the status the test
+ * claims to be exercising.
+ */
+function fulfillDiscovery(
+  status: number,
+  body: unknown,
+  extra: Record<string, string> = {},
+) {
+  return {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Expose-Headers": "Retry-After",
+      ...extra,
+    },
+    body: JSON.stringify(body),
+  };
+}
 
 const userRow = (page: Page, text: string): Locator =>
   screen(page)
@@ -110,14 +136,12 @@ test("the row is absent where the deployment serves no assistant", async ({
   // address to open a chat at. The row must not exist rather than open a
   // broken screen, and nothing is said to the user about it.
   await page.route("**/v1/assistant", (route) =>
-    route.fulfill({
-      status: 501,
-      contentType: "application/json",
-      body: JSON.stringify({
+    route.fulfill(
+      fulfillDiscovery(501, {
         error: "the gateway serves assistant discovery, not this engine",
         code: "assistant_gateway_only",
       }),
-    }),
+    ),
   );
   await page.goto("/");
 
@@ -129,4 +153,46 @@ test("the row is absent where the deployment serves no assistant", async ({
     page.locator("[data-tour-target='nav-agent-store']"),
   ).toBeVisible();
   await expect(assistantRow(page)).toHaveCount(0);
+});
+
+test("says so, and offers another ask, when the manager will not start", async ({
+  page,
+}) => {
+  // The gateway's answer while an engine pod provisions, wakes or never comes
+  // up: a 503 with no code (a code would name ABSENCE) and a Retry-After hint.
+  // The deployment HAS a manager and cannot start it, so the row stays and the
+  // screen owes the user an honest word plus a way to ask again — the silent
+  // disappearance was PRODUCT-1795.
+  let requests = 0;
+  await page.route("**/v1/assistant", (route) => {
+    requests += 1;
+    return route.fulfill(
+      fulfillDiscovery(
+        503,
+        { error: "engine unavailable" },
+        {
+          "Retry-After": "1",
+        },
+      ),
+    );
+  });
+  // The ladder is five attempts, paced by the hint above, and its constants are
+  // module-level — deliberately not injectable, since a test-only switch is a
+  // switch. So this waits the ladder out instead of faking a clock: the schedule
+  // itself is pinned in `app/tests/assistant-availability.test.ts`, and what is
+  // worth the wall time here is that the screen lands somewhere honest.
+  test.slow();
+
+  await page.goto("/");
+  await assistantRow(page).click();
+
+  await expect(
+    screen(page).getByText("Houston couldn't start your AI Manager"),
+  ).toBeVisible({ timeout: 30_000 });
+
+  // "Try again" is the whole point of the state: it must put a request on the
+  // wire at once rather than wait out the 60s background beat.
+  const asked = requests;
+  await screen(page).getByRole("button", { name: "Try again" }).click();
+  await expect.poll(() => requests, { timeout: 10_000 }).toBeGreaterThan(asked);
 });
