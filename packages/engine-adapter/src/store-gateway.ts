@@ -21,17 +21,6 @@ import {
   liveToken,
 } from "./control-plane";
 
-declare global {
-  interface Window {
-    /**
-     * Store gateway target installed by the desktop shell when the engine is a
-     * local sidecar (the gateway is elsewhere). Absent on hosted/web, where the
-     * engine baseUrl + bearer already point at the gateway.
-     */
-    __HOUSTON_STORE__?: { baseUrl: string; token: string };
-  }
-}
-
 /** The public store SITE (not API) base, for "browse the store" links. */
 export const STORE_SITE_URL = (
   (import.meta.env?.VITE_AGENTSTORE_SITE_URL as string | undefined) ??

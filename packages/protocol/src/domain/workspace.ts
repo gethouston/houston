@@ -1,6 +1,6 @@
 // Workspaces + agents — the tenancy-index resources the host owns.
 // Field shapes match v1 exactly where the family survives, so the
-// engine-client rewrite is transport-only and the UI does not churn.
+// client rewrite is transport-only and the UI does not churn.
 
 export interface Workspace {
   id: string;

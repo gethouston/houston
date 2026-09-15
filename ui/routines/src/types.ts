@@ -8,7 +8,7 @@
 export type RoutineChatMode = "shared" | "per_run";
 
 /**
- * A routine's Composio trigger binding. Mirrors the engine-client
+ * A routine's Composio trigger binding. Mirrors the `@houston/wire-types`
  * `ComposioTriggerBinding`; kept as its own type here so `ui/` stays free of
  * app/engine imports. The `kind` discriminant is optional for backward
  * compatibility — absent means Composio (the original, pre-webhook shape).
@@ -87,7 +87,7 @@ export type RunStatus =
 
 /**
  * Why a run failed before the agent ever ran (PRODUCT-1475): the AI account it
- * was going to use is unusable. Mirrors the engine-client wire union rather
+ * was going to use is unusable. Mirrors the `@houston/wire-types` union rather
  * than importing it, the same way the trigger bindings above do, so `ui/` stays
  * free of app/engine imports. `provider` is a bare id — naming it in the user's
  * language is the app's job.

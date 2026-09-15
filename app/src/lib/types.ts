@@ -63,7 +63,7 @@ export interface Agent {
   /**
    * Multiplayer only: whether the CURRENT user is assigned this agent (may use
    * it). Absent in single-player mode. Kept in sync (by hand) with the
-   * engine-client `Agent` shape.
+   * `@houston/wire-types` `Agent` shape.
    */
   assigned?: boolean;
   /**
@@ -76,7 +76,7 @@ export interface Agent {
    * may reconfigure it, `user` may only use it). Absent in single-player mode.
    * Drives the client-side read-only gating (agent-access `isAgentManager`);
    * the gateway is the sole enforcer. Kept in sync (by hand) with the
-   * engine-client `Agent` shape.
+   * `@houston/wire-types` `Agent` shape.
    */
   access?: "manager" | "user";
   /**

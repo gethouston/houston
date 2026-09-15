@@ -8,7 +8,7 @@
  * changes) because this vocabulary is a contract several things read: the
  * first-party product catalogue types itself against it
  * (`product-analytics/catalogue-table.ts`), and the app's node tests assert
- * against it. Those readers must not drag PostHog and the engine client in,
+ * against it. Those readers must not drag PostHog and the engine adapter in,
  * which is exactly what importing `analytics.ts` costs — this file holds types
  * and one Set, and imports nothing but its sibling's type.
  */

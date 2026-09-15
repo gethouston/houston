@@ -10,7 +10,7 @@ import { classifyAssistantDiscoveryFailure } from "./assistant-availability.ts";
 /**
  * RETRIES a transient failure earns — four, so five attempts in all, spanning
  * ~15s of client patience (1s/2s/4s/8s). Sized like the read transport's wake
- * budget (`packages/engine-adapter/cp/transient-retry.ts`): well past a
+ * budget (`packages/engine-adapter/src/cp/transient-retry.ts`): well past a
  * healthy pod boot, and bounded — a pod that has not come up by then is a
  * capacity problem, and discovery refetches on the next mount or focus anyway.
  */

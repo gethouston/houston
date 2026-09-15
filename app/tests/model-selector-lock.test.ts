@@ -29,7 +29,8 @@ const teams = (role: OrgRole): Capabilities =>
 const preTeams = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role });
 
-// The wire type lives on `Agent.access` (engine-client); the helpers only read
+// The wire type lives on `Agent.access` (`@houston/wire-types`); the helpers
+// only read
 // that field, so the fixtures pass a minimal `{ access }` shape.
 const agent = (access?: "manager" | "user") => ({ access });
 

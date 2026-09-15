@@ -33,7 +33,7 @@ export const MISSING_SKILL_KIND = "skill_not_found";
 export function isMissingSkillError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const e = err as { status?: unknown; kind?: unknown };
-  // Primary signal: the engine-client HoustonEngineError for a 404 skill GET.
+  // Primary signal: the engine adapter's HoustonEngineError for a 404 skill GET.
   if (e.status === 404) return true;
   // Forward-compat / legacy Rust engine: a typed kind, should the host emit one.
   return e.kind === MISSING_SKILL_KIND;

@@ -48,14 +48,7 @@ export function useProviderCatalog(): {
   const enabled = newEngineActive();
   const query = useQuery({
     queryKey: ["provider-catalog"],
-    // `getCatalog` is a new-engine-adapter method absent from the shared
-    // engine-client type, so cast.
-    queryFn: (): Promise<ProviderCatalog> =>
-      (
-        getEngine() as unknown as {
-          getCatalog: () => Promise<ProviderCatalog>;
-        }
-      ).getCatalog(),
+    queryFn: (): Promise<ProviderCatalog> => getEngine().getCatalog(),
     enabled,
     staleTime: Number.POSITIVE_INFINITY,
     retry: 3,

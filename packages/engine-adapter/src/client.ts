@@ -1,8 +1,7 @@
 /**
- * Drop-in replacement for `@houston/engine-adapter`'s HoustonClient, backed by
- * the new TS engine. Boot/chat/auth map to the new engine; a single synthetic
- * workspace holds localStorage-backed agents, their `.houston/**` files, and
- * their boards.
+ * The HoustonClient every frontend talks to, backed by the TS engine.
+ * Boot/chat/auth map to the engine; a single synthetic workspace holds
+ * localStorage-backed agents, their `.houston/**` files, and their boards.
  *
  * The ~100 methods are split into cohesive cluster **mixins** (under `client/`),
  * composed here over ONE shared {@link HoustonClientBase} → {@link AdapterContext}

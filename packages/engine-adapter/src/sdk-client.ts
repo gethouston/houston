@@ -13,7 +13,7 @@
  * would duplicate both.
  *
  * **One source of truth for auth + active space.** The `fetch` handed in is the
- * SAME `gatewayAuthFetch` the adapter's own engine client uses: it reads the
+ * SAME `gatewayAuthFetch` the adapter's own HoustonClient uses: it reads the
  * live Supabase bearer per attempt, retries a 401 after one refresh, and stamps
  * `x-houston-org` from the live `ControlPlaneConfig.activeOrgSlug`. Sharing that
  * one fetch means `HoustonClient.setActiveOrg` (which mutates the config in
@@ -89,7 +89,7 @@ export interface EngineSdkOptions {
   baseUrl: string;
   /**
    * The SHARED gateway auth fetch — the exact `typeof fetch` the adapter's own
-   * engine client runs on, carrying the live bearer, 401-refresh, and the
+   * HoustonClient runs on, carrying the live bearer, 401-refresh, and the
    * `x-houston-org` header off the live active space. Passing the same instance
    * keeps auth + active-space behavior identical across the adapter and the SDK.
    * The read retry is added HERE, not by the caller (see {@link createEngineSdk}).

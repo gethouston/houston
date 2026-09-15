@@ -15,7 +15,8 @@
  *
  * Split out of `error-toast.ts` so the surviving decision stays unit-testable
  * once the error path stopped rendering toasts (HOU-1245): the module it came
- * from cannot be imported by `app/tests` (it pulls the engine-client barrel and
+ * from cannot be imported by `app/tests` (it pulls the engine adapter's barrel
+ * and
  * the Zustand store), this one is dependency-free.
  */
 

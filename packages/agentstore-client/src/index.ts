@@ -4,7 +4,7 @@
  * unified wire types (reconciled against the authoritative Go handlers), the one
  * {@link StoreApiError} class every consumer branches on, and the
  * {@link AgentStoreClient} that all three consumers (the Next.js catalog, the
- * desktop/web engine client, and the publish adapter) call through. No
+ * engine adapter, and the publish adapter) call through. No
  * environment reads, no `window`/Node built-ins — consumer-specific origin and
  * caching are injected per call.
  */

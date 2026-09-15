@@ -10,7 +10,7 @@ import { useCapabilities } from "../use-capabilities";
  * every hook self-gates on `capabilities.apiKeys`, so off-cloud (desktop,
  * self-host) the query never fires and the section never renders.
  *
- * The wire calls route through `tauriApiKeys.*` → the engine client's `call()`
+ * The wire calls route through `tauriApiKeys.*` → the engine adapter's `call()`
  * wrapper, which surfaces any failure once as a red bug toast + Sentry report
  * (the required no-silent-failures path). So these hooks carry no `onError` — a
  * second toast would double up (same as `use-billing.ts`). The one exception is

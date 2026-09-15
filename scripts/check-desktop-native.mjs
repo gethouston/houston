@@ -23,7 +23,8 @@
  *   4. No file under `app/src/` outside `app/src/lib/os-bridge/` contains
  *      `invoke(` or imports `invoke` at all.
  *   5. Every `@tauri-apps/<specifier>` imported by `app/src` has a shim alias
- *      in `packages/web/vite.config.ts` AND a path mapping in its tsconfig. *
+ *      in `packages/web/vite.config.ts` AND a path mapping in its tsconfig.
+ *
  * Run: node scripts/check-desktop-native.mjs   (root script: pnpm check)
  */
 import { readFileSync } from "node:fs";

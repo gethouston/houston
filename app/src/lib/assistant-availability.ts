@@ -51,8 +51,8 @@ export type AssistantDiscoveryFailure =
    *  that carries no status at all. Keeps the loud path. */
   | { readonly kind: "unexpected" };
 
-/** The code the two transports carry: the web adapter passes the host's flat
- *  `{error, code}` through, the engine-client nests it under `error`. */
+/** The code either answer shape carries: a flat `{error, code}` body, or the
+ *  code nested under `error`. */
 function errorCode(body: unknown): string | undefined {
   const b = body as { code?: unknown; error?: { code?: unknown } } | null;
   if (typeof b?.code === "string") return b.code;

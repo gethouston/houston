@@ -23,7 +23,7 @@ import {
  * The agent-scoped marketplace surface: installs write into the agent's
  * `.agents/skills/<slug>/SKILL.md` (the same folders pi loads), and the
  * read-only search/popular/list routes are also served here for the
- * engine-client wire (which scopes every call under /agents/:id). The shared
+ * engine adapter's wire (which scopes every call under /agents/:id). The shared
  * skills.sh cache + typed error shape live in skills-directory.ts.
  */
 

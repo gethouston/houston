@@ -23,7 +23,8 @@ const multiplayer = (role: OrgRole): Capabilities =>
   caps({ multiplayer: true, role });
 
 // Per-agent effective access (contract §0). Defined locally: the wire type
-// lives on `Agent.access` (engine-client), added alongside this work; the tests
+// lives on `Agent.access` (`@houston/wire-types`), added alongside this work;
+// the tests
 // only need the value union.
 type AgentAccess = "manager" | "user";
 

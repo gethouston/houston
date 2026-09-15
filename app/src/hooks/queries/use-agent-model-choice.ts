@@ -43,7 +43,7 @@ function toDisplayChoice(
  * multiplayer the composer's model picker reads THIS (the member's personal
  * per-agent pick), not the shared agent config, and offers only the pickable set
  * the ceiling allows. Gated on the `teams` capability via `enabled`: a host that
- * predates Teams 404s the route and the engine-client degrades that to `null`,
+ * predates Teams 404s the route and the engine adapter degrades that to `null`,
  * so the query is left idle there and the composer keeps its single-player
  * shared-config behavior. One choice per (agent, user); keyed by agent id.
  */

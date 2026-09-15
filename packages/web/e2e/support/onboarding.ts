@@ -12,7 +12,7 @@ import { type APIRequestContext, expect, type Page } from "@playwright/test";
 /**
  * Write one ACCOUNT preference straight onto the host (`null` clears it) — the
  * keys `ACCOUNT_PREF_KEYS` routes off this device
- * (packages/engine-adapter/client/config-prefs-mixin.ts).
+ * (packages/engine-adapter/src/client/config-prefs-mixin.ts).
  */
 export async function setAccountPreference(
   request: APIRequestContext,

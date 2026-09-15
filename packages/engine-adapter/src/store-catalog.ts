@@ -28,7 +28,7 @@ import type {
 
 /**
  * A failed catalog read. Deliberately NOT `HoustonEngineError` (this module
- * must not pull the engine client into consumers that only browse), but it
+ * must not pull the HoustonClient into consumers that only browse), but it
  * carries the same structural `status` every caller switches on.
  */
 export class StoreCatalogError extends Error {
@@ -39,12 +39,6 @@ export class StoreCatalogError extends Error {
     this.name = "StoreCatalogError";
     this.status = status;
     this.body = body;
-  }
-}
-
-declare global {
-  interface Window {
-    __HOUSTON_STORE__?: { baseUrl: string; token: string };
   }
 }
 

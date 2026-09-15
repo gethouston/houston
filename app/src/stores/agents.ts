@@ -111,7 +111,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   settleEmpty: () => {
     loadAgentsGeneration++;
-    // Also tell the engine client no list is coming, so provider routing falls
+    // Also tell the engine adapter no list is coming, so provider routing falls
     // back to the persisted selection instead of refusing every call while it
     // waits on a `listAgents` that will never run (HOU-979). Guarded because
     // this settles UI state and must never itself throw; a client that isn't

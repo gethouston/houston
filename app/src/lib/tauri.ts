@@ -359,7 +359,7 @@ async function surfaceError(
   ]);
   if (shouldToast) {
     // Pass the real error so Sentry records the true failure stack (the
-    // engine-client frame), not a synthetic one — this also fixes Sentry
+    // engine adapter frame), not a synthetic one — this also fixes Sentry
     // grouping (engine errors used to collapse into a single issue).
     showErrorToast(label, message, err);
   } else {
@@ -531,7 +531,7 @@ export const tauriAgentSettings = {
 /**
  * Teams v2: the ACTING user's per-agent model choice + the agent's effective
  * `allowedModels` ceiling. `get` degrades to `null` on a non-Teams host (the
- * engine-client swallows the 404); `set` 400s `model_not_allowed` outside the
+ * engine adapter swallows the 404); `set` 400s `model_not_allowed` outside the
  * ceiling. Both route through `call()` so failures surface as a toast + Report
  * bug, same as the wrappers above — except `model_not_allowed`, an expected
  * state (the ceiling moved under the user, PRODUCT-1734) that is logged here
@@ -685,7 +685,7 @@ export const tauriChat = {
     // JUST-CREATED agent: nothing is persisted yet and the read (plus the
     // observer stream it attaches) would be held for the whole warm-up. The
     // open conversation renders from the local VM (queued bubbles) meanwhile.
-    // An EXISTING asleep agent (HOU-730) passes through: the engine client's
+    // An EXISTING asleep agent (HOU-730) passes through: the engine adapter's
     // transcript cache (HOU-712) paints the chat instantly and the held read
     // revalidates on pod wake — answering [] here would blank a cached chat.
     isAgentPathCreating(agentPath)

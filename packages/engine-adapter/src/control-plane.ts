@@ -13,8 +13,7 @@
  */
 
 // The type surface callers reference (some as `controlPlane.<Type>`). Re-exported
-// once here so importing from the adapter keeps a single import site and the v1
-// engine-client agrees.
+// once here so importing from the adapter keeps a single import site.
 export type {
   AddCustomIntegrationInput,
   AddOrgMemberResult,

@@ -2,7 +2,7 @@
  * Creator @handle grammar, normalization, and the reserved-word list — the
  * client-side mirror of the authoritative Go rules in
  * `cloud/internal/agentstore/profiles.go` (`handleRegexp`, `reservedHandles`).
- * Kept dependency-light so every store surface (Next.js catalog, engine client,
+ * Kept dependency-light so every store surface (Next.js catalog, engine adapter,
  * publish adapter) validates a handle the same way BEFORE it reaches the gateway.
  * The gateway remains the sole authority on uniqueness; these checks only cover
  * grammar and reservation, which are decidable in isolation.

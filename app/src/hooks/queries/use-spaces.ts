@@ -13,7 +13,7 @@ import { tauriOrg } from "../../lib/tauri";
  * `use-orgs.ts` (`useCreateTeam`); these cover LISTING the caller's spaces (to
  * pick a team to share into) and the agent MOVE + its poll.
  *
- * The wire calls route through `tauriOrg.*` → the engine client's `call()`
+ * The wire calls route through `tauriOrg.*` → the engine adapter's `call()`
  * wrapper, which surfaces any failure as a red toast + Sentry report and
  * re-throws. So these hooks carry no `onError` (that would double-toast); a
  * caller that renders a failure inline reads the mutation/query error state.

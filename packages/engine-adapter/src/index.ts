@@ -1,8 +1,9 @@
 /**
- * `@houston/engine-adapter` IS this module: `app/vite.config.ts` and
- * `packages/web/vite.config.ts` alias the specifier here, and both tsconfigs
- * carry the matching `paths` entry, so the whole UI (app/src) compiles against
- * exactly what it runs.
+ * `@houston/engine-adapter` IS this module: `app` and `packages/web` both
+ * declare the workspace dependency, so the specifier resolves through pnpm's
+ * symlink at `node_modules/@houston/engine-adapter`. No alias, no tsconfig
+ * `paths` entry — the whole UI (app/src) compiles against exactly what it
+ * runs.
  *
  * The shapes it speaks in are `@houston/wire-types`, which has no I/O of its
  * own; the adapter re-exports them so `app/src` reads one surface.
@@ -24,7 +25,7 @@ export { clearConversationCache } from "./conversation-cache";
 export { conversationCacheScope } from "./conversation-cache-identity";
 // The public Agent Store catalog reads (anonymous, CORS-open): the one request
 // on this surface that needs neither a host nor a session.
-export * from "./store-catalog.ts";
+export * from "./store-catalog";
 // Warming-engine send queue (HOU-693): show the message as sent while the
 // engine boots; the deferred real send suppresses its own bubble.
 export { pushPendingUserMessage } from "./turn-stream";

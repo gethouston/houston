@@ -45,18 +45,20 @@ Store, and global `/v1/events` reactivity.
 
 The Agent Store is fully wired here, not stubbed:
 
-- **Browse** — `@houston/engine-adapter` (`src/store-catalog.ts`). Anonymous, CORS-open
-  catalog reads against the store gateway, so browsing works signed-out.
-- **Install** — `@houston/engine-adapter` (`src/portable-from-store.ts`). Prefers the host's
-  `/v1/portable/fetch-from-store`; hosted deployments have no local host (the
-  cloud gateway answers 501 for `/v1/portable*`), so the browser falls back to
-  reading the public IR off the store gateway and converting it with the same
-  shared code the host route runs. Either path parks the package in the registry
-  a file upload uses, so the wizard steps downstream are identical.
+- **Browse** — `@houston/engine-adapter` (`src/store-catalog.ts`). Anonymous,
+  CORS-open catalog reads against the store gateway, so browsing works
+  signed-out.
+- **Install** — `@houston/engine-adapter` (`src/portable-from-store.ts`).
+  Prefers the host's `/v1/portable/fetch-from-store`; hosted deployments have no
+  local host (the cloud gateway answers 501 for `/v1/portable*`), so the browser
+  falls back to reading the public IR off the store gateway and converting it
+  with the same shared code the host route runs. Either path parks the package
+  in the registry a file upload uses, so the wizard steps downstream are
+  identical.
 - **Publish** — `@houston/engine-adapter` (`src/portable-store.ts` +
-  `src/store-gateway.ts`). Posts
-  the agent IR to the gateway `/v1/agentstore` API with the user's own session
-  bearer (no manage tokens), reusing the engine transport's 401-refresh discipline.
+  `src/store-gateway.ts`). Posts the agent IR to the gateway `/v1/agentstore`
+  API with the user's own session bearer (no manage tokens), reusing the engine
+  transport's 401-refresh discipline.
 
 ## Optional Env
 

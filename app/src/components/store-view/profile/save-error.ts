@@ -3,7 +3,8 @@ import { isHoustonEngineError } from "@houston/engine-adapter";
 /**
  * Reads the machine token from a failed profile/avatar mutation. Kept out of the
  * pure `save-error-map.ts` (which stays runtime-dependency-free for the node test
- * runner) because reading the gateway token needs the engine-client value import.
+ * runner) because reading the gateway token needs the engine adapter's value
+ * import.
  */
 
 /**

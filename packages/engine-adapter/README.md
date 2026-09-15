@@ -16,9 +16,19 @@ src/
 It is a plain workspace package consumed as TypeScript source (`main` is
 `src/index.ts`). `app` and `packages/web` both declare it, and pnpm's symlink is
 the only thing that resolves it — vite, tsgo, node, biome and esbuild all agree
-without a line of configuration. **There is no alias.** The specifier and the
-module are the same thing under every resolver, which is why a method the
-adapter does not implement is a compile error rather than a runtime `TypeError`.
+on which package the specifier names, without a line of configuration.
+**There is no alias.** The specifier and the module are the same thing under
+every resolver, which is why a method the adapter does not implement is a
+compile error rather than a runtime `TypeError`.
+
+Agreeing on the package is not the same as loading the barrel. Bundlers and
+tsgo read `src/index.ts`; plain Node (`node --experimental-strip-types`, the
+app's test runner) does not — the barrel imports its siblings without the `.ts`
+extension, like nearly every `@houston/*` barrel, and `./client` is a directory,
+so a VALUE import of the barrel throws `ERR_UNSUPPORTED_DIR_IMPORT`. Subpaths
+load fine, which is why the node-tested modules in `app/src` re-export the
+adapter's error predicates by subpath
+(`@houston/engine-adapter/engine-waking-error`).
 
 ## Importing it
 
@@ -27,7 +37,8 @@ adapter does not implement is a compile error rather than a runtime `TypeError`.
 (`@houston/engine-adapter/cp/fetch`, `@houston/engine-adapter/client/errors`),
 because the adapter's own specs and `packages/web`'s wire specs test its
 internals directly and `vi.mock` needs a module specifier, not a re-export.
-Application code imports the barrel.
+Application code imports the barrel; the `app/src/lib` re-export shims reach for
+a subpath because Node, not a bundler, runs them (above).
 
 ## What it does not do
 

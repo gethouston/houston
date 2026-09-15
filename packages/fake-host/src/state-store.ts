@@ -43,7 +43,7 @@ export type IntegrationsMode = "ready" | "unavailable" | "signin" | "absent";
 
 /**
  * One custom integration (HOU-550) as `GET /v1/integrations/custom/definitions`
- * serves it. Mirrors the engine-client's `CustomIntegrationView` wire shape
+ * serves it. Mirrors the `CustomIntegrationView` wire shape
  * structurally (that type lives in `@houston/engine-adapter`, which this
  * package does not depend on).
  */
@@ -124,7 +124,7 @@ export interface ComputeUsageSeed {
 /** A caller's effective per-agent access (Teams v2). Mirrors the wire enum. */
 export type AgentAccess = "manager" | "user";
 
-/** An org role (Teams v2). Mirrors the engine-client `OrgRole` wire enum. */
+/** An org role (Teams v2). Mirrors the `OrgRole` wire enum. */
 export type OrgRole = "owner" | "admin" | "user";
 
 /**

@@ -62,7 +62,7 @@ describe("isNetworkTransportError", () => {
   });
 
   it("matches the adapter's synthetic transient-session-refresh failure (HOU-1106)", () => {
-    // packages/engine-adapter/session-refresh.ts mints exactly this
+    // packages/engine-adapter/src/session-refresh.ts mints exactly this
     // message when the token refresh loses to a settling reconnect. If the
     // classifier stops matching it, that failure regresses to a red bug toast
     // + Sentry report — keep the two in lockstep.

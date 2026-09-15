@@ -7,8 +7,8 @@ import type { HoustonEvent } from "@houston/protocol";
  *
  * This is the ONE classification shared by the cloud/local host's file watcher
  * (`packages/host/src/watch/classify.ts`, which prepends the agent prefix) and
- * the web engine-adapter's write-through echo
- * (`packages/engine-adapter/client.ts`). Keeping it in the shared domain
+ * the engine adapter's write-through echo
+ * (`packages/engine-adapter/src/client.ts`). Keeping it in the shared domain
  * means the watcher and the echo can never drift into disagreeing about which
  * file raises which event.
  *

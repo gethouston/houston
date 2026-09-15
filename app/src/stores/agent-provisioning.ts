@@ -315,7 +315,7 @@ function startProbe(entry: ProvisioningEntry): void {
 }
 
 // Rehydrate after a relaunch: pick the still-fresh entries back up and resume
-// their probes once the engine client exists. Hosted profile only — on a
+// their probes once the engine adapter exists. Hosted profile only — on a
 // co-located engine nothing is ever marked, and stale hosted entries expire
 // via the TTL inside parsePersistedProvisioning.
 void whenEngineReady().then(() => {

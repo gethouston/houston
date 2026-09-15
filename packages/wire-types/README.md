@@ -17,6 +17,10 @@ The client that performs the requests is the engine adapter
 (`packages/engine-adapter`), which imports this package and re-exports
 it, so `app/src` reads one surface.
 
+Its `version` (`0.4.0`) does not track the app's: `scripts/version.sh` bumps
+only the packages that share Houston's single release line and excludes this one
+by name, alongside `ui/agent` and `ui/agent-schemas`.
+
 ## Keeping it true
 
 The host is the source of truth. When a route's payload changes in

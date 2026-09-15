@@ -29,7 +29,7 @@ import type {
 import { state } from "./state-store";
 
 /**
- * One membership as `GET /v1/orgs` serves it. Mirrors the engine-client
+ * One membership as `GET /v1/orgs` serves it. Mirrors the
  * `OrgSummary` wire shape structurally (that type lives in
  * `@houston/engine-adapter`, which this package does not depend on) minus the
  * optional billing detail, which C8 omits from summaries.

@@ -42,7 +42,7 @@ export function isAgentGoneError(err: unknown): boolean {
  * without the agent — so a 403 on a passive read is silenced and heals the
  * roster exactly like {@link isAgentGoneError}. Same structural `.status`
  * key: the gateway's 403 body carries its code at the top level, which the
- * engine-client's `.code` getter (`body.error.code`) never sees.
+ * engine adapter's `.code` getter (`body.error.code`) never sees.
  */
 export function isAgentUnreadableError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;

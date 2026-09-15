@@ -2,7 +2,7 @@
  * Where this client points, and who it speaks as.
  *
  * The transport half of {@link AdapterContext}: the base URL, the bearer, the
- * one `authFetch` both the engine client and the SDK ride, and the live
+ * one `authFetch` both the HoustonClient and the SDK ride, and the live
  * `ControlPlaneConfig` that routes hosted calls at a space. It owns the two
  * repoints the shell performs on a LIVE client — a new engine
  * ({@link EngineEndpoint.setEndpoint}) and a new space
