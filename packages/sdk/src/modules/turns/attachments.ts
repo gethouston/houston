@@ -4,25 +4,26 @@
  * the turn. The write half of the attachment story; the marker that names the
  * saved paths in the turn's text lives in `attachment-text.ts`.
  *
- * The operation hits the host's `POST attachments` route through the SDK's
- * engine/http seam — the injected `ports.fetch` (which carries auth) against the
- * per-agent root (`/agents/<id>`), exactly how {@link HoustonEngineClient} is
- * built. The route stores each file under the agent's visible `uploads/` folder
- * and returns the RELATIVE paths the agent reads (HOU-706: durable uploads).
+ * The REQUEST itself belongs to the files module (`files/uploads.ts`): one wire
+ * body, one owner, so the `relPath` that keeps a dropped folder's nesting
+ * reaches the host from the bridge exactly as it does from the Files section.
+ * What lives here is what the turn adds on top — the untrusted-envelope guard
+ * for the bridge command and the typed too-large error a composer renders.
  */
 
 import type { ModuleContext } from "../../module-context";
+import { FilesHttpError } from "../files/http";
+import type { FileUpload } from "../files/types";
+import { saveAttachments } from "../files/uploads";
+import { moduleScope } from "../http";
 
-/** One file to upload: original name + its base64-encoded bytes. */
-export interface AttachmentUpload {
-  name: string;
-  contentBase64: string;
-}
+/** One file to upload: original name, base64 bytes, and its folder path. */
+export type AttachmentUpload = FileUpload;
 
 /** Payload for the `turns/attachments/save` command. */
 export interface TurnAttachmentsSaveInput {
-  /** The agent whose workspace the files land in (omit for the single local runtime). */
-  agentId?: string;
+  /** The agent whose workspace the files land in; the route exists only under one. */
+  agentId: string;
   /**
    * Legacy per-conversation storage key. The current host ignores it (uploads
    * are durable workspace files, HOU-706), but clients still send it so a
@@ -59,6 +60,8 @@ export function asAttachmentsSaveInput(
   payload: unknown,
 ): TurnAttachmentsSaveInput {
   const p = (payload ?? {}) as Record<string, unknown>;
+  if (typeof p.agentId !== "string" || p.agentId === "")
+    throw new Error("turns/attachments/save requires a string agentId");
   if (typeof p.scopeId !== "string")
     throw new Error("turns/attachments/save requires a string scopeId");
   if (!Array.isArray(p.files) || p.files.length === 0)
@@ -73,13 +76,16 @@ export function asAttachmentsSaveInput(
       throw new Error(
         `turns/attachments/save file[${i}] needs a string contentBase64`,
       );
-    return { name: f.name, contentBase64: f.contentBase64 };
+    return {
+      name: f.name,
+      contentBase64: f.contentBase64,
+      // A folder upload carries the path inside the dropped folder; forwarding
+      // it is what makes the host store `uploads/<folder>/…` instead of a flat
+      // pile of filenames.
+      ...(typeof f.relPath === "string" ? { relPath: f.relPath } : {}),
+    };
   });
-  return {
-    scopeId: p.scopeId,
-    files,
-    agentId: typeof p.agentId === "string" ? p.agentId : undefined,
-  };
+  return { agentId: p.agentId, scopeId: p.scopeId, files };
 }
 
 /** The typed attachments operation — the SAME function backs the
@@ -88,39 +94,30 @@ export interface AttachmentsOperation {
   save(input: TurnAttachmentsSaveInput): Promise<TurnAttachmentsSaveResult>;
 }
 
-/** Build the attachments operation over the module's `ports.fetch` seam. */
+/** Build the attachments operation over the files module's upload request. */
 export function createAttachmentsOperation(
   ctx: ModuleContext,
 ): AttachmentsOperation {
+  const scope = moduleScope(ctx, "files", FilesHttpError);
   const save = async (
     input: TurnAttachmentsSaveInput,
   ): Promise<TurnAttachmentsSaveResult> => {
-    // Mirror `clientFor`: the base URL for the flat local runtime, or the agent
-    // sandbox root the host nests per-agent routes under (protocol v3).
-    const base = ctx.config.baseUrl.replace(/\/+$/, "");
-    const agentId = input.agentId ?? "";
-    const root =
-      agentId === "" ? base : `${base}/agents/${encodeURIComponent(agentId)}`;
-    const res = await ctx.config.ports.fetch(`${root}/attachments`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      // `scopeId` is forwarded for wire-compat; the current host ignores it.
-      body: JSON.stringify({ scopeId: input.scopeId, files: input.files }),
-    });
-    if (res.status === 413) throw new AttachmentTooLargeError();
-    if (!res.ok) {
-      const detail = await res.text().catch(() => "");
-      throw new Error(
-        `attachments upload failed (${res.status})${detail ? `: ${detail}` : ""}`,
+    let paths: unknown;
+    try {
+      paths = await saveAttachments(
+        scope,
+        input.agentId,
+        input.scopeId,
+        input.files,
       );
+    } catch (err) {
+      if (err instanceof FilesHttpError && err.status === 413)
+        throw new AttachmentTooLargeError();
+      throw err;
     }
-    const body = (await res.json()) as { paths?: unknown };
-    if (
-      !Array.isArray(body.paths) ||
-      !body.paths.every((p) => typeof p === "string")
-    )
+    if (!Array.isArray(paths) || !paths.every((p) => typeof p === "string"))
       throw new Error("attachments upload returned a malformed response");
-    return { paths: body.paths as string[] };
+    return { paths: paths as string[] };
   };
   return { save };
 }

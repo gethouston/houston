@@ -1,5 +1,4 @@
 import type { ServerResponse } from "node:http";
-import type { UserId } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
@@ -13,6 +12,7 @@ import {
   type MigrationKind,
   toolkitsFromIntegrationsJson,
 } from "./migration-scope";
+import { defineRoute } from "./registry";
 
 /**
  * The SOURCE side of the one-click desktop→cloud migration (HOU-719): the new
@@ -80,20 +80,23 @@ export interface MigrationSourceDeps {
   accountIntegrations?: () => Promise<string[]>;
 }
 
-/** `GET /v1/migration/source` — every agent, every workspace, with manifests,
- *  plus the legacy Composio account's connected toolkits (best-effort). */
-export async function handleMigrationSource(
+/** Every agent, every workspace, with manifests, plus the legacy Composio
+ *  account's connected toolkits (best-effort). */
+defineRoute({
+  group: "migration-source",
+  method: "GET",
+  path: "/v1/migration/source",
+  phase: "user",
+  classification: "sdk",
+  source: "packages/host/src/routes/migration-source.ts",
+  handler: ({ deps, res }) => serveMigrationSource(deps, res),
+});
+
+async function serveMigrationSource(
   deps: MigrationSourceDeps,
-  _userId: UserId,
-  method: string,
-  path: string,
   res: ServerResponse,
-): Promise<boolean> {
-  if (path !== "/v1/migration/source" || method !== "GET") return false;
-  if (!deps.vfs) {
-    json(res, 503, { error: "agent data not configured" });
-    return true;
-  }
+): Promise<void> {
+  if (!deps.vfs) return json(res, 503, { error: "agent data not configured" });
   const vfs = deps.vfs;
   const paths = deps.paths ?? new CloudPaths();
   // The account-level probe (network) runs alongside the manifest walk (disk).
@@ -121,5 +124,4 @@ export async function handleMigrationSource(
     agents,
     accountIntegrations: await accountIntegrationsPromise,
   });
-  return true;
 }

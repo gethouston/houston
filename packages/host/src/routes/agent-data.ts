@@ -1,19 +1,17 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  loadConfig,
-  loadLearnings,
-  loadRoutineRuns,
-  saveConfig,
-  saveLearnings,
-} from "@houston/domain";
+import { loadRoutineRuns } from "@houston/domain";
 import type { ActivityContributor, HoustonEvent } from "@houston/protocol";
+import { actingAuthorFor, routineActorFor } from "../auth/acting";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
+import { DEFAULT_PATHS } from "./agent-authz";
 import { handleActivitiesData } from "./agent-data-activities";
+import { handleDocsData } from "./agent-data-docs";
 import { handleRoutinesData } from "./agent-data-routines";
-import { withDocLock } from "./doc-lock";
-import { json, readJson } from "./http";
+import { agentRest } from "./agent-rest";
+import { json, methodNotAllowed } from "./http";
+import { defineRouteFamily } from "./registry";
 
 // The cloud-layout root, kept as a convenience for cloud tests + callers that
 // don't carry a WorkspacePaths instance. Production handlers use the injected
@@ -124,45 +122,74 @@ export async function handleAgentData(
     return true;
   }
 
-  if (family === "config" && !itemId) {
-    if (method === "GET") {
-      json(res, 200, await loadConfig(vfs, root));
-      return true;
-    }
-    if (method === "PUT") {
-      const body = await readJson(req);
-      await saveConfig(vfs, root, body);
-      fireChange();
-      json(res, 200, body);
-      return true;
-    }
-  }
+  if (
+    (family === "config" || family === "learnings") &&
+    (await handleDocsData(
+      vfs,
+      root,
+      family,
+      method,
+      itemId,
+      req,
+      res,
+      fireChange,
+    ))
+  )
+    return true;
 
-  if (family === "learnings" && !itemId) {
-    if (method === "GET") {
-      json(res, 200, await loadLearnings(vfs, root));
-      return true;
-    }
-    if (method === "PUT") {
-      const body = await readJson(req);
-      const items = body.items;
-      if (!Array.isArray(items)) {
-        json(res, 400, { error: "missing 'items' array" });
-        return true;
-      }
-      // Whole-file replace, under the SAME per-doc lock the runtime's
-      // `save_learning` route takes (routes/learnings-sandbox.ts) — otherwise
-      // this write can land in the middle of that route's load→append→save and
-      // silently drop the learning the agent just recorded.
-      await withDocLock(`${root}#learnings`, () =>
-        saveLearnings(vfs, root, items),
-      );
-      fireChange();
-      json(res, 200, { ok: true });
-      return true;
-    }
-  }
-
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
   return true;
 }
+
+/**
+ * The five families as ROUTES. One handler owns all thirteen pairs because the
+ * regex above owns both the "not mine" boundary and the family-wide 405: a
+ * method this family does not serve is ITS answer to give, never the next
+ * route's request to claim — expanding the members into separate routes would
+ * proxy a `DELETE /config` to a runtime that has no such route instead.
+ */
+defineRouteFamily({
+  group: "agent-data",
+  members: [
+    { method: "GET", path: "/agents/:agentId/activities" },
+    { method: "POST", path: "/agents/:agentId/activities" },
+    { method: "PATCH", path: "/agents/:agentId/activities/:activityId" },
+    { method: "DELETE", path: "/agents/:agentId/activities/:activityId" },
+    { method: "GET", path: "/agents/:agentId/routines" },
+    { method: "POST", path: "/agents/:agentId/routines" },
+    { method: "PATCH", path: "/agents/:agentId/routines/:routineId" },
+    { method: "DELETE", path: "/agents/:agentId/routines/:routineId" },
+    { method: "GET", path: "/agents/:agentId/routine_runs" },
+    { method: "GET", path: "/agents/:agentId/config" },
+    { method: "PUT", path: "/agents/:agentId/config" },
+    { method: "GET", path: "/agents/:agentId/learnings" },
+    { method: "PUT", path: "/agents/:agentId/learnings" },
+  ],
+  // The item shapes the regex claims and the family does not serve: config and
+  // learnings are whole documents with no items, and routine runs are listed
+  // only as a whole. Each is this family's 405 to give — forwarding it would
+  // wake the agent's runtime for a route it has never had.
+  owns: [
+    "/agents/:agentId/config/:itemId",
+    "/agents/:agentId/learnings/:itemId",
+    "/agents/:agentId/routine_runs/:runId",
+  ],
+  methodMismatch: "405",
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/agent-data.ts",
+  handler: ({ deps, userId, authz, method, path, req, res, emit }) =>
+    handleAgentData(
+      deps.vfs,
+      deps.paths ?? DEFAULT_PATHS,
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+      emit,
+      routineActorFor(deps, req, userId),
+      actingAuthorFor(deps, req) ?? undefined,
+      deps.triggersEnabled ?? false,
+    ),
+});

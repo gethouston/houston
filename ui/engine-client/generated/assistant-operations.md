@@ -23,7 +23,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `createApiKey` | POST | confirmed: host approval required | returns a secret; the full key is revealed once and must not pass through a chat turn. | name: free text |
 | `listApiKeys` | GET | unconfirmed: read-only HTTP GET | credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway. | none |
 | `revokeApiKey` | DELETE | confirmed: host approval required | credential management stays with the person; the hosted gateway's scope wall denies key routes to this surface anyway. | id: open: API keys are secrets the directory never lists. |
-| `saveAttachments` | unroutable | unconfirmed: withheld from dispatch | binary upload; the composer batches the dropped files and base64 frames them itself. | agentId: resolved:agents; scopeId: free text; files: free text |
+| `saveAttachments` | POST | unconfirmed: withheld from dispatch | binary upload; the composer batches the dropped files and base64 frames them itself. | agentId: resolved:agents; scopeId: free text; files: free text |
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
 | `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
 | `getBilling` | GET | unconfirmed: read-only HTTP GET | visible | none |
@@ -43,9 +43,13 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `renameFile` | POST | confirmed: host approval required | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; newName: free text |
 | `uploadProjectFiles` | unroutable | unconfirmed: withheld from dispatch | binary upload; browser File objects the Files section hands it. | agentPath: resolved:agents; files: free text; targetDir: free text |
 | `writeAgentFile` | PUT | confirmed: host approval required | visible | agentId: resolved:agents; relPath: open: An agent document is addressed by its known name, and nothing lists them.; content: free text |
+| `addAgentCustomIntegration` | POST | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; input: free text |
 | `addCustomIntegration` | POST | confirmed: host approval required | visible | input: free text |
+| `agentCustomIntegrations` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |
+| `agentCustomIntegrationTools` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents; slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations. |
 | `customIntegrations` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `customIntegrationTools` | GET | unconfirmed: read-only HTTP GET | visible | slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations. |
+| `detectAgentCustomIntegration` | POST | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; url: free text |
 | `detectCustomIntegration` | POST | confirmed: host approval required | visible | url: free text |
 | `integrationConnection` | GET | unconfirmed: read-only HTTP GET | visible | provider: enum; connectionId: open: A connection lives with the integration provider, so read its id from integrationConnections. |
 | `integrationConnections` | GET | unconfirmed: read-only HTTP GET | visible | provider: enum |
@@ -58,10 +62,15 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `integrations.writes.disconnect` | unroutable | unconfirmed: withheld from dispatch | the variant for a surface that owns its own reads; integrations.disconnect is the one to dispatch, and it also refreshes what the user sees. | toolkit: open: Toolkits belong to the integration provider, so read the slug from integrationToolkits.; opts: free text |
 | `integrationStatus` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `integrationToolkits` | GET | unconfirmed: read-only HTTP GET | visible | provider: enum |
+| `removeAgentCustomIntegration` | DELETE | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations. |
 | `removeCustomIntegration` | DELETE | confirmed: host approval required | visible | slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations. |
+| `startAgentCustomIntegrationOAuth` | POST | unconfirmed: withheld from dispatch | starts a browser sign-in only the user can finish. | agentSlugOrId: resolved:agents; slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations. |
 | `startCustomIntegrationOAuth` | POST | unconfirmed: withheld from dispatch | starts a browser sign-in only the user can finish. | slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations. |
+| `submitAgentCustomIntegrationCredential` | POST | confirmed: host approval required | takes a secret; the user pastes the integration's own credential. | agentSlugOrId: resolved:agents; slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; values: free text |
 | `submitCustomIntegrationCredential` | POST | confirmed: host approval required | takes a secret; the user pastes the integration's own credential. | slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; values: free text |
 | `triggerTypes` | GET | unconfirmed: read-only HTTP GET | visible | toolkit: open: Toolkits belong to the integration provider, so read the slug from integrationToolkits. |
+| `updateAgentCustomIntegrationDetails` | PATCH | unconfirmed: withheld from dispatch | cosmetic edit form; connection identity is unchanged. | agentSlugOrId: resolved:agents; slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; details: free text |
+| `updateCustomIntegrationDetails` | PATCH | unconfirmed: withheld from dispatch | cosmetic edit form; connection identity is unchanged. | slug: open: The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.; details: free text |
 | `createActivity` | POST | unconfirmed: Creates a board draft without starting work or spending model tokens. | visible | agentId: resolved:agents; input: free text |
 | `deleteActivity` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:activities |
 | `listActivities` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
@@ -73,7 +82,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `getOrg` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgPeople` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgProfiles` | unroutable | unconfirmed: withheld from dispatch | UI plumbing; resolves member ids to the names and photos the app's avatars render. | ids: free text |
-| `orgAudit` | unroutable | unconfirmed: no callable route | visible | opts: free text |
+| `orgAudit` | unroutable | unconfirmed: no callable route | visible | before: free text; limit: free text |
 | `orgUsage` | GET | unconfirmed: read-only HTTP GET | visible | days: free text |
 | `removeOrgMember` | DELETE | confirmed: host approval required | visible | userId: resolved:members |
 | `setOrgMemberRole` | PATCH | confirmed: host approval required | visible | userId: resolved:members; role: enum |
@@ -109,11 +118,11 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `mintRoutineWebhookKey` | POST | confirmed: host approval required | returns a secret; the webhook key is revealed once and calling again rotates it. | agentId: resolved:agents; routineId: resolved:routines |
 | `runRoutineNow` | POST | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines |
 | `updateRoutine` | PATCH | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines; updates: free text |
-| `getContext` | unroutable | unconfirmed: no callable route | visible | kind: enum |
+| `getContext` | GET | unconfirmed: read-only HTTP GET | visible | kind: enum |
 | `getMyProfile` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getPreference` | GET | unconfirmed: read-only HTTP GET | UI plumbing; an untyped key/value store the app reads for its own device settings. | key: free text |
 | `preferences.setLocale` | PATCH | confirmed: host approval required | visible | workspaceId: resolved:workspaces; locale: free text |
-| `setContext` | unroutable | confirmed: host approval required | visible | kind: enum; content: free text |
+| `setContext` | PUT | confirmed: host approval required | visible | kind: enum; content: free text |
 | `setMyProfile` | PUT | unconfirmed: Reversible personal display overrides; costs nothing and changes no permissions. | visible | update: free text |
 | `setPreference` | PUT | unconfirmed: withheld from dispatch | UI plumbing; an open key/value write that can clobber any app setting. | key: free text; value: free text |
 | `createSharedSkill` | POST | confirmed: host approval required | visible | workspaceId: resolved:workspaces; body: free text |
@@ -145,7 +154,6 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `createAgentTeam` | POST | unconfirmed: Creates an empty team without moving agents or adding other members. | visible | input: free text |
 | `deleteAgentTeam` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams |
 | `getAgentSettings` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |
-| `joinAgentTeam` | POST | confirmed: host approval required | visible | teamId: resolved:teams |
 | `listAgentTeamMembers` | GET | unconfirmed: read-only HTTP GET | visible | teamId: resolved:teams |
 | `listAgentTeams` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `removeAgentTeamMember` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams; userId: resolved:members |

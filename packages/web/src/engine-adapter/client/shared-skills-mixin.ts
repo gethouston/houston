@@ -2,12 +2,24 @@ import type {
   CreateSkillRequest,
   SaveSkillRequest,
   SkillDetail,
-  SkillsManifest,
 } from "../../../../../ui/engine-client/src/types";
 import { emitLocalEcho } from "../bus";
-import * as controlPlane from "../control-plane";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
+/** The path `sdk.skills.shared` builds, which {@link viaSdk} is told about. */
+function sharedSkillsPath(wireWorkspaceId: string, slug?: string): string {
+  const library = `/v1/workspaces/${encodeURIComponent(wireWorkspaceId)}/shared-skills`;
+  return slug === undefined
+    ? library
+    : `${library}/${encodeURIComponent(slug)}`;
+}
+
+/**
+ * The workspace-shared skill library, delegated to `sdk.skills.shared`. Nothing
+ * here degrades: the host answers every one of these routes, so a 404 is a real
+ * failure (an unknown workspace, an unknown slug) and reaches the caller.
+ */
 export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
   class SharedSkills extends Base {
     /**
@@ -21,9 +33,9 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
 
     async listSharedSkills(workspaceId: string) {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      return controlPlane.listSharedSkills(
-        this.ctx.cp,
-        await this.wireWorkspaceId(workspaceId),
+      const wire = await this.wireWorkspaceId(workspaceId);
+      return viaSdk(sharedSkillsPath(wire), () =>
+        this.ctx.sdk.skills.shared.listSharedSkills(wire),
       );
     }
 
@@ -32,10 +44,9 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       slug: string,
     ): Promise<SkillDetail> {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      return controlPlane.loadSharedSkill(
-        this.ctx.cp,
-        await this.wireWorkspaceId(workspaceId),
-        slug,
+      const wire = await this.wireWorkspaceId(workspaceId);
+      return viaSdk(sharedSkillsPath(wire, slug), () =>
+        this.ctx.sdk.skills.shared.loadSharedSkill(wire, slug),
       );
     }
 
@@ -44,14 +55,13 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       req: CreateSkillRequest,
     ): Promise<SkillDetail> {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      const detail = await controlPlane.createSharedSkill(
-        this.ctx.cp,
-        await this.wireWorkspaceId(workspaceId),
-        {
+      const wire = await this.wireWorkspaceId(workspaceId);
+      const detail = await viaSdk(sharedSkillsPath(wire), () =>
+        this.ctx.sdk.skills.shared.createSharedSkill(wire, {
           name: req.name,
           description: req.description,
           content: req.content,
-        },
+        }),
       );
       // Local echoes keep the CLIENT's id vocabulary — query keys are built
       // from the same workspaceId the caller holds.
@@ -65,11 +75,9 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       content: string,
     ): Promise<SkillDetail> {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      const detail = await controlPlane.promoteSharedSkill(
-        this.ctx.cp,
-        await this.wireWorkspaceId(workspaceId),
-        slug,
-        content,
+      const wire = await this.wireWorkspaceId(workspaceId);
+      const detail = await viaSdk(sharedSkillsPath(wire, slug), () =>
+        this.ctx.sdk.skills.shared.promoteSharedSkill(wire, slug, content),
       );
       emitLocalEcho("SharedSkillsChanged", { workspaceId });
       return detail;
@@ -81,42 +89,20 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       req: SaveSkillRequest,
     ): Promise<void> {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      await controlPlane.saveSharedSkill(
-        this.ctx.cp,
-        await this.wireWorkspaceId(workspaceId),
-        slug,
-        req.content,
+      const wire = await this.wireWorkspaceId(workspaceId);
+      await viaSdk(sharedSkillsPath(wire, slug), () =>
+        this.ctx.sdk.skills.shared.saveSharedSkill(wire, slug, req.content),
       );
       emitLocalEcho("SharedSkillsChanged", { workspaceId });
     }
 
     async deleteSharedSkill(workspaceId: string, slug: string): Promise<void> {
       if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
-      await controlPlane.deleteSharedSkill(
-        this.ctx.cp,
-        await this.wireWorkspaceId(workspaceId),
-        slug,
+      const wire = await this.wireWorkspaceId(workspaceId);
+      await viaSdk(sharedSkillsPath(wire, slug), () =>
+        this.ctx.sdk.skills.shared.deleteSharedSkill(wire, slug),
       );
       emitLocalEcho("SharedSkillsChanged", { workspaceId });
-    }
-
-    async getSkillsManifest(agentPath: string): Promise<SkillsManifest> {
-      if (!this.ctx.cp) throw new Error("Skills manifests need a host agent.");
-      return controlPlane.getSkillsManifest(this.ctx.cp, agentPath);
-    }
-
-    async putSkillsManifest(
-      agentPath: string,
-      manifest: SkillsManifest,
-    ): Promise<SkillsManifest> {
-      if (!this.ctx.cp) throw new Error("Skills manifests need a host agent.");
-      const saved = await controlPlane.putSkillsManifest(
-        this.ctx.cp,
-        agentPath,
-        manifest,
-      );
-      emitLocalEcho("SkillsChanged", { agentPath });
-      return saved;
     }
   }
   return SharedSkills;

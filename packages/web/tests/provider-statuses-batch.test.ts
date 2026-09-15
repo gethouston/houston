@@ -9,9 +9,8 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  * card's status from it. These tests pin that single-round-trip contract.
  */
 
-const { listProviders, cpListAgents } = vi.hoisted(() => ({
+const { listProviders } = vi.hoisted(() => ({
   listProviders: vi.fn(),
-  cpListAgents: vi.fn(),
 }));
 
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
@@ -21,7 +20,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
-    listAgents: cpListAgents,
     // Every provider/auth call resolves to the same fake runtime client, so we
     // can count how many times the adapter reaches for the provider list.
     runtimeClientFor: vi.fn(() => ({ listProviders })),
@@ -29,6 +27,11 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
 });
 
 import { HoustonClient } from "../src/engine-adapter/client";
+import {
+  restoreAgentListFetch,
+  stubAgentListFetch,
+  wireAgent,
+} from "./support/agent-list";
 
 beforeEach(() => {
   // cp-mode `providerEngine()` needs a selected agent id; the adapter reads it
@@ -40,11 +43,13 @@ beforeEach(() => {
     removeItem: () => {},
   };
   listProviders.mockReset();
-  cpListAgents.mockReset();
-  cpListAgents.mockResolvedValue([{ id: "agent-1" }]);
+  stubAgentListFetch([wireAgent("agent-1")]);
 });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  restoreAgentListFetch();
+  vi.clearAllMocks();
+});
 
 /**
  * A client whose ACTIVE SPACE has already listed its agents.

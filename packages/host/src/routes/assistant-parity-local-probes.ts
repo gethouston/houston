@@ -129,6 +129,21 @@ export const LOCAL_PROBES: readonly Probe[] = [
   probe("detectCustomIntegration", { url: "not-a-url" }),
   probe("customIntegrationTools", { slug: "no-such-integration" }),
   probe("removeCustomIntegration", { slug: "no-such-integration" }),
+  // The same connectors, addressed through the agent that owns them.
+  probe("agentCustomIntegrations", { agentSlugOrId: PROBE_AGENT }),
+  probe("addAgentCustomIntegration", { agentSlugOrId: PROBE_AGENT, input: {} }),
+  probe("detectAgentCustomIntegration", {
+    agentSlugOrId: PROBE_AGENT,
+    url: "not-a-url",
+  }),
+  probe("agentCustomIntegrationTools", {
+    agentSlugOrId: PROBE_AGENT,
+    slug: "no-such-integration",
+  }),
+  probe("removeAgentCustomIntegration", {
+    agentSlugOrId: PROBE_AGENT,
+    slug: "no-such-integration",
+  }),
   probe("integrations.disconnect", { toolkit: "gmail" }),
   probe("providers.refreshStatus", AGENT, {
     status: 503,

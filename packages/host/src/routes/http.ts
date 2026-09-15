@@ -24,6 +24,17 @@ export function json(
   res.end(buf);
 }
 
+/**
+ * The blanket refusal a family gives for a method it does not serve. One
+ * spelling, because the dispatcher emits this exact body when a family's
+ * `methodMismatch` is "405" (routes/registry/index.ts): a handler whose own
+ * 405 drifted from it would answer differently depending on which of the two
+ * reached the request first.
+ */
+export function methodNotAllowed(res: ServerResponse): void {
+  json(res, 405, { error: "method not allowed" });
+}
+
 /** The caller's bearer, from the Authorization header or a ?token= fallback (SSE). */
 export function bearer(req: IncomingMessage, url: URL): string | null {
   const h = req.headers.authorization;

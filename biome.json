@@ -18,6 +18,7 @@
       "!packages/design-tokens/dist",
       "!app/src/agents/builtin/store-templates",
       "!app/src/lib/ai-hub/model-catalog.json",
+      "!packages/host/src/routes/routes.golden.json",
       "!website/src/assets/vendor"
     ]
   },

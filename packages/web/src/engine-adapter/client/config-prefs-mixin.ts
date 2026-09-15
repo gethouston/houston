@@ -4,6 +4,7 @@ import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
 import { DEFAULT_AGENT_ID, DEFAULT_WORKSPACE_ID } from "../synthetic";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 /**
  * Preference keys that are ACCOUNT state, not device state. The engine acts on
@@ -53,8 +54,15 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ConfigPrefs extends Base {
     async getPreference(key: string): Promise<string | null> {
       if (ACCOUNT_PREF_KEYS.has(key)) {
-        const cfg = this.ctx.prefConfig();
-        const value = await controlPlane.getPreference(cfg, key);
+        // The account-key READ is the SDK's too: the same `GET
+        // /v1/preferences/:key` over the same shared gateway fetch, which carries
+        // `cpFetch`'s read retry (`sdk-client.ts`), so this boot-path GET still
+        // rides out a rolling deploy or a waking pod. The lone wire difference is
+        // a `Content-Type: application/json` header cpFetch stamps on every
+        // request: a GET has no body to describe.
+        const value = await viaSdk(controlPlane.prefPath(key), () =>
+          this.ctx.sdk.preferences.get(key),
+        );
         if (value !== null) return value;
         // One-time lift of a pre-fix device-local copy: earlier builds kept
         // account keys in localStorage only, so the host never learned them.
@@ -62,7 +70,9 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
         // re-deriving it — a deliberately chosen timezone must survive.
         const legacy = readLocalPref(key);
         if (legacy !== null) {
-          await controlPlane.setPreference(cfg, key, legacy);
+          await viaSdk(controlPlane.prefPath(key), () =>
+            this.ctx.sdk.preferences.set(key, legacy),
+          );
           removeLocalPref(key);
           return legacy;
         }
@@ -78,17 +88,16 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
     async setPreference(key: string, value: string): Promise<void> {
       if (ACCOUNT_PREF_KEYS.has(key)) {
-        // Delegate the account-key WRITE to the SDK (migration wave 2a): its
-        // PreferencesClient issues the identical `PUT /v1/preferences/:key` with
-        // body `{value}` over the SAME shared gateway fetch (bearer +
-        // `x-houston-org`), and — unlike the agents/activities facades — does NOT
-        // refetch. The SDK echoes the stored value; this caller discards it, so
-        // the observable request and the `void` result are byte-identical to the
-        // old `controlPlane.setPreference`. PUTs never transient-retry in either
-        // path, so nothing is lost. The READ stays on `controlPlane.getPreference`
-        // (below): cpFetch wraps GETs in `transientRetryFetch`, which the SDK path
-        // lacks — delegating it would drop that boot-path retry resilience.
-        await this.ctx.sdk.preferences.set(key, value);
+        // The account-key WRITE is the SDK's: its PreferencesClient issues the
+        // identical `PUT /v1/preferences/:key` with body `{value}` over the SAME
+        // shared gateway fetch (bearer + `x-houston-org`), and — unlike the
+        // agents/activities facades — does NOT refetch. The SDK echoes the
+        // stored value; this caller discards it, so the observable request and
+        // the `void` result match the control-plane helper byte for byte. PUTs
+        // never transient-retry in either path, so nothing is lost.
+        await viaSdk(controlPlane.prefPath(key), () =>
+          this.ctx.sdk.preferences.set(key, value),
+        );
         removeLocalPref(key);
         return;
       }

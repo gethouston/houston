@@ -19,7 +19,6 @@ import { isNoAgentForProviderWriteError } from "../src/engine-adapter/no-agent-p
  */
 
 const {
-  cpListAgents,
   forgetCredential,
   forgetSetupCredential,
   setCustomEndpoint,
@@ -27,7 +26,6 @@ const {
   setupLogout,
   agentClaim,
 } = vi.hoisted(() => ({
-  cpListAgents: vi.fn(),
   forgetCredential: vi.fn(),
   forgetSetupCredential: vi.fn(),
   setCustomEndpoint: vi.fn(),
@@ -43,7 +41,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
-    listAgents: cpListAgents,
     forgetCredential,
     forgetSetupCredential,
     setCustomEndpoint,
@@ -56,6 +53,11 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
 });
 
 import { HoustonClient } from "../src/engine-adapter/client";
+import {
+  restoreAgentListFetch,
+  stubAgentListFetch,
+  wireAgent,
+} from "./support/agent-list";
 
 const PREF = "houston.pref.last_agent_id";
 /** A selection left over from before the last agent was deleted. */
@@ -79,10 +81,11 @@ beforeEach(() => {
     fn.mockReset().mockResolvedValue(undefined);
   }
   // The space's list is KNOWN and EMPTY.
-  cpListAgents.mockReset().mockResolvedValue([]);
+  stubAgentListFetch([]);
 });
 
 afterEach(() => {
+  restoreAgentListFetch();
   vi.clearAllMocks();
 });
 
@@ -152,7 +155,7 @@ test("the still-loading refusal is unchanged and is NOT the expected-state error
 });
 
 test("with an agent, sign-out and the endpoint still take the per-agent routes", async () => {
-  cpListAgents.mockResolvedValue([{ id: "agent-1" }]);
+  stubAgentListFetch([wireAgent("agent-1")]);
   const c = await zeroAgentClient();
 
   await c.providerLogout("anthropic");

@@ -17,8 +17,10 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { requireString } from "../payload";
 import { startAgentsEventStream } from "./events-stream";
-import { createAgentsHttp } from "./http";
+import { agentsScope, createAgentsHttp } from "./http";
+import { type AgentsAccount, createAgentsAccount } from "./library";
 import {
   AGENTS_SCOPE,
   type AgentCreateInput,
@@ -29,11 +31,15 @@ import {
 } from "./types";
 
 export { AgentsHttpError } from "./http";
+export type { AgentsAccount, AgentsLibrary } from "./library";
 export type {
+  AgentAccess,
+  AgentAssignment,
   AgentCreateInput,
   AgentListItem,
   AgentsViewModel,
   AgentsWrites,
+  InstalledConfig,
   WireAgent,
 } from "./types";
 export {
@@ -47,6 +53,12 @@ export {
 export interface AgentsModule {
   /** Refetch the list and republish the `agents` scope snapshot. */
   refresh(): Promise<void>;
+  /**
+   * The agent list as the host serves it, published nowhere. For a host that
+   * owns its own read model (web under `reactivity:false`), where publishing
+   * into a scope nobody subscribes to would be a second, unasked-for read.
+   */
+  list(): Promise<WireAgent[]>;
   /** Create an agent named `name`, then refetch. */
   create(name: string): Promise<void>;
   /** Rename agent `id` to `name`, then refetch. */
@@ -59,6 +71,10 @@ export interface AgentsModule {
    * return the wire entity. iOS keeps using the refetching methods above.
    */
   writes: AgentsWrites;
+  /** The account's library of installed agent templates. */
+  library: AgentsAccount["library"];
+  /** Set one agent's palette colour, in a single request. */
+  setColor: AgentsAccount["setColor"];
   /** Stop the reactivity stream. Module-local; the kernel has no dispose seam. */
   dispose(): void;
 }
@@ -72,25 +88,15 @@ function toItem(a: WireAgent): AgentsViewModel["items"][number] {
   };
 }
 
-/** Pull a required non-empty string off an untrusted command payload. */
-function requireString(payload: unknown, key: string): string {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
-}
-
 export function createAgentsModule(ctx: ModuleContext): AgentsModule {
   const { store, authExpiry } = ctx;
   const { baseUrl, ports } = ctx.config;
 
   const emitTokenExpired = () => authExpiry.notifyExpired();
 
-  const http = createAgentsHttp(baseUrl, ports, emitTokenExpired);
+  const scope = agentsScope(ctx);
+  const http = createAgentsHttp(scope);
+  const account = createAgentsAccount(ctx, scope);
 
   async function refresh(): Promise<void> {
     const agents = await http.list();
@@ -170,5 +176,14 @@ export function createAgentsModule(ctx: ModuleContext): AgentsModule {
           },
         });
 
-  return { refresh, create, rename, delete: del, writes, dispose };
+  return {
+    refresh,
+    list: () => http.list(),
+    create,
+    rename,
+    delete: del,
+    writes,
+    ...account,
+    dispose,
+  };
 }

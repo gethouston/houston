@@ -42,6 +42,9 @@ export function json(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
+// The 405 body has one spelling, in routes/http.ts; re-exported for the same
+// reason — the turn dispatch path must not drift from the rest of the chain.
+export { methodNotAllowed } from "../routes/http";
 // The byte-capped body reader lives once in routes/read-body.ts; re-exported so
 // the turn dispatch path shares the exact same cap as every other route.
 export { readJson } from "../routes/read-body";

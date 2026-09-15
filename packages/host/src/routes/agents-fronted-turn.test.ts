@@ -11,8 +11,9 @@ import type {
 } from "../ports";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
-import { type AgentRouteDeps, handleAgents } from "./agents";
+import type { AgentRouteDeps } from "./agent-authz";
 import { liveTurns } from "./live-turn";
+import { dispatchGroup } from "./registry/all";
 
 /**
  * THE SEND ITSELF, on the deployment where the most reads it: a managed
@@ -107,15 +108,15 @@ async function boot() {
   };
   const server = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
-    void handleAgents(
+    void dispatchGroup("agent-proxy", {
       deps,
-      "alice",
-      req.method || "GET",
-      url.pathname,
+      userId: "alice",
+      method: req.method || "GET",
+      path: url.pathname,
       url,
       req,
       res,
-    ).then((handled) => {
+    }).then((handled) => {
       if (!handled) {
         res.writeHead(404);
         res.end();

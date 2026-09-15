@@ -1,21 +1,19 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent } from "@houston/protocol";
-import { type Zippable, zipSync } from "fflate";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
-import { MAX_ARCHIVE_BYTES } from "../turn/files-archive";
 import type { Vfs } from "../vfs";
-import { safeSeedKey } from "./agent-seed";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
 import { json, readJson } from "./http";
+import { exportMigrationChunk } from "./migration-export";
 import {
   applyMigrationArchive,
   MigrationImportError,
 } from "./migration-import";
-import {
-  classifyMigrationPath,
-  MAX_IMPORT_BODY_BYTES,
-} from "./migration-scope";
+import { MAX_IMPORT_BODY_BYTES } from "./migration-scope";
+import { defineRouteFamily } from "./registry";
 
 /**
  * Agent-scoped routes of the one-click desktop→cloud migration (HOU-719).
@@ -69,30 +67,7 @@ export async function handleMigration(
       json(res, 400, { error: "missing 'paths' (string array)" });
       return true;
     }
-    const entries: Zippable = {};
-    let total = 0;
-    for (const requestedPath of requested as string[]) {
-      const rel = safeSeedKey(requestedPath);
-      const kind = rel ? classifyMigrationPath(rel) : null;
-      if (!rel || kind === null) {
-        json(res, 400, {
-          error: `path outside migration scope: ${requestedPath}`,
-        });
-        return true;
-      }
-      const buf = await vfs.readBytes(`${root}/${rel}`);
-      if (buf === null) continue; // deleted since the manifest — not an error
-      total += buf.length;
-      if (total > MAX_ARCHIVE_BYTES) {
-        json(res, 413, { error: "requested chunk too large" });
-        return true;
-      }
-      // Agent data (JSON/markdown) compresses well and is worth the CPU on a
-      // one-time upload; working files are often already-compressed binaries.
-      entries[rel] = [new Uint8Array(buf), { level: kind === "core" ? 6 : 0 }];
-    }
-    res.writeHead(200, { "Content-Type": "application/zip" });
-    res.end(Buffer.from(zipSync(entries)));
+    await exportMigrationChunk(vfs, root, requested as string[], res);
     return true;
   }
 
@@ -161,3 +136,42 @@ export async function handleMigration(
   json(res, 404, { error: "not found" });
   return true;
 }
+
+/**
+ * The family owns the whole `migration/` prefix, not only the four pairs it
+ * serves: an unknown path or a wrong verb inside it is this handler's own 404,
+ * so a migration call that names nothing can never be forwarded to the agent's
+ * runtime and answered by something else entirely.
+ */
+defineRouteFamily({
+  group: "migration",
+  members: [
+    { method: "POST", path: "/agents/:agentId/migration/export" },
+    { method: "POST", path: "/agents/:agentId/migration/import" },
+    { method: "POST", path: "/agents/:agentId/migration/complete" },
+    { method: "GET", path: "/agents/:agentId/migration/status" },
+  ],
+  // `/agents/:agentId/migration` alone is NOT in the prefix (the check above
+  // requires the separator), so it falls through to the agent's runtime.
+  owns: ["/agents/:agentId/migration/", "/agents/:agentId/migration/*rest"],
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/migration.ts",
+  handler: async ({ deps, authz, method, path, req, res, emit }) => {
+    await handleMigration(
+      {
+        vfs: deps.vfs,
+        paths: deps.paths ?? DEFAULT_PATHS,
+        // Anchors re-synthesized pi sessions on a deployment with a real
+        // on-disk tree; absent in cloud, where nothing replays them.
+        agentDir: deps.agentDir?.(authz.workspace, authz.agent),
+      },
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+      emit,
+    );
+  },
+});

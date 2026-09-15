@@ -72,9 +72,9 @@ export class AdapterContext {
   engine: HoustonEngineClient;
   baseUrl: string;
   token: string;
-  /** The single web-side {@link HoustonSdk} (migration wave 1), built INERT
-   *  (reactivity off) over the shared `authFetch`. Later waves delegate
-   *  control-plane WRITES to its modules. */
+  /** The single web-side {@link HoustonSdk}, built over the shared `authFetch`
+   *  with reactivity off (web owns its read model). Every mixin's domain call
+   *  lands on one of its modules. */
   sdk: HoustonSdk;
   /** Live-token auth fetch (not a pinned `token`): hosted mode rotates the
    *  bearer mid-session and a 401 refreshes + replays (HOU-687). Shared by
@@ -126,7 +126,8 @@ export class AdapterContext {
     });
     // INERT: reactivity is off, so constructing the SDK opens NO stream and
     // fires NO request — it only holds the write surface for later waves. It
-    // rides the SAME `authFetch`, so bearer/401-refresh/active-space match.
+    // rides the SAME `authFetch`, so bearer/401-refresh/active-space match,
+    // under the SAME read retry (`createEngineSdk` wraps it).
     this.sdk = createEngineSdk({ baseUrl: this.baseUrl, fetch: authFetch });
     // Mark the new TS engine as the active backend so the frontend can surface
     // new-engine-only capabilities (e.g. API-key providers like OpenCode).

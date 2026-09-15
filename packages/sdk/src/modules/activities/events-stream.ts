@@ -71,6 +71,58 @@ export function startActivitiesEventStream(
   return () => ac.abort();
 }
 
+/** What {@link attachActivitiesReactivity} needs from the module it drives. */
+export interface ActivitiesReactivityDeps {
+  baseUrl: string;
+  fetch: typeof fetch;
+  clock: Clock;
+  logger: SdkLogger;
+  /** Agents loaded at least once — the LIVE set a catch-up refetch covers. */
+  known: ReadonlySet<string>;
+  /** The module's silent refetch for one agent. */
+  refresh(agentId: string): Promise<void>;
+  onUnauthorized(): void;
+}
+
+/**
+ * Wire the stream to the module's refetch and return its stop function.
+ *
+ * A stream-driven refetch is not a user action: a transient failure just leaves
+ * the snapshot stale until the next event. A 401 still surfaces (the http layer
+ * fires `onUnauthorized`), so only the noise is logged, never swallowed.
+ */
+export function attachActivitiesReactivity(
+  deps: ActivitiesReactivityDeps,
+): () => void {
+  const backgroundRefresh = (agentId: string, where: string) =>
+    void deps.refresh(agentId).catch((err) =>
+      deps.logger.debug(`activities refresh (${where}) failed`, {
+        error: String(err),
+        agentId,
+      }),
+    );
+  const refreshAll = (where: string) => {
+    for (const id of deps.known) backgroundRefresh(id, where);
+  };
+  return startActivitiesEventStream({
+    baseUrl: deps.baseUrl,
+    fetch: deps.fetch,
+    clock: deps.clock,
+    logger: deps.logger,
+    handlers: {
+      onConnect: () => refreshAll("connect"),
+      // Targeted: only an agent we're showing. A frame with no agentPath can't
+      // be targeted, so refetch every known agent (catch-up, never a miss).
+      onActivityChanged: (agentPath) => {
+        if (agentPath === undefined) refreshAll("change");
+        else if (deps.known.has(agentPath))
+          backgroundRefresh(agentPath, "change");
+      },
+      onUnauthorized: deps.onUnauthorized,
+    },
+  });
+}
+
 /**
  * The agent id off an `ActivityChanged` frame, `undefined` when the frame omits
  * it, or `null` when the frame is not an `ActivityChanged` (not our signal).

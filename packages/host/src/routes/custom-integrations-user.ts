@@ -3,14 +3,11 @@ import { canUseAgent } from "../domain/access";
 import type { UserId } from "../domain/types";
 import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import type { WorkspaceStore } from "../ports";
-import {
-  bodyOr400,
-  type CustomTarget,
-  customTargetOf,
-  parseAddInput,
-  relayCustomError,
-} from "./custom-integrations";
+import { agentRest } from "./agent-rest";
+import { customTargetOf } from "./custom-integrations";
+import { serveCustomTarget } from "./custom-integrations-serve";
 import { json } from "./http";
+import { defineRouteFamily, type HttpMethod } from "./registry";
 
 /**
  * Custom-integration USER routes (HOU-550): list / add / detect / remove /
@@ -41,6 +38,8 @@ export interface CustomIntegrationUserDeps {
   store: WorkspaceStore;
 }
 
+const SOURCE = "packages/host/src/routes/custom-integrations-user.ts";
+
 const TOP = /^\/v1\/integrations\/custom\/(.+)$/;
 const AGENT = /^\/v1\/agents\/([^/]+)\/integrations\/custom\/(.+)$/;
 const DISPATCH = /^integrations\/custom\/(.+)$/;
@@ -60,96 +59,6 @@ async function authorize(
     status: access.reason === "agent not found" ? 404 : 403,
     reason: access.reason,
   };
-}
-
-/** The surface-agnostic core: serve one user request against the manager.
- *  Returns false when method+shape name no route in this family. */
-async function serve(
-  manager: CustomIntegrationManager,
-  method: string,
-  target: CustomTarget,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<boolean> {
-  try {
-    if (target.kind === "definitions" && method === "GET") {
-      json(res, 200, { items: await manager.list() });
-      return true;
-    }
-    // The manual add form (HOU-980). Same body grammar as the agent's
-    // sandbox add tool — parseAddInput is the one validator for both.
-    if (target.kind === "definitions" && method === "POST") {
-      const body = await bodyOr400(req, res);
-      if (!body) return true;
-      const input = parseAddInput(body);
-      if (typeof input === "string") {
-        json(res, 400, { error: input });
-        return true;
-      }
-      json(res, 200, await manager.add(input));
-      return true;
-    }
-    if (target.kind === "detect" && method === "POST") {
-      const body = await bodyOr400(req, res);
-      if (!body) return true;
-      if (typeof body.url !== "string" || !body.url.trim()) {
-        json(res, 400, { error: "missing 'url'" });
-        return true;
-      }
-      json(res, 200, await manager.detect(body.url.trim()));
-      return true;
-    }
-    if (target.kind === "definition" && method === "PATCH") {
-      const body = await bodyOr400(req, res);
-      if (!body) return true;
-      await manager.updateDetails(target.slug, body);
-      json(res, 200, { ok: true });
-      return true;
-    }
-    if (target.kind === "definition" && method === "DELETE") {
-      await manager.remove(target.slug);
-      json(res, 200, { ok: true });
-      return true;
-    }
-    if (target.kind === "tools" && method === "GET") {
-      json(res, 200, { items: await manager.tools(target.slug) });
-      return true;
-    }
-    // OAuth sign-in start (PRODUCT-1172): mint the authorize URL the client
-    // opens in the browser; the redirect lands on the PUBLIC callback route
-    // (custom-integrations-oauth.ts), which completes the flow server-side.
-    if (target.kind === "oauthStart" && method === "POST") {
-      json(res, 200, await manager.startOAuth(target.slug));
-      return true;
-    }
-    if (target.kind === "credential" && method === "POST") {
-      const body = await bodyOr400(req, res);
-      if (!body) return true;
-      const values = body.values;
-      if (
-        !values ||
-        typeof values !== "object" ||
-        Array.isArray(values) ||
-        !Object.values(values).every((v) => typeof v === "string")
-      ) {
-        json(res, 400, { error: "missing 'values' (object of strings)" });
-        return true;
-      }
-      json(
-        res,
-        200,
-        await manager.setCredential(
-          target.slug,
-          values as Record<string, string>,
-        ),
-      );
-      return true;
-    }
-  } catch (err) {
-    if (relayCustomError(res, err)) return true;
-    throw err;
-  }
-  return false;
 }
 
 /** The two `/v1` forms (top-level + agent-scoped). Mounted BEFORE the generic
@@ -178,9 +87,10 @@ export async function handleCustomIntegrations(
     try {
       agentId = decodeURIComponent(scoped[1] ?? "");
     } catch {
-      // A malformed escape in the agent segment is a client error, never a 500.
-      json(res, 400, { error: "malformed agent id" });
-      return true;
+      // A malformed escape names no agent of ours, so this is a non-match like
+      // any other — the same answer the matcher gives a `:agentId` it cannot
+      // decode, and the same one customTargetOf gives a malformed slug.
+      return false;
     }
     const authz = await authorize(deps.store, userId, agentId);
     if (!authz.ok) {
@@ -188,16 +98,14 @@ export async function handleCustomIntegrations(
       return true;
     }
   }
-  return serve(manager, method, target, req, res);
+  return serveCustomTarget(manager, method, target, req, res);
 }
 
 /**
- * The SAME routes on the per-agent dispatch surface, matched on the dispatch
- * `rest` inside handleAgents — which has ALREADY run the ownership check, so
- * no authz here. This is the surface the hosted gateway proxies to the pod,
- * and the one the shipped clients call in both deployments. Unwired manager →
- * false, and the request falls through toward the runtime channel like any
- * unknown dispatch family.
+ * The SAME routes matched on the per-agent `rest`, for the two chains that run
+ * behind their own ownership check: the dispatch surface below, and the pod's
+ * op chain (op/handler-chain.ts). Unwired manager → false, so the request keeps
+ * travelling toward the agent's engine like any unknown rest.
  */
 export async function handleCustomIntegrationsDispatch(
   manager: CustomIntegrationManager | undefined,
@@ -209,5 +117,77 @@ export async function handleCustomIntegrationsDispatch(
   const m = rest.match(DISPATCH);
   const target = m ? customTargetOf(m[1] ?? "") : null;
   if (!target || !manager) return false;
-  return serve(manager, method, target, req, res);
+  return serveCustomTarget(manager, method, target, req, res);
 }
+
+/** The grammar of custom-integrations.ts, as the pairs a surface publishes. */
+const OPS: { method: HttpMethod; target: string }[] = [
+  { method: "GET", target: "definitions" },
+  { method: "POST", target: "definitions" },
+  { method: "POST", target: "detect" },
+  { method: "PATCH", target: "definitions/:slug" },
+  { method: "DELETE", target: "definitions/:slug" },
+  { method: "GET", target: "definitions/:slug/tools" },
+  { method: "POST", target: "definitions/:slug/oauth/start" },
+  { method: "POST", target: "definitions/:slug/credential" },
+];
+
+const members = (mount: string) =>
+  OPS.map(({ method, target }) => ({ method, path: `${mount}/${target}` }));
+
+/**
+ * Both `/v1` mounts, declared per prefix and served by the one handler above.
+ *
+ * Each claims its whole subtree for EVERY method because that is what the
+ * mount regexes do: the grammar, not the method table, decides what belongs
+ * here, so an unwired manager answers 404 for any method (the client learns
+ * the feature is absent instead of that its URL is wrong) and a target the
+ * grammar rejects is DECLINED — which is the only reason the generic provider
+ * family mounted after this one still answers `custom/connections`.
+ */
+defineRouteFamily({
+  group: "custom-integrations",
+  phase: "user",
+  classification: "sdk",
+  source: SOURCE,
+  members: members("/v1/integrations/custom"),
+  owns: ["/v1/integrations/custom/*rest"],
+  handler: ({ deps, userId, method, path, req, res }) =>
+    handleCustomIntegrations(deps, userId, method, path, req, res),
+});
+
+defineRouteFamily({
+  group: "custom-integrations",
+  phase: "user",
+  classification: "sdk",
+  source: SOURCE,
+  members: members("/v1/agents/:agentId/integrations/custom"),
+  owns: ["/v1/agents/:agentId/integrations/custom/*rest"],
+  handler: ({ deps, userId, method, path, req, res }) =>
+    handleCustomIntegrations(deps, userId, method, path, req, res),
+});
+
+/**
+ * The same routes on the PER-AGENT dispatch surface, behind the agent phase's
+ * ownership check. It DECLINES — rather than 404ing like the `/v1` mounts —
+ * whenever the manager is unwired or the grammar does not know the target,
+ * because the family behind it here is the agent's own engine: a probe for
+ * something else under `integrations/` belongs to the engine, and on a host
+ * with no custom-integration manager the whole subtree does.
+ */
+defineRouteFamily({
+  group: "agent-integrations",
+  phase: "agent",
+  classification: "sdk",
+  source: SOURCE,
+  members: members("/agents/:agentId/integrations/custom"),
+  owns: ["/agents/:agentId/integrations/custom/*rest"],
+  handler: ({ deps, method, path, req, res }) =>
+    handleCustomIntegrationsDispatch(
+      deps.customIntegrations,
+      method,
+      agentRest(path),
+      req,
+      res,
+    ),
+});

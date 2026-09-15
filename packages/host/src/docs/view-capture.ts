@@ -1,4 +1,5 @@
 import type { ServerResponse } from "node:http";
+import { listRoutes } from "../routes/registry/all";
 
 /**
  * View docs: ENGINE-COMPUTED answers (not family files) published to the
@@ -14,15 +15,45 @@ export type ViewFamily =
   | "custom_definitions"
   | "skills";
 
-/** Route rest (after `/agents/:id/`) → the view family it publishes. */
-export const VIEW_RESTS: Readonly<Record<string, ViewFamily>> = {
+/**
+ * Which per-agent GET each family publishes. Two of the four are proxied to
+ * the agent's engine and two the host serves itself, so what they have in
+ * common is only that a route declares them — which is where the rests below
+ * are resolved from.
+ */
+const VIEW_ROUTES = {
   providers: "providers",
-  "providers/usage": "provider_usage",
-  "integrations/custom/definitions": "custom_definitions",
+  provider_usage: "providers/usage",
+  custom_definitions: "integrations/custom/definitions",
   // The skills list is a directory family (no .houston/<family>.json), so it
   // rides the view path: the pod's own answer, captured and served asleep.
   skills: "skills",
-};
+} as const satisfies Record<ViewFamily, string>;
+
+const AGENT_PREFIX = "/agents/:agentId/";
+
+/**
+ * Route rest (after `/agents/:id/`) → the view family it publishes, taken from
+ * the registry's own agent-phase declarations. A family whose route was renamed
+ * or removed fails THIS import rather than publishing a 404 body as a view, for
+ * every reader of that doc, until someone notices.
+ */
+export const VIEW_RESTS: Readonly<Record<string, ViewFamily>> =
+  Object.fromEntries(
+    Object.entries(VIEW_ROUTES).map(([family, rest]) => {
+      const declared = listRoutes().some(
+        (route) =>
+          route.phase === "agent" &&
+          route.method === "GET" &&
+          route.path === `${AGENT_PREFIX}${rest}`,
+      );
+      if (!declared)
+        throw new Error(
+          `view family "${family}" captures GET ${AGENT_PREFIX}${rest}, which no route declares`,
+        );
+      return [rest, family as ViewFamily];
+    }),
+  );
 
 const AGENT_PATH = /^\/agents\/([^/]+)\/(.+)$/;
 

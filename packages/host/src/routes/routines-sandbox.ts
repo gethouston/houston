@@ -9,6 +9,7 @@ import { DEFAULT_PATHS } from "./agent-authz";
 import { bearer, header, json, readJson } from "./http";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
 import { liveTurns } from "./live-turn";
+import { defineRoute } from "./registry";
 import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
 
 /**
@@ -27,7 +28,20 @@ import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
  * A body with an `id` updates that routine in place; without one it creates a new
  * routine alongside the existing set.
  */
-export async function handleSandboxRoutines(
+defineRoute({
+  group: "sandbox-routines",
+  method: "POST",
+  path: "/sandbox/routines/save",
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "The agent's save_routine tool calls it with a per-sandbox HMAC token, which is what names the workspace.",
+  source: "packages/host/src/routes/routines-sandbox.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxRoutines(deps, method, path, url, req, res),
+});
+
+async function handleSandboxRoutines(
   deps: {
     vault: CredentialVault;
     store: WorkspaceStore;

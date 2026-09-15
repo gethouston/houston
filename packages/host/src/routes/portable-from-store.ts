@@ -8,6 +8,7 @@ import {
   type HostLookup,
   vetResolvedHost,
 } from "./portable-from-store-net";
+import { defineRoute } from "./registry";
 
 /** Rides in the manifest of a link-installed package; matches the export path. */
 const HOUSTON_VERSION = "0.0.0";
@@ -119,3 +120,21 @@ export async function handlePortableFromStore(
   json(res, 200, pkg);
   return true;
 }
+
+defineRoute({
+  group: "portable-from-store",
+  method: "POST",
+  path: "/v1/portable/fetch-from-store",
+  phase: "user",
+  classification: "sdk",
+  source: "packages/host/src/routes/portable-from-store.ts",
+  handler: async ({ deps, method, path, req, res }) => {
+    await handlePortableFromStore(
+      { apiUrl: deps.agentStoreApiUrl },
+      method,
+      path,
+      req,
+      res,
+    );
+  },
+});

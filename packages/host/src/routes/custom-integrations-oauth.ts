@@ -1,5 +1,6 @@
 import type { ServerResponse } from "node:http";
 import type { CustomIntegrationManager } from "../integrations/custom/manager";
+import { defineRoute } from "./registry";
 
 /**
  * The PUBLIC OAuth callback for custom integrations (PRODUCT-1172):
@@ -37,6 +38,19 @@ function page(res: ServerResponse, ok: boolean, detail?: string): void {
       `</head><body><main><h1>${title}</h1><p>${body}</p></main></body></html>`,
   );
 }
+
+defineRoute({
+  group: "custom-oauth-callback",
+  method: "GET",
+  path: CUSTOM_OAUTH_CALLBACK_PATH,
+  phase: "public",
+  classification: "infra",
+  reason:
+    "The browser arrives from a consent screen with no Houston bearer: the single-use `state` is the whole authentication.",
+  source: "packages/host/src/routes/custom-integrations-oauth.ts",
+  handler: ({ deps, method, path, url, res }) =>
+    handleCustomOAuthCallback(deps, method, path, url, res),
+});
 
 export async function handleCustomOAuthCallback(
   deps: { customIntegrations?: CustomIntegrationManager },

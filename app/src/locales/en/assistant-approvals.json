@@ -1,6 +1,7 @@
 {
   "operations": {
     "acceptOrgInvite": "Accept this invitation to join a shared space.",
+    "addAgentCustomIntegration": "Add an outside app of your own to this agent, from a link.",
     "addCustomIntegration": "Add an outside app of your own from a link.",
     "addOrgMember": "Invite someone to this space with the role you chose.",
     "cancelRoutineRun": "Stop this routine run while it is under way.",
@@ -21,13 +22,13 @@
     "deleteRoutine": "Delete this routine so it stops running on its schedule.",
     "deleteSharedSkill": "Delete a skill shared with the workspace, removing it for everyone.",
     "deleteSkill": "Delete this skill so the agent no longer has it.",
+    "detectAgentCustomIntegration": "Check what kind of service this link points to, using this agent.",
     "detectCustomIntegration": "Check what kind of service this link points to.",
     "forgetCredential": "Sign this workspace out of the AI account.",
     "installAgentFromGithub": "Install an agent from a GitHub repository.",
     "installCommunitySkill": "Install a skill from the community directory into the agent.",
     "installSkillsFromRepo": "Install skills from a GitHub repository into the agent.",
     "integrations.disconnect": "Disconnect an outside app from your account.",
-    "joinAgentTeam": "Join this team in the space.",
     "mintRoutineWebhookKey": "Create a fresh key that lets an outside service start this routine. Any key issued before stops working.",
     "moveAgent": "Move this agent into a shared space so teammates can work with it.",
     "moveProjectFile": "Move this file into another folder of the agent's workspace.",
@@ -35,6 +36,7 @@
     "promoteSharedSkill": "Share the agent's skill with everyone in the workspace.",
     "pushClaudeOAuthCredential": "Send this computer's Claude sign-in to a cloud agent.",
     "putSkillsManifest": "Choose which of the agent's skills are switched on.",
+    "removeAgentCustomIntegration": "Remove an outside app from this agent.",
     "removeAgentTeamMember": "Remove this person from the team.",
     "removeCustomIntegration": "Remove an outside app you added yourself.",
     "removeOrgMember": "Remove this person from the space.",
@@ -51,6 +53,7 @@
     "setAgentTeamMemberOwner": "Give someone ownership of this team, or take it away.",
     "setContext": "Replace the background notes Houston gives the agent on every conversation.",
     "setOrgMemberRole": "Change what this person is allowed to do in this space.",
+    "submitAgentCustomIntegrationCredential": "Save the secret that finishes setting up this app for this agent.",
     "submitCustomIntegrationCredential": "Save the secret that finishes setting up this app.",
     "updateActivity": "Update this mission's details or status.",
     "updateAgentTeam": "Rename this team, reorder it, restyle it, or update the notes it shares.",
@@ -124,6 +127,9 @@
     "promoteSharedSkill": {
       "slug": "skill"
     },
+    "removeAgentCustomIntegration": {
+      "slug": "app"
+    },
     "removeCustomIntegration": {
       "slug": "app"
     },
@@ -141,6 +147,9 @@
     },
     "saveSkill": {
       "slug": "skill"
+    },
+    "submitAgentCustomIntegrationCredential": {
+      "slug": "app"
     },
     "submitCustomIntegrationCredential": {
       "slug": "app"

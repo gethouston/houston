@@ -17,7 +17,7 @@ import type {
 import { activityUpdateSchema } from "@houston/protocol";
 import { hostOwnedApprovalCards } from "./activity-approval-cards";
 import { withDocLock } from "./doc-lock";
-import { json, readJson } from "./http";
+import { json, methodNotAllowed, readJson } from "./http";
 
 /**
  * The fields a create DECIDES. A repeat of the same create (HOU-693: the app
@@ -166,5 +166,5 @@ export async function handleActivitiesData(
     return;
   }
 
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
 }

@@ -10,7 +10,9 @@
  * untrusted client input and must never reach this decode.
  */
 
+import type { IncomingMessage } from "node:http";
 import type { ActivityContributor } from "@houston/protocol";
+import type { UserId } from "../domain/types";
 
 /** The gateway-minted acting-as identity header (C2), lowercase for Node's
  *  IncomingMessage.headers. */
@@ -71,4 +73,48 @@ export function actingAuthorFromHeader(
   return typeof payload.name === "string" && payload.name
     ? { user_id: payload.sub, name: payload.name }
     : { user_id: payload.sub };
+}
+
+/** What a request's acting identity depends on: only whether a trusted gateway
+ *  minted the header, and who to fall back to when it minted none. */
+interface ActingDeps {
+  gatewayFronted?: boolean;
+  ownerSub?: string;
+}
+
+/**
+ * The acting human as a full contributor, stamped onto missions (activity
+ * create/PATCH + turns). CRITICAL: null off the gateway (desktop/self-host),
+ * so single-player activity.json gains no attribution keys and stays
+ * byte-identical. Does NOT change the routine actor below.
+ */
+export function actingAuthorFor(
+  deps: ActingDeps,
+  req: IncomingMessage,
+): ActivityContributor | null {
+  return deps.gatewayFronted
+    ? actingAuthorFromHeader(req.headers[ACTING_AS_HEADER])
+    : null;
+}
+
+/**
+ * WHO a routine write records as its acting identity (C2). A gateway-fronted
+ * pod authenticates every request as its single local user, and that id has no
+ * membership upstream — a routine stamped with it 401s every integration call
+ * when it fires (HOU-689). The gateway minted the acting-as header for exactly
+ * this: its sub is the identity the gateway re-authorizes at fire time. On the
+ * desktop the header is untrusted client input, so the local userId stays the
+ * recorded creator (routine turns there authenticate with the frontend session
+ * instead). A gateway-fronted request with no decodable header falls back to
+ * the org owner: an authorless routine is not fireable by the control-plane
+ * planner, so SOME real, re-authorizable identity must always be recorded.
+ */
+export function routineActorFor(
+  deps: ActingDeps,
+  req: IncomingMessage,
+  userId: UserId,
+): string | undefined {
+  return deps.gatewayFronted
+    ? (actingSubFromHeader(req.headers[ACTING_AS_HEADER]) ?? deps.ownerSub)
+    : userId;
 }

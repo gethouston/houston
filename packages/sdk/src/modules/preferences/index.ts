@@ -19,6 +19,7 @@ import {
   type Workspace,
 } from "@houston/runtime-client";
 import type { ModuleContext } from "../../module-context";
+import { requireString } from "../payload";
 
 /** The write vocabulary — the same constants back the facade and the bridge. */
 export const PreferencesCommand = {
@@ -38,18 +39,6 @@ export interface PreferencesModule {
   set(key: string, value: string | null): Promise<string | null>;
   /** Set (or clear, with `null`) the workspace's UI-locale override. */
   setLocale(workspaceId: string, locale: string | null): Promise<Workspace>;
-}
-
-/** A required non-empty string off an untrusted command payload. */
-function requireString(payload: unknown, key: string): string {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
 }
 
 /** A nullable-string field off an untrusted command payload. */

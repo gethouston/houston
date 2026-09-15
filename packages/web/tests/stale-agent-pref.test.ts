@@ -14,29 +14,22 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  * the deleted agent was the remembered one.
  */
 
-// `deleteAgent`'s WIRE write is delegated to `sdk.agents.writes.delete` (a real
-// gateway DELETE over the shared fetch, stubbed per-test); only the ADAPTER-side
-// `dropLastAgentPref` after it is under test here. `listAgents`'s pref-pruning
-// and the login-runtime routing stay on the control plane, so those are mocked.
-const { cpListAgents, runtimeClientFor, setupRuntimeClientFor } = vi.hoisted(
-  () => ({
-    cpListAgents: vi.fn(),
-    runtimeClientFor: vi.fn(),
-    setupRuntimeClientFor: vi.fn(),
-  }),
-);
+// Both agent calls under test reach the wire through `@houston/sdk` (`GET
+// /agents`, `DELETE /agents/:id`) over the shared gateway fetch, stubbed
+// per-test; only the ADAPTER-side pref bookkeeping around them —
+// `dropLastAgentPref`, `noteAgentGone` — is what these tests pin. The
+// login-runtime routing stays on the control plane, so those two are mocked.
+const { runtimeClientFor, setupRuntimeClientFor } = vi.hoisted(() => ({
+  runtimeClientFor: vi.fn(),
+  setupRuntimeClientFor: vi.fn(),
+}));
 
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
     await importOriginal<
       typeof import("../src/engine-adapter/control-plane")
     >();
-  return {
-    ...actual,
-    listAgents: cpListAgents,
-    runtimeClientFor,
-    setupRuntimeClientFor,
-  };
+  return { ...actual, runtimeClientFor, setupRuntimeClientFor };
 });
 
 import { HoustonClient } from "../src/engine-adapter/client";
@@ -56,15 +49,28 @@ beforeEach(() => {
     setItem: (k: string, v: string) => void store.set(k, v),
     removeItem: (k: string) => void store.delete(k),
   };
-  cpListAgents.mockReset();
   runtimeClientFor.mockReset();
   setupRuntimeClientFor.mockReset();
   // The delegated agent DELETE lands on the shared gateway fetch — stub a 200 so
   // the write succeeds and control returns to `dropLastAgentPref`.
-  globalThis.fetch = vi.fn(
-    async () => new Response(null, { status: 200 }),
-  ) as unknown as typeof fetch;
+  listReturns();
 });
+
+/** Answer the delegated `GET /agents` with `agents`, and every other request
+ *  (the DELETE, the colour-preference reconcile) with a bare 200. */
+function listReturns(...agents: { id: string }[]) {
+  globalThis.fetch = vi.fn(async (input: unknown) =>
+    String(input).endsWith("/agents")
+      ? new Response(JSON.stringify(agents), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        })
+      : new Response("{}", {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+  ) as unknown as typeof fetch;
+}
 
 afterEach(() => {
   vi.useRealTimers();
@@ -83,16 +89,13 @@ function client() {
 const agent = (id: string) => ({
   id,
   name: id,
-  folderPath: id,
-  configId: "c",
-  color: "#000",
-  createdAt: "2026-01-01T00:00:00.000Z",
-  lastOpenedAt: "2026-01-01T00:00:00.000Z",
+  workspaceId: "ws",
+  createdAt: 0,
 });
 
 test("listAgents prunes a pref naming an agent the control plane doesn't have", async () => {
   store.set(PREF, "ws/Deleted Agent");
-  cpListAgents.mockResolvedValue([agent("ws/Other")]);
+  listReturns(agent("ws/Other"));
 
   await client().listAgents("ws");
 
@@ -101,7 +104,7 @@ test("listAgents prunes a pref naming an agent the control plane doesn't have", 
 
 test("listAgents keeps a pref naming an existing agent", async () => {
   store.set(PREF, "ws/Alive");
-  cpListAgents.mockResolvedValue([agent("ws/Alive"), agent("ws/Other")]);
+  listReturns(agent("ws/Alive"), agent("ws/Other"));
 
   await client().listAgents("ws");
 
@@ -110,7 +113,7 @@ test("listAgents keeps a pref naming an existing agent", async () => {
 
 test("listAgents leaves the synthetic default-agent sentinel alone", async () => {
   store.set(PREF, DEFAULT_AGENT_ID);
-  cpListAgents.mockResolvedValue([]);
+  listReturns();
 
   await client().listAgents("ws");
 
@@ -135,7 +138,7 @@ test("deleteAgent keeps the pref when another agent was deleted", async () => {
 
 test("regression: after boot prunes a stale pref, first-run login runs on the SETUP runtime, not the dead agent's", async () => {
   store.set(PREF, "ws/Deleted Agent");
-  cpListAgents.mockResolvedValue([]); // fresh install: zero agents → onboarding
+  listReturns(); // fresh install: zero agents → onboarding
   const startLogin = vi.fn().mockResolvedValue({
     kind: "device_code",
     verificationUri: "https://auth.example/device",
@@ -159,7 +162,7 @@ test("provider login targets the FIRST live agent when none is selected but agen
   // No selection at all (e.g. the migration wizard's connect step) — but the
   // org HAS agents, so the login must run on a real pod: the setup pod was
   // torn down at the org's first agent and re-materializing it is churn.
-  cpListAgents.mockResolvedValue([agent("ws/First"), agent("ws/Second")]);
+  listReturns(agent("ws/First"), agent("ws/Second"));
   const startLogin = vi.fn().mockResolvedValue({
     kind: "device_code",
     verificationUri: "https://auth.example/device",
@@ -181,7 +184,7 @@ test("provider login targets the FIRST live agent when none is selected but agen
 
 test("provider login falls back to a live agent when the selected pref is stale and agents exist", async () => {
   store.set(PREF, "ws/Deleted Agent");
-  cpListAgents.mockResolvedValue([agent("ws/Alive")]);
+  listReturns(agent("ws/Alive"));
   const startLogin = vi.fn().mockResolvedValue({
     kind: "device_code",
     verificationUri: "https://auth.example/device",

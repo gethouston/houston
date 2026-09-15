@@ -85,6 +85,38 @@ describe("activities module — no-refetch writes", () => {
     sdk.dispose();
   });
 
+  it("writes.update PATCHes the caller's whole update in ONE request, no refetch", async () => {
+    const { sdk, calls } = makeSdk();
+    // A settling turn writes its status and clears its interaction together;
+    // two narrow PATCHes would publish a half-settled card between them.
+    const updated = await sdk.activities.writes.update(AGENT, "m1", {
+      status: "done",
+      pending_interaction: null,
+    });
+    expect(calls).toEqual([
+      {
+        method: "PATCH",
+        path: `${base}/m1`,
+        body: { status: "done", pending_interaction: null },
+      },
+    ]);
+    expect(updated).toMatchObject({ id: "m1", status: "done" });
+    expect(gets(calls)).toEqual([]);
+    sdk.dispose();
+  });
+
+  it("list() returns the rows and publishes NO scope (contrast: refresh)", async () => {
+    const { sdk, calls } = makeSdk();
+    const rows = await sdk.activities.list(AGENT);
+    expect(calls).toEqual([{ method: "GET", path: base, body: undefined }]);
+    expect(rows).toEqual([]);
+    // The read a host with its own read model wants: nothing lands in the store.
+    expect(sdk.getSnapshot(activitiesScope(AGENT))).toBeUndefined();
+    await sdk.activities.refresh(AGENT);
+    expect(sdk.getSnapshot(activitiesScope(AGENT))).toBeDefined();
+    sdk.dispose();
+  });
+
   it("writes.setStatus PATCHes { status } and returns the activity, no refetch", async () => {
     const { sdk, calls } = makeSdk();
     const updated = await sdk.activities.writes.setStatus(AGENT, "m1", "done");

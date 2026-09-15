@@ -1,0 +1,184 @@
+/**
+ * The POLICY and wire identity of every operation the catalog publishes -
+ * frozen across the migration that moves each capability from the web adapter's
+ * `cp/*` copy to its `@houston/sdk` module.
+ *
+ * `PUBLISHED_OPERATION_FLOOR` proves an operation still exists and
+ * `CALLABLE_OPERATION_FLOOR` that it can still be dispatched; neither notices
+ * the failure this file is for. A twin written beside the copy it replaces can
+ * land in a different group, lose its `confirm`, become visible after being
+ * deliberately hidden, or answer a different route - and the catalog is still
+ * complete, still callable, and still blessed by the drift check. What the
+ * assistant is ALLOWED to do would have changed silently.
+ *
+ * A `Record`, not a list, and deliberately so: a wave that ADDS an operation
+ * touches nothing here, while a wave that MOVES one may not change its policy
+ * without a reviewer seeing the line. Removing an entry is the same reviewed
+ * act the two name floors demand.
+ *
+ * Captured from the committed `assistant-catalog.generated.json`; never read
+ * from the JSON at test time - a fixture that re-derives its expectation from
+ * the artifact it guards proves nothing.
+ */
+export interface OperationPolicy {
+  /** The capability group the assistant lists the operation under. */
+  readonly group: string;
+  /** Whether a caller must confirm before it runs. */
+  readonly confirm: boolean;
+  /** Whether it is withheld from the assistant's index. */
+  readonly hidden: boolean;
+  /** `"METHOD path"`, or null when no route resolved from the body. */
+  readonly route: string | null;
+  /** Whether the body does more than return the transport's answer; null when unrouted. */
+  readonly rawResponse: boolean | null;
+}
+
+// biome-ignore format: one operation per line - the policy diff IS the review.
+export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> = {
+  "conversations.delete": { group: "chat", confirm: false, hidden: true, route: "DELETE /agents/{agentId}/conversations/{id}", rawResponse: true },
+  "conversations.rename": { group: "chat", confirm: false, hidden: true, route: "PATCH /agents/{agentId}/conversations/{id}", rawResponse: true },
+  "integrations.connect": { group: "integrations", confirm: false, hidden: true, route: null, rawResponse: null },
+  "integrations.disconnect": { group: "integrations", confirm: true, hidden: false, route: "POST /v1/integrations/composio/disconnect", rawResponse: true },
+  "integrations.dismissReconnectNotice": { group: "integrations", confirm: false, hidden: true, route: "POST /v1/integrations/reconnect-notice/dismiss", rawResponse: true },
+  "integrations.pollConnection": { group: "integrations", confirm: false, hidden: true, route: "GET /v1/integrations/composio/connections/{connectionId}", rawResponse: true },
+  "integrations.refresh": { group: "integrations", confirm: false, hidden: false, route: null, rawResponse: null },
+  "integrations.setSession": { group: "integrations", confirm: false, hidden: true, route: "PUT /v1/integrations/session", rawResponse: true },
+  "integrations.writes.disconnect": { group: "integrations", confirm: false, hidden: true, route: null, rawResponse: null },
+  "missions.search": { group: "missions", confirm: false, hidden: false, route: null, rawResponse: null },
+  "preferences.setLocale": { group: "settings", confirm: true, hidden: false, route: "PATCH /v1/workspaces/{workspaceId}", rawResponse: true },
+  "providers.cancelLogin": { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  "providers.completeLogin": { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  "providers.login": { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  "providers.refresh": { group: "providers", confirm: false, hidden: false, route: null, rawResponse: null },
+  "providers.refreshStatus": { group: "providers", confirm: false, hidden: false, route: "GET /agents/{agentId}/auth/status", rawResponse: true },
+  "providers.writes.logout": { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  "providers.writes.setApiKey": { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  "providers.writes.setCustomEndpoint": { group: "providers", confirm: false, hidden: true, route: "POST /agents/{agentId}/providers/openai-compatible", rawResponse: false },
+  "providers.writes.setModel": { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  "turns.cancel": { group: "chat", confirm: false, hidden: false, route: null, rawResponse: null },
+  "turns.history": { group: "chat", confirm: false, hidden: false, route: null, rawResponse: null },
+  "turns.observe": { group: "chat", confirm: false, hidden: true, route: null, rawResponse: null },
+  acceptOrgInvite: { group: "spaces", confirm: true, hidden: false, route: "POST /v1/org-invites/{inviteId}/accept", rawResponse: true },
+  addCustomIntegration: { group: "integrations", confirm: true, hidden: false, route: "POST /v1/integrations/custom/definitions", rawResponse: true },
+  addOrgMember: { group: "org", confirm: true, hidden: false, route: "POST /v1/org/members", rawResponse: true },
+  agentTriggerStatus: { group: "routines", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/trigger-status", rawResponse: true },
+  applyAgentColor: { group: "agents", confirm: false, hidden: true, route: "GET /agents", rawResponse: true },
+  cancelRoutineRun: { group: "routines", confirm: true, hidden: false, route: "POST /agents/{agentId}/routines/{routineId}/runs/{runId}/cancel", rawResponse: true },
+  captureCredential: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  captureSetupCredential: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  computeUsage: { group: "org", confirm: false, hidden: false, route: "GET /v1/org/compute-usage", rawResponse: true },
+  createActivity: { group: "missions", confirm: false, hidden: false, route: "POST /agents/{agentId}/activities", rawResponse: true },
+  createAgent: { group: "agents", confirm: true, hidden: false, route: "POST /agents", rawResponse: true },
+  createAgentTeam: { group: "teams", confirm: false, hidden: false, route: "POST /v1/org/teams", rawResponse: true },
+  createApiKey: { group: "api-keys", confirm: true, hidden: true, route: "POST /v1/keys", rawResponse: true },
+  createCheckout: { group: "billing", confirm: true, hidden: false, route: "POST /v1/org/billing/checkout", rawResponse: true },
+  createFolder: { group: "files", confirm: false, hidden: false, route: "POST /agents/{agentPath}/files/folder", rawResponse: true },
+  createOrg: { group: "spaces", confirm: true, hidden: false, route: "POST /v1/orgs", rawResponse: true },
+  createPortal: { group: "billing", confirm: false, hidden: true, route: "POST /v1/org/billing/portal", rawResponse: true },
+  createRoutine: { group: "routines", confirm: true, hidden: false, route: "POST /agents/{agentId}/routines", rawResponse: true },
+  createSharedSkill: { group: "skills", confirm: true, hidden: false, route: "POST /v1/workspaces/{workspaceId}/shared-skills", rawResponse: true },
+  createSkill: { group: "skills", confirm: true, hidden: false, route: "POST /agents/{agentId}/skills", rawResponse: false },
+  customIntegrationTools: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations/custom/definitions/{slug}/tools", rawResponse: true },
+  customIntegrations: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations/custom/definitions", rawResponse: true },
+  declineOrgInvite: { group: "spaces", confirm: true, hidden: false, route: "DELETE /v1/org-invites/{inviteId}", rawResponse: false },
+  deleteActivity: { group: "missions", confirm: true, hidden: false, route: "DELETE /agents/{agentId}/activities/{id}", rawResponse: false },
+  deleteAgent: { group: "agents", confirm: true, hidden: false, route: "DELETE /agents/{id}", rawResponse: false },
+  deleteAgentTeam: { group: "teams", confirm: true, hidden: false, route: "DELETE /v1/org/teams/{teamId}", rawResponse: false },
+  deleteFile: { group: "files", confirm: true, hidden: false, route: "DELETE /agents/{agentPath}/files", rawResponse: false },
+  deleteOrg: { group: "spaces", confirm: true, hidden: true, route: "DELETE /v1/orgs/{slug}", rawResponse: false },
+  deleteOrgInvite: { group: "org", confirm: true, hidden: false, route: "DELETE /v1/org/invites/{inviteId}", rawResponse: false },
+  deleteRoutine: { group: "routines", confirm: true, hidden: false, route: "DELETE /agents/{agentId}/routines/{id}", rawResponse: false },
+  deleteSharedSkill: { group: "skills", confirm: true, hidden: false, route: "DELETE /v1/workspaces/{workspaceId}/shared-skills/{slug}", rawResponse: false },
+  deleteSkill: { group: "skills", confirm: true, hidden: false, route: "DELETE /agents/{agentId}/skills/{slug}", rawResponse: false },
+  detectCustomIntegration: { group: "integrations", confirm: true, hidden: false, route: "POST /v1/integrations/custom/detect", rawResponse: true },
+  downloadProjectArchive: { group: "files", confirm: false, hidden: true, route: null, rawResponse: null },
+  downloadProjectFile: { group: "files", confirm: false, hidden: true, route: "GET /agents/{agentPath}/files/download", rawResponse: true },
+  forgetCredential: { group: "providers", confirm: true, hidden: true, route: "POST /agents/{agentId}/credential/forget", rawResponse: false },
+  forgetSetupCredential: { group: "providers", confirm: false, hidden: true, route: "POST /setup-runtime/credential/forget", rawResponse: false },
+  generateAgentInstructions: { group: "agents", confirm: false, hidden: true, route: null, rawResponse: null },
+  getAgentModelChoice: { group: "agents", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/model-choice", rawResponse: true },
+  getAgentSettings: { group: "teams", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/settings", rawResponse: true },
+  getAssistant: { group: "system", confirm: false, hidden: true, route: "GET /v1/assistant", rawResponse: true },
+  getBilling: { group: "billing", confirm: false, hidden: false, route: "GET /v1/org/billing", rawResponse: true },
+  getContext: { group: "settings", confirm: false, hidden: false, route: "GET /v1/{kind}-context", rawResponse: true },
+  getHostSidebarLayout: { group: "workspaces", confirm: false, hidden: true, route: "GET /v1/workspaces/{workspaceId}/sidebar-layout", rawResponse: true },
+  getMoveStatus: { group: "spaces", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/move/{moveId}", rawResponse: true },
+  getMyProfile: { group: "settings", confirm: false, hidden: false, route: "GET /v1/me/profile", rawResponse: true },
+  getOrg: { group: "org", confirm: false, hidden: false, route: "GET /v1/org", rawResponse: true },
+  getOrgPeople: { group: "org", confirm: false, hidden: false, route: "GET /v1/org/people", rawResponse: true },
+  getOrgProfiles: { group: "org", confirm: false, hidden: true, route: null, rawResponse: null },
+  getPreference: { group: "settings", confirm: false, hidden: true, route: "GET /v1/preferences/{key}", rawResponse: true },
+  getSkillsManifest: { group: "skills", confirm: false, hidden: false, route: "GET /agents/{agentId}/skills-manifest", rawResponse: true },
+  installAgentFromGithub: { group: "agents", confirm: true, hidden: false, route: "POST /v1/agents/install-from-github", rawResponse: true },
+  installCommunitySkill: { group: "skills", confirm: true, hidden: false, route: "POST /agents/{agentId}/skills/community/install", rawResponse: true },
+  installSkillsFromRepo: { group: "skills", confirm: true, hidden: false, route: "POST /agents/{agentId}/skills/repo/install", rawResponse: true },
+  integrationConnection: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations/{provider}/connections/{connectionId}", rawResponse: true },
+  integrationConnections: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations/{provider}/connections", rawResponse: true },
+  integrationStatus: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations", rawResponse: true },
+  integrationToolkits: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations/{provider}/toolkits", rawResponse: true },
+  listActivities: { group: "missions", confirm: false, hidden: false, route: "GET /agents/{agentId}/activities", rawResponse: true },
+  listAgentProviders: { group: "providers", confirm: false, hidden: false, route: "GET /agents/{agentId}/providers", rawResponse: true },
+  listAgentTeamMembers: { group: "teams", confirm: false, hidden: false, route: "GET /v1/org/teams/{teamId}/members", rawResponse: true },
+  listAgentTeams: { group: "teams", confirm: false, hidden: false, route: "GET /v1/org/teams", rawResponse: true },
+  listAgents: { group: "agents", confirm: false, hidden: false, route: "GET /agents", rawResponse: true },
+  listApiKeys: { group: "api-keys", confirm: false, hidden: true, route: "GET /v1/keys", rawResponse: true },
+  listInstalledConfigs: { group: "agents", confirm: false, hidden: false, route: "GET /v1/agent-configs", rawResponse: true },
+  listOrgs: { group: "spaces", confirm: false, hidden: false, route: "GET /v1/orgs", rawResponse: true },
+  listProjectFiles: { group: "files", confirm: false, hidden: false, route: "GET /agents/{agentPath}/files", rawResponse: true },
+  listRoutineRuns: { group: "routines", confirm: false, hidden: false, route: "GET /agents/{agentId}/routine_runs", rawResponse: true },
+  listRoutines: { group: "routines", confirm: false, hidden: false, route: "GET /agents/{agentId}/routines", rawResponse: true },
+  listSharedSkills: { group: "skills", confirm: false, hidden: false, route: "GET /v1/workspaces/{workspaceId}/shared-skills", rawResponse: true },
+  listSkills: { group: "skills", confirm: false, hidden: false, route: "GET /agents/{agentId}/skills", rawResponse: true },
+  listSkillsFromRepo: { group: "skills", confirm: false, hidden: false, route: "POST /agents/{agentId}/skills/repo/list", rawResponse: true },
+  listWorkspaces: { group: "workspaces", confirm: false, hidden: false, route: "GET /v1/workspaces", rawResponse: true },
+  loadSharedSkill: { group: "skills", confirm: false, hidden: false, route: "GET /v1/workspaces/{workspaceId}/shared-skills/{slug}", rawResponse: true },
+  loadSkill: { group: "skills", confirm: false, hidden: false, route: "GET /agents/{agentId}/skills/{slug}", rawResponse: true },
+  mintRoutineWebhookKey: { group: "routines", confirm: true, hidden: true, route: "POST /v1/agents/{agentId}/routines/{routineId}/webhook-key", rawResponse: true },
+  moveAgent: { group: "spaces", confirm: true, hidden: false, route: "POST /v1/agents/{agentSlugOrId}/move", rawResponse: true },
+  moveProjectFile: { group: "files", confirm: true, hidden: false, route: "POST /agents/{agentPath}/files/move", rawResponse: false },
+  orgAudit: { group: "org", confirm: false, hidden: false, route: null, rawResponse: null },
+  orgUsage: { group: "org", confirm: false, hidden: false, route: "GET /v1/org/usage", rawResponse: true },
+  previewCommunitySkill: { group: "skills", confirm: false, hidden: false, route: "POST /agents/{agentId}/skills/community/preview", rawResponse: true },
+  promoteSharedSkill: { group: "skills", confirm: true, hidden: false, route: "POST /v1/workspaces/{workspaceId}/shared-skills/{slug}", rawResponse: true },
+  providerLogout: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  providerStatusesForAgent: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  providerUsage: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  pushClaudeOAuthCredential: { group: "providers", confirm: true, hidden: true, route: "POST /agents/{agentId}/credential/claude-oauth", rawResponse: false },
+  pushSetupClaudeOAuthCredential: { group: "providers", confirm: false, hidden: true, route: "POST /setup-runtime/credential/claude-oauth", rawResponse: false },
+  putHostSidebarLayout: { group: "workspaces", confirm: false, hidden: true, route: "PUT /v1/workspaces/{workspaceId}/sidebar-layout", rawResponse: true },
+  putSkillsManifest: { group: "skills", confirm: true, hidden: false, route: "PUT /agents/{agentId}/skills-manifest", rawResponse: true },
+  readAgentFile: { group: "files", confirm: false, hidden: false, route: "GET /agents/{agentId}/agentfile/{relPath}", rawResponse: true },
+  readProjectFile: { group: "files", confirm: false, hidden: false, route: "GET /agents/{agentPath}/files/read", rawResponse: true },
+  removeAgentTeamMember: { group: "teams", confirm: true, hidden: false, route: "DELETE /v1/org/teams/{teamId}/members/{userId}", rawResponse: false },
+  removeCustomIntegration: { group: "integrations", confirm: true, hidden: false, route: "DELETE /v1/integrations/custom/definitions/{slug}", rawResponse: false },
+  removeOrgMember: { group: "org", confirm: true, hidden: false, route: "DELETE /v1/org/members/{userId}", rawResponse: false },
+  renameAgent: { group: "agents", confirm: true, hidden: false, route: "PATCH /agents/{id}", rawResponse: true },
+  renameFile: { group: "files", confirm: true, hidden: false, route: "POST /agents/{agentPath}/files/rename", rawResponse: false },
+  revokeApiKey: { group: "api-keys", confirm: true, hidden: true, route: "DELETE /v1/keys/{id}", rawResponse: false },
+  runRoutineNow: { group: "routines", confirm: true, hidden: false, route: "POST /agents/{agentId}/routines/{id}/run", rawResponse: false },
+  saveAttachments: { group: "attachments", confirm: false, hidden: true, route: "POST /agents/{agentId}/attachments", rawResponse: true },
+  saveSharedSkill: { group: "skills", confirm: true, hidden: false, route: "PUT /v1/workspaces/{workspaceId}/shared-skills/{slug}", rawResponse: false },
+  saveSkill: { group: "skills", confirm: true, hidden: false, route: "PUT /agents/{agentId}/skills/{slug}", rawResponse: false },
+  searchCommunitySkills: { group: "skills", confirm: false, hidden: false, route: "POST /agents/{agentId}/skills/community/search", rawResponse: true },
+  setAgentAssignments: { group: "teams", confirm: true, hidden: false, route: null, rawResponse: null },
+  setAgentModelChoice: { group: "agents", confirm: true, hidden: false, route: "PUT /v1/agents/{agentSlugOrId}/model-choice", rawResponse: false },
+  setAgentSettings: { group: "teams", confirm: true, hidden: false, route: "PUT /v1/agents/{agentSlugOrId}/settings", rawResponse: false },
+  setAgentTeam: { group: "teams", confirm: true, hidden: false, route: "PUT /v1/agents/{agentSlugOrId}/team", rawResponse: false },
+  setAgentTeamMemberOwner: { group: "teams", confirm: true, hidden: false, route: "PUT /v1/org/teams/{teamId}/members/{userId}", rawResponse: false },
+  setApiKey: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  setContext: { group: "settings", confirm: true, hidden: false, route: "PUT /v1/{kind}-context", rawResponse: false },
+  setCustomEndpoint: { group: "providers", confirm: false, hidden: true, route: "POST /agents/{agentId}/provider/openai-compatible", rawResponse: false },
+  setMyProfile: { group: "settings", confirm: false, hidden: false, route: "PUT /v1/me/profile", rawResponse: true },
+  setOrgMemberRole: { group: "org", confirm: true, hidden: false, route: "PATCH /v1/org/members/{userId}", rawResponse: false },
+  setPreference: { group: "settings", confirm: false, hidden: true, route: "PUT /v1/preferences/{key}", rawResponse: false },
+  setProviderCustomEndpoint: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  setSetupApiKey: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
+  startCustomIntegrationOAuth: { group: "integrations", confirm: false, hidden: true, route: "POST /v1/integrations/custom/definitions/{slug}/oauth/start", rawResponse: true },
+  submitCustomIntegrationCredential: { group: "integrations", confirm: true, hidden: true, route: "POST /v1/integrations/custom/definitions/{slug}/credential", rawResponse: true },
+  triggerTypes: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations/composio/trigger-types", rawResponse: true },
+  updateActivity: { group: "missions", confirm: true, hidden: true, route: "PATCH /agents/{agentId}/activities/{id}", rawResponse: true },
+  updateAgentColor: { group: "agents", confirm: false, hidden: false, route: "PUT /v1/agents/{agentId}/color", rawResponse: false },
+  updateAgentTeam: { group: "teams", confirm: true, hidden: false, route: "PATCH /v1/org/teams/{teamId}", rawResponse: true },
+  updateRoutine: { group: "routines", confirm: true, hidden: false, route: "PATCH /agents/{agentId}/routines/{id}", rawResponse: true },
+  uploadProjectFiles: { group: "files", confirm: false, hidden: true, route: null, rawResponse: null },
+  writeAgentFile: { group: "files", confirm: true, hidden: false, route: "PUT /agents/{agentId}/agentfile/{relPath}", rawResponse: false },};

@@ -12,6 +12,7 @@ import {
   route,
   segments,
 } from "./assistant-catalog-support.ts";
+import { OPERATION_POLICY_FLOOR } from "./fixtures/operation-policy-floor.ts";
 import {
   CALLABLE_OPERATION_FLOOR,
   PUBLISHED_OPERATION_FLOOR,
@@ -372,6 +373,30 @@ describe("the live engine adapter", () => {
     expect(
       CALLABLE_OPERATION_FLOOR.filter((name) => !callable.has(name)),
     ).toEqual([]);
+  });
+
+  it("never changes an operation's policy or wire across the SDK flip", () => {
+    // Moving a capability from its `cp/*` copy to an SDK module must carry the
+    // whole `@assistant` block and the exact route with it. A twin that lands
+    // in another group, drops its `confirm`, becomes visible, or answers a
+    // different path leaves the catalog complete and callable — and changes
+    // what the assistant is allowed to do, with nothing else to catch it.
+    for (const [name, want] of Object.entries(OPERATION_POLICY_FLOOR)) {
+      const operation = live.catalog.operations.find((o) => o.name === name);
+      expect(operation, name).toBeDefined();
+      expect(
+        {
+          group: operation?.group,
+          confirm: operation?.confirm,
+          hidden: operation?.hidden,
+          route: operation?.route
+            ? `${operation.route.method} ${operation.route.path}`
+            : null,
+          rawResponse: operation?.route?.rawResponse ?? null,
+        },
+        name,
+      ).toEqual(want);
+    }
   });
 
   it("advertises only what houston_call will perform", () => {

@@ -11,19 +11,14 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  * only Codex is renamed; every other id flows to the engine verbatim.
  */
 
-const {
-  setApiKey,
-  claimActiveProvider,
-  forgetCredential,
-  logout,
-  cpListAgents,
-} = vi.hoisted(() => ({
-  setApiKey: vi.fn(),
-  claimActiveProvider: vi.fn(),
-  forgetCredential: vi.fn(),
-  logout: vi.fn(),
-  cpListAgents: vi.fn(),
-}));
+const { setApiKey, claimActiveProvider, forgetCredential, logout } = vi.hoisted(
+  () => ({
+    setApiKey: vi.fn(),
+    claimActiveProvider: vi.fn(),
+    forgetCredential: vi.fn(),
+    logout: vi.fn(),
+  }),
+);
 
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
@@ -32,7 +27,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
-    listAgents: cpListAgents,
     setApiKey,
     forgetCredential,
     runtimeClientFor: vi.fn(() => ({ claimActiveProvider, logout })),
@@ -44,6 +38,11 @@ import {
   credentialSiblings,
   toNewProvider,
 } from "../src/engine-adapter/synthetic";
+import {
+  restoreAgentListFetch,
+  stubAgentListFetch,
+  wireAgent,
+} from "./support/agent-list";
 
 beforeEach(() => {
   (globalThis as { localStorage?: unknown }).localStorage = {
@@ -56,10 +55,13 @@ beforeEach(() => {
   claimActiveProvider.mockReset().mockResolvedValue(undefined);
   forgetCredential.mockReset().mockResolvedValue(undefined);
   logout.mockReset().mockResolvedValue(undefined);
-  cpListAgents.mockReset().mockResolvedValue([{ id: "agent-1" }]);
+  stubAgentListFetch([wireAgent("agent-1")]);
 });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  restoreAgentListFetch();
+  vi.clearAllMocks();
+});
 
 /**
  * A client whose active space has already listed its agents. Provider writes

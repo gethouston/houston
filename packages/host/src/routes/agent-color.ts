@@ -1,9 +1,8 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
 import { updatePreference } from "@houston/domain";
-import type { UserId } from "../domain/types";
 import type { Vfs } from "../vfs";
-import { type AgentRouteDeps, authorizeAgent } from "./agent-authz";
+import { authorizeAgent } from "./agent-authz";
 import { json, readJson } from "./http";
+import { defineRoute } from "./registry";
 
 /**
  * One agent's color, written host-side. The durable home is the `agent_colors`
@@ -134,54 +133,41 @@ export function clearAgentColor(
   }));
 }
 
-const COLOR_ROUTE = /^\/v1\/agents\/([^/]+)\/color$/;
-
 /**
  * `PUT /v1/agents/:agentId/color` — set one agent's color in a single request.
- * Returns true when the request was handled.
+ *
+ * A USER-phase route even though an agent is in its path: it is mounted ahead
+ * of the per-agent dispatch and answers a wrong method with a 405 BEFORE any
+ * ownership check, so it runs `authorizeAgent` itself instead of taking the
+ * agent phase's, which would answer 403 to a wrong method on someone else's
+ * agent.
  */
-export async function handleAgentColor(
-  deps: AgentRouteDeps,
-  userId: UserId,
-  method: string,
-  path: string,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<boolean> {
-  const match = COLOR_ROUTE.exec(path);
-  if (!match) return false;
-  if (method !== "PUT") {
-    json(res, 405, { error: "method not allowed" });
-    return true;
-  }
-  const raw = match[1];
-  if (raw === undefined) return false;
-  const agentId = decodeURIComponent(raw);
+defineRoute({
+  group: "agent-color",
+  method: "PUT",
+  path: "/v1/agents/:agentId/color",
+  methodMismatch: "405",
+  phase: "user",
+  classification: "sdk",
+  source: "packages/host/src/routes/agent-color.ts",
+  async handler({ deps, userId, params, req, res }) {
+    const agentId = params.agentId ?? "";
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) return json(res, authz.status, { error: authz.reason });
+    if (!deps.vfs)
+      return json(res, 503, { error: "preferences not configured" });
+    const color = agentColorOrNull((await readJson(req)).color);
+    if (!color) return json(res, 400, { error: "invalid 'color'" });
 
-  const authz = await authorizeAgent(deps, userId, agentId);
-  if (!authz.ok) {
-    json(res, authz.status, { error: authz.reason });
-    return true;
-  }
-  if (!deps.vfs) {
-    json(res, 503, { error: "preferences not configured" });
-    return true;
-  }
-  const color = agentColorOrNull((await readJson(req)).color);
-  if (!color) {
-    json(res, 400, { error: "invalid 'color'" });
-    return true;
-  }
-
-  // Keyed by the caller's PERSONAL workspace, which is exactly how
-  // `/v1/preferences/:key` resolves the doc — anything else would write a map
-  // the app never reads.
-  const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
-  await storeAgentColor(deps.vfs, ws.id, agentId, color);
-  deps.events?.emit(authz.workspace.ownerUserId, {
-    type: "AgentsChanged",
-    workspaceId: authz.workspace.id,
-  });
-  json(res, 200, { agentId, color });
-  return true;
-}
+    // Keyed by the caller's PERSONAL workspace, which is exactly how
+    // `/v1/preferences/:key` resolves the doc — anything else would write a map
+    // the app never reads.
+    const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
+    await storeAgentColor(deps.vfs, ws.id, agentId, color);
+    deps.events?.emit(authz.workspace.ownerUserId, {
+      type: "AgentsChanged",
+      workspaceId: authz.workspace.id,
+    });
+    json(res, 200, { agentId, color });
+  },
+});

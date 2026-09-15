@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { HoustonClient, HoustonEngineError } from "../src/client.ts";
 
 /**
- * C13 agent-teams client surface: the nine methods behind `capabilities
+ * C13 agent-teams client surface: the eight methods behind `capabilities
  * .agentTeams`. A capturing `fetchImpl` records the outgoing `{method, url,
  * body}` so the exact wire request is asserted, and returns a canned body (at a
  * chosen status) so the parse side is covered too.
@@ -237,16 +237,6 @@ describe("HoustonClient C13 agent teams — listAgentTeamMembers", () => {
   });
 });
 
-describe("HoustonClient C13 agent teams — joinAgentTeam", () => {
-  it("POSTs /org/teams/:id/join with no body", async () => {
-    const { client, calls } = makeClient(undefined, 204);
-    strictEqual(await client.joinAgentTeam("t1"), undefined);
-    strictEqual(calls[0].method, "POST");
-    strictEqual(calls[0].url, "http://127.0.0.1:9999/v1/org/teams/t1/join");
-    strictEqual(calls[0].body, undefined);
-  });
-});
-
 describe("HoustonClient C13 agent teams — removeAgentTeamMember", () => {
   it("DELETEs /org/teams/:id/members/:userId", async () => {
     const { client, calls } = makeClient(undefined, 204);
@@ -321,14 +311,13 @@ describe("HoustonClient C13 agent teams — a 404 throws, it is NOT degraded", (
   // The caller gates on `capabilities.agentTeams` before it ever calls these,
   // so a 404 means the host advertised the surface and then denied it. Turning
   // that into `[]` would blank the rail and present "you have no teams" as the
-  // truth. Every one of the nine must surface it.
+  // truth. Every one of the eight must surface it.
   const cases: Array<[string, (c: HoustonClient) => Promise<unknown>]> = [
     ["listAgentTeams", (c) => c.listAgentTeams()],
     ["createAgentTeam", (c) => c.createAgentTeam({ name: "Design" })],
     ["updateAgentTeam", (c) => c.updateAgentTeam("t1", { name: "x" })],
     ["deleteAgentTeam", (c) => c.deleteAgentTeam("t1")],
     ["listAgentTeamMembers", (c) => c.listAgentTeamMembers("t1")],
-    ["joinAgentTeam", (c) => c.joinAgentTeam("t1")],
     ["removeAgentTeamMember", (c) => c.removeAgentTeamMember("t1", "u1")],
     [
       "setAgentTeamMemberOwner",

@@ -1,6 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Activity, HoustonEvent } from "@houston/protocol";
-import { actingAuthorFromHeader } from "../auth/acting";
 import type { Agent, Workspace, WorkspaceRuntime } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
@@ -11,14 +10,12 @@ import type {
   WorkspaceStore,
 } from "../ports";
 import type { Vfs } from "../vfs";
-import { DEFAULT_PATHS } from "./agent-authz";
-import { bearer, header, json } from "./http";
-import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
-import { liveTurns } from "./live-turn";
+import { bearer, json } from "./http";
 import { handleMissionSettle, handleMissionStatus } from "./missions-manage";
 import { handleList, handleMissionRead } from "./missions-read";
+import { missionsContext } from "./missions-sandbox-context";
 import { handleMissionStart } from "./missions-start";
-import { refusedOutsideExecuteTurn } from "./plan-gate";
+import { defineRouteFamily } from "./registry";
 
 /**
  * The RUNTIME-facing mission routes (HMAC sandbox token), PRODUCT-1244 — the
@@ -95,6 +92,24 @@ export interface MissionsCtx {
 export const missionSessionKey = (a: Activity): string =>
   a.session_key ?? `activity-${a.id}`;
 
+defineRouteFamily({
+  group: "sandbox-missions",
+  members: [
+    { method: "GET", path: "/sandbox/missions" },
+    { method: "GET", path: "/sandbox/missions/read" },
+    { method: "POST", path: "/sandbox/missions/start" },
+    { method: "POST", path: "/sandbox/missions/status" },
+    { method: "POST", path: "/sandbox/missions/settle" },
+  ],
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "The agent's mission tools and its turn-end report call these with a per-sandbox HMAC token, never a client.",
+  source: "packages/host/src/routes/missions-sandbox.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxMissions(deps, method, path, url, req, res),
+});
+
 export async function handleSandboxMissions(
   deps: MissionsSandboxDeps,
   method: string,
@@ -118,56 +133,8 @@ export async function handleSandboxMissions(
     json(res, 401, { error: "unauthorized" });
     return true;
   }
-  const vfs = deps.vfs;
-  if (!vfs) {
-    json(res, 503, {
-      error: "agent data not configured",
-      code: "agent_data_not_configured",
-    });
-    return true;
-  }
-  const ws = await deps.store.getWorkspace(claim.workspaceId);
-  const agent = await deps.store.getAgent(claim.agentId);
-  if (!ws || !agent) {
-    json(res, 404, { error: "agent not found" });
-    return true;
-  }
-  // WHICH CHAT THIS CALL IS SPEAKING IN. The runtime NAMES the conversation
-  // (`x-houston-conversation-id`) and the host MATCHES it against its own record
-  // of the turn it started there (routes/live-turn.ts): every mission decision
-  // that reads it is a decision ABOUT the caller - which mission it may not move
-  // (it is the one it is talking in), how deep its next start sits, whose name
-  // the work is done in - so a runtime that could source a conversation would be
-  // answering its own guards. No record means no turn of the host's is running
-  // there, and the write is refused rather than attributed to a chat nobody is in.
-  const claimedConversationId = header(req, CONVERSATION_ID_HEADER);
-  const turn = claimedConversationId
-    ? liveTurns.get(claim.agentId, claimedConversationId)
-    : undefined;
-  if (
-    (isStart || isStatus) &&
-    refusedOutsideExecuteTurn(claim.agentId, claimedConversationId, res)
-  ) {
-    return true;
-  }
-  const paths = deps.paths ?? DEFAULT_PATHS;
-  const ctx: MissionsCtx = {
-    deps,
-    ws,
-    agent,
-    vfs,
-    root: paths.agentRoot(ws, agent),
-    paths,
-    conversationId: turn?.conversationId,
-    // WHO the turn acts as, as the host recorded it when the turn began. A
-    // loopback /sandbox call is not gateway-fronted, so the acting-as header on
-    // THIS request is the runtime's own word about whose name the mission is
-    // created in; the header the gateway stamped on the user's send is not.
-    author: deps.gatewayFronted
-      ? (actingAuthorFromHeader(turn?.actingAs) ?? undefined)
-      : undefined,
-    actingAs: deps.gatewayFronted ? turn?.actingAs : undefined,
-  };
+  const ctx = await missionsContext(deps, claim, req, res, isStart || isStatus);
+  if (!ctx) return true;
 
   if (isList) await handleList(ctx, url, res);
   else if (isRead) await handleMissionRead(ctx, url, res);

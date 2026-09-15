@@ -8,6 +8,7 @@ import {
   signinRequired,
 } from "./integrations";
 import { executeIntegration, searchIntegrations } from "./integrations-fanout";
+import { defineRouteFamily } from "./registry";
 
 export { providerForAction } from "./integrations-fanout";
 
@@ -26,7 +27,22 @@ export { providerForAction } from "./integrations-fanout";
  * sandbox → its workspace owner → that user's id with the provider. The
  * user-facing routes live in integrations.ts.
  */
-export async function handleSandboxIntegrations(
+defineRouteFamily({
+  group: "sandbox-integrations",
+  members: [
+    { method: "POST", path: "/sandbox/integrations/search" },
+    { method: "POST", path: "/sandbox/integrations/execute" },
+  ],
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "The runtime's tools call these with a per-sandbox HMAC token so no integration secret ever sits in the agent.",
+  source: "packages/host/src/routes/integrations-sandbox.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxIntegrations(deps, method, path, url, req, res),
+});
+
+async function handleSandboxIntegrations(
   deps: {
     vault: CredentialVault;
     store: WorkspaceStore;

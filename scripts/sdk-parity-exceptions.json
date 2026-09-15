@@ -1,0 +1,677 @@
+{
+  "$comment": "Written exceptions for scripts/check-sdk-parity.ts, which FAILS the process on any violation not listed here. An entry is { rule, key, reason } and nothing else; `key` is the violation identity the report prints, and `reason` must be at least 20 characters saying WHY parity stops here. An entry whose violation no longer reproduces fails the gate as stale: the PR that binds the route is the one that deletes its excuse and lowers `baseline`. `baseline` may only go down on its own; raising it is a visible diff a reviewer must accept, because it means a new route shipped with no client behind it.",
+  "$waves": "The waves named in these reasons are the SDK binding waves of PRODUCT-1820 step 4: each wave moves one family of routes behind a @houston/sdk module, so naming a wave says which family a route belongs to. A1 org, A2 spaces, A3 teams, A4 account, B1 workspaces, B2 agent library, B3 board, C1 routines, C2 skills, C3 integrations, C4 credentials/providers, C5 files, D1 chat/turns. A1-A4, B1-B3, C1-C3 and C5 are bound, and a route of theirs that still has no SDK method says below what keeps it unbound; C4 and D1 are the two waves that have not shipped.",
+  "baseline": 134,
+  "entries": [
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/skills/community/search",
+      "reason": "the user-level spelling of the marketplace reads; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twins the Add Skills dialog browses with"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/skills/community/popular",
+      "reason": "the user-level spelling of the marketplace reads; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twins the Add Skills dialog browses with"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/skills/community/preview",
+      "reason": "the user-level spelling of the marketplace reads; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twins the Add Skills dialog browses with"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/skills/repo/list",
+      "reason": "the user-level spelling of the marketplace reads; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twins the Add Skills dialog browses with"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/portable/preview",
+      "reason": "the portable surface stays in the web adapter (in-browser archive unpack plus the domain threat scan); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/portable/install",
+      "reason": "the portable surface stays in the web adapter (in-browser archive unpack plus the domain threat scan); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/portable/fetch-from-store",
+      "reason": "the portable surface stays in the web adapter (in-browser archive unpack plus the domain threat scan); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /v1/migration/source",
+      "reason": "the desktop-to-cloud migration flow the desktop app drives; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /v1/agents/{}/integrations/custom/definitions",
+      "reason": "the /v1-prefixed twin of the per-agent custom-integration surface; the SDK issues the /agents/{id}/integrations/custom spelling, and the /v1 prefix is what @houston-ai/engine-client puts in front of every path the desktop client sends"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/agents/{}/integrations/custom/definitions",
+      "reason": "the /v1-prefixed twin of the per-agent custom-integration surface; the SDK issues the /agents/{id}/integrations/custom spelling, and the /v1 prefix is what @houston-ai/engine-client puts in front of every path the desktop client sends"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/agents/{}/integrations/custom/detect",
+      "reason": "the /v1-prefixed twin of the per-agent custom-integration surface; the SDK issues the /agents/{id}/integrations/custom spelling, and the /v1 prefix is what @houston-ai/engine-client puts in front of every path the desktop client sends"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host PATCH /v1/agents/{}/integrations/custom/definitions/{}",
+      "reason": "the /v1-prefixed twin of the per-agent custom-integration surface; the SDK issues the /agents/{id}/integrations/custom spelling, and the /v1 prefix is what @houston-ai/engine-client puts in front of every path the desktop client sends"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host DELETE /v1/agents/{}/integrations/custom/definitions/{}",
+      "reason": "the /v1-prefixed twin of the per-agent custom-integration surface; the SDK issues the /agents/{id}/integrations/custom spelling, and the /v1 prefix is what @houston-ai/engine-client puts in front of every path the desktop client sends"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /v1/agents/{}/integrations/custom/definitions/{}/tools",
+      "reason": "the /v1-prefixed twin of the per-agent custom-integration surface; the SDK issues the /agents/{id}/integrations/custom spelling, and the /v1 prefix is what @houston-ai/engine-client puts in front of every path the desktop client sends"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/agents/{}/integrations/custom/definitions/{}/oauth/start",
+      "reason": "the /v1-prefixed twin of the per-agent custom-integration surface; the SDK issues the /agents/{id}/integrations/custom spelling, and the /v1 prefix is what @houston-ai/engine-client puts in front of every path the desktop client sends"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/agents/{}/integrations/custom/definitions/{}/credential",
+      "reason": "the /v1-prefixed twin of the per-agent custom-integration surface; the SDK issues the /agents/{id}/integrations/custom spelling, and the /v1 prefix is what @houston-ai/engine-client puts in front of every path the desktop client sends"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/integrations/{}/connect",
+      "reason": "the SDK's integrations.connect builds the provider segment from an option the caller may override, so the extractor cannot route it (coverage.unroutable)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/integrations/{}/disconnect",
+      "reason": "the SDK's integrations.disconnect resolves to the literal /v1/integrations/composio/disconnect, which does not fold onto this :provider spelling"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/integrations/{}/search",
+      "reason": "the tool search/execute leg a host forwards upstream through RemoteIntegrationProvider (integrations/remote.ts); no client and no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /v1/integrations/{}/execute",
+      "reason": "the tool search/execute leg a host forwards upstream through RemoteIntegrationProvider (integrations/remote.ts); no client and no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /setup-runtime/credential/capture",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /setup-runtime/credential/forget",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /setup-runtime/credential/api-key",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /setup-runtime/credential/claude-oauth",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /setup-runtime/providers",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /setup-runtime/auth/status",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /setup-runtime/auth/{}/login",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /setup-runtime/auth/{}/login/complete",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /setup-runtime/auth/{}/login/cancel",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /setup-runtime/auth/{}/logout",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /v1/assistant",
+      "reason": "the assistant address probe owns its retry ladder in the adapter (CALLER_OWNED_RETRY_PATHS), so it is deliberately not an SDK method"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/credential/capture",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/credential/forget",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/credential/api-key",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/credential/claude-oauth",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/provider/openai-compatible",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/approvals/{}",
+      "reason": "a pending approval re-read served on both spellings; nothing in the shipped clients issues it, so no SDK wave binds it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /v1/agents/{}/approvals/{}",
+      "reason": "a pending approval re-read served on both spellings; nothing in the shipped clients issues it, so no SDK wave binds it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/missions",
+      "reason": "the gateway's mission dispatch target on the pod (missions-remote-forward is the other end); the app addresses the gateway's /v1 multiplayer surface instead"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/missions/read",
+      "reason": "the gateway's mission dispatch target on the pod (missions-remote-forward is the other end); the app addresses the gateway's /v1 multiplayer surface instead"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/missions/start",
+      "reason": "the gateway's mission dispatch target on the pod (missions-remote-forward is the other end); the app addresses the gateway's /v1 multiplayer surface instead"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/missions/status",
+      "reason": "the gateway's mission dispatch target on the pod (missions-remote-forward is the other end); the app addresses the gateway's /v1 multiplayer surface instead"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/config",
+      "reason": "the app reads and writes this document as an agent file (.houston/<name>/<name>.json) through readAgentFile/writeAgentFile, so no SDK method issues the document route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host PUT /agents/{}/config",
+      "reason": "the app reads and writes this document as an agent file (.houston/<name>/<name>.json) through readAgentFile/writeAgentFile, so no SDK method issues the document route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/learnings",
+      "reason": "the app reads and writes this document as an agent file (.houston/<name>/<name>.json) through readAgentFile/writeAgentFile, so no SDK method issues the document route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host PUT /agents/{}/learnings",
+      "reason": "the app reads and writes this document as an agent file (.houston/<name>/<name>.json) through readAgentFile/writeAgentFile, so no SDK method issues the document route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/trigger-status",
+      "reason": "the host's own no-trigger-backend answer; the SDK's agentTriggerStatus reads /v1/agents/{id}/trigger-status, which the gateway edge answers without proxying here"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/agentfile/{*}",
+      "reason": "the same write PUT serves, for a client that sends it as POST; the SDK's writeAgentFile only ever issues PUT"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/skills/community/popular",
+      "reason": "the agent-scoped popular list the host serves beside search and preview; the SDK's marketplace module offers search, preview and install, and no shipped client asks for popular"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/files/download",
+      "reason": "a binary download the SDK deliberately does not carry (a Blob cannot cross the dispatch boundary); it stays in project-files-mixin"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/files/archive",
+      "reason": "a binary download the SDK deliberately does not carry (a Blob cannot cross the dispatch boundary); it stays in project-files-mixin"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/files/import",
+      "reason": "the SDK issues it as uploadProjectFiles, whose body is framed by the caller rather than taken as a parameter, so the extractor cannot route it (coverage.unroutable)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/portable/preview",
+      "reason": "the portable surface stays in the web adapter (in-browser archive unpack plus the domain threat scan); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/portable/anonymize",
+      "reason": "the portable surface stays in the web adapter (in-browser archive unpack plus the domain threat scan); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/portable/export",
+      "reason": "the portable surface stays in the web adapter (in-browser archive unpack plus the domain threat scan); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/migration/export",
+      "reason": "the desktop-to-cloud migration flow the desktop app drives; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/migration/import",
+      "reason": "the desktop-to-cloud migration flow the desktop app drives; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/migration/complete",
+      "reason": "the desktop-to-cloud migration flow the desktop app drives; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/migration/status",
+      "reason": "the desktop-to-cloud migration flow the desktop app drives; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/portable/store-ir",
+      "reason": "the Agent Store publication surface the store-mixin drives against the agentstore contract; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host GET /agents/{}/portable/store-publication",
+      "reason": "the Agent Store publication surface the store-mixin drives against the agentstore contract; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host POST /agents/{}/portable/store-publication",
+      "reason": "the Agent Store publication surface the store-mixin drives against the agentstore contract; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "host DELETE /agents/{}/portable/store-publication",
+      "reason": "the Agent Store publication surface the store-mixin drives against the agentstore contract; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway DELETE /v1/me",
+      "reason": "account deletion and the onboarding record the app fetches straight from the gateway with the Firebase token (lib/identity/delete-account.ts, lib/onboarding-sync.ts); the SDK's account module owns the profile and the API keys"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /setup-runtime/auth/status",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /setup-runtime/providers",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/agents/{}/missions",
+      "reason": "the public missions REST API an outside caller drives with its own API key (the app only shows the address, lib/agent-connect-model.ts); no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/agents/{}/missions/{}",
+      "reason": "the public missions REST API an outside caller drives with its own API key (the app only shows the address, lib/agent-connect-model.ts); no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/agents/{}/missions/{}/events",
+      "reason": "the public missions REST API an outside caller drives with its own API key (the app only shows the address, lib/agent-connect-model.ts); no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/assistant",
+      "reason": "the assistant address probe owns its retry ladder in the adapter (CALLER_OWNED_RETRY_PATHS), so it is deliberately not an SDK method"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/capabilities",
+      "reason": "a boot probe the adapter answers before any SDK exists (boot-mixin bypasses the SDK deliberately)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/catalog",
+      "reason": "a boot probe the adapter answers before any SDK exists (boot-mixin bypasses the SDK deliberately)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/events",
+      "reason": "a boot probe the adapter answers before any SDK exists (boot-mixin bypasses the SDK deliberately)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/integrations/composio/connections",
+      "reason": "the SDK binds the parameterised /v1/integrations/{provider} form (integrationConnections, integrationToolkits); the gate compares that against this literal composio spelling, so the pair does not fold"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/integrations/composio/toolkits",
+      "reason": "the SDK binds the parameterised /v1/integrations/{provider} form (integrationConnections, integrationToolkits); the gate compares that against this literal composio spelling, so the pair does not fold"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/local-model-bridges/legacy",
+      "reason": "the local-model-bridge and tunnel control surface the web adapter drives directly (client/local-model-bridge.ts); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/local-model-bridges/{}",
+      "reason": "the local-model-bridge and tunnel control surface the web adapter drives directly (client/local-model-bridge.ts); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/local-model-bridges/{}/connect",
+      "reason": "the local-model-bridge and tunnel control surface the web adapter drives directly (client/local-model-bridge.ts); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/me/onboarding",
+      "reason": "account deletion and the onboarding record the app fetches straight from the gateway with the Firebase token (lib/identity/delete-account.ts, lib/onboarding-sync.ts); the SDK's account module owns the profile and the API keys"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/org/audit",
+      "reason": "the SDK issues it as orgAudit/getOrgProfiles, each appending a query string it builds at call time, so the extractor cannot route the path (coverage.unroutable)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/org/billing",
+      "reason": "the seat-billing surface the app drives through @houston-ai/engine-client (getBilling, createCheckout, createPortal); no SDK module covers billing"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/org/profiles",
+      "reason": "the SDK issues it as orgAudit/getOrgProfiles, each appending a query string it builds at call time, so the extractor cannot route the path (coverage.unroutable)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/user-context",
+      "reason": "getContext/setContext derive the path from kind as /v1/{}-context; the gateway serves the two literal spellings (/v1/user-context, /v1/workspace-context), so neither side folds onto the other"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/version",
+      "reason": "a boot probe the adapter answers before any SDK exists (boot-mixin bypasses the SDK deliberately)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway GET /v1/workspace-context",
+      "reason": "getContext/setContext derive the path from kind as /v1/{}-context; the gateway serves the two literal spellings (/v1/user-context, /v1/workspace-context), so neither side folds onto the other"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /feedback",
+      "reason": "the Send feedback intake the app posts directly to the gateway; no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /setup-runtime/auth/{}/login",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /setup-runtime/auth/{}/login/cancel",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /setup-runtime/auth/{}/login/complete",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /setup-runtime/auth/{}/logout",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /setup-runtime/credential/api-key",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /setup-runtime/credential/capture",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /setup-runtime/credential/claude-oauth",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /setup-runtime/credential/forget",
+      "reason": "wave C4 (credentials/providers) is the wave that binds the provider-connect surface; it has not shipped, so no SDK method issues this route"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/agents/{}/missions/{}/cancel",
+      "reason": "the public missions REST API an outside caller drives with its own API key (the app only shows the address, lib/agent-connect-model.ts); no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/client-metrics",
+      "reason": "the browser's own telemetry post; not a domain capability, so no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/integrations/composio/connect",
+      "reason": "the SDK's integrations.connect builds the provider segment from an option the caller may override, so the extractor cannot route it (coverage.unroutable)"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/integrations/composio/execute",
+      "reason": "the tool search/execute leg an engine pod's turn drives against the gateway through RemoteIntegrationProvider; no client and no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/integrations/composio/search",
+      "reason": "the tool search/execute leg an engine pod's turn drives against the gateway through RemoteIntegrationProvider; no client and no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/local-model-bridges",
+      "reason": "the local-model-bridge and tunnel control surface the web adapter drives directly (client/local-model-bridge.ts); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/local-model-bridges/{}/sessions",
+      "reason": "the local-model-bridge and tunnel control surface the web adapter drives directly (client/local-model-bridge.ts); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/org/billing/checkout",
+      "reason": "the seat-billing surface the app drives through @houston-ai/engine-client (getBilling, createCheckout, createPortal); no SDK module covers billing"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/org/billing/portal",
+      "reason": "the seat-billing surface the app drives through @houston-ai/engine-client (getBilling, createCheckout, createPortal); no SDK module covers billing"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/tunnel/credentials",
+      "reason": "the local-model-bridge and tunnel control surface the web adapter drives directly (client/local-model-bridge.ts); no SDK wave covers it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway PUT /v1/agents/{}/assignments",
+      "reason": "the SDK binds it as setAgentAssignments, which picks its body between the v1 userIds and the v2 assignments shapes, so the extractor cannot route it (coverage.unroutable)"
+    },
+    {
+      "rule": "sdk-method-unserved",
+      "key": "sdk GET /v1/{}-context",
+      "reason": "getContext/setContext derive the path from kind as /v1/{}-context; the gateway serves the two literal spellings (/v1/user-context, /v1/workspace-context), so neither side folds onto the other"
+    },
+    {
+      "rule": "sdk-method-unserved",
+      "key": "sdk PUT /v1/{}-context",
+      "reason": "getContext/setContext derive the path from kind as /v1/{}-context; the gateway serves the two literal spellings (/v1/user-context, /v1/workspace-context), so neither side folds onto the other"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/health",
+      "reason": "a per-agent engine probe the app drives through @houston/engine-client, rooted at an agent the extractor cannot parameterise"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/busy",
+      "reason": "a per-agent engine probe the app drives through @houston/engine-client, rooted at an agent the extractor cannot parameterise"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/version",
+      "reason": "a per-agent engine probe the app drives through @houston/engine-client, rooted at an agent the extractor cannot parameterise"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/providers/usage",
+      "reason": "the provider balances the web adapter reads through the runtime client (engine-adapter/client/provider-status-mixin.ts); no SDK method issues it"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy PUT /agents/{}/settings",
+      "reason": "the runtime's own settings write; the app addresses the gateway's /v1 spelling, which the SDK binds as setAgentSettings"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/settings/claim",
+      "reason": "client/local-model-bridge.ts claims the bridge on the agent directly; the bridge surface has no SDK module"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/auth/export",
+      "reason": "the host's own credential capture reads it from the runtime (channel/capture-credential.ts); no client ever calls it"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/auth/scrub-refresh",
+      "reason": "the host scrubs a stale refresh token on the runtime itself (channel/capture-credential.ts); no client ever calls it"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/providers/openai-compatible",
+      "reason": "the runtime's read-back of the configured OpenAI-compatible server; the SDK's setCustomEndpoint writes the POST twin and nothing reads this one"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/auth/anthropic/oauth-credential",
+      "reason": "the host pushes a captured Claude OAuth credential into the runtime (channel/proxy.ts); no client ever calls it"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/auth/{}/api-key",
+      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy DELETE /agents/{}/auth/{}/api-key",
+      "reason": "no SDK method clears a stored API key: the runtime client writes one (setApiKey) and signs out (logout), and nothing issues this delete"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/auth/{}/login",
+      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/auth/{}/login/complete",
+      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/auth/{}/login/cancel",
+      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/auth/{}/logout",
+      "reason": "the SDK's login and api-key writes build their provider segment by unescaped interpolation, so the extractor cannot route them (coverage.unroutable)"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/conversations",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/title",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/conversations/{}/messages",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy GET /agents/{}/conversations/{}/events",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/conversations/{}/cancel",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/conversations/{}/dismiss-interaction",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/conversations/{}/mode",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/conversations/{}/title",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/conversations/{}/truncate",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/conversations/{}/messages",
+      "reason": "SDK wave D1 (chat/turns) owns the rebinding; the SDK reaches it through a runtime client rooted at one agent, which the extractor cannot route"
+    },
+    {
+      "rule": "proxy-drift",
+      "key": "proxy POST /agents/{}/generate-agent",
+      "reason": "the setup runtime's agent-description generator, called host-side; no client ever calls it"
+    }
+  ]
+}

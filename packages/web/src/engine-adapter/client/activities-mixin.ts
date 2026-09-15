@@ -12,6 +12,7 @@ import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
 import { deleteCachedConversation } from "../conversation-cache";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
   class Activities extends Base {
@@ -19,8 +20,13 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
     // Cloud: the host serves them off the agent's workspace (.houston/activity).
     // Standalone web: localStorage-backed (no host).
     async listActivities(agentPath: string): Promise<Activity[]> {
+      // SDK delegates the read (byte-identical GET /agents/:id/activities); it
+      // returns the rows without publishing its scope, which nothing on web
+      // subscribes to. Standalone (no host) stays localStorage-backed.
       if (this.ctx.cp)
-        return controlPlane.listActivities(this.ctx.cp, agentPath);
+        return viaSdk(`${controlPlane.agentPath(agentPath)}/activities`, () =>
+          this.ctx.sdk.activities.list(agentPath),
+        );
       return activities.listActivities(agentPath);
     }
     async createActivity(
@@ -31,7 +37,9 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
       // /agents/:id/activities, no refetch); web keeps its own write-through
       // echo. Standalone (no host) stays localStorage-backed.
       const activity = this.ctx.cp
-        ? await this.ctx.sdk.activities.writes.create(agentPath, input)
+        ? await viaSdk(`${controlPlane.agentPath(agentPath)}/activities`, () =>
+            this.ctx.sdk.activities.writes.create(agentPath, input),
+          )
         : activities.createActivity(agentPath, input);
       emitLocalEcho("ActivityChanged", { agentPath });
       return activity;
@@ -41,8 +49,14 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
       id: string,
       updates: ActivityUpdate,
     ): Promise<Activity> {
+      // SDK delegates the wire write (byte-identical PATCH
+      // /agents/:id/activities/:id carrying the caller's whole `updates`, no
+      // refetch); web keeps its own write-through echo below.
       const activity = this.ctx.cp
-        ? await controlPlane.updateActivity(this.ctx.cp, agentPath, id, updates)
+        ? await viaSdk(
+            `${controlPlane.agentPath(agentPath)}/activities/${encodeURIComponent(id)}`,
+            () => this.ctx.sdk.activities.writes.update(agentPath, id, updates),
+          )
         : activities.updateActivity(agentPath, id, updates);
       emitLocalEcho("ActivityChanged", { agentPath });
       return activity;
@@ -51,7 +65,10 @@ export function ActivitiesMixin<TBase extends BaseCtor>(Base: TBase) {
       // SDK delegates the wire write (byte-identical DELETE
       // /agents/:id/activities/:id, no refetch).
       if (this.ctx.cp)
-        await this.ctx.sdk.activities.writes.delete(agentPath, id);
+        await viaSdk(
+          `${controlPlane.agentPath(agentPath)}/activities/${encodeURIComponent(id)}`,
+          () => this.ctx.sdk.activities.writes.delete(agentPath, id),
+        );
       else activities.deleteActivity(agentPath, id);
       // The user deleted the chat — THIS is when its locally cached transcript
       // goes too (a server 404 alone no longer drops it, HOU-731). Missions

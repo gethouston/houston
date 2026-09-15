@@ -155,7 +155,7 @@ export const noChannel = (res: ServerResponse, runtime: WorkspaceRuntime) =>
  * inbound header is untrusted client input — honoring it would let any client
  * file the user's credential into a per-user scope (`auth-users/<hash>.json`)
  * instead of the workspace's shared `auth.json`, leaving every agent reading
- * as disconnected. Same stance as the routine actor in agents.ts and as
+ * as disconnected. Same stance as the routine actor (auth/acting.ts) and as
  * ProxyChannel's relay (channel/proxy.ts).
  */
 export function trustedActingAs(

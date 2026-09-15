@@ -2528,8 +2528,8 @@ export const tauriAgentTeams = {
     call("agent_team_members", () => getEngine().listAgentTeamMembers(teamId)),
   // No `join`: a member is shown only the teams they are already in (the
   // gateway filters the list), so there is no "other teams" bucket to join from
-  // and the app has no caller. `HoustonClient.joinAgentTeam` and the adapter's
-  // stay — the route is live and shim parity requires them.
+  // and the app has no caller. No gateway serves the route either
+  // (PRODUCT-1821), which is why nothing below it exists.
   /** Remove a member. The caller's own id is a LEAVE; anyone else's is an
    *  owner-only removal. Same route either way — the gateway tells them apart. */
   removeMember: (teamId: string, userId: string, options?: EngineCallOptions) =>

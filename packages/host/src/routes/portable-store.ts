@@ -2,8 +2,11 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
-import { json, readJson } from "./http";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
+import { json, methodNotAllowed, readJson } from "./http";
 import { buildStoreIr, parseStoreIrRequest } from "./portable-store-ir";
+import { defineRouteFamily } from "./registry";
 import {
   clearPublicationPointer,
   readPublicationPointer,
@@ -59,7 +62,10 @@ export async function handlePortableStore(
   );
 
   if (rest === "portable/store-ir") {
-    if (method !== "POST") return methodNotAllowed(res);
+    if (method !== "POST") {
+      methodNotAllowed(res);
+      return true;
+    }
     const request = parseStoreIrRequest(await readJson(req));
     if (typeof request === "string") return badRequest(res, request);
     const ir = await buildStoreIr(vfs, root, request);
@@ -85,7 +91,8 @@ export async function handlePortableStore(
     json(res, 200, { ok: true });
     return true;
   }
-  return methodNotAllowed(res);
+  methodNotAllowed(res);
+  return true;
 }
 
 const isNonEmptyString = (v: unknown): v is string =>
@@ -114,7 +121,34 @@ function badRequest(res: ServerResponse, error: string): boolean {
   return true;
 }
 
-function methodNotAllowed(res: ServerResponse): boolean {
-  json(res, 405, { error: "method not allowed" });
-  return true;
-}
+/**
+ * The family owns both of its paths for every method: a wrong verb is refused
+ * by the handler, after the unwired-vfs 503 the dispatcher's own 405 would
+ * skip past.
+ */
+defineRouteFamily({
+  group: "portable-store",
+  members: [
+    { method: "POST", path: "/agents/:agentId/portable/store-ir" },
+    { method: "GET", path: "/agents/:agentId/portable/store-publication" },
+    { method: "POST", path: "/agents/:agentId/portable/store-publication" },
+    { method: "DELETE", path: "/agents/:agentId/portable/store-publication" },
+  ],
+  owns: [
+    "/agents/:agentId/portable/store-ir",
+    "/agents/:agentId/portable/store-publication",
+  ],
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/portable-store.ts",
+  handler: async ({ deps, authz, userId, method, path, req, res }) => {
+    await handlePortableStore(
+      { vfs: deps.vfs, paths: deps.paths ?? DEFAULT_PATHS },
+      { ...authz, userId },
+      method,
+      agentRest(path),
+      req,
+      res,
+    );
+  },
+});

@@ -18,17 +18,19 @@
 import type { PendingInteraction } from "@houston/protocol";
 import type { ModuleContext } from "../../module-context";
 import { registerActivitiesCommands } from "./commands";
-import { startActivitiesEventStream } from "./events-stream";
+import { attachActivitiesReactivity } from "./events-stream";
 import { createActivitiesHttp, createActivitiesWrites } from "./http";
 import {
   type ActivitiesModule,
   type ActivitiesViewModel,
   activitiesScope,
   type CreatedActivity,
+} from "./types";
+import {
   matchesActivitySessionKey,
   sessionKeyOf,
   toActivityItem,
-} from "./types";
+} from "./view-model";
 
 export { ActivitiesHttpError } from "./http";
 export {
@@ -48,7 +50,7 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
   const { store, authExpiry } = ctx;
   const { baseUrl, ports } = ctx.config;
   const emitTokenExpired = () => authExpiry.notifyExpired();
-  const http = createActivitiesHttp(baseUrl, ports, emitTokenExpired);
+  const http = createActivitiesHttp(ctx);
 
   /** Agents we've loaded at least once — the set the reactivity stream refetches. */
   const known = new Set<string>();
@@ -145,49 +147,26 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
 
   registerActivitiesCommands(ctx, { refresh, create, setStatus, rename, del });
 
-  // A stream-driven refetch is not a user action: a transient failure just
-  // leaves the snapshot stale until the next event. A 401 still surfaces (http
-  // fires emitTokenExpired), so only the noise is logged, never swallowed.
-  const backgroundRefresh = (agentId: string, where: string) =>
-    void refresh(agentId, true).catch((err) =>
-      ports.logger.debug(`activities refresh (${where}) failed`, {
-        error: String(err),
-        agentId,
-      }),
-    );
-
   // Reactivity off (`config.reactivity === false`): the host owns its own read
   // model + invalidation (the web adapter), so we DON'T open a duplicate
   // `/v1/events` stream — the module stays write-only and `dispose` is a no-op.
   const dispose =
     ctx.config.reactivity === false
       ? () => {}
-      : startActivitiesEventStream({
+      : attachActivitiesReactivity({
           baseUrl,
           fetch: ports.fetch,
           clock: ports.clock,
           logger: ports.logger,
-          handlers: {
-            onConnect: () => {
-              for (const id of known) backgroundRefresh(id, "connect");
-            },
-            onActivityChanged: (agentPath) => {
-              // Targeted: only an agent we're showing. A frame with no agentPath
-              // can't be targeted, so refetch every known agent (catch-up,
-              // never a miss).
-              if (agentPath === undefined) {
-                for (const id of known) backgroundRefresh(id, "change");
-              } else if (known.has(agentPath)) {
-                backgroundRefresh(agentPath, "change");
-              }
-            },
-            onUnauthorized: emitTokenExpired,
-          },
+          known,
+          refresh: (agentId) => refresh(agentId, true),
+          onUnauthorized: emitTokenExpired,
         });
 
   return {
     scope: activitiesScope,
     refresh,
+    list: (agentId) => http.list(agentId),
     create,
     setStatus,
     setStatusBySessionKey,

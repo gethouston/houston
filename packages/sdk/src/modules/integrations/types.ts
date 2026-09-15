@@ -12,11 +12,23 @@ import type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston/runtime-client";
+import { SdkHttpError } from "../http";
 
 export type {
   IntegrationConnection,
   IntegrationToolkit,
 } from "@houston/runtime-client";
+
+/**
+ * A failed integrations request. `status` is the upstream HTTP status, so the
+ * `503` of a deployment with no Composio key reaches the caller intact and the
+ * tab renders "unavailable" instead of an error.
+ */
+export class IntegrationsHttpError extends SdkHttpError {
+  constructor(message: string, status: number) {
+    super(message, status, "IntegrationsHttpError");
+  }
+}
 
 /** The single scope the integrations VM is published under. */
 export const INTEGRATIONS_SCOPE = "integrations";
@@ -69,16 +81,4 @@ export function unavailableVm(
   };
   if (reason) vm.reason = reason;
   return vm;
-}
-
-/** A required non-empty string off an untrusted command payload. */
-export function requireString(payload: unknown, key: string): string {
-  const value =
-    typeof payload === "object" && payload !== null
-      ? (payload as Record<string, unknown>)[key]
-      : undefined;
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`missing '${key}'`);
-  }
-  return value;
 }

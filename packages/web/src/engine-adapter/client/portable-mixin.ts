@@ -10,10 +10,13 @@ import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../../ui/engine-client/src/types";
+import * as controlPlane from "../control-plane";
 import * as migration from "../migration";
 import * as portable from "../portable";
 import { importFromStoreLink } from "../portable-from-store";
+import { install } from "../portable-install";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
   class Portable extends Base {
@@ -66,7 +69,17 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<PortableInstalledAgent> {
       if (!this.ctx.cp)
         throw new Error("Importing an agent needs a connected host.");
-      return portable.install(this.ctx.cp, req);
+      // The create is the adapter's own SDK-delegated one (byte-identical
+      // POST /agents with the seed body, no refetch); `portable.ts` holds no
+      // SDK handle, so it takes it as a parameter. The install carries the
+      // source agent's colour on the wire — there is no picker here to seed a
+      // client overlay from.
+      return install(req, async (name, color, seed) => {
+        const wire = await viaSdk("/agents", () =>
+          this.ctx.sdk.agents.writes.create({ name, color, ...seed }),
+        );
+        return controlPlane.createdAgentToUi(wire, color);
+      });
     }
     // ---- agent data migration (agent-scoped export/import) — host only ----
     async migrationExport(

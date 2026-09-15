@@ -14,6 +14,13 @@
  *  - 503 (no key) → VM `{ready:false, reason:"unavailable"}` — the tab never crashes.
  *  - provider `ready:false, reason:"signin"` → VM `{ready:false, reason:"signin"}`.
  *  - a 401 routes through the shared {@link ModuleContext.authExpiry} notifier.
+ *
+ * `refresh` and `pollConnection` read through {@link IntegrationsClient} rather
+ * than the provider-scoped twins in `reads.ts`: the assistant catalog derives an
+ * operation's route from the transport call in the declaration's own body, so
+ * forwarding them would erase both from it. The provider-parameterised reads,
+ * the custom connectors and their per-agent form live in `reads.ts`,
+ * `custom.ts` and `custom-agent.ts`, bound here through `facade.ts`.
  */
 
 import {
@@ -22,15 +29,24 @@ import {
   IntegrationsClient,
 } from "@houston/runtime-client";
 import type { ModuleContext } from "../../module-context";
+import { moduleScope } from "../http";
+import { requireString } from "../payload";
+import type { ConnectResult, IntegrationsModule } from "./facade";
+import {
+  createAgentCustomIntegrations,
+  createCustomIntegrations,
+  createIntegrationsReads,
+} from "./facade";
 import {
   INTEGRATIONS_SCOPE,
   IntegrationsCommand,
+  IntegrationsHttpError,
   type IntegrationsViewModel,
-  requireString,
   unavailableVm,
 } from "./types";
-import { createIntegrationsWrites, type IntegrationsWrites } from "./writes";
+import { createIntegrationsWrites } from "./writes";
 
+export type { ConnectResult, IntegrationsModule } from "./facade";
 export type {
   IntegrationConnection,
   IntegrationsCommandType,
@@ -41,39 +57,6 @@ export type {
 export { INTEGRATIONS_SCOPE, IntegrationsCommand } from "./types";
 export type { IntegrationsWrites } from "./writes";
 
-/** The result of a connect: the URL the surface opens, plus the id to poll. */
-export interface ConnectResult {
-  redirectUrl: string;
-  connectionId: string;
-}
-
-/** The typed facade for integration reads + writes. */
-export interface IntegrationsModule {
-  /** Scope string for `sdk.subscribe(...)` / `sdk.getSnapshot(...)`. */
-  readonly scope: string;
-  /** Refetch readiness + catalog + connections and republish the VM. */
-  refresh(): Promise<IntegrationsViewModel>;
-  /** Start an OAuth connect (composio); the surface opens `redirectUrl`, then polls. */
-  connect(toolkit: string): Promise<ConnectResult>;
-  /** Provider-scoped connect (additive): `agent` scopes it to one agent slug. */
-  connect(
-    provider: string,
-    toolkit: string,
-    agent?: string,
-  ): Promise<ConnectResult>;
-  /** Poll one connection until its OAuth finishes (status flips to active). */
-  pollConnection(connectionId: string): Promise<IntegrationConnection>;
-  /** Disconnect a toolkit everywhere, then refetch the VM. */
-  disconnect(toolkit: string): Promise<IntegrationsViewModel>;
-  /** Push the caller's Supabase token to the gateway adapter (`null` on sign-out). */
-  setSession(token: string | null): Promise<void>;
-  /** Dismiss the one-time "reconnect your integrations" notice (idempotent). */
-  dismissReconnectNotice(): Promise<void>;
-  /** No-refetch write variants for a host that owns its own reads (web under
-   *  `reactivity:false`). The refetching methods above are untouched (iOS-safe). */
-  writes: IntegrationsWrites;
-}
-
 export function createIntegrationsModule(
   ctx: ModuleContext,
 ): IntegrationsModule {
@@ -82,6 +65,7 @@ export function createIntegrationsModule(
 
   const client = new IntegrationsClient({ baseUrl, fetch: ports.fetch });
   const emitTokenExpired = () => authExpiry.notifyExpired();
+  const scope = moduleScope(ctx, "integrations", IntegrationsHttpError);
 
   /** Run a client call, surfacing a 401 as the shared token-expiry signal. */
   async function run<T>(fn: () => Promise<T>): Promise<T> {
@@ -206,5 +190,8 @@ export function createIntegrationsModule(
     pollConnection,
     disconnect,
     ...createIntegrationsWrites(client, run),
+    reads: createIntegrationsReads(scope),
+    custom: createCustomIntegrations(scope),
+    agentCustom: createAgentCustomIntegrations(scope),
   };
 }

@@ -1,11 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { disconnectRejectedCredential } from "../credentials/disconnect";
-import { RefreshRejectedError } from "../credentials/oauth-token-exchange";
 import { isExpiring } from "../credentials/refresh";
-import {
-  CredentialGoneError,
-  sharedCredentialRefresher,
-} from "../credentials/refresh-coalescer";
 import { RemoteCredentialDeadError } from "../credentials/remote-store";
 import {
   type CredentialStore,
@@ -13,7 +7,9 @@ import {
   isApiKeyCredential,
 } from "../ports";
 import type { CredentialServeHealer } from "./credential-healer";
+import { refreshedForServe } from "./credential-refresh";
 import { bearer, json } from "./http";
+import { defineRoute } from "./registry";
 
 /**
  * The store's authoritative "not connected" answer, and the ONLY way this route
@@ -28,20 +24,6 @@ function notConnected(res: ServerResponse, error: string): true {
 }
 
 /**
- * Serve-time refresh margin. The real invariant is pi's OAuth validity floor:
- * pi refreshes ANY stored OAuth entry within 5 minutes of expiry
- * (`DEFAULT_OAUTH_MINIMUM_VALIDITY_MS`, pi-ai dist/auth/resolve.js), and a
- * served entry is access-only (Gate #2's `refresh:""`) — pi has nothing to
- * refresh it with, and before the runtime's empty-refresh guard it POSTed
- * `refresh_token=""` at the provider (PRODUCT-1317, seen live as
- * PRODUCT-1293). A token served with less than the floor remaining is born
- * inside pi's refresh window, so the refresh here must fire while MORE than
- * the floor remains: 6 minutes is pi's 5 plus a minute of slack. Passed
- * explicitly — `isExpiring`'s 2-minute default serves its other callers.
- */
-const SERVE_VALIDITY_SKEW_MS = 6 * 60 * 1000;
-
-/**
  * Sandbox-facing (connect-once): an agent runtime serves a FRESH subscription
  * token from its workspace's central credential. Authenticated by the
  * per-sandbox HMAC token (NOT a user JWT), refreshed centrally here so no
@@ -49,6 +31,19 @@ const SERVE_VALIDITY_SKEW_MS = 6 * 60 * 1000;
  *
  * Returns true when the request was handled.
  */
+defineRoute({
+  group: "sandbox-credential",
+  method: "GET",
+  path: "/sandbox/credential",
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "An agent runtime serves itself a subscription token with a per-sandbox HMAC token; no client ever holds this surface.",
+  source: "packages/host/src/routes/credential.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxCredential(deps, method, path, url, req, res),
+});
+
 export async function handleSandboxCredential(
   deps: {
     vault: CredentialVault;
@@ -133,70 +128,15 @@ export async function handleSandboxCredential(
     if (deadError) throw deadError;
     return notConnected(res, "workspace not connected");
   }
-  if (isExpiring(cred, SERVE_VALIDITY_SKEW_MS) && cred.refreshToken) {
-    const refreshing = cred.provider;
-    try {
-      // Single-flight: one runtime process per agent serves this per turn AND
-      // per /providers poll, so the same expiring credential arrives here N
-      // times at once. Refreshing it N times rotates the refresh token N times;
-      // every loser gets invalid_grant and the catch below disconnects the
-      // user. The coalescer makes the burst one exchange.
-      cred = await sharedCredentialRefresher.run({
-        workspaceId: claim.workspaceId,
-        provider: refreshing,
-        acting,
-        load: () => deps.credentials.get(claim.workspaceId, refreshing, acting),
-        persist: (c) => deps.credentials.put(c, acting),
-        // The flight's own re-check must judge expiry by THIS route's margin,
-        // or it hands back the very token the route already deemed too short.
-        skewMs: SERVE_VALIDITY_SKEW_MS,
-      });
-    } catch (err) {
-      if (err instanceof CredentialGoneError) {
-        // The user disconnected the provider while this refresh was queued.
-        // Nothing was refreshed and nothing was written; the store's answer is
-        // simply "not connected", and there is no dead token to compare-and-
-        // delete.
-        return notConnected(res, "workspace not connected");
-      }
-      if (err instanceof RefreshRejectedError) {
-        // The refresh TOKEN itself was rejected — dead until the user
-        // reconnects. The policy (compare-and-delete, never a blind remove)
-        // lives in credentials/disconnect.ts; it answers with the credential
-        // that superseded ours, or null when the dead one is confirmed gone.
-        const superseding = await disconnectRejectedCredential({
-          credentials: deps.credentials,
-          workspaceId: claim.workspaceId,
-          rejected: cred,
-          acting,
-          reason: err.message,
-        });
-        // Confirmed dead: the marked 404 makes the runtime drop its served
-        // entry (provenance-gated) and the provider reads signed-out with the
-        // reconnect flow — the credential IS the switch. Otherwise serve what
-        // the store holds NOW, through every check below (anthropic staleness
-        // included).
-        if (!superseding)
-          return notConnected(
-            res,
-            `${cred.provider} session ended; reconnect the provider`,
-          );
-        cred = superseding;
-      } else {
-        // No refresh path for this provider, or a transient failure (network,
-        // 5xx). Serve the existing token best-effort instead of 500-ing every
-        // turn: it may still be valid, and a genuinely expired one surfaces as
-        // a clear auth error on the real API call. This also stops the
-        // runtime's multi-provider serve loop from spamming serve 500s for a
-        // stale, unused credential (e.g. a leftover Claude login while the
-        // agent runs OpenCode).
-        console.error(
-          `[sandbox/credential] refresh failed for ${cred.provider}, serving existing token:`,
-          err instanceof Error ? err.message : err,
-        );
-      }
-    }
-  }
+  const refreshed = await refreshedForServe(
+    deps.credentials,
+    claim.workspaceId,
+    cred,
+    acting,
+  );
+  if ("notConnected" in refreshed)
+    return notConnected(res, refreshed.notConnected);
+  cred = refreshed.cred;
   // Never serve a STALE anthropic token. Unlike every other provider, a served
   // anthropic token doesn't just fail its own API call — inside the Claude
   // Agent SDK the env token OUTRANKS the materialized `.credentials.json` /

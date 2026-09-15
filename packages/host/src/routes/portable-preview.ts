@@ -4,7 +4,10 @@ import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
 import type { Vfs } from "../vfs";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
 import { json } from "./http";
+import { defineRoute } from "./registry";
 
 /**
  * What the "Share with a friend" wizard shows on its pick screen: the agent's
@@ -73,3 +76,27 @@ export async function handlePortablePreview(
   });
   return true;
 }
+
+/**
+ * A wrong method here must NOT 405: the check above declines it, so the
+ * request carries on down the dispatch chain to the agent's runtime.
+ */
+defineRoute({
+  group: "portable-preview",
+  method: "GET",
+  path: "/agents/:agentId/portable/preview",
+  phase: "agent",
+  classification: "sdk",
+  methodMismatch: "fallthrough",
+  source: "packages/host/src/routes/portable-preview.ts",
+  handler: async ({ deps, authz, method, path, req, res }) => {
+    await handlePortablePreview(
+      { vfs: deps.vfs, paths: deps.paths ?? DEFAULT_PATHS },
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+    );
+  },
+});

@@ -3,10 +3,6 @@ import {
   HoustonClient,
   HoustonEngineError,
 } from "../src/engine-adapter/client";
-import {
-  getMyProfile,
-  listInstalledConfigs,
-} from "../src/engine-adapter/control-plane";
 
 /**
  * HOU-688: two desktop calls 404'd against the hosted gateway and red-toasted
@@ -73,18 +69,28 @@ test("version() surfaces a real failure with the host's reason", async () => {
   await expect(client.version()).rejects.toThrow("boom (engine error 500)");
 });
 
+// The library read is the SDK's `GET /v1/agent-configs`; the degrade is the
+// adapter's, so both cases run through the client (a deployment that declares
+// no `agentConfigLibrary` flag reaches the route — see the probe tests below).
 test("a 404 on /v1/agent-configs reads as an empty library — no toast (HOU-688)", async () => {
-  stubFetch(json(404, { error: "not found" }));
+  stubFetch(json(200, { profile: "cloud" }), json(404, { error: "not found" }));
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
 
-  await expect(listInstalledConfigs(CFG)).resolves.toEqual([]);
+  await expect(client.listInstalledConfigs()).resolves.toEqual([]);
 });
 
 test("every other agent-configs failure still propagates — never swallowed", async () => {
-  stubFetch(json(500, { error: "library exploded" }));
+  stubFetch(
+    json(200, { profile: "cloud" }),
+    json(500, { error: "library exploded" }),
+  );
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
 
-  await expect(listInstalledConfigs(CFG)).rejects.toThrow(HoustonEngineError);
+  await expect(client.listInstalledConfigs()).rejects.toThrow(
+    HoustonEngineError,
+  );
   stubFetch(json(500, { error: "library exploded" }));
-  await expect(listInstalledConfigs(CFG)).rejects.toThrow(
+  await expect(client.listInstalledConfigs()).rejects.toThrow(
     "library exploded (engine error 500)",
   );
 });
@@ -143,17 +149,19 @@ test("getOrgPeople is empty off-cloud, and propagates every other failure", asyn
 
 test("a 404 on /v1/me/profile hides the profile section — no toast", async () => {
   const calls = stubFetch(json(404, { error: "not found" }));
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
 
-  await expect(getMyProfile(CFG)).resolves.toBeNull();
+  await expect(client.getMyProfile()).resolves.toBeNull();
   expect(calls).toEqual(["https://gateway.example/v1/me/profile"]);
 });
 
 test("every other /v1/me/profile failure still propagates — never swallowed", async () => {
   stubFetch(json(500, { error: "profile exploded" }));
+  const client = new HoustonClient({ ...CFG, controlPlane: true });
 
-  await expect(getMyProfile(CFG)).rejects.toThrow(HoustonEngineError);
+  await expect(client.getMyProfile()).rejects.toThrow(HoustonEngineError);
   stubFetch(json(500, { error: "profile exploded" }));
-  await expect(getMyProfile(CFG)).rejects.toThrow(
+  await expect(client.getMyProfile()).rejects.toThrow(
     "profile exploded (engine error 500)",
   );
 });

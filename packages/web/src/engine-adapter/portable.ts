@@ -12,30 +12,20 @@
  */
 
 import {
-  filterPackage,
   type PortablePackage,
-  packageSeed,
-  remintRoutineIds,
   scanContent,
   unpackAgent,
 } from "@houston/domain";
-import { agentColorId } from "@houston-ai/core";
 import type {
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableExportRequest,
-  PortableInstalledAgent,
-  PortableInstallRequest,
   PortableInventoryPreview,
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "./client/errors";
-import {
-  type ControlPlaneConfig,
-  createAgent,
-  gatewayAuthFetch,
-} from "./control-plane";
+import { type ControlPlaneConfig, gatewayAuthFetch } from "./control-plane";
 import { packagePreview, toWireSelection } from "./portable-map";
 
 /** Unpacked uploads awaiting install, keyed by the packageId handed to the wizard. */
@@ -143,55 +133,22 @@ export function previewUpload(
  * pure `@houston/domain` code the host would run.
  */
 export function scanUpload(packageId: string): PortableScanResponse {
+  return scanContent(parkedUpload(packageId));
+}
+
+/** The package parked under `packageId`, or the wizard's own message when the
+ *  upload is gone (a reload, a second tab) — it toasts this verbatim. */
+export function parkedUpload(packageId: string): PortablePackage {
   const pkg = uploads.get(packageId);
   if (!pkg) {
     throw new Error(
       "The uploaded agent file is no longer available — pick the file again.",
     );
   }
-  return scanContent(pkg);
+  return pkg;
 }
 
-/**
- * Install the parked archive as a new agent — as an ordinary agent create
- * carrying the selected content as its seed payload (CLAUDE.md + file map).
- * That pipeline exists on BOTH backends: the local host writes the seeds on
- * create, and the hosted-cloud gateway (which serves no account-level
- * portable route) persists them and seeds the new agent's pod with them.
- */
-export async function install(
-  cfg: ControlPlaneConfig,
-  req: PortableInstallRequest,
-): Promise<PortableInstalledAgent> {
-  const parked = uploads.get(req.packageId);
-  if (!parked) {
-    throw new Error(
-      "The uploaded agent file is no longer available — pick the file again.",
-    );
-  }
-  // The installed agent is a NEW identity: its routines never keep the
-  // package's ids (see remintRoutineIds).
-  const { pkg, routineIds } = remintRoutineIds(
-    filterPackage(parked, toWireSelection(req.selection)),
-    () => crypto.randomUUID(),
-  );
-  const agent = await createAgent(
-    cfg,
-    req.agentName,
-    // The request carries whatever the source agent stored — a palette id, or
-    // one of the palette's hexes for an agent that predates ids. Canonicalize
-    // to the id the picker and the assistant both speak; the rendered color is
-    // the same either way.
-    req.agentColor ? agentColorId(req.agentColor) : undefined,
-    packageSeed(pkg),
-  );
-  uploads.delete(req.packageId);
-  return {
-    agentPath: agent.id, // in control-plane mode the agent id IS the path key
-    agentName: agent.name,
-    workspaceName: req.workspaceName,
-    requiredIntegrations: [],
-    routineIds,
-    agent,
-  };
+/** Forget a parked upload once it has become an agent. */
+export function dropUpload(packageId: string): void {
+  uploads.delete(packageId);
 }

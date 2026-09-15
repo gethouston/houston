@@ -6,7 +6,10 @@ import type { WorkspacePaths } from "../paths";
 import { FilePathError, safeRel } from "../turn/files-path";
 import type { Vfs } from "../vfs";
 import { hostOwnedApprovalCards } from "./activity-approval-cards";
-import { json, readJson } from "./http";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
+import { json, methodNotAllowed, readJson } from "./http";
+import { defineRoute } from "./registry";
 
 /**
  * Raw `.houston/**` file read/write — the host side of the app's files-first
@@ -99,6 +102,34 @@ function servedContent(rel: string, content: string, agentId: string): string {
   return JSON.stringify(hostOwnedApprovalCards(parsed, agentId));
 }
 
+/**
+ * `*rest` because a document is addressed by its RELATIVE PATH, separators and
+ * all (`.houston/activity/activity.json`), and the route serves every method
+ * the app writes with. A method it does not serve is its own 405: the rest is
+ * a document path, and forwarding it to the agent's runtime — which has no
+ * agentfile route — would answer for something else entirely.
+ */
+defineRoute({
+  group: "agent-file",
+  method: ["GET", "PUT", "POST"],
+  path: "/agents/:agentId/agentfile/*rest",
+  methodMismatch: "405",
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/agent-file.ts",
+  handler: ({ deps, authz, method, path, req, res, emit }) =>
+    handleAgentFile(
+      deps.vfs,
+      deps.paths ?? DEFAULT_PATHS,
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+      emit,
+    ),
+});
+
 export async function handleAgentFile(
   vfs: Vfs | undefined,
   paths: WorkspacePaths,
@@ -156,6 +187,6 @@ export async function handleAgentFile(
     return true;
   }
 
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
   return true;
 }

@@ -2,14 +2,11 @@ import type {
   SidebarLayout,
   Workspace,
 } from "../../../../../ui/engine-client/src/types";
-import {
-  listWorkspaces as cpListWorkspaces,
-  deleteOrg,
-  retryTransientRead,
-} from "../control-plane";
+import { prefPath, retryTransientRead } from "../control-plane";
 import { syntheticWorkspace } from "../synthetic";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 import { SidebarLayoutStore } from "./sidebar-layout-store";
 
 /** Exactly `org:` + 16 lowercase hex chars — the C8 team-space id grammar. */
@@ -37,8 +34,7 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       // personal row REPLACES the served one (its "default" id is load-bearing
       // for prefs, caches, and the desktop boot path); ONLY the `org:*` team
       // rows bridge through, so a local/self-host list (never `org:`-prefixed)
-      // stays byte-identical. `prefConfig()` is the shared seam: the gateway
-      // in cloud mode, the local host otherwise.
+      // stays byte-identical.
       //
       // A 404 is CAPABILITY negotiation, not a failure: a host that predates
       // the surface has no teams to bridge, so personal-only is the honest and
@@ -54,7 +50,9 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       // successful load restores the right space.
       try {
         const rows = await retryTransientRead(() =>
-          cpListWorkspaces(this.ctx.prefConfig()),
+          viaSdk("/v1/workspaces", () =>
+            this.ctx.sdk.workspaces.listWorkspaces(),
+          ),
         );
         const teams = rows.filter((w) => w.id.startsWith("org:"));
         return [personal, ...teams];
@@ -90,7 +88,9 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Your personal workspace can't be deleted.");
       if (!this.ctx.cp)
         throw new Error("Deleting a team needs the hosted gateway.");
-      await deleteOrg(this.ctx.cp, slug);
+      await viaSdk(`/v1/orgs/${encodeURIComponent(slug)}`, () =>
+        this.ctx.sdk.spaces.deleteOrg(slug),
+      );
     }
     // Persist the language pick as the account-level `locale` preference. The
     // workspace id is ignored on purpose: the personal row is the synthetic
@@ -103,7 +103,9 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       _id: string,
       locale: string | null,
     ): Promise<Workspace> {
-      await this.ctx.sdk.preferences.set("locale", locale);
+      await viaSdk(prefPath("locale"), () =>
+        this.ctx.sdk.preferences.set("locale", locale),
+      );
       const { provider, model } = await this.ctx.activeOld();
       return { ...syntheticWorkspace(provider, model), locale };
     }

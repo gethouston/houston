@@ -4,6 +4,7 @@ import type { UserId } from "../domain/types";
 import { normalizeSource } from "../skills/github-parse";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
+import { defineRoute } from "./registry";
 
 /**
  * The installed agent-config library: `houston.json` templates the user added
@@ -150,33 +151,41 @@ async function installFromGithub(
   json(res, 200, { agentId });
 }
 
-/**
- * Account-level agent-config routes: GET /v1/agent-configs (the library, fed
- * into the create-agent picker) and POST /v1/agents/install-from-github (add a
- * repo's houston.json to the library). Returns true when handled.
- */
-export async function handleAgentConfigs(
-  deps: { agentConfigs?: AgentConfigsDeps },
-  userId: UserId,
-  method: string,
-  path: string,
-  req: IncomingMessage,
-  res: ServerResponse,
-): Promise<boolean> {
-  const isList = method === "GET" && path === "/v1/agent-configs";
-  const isInstall =
-    method === "POST" && path === "/v1/agents/install-from-github";
-  if (!isList && !isInstall) return false;
+const SOURCE = "packages/host/src/routes/agent-configs.ts";
 
-  const lib = deps.agentConfigs;
-  if (!lib) {
-    // No library wired: an empty list is the honest read (nothing installed
-    // here), but an install must fail loudly rather than pretend to work.
-    if (isList) json(res, 200, []);
-    else json(res, 503, { error: "agent-config library not configured" });
-    return true;
-  }
-  if (isList) json(res, 200, await listInstalled(lib, userId));
-  else await installFromGithub(lib, userId, req, res);
-  return true;
-}
+/**
+ * The library itself, fed into the create-agent picker's "installed" source. No
+ * library wired is an empty list: nothing IS installed on such a host, and the
+ * picker still renders its bundled first-party templates.
+ */
+defineRoute({
+  group: "agent-configs",
+  method: "GET",
+  path: "/v1/agent-configs",
+  phase: "user",
+  classification: "sdk",
+  source: SOURCE,
+  handler: async ({ deps, userId, res }) => {
+    const lib = deps.agentConfigs;
+    json(res, 200, lib ? await listInstalled(lib, userId) : []);
+  },
+});
+
+/**
+ * Add a repo's houston.json to the library. Unlike the read above, an install
+ * with no library wired fails loudly rather than pretending to have stored it.
+ */
+defineRoute({
+  group: "agent-configs",
+  method: "POST",
+  path: "/v1/agents/install-from-github",
+  phase: "user",
+  classification: "sdk",
+  source: SOURCE,
+  handler: async ({ deps, userId, req, res }) => {
+    const lib = deps.agentConfigs;
+    if (!lib)
+      return json(res, 503, { error: "agent-config library not configured" });
+    await installFromGithub(lib, userId, req, res);
+  },
+});

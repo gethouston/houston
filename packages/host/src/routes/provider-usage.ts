@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { CredentialStore, CredentialVault } from "../ports";
 import { bearer, json } from "./http";
+import { defineRoute } from "./registry";
 
 /**
  * Sandbox-facing central usage probe (connect-once). GitHub Copilot's quota
@@ -28,6 +29,19 @@ const COPILOT_QUOTA_HEADERS = {
   "Editor-Plugin-Version": "copilot-chat/0.35.0",
   "X-GitHub-Api-Version": "2025-04-01",
 };
+
+defineRoute({
+  group: "sandbox-provider-usage",
+  method: "GET",
+  path: "/sandbox/provider-usage",
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "A runtime's per-sandbox HMAC token authenticates it; the probe runs on a credential no client may hold.",
+  source: "packages/host/src/routes/provider-usage.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxProviderUsage(deps, method, path, url, req, res),
+});
 
 export async function handleSandboxProviderUsage(
   deps: {

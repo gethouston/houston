@@ -1,9 +1,11 @@
-import * as controlPlane from "../control-plane";
+import type * as controlPlane from "../control-plane";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 /**
- * C13 agent teams — the hosted gateway only. Distinct from {@link TeamsMixin},
- * which carries the per-AGENT multiplayer surface (assignments, settings, model
+ * C13 agent teams — the hosted gateway only, delegated whole to `sdk.teams`
+ * (`packages/sdk/src/modules/teams`). Distinct from {@link TeamsMixin}, which
+ * carries the per-AGENT multiplayer surface (assignments, settings, model
  * choice) and shares only a name.
  *
  * NOTHING here degrades to `[]`/`null` off-cloud, reads included: the whole
@@ -17,7 +19,7 @@ export function OrgTeamsMixin<TBase extends BaseCtor>(Base: TBase) {
     async listAgentTeams(): Promise<controlPlane.AgentTeam[]> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.listAgentTeams(this.ctx.cp);
+      return viaSdk("/v1/org/teams", () => this.ctx.sdk.teams.listAgentTeams());
     }
     async createAgentTeam(input: {
       name: string;
@@ -26,7 +28,9 @@ export function OrgTeamsMixin<TBase extends BaseCtor>(Base: TBase) {
     }): Promise<controlPlane.AgentTeam> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.createAgentTeam(this.ctx.cp, input);
+      return viaSdk("/v1/org/teams", () =>
+        this.ctx.sdk.teams.createAgentTeam(input),
+      );
     }
     async updateAgentTeam(
       teamId: string,
@@ -40,29 +44,33 @@ export function OrgTeamsMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<controlPlane.AgentTeam> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.updateAgentTeam(this.ctx.cp, teamId, patch);
+      return viaSdk(`/v1/org/teams/${encodeURIComponent(teamId)}`, () =>
+        this.ctx.sdk.teams.updateAgentTeam(teamId, patch),
+      );
     }
     async deleteAgentTeam(teamId: string): Promise<void> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.deleteAgentTeam(this.ctx.cp, teamId);
+      return viaSdk(`/v1/org/teams/${encodeURIComponent(teamId)}`, () =>
+        this.ctx.sdk.teams.deleteAgentTeam(teamId),
+      );
     }
     async listAgentTeamMembers(
       teamId: string,
     ): Promise<controlPlane.AgentTeamMember[]> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.listAgentTeamMembers(this.ctx.cp, teamId);
-    }
-    async joinAgentTeam(teamId: string): Promise<void> {
-      if (!this.ctx.cp)
-        throw new Error("agent teams require the hosted gateway");
-      return controlPlane.joinAgentTeam(this.ctx.cp, teamId);
+      return viaSdk(`/v1/org/teams/${encodeURIComponent(teamId)}/members`, () =>
+        this.ctx.sdk.teams.listAgentTeamMembers(teamId),
+      );
     }
     async removeAgentTeamMember(teamId: string, userId: string): Promise<void> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.removeAgentTeamMember(this.ctx.cp, teamId, userId);
+      return viaSdk(
+        `/v1/org/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
+        () => this.ctx.sdk.teams.removeAgentTeamMember(teamId, userId),
+      );
     }
     async setAgentTeamMemberOwner(
       teamId: string,
@@ -71,17 +79,18 @@ export function OrgTeamsMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<void> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.setAgentTeamMemberOwner(
-        this.ctx.cp,
-        teamId,
-        userId,
-        owner,
+      return viaSdk(
+        `/v1/org/teams/${encodeURIComponent(teamId)}/members/${encodeURIComponent(userId)}`,
+        () => this.ctx.sdk.teams.setAgentTeamMemberOwner(teamId, userId, owner),
       );
     }
     async setAgentTeam(agentSlugOrId: string, teamId: string): Promise<void> {
       if (!this.ctx.cp)
         throw new Error("agent teams require the hosted gateway");
-      return controlPlane.setAgentTeam(this.ctx.cp, agentSlugOrId, teamId);
+      return viaSdk(
+        `/v1/agents/${encodeURIComponent(agentSlugOrId)}/team`,
+        () => this.ctx.sdk.teams.setAgentTeam(agentSlugOrId, teamId),
+      );
     }
   }
   return OrgTeams;

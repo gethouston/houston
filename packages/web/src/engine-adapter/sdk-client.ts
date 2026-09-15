@@ -1,21 +1,16 @@
 /**
- * The web engine-adapter's single {@link HoustonSdk} construction point
- * (migration wave 1).
+ * The web engine-adapter's single {@link HoustonSdk} construction point.
  *
- * Houston's behavior — agents/activities/providers/integrations/preferences
- * CRUD, turn lifecycle, reconnection — is written ONCE in `@houston/sdk` and
- * every surface binds to it (the iOS app already consumes ALL of it via the
- * native bridge). The web adapter still RE-implements the control-plane CRUD in
- * `control-plane.ts` + `client.ts` against the same routes — a dual source of
- * truth this migration removes. This file builds the ONE web-side `HoustonSdk`
- * that later waves delegate those writes to, so web matches iOS.
+ * Houston's behavior — domain CRUD, turn lifecycle, reconnection — is written
+ * ONCE in `@houston/sdk`, and every surface binds it: the adapter's mixins
+ * delegate their calls to the modules on the SDK built here, so web and iOS run
+ * the same code against the same routes.
  *
- * **Wave 1 is the inert seam.** Construction opens NO network: the SDK is built
- * with `reactivity: false`, so its agents/activities/turns modules do NOT start
- * `/v1/events` streams — web keeps its own read model (TanStack Query) and its
- * own `/v1/events` bus (`client.ts subscribeServerEvents`) unchanged. The SDK
- * exposes only its WRITE surface for wave 2 (`sdk.agents/activities/providers/
- * integrations/preferences` mutations, which hit the SAME gateway routes).
+ * **Reactivity is OFF.** The SDK is built with `reactivity: false`, so its
+ * agents/activities/turns modules open no `/v1/events` stream and constructing
+ * it issues no request: web owns its own read model (TanStack Query) and its
+ * own `/v1/events` bus (`client.ts subscribeServerEvents`), and a second stream
+ * would duplicate both.
  *
  * **One source of truth for auth + active space.** The `fetch` handed in is the
  * SAME `gatewayAuthFetch` the adapter's own engine client uses: it reads the
@@ -26,6 +21,9 @@
  */
 
 import { HoustonSdk, type KeyValueStore, type SdkLogger } from "@houston/sdk";
+// The barrel, never `cp/transient-retry` directly: the web suite mocks
+// `./control-plane` wholesale and a submodule import would bypass the mock.
+import { transientRetryFetch } from "./control-plane";
 
 /** Namespace for every SDK-owned `localStorage` key, so nothing the SDK
  *  persists can collide with the adapter's existing browser state. */
@@ -94,23 +92,31 @@ export interface EngineSdkOptions {
    * engine client runs on, carrying the live bearer, 401-refresh, and the
    * `x-houston-org` header off the live active space. Passing the same instance
    * keeps auth + active-space behavior identical across the adapter and the SDK.
+   * The read retry is added HERE, not by the caller (see {@link createEngineSdk}).
    */
   fetch: typeof fetch;
 }
 
 /**
- * Construct the web engine-adapter's single, INERT {@link HoustonSdk}: wired to
- * the shared gateway auth fetch, with reactivity OFF (no `/v1/events` streams,
- * no refetch-on-construct) so it changes nothing at runtime until a later wave
- * delegates a write to `sdk.agents/activities/providers/integrations/
- * preferences`. Constructing it issues NO network request.
+ * Construct the web engine-adapter's single {@link HoustonSdk}: wired to the
+ * shared gateway auth fetch, with reactivity OFF (no `/v1/events` streams, no
+ * refetch-on-construct) because web owns its read model. Constructing it issues
+ * NO network request; the first one is whatever a mixin delegates.
+ *
+ * The transport is the shared gateway auth fetch UNDER the same read retry
+ * `cpFetch` gives every control-plane call (`cp/transient-retry.ts`). Composing
+ * it at this ONE construction point, rather than inside each SDK module, is
+ * what lets a mixin delegate a READ at all: a GET that meets a rolling deploy
+ * or a cold engine pod rides it out on the reason-aware ladder instead of
+ * surfacing as a boot-path failure. Only GET/HEAD are retried, so no write is
+ * ever replayed and a delegated write is still exactly one request on the wire.
  */
 export function createEngineSdk(opts: EngineSdkOptions): HoustonSdk {
   return new HoustonSdk({
     baseUrl: opts.baseUrl.replace(/\/+$/, ""),
     reactivity: false,
     ports: {
-      fetch: opts.fetch,
+      fetch: transientRetryFetch(opts.fetch),
       storage: createWebStorage(),
       clock: {
         now: () => Date.now(),

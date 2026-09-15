@@ -52,6 +52,18 @@ export function isCommandEnvelope(value: unknown): value is CommandEnvelope {
 }
 
 /**
+ * Best-effort correlation id off a value {@link isCommandEnvelope} rejected, so
+ * a malformed envelope still answers on the id the caller is waiting for.
+ */
+export function envelopeId(value: unknown): string {
+  if (typeof value === "object" && value !== null) {
+    const id = (value as Record<string, unknown>).id;
+    if (typeof id === "string") return id;
+  }
+  return "";
+}
+
+/**
  * Normalize an unknown thrown value into a `CommandResult` error object,
  * preserving an HTTP-style `status` when the error carries a numeric one (e.g.
  * runtime-client's `EngineError`).

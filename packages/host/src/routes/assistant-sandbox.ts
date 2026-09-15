@@ -19,6 +19,7 @@ import {
 import { resolveAssistantGateway } from "./assistant-wiring";
 import { bearer, header, json, readJson } from "./http";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
+import { defineRouteFamily } from "./registry";
 
 /**
  * The RUNTIME-facing assistant surface (HMAC sandbox token) — what the agent's
@@ -77,6 +78,27 @@ export interface AssistantSandboxDeps {
   /** Injection point for tests; production shares one per-process store. */
   approvals?: ApprovalStore;
 }
+
+/**
+ * Both paths are owned for EVERY method: the wrong-method 405 carries a `code`
+ * the runtime's tool classifies on, so this family answers it itself instead
+ * of falling through to the bearer wall's 401.
+ */
+defineRouteFamily({
+  group: "sandbox-assistant",
+  members: [
+    { method: "POST", path: ASSISTANT_CALL_PATH },
+    { method: "POST", path: ASSISTANT_PENDING_PATH },
+  ],
+  owns: [ASSISTANT_CALL_PATH, ASSISTANT_PENDING_PATH],
+  phase: "sandbox",
+  classification: "internal-sandbox",
+  reason:
+    "The agent's houston_call tool proxies through here on a per-sandbox HMAC token scoped to the personal assistant.",
+  source: "packages/host/src/routes/assistant-sandbox.ts",
+  handler: ({ deps, method, path, url, req, res }) =>
+    handleSandboxAssistant(deps, method, path, url, req, res),
+});
 
 export async function handleSandboxAssistant(
   deps: AssistantSandboxDeps,

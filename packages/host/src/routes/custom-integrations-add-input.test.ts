@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { parseAddInput } from "./custom-integrations";
+import { parseAddInput } from "./custom-integrations-input";
 
 const mcp = (extra: Record<string, unknown>) => ({
   kind: "mcp",

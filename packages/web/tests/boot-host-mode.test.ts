@@ -10,7 +10,8 @@ import { HoustonClient } from "../src/engine-adapter/client";
  *
  * The adapter reads `window.__HOUSTON_CP__` once, in its constructor, and a
  * client built without it routes routines/skills to a silent `[]` (see
- * `client/routines-skills-mixin.ts`) — no request, no error, an empty screen.
+ * `client/routines-mixin.ts` and `client/skills-mixin.ts`) — no request, no
+ * error, an empty screen.
  * The self-host branch used to inherit the flag purely from an app/src
  * module-load side effect (`app/src/lib/engine.ts`, HOU-546), with nothing
  * pinning the coupling. These tests assert host mode holds on the web entry's

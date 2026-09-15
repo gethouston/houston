@@ -2,6 +2,7 @@ import type { ServerResponse } from "node:http";
 import type { AgentId, UserId } from "../domain/types";
 import type { WorkspaceStore } from "../ports";
 import { json } from "./http";
+import { defineRouteFamily } from "./registry";
 
 /**
  * Discovery for the user's personal assistant: `GET /v1/assistant` answers
@@ -109,3 +110,20 @@ export async function handleAssistant(
   json(res, 200, handle);
   return true;
 }
+
+/**
+ * One route, but the path is `owns`ed for every method: a wrong method here
+ * answers 405 with a `code` the dispatcher's generic refusal does not carry,
+ * and the clients classify on that code.
+ */
+defineRouteFamily({
+  group: "assistant",
+  members: [{ method: "GET", path: ASSISTANT_PATH }],
+  owns: [ASSISTANT_PATH],
+  phase: "user",
+  classification: "sdk",
+  source: "packages/host/src/routes/assistant.ts",
+  handler: async ({ deps, userId, method, res }) => {
+    await handleAssistant(deps, userId, method, ASSISTANT_PATH, res);
+  },
+});

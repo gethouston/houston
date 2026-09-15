@@ -1,62 +1,83 @@
-import type { IncomingMessage, ServerResponse } from "node:http";
+import type { ServerResponse } from "node:http";
 import { loadRoutines } from "@houston/domain";
+import type { Agent, Workspace } from "../domain/types";
+import type { WorkspacePaths } from "../paths";
+import type { RuntimeChannel } from "../ports";
 import { cancelRoutineRun } from "../schedule/cancel";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { fireRoutineRun, RoutineBusyError } from "../schedule/run";
+import type { Vfs } from "../vfs";
 import {
   type AgentRouteDeps,
-  authorizeAgent,
   channelFor,
   DEFAULT_PATHS,
   noChannel,
   trustedActingAs,
 } from "./agent-authz";
 import { json } from "./http";
+import { defineRoute } from "./registry";
 
 /**
- * The routine-run routes: on-demand fire ("run now") and stop. Both must be
- * matched BEFORE the generic per-agent runtime dispatch — the runtime has no
- * routine routes. Returns true when the request was handled.
+ * The routine-run routes: on-demand fire ("run now") and stop. Both are matched
+ * BEFORE the generic per-agent runtime dispatch — the runtime has no routine
+ * routes — and a wrong method on either falls through to it exactly as before.
  */
-export async function handleRoutineRuns(
+const SOURCE = "packages/host/src/routes/routine-runs.ts";
+
+interface RunWiring {
+  vfs: Vfs;
+  paths: WorkspacePaths;
+  channel: RuntimeChannel;
+  root: string;
+}
+
+/**
+ * The storage and the live channel both routes need, or null once the 503 has
+ * been answered: a run that cannot reach the runtime must never read as one
+ * that started.
+ */
+function runWiring(
   deps: AgentRouteDeps,
-  userId: string,
-  method: string,
-  path: string,
-  req: IncomingMessage,
+  authz: { workspace: Workspace; agent: Agent },
   res: ServerResponse,
-): Promise<boolean> {
-  // Run a routine ON DEMAND: fire it now through the SAME firer + record path
-  // the scheduler uses, so a hand-pressed run is indistinguishable from a cron
-  // one (records a routine_run, reconcile completes it). A fire failure
-  // surfaces as a real status — never a silent miss.
-  const runNow = path.match(/^\/agents\/([^/]+)\/routines\/([^/]+)\/run$/);
-  if (runNow && method === "POST") {
-    // The `[^/]+` captures are non-empty by construction.
-    const agentId = decodeURIComponent(runNow[1] ?? "");
-    const routineId = decodeURIComponent(runNow[2] ?? "");
-    const authz = await authorizeAgent(deps, userId, agentId);
-    if (!authz.ok) {
-      json(res, authz.status, { error: authz.reason });
-      return true;
-    }
-    if (!deps.vfs) {
-      json(res, 503, { error: "agent data not configured" });
-      return true;
-    }
-    const channel = channelFor(deps, authz.workspace);
-    if (!channel) {
-      noChannel(res, authz.workspace.runtime);
-      return true;
-    }
-    const paths = deps.paths ?? DEFAULT_PATHS;
-    const root = paths.agentRoot(authz.workspace, authz.agent);
-    const { items: routines } = await loadRoutines(deps.vfs, root);
-    const routine = routines.find((r) => r.id === routineId);
-    if (!routine) {
-      json(res, 404, { error: "routine not found" });
-      return true;
-    }
+): RunWiring | null {
+  if (!deps.vfs) {
+    json(res, 503, { error: "agent data not configured" });
+    return null;
+  }
+  const channel = channelFor(deps, authz.workspace);
+  if (!channel) {
+    noChannel(res, authz.workspace.runtime);
+    return null;
+  }
+  const paths = deps.paths ?? DEFAULT_PATHS;
+  return {
+    vfs: deps.vfs,
+    paths,
+    channel,
+    root: paths.agentRoot(authz.workspace, authz.agent),
+  };
+}
+
+/**
+ * Run a routine ON DEMAND: fire it now through the SAME firer + record path the
+ * scheduler uses, so a hand-pressed run is indistinguishable from a cron one
+ * (records a routine_run, reconcile completes it). A fire failure surfaces as a
+ * real status — never a silent miss.
+ */
+defineRoute({
+  group: "routine-runs",
+  method: "POST",
+  path: "/agents/:agentId/routines/:routineId/run",
+  phase: "agent",
+  classification: "sdk",
+  source: SOURCE,
+  async handler({ deps, authz, params, req, res }) {
+    const wiring = runWiring(deps, authz, res);
+    if (!wiring) return;
+    const { items: routines } = await loadRoutines(wiring.vfs, wiring.root);
+    const routine = routines.find((r) => r.id === params.routineId);
+    if (!routine) return json(res, 404, { error: "routine not found" });
     // The firer wraps the workspace's channel — the exact path
     // ChannelRoutineFirer takes for the scheduler. fireRoutineRun records the
     // run, then fires; a fire failure marks the run errored AND rethrows, so
@@ -79,8 +100,8 @@ export async function handleRoutineRuns(
     try {
       const { runId } = await fireRoutineRun(
         {
-          vfs: deps.vfs,
-          paths,
+          vfs: wiring.vfs,
+          paths: wiring.paths,
           firer,
           events: deps.events,
           now: () => new Date(),
@@ -98,59 +119,46 @@ export async function handleRoutineRuns(
         error: err instanceof Error ? err.message : String(err),
       });
     }
-    return true;
-  }
+  },
+});
 
-  // Stop an in-flight routine run: the row goes terminal first, then the live
-  // turn is aborted through the channel (schedule/cancel.ts).
-  const runCancel = path.match(
-    /^\/agents\/([^/]+)\/routines\/([^/]+)\/runs\/([^/]+)\/cancel$/,
-  );
-  if (runCancel && method === "POST") {
-    const agentId = decodeURIComponent(runCancel[1] ?? "");
-    const routineId = decodeURIComponent(runCancel[2] ?? "");
-    const runId = decodeURIComponent(runCancel[3] ?? "");
-    const authz = await authorizeAgent(deps, userId, agentId);
-    if (!authz.ok) {
-      json(res, authz.status, { error: authz.reason });
-      return true;
-    }
-    if (!deps.vfs) {
-      json(res, 503, { error: "agent data not configured" });
-      return true;
-    }
-    const channel = channelFor(deps, authz.workspace);
-    if (!channel) {
-      noChannel(res, authz.workspace.runtime);
-      return true;
-    }
+/**
+ * Stop an in-flight routine run: the row goes terminal first, then the live
+ * turn is aborted through the channel (schedule/cancel.ts).
+ */
+defineRoute({
+  group: "routine-runs",
+  method: "POST",
+  path: "/agents/:agentId/routines/:routineId/runs/:runId/cancel",
+  phase: "agent",
+  classification: "sdk",
+  source: SOURCE,
+  async handler({ deps, authz, params, res }) {
+    const wiring = runWiring(deps, authz, res);
+    if (!wiring) return;
     const result = await cancelRoutineRun(
       {
-        vfs: deps.vfs,
-        paths: deps.paths ?? DEFAULT_PATHS,
-        channel,
+        vfs: wiring.vfs,
+        paths: wiring.paths,
+        channel: wiring.channel,
         events: deps.events,
         now: () => new Date(),
       },
       authz.workspace,
       authz.agent,
-      routineId,
-      runId,
+      params.routineId ?? "",
+      params.runId ?? "",
     );
     if (result.status === "not_found")
-      json(res, 404, { error: "run not found" });
-    else if (result.status === "not_running")
-      json(res, 409, { error: "run is not running" });
+      return json(res, 404, { error: "run not found" });
+    if (result.status === "not_running")
+      return json(res, 409, { error: "run is not running" });
     // The run is cancelled either way; `abort_failed` (additive) tells the
     // client the live-turn abort itself failed — the runtime may still be
     // burning the turn (no-silent-failures: the caller can surface it).
-    else
-      json(res, 200, {
-        ...result.run,
-        ...(result.abortFailed ? { abort_failed: true } : {}),
-      });
-    return true;
-  }
-
-  return false;
-}
+    json(res, 200, {
+      ...result.run,
+      ...(result.abortFailed ? { abort_failed: true } : {}),
+    });
+  },
+});

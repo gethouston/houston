@@ -11,7 +11,10 @@ import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
-import { json, readJson } from "./http";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
+import { json, methodNotAllowed, readJson } from "./http";
+import { defineRouteFamily } from "./registry";
 
 /**
  * Skills (.agents/skills/<slug>/SKILL.md — the same folders pi loads into the
@@ -121,6 +124,42 @@ export async function handleSkills(
     return true;
   }
 
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
   return true;
 }
+
+/**
+ * The five pairs one regex serves. The family owns both of its paths for
+ * every method, so a wrong verb still reaches the handler — which answers the
+ * unwired-vfs 503 BEFORE its 405, an order the dispatcher's own 405 would skip.
+ *
+ * `skills/community/search` and friends are NOT in this family: the regex above
+ * stops at one segment after `skills`, so the two-segment marketplace paths in
+ * skills-remote.ts never collide with it despite the shared prefix.
+ */
+defineRouteFamily({
+  group: "skills",
+  members: [
+    { method: "GET", path: "/agents/:agentId/skills" },
+    { method: "POST", path: "/agents/:agentId/skills" },
+    { method: "GET", path: "/agents/:agentId/skills/:slug" },
+    { method: "PUT", path: "/agents/:agentId/skills/:slug" },
+    { method: "DELETE", path: "/agents/:agentId/skills/:slug" },
+  ],
+  owns: ["/agents/:agentId/skills", "/agents/:agentId/skills/:slug"],
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/skills.ts",
+  handler: async ({ deps, authz, method, path, req, res, emit }) => {
+    await handleSkills(
+      deps.vfs,
+      deps.paths ?? DEFAULT_PATHS,
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+      emit,
+    );
+  },
+});

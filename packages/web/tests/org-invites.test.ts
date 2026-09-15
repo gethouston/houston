@@ -1,9 +1,8 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonEngineError } from "../src/engine-adapter/client";
 import {
-  acceptOrgInvite,
-  declineOrgInvite,
-} from "../src/engine-adapter/control-plane";
+  HoustonClient,
+  HoustonEngineError,
+} from "../src/engine-adapter/client";
 
 /**
  * The INVITEE half of C8 invites on the HOSTED path — the client every cloud
@@ -18,9 +17,13 @@ import {
  * Neither call degrades: every rejection (`404 invite_not_found`,
  * `409 already_member`, `403 needs_upgrade`) is a state the invitee must see,
  * so it throws and the UI explains it. Mirrors `billing-degrade.test.ts`.
+ *
+ * Driven through the composed client the app holds, which is where the two
+ * calls live: the requests themselves are `sdk.spaces`'.
  */
 
-const CFG = { baseUrl: "https://gw.example", token: "t" };
+const CFG = { baseUrl: "https://gw.example", token: "t", controlPlane: true };
+const cp = () => new HoustonClient(CFG);
 
 const originalFetch = globalThis.fetch;
 
@@ -58,7 +61,7 @@ const ORG = {
 
 test("acceptOrgInvite POSTs /v1/org-invites/:id/accept and unwraps {org}", async () => {
   const calls = stubFetch(201, { org: ORG });
-  await expect(acceptOrgInvite(CFG, "inv-1")).resolves.toEqual(ORG);
+  await expect(cp().acceptOrgInvite("inv-1")).resolves.toEqual(ORG);
   expect(calls).toEqual([
     { url: "https://gw.example/v1/org-invites/inv-1/accept", method: "POST" },
   ]);
@@ -66,7 +69,7 @@ test("acceptOrgInvite POSTs /v1/org-invites/:id/accept and unwraps {org}", async
 
 test("acceptOrgInvite percent-encodes the invite id", async () => {
   const calls = stubFetch(201, { org: ORG });
-  await acceptOrgInvite(CFG, "inv/1 2");
+  await cp().acceptOrgInvite("inv/1 2");
   expect(calls[0].url).toBe(
     "https://gw.example/v1/org-invites/inv%2F1%202/accept",
   );
@@ -74,25 +77,25 @@ test("acceptOrgInvite percent-encodes the invite id", async () => {
 
 test("acceptOrgInvite throws a 403 needs_upgrade instead of degrading", async () => {
   stubFetch(403, { error: "team needs upgrade", code: "needs_upgrade" });
-  await expect(acceptOrgInvite(CFG, "inv-1")).rejects.toThrow(
+  await expect(cp().acceptOrgInvite("inv-1")).rejects.toThrow(
     HoustonEngineError,
   );
 });
 
 test("acceptOrgInvite throws a 409 already_member and a 404 invite_not_found", async () => {
   stubFetch(409, { error: "already a member", code: "already_member" });
-  await expect(acceptOrgInvite(CFG, "inv-1")).rejects.toThrow(
+  await expect(cp().acceptOrgInvite("inv-1")).rejects.toThrow(
     HoustonEngineError,
   );
   stubFetch(404, { error: "invite not found", code: "invite_not_found" });
-  await expect(acceptOrgInvite(CFG, "inv-1")).rejects.toThrow(
+  await expect(cp().acceptOrgInvite("inv-1")).rejects.toThrow(
     HoustonEngineError,
   );
 });
 
 test("declineOrgInvite DELETEs /v1/org-invites/:id and resolves on 204", async () => {
   const calls = stubFetch(204, null);
-  await expect(declineOrgInvite(CFG, "inv-2")).resolves.toBeUndefined();
+  await expect(cp().declineOrgInvite("inv-2")).resolves.toBeUndefined();
   expect(calls).toEqual([
     { url: "https://gw.example/v1/org-invites/inv-2", method: "DELETE" },
   ]);
@@ -100,7 +103,7 @@ test("declineOrgInvite DELETEs /v1/org-invites/:id and resolves on 204", async (
 
 test("declineOrgInvite throws a 404 instead of degrading", async () => {
   stubFetch(404, { error: "invite not found", code: "invite_not_found" });
-  await expect(declineOrgInvite(CFG, "inv-2")).rejects.toThrow(
+  await expect(cp().declineOrgInvite("inv-2")).rejects.toThrow(
     HoustonEngineError,
   );
 });

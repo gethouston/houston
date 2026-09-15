@@ -73,8 +73,8 @@ export interface ArmedAgentTeams {
 /**
  * C13 personal space: a space holding exactly one human. It groups its agents
  * with teams like any other — the read serves the real list, and create, patch,
- * delete and the agent move all behave normally. Only the three PEOPLE routes
- * (join, the owner write, the member remove) answer `403 personal_space`.
+ * delete and the agent move all behave normally. Only the two PEOPLE routes
+ * (the owner write, the member remove) answer `403 personal_space`.
  */
 export function isPersonalSpace(): boolean {
   return state.personalSpace;
@@ -162,13 +162,6 @@ export function deleteAgentTeamRow(teamId: string): void {
   state.agentTeamMembers.delete(teamId);
   for (const [agentId, id] of [...state.agentTeamOf])
     if (id === teamId) state.agentTeamOf.delete(agentId);
-}
-
-/** Join: idempotent, and it never demotes an existing owner row. */
-export function joinAgentTeamRow(teamId: string, userId: string): void {
-  const rows = state.agentTeamMembers.get(teamId) ?? [];
-  if (rows.some((m) => m.userId === userId)) return;
-  state.agentTeamMembers.set(teamId, [...rows, { userId, owner: false }]);
 }
 
 /** Upsert a member row — it also ADDS someone who never joined the team. */

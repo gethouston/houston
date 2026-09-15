@@ -7,15 +7,17 @@ import { handleAgentData } from "../routes/agent-data";
 import { handleAgentFile } from "../routes/agent-file";
 import { handleCustomIntegrationsDispatch } from "../routes/custom-integrations-user";
 import { handleMigration } from "../routes/migration";
-import { handlePortableExport } from "../routes/portable";
+import { handlePortableExport } from "../routes/portable-export";
 import { handlePortablePreview } from "../routes/portable-preview";
 import { handlePortableStore } from "../routes/portable-store";
+import type { Answer } from "../routes/registry/types";
 import { handleSkills } from "../routes/skills";
 import { handleSkillsManifest } from "../routes/skills-manifest";
 import { handleSkillsRemote } from "../routes/skills-remote";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
 import type { Vfs } from "../vfs";
+import { OP_CHAIN, type OpGroup } from "./op-surface";
 
 export interface AgentOpChainDeps {
   vfs: Vfs;
@@ -33,14 +35,134 @@ export interface AgentOpChainDeps {
 }
 
 /**
- * The pod's own handler chain, run for one op. The same handlers as the
- * dispatch surface in routes/agents.ts (the route families are disjoint, so
- * relative order is free) — only the filesystem, and the construction of the
- * custom-integration manager, is different underneath. Deliberately absent:
- * trigger-status (gateway-native for asleep agents) and portable/anonymize
- * (its own op kind — the titles pattern). A route added to agents.ts must be
- * added here too, or its op answers 404. Unknown routes answer 404, never a
- * throw.
+ * One route family's handler, adapted to the single shape an op arrives in.
+ * The answer is the chain's, unchanged: anything but `false` means answered.
+ */
+type OpHandler = (
+  deps: AgentOpChainDeps,
+  method: string,
+  rest: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+) => Answer;
+
+const OP_HANDLERS: Record<OpGroup, OpHandler> = {
+  "agent-integrations": (deps, method, rest, req, res) =>
+    handleCustomIntegrationsDispatch(
+      deps.customIntegrations,
+      method,
+      rest,
+      req,
+      res,
+    ),
+  "agent-data": (deps, method, rest, req, res) =>
+    handleAgentData(
+      deps.vfs,
+      deps.paths,
+      deps.ctx,
+      method,
+      rest,
+      req,
+      res,
+      deps.emit,
+      deps.actingSub,
+      deps.actingAuthor,
+      deps.triggersEnabled,
+    ),
+  "agent-file": (deps, method, rest, req, res) =>
+    handleAgentFile(
+      deps.vfs,
+      deps.paths,
+      deps.ctx,
+      method,
+      rest,
+      req,
+      res,
+      deps.emit,
+    ),
+  "skills-manifest": (deps, method, rest, req, res) =>
+    handleSkillsManifest(
+      deps.vfs,
+      deps.paths,
+      deps.ctx,
+      method,
+      rest,
+      req,
+      res,
+      deps.emit,
+    ),
+  skills: (deps, method, rest, req, res) =>
+    handleSkills(
+      deps.vfs,
+      deps.paths,
+      deps.ctx,
+      method,
+      rest,
+      req,
+      res,
+      deps.emit,
+    ),
+  "skills-remote": (deps, method, rest, req, res) =>
+    handleSkillsRemote(
+      deps.vfs,
+      deps.paths,
+      deps.ctx,
+      method,
+      rest,
+      req,
+      res,
+      deps.emit,
+      deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {},
+    ),
+  // Files (list/read/download/archive/import/move/rename/folder): the Files
+  // tab, byte-identical to the pod.
+  "workspace-files": (deps, method, rest, req, res) =>
+    handleFiles(
+      deps.vfs,
+      deps.paths,
+      deps.ctx,
+      method,
+      rest,
+      req,
+      res,
+      deps.query,
+      deps.emit,
+    ),
+  // Composer drops land in uploads/ BEFORE the send (which is a pool turn).
+  attachments: (deps, method, rest, req, res) =>
+    handleAttachments(
+      deps.vfs,
+      deps.paths,
+      deps.ctx,
+      method,
+      rest,
+      req,
+      res,
+      deps.emit,
+    ),
+  "portable-preview": (deps, method, rest, req, res) =>
+    handlePortablePreview(deps, deps.ctx, method, rest, req, res),
+  "portable-export": (deps, method, rest, req, res) =>
+    handlePortableExport(deps, deps.ctx, method, rest, req, res),
+  // No agentDir: archives carrying runtime transcripts were declined before
+  // dispatch (turn/op-route.ts), so there is never a session to synthesize here.
+  migration: (deps, method, rest, req, res) =>
+    handleMigration(deps, deps.ctx, method, rest, req, res, deps.emit),
+  "portable-store": (deps, method, rest, req, res) =>
+    handlePortableStore(
+      deps,
+      { ...deps.ctx, userId: deps.ctx.workspace.ownerUserId },
+      method,
+      rest,
+      req,
+      res,
+    ),
+};
+
+/**
+ * The pod's own handler chain, run for one op: the SAME handlers the per-agent
+ * groups serve, over a hydrated copy of the agent's workspace instead of the
+ * pod's disk. Unknown routes answer 404, never a throw.
  */
 export async function runAgentOpChain(
   deps: AgentOpChainDeps,
@@ -49,82 +171,8 @@ export async function runAgentOpChain(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<void> {
-  const { vfs, paths, ctx, emit } = deps;
-  if (
-    await handleCustomIntegrationsDispatch(
-      deps.customIntegrations,
-      method,
-      rest,
-      req,
-      res,
-    )
-  )
-    return;
-  // Files (list/read/download/archive/import/move/rename/folder): the
-  // Files tab, byte-identical to the pod.
-  if (
-    await handleFiles(vfs, paths, ctx, method, rest, req, res, deps.query, emit)
-  )
-    return;
-  if (
-    await handleAgentData(
-      vfs,
-      paths,
-      ctx,
-      method,
-      rest,
-      req,
-      res,
-      emit,
-      deps.actingSub,
-      deps.actingAuthor,
-      deps.triggersEnabled,
-    )
-  )
-    return;
-  if (await handleAgentFile(vfs, paths, ctx, method, rest, req, res, emit))
-    return;
-  // Composer drops land in uploads/ BEFORE the send (which is a pool turn).
-  if (await handleAttachments(vfs, paths, ctx, method, rest, req, res, emit))
-    return;
-  if (await handleSkillsManifest(vfs, paths, ctx, method, rest, req, res, emit))
-    return;
-  if (await handleSkills(vfs, paths, ctx, method, rest, req, res, emit)) return;
-  if (
-    await handleSkillsRemote(
-      vfs,
-      paths,
-      ctx,
-      method,
-      rest,
-      req,
-      res,
-      emit,
-      deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {},
-    )
-  )
-    return;
-  if (await handlePortablePreview({ vfs, paths }, ctx, method, rest, req, res))
-    return;
-  // NOT portable/anonymize: the model pass rides its own op kind (the
-  // titles pattern), never the route chain.
-  if (await handlePortableExport({ vfs, paths }, ctx, method, rest, req, res))
-    return;
-  // No agentDir: archives carrying runtime transcripts were declined before
-  // dispatch (op-route.ts), so there is never a session to synthesize here.
-  if (await handleMigration({ vfs, paths }, ctx, method, rest, req, res, emit))
-    return;
-  if (
-    await handlePortableStore(
-      { vfs, paths },
-      { ...ctx, userId: ctx.workspace.ownerUserId },
-      method,
-      rest,
-      req,
-      res,
-    )
-  )
-    return;
+  for (const group of OP_CHAIN)
+    if (await OP_HANDLERS[group](deps, method, rest, req, res)) return;
   res.writeHead(404, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ error: "not an op route" }));
 }

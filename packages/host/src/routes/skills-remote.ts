@@ -7,7 +7,10 @@ import {
   installSkillsFromRepo,
 } from "../skills/install";
 import type { Vfs } from "../vfs";
-import { json, readJson } from "./http";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
+import { json, methodNotAllowed, readJson } from "./http";
+import { defineRouteFamily } from "./registry";
 import {
   communityPopularAction,
   communityPreviewAction,
@@ -44,7 +47,7 @@ export async function handleSkillsRemote(
   if (!m) return false;
   const [, family, action] = m;
   if (method !== "POST") {
-    json(res, 405, { error: "method not allowed" });
+    methodNotAllowed(res);
     return true;
   }
   const fetchImpl = deps.fetchImpl ?? fetch;
@@ -121,3 +124,46 @@ export async function handleSkillsRemote(
   json(res, 404, { error: "not found" });
   return true;
 }
+
+/**
+ * The six marketplace pairs as one family, plus the BOUNDARY the regex above
+ * owns beyond them: any action under `skills/{community,repo}`, claimed for
+ * every method so the handler is the one thing deciding what belongs here.
+ * That is what keeps its three answers reachable and distinct — a blanket 405
+ * for a wrong method, a 404 for a lower-case action nobody serves, and a
+ * DECLINE for anything `[a-z]+` never matched (`skills/community/Search`, a
+ * percent-escaped slug), which then reaches the agent's own engine.
+ *
+ * The `:action` boundary is deliberately WIDER than the regex; the handler's
+ * own `return false` is what narrows it back, so the matcher needs no
+ * character class it does not have.
+ */
+defineRouteFamily({
+  group: "skills-remote",
+  members: [
+    { method: "POST", path: "/agents/:agentId/skills/community/search" },
+    { method: "POST", path: "/agents/:agentId/skills/community/popular" },
+    { method: "POST", path: "/agents/:agentId/skills/community/preview" },
+    { method: "POST", path: "/agents/:agentId/skills/community/install" },
+    { method: "POST", path: "/agents/:agentId/skills/repo/list" },
+    { method: "POST", path: "/agents/:agentId/skills/repo/install" },
+  ],
+  owns: [
+    "/agents/:agentId/skills/community/:action",
+    "/agents/:agentId/skills/repo/:action",
+  ],
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/skills-remote.ts",
+  handler: ({ deps, authz, method, path, req, res, emit }) =>
+    handleSkillsRemote(
+      deps.vfs,
+      deps.paths ?? DEFAULT_PATHS,
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+      emit,
+    ),
+});

@@ -1,9 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import {
-  createAgent,
-  gatewayAuthFetch,
-  listAgents,
-} from "../src/engine-adapter/control-plane";
+import { cpFetch, gatewayAuthFetch } from "../src/engine-adapter/control-plane";
 import { resetRejectedBearers } from "../src/engine-adapter/cp/bearer-recovery";
 import { REJECTED_MINT_VERIFY_DELAY_MS } from "../src/engine-adapter/cp/rejected-mint";
 import { refreshLiveToken } from "../src/engine-adapter/session-refresh";
@@ -271,36 +267,27 @@ test("concurrent 401s share one refresh (single-flight)", async () => {
 test("reads retry through a transient gateway-roll status", async () => {
   vi.useFakeTimers();
   setEngineWindow({ token: "tok" });
-  // listAgents also hydrates the `agent_colors` account preference
-  // (PRODUCT-1344) in parallel; answer that side channel by URL so the
-  // retry-under-test keeps a clean two-response queue for /agents itself.
-  const agentResponses = [json(503), json(200, [])];
-  const agentCalls: string[] = [];
-  globalThis.fetch = vi.fn(async (input: unknown) => {
-    const url = String(input);
-    if (url.includes("/v1/preferences/")) return json(200, { value: null });
-    agentCalls.push(url);
-    const next = agentResponses.shift();
-    if (!next) throw new Error("stubFetch: no responses left");
-    return next;
-  }) as unknown as typeof fetch;
+  const calls = stubFetch(json(503), json(200, []));
 
-  const pending = listAgents(CFG);
+  const pending = cpFetch(CFG, "/agents");
   await vi.advanceTimersByTimeAsync(600);
 
-  expect(await pending).toEqual([]);
-  expect(agentCalls).toHaveLength(2);
+  expect((await pending).status).toBe(200);
+  expect(calls).toHaveLength(2);
 });
 
 test("writes never blind-retry a transient status", async () => {
   setEngineWindow({ token: "tok" });
   const calls = stubFetch(json(503));
 
-  // `createAgent` is a POST — the cpFetch write path. transientRetryFetch only
-  // blind-retries GET/HEAD, so a write surfaces the 503 on the first attempt.
-  await expect(createAgent(CFG, "new agent")).rejects.toMatchObject({
-    status: 503,
-  });
+  // A POST is the cpFetch write path. transientRetryFetch only blind-retries
+  // GET/HEAD, so a write surfaces the 503 on the first attempt.
+  await expect(
+    cpFetch(CFG, "/agents", {
+      method: "POST",
+      body: JSON.stringify({ name: "new agent" }),
+    }),
+  ).rejects.toMatchObject({ status: 503 });
   expect(calls).toHaveLength(1);
 });
 

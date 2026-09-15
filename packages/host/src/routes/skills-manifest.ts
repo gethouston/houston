@@ -8,7 +8,10 @@ import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
-import { json, readJson } from "./http";
+import { DEFAULT_PATHS } from "./agent-authz";
+import { agentRest } from "./agent-rest";
+import { json, methodNotAllowed, readJson } from "./http";
+import { defineRouteFamily } from "./registry";
 
 /** Per-agent shared-skill enablement, mounted behind the agent ownership check. */
 export async function handleSkillsManifest(
@@ -38,6 +41,36 @@ export async function handleSkillsManifest(
     json(res, 200, manifest);
     return true;
   }
-  json(res, 405, { error: "method not allowed" });
+  methodNotAllowed(res);
   return true;
 }
+
+/**
+ * One path, two verbs — and a wrong verb is answered by this handler, not by
+ * the chain: the manifest 405s after the unwired-vfs 503, so the family
+ * owns its own path for every method rather than letting the dispatcher
+ * shortcut to a 405 the handler would never have reached.
+ */
+defineRouteFamily({
+  group: "skills-manifest",
+  members: [
+    { method: "GET", path: "/agents/:agentId/skills-manifest" },
+    { method: "PUT", path: "/agents/:agentId/skills-manifest" },
+  ],
+  owns: ["/agents/:agentId/skills-manifest"],
+  phase: "agent",
+  classification: "sdk",
+  source: "packages/host/src/routes/skills-manifest.ts",
+  handler: async ({ deps, authz, method, path, req, res, emit }) => {
+    await handleSkillsManifest(
+      deps.vfs,
+      deps.paths ?? DEFAULT_PATHS,
+      authz,
+      method,
+      agentRest(path),
+      req,
+      res,
+      emit,
+    );
+  },
+});

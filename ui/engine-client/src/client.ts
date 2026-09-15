@@ -1842,16 +1842,6 @@ export class HoustonClient {
     return body.members ?? [];
   }
   /**
-   * Subscribe the caller to a team (v1 teams are all public). Idempotent, and it
-   * never demotes an existing owner row, so a double-click is harmless. A no-op
-   * on the default team, which everyone is already in. One of the THREE
-   * people-management routes a personal space refuses (`403 personal_space`) —
-   * it holds one human, so there is nobody to subscribe to anyone's team.
-   */
-  async joinAgentTeam(teamId: string): Promise<void> {
-    await this.request("POST", `/org/teams/${this.seg(teamId)}/join`);
-  }
-  /**
    * Drop one membership row: the caller's own (leave) or someone else's (remove,
    * effective team owner only). Idempotent — removing a non-member still answers
    * `204`, so a double-click cannot 404. `400 default_team`: nobody leaves the

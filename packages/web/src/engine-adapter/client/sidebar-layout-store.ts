@@ -1,8 +1,8 @@
 import type { SidebarLayout } from "../../../../../ui/engine-client/src/types";
-import * as controlPlane from "../control-plane";
 import type { AdapterContext } from "./context";
 import { HoustonEngineError } from "./errors";
 import { fetchCapabilities } from "./host-capabilities";
+import { viaSdk } from "./sdk-error";
 
 const SIDEBAR_LAYOUT_PREF = "houston.sidebar-layout";
 
@@ -13,6 +13,10 @@ const EMPTY_SIDEBAR_LAYOUT: SidebarLayout = {
 
 const localKey = (workspaceId: string) =>
   `${SIDEBAR_LAYOUT_PREF}.${workspaceId}`;
+
+/** The request path the delegated calls issue, as the SDK builds it. */
+const layoutPath = (workspaceId: string) =>
+  `/v1/workspaces/${encodeURIComponent(workspaceId)}/sidebar-layout`;
 
 function readLocalSidebarLayout(workspaceId: string): SidebarLayout {
   try {
@@ -104,11 +108,12 @@ export class SidebarLayoutStore {
 
   async get(workspaceId: string): Promise<SidebarLayout> {
     if (!(await this.hostBacked())) return readLocalSidebarLayout(workspaceId);
-    const cfg = this.ctx.prefConfig();
     const wireId = await this.ctx.workspaceIds.resolve(workspaceId);
     let hosted: SidebarLayout;
     try {
-      hosted = await controlPlane.getHostSidebarLayout(cfg, wireId);
+      hosted = await viaSdk(layoutPath(wireId), () =>
+        this.ctx.sdk.workspaces.getSidebarLayout(wireId),
+      );
     } catch (err) {
       if (this.degradeOn(err)) return readLocalSidebarLayout(workspaceId);
       throw err;
@@ -116,10 +121,8 @@ export class SidebarLayoutStore {
     const local = readLocalSidebarLayout(workspaceId);
     if (!shouldSeedHostLayout(hosted, local)) return hosted;
     try {
-      const seeded = await controlPlane.putHostSidebarLayout(
-        cfg,
-        wireId,
-        local,
+      const seeded = await viaSdk(layoutPath(wireId), () =>
+        this.ctx.sdk.workspaces.setSidebarLayout(wireId, local),
       );
       // Only now: the arrangement lives on the host, and a leftover device copy
       // is what would re-seed it if the user ever emptied their sidebar.
@@ -142,10 +145,11 @@ export class SidebarLayoutStore {
       writeLocalSidebarLayout(workspaceId, layout);
       return layout;
     }
-    const cfg = this.ctx.prefConfig();
     const wireId = await this.ctx.workspaceIds.resolve(workspaceId);
     try {
-      return await controlPlane.putHostSidebarLayout(cfg, wireId, layout);
+      return await viaSdk(layoutPath(wireId), () =>
+        this.ctx.sdk.workspaces.setSidebarLayout(wireId, layout),
+      );
     } catch (err) {
       if (!this.degradeOn(err)) throw err;
       writeLocalSidebarLayout(workspaceId, layout);

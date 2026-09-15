@@ -1,12 +1,9 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { UserId } from "../domain/types";
-import type { IntegrationProvider } from "../integrations/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
-import {
-  IntegrationSigninRequiredError,
-  IntegrationUpstreamError,
-} from "../integrations/types";
-import { json, optionalTrimmed, readJson } from "./http";
+import { json, readJson } from "./http";
+import { handleProviderRequest } from "./integrations-provider";
+import { defineRouteFamily } from "./registry";
 
 /**
  * Third-party integrations (Composio platform mode first) — the USER routes
@@ -15,9 +12,14 @@ import { json, optionalTrimmed, readJson } from "./http";
  * the app itself, never the provider), a connection poll, disconnect, plus
  * search/execute for the desktop gateway. There is no provider login: the
  * platform key lives with the deployment (cloud/self-host) or upstream behind
- * the gateway adapter. The runtime-facing proxy lives in
- * integrations-sandbox.ts.
+ * the gateway adapter. The per-provider half lives in integrations-provider.ts
+ * and the runtime-facing proxy in integrations-sandbox.ts.
  */
+export {
+  relayIntegrationUpstreamError,
+  signinRequired,
+} from "./integrations-errors";
+
 export interface IntegrationDeps {
   registry: IntegrationRegistry;
   /**
@@ -44,37 +46,9 @@ export interface IntegrationDeps {
   };
 }
 
-/** Resolve the provider from the URL segment, or 404. */
-function providerOr404(
-  registry: IntegrationRegistry,
-  id: string | undefined,
-  res: ServerResponse,
-): IntegrationProvider | null {
-  if (id && registry.has(id)) return registry.get(id);
-  json(res, 404, { error: `unknown integration provider '${id ?? ""}'` });
-  return null;
-}
+const SOURCE = "packages/host/src/routes/integrations.ts";
 
-/** 409 + code for "the user must sign in to Houston first" (shared with the
- *  sandbox proxy in integrations-sandbox.ts). */
-export const signinRequired = (res: ServerResponse) =>
-  json(res, 409, {
-    error: "sign in to Houston to use integrations",
-    code: "signin_required",
-  });
-
-export const relayIntegrationUpstreamError = (
-  res: ServerResponse,
-  err: unknown,
-): boolean => {
-  if (!(err instanceof IntegrationUpstreamError)) return false;
-  json(res, err.status, err.body);
-  return true;
-};
-
-// ── User-facing routes ───────────────────────────────────────────────────────
-
-export async function handleIntegrations(
+async function handleIntegrations(
   deps: { integrations?: IntegrationDeps },
   userId: UserId,
   method: string,
@@ -141,112 +115,51 @@ export async function handleIntegrations(
 
   const m = path.match(/^\/v1\/integrations\/([^/]+)\/(.+)$/);
   if (!m) return false;
-  const provider = providerOr404(registry, m[1], res);
-  if (!provider) return true;
-  const sub = m[2] ?? "";
-
-  try {
-    if (sub === "toolkits" && method === "GET") {
-      json(res, 200, { items: await provider.listToolkits() });
-      return true;
-    }
-    if (sub === "connections" && method === "GET") {
-      json(res, 200, { items: await provider.listConnections(userId) });
-      return true;
-    }
-    const connPoll = sub.match(/^connections\/([^/]+)$/)?.[1];
-    if (connPoll && method === "GET") {
-      const conn = await provider.connection(userId, connPoll);
-      if (!conn) json(res, 404, { error: "connection not found" });
-      else json(res, 200, conn);
-      return true;
-    }
-    if (sub === "connect" && method === "POST") {
-      const { toolkit } = await readJson(req);
-      if (!toolkit || typeof toolkit !== "string") {
-        json(res, 400, { error: "missing 'toolkit'" });
-        return true;
-      }
-      json(res, 200, await provider.connect(userId, toolkit));
-      return true;
-    }
-    if (sub === "disconnect" && method === "POST") {
-      const { toolkit, connectionId } = await readJson(req);
-      if (!toolkit || typeof toolkit !== "string") {
-        json(res, 400, { error: "missing 'toolkit'" });
-        return true;
-      }
-      // Optional `connectionId` narrows the removal to ONE account of the
-      // toolkit (a toolkit can hold several — two Gmail logins); absent, every
-      // account for the toolkit goes.
-      await provider.disconnect(
-        userId,
-        toolkit,
-        typeof connectionId === "string" && connectionId
-          ? connectionId
-          : undefined,
-      );
-      json(res, 200, { ok: true });
-      return true;
-    }
-    if (sub === "search" && method === "POST") {
-      const { query, app } = await readJson(req);
-      if (typeof query !== "string") {
-        json(res, 400, { error: "missing 'query'" });
-        return true;
-      }
-      // Optional `app` hard-scopes discovery to one named app (PRODUCT-1274);
-      // the desktop gateway adapter forwards it here verbatim. STRICTLY
-      // scoped — no unscoped fallback here: the sandbox proxy at the top of
-      // the chain owns that retry, so a scoped call through this route never
-      // smuggles other apps' actions into a caller's merge. The `scoped` echo
-      // tells a downstream remote adapter what became of the scope (absent =
-      // the provider ignored it, which the adapter must surface, not trust).
-      const result = await provider.search(
-        userId,
-        query,
-        undefined,
-        optionalTrimmed(app),
-      );
-      json(res, 200, {
-        items: result.items,
-        ...(result.scope === "resolved" ? { scoped: true } : {}),
-        ...(result.scope === "unresolved" ? { scoped: false } : {}),
-      });
-      return true;
-    }
-    if (sub === "execute" && method === "POST") {
-      const body = await readJson(req);
-      if (typeof body.action !== "string") {
-        json(res, 400, { error: "missing 'action'" });
-        return true;
-      }
-      const params =
-        body.params && typeof body.params === "object"
-          ? (body.params as Record<string, unknown>)
-          : {};
-      // Optional `account` targets one of the user's connected accounts for
-      // the action's toolkit (see IntegrationProvider.execute).
-      const account =
-        typeof body.account === "string" && body.account
-          ? body.account
-          : undefined;
-      json(
-        res,
-        200,
-        await provider.execute(userId, body.action, params, undefined, account),
-      );
-      return true;
-    }
-  } catch (err) {
-    if (err instanceof IntegrationSigninRequiredError) {
-      signinRequired(res);
-      return true;
-    }
-    if (relayIntegrationUpstreamError(res, err)) return true;
-    throw err;
-  }
-
-  json(res, 404, { error: "not found" });
+  await handleProviderRequest(
+    registry,
+    userId,
+    m[1],
+    m[2] ?? "",
+    method,
+    req,
+    res,
+  );
   return true;
 }
+
+/**
+ * The module owns the whole `/v1/integrations` subtree for EVERY method, which
+ * is what its prefix guard has always done: on a deployment with no
+ * integrations wired, anything in here answers 503 "integrations not
+ * configured" — the client learns the feature is absent rather than that its
+ * URL is wrong — and a wired one answers 404 for a provider or a sub it does
+ * not know. Nothing is normalised, so the bare and trailing-slash forms are
+ * separate paths the same handler answers.
+ *
+ * The custom-integrations group is mounted BEFORE this one for exactly this
+ * reason: this claim would otherwise swallow `/v1/integrations/custom/*`.
+ */
+defineRouteFamily({
+  group: "integrations",
+  phase: "user",
+  classification: "sdk",
+  source: SOURCE,
+  members: [
+    { method: "PUT", path: "/v1/integrations/session" },
+    { method: "POST", path: "/v1/integrations/reconnect-notice/dismiss" },
+    { method: "GET", path: "/v1/integrations" },
+    { method: "GET", path: "/v1/integrations/:provider/toolkits" },
+    { method: "GET", path: "/v1/integrations/:provider/connections" },
+    {
+      method: "GET",
+      path: "/v1/integrations/:provider/connections/:connectionId",
+    },
+    { method: "POST", path: "/v1/integrations/:provider/connect" },
+    { method: "POST", path: "/v1/integrations/:provider/disconnect" },
+    { method: "POST", path: "/v1/integrations/:provider/search" },
+    { method: "POST", path: "/v1/integrations/:provider/execute" },
+  ],
+  owns: ["/v1/integrations", "/v1/integrations/", "/v1/integrations/*rest"],
+  handler: ({ deps, userId, method, path, req, res }) =>
+    handleIntegrations(deps, userId, method, path, req, res),
+});

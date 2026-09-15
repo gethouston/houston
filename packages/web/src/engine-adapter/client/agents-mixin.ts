@@ -10,8 +10,11 @@ import type {
 } from "../../../../../ui/engine-client/src/types";
 import * as agents from "../agents";
 import * as controlPlane from "../control-plane";
+import { readAgentList } from "./agent-list";
+import { HoustonEngineError } from "./errors";
 import { deploymentServes } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
+import { viaSdk } from "./sdk-error";
 
 export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Agents extends Base {
@@ -19,7 +22,7 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (this.ctx.cp) {
         let list: Agent[];
         try {
-          list = await controlPlane.listAgents(this.ctx.cp);
+          list = await readAgentList(this.ctx.sdk, this.ctx.cp);
         } catch (e) {
           // A FAILED list is not "not loaded yet" (HOU-979). Left as the latter
           // it never resolves, so the provider probe skipped itself forever
@@ -49,11 +52,13 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
         // the full `{ name, claudeMd?, seeds? }` body, no refetch). The RETURNED
         // wire agent carries the id the color overlay needs — layer it on and map
         // to the UI shape callers expect.
-        const wire = await this.ctx.sdk.agents.writes.create({
-          name: req.name,
-          claudeMd: req.claudeMd,
-          seeds: req.seeds,
-        });
+        const wire = await viaSdk("/agents", () =>
+          this.ctx.sdk.agents.writes.create({
+            name: req.name,
+            claudeMd: req.claudeMd,
+            seeds: req.seeds,
+          }),
+        );
         this.ctx.noteAgentAdded(wire.id);
         return { agent: controlPlane.createdAgentToUi(wire, req.color) };
       }
@@ -67,7 +72,9 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (this.ctx.cp) {
         // SDK delegates the PATCH /agents/:id write; web carries the color
         // overlay across the (possibly new) id and maps to the UI shape.
-        const wire = await this.ctx.sdk.agents.writes.rename(agentId, newName);
+        const wire = await viaSdk(controlPlane.agentPath(agentId), () =>
+          this.ctx.sdk.agents.writes.rename(agentId, newName),
+        );
         // A rename mints a new id: the old one 404s from here on, so provider
         // routing must stop naming it (HOUSTON-APP-52F).
         if (wire.id !== agentId) {
@@ -91,7 +98,9 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (this.ctx.cp) {
         // SDK delegates the DELETE /agents/:id write; web forgets the deleted
         // agent's color overlay (was cp.deleteAgent's clearColor) after.
-        await this.ctx.sdk.agents.writes.delete(agentId);
+        await viaSdk(controlPlane.agentPath(agentId), () =>
+          this.ctx.sdk.agents.writes.delete(agentId),
+        );
         controlPlane.clearColor(agentId);
         // Neither the selection pref nor the known list may outlive the agent:
         // provider connects fall back to the next known agent, or the setup
@@ -155,17 +164,34 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
     async listInstalledConfigs(): Promise<InstalledConfig[]> {
       if (!this.ctx.cp) return [];
       // A deployment that advertises `agentConfigLibrary: false` (the hosted
-      // gateway) is skipped outright; the 404 fallback inside stays for
+      // gateway) is skipped outright; the 404 fallback below stays for
       // deployments that predate the flag (PRODUCT-1474).
       if (!(await deploymentServes(this.ctx, "agentConfigLibrary"))) return [];
-      return controlPlane.listInstalledConfigs(this.ctx.cp);
+      // SDK delegates the byte-identical GET /v1/agent-configs. It PROPAGATES
+      // the 404; web keeps swallowing it — the hosted gateway keeps no
+      // account-level config library (one pod per agent, no shared disk) and
+      // answers 404 for the route, the same honest answer as standalone web:
+      // nothing installed, the picker shows the bundled templates (HOU-688).
+      // Every other failure still propagates.
+      try {
+        return await viaSdk("/v1/agent-configs", () =>
+          this.ctx.sdk.agents.library.list(),
+        );
+      } catch (err) {
+        if (err instanceof HoustonEngineError && err.status === 404) return [];
+        throw err;
+      }
     }
     async installAgentFromGithub(
       req: InstallFromGithub,
     ): Promise<{ agentId: string }> {
       if (!this.ctx.cp)
         throw new Error("Installing agents needs a cloud workspace.");
-      return controlPlane.installAgentFromGithub(this.ctx.cp, req.githubUrl);
+      // SDK delegates the byte-identical POST /v1/agents/install-from-github
+      // with the `{ githubUrl }` body.
+      return viaSdk("/v1/agents/install-from-github", () =>
+        this.ctx.sdk.agents.library.installFromGithub(req.githubUrl),
+      );
     }
   }
   return Agents;
