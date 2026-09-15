@@ -128,8 +128,6 @@ export function AgentFilesMixin<TBase extends BaseCtor>(Base: TBase) {
         content,
       );
     }
-    async seedAgentSchemas(): Promise<void> {}
-    async migrateAgentFiles(): Promise<void> {}
   }
   return AgentFiles;
 }

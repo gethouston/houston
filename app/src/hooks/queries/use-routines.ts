@@ -52,15 +52,13 @@ export function useRoutines(agentPath: string | undefined) {
 }
 
 /**
- * What a routine WRITE leaves behind: that agent's routines list refetched, and
- * the scheduler resynced. The engine syncs on write already, but a redundant
- * client-side sync is cheap and protects against race-y reads after WS
- * reconnects. Shared by `useCreateRoutine` and the cross-agent writes so the
- * two can never drift apart on what a write invalidates.
+ * What a routine WRITE leaves behind: that agent's routines list refetched.
+ * The host reschedules on the write itself. Shared by `useCreateRoutine` and
+ * the cross-agent writes so the two can never drift apart on what a write
+ * invalidates.
  */
 function afterRoutineWrite(qc: QueryClient, agentPath: string): void {
   qc.invalidateQueries({ queryKey: queryKeys.routines(agentPath) });
-  tauriRoutines.syncScheduler(agentPath).catch(console.error);
 }
 
 /** What a RUN write leaves behind: that agent's run list refetched. */

@@ -81,15 +81,6 @@ export class HoustonClientBase {
     return this.ctx.sdk;
   }
 
-  // ---- lifecycle no-ops the shell calls ----
-  // The host owns the file watcher + routine scheduler; there is nothing for the
-  // client to start/stop/sync, so these resolve without touching the engine.
-  async startAgentWatcher(): Promise<void> {}
-  async stopAgentWatcher(): Promise<void> {}
-  async startRoutineScheduler(): Promise<void> {}
-  async stopRoutineScheduler(): Promise<void> {}
-  async syncRoutineScheduler(): Promise<void> {}
-
   wsUrl(): string {
     return "";
   }

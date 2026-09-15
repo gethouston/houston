@@ -17,7 +17,12 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
     "paths": {
-      "@houston/web-identity": ["./src/lib/identity/firebase-popup-stub.ts"]
+      "@houston/web-identity": ["./src/lib/identity/firebase-popup-stub.ts"],
+      // Mirrors the build-time alias in app/vite.config.ts: the specifier IS the
+      // adapter, so typecheck and runtime resolve to the same implementation.
+      "@houston-ai/engine-client": [
+        "../packages/web/src/engine-adapter/index.ts"
+      ]
     }
   },
   "include": ["src"]

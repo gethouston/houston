@@ -71,10 +71,6 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
         name: req?.name || "Personal",
       };
     }
-    async renameWorkspace(): Promise<Workspace> {
-      const { provider, model } = await this.ctx.activeOld();
-      return syntheticWorkspace(provider, model);
-    }
     // Delete a team space (PRODUCT-1410). Only an `org:<slug>` row is
     // deletable, and only through the gateway: the personal workspace is the
     // synthetic row every deployment keeps (a hosted personal space goes away

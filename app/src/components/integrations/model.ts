@@ -1,3 +1,4 @@
+import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   Capabilities,
   IntegrationConnection,
@@ -9,7 +10,7 @@ import { isIntegrationConnectionGoneError } from "../../lib/integration-connecti
  * server-side; the user only OAuths the apps themselves, no Composio account,
  * no sign-in step for the apps.
  */
-export const INTEGRATION_PROVIDER = "composio";
+export const INTEGRATION_PROVIDER: IntegrationProviderId = "composio";
 
 /**
  * Whether this deployment serves the integration routes at all. The host

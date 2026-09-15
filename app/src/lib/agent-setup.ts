@@ -43,11 +43,6 @@ export async function finishAgentSetup(
   }
 
   if (opts.routine) {
-    // The agent is brand new, so its scheduler was never started (create()
-    // doesn't go through setCurrent, and use-houston-init only starts
-    // schedulers that existed at launch). startScheduler is idempotent and
-    // picks up the just-written routine; plain syncScheduler would be a no-op
-    // for an unstarted agent.
     try {
       await tauriRoutines.create(
         agentPath,
@@ -62,7 +57,6 @@ export async function finishAgentSetup(
         // Same held-request posture as the config write above.
         { allowWhileWarming: true },
       );
-      await tauriRoutines.startScheduler(agentPath);
     } catch (e) {
       // The tauri wrapper surfaced its own error toast; leave a breadcrumb.
       logger.error(`[new-agent] routine setup failed: ${e}`);

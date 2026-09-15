@@ -1,28 +1,23 @@
 # @houston-ai/engine-client
 
-The TypeScript front door to the Houston engine. The specifier resolves to two
-different things on purpose, and both are load-bearing:
+The TypeScript front door to the Houston engine. The specifier
+`@houston-ai/engine-client` resolves to the **v3 host adapter**
+(`packages/web/src/engine-adapter/index.ts`) on every path: `app/vite.config.ts`
+and `packages/web/vite.config.ts` alias it at build time, and `app/tsconfig.json`
+and `packages/web/tsconfig.json` carry the matching `paths` entry at typecheck
+time. So "compiles" and "runs" are the same answer — a method the adapter does
+not implement is a compile error, not a run-time `TypeError`.
 
-- **At build and run time — the v3 host adapter.** `app/vite.config.ts` and
-  `packages/web/vite.config.ts` both alias `@houston-ai/engine-client` to
-  `packages/web/src/engine-adapter/index.ts`, which implements the client
-  surface against `packages/host` over HTTP + SSE. This is the code every
-  shipping build executes.
-- **At typecheck time — this package's `src/`.** No tsconfig carries a matching
-  `paths` entry, so `tsgo` resolves the specifier through `node_modules` to
-  `src/index.ts`. `src/client.ts` (`HoustonClient`) and `src/ws.ts`
-  (`EngineWebSocket`, `topics`) are therefore the type contract `app/src`
-  compiles against — `app/src/lib/engine.ts` types `getEngine()` as
-  `HoustonClient`. Keep a method here when `app/src` calls it.
+This package holds the half of the surface that is deployment-shape agnostic,
+which the adapter re-exports verbatim:
 
-`src/types.ts` is the shared v3 wire-type surface — the TypeScript projection of
-protocol v3 (`packages/protocol`) — and the adapter re-exports it, so it means
-the same thing on both resolution paths.
-
-Because the two paths are held in sync by hand, a signature that exists here and
-not on the adapter compiles but throws a `TypeError` at run time. So a method
-`app/src` stops calling is deleted here in the same change — that is what keeps
-"compiles" and "runs" the same answer.
+- `src/types.ts` — the shared v3 wire-type surface, the TypeScript projection of
+  protocol v3 (`packages/protocol`).
+- `src/store-catalog.ts` — the public Agent Store reads (anonymous, CORS-open).
+- `src/local-model-bridge.ts` — the `LocalModelBridgeAccess` port the desktop
+  bridge binds.
+- `src/retry-after.ts` — the `Retry-After` header parser every gateway fetch
+  uses to honour a waking pod's backoff.
 
 ## Assistant catalog
 

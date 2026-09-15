@@ -50,9 +50,6 @@
       "photoFailed": "Não foi possível usar essa foto"
     }
   },
-  "workspace": {
-    "title": "Nome do espaço"
-  },
   "appearance": {
     "title": "Aparência",
     "light": "Claro",
@@ -138,7 +135,6 @@
   },
   "version": "Versão {{version}}",
   "toasts": {
-    "workspaceRenamed": "Espaço de trabalho renomeado",
     "providerSwitched": "Mudou para {{provider}} ({{model}})",
     "versionCopied": "Versão copiada",
     "versionCopyFailed": "Não foi possível copiar a versão"

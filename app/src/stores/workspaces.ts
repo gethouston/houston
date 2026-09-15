@@ -59,7 +59,6 @@ interface WorkspaceState {
     options?: EngineCallOptions,
     mode?: WorkspaceDeleteMode,
   ) => Promise<void>;
-  rename: (id: string, newName: string) => Promise<void>;
   /** Set (or clear, with null) the workspace's UI-locale override. */
   setLocale: (id: string, locale: string | null) => Promise<void>;
   /** Drop the workspace list back to its initial (loading) state on an identity
@@ -157,17 +156,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   delete: (id, options, mode = "server-first") =>
     runWorkspaceDelete(id, options, get, set, mode),
-
-  rename: async (id, newName) => {
-    await tauriWorkspaces.rename(id, newName);
-    set((s) => ({
-      workspaces: s.workspaces.map((w) =>
-        w.id === id ? { ...w, name: newName } : w,
-      ),
-      current:
-        s.current?.id === id ? { ...s.current, name: newName } : s.current,
-    }));
-  },
 
   setLocale: async (id, locale) => {
     const updated = await tauriWorkspaces.setLocale(id, locale);

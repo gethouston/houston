@@ -103,7 +103,8 @@ export class AdapterContext {
     this.token = opts.token;
     const useCp =
       opts.controlPlane ??
-      (typeof window !== "undefined" && !!window.__HOUSTON_CP__);
+      (typeof window !== "undefined" &&
+        !!(window as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__);
     this._cp = useCp
       ? { baseUrl: opts.baseUrl.replace(/\/+$/, ""), token: opts.token }
       : null;

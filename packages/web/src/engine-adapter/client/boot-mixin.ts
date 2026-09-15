@@ -1,6 +1,10 @@
 import type { ProviderCatalog } from "@houston/protocol";
 import { retryAfterMsOf } from "../../../../../ui/engine-client/src/retry-after";
-import type { Capabilities } from "../../../../../ui/engine-client/src/types";
+import type {
+  Capabilities,
+  HealthResponse,
+  VersionResponse,
+} from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
 import { fetchCapabilities } from "./host-capabilities";
@@ -9,11 +13,11 @@ import type { BaseCtor } from "./mixin";
 export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
   class Boot extends Base {
     // ---- meta / boot ----
-    async health() {
+    async health(): Promise<HealthResponse> {
       const h = await this.ctx.engine.health();
-      return { status: h.status, version: h.version, protocol: 1 } as never;
+      return { status: h.status, version: h.version, protocol: 1 };
     }
-    async version() {
+    async version(): Promise<VersionResponse> {
       // gatewayAuthFetch on `/v1/version` (not `this.engine.version()`): the
       // runtime-protocol client asks `/version`, a path only the pi runtime
       // serves — the host's and the gateway's meta surface is `/v1/version`, so
@@ -32,7 +36,7 @@ export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
           retryAfterMsOf(res.headers),
         );
       }
-      return (await res.json()) as never;
+      return (await res.json()) as VersionResponse;
     }
     async capabilities(): Promise<Capabilities> {
       // Uncached on purpose: `role` is PER-SPACE, so the caller re-fetches after

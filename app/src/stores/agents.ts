@@ -5,12 +5,7 @@ import {
 } from "../lib/agent-selection";
 import { analytics } from "../lib/analytics";
 import { getEngine, isEngineReady } from "../lib/engine";
-import {
-  tauriAgents,
-  tauriPreferences,
-  tauriRoutines,
-  tauriWatcher,
-} from "../lib/tauri";
+import { tauriAgents, tauriPreferences } from "../lib/tauri";
 import type { Agent } from "../lib/types";
 import { useAgentProvisioningStore } from "./agent-provisioning";
 import { useDraftStore } from "./drafts";
@@ -21,16 +16,11 @@ export interface CreatedAgent {
 
 let loadAgentsGeneration = 0;
 
+/** What selecting an agent leaves behind: the pick survives a restart. The
+ *  host owns the file watcher and the routine scheduler for every agent it
+ *  serves, so there is nothing per-agent for the client to start. */
 function startAgentSideEffects(agent: Agent) {
   tauriPreferences.set("last_agent_id", agent.id);
-  // Start file watcher for AI-native reactivity
-  tauriWatcher
-    .start(agent.folderPath)
-    .catch((e) => console.error("[watcher] Failed to start:", e));
-  // Start routine scheduler for this agent
-  tauriRoutines
-    .startScheduler(agent.folderPath)
-    .catch((e) => console.error("[routines] Failed to start scheduler:", e));
 }
 
 interface AgentState {
@@ -199,10 +189,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   rename: async (workspaceId, id, newName) => {
     // The engine renames the folder on disk, so folderPath changes too. Use
     // the returned record instead of patching only `name`, or the stale path
-    // later reaches tauriWatcher.start and the watch fails with a "neither a
-    // file nor a directory" error toast (#298).
-    // Reject a roster snapshot started before the rename. It still carries the
-    // removed folder path and would restart its watcher after this mutation.
+    // survives in the roster and every later per-agent call 404s.
+    // Reject a roster snapshot started before the rename: it still carries the
+    // removed folder path and would reinstate it after this mutation.
     loadAgentsGeneration++;
     const updated = await tauriAgents.rename(workspaceId, id, newName);
     // A rename can change both id and folderPath; a warm-up probe pointed at
@@ -211,8 +200,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     set((s) => ({
       agents: s.agents.map((a) => (a.id === id ? updated : a)),
     }));
-    // If we renamed the agent we're viewing, re-select it so the file watcher
-    // and routine scheduler repoint at the new folder (the old one is gone).
+    // If we renamed the agent we're viewing, re-select it so the stored
+    // "last agent" pick names the surviving folder (the old one is gone).
     if (get().current?.id === id) {
       get().setCurrent(updated);
     }
