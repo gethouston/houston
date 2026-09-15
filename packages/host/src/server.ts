@@ -4,11 +4,7 @@ import {
   type Server,
   type ServerResponse,
 } from "node:http";
-import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
-// Build-time constant: esbuild inlines the JSON import into the bundle (and
-// vitest/tsx resolve it the same way), so the served version can never drift
-// from the package.json that shipped it.
-import { version as HOST_VERSION } from "../package.json";
+import type { Capabilities } from "@houston/protocol";
 import type { SharedEndpointStore } from "./credentials/remote-shared-endpoint-store";
 import {
   attachViewCapture,
@@ -22,11 +18,7 @@ import type {
   WorkspaceRuntime,
 } from "./domain/types";
 import type { EventHub } from "./events/hub";
-import {
-  type FeedbackPayload,
-  type FeedbackSender,
-  parseFeedbackPayload,
-} from "./feedback";
+import type { FeedbackSender } from "./feedback";
 import type { WorkspacePaths } from "./paths";
 import {
   type CredentialStore,
@@ -42,13 +34,12 @@ import {
   type AgentConfigsDeps,
   handleAgentConfigs,
 } from "./routes/agent-configs";
-import { handleAgents, podActivityStatus } from "./routes/agents";
+import { handleAgents } from "./routes/agents";
 import { type AssistantDeps, handleAssistant } from "./routes/assistant";
 import {
   type AssistantSandboxDeps,
   handleSandboxAssistant,
 } from "./routes/assistant-sandbox";
-import { handleCatalog } from "./routes/catalog";
 import { handleSandboxCredential } from "./routes/credential";
 import type { CredentialServeHealer } from "./routes/credential-healer";
 import { handleSandboxCredentialRevoked } from "./routes/credential-revoked";
@@ -58,8 +49,7 @@ import {
 } from "./routes/custom-integrations";
 import { handleCustomOAuthCallback } from "./routes/custom-integrations-oauth";
 import { handleCustomIntegrations } from "./routes/custom-integrations-user";
-import { handleEventStream } from "./routes/events-stream";
-import { bearer, json, readJson } from "./routes/http";
+import { bearer, json } from "./routes/http";
 import {
   handleIntegrations,
   type IntegrationDeps,
@@ -72,6 +62,7 @@ import { handlePortableAccount } from "./routes/portable";
 import { handlePortableFromStore } from "./routes/portable-from-store";
 import { handleSandboxProviderUsage } from "./routes/provider-usage";
 import { BodyTooLargeError } from "./routes/read-body";
+import { dispatchGroup } from "./routes/registry/all";
 import { handleRoutineFires } from "./routes/routine-fires";
 import { handleSandboxRoutines } from "./routes/routines-sandbox";
 import { refuseOutOfCoordinatorScope } from "./routes/sandbox-scope";
@@ -88,6 +79,9 @@ import type { TriggerEventLock } from "./triggers/fire";
 import type { Vfs } from "./vfs";
 
 export type { RuntimeProxy } from "./channel/proxy";
+// `/health`'s body shape is part of this server's published surface; the route
+// that serves it now lives in routes/meta.ts.
+export { healthBody } from "./routes/meta";
 
 /**
  * The operator-admin extension seam. The open server never imports an admin
@@ -288,16 +282,6 @@ function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
   res.setHeader("Access-Control-Expose-Headers", "Retry-After");
 }
 
-export function healthBody(deps: Pick<ControlPlaneDeps, "storeFenced">): {
-  status: "ok";
-  storeFenced?: boolean;
-} {
-  return {
-    status: "ok",
-    ...(deps.storeFenced ? { storeFenced: deps.storeFenced() } : {}),
-  };
-}
-
 /** Resolve the caller to a verified user id, or null if unauthenticated. */
 async function principal(
   deps: ControlPlaneDeps,
@@ -326,35 +310,16 @@ async function handle(
   const url = new URL(req.url || "/", "http://control-plane.local");
   const path = url.pathname;
 
+  const entry = { deps, method, path, url, req, res };
+
   // Public: health + the v3 meta surface (capabilities are not secrets; the UI
   // reads them before sign-in to shape itself).
-  if (method === "GET" && path === "/health") {
-    // The gateway may use storeFenced to change routing/readiness later. This
-    // change only surfaces the state and deliberately keeps health at 200.
-    return json(res, 200, healthBody(deps));
-  }
-  if (method === "GET" && path === "/v1/version") {
-    return json(res, 200, {
-      engine: "houston-host",
-      // The host package's semver — bumped when something meaningful ships,
-      // so the cloud update manager can compare pods against the current release.
-      version: HOST_VERSION,
-      protocol: PROTOCOL_VERSION,
-      // The exact git commit this image was built from (engine-pod-image.yml
-      // bakes BUILD_SHA into the engine-pod target); null on builds that don't
-      // set it (self-host, local dev).
-      build: process.env.BUILD_SHA || null,
-      chatHistoryMigrated: deps.chatHistoryMigrated ?? false,
-    });
-  }
-  if (method === "GET" && path === "/v1/capabilities") {
-    return json(res, 200, deps.capabilities);
-  }
+  if (await dispatchGroup("meta", entry)) return;
   // pi-ai's full static model catalog (every runnable provider + model), the
   // SAME on every deployment. Static + not user-scoped, so it rides the public
   // meta surface next to capabilities — the picker/AI-Models tab read it to
   // shape themselves.
-  if (handleCatalog(method, path, res)) return;
+  if (await dispatchGroup("catalog", entry)) return;
 
   // THE COORDINATOR'S REACH (routes/sandbox-scope.ts). Every /sandbox/* route
   // below authenticates a sandbox token, which is the right gate for an
@@ -422,35 +387,15 @@ async function handle(
     if (addressed?.[1]) deps.addressedAgent(decodeURIComponent(addressed[1]));
   }
 
+  const authenticated = { ...entry, userId };
+
   // The global reactivity stream (SSE): this user's domain-change events only.
   // Long-lived — do not fall through, and never end the response here.
-  if (method === "GET" && path === "/v1/events") {
-    if (!deps.events) return json(res, 503, { error: "events not configured" });
-    return handleEventStream(deps.events, userId, res, (cb) =>
-      req.on("close", cb),
-    );
-  }
-
-  // Pod-level busy probe: one answer for the whole host, so the control
-  // plane can tell whether this pod is safe to restart (busy-aware engine
-  // rolls) without enumerating agents — the waker's idle sweep stays on the
-  // per-agent route. Deliberately NOT under /agents/ — the agentRequests
-  // counter below counts only that prefix, so this probe never counts itself
-  // (no self-subtraction, unlike the per-agent route).
-  if (method === "GET" && path === "/activity") {
-    return json(res, 200, await podActivityStatus(deps));
-  }
-
-  // Prometheus text exposition of the boot-span ledger (HOU-1011). Pods are
-  // never scraped in production (they push boot reports to the gateway); this
-  // route is the local/debug window onto the same numbers.
-  if (method === "GET" && path === "/metrics") {
-    if (!deps.metrics) return json(res, 404, { error: "not found" });
-    const body = await deps.metrics.render();
-    res.writeHead(200, { "content-type": deps.metrics.contentType });
-    res.end(body);
-    return;
-  }
+  if (await dispatchGroup("events", authenticated)) return;
+  // Pod-level busy probe for the control plane's busy-aware engine rolls.
+  if (await dispatchGroup("pod-activity", authenticated)) return;
+  // Prometheus text exposition of the boot-span ledger (HOU-1011).
+  if (await dispatchGroup("metrics", authenticated)) return;
 
   if (
     deps.mountAdmin &&
@@ -459,24 +404,8 @@ async function handle(
     return;
 
   // "Send feedback" from the web build: same payload the desktop files to Linear
-  // via Tauri, fronted here so the browser never holds the Linear key. Errors
-  // surface as real statuses — the dialog shows them (beta policy: no silent loss).
-  if (path === "/feedback" && method === "POST") {
-    if (!deps.feedback)
-      return json(res, 503, { error: "feedback intake not configured" });
-    let payload: FeedbackPayload;
-    try {
-      payload = parseFeedbackPayload(await readJson(req));
-    } catch (err) {
-      // An oversized body is a 413 (mapped by the top-level handler), not a
-      // malformed-payload 400 — let it propagate rather than mislabel it.
-      if (err instanceof BodyTooLargeError) throw err;
-      return json(res, 400, {
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-    return json(res, 200, { id: await deps.feedback.send(payload, userId) });
-  }
+  // via Tauri, fronted here so the browser never holds the Linear key.
+  if (await dispatchGroup("feedback", authenticated)) return;
 
   // User-level resources (workspaces, preferences) — no agent in the path.
   // Marketplace reads (skills.sh search/popular, GitHub repo discovery) also

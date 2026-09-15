@@ -1,0 +1,5 @@
+{
+  "$comment": "Written exceptions for scripts/check-sdk-parity.ts. Every entry needs a reason of at least 20 characters saying WHY parity stops here; an entry whose violation no longer reproduces is reported as stale and must be deleted in the PR that fixed it. `baseline` may only go down — lowering it is the mandatory last step of every fix, and raising it is a visible diff a reviewer must accept. Empty on purpose today: the host's route registry holds only the migrated routes, so the large sdk-route-unbound / sdk-method-unserved counts the report prints are an artefact of the in-progress migration (PRODUCT-1820) and will disappear as the waves land — excusing them one by one would bury the real ones.",
+  "baseline": 0,
+  "entries": []
+}

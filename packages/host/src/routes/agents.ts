@@ -66,6 +66,7 @@ import { handlePortableAnonymize } from "./portable-anonymize";
 import { handlePortablePreview } from "./portable-preview";
 import { handlePortableStore } from "./portable-store";
 import { MAX_JSON_BYTES, readBody } from "./read-body";
+import { defineRoute, dispatchGroup } from "./registry";
 import { handleRoutineRuns } from "./routine-runs";
 import { handleSkills } from "./skills";
 import { handleSkillsManifest } from "./skills-manifest";
@@ -159,6 +160,32 @@ async function activityStatus(
  * unconfigured, or that throws while probed counts as busy rather than
  * failing the whole answer.
  */
+/**
+ * `GET /agents/:agentId/activity` — the gateway's per-agent idle-sleep probe.
+ * It reports whether a runtime turn or a routine run is still active without
+ * falling through to the runtime dispatch surface below.
+ */
+defineRoute({
+  group: "agent-activity",
+  method: "GET",
+  path: "/agents/:agentId/activity",
+  phase: "agent",
+  classification: "sdk",
+  // A POST here must NOT 405: today it falls past this check into the generic
+  // dispatch and is proxied to the agent's own runtime.
+  methodMismatch: "fallthrough",
+  source: "packages/host/src/routes/agents.ts",
+  async handler({ deps, authz, res }) {
+    const status = await activityStatus(deps, {
+      workspace: authz.workspace,
+      agent: authz.agent,
+    });
+    if (!status) return noChannel(res, authz.workspace.runtime);
+    if ("error" in status) return json(res, 503, { error: status.error });
+    json(res, 200, status);
+  },
+});
+
 export async function podActivityStatus(deps: AgentRouteDeps): Promise<{
   busy: boolean;
   activeRequests: number;
@@ -812,33 +839,18 @@ export async function handleAgents(
   if (await handleRoutineRuns(deps, userId, method, path, req, res))
     return true;
 
-  const activity = path.match(/^\/agents\/([^/]+)\/activity$/);
-  if (activity && method === "GET") {
-    const agentId = activity[1] ? decodeURIComponent(activity[1]) : undefined;
-    if (!agentId) {
-      json(res, 404, { error: "not found" });
-      return true;
-    }
-    const authz = await authorizeAgent(deps, userId, agentId);
-    if (!authz.ok) {
-      json(res, authz.status, { error: authz.reason });
-      return true;
-    }
-    const status = await activityStatus(deps, {
-      workspace: authz.workspace,
-      agent: authz.agent,
-    });
-    if (!status) {
-      noChannel(res, authz.workspace.runtime);
-      return true;
-    }
-    if ("error" in status) {
-      json(res, 503, { error: status.error });
-      return true;
-    }
-    json(res, 200, status);
+  if (
+    await dispatchGroup("agent-activity", {
+      deps,
+      userId,
+      method,
+      path,
+      url,
+      req,
+      res,
+    })
+  )
     return true;
-  }
 
   if (await handleApprovalRead(deps, userId, method, path, res)) return true;
 
