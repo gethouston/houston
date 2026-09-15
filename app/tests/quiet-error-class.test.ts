@@ -4,6 +4,7 @@ import { StoreApiError } from "../../packages/agentstore-client/src/errors.ts";
 import {
   agentKeyOf,
   classifyQuietError,
+  quietBurstKey,
   quietErrorDetails,
 } from "../src/lib/quiet-error-class.ts";
 
@@ -204,5 +205,35 @@ describe("agentKeyOf", () => {
   it("is null when no layer scoped the call", () => {
     strictEqual(agentKeyOf(new TypeError("Load failed")), null);
     strictEqual(agentKeyOf(undefined, { agentPath: "" }), null);
+  });
+});
+
+// PRODUCT-1825 (HOUSTON-APP-5CG): one transport drop fails every live query
+// at once, so the offline class collapses to one event per episode; the
+// waking class stays per (command, agent) because it feeds the per-agent
+// stuck-wake tracker.
+describe("quietBurstKey", () => {
+  it("collapses every offline command into one key", () => {
+    strictEqual(
+      quietBurstKey("offline", "integration_toolkits", null),
+      quietBurstKey("offline", "list_agents", "agent-a"),
+    );
+  });
+
+  it("keeps waking answers distinct per command and agent", () => {
+    const a = quietBurstKey("engine_waking", "read_agent_file", "agent-a");
+    strictEqual(a, "engine_waking:read_agent_file:agent-a");
+    strictEqual(
+      a === quietBurstKey("engine_waking", "read_agent_file", "agent-b"),
+      false,
+    );
+    strictEqual(
+      a === quietBurstKey("engine_waking", "load_chat_history", "agent-a"),
+      false,
+    );
+    strictEqual(
+      quietBurstKey("engine_waking", "read_agent_file", null),
+      "engine_waking:read_agent_file:",
+    );
   });
 });

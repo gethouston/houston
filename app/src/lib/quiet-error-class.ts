@@ -53,6 +53,27 @@ export function classifyQuietError(err: unknown): QuietErrorClass | null {
   return null;
 }
 
+/**
+ * The burst-gate key a quiet-class report collapses on.
+ *
+ * A transport drop (`offline`) fails EVERY live query on the device at once,
+ * and each one reaches the report path carrying the same message and no
+ * status: keyed per command, one sleep-wake filed a dozen events in the same
+ * second (HOUSTON-APP-5CG, PRODUCT-1825), inflating the fixed issue against
+ * the Sentry quota while saying nothing the first event did not. So `offline`
+ * keys on the class alone: one episode, one event, whose `source` tag is the
+ * command that lost first. Every other class keeps (class, command, agent) —
+ * a waking answer is per agent and feeds the per-agent stuck-wake tracker.
+ */
+export function quietBurstKey(
+  kind: QuietErrorClass,
+  command: string,
+  agent: string | null,
+): string {
+  if (kind === "offline") return kind;
+  return `${kind}:${command}:${agent ?? ""}`;
+}
+
 export interface QuietErrorDetails {
   /** HTTP status of the gateway answer; null for a transport drop. */
   status: number | null;
