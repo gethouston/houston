@@ -5,8 +5,9 @@
  * `app/src/lib/desktop-native-commands.ts` declares the ONLY capabilities the
  * frontend may reach outside `@houston/sdk` — the ones that are properties of
  * the user's machine rather than of Houston. That declaration is worth nothing
- * unless three other files agree with it: `os-bridge.ts` (the only caller), the
- * Rust `generate_handler!` block (the only implementer), and the web shim
+ * unless three other places agree with it: `app/src/lib/os-bridge/` (the only
+ * caller), the Rust `generate_handler!` block (the only implementer), and the
+ * web shim
  * (`packages/web` reuses `app/src` verbatim in a browser, where an unhandled
  * command throws at runtime).
  *
@@ -20,22 +21,25 @@
  *   3. Every declared command is a `case` label of the dispatch in
  *      `packages/web/src/shims/tauri-core.ts`, or is on the documented
  *      identity-session exemption.
- *   4. No file under `app/src/` other than `os-bridge.ts` contains `invoke(`
- *      or imports `invoke` at all.
+ *   4. No file under `app/src/` outside `app/src/lib/os-bridge/` contains
+ *      `invoke(` or imports `invoke` at all.
  *   5. Every `@tauri-apps/<specifier>` imported by `app/src` has a shim alias
  *      in `packages/web/vite.config.ts` AND a path mapping in its tsconfig.
  *
  * Run: node scripts/check-desktop-native.mjs   (root script: pnpm check)
  */
 import { readFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { readSources } from "./lib/app-sources.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const appSrc = join(root, "app", "src");
 const webDir = join(root, "packages", "web");
-const BRIDGE = join(appSrc, "lib", "os-bridge.ts");
+// One module per native category, so the trailing separator matters: without
+// it the prefix would also excuse `app/src/lib/os-bridge.ts`, the barrel that
+// re-exports them and must never invoke anything itself.
+const BRIDGE_DIR = join(appSrc, "lib", "os-bridge") + sep;
 
 const files = readSources(appSrc);
 
@@ -129,22 +133,22 @@ for (const command of declared.keys())
       `packages/web/src/shims/tauri-core.ts has no case for invoke("${command}")`,
     );
 
-// 4. The invariant os-bridge.ts states: it is the only caller. Both the call
-// and the IMPORT are checked, because `import { invoke as run }` would make the
+// 4. The invariant the bridge states: it is the only caller. Both the call and
+// the IMPORT are checked, because `import { invoke as run }` would make the
 // call spelling anything at all.
 const CORE_IMPORT =
   /import\s*\{([^}]*)\}\s*from\s*["']@tauri-apps\/api\/core["']/g;
 for (const { path, src } of files) {
-  if (path === BRIDGE) continue;
+  if (path.startsWith(BRIDGE_DIR)) continue;
   const where = relative(root, path);
   if (/\binvoke(?:<[^>]*>)?\(/.test(src))
     errors.push(
-      `${where} calls invoke( — only app/src/lib/os-bridge.ts may; add an os* wrapper there and import it`,
+      `${where} calls invoke( — only app/src/lib/os-bridge/ may; add an os* wrapper to the matching category module there and import it from "os-bridge"`,
     );
   for (const m of src.matchAll(CORE_IMPORT))
     if (/\binvoke\b/.test(m[1]))
       errors.push(
-        `${where} imports invoke from @tauri-apps/api/core — only app/src/lib/os-bridge.ts may hold it`,
+        `${where} imports invoke from @tauri-apps/api/core — only app/src/lib/os-bridge/invoke.ts may hold it`,
       );
 }
 
@@ -174,7 +178,7 @@ if (errors.length) {
   console.error(
     "\nThe rule: app/src may leave @houston/sdk only for a capability of the " +
       "user's MACHINE, declared in app/src/lib/desktop-native-commands.ts and " +
-      "invoked only from app/src/lib/os-bridge.ts.\n",
+      "invoked only from app/src/lib/os-bridge/.\n",
   );
   process.exit(1);
 }
