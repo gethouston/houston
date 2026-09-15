@@ -11,10 +11,9 @@
  * unchanged, so every caller is untouched.
  *
  * There is deliberately NO catch-all Proxy: the old adapter masked unknown
- * methods with `async () => []`, a silent-failure hazard. Legacy desktop/Rust
- * methods that don't exist on the host engine now throw explicitly
- * ({@link LegacyUnsupportedMixin}); a genuinely undefined method throws a real
- * TypeError instead of resolving to `[]`.
+ * methods with `async () => []`, a silent-failure hazard. A method this client
+ * does not define is `undefined`, so a stray call is a real TypeError the
+ * caller can see and report instead of a silent `[]`.
  */
 export type { HoustonClientOptions } from "./client/context";
 export {
@@ -33,13 +32,13 @@ import { AssistantMixin } from "./client/assistant-mixin";
 import { HoustonClientBase } from "./client/base";
 import { BillingMixin } from "./client/billing-mixin";
 import { BootMixin } from "./client/boot-mixin";
+import { ChatControlsMixin } from "./client/chat-controls-mixin";
 import { ChatHistoryMixin } from "./client/chat-history-mixin";
 import { ChatSendMixin } from "./client/chat-send-mixin";
 import { ConfigPrefsMixin } from "./client/config-prefs-mixin";
 import type { HoustonClientOptions } from "./client/context";
 import { CustomIntegrationsMixin } from "./client/custom-integrations-mixin";
 import { IntegrationsMixin } from "./client/integrations-mixin";
-import { LegacyUnsupportedMixin } from "./client/legacy-unsupported-mixin";
 import { MarketplaceMixin } from "./client/marketplace-mixin";
 import { MeProfileMixin } from "./client/me-profile-mixin";
 import type { BaseCtor } from "./client/mixin";
@@ -68,7 +67,6 @@ import { WorkspacesMixin } from "./client/workspaces-mixin";
  * `client/` is listed, and the fold exposes each one's methods.
  */
 export const MIXINS = [
-  LegacyUnsupportedMixin,
   PortableMixin,
   StoreMixin,
   ApiKeysMixin,
@@ -85,6 +83,7 @@ export const MIXINS = [
   ProviderStatusMixin,
   ChatHistoryMixin,
   ChatSendMixin,
+  ChatControlsMixin,
   MarketplaceMixin,
   SkillsMixin,
   RoutinesMixin,

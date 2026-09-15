@@ -17,6 +17,10 @@
  * - `request_connection` APPENDS a connect step, deduped by normalized toolkit —
  *   a repeat call for the same toolkit updates its reason (ids `c1`..`cN` in
  *   first-seen order).
+ * - `request_hands_on` APPENDS an errand the user must finish on a Houston
+ *   screen themselves, deduped by screen (ids `h1`..`hN`). It closes
+ *   the sequence: a connection unblocks the agent's own work, an errand does
+ *   not.
  * - The recorded {@link PendingInteraction} is the question steps THEN the
  *   signin step THEN the connect steps, so the UI walks the user through
  *   everything the model queued in one flow. Any single kind alone still yields
@@ -48,6 +52,7 @@
 export {
   recordConnection,
   recordCredentialRequest,
+  recordHandsOn,
   recordProviderConnection,
   recordSignin,
 } from "./interaction-access";

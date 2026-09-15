@@ -1,11 +1,13 @@
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { DESKTOP_NATIVE_COMMANDS } from "../../app/src/lib/desktop-native-commands.ts";
 import { listRoutes } from "../../packages/host/src/routes/registry/all.ts";
 import { extractCatalog } from "../../ui/engine-client/scripts/assistant-extractor.ts";
 import { assistantPaths } from "../../ui/engine-client/scripts/assistant-paths.ts";
+import { type AdapterMethod, classifyAdapter } from "./adapter-methods.ts";
 
-/** The three route sources the parity report joins, and the key it joins on. */
+/** The four client/route sources the parity report joins, and the join key. */
 
 export const repoRoot = resolve(
   dirname(fileURLToPath(import.meta.url)),
@@ -96,6 +98,50 @@ function restSpelled(route: {
  * module tree is read: the web adapter is a surface that BINDS the SDK, not a
  * second client whose routes would count as bound.
  */
+/** What the SHIPPED app does, split three ways. */
+export interface DesktopCalls {
+  /** Adapter methods that delegate their request to an `@houston/sdk` method. */
+  sdk: AdapterMethod[];
+  /** Tauri commands the desktop is declared to reach natively (§ the rule in
+   *  `app/src/lib/desktop-native-commands.ts`); the native boundary's own gate
+   *  is `scripts/check-desktop-native.mjs`. */
+  native: string[];
+  /** Adapter methods that reach a server with no SDK method behind them. */
+  unbound: AdapterMethod[];
+}
+
+/** Every non-test `.ts` under `directory`, at any depth. */
+function sourcesUnder(directory: string): string[] {
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory()
+      ? sourcesUnder(join(directory, entry.name))
+      : entry.name.endsWith(".ts") && !entry.name.endsWith(".test.ts")
+        ? [join(directory, entry.name)]
+        : [],
+  );
+}
+
+/**
+ * The client side of parity: what the app the user runs actually issues.
+ *
+ * The adapter is read WHOLE (`cp/` and the helper modules beside the mixins,
+ * not just `client/*-mixin.ts`) because a mixin method's request is usually
+ * made one or two calls deeper; only the mixin classes publish methods, so
+ * only they are classified. One adapter covers both surfaces — the desktop
+ * aliases `@houston-ai/engine-client` to it and `packages/web` composes the
+ * same `app/src` — so there is no separate desktop input to keep in step.
+ */
+export function desktopCalls(): DesktopCalls {
+  const methods = classifyAdapter(
+    sourcesUnder(resolve(repoRoot, "packages/web/src/engine-adapter")),
+  );
+  return {
+    sdk: methods.filter((method) => method.bound),
+    native: DESKTOP_NATIVE_COMMANDS.map(([command]) => command),
+    unbound: methods.filter((method) => method.unbound),
+  };
+}
+
 export function sdkMethods(): {
   routed: SdkMethod[];
   unroutable: { name: string; reason: string }[];

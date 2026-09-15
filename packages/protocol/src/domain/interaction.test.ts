@@ -1,6 +1,10 @@
 import { expect, expectTypeOf, test } from "vitest";
 import {
+  HANDS_ON_SURFACES,
+  type HandsOnSurface,
   hasOnlySuggestionSteps,
+  isHandsOnSurface,
+  isInteractionStep,
   isPendingInteraction,
   type PendingInteraction,
   parsePendingInteraction,
@@ -434,4 +438,60 @@ test("resolveInteractionPatch: a MALFORMED payload is absent, never 'keep what's
       status: "needs_you",
     }),
   ).toEqual({ kind: "keep" });
+});
+
+test("a hands-on errand survives the wire guard and keeps its optional reason", () => {
+  const step = {
+    kind: "hands_on",
+    id: "h1",
+    surface: "apiKeys",
+    reason: "Copy the key Houston shows you once.",
+  };
+  expect(isPendingInteraction({ steps: [step] })).toBe(true);
+  // Stored VERBATIM: the reason is the model's own words to the person, so a
+  // round trip through the wire must not reword or drop it.
+  expect(parsePendingInteraction({ steps: [step] })).toEqual({ steps: [step] });
+  expect(
+    isPendingInteraction({
+      steps: [{ kind: "hands_on", id: "h1", surface: "billing" }],
+    }),
+  ).toBe(true);
+  for (const malformed of [
+    { kind: "hands_on", id: "h1" },
+    { ...step, surface: "" },
+    { ...step, surface: 3 },
+    { ...step, reason: 3 },
+  ])
+    expect(isInteractionStep(malformed)).toBe(false);
+});
+
+test("the hands-on vocabulary is closed and its guard agrees with the union", () => {
+  // The app navigates by these names; a screen it cannot open must never reach
+  // a card, so the tool refuses anything outside the list at the source.
+  expect([...HANDS_ON_SURFACES]).toEqual([
+    "apiKeys",
+    "billing",
+    "files",
+    "routineWebhook",
+    "orgDanger",
+  ]);
+  for (const surface of HANDS_ON_SURFACES)
+    expect(isHandsOnSurface(surface)).toBe(true);
+  for (const junk of ["", "settings", "toString", 7, null, undefined])
+    expect(isHandsOnSurface(junk)).toBe(false);
+  expectTypeOf<
+    (typeof HANDS_ON_SURFACES)[number]
+  >().toEqualTypeOf<HandsOnSurface>();
+});
+
+test("a hands-on errand is a BLOCKING step, void once the user closes the mission", () => {
+  const errand = { kind: "hands_on", id: "h1", surface: "billing" } as const;
+  expect(hasOnlySuggestionSteps([errand])).toBe(false);
+  expect(
+    resolveInteractionPatch({
+      patched: undefined,
+      stored: { steps: [errand] },
+      status: "done",
+    }),
+  ).toEqual({ kind: "clear" });
 });

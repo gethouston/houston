@@ -9,6 +9,7 @@ import {
 import { credentialTools } from "../session/tools/credential-tools";
 import { makeSkillDirectoryTools } from "../session/tools/find-skills";
 import { makeIntegrationTools } from "../session/tools/integrations";
+import { makeRequestHandsOnTool } from "../session/tools/request-hands-on";
 import { makeRequestProviderConnectionTool } from "../session/tools/request-provider-connection";
 import { makeSaveLearningTool } from "../session/tools/save-learning";
 import { makeSaveRoutineTool } from "../session/tools/save-routine";
@@ -50,7 +51,10 @@ export function buildTurnHostTools(
   const enabled = capabilities(turn);
   return [
     ...(enabled.providerConnections
-      ? [makeRequestProviderConnectionTool()]
+      ? [
+          makeRequestProviderConnectionTool(),
+          makeRequestHandsOnTool({ personalAssistant }),
+        ]
       : []),
     ...(enabled.integrations
       ? [

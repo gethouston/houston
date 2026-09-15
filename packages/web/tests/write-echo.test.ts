@@ -12,25 +12,16 @@ import { afterEach, expect, test, vi } from "vitest";
  * the echo fires on the settle path and on other writes, with the correct keys,
  * and that its shape is byte-identical to a server frame's.
  *
- * The control-plane module is mocked so cp-mode writes resolve without a network,
- * letting us observe the echo the client pushes onto the in-process bus. The
- * board read/PATCH (the settle path), the routine create and the agent-file PUT
- * go through `@houston/sdk` instead, so those are served by a stubbed `fetch`
- * rather than a module mock.
+ * Every write here goes through `@houston/sdk` and is served by a stubbed
+ * `fetch`; only the global `/v1/events` subscription is mocked away, so the bus
+ * carries nothing but the echoes the client itself pushed.
  */
 vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
     await importOriginal<
       typeof import("../src/engine-adapter/control-plane")
     >();
-  return {
-    ...actual,
-    runtimeClientFor: vi.fn(() => ({
-      cancel: vi.fn(async () => ({ cancelled: false })),
-      setSettings: vi.fn(async () => {}),
-    })),
-    subscribeEvents: vi.fn(() => () => {}),
-  };
+  return { ...actual, subscribeEvents: vi.fn(() => () => {}) };
 });
 
 import { bus, emitLocalEcho } from "../src/engine-adapter/bus";
@@ -70,17 +61,19 @@ function stubHostFetch() {
     session_key: "sk-1",
     updated_at: 0,
   };
-  globalThis.fetch = vi.fn(async (_url: unknown, init?: RequestInit) =>
-    (init?.method ?? "GET") === "GET"
-      ? new Response(JSON.stringify({ items: [row] }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        })
-      : new Response(JSON.stringify(row), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-  ) as unknown as typeof fetch;
+  globalThis.fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
+    // The Stop answers "nothing was in flight" — the orphan the settle path is
+    // about. Everything else echoes the row back.
+    const body = String(url).endsWith("/cancel")
+      ? { ok: true, cancelled: false }
+      : (init?.method ?? "GET") === "GET"
+        ? { items: [row] }
+        : row;
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }) as unknown as typeof fetch;
 }
 
 test("the settle path echoes ActivityChanged with the agent key", async () => {

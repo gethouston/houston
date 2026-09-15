@@ -2,11 +2,9 @@ import { Button, ConfirmDialog } from "@houston-ai/core";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCapabilities } from "../../../hooks/use-capabilities";
+import { useSurfaceGates } from "../../../hooks/use-surface-gates";
 import { showExpectedStateToast } from "../../../lib/error-toast";
 import { openHome } from "../../../lib/home-nav";
-import { canDeleteWorkspace } from "../../../lib/org-roles";
-import { isTeamWorkspace } from "../../../lib/space-id";
 import { tauriOrg } from "../../../lib/tauri";
 import {
   canDeleteOptimistically,
@@ -22,11 +20,12 @@ import { SettingsControlRow } from "../settings-row";
 /**
  * Settings → Danger Zone: delete the ACTIVE team space for good (PRODUCT-1410).
  *
- * Shown only when all three hold — the deployment can delete a space at all
- * (`capabilities.workspaceDelete`, the gateway's feature-detect flag: absent on
- * desktop/self-host, where the one personal workspace is not deletable, and on
- * gateways that predate the route), the active space is a team (a personal
- * space goes with the account, never on its own), and the caller owns it
+ * Shown on `showWorkspaceDanger`, which holds when all three do — the
+ * deployment can delete a space at all (`capabilities.workspaceDelete`, the
+ * gateway's feature-detect flag: absent on desktop/self-host, where the one
+ * personal workspace is not deletable, and on gateways that predate the route),
+ * the active space is a team (a personal space goes with the account, never on
+ * its own), and the caller owns it
  * (PRODUCT-1247). Cosmetic gates all: the gateway is the sole enforcer, and
  * its two business rejections (`has_members`, `subscription_active`) come
  * back as plain informational toasts that say what to do first.
@@ -43,7 +42,7 @@ import { SettingsControlRow } from "../settings-row";
  */
 export function DangerSection() {
   const { t } = useTranslation("settings");
-  const { capabilities } = useCapabilities();
+  const { showWorkspaceDanger } = useSurfaceGates();
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const deleteWorkspace = useWorkspaceStore((s) => s.delete);
   const loadAgents = useAgentStore((s) => s.loadAgents);
@@ -51,9 +50,10 @@ export function DangerSection() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   if (!currentWorkspace) return null;
-  if (!capabilities?.workspaceDelete) return null;
-  if (!isTeamWorkspace(currentWorkspace.id)) return null;
-  if (!canDeleteWorkspace(capabilities)) return null;
+  // Read from the shared gates so that whatever SENDS a person here — the
+  // agent's hands-on errand card offers to open this very screen — asks the
+  // same question this block answers.
+  if (!showWorkspaceDanger) return null;
 
   // The active space switched under the user (the space they deleted owned
   // this Settings screen), so land them on home to make the switch visible.

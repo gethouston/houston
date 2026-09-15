@@ -100,9 +100,10 @@ pins the contract.
 
 ## Parity Guard
 
-`scripts/check-tauri-shims.mjs` runs during `typecheck` and `build`. It fails if
-`app/src` imports a new Tauri module or invokes a new native command that this
-package has not shimmed.
+`scripts/check-desktop-native.mjs` runs during `typecheck` and `build`, and from
+the root `pnpm check`. It fails if `app/src` imports a new Tauri module or
+invokes a native command this package has not shimmed, and it holds the rest of
+the native boundary too (see `app/src/lib/desktop-native-commands.ts`).
 
 ## Relationship To Other Frontends
 

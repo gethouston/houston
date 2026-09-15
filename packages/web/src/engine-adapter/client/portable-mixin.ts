@@ -11,7 +11,6 @@ import type {
   PortableUploadPreviewResponse,
 } from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
-import * as migration from "../migration";
 import * as portable from "../portable";
 import { importFromStoreLink } from "../portable-from-store";
 import { install } from "../portable-install";
@@ -82,13 +81,20 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
       });
     }
     // ---- agent data migration (agent-scoped export/import) — host only ----
+    // Delegated to `sdk.migration` (`packages/sdk/src/modules/migration`).
+    // "Copy an agent" runs both halves against this engine; the desktop→cloud
+    // wizard drives the same routes over its own two peers (`app/src/lib/
+    // cloud-migration-transport.ts`), which is why neither half degrades here.
     async migrationExport(
       agentPath: string,
       paths: string[],
     ): Promise<ArrayBuffer> {
       if (!this.ctx.cp)
         throw new Error("Copying agent data needs a connected host.");
-      return migration.migrationExport(this.ctx.cp, agentPath, paths);
+      return viaSdk(
+        `/agents/${encodeURIComponent(agentPath)}/migration/export`,
+        () => this.ctx.sdk.migration.migrationExport(agentPath, paths),
+      );
     }
     async migrationImport(
       agentPath: string,
@@ -97,7 +103,10 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<MigrationImportResult> {
       if (!this.ctx.cp)
         throw new Error("Copying agent data needs a connected host.");
-      return migration.migrationImport(this.ctx.cp, agentPath, bytes, opts);
+      return viaSdk(
+        `/agents/${encodeURIComponent(agentPath)}/migration/import`,
+        () => this.ctx.sdk.migration.migrationImport(agentPath, bytes, opts),
+      );
     }
   }
   return Portable;

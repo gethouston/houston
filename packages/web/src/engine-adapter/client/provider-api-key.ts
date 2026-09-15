@@ -3,6 +3,7 @@ import * as controlPlane from "../control-plane";
 import { credentialSiblings, toNewProvider } from "../synthetic";
 import type { AdapterContext } from "./context";
 import { requireProviderRouting } from "./provider-routing";
+import { viaSdk } from "./sdk-error";
 
 /**
  * Connect an API-key provider (OpenCode Zen / Go, OpenRouter, Gemini, Bedrock):
@@ -34,9 +35,12 @@ export async function connectApiKey(
     // lands on this space's central store and the agent created next reads it.
     // No per-agent settings exist yet to flip.
     const agentId = ctx.providerAgentId();
+    const credentials = ctx.sdk.providers.credentials;
     if (!agentId) {
       for (const target of targets) {
-        await controlPlane.setSetupApiKey(ctx.cp, target, apiKey, endpoint);
+        await viaSdk("/setup-runtime/credential/api-key", () =>
+          credentials.setSetupApiKey(target, apiKey, endpoint),
+        );
       }
       emitEvent("ProviderLoginComplete", {
         provider: name,
@@ -46,7 +50,10 @@ export async function connectApiKey(
       return;
     }
     for (const target of targets) {
-      await controlPlane.setApiKey(ctx.cp, agentId, target, apiKey, endpoint);
+      await viaSdk(
+        `${controlPlane.agentPath(agentId)}/credential/api-key`,
+        () => credentials.setApiKey(agentId, target, apiKey, endpoint),
+      );
     }
     // CLAIM (don't set) the active provider: it becomes active only when the
     // agent doesn't already resolve to one — a first connect on a fresh agent.

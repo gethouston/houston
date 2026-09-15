@@ -5,6 +5,13 @@ export * from "./domain/activity";
 export * from "./domain/approval";
 export * from "./domain/config";
 export * from "./domain/interaction";
+// The closed hands-on vocabulary is a VALUE, and `./domain/interaction` may
+// only re-export types from its neighbour (see the note there), so the two
+// runtime exports come straight from the type module.
+export {
+  HANDS_ON_SURFACES,
+  isHandsOnSurface,
+} from "./domain/interaction-types";
 export * from "./domain/portable";
 export * from "./domain/routine";
 export * from "./domain/skill";

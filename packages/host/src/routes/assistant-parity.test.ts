@@ -26,8 +26,12 @@ import { buildBody, buildPath, buildQuery } from "./assistant-request-parts";
  *
  * `/agents/:id/<anything>` is a CATCH-ALL that proxies whatever it does not
  * recognise to the agent's runtime, so "no 404" alone proves nothing. The
- * spawner below therefore serves a real sentinel: a probe answered by it fell
- * THROUGH the host's route table, and the test fails exactly as it should.
+ * spawner below therefore serves a real sentinel, and an answer carrying it
+ * came from the RUNTIME rather than from the host. For an operation the host
+ * serves itself that is a failure — the address fell THROUGH the route table.
+ * For the few whose route is a published member of the runtime-proxy family
+ * (routes/agents-proxy-members.ts) it is the pass: `proxied()` marks those, and
+ * the sentinel is the proof the host relayed them to the engine that owns them.
  */
 
 /** What the stand-in runtime answers, so a proxied request is unmistakable. */
@@ -51,7 +55,18 @@ function freePort(): Promise<number> {
 const runtimes: Server[] = [];
 const sentinelSpawner: RuntimeSpawner = {
   spawn: (spec) => {
-    const server = createHttpServer((_req, res) => {
+    const server = createHttpServer((req, res) => {
+      // `GET /health` answering 200 is what the launcher's boot contract means
+      // by awake (launcher/process-probes.ts). A runtime that sentinels its own
+      // health never becomes healthy, so every forwarded request would sit out
+      // the 60s boot budget instead of being answered — and a proxied write,
+      // which awaits the wake outright (channel/probe-wake.ts), would never
+      // reach the engine at all.
+      if (req.method === "GET" && req.url?.split("?")[0] === "/health") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end('{"ok":true}');
+        return;
+      }
       res.writeHead(SENTINEL_STATUS, { "Content-Type": "text/plain" });
       res.end(SENTINEL_BODY);
     });
@@ -107,6 +122,16 @@ beforeAll(async () => {
   });
   base = `http://127.0.0.1:${port}`;
   await host.start();
+  // Wake the probe agent's runtime up front, so a proxied probe below meets a
+  // live engine instead of a boot in flight: the read-only probe routes race
+  // the wake against a 1.5s deadline (channel/probe-wake.ts) and would answer
+  // "still starting" rather than the sentinel if one of them triggered the
+  // spawn. `health` is a proxy member, so this arrives as the sentinel too.
+  const wake = await fetch(
+    `${base}/agents/${encodeURIComponent(PROBE_AGENT)}/health`,
+    { headers: { Authorization: "Bearer boot-secret" } },
+  );
+  await wake.text();
 });
 
 afterAll(async () => {
@@ -187,6 +212,16 @@ describe("catalog operations address the local host's real routes", () => {
     expect(`${res.path} -> ${res.status} ${res.body.slice(0, 120)}`).not.toBe(
       `${res.path} -> 404 ${ROUTE_MISS}`,
     );
+    if (probe.runtimeProxied) {
+      // The host publishes this rest as the agent engine's own
+      // (routes/agents-proxy-members.ts) and relays it, so the stand-in
+      // runtime answering IS the proof: the address resolved into the proxy
+      // family and the request was forwarded verbatim.
+      expect(`${res.status} ${res.body}`, probe.runtimeProxied.reason).toBe(
+        `${SENTINEL_STATUS} ${SENTINEL_BODY}`,
+      );
+      return;
+    }
     expect(res.body).not.toContain(SENTINEL_BODY);
     expect(res.status).not.toBe(SENTINEL_STATUS);
     if (probe.serviceState) {

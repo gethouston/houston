@@ -14,6 +14,7 @@ type ProviderConnectStep = Extract<
   { kind: "provider_connect" }
 >;
 type CredentialStep = Extract<InteractionStep, { kind: "credential" }>;
+type HandsOnStep = Extract<InteractionStep, { kind: "hands_on" }>;
 type PlanReadyStep = Extract<InteractionStep, { kind: "plan_ready" }>;
 type SuggestReusableStep = Extract<
   InteractionStep,
@@ -41,6 +42,10 @@ export interface InteractionHolder {
   /** Credential steps appended by `request_credential` (custom integrations),
    *  deduped by toolkit — the user enters the secret in a secure card. */
   readonly credentials: CredentialStep[];
+  /** Hands-on errands appended by `request_hands_on`, deduped by screen. They
+   *  close the sequence: a connection unblocks the agent's own work, an errand
+   *  on a screen only the user can operate does not. */
+  readonly handsOn: HandsOnStep[];
   /** The single plan-ready step, once the model called `plan_ready` (plan mode
    *  only). When set it OWNS the interaction exclusively — see {@link pending}. */
   readonly planReady: PlanReadyStep | undefined;
@@ -72,6 +77,7 @@ export class MutableInteractionHolder implements InteractionHolder {
   readonly connects: ConnectStep[] = [];
   readonly providerConnects: ProviderConnectStep[] = [];
   readonly credentials: CredentialStep[] = [];
+  readonly handsOn: HandsOnStep[] = [];
   planReady: PlanReadyStep | undefined;
   suggestReusable: SuggestReusableStep | undefined;
   suggestActions: SuggestActionsStep | undefined;
@@ -91,6 +97,7 @@ export class MutableInteractionHolder implements InteractionHolder {
       // Credentials sit with connects (entering a key is a form of connecting).
       ...this.credentials,
       ...this.providerConnects,
+      ...this.handsOn,
     ];
     if (steps.length > 0) return { steps };
     // Optional offers may compose on the clean frame. Actions render first,

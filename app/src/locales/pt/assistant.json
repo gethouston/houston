@@ -6,5 +6,10 @@
     "heading": "Oi, eu sou seu AI Manager",
     "capabilities": "Eu posso fazer tudo o que você faz no Houston: criar agentes, configurar automações, conectar seus apps e achar o que você precisa.",
     "safety": "Vou sempre perguntar antes de fazer algo arriscado."
+  },
+  "failure": {
+    "title": "O Houston não conseguiu iniciar seu AI Manager",
+    "body": "Isso costuma se resolver sozinho. O Houston continua tentando em segundo plano, e você pode tentar de novo agora.",
+    "retry": "Tentar de novo"
   }
 }

@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { osEngineHandshake } from "./os-bridge";
 
 interface EngineConfig {
   baseUrl: string;
@@ -18,7 +18,7 @@ export async function pullEngineHandshakeWithRetry(opts: {
   while (Date.now() < deadline) {
     if (opts.hasClient()) return;
     try {
-      const config = await invoke<EngineConfig>("get_engine_handshake");
+      const config: EngineConfig = await osEngineHandshake();
       if (config?.baseUrl && config?.token) {
         opts.applyConfig(config);
         return;

@@ -27,8 +27,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
-    setApiKey,
-    forgetCredential,
     runtimeClientFor: vi.fn(() => ({ claimActiveProvider, logout })),
   };
 });
@@ -75,6 +73,13 @@ async function client() {
     token: "t",
     controlPlane: true,
   });
+  // The two central-credential writes are `sdk.providers.credentials`', so the
+  // client's own SDK is the seam; both take the agent id first.
+  const credentials = c.engineSdk.providers.credentials;
+  vi.spyOn(credentials, "setApiKey").mockImplementation(setApiKey);
+  vi.spyOn(credentials, "forgetCredential").mockImplementation(
+    forgetCredential,
+  );
   await c.listAgents("ws");
   return c;
 }
@@ -114,7 +119,7 @@ test("setProviderApiKey connects an uncurated pi provider instead of throwing", 
 
   expect(setApiKey).toHaveBeenCalledTimes(1);
   // The trailing undefined is the (azure-only) endpoint arg — PRODUCT-1477.
-  expect(setApiKey.mock.calls[0].slice(2)).toEqual([
+  expect(setApiKey.mock.calls[0].slice(1)).toEqual([
     "mistral",
     "sk-mistral-key",
     undefined,
@@ -126,6 +131,6 @@ test("providerLogout clears an uncurated pi provider instead of no-oping", async
   await (await client()).providerLogout("groq");
 
   expect(forgetCredential).toHaveBeenCalledTimes(1);
-  expect(forgetCredential.mock.calls[0][2]).toBe("groq");
+  expect(forgetCredential.mock.calls[0][1]).toBe("groq");
   expect(logout).toHaveBeenCalledWith("groq");
 });

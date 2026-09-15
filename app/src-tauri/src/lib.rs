@@ -477,7 +477,6 @@ pub fn run() {
             commands::os::reveal_file,
             commands::os::reveal_agent,
             commands::os::reveal_path,
-            commands::terminal::open_terminal,
             commands::portable::save_portable_agent,
             commands::portable::open_portable_agent,
             // One-click desktop→cloud migration (HOU-719): detect legacy data
@@ -549,13 +548,11 @@ pub fn run() {
             local_bridge::commands::detect_local_models,
             local_bridge::commands::start_local_bridge,
             local_bridge::commands::stop_local_bridge,
-            local_bridge::commands::local_bridge_status,
             local_bridge::commands::saved_bridge_target,
             local_bridge::commands::local_bridge_device,
             local_bridge::commands::save_bridge_target,
             local_bridge::commands::forget_bridge_target,
             local_bridge::commands::renew_local_bridge,
-            local_bridge::commands::local_bridge_migration_needed,
             local_bridge::legacy::local_bridge_legacy_candidate,
             local_bridge::legacy::local_bridge_complete_migration,
             // On-device dictation: transcribe recorded audio with the bundled

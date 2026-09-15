@@ -1,9 +1,7 @@
-import {
-  pushClaudeOAuthCredential,
-  pushSetupClaudeOAuthCredential,
-} from "../control-plane";
+import { agentPath } from "../control-plane";
 import type { AdapterContext } from "./context";
 import { providerRoutingSettled } from "./provider-routing";
+import { viaSdk } from "./sdk-error";
 
 /**
  * Push a desktop-extracted Anthropic OAuth credential (the `claude` CLI's
@@ -29,12 +27,17 @@ export async function pushClaudeCredential(
   ctx: AdapterContext,
   credentialJson: string,
 ): Promise<void> {
-  const cp = ctx.cp;
-  if (!cp) throw new Error("Pushing a Claude credential needs a cloud engine.");
+  if (!ctx.cp)
+    throw new Error("Pushing a Claude credential needs a cloud engine.");
   const agentId = providerRoutingSettled(ctx) ? ctx.providerAgentId() : null;
+  const credentials = ctx.sdk.providers.credentials;
   if (agentId) {
-    await pushClaudeOAuthCredential(cp, agentId, credentialJson);
+    await viaSdk(`${agentPath(agentId)}/credential/claude-oauth`, () =>
+      credentials.pushClaudeOAuthCredential(agentId, credentialJson),
+    );
     return;
   }
-  await pushSetupClaudeOAuthCredential(cp, credentialJson);
+  await viaSdk("/setup-runtime/credential/claude-oauth", () =>
+    credentials.pushSetupClaudeOAuthCredential(credentialJson),
+  );
 }

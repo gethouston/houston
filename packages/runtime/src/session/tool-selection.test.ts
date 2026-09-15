@@ -81,6 +81,7 @@ describe("buildToolSelection", () => {
       "suggest_reusable",
       SUGGEST_ACTIONS_TOOL_NAME,
       "request_provider_connection",
+      "request_hands_on",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -253,6 +254,7 @@ describe("assistant family gating", () => {
       SUGGEST_ACTIONS_TOOL_NAME,
       ...ASSISTANT_TOOL_NAMES,
       "request_provider_connection",
+      "request_hands_on",
       "request_connection",
       "request_credential",
     ]);
@@ -335,6 +337,7 @@ describe("autoToolNames", () => {
       "suggest_reusable",
       SUGGEST_ACTIONS_TOOL_NAME,
       "request_provider_connection",
+      "request_hands_on",
       "bash",
       "integration_search",
       "integration_execute",
@@ -530,6 +533,7 @@ describe("the personal assistant's tool set", () => {
       "update_mission_status",
       ...ASSISTANT_TOOL_NAMES,
       "request_provider_connection",
+      "request_hands_on",
       "request_connection",
       "request_credential",
     ]);

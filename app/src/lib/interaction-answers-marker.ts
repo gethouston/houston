@@ -51,6 +51,12 @@ export function encodeInteractionAnswersMessage(
     lines.push({ answer: args.skippedCredentialLine(name) });
   for (const r of args.credentialRedirects)
     lines.push({ answer: args.credentialRedirectLine(r.name, r.text) });
+  for (const screen of args.finishedScreens)
+    lines.push({ answer: args.handsOnLine(screen) });
+  for (const screen of args.skippedScreens)
+    lines.push({ answer: args.handsOnSkippedLine(screen) });
+  for (const r of args.handsOnRedirects)
+    lines.push({ answer: args.handsOnRedirectLine(r.name, r.text) });
 
   const payload: InteractionAnswersPayload = { lines };
   return `${MARKER_PREFIX}${JSON.stringify(payload)}${MARKER_SUFFIX}\n\n${body}`;

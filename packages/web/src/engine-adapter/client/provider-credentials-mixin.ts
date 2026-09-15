@@ -10,6 +10,7 @@ import {
   requireProviderAgentId,
   requireProviderRouting,
 } from "./provider-routing";
+import { viaSdk } from "./sdk-error";
 
 export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProviderCredentials extends Base {
@@ -45,9 +46,12 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
         // it, and the setup runtime's own auth copy is cleared alongside.
         requireProviderRouting(this.ctx);
         const agentId = this.ctx.providerAgentId();
+        const credentials = this.ctx.sdk.providers.credentials;
         if (!agentId) {
           for (const target of targets) {
-            await controlPlane.forgetSetupCredential(this.ctx.cp, target);
+            await viaSdk("/setup-runtime/credential/forget", () =>
+              credentials.forgetSetupCredential(target),
+            );
             await controlPlane
               .setupRuntimeClientFor(this.ctx.cp)
               .logout(target);
@@ -55,7 +59,10 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
           return;
         }
         for (const target of targets) {
-          await controlPlane.forgetCredential(this.ctx.cp, agentId, target);
+          await viaSdk(
+            `${controlPlane.agentPath(agentId)}/credential/forget`,
+            () => credentials.forgetCredential(agentId, target),
+          );
           await controlPlane
             .runtimeClientFor(this.ctx.cp, agentId)
             .logout(target);
@@ -111,7 +118,14 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
         // agent's creation, so a zero-agent space is the typed expected
         // state the app turns into "create an agent first" (PRODUCT-1662).
         const agentId = requireProviderAgentId(this.ctx);
-        await controlPlane.setCustomEndpoint(this.ctx.cp, agentId, endpoint);
+        await viaSdk(
+          `${controlPlane.agentPath(agentId)}/provider/openai-compatible`,
+          () =>
+            this.ctx.sdk.providers.credentials.setCustomEndpoint(
+              agentId,
+              endpoint,
+            ),
+        );
         await controlPlane
           .runtimeClientFor(this.ctx.cp, agentId)
           .claimActiveProvider("openai-compatible");

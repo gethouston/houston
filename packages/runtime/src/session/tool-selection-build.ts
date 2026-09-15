@@ -20,6 +20,7 @@ import {
 } from "./tools/mission-tool-names";
 import { READ_MISSION_TOOL_NAME } from "./tools/read-mission";
 import { REQUEST_CREDENTIAL_TOOL_NAME } from "./tools/request-credential";
+import { REQUEST_HANDS_ON_TOOL_NAME } from "./tools/request-hands-on";
 import { REQUEST_PROVIDER_CONNECTION_TOOL_NAME } from "./tools/request-provider-connection";
 import { SAVE_LEARNING_TOOL_NAME } from "./tools/save-learning";
 import { SAVE_ROUTINE_TOOL_NAME } from "./tools/save-routine";
@@ -112,7 +113,13 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
     ...(input.providerConnections ||
     input.integrations ||
     (input.assistant && input.personalAssistant)
-      ? [REQUEST_PROVIDER_CONNECTION_TOOL_NAME]
+      ? // request_hands_on shares this reach exactly: both are a REQUEST TO THE
+        // PERSON rendered as a card in their own session, never authority of
+        // the agent's own, so whoever may ask for a provider may ask for an
+        // errand on a screen. WHICH screens an agent may ask for is a second,
+        // narrower question the tool itself answers (`request-hands-on.ts`):
+        // Billing and the Danger zone are the AI Manager's alone.
+        [REQUEST_PROVIDER_CONNECTION_TOOL_NAME, REQUEST_HANDS_ON_TOOL_NAME]
       : []),
     ...(input.assistant && input.personalAssistant && !input.integrations
       ? [REQUEST_CONNECTION_TOOL_NAME, REQUEST_CREDENTIAL_TOOL_NAME]

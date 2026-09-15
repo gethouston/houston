@@ -22,9 +22,8 @@ export interface TurnOperationsDeps {
 /** The typed turn facade: the SAME functions back the `turns/*` commands. */
 export interface TurnOperations {
   send(input: TurnSendInput): Promise<void>;
-  observe(conversationId: string, agentId?: string): Promise<void>;
-  history(conversationId: string, agentId?: string): Promise<FeedFrame[]>;
-  cancel(conversationId: string, agentId?: string): Promise<void>;
+  observe(conversationId: string, agentId: string): Promise<void>;
+  history(conversationId: string, agentId: string): Promise<FeedFrame[]>;
   /** Refresh actively subscribed conversations after a global change event. */
   refreshObserved(agentId?: string): void;
   /** Remove one conversation from the global-refresh registry. */
@@ -116,19 +115,18 @@ export function createTurnOperations(
    */
   const observe = async (
     conversationId: string,
-    agentId?: string,
+    agentId: string,
   ): Promise<void> => {
-    const resolvedAgentId = agentId ?? "";
-    const client = ctx.clientFor(resolvedAgentId);
-    const key = streamKey(resolvedAgentId, conversationId);
-    observed.set(key, { agentId: resolvedAgentId, conversationId });
+    const client = ctx.clientFor(agentId);
+    const key = streamKey(agentId, conversationId);
+    observed.set(key, { agentId, conversationId });
     const { messages } = await client.getHistory(conversationId);
     const output = new MultiplexFeedOutput([...defaults, ...external]);
     if (!registry.get(key))
-      vm.seedHistory(resolvedAgentId, conversationId, historyToFeed(messages));
+      vm.seedHistory(agentId, conversationId, historyToFeed(messages));
     observeConversation(
       client,
-      resolvedAgentId,
+      agentId,
       conversationId,
       output,
       messages.length,
@@ -146,32 +144,17 @@ export function createTurnOperations(
    * @param agentId The agent this acts on, by the id listAgents returns. An
    *   agent's name is not its id, so read the id from listAgents first.
    * @assistant group:chat
-   * @assistant unroutable: debt: the agent defaults to the single-runtime profile when it is left out, so which sandbox the chat is read from is not decided until the call runs.
+   * @assistant unroutable: debt: the transcript read carries an optional window (`limit`/`before`), so its query string is assembled per call and the path template cannot spell a key that is sometimes absent; routable once a route may declare an optional query key.
    * @assistant unschematized: a replayed message carries the runtime's own frame payloads, which differ per frame type.
    */
   const history = async (
     conversationId: string,
-    agentId?: string,
+    agentId: string,
   ): Promise<FeedFrame[]> => {
     const { messages } = await ctx
-      .clientFor(agentId ?? "")
+      .clientFor(agentId)
       .getHistory(conversationId);
     return historyToFeed(messages);
-  };
-
-  /**
-   * Stops whatever an agent is currently doing in one chat.
-   * @param conversationId The chat to stop.
-   * @param agentId The agent this acts on, by the id listAgents returns. An
-   *   agent's name is not its id, so read the id from listAgents first.
-   * @assistant group:chat unconfirmed: Stops work already under way; nothing already said or written is undone.
-   * @assistant unroutable: debt: the agent defaults to the single-runtime profile when it is left out, so which sandbox the turn is stopped in is not decided until the call runs.
-   */
-  const cancel = async (
-    conversationId: string,
-    agentId?: string,
-  ): Promise<void> => {
-    await ctx.clientFor(agentId ?? "").cancel(conversationId);
   };
 
   const forgetObserved = (conversationId: string, agentId?: string): void => {
@@ -199,12 +182,5 @@ export function createTurnOperations(
     }
   };
 
-  return {
-    send,
-    observe,
-    history,
-    cancel,
-    refreshObserved,
-    forgetObserved,
-  };
+  return { send, observe, history, refreshObserved, forgetObserved };
 }

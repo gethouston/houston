@@ -115,3 +115,13 @@ test("coordinator owns secure integration and provider setup", () => {
   expect(rules).toContain("never delegate connection setup to an agent");
   expect(rules).toContain("Never collect credentials or sign-in codes in chat");
 });
+
+test("work that needs the person's own hands is handed over, never narrated", () => {
+  // Billing, a key Houston reveals once, files on their device: the model
+  // cannot do any of it, and talking a non-technical person through the clicks
+  // is the failure this card replaces.
+  const rules = buildAssistantRulesSection("coordinator") ?? "";
+  expect(rules).toContain("request_hands_on");
+  expect(rules).toContain("needs the person's own hands");
+  expect(rules).toContain("never describe the steps in chat");
+});

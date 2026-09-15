@@ -49,6 +49,7 @@ test.each([
       "custom_integration_remove",
       "request_credential",
       "request_provider_connection",
+      "request_hands_on",
     ],
   },
   {
@@ -59,6 +60,7 @@ test.each([
       "find_skills",
       "install_skill",
       "request_provider_connection",
+      "request_hands_on",
     ],
   },
 ])("$scopes gates both names and registered objects", ({ scopes, names }) => {
@@ -109,6 +111,7 @@ test("an agent turn registers exactly the shared credential surface", () => {
   const turn = base({ scopes: ["integrations"] });
   expect(buildTurnHostTools(turn).map((tool) => tool.name)).toEqual([
     "request_provider_connection",
+    "request_hands_on",
     ...makeIntegrationTools({ call }).map((tool) => tool.name),
     ...credentialTools({
       personalAssistant: false,
@@ -130,6 +133,7 @@ test("a coordinator turn registers the coordinator credential tool", async () =>
     .map((tool) => tool.name);
   expect(registered).toEqual([
     "request_provider_connection",
+    "request_hands_on",
     ...makeIntegrationTools({ call }).map((tool) => tool.name),
     ...credentialTools({
       personalAssistant: true,

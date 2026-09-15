@@ -1,15 +1,37 @@
-import type { CustomEndpoint } from "../../../../../ui/engine-client/src/types";
-import { type ControlPlaneConfig, cpFetch } from "./fetch";
-
 /**
+ * The per-agent credential writes the HOST serves — `/agents/:id/credential/*`
+ * and `/agents/:id/provider/openai-compatible`.
+ *
+ * TWO PROVIDER WRITE SURFACES EXIST, and both are real. `./writes.ts` reaches
+ * the agent's own RUNTIME through `clientFor(agentId)`
+ * (`/agents/:id/auth/:provider/api-key`, `/agents/:id/providers/openai-compatible`):
+ * those calls land on the pod's local `auth.json`, which is the surface a native
+ * shell drives over the bridge, and the only one a LOCAL engine with no gateway
+ * in front of it serves. The routes HERE are the gateway/host's connect-once
+ * surface: the host stores the credential in the WORKSPACE's central store —
+ * which every agent, existing and future, serves from — and pushes it into the
+ * standing runtime as a side effect. The web app connects providers that way, so
+ * these are the bytes it must keep sending; a write to the runtime twin would
+ * leave the central store empty and the next turn would re-hydrate the agent
+ * from it, undoing the sign-out or missing the key entirely.
+ *
  * NO credential write below carries a scope, in any form (HOU-976). WHOSE
  * account a write lands on is the SERVER's call, decided from the space the
  * request is made in: a team space has no shared AI credential, so the write is
  * the acting member's own; a personal space has exactly one. A client-sent scope
  * could only ever restate what the gateway already knows, or contradict it —
- * `credential-write-urls.test.ts` pins these URLs byte-for-byte so no query
- * param can creep back in.
+ * `packages/web/tests/credential-write-urls.test.ts` pins these URLs
+ * byte-for-byte so no query param can creep back in.
+ *
+ * Each secret travels in the BODY and never in the path or a query, so nothing
+ * here can reach a log line or an error message that carries a URL. Nothing
+ * degrades either: every non-2xx throws a `ProvidersHttpError` with the host's
+ * reason, because a connect that reported success without storing anything is
+ * the one failure the user cannot see.
  */
+
+import type { CustomEndpoint } from "@houston/runtime-client";
+import { type HttpScope, httpRequest } from "../http";
 
 /**
  * Saves an agent's provider sign-in so every agent in the workspace can use it.
@@ -20,12 +42,12 @@ import { type ControlPlaneConfig, cpFetch } from "./fetch";
  * @assistant group:providers hidden: credential plumbing; the device-code connect flow calls it as its own last step.
  */
 export async function captureCredential(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   provider?: string,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/agents/${encodeURIComponent(agentId)}/credential/capture`,
     {
       method: "POST",
@@ -54,12 +76,12 @@ export async function captureCredential(
  * @assistant group:providers confirm hidden: carries a secret; the desktop's Anthropic OAuth credential.
  */
 export async function pushClaudeOAuthCredential(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   credentialJson: string,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/agents/${encodeURIComponent(agentId)}/credential/claude-oauth`,
     { method: "POST", body: credentialJson },
   );
@@ -78,12 +100,12 @@ export async function pushClaudeOAuthCredential(
  * @assistant group:providers confirm hidden: destroys the workspace's provider sign-in, including the one serving this conversation.
  */
 export async function forgetCredential(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   provider: string,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/agents/${encodeURIComponent(agentId)}/credential/forget`,
     {
       method: "POST",
@@ -101,14 +123,14 @@ export async function forgetCredential(
  * @assistant group:providers hidden: takes a secret; the user pastes the provider key themselves.
  */
 export async function setApiKey(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   provider: string,
   apiKey: string,
   endpoint?: string,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/agents/${encodeURIComponent(agentId)}/credential/api-key`,
     {
       method: "POST",
@@ -127,16 +149,16 @@ export async function setApiKey(
  * Connect an OpenAI-compatible (local) server: the host forwards the endpoint
  * (base URL + model + optional key) to the agent's standing runtime, which
  * persists it. LOCAL-only — a non-local deployment 400s on the openaiCompatible
- * capability, and cpFetch throws the host's error message.
+ * capability, and the host's error message surfaces verbatim.
  * @assistant group:providers hidden: takes a secret; the guided local-model setup supplies the server URL and its key.
  */
 export async function setCustomEndpoint(
-  cfg: ControlPlaneConfig,
+  scope: HttpScope,
   agentId: string,
   endpoint: CustomEndpoint,
 ): Promise<void> {
-  await cpFetch(
-    cfg,
+  await httpRequest(
+    scope,
     `/agents/${encodeURIComponent(agentId)}/provider/openai-compatible`,
     {
       method: "POST",

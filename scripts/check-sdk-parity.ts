@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { judge, parseExceptions } from "./sdk-parity/gate.ts";
 import {
+  desktopCalls,
   gatewayExport,
   listRoutes,
   readGateway,
@@ -38,7 +39,8 @@ if (!gateway)
     `WARNING: no gateway route export at ${gatewayExport}. The gateway's routes are NOT checked — point HOUSTON_CLOUD_ROOT at the cloud checkout. This is a blind spot, not a pass.\n`,
   );
 const sdk = sdkMethods();
-const violations = checkRules(host, gateway ?? [], sdk.routed);
+const desktop = desktopCalls();
+const violations = checkRules(host, gateway ?? [], sdk.routed, desktop);
 const exceptions = parseExceptions(
   JSON.parse(readFileSync(EXCEPTIONS, "utf8")),
   EXCEPTIONS,
@@ -47,7 +49,7 @@ const exceptions = parseExceptions(
 const { report, failures } = judge(
   violations,
   exceptions,
-  `SDK parity — ${host.length} host routes registered, ${gateway?.length ?? 0} gateway routes, ${sdk.routed.length} routed SDK methods (${sdk.unroutable.length} the extractor cannot route).`,
+  `SDK parity — ${host.length} host routes registered, ${gateway?.length ?? 0} gateway routes, ${sdk.routed.length} routed SDK methods (${sdk.unroutable.length} the extractor cannot route), and the shipped client: ${desktop.sdk.length} adapter methods on the SDK, ${desktop.unbound.length} reaching a server without it, ${desktop.native.length} declared native commands.`,
 );
 process.stdout.write(report);
 if (failures.length) {

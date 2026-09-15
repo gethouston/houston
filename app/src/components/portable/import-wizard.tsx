@@ -31,7 +31,6 @@ import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "@houston-ai/engine-client";
-import { invoke } from "@tauri-apps/api/core";
 import { Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -44,6 +43,7 @@ import { pickDefaultProviderModel } from "../../lib/default-provider-model";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-report";
 import { openAgentBoard } from "../../lib/open-agent";
+import { osOpenPortableAgent } from "../../lib/os-bridge";
 import { providerIsConnected } from "../../lib/provider-connection";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider, toAgent } from "../../lib/tauri";
@@ -206,7 +206,7 @@ export function ImportAgentWizard() {
 
   const handleOpenFile = async () => {
     try {
-      const bytes = await invoke<number[] | null>("open_portable_agent");
+      const bytes = await osOpenPortableAgent();
       if (!bytes) return;
       const u8 = new Uint8Array(bytes);
       applyPreview(await getEngine().importPreview(u8.buffer));

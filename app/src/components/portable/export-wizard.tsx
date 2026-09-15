@@ -17,7 +17,6 @@ import type {
   PortableInventoryPreview,
   StorePublishIdentity,
 } from "@houston-ai/engine-client";
-import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSession } from "../../hooks/use-session";
@@ -29,7 +28,7 @@ import { showExpectedStateToast } from "../../lib/error-toast";
 import { planFileOpFailure } from "../../lib/file-op-failure";
 import { isIdentityConfigured } from "../../lib/identity";
 import { logger } from "../../lib/logger";
-import { osRevealPath, type WrittenFile } from "../../lib/os-bridge";
+import { osRevealPath, osSavePortableAgent } from "../../lib/os-bridge";
 import {
   buildAnonymizeOverrides,
   buildStorePublishRequest,
@@ -189,10 +188,7 @@ export function ExportAgentWizard() {
       });
       const filename = `${agent.name.replace(/[^a-z0-9._-]+/gi, "-")}.houstonagent`;
       const u8 = new Uint8Array(bytes);
-      const saved = await invoke<WrittenFile | null>("save_portable_agent", {
-        default_name: filename,
-        bytes: Array.from(u8),
-      });
+      const saved = await osSavePortableAgent(filename, u8);
       if (saved) {
         const savedPath = saved.path;
         analytics.track("agent_shared", {

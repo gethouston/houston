@@ -9,7 +9,6 @@ pub mod migration;
 pub mod os;
 pub mod portable;
 pub mod save_file;
-pub mod terminal;
 pub mod update;
 mod update_failure;
 mod update_fetch;

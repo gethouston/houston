@@ -14,16 +14,26 @@ const discovering: AssistantDiscovery = {
   handle: null,
   isLoading: true,
   unavailable: false,
+  failure: null,
 };
 const settledAbsent: AssistantDiscovery = {
   handle: null,
   isLoading: false,
   unavailable: true,
+  failure: null,
+};
+/** Discovery's ladder spent on a pod that never woke. */
+const settledFailed: AssistantDiscovery = {
+  handle: null,
+  isLoading: false,
+  unavailable: false,
+  failure: "transient",
 };
 const present: AssistantDiscovery = {
   handle: { agentId: "a", workspaceId: "w" } as never,
   isLoading: false,
   unavailable: false,
+  failure: null,
 };
 
 describe("surfaceGatesFor", () => {
@@ -33,6 +43,21 @@ describe("surfaceGatesFor", () => {
         capabilities: owner,
         isTeam: false,
         assistant: discovering,
+        capabilitiesLoading: false,
+      }).showAssistant,
+      true,
+    );
+  });
+
+  it("keeps the assistant row up when discovery keeps FAILING", () => {
+    // A manager that cannot start still exists. Dropping the row here left the
+    // user with no way back to it at all (PRODUCT-1795); the screen behind the
+    // row is what says what went wrong.
+    strictEqual(
+      surfaceGatesFor({
+        capabilities: owner,
+        isTeam: false,
+        assistant: settledFailed,
         capabilitiesLoading: false,
       }).showAssistant,
       true,
@@ -90,6 +115,55 @@ describe("surfaceGatesFor", () => {
       "utf8",
     );
     strictEqual(src.includes("capabilitiesLoading?:"), false);
+  });
+
+  it("keeps Billing and the Danger zone to the team space that has them", () => {
+    // Both are destinations an agent's hands-on errand can send someone to, so
+    // a gate that said yes off a personal space would hand them a button to a
+    // section that is not rendered anywhere.
+    const spaces = { ...owner, spaces: true, workspaceDelete: true } as never;
+    const team = surfaceGatesFor({
+      capabilities: spaces,
+      isTeam: true,
+      assistant: present,
+      capabilitiesLoading: false,
+    });
+    strictEqual(team.showBilling, true);
+    strictEqual(team.showWorkspaceDanger, true);
+    const personal = surfaceGatesFor({
+      capabilities: spaces,
+      isTeam: false,
+      assistant: present,
+      capabilitiesLoading: false,
+    });
+    strictEqual(personal.showBilling, false);
+    strictEqual(personal.showWorkspaceDanger, false);
+    // A plain member of the same team sees neither.
+    const member = surfaceGatesFor({
+      capabilities: {
+        multiplayer: true,
+        role: "user",
+        spaces: true,
+        workspaceDelete: true,
+      } as never,
+      isTeam: true,
+      assistant: present,
+      capabilitiesLoading: false,
+    });
+    strictEqual(member.showBilling, false);
+    strictEqual(member.showWorkspaceDanger, false);
+  });
+
+  it("keeps the Danger zone off a deployment that cannot delete a space", () => {
+    strictEqual(
+      surfaceGatesFor({
+        capabilities: { ...owner, spaces: true } as never,
+        isTeam: true,
+        assistant: present,
+        capabilitiesLoading: false,
+      }).showWorkspaceDanger,
+      false,
+    );
   });
 
   it("keeps Skills to the space owner in a team workspace", () => {

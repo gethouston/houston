@@ -22,6 +22,31 @@
 
 import type { ApprovalArg } from "./approval";
 
+/**
+ * The Houston screens a `hands_on` step can send the person to — the errands
+ * nothing but their own hands can finish: a card on file, a secret revealed
+ * once, files that live on their device.
+ *
+ * CLOSED on purpose. The app navigates by this vocabulary, so a surface it
+ * cannot open must never reach a card the person can only sit in front of:
+ * `request_hands_on` refuses anything outside the list at the source, and a
+ * surface a build does not know renders as unavailable rather than as a dead
+ * end. Growing it means teaching the app the screen in the same change.
+ */
+export const HANDS_ON_SURFACES = [
+  "apiKeys",
+  "billing",
+  "files",
+  "routineWebhook",
+  "orgDanger",
+] as const;
+
+export type HandsOnSurface = (typeof HANDS_ON_SURFACES)[number];
+
+/** True for a screen this build knows how to open. */
+export const isHandsOnSurface = (v: unknown): v is HandsOnSurface =>
+  HANDS_ON_SURFACES.includes(v as HandsOnSurface);
+
 export type InteractionOption =
   | ChoiceOption
   | {
@@ -45,14 +70,18 @@ interface ChoiceOption {
 
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
  *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps, `k1`..`kN` for credential steps) so each step's outcome is
+ *  steps, `k1`..`kN` for credential steps, `h1`..`hN` for hands-on steps) so
+ *  each step's outcome is
  *  addressable. A `question` carries its text + optional single-select options,
  *  plus an optional `toolkit` slug that brands the card with a connected app's
  *  logo (set when the question confirms an app action); a `signin` asks the user
  *  to sign in to Houston with an optional user-facing reason; a `connect` names
  *  the toolkit to connect with an optional user-facing reason; a `credential`
  *  asks the user to enter a custom integration's API key/token in a secure field
- *  (never into the chat) — `toolkit` is the custom integration's slug. */
+ *  (never into the chat) — `toolkit` is the custom integration's slug; a
+ *  `hands_on` sends the user to a Houston screen only their own hands can
+ *  finish (billing, a key revealed once, files on their device) and nothing can
+ *  observe the outcome, so its card asks them to say Done or Skip. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -89,6 +118,13 @@ export type InteractionStep =
   | { kind: "connect"; id: string; toolkit: string; reason?: string }
   | { kind: "provider_connect"; id: string; provider: string; reason?: string }
   | { kind: "credential"; id: string; toolkit: string; reason?: string }
+  | {
+      kind: "hands_on";
+      id: string;
+      /** Which Houston screen the person is being sent to. */
+      surface: HandsOnSurface;
+      reason?: string;
+    }
   | { kind: "plan_ready"; id: string; summary: string }
   | {
       kind: "suggest_reusable";

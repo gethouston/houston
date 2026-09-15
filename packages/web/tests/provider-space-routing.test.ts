@@ -39,7 +39,6 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
     >();
   return {
     ...actual,
-    forgetCredential,
     runtimeClientFor: vi.fn(() => ({
       listProviders,
       logout: runtimeLogout,
@@ -83,12 +82,23 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+/**
+ * A hosted client whose central-credential forget is recorded. The write is
+ * `sdk.providers.credentials`', so the spy sits on the client's own SDK — and
+ * its first argument is the agent id the write routed at, which is what every
+ * assertion below reads.
+ */
 function client() {
-  return new HoustonClient({
+  const c = new HoustonClient({
     baseUrl: "http://gateway",
     token: "t",
     controlPlane: true,
   });
+  vi.spyOn(
+    c.engineSdk.providers.credentials,
+    "forgetCredential",
+  ).mockImplementation(forgetCredential);
+  return c;
 }
 
 test("the probe reports UNKNOWN, and makes no request, before the space's agents settle", async () => {
@@ -135,7 +145,7 @@ test("a settled write targets the SPACE's agent, never the stale pref", async ()
   // and the write routes at the space's own agent.
   expect(localStorage.getItem(PREF)).toBeNull();
   for (const call of forgetCredential.mock.calls) {
-    expect(call[1]).toBe(THIS_SPACE_AGENT);
+    expect(call[0]).toBe(THIS_SPACE_AGENT);
   }
   expect(forgetCredential).toHaveBeenCalled();
 });
@@ -190,7 +200,7 @@ test("switching spaces un-settles routing until the NEW space's list lands", asy
   );
   await c.providerLogout("anthropic");
   for (const call of forgetCredential.mock.calls) {
-    expect(call[1]).toBe(AGENT_IN_B);
+    expect(call[0]).toBe(AGENT_IN_B);
   }
 });
 
@@ -234,7 +244,7 @@ test("a FAILED agent list degrades to pref-based routing instead of bricking", a
   await c.providerLogout("anthropic");
   expect(forgetCredential).toHaveBeenCalled();
   for (const call of forgetCredential.mock.calls) {
-    expect(call[1]).toBe(STALE_PREF_AGENT);
+    expect(call[0]).toBe(STALE_PREF_AGENT);
   }
 });
 
@@ -250,7 +260,7 @@ test("a later SUCCESSFUL list restores strict validation after a failure", async
   await c.providerLogout("anthropic");
   expect(localStorage.getItem(PREF)).toBeNull();
   for (const call of forgetCredential.mock.calls) {
-    expect(call[1]).toBe(THIS_SPACE_AGENT);
+    expect(call[0]).toBe(THIS_SPACE_AGENT);
   }
 });
 
@@ -265,7 +275,7 @@ test("a failure never downgrades a list we already have", async () => {
   forgetCredential.mockClear();
   await c.providerLogout("anthropic");
   for (const call of forgetCredential.mock.calls) {
-    expect(call[1]).toBe(THIS_SPACE_AGENT);
+    expect(call[0]).toBe(THIS_SPACE_AGENT);
   }
 });
 

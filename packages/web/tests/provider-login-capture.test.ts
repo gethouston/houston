@@ -8,8 +8,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../src/engine-adapter/control-plane", () => ({
-  captureCredential: mocks.captureCredential,
-  captureSetupCredential: vi.fn(),
+  agentPath: (id: string) => `/agents/${encodeURIComponent(id)}`,
+  agentIdOfPath: () => null,
   runtimeClientFor: () => ({
     authStatus: mocks.authStatus,
     claimActiveProvider: mocks.claimActiveProvider,
@@ -38,10 +38,19 @@ beforeEach(() => {
 
 afterEach(() => vi.useRealTimers());
 
+/** The capture is `sdk.providers.credentials`' now, so the SDK is the seam. */
 function context() {
   return {
     cp: { baseUrl: "https://example.test", token: "token" },
     activeLogins: new Set<string>(),
+    sdk: {
+      providers: {
+        credentials: {
+          captureCredential: mocks.captureCredential,
+          captureSetupCredential: vi.fn(),
+        },
+      },
+    },
   } as never;
 }
 

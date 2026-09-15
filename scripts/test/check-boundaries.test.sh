@@ -181,6 +181,22 @@ export const v = x;
 EOF
 assert_pass "a string ending in the word from does not false-fail"
 
+# Rule D — the getEngine() bypass set inside app/src. The fixture's paths are
+# not the real repo's, so the frozen list reads as entirely stale here too;
+# what this asserts is that an UNDECLARED caller is named and fails.
+reset_fixture
+mkdir -p "$TMP/app/src/components"
+printf 'import { getEngine } from "../lib/engine";\nexport const v = getEngine();\n' \
+  > "$TMP/app/src/components/bypasser.ts"
+assert_fail "an undeclared getEngine() caller is caught" \
+  '[D] app/src/components/bypasser.ts calls getEngine() directly'
+
+# A declared caller that stopped calling it must be removed from the list, or
+# the list stops describing anything.
+printf 'export const v = 1;\n' > "$TMP/app/src/components/bypasser.ts"
+assert_fail "a stale bypass entry is caught" 'no longer calls getEngine()'
+rm -rf "$TMP/app"
+
 # ---------------------------------------------------------------------------
 echo
 printf 'PASS %d  FAIL %d\n' "$pass" "$fail"

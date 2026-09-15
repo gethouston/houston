@@ -6,5 +6,10 @@
     "heading": "Hi, I'm your AI Manager",
     "capabilities": "I can do anything you can do in Houston: create agents, set up automations, connect your apps, and find what you need.",
     "safety": "I'll always ask before anything risky."
+  },
+  "failure": {
+    "title": "Houston couldn't start your AI Manager",
+    "body": "This usually clears up on its own. Houston keeps trying in the background, and you can try again now.",
+    "retry": "Try again"
   }
 }

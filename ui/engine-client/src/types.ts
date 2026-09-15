@@ -841,9 +841,20 @@ export interface InteractionChoiceOption {
   recommended?: boolean;
 }
 
+/** The Houston screens a `hands_on` step sends the user to. CLOSED: a client
+ *  can only hand over a screen it knows how to open. Mirrors
+ *  `packages/protocol/src/domain/interaction-types.ts`. */
+export type HandsOnSurface =
+  | "apiKeys"
+  | "billing"
+  | "files"
+  | "routineWebhook"
+  | "orgDanger";
+
 /** One step in the interaction sequence. `id` is tool-assigned (`q1`..`qN` for
  *  question steps, `s1` for the single signin step, `c1`..`cN` for connect
- *  steps) so each step's outcome is addressable. */
+ *  steps, `h1`..`hN` for hands-on steps) so each step's outcome is
+ *  addressable. */
 export type InteractionStep =
   | {
       kind: "question";
@@ -870,6 +881,15 @@ export type InteractionStep =
    *  into the chat). `toolkit` is the custom integration's slug (HOU-550). */
   | { kind: "credential"; id: string; toolkit: string; reason?: string }
   | { kind: "provider_connect"; id: string; provider: string; reason?: string }
+  /** An errand only the user's own hands can finish on a Houston screen —
+   *  billing, a key revealed once, files from their device. Nothing can observe
+   *  the outcome, so the card asks them to say Done or Skip. */
+  | {
+      kind: "hands_on";
+      id: string;
+      surface: HandsOnSurface;
+      reason?: string;
+    }
   /** The model finished planning: a short plan summary the user approves by
    *  choosing a mode (start working / Autopilot) or dismisses to keep planning. */
   | { kind: "plan_ready"; id: string; summary: string }

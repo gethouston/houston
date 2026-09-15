@@ -2,9 +2,8 @@
 //! sense on the user's local machine.
 //!
 //! The engine may run on a remote VPS for Houston Always On / Teams /
-//! Cloud; these commands (folder picker, file-manager reveal, URL open, terminal
-//! launch, local CLI probes) would be meaningless there and stay
-//! desktop-only.
+//! Cloud; these commands (folder picker, file-manager reveal, URL open, local
+//! CLI probes) would be meaningless there and stay desktop-only.
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;

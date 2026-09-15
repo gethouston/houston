@@ -62,10 +62,10 @@ export {
   TURN_FAILED_MESSAGE,
   type TurnAttachmentsSaveInput,
   type TurnAttachmentsSaveResult,
-  type TurnCancelInput,
-  type TurnHistoryInput,
-  type TurnObserveInput,
+  type TurnConversationInput,
   type TurnSendInput,
+  type TurnSetModeInput,
+  type TurnTruncateInput,
   type TurnWirePin,
   turnErrorMessage,
 } from "./modules/turns";

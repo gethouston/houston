@@ -97,12 +97,14 @@ export function interactionQuestionCount(
 
 /**
  * Which completion-notification body an ended turn takes, by FIRST unmet need
- * (steps are ordered questions → sign-in → connections). A sequence with ANY
- * question steps reads as the (pluralized) question body; else a sign-in step
- * reads as the sign-in body; else a connect step reads as the connect body;
- * everything else (a clean finish, a user stop, a provider error) reads as the
- * plain "finished" body. Pure so the copy mapping is unit-tested without the
- * event plumbing.
+ * (steps are ordered questions → sign-in → connections → hands-on errands). A
+ * sequence with ANY question steps reads as the (pluralized) question body;
+ * else a sign-in step reads as the sign-in body; else a connect step reads as
+ * the connect body; else a credential step, then a hands-on errand — which
+ * needs its own body or it silently reads as "finished", the one thing it is
+ * not. Everything else (a clean finish, a user stop, a provider error) reads as
+ * the plain "finished" body. Pure so the copy mapping is unit-tested without
+ * the event plumbing.
  */
 export function interactionNotificationBodyKey(
   interaction: PendingInteraction | null | undefined,
@@ -111,7 +113,8 @@ export function interactionNotificationBodyKey(
   | "sessionComplete.question"
   | "sessionComplete.signin"
   | "sessionComplete.connect"
-  | "sessionComplete.credential" {
+  | "sessionComplete.credential"
+  | "sessionComplete.handsOn" {
   if (interactionQuestionCount(interaction) > 0)
     return "sessionComplete.question";
   if (
@@ -131,6 +134,11 @@ export function interactionNotificationBodyKey(
     interaction.steps.some((step) => step.kind === "credential")
   )
     return "sessionComplete.credential";
+  if (
+    isPendingInteraction(interaction) &&
+    interaction.steps.some((step) => step.kind === "hands_on")
+  )
+    return "sessionComplete.handsOn";
 
   return "sessionComplete.body";
 }

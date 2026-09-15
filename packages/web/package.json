@@ -6,9 +6,9 @@
   "description": "Houston as a standalone web app. Composes the desktop UI (app/src) and runs it in a plain browser against the Houston host, with @tauri-apps/* aliased to web shims.",
   "scripts": {
     "dev": "vite",
-    "build": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit && vite build",
+    "build": "node ../../scripts/check-desktop-native.mjs && tsgo --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit",
+    "typecheck": "node ../../scripts/check-desktop-native.mjs && tsgo --noEmit",
     "typecheck:e2e": "tsgo --noEmit -p e2e/tsconfig.json",
     "test": "vitest run ./tests ./src --testTimeout=30000",
     "test:e2e": "tsx e2e/support/run-locked.ts playwright test --project chromium --project mobile --project auth --fail-on-flaky-tests",
@@ -18,7 +18,7 @@
     "test:visual": "tsx e2e/support/run-locked.ts playwright test --project visual --fail-on-flaky-tests --workers=2",
     "test:visual:update": "tsx e2e/support/run-locked.ts playwright test --project visual --update-snapshots --workers=2",
     "fake-host": "pnpm --filter @houston/fake-host start",
-    "check-shims": "node ../../scripts/check-tauri-shims.mjs"
+    "check-shims": "node ../../scripts/check-desktop-native.mjs"
   },
   "dependencies": {
     "@houston-ai/agent": "workspace:*",

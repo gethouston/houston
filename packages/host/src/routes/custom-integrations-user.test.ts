@@ -13,13 +13,13 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
 
 /**
- * The custom-integration USER routes on their per-agent surfaces (HOU-823),
- * over the FULL server so the real mounting order and ownership checks run:
- * the `/v1/agents/:id/integrations/custom/*` wrapper and the per-agent
- * dispatch `/agents/:id/integrations/custom/*` — the ONE form the hosted
- * gateway proxies to a pod, so the shipped in-chat credential card calls it
- * in both deployments (the gateway's own /v1/integrations subtree is
- * Composio-only, and the top-level form 404s there).
+ * The custom-integration USER routes over the FULL server, so the real
+ * mounting order and ownership checks run: the top-level
+ * `/v1/integrations/custom/*` form and the per-agent dispatch
+ * `/agents/:id/integrations/custom/*` — the ONE form the hosted gateway
+ * proxies to a pod, so the shipped in-chat credential card calls it in both
+ * deployments (the gateway's own /v1/integrations subtree is Composio-only,
+ * and the top-level form 404s there).
  */
 
 const USER = "alice";
@@ -107,17 +107,13 @@ const auth = (token = "tok") => ({
 });
 const dispatchUrl = (base: string, agentId: string, sub = "") =>
   `${base}/agents/${encodeURIComponent(agentId)}/integrations/custom/definitions${sub}`;
-const v1Url = (base: string, agentId: string, sub = "") =>
-  `${base}/v1/agents/${encodeURIComponent(agentId)}/integrations/custom/definitions${sub}`;
-
-test("detail edits use all user mounts and enforce agent ownership", async () => {
+test("detail edits use both user mounts and enforce agent ownership", async () => {
   const updateDetails = vi.fn(async () => {});
   const { base, agent, stop } = await setup(fakeManager({ updateDetails }));
   const details = { name: "Spark", website: "https://spark.studioroda.co" };
   try {
     for (const url of [
       dispatchUrl(base, agent.id, "/acme"),
-      v1Url(base, agent.id, "/acme"),
       `${base}/v1/integrations/custom/definitions/acme`,
     ]) {
       const res = await fetch(url, {
@@ -127,15 +123,15 @@ test("detail edits use all user mounts and enforce agent ownership", async () =>
       });
       expect(res.status).toBe(200);
     }
-    expect(updateDetails).toHaveBeenCalledTimes(3);
+    expect(updateDetails).toHaveBeenCalledTimes(2);
     expect(updateDetails).toHaveBeenCalledWith("acme", details);
-    const denied = await fetch(v1Url(base, agent.id, "/acme"), {
+    const denied = await fetch(dispatchUrl(base, agent.id, "/acme"), {
       method: "PATCH",
       headers: auth("other"),
       body: JSON.stringify(details),
     });
     expect([403, 404]).toContain(denied.status);
-    expect(updateDetails).toHaveBeenCalledTimes(3);
+    expect(updateDetails).toHaveBeenCalledTimes(2);
   } finally {
     stop();
   }
@@ -199,20 +195,16 @@ test("dispatch surface relays manager errors as stable {error, code} bodies", as
   }
 });
 
-test("/v1 agent-scoped form: owner passes; another user is refused; DELETE removes", async () => {
+test("dispatch surface: another user is refused; the owner's DELETE removes", async () => {
   const remove = vi.fn(async () => {});
   const { base, agent, stop } = await setup(fakeManager({ remove }));
   try {
-    const list = await fetch(v1Url(base, agent.id), { headers: auth() });
-    expect(list.status).toBe(200);
-    expect(await list.json()).toEqual({ items: [VIEW] });
-
-    const denied = await fetch(v1Url(base, agent.id), {
+    const denied = await fetch(dispatchUrl(base, agent.id), {
       headers: auth("other"),
     });
     expect([403, 404]).toContain(denied.status);
 
-    const del = await fetch(v1Url(base, agent.id, "/acme"), {
+    const del = await fetch(dispatchUrl(base, agent.id, "/acme"), {
       method: "DELETE",
       headers: auth(),
     });

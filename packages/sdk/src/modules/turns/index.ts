@@ -7,16 +7,12 @@ import {
   asAttachmentsSaveInput,
   createAttachmentsOperation,
 } from "./attachments";
+import { createConversationControls } from "./conversation-controls";
 import { startTurnsEventStream } from "./events-stream";
 import type { FeedOutput } from "./feed-output";
 import { createTurnOperations } from "./operations";
 import { StreamRegistry } from "./stream-registry";
-import {
-  asCancelInput,
-  asHistoryInput,
-  asObserveInput,
-  asSendInput,
-} from "./turn-inputs";
+import { asConversationInput, asSendInput } from "./turn-inputs";
 import { ConversationVmOutput } from "./vm-output";
 
 /**
@@ -61,7 +57,10 @@ export function createTurnsModule(
     external,
     registry,
   });
-  const { send, observe, history, cancel } = operations;
+  const { send, observe, history } = operations;
+  // The one-shot conversation controls (stop / mode / dismiss / rewind) register
+  // their own commands; they share the module's client cache and nothing else.
+  const controls = createConversationControls(ctx);
   const attachments = createAttachmentsOperation(ctx);
   const stopEvents =
     ctx.config.reactivity === false
@@ -80,22 +79,18 @@ export function createTurnsModule(
   ctx.registerCommand("turns/attachments/save", (payload) =>
     attachments.save(asAttachmentsSaveInput(payload)),
   );
-  ctx.registerCommand("turns/cancel", (payload) => {
-    const { conversationId, agentId } = asCancelInput(payload);
-    return cancel(conversationId, agentId);
-  });
   ctx.registerCommand("turns/observe", (payload) => {
-    const { conversationId, agentId } = asObserveInput(payload);
-    return observe(conversationId, agentId);
+    const ref = asConversationInput(payload, "turns/observe");
+    return observe(ref.conversationId, ref.agentId);
   });
   ctx.registerCommand("turns/history", (payload) => {
-    const { conversationId, agentId } = asHistoryInput(payload);
-    return history(conversationId, agentId);
+    const ref = asConversationInput(payload, "turns/history");
+    return history(ref.conversationId, ref.agentId);
   });
 
   return {
     send,
-    cancel,
+    ...controls,
     observe,
     history,
     /**
@@ -177,10 +172,10 @@ export {
   turnErrorMessage,
 } from "./turn-errors";
 export type {
-  TurnCancelInput,
-  TurnHistoryInput,
-  TurnObserveInput,
+  TurnConversationInput,
   TurnSendInput,
+  TurnSetModeInput,
+  TurnTruncateInput,
 } from "./turn-inputs";
 export {
   type StreamTurnOptions,

@@ -24,7 +24,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## chat
 
-- `turns.cancel`: Stops whatever an agent is currently doing in one chat. (not callable yet)
+- `turns.cancel`: Stops whatever an agent is currently doing in one chat.
 - `turns.history`: Reads back everything said in one chat. (not callable yet)
 
 ## files

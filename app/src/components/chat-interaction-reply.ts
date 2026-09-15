@@ -9,6 +9,8 @@ import {
   type CredentialOutcome,
   finalConnectNames,
   finalCredentialNames,
+  finalHandsOnNames,
+  type HandsOnOutcome,
 } from "../lib/interaction-outcomes.ts";
 import type { NonPlanReadyStep } from "../lib/plan-ready";
 
@@ -36,6 +38,10 @@ export interface InteractionOutcomes {
   readonly connects: Map<string, ConnectOutcome>;
   /** Per credential step's FINAL outcome — the credential mirror of `connects`. */
   readonly credentials: Map<string, CredentialOutcome>;
+  /** Per hands-on step's FINAL outcome, keyed by step id. Nothing can observe
+   *  the screen the person was sent to, so this is the ONLY evidence of what
+   *  happened there. */
+  readonly handsOn: Map<string, HandsOnOutcome>;
   /**
    * How each credentialed integration authenticates, keyed by NAME (the unit the
    * composed lines speak in): a sign-in (oauth) step reads "Signed in to X." /
@@ -56,6 +62,7 @@ export function createInteractionOutcomes(): InteractionOutcomes {
   return {
     connects: new Map(),
     credentials: new Map(),
+    handsOn: new Map(),
     credentialModes: new Map(),
     signin: "pending",
     signinDeclineText: undefined,
@@ -90,6 +97,11 @@ export function interactionReplyMessage(args: {
       steps.filter((s) => s.kind === "credential").map((s) => s.id),
       outcomes.credentials,
     );
+  const { finishedScreens, skippedScreens, handsOnRedirects } =
+    finalHandsOnNames(
+      steps.filter((s) => s.kind === "hands_on").map((s) => s.id),
+      outcomes.handsOn,
+    );
   const oauth = (name: string) =>
     outcomes.credentialModes.get(name) === "oauth";
   return encodeInteractionAnswersMessage({
@@ -98,6 +110,9 @@ export function interactionReplyMessage(args: {
     skippedConnectNames,
     credentialedNames,
     skippedCredentialNames,
+    finishedScreens,
+    skippedScreens,
+    handsOnRedirects,
     connectRedirects,
     credentialRedirects,
     signinDeclineText: outcomes.signinDeclineText,
@@ -132,6 +147,11 @@ export function interactionReplyMessage(args: {
           : "chat:credential.redirectLine",
         { name, text },
       ),
+    handsOnLine: (screen) => t("chat:interaction.handsOnLine", { screen }),
+    handsOnSkippedLine: (screen) =>
+      t("chat:interaction.handsOnSkippedLine", { screen }),
+    handsOnRedirectLine: (screen, text) =>
+      t("chat:interaction.handsOnRedirectLine", { screen, text }),
     signedInLine: t("chat:interaction.signedInLine"),
     skippedSigninLine: t("chat:interaction.skippedSigninLine"),
     signinRedirectLine: (text) =>

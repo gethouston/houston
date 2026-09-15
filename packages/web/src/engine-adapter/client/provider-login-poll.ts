@@ -5,13 +5,13 @@ import {
 } from "@houston-ai/core";
 import { emitEvent } from "../bus";
 import {
-  captureCredential,
-  captureSetupCredential,
+  agentPath,
   runtimeClientFor,
   setupRuntimeClientFor,
 } from "../control-plane";
 import type { AdapterContext } from "./context";
 import { retryCredentialCapture } from "./provider-capture-retry";
+import { viaSdk } from "./sdk-error";
 
 /**
  * `activeLogins` key segment for a login started before any agent existed
@@ -178,13 +178,18 @@ export async function pollProviderConnect(
         }
         // Connect-once: store this credential for the WHOLE workspace, so every
         // agent (existing + new + the one onboarding creates next) shares it.
+        const credentials = ctx.sdk.providers.credentials;
         try {
           if (agentId) {
             await retryCredentialCapture(() =>
-              captureCredential(cp, agentId, pid),
+              viaSdk(`${agentPath(agentId)}/credential/capture`, () =>
+                credentials.captureCredential(agentId, pid),
+              ),
             );
           } else {
-            await captureSetupCredential(cp, pid);
+            await viaSdk("/setup-runtime/credential/capture", () =>
+              credentials.captureSetupCredential(pid),
+            );
           }
         } catch (e) {
           if (!agentId) {

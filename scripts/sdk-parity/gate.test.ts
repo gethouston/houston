@@ -3,9 +3,10 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
+import { buildGraph, nodeKey } from "./adapter-graph.ts";
 import { type Exceptions, judge, parseExceptions } from "./gate.ts";
-import { repoRoot } from "./inputs.ts";
-import type { Violation } from "./rules.ts";
+import { type DesktopCalls, repoRoot } from "./inputs.ts";
+import { checkRules, type Violation } from "./rules.ts";
 
 const VIOLATION: Violation = {
   rule: "proxy-drift",
@@ -71,6 +72,103 @@ test("the same violation cannot be excused twice", () => {
   expect(() =>
     parseExceptions(excusing(VIOLATION.key, VIOLATION.key), "fixture"),
   ).toThrow(/a second time/);
+});
+
+/** One classified adapter method, as `desktopCalls()` reports it. */
+const method = (name: string, bound: boolean) => ({
+  name,
+  source: resolve(
+    repoRoot,
+    "packages/web/src/engine-adapter/client/example-mixin.ts",
+  ),
+  bound,
+  unbound: !bound,
+});
+
+const client = (...unbound: string[]): DesktopCalls => ({
+  sdk: [],
+  native: [],
+  unbound: unbound.map((name) => method(name, false)),
+});
+
+const UNBOUND_EXCUSE = {
+  rule: "client-route-unbound" as const,
+  key: "client rawRead",
+  reason: "written down so a reader knows why this one stays off the SDK",
+};
+
+test("an adapter method that reaches a server without the SDK is a violation", () => {
+  const violations = checkRules([], [], [], client("rawRead"));
+  expect(violations).toHaveLength(1);
+  expect(violations[0]).toMatchObject({
+    rule: "client-route-unbound",
+    key: "client rawRead",
+  });
+  const verdict = judge(violations, { baseline: 0, entries: [] }, "summary");
+  expect(verdict.failures).toHaveLength(1);
+  expect(verdict.failures[0]).toContain("client rawRead");
+});
+
+test("an adapter method that delegates to the SDK is no violation", () => {
+  const bound: DesktopCalls = {
+    sdk: [method("rawRead", true)],
+    native: [],
+    unbound: [],
+  };
+  expect(checkRules([], [], [], bound)).toEqual([]);
+});
+
+test("an excuse for an adapter method that now delegates fails as stale", () => {
+  const bound: DesktopCalls = { sdk: [], native: [], unbound: [] };
+  const verdict = judge(
+    checkRules([], [], [], bound),
+    { baseline: 1, entries: [UNBOUND_EXCUSE] },
+    "summary",
+  );
+  expect(verdict.failures).toHaveLength(1);
+  expect(verdict.failures[0]).toContain("no longer reproduces");
+});
+
+/**
+ * The edges one adapter function publishes, read off a throwaway module —
+ * `buildGraph` parses files, so the fixture is written to disk. `helpers.ts`
+ * has to exist for the import to resolve; only `mixin.ts` is parsed.
+ */
+function edgesOf(body: string): {
+  edges: string[];
+  helperKey: (name: string) => string;
+} {
+  const directory = mkdtempSync(join(tmpdir(), "adapter-graph-"));
+  writeFileSync(
+    join(directory, "helpers.ts"),
+    "export const helper = { run: () => {} };\n" +
+      "export const ready = Promise.resolve({ refresh: () => {} });\n",
+  );
+  const mixin = join(directory, "mixin.ts");
+  writeFileSync(
+    mixin,
+    `import { helper, ready } from "./helpers.ts";\n${body}`,
+  );
+  const graph = buildGraph([mixin]);
+  return {
+    edges: graph.nodes.get(nodeKey(mixin, "call"))?.edges ?? [],
+    helperKey: (name) => nodeKey(join(directory, "helpers.ts"), name),
+  };
+}
+
+test("a callee behind a cast is still an edge", () => {
+  const { edges, helperKey } = edgesOf(
+    "export function call(): void {\n  (helper.run as () => void)();\n}\n",
+  );
+  expect(edges).toContain(helperKey("run"));
+});
+
+test("a callee reached through await is still an edge", () => {
+  const { edges, helperKey } = edgesOf(
+    "export async function call(): Promise<void> {\n" +
+      "  (await ready).refresh();\n}\n",
+  );
+  expect(edges).toContain(helperKey("refresh"));
 });
 
 const EXCEPTIONS = resolve(repoRoot, "scripts/sdk-parity-exceptions.json");
