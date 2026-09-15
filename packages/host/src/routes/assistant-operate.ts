@@ -93,9 +93,7 @@ export async function handleAssistantPending(
     });
     return;
   }
-  // AFTER findVisibleOperation, never before: a hidden operation must answer
-  // "no such operation", and refusing it as unserved would tell the caller it
-  // exists somewhere.
+  // After findVisibleOperation: a hidden op must read as nonexistent, not unserved.
   if (refusedUnserved(ctx, op.name, res)) return;
   if (!op.confirm) {
     json(res, 400, {
@@ -160,9 +158,7 @@ export async function handleAssistantCall(
     });
     return;
   }
-  // AFTER findVisibleOperation, never before: a hidden operation must answer
-  // "no such operation", and refusing it as unserved would tell the caller it
-  // exists somewhere.
+  // After findVisibleOperation: a hidden op must read as nonexistent, not unserved.
   if (refusedUnserved(ctx, op.name, res)) return;
   if (refusedOutsideExecute(ctx, op, res)) return;
   if (refusedUnknownParams(op, input.params, res)) return;
