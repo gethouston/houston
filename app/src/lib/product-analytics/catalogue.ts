@@ -1,6 +1,7 @@
 /**
  * WHAT HOUSTON GATHERS ABOUT PRODUCT USAGE — the rules around the table in
- * `catalogue-table.ts`, and the front door every caller reads it through.
+ * `catalogue-table.ts`. THIS file is the front door: everything else in the app
+ * reads the table through here, never directly.
  *
  * The gateway's Postgres is the single source of truth for product analytics,
  * and the split between the two writers is deliberate:
@@ -20,7 +21,10 @@
  * sources.
  */
 
-import type { AnalyticsEventName, AnalyticsProperty } from "../analytics.ts";
+import type {
+  AnalyticsEventName,
+  AnalyticsProperty,
+} from "../analytics-vocabulary.ts";
 import type { ProductEventName } from "./catalogue-table.ts";
 import { PRODUCT_EVENTS } from "./catalogue-table.ts";
 

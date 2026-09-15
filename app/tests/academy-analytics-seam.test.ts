@@ -6,6 +6,11 @@ import {
   notifyAnalytics,
   subscribeAnalytics,
 } from "../src/lib/analytics-bus.ts";
+import {
+  TRACKED_ALLOWED_PROPS as ALLOWED_PROPS,
+  TRACKED_EVENTS as EVENTS,
+  TRACKED_PROPERTY_UNION as PROPERTY_UNION,
+} from "./fixtures/analytics-source.ts";
 
 // The bus contains the errors it reports.
 console.error = () => {};
@@ -80,9 +85,6 @@ function block(startsWith: string, endsWith: string): string {
   return SOURCE.slice(from, to);
 }
 
-const quoted = (source: string) =>
-  new Set(Array.from(source.matchAll(/"([a-z0-9_$]+)"/g), (m) => m[1]));
-
 describe("analytics.track's seam with the app", () => {
   it("notifies the app BEFORE the PostHog no-op path", () => {
     // A build with no POSTHOG_KEY returns early — if the notify sat after that
@@ -102,19 +104,14 @@ describe("analytics.track's seam with the app", () => {
   });
 
   it("declares the Academy lesson events and their property", () => {
-    const events = quoted(block("export type AnalyticsEventName =", ";\n"));
     for (const event of [
       "academy_lesson_started",
       "academy_lesson_completed",
     ]) {
-      ok(events.has(event), `AnalyticsEventName is missing "${event}"`);
+      ok(EVENTS.has(event), `AnalyticsEventName is missing "${event}"`);
     }
-    const props = quoted(block("type AnalyticsProperty =", ";\n"));
-    const allowed = quoted(
-      block("const ALLOWED_PROPS = new Set<AnalyticsProperty>([", "]);"),
-    );
     // `cleanProps` drops anything missing from the Set, silently.
-    ok(props.has("lesson"), 'AnalyticsProperty is missing "lesson"');
-    ok(allowed.has("lesson"), 'ALLOWED_PROPS is missing "lesson"');
+    ok(PROPERTY_UNION.has("lesson"), 'AnalyticsProperty is missing "lesson"');
+    ok(ALLOWED_PROPS.has("lesson"), 'ALLOWED_PROPS is missing "lesson"');
   });
 });

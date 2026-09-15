@@ -1,6 +1,9 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { createProductAnalyticsContext } from "../src/lib/product-analytics/context.ts";
+import {
+  createInstallIdReader,
+  createProductAnalyticsContext,
+} from "../src/lib/product-analytics/context.ts";
 import { ProductAnalyticsQueue } from "../src/lib/product-analytics/queue.ts";
 import type {
   ProductAnalyticsContext,
@@ -12,8 +15,6 @@ const INSTALL_ID = "8f0c3b1a-2d4e-4a6b-9c8d-7e5f4a3b2c1d";
 function harness() {
   let reads = 0;
   let resolveRead: (id: string) => void = () => {};
-  let rejectRead: (error: unknown) => void = () => {};
-  const failures: unknown[] = [];
 
   const context = createProductAnalyticsContext({
     sessionId: () => "session-1",
@@ -21,13 +22,9 @@ function harness() {
     platform: () => "desktop",
     readInstallId: () => {
       reads += 1;
-      return new Promise<string>((resolve, reject) => {
+      return new Promise<string>((resolve) => {
         resolveRead = resolve;
-        rejectRead = reject;
       });
-    },
-    onInstallIdFailure: (error) => {
-      failures.push(error);
     },
   });
 
@@ -36,17 +33,10 @@ function harness() {
 
   return {
     context,
-    failures,
     settle,
     reads: () => reads,
     answer: async (id = INSTALL_ID) => {
       resolveRead(id);
-      await settle();
-    },
-    refuse: async (
-      error: unknown = options?.failWith ?? new Error("no store"),
-    ) => {
-      rejectRead(error);
       await settle();
     },
   };
@@ -85,20 +75,6 @@ describe("the product-analytics batch context", () => {
     strictEqual(h.reads(), 1, "a resolved id is never read again");
   });
 
-  it("reports a refused read and keeps sending batches without the id", async () => {
-    const failure = new Error("preferences unavailable");
-    const h = harness();
-    h.context();
-    await h.refuse(failure);
-    deepStrictEqual(h.failures, [failure], "a refused read reaches Sentry");
-    ok(!Object.hasOwn(h.context(), "install_id"));
-    strictEqual(
-      h.reads(),
-      1,
-      "one attempt per launch, so one report per launch",
-    );
-  });
-
   it("asks for the session id and platform fresh on every batch", async () => {
     let session = "first";
     let desktop = true;
@@ -107,13 +83,58 @@ describe("the product-analytics batch context", () => {
       appVersion: "1.2.3",
       platform: () => (desktop ? "desktop" : "web"),
       readInstallId: () => Promise.resolve(INSTALL_ID),
-      onInstallIdFailure: () => {},
     });
     strictEqual(context().session_id, "first");
     session = "second";
     desktop = false;
     strictEqual(context().session_id, "second");
     strictEqual(context().platform, "web");
+  });
+});
+
+describe("the install id the batches carry", () => {
+  it("never reads the store before the engine is ready", async () => {
+    let reads = 0;
+    const readInstallId = createInstallIdReader({
+      // An engine that never bootstraps: offline before sign-in, with the sink
+      // already listening above <EngineGate>.
+      whenEngineReady: () => new Promise<void>(() => {}),
+      readStoredId: () => {
+        reads += 1;
+        return Promise.resolve(INSTALL_ID);
+      },
+    });
+    const context = createProductAnalyticsContext({
+      sessionId: () => "session-1",
+      appVersion: "1.2.3",
+      platform: () => "desktop",
+      readInstallId,
+    });
+
+    context();
+    await new Promise<void>((done) => setImmediate(done));
+    // Reading early MINTS one (`lib/install-id.ts` swallows the store failure),
+    // and a fabricated id would re-fire install_created and re-open the welcome
+    // bridge for a device that was never new.
+    strictEqual(reads, 0, "a flush before the engine must mint nothing");
+    ok(
+      !Object.hasOwn(context(), "install_id"),
+      "the batch ships without an id rather than with an invented one",
+    );
+  });
+
+  it("reads the stored id once the engine is up", async () => {
+    let ready: () => void = () => {};
+    const readInstallId = createInstallIdReader({
+      whenEngineReady: () =>
+        new Promise<void>((resolve) => {
+          ready = resolve;
+        }),
+      readStoredId: () => Promise.resolve(INSTALL_ID),
+    });
+    const id = readInstallId();
+    ready();
+    strictEqual(await id, INSTALL_ID);
   });
 });
 

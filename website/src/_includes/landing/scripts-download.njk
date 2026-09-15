@@ -12,4 +12,8 @@
 <script defer src="/assets/download-gate-anchor.js"></script>
 <script defer src="/assets/download-gate-dropdown.js"></script>
 <script defer src="/assets/download-gate-form.js"></script>
+{# The buttons module must define window.HoustonDLButtons before the modal
+   below initialises it. Deferred scripts run in document order, so this pair
+   stays in this order. #}
+<script defer src="/assets/download-gate-buttons.js"></script>
 <script defer src="/assets/download-gate.js"></script>

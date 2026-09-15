@@ -1,15 +1,16 @@
 /**
  * The table itself: every product beat the client may send, what each one
- * means, and the only properties that ride it. Who is allowed to write what,
- * and what happens to anything outside this table, is `catalogue.ts` — the
- * front door the rest of the app reads this through.
+ * means, and the only properties that ride it.
  *
  * Keyed by `AnalyticsEventName` on purpose: a name that is not a real tracked
  * event, or a property key that is not a real tracked property, fails the
  * build rather than going quiet in production.
  */
 
-import type { AnalyticsEventName, AnalyticsProperty } from "../analytics.ts";
+import type {
+  AnalyticsEventName,
+  AnalyticsProperty,
+} from "../analytics-vocabulary.ts";
 
 export interface ProductEventSpec {
   /** One sentence: what this event means, for whoever reads the table. */
@@ -133,7 +134,7 @@ const CATALOGUE = {
 
 export type ProductEventName = keyof typeof CATALOGUE;
 
-/** The one table. Read it through `catalogue.ts`, which owns the rules. */
+/** The one table. */
 export const PRODUCT_EVENTS: Readonly<
   Record<ProductEventName, ProductEventSpec>
 > = CATALOGUE;

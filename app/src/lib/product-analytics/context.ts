@@ -2,13 +2,13 @@
  * The device identity stamped on every batch.
  *
  * Three of its four fields are known the moment the app is running. The
- * fourth, `install_id`, lives in the preference store and is read through the
- * engine, so it lands one async hop later — and a flush must never wait for
- * it: a quit-time goodbye has milliseconds, and an event that misses its ride
- * is gone for good. So the first batch of a launch starts the read and ships
- * without the id; every batch after it lands carries it. An install id the
- * gateway never receives simply leaves that batch unattributed to a device,
- * which is the cheap half of the trade.
+ * fourth, `install_id`, is BEST-EFFORT: it lives in the preference store and is
+ * read through the engine, so it lands one async hop later — and a flush must
+ * never wait for it, because a quit-time goodbye has milliseconds and an event
+ * that misses its ride is gone for good. So the first batch of a launch starts
+ * the read and ships without the id; every batch after it lands carries it. An
+ * install id the gateway never receives simply leaves that batch unattributed
+ * to a device, which is the cheap half of the trade.
  *
  * Dependency-injected end to end so the whole policy is testable with no
  * preference store, no gateway and no browser.
@@ -21,10 +21,38 @@ export interface ProductAnalyticsContextDeps {
   sessionId(): string;
   appVersion: string;
   platform(): "desktop" | "web";
-  /** Reads this install's id. Called once per launch, on the first batch. */
+  /**
+   * Reads this install's id. Called once per launch, on the first batch.
+   * {@link createInstallIdReader} is the one the app wires in: it settles only
+   * when the id is genuinely known, so a launch that never reaches an engine
+   * simply never answers and every batch ships without the field.
+   */
   readInstallId(): Promise<string>;
-  /** Where a refused read goes — it is unexpected, so it must be reported. */
-  onInstallIdFailure(error: unknown): void;
+}
+
+export interface InstallIdReaderDeps {
+  /** Resolves once the engine is bootstrapped (`lib/engine.ts`). */
+  whenEngineReady(): Promise<void>;
+  /** This install's stored id, read through the engine (`lib/install-id.ts`). */
+  readStoredId(): Promise<string>;
+}
+
+/**
+ * The install-id read the sink uses. Waiting for the engine IS the point: the
+ * store read MINTS a fresh id and caches it for the whole process when it
+ * cannot reach the preference store, so a batch flushed before the engine
+ * bootstraps — the sink is mounted above `<EngineGate>`, and an
+ * `app_error_shown` while offline can flush there — would fabricate an install
+ * id that then re-fires `install_created` and re-opens the website's welcome
+ * bridge for a device that was never new.
+ */
+export function createInstallIdReader(
+  deps: InstallIdReaderDeps,
+): () => Promise<string> {
+  return async () => {
+    await deps.whenEngineReady();
+    return deps.readStoredId();
+  };
 }
 
 /**
@@ -41,16 +69,13 @@ export function createProductAnalyticsContext(
   function startReading(): void {
     if (reading || installId !== undefined) return;
     reading = true;
-    void deps.readInstallId().then(
-      (id) => {
-        installId = id;
-      },
-      (error: unknown) => {
-        // One attempt per launch: a store that refused once refuses for the
-        // same reason on the next batch, and retrying would report it again.
-        deps.onInstallIdFailure(error);
-      },
-    );
+    // One read per launch. Nothing catches here on purpose: the reader is
+    // documented not to reject, so a rejection is a bug, and it belongs to the
+    // global unhandled-rejection handler that reports it — not to a branch
+    // here that would swallow it.
+    void deps.readInstallId().then((id) => {
+      installId = id;
+    });
   }
 
   return () => {

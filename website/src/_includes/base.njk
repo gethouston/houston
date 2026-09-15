@@ -51,6 +51,14 @@
    THOSE instead of the real ones, while the query string is kept so a shared
    link's UTMs still attribute. Every other page is unchanged: with no
    `analyticsTitle` the two snippets below render exactly as they always did. #}
+{# ── Do Not Track, answered once for the whole page ──────────────────────────
+   Every sink reads THIS value: the GA consent default below and the
+   first-party funnel asset. Unconditional, so a page with no PostHog/GA key
+   still answers the question for the asset. PostHog asks itself
+   (`respect_dnt` below) — same three signals, same answer. #}
+<script>
+  window.__houstonDNT = (navigator.doNotTrack == '1' || window.doNotTrack == '1' || navigator.msDoNotTrack == '1');
+</script>
 {% if env.posthogKey %}
 <script>
   !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init me ws ys ps bs capture je Di ks register register_once register_for_session unregister unregister_for_session Ps getFeatureFlag getFeatureFlagPayload isFeatureEnabled reloadFeatureFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey canRenderSurveyAsync identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags getGroups setGroupPropertiesForFlags resetGroupPropertiesForFlags reset get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException loadToolbar get_property getSessionProperty Es $s createPersonProfile Is opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing clear_opt_in_out_capturing Ss debug xs getPageViewId captureTraceFeedback captureTraceMetric".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
@@ -94,14 +102,13 @@
   function gtag(){dataLayer.push(arguments);}
   // Consent Mode v2. This site runs no advertising, so all ad signals are
   // denied by default. Analytics mirrors the existing PostHog posture: on by
-  // default but disabled when the visitor has Do Not Track enabled
-  // (PostHog uses respect_dnt: true above).
-  var __houstonDNT = (navigator.doNotTrack == '1' || window.doNotTrack == '1' || navigator.msDoNotTrack == '1');
+  // default but disabled when the visitor has Do Not Track enabled — the one
+  // answer hoisted above, so the three sinks cannot disagree.
   gtag('consent', 'default', {
     ad_storage: 'denied',
     ad_user_data: 'denied',
     ad_personalization: 'denied',
-    analytics_storage: __houstonDNT ? 'denied' : 'granted'
+    analytics_storage: window.__houstonDNT ? 'denied' : 'granted'
   });
   gtag('js', new Date());
   {# GA4 forbids PII in any parameter, and `page_title` / `page_location`
@@ -123,6 +130,7 @@
 <script>
   window.HOUSTON_ANALYTICS = { gatewayUrl: "{{ api.gatewayUrl }}", landing: {{ "true" if isLandingPage else "false" }} };
 </script>
+<script defer src="/assets/houston-analytics-identity.js"></script>
 <script defer src="/assets/houston-analytics.js"></script>
 </head>
 <body>

@@ -9,29 +9,21 @@ import {
 import {
   TRACKED_ALLOWED_PROPS as ALLOWED_PROPS,
   TRACKED_EVENTS as EVENTS,
-  TRACKED_PROPERTY_UNION as PROPERTY_UNION,
 } from "./fixtures/analytics-source.ts";
 
-// Two things must hold or the first-party pipe goes quiet: every gathered name
-// is a name the app actually tracks (a name nothing emits is silently never
-// sent), and every gathered property is in BOTH the property union and
-// ALLOWED_PROPS — these properties reach us through the same call sites
-// PostHog's `cleanProps` filters.
+// The table types itself against `AnalyticsEventName` / `AnalyticsProperty`, so
+// the compiler already refuses a name or a property key that does not exist.
+// What it cannot see is `ALLOWED_PROPS`: these properties reach us through the
+// same call sites PostHog's `cleanProps` filters, and a key missing from that
+// Set is dropped there silently.
 
 const NAMES = Object.keys(PRODUCT_EVENTS) as Array<keyof typeof PRODUCT_EVENTS>;
 
 describe("product analytics catalogue", () => {
-  it("gathers only names the app actually tracks", () => {
+  it("gathers only properties the tracked call sites keep", () => {
     ok(NAMES.length > 0);
     for (const name of NAMES) {
-      ok(EVENTS.has(name), `AnalyticsEventName is missing "${name}"`);
-    }
-  });
-
-  it("gathers only properties the tracked call sites keep", () => {
-    for (const name of NAMES) {
       for (const prop of PRODUCT_EVENTS[name].props) {
-        ok(PROPERTY_UNION.has(prop), `AnalyticsProperty is missing "${prop}"`);
         ok(ALLOWED_PROPS.has(prop), `ALLOWED_PROPS is missing "${prop}"`);
       }
     }

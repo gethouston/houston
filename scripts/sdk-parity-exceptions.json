@@ -1,6 +1,6 @@
 {
   "$comment": "Written exceptions for scripts/check-sdk-parity.ts, which FAILS the process on any violation not listed here. An entry is { rule, key, reason } and nothing else; `key` is the violation identity the report prints, and `reason` must be at least 20 characters saying WHY parity stops here. An entry whose violation no longer reproduces fails the gate as stale: the PR that binds the route is the one that deletes its excuse and lowers `baseline`. Keys read as the report prints them: `host|gateway METHOD /path` for a route, `proxy METHOD /path` for a runtime-proxy member, and `client <adapter method>` for a method of the shipped client's mixin chain that reaches a server with no @houston/sdk method behind it. `baseline` may only go down on its own; raising it is a visible diff a reviewer must accept, because it means a new route shipped with no client behind it.",
-  "baseline": 138,
+  "baseline": 139,
   "entries": [
     {
       "rule": "sdk-route-unbound",
@@ -371,6 +371,11 @@
       "rule": "sdk-route-unbound",
       "key": "gateway POST /v1/client-metrics",
       "reason": "the browser's own telemetry post; not a domain capability, so no SDK method issues it"
+    },
+    {
+      "rule": "sdk-route-unbound",
+      "key": "gateway POST /v1/analytics/events",
+      "reason": "the client's own product-analytics beacon (app/src/lib/product-analytics/); not a domain capability, so no SDK method issues it"
     },
     {
       "rule": "sdk-route-unbound",

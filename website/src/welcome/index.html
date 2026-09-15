@@ -72,19 +72,20 @@ rootPath: "../"
   // person_profiles is 'always' in base.njk so the anonymous person
   // exists with UTM props ready to be merged. Without 'always', this
   // identify would create a fresh empty profile.
-  // Runs on DOMContentLoaded because the first-party sink below ships as a
-  // deferred asset: deferred scripts execute after parsing but before this
-  // event, so window.HoustonAnalytics is guaranteed to exist here.
+  // Runs on DOMContentLoaded because the first-party sink ships as a deferred
+  // asset: deferred scripts execute after parsing but before this event, so
+  // window.HoustonAnalytics is guaranteed to exist here.
   window.addEventListener('DOMContentLoaded', function () {
     var params = new URLSearchParams(window.location.search);
     var installId = params.get('install_id');
-    var UUID = /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-    if (!installId || !UUID.test(installId)) return;
+    var analytics = window.HoustonAnalytics;
+    // The asset owns the id shape, because the gateway does: a non-canonical
+    // uuid costs the whole welcome_bridged event, so both sides must judge it
+    // by the same rule rather than each carrying a regex of its own.
+    if (!installId || !analytics || !analytics.isInstallId(installId)) return;
     // First-party funnel: ties this browser's visitor id to the install. Fired
     // independently of PostHog, which an ad blocker can remove entirely.
-    if (window.HoustonAnalytics) {
-      window.HoustonAnalytics.track('welcome_bridged', { install_id: installId });
-    }
+    analytics.track('welcome_bridged', { install_id: installId });
     if (!window.posthog) return;
     try {
       window.posthog.alias(installId);

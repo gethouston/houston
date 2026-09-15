@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { subscribeAnalytics } from "../lib/analytics";
 import { onAppHidden } from "../lib/app-hidden";
+import { reportError } from "../lib/error-report";
+import type { ProductAnalyticsLoss } from "../lib/product-analytics/queue";
 import { ProductAnalyticsQueue } from "../lib/product-analytics/queue";
 import { startProductAnalyticsSink } from "../lib/product-analytics/sink";
 import { sendProductEvents } from "../lib/product-analytics/transport";
@@ -23,12 +25,31 @@ import { useSession } from "./use-session";
  * identity and remounts on every sign-in. A second live instance would send
  * every event twice.
  */
+/**
+ * Events that never made it are silent to the user and must never be silent to
+ * us. One report per class per launch: each is a fact about the deployment (the
+ * route and this client disagree, a backlog overflowed, the transport threw),
+ * so a per-event report would file the same issue hundreds of times.
+ */
+const reportedLosses = new Set<ProductAnalyticsLoss>();
+function reportProductAnalyticsLoss(
+  reason: ProductAnalyticsLoss,
+  detail: unknown,
+): void {
+  if (reportedLosses.has(reason)) return;
+  reportedLosses.add(reason);
+  reportError("product-analytics", `events were lost (${reason})`, detail);
+}
+
 export function useProductAnalyticsSink(): void {
   const { data: session } = useSession();
   const queueRef = useRef<ProductAnalyticsQueue | null>(null);
 
   useEffect(() => {
-    const queue = new ProductAnalyticsQueue({ transport: sendProductEvents });
+    const queue = new ProductAnalyticsQueue({
+      transport: sendProductEvents,
+      onLost: reportProductAnalyticsLoss,
+    });
     queueRef.current = queue;
     return startProductAnalyticsSink({
       hosted: currentClientDeployment() === "managed-cloud",

@@ -1,6 +1,6 @@
 // First-party funnel capture (src/assets/houston-analytics.js). The asset is a
-// browser IIFE that hangs its API off `window`, so it is read and evaluated
-// against a stub window rather than imported. Everything it touches
+// pair of browser IIFEs that hang their API off `window`, so they are read and
+// evaluated against a stub window rather than imported. Everything it touches
 // (navigator, document, localStorage, crypto, Blob, fetch) is reached through
 // that stub, which is what makes these paths testable in node.
 import assert from "node:assert/strict";
@@ -11,10 +11,18 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const source = readFileSync(
-  join(here, "..", "src", "assets", "houston-analytics.js"),
-  "utf8",
-);
+const asset = (name) =>
+  readFileSync(join(here, "..", "src", "assets", name), "utf8");
+// The page loads the pair in this order (base.njk): the ids and the hashing
+// first, then the sink that sends them.
+const source = asset("houston-analytics.js");
+const identitySource = asset("houston-analytics-identity.js");
+
+/** Evaluates both assets against one stub window, the way the page does. */
+function evaluate(window) {
+  new Function("window", identitySource)(window);
+  new Function("window", source)(window);
+}
 
 const GATEWAY = "https://gateway.example.test";
 const ENDPOINT = `${GATEWAY}/v1/web/events`;
@@ -51,6 +59,7 @@ function load(options = {}) {
     };
   }
   const window = {
+    __houstonDNT: options.dntGlobal,
     HOUSTON_ANALYTICS: {
       gatewayUrl: GATEWAY,
       landing: options.landing === true,
@@ -78,7 +87,7 @@ function load(options = {}) {
       return Promise.resolve({ ok: true });
     },
   };
-  new Function("window", source)(window);
+  evaluate(window);
   const events = () =>
     requests.flatMap((request) => {
       const body =
@@ -93,6 +102,25 @@ test("sends nothing when the visitor has Do Not Track enabled", async () => {
   await site.api.track("download_started", { os: "mac" });
   assert.equal(site.requests.length, 0);
   assert.equal(site.storage.map.size, 0);
+});
+
+test("honours a Do Not Track signal the browser reports as a number", async () => {
+  // navigator.doNotTrack is `1` (a number) in some browsers; the site's own
+  // snippets compare loosely, so this asset must opt out on it too.
+  const site = load({ doNotTrack: 1, landing: true });
+  await site.api.track("download_started", { os: "mac" });
+  assert.equal(site.requests.length, 0);
+});
+
+test("follows the site's one Do Not Track answer when the page set it", async () => {
+  const optedOut = load({ dntGlobal: true, landing: true });
+  await optedOut.api.track("download_started", { os: "mac" });
+  assert.equal(optedOut.requests.length, 0);
+
+  // An explicit "not opted out" is honoured too, even against a stale signal.
+  const optedIn = load({ dntGlobal: false, doNotTrack: "1" });
+  await optedIn.api.track("download_started", { os: "mac" });
+  assert.equal(optedIn.requests.length, 1);
 });
 
 test("ignores event names outside the closed list", async () => {
@@ -159,15 +187,54 @@ test("download_form_completed carries a hashed email and never the address", asy
   assert.ok(!JSON.stringify(event).toLowerCase().includes("ada@example.com"));
 });
 
-test("welcome_bridged keeps a uuid install id and drops anything else", async () => {
+test("welcome_bridged keeps a canonical v4 install id and drops anything else", async () => {
   const site = load();
   await site.api.track("welcome_bridged", {
     install_id: "3F2504E0-4F89-41D3-9A0C-0305E82C3301",
   });
   await site.api.track("welcome_bridged", { install_id: "not-a-uuid" });
-  const [good, bad] = site.events();
+  // A non-v4 uuid would cost the WHOLE event: the gateway requires canonical
+  // v4 and rejects the event rather than dropping the field.
+  await site.api.track("welcome_bridged", {
+    install_id: "3f2504e0-4f89-11d3-9a0c-0305e82c3301",
+  });
+  const [good, bad, v1] = site.events();
   assert.equal(good.install_id, "3f2504e0-4f89-41d3-9a0c-0305e82c3301");
   assert.equal(bad.install_id, undefined);
+  assert.equal(v1.install_id, undefined);
+});
+
+test("carries each field only on the events allowed to have it", async () => {
+  const site = load();
+  // The gateway gates these by name and REJECTS the whole event on a field
+  // that does not belong, so the browser must not send one.
+  await site.api.track("landing_viewed", {
+    os: "mac",
+    install_id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+  });
+  await site.api.track("download_started", {
+    os: "mac",
+    install_id: "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+  });
+  const [landing, download] = site.events();
+  assert.equal(landing.os, undefined);
+  assert.equal(landing.install_id, undefined);
+  assert.equal(download.os, "mac", "download_started is where os belongs");
+  assert.equal(download.install_id, undefined);
+});
+
+test("publishes the install-id shape the gateway accepts", () => {
+  const site = load();
+  assert.equal(
+    site.api.isInstallId("3F2504E0-4F89-41D3-9A0C-0305E82C3301"),
+    true,
+  );
+  assert.equal(
+    site.api.isInstallId("3f2504e0-4f89-11d3-9a0c-0305e82c3301"),
+    false,
+  );
+  assert.equal(site.api.isInstallId("not-a-uuid"), false);
+  assert.equal(site.api.isInstallId(null), false);
 });
 
 test("prefers sendBeacon and falls back to fetch with keepalive", async () => {
@@ -246,7 +313,28 @@ test("never throws and sends nothing when the gateway origin is missing", async 
     URL,
     URLSearchParams,
   };
-  new Function("window", source)(window);
+  evaluate(window);
   await window.HoustonAnalytics.track("landing_viewed");
   assert.equal(requests.length, 0);
+});
+
+test("the page answers Do Not Track once, above every sink", () => {
+  const base = readFileSync(
+    join(here, "..", "src", "_includes", "base.njk"),
+    "utf8",
+  );
+  const answer = base.indexOf("window.__houstonDNT =");
+  const consent = base.indexOf("analytics_storage: window.__houstonDNT");
+  assert.ok(answer > 0, "base.njk no longer answers Do Not Track");
+  assert.ok(consent > answer, "the GA consent default reads that one answer");
+  assert.equal(
+    base.split("window.doNotTrack ==").length - 1,
+    1,
+    "one expression, so the sinks cannot disagree",
+  );
+
+  // The ids must exist before the sink that sends them runs.
+  const identity = base.indexOf("/assets/houston-analytics-identity.js");
+  const sink = base.indexOf('src="/assets/houston-analytics.js"');
+  assert.ok(identity > 0 && sink > identity, "the pair loads in order");
 });

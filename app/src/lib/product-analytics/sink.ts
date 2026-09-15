@@ -7,6 +7,7 @@
 // (`hooks/use-product-analytics-sink.ts`) gives it a life span, and a test
 // gives it a fake bus.
 
+import type { AnalyticsEventName } from "../analytics-vocabulary.ts";
 import type { ProductAnalyticsQueue } from "./queue.ts";
 
 export interface ProductAnalyticsSinkDeps {
@@ -19,7 +20,10 @@ export interface ProductAnalyticsSinkDeps {
   queue: ProductAnalyticsQueue;
   /** The in-app analytics bus (`subscribeAnalytics`). */
   subscribe: (
-    listener: (name: string, props?: Record<string, unknown>) => void,
+    listener: (
+      name: AnalyticsEventName,
+      props?: Record<string, unknown>,
+    ) => void,
   ) => () => void;
   /**
    * "The window is going away" (`onAppHidden`) — a quit, a cmd-tab away, a
