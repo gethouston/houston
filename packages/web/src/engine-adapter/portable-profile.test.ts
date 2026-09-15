@@ -1,8 +1,5 @@
+import type { CreatorProfile, HandleAvailability } from "@houston/wire-types";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import type {
-  CreatorProfile,
-  HandleAvailability,
-} from "../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "./client";
 import type { ControlPlaneConfig } from "./control-plane";
 import {

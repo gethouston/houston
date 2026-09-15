@@ -1,7 +1,4 @@
-import type {
-  Agent,
-  CreateAgent,
-} from "../../../../ui/engine-client/src/types";
+import type { Agent, CreateAgent } from "@houston/wire-types";
 import { writeAgentFile } from "./agent-files";
 import { DEFAULT_AGENT_COLOR, syntheticAgent } from "./synthetic";
 

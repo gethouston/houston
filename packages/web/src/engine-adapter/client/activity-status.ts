@@ -1,6 +1,6 @@
 import { addressesMission } from "@houston/domain";
 import type { BoardStatus } from "@houston/sdk";
-import type { PendingInteraction } from "../../../../../ui/engine-client/src/types";
+import type { PendingInteraction } from "@houston/wire-types";
 import * as activities from "../activities";
 import { emitLocalEcho } from "../bus";
 import { agentPath as agentRoute } from "../control-plane";

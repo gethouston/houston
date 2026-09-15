@@ -12,8 +12,9 @@ Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the
 | `packages/host` | The host server (protocol v3). Same server for desktop and cloud, different adapter profiles. Boot migrations: `src/migrate/` |
 | `packages/domain` / `packages/protocol` | Domain logic (`.houston` layout, schemas, cron, portable) / v3 wire types + zod |
 | `packages/sdk` | Client behavior layer (turn lifecycle, conversation VM). Every surface binds it |
+| `packages/wire-types` | Protocol v3 as the client sees it: wire shapes, the local-model-bridge port, the `Retry-After` parser. No I/O |
 | `packages/web` | Web build of `app/src` + Playwright e2e/visual suites (see `packages/web/e2e/README.md`) |
-| `ui/` | `@houston-ai/*` React packages, props-only. `@houston-ai/engine-client` ships wire types, the store catalog reads and the local-model-bridge port; the client is `packages/web/src/engine-adapter` |
+| `ui/` | `@houston-ai/*` React packages, props-only |
 | `packages/design-tokens` | Visual values. Tokens win over any hardcoded literal |
 | `mobile/ios` | Native SwiftUI app over `@houston/sdk`. Parity notes: `mobile/PARITY*.md` |
 | `agentstore/` | Agent Store frontend (agents.gethouston.ai) |

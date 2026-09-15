@@ -1,5 +1,5 @@
 import type { WireAgent } from "@houston/sdk";
-import type { Agent } from "../../../../../ui/engine-client/src/types";
+import type { Agent } from "@houston/wire-types";
 import { HoustonEngineError } from "../client/errors";
 import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "../synthetic";
 import { colorOverlay, moveColor, setColor } from "./agent-color";

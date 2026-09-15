@@ -46,7 +46,7 @@
  * reason — not a duration — picks the schedule below. `Retry-After` says only
  * "how long", and only where the responder exposes it cross-origin, so it can
  * never classify; it is captured at the throw site onto
- * `HoustonEngineError.retryAfterMs` (`ui/engine-client/src/retry-after.ts`).
+ * `HoustonEngineError.retryAfterMs` (`packages/wire-types/src/retry-after.ts`).
  *
  * ── Why suppressing the wake toast is not a silent failure ──────────────────
  * The no-silent-failures policy (`CLAUDE.md`) requires every failure a

@@ -1,5 +1,5 @@
 import { agentFileEventType } from "@houston/domain";
-import type { WorkspaceContext } from "../../../../../ui/engine-client/src/types";
+import type { WorkspaceContext } from "@houston/wire-types";
 import {
   readAgentFile as readAgentFileStore,
   writeAgentFile as writeAgentFileStore,

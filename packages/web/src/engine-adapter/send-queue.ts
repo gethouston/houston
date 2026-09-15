@@ -4,7 +4,7 @@ import {
   conversationScope,
   type QueuedMessageVM,
 } from "@houston/sdk";
-import type { SessionStartRequest } from "../../../../ui/engine-client/src/types";
+import type { SessionStartRequest } from "@houston/wire-types";
 import { armQueueWatchdog, disarmQueueWatchdog } from "./queue-watchdog";
 import { mergeSendFields } from "./send-queue-merge";
 import { armSettleWatcher, disarmSettleWatcher } from "./settle-watcher";

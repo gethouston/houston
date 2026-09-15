@@ -64,8 +64,8 @@ export class HoustonClientBase {
    * sidecar restarting on a fresh random port (HOU-432), and every hosted
    * bearer rotation (`setHostedEngineSessionToken`) — so the instance every
    * hook holds keeps working instead of being rebuilt. Delegates to the ONE
-   * {@link AdapterContext}. Mirrors `HoustonClient.setEndpoint` in
-   * `ui/engine-client` — the shell treats the two clients interchangeably.
+   * {@link AdapterContext}. Mirrors `HoustonClient.setEndpoint` on the
+   * adapter's own client — the shell treats the two interchangeably.
    */
   setEndpoint(config: { baseUrl: string; token: string }): void {
     this.ctx.setEndpoint(config);

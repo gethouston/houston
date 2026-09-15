@@ -1,5 +1,5 @@
 import { migrateProviderModel } from "@houston/domain";
-import type { ProjectConfig } from "../../../../../ui/engine-client/src/types";
+import type { ProjectConfig } from "@houston/wire-types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
 import { DEFAULT_AGENT_ID, DEFAULT_WORKSPACE_ID } from "../synthetic";

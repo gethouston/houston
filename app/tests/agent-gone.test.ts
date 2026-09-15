@@ -13,7 +13,7 @@ import {
 describe("isAgentGoneError", () => {
   it("matches the engine-client 404 for a vanished agent", () => {
     // Structural shape of HoustonEngineError(404, {error: "agent not found"})
-    // from both adapter classes (packages/web and ui/engine-client).
+    // as the engine adapter throws it.
     const err = Object.assign(new Error("agent not found (engine error 404)"), {
       status: 404,
       body: { error: "agent not found" },

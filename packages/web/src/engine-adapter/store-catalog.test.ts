@@ -1,5 +1,4 @@
-import { deepStrictEqual, ok, rejects, strictEqual } from "node:assert";
-import { describe, it } from "node:test";
+import { describe, expect, it } from "vitest";
 import {
   fetchStoreAgent,
   fetchStoreCatalog,
@@ -10,11 +9,11 @@ import {
   reportStoreCreator,
   StoreCatalogError,
   storeCatalogApiBase,
-} from "../src/store-catalog.ts";
+} from "./store-catalog.ts";
 
 /**
  * The public catalog reads: URL/query construction, the anonymous ping's
- * body, and the structural error (status-carrying, engine-client-free).
+ * body, and the structural error (status-carrying, wire-type-free).
  * `fetchImpl` is injected, so no network is touched.
  */
 
@@ -43,9 +42,23 @@ function capture(body: unknown = { items: [], hasMore: false }) {
   return { calls, fetchImpl };
 }
 
+/**
+ * What a call threw, as a value. `expect(...).rejects` can assert a shape but
+ * cannot hand the error back, and every rejection below is asserted on more
+ * than one of its properties.
+ */
+async function rejection(call: Promise<unknown>): Promise<unknown> {
+  try {
+    await call;
+  } catch (error) {
+    return error;
+  }
+  throw new Error("expected the call to reject, but it resolved");
+}
+
 describe("storeCatalogApiBase", () => {
   it("uses the target the shell installed", () => {
-    strictEqual(storeCatalogApiBase(), BASE);
+    expect(storeCatalogApiBase()).toBe(BASE);
   });
 
   it("trims a trailing slash off the installed target", () => {
@@ -54,7 +67,7 @@ describe("storeCatalogApiBase", () => {
     const restore = win.__HOUSTON_STORE__;
     win.__HOUSTON_STORE__ = { baseUrl: `${BASE}/`, token: "" };
     try {
-      strictEqual(storeCatalogApiBase(), BASE);
+      expect(storeCatalogApiBase()).toBe(BASE);
     } finally {
       win.__HOUSTON_STORE__ = restore;
     }
@@ -76,8 +89,8 @@ describe("storeCatalogApiBase", () => {
       } catch (err) {
         caught = err;
       }
-      ok(caught instanceof StoreCatalogError);
-      strictEqual((caught as StoreCatalogError).status, 0);
+      expect(caught).toBeInstanceOf(StoreCatalogError);
+      expect((caught as StoreCatalogError).status).toBe(0);
     } finally {
       win.__HOUSTON_STORE__ = restore;
     }
@@ -88,7 +101,7 @@ describe("fetchStoreCatalog", () => {
   it("requests the bare listing when the query is empty", async () => {
     const { calls, fetchImpl } = capture();
     await fetchStoreCatalog({}, fetchImpl);
-    strictEqual(calls[0].url, `${BASE}/v1/agentstore/agents`);
+    expect(calls[0].url).toBe(`${BASE}/v1/agentstore/agents`);
   });
 
   it("carries q/category/sort and omits page 1", async () => {
@@ -103,16 +116,16 @@ describe("fetchStoreCatalog", () => {
       fetchImpl,
     );
     const url = new URL(calls[0].url);
-    strictEqual(url.searchParams.get("q"), "email helper");
-    strictEqual(url.searchParams.get("category"), "productivity");
-    strictEqual(url.searchParams.get("sort"), "installs");
-    strictEqual(url.searchParams.get("page"), null);
+    expect(url.searchParams.get("q")).toBe("email helper");
+    expect(url.searchParams.get("category")).toBe("productivity");
+    expect(url.searchParams.get("sort")).toBe("installs");
+    expect(url.searchParams.get("page")).toBe(null);
   });
 
   it("carries pages past the first", async () => {
     const { calls, fetchImpl } = capture();
     await fetchStoreCatalog({ page: 3 }, fetchImpl);
-    strictEqual(new URL(calls[0].url).searchParams.get("page"), "3");
+    expect(new URL(calls[0].url).searchParams.get("page")).toBe("3");
   });
 
   // Relayed verbatim except for the client's own backfill of additive summary
@@ -120,7 +133,7 @@ describe("fetchStoreCatalog", () => {
   // still reaches the UI with every field it renders.
   it("returns the page payload, with absent summary fields backfilled", async () => {
     const { fetchImpl } = capture({ items: [{ id: "a1" }], hasMore: true });
-    deepStrictEqual(await fetchStoreCatalog({}, fetchImpl), {
+    expect(await fetchStoreCatalog({}, fetchImpl)).toEqual({
       items: [{ id: "a1", skills: [] }],
       hasMore: true,
     });
@@ -131,13 +144,10 @@ describe("fetchStoreCatalog", () => {
       Promise.resolve(
         jsonResponse({ error: "not_found" }, 404),
       )) as typeof fetch;
-    await rejects(
-      fetchStoreCatalog({}, fetchImpl),
-      (err: unknown) =>
-        err instanceof StoreCatalogError &&
-        err.status === 404 &&
-        typeof err.body === "object",
-    );
+    const error = await rejection(fetchStoreCatalog({}, fetchImpl));
+    expect(error).toBeInstanceOf(StoreCatalogError);
+    expect((error as StoreCatalogError).status).toBe(404);
+    expect(typeof (error as StoreCatalogError).body).toBe("object");
   });
 
   it("re-raises the underlying cause on a network failure (status 0)", async () => {
@@ -146,11 +156,7 @@ describe("fetchStoreCatalog", () => {
     // StoreCatalogError), exactly as the former plain-fetch code let it bubble.
     const cause = new Error("connection refused");
     const fetchImpl = (() => Promise.reject(cause)) as typeof fetch;
-    await rejects(fetchStoreCatalog({}, fetchImpl), (err: unknown) => {
-      ok(!(err instanceof StoreCatalogError));
-      strictEqual(err, cause);
-      return true;
-    });
+    expect(await rejection(fetchStoreCatalog({}, fetchImpl))).toBe(cause);
   });
 });
 
@@ -158,7 +164,7 @@ describe("fetchStoreAgent", () => {
   it("addresses the listing by encoded slug", async () => {
     const { calls, fetchImpl } = capture({ agent: {}, ir: {} });
     await fetchStoreAgent("inbox-helper", fetchImpl);
-    strictEqual(calls[0].url, `${BASE}/v1/agentstore/agents/inbox-helper`);
+    expect(calls[0].url).toBe(`${BASE}/v1/agentstore/agents/inbox-helper`);
   });
 });
 
@@ -169,27 +175,22 @@ describe("fetchStoreCategories", () => {
       { slug: "research", name: "Research" },
     ];
     const { calls, fetchImpl } = capture({ items: cats });
-    deepStrictEqual(await fetchStoreCategories(fetchImpl), cats);
-    strictEqual(calls[0].url, `${BASE}/v1/agentstore/categories`);
+    expect(await fetchStoreCategories(fetchImpl)).toEqual(cats);
+    expect(calls[0].url).toBe(`${BASE}/v1/agentstore/categories`);
   });
 
   it("throws a status-carrying StoreCatalogError on a failed read", async () => {
     const fetchImpl = (() =>
       Promise.resolve(jsonResponse({ error: "boom" }, 500))) as typeof fetch;
-    await rejects(
-      fetchStoreCategories(fetchImpl),
-      (err: unknown) => err instanceof StoreCatalogError && err.status === 500,
-    );
+    const error = await rejection(fetchStoreCategories(fetchImpl));
+    expect(error).toBeInstanceOf(StoreCatalogError);
+    expect((error as StoreCatalogError).status).toBe(500);
   });
 
   it("re-raises the underlying cause on a network failure (status 0)", async () => {
     const cause = new Error("connection refused");
     const fetchImpl = (() => Promise.reject(cause)) as typeof fetch;
-    await rejects(fetchStoreCategories(fetchImpl), (err: unknown) => {
-      ok(!(err instanceof StoreCatalogError));
-      strictEqual(err, cause);
-      return true;
-    });
+    expect(await rejection(fetchStoreCategories(fetchImpl))).toBe(cause);
   });
 });
 
@@ -205,12 +206,11 @@ describe("reportStoreAgent", () => {
       { reason: "spam", details: "unsolicited" },
       fetchImpl,
     );
-    strictEqual(
-      calls[0].url,
+    expect(calls[0].url).toBe(
       `${BASE}/v1/agentstore/agents/inbox-helper/reports`,
     );
-    strictEqual(calls[0].init?.method, "POST");
-    deepStrictEqual(JSON.parse(String(calls[0].init?.body)), {
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({
       reason: "spam",
       details: "unsolicited",
     });
@@ -221,23 +221,21 @@ describe("reportStoreAgent", () => {
       Promise.resolve(
         jsonResponse({ error: "rate_limited" }, 429),
       )) as typeof fetch;
-    await rejects(
+    const error = await rejection(
       reportStoreAgent("inbox-helper", { reason: "other" }, fetchImpl),
-      (err: unknown) => err instanceof StoreCatalogError && err.status === 429,
     );
+    expect(error).toBeInstanceOf(StoreCatalogError);
+    expect((error as StoreCatalogError).status).toBe(429);
   });
 
   it("re-raises the underlying cause on a network failure (status 0)", async () => {
     const cause = new Error("connection refused");
     const fetchImpl = (() => Promise.reject(cause)) as typeof fetch;
-    await rejects(
-      reportStoreAgent("inbox-helper", { reason: "spam" }, fetchImpl),
-      (err: unknown) => {
-        ok(!(err instanceof StoreCatalogError));
-        strictEqual(err, cause);
-        return true;
-      },
-    );
+    expect(
+      await rejection(
+        reportStoreAgent("inbox-helper", { reason: "spam" }, fetchImpl),
+      ),
+    ).toBe(cause);
   });
 });
 
@@ -249,9 +247,9 @@ describe("fetchStoreCreator", () => {
     });
     await fetchStoreCreator("felipe", { sort: "installs", page: 2 }, fetchImpl);
     const url = new URL(calls[0].url);
-    strictEqual(url.pathname, "/v1/agentstore/creators/felipe");
-    strictEqual(url.searchParams.get("sort"), "installs");
-    strictEqual(url.searchParams.get("page"), "2");
+    expect(url.pathname).toBe("/v1/agentstore/creators/felipe");
+    expect(url.searchParams.get("sort")).toBe("installs");
+    expect(url.searchParams.get("page")).toBe("2");
   });
 
   it("omits page=1 and percent-encodes the handle", async () => {
@@ -261,8 +259,8 @@ describe("fetchStoreCreator", () => {
     });
     await fetchStoreCreator("a/b", { page: 1 }, fetchImpl);
     const url = new URL(calls[0].url);
-    strictEqual(url.pathname, "/v1/agentstore/creators/a%2Fb");
-    strictEqual(url.searchParams.get("page"), null);
+    expect(url.pathname).toBe("/v1/agentstore/creators/a%2Fb");
+    expect(url.searchParams.get("page")).toBe(null);
   });
 
   it("returns the creator page payload, with absent summary fields backfilled", async () => {
@@ -270,7 +268,7 @@ describe("fetchStoreCreator", () => {
       profile: { handle: "felipe" },
       agents: { items: [{ id: "a1" }], hasMore: true },
     });
-    deepStrictEqual(await fetchStoreCreator("felipe", {}, fetchImpl), {
+    expect(await fetchStoreCreator("felipe", {}, fetchImpl)).toEqual({
       profile: { handle: "felipe" },
       agents: { items: [{ id: "a1", skills: [] }], hasMore: true },
     });
@@ -281,22 +279,16 @@ describe("fetchStoreCreator", () => {
       Promise.resolve(
         jsonResponse({ error: "not_found" }, 404),
       )) as typeof fetch;
-    await rejects(
-      fetchStoreCreator("ghost", {}, fetchImpl),
-      (err: unknown) => err instanceof StoreCatalogError && err.status === 404,
-    );
+    const error = await rejection(fetchStoreCreator("ghost", {}, fetchImpl));
+    expect(error).toBeInstanceOf(StoreCatalogError);
+    expect((error as StoreCatalogError).status).toBe(404);
   });
 
   it("re-raises the underlying cause on a network failure (status 0)", async () => {
     const cause = new Error("connection refused");
     const fetchImpl = (() => Promise.reject(cause)) as typeof fetch;
-    await rejects(
-      fetchStoreCreator("felipe", {}, fetchImpl),
-      (err: unknown) => {
-        ok(!(err instanceof StoreCatalogError));
-        strictEqual(err, cause);
-        return true;
-      },
+    expect(await rejection(fetchStoreCreator("felipe", {}, fetchImpl))).toBe(
+      cause,
     );
   });
 });
@@ -313,9 +305,9 @@ describe("reportStoreCreator", () => {
       { reason: "spam", details: "impersonation" },
       fetchImpl,
     );
-    strictEqual(calls[0].url, `${BASE}/v1/agentstore/creators/felipe/reports`);
-    strictEqual(calls[0].init?.method, "POST");
-    deepStrictEqual(JSON.parse(String(calls[0].init?.body)), {
+    expect(calls[0].url).toBe(`${BASE}/v1/agentstore/creators/felipe/reports`);
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({
       reason: "spam",
       details: "impersonation",
     });
@@ -326,23 +318,21 @@ describe("reportStoreCreator", () => {
       Promise.resolve(
         jsonResponse({ error: "rate_limited" }, 429),
       )) as typeof fetch;
-    await rejects(
+    const error = await rejection(
       reportStoreCreator("felipe", { reason: "other" }, fetchImpl),
-      (err: unknown) => err instanceof StoreCatalogError && err.status === 429,
     );
+    expect(error).toBeInstanceOf(StoreCatalogError);
+    expect((error as StoreCatalogError).status).toBe(429);
   });
 
   it("re-raises the underlying cause on a network failure (status 0)", async () => {
     const cause = new Error("connection refused");
     const fetchImpl = (() => Promise.reject(cause)) as typeof fetch;
-    await rejects(
-      reportStoreCreator("felipe", { reason: "spam" }, fetchImpl),
-      (err: unknown) => {
-        ok(!(err instanceof StoreCatalogError));
-        strictEqual(err, cause);
-        return true;
-      },
-    );
+    expect(
+      await rejection(
+        reportStoreCreator("felipe", { reason: "spam" }, fetchImpl),
+      ),
+    ).toBe(cause);
   });
 });
 
@@ -354,12 +344,11 @@ describe("pingStoreInstall", () => {
       return Promise.resolve(new Response(null, { status: 204 }));
     }) as typeof fetch;
     await pingStoreInstall("inbox-helper", fetchImpl);
-    strictEqual(
-      calls[0].url,
+    expect(calls[0].url).toBe(
       `${BASE}/v1/agentstore/agents/inbox-helper/installs`,
     );
-    strictEqual(calls[0].init?.method, "POST");
-    deepStrictEqual(JSON.parse(String(calls[0].init?.body)), {
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(String(calls[0].init?.body))).toEqual({
       target: "houston",
     });
   });
@@ -369,10 +358,8 @@ describe("pingStoreInstall", () => {
       Promise.resolve(
         jsonResponse({ error: "not_found" }, 404),
       )) as typeof fetch;
-    await rejects(pingStoreInstall("ghost", fetchImpl), (err: unknown) => {
-      ok(err instanceof StoreCatalogError);
-      strictEqual(err.status, 404);
-      return true;
-    });
+    const error = await rejection(pingStoreInstall("ghost", fetchImpl));
+    expect(error).toBeInstanceOf(StoreCatalogError);
+    expect((error as StoreCatalogError).status).toBe(404);
   });
 });

@@ -1,7 +1,4 @@
-import type {
-  SidebarLayout,
-  Workspace,
-} from "../../../../../ui/engine-client/src/types";
+import type { SidebarLayout, Workspace } from "@houston/wire-types";
 import { prefPath, retryTransientRead } from "../control-plane";
 import { syntheticWorkspace } from "../synthetic";
 import { HoustonEngineError } from "./errors";

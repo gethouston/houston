@@ -7,7 +7,7 @@ import type {
   InstalledConfig,
   InstallFromGithub,
   UpdateAgent,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import * as agents from "../agents";
 import * as controlPlane from "../control-plane";
 import { readAgentList } from "./agent-list";

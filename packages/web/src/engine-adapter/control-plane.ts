@@ -57,7 +57,7 @@ export type {
   UserProfile,
   UserProfilesResult,
   WebhookKeyReveal,
-} from "../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 
 export * from "./cp/agent-color";
 export * from "./cp/agent-color-sync";

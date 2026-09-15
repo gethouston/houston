@@ -1,10 +1,10 @@
 import type { ProviderCatalog } from "@houston/protocol";
-import { retryAfterMsOf } from "../../../../../ui/engine-client/src/retry-after";
 import type {
   Capabilities,
   HealthResponse,
   VersionResponse,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
+import { retryAfterMsOf } from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
 import type { AdapterContext } from "./context";
 import { HoustonEngineError } from "./errors";

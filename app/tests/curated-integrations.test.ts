@@ -1,6 +1,6 @@
 import { deepStrictEqual, match, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { CustomIntegrationView } from "../../ui/engine-client/src/types.ts";
+import type { CustomIntegrationView } from "@houston/wire-types";
 import {
   CURATED_INTEGRATIONS,
   curatedAddInput,

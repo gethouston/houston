@@ -1,4 +1,4 @@
-import type { ProjectFile } from "../../../../../ui/engine-client/src/types";
+import type { ProjectFile } from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
 import { frameBatch, planAttachmentBatches } from "./attachment-batches";
 import type { BaseCtor } from "./mixin";

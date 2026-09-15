@@ -2,7 +2,7 @@ import type {
   MessageApproval,
   MessageMention,
   SessionStartRequest,
-} from "../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 
 /**
  * How N held sends become ONE (see send-queue.ts): the per-field merge rules for

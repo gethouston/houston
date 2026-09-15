@@ -1,6 +1,6 @@
 import { type ChatMessage, EngineError } from "@houston/runtime-client";
 import { historyToFeed as foldHistoryToFeed } from "@houston/sdk";
-import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
+import type { ChatHistoryEntry } from "@houston/wire-types";
 import { toOldProvider } from "./synthetic";
 
 // The turn error/stop/not-connected classifiers moved into `@houston/sdk` with

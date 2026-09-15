@@ -1,4 +1,4 @@
-import { retryAfterMsOf } from "../../../../../ui/engine-client/src/retry-after";
+import { retryAfterMsOf } from "@houston/wire-types";
 import { appVersionHeader } from "../app-version";
 import { HoustonEngineError } from "../client/errors";
 import { refreshLiveToken } from "../session-refresh";

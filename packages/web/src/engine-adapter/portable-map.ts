@@ -9,7 +9,7 @@ import type {
   PortableInventoryPreview,
   PortableManifestSummary,
   StorePublishRequest,
-} from "../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 
 /** The host's `PortableSelection` wire shape (packages/protocol). */
 export interface WireSelection {

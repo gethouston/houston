@@ -12,7 +12,7 @@ import type {
   PortableInventoryPreview,
   PortableScanResponse,
   PortableUploadPreviewResponse,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
 import * as portable from "../portable";
 import { importFromStoreLink } from "../portable-from-store";

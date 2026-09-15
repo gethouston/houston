@@ -1,6 +1,6 @@
 import { canonicalProviderId, migrateProviderModel } from "@houston/domain";
 import { toDisplayProviderId } from "@houston/domain/provider-dialect";
-import type { Agent, Workspace } from "../../../../ui/engine-client/src/types";
+import type { Agent, Workspace } from "@houston/wire-types";
 
 /**
  * The new engine is single-workspace / single-user with no agent concept, but

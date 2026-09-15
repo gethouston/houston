@@ -17,7 +17,7 @@ import type {
   CreatorProfile,
   CreatorProfilePatch,
   HandleAvailability,
-} from "../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import type { ControlPlaneConfig } from "./control-plane";
 import { asEngineError, storeClient } from "./portable-store";
 

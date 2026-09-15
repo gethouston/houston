@@ -1,4 +1,4 @@
-import type { AssistantHandle } from "../../../../../ui/engine-client/src/types";
+import type { AssistantHandle } from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";

@@ -1,7 +1,7 @@
 /**
  * The single HTTP client for the Houston gateway's Agent Store REST API,
  * mounted under `/v1/agentstore`. It replaces the hand-rolled `fetch` code in
- * `agentstore/src/lib/store-*.ts`, `ui/engine-client/src/store-catalog.ts`, and
+ * `agentstore/src/lib/store-*.ts`, `packages/web/src/engine-adapter/store-catalog.ts`, and
  * `packages/web/src/engine-adapter/portable-store.ts`.
  *
  * The client is isomorphic: it reads no environment and touches no `window`,

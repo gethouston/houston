@@ -18,7 +18,7 @@ import type { HoustonSdk } from "@houston/sdk";
 // `cp/*` submodules directly: the web test suite mocks the barrel module
 // (`vi.mock("…/control-plane")`) and overrides `runtimeClientFor` /
 // `gatewayAuthFetch` etc. — a direct submodule import would bypass the mock.
-import type { Capabilities } from "../../../../../ui/engine-client/src/types";
+import type { Capabilities } from "@houston/wire-types";
 import type { ControlPlaneConfig } from "../control-plane";
 import {
   gatewayAuthFetch,

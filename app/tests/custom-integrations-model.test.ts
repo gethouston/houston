@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import type {
   CustomAuthMethod,
   CustomIntegrationView,
-} from "../../ui/engine-client/src/types.ts";
+} from "@houston/wire-types";
 import {
   customAuthMethod,
   customKindBadgeKey,

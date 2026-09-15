@@ -3,7 +3,7 @@ import type {
   ProviderHealth,
   ProviderStatus,
   ProviderUsage,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import { toNewProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 import { withProviderAgentRetarget } from "./provider-agent-gone";

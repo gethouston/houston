@@ -24,7 +24,7 @@ import type {
   StoreCategory,
   StoreCreatorDirectoryPage,
   StoreCreatorPage,
-} from "./types.ts";
+} from "@houston/wire-types";
 
 /**
  * A failed catalog read. Deliberately NOT `HoustonEngineError` (this module

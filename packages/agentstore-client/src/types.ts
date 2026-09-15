@@ -4,7 +4,7 @@
  * handlers (`cloud/internal/edge/agentstoreroutes` + `cloud/internal/agentstore`)
  * and unify the previously divergent shapes carried by the Next.js frontend
  * (`agentstore/src/lib/*`) and the desktop/web engine client
- * (`ui/engine-client/src/*`). Pure types only — this module is isomorphic and
+ * (`packages/wire-types/src/types.ts`). Pure types only — this module is isomorphic and
  * reads no environment.
  */
 import type { AgentIR } from "@houston/agentstore-contract";

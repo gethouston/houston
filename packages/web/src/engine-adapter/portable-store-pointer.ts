@@ -6,7 +6,7 @@
  * bearer) lives in `portable-store.ts`.
  */
 
-import type { StorePublishRequest } from "../../../../ui/engine-client/src/types";
+import type { StorePublishRequest } from "@houston/wire-types";
 import { type ControlPlaneConfig, cpFetch } from "./control-plane";
 import { storePublishBody } from "./portable-map";
 

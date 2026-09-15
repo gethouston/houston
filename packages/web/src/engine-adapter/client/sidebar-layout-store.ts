@@ -1,4 +1,4 @@
-import type { SidebarLayout } from "../../../../../ui/engine-client/src/types";
+import type { SidebarLayout } from "@houston/wire-types";
 import type { AdapterContext } from "./context";
 import { HoustonEngineError } from "./errors";
 import { getCapabilities } from "./host-capabilities";

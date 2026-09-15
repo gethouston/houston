@@ -1,5 +1,5 @@
 import { historyToFeed as sdkHistoryToFeed } from "@houston/sdk";
-import type { ChatHistoryEntry } from "../../../../../ui/engine-client/src/types";
+import type { ChatHistoryEntry } from "@houston/wire-types";
 import {
   type CachedFrame,
   writeCachedConversation,

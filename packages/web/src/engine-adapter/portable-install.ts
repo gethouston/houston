@@ -15,12 +15,12 @@ import {
   packageSeed,
   remintRoutineIds,
 } from "@houston/domain";
-import { agentColorId } from "@houston-ai/core";
 import type {
   Agent,
   PortableInstalledAgent,
   PortableInstallRequest,
-} from "../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
+import { agentColorId } from "@houston-ai/core";
 import { dropUpload, parkedUpload } from "./portable";
 import { toWireSelection } from "./portable-map";
 

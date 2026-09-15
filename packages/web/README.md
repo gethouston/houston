@@ -46,7 +46,7 @@ Store, and global `/v1/events` reactivity.
 
 The Agent Store is fully wired here, not stubbed:
 
-- **Browse** — `ui/engine-client/src/store-catalog.ts`. Anonymous, CORS-open
+- **Browse** — `engine-adapter/store-catalog.ts`. Anonymous, CORS-open
   catalog reads against the store gateway, so browsing works signed-out.
 - **Install** — `engine-adapter/portable-from-store.ts`. Prefers the host's
   `/v1/portable/fetch-from-store`; hosted deployments have no local host (the

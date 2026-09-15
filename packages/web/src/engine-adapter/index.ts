@@ -4,16 +4,11 @@
  * carry the matching `paths` entry, so the whole UI (app/src) compiles against
  * exactly what it runs.
  *
- * The shared wire types and the deployment-agnostic reads still come from the
- * `ui/engine-client` package; the client implementation lives here.
+ * The shapes it speaks in are `@houston/wire-types`, which has no I/O of its
+ * own; the adapter re-exports them so `app/src` reads one surface.
  */
 
-// The local-model-bridge port (types only) and the public store catalog reads
-// (anonymous, CORS-open) are deployment-shape agnostic, so the adapter serves
-// the ui package's implementations as-is.
-export * from "../../../../ui/engine-client/src/local-model-bridge";
-export * from "../../../../ui/engine-client/src/store-catalog";
-export * from "../../../../ui/engine-client/src/types";
+export * from "@houston/wire-types";
 export type { HoustonClientOptions } from "./client";
 export {
   HoustonClient,
@@ -27,6 +22,9 @@ export {
 // keys the app's list-query persistence to the same gateway+user identity.
 export { clearConversationCache } from "./conversation-cache";
 export { conversationCacheScope } from "./conversation-cache-identity";
+// The public Agent Store catalog reads (anonymous, CORS-open): the one request
+// on this surface that needs neither a host nor a session.
+export * from "./store-catalog.ts";
 // Warming-engine send queue (HOU-693): show the message as sent while the
 // engine boots; the deferred real send suppresses its own bubble.
 export { pushPendingUserMessage } from "./turn-stream";

@@ -1,5 +1,5 @@
+import type { StorePublishRequest } from "@houston/wire-types";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import type { StorePublishRequest } from "../../../../ui/engine-client/src/types";
 import { HoustonEngineError } from "./client";
 import type { ControlPlaneConfig } from "./control-plane";
 import {

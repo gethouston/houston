@@ -22,7 +22,7 @@ import {
   type PortablePackage,
   storePackageFromIrPayload,
 } from "@houston/domain";
-import type { PortableUploadPreviewResponse } from "../../../../ui/engine-client/src/types";
+import type { PortableUploadPreviewResponse } from "@houston/wire-types";
 import { HoustonEngineError, isHoustonEngineError } from "./client/errors";
 import type { ControlPlaneConfig } from "./control-plane";
 import { hostFetch, parkUpload } from "./portable";

@@ -11,7 +11,7 @@ import type {
   StorePublishResponse,
   StoreUnpublishResponse,
   StoreUpdateResponse,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import * as portableProfile from "../portable-profile";
 import * as portableStore from "../portable-store";
 import type { BaseCtor } from "./mixin";

@@ -164,9 +164,6 @@ importers:
       '@houston-ai/core':
         specifier: workspace:*
         version: link:../ui/core
-      '@houston-ai/engine-client':
-        specifier: workspace:*
-        version: link:../ui/engine-client
       '@houston-ai/events':
         specifier: workspace:*
         version: link:../ui/events
@@ -200,6 +197,9 @@ importers:
       '@houston/sdk':
         specifier: workspace:*
         version: link:../packages/sdk
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../packages/wire-types
       '@sentry/browser':
         specifier: 10.63.0
         version: 10.63.0
@@ -671,9 +671,6 @@ importers:
       '@houston-ai/core':
         specifier: workspace:*
         version: link:../../ui/core
-      '@houston-ai/engine-client':
-        specifier: workspace:*
-        version: link:../../ui/engine-client
       '@houston-ai/events':
         specifier: workspace:*
         version: link:../../ui/events
@@ -707,6 +704,9 @@ importers:
       '@houston/sdk':
         specifier: workspace:*
         version: link:../sdk
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../wire-types
       '@sentry/browser':
         specifier: 10.63.0
         version: 10.63.0
@@ -801,6 +801,19 @@ importers:
       vitest:
         specifier: 3.2.6
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/wire-types:
+    dependencies:
+      '@houston/agentstore-client':
+        specifier: workspace:*
+        version: link:../agentstore-client
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+    devDependencies:
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
 
   ui/agent:
     dependencies:
@@ -950,19 +963,6 @@ importers:
       tailwindcss:
         specifier: ^4.0.0
         version: 4.3.2
-
-  ui/engine-client:
-    dependencies:
-      '@houston/agentstore-client':
-        specifier: workspace:*
-        version: link:../../packages/agentstore-client
-      '@houston/protocol':
-        specifier: workspace:*
-        version: link:../../packages/protocol
-    devDependencies:
-      typescript:
-        specifier: 5.9.3
-        version: 5.9.3
 
   ui/events:
     dependencies:

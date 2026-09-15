@@ -5,7 +5,7 @@ import {
   LocalBridgeRemoteStatusSchema,
   LocalBridgeSessionSchema,
 } from "@houston/protocol";
-import type { LocalModelBridgeAccess } from "../../../../../ui/engine-client/src/local-model-bridge";
+import type { LocalModelBridgeAccess } from "@houston/wire-types";
 import { emitEvent } from "../bus";
 import { scopedBridgeFetch } from "../cp/bridge-fetch";
 import type { AdapterContext } from "./context";

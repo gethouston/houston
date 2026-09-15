@@ -25,7 +25,7 @@ import type {
   StorePublishResponse,
   StoreUnpublishResponse,
   StoreUpdateResponse,
-} from "../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import { HoustonEngineError } from "./client";
 import type { ControlPlaneConfig } from "./control-plane";
 import {

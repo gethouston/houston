@@ -17,7 +17,7 @@ import {
  * FIXTURE operations, never the generated catalog: these pin the resolution and
  * the refusals, which must not move when the adapter's operations do. Which
  * parameter carries which `resolver` is the generator's half of the contract
- * (ui/engine-client/tests/assistant-entity-sources.spec.ts); here it is stated
+ * (scripts/assistant-catalog/tests/assistant-entity-sources.spec.ts); here it is stated
  * on the fixture, exactly as the catalog states it on a real operation.
  */
 

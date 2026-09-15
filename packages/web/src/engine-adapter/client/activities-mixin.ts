@@ -6,7 +6,7 @@ import type {
   ConversationEntry,
   FailedAgentRead,
   NewActivity,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import * as activities from "../activities";
 import * as agents from "../agents";
 import { emitLocalEcho } from "../bus";

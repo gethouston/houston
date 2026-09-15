@@ -1,7 +1,7 @@
 import type {
   SessionStartRequest,
   SessionStartResponse,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import {
   flushQueuedSends,
   maybeQueueSend,

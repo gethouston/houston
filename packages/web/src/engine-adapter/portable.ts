@@ -23,7 +23,7 @@ import type {
   PortableInventoryPreview,
   PortableScanResponse,
   PortableUploadPreviewResponse,
-} from "../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import { HoustonEngineError } from "./client/errors";
 import { type ControlPlaneConfig, gatewayAuthFetch } from "./control-plane";
 import { packagePreview, toWireSelection } from "./portable-map";

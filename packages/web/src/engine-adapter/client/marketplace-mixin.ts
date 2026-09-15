@@ -4,7 +4,7 @@ import type {
   InstallCommunityRequest,
   InstallFromRepoRequest,
   RepoSkill,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import { emitLocalEcho } from "../bus";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";

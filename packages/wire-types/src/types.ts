@@ -1,10 +1,11 @@
 /**
- * Wire types mirroring `engine/houston-engine-protocol/src/lib.rs` and
- * domain DTOs from `engine/houston-engine-core`.
+ * The request/response shapes of protocol v3, as the client sees them.
  *
- * Until we wire up a Rust→TS code generator (`ts-rs` or `specta`) these
- * are maintained by hand. Keep them in sync — the Rust side is the
- * source of truth.
+ * Hand-maintained, and a projection of `packages/protocol` (`src/wire.ts`,
+ * which carries the zod schemas the host validates against) widened with the
+ * shapes only a gateway deployment serves: billing, orgs, teams. The host is
+ * the source of truth — when a route's payload changes there, change it here in
+ * the same PR or the app compiles against a contract nothing serves.
  */
 
 import type {

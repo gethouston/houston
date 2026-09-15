@@ -3,7 +3,7 @@ import type {
   SaveSkillRequest,
   SkillDetail,
   SkillsManifest,
-} from "../../../../../ui/engine-client/src/types";
+} from "@houston/wire-types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
 import type { BaseCtor } from "./mixin";

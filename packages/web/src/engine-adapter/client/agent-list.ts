@@ -1,5 +1,5 @@
 import type { HoustonSdk } from "@houston/sdk";
-import type { Agent } from "../../../../../ui/engine-client/src/types";
+import type { Agent } from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
 import { viaSdk } from "./sdk-error";
 
