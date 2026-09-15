@@ -8,10 +8,13 @@ import {
   toolStartFrame,
   type UserContentBlock,
   unverifiedToolStart,
+  warnDroppedToolBlock,
 } from "./translate-support";
 
 /** The per-turn content-block state behind a translator's stream handling. */
 export interface ContentBlockTracker {
+  /** A main-thread `message_start`: drops tool blocks left open by the last response. */
+  onMessageStart(): void;
   /** SDK `stream_event` frames → text/thinking deltas and tool_start. */
   onStreamEvent(event: EventLike): WireEvent[];
   /**
@@ -40,6 +43,12 @@ export interface ContentBlockTracker {
  * that is an EXPECTED state — logged as a breadcrumb, never a Sentry error
  * (PRODUCT-1694). A stop whose deltas fail to parse before the SDK's verdict
  * arrives waits for it; only a verdict that never comes is loud.
+ *
+ * Open blocks are keyed by content index, which every API response reuses from
+ * 0, so the tracker is reset per response (`onMessageStart`): a block whose
+ * stream broke before its stop (PRODUCT-1828: a Bash input cut at 204 bytes, the
+ * CLI retried transparently) must not be settled by the next response's text
+ * block at the same index and reported as an unverified call at turn end.
  */
 export function createContentBlockTracker(): ContentBlockTracker {
   const toolBlocks = new Map<number, ToolBlock>();
@@ -59,6 +68,11 @@ export function createContentBlockTracker(): ContentBlockTracker {
   let sawThinking = false;
   let sepText = false;
   let sepThinking = false;
+
+  function onMessageStart(): void {
+    for (const tb of toolBlocks.values()) warnDroppedToolBlock(tb);
+    toolBlocks.clear();
+  }
 
   function onStreamEvent(event: EventLike): WireEvent[] {
     if (event?.type === "content_block_start" && event.index !== undefined) {
@@ -174,5 +188,11 @@ export function createContentBlockTracker(): ContentBlockTracker {
     return out;
   }
 
-  return { onStreamEvent, onAssistantMessage, onUserMessage, onTurnEnd };
+  return {
+    onMessageStart,
+    onStreamEvent,
+    onAssistantMessage,
+    onUserMessage,
+    onTurnEnd,
+  };
 }
