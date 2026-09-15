@@ -1,3 +1,4 @@
+import { NAME_TAKEN } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 import { FOLDER_KEEP } from "./files-list";
 import { loadWorkspaceKeys, moveOrRefuse } from "./files-names";
@@ -5,7 +6,6 @@ import {
   FileOpError,
   FilePathError,
   fileKey,
-  NAME_TAKEN,
   safeRel,
   workspaceRel,
 } from "./files-path";

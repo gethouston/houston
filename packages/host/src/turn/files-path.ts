@@ -1,4 +1,5 @@
 import { posix } from "node:path";
+import type { FileOpCode } from "@houston/protocol";
 
 /**
  * Path validation for the workspace files routes — the wall every UI- or
@@ -15,21 +16,13 @@ export class FilePathError extends Error {
 }
 
 /**
- * Machine-readable reason a files op refused, carried to the client beside the
- * status in the error body. The status alone cannot identify a state: the
- * moment a route grows a SECOND 409, every client that keyed on `409` starts
- * explaining the new one with the old one's copy. Clients match the code
- * (`app/src/lib/file-conflicts.ts`).
+ * A file operation that failed with a specific HTTP status (409 conflict, 413
+ * too large, …). `code` is the shared `FileOpCode` vocabulary
+ * (`@houston/protocol`), carried to the client beside the status because the
+ * status alone cannot identify a state: the moment a route grows a SECOND 409,
+ * every client that keyed on `409` starts explaining the new one with the old
+ * one's copy (`app/src/lib/file-conflicts.ts` matches the code).
  */
-export type FileOpCode = "name_taken" | "read_only";
-
-/** The destination name is already in use — refusing beats overwriting. */
-export const NAME_TAKEN: FileOpCode = "name_taken";
-
-/** The workspace's storage refuses every write (a read-only mount or disk). */
-export const READ_ONLY: FileOpCode = "read_only";
-
-/** A file operation that failed with a specific HTTP status (409 conflict, 413 too large, …). */
 export class FileOpError extends Error {
   constructor(
     readonly status: number,

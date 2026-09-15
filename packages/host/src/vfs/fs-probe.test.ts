@@ -3,18 +3,18 @@ import { readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { loadWorkspaceKeys } from "../turn/files-names";
 import { FsVfs } from "./fs";
+import { VfsReadOnlyError } from "./vfs";
 
 /**
  * The case probe is a READ-shaped question ("how does this volume compare
  * names?") that has to write one scratch file to answer. Both facts about it
  * matter to a user: it must not bring the workspace directory into existence
- * on the way, and a storage that refuses the write is the user's read-only
- * disk, not a Houston fault.
+ * on the way, and an answer it had to borrow from an ancestor is never
+ * remembered. A storage that refuses the probe's write is a read-only volume,
+ * covered with every other write primitive in `fs-readonly.test.ts`.
  */
 
-const ROOT = "Houston/Bo";
 const base = () => mkdtempSync(join(tmpdir(), "houston-probe-"));
 const isRoot = process.getuid?.() === 0;
 
@@ -45,28 +45,9 @@ test.skipIf(isRoot)(
 
     mkdirSync(root, { mode: 0o500 });
     try {
-      await expect(vfs.keyCase()).rejects.toMatchObject({ code: "EACCES" });
+      await expect(vfs.keyCase()).rejects.toBeInstanceOf(VfsReadOnlyError);
     } finally {
       chmodSync(root, 0o700);
-    }
-  },
-);
-
-test.skipIf(isRoot)(
-  "a read-only workspace says so, with its own code",
-  async () => {
-    const dir = base();
-    const vfs = new FsVfs(join(dir, ROOT));
-    chmodSync(dir, 0o500);
-    try {
-      const refused = loadWorkspaceKeys(vfs, ROOT);
-      // Not a 500 naming a scratch file the user never heard of.
-      await expect(refused).rejects.toMatchObject({
-        status: 403,
-        code: "read_only",
-      });
-    } finally {
-      chmodSync(dir, 0o700);
     }
   },
 );

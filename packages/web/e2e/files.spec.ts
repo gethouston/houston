@@ -302,7 +302,9 @@ test("a read-only workspace says so instead of failing in silence", async ({
       .filter({ hasText: "can’t be changed right now" })
       .filter({ hasText: "Check the folder’s permissions" }),
   ).toBeVisible();
-  await expect(page.getByText("Houston, we have a problem!")).toHaveCount(0);
+  // ONE toast: the authored sentence, and no generic bug box beside it. A
+  // count of zero bug boxes would pass on a screen showing nothing at all.
+  await expect(page.getByRole("status")).toHaveCount(1);
 
   // The rename did not happen, and the screen is not optimistic about it.
   await expect(row(page, "Q3 report.pdf")).toHaveCount(1);

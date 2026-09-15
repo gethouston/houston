@@ -18,6 +18,7 @@ import {
   FileOpError,
   FilePathError,
   listWorkspace,
+  readOnlyRefusal,
   readWorkspaceFile,
   renameWorkspaceFile,
   workspaceRel,
@@ -159,12 +160,16 @@ export async function handleFiles(
       json(res, 400, { error: err.message });
       return true;
     }
-    if (err instanceof FileOpError) {
+    // Storage that refuses every write reaches here from WHICHEVER op hit it
+    // first — the case probe, the delete, the upload — so it is named once,
+    // here, rather than by each op remembering permissions.
+    const refusal = readOnlyRefusal(err) ?? err;
+    if (refusal instanceof FileOpError) {
       // The code travels beside the sentence: a client that must tell an
       // EXPECTED refusal from a bug cannot do it on the status alone.
-      json(res, err.status, {
-        error: err.message,
-        ...(err.code ? { code: err.code } : {}),
+      json(res, refusal.status, {
+        error: refusal.message,
+        ...(refusal.code ? { code: refusal.code } : {}),
       });
       return true;
     }

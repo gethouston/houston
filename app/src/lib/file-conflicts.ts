@@ -5,6 +5,15 @@
  * Replace / Keep both, a rename says the name is taken, and neither costs the
  * user a round trip that could only end in a refusal.
  */
+
+// Subpath import (like @houston/protocol/interaction): the app's node:test
+// runner loads value imports for real, and the package index's extensionless
+// import chain only resolves under bundler resolution.
+import {
+  type FileOpCode,
+  NAME_TAKEN,
+  READ_ONLY,
+} from "@houston/protocol/file-refusal";
 import type { FileEntry } from "@houston-ai/agent";
 import { engineErrorCode } from "./engine-error-code.ts";
 
@@ -79,48 +88,37 @@ export function detectRenameConflict(
 }
 
 /**
- * The client mirror of the host's `FileOpCode` union
- * (`packages/host/src/turn/files-path.ts`): the machine-readable reasons a
- * files write refused, answered beside the status. One member, one authored
- * surface — which is the whole point of keying on the code rather than the
- * status. The day the route grows a second 409 or a second 403, a client that
- * read the status would explain the new state with the old one's copy and
- * silence it from Sentry along with it. The English message is no contract
- * either: the host's wording is untranslated and free to change.
- */
-export type FileRefusal = "name_taken" | "read_only";
-
-/** The destination name is in use — another writer, or the agent itself, took
- *  it between the listing the UI read and the request it sent. */
-export const NAME_TAKEN_CODE: FileRefusal = "name_taken";
-
-/** The workspace's storage refuses every write: its folder answered
- *  EACCES/EPERM/EROFS (a read-only mount, a folder whose permissions were
- *  revoked, a sync client holding it). The person's machine, not the data. */
-export const READ_ONLY_CODE: FileRefusal = "read_only";
-
-/**
  * Which refusal the host answered with, or null for anything else — the ONE
  * place a files-write rejection is classified, so a state the client cannot
- * explain keeps the report path instead of borrowing the nearest copy.
+ * explain keeps the report path instead of borrowing the nearest authored copy.
+ *
+ * The vocabulary is the host's own (`@houston/protocol`), not a mirror of it:
+ * keying on the code rather than the status is only worth anything while the
+ * two ends cannot drift. The English message is no contract either — the
+ * host's wording is untranslated and free to change.
  */
-export function fileRefusal(err: unknown): FileRefusal | null {
+export function fileRefusal(err: unknown): FileOpCode | null {
   switch (engineErrorCode(err)) {
-    case NAME_TAKEN_CODE:
-      return NAME_TAKEN_CODE;
-    case READ_ONLY_CODE:
-      return READ_ONLY_CODE;
+    case NAME_TAKEN:
+      return NAME_TAKEN;
+    case READ_ONLY:
+      return READ_ONLY;
     default:
       return null;
   }
 }
 
+/** The destination name is in use — another writer, or the agent itself, took
+ *  it between the listing the UI read and the request it sent. */
 export function isNameTakenError(err: unknown): boolean {
-  return fileRefusal(err) === NAME_TAKEN_CODE;
+  return fileRefusal(err) === NAME_TAKEN;
 }
 
+/** The workspace's storage refuses every write: its folder answered
+ *  EACCES/EPERM/EROFS (a read-only mount, a folder whose permissions were
+ *  revoked, a sync client holding it). The person's machine, not the data. */
 export function isReadOnlyError(err: unknown): boolean {
-  return fileRefusal(err) === READ_ONLY_CODE;
+  return fileRefusal(err) === READ_ONLY;
 }
 
 /**

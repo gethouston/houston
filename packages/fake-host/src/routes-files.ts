@@ -4,7 +4,8 @@
  * (upload), move, rename, folder create, delete. Backed by `state-workspace.ts`.
  */
 
-import { mimeFor, NAME_TAKEN, READ_ONLY } from "@houston/host/src/turn/files";
+import { mimeFor } from "@houston/host/src/turn/files";
+import { NAME_TAKEN, READ_ONLY } from "@houston/protocol";
 import { type Zippable, zipSync } from "fflate";
 import { CORS, json, noContent } from "./http";
 import * as state from "./state";
@@ -13,8 +14,8 @@ import * as state from "./state";
  * The real host refuses a taken name rather than overwriting the other entry —
  * same status and same `{error, code}` body, so the UI's expected-state
  * handling is exercised here and not just in production. The code comes from
- * the host's own constant: a drift would make the e2e green while the app
- * showed a red bug toast against the real thing.
+ * the SHARED protocol vocabulary both ends answer with: a drift would make the
+ * e2e green while the app showed a red bug toast against the real thing.
  */
 const nameTaken = (path: string) =>
   json(
@@ -27,9 +28,10 @@ const nameTaken = (path: string) =>
 
 /**
  * The real host's refusal when the workspace folder answers EACCES/EPERM/EROFS
- * (`turn/files-names.ts` `probeKeyCase`): a read-only mount, revoked folder
- * permissions. Same status and same `{error, code}` body, from the host's own
- * constant, so the app's authored surface is exercised here too.
+ * (the vfs raises `VfsReadOnlyError`, `turn/files.ts` names it): a read-only
+ * mount, revoked folder permissions. Same status and same `{error, code}`
+ * body, from the shared protocol constant, so the app's authored surface is
+ * exercised here too.
  */
 const readOnly = () =>
   json({ error: "this workspace is read-only", code: READ_ONLY }, 403);
@@ -56,9 +58,9 @@ export function handleWorkspaceFiles(
   const sub = rest[2];
   const query = new URL(req.url).searchParams;
 
-  // The probe the real host runs before any write is the first thing that
-  // fails on an unwritable volume, so every write refuses and every read still
-  // answers — the asymmetry the Files tab's copy describes.
+  // Every write primitive on an unwritable volume refuses (the case probe the
+  // real host runs first among them), while every read still answers — the
+  // asymmetry the Files tab's copy describes.
   if (isWrite(method, sub) && state.isWorkspaceReadOnly(id)) return readOnly();
 
   if (sub === undefined) {

@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
-import { MemoryVfs } from "../vfs";
+import { MemoryVfs, VfsReadOnlyError } from "../vfs";
 import {
   contentDisposition,
   createWorkspaceFolder,
@@ -457,6 +457,40 @@ test("POST files/rename on a missing source is a 404 response body", async () =>
   expect(JSON.parse(String(state.body)) as { error: string }).toEqual({
     error: "file not found",
   });
+});
+
+/**
+ * A workspace whose storage refuses every write (a read-only mount, a folder
+ * whose permissions were revoked). The vfs raises its typed refusal from
+ * whichever primitive hits it first; the route has to name it 403 `read_only`
+ * so the person gets authored copy, and so the report path can tell this
+ * expected state from a bug. Left to the generic handler it is a 500 — which
+ * is what every writer but the case probe used to get.
+ */
+class ReadOnlyVfs extends MemoryVfs {
+  override deleteKey(key: string): Promise<void> {
+    return Promise.reject(new VfsReadOnlyError(key));
+  }
+}
+
+test("DELETE on a workspace that refuses writes is a 403 read_only body", async () => {
+  const objects = new ReadOnlyVfs();
+  const { res, state } = fakeRes();
+  const handled = await handleFiles(
+    objects,
+    PATHS,
+    CTX,
+    "DELETE",
+    "files",
+    { url: "/x" } as never,
+    res,
+    new URLSearchParams({ path: "report.txt" }),
+  );
+  expect(handled).toBe(true);
+  expect(state.status).toBe(403);
+  expect(
+    JSON.parse(String(state.body)) as { error: string; code: string },
+  ).toEqual({ error: "this workspace is read-only", code: "read_only" });
 });
 
 test("POST files/rename onto a taken name is a 409 response body", async () => {
