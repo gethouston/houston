@@ -9,7 +9,7 @@ import type {
   PortableAnonymizeRequest,
   PortableAnonymizeResponse,
   PortableInventoryPreview,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine } from "../../lib/engine";

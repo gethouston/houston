@@ -15,11 +15,11 @@
  * rendering that shipped before this feature.
  */
 
-import type { CredentialScope } from "@houston-ai/engine-client";
+import type { CredentialScope } from "@houston/engine-adapter";
 
 /**
  * The per-scope credential context a provider error / status row may carry.
- * Structurally identical in `@houston-ai/chat` and `@houston-ai/engine-client`;
+ * Structurally identical in `@houston-ai/chat` and `@houston/engine-adapter`;
  * spelled locally so this module stays dependency-light and both shapes pass in.
  */
 export interface CredentialContext {

@@ -1,7 +1,4 @@
-import type {
-  AgentMoveStart,
-  AgentMoveStatus,
-} from "@houston-ai/engine-client";
+import type { AgentMoveStart, AgentMoveStatus } from "@houston/engine-adapter";
 import type { PendingAgentMove } from "./pending-move";
 import { MOVE_POLL_TIMEOUT_MS, shareErrorCode } from "./share-via-team.ts";
 

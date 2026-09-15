@@ -11,7 +11,7 @@ import type {
   StorePublishRequest,
   StorePublishResponse,
   StoreUpdateResponse,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine } from "../../lib/engine";

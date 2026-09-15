@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { SidebarLayout } from "@houston-ai/engine-client";
+import type { SidebarLayout } from "@houston/engine-adapter";
 import { teamCollapsedLookup } from "../src/components/shell/team-sidebar-model.ts";
 import type { TeamView } from "../src/lib/teams-model.ts";
 

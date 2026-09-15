@@ -1,6 +1,6 @@
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import type { LocalModelBridgeController } from "@houston/sdk";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonEngineError } from "../src/engine-adapter/client/errors";
 import {
   deferred,
   detected,

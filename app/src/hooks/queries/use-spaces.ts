@@ -2,7 +2,7 @@ import type {
   AgentMoveStart,
   AgentMoveStatus,
   OrgsList,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { isExpectedShareError } from "../../lib/share-via-team";

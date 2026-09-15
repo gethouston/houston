@@ -1,9 +1,6 @@
+import type { StoreCatalogAgent } from "@houston/engine-adapter";
+import { reportStoreCreator, StoreCatalogError } from "@houston/engine-adapter";
 import { Button } from "@houston-ai/core";
-import type { StoreCatalogAgent } from "@houston-ai/engine-client";
-import {
-  reportStoreCreator,
-  StoreCatalogError,
-} from "@houston-ai/engine-client";
 import { CreatorProfileScreen } from "@houston-ai/store";
 import { FlagIcon } from "lucide-react";
 import { useEffect, useState } from "react";

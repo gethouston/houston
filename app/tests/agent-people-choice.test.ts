@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Agent, OrgMember } from "@houston-ai/engine-client";
+import type { Agent, OrgMember } from "@houston/engine-adapter";
 import {
   agentAccessMode,
   agentPeopleCount,

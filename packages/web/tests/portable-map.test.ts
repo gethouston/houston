@@ -1,9 +1,9 @@
 import { packAgent, unpackAgent } from "@houston/domain";
-import { expect, test } from "vitest";
 import {
   packagePreview,
   toWireSelection,
-} from "../src/engine-adapter/portable-map";
+} from "@houston/engine-adapter/portable-map";
+import { expect, test } from "vitest";
 
 /**
  * The v1-wizard ↔ v3-wire mappings for portable agents. The wizards keep the

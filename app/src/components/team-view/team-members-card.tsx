@@ -1,5 +1,5 @@
+import type { OrgMember } from "@houston/engine-adapter";
 import { Button, CatalogSectionHeader, Skeleton } from "@houston-ai/core";
-import type { OrgMember } from "@houston-ai/engine-client";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {

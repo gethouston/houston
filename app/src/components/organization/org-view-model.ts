@@ -1,4 +1,4 @@
-import type { AuditEntry, Capabilities } from "@houston-ai/engine-client";
+import type { AuditEntry, Capabilities } from "@houston/engine-adapter";
 import { canSeeMembers, isPersonalSpace } from "../../lib/org-roles.ts";
 import { showComputeSection } from "../time-worked/compute-usage-model.ts";
 

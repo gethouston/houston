@@ -1,11 +1,11 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   bridgeTokenSubject,
   scopedBridgeFetch,
-} from "../src/engine-adapter/cp/bridge-fetch";
+} from "@houston/engine-adapter/cp/bridge-fetch";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const refresh = vi.hoisted(() => vi.fn<() => Promise<string | null>>());
-vi.mock("../src/engine-adapter/session-refresh", () => ({
+vi.mock("@houston/engine-adapter/session-refresh", () => ({
   refreshLiveToken: refresh,
   hasSessionRefresher: () => true,
 }));

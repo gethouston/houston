@@ -1,7 +1,7 @@
 import type {
   AgentModelChoice,
   AgentModelChoiceInfo,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { showExpectedStateToast } from "../../lib/error-toast";
 import i18n from "../../lib/i18n";

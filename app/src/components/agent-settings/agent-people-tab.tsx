@@ -1,10 +1,10 @@
+import type { OrgMember } from "@houston/engine-adapter";
 import {
   ConfirmDialog,
   Empty,
   EmptyDescription,
   EmptyTitle,
 } from "@houston-ai/core";
-import type { OrgMember } from "@houston-ai/engine-client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useUserProfiles } from "../../hooks/queries/use-user-profiles";

@@ -1,4 +1,4 @@
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 import { defaultModelFor } from "./build-provider.ts";
 import { PROVIDERS } from "./catalog.ts";
 import { providerName } from "./lookup.ts";

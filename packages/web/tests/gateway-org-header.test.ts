@@ -1,7 +1,7 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
+import type { ControlPlaneConfig } from "@houston/engine-adapter/control-plane";
+import { exportPreview } from "@houston/engine-adapter/portable";
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import type { ControlPlaneConfig } from "../src/engine-adapter/control-plane";
-import { exportPreview } from "../src/engine-adapter/portable";
 
 // C8 §Active space: with a team space pinned, EVERY gateway call must carry
 // `x-houston-org: <slug>`, else the gateway resolves the caller's PERSONAL org

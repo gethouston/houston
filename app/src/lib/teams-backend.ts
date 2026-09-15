@@ -9,7 +9,7 @@
  * pure rule that a lib has to reach for does not belong in the hooks layer.
  */
 
-import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
+import type { AgentTeam, SidebarLayout } from "@houston/engine-adapter";
 import { resolveServerTeams } from "./server-teams-model.ts";
 import { resolveTeams, type TeamView } from "./teams-model.ts";
 import type { Agent } from "./types.ts";

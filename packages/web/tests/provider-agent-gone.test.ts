@@ -19,10 +19,10 @@ const { listProviders, startLogin, runtimeClientFor } = vi.hoisted(() => ({
   runtimeClientFor: vi.fn(),
 }));
 
-vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
+vi.mock("@houston/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
     await importOriginal<
-      typeof import("../src/engine-adapter/control-plane")
+      typeof import("@houston/engine-adapter/control-plane")
     >();
   return {
     ...actual,
@@ -41,10 +41,10 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   };
 });
 
-import { bus } from "../src/engine-adapter/bus";
-import { HoustonClient } from "../src/engine-adapter/client";
-import type { AdapterContext } from "../src/engine-adapter/client/context";
-import { isProviderAgentGoneError } from "../src/engine-adapter/client/provider-agent-gone";
+import { bus } from "@houston/engine-adapter/bus";
+import { HoustonClient } from "@houston/engine-adapter/client";
+import type { AdapterContext } from "@houston/engine-adapter/client/context";
+import { isProviderAgentGoneError } from "@houston/engine-adapter/client/provider-agent-gone";
 import {
   restoreAgentListFetch,
   stubAgentListFetch,

@@ -1,4 +1,3 @@
-import { afterEach, expect, test, vi } from "vitest";
 import {
   classifyUnavailableBody,
   cpFetch,
@@ -8,7 +7,8 @@ import {
   setupRuntimeClientFor,
   transientRetryFetch,
   WAKE_RETRY_DELAYS_MS,
-} from "../src/engine-adapter/control-plane";
+} from "@houston/engine-adapter/control-plane";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
  * transientRetryFetch (HOU-731): reads bridge a rolling gateway deploy / pod

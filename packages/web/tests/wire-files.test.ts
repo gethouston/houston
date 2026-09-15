@@ -1,6 +1,6 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { LAST_AGENT_PREF } from "@houston/engine-adapter/client/context";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { LAST_AGENT_PREF } from "../src/engine-adapter/client/context";
 import {
   createWireCapture,
   expectGatewayHeaders,

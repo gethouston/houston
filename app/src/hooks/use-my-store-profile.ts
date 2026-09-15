@@ -1,4 +1,4 @@
-import type { CreatorProfile } from "@houston-ai/engine-client";
+import type { CreatorProfile } from "@houston/engine-adapter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEngine } from "../lib/engine";
 import { useSession } from "./use-session";

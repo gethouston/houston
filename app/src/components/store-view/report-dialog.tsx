@@ -1,3 +1,4 @@
+import type { ReportInput, ReportReason } from "@houston/engine-adapter";
 import {
   Button,
   Dialog,
@@ -14,7 +15,6 @@ import {
   Spinner,
   Textarea,
 } from "@houston-ai/core";
-import type { ReportInput, ReportReason } from "@houston-ai/engine-client";
 import { useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportError } from "../../lib/error-report";

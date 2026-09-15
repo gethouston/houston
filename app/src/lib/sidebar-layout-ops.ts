@@ -1,4 +1,4 @@
-import type { SidebarLayout } from "@houston-ai/engine-client";
+import type { SidebarLayout } from "@houston/engine-adapter";
 
 import { blankOverlayGroup } from "./sidebar-layout-group-ops.ts";
 

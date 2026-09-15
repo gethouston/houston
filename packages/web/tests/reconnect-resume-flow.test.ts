@@ -1,3 +1,5 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { conversationVm } from "@houston/engine-adapter/vm";
 import {
   FAKE_TOKEN,
   type FakeHost,
@@ -5,8 +7,6 @@ import {
   startFakeHost,
 } from "@houston/fake-host";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { conversationVm } from "../src/engine-adapter/vm";
 
 /**
  * Real-chain guard for the reconnect auto-continue (HOU-849): the REAL

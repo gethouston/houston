@@ -1,7 +1,7 @@
 import type {
   IntegrationConnection,
   IntegrationToolkit,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import type { Dispatch, ReactNode, SetStateAction } from "react";
 import type { ConnectFlow } from "../integrations";
 import { matchesQuery } from "../integrations/browse-model";

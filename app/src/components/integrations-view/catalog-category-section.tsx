@@ -1,5 +1,5 @@
+import type { IntegrationToolkit } from "@houston/engine-adapter";
 import { CatalogGrid, CatalogShowMore } from "@houston-ai/core";
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import {
   appDisplay,

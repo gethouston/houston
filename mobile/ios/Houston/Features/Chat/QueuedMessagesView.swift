@@ -6,7 +6,7 @@ import SwiftUI
 /// user bubble with a "pending" clock so the user sees what will send next.
 ///
 /// Mirrors the desktop composer's queued-bubble affordance
-/// (`packages/web/src/engine-adapter/send-queue.ts`). Rendered only when the VM
+/// (`packages/engine-adapter/send-queue.ts`). Rendered only when the VM
 /// publishes a non-empty `queued` list.
 struct QueuedMessagesView: View {
   let messages: [QueuedMessageVM]

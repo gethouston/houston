@@ -1,7 +1,7 @@
 import type {
   Capabilities,
   IntegrationConnection,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 // `.ts` extension so the node test runner (extensionless ESM can't resolve)
 // can import this pure helper directly, matching the repo's tested-module
 // convention. The target only imports erased package types, so it loads clean.

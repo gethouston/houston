@@ -1,4 +1,4 @@
-import type { Routine, TriggerStatusItem } from "@houston-ai/engine-client";
+import type { Routine, TriggerStatusItem } from "@houston/engine-adapter";
 
 /**
  * Pure read-model helpers the Routines section uses to feed the grid's trigger

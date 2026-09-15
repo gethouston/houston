@@ -1,4 +1,4 @@
-import type { AgentTeam } from "@houston-ai/engine-client";
+import type { AgentTeam } from "@houston/engine-adapter";
 
 /**
  * The pure patches an OPTIMISTIC agent-teams write applies before its round

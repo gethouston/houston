@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Activity, Routine } from "@houston-ai/engine-client";
+import type { Activity, Routine } from "@houston/engine-adapter";
 import { aggregateTeamRoutineDrafts } from "../src/components/team-view/team-routine-drafts-model.ts";
 import { parseTeamRoutineKey } from "../src/components/team-view/team-routines-model.ts";
 import type { Agent } from "../src/lib/types.ts";

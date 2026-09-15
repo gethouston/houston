@@ -1,5 +1,5 @@
+import type { Activity, Routine } from "@houston/engine-adapter";
 import { ChatInput } from "@houston-ai/chat";
-import type { Activity, Routine } from "@houston-ai/engine-client";
 import { Loader2, X } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";

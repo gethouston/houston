@@ -1,6 +1,6 @@
+import { isProviderLoginSessionLostError } from "@houston/engine-adapter/provider-login-session-lost";
 import { EngineError } from "@houston/runtime-client";
 import { expect, test } from "vitest";
-import { isProviderLoginSessionLostError } from "../src/engine-adapter/provider-login-session-lost";
 
 // HOUSTON-APP-56B: a relayed Codex code (or a pasted setup token) submitted
 // after the runtime dropped the login answers `400 {"error":"no active login

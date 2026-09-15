@@ -1,5 +1,5 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
 
 // The desktop shell repoints an already-built client whenever a new engine
 // config lands (`applyConfig` in app/src/lib/engine.ts): every hosted bearer

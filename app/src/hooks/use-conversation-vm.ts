@@ -1,8 +1,8 @@
+import { conversationStore } from "@houston/engine-adapter";
 import type { ConversationVM } from "@houston/sdk";
 import { conversationScope } from "@houston/sdk";
 import { useSdkSnapshot } from "@houston/sdk/react";
 import type { FeedItem } from "@houston-ai/chat";
-import { conversationStore } from "@houston-ai/engine-client";
 import { useMemo } from "react";
 import { toDisplayProviderId } from "../lib/provider-overrides";
 

@@ -1,4 +1,4 @@
-import type { ProviderUsageWindow } from "@houston-ai/engine-client";
+import type { ProviderUsageWindow } from "@houston/engine-adapter";
 
 /**
  * Render-time settling of ONE rate-limit window on the AI Models hub's

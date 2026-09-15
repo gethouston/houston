@@ -85,7 +85,7 @@ export interface SessionUserMeta {
  * The subset of the caller's Agent Store creator profile the self-face reads:
  * their claimed @handle, verification, and the avatar they chose in the store.
  * A bare shape so this pure module keeps importing nothing; a live
- * `CreatorProfile` (from `@houston-ai/engine-client`) structurally satisfies it.
+ * `CreatorProfile` (from `@houston/engine-adapter`) structurally satisfies it.
  */
 export interface StoreProfileFace {
   handle: string | null;

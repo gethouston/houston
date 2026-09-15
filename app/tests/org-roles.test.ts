@@ -1,6 +1,6 @@
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Capabilities, OrgRole } from "@houston-ai/engine-client";
+import type { Capabilities, OrgRole } from "@houston/engine-adapter";
 import { canSeeBilling, canSeeBillingTab } from "../src/lib/billing-gates.ts";
 import {
   canCreateAgents,

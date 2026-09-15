@@ -53,7 +53,7 @@ export const annotation = (
   overrides: Partial<OperationAnnotation> = {},
 ): OperationAnnotation => ({
   name: "listThings",
-  location: "packages/web/src/engine-adapter/cp/things.ts:12",
+  location: "packages/engine-adapter/cp/things.ts:12",
   documented: true,
   group: "agents",
   hidden: false,

@@ -19,7 +19,7 @@
  * app/src/lib/desktop-native-commands.ts must appear here, keychain aside).
  */
 
-import { gatewayAuthFetch } from "../engine-adapter/cp/fetch";
+import { gatewayAuthFetch } from "@houston/engine-adapter/cp/fetch";
 
 /** Mirror of `@tauri-apps/api`'s `isTauri()` — always false in the web build. */
 export function isTauri(): boolean {

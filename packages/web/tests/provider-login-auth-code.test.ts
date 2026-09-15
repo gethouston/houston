@@ -25,8 +25,8 @@ vi.mock("@houston/runtime-client", async (importOriginal) => {
   };
 });
 
-import { bus } from "../src/engine-adapter/bus";
-import { HoustonClient } from "../src/engine-adapter/client";
+import { bus } from "@houston/engine-adapter/bus";
+import { HoustonClient } from "@houston/engine-adapter/client";
 
 beforeEach(() => {
   // Freeze the login-completion poll interval so it never fires during the test.

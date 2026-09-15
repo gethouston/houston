@@ -1,5 +1,5 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
 
 /**
  * The hosted gateway proxies nothing but `/agents/:slug/*` — a top-level

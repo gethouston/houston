@@ -1,4 +1,4 @@
-import type { ApiKey } from "@houston-ai/engine-client";
+import type { ApiKey } from "@houston/engine-adapter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiKeysSupported } from "../../lib/api-keys-model";
 import { queryKeys } from "../../lib/query-keys";

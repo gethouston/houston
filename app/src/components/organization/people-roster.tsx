@@ -1,3 +1,4 @@
+import type { OrgMember, OrgRole } from "@houston/engine-adapter";
 import {
   Avatar,
   AvatarFallback,
@@ -10,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
-import type { OrgMember, OrgRole } from "@houston-ai/engine-client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRemoveMember, useSetMemberRole } from "../../hooks/queries";

@@ -1,3 +1,4 @@
+import type { OrgRole } from "@houston/engine-adapter";
 import {
   AsyncButton,
   ConfirmDialog,
@@ -8,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
-import type { OrgRole } from "@houston-ai/engine-client";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAddMember } from "../../hooks/queries";

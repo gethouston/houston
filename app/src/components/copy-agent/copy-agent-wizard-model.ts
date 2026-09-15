@@ -1,7 +1,7 @@
 import type {
   PortableExportSelection,
   PortableInventoryPreview,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import type { WizardSelection } from "../../lib/portable-share";
 
 /**

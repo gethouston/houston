@@ -1,4 +1,4 @@
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 import { isAgentManager } from "./agent-access.ts";
 import { canConfigureTeam } from "./team-permissions.ts";
 import type { TeamView } from "./teams-model.ts";

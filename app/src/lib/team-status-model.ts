@@ -1,4 +1,4 @@
-import type { BillingSummary, OrgRole } from "@houston-ai/engine-client";
+import type { BillingSummary, OrgRole } from "@houston/engine-adapter";
 import { shareErrorCode } from "./share-via-team.ts";
 
 /**

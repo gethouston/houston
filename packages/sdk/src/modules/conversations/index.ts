@@ -11,7 +11,7 @@
  *
  * SEAM — `listConversations` is spelled twice, for two different things. The
  * engine adapter's method of that name
- * (`packages/web/src/engine-adapter/client/activities-mixin.ts`) builds the
+ * (`packages/engine-adapter/client/activities-mixin.ts`) builds the
  * BOARD out of an agent's missions; this module's `list` is the agent's chats,
  * off the runtime. Neither calls the other.
  *

@@ -1,4 +1,4 @@
-import type { OrgsList } from "@houston-ai/engine-client";
+import type { OrgsList } from "@houston/engine-adapter";
 import { orgSlugFromWorkspaceId } from "./space-id.ts";
 
 /**

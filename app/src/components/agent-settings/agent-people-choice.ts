@@ -2,7 +2,7 @@ import type {
   Agent,
   AgentAssignment,
   OrgMember,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import {
   buildSharePeople,
   isSharedWithEveryone,

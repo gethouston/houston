@@ -1,5 +1,5 @@
+import { applyAgentColor } from "@houston/engine-adapter/control-plane";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { applyAgentColor } from "../src/engine-adapter/control-plane";
 
 /**
  * The app picker's color write: it sets the device overlay and answers with the

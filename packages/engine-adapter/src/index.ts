@@ -1,5 +1,5 @@
 /**
- * `@houston-ai/engine-client` IS this module: `app/vite.config.ts` and
+ * `@houston/engine-adapter` IS this module: `app/vite.config.ts` and
  * `packages/web/vite.config.ts` alias the specifier here, and both tsconfigs
  * carry the matching `paths` entry, so the whole UI (app/src) compiles against
  * exactly what it runs.

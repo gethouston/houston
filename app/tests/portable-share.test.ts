@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { PortableAnonymizeResponse } from "@houston-ai/engine-client";
+import type { PortableAnonymizeResponse } from "@houston/engine-adapter";
 import {
   type AnonymizeAccept,
   buildAnonymizeOverrides,

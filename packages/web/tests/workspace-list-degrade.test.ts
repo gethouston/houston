@@ -1,10 +1,10 @@
-import { afterEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { HoustonEngineError } from "../src/engine-adapter/client/errors";
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import {
   isTransientHostError,
   retryTransientRead,
-} from "../src/engine-adapter/cp/retry";
+} from "@houston/engine-adapter/cp/retry";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
  * HOU-981, the "wrong space all session" half.

@@ -4,7 +4,7 @@
  * accept-state plumbing so the step component stays focused on flow.
  */
 
-import type { PortableAnonymizeResponse } from "@houston-ai/engine-client";
+import type { PortableAnonymizeResponse } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import type { AnonymizeAccept } from "../../lib/portable-share";
 import { DiffCard, RoutineDiffCard } from "./anonymize-diff-cards";

@@ -1,4 +1,4 @@
-import type { BillingSummary } from "@houston-ai/engine-client";
+import type { BillingSummary } from "@houston/engine-adapter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { canSeeBillingTab } from "../../lib/billing-gates";
 import { queryKeys } from "../../lib/query-keys";

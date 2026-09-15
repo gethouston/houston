@@ -1,7 +1,7 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
+import { teamSlugFromWorkspaceId } from "@houston/engine-adapter/client/workspaces-mixin";
 import { afterEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { HoustonEngineError } from "../src/engine-adapter/client/errors";
-import { teamSlugFromWorkspaceId } from "../src/engine-adapter/client/workspaces-mixin";
 
 /**
  * PRODUCT-1410 — "Workspace is not being deleted".

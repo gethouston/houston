@@ -1,8 +1,8 @@
-import { afterEach, expect, test, vi } from "vitest";
 import {
   HoustonClient,
   HoustonEngineError,
-} from "../src/engine-adapter/client";
+} from "@houston/engine-adapter/client";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
  * `getBilling` on the HOSTED path (C8 §Billing) is the client every cloud build

@@ -4,8 +4,8 @@
  * Three call sites used to hand-roll this (account deletion, the cloud-migration
  * wizard, the onboarding-survey store), each with a slightly different subset of
  * the rules. The canonical implementation is the engine adapter's
- * `gatewayAuthFetch` (`packages/web/src/engine-adapter/cp/fetch.ts`), which app
- * code cannot import — `@houston-ai/engine-client` does not export it and the
+ * `gatewayAuthFetch` (`packages/engine-adapter/cp/fetch.ts`), which app
+ * code cannot import — `@houston/engine-adapter` does not export it and the
  * package boundary (`pnpm check:boundaries`) is the point. So this is its
  * app-side peer, and it keeps parity on all four rules:
  *

@@ -1,4 +1,4 @@
-import type { IntegrationConnection } from "@houston-ai/engine-client";
+import type { IntegrationConnection } from "@houston/engine-adapter";
 import { useState } from "react";
 import { appDisplay } from "./app-display";
 import { connKey } from "./connected-apps-model";

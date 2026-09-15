@@ -32,10 +32,10 @@ const { listProviders, forgetCredential, runtimeLogout } = vi.hoisted(() => ({
   runtimeLogout: vi.fn(),
 }));
 
-vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
+vi.mock("@houston/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
     await importOriginal<
-      typeof import("../src/engine-adapter/control-plane")
+      typeof import("@houston/engine-adapter/control-plane")
     >();
   return {
     ...actual,
@@ -46,7 +46,7 @@ vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
   };
 });
 
-import { HoustonClient } from "../src/engine-adapter/client";
+import { HoustonClient } from "@houston/engine-adapter/client";
 import {
   restoreAgentListFetch,
   stubAgentListFetch,

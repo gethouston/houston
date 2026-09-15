@@ -2,7 +2,7 @@ import type {
   ConversationEntry,
   MigrationImportOptions,
   MigrationImportResult,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import {
   ACTIVITY_PATH,
   planChatIdMap,

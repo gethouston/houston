@@ -1,4 +1,4 @@
-import type { PortableInventoryPreview } from "@houston-ai/engine-client";
+import type { PortableInventoryPreview } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import type { WizardSelection } from "../../lib/portable-share";
 import { PickListStep } from "../portable/pick-list-step";

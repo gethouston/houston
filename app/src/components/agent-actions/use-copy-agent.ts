@@ -1,4 +1,4 @@
-import type { PortableExportSelection } from "@houston-ai/engine-client";
+import type { PortableExportSelection } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import { finishAgentSetup } from "../../lib/agent-setup";

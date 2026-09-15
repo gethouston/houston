@@ -1,0 +1,16 @@
+/// <reference types="vite/client" />
+
+/**
+ * The window globals the adapter READS, declared where they are read.
+ *
+ * Both are written by the shell before the app's module graph loads — the
+ * desktop shell and `packages/web`'s boot each install them — and each surface
+ * declares them again for its own program (`app/src/lib/engine.ts`,
+ * `packages/web/src/vite-env.d.ts`). These declarations must stay shape-identical
+ * with those: TypeScript merges the interfaces, and a divergent member is an
+ * error at the merge, not a silent widening.
+ */
+interface Window {
+  /** The engine endpoint the session is pointed at (baseUrl + bearer). */
+  __HOUSTON_ENGINE__?: { baseUrl: string; token: string };
+}

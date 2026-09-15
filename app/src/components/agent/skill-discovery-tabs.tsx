@@ -1,5 +1,5 @@
+import type { Activity } from "@houston/engine-adapter";
 import type { CatalogShellTab } from "@houston-ai/core";
-import type { Activity } from "@houston-ai/engine-client";
 import type { CommunitySkill, CommunitySkillPreview } from "@houston-ai/skills";
 import { SkillMarketplaceSection } from "@houston-ai/skills";
 import { useTranslation } from "react-i18next";

@@ -1,20 +1,20 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
+import { HoustonClient } from "@houston/engine-adapter/client";
 import {
   HoustonEngineError,
   isSignedOutEngineError,
-} from "../src/engine-adapter/client/errors";
+} from "@houston/engine-adapter/client/errors";
 import {
   toHoustonEngineError,
   viaSdk,
-} from "../src/engine-adapter/client/sdk-error";
-import * as controlPlane from "../src/engine-adapter/control-plane";
-import { HANDOFF_RETRY_DELAYS_MS } from "../src/engine-adapter/cp/unavailable-reason";
+} from "@houston/engine-adapter/client/sdk-error";
+import * as controlPlane from "@houston/engine-adapter/control-plane";
+import { HANDOFF_RETRY_DELAYS_MS } from "@houston/engine-adapter/cp/unavailable-reason";
 import {
   WAKING_EPISODE_GAP_MS,
   WAKING_STUCK_THRESHOLD_MS,
   wakingStuckTracker,
-} from "../src/engine-adapter/waking-stuck-tracker";
+} from "@houston/engine-adapter/waking-stuck-tracker";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
   createWireCapture,
   installLocalStorage,

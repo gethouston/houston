@@ -13,7 +13,7 @@ import type { MentionPerson } from "@houston-ai/chat";
  * One row of the gateway's sanitized co-member directory (`OrgPerson` on the
  * wire): no email, no role, and BOTH display fields optional. Restated here as
  * a bare shape so this module imports no client; a live `OrgPerson` from
- * `@houston-ai/engine-client` structurally satisfies it.
+ * `@houston/engine-adapter` structurally satisfies it.
  */
 export interface OrgPersonRow {
   userId: string;

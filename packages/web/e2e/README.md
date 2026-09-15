@@ -26,8 +26,8 @@ on Chromium and dead on WebKit).
 
 Playwright boots two servers automatically (see `playwright.config.ts`):
 
-1. **vite** with `VITE_NEW_ENGINE=1` on `:1430` — aliases `@houston-ai/engine-client`
-   to the new-engine adapter and mounts `NewEngineRoot` (`packages/web/src/main.tsx`).
+1. **vite** with `VITE_NEW_ENGINE=1` on `:1430` — mounts `NewEngineRoot`
+   (`packages/web/src/main.tsx`), which drives `@houston/engine-adapter`.
 2. the **fake host** (`pnpm fake-host`) on `:4399`.
 
 The fake host itself lives in the shared **`@houston/fake-host`** package

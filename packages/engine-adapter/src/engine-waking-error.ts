@@ -4,7 +4,7 @@
 // importable from anywhere.
 //
 // It lives in the engine adapter, not app/src/lib: the adapter is bundled by
-// BOTH the desktop app (app/vite.config.ts aliases `@houston-ai/engine-client`
+// BOTH the desktop app (app/vite.config.ts aliases `@houston/engine-adapter`
 // at this directory) and the web shell, and only the web build can resolve
 // `@houston/app/*`. An adapter import of app code broke every desktop release
 // build while the web build passed. app/src/lib/engine-waking-error.ts
@@ -30,7 +30,7 @@
 // Keyed on the exact (status, gateway reason) pairs, NOT on bare 502/503:
 // other bodies on the same statuses (provider quota pages, self-host proxies)
 // carry different reasons and must keep surfacing as real errors. The read
-// transport (`packages/web/src/engine-adapter/cp/transient-retry.ts`) parses
+// transport (`packages/engine-adapter/cp/transient-retry.ts`) parses
 // the same two answers on the wire and gives them the cold-start retry budget
 // first; this classifier decides how the ones that outlive that budget
 // surface.

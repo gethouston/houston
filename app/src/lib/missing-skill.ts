@@ -2,7 +2,7 @@
  * A skill the user opened can no longer be resolved on disk — renamed,
  * deleted, or never installed. The host's `GET /v1/skills/<slug>` route answers
  * `404 { error: "skill not found" }` (packages/host/src/routes/skills.ts),
- * surfaced by `@houston-ai/engine-client` as a `HoustonEngineError` whose
+ * surfaced by `@houston/engine-adapter` as a `HoustonEngineError` whose
  * `.status` is 404.
  *
  * Unlike the legacy Rust engine, the TS host emits bare-string error bodies, so

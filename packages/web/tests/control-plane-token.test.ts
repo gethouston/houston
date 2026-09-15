@@ -1,5 +1,5 @@
+import { liveToken } from "@houston/engine-adapter/control-plane";
 import { afterEach, expect, test } from "vitest";
-import { liveToken } from "../src/engine-adapter/control-plane";
 
 const originalWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { AgentTeamMember } from "@houston-ai/engine-client";
+import type { AgentTeamMember } from "@houston/engine-adapter";
 import {
   buildTeamMemberRows,
   clampToRunes,

@@ -1,5 +1,5 @@
+import { wireTurnPin } from "@houston/engine-adapter/turn-pin";
 import { expect, test } from "vitest";
-import { wireTurnPin } from "../src/engine-adapter/turn-pin";
 
 /**
  * The send-time app→engine pin mapping (HOU-695): every send forwards the

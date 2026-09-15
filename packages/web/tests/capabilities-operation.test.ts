@@ -1,7 +1,7 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
+import { HANDOFF_RETRY_DELAYS_MS } from "@houston/engine-adapter/cp/unavailable-reason";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { HoustonEngineError } from "../src/engine-adapter/client/errors";
-import { HANDOFF_RETRY_DELAYS_MS } from "../src/engine-adapter/cp/unavailable-reason";
 import {
   createWireCapture,
   expectGatewayHeaders,

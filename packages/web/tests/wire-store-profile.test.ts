@@ -1,5 +1,5 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
 import {
   createWireCapture,
   installLocalStorage,
@@ -12,7 +12,7 @@ import {
  * at the HTTP level: `getMyStoreProfile` / `updateMyStoreProfile` /
  * `listMyStoreAgents`. They do NOT ride the engine's control-plane fetch — they
  * go through `AgentStoreClient` over the `storeAuthFetch` seam
- * (`src/engine-adapter/store-gateway.ts`), so nothing in the `cp/*` wire specs
+ * (`@houston/engine-adapter`, `src/store-gateway.ts`), so nothing in the `cp/*` wire specs
  * would notice one of them drifting.
  *
  * The store routes are USER-scoped, never space-scoped, so the header contract

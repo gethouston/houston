@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { OrgsList } from "@houston-ai/engine-client";
+import type { OrgsList } from "@houston/engine-adapter";
 import {
   connectEndpoints,
   connectOrgSlug,

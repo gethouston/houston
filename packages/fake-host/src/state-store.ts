@@ -44,7 +44,7 @@ export type IntegrationsMode = "ready" | "unavailable" | "signin" | "absent";
 /**
  * One custom integration (HOU-550) as `GET /v1/integrations/custom/definitions`
  * serves it. Mirrors the engine-client's `CustomIntegrationView` wire shape
- * structurally (that type lives in `@houston-ai/engine-client`, which this
+ * structurally (that type lives in `@houston/engine-adapter`, which this
  * package does not depend on).
  */
 export interface CustomIntegrationSeed {
@@ -82,7 +82,7 @@ export interface CustomIntegrationSeed {
  * The capabilities the fake host advertises at `GET /v1/capabilities`. It models
  * the GATEWAY-augmented view the client sees, so it extends the host's protocol
  * `Capabilities` with the two gateway-only feature-detect flags Teams adds
- * (`teams`, `spaces` — defined in `@houston-ai/engine-client`, not the host
+ * (`teams`, `spaces` — defined in `@houston/engine-adapter`, not the host
  * protocol). `multiplayer` / `role` are already on the protocol type. The
  * `/__test__/capabilities` control merges a partial into this so a spec can arm
  * integrations, multiplayer, or the Teams surface without a forked build.
@@ -93,7 +93,7 @@ export type FakeCapabilities = Capabilities & {
   computeUsage?: boolean;
   /**
    * C13 agent teams. Mirrors the `agentTeams` feature-detect flag on
-   * `@houston-ai/engine-client`'s `Capabilities` (gateway-only, like `teams`
+   * `@houston/engine-adapter`'s `Capabilities` (gateway-only, like `teams`
    * and `spaces`, so the host protocol type does not carry it): armed on, the
    * client swaps its sidebar grouping to the server-owned teams below.
    */
@@ -102,7 +102,7 @@ export type FakeCapabilities = Capabilities & {
 
 /**
  * A `GET /v1/org/compute-usage` row — one (agent, UTC day)'s engine running
- * time. Mirrors `@houston-ai/engine-client`'s `ComputeUsageRow` exactly so the
+ * time. Mirrors `@houston/engine-adapter`'s `ComputeUsageRow` exactly so the
  * mock can't drift from the wire.
  */
 export interface ComputeUsageSeedRow {

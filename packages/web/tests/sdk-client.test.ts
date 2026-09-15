@@ -1,6 +1,6 @@
+import { gatewayAuthFetch } from "@houston/engine-adapter/control-plane";
+import { createEngineSdk } from "@houston/engine-adapter/sdk-client";
 import { afterEach, expect, test, vi } from "vitest";
-import { gatewayAuthFetch } from "../src/engine-adapter/control-plane";
-import { createEngineSdk } from "../src/engine-adapter/sdk-client";
 
 /**
  * The migration-wave-1 seam: the web engine-adapter builds ONE `HoustonSdk`

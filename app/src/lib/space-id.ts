@@ -39,7 +39,7 @@ export function isTeamWorkspace(id: string): boolean {
  * desktop boot path.
  *
  * The adapter spells the same value `DEFAULT_WORKSPACE_ID`
- * (`packages/web/src/engine-adapter/synthetic.ts`) and keeps its own copy for
+ * (`packages/engine-adapter/synthetic.ts`) and keeps its own copy for
  * the same reason `teamSlugFromWorkspaceId` does: `packages/web` never imports
  * from `app/`. The two must stay equal.
  */

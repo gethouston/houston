@@ -27,6 +27,7 @@
     "@houston-ai/store": "workspace:*",
     "@houston/agentstore-contract": "workspace:*",
     "@houston/design-tokens": "workspace:*",
+    "@houston/engine-adapter": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
     "@houston/sdk": "workspace:*",

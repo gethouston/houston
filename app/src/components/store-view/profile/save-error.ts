@@ -1,4 +1,4 @@
-import { isHoustonEngineError } from "@houston-ai/engine-client";
+import { isHoustonEngineError } from "@houston/engine-adapter";
 
 /**
  * Reads the machine token from a failed profile/avatar mutation. Kept out of the

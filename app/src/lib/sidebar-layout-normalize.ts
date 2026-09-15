@@ -1,4 +1,4 @@
-import type { SidebarGroup, SidebarLayout } from "@houston-ai/engine-client";
+import type { SidebarGroup, SidebarLayout } from "@houston/engine-adapter";
 
 /**
  * Coercing an UNTRUSTED layout into one the rail can render, kept apart from

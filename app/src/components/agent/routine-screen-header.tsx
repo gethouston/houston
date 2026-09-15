@@ -5,8 +5,8 @@
  * activation chip, and the Runs / Open chat actions.
  */
 
+import type { Routine } from "@houston/engine-adapter";
 import { Button, Input } from "@houston-ai/core";
-import type { Routine } from "@houston-ai/engine-client";
 import { ArrowLeft, History, MessageCircle, Pencil } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

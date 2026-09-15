@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { ProviderUsageWindow } from "@houston-ai/engine-client";
+import type { ProviderUsageWindow } from "@houston/engine-adapter";
 import {
   formatReadingAge,
   settleUsageWindow,

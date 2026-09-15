@@ -1,7 +1,7 @@
 import type {
   CreatorProfile,
   StoreCatalogAgent,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { useEffect, useState } from "react";
 import { useCreatorProfile } from "../../../hooks/use-creator-profile";
 

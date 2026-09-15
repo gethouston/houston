@@ -34,6 +34,7 @@
     "@houston/agentstore-client": "workspace:*",
     "@houston/agentstore-contract": "workspace:*",
     "@houston/domain": "workspace:*",
+    "@houston/engine-adapter": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
     "@houston/sdk": "workspace:*",

@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { ProviderUsage } from "@houston-ai/engine-client";
+import type { ProviderUsage } from "@houston/engine-adapter";
 import {
   formatCreditsAmount,
   formatMeteredSince,

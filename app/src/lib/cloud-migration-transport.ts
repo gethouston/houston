@@ -16,10 +16,7 @@
  * — the per-agent row renders the thrown `Error.message` verbatim.
  */
 
-import type {
-  MigrationCounts,
-  MigrationSource,
-} from "@houston-ai/engine-client";
+import type { MigrationCounts, MigrationSource } from "@houston/engine-adapter";
 import type { SourceAgent } from "./cloud-migration";
 import {
   type MigrationCallDeps,

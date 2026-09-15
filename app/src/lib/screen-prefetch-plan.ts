@@ -1,4 +1,4 @@
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 
 export type ScreenPrefetch = "integrations" | "organization" | "store-catalog";
 

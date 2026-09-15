@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { OrgInviteSummary } from "@houston-ai/engine-client";
+import type { OrgInviteSummary } from "@houston/engine-adapter";
 import {
   classifyInviteError,
   createInviteActionLock,

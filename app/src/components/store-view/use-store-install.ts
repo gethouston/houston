@@ -1,4 +1,4 @@
-import { pingStoreInstall } from "@houston-ai/engine-client";
+import { pingStoreInstall } from "@houston/engine-adapter";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";

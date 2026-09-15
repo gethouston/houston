@@ -1,12 +1,12 @@
+import { bus } from "@houston/engine-adapter/bus";
+import { historyToFeed } from "@houston/engine-adapter/translate";
+import { streamTurn } from "@houston/engine-adapter/turn-stream";
 import type {
   ChatMessage,
   HoustonEngineClient,
   WireEvent,
 } from "@houston/runtime-client";
 import { expect, test } from "vitest";
-import { bus } from "../src/engine-adapter/bus";
-import { historyToFeed } from "../src/engine-adapter/translate";
-import { streamTurn } from "../src/engine-adapter/turn-stream";
 
 type FinalResult = {
   feed_type?: string;
@@ -252,7 +252,7 @@ test("a refused not-connected send surfaces the typed reconnect card with provid
 // chat. The classifier is the seam that decides which is which.
 test("isConversationNotFound: only an engine 404 reads as no-history-yet", async () => {
   const { isConversationNotFound } = await import(
-    "../src/engine-adapter/translate"
+    "@houston/engine-adapter/translate"
   );
   const { EngineError } = await import("@houston/runtime-client");
 

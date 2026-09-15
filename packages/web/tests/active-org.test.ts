@@ -1,9 +1,9 @@
-import { afterEach, expect, test, vi } from "vitest";
 import {
   cpFetch,
   gatewayAuthFetch,
   subscribeEvents,
-} from "../src/engine-adapter/control-plane";
+} from "@houston/engine-adapter/control-plane";
+import { afterEach, expect, test, vi } from "vitest";
 
 /**
  * Active-space plumbing on the HOSTED path (C8 §Active space). The web adapter

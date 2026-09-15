@@ -1,4 +1,4 @@
-import type { ApiKey, Capabilities } from "@houston-ai/engine-client";
+import type { ApiKey, Capabilities } from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free logic behind the API-keys settings section (C9). Kept out of

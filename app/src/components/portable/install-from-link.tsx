@@ -10,8 +10,8 @@
  * link is never lost.
  */
 
+import type { PortableUploadPreviewResponse } from "@houston/engine-adapter";
 import { Button, Input } from "@houston-ai/core";
-import type { PortableUploadPreviewResponse } from "@houston-ai/engine-client";
 import { Link2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -9,4 +9,4 @@ export {
   type WakingStuck,
   type WakingStuckTracker,
   wakingStuckTracker,
-} from "../../../packages/web/src/engine-adapter/waking-stuck-tracker.ts";
+} from "@houston/engine-adapter/waking-stuck-tracker";

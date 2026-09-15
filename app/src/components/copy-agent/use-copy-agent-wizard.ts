@@ -1,4 +1,4 @@
-import type { PortableInventoryPreview } from "@houston-ai/engine-client";
+import type { PortableInventoryPreview } from "@houston/engine-adapter";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";

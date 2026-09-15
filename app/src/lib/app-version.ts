@@ -1,7 +1,7 @@
 /**
  * Build identity for gateway requests: the desktop app identifies itself as
  * `<semver>+<channel>` via `X-Houston-App-Version` on every gateway call (the
- * shared adapter transport, `packages/web/src/engine-adapter/cp/fetch.ts`, and
+ * shared adapter transport, `packages/engine-adapter/cp/fetch.ts`, and
  * its app-side peer `gateway-fetch.ts` both attach it). The gateway no longer
  * acts on it — the server-side min-app-version 426 gate was retired
  * (PRODUCT-1144) — but the header stays: it gives gateway logs a build

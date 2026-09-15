@@ -27,10 +27,7 @@
       ],
       "@houston/app/*": ["../../app/src/*"],
       "@houston/app": ["../../app/src"],
-      "@houston/web-identity": ["./src/identity/firebase-popup.ts"],
-      // Mirrors the build-time alias in packages/web/vite.config.ts: the
-      // specifier IS the adapter, so typecheck and runtime agree.
-      "@houston-ai/engine-client": ["./src/engine-adapter/index.ts"]
+      "@houston/web-identity": ["./src/identity/firebase-popup.ts"]
     }
   },
   "include": ["src"],

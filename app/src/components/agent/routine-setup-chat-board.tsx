@@ -5,10 +5,11 @@
  * panel (into the shell-level panel container) — it fills the big right-hand
  * panel, the SAME one the Activity mission board opens, for a routine's chat.
  */
+
+import type { Activity } from "@houston/engine-adapter";
 import type { KanbanItem } from "@houston-ai/board";
 import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import type { Activity } from "@houston-ai/engine-client";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";

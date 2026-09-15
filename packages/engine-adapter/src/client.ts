@@ -1,5 +1,5 @@
 /**
- * Drop-in replacement for `@houston-ai/engine-client`'s HoustonClient, backed by
+ * Drop-in replacement for `@houston/engine-adapter`'s HoustonClient, backed by
  * the new TS engine. Boot/chat/auth map to the new engine; a single synthetic
  * workspace holds localStorage-backed agents, their `.houston/**` files, and
  * their boards.

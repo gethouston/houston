@@ -7,11 +7,12 @@
  * dialog; rotating asks for confirmation first, since it invalidates the old
  * secret. A host too old to mint returns null — surfaced as an honest toast.
  */
-import { AsyncButton, Button, ConfirmDialog } from "@houston-ai/core";
+
 import type {
   TriggerStatusItem,
   WebhookKeyReveal,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import { AsyncButton, Button, ConfirmDialog } from "@houston-ai/core";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";

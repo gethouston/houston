@@ -1,12 +1,12 @@
+import type { HoustonClient } from "@houston/engine-adapter/client";
+import { disposeAllStreams } from "@houston/engine-adapter/stream-registry";
+import { observeConversation } from "@houston/engine-adapter/turn-stream";
+import { EngineWebSocket } from "@houston/engine-adapter/ws";
 import type {
   EventStreamOptions,
   HoustonEngineClient,
 } from "@houston/runtime-client";
 import { afterEach, expect, test } from "vitest";
-import type { HoustonClient } from "../src/engine-adapter/client";
-import { disposeAllStreams } from "../src/engine-adapter/stream-registry";
-import { observeConversation } from "../src/engine-adapter/turn-stream";
-import { EngineWebSocket } from "../src/engine-adapter/ws";
 
 /**
  * EngineWebSocket.disconnect() is the adapter's client-teardown seam (logout /

@@ -1,4 +1,4 @@
-import type { OrgMember } from "@houston-ai/engine-client";
+import type { OrgMember } from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free display helpers for the Organization dashboard (Teams v2).

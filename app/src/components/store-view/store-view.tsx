@@ -1,7 +1,7 @@
 import {
   fetchStoreAgent,
   type StoreCatalogAgent,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { useEffect, useState } from "react";
 import { useMyStoreProfile } from "../../hooks/use-my-store-profile";
 import { reportError } from "../../lib/error-report";

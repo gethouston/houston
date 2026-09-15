@@ -1,6 +1,6 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { HoustonEngineError } from "../../packages/web/src/engine-adapter/client/errors.ts";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import {
   isExpectedSkillPreviewError,
   isUnavailableSkillError,

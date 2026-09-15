@@ -1,4 +1,4 @@
-import type { AgentTeam, SidebarLayout } from "@houston-ai/engine-client";
+import type { AgentTeam, SidebarLayout } from "@houston/engine-adapter";
 import { orderByOverlay, overlayOrderFor } from "./team-overlay.ts";
 import type { TeamView } from "./teams-model.ts";
 import type { Agent } from "./types.ts";

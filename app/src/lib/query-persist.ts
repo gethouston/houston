@@ -19,7 +19,7 @@
 import {
   clearConversationCache,
   conversationCacheScope,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import type { QueryClient } from "@tanstack/react-query";
 import type { PersistQueryClientOptions } from "@tanstack/react-query-persist-client";

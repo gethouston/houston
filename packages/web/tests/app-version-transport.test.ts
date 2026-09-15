@@ -1,5 +1,5 @@
+import { gatewayAuthFetch } from "@houston/engine-adapter/control-plane";
 import { afterEach, expect, test, vi } from "vitest";
-import { gatewayAuthFetch } from "../src/engine-adapter/control-plane";
 
 /**
  * Build identity, transport half: gatewayAuthFetch must attach

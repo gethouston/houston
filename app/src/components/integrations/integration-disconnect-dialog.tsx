@@ -1,5 +1,5 @@
+import type { IntegrationConnection } from "@houston/engine-adapter";
 import { ConfirmDialog } from "@houston-ai/core";
-import type { IntegrationConnection } from "@houston-ai/engine-client";
 import { useTranslation } from "react-i18next";
 import { accountRowLabel } from "./account-display";
 import type { AppDisplay } from "./app-display";

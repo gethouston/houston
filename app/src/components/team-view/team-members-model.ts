@@ -1,4 +1,4 @@
-import type { AgentTeamMember, OrgMember } from "@houston-ai/engine-client";
+import type { AgentTeamMember, OrgMember } from "@houston/engine-adapter";
 import { canLeaveTeam, type TeamView } from "../../lib/teams-model.ts";
 import { memberLabel } from "../organization/people-tab-model.ts";
 

@@ -17,7 +17,7 @@
  * bookkeeping beside the record itself.
  */
 
-import type { ActivityStatus } from "@houston-ai/engine-client";
+import type { ActivityStatus } from "@houston/engine-adapter";
 import { create } from "zustand";
 import {
   detectEngineAsleep,

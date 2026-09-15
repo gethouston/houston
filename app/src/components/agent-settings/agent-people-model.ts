@@ -3,7 +3,7 @@ import type {
   AgentAssignment,
   OrgMember,
   OrgRole,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import {
   applyShareAction,
   buildSharePeople,

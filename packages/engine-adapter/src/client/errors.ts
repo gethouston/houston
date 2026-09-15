@@ -2,7 +2,7 @@
  * The adapter's single error type. Extracted from `client.ts` so the
  * control-plane modules and the mixins can import it without pulling in the
  * whole `HoustonClient` facade (which would create an import cycle through the
- * mixins). `client.ts` re-exports both names, so `@houston-ai/engine-client`'s
+ * mixins). `client.ts` re-exports both names, so `@houston/engine-adapter`'s
  * public surface (`HoustonEngineError`, `isHoustonEngineError`) is unchanged.
  */
 export class HoustonEngineError extends Error {

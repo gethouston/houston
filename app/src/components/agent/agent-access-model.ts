@@ -4,7 +4,7 @@ import type {
   Capabilities,
   OrgMember,
   OrgRole,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { canManageAssignments } from "../../lib/agent-access.ts";
 import { hasSpaces, isMultiplayer } from "../../lib/org-roles.ts";
 

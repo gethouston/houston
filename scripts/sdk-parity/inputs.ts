@@ -101,13 +101,13 @@ function sourcesUnder(directory: string): string[] {
  * The adapter is read WHOLE (`cp/` and the helper modules beside the mixins,
  * not just `client/*-mixin.ts`) because a mixin method's request is usually
  * made one or two calls deeper; only the mixin classes publish methods, so
- * only they are classified. One adapter covers both surfaces — the desktop
- * aliases `@houston-ai/engine-client` to it and `packages/web` composes the
- * same `app/src` — so there is no separate desktop input to keep in step.
+ * only they are classified. One adapter covers both surfaces — desktop and
+ * `packages/web` both depend on `@houston/engine-adapter`, and `packages/web`
+ * composes the same `app/src` — so there is no separate desktop input.
  */
 export function desktopCalls(): DesktopCalls {
   const methods = classifyAdapter(
-    sourcesUnder(resolve(repoRoot, "packages/web/src/engine-adapter")),
+    sourcesUnder(resolve(repoRoot, "packages/engine-adapter/src")),
   );
   return {
     sdk: methods.filter((method) => method.bound),

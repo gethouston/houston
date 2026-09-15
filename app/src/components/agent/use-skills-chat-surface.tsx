@@ -1,4 +1,4 @@
-import type { Activity } from "@houston-ai/engine-client";
+import type { Activity } from "@houston/engine-adapter";
 import { type ReactNode, useEffect } from "react";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import type { Agent, SkillSummary } from "../../lib/types";

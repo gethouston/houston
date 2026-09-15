@@ -1,4 +1,4 @@
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import type { IntegrationToolkit } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { AllowlistEditor } from "../../integrations/allowlist-editor";
 

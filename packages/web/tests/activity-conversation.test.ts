@@ -1,5 +1,5 @@
+import { activityToConversation } from "@houston/engine-adapter/activities";
 import { expect, test } from "vitest";
-import { activityToConversation } from "../src/engine-adapter/activities";
 
 test("conversation mapping keeps the mission-card metadata (agent mode + routine)", () => {
   // Mission Control derives card tags from `agent` and `routine_id`; the

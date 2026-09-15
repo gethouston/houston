@@ -1,4 +1,4 @@
-import type { AgentMoveStatus, OrgSummary } from "@houston-ai/engine-client";
+import type { AgentMoveStatus, OrgSummary } from "@houston/engine-adapter";
 import { engineErrorCode } from "./engine-error-code.ts";
 
 /**

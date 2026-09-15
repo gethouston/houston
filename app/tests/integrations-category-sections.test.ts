@@ -1,6 +1,6 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { IntegrationToolkit } from "@houston-ai/engine-client";
+import type { IntegrationToolkit } from "@houston/engine-adapter";
 import {
   browseCatalog,
   UNCATEGORIZED,

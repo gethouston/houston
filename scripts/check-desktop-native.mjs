@@ -10,7 +10,7 @@
  * web shim (`packages/web` reuses `app/src` verbatim in a browser, where an
  * unhandled command throws at runtime).
  *
- * Six assertions, all fatal:
+ * Five assertions, all fatal:
  *
  *   1. Every `invoke("X")` reachable from `app/src` is declared, and every
  *      declared command is actually invoked (a stale entry rots the list).
@@ -23,16 +23,12 @@
  *   4. No file under `app/src/` outside `app/src/lib/os-bridge/` contains
  *      `invoke(` or imports `invoke` at all.
  *   5. Every `@tauri-apps/<specifier>` imported by `app/src` has a shim alias
- *      in `packages/web/vite.config.ts` AND a path mapping in its tsconfig.
- *   6. `@houston-ai/engine-client` resolves to the ONE adapter entry in both
- *      vite configs and in both tsconfigs that typecheck `app/src`.
- *
+ *      in `packages/web/vite.config.ts` AND a path mapping in its tsconfig. *
  * Run: node scripts/check-desktop-native.mjs   (root script: pnpm check)
  */
 import { readFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
-import { adapterAliasErrors } from "./desktop-native/adapter-alias.mjs";
 import { readSources } from "./lib/app-sources.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -173,10 +169,6 @@ for (const spec of specifiers) {
       `packages/web/tsconfig.json is missing a paths entry for "${spec}"`,
     );
 }
-
-// 6. The engine-client specifier: a name, not a package, so the build and the
-// typecheck only agree because four configs say the same thing.
-errors.push(...adapterAliasErrors(root));
 
 if (errors.length) {
   console.error("✗ Desktop native boundary check FAILED:\n");

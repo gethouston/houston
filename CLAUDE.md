@@ -12,6 +12,7 @@ Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the
 | `packages/host` | The host server (protocol v3). Same server for desktop and cloud, different adapter profiles. Boot migrations: `src/migrate/` |
 | `packages/domain` / `packages/protocol` | Domain logic (`.houston` layout, schemas, cron, portable) / v3 wire types + zod |
 | `packages/sdk` | Client behavior layer (turn lifecycle, conversation VM). Every surface binds it |
+| `packages/engine-adapter` | The engine client: every fetch, SSE stream and socket the frontends make, binding `@houston/sdk` against the host |
 | `packages/wire-types` | Protocol v3 as the client sees it: wire shapes, the local-model-bridge port, the `Retry-After` parser. No I/O |
 | `packages/web` | Web build of `app/src` + Playwright e2e/visual suites (see `packages/web/e2e/README.md`) |
 | `ui/` | `@houston-ai/*` React packages, props-only |
@@ -25,7 +26,7 @@ Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the
 
 Non-obvious wiring:
 
-- Every domain call is a `fetch`/SSE through the engine adapter (`packages/web/src/engine-adapter`, imported as `@houston-ai/engine-client` by alias in vite and tsconfig) binding `@houston/sdk` against the host. Never a Tauri `invoke(...)` for domain.
+- Every domain call is a `fetch`/SSE through `@houston/engine-adapter` (`packages/engine-adapter`) binding `@houston/sdk` against the host — a real workspace package `app` and `packages/web` both depend on, resolved by pnpm alone. There is no alias. Never a Tauri `invoke(...)` for domain.
 - The host emits `HoustonEvent`s on `/v1/events` (SSE); `app/src/hooks/use-agent-invalidation.ts` maps events to TanStack Query keys. An FS watcher catches direct agent file writes.
 - User data lives at `~/.houston/workspaces/<Workspace>/<Agent>/` (`.houston/` data + `CLAUDE.md` + `.agents/skills/`).
 - The retired multi-tenant control plane (`@houston/host-cloud`) must never reappear, and open code never imports a cloud lib. Rules: `BOUNDARY.md`, enforced by `pnpm check:boundaries` (in CI).
@@ -45,6 +46,7 @@ Non-obvious wiring:
 | Any TS/JS/JSON change | `pnpm check:fix` after EVERY change; end state `pnpm check` exits 0 (Biome) |
 | ui/ | `pnpm typecheck` |
 | host / runtime / domain | `pnpm --filter @houston/host --filter @houston/runtime --filter @houston/domain test` (vitest) |
+| engine adapter | `pnpm --filter @houston/engine-adapter test` (vitest; the wire specs that drive it live in `packages/web/tests`) |
 | boundaries | `pnpm check:boundaries` |
 | app/ types | `cd app && pnpm tsgo --noEmit` |
 | app/ unit tests | `cd app && pnpm test` (run whenever `app/src` logic or `app/tests` change) |

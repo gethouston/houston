@@ -6,7 +6,7 @@
 // node:test runner with no bundler — and it cannot drift from the rail row,
 // the screen and the view guard, which all read the same four answers.
 
-import type { AssistantHandle } from "@houston-ai/engine-client";
+import type { AssistantHandle } from "@houston/engine-adapter";
 import { classifyAssistantDiscoveryFailure } from "./assistant-availability.ts";
 
 /**

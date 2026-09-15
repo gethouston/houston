@@ -20,7 +20,7 @@ import type {
   Agent,
   AgentModelChoice,
   Capabilities,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { canEditAgentConfig } from "./agent-access.ts";
 import { type CeilingResolver, pickCeilingPin } from "./ceiling-pin.ts";
 import { decodeModelPickerId } from "./chat-model-picker-ids.ts";

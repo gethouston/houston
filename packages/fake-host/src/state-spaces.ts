@@ -31,7 +31,7 @@ import { state } from "./state-store";
 /**
  * One membership as `GET /v1/orgs` serves it. Mirrors the engine-client
  * `OrgSummary` wire shape structurally (that type lives in
- * `@houston-ai/engine-client`, which this package does not depend on) minus the
+ * `@houston/engine-adapter`, which this package does not depend on) minus the
  * optional billing detail, which C8 omits from summaries.
  */
 export interface OrgSummaryWire {

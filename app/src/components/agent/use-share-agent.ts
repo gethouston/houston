@@ -1,4 +1,4 @@
-import type { AgentAssignment, OrgMember } from "@houston-ai/engine-client";
+import type { AgentAssignment, OrgMember } from "@houston/engine-adapter";
 import { useMutation } from "@tanstack/react-query";
 import { analytics } from "../../lib/analytics";
 import { tauriAgents } from "../../lib/tauri";

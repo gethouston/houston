@@ -1,8 +1,8 @@
-import { CatalogSearchField } from "@houston-ai/core";
 import type {
   IntegrationConnection,
   IntegrationToolkit,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import { CatalogSearchField } from "@houston-ai/core";
 import { type ReactNode, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {

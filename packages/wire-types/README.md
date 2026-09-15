@@ -14,7 +14,7 @@ import it without pulling a transport along.
   to honour a waking pod's backoff.
 
 The client that performs the requests is the engine adapter
-(`packages/web/src/engine-adapter`), which imports this package and re-exports
+(`packages/engine-adapter`), which imports this package and re-exports
 it, so `app/src` reads one surface.
 
 ## Keeping it true

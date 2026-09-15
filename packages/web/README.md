@@ -9,9 +9,9 @@ final cutover, but normal convergence work uses host mode.
 
 ## Modes
 
-- **Host mode**: `VITE_CONTROL_PLANE_URL` is set. `@houston-ai/engine-client` is
-  aliased to `src/engine-adapter`, the app signs in if Firebase (GCIP) env is
-  present, and all domain calls go to the host.
+- **Host mode**: `VITE_CONTROL_PLANE_URL` is set. Domain calls go to the host
+  through `@houston/engine-adapter`, and the app signs in if Firebase (GCIP)
+  env is present.
 - **External new-engine mode**: `VITE_NEW_ENGINE=1` or `VITE_NEW_ENGINE_URL` is
   set. The browser shows the new-engine connect screen unless URL/token are
   pre-seeded.
@@ -34,7 +34,6 @@ src/
   main.tsx          chooses host/new-engine/legacy mode from env
   cloud-login.tsx   host-mode auth wrapper
   app-tree.tsx      app/src providers + gates + <App />
-  engine-adapter/   v3 host adapter for @houston-ai/engine-client
   new-engine/       external-host connect screen + app wrapper
   shims/            @tauri-apps/* browser equivalents
   admin/            cloud operator dashboard mounted at /admin
@@ -46,15 +45,16 @@ Store, and global `/v1/events` reactivity.
 
 The Agent Store is fully wired here, not stubbed:
 
-- **Browse** — `engine-adapter/store-catalog.ts`. Anonymous, CORS-open
+- **Browse** — `@houston/engine-adapter` (`src/store-catalog.ts`). Anonymous, CORS-open
   catalog reads against the store gateway, so browsing works signed-out.
-- **Install** — `engine-adapter/portable-from-store.ts`. Prefers the host's
+- **Install** — `@houston/engine-adapter` (`src/portable-from-store.ts`). Prefers the host's
   `/v1/portable/fetch-from-store`; hosted deployments have no local host (the
   cloud gateway answers 501 for `/v1/portable*`), so the browser falls back to
   reading the public IR off the store gateway and converting it with the same
   shared code the host route runs. Either path parks the package in the registry
   a file upload uses, so the wizard steps downstream are identical.
-- **Publish** — `engine-adapter/portable-store.ts` + `store-gateway.ts`. Posts
+- **Publish** — `@houston/engine-adapter` (`src/portable-store.ts` +
+  `src/store-gateway.ts`). Posts
   the agent IR to the gateway `/v1/agentstore` API with the user's own session
   bearer (no manage tokens), reusing the engine transport's 401-refresh discipline.
 

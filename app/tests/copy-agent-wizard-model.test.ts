@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { PortableInventoryPreview } from "@houston-ai/engine-client";
+import type { PortableInventoryPreview } from "@houston/engine-adapter";
 import {
   copyWizardSteps,
   fullCopySelection,

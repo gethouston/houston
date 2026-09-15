@@ -1,4 +1,4 @@
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 import { isMultiplayer } from "../../lib/org-roles.ts";
 import type { Agent } from "../../lib/types";
 

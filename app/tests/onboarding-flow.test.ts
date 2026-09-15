@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import type {
   Capabilities,
   IntegrationConnection,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import {
   integrationsAvailable,
   isFirstRun,

@@ -1,7 +1,7 @@
 import type {
   IntegrationConnection,
   IntegrationToolkit,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 
 /**
  * Pure logic for the inline integration connect card (`IntegrationConnectCard`)

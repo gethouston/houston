@@ -1,4 +1,4 @@
-import type { AuditEntry } from "@houston-ai/engine-client";
+import type { AuditEntry } from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free translation of an audit-log entry into a human sentence

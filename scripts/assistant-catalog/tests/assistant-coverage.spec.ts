@@ -178,7 +178,7 @@ describe("the coverage gate's rules", () => {
       ]),
     );
     expect(output).toContain("saveAttachments");
-    expect(output).toContain("packages/web/src/engine-adapter/cp/things.ts:12");
+    expect(output).toContain("packages/engine-adapter/cp/things.ts:12");
     expect(output).toContain("unroutable:");
     expect(output).toContain(
       "@assistant unroutable: <why this cannot be auto-routed>",

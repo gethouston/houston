@@ -1,6 +1,6 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { BillingSummary, OrgRole } from "@houston-ai/engine-client";
+import type { BillingSummary, OrgRole } from "@houston/engine-adapter";
 import {
   daysLeftUntil,
   isNeedsUpgradeError,

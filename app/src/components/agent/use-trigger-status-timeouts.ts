@@ -1,4 +1,4 @@
-import type { TriggerStatusItem } from "@houston-ai/engine-client";
+import type { TriggerStatusItem } from "@houston/engine-adapter";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {

@@ -25,14 +25,14 @@ import type {
   MigrationImportResult,
   MigrationMarker,
   MigrationSource,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 // The relative path, not the package alias: this module is driven by
 // `node --test` (app/tests), which resolves no bundler alias. Same reason as
 // `network-transport-error.ts` and its siblings in this directory.
 import {
   isHoustonEngineError,
   isSignedOutEngineError,
-} from "../../../packages/web/src/engine-adapter/client/errors.ts";
+} from "@houston/engine-adapter/client/errors";
 
 /** The authored copy for the two states the user can act on. */
 export interface MigrationErrorCopy {

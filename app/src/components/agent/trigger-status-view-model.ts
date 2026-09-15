@@ -1,4 +1,4 @@
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import type { TriggerStatusItem } from "@houston-ai/routines";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

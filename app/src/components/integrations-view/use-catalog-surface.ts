@@ -2,7 +2,7 @@ import type {
   CustomIntegrationView,
   IntegrationConnection,
   IntegrationToolkit,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { type Dispatch, type SetStateAction, useMemo, useState } from "react";
 import {
   type FilteredInstalled,

@@ -1,8 +1,8 @@
 import type {
   StoreCatalogSort,
   StoreCreatorPage,
-} from "@houston-ai/engine-client";
-import { fetchStoreCreator } from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import { fetchStoreCreator } from "@houston/engine-adapter";
 import { type UseQueryResult, useQuery } from "@tanstack/react-query";
 
 /** Paging + sort for a creator's public page (mirrors the browse controls). */

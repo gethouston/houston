@@ -1,6 +1,6 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { runtimeClientFor } from "@houston/engine-adapter/cp/runtime-clients";
 import { afterEach, expect, test } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { runtimeClientFor } from "../src/engine-adapter/cp/runtime-clients";
 
 /**
  * HOU-976 personal-only, the URL contract: a credential write NEVER names an

@@ -6,7 +6,7 @@
  * These mirror the closed cloud gateway (C7 Teams v2, `agent_settings`) — the
  * surface the host repo itself never serves, since the ceiling lives only above
  * the engine. They read/write the single-user Teams settings in state; the wire
- * shape matches `@houston-ai/engine-client`'s `AgentSettings` exactly so the mock
+ * shape matches `@houston/engine-adapter`'s `AgentSettings` exactly so the mock
  * can't drift.
  */
 

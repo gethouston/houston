@@ -1,4 +1,4 @@
-import type { Capabilities } from "@houston-ai/engine-client";
+import type { Capabilities } from "@houston/engine-adapter";
 import { canSeeOrganization } from "../components/organization/org-view-model.ts";
 import type { AssistantDiscovery } from "./assistant-discovery-state.ts";
 import { canSeeBillingTab } from "./billing-gates.ts";

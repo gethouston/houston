@@ -1,6 +1,6 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { HoustonEngineError } from "../src/engine-adapter/client/errors";
 import {
   type Call,
   createWireCapture,

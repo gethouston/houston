@@ -39,13 +39,6 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
-        // The Houston host (packages/host) is the only engine, so
-        // `@houston-ai/engine-client` always resolves to the v3 host adapter —
-        // the whole desktop UI (app/src) runs on the host / control plane.
-        {
-          find: "@houston-ai/engine-client",
-          replacement: path.resolve(__dirname, "src/engine-adapter/index.ts"),
-        },
         // The web-only Firebase Auth surface — the real firebase-js-sdk module.
         // app/vite.config.ts maps this specifier to a stub so firebase never
         // ships to desktop.
@@ -120,6 +113,7 @@ export default defineConfig(({ mode }) => {
     // (mirrors app/vite.config.ts).
     optimizeDeps: {
       exclude: [
+        "@houston/engine-adapter",
         "@houston/runtime-client",
         "@houston-ai/chat",
         "@houston-ai/core",

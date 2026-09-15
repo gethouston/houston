@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual, throws } from "node:assert";
 import { describe, it } from "node:test";
-import type { AgentMoveStatus, OrgSummary } from "@houston-ai/engine-client";
+import type { AgentMoveStatus, OrgSummary } from "@houston/engine-adapter";
 import {
   addInviteEmails,
   applyMovePoll,

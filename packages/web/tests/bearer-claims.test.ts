@@ -1,8 +1,8 @@
-import { expect, test } from "vitest";
 import {
   describeBearer,
   formatBearerDescription,
-} from "../src/engine-adapter/cp/bearer-claims";
+} from "@houston/engine-adapter/cp/bearer-claims";
+import { expect, test } from "vitest";
 
 const b64url = (value: unknown) =>
   Buffer.from(JSON.stringify(value)).toString("base64url");

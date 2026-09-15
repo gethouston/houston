@@ -1,7 +1,7 @@
 import type {
   AddCustomIntegrationInput,
   CustomDetectResult,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 
 /** The manual add form's state (HOU-980). `url` doubles as the OpenAPI
  *  document URL and the MCP endpoint, whichever `kind` says. */

@@ -1,9 +1,9 @@
+import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   applyHostModeGlobals,
   type HostModeGlobals,
 } from "../src/boot-globals";
-import { HoustonClient } from "../src/engine-adapter/client";
 
 /**
  * PRODUCT-1627: the web entry owns the host-mode boot contract on BOTH paths.

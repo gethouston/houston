@@ -20,7 +20,7 @@
  * exact state this feature was built to surface.
  */
 
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import { useMemo } from "react";
 import { resolveAgentModelOverrides } from "../lib/agent-model-overrides";
 import type { CeilingResolver } from "../lib/ceiling-pin";

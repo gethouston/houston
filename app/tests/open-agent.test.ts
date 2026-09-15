@@ -10,7 +10,7 @@ import { useAgentSettingsNav } from "../src/components/team-view/agent-settings-
  *
  * `open-agent.ts` is the IMPERATIVE half of the agent-nav rules (the pure half
  * is `lib/agent-nav.ts`, covered in `agent-nav.test.ts`). It cannot be imported
- * here: its store chain reaches `lib/tauri.ts` → `@houston-ai/engine-client`,
+ * here: its store chain reaches `lib/tauri.ts` → `@houston/engine-adapter`,
  * whose parameter properties Node's strip-only TypeScript refuses, and
  * `lib/i18n.ts`, whose locale JSON is imported without an import attribute.
  * Both are Vite's job, not Node's. So the store primitive this module now leans

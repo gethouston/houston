@@ -1,4 +1,4 @@
-import type { WorkspaceContext } from "@houston-ai/engine-client";
+import type { WorkspaceContext } from "@houston/engine-adapter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEngine } from "../../lib/engine";
 import { queryKeys } from "../../lib/query-keys";
@@ -21,7 +21,7 @@ type Slot = "workspace" | "user";
 
 /**
  * `getEngine()` is typed as the legacy engine-client, but the running instance is
- * the v3 adapter (`packages/web/src/engine-adapter`), which exposes the
+ * the v3 adapter (`packages/engine-adapter`), which exposes the
  * deployment-aware context methods. Narrow to just those (same cast pattern as
  * `claude-login-remote.ts`).
  */

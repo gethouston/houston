@@ -188,6 +188,9 @@ importers:
       '@houston/design-tokens':
         specifier: workspace:*
         version: link:../packages/design-tokens
+      '@houston/engine-adapter':
+        specifier: workspace:*
+        version: link:../packages/engine-adapter
       '@houston/protocol':
         specifier: workspace:*
         version: link:../packages/protocol
@@ -415,6 +418,46 @@ importers:
       vitest:
         specifier: 3.2.6
         version: 3.2.6(@types/debug@4.1.13)(@types/node@22.20.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+
+  packages/engine-adapter:
+    dependencies:
+      '@houston-ai/core':
+        specifier: workspace:*
+        version: link:../../ui/core
+      '@houston/agentstore-client':
+        specifier: workspace:*
+        version: link:../agentstore-client
+      '@houston/agentstore-contract':
+        specifier: workspace:*
+        version: link:../agentstore-contract
+      '@houston/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@houston/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      '@houston/runtime-client':
+        specifier: workspace:*
+        version: link:../runtime-client
+      '@houston/sdk':
+        specifier: workspace:*
+        version: link:../sdk
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../wire-types
+    devDependencies:
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260607.1
+        version: 7.0.0-dev.20260607.1
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+      vite:
+        specifier: 6.4.3
+        version: 6.4.3(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+      vitest:
+        specifier: 3.2.6
+        version: 3.2.6(@types/debug@4.1.13)(@types/node@25.6.0)(jiti@2.7.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
 
   packages/fake-host:
     dependencies:
@@ -695,6 +738,9 @@ importers:
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
+      '@houston/engine-adapter':
+        specifier: workspace:*
+        version: link:../engine-adapter
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol

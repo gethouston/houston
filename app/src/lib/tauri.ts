@@ -2,7 +2,7 @@
  * Houston backend adapter — the error-surfacing policy layer, not a transport.
  *
  * Every domain call (workspaces, agents, chat, skills, store, …) flows through
- * `@houston-ai/engine-client` to the Houston host: the sidecar the Tauri shell
+ * `@houston/engine-adapter` to the Houston host: the sidecar the Tauri shell
  * spawns on `127.0.0.1` (see `engine_supervisor.rs`), an external host, or the
  * hosted gateway. Each one is wrapped in {@link call}, which pairs it with an
  * authored label (the Sentry grouping key) and the per-call
@@ -15,7 +15,6 @@
  * VPS where those APIs would be meaningless.
  */
 
-import type { IntegrationProviderId } from "@houston/protocol";
 import type {
   AddCustomIntegrationInput,
   AgentAssignment,
@@ -30,7 +29,8 @@ import type {
   ProviderHealth,
   ProviderUsage,
   SkillsManifest,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import type { IntegrationProviderId } from "@houston/protocol";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
 import {
@@ -408,7 +408,7 @@ export interface CreateAgentResult {
 
 /** Engine wire agent → app Agent. Exported for flows that receive an agent
  *  record outside the tauriAgents wrappers (the import wizard, HOU-710). */
-export function toAgent(a: import("@houston-ai/engine-client").Agent): Agent {
+export function toAgent(a: import("@houston/engine-adapter").Agent): Agent {
   return {
     id: a.id,
     name: a.name,
@@ -544,7 +544,7 @@ export const tauriAgentModelChoice = {
     ),
   set: (
     agentSlugOrId: string,
-    choice: import("@houston-ai/engine-client").AgentModelChoice,
+    choice: import("@houston/engine-adapter").AgentModelChoice,
   ) =>
     call<void>(
       "set_agent_model_choice",
@@ -1197,7 +1197,7 @@ export interface RawConversation {
  */
 export interface AllConversationsSweep {
   items: RawConversation[];
-  failedAgents: import("@houston-ai/engine-client").FailedAgentRead[];
+  failedAgents: import("@houston/engine-adapter").FailedAgentRead[];
 }
 
 export const tauriConversations = {
@@ -1269,7 +1269,7 @@ export const tauriConversations = {
 };
 
 function conversationToRaw(
-  c: import("@houston-ai/engine-client").ConversationEntry,
+  c: import("@houston/engine-adapter").ConversationEntry,
 ): RawConversation {
   return {
     id: c.id,
@@ -1296,7 +1296,7 @@ import type {
   NewActivity as EngineNewActivity,
   NewRoutine as EngineNewRoutine,
   RoutineUpdate as EngineRoutineUpdate,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import * as activityData from "../data/activity";
 import * as configData from "../data/config";
 
@@ -1451,15 +1451,15 @@ export const tauriPreferences = {
 
 export const tauriSidebar = {
   getLayout: (workspaceId: string) =>
-    call<import("@houston-ai/engine-client").SidebarLayout>(
+    call<import("@houston/engine-adapter").SidebarLayout>(
       "get_sidebar_layout",
       () => getEngine().getSidebarLayout(workspaceId),
     ),
   setLayout: (
     workspaceId: string,
-    layout: import("@houston-ai/engine-client").SidebarLayout,
+    layout: import("@houston/engine-adapter").SidebarLayout,
   ) =>
-    call<import("@houston-ai/engine-client").SidebarLayout>(
+    call<import("@houston/engine-adapter").SidebarLayout>(
       "set_sidebar_layout",
       () => getEngine().setSidebarLayout(workspaceId, layout),
     ),
@@ -1893,8 +1893,7 @@ export const tauriProvider = {
 
 /** Mirror of the engine `AssistantHandle` — re-exported so callers can import
  *  it from `lib/tauri.ts` like the other engine DTOs. */
-export type AssistantHandle =
-  import("@houston-ai/engine-client").AssistantHandle;
+export type AssistantHandle = import("@houston/engine-adapter").AssistantHandle;
 
 /**
  * Where the user's personal assistant lives. The assistant is an ordinary
@@ -2119,7 +2118,7 @@ export const tauriOrg = {
     }),
   addMember: (
     email: string,
-    role: import("@houston-ai/engine-client").OrgRole,
+    role: import("@houston/engine-adapter").OrgRole,
     options?: EngineCallOptions,
   ) =>
     call(
@@ -2155,7 +2154,7 @@ export const tauriOrg = {
     call("remove_org_member", () => getEngine().removeOrgMember(userId)),
   setMemberRole: (
     userId: string,
-    role: import("@houston-ai/engine-client").OrgRole,
+    role: import("@houston/engine-adapter").OrgRole,
   ) =>
     call("set_org_member_role", () =>
       getEngine().setOrgMemberRole(userId, role),

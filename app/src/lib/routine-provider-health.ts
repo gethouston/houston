@@ -35,7 +35,7 @@
  * (`app/tests/routine-provider-health.test.ts`).
  */
 
-import type { ProviderHealth } from "@houston-ai/engine-client";
+import type { ProviderHealth } from "@houston/engine-adapter";
 
 /**
  * What the routine's connection badge shows. The wire's five `ProviderHealth`

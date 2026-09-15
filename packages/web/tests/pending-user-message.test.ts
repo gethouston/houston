@@ -1,7 +1,7 @@
+import { pushPendingUserMessage } from "@houston/engine-adapter/turn-stream";
+import { conversationStore } from "@houston/engine-adapter/vm";
 import { conversationScope } from "@houston/sdk";
 import { expect, test } from "vitest";
-import { pushPendingUserMessage } from "../src/engine-adapter/turn-stream";
-import { conversationStore } from "../src/engine-adapter/vm";
 
 /**
  * The warming-engine send queue's optimistic bubble (HOU-693). The REAL send at

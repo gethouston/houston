@@ -10,7 +10,7 @@
  * informs, it never blocks.
  */
 
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
 import { useRoutineModelResolution } from "../../hooks/use-routine-model-resolution";
 import { useRoutineProviderHealth } from "../../hooks/use-routine-provider-health";

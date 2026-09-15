@@ -1,8 +1,8 @@
-import { cn, Skeleton } from "@houston-ai/core";
 import type {
   ProviderUsageTokens,
   ProviderUsageWindow,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import { cn, Skeleton } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import {
   formatCreditsAmount,

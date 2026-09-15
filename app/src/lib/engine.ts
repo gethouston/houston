@@ -1,6 +1,6 @@
 /** Engine client bootstrap for the Houston desktop app. */
 
-import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
+import { EngineWebSocket, HoustonClient } from "@houston/engine-adapter";
 import {
   appUpdateChannel,
   currentAppVersion,

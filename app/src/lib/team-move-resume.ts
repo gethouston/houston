@@ -1,4 +1,4 @@
-import type { AgentTeam } from "@houston-ai/engine-client";
+import type { AgentTeam } from "@houston/engine-adapter";
 import type { ResumeOptions, ResumeOutcome } from "./move-resume";
 import type { PendingAgentMove } from "./pending-move";
 import type { PendingTeamMove } from "./pending-team-move";

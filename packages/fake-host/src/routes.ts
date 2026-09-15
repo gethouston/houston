@@ -3,7 +3,7 @@
  *
  * Two contracts share this namespace (mirroring the real deployment):
  *  - control-plane host data — activities, routines, skills, agent files
- *    (packages/web/src/engine-adapter/control-plane.ts), and
+ *    (packages/engine-adapter/control-plane.ts), and
  *  - the per-agent runtime proxy — providers, auth, settings, and the
  *    conversation stream (packages/runtime-client/src/client.ts), reached at
  *    `/agents/:id/conversations/:cid/*`.

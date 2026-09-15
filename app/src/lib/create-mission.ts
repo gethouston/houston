@@ -4,7 +4,7 @@
  * and the mobile sync responder so the flow stays identical.
  */
 
-import type { MessageMention } from "@houston-ai/engine-client";
+import type { MessageMention } from "@houston/engine-adapter";
 import { isAgentProvisioning } from "../stores/agent-provisioning";
 import { activityRowPin, definedPins } from "./agent-model-overrides";
 import { analytics } from "./analytics";

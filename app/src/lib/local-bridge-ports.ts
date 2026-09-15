@@ -1,10 +1,10 @@
+import type { LocalModelBridgeAccess } from "@houston/engine-adapter";
 import type { LocalBridgeIdentity } from "@houston/protocol";
 import type {
   LocalBridgeNativeEvent,
   LocalModelBridgePorts,
 } from "@houston/sdk";
 import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported";
-import type { LocalModelBridgeAccess } from "@houston-ai/engine-client";
 import { showErrorToast } from "./error-toast";
 import {
   legacyListen,

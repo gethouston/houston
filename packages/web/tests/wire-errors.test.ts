@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { HoustonClient } from "../src/engine-adapter/client";
+import { HoustonClient } from "@houston/engine-adapter/client";
 import {
   HoustonEngineError,
   isSignedOutEngineError,
-} from "../src/engine-adapter/client/errors";
-import { wakingStuckTracker } from "../src/engine-adapter/waking-stuck-tracker";
+} from "@houston/engine-adapter/client/errors";
+import { wakingStuckTracker } from "@houston/engine-adapter/waking-stuck-tracker";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { installLocalStorage, json } from "./support/wire-capture";
 
 /**

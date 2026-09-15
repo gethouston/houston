@@ -73,4 +73,4 @@ Together these guarantee the user never has to manually refresh after the agent 
 | Phone access store + HTTP routes | `engine/houston-engine-server/src/{mobile_access.rs,routes/tunnel.rs}` |
 | Relay Worker + Durable Object | `houston-relay/` |
 | PWA source (React + Vite) | `mobile/` |
-| Engine client library (shared with desktop) | `packages/web/src/engine-adapter/` |
+| Engine client library (shared with desktop) | `packages/engine-adapter/` |

@@ -1,4 +1,4 @@
-import type { OrgRole } from "@houston-ai/engine-client";
+import type { OrgRole } from "@houston/engine-adapter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";

@@ -1,6 +1,6 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { TriggerStatusItem } from "@houston-ai/engine-client";
+import type { TriggerStatusItem } from "@houston/engine-adapter";
 import {
   TRIGGER_STATUS_POLL_MS,
   triggerActivationKind,

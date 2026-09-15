@@ -1,7 +1,7 @@
+import { AdapterContext } from "@houston/engine-adapter/client/context";
+import { localModelBridgeAccess } from "@houston/engine-adapter/client/local-model-bridge";
 import { isBridgeUnsupported } from "@houston/sdk";
 import { afterEach, expect, test, vi } from "vitest";
-import { AdapterContext } from "../src/engine-adapter/client/context";
-import { localModelBridgeAccess } from "../src/engine-adapter/client/local-model-bridge";
 
 const id = "a138ce01-cf5b-4d3d-b270-eecb9be1645d";
 const device = { deviceId: id, deviceSecret: "a".repeat(43) };

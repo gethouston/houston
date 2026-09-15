@@ -1,4 +1,4 @@
-import type { Capabilities, ComputeUsageRow } from "@houston-ai/engine-client";
+import type { Capabilities, ComputeUsageRow } from "@houston/engine-adapter";
 
 /**
  * Pure aggregation for the Time worked screen (no DOM, no i18n): buckets the

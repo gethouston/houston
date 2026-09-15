@@ -10,7 +10,7 @@ import type {
   PortableExportOverrides,
   PortableExportSelection,
   StorePublishRequest,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
 import { isStoreCategory } from "./store-categories.ts";
 
 /** The pick step's selection (Sets while the user toggles rows). */

@@ -886,7 +886,7 @@ describe("startFakeHost", () => {
   });
 });
 
-/** One team on the wire (`AgentTeam` in `@houston-ai/engine-client`). */
+/** One team on the wire (`AgentTeam` in `@houston/engine-adapter`). */
 interface TeamWire {
   id: string;
   name: string;

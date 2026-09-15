@@ -1,4 +1,4 @@
-import type { ConversationEntry } from "@houston-ai/engine-client";
+import type { ConversationEntry } from "@houston/engine-adapter";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
 /**

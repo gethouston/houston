@@ -1,4 +1,4 @@
-import type { OrgInfo, OrgRole } from "@houston-ai/engine-client";
+import type { OrgInfo, OrgRole } from "@houston/engine-adapter";
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";

@@ -1,8 +1,8 @@
-import { Button, Input } from "@houston-ai/core";
 import type {
   CustomAuthField,
   CustomAuthMethod,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import { Button, Input } from "@houston-ai/core";
 import { Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";

@@ -14,7 +14,7 @@
  * below are a type (erased at runtime) and the pure key factory.
  */
 
-import type { ActivityStatus, MessageMention } from "@houston-ai/engine-client";
+import type { ActivityStatus, MessageMention } from "@houston/engine-adapter";
 import { queryKeys } from "./query-keys.ts";
 
 /**

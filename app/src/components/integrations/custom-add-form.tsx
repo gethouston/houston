@@ -1,8 +1,8 @@
-import { AsyncButton, Button, Input, Switch } from "@houston-ai/core";
 import type {
   CustomDetectResult,
   CustomIntegrationView,
-} from "@houston-ai/engine-client";
+} from "@houston/engine-adapter";
+import { AsyncButton, Button, Input, Switch } from "@houston-ai/core";
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {

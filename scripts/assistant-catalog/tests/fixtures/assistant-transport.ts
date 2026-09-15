@@ -1,5 +1,5 @@
 /**
- * Fixture twin of `packages/web/src/engine-adapter/cp/fetch.ts`: the one
+ * Fixture twin of `packages/engine-adapter/cp/fetch.ts`: the one
  * function that reaches the wire, plus the module-scope path helper the
  * operation sources build their templates from. The extractor reads this file
  * only for those shared helpers — nothing here becomes an operation.

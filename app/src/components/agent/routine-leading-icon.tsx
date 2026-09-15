@@ -1,4 +1,4 @@
-import type { Routine } from "@houston-ai/engine-client";
+import type { Routine } from "@houston/engine-adapter";
 import { Webhook } from "lucide-react";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { useIntegrationToolkits } from "../../hooks/queries/use-integrations";

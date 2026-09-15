@@ -1,4 +1,4 @@
-import type { IntegrationConnection } from "@houston-ai/engine-client";
+import type { IntegrationConnection } from "@houston/engine-adapter";
 import type { TFunction } from "i18next";
 
 /**

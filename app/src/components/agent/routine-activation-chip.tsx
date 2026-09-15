@@ -12,8 +12,9 @@
  * spinning forever. Reconnect routes to the Integrations surface, the same
  * hand-off the grid's row badge uses.
  */
+
+import type { RoutineTriggerBinding } from "@houston/engine-adapter";
 import { Button, cn } from "@houston-ai/core";
-import type { RoutineTriggerBinding } from "@houston-ai/engine-client";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";

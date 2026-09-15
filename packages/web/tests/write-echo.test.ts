@@ -16,17 +16,17 @@ import { afterEach, expect, test, vi } from "vitest";
  * `fetch`; only the global `/v1/events` subscription is mocked away, so the bus
  * carries nothing but the echoes the client itself pushed.
  */
-vi.mock("../src/engine-adapter/control-plane", async (importOriginal) => {
+vi.mock("@houston/engine-adapter/control-plane", async (importOriginal) => {
   const actual =
     await importOriginal<
-      typeof import("../src/engine-adapter/control-plane")
+      typeof import("@houston/engine-adapter/control-plane")
     >();
   return { ...actual, subscribeEvents: vi.fn(() => () => {}) };
 });
 
-import { bus, emitLocalEcho } from "../src/engine-adapter/bus";
-import { HoustonClient } from "../src/engine-adapter/client";
-import { toInvalidationEvent } from "../src/engine-adapter/control-plane";
+import { bus, emitLocalEcho } from "@houston/engine-adapter/bus";
+import { HoustonClient } from "@houston/engine-adapter/client";
+import { toInvalidationEvent } from "@houston/engine-adapter/control-plane";
 
 type BusEvent = { type: string; data: { agent_path?: string } };
 
