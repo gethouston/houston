@@ -1,10 +1,12 @@
 import type { PiBackendDeps } from "../backends/pi/backend";
+import { assistantOptions } from "../session/assistant-family";
+import { personalAssistant } from "../session/runtime-role";
 import {
   buildToolSelection,
   type CodeExecutionMode,
   type ToolSelection,
 } from "../session/tool-selection";
-import { makeCustomIntegrationTools } from "../session/tools/custom-integrations";
+import { credentialTools } from "../session/tools/credential-tools";
 import { makeSkillDirectoryTools } from "../session/tools/find-skills";
 import { makeIntegrationTools } from "../session/tools/integrations";
 import { makeRequestProviderConnectionTool } from "../session/tools/request-provider-connection";
@@ -53,7 +55,16 @@ export function buildTurnHostTools(
     ...(enabled.integrations
       ? [
           ...makeIntegrationTools({ call: turn.sandbox.call }),
-          ...makeCustomIntegrationTools({ call: turn.sandbox.call }),
+          // The secure key-entry surface is `credentialTools`' call on every
+          // backend; the assistant family's catalog is process-level but its
+          // transport is not, so it is rebound to THIS turn's sandbox.
+          ...credentialTools({
+            personalAssistant,
+            ...(assistantOptions
+              ? { assistant: { ...assistantOptions, call: turn.sandbox.call } }
+              : {}),
+            integrations: { call: turn.sandbox.call },
+          }),
         ]
       : []),
     ...(enabled.agentWrites

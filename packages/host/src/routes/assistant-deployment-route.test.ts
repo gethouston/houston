@@ -181,10 +181,17 @@ test("every visible catalogued custom-integration route is rewritten", () => {
     // operations are exempt — the secret-bearing credential/oauth pair is
     // refused before dispatch (see "hidden %s stays refused" above), so
     // whether a route exists for them decides nothing.
+    //
+    // Pinned to the exact upstream request, not merely non-null: a rewrite that
+    // lands on the wrong pod path (or drops the method/query) reaches a real
+    // gateway and fails there, which a null-check can never catch.
     expect(
       rewritten,
       `${op.name} (${route.method} ${route.path}) is not routed for a gateway-fronted deployment`,
-    ).not.toBeNull();
+    ).toEqual({
+      ...request,
+      path: `/agents/trusted-pod/integrations/custom/${request.path.slice(prefix.length)}`,
+    });
   }
 });
 

@@ -54,8 +54,10 @@ export interface SurfaceGates {
 /** Everything the gates are computed from — no hooks, no queries, no DOM. */
 export interface SurfaceGateInputs {
   capabilities: Capabilities | null | undefined;
-  /** True until the capabilities fetch resolves. */
-  capabilitiesLoading?: boolean;
+  /** True until the capabilities fetch resolves. Required: every flag is read
+   *  off `capabilities`, so a caller that omitted it silently declared the
+   *  gates SETTLED while they were still unknown. */
+  capabilitiesLoading: boolean;
   /** Whether the ACTIVE workspace is a team space. */
   isTeam: boolean;
   assistant: AssistantDiscovery;

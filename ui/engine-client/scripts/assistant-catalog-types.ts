@@ -75,6 +75,11 @@ export interface OperationAnnotation {
   openIdentifiers: string[];
   unroutableReason?: string;
   unschematizedReason?: string;
+  /**
+   * Another SDK operation resolving to this one's route, when visibility does
+   * not settle which of them the catalog publishes.
+   */
+  routeConflict?: { route: string; others: string[] };
   unknownTags: string[];
   routable: boolean;
   /** `param` / `returns` names whose schema fell back to free-form. */

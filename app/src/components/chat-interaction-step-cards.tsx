@@ -23,11 +23,14 @@ export function interactionStepCards(args: {
   /** The protocol steps, so a custom step can be matched back to its request. */
   steps: readonly NonPlanReadyStep[];
   agentId: string;
+  /** The conversation the interaction belongs to, `null` before its id lands —
+   *  half of the identity a provider request is remembered by. */
+  conversationId: string | null;
   /** The AI Manager connects for the ACCOUNT, an agent chat for its agent. */
   accountScope: boolean;
   outcomes: InteractionOutcomes;
 }): StepRenderers {
-  const { steps, agentId, accountScope, outcomes } = args;
+  const { steps, agentId, conversationId, accountScope, outcomes } = args;
   return {
     renderCustom: (step, api) => {
       const request = steps.find((item) => item.id === step.id);
@@ -37,6 +40,8 @@ export function interactionStepCards(args: {
           {...api}
           key={step.id}
           stepId={step.id}
+          agentId={agentId}
+          conversationId={conversationId}
           providerId={request.provider}
           reason={request.reason}
           onConnected={(name) => {

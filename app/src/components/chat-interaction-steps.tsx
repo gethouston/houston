@@ -9,7 +9,6 @@ import type { ApprovalCardCopy } from "../lib/interaction-approval-labels";
 import { localizeApprovalQuestion } from "../lib/interaction-approval-labels";
 import { approvalsFromAnswers } from "../lib/interaction-approvals";
 import type { NonPlanReadyStep } from "../lib/plan-ready";
-import { providerName } from "../lib/providers";
 import type { TurnMode } from "../lib/turn-mode";
 import {
   createInteractionOutcomes,
@@ -24,11 +23,16 @@ export interface ChatInteractionStepsArgs {
   /** The plan_ready-free steps the stepper walks, in wire order. */
   steps: readonly NonPlanReadyStep[];
   agentId: string;
+  /** The conversation the interaction belongs to, `null` before its id lands. */
+  conversationId: string | null;
   /** The AI Manager connects apps for the ACCOUNT, an agent chat for its agent. */
   accountScope: boolean;
   labels: ChatInteractionCardProps["labels"];
   approvalCopy: ApprovalCardCopy;
   resolveBrand: ReturnType<typeof useToolkitBrandResolver>;
+  /** Names a requested AI provider through the GATED connect list — the same
+   *  list its card acts on, so title and card never name different things. */
+  resolveProviderName: (providerId: string) => string;
   onDismiss: () => void;
   onSend: (
     text: string,
@@ -50,8 +54,16 @@ export interface ChatInteractionStepsArgs {
 export function chatInteractionStepsNode(
   args: ChatInteractionStepsArgs,
 ): ReactNode {
-  const { steps, labels, approvalCopy, resolveBrand, onDismiss, onSend, t } =
-    args;
+  const {
+    steps,
+    labels,
+    approvalCopy,
+    resolveBrand,
+    resolveProviderName,
+    onDismiss,
+    onSend,
+    t,
+  } = args;
   // Map the protocol steps into ui/chat steps, resolving each question step's
   // optional `toolkit` into a presentational brand (logo + name) so a question
   // that concerns an integration wears the app's identity in its title. A step
@@ -64,7 +76,7 @@ export function chatInteractionStepsNode(
       return {
         kind: "custom",
         id: step.id,
-        title: providerName(step.provider),
+        title: resolveProviderName(step.provider),
       };
     if (step.kind !== "question") return step;
     const question = localizeApprovalQuestion(step, approvalCopy);
@@ -94,6 +106,7 @@ export function chatInteractionStepsNode(
       {...interactionStepCards({
         steps,
         agentId: args.agentId,
+        conversationId: args.conversationId,
         accountScope: args.accountScope,
         outcomes,
       })}

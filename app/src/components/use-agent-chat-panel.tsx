@@ -65,6 +65,7 @@ import {
 import { useApprovalCardCopy } from "../hooks/use-approval-card-copy";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useConnectAiComposer } from "../hooks/use-connect-ai-composer";
+import { useConnectProviderName } from "../hooks/use-connect-providers";
 import {
   useConversationFeed,
   useConversationVm,
@@ -110,6 +111,10 @@ import {
 } from "../lib/model-selector-lock";
 import { osIsTauri } from "../lib/os-bridge";
 import { resolvePlanReadyOverride } from "../lib/plan-ready";
+import {
+  providerConnectStepScope,
+  releaseProviderConnectStepResumes,
+} from "../lib/provider-connect-step-memory";
 import {
   providerConnectionState,
   providerIsConnected,
@@ -1521,7 +1526,18 @@ export function useAgentChatPanel({
   // before the runtime ever sees the turn.
   const sendInteractionMessage = useCallback(
     (text: string, mode?: TurnMode, approvals?: MessageApproval[]) => {
-      if (!path || !selectedSessionKey) return;
+      // A provider connect claims its ONE resume of the conversation before the
+      // reply is composed, so a reply that never leaves the client has to give
+      // that claim back — otherwise the user's retry is refused by a guard
+      // standing for a nudge the agent never heard.
+      const releaseResumes = () =>
+        releaseProviderConnectStepResumes(
+          providerConnectStepScope(agent?.id ?? "", selectedSessionKey),
+        );
+      if (!path || !selectedSessionKey) {
+        releaseResumes();
+        return;
+      }
       resolveSendPin()
         .then((pin) =>
           tauriChat.send(path, text, selectedSessionKey, {
@@ -1538,11 +1554,12 @@ export function useAgentChatPanel({
         .then(
           () => onSendReactivatedRef.current?.(),
           (err: unknown) => {
+            releaseResumes();
             showSendFailedToast(err);
           },
         );
     },
-    [path, selectedSessionKey, resolveSendPin, turnMode],
+    [agent?.id, path, selectedSessionKey, resolveSendPin, turnMode],
   );
 
   // Resolves a question step's `toolkit` to the app's presentational brand (logo
@@ -1550,6 +1567,10 @@ export function useAgentChatPanel({
   // in its title. Read-only (no connect side effects); a catalog miss yields the
   // prettified slug and no logo. Stable across renders unless the catalog moves.
   const resolveBrand = useToolkitBrandResolver();
+
+  // Names a requested AI provider through the GATED connect list, so a step's
+  // title and the card beneath it always say the same thing.
+  const resolveProviderName = useConnectProviderName();
 
   const interactionLabels = useMemo(
     () => ({
@@ -1887,10 +1908,12 @@ export function useAgentChatPanel({
       node: chatInteractionStepsNode({
         steps: override.steps,
         agentId: agent.id,
+        conversationId: selectedSessionKey,
         accountScope: integrationAccountScope,
         labels: interactionLabels,
         approvalCopy,
         resolveBrand,
+        resolveProviderName,
         onDismiss: dismissActiveInteraction,
         onSend: sendInteractionMessage,
         t,
@@ -1900,6 +1923,7 @@ export function useAgentChatPanel({
     connectAiComposer.node,
     integrationAccountScope,
     agent,
+    selectedSessionKey,
     activeInteraction,
     interactionKey,
     abandonedInteractionKey,
@@ -1922,6 +1946,7 @@ export function useAgentChatPanel({
     dismissInteractionStep,
     dismissActiveInteraction,
     resolveBrand,
+    resolveProviderName,
     approvalCopy,
     t,
   ]);

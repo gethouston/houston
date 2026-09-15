@@ -36,6 +36,19 @@ const callable = new Set(
 
 const section = buildAssistantRulesSection("coordinator") ?? "";
 
+/**
+ * Whether the capability map names this operation as a WHOLE name. A substring
+ * test is vacuous for prefix pairs in both directions: `providers.refresh`
+ * would read as present because `providers.refreshStatus` is listed, and a
+ * hidden `providers.refresh` would read as leaked for the same reason.
+ */
+function mapNames(operation: string): boolean {
+  const escaped = operation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^\\w.])${escaped}(?![\\w.])`).test(
+    ASSISTANT_CAPABILITY_INDEX,
+  );
+}
+
 test("every case is either an operation to find or a refusal to make", () => {
   const ids = DISCOVERABILITY_CASES.map((one) => one.id);
   expect(new Set(ids).size).toBe(ids.length);
@@ -61,16 +74,11 @@ test("the capability map names every callable operation and no other", () => {
   // The map is what removes "I did not know it existed" from the loop, so it
   // has to be the WHOLE callable surface, not a curated excerpt of it.
   for (const operation of callable) {
-    expect(ASSISTANT_CAPABILITY_INDEX, operation).toContain(operation);
+    expect(mapNames(operation), operation).toBe(true);
   }
   for (const operation of visible) {
     if (callable.has(operation)) continue;
-    // Whole-name match: `providers.refresh` must not pass as a substring of
-    // `providers.refreshStatus`.
-    const named = new RegExp(
-      `(^|[^\\w.])${operation.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w.])`,
-    );
-    expect(named.test(ASSISTANT_CAPABILITY_INDEX), operation).toBe(false);
+    expect(mapNames(operation), operation).toBe(false);
   }
   expect(section).toContain(ASSISTANT_CAPABILITY_INDEX);
 });

@@ -16,9 +16,10 @@ export const fixtureOptions = {
     fixture("assistant-cluster-mixin.ts"),
     fixture("assistant-dedup.ts"),
     fixture("assistant-module.ts"),
+    fixture("assistant-claims-module.ts"),
   ],
   isModuleSource: (path: string): boolean =>
-    path.endsWith("assistant-module.ts"),
+    /assistant-(claims-)?module\.ts$/.test(path),
   transportSource: fixture("assistant-transport.ts"),
   facadeSource: fixture("assistant-facade.ts"),
   resolverSources: [fixture("assistant-runtime-client.ts")],

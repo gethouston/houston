@@ -17,6 +17,7 @@ import {
   declarationLocation,
   parametersOf,
   returnsOf,
+  unpublishedPathParams,
 } from "./assistant-operation-parts.ts";
 import { extractRoute, type RouteContext } from "./assistant-route.ts";
 import { isFallback, schemaForType } from "./assistant-schema.ts";
@@ -97,14 +98,25 @@ export function readOperation(
     context,
   );
   if (routing.reason === "no request call") return null;
+  const unpublished = routing.route
+    ? unpublishedPathParams(routing.route, declaration, checker, source)
+    : [];
+  const route = unpublished.length > 0 ? null : routing.route;
+  const unroutable =
+    unpublished.length > 0
+      ? `the path names ${unpublished.join(", ")}, which the published signature does not declare`
+      : routing.reason;
   const docs = parseAssistantDocs(docsFor(declaration));
   const { params, unschematized, openIdentifiers } = parametersOf(
     declaration,
     checker,
     source,
-    { docs: docs.params, route: routing.route, operation: declaration.name },
+    { docs: docs.params, route, operation: declaration.name },
   );
-  const returnType = routing.returns ?? returnsOf(declaration, checker);
+  // Only a derived route can answer with the CLIENT method's shape; once it is
+  // refused, what a caller gets back is whatever this declaration returns.
+  const returnType =
+    (route ? routing.returns : null) ?? returnsOf(declaration, checker);
   const returns = returnType
     ? schemaForType(checker, returnType, declaration.node)
     : { $comment: "unschematized: unknown" };
@@ -120,7 +132,7 @@ export function readOperation(
       ...(docs.unconfirmed ? { unconfirmed: docs.unconfirmed } : {}),
       params,
       returns,
-      route: routing.route,
+      route,
     },
     annotation: {
       name: declaration.name,
@@ -129,18 +141,18 @@ export function readOperation(
       group: docs.group,
       hidden: docs.hidden,
       hiddenReason: docs.hiddenReason,
-      method: routing.route?.method,
+      method: route?.method,
       confirm: docs.confirm,
       unconfirmed: docs.unconfirmed,
       unroutableReason: docs.unroutableReason,
       unschematizedReason: docs.unschematizedReason,
       unknownTags: docs.unknownTags,
-      routable: routing.route !== null,
+      routable: route !== null,
       unschematizedFields: unschematized,
       openIdentifiers,
     },
     unschematized,
-    unroutable: routing.reason,
+    unroutable,
   };
 }
 

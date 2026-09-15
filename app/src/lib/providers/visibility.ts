@@ -1,6 +1,7 @@
 import type { Capabilities } from "@houston-ai/engine-client";
 import { defaultModelFor } from "./build-provider.ts";
 import { PROVIDERS } from "./catalog.ts";
+import { providerName } from "./lookup.ts";
 import type { ProviderInfo } from "./types.ts";
 
 /**
@@ -124,4 +125,20 @@ export function getConnectProviders(
  */
 export function providerGatewayIds(p: ProviderInfo): readonly string[] {
   return p.gatewayIds ?? [p.id];
+}
+
+/**
+ * What the connect surfaces CALL `providerId`, resolved through the gated list
+ * (`connect`) rather than the raw catalog. A deployment that does not serve the
+ * provider has no card for it, so the name falls back to the catalog's — which
+ * is what the card itself renders, so a request's title and its card can never
+ * name two different things. Gateway ids resolve too: `opencode-go` reads as
+ * the merged OpenCode account.
+ */
+export function connectProviderName(
+  connect: readonly ProviderInfo[],
+  providerId: string,
+): string {
+  const card = connect.find((p) => providerGatewayIds(p).includes(providerId));
+  return card?.name ?? providerName(providerId);
 }

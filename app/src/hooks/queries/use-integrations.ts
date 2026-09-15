@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { cancelFlowForDisconnect } from "../../components/integrations/connect-flow-registry";
+import { cancelFlowsForDisconnect } from "../../components/integrations/connect-flow-registry";
 import { integrationsSupported } from "../../components/integrations/model";
 import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
@@ -91,7 +91,7 @@ export function useDisconnectIntegration(provider: string) {
     // before the removal lands: otherwise its next read 404s on the id the
     // user just took away (PRODUCT-1733).
     onMutate: ({ toolkit, connectionId }) => {
-      cancelFlowForDisconnect(connectFlowRegistry, toolkit, connectionId);
+      cancelFlowsForDisconnect(connectFlowRegistry, toolkit, connectionId);
     },
     onSuccess: (_data, { toolkit }) => {
       analytics.track("integration_disconnected", {

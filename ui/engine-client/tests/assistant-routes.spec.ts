@@ -94,6 +94,12 @@ describe("assistant route derivation", () => {
     const expected = {
       allThings: "non-literal path",
       branchedThing: "multiple request calls",
+      "gadgets.detachAll":
+        "path segment depends on a value the caller may override",
+      "gadgets.seek":
+        "the path names a, which the published signature does not declare",
+      "gadgets.stray":
+        "hop into AgentThingsClient.readThing could not be resolved: the client comes from strayThingsClient(), which is not clientFor()",
       getThingContext: "unescaped path interpolation",
       headThing: "unsupported HTTP method HEAD",
       probeThing: "non-assignment request option",
@@ -102,7 +108,7 @@ describe("assistant route derivation", () => {
       "things.audit": "the client method issues several requests",
       "things.pin": "body value is not a parameter",
       "things.readLoose":
-        "the agent the client is rooted at is not a parameter",
+        "hop into AgentThingsClient.readThing could not be resolved: the agent the client is rooted at is not a parameter",
       "things.unpin": "path segment depends on a value the caller may override",
       "things.writes.detach":
         "path segment depends on a value the caller may override",

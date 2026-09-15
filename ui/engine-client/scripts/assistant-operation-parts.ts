@@ -54,6 +54,31 @@ function publishedParameters(
     : node.parameters;
 }
 
+/**
+ * The path parameters a caller cannot actually supply.
+ *
+ * Routing reads the IMPLEMENTATION signature while the parameter list a caller
+ * sees is the first overload's, so behind an overload the two name different
+ * things: `pin(id)` publishes `id` while the body builds its path from `b`. A
+ * route whose path names something its own entry does not carry is a call
+ * nobody can make, so it is no route at all.
+ */
+export function unpublishedPathParams(
+  route: AssistantRoute,
+  declaration: Declaration,
+  checker: ts.TypeChecker,
+  source: ts.SourceFile,
+): string[] {
+  const published = new Set(
+    publishedParameters(declaration, checker)
+      .filter((parameter) => !isPlumbingParameter(parameter))
+      .map((parameter) => parameter.name.getText(source)),
+  );
+  return route.pathParams
+    .map(({ name }) => name)
+    .filter((name) => !published.has(name));
+}
+
 export interface OperationParameters {
   params: AssistantParameter[];
   /** Parameter names whose schema fell back to a free-form comment. */

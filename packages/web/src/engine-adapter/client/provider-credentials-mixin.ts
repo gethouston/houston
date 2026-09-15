@@ -16,7 +16,12 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
     getLocalModelBridgeAccess(userId: string) {
       return localModelBridgeAccess(this.ctx, userId);
     }
-    /** Disconnect a provider account. */
+    /**
+     * Signs the workspace out of an AI provider.
+     *
+     * @assistant group:providers
+     * @assistant hidden: destroys the provider sign-in every agent runs on, including the one serving this conversation.
+     */
     async providerLogout(name: string): Promise<void> {
       const pid = toNewProvider(name);
       if (!pid) return;
@@ -85,6 +90,11 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
 
     /**
+     * Connects an agent to a self-hosted, OpenAI-compatible model server.
+     *
+     * @assistant group:providers
+     * @assistant hidden: takes the key that server is reached with, and a credential must never pass through a chat turn.
+     *
      * Connect an OpenAI-compatible (local) server: persist the base URL + model
      * and CLAIM it as active (first connect on a fresh agent only — a connect
      * never moves an agent that already has a provider, HOU-695), then fire

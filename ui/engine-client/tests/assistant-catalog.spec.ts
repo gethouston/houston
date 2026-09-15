@@ -12,7 +12,10 @@ import {
   route,
   segments,
 } from "./assistant-catalog-support.ts";
-import { PUBLISHED_OPERATION_FLOOR } from "./fixtures/published-operation-floor.ts";
+import {
+  CALLABLE_OPERATION_FLOOR,
+  PUBLISHED_OPERATION_FLOOR,
+} from "./fixtures/published-operation-floor.ts";
 
 const result = extractCatalog(fixtureOptions);
 const named = (name: string) =>
@@ -31,6 +34,12 @@ describe("assistant catalog extraction", () => {
       "createThing",
       "deleteAgentFileEntry",
       "deleteThing",
+      "gadgets.detachAll",
+      "gadgets.listFirst",
+      "gadgets.probeFirst",
+      "gadgets.seek",
+      "gadgets.stamp",
+      "gadgets.stray",
       "getThing",
       "getThingContext",
       "headThing",
@@ -153,7 +162,87 @@ describe("assistant catalog extraction", () => {
     expect(
       result.coverage.unroutable.find(({ name }) => name === "things.readLoose")
         ?.reason,
-    ).toBe("the agent the client is rooted at is not a parameter");
+    ).toBe(
+      "hop into AgentThingsClient.readThing could not be resolved: the agent the client is rooted at is not a parameter",
+    );
+  });
+
+  it("publishes the VISIBLE twin of a shared route, whatever was read first", () => {
+    // `gadgets` is mounted first, so the hidden `tally` reaches the route
+    // before `things.count` does. Order must not decide which name a caller
+    // can dispatch.
+    expect(named("gadgets.tally")).toBeUndefined();
+    expect(named("things.count")?.route?.path).toBe("/v1/widgets/count");
+  });
+
+  it("fails the gate when two SDK names tie on one route, naming both", () => {
+    const conflicts = coverageViolations(result.annotations).filter(
+      ({ rule }) => rule === "route-conflict",
+    );
+    expect(
+      conflicts.map(({ name, problem }) => [name, problem]).sort(),
+    ).toEqual([
+      [
+        "gadgets.listFirst",
+        "`GET /v1/widgets` is claimed by this and by gadgets.listSecond, and visibility does not settle which one the catalog publishes.",
+      ],
+      [
+        "gadgets.listSecond",
+        "`GET /v1/widgets` is claimed by this and by gadgets.listFirst, and visibility does not settle which one the catalog publishes.",
+      ],
+      [
+        "gadgets.probeFirst",
+        "`GET /agents/{agentId}/probes/{id}` is claimed by this and by gadgets.probeSecond, and visibility does not settle which one the catalog publishes.",
+      ],
+      [
+        "gadgets.probeSecond",
+        "`GET /agents/{agentId}/probes/{id}` is claimed by this and by gadgets.probeFirst, and visibility does not settle which one the catalog publishes.",
+      ],
+    ]);
+  });
+
+  it("names the sub-client when a hop cannot be rooted, instead of vanishing", () => {
+    // Before, an unrootable hop read as "makes no request": the operation left
+    // the catalog AND the coverage gate, so nothing asked for a reason.
+    expect(named("gadgets.stray")?.route).toBeNull();
+    expect(
+      result.coverage.unroutable.find(({ name }) => name === "gadgets.stray")
+        ?.reason,
+    ).toBe(
+      "hop into AgentThingsClient.readThing could not be resolved: the client comes from strayThingsClient(), which is not clientFor()",
+    );
+  });
+
+  it("refuses a route whose path names something the signature does not", () => {
+    // The overload publishes `id`; the body binds `a`. A route keyed on `a` is
+    // a call no caller could assemble.
+    expect(named("gadgets.seek")?.params.map(({ name }) => name)).toEqual([
+      "id",
+    ]);
+    expect(named("gadgets.seek")?.route).toBeNull();
+    expect(
+      result.coverage.unroutable.find(({ name }) => name === "gadgets.seek")
+        ?.reason,
+    ).toBe("the path names a, which the published signature does not declare");
+  });
+
+  it("treats a spread argument as supplying every parameter it reaches", () => {
+    // `detachAll(...args)` could carry the `scope` that keys the route, so the
+    // default it would otherwise fall back to is not the only possible path.
+    expect(named("gadgets.detachAll")?.route).toBeNull();
+    expect(
+      result.coverage.unroutable.find(
+        ({ name }) => name === "gadgets.detachAll",
+      )?.reason,
+    ).toBe("path segment depends on a value the caller may override");
+  });
+
+  it("reads a template-literal widening and a string parameter as strings", () => {
+    // Both would otherwise walk the String prototype into a 50-property object.
+    expect(named("gadgets.stamp")?.params).toEqual([
+      { name: "id", required: true, schema: { type: "string" } },
+      { name: "token", required: true, schema: { type: "string" } },
+    ]);
   });
 
   it("keeps the adapter's copy when the SDK reaches the same route", () => {
@@ -268,6 +357,20 @@ describe("the live engine adapter", () => {
     const published = new Set(live.catalog.operations.map(({ name }) => name));
     expect(
       PUBLISHED_OPERATION_FLOOR.filter((name) => !published.has(name)),
+    ).toEqual([]);
+  });
+
+  it("never drops the callability of an operation that had it", () => {
+    // Staying in the catalog is not enough: an operation that loses its route,
+    // or loses it to a hidden twin claiming the same one, is gone from the
+    // assistant exactly as completely as a deleted one.
+    const callable = new Set(
+      live.catalog.operations
+        .filter(isCallableOperation)
+        .map(({ name }) => name),
+    );
+    expect(
+      CALLABLE_OPERATION_FLOOR.filter((name) => !callable.has(name)),
     ).toEqual([]);
   });
 

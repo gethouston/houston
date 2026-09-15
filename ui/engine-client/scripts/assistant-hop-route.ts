@@ -47,8 +47,20 @@ function bindArguments(
   parameters: Set<string>,
 ): Map<string, Binding> {
   const bindings = new Map<string, Binding>();
+  // A spread hands over an unknown number of values, so every parameter from
+  // there on could have been supplied. Reading one as OMITTED would make the
+  // default it guards the only route the request can take, which is exactly the
+  // guess `unpinThing` exists to refuse.
+  const spreadAt = call.arguments.findIndex((argument) =>
+    ts.isSpreadElement(argument),
+  );
   for (const [index, parameter] of method.parameters.entries()) {
     const argument = call.arguments[index];
+    if (spreadAt >= 0 && index >= spreadAt) {
+      for (const bound of boundNames(parameter.name))
+        bindings.set(bound, { kind: "opaque" });
+      continue;
+    }
     if (!argument) continue;
     if (ts.isIdentifier(parameter.name)) {
       const name = namedValue(argument);

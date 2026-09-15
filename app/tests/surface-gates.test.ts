@@ -1,4 +1,5 @@
 import { strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { Capabilities } from "@houston-ai/engine-client";
 import type { AssistantDiscovery } from "../src/lib/assistant-discovery-state.ts";
@@ -32,6 +33,7 @@ describe("surfaceGatesFor", () => {
         capabilities: owner,
         isTeam: false,
         assistant: discovering,
+        capabilitiesLoading: false,
       }).showAssistant,
       true,
     );
@@ -43,6 +45,7 @@ describe("surfaceGatesFor", () => {
         capabilities: owner,
         isTeam: false,
         assistant: settledAbsent,
+        capabilitiesLoading: false,
       }).showAssistant,
       false,
     );
@@ -51,6 +54,7 @@ describe("surfaceGatesFor", () => {
         capabilities: owner,
         isTeam: false,
         assistant: present,
+        capabilitiesLoading: false,
       }).showAssistant,
       true,
     );
@@ -77,20 +81,36 @@ describe("surfaceGatesFor", () => {
     );
   });
 
+  it("requires the loading flag rather than defaulting it to settled", () => {
+    // `ready: !capabilitiesLoading` over an OPTIONAL field read every caller
+    // that forgot it as "the gates have settled" — the one answer that lets a
+    // guard drop an owner out of a screen they can reach.
+    const src = readFileSync(
+      new URL("../src/lib/surface-gates-model.ts", import.meta.url),
+      "utf8",
+    );
+    strictEqual(src.includes("capabilitiesLoading?:"), false);
+  });
+
   it("keeps Skills to the space owner in a team workspace", () => {
     const member = { multiplayer: true, role: "user" } as never;
     const gates = surfaceGatesFor({
       capabilities: member,
       isTeam: true,
       assistant: present,
+      capabilitiesLoading: false,
     });
     strictEqual(gates.showSkills, false);
     // Everyone keeps the AI Models hub; the org-level narrowing lives in the
     // screen, not the rail.
     strictEqual(gates.showAiModels, true);
     strictEqual(
-      surfaceGatesFor({ capabilities: owner, isTeam: true, assistant: present })
-        .showSkills,
+      surfaceGatesFor({
+        capabilities: owner,
+        isTeam: true,
+        assistant: present,
+        capabilitiesLoading: false,
+      }).showSkills,
       true,
     );
   });

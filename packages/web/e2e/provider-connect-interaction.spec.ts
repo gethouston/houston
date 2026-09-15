@@ -1,4 +1,4 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
+import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
 import { startMission } from "./support/mission";
 import { openAssistant } from "./support/settings-nav";
@@ -115,6 +115,15 @@ test("picking a Copilot plan starts the sign-in from the connect step", async ({
   page,
   request,
 }) => {
+  const sent: Record<string, unknown>[] = [];
+  page.on("request", (req) => {
+    if (
+      req.method() === "POST" &&
+      /\/conversations\/[^/]+\/messages$/.test(req.url())
+    ) {
+      sent.push(req.postDataJSON() as Record<string, unknown>);
+    }
+  });
   await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     data: {
       interaction: {
@@ -142,10 +151,35 @@ test("picking a Copilot plan starts the sign-in from the connect step", async ({
   // dialog is up, so the step's own waiting state is pinned by the unit tests
   // of closeMeansCancel, not asserted through the modal.
   await expect(plan).toHaveCount(0);
-  await expect(
-    page.getByRole("dialog", { name: "Finish signing in to GitHub Copilot" }),
-  ).toBeVisible();
+  const signIn = page.getByRole("dialog", {
+    name: "Finish signing in to GitHub Copilot",
+  });
+  await expect(signIn).toBeVisible();
   await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+
+  // Finish the device-code sign-in on the agent's runtime, as the provider's
+  // own page would. Only an observation that SURVIVED the plan pick can see
+  // this land — the bug closed the dialog and cancelled the observation, so
+  // the conversation stayed blocked here no matter what the user did next.
+  const completed = await request.post(
+    `${FAKE_HOST_URL}/agents/${SEED_AGENT_ID}/auth/github-copilot/login/complete`,
+  );
+  expect(completed.status()).toBe(200);
+
+  await expect(signIn).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(
+    page.getByText("Connect GitHub Copilot for this task.", { exact: true }),
+  ).toHaveCount(0);
+  // The mission's own message plus ONE resume — a second nudge would start a
+  // second turn and a second card. Counted once the resumed turn's own reply
+  // has landed, so a duplicate nudge would already be in `sent`.
+  await expect(page.getByText(/Roger that\. You said:/)).toHaveCount(2, {
+    timeout: 20_000,
+  });
+  expect(sent).toHaveLength(2);
 });
 
 test("dismissing the Copilot plan dialog leaves the connection request actionable", async ({

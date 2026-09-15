@@ -61,7 +61,13 @@ function isBaseRooted(expression: ts.Expression): boolean {
 
 /**
  * The prefix the receiving client contributes, or why it cannot be composed.
- * `null` means the expression is not a client this module resolved at all.
+ *
+ * `null` is reserved for the ONE case that is not a failure: a client the
+ * operation was HANDED, which makes the body its caller's helper rather than an
+ * operation. Every other shape answers `unresolved`, because the call already
+ * landed in a sub-client method — the request IS being made, and a silent
+ * `null` there would erase the operation from the catalog and from the coverage
+ * gate alike.
  */
 export function clientRoot(
   receiver: ts.Expression,
@@ -71,7 +77,10 @@ export function clientRoot(
   const node = unwrap(receiver);
   if (depth > 2) return { unresolved: "the client is resolved too indirectly" };
   if (ts.isCallExpression(node)) {
-    if (calleeName(node) !== CLIENT_FOR) return null;
+    if (calleeName(node) !== CLIENT_FOR)
+      return {
+        unresolved: `the client comes from ${calleeName(node) ?? "a call"}(), which is not ${CLIENT_FOR}()`,
+      };
     const agent = node.arguments[0];
     const name = agent ? namedValue(agent) : null;
     if (name === null || !context.parameters.has(name))
@@ -83,9 +92,15 @@ export function clientRoot(
       { kind: "param", name, encoding: "segment" },
     ];
   }
+  // A client reached through a property (`this.client`, `ctx.client`) was put
+  // there by whoever constructed the holder, so it is the handed-in case again:
+  // the body is that owner's helper, not an operation of its own.
   if (!ts.isIdentifier(node)) return null;
   const declaration = declarationOf(node.text, receiver);
-  if (!declaration) return null;
+  if (!declaration)
+    return {
+      unresolved: `\`${node.text}\` is declared outside the module, so where it is rooted is not readable here`,
+    };
   if (ts.isParameter(declaration)) {
     // A client the module handed its own sub-factory is still the module's.
     // One handed in from anywhere else belongs to the caller: that body is the
@@ -93,7 +108,10 @@ export function clientRoot(
     const supplied = context.substitutions.get(node.text);
     return supplied ? clientRoot(supplied, context, depth + 1) : null;
   }
-  if (!declaration.initializer) return null;
+  if (!declaration.initializer)
+    return {
+      unresolved: `\`${node.text}\` is declared without an initializer`,
+    };
   if (isBaseRooted(declaration.initializer)) return [];
   return clientRoot(declaration.initializer, context, depth + 1);
 }

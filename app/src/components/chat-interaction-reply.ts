@@ -3,13 +3,13 @@ import type {
   ChatInteractionStep,
 } from "@houston-ai/chat";
 import type { useTranslation } from "react-i18next";
-import { encodeInteractionAnswersMessage } from "../lib/interaction-answers-marker";
+import { encodeInteractionAnswersMessage } from "../lib/interaction-answers-marker.ts";
 import {
   type ConnectOutcome,
   type CredentialOutcome,
   finalConnectNames,
   finalCredentialNames,
-} from "../lib/interaction-outcomes";
+} from "../lib/interaction-outcomes.ts";
 import type { NonPlanReadyStep } from "../lib/plan-ready";
 
 /** The panel's own `t`, so a key that compiles there compiles here. */

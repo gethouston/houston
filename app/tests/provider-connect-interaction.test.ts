@@ -1,4 +1,5 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import type { PendingInteraction } from "@houston/protocol";
 import {
@@ -67,4 +68,47 @@ test("provider and app connections preserve final outcomes in sequence order", (
     skippedConnectNames: [],
     connectRedirects: [],
   });
+});
+
+const readSrc = (path: string) =>
+  readFileSync(new URL(path, import.meta.url), "utf8");
+
+test("the card keys its memory by the whole request, never the bare step id", () => {
+  // The engine numbers steps per TURN, so "p1" names the first provider request
+  // of every turn of every conversation: keyed on it alone, one connect
+  // answered for every later request in the app run and the chat hung.
+  const card = readSrc(
+    "../src/components/chat-provider-connect-interaction-card.tsx",
+  );
+  ok(
+    card.includes("providerConnectStepKey({ agentId, conversationId"),
+    "the card composes agent + conversation + provider + step",
+  );
+  ok(
+    card.includes("forgetProviderConnectStep(stepKey)"),
+    "an answered step is forgotten, so a later request starts live",
+  );
+  const panel = readSrc("../src/components/use-agent-chat-panel.tsx");
+  ok(
+    panel.includes("conversationId: selectedSessionKey"),
+    "the panel supplies the conversation half of the identity",
+  );
+  ok(
+    panel.includes("releaseProviderConnectStepResumes("),
+    "a resume whose turn never sent gives its claim back",
+  );
+});
+
+test("a requested provider is named through the gated connect list", () => {
+  // The card resolves through `getConnectProviders`; a title resolved off the
+  // raw catalog named a provider the card itself reports as unavailable.
+  const steps = readSrc("../src/components/chat-interaction-steps.tsx");
+  ok(
+    steps.includes("title: resolveProviderName(step.provider)"),
+    "the mapped title uses the gated resolver",
+  );
+  ok(
+    !steps.includes('from "../lib/providers"'),
+    "the raw catalog lookup is gone from the step mapper",
+  );
 });

@@ -3,11 +3,13 @@ import {
   createProviderConnectionMonitor,
 } from "@houston/sdk/provider-connection-observer";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useCapabilities } from "../hooks/use-capabilities";
+import { useConnectProviders } from "../hooks/use-connect-providers";
 import { useProviderConnections } from "../hooks/use-provider-connections";
-import { newEngineActive } from "../lib/engine";
 import { logAndReportError } from "../lib/error-report";
-import { osIsTauri } from "../lib/os-bridge";
+import {
+  providerConnectEvidenceSeen,
+  providerConnectProbing,
+} from "../lib/provider-connect-probe";
 import {
   cancelProviderConnectStep,
   claimProviderConnectStepResume,
@@ -15,51 +17,44 @@ import {
   resumeProviderConnectStep,
 } from "../lib/provider-connect-step-memory";
 import { providerConnectionState } from "../lib/provider-connection";
-import {
-  EMPTY_PROVIDER_CAPABILITIES,
-  getConnectProviders,
-  providerGatewayIds,
-} from "../lib/providers";
+import { providerGatewayIds } from "../lib/providers";
 import { tauriProvider } from "../lib/tauri";
 import { useWorkspaceStore } from "../stores/workspaces";
 import { useIsActiveView } from "./shell/keep-alive-views";
 
 /** Secure dialogs own credentials; the SDK observes only fresh auth evidence. */
 export function useChatProviderConnect({
-  stepId,
+  stepKey,
   providerId,
   revisited,
   onConnected,
 }: {
-  /** The interaction step this card is: the unit a cancel is remembered by. */
-  stepId: string;
+  /** WHICH request this card renders (`provider-connect-step-memory.ts`): the
+   *  unit a cancel and a resume are remembered by, across every rebuild. */
+  stepKey: string;
   providerId: string;
   revisited: boolean;
   onConnected: (name: string) => void;
 }) {
   const active = useIsActiveView();
-  const { capabilities } = useCapabilities();
-  const newEngine = newEngineActive();
-  const providerCapabilities =
-    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
-  // Resolve through the GATED connect list, never the raw catalog: a model may
-  // request any provider it can read, including the local OpenAI-compatible one
-  // a hosted deployment does not serve (`openaiCompatible: false`). A raw
-  // lookup gave that card a live Connect that opened the local-model dialog on
-  // a host with nowhere to point it; a miss here is simply unavailable, which
-  // is what the card already renders. Gateway ids resolve too, so a request for
+  // Resolve through the GATED connect list, never the raw catalog: a raw lookup
+  // gave the card a live Connect that opened the local-model dialog on a host
+  // with nowhere to point it. A miss here is simply unavailable, which is what
+  // the card already renders. Gateway ids resolve too, so a request for
   // `opencode-go` lands on the merged OpenCode account card.
+  const connectProviders = useConnectProviders();
   const provider = useMemo(
     () =>
-      getConnectProviders({
-        newEngine,
-        desktop: osIsTauri(),
-        capabilities: providerCapabilities,
-      }).find((p) => providerGatewayIds(p).includes(providerId)) ?? null,
-    [newEngine, providerCapabilities, providerId],
+      connectProviders.find((p) =>
+        providerGatewayIds(p).includes(providerId),
+      ) ?? null,
+    [connectProviders, providerId],
   );
   const workspaceId = useWorkspaceStore((s) => s.current?.id);
   const [state, setState] = useState<ConnectionEvidence>("checking");
+  // Whether ANY answer about this provider has landed yet. The card spins only
+  // until the first one, never on the `"checking"` a failed probe reports back.
+  const [evidenceSeen, setEvidenceSeen] = useState(false);
   const monitor = useRef<ReturnType<
     typeof createProviderConnectionMonitor
   > | null>(null);
@@ -71,21 +66,25 @@ export function useChatProviderConnect({
   useEffect(() => {
     if (!active || !id || !name || !workspaceId) return;
     setState("checking");
+    setEvidenceSeen(false);
     const current = createProviderConnectionMonitor({
       probe: async () =>
         providerConnectionState(await tauriProvider.checkStatus(id), false),
-      onState: setState,
+      onState: (next) => {
+        setState(next);
+        setEvidenceSeen((seen) => providerConnectEvidenceSeen(seen, next));
+      },
       autoContinue: !revisited,
-      // The cancel lives with the STEP, not with this mount: a sign-in that
+      // The cancel lives with the REQUEST, not with this mount: a sign-in that
       // lands after the user cancelled must not resume the conversation just
       // because the card was rebuilt in between.
-      initiallyPaused: providerConnectStepCancelled(stepId),
-      // The resume lives with the STEP, not with this mount: the interaction is
-      // persisted, so the card is rebuilt after the very turn this nudge starts
+      initiallyPaused: providerConnectStepCancelled(stepKey),
+      // The resume lives with the REQUEST, not with this mount: the interaction
+      // is persisted, so the card is rebuilt after the very turn this nudge starts
       // — and a second nudge would start another turn, and another card.
       onConnected: () => {
-        if (!claimProviderConnectStepResume(stepId)) return;
-        resumeProviderConnectStep(stepId);
+        if (!claimProviderConnectStepResume(stepKey)) return;
+        resumeProviderConnectStep(stepKey);
         connectedRef.current(name);
       },
       onError: (error) => logAndReportError("chat_provider_connection", error),
@@ -95,10 +94,10 @@ export function useChatProviderConnect({
       current.dispose();
       if (monitor.current === current) monitor.current = null;
     };
-  }, [active, id, name, workspaceId, revisited, stepId]);
+  }, [active, id, name, workspaceId, revisited, stepKey]);
 
   const cancelObservation = () => {
-    cancelProviderConnectStep(stepId);
+    cancelProviderConnectStep(stepKey);
     monitor.current?.cancel();
   };
   const connections = useProviderConnections({
@@ -107,7 +106,7 @@ export function useChatProviderConnect({
   });
   const start = () => {
     if (!provider) return;
-    resumeProviderConnectStep(stepId);
+    resumeProviderConnectStep(stepKey);
     monitor.current?.retry();
     connections.connect(provider);
   };
@@ -134,6 +133,7 @@ export function useChatProviderConnect({
     cancel,
     cancelObservation,
     connecting: !!(id && connections.busy[id]),
+    probing: providerConnectProbing(state, evidenceSeen),
     dialogOpen,
     dialogProps: dialogs,
   };

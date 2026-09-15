@@ -1,16 +1,17 @@
 /**
- * Every operation the catalog published before the generator learned to read
- * the SDK's module tree - the FLOOR the assistant surface may never fall
- * below.
+ * Every operation the catalog publishes, and every one a caller can actually
+ * dispatch - the FLOOR the assistant surface may never fall below.
  *
- * It exists because the generator derives its whole output from source: a
- * refactor that stops a body from resolving drops the operation silently, and
- * the drift check happily blesses the smaller file. Houston telling a user it
- * cannot do something it shipped last week is the failure, and nothing else
- * catches it. A name removed on purpose is removed from this list in the same
- * change, in front of a reviewer.
+ * Two lists, because losing an operation and losing its CALLABILITY look
+ * identical from the outside and neither is caught anywhere else. The generator
+ * derives its whole output from source: a refactor that stops a body from
+ * resolving drops the operation, a reordered `return {}` block can hand a
+ * route to a hidden twin, and the drift check happily blesses either. Houston
+ * telling a user it cannot do something it shipped last week is the failure.
  *
- * Captured once from the committed document; never read from git at test time.
+ * A name removed on purpose is removed from the list in the same change, in
+ * front of a reviewer. Captured from the committed document; never read from
+ * git or from the JSON at test time.
  */
 export const PUBLISHED_OPERATION_FLOOR: readonly string[] = [
   "acceptOrgInvite",
@@ -22,6 +23,8 @@ export const PUBLISHED_OPERATION_FLOOR: readonly string[] = [
   "captureCredential",
   "captureSetupCredential",
   "computeUsage",
+  "conversations.delete",
+  "conversations.rename",
   "createActivity",
   "createAgent",
   "createAgentTeam",
@@ -50,6 +53,7 @@ export const PUBLISHED_OPERATION_FLOOR: readonly string[] = [
   "downloadProjectFile",
   "forgetCredential",
   "forgetSetupCredential",
+  "generateAgentInstructions",
   "getAgentModelChoice",
   "getAgentSettings",
   "getAssistant",
@@ -70,6 +74,13 @@ export const PUBLISHED_OPERATION_FLOOR: readonly string[] = [
   "integrationConnections",
   "integrationStatus",
   "integrationToolkits",
+  "integrations.connect",
+  "integrations.disconnect",
+  "integrations.dismissReconnectNotice",
+  "integrations.pollConnection",
+  "integrations.refresh",
+  "integrations.setSession",
+  "integrations.writes.disconnect",
   "joinAgentTeam",
   "listActivities",
   "listAgentProviders",
@@ -89,12 +100,26 @@ export const PUBLISHED_OPERATION_FLOOR: readonly string[] = [
   "loadSharedSkill",
   "loadSkill",
   "mintRoutineWebhookKey",
+  "missions.search",
   "moveAgent",
   "moveProjectFile",
   "orgAudit",
   "orgUsage",
+  "preferences.setLocale",
   "previewCommunitySkill",
   "promoteSharedSkill",
+  "providerLogout",
+  "providerStatusesForAgent",
+  "providerUsage",
+  "providers.cancelLogin",
+  "providers.completeLogin",
+  "providers.login",
+  "providers.refresh",
+  "providers.refreshStatus",
+  "providers.writes.logout",
+  "providers.writes.setApiKey",
+  "providers.writes.setCustomEndpoint",
+  "providers.writes.setModel",
   "pushClaudeOAuthCredential",
   "pushSetupClaudeOAuthCredential",
   "putHostSidebarLayout",
@@ -123,14 +148,117 @@ export const PUBLISHED_OPERATION_FLOOR: readonly string[] = [
   "setMyProfile",
   "setOrgMemberRole",
   "setPreference",
+  "setProviderCustomEndpoint",
   "setSetupApiKey",
   "startCustomIntegrationOAuth",
   "submitCustomIntegrationCredential",
   "triggerTypes",
+  "turns.cancel",
+  "turns.history",
+  "turns.observe",
   "updateActivity",
   "updateAgentColor",
   "updateAgentTeam",
   "updateRoutine",
   "uploadProjectFiles",
+  "writeAgentFile",
+];
+
+/**
+ * Published, visible AND routable: what `houston_call` will actually perform
+ * and the capability index therefore advertises. An operation that stays in the
+ * catalog while losing its route disappears from the assistant just as
+ * completely as one that is deleted.
+ */
+export const CALLABLE_OPERATION_FLOOR: readonly string[] = [
+  "acceptOrgInvite",
+  "addCustomIntegration",
+  "addOrgMember",
+  "agentTriggerStatus",
+  "cancelRoutineRun",
+  "computeUsage",
+  "createActivity",
+  "createAgent",
+  "createAgentTeam",
+  "createCheckout",
+  "createFolder",
+  "createOrg",
+  "createRoutine",
+  "createSharedSkill",
+  "createSkill",
+  "customIntegrationTools",
+  "customIntegrations",
+  "declineOrgInvite",
+  "deleteActivity",
+  "deleteAgent",
+  "deleteAgentTeam",
+  "deleteFile",
+  "deleteOrgInvite",
+  "deleteRoutine",
+  "deleteSharedSkill",
+  "deleteSkill",
+  "detectCustomIntegration",
+  "getAgentModelChoice",
+  "getAgentSettings",
+  "getBilling",
+  "getMoveStatus",
+  "getMyProfile",
+  "getOrg",
+  "getOrgPeople",
+  "getSkillsManifest",
+  "installAgentFromGithub",
+  "installCommunitySkill",
+  "installSkillsFromRepo",
+  "integrationConnection",
+  "integrationConnections",
+  "integrationStatus",
+  "integrationToolkits",
+  "integrations.disconnect",
+  "joinAgentTeam",
+  "listActivities",
+  "listAgentProviders",
+  "listAgentTeamMembers",
+  "listAgentTeams",
+  "listAgents",
+  "listInstalledConfigs",
+  "listOrgs",
+  "listProjectFiles",
+  "listRoutineRuns",
+  "listRoutines",
+  "listSharedSkills",
+  "listSkills",
+  "listSkillsFromRepo",
+  "listWorkspaces",
+  "loadSharedSkill",
+  "loadSkill",
+  "moveAgent",
+  "moveProjectFile",
+  "orgUsage",
+  "preferences.setLocale",
+  "previewCommunitySkill",
+  "promoteSharedSkill",
+  "providers.refreshStatus",
+  "putSkillsManifest",
+  "readAgentFile",
+  "readProjectFile",
+  "removeAgentTeamMember",
+  "removeCustomIntegration",
+  "removeOrgMember",
+  "renameAgent",
+  "renameFile",
+  "runRoutineNow",
+  "saveSharedSkill",
+  "saveSkill",
+  "searchCommunitySkills",
+  "setAgentModelChoice",
+  "setAgentSettings",
+  "setAgentTeam",
+  "setAgentTeamMemberOwner",
+  "setMyProfile",
+  "setOrgMemberRole",
+  "triggerTypes",
+  "updateAgentColor",
+  "updateAgentTeam",
+  "updateRoutine",
   "writeAgentFile",
 ];

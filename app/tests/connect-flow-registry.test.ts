@@ -4,13 +4,17 @@ import { describe, it } from "node:test";
 import {
   beginFlow,
   cancelFlow,
-  cancelFlowForDisconnect,
+  cancelFlowsForDisconnect,
   createRegistry,
   endFlow,
   flowPromise,
   flowRedirectUrl,
   wakeFlow,
 } from "../src/components/integrations/connect-flow-registry.ts";
+import {
+  connectFlowKey,
+  connectFlowScope,
+} from "../src/components/integrations/connect-flow-scope.ts";
 import type { Waker } from "../src/components/integrations/model.ts";
 
 /** A `Waker` that counts wakes and never really sleeps — enough to prove which
@@ -169,23 +173,35 @@ describe("connect-flow registry — wake + redirect are per slug", () => {
 });
 
 describe("connect-flow registry — cancel on disconnect (PRODUCT-1733)", () => {
-  it("removing the whole app stops its pending poll", () => {
+  // Entries are keyed scope+slug (`connect-flow-scope.ts`), but a disconnect
+  // names the bare app: the user removed Gmail, not "the agent's Gmail".
+  const personal = connectFlowKey(connectFlowScope("Personal/Writer"), "gmail");
+  const account = connectFlowKey(connectFlowScope(undefined), "gmail");
+
+  it("removing the whole app stops a pending poll in EVERY scope", () => {
     const reg = createRegistry();
-    const waker = countingWaker();
-    const entry = beginFlow(reg, "gmail", waker);
-    if (!entry) throw new Error("expected an entry");
-    entry.connectionId = "ca_pending";
-    cancelFlowForDisconnect(reg, "gmail");
-    strictEqual(entry.cancelled, true);
-    strictEqual(waker.wakes, 1);
+    const agentWaker = countingWaker();
+    const accountWaker = countingWaker();
+    const inAgent = beginFlow(reg, personal, agentWaker);
+    const inAccount = beginFlow(reg, account, accountWaker);
+    if (!inAgent || !inAccount) throw new Error("expected entries");
+    inAgent.connectionId = "ca_pending";
+    inAccount.connectionId = "ca_other";
+
+    cancelFlowsForDisconnect(reg, "gmail");
+
+    strictEqual(inAgent.cancelled, true);
+    strictEqual(agentWaker.wakes, 1);
+    strictEqual(inAccount.cancelled, true);
+    strictEqual(accountWaker.wakes, 1);
   });
 
-  it("removing THE account being polled stops the poll", () => {
+  it("removing THE account being polled stops that poll, in any scope", () => {
     const reg = createRegistry();
-    const entry = beginFlow(reg, "gmail", countingWaker());
+    const entry = beginFlow(reg, personal, countingWaker());
     if (!entry) throw new Error("expected an entry");
     entry.connectionId = "ca_pending";
-    cancelFlowForDisconnect(reg, "gmail", "ca_pending");
+    cancelFlowsForDisconnect(reg, "gmail", "ca_pending");
     strictEqual(entry.cancelled, true);
   });
 
@@ -194,25 +210,51 @@ describe("connect-flow registry — cancel on disconnect (PRODUCT-1733)", () => 
     // still open in the browser. That OAuth is still theirs to finish.
     const reg = createRegistry();
     const waker = countingWaker();
-    const entry = beginFlow(reg, "gmail", waker);
+    const entry = beginFlow(reg, personal, waker);
     if (!entry) throw new Error("expected an entry");
     entry.connectionId = "ca_pending";
-    cancelFlowForDisconnect(reg, "gmail", "ca_old");
+    cancelFlowsForDisconnect(reg, "gmail", "ca_old");
     strictEqual(entry.cancelled, false);
     strictEqual(waker.wakes, 0);
   });
 
   it("a single-account removal while the link is still minting leaves the flow alone", () => {
     const reg = createRegistry();
-    const entry = beginFlow(reg, "gmail", countingWaker());
+    const entry = beginFlow(reg, personal, countingWaker());
     if (!entry) throw new Error("expected an entry");
-    cancelFlowForDisconnect(reg, "gmail", "ca_old");
+    cancelFlowsForDisconnect(reg, "gmail", "ca_old");
     strictEqual(entry.cancelled, false);
   });
 
-  it("is a no-op for a slug with no flow", () => {
+  it("leaves another APP's flow alone, in every scope", () => {
     const reg = createRegistry();
-    cancelFlowForDisconnect(reg, "gmail");
+    const slack = beginFlow(
+      reg,
+      connectFlowKey(connectFlowScope("Personal/Writer"), "slack"),
+      countingWaker(),
+    );
+    if (!slack) throw new Error("expected an entry");
+    cancelFlowsForDisconnect(reg, "gmail");
+    strictEqual(slack.cancelled, false);
+  });
+
+  it("never matches an app whose slug merely ENDS with the disconnected one", () => {
+    // `google-drive` must not be stopped by a disconnect of `drive`: the scope
+    // separator is what bounds the slug, so the match is on the whole segment.
+    const reg = createRegistry();
+    const drive = beginFlow(
+      reg,
+      connectFlowKey(connectFlowScope(undefined), "google-drive"),
+      countingWaker(),
+    );
+    if (!drive) throw new Error("expected an entry");
+    cancelFlowsForDisconnect(reg, "drive");
+    strictEqual(drive.cancelled, false);
+  });
+
+  it("is a no-op for an app with no flow", () => {
+    const reg = createRegistry();
+    cancelFlowsForDisconnect(reg, "gmail");
     strictEqual(reg.size, 0);
   });
 });

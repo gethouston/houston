@@ -13,10 +13,10 @@
  * conversation already pinned to one keeps working. It just cannot be connected
  * or picked any more.
  *
- * A dependency-free LEAF (see `provider-dialect.ts`): exposed as the
- * `@houston/domain/provider-visibility` subpath so surface code loads it under
- * plain `node --experimental-strip-types`, where a barrel's extensionless
- * internal imports do not resolve.
+ * A leaf whose ONLY import is the sibling leaf `provider-dialect.ts`, itself
+ * dependency-free: both are exposed as their own `@houston/domain/*` subpaths
+ * so surface code loads them under plain `node --experimental-strip-types`,
+ * where a barrel's extensionless internal imports do not resolve.
  */
 
 import { toCanonicalProviderId } from "@houston/domain/provider-dialect";

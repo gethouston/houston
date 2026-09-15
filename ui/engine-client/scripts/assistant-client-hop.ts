@@ -72,6 +72,16 @@ function resolverMethod(
     : null;
 }
 
+/** `<Class>.<method>` — the sub-client method a hop lands in, as a reader sees it. */
+function hopName(method: ts.MethodDeclaration): string {
+  const owner = method.parent;
+  const client =
+    (ts.isClassDeclaration(owner) || ts.isClassExpression(owner)) && owner.name
+      ? owner.name.text
+      : "the client";
+  return `${client}.${method.name.getText(method.getSourceFile())}`;
+}
+
 /**
  * The hop a call makes, or `null` when it makes none. A call that lands in a
  * sub-client but whose client root cannot be composed answers `unresolved`: it
@@ -86,7 +96,13 @@ export function clientHop(
   const callee = unwrap(call.expression) as ts.PropertyAccessExpression;
   const root = clientRoot(callee.expression, context);
   if (root === null) return null;
-  if (isUnresolved(root)) return root;
+  // Named here rather than inside the resolver: the reason reaches an author
+  // who is reading the SDK method, and the sub-client it dispatches into is the
+  // one fact that method's own text does not show.
+  if (isUnresolved(root))
+    return {
+      unresolved: `hop into ${hopName(method)} could not be resolved: ${root.unresolved}`,
+    };
   return { method, root };
 }
 

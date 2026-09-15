@@ -12,6 +12,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `applyAgentColor` | GET | unconfirmed: read-only HTTP GET | client-side branching; its only request is the list refetch, so use updateAgentColor to write a color. | agentId: resolved:agents; color: free text |
 | `createAgent` | POST | confirmed: host approval required | visible | name: free text; color: enum; seed: free text |
 | `deleteAgent` | DELETE | confirmed: host approval required | visible | id: resolved:agents |
+| `generateAgentInstructions` | unroutable | unconfirmed: withheld from dispatch | a one-shot generation turn on a runtime, not a Houston operation; an assistant writes the instructions itself and saves them with writeAgentFile. | description: free text; opts: free text |
 | `getAgentModelChoice` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |
 | `installAgentFromGithub` | POST | confirmed: host approval required | visible | githubUrl: free text |
 | `listAgents` | GET | unconfirmed: read-only HTTP GET | visible | none |
@@ -81,6 +82,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `forgetCredential` | POST | confirmed: host approval required | destroys the workspace's provider sign-in, including the one serving this conversation. | agentId: resolved:agents; provider: free text |
 | `forgetSetupCredential` | POST | unconfirmed: withheld from dispatch | destroys the space's provider sign-in, before any agent exists. | provider: free text |
 | `listAgentProviders` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
+| `providerLogout` | unroutable | unconfirmed: withheld from dispatch | destroys the provider sign-in every agent runs on, including the one serving this conversation. | name: free text |
 | `providers.cancelLogin` | unroutable | unconfirmed: withheld from dispatch | UI plumbing; it abandons the sign-in the person opened, and only they know they gave up on it. | agentId: resolved:agents; provider: free text |
 | `providers.completeLogin` | unroutable | unconfirmed: withheld from dispatch | takes a one-time sign-in code the provider showed the person, which must not pass through a chat turn. | agentId: resolved:agents; provider: free text; code: free text |
 | `providers.login` | unroutable | unconfirmed: withheld from dispatch | starts a provider sign-in only the user can finish, at the provider's own screen. | agentId: resolved:agents; provider: free text; opts: free text |
@@ -90,10 +92,13 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `providers.writes.setApiKey` | unroutable | unconfirmed: withheld from dispatch | takes a provider credential the person pastes; a key must never pass through a chat turn. | agentId: resolved:agents; provider: free text; key: free text |
 | `providers.writes.setCustomEndpoint` | POST | unconfirmed: withheld from dispatch | takes the key that server is reached with, and a credential must never pass through a chat turn. | agentId: resolved:agents; endpoint: free text |
 | `providers.writes.setModel` | unroutable | unconfirmed: withheld from dispatch | the agent-wide write the model picker owns; setAgentModelChoice is the one to dispatch, and it names the model with the values that exist. | agentId: resolved:agents; opts: free text |
+| `providerStatusesForAgent` | unroutable | unconfirmed: withheld from dispatch | the provider hub's own per-agent read, shaped for its rows; refreshStatus is the one to dispatch for the same sign-in. | agentId: resolved:agents; names: free text |
+| `providerUsage` | unroutable | unconfirmed: withheld from dispatch | the provider hub's live probe, which throws the moment an engine is unreachable; it is polled behind a confirmed connection, never dispatched. | none |
 | `pushClaudeOAuthCredential` | POST | confirmed: host approval required | carries a secret; the desktop's Anthropic OAuth credential. | agentId: resolved:agents; credentialJson: free text |
 | `pushSetupClaudeOAuthCredential` | POST | unconfirmed: withheld from dispatch | carries a secret; the desktop's Anthropic OAuth credential, before any agent exists. | credentialJson: free text |
 | `setApiKey` | unroutable | unconfirmed: withheld from dispatch | takes a secret; the user pastes the provider key themselves. | agentId: resolved:agents; provider: free text; apiKey: free text; endpoint: free text |
 | `setCustomEndpoint` | POST | unconfirmed: withheld from dispatch | takes a secret; the guided local-model setup supplies the server URL and its key. | agentId: resolved:agents; endpoint: free text |
+| `setProviderCustomEndpoint` | unroutable | unconfirmed: withheld from dispatch | takes the key that server is reached with, and a credential must never pass through a chat turn. | endpoint: free text |
 | `setSetupApiKey` | unroutable | unconfirmed: withheld from dispatch | takes a secret; the user pastes the provider key during first-run setup. | provider: free text; apiKey: free text; endpoint: free text |
 | `agentTriggerStatus` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |
 | `cancelRoutineRun` | POST | confirmed: host approval required | visible | agentId: resolved:agents; routineId: resolved:routines; runId: open: The directory lists routines, not their runs, so read the run id from listRoutineRuns. |

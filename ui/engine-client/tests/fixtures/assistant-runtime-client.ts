@@ -21,6 +21,9 @@ const KIND = "widgets";
 /** The `(string & {})` widening: the named kinds, any other id still accepted. */
 export type ThingKind = "widget" | "gadget" | (string & {});
 
+/** The same widening over a TEMPLATE literal: still a string, not an object. */
+export type ThingToken = `thing-${string}` & {};
+
 export interface Thing {
   id: string;
   name: string;
@@ -90,6 +93,19 @@ export class ThingsClient {
     );
   }
 
+  stampThing<T extends string>(id: T, token: ThingToken): Promise<Thing> {
+    return this.r.json(`/v1/${KIND}/${encodeURIComponent(id)}/stamp`, {
+      method: "POST",
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ token }),
+    });
+  }
+
+  /** The overload case: the published name is `id`, the body binds `a`. */
+  seekThing(id: string): Promise<Thing> {
+    return this.r.json(`/v1/${KIND}/seek/${encodeURIComponent(id)}`);
+  }
+
   /** Two requests inside ONE client method: no single route describes it. */
   async auditThing(id: string): Promise<Thing> {
     await this.r.request(`/v1/${KIND}/${encodeURIComponent(id)}/audit`, {
@@ -114,4 +130,11 @@ export class AgentThingsClient {
   inspectThing(id: string): Promise<Thing> {
     return this.r.json(`/gadgets/${encodeURIComponent(id)}`);
   }
+
+  probeThing(id: string): Promise<Thing> {
+    return this.r.json(`/probes/${encodeURIComponent(id)}`);
+  }
 }
+
+/** A client handed back by a factory that is NOT `ctx.clientFor`. */
+export declare function strayThingsClient(): AgentThingsClient;

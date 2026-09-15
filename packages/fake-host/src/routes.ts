@@ -18,6 +18,7 @@ import { parseMentions } from "@houston/protocol";
 import type { ProviderId } from "@houston/runtime-client";
 import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
+import { apiKeyProviderSpec } from "./provider-catalog";
 import { handleWorkspaceFiles } from "./routes-files";
 import { handleMigrationRoutes } from "./routes-migration";
 import { handlePortableRoutes } from "./routes-portable";
@@ -173,16 +174,17 @@ export function handleAgents(
       // connect makes — the real host stores the key centrally AND pushes it
       // into the standing runtime, so `/providers` reads connected at once. No
       // runtime-side call follows it, so accepting it as a no-op left the
-      // provider unconnected while the dialog reported success. Same validation
-      // as the real route (and the setup-runtime twin): a malformed body 400s.
+      // provider unconnected while the dialog reported success. Same gate as
+      // the real route: the provider must be one this catalog connects with a
+      // pasted key (an OAuth or unknown id is "unknown API-key provider"), and
+      // a key that is only whitespace is no key.
       if (method === "POST" && rest[2] === "api-key") {
-        const provider = body?.provider;
-        if (!provider || typeof provider !== "string")
-          return json({ error: "missing 'provider'" }, 400);
-        if (!body?.apiKey || typeof body.apiKey !== "string")
-          return json({ error: "missing 'apiKey'" }, 400);
-        state.setApiKey(id, provider as ProviderId);
-        return json({ ok: true, provider });
+        const spec = apiKeyProviderSpec(body?.provider);
+        if (!spec) return json({ error: "unknown API-key provider" }, 400);
+        const key = typeof body?.apiKey === "string" ? body.apiKey.trim() : "";
+        if (!key) return json({ error: "missing 'apiKey'" }, 400);
+        state.setApiKey(id, spec.id);
+        return json({ ok: true, provider: spec.id });
       }
       // capture / forget: each is paired with a runtime login/logout call the
       // fake already models, so the slot state is carried there.

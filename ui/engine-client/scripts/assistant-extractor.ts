@@ -4,6 +4,7 @@ import type { ExtractionResult } from "./assistant-catalog-types.ts";
 import {
   type Collected,
   emptyCollection,
+  type ReadOperation,
   readOperation,
   recordOperation,
   routeKey,
@@ -17,6 +18,7 @@ import { facadeSurface } from "./assistant-facade-surface.ts";
 import type { Candidate } from "./assistant-module-surface.ts";
 import { ASSISTANT_PROVENANCE } from "./assistant-paths.ts";
 import type { RouteContext } from "./assistant-route.ts";
+import { claimRoutes } from "./assistant-route-claims.ts";
 import { hashSources, sharedHelpers } from "./assistant-sources.ts";
 
 /** How to read the document's own fields, for whoever opens it. */
@@ -81,47 +83,37 @@ export function extractCatalog(options: ExtractOptions): ExtractionResult {
   const collected = emptyCollection();
   const seen = new Set<string>();
   const claimed = new Set<string>();
-  const collect = (
+  const read = (
     declaration: Declaration,
     source: ts.SourceFile,
-    // A facade operation that re-implements a route the canonical adapter copy
-    // already publishes is a second name for one capability, not a second
-    // capability - the SDK contributes only what nothing else implements.
-    skipClaimedRoutes: boolean,
-  ): void => {
-    if (seen.has(declaration.name)) return;
+  ): ReadOperation | null => {
+    if (seen.has(declaration.name)) return null;
     const context: RouteContext = {
       surface: surfaces.get(source.fileName) ?? readFileSurface(source, false),
       shared,
       hops,
     };
-    const read = readOperation(declaration, source, checker, context);
-    if (!read) return;
-    const key = routeKey(read.operation);
-    if (skipClaimedRoutes && key !== null && claimed.has(key)) {
-      // Dropped from the CATALOG, never from the gate: the operation is still
-      // a function on the SDK surface, and an unannotated one whose route the
-      // adapter happens to claim would otherwise reach the assistant the
-      // moment either copy's path literal changed, with a green build.
-      collected.annotations.push(read.annotation);
-      return;
-    }
-    seen.add(declaration.name);
-    if (key !== null) claimed.add(key);
-    recordOperation(read, collected);
+    const operation = readOperation(declaration, source, checker, context);
+    if (operation) seen.add(declaration.name);
+    return operation;
   };
 
   for (const path of options.operationSources) {
     const source = load(path);
     for (const declaration of surfaces.get(source.fileName)?.declarations ?? [])
-      if (!facade.wiring.has(declaration.node))
-        collect(declaration, source, false);
+      if (!facade.wiring.has(declaration.node)) {
+        const operation = read(declaration, source);
+        if (!operation) continue;
+        const key = routeKey(operation.operation);
+        if (key !== null) claimed.add(key);
+        recordOperation(operation, collected);
+      }
   }
   // The SDK's factory-published surface, in the order `sdk.ts` mounts it: the
   // operations a caller reaches as `sdk.<namespace>.<path>`, which have no
   // exported name of their own for the per-file pass to find.
-  for (const member of facade.members)
-    collect(
+  const sdk = facade.members.flatMap((member) => {
+    const operation = read(
       {
         name: member.path,
         node: member.node,
@@ -130,8 +122,22 @@ export function extractCatalog(options: ExtractOptions): ExtractionResult {
         substitutions: member.substitutions,
       },
       member.source,
-      true,
     );
+    return operation ? [operation] : [];
+  });
+  // A facade operation that re-implements a route the canonical adapter copy
+  // already publishes is a second name for one capability, not a second
+  // capability - the SDK contributes only what nothing else implements. Which
+  // SDK name wins among themselves is `claimRoutes`' call, never source order.
+  const outcome = claimRoutes(sdk, claimed);
+  for (const operation of outcome.published)
+    recordOperation(operation, collected);
+  // Dropped from the CATALOG, never from the gate: the operation is still a
+  // function on the SDK surface, and an unannotated one whose route another
+  // copy happens to claim would otherwise reach the assistant the moment
+  // either copy's path literal changed, with a green build.
+  for (const operation of outcome.shadowed)
+    collected.annotations.push(operation.annotation);
 
   return finish(collected, files);
 }
