@@ -22,6 +22,7 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
      *
      * @assistant group:providers
      * @assistant hidden: destroys the provider sign-in every agent runs on, including the one serving this conversation.
+     * @assistant hands: unreachable signing out is offered on the provider screen the person opens themselves, and no card asks for it.
      */
     async providerLogout(name: string): Promise<void> {
       const pid = toNewProvider(name);
@@ -101,6 +102,7 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
      *
      * @assistant group:providers
      * @assistant hidden: takes the key that server is reached with, and a credential must never pass through a chat turn.
+     * @assistant hands: request_provider_connection
      *
      * Connect an OpenAI-compatible (local) server: persist the base URL + model
      * and CLAIM it as active (first connect on a fresh agent only — a connect

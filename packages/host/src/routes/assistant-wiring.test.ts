@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
 import {
+  assistantOperationsServedHere,
   formatAssistantModeLog,
   resolveAssistantGateway,
 } from "./assistant-wiring";
@@ -64,4 +65,24 @@ test("the boot line names the gateway, this host, or the missing env", () => {
   expect(
     formatAssistantModeLog({ env: { HOUSTON_ASSISTANT_CP_URL: "https://g" } }),
   ).toContain("HOUSTON_ASSISTANT_TOKEN");
+});
+
+/**
+ * WHOSE route table answers "what can this deployment do". Behind a real
+ * gateway it is the gateway's, and the gateway serves the whole catalogued
+ * surface — a pod that read its OWN routes would withdraw spaces, teams and
+ * billing from a managed assistant that can perform every one of them.
+ */
+test("only a host nothing fronts answers for the catalogued surface itself", () => {
+  expect(assistantOperationsServedHere({ env: {}, self: SELF })).toBe(true);
+  expect(assistantOperationsServedHere({ env: {} })).toBe(true);
+  expect(
+    assistantOperationsServedHere({
+      env: {
+        HOUSTON_ASSISTANT_CP_URL: "https://gateway.example",
+        HOUSTON_ASSISTANT_TOKEN: "pod",
+      },
+      self: SELF,
+    }),
+  ).toBe(false);
 });

@@ -1,3 +1,4 @@
+import { assistantUnservedEnv } from "@houston/domain/assistant-deployment";
 import { type AssistantRuntimeRole, assistantRoleEnv } from "./assistant-role";
 
 /**
@@ -31,6 +32,13 @@ export interface RuntimeSpawnEnvInput {
    * that authorizes account-wide Houston operations.
    */
   assistantRole: AssistantRuntimeRole | null;
+  /**
+   * Operations this host cannot perform, from its own route table
+   * (`assistant/served-operations.ts`). Stamped ONLY into the coordinator's
+   * child, because it is the only runtime that calls Houston operations at all
+   * — every other agent would carry a list it has no tool to consult.
+   */
+  unservedOperations: readonly string[];
 }
 
 export function runtimeSpawnEnv(
@@ -48,5 +56,8 @@ export function runtimeSpawnEnv(
     // constructed its pod-auth facade from the complete managed config.
     HOUSTON_TRANSCRIPT_DUAL_WRITE: input.transcriptDualWrite ? "1" : "",
     ...assistantRoleEnv(input.assistantRole),
+    ...assistantUnservedEnv(
+      input.assistantRole ? input.unservedOperations : [],
+    ),
   };
 }

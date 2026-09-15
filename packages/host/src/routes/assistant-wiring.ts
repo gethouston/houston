@@ -65,6 +65,23 @@ export function resolveAssistantGateway(
   return wiring.self ? normalize(wiring.self) : null;
 }
 
+/**
+ * True when THIS host performs the catalogued operations itself: nothing fronts
+ * it and no gateway pair is configured, so the routes the catalog names are its
+ * own.
+ *
+ * Which is exactly when its route table is the honest answer to "what can this
+ * deployment do" (`assistant/served-operations.ts`). Behind a real gateway the
+ * question belongs to the gateway, which serves the whole surface, and a pod
+ * that guessed from its OWN routes would withdraw three quarters of the
+ * catalog from a managed assistant that can perform every bit of it.
+ */
+export function assistantOperationsServedHere(
+  wiring: AssistantWiring = {},
+): boolean {
+  return envAssistantGateway(wiring.env ?? process.env) === null;
+}
+
 /** The one boot line naming the state, and the remedy when it is off. */
 export function formatAssistantModeLog(wiring: AssistantWiring = {}): string {
   const env = wiring.env ?? process.env;

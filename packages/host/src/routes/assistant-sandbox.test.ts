@@ -426,6 +426,8 @@ interface CallOpts {
   approvals?: ApprovalStore;
   /** Call as a runtime with no turn of the host's running behind it (S9). */
   noLiveTurn?: boolean;
+  /** Operations THIS deployment cannot perform (local/host-base.ts). */
+  unserved?: string[];
 }
 
 async function call(body: unknown, opts: CallOpts = {}) {
@@ -468,6 +470,7 @@ async function call(body: unknown, opts: CallOpts = {}) {
         opts.gateway === undefined ? GATEWAY : opts.gateway,
       assistantCatalog: () =>
         opts.catalog === undefined ? CATALOG : opts.catalog,
+      unservedOperations: () => new Set(opts.unserved ?? []),
     },
     opts.method ?? "POST",
     path,
@@ -1438,4 +1441,63 @@ test("a local host says teams are not supported, not that there are none yet", a
     "not supported on this Houston",
   );
   expect(calls).toEqual([]);
+});
+
+/**
+ * The DEPLOYMENT gate. The catalog describes desktop and hosted cloud at once,
+ * so a desktop is asked for spaces it has no route for. Refused here, by name,
+ * before anything is built: left to the address, the miss comes back as a 404
+ * the forwarder relays as `gateway_error` — which reads to the model as an
+ * outage worth retrying and to the person as Houston breaking.
+ */
+test("an operation this deployment cannot perform is refused by name", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { items: [] } }));
+  const out = await call(
+    { operation: "listOrgs", params: {} },
+    { fetchImpl: impl, unserved: ["listOrgs"] },
+  );
+  expect(out.status).toBe(400);
+  expect(out.body).toMatchObject({ code: "operation_unavailable_here" });
+  expect(JSON.stringify(out.body)).toContain("this Houston");
+  // Nothing was addressed: the refusal is the whole of what happened.
+  expect(calls).toEqual([]);
+});
+
+test("the same refusal answers an approval request, not just a call", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: {} }));
+  const out = await call(
+    { operation: "deleteAgent", params: { id: "a1" } },
+    {
+      fetchImpl: impl,
+      path: ASSISTANT_PENDING_PATH,
+      unserved: ["deleteAgent"],
+    },
+  );
+  expect(out.status).toBe(400);
+  expect(out.body).toMatchObject({ code: "operation_unavailable_here" });
+  expect(calls).toEqual([]);
+});
+
+test("a withheld operation still reads as one that does not exist", async () => {
+  // `rotateEngineSecret` is hidden. Naming it in the unserved set must not give
+  // it a different answer from any other unknown name: the hidden set is not a
+  // hint list, and "unavailable here" would confirm it exists.
+  const out = await call(
+    { operation: "rotateEngineSecret", params: {} },
+    {
+      fetchImpl: fetchStub(() => ({ body: {} })).impl,
+      unserved: ["rotateEngineSecret"],
+    },
+  );
+  expect(out.body).toMatchObject({ code: "operation_not_supported" });
+});
+
+test("an empty unserved set withholds nothing", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { items: [] } }));
+  const out = await call(
+    { operation: "listOrgs", params: {} },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(200);
+  expect(calls).toHaveLength(1);
 });

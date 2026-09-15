@@ -71,7 +71,8 @@ export async function createOrg(
  *
  * @param slug The space to delete, by the slug listOrgs returns.
  * @assistant group:spaces confirm: irreversible. A delete takes the space and everything in it for good.
- * @assistant hidden: the hosted gateway's scope wall denies the space-delete route to this surface, so a dispatched delete can only fail.
+ * @assistant hidden: deleting a space is the person's own to do, from the space's own settings.
+ * @assistant hands: request_hands_on(orgDanger)
  */
 export async function deleteOrg(scope: HttpScope, slug: string): Promise<void> {
   await httpRequest(scope, `/v1/orgs/${encodeURIComponent(slug)}`, {

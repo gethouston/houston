@@ -1,4 +1,5 @@
 import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
+import type { ASSISTANT_UNAVAILABLE_HERE } from "@houston/domain/assistant-deployment";
 
 /**
  * The assistant family's failure taxonomy and the tool results it is reported in.
@@ -11,6 +12,9 @@ import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
  */
 
 export type AssistantErrorCode =
+  /** The catalog offers it, but THIS deployment cannot perform it — a desktop
+   *  has no spaces, no teams and no billing. Final: nothing retries into it. */
+  | typeof ASSISTANT_UNAVAILABLE_HERE
   /** No such operation, or it is withheld from the agent. */
   | "unknown_operation"
   /** A param the operation does not take. */

@@ -1,3 +1,5 @@
+import type { AssistantHands } from "./assistant-hands";
+
 /** Collections supported by the host's pinned EntityDirectory contract. */
 export type AssistantEntityCollection =
   | "agents"
@@ -174,6 +176,8 @@ export interface AssistantOperationDocument<Schema = AssistantJsonSchema> {
   hiddenReason?: string;
   /** Why an HTTP mutation dispatches without an approval card. */
   unconfirmed?: string;
+  /** The card that DOES reach this hidden operation, or why none does. */
+  hands?: AssistantHands;
   params: AssistantParameterDocument<Schema>[];
   returns: Schema;
   /** `null` when no route could be derived conservatively from the source. */

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { parseAssistantHands } from "@houston/domain/assistant-hands";
 import type ts from "typescript";
 import {
   ASSISTANT_GROUPS,
@@ -107,6 +108,12 @@ export function readOperation(
       ? `the path names ${unpublished.join(", ")}, which the published signature does not declare`
       : routing.reason;
   const docs = parseAssistantDocs(docsFor(declaration));
+  // An unparseable card is left OFF the document and reported by the gate
+  // instead: the host dispatches nothing it cannot name, so half a card in the
+  // catalog would be a screen the app has no way to open.
+  const hands = docs.handsCard
+    ? parseAssistantHands(docs.handsCard)
+    : undefined;
   const { params, unschematized, openIdentifiers } = parametersOf(
     declaration,
     checker,
@@ -130,6 +137,7 @@ export function readOperation(
       hidden: docs.hidden,
       ...(docs.hiddenReason ? { hiddenReason: docs.hiddenReason } : {}),
       ...(docs.unconfirmed ? { unconfirmed: docs.unconfirmed } : {}),
+      ...(hands && hands.kind !== "invalid" ? { hands } : {}),
       params,
       returns,
       route,
@@ -141,6 +149,7 @@ export function readOperation(
       group: docs.group,
       hidden: docs.hidden,
       hiddenReason: docs.hiddenReason,
+      handsCard: docs.handsCard,
       method: route?.method,
       confirm: docs.confirm,
       confirmed: docs.confirmed,

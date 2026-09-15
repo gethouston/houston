@@ -29,6 +29,7 @@ import type { TSchema } from "typebox";
 
 export {
   ASSISTANT_CATALOG_VERSION,
+  type AssistantHands,
   type AssistantHttpMethod,
   type AssistantPathEncoding,
   type AssistantPathParam,

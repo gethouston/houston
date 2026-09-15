@@ -10,7 +10,7 @@ import { emitEvent } from "../bus";
 import { scopedBridgeFetch } from "../cp/bridge-fetch";
 import type { AdapterContext } from "./context";
 import { HoustonEngineError } from "./errors";
-import { fetchCapabilities } from "./host-capabilities";
+import { getCapabilities } from "./host-capabilities";
 import { requireProviderAgentId } from "./provider-routing";
 
 const prefix = "/v1/local-model-bridges";
@@ -23,7 +23,7 @@ export async function localModelBridgeAccess(
   const baseUrl = ctx.baseUrl;
   const selectedOrg = ctx.cp?.activeOrgSlug ?? null;
   const hostname = new URL(baseUrl).hostname;
-  const capabilities = await fetchCapabilities(ctx);
+  const capabilities = await getCapabilities(ctx);
   if (
     ctx.baseUrl !== baseUrl ||
     (ctx.cp?.activeOrgSlug ?? null) !== selectedOrg

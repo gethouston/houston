@@ -18,6 +18,7 @@ import type {
 import {
   refusedOutsideExecute,
   refusedUnknownParams,
+  refusedUnserved,
 } from "./assistant-operation-guards";
 import { json } from "./http";
 
@@ -92,6 +93,7 @@ export async function handleAssistantPending(
     });
     return;
   }
+  if (refusedUnserved(ctx, op.name, res)) return;
   if (!op.confirm) {
     json(res, 400, {
       error: `"${operation}" needs no approval: call it directly`,
@@ -155,6 +157,7 @@ export async function handleAssistantCall(
     });
     return;
   }
+  if (refusedUnserved(ctx, op.name, res)) return;
   if (refusedOutsideExecute(ctx, op, res)) return;
   if (refusedUnknownParams(op, input.params, res)) return;
   const params = await resolvedParams(ctx, op, input.params, res);

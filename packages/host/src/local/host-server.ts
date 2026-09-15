@@ -13,6 +13,7 @@ import type { createHostIntegrations } from "./host-integrations";
 import { LOCAL_USER, severityLog } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
 import type { createHostRuntime } from "./host-runtime";
+import { createViewSink } from "./view-sink";
 
 export function createHostServer(
   opts: LocalHostOptions,
@@ -31,6 +32,7 @@ export function createHostServer(
     credentials,
     sharedEndpoints,
     assistantGateway,
+    assistantUnserved,
     transcriptShadow,
     docShadow,
     docProjector,
@@ -89,8 +91,6 @@ export function createHostServer(
         log: severityLog,
       })
     : undefined;
-  // Per-family publish chains for the view sink (see viewSink below).
-  const viewTails = new Map<string, Promise<void>>();
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -136,9 +136,11 @@ export function createHostServer(
     ensureSyntheticAgentDir: (agentId) => {
       liveAgentDir(agentId);
     },
-    // Where this host performs Houston operations, from the one resolver —
-    // the same value the spawned runtimes carry in their environment.
+    // Where this host performs Houston operations, and which of them it cannot
+    // perform at all — both from the one boot-time resolution (host-base.ts),
+    // so the dispatcher and the coordinator's runtime can never disagree.
     assistantGateway: () => assistantGateway,
+    unservedOperations: () => assistantUnserved,
     corsOrigin: "*",
     // Boot-span ledger behind GET /metrics (HOU-1011). Token-gated like every
     // non-public route: timings aren't secrets, but there is no reason to
@@ -149,38 +151,11 @@ export function createHostServer(
     addressedAgent: docProjector
       ? (agentId) => docProjector.bindAddressed(agentId)
       : undefined,
-    // Publish the view routes' answers (providers, usage, custom definitions)
-    // to the managed doc store; the gateway serves them while the pod is
-    // asleep. Cloud pods only (docShadow exists only under dual-write).
+    // Cloud pods publish the view routes' answers to the managed doc store so
+    // the gateway can serve them while the pod is asleep (./view-sink.ts).
     viewSink:
       docShadow && docProjector
-        ? (agentId, family, body) => {
-            // Same cross-post rule as the file projector: the doc route
-            // names ONE agent; a view captured for any other id (a leftover
-            // directory's /skills) must never land under the bound agent.
-            // Publishes are SERIALIZED per family so two captures in flight
-            // land in capture order — a detached pair could otherwise let
-            // the older body win the CAS retry.
-            const prior = viewTails.get(family) ?? Promise.resolve();
-            const task = prior
-              .then(() => docProjector.boundAgent())
-              .then((bound) => {
-                if (bound !== agentId) {
-                  console.warn(
-                    `[view-docs] refusing ${family} publish for ${agentId} (route bound to ${bound ?? "nothing yet"})`,
-                  );
-                  return;
-                }
-                return docShadow.put(family, body);
-              })
-              .catch((error: unknown) => {
-                console.error(`[view-docs] ${family} publish failed`, error);
-              })
-              .finally(() => {
-                if (viewTails.get(family) === task) viewTails.delete(family);
-              });
-            viewTails.set(family, task);
-          }
+        ? createViewSink(docShadow, docProjector)
         : undefined,
   };
 

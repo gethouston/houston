@@ -6,9 +6,32 @@ import type {
   VersionResponse,
 } from "../../../../../ui/engine-client/src/types";
 import * as controlPlane from "../control-plane";
+import type { AdapterContext } from "./context";
 import { HoustonEngineError } from "./errors";
-import { fetchCapabilities } from "./host-capabilities";
 import type { BaseCtor } from "./mixin";
+
+/**
+ * What this deployment can do (`GET /v1/capabilities`) - the SERVER describing
+ * itself: which profile it runs, whether it has a shell, an org, a skills
+ * store, triggers, and which AI providers it offers.
+ *
+ * Lives here, in a scanned `*-mixin.ts`, because that is the only place the
+ * assistant-catalog generator looks. Routed through `cpFetch` on
+ * `prefConfig()` (the gateway in cloud, the local host otherwise) rather than
+ * `this.engine.capabilities()`: hosted mode rotates the bearer mid-session, so
+ * the token is read live per attempt and a 401 refreshes + replays (HOU-687),
+ * and a non-2xx arrives as a `HoustonEngineError` carrying the host's reason.
+ * It is also the only honest answer to "am I talking to an open host or to the
+ * cloud gateway" - a build-time flag cannot tell, since the desktop shell sets
+ * `__HOUSTON_CP__` on every delivery path.
+ * @assistant group:system
+ */
+export async function getCapabilities(
+  ctx: AdapterContext,
+): Promise<Capabilities> {
+  const res = await controlPlane.cpFetch(ctx.prefConfig(), "/v1/capabilities");
+  return (await res.json()) as Capabilities;
+}
 
 export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
   class Boot extends Base {
@@ -40,10 +63,10 @@ export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
     }
     async capabilities(): Promise<Capabilities> {
       // Uncached on purpose: `role` is PER-SPACE, so the caller re-fetches after
-      // a space switch (C8 §capabilities). The shared implementation lives in
-      // `host-capabilities.ts` — the sidebar-layout store reads the same route to
-      // learn whether it is talking to an open host.
-      return fetchCapabilities(this.ctx);
+      // a space switch (C8 §capabilities). The shared implementation is
+      // `getCapabilities` above — the sidebar-layout store reads the same route
+      // to learn whether it is talking to an open host.
+      return getCapabilities(this.ctx);
     }
     /**
      * pi-ai's FULL static model catalog — every provider and every runnable model

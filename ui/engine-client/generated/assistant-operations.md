@@ -21,8 +21,8 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `setAgentModelChoice` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; choice: free text |
 | `updateAgentColor` | PUT | unconfirmed: Reversible display preference; changes no agent behavior or access. | visible | agentId: resolved:agents; color: enum |
 | `createApiKey` | POST | confirmed: host approval required | returns a secret; the full key is revealed once and must not pass through a chat turn. | name: free text |
-| `listApiKeys` | GET | unconfirmed: read-only HTTP GET | the hosted gateway's scope wall denies the key routes to this surface, so a dispatched listing can only fail. | none |
-| `revokeApiKey` | DELETE | confirmed: host approval required | the hosted gateway's scope wall denies the key routes to this surface, so a dispatched revoke can only fail. | id: open: API keys are secrets the directory never lists. |
+| `listApiKeys` | GET | unconfirmed: read-only HTTP GET | a person's keys are theirs to look at, on the screen that lists them. | none |
+| `revokeApiKey` | DELETE | confirmed: host approval required | revoking a key is the person's own to do, on the screen that lists their keys. | id: open: API keys are secrets the directory never lists. |
 | `saveAttachments` | POST | unconfirmed: withheld from dispatch | the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace. | agentId: resolved:agents; scopeId: free text; files: free text |
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
 | `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
@@ -151,11 +151,12 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `acceptOrgInvite` | POST | confirmed: host approval required | visible | inviteId: resolved:invites |
 | `createOrg` | POST | confirmed: host approval required | visible | name: free text |
 | `declineOrgInvite` | DELETE | confirmed: host approval required | visible | inviteId: resolved:invites |
-| `deleteOrg` | DELETE | confirmed: host approval required | the hosted gateway's scope wall denies the space-delete route to this surface, so a dispatched delete can only fail. | slug: open: The directory covers one organization, so read another one's slug from listOrgs. |
+| `deleteOrg` | DELETE | confirmed: host approval required | deleting a space is the person's own to do, from the space's own settings. | slug: open: The directory covers one organization, so read another one's slug from listOrgs. |
 | `getMoveStatus` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents; moveId: open: A move receipt exists only in the answer moveAgent returned. |
 | `listOrgs` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `moveAgent` | POST | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; toSlug: open: The directory covers one organization, so read another one's slug from listOrgs. |
 | `getAssistant` | GET | unconfirmed: read-only HTTP GET | the assistant IS this agent, so where it lives tells it nothing it can act on. | none |
+| `getCapabilities` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `createAgentTeam` | POST | unconfirmed: Creates an empty team without moving agents or adding other members. | visible | input: free text |
 | `deleteAgentTeam` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams |
 | `getAgentSettings` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |

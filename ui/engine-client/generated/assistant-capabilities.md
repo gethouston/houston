@@ -135,6 +135,10 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `listOrgs`: Lists the spaces the user belongs to and any invitations waiting for them.
 - `moveAgent`: Moves an agent into a shared space so teammates can work with it. **Confirmation required.**
 
+## system
+
+- `getCapabilities`: What this deployment can do (`GET /v1/capabilities`) - the SERVER describing itself: which profile it runs, whether it has a shell, an org, a skills store, triggers, and which AI providers it offers.
+
 ## teams
 
 - `createAgentTeam`: Creates a team in this space.

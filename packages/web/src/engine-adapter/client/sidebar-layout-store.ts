@@ -1,7 +1,7 @@
 import type { SidebarLayout } from "../../../../../ui/engine-client/src/types";
 import type { AdapterContext } from "./context";
 import { HoustonEngineError } from "./errors";
-import { fetchCapabilities } from "./host-capabilities";
+import { getCapabilities } from "./host-capabilities";
 import { viaSdk } from "./sdk-error";
 
 const SIDEBAR_LAYOUT_PREF = "houston.sidebar-layout";
@@ -160,7 +160,7 @@ export class SidebarLayoutStore {
   /** Does the layout PUT reach an open host? Probed once per client. */
   private hostBacked(): Promise<boolean> {
     if (this.#degraded) return Promise.resolve(false);
-    this.#hostBacked ??= fetchCapabilities(this.ctx)
+    this.#hostBacked ??= getCapabilities(this.ctx)
       .then((caps) => caps.profile === "local")
       .catch((err) => {
         // Unknown deployment: keep the layout on this device for THIS call and

@@ -22,6 +22,7 @@ function context(gatewayFronted = true): AssistantOperationCtx {
     agentId,
     conversationId,
     gatewayFronted,
+    unserved: new Set<string>(),
     gatewayAgentId: "trusted-pod",
     agents: empty,
     directory: {

@@ -1,3 +1,4 @@
+import type { AssistantHands } from "@houston/domain/assistant-hands";
 import type {
   Acknowledgement,
   AssistantCatalog,
@@ -59,6 +60,33 @@ function confirmedSection(
           ({ name, confirmed: reason }) =>
             `- \`${name}\`: ${reason ?? "no reason stated."}`,
         )
+      : ["None."]),
+  ];
+}
+
+/**
+ * What the PERSON is handed for everything the assistant is not allowed to do.
+ *
+ * Read against the acknowledged exceptions above it, this is the other half of
+ * every hidden operation: the card that still reaches it, or the author's
+ * statement that nothing does. A withheld operation with neither line is what
+ * the coverage gate refuses, so this section is the whole answer, not a sample.
+ */
+function handsSection(catalog: AssistantCatalog): string[] {
+  const named = catalog.operations.flatMap(({ name, hands }) =>
+    hands ? [{ name, hands }] : [],
+  );
+  const card = (hands: AssistantHands): string =>
+    hands.kind === "unreachable"
+      ? `no card: ${hands.reason}`
+      : `\`${hands.tool}${hands.surface ? `(${hands.surface})` : ""}\``;
+  return [
+    `## Hands-on operations (${named.length})`,
+    "",
+    "Each one is withheld from the assistant and still the person's to finish. The card names the Houston flow that hands it to them; `no card` states why the errand does not exist.",
+    "",
+    ...(named.length > 0
+      ? named.map(({ name, hands }) => `- \`${name}\` - ${card(hands)}`)
       : ["None."]),
   ];
 }
@@ -125,6 +153,8 @@ export function renderCoverage({
     ),
     "",
     ...confirmedSection(annotations),
+    "",
+    ...handsSection(catalog),
     "",
     ...section("Undocumented operations", coverage.undocumented),
     "",

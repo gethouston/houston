@@ -76,7 +76,8 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
     /** Downloads a file from an agent's workspace.
      *
      * Raw bytes of a workspace file (binary-safe) plus its served MIME type.
-     * @assistant group:files hidden: binary download; returns a Blob no chat turn can carry. */
+     * @assistant group:files hidden: binary download; returns a Blob no chat turn can carry.
+     * @assistant hands: request_hands_on(files) */
     async downloadProjectFile(
       agentPath: string,
       relPath: string,
@@ -152,7 +153,8 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
      * One zip of the workspace ("Download all") or, with `path`, of a single
      * folder's subtree — for deployments with no local file manager to reveal
      * in (cloud pods, web builds).
-     * @assistant group:files hidden: binary download; returns a zip Blob no chat turn can carry. */
+     * @assistant group:files hidden: binary download; returns a zip Blob no chat turn can carry.
+     * @assistant hands: request_hands_on(files) */
     async downloadProjectArchive(
       agentPath: string,
       path?: string,

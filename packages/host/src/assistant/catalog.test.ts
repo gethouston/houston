@@ -151,3 +151,58 @@ test("validates policy reasons in the shared operation envelope", () => {
     ).not.toBeNull();
   }
 });
+
+/**
+ * The card a withheld operation is handed over with. A half-spelled one would
+ * have the host name a screen the app cannot open, so the envelope takes the
+ * two arms whole or refuses the document.
+ */
+describe("the hands envelope", () => {
+  const withHands = (hands: unknown): string =>
+    JSON.stringify({
+      ...fixture,
+      operations: [{ ...fixture.operations[1], hands }],
+    });
+  const handsOf = (hands: unknown) =>
+    parseAssistantCatalog(withHands(hands))?.operations[0]?.hands;
+
+  test("keeps a card and its surface", () => {
+    expect(
+      handsOf({ kind: "card", tool: "request_hands_on", surface: "billing" }),
+    ).toEqual({
+      kind: "card",
+      tool: "request_hands_on",
+      surface: "billing",
+    });
+    expect(handsOf({ kind: "card", tool: "request_connection" })).toEqual({
+      kind: "card",
+      tool: "request_connection",
+    });
+  });
+
+  test("keeps the written statement that no card reaches it", () => {
+    expect(
+      handsOf({ kind: "unreachable", reason: "Nobody can finish it." }),
+    ).toEqual({
+      kind: "unreachable",
+      reason: "Nobody can finish it.",
+    });
+  });
+
+  test.each([
+    ["an unknown tool", { kind: "card", tool: "request_anything" }],
+    [
+      "a surface the app cannot open",
+      { kind: "card", tool: "request_hands_on", surface: "dashboard" },
+    ],
+    ["an escape with no reason", { kind: "unreachable" }],
+    ["neither arm", { kind: "card" }],
+  ])("refuses the whole document for %s", (_label, hands) => {
+    expect(parseAssistantCatalog(withHands(hands))).toBeNull();
+  });
+
+  // Additive and optional: a catalog written before the tag existed still loads.
+  test("accepts an operation that names no card", () => {
+    expect(parseAssistantCatalog(JSON.stringify(fixture))).not.toBeNull();
+  });
+});

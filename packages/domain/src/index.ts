@@ -5,6 +5,7 @@ export * from "./anonymize";
 export * from "./anonymize-ai";
 export * from "./assistant-catalog-callable";
 export * from "./assistant-catalog-types";
+export * from "./assistant-hands";
 export * from "./config";
 export * from "./contributors";
 export * from "./doc-lock";

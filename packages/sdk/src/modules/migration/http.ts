@@ -27,6 +27,7 @@ import type { MigrationImportOptions, MigrationImportResult } from "./types";
  *
  * Zip the requested in-scope paths of one agent (the migration export route).
  * @assistant group:files hidden: answers with a zip as raw bytes, which no chat turn can carry; the copy and migration flows drive it themselves.
+ * @assistant hands: request_hands_on(files)
  */
 export async function migrationExport(
   scope: HttpScope,
@@ -46,6 +47,7 @@ export async function migrationExport(
  *
  * Unpack one zip chunk into an agent (the migration import route).
  * @assistant group:files hidden: takes a zip as raw bytes, which no chat turn can carry; the copy and migration flows drive it themselves.
+ * @assistant hands: request_hands_on(files)
  */
 export async function migrationImport(
   scope: HttpScope,

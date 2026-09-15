@@ -5,7 +5,7 @@ import { gatewayEntityDirectory } from "../assistant/entity-directory-gateway";
 import { localEntityDirectory } from "../assistant/entity-directory-local";
 import type { AssistantClaim } from "./assistant-claim";
 import type { AssistantGateway } from "./assistant-forward";
-import type { AssistantSandboxDeps } from "./assistant-sandbox";
+import type { AssistantSandboxDeps } from "./assistant-sandbox-deps";
 import type { ReachableAgent } from "./reachable-agents";
 
 /**
@@ -24,6 +24,15 @@ export interface AssistantOperationCtx {
   gatewayAgentId?: string;
   /** The calling turn's conversation. Absent = nowhere for an answer to arrive. */
   conversationId: string | undefined;
+  /**
+   * Operations this deployment cannot perform. Empty when a real gateway is in
+   * front of this host, which serves the whole catalogued surface.
+   *
+   * Required rather than optional: a handler assembled without it would carry
+   * a silently-open gate, and the failure it guards against is invisible until
+   * a user is told Houston broke.
+   */
+  unserved: ReadonlySet<string>;
   /** Every agent this caller may address, for resolving the identifiers an
    *  operation's parameters name (`assistant/entity-resolution.ts`). */
   agents(): Promise<readonly ReachableAgent[]>;

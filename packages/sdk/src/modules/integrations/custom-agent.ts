@@ -139,6 +139,7 @@ export async function updateAgentCustomIntegrationDetails(
  *   field name.
  * @assistant group:integrations confirm: outward. It hands a secret to a third-party service Houston then acts against on this agent's behalf.
  * @assistant hidden: takes a secret; the user pastes the integration's own credential.
+ * @assistant hands: request_credential
  */
 export async function submitAgentCustomIntegrationCredential(
   scope: HttpScope,
@@ -161,6 +162,7 @@ export async function submitAgentCustomIntegrationCredential(
  * @param slug The custom integration's exact slug, from
  *   agentCustomIntegrations.
  * @assistant group:integrations hidden: starts a browser sign-in only the user can finish.
+ * @assistant hands: request_credential
  */
 export async function startAgentCustomIntegrationOAuth(
   scope: HttpScope,

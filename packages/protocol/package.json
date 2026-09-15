@@ -30,6 +30,10 @@
     "./interaction": {
       "types": "./src/domain/interaction.ts",
       "import": "./src/domain/interaction.ts"
+    },
+    "./interaction-types": {
+      "types": "./src/domain/interaction-types.ts",
+      "import": "./src/domain/interaction-types.ts"
     }
   },
   "files": [

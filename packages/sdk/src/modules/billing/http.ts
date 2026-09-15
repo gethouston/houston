@@ -63,6 +63,7 @@ export async function createCheckout(
  * Open the Stripe customer portal for the active team (owner only) — card,
  * invoices, interval switch, cancel. Returns the hosted `{url}`. Never degrades.
  * @assistant group:billing hidden: answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model.
+ * @assistant hands: request_hands_on(billing)
  */
 export async function createPortal(scope: HttpScope): Promise<BillingCheckout> {
   const res = await httpRequest(scope, "/v1/org/billing/portal", {

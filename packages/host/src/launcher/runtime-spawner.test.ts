@@ -76,6 +76,7 @@ test("only the coordinator's child carries the assistant role, and no credential
       env: (spec) =>
         runtimeSpawnEnv({
           transcriptDualWrite: false,
+          unservedOperations: [],
           assistantRole: spec.assistantRole ?? null,
         }),
     }),
@@ -215,7 +216,11 @@ test.each([
   new RuntimeProcessSpawner({
     command: ["runtime"],
     env: () =>
-      runtimeSpawnEnv({ transcriptDualWrite: false, assistantRole: role }),
+      runtimeSpawnEnv({
+        transcriptDualWrite: false,
+        unservedOperations: [],
+        assistantRole: role,
+      }),
   }).spawn({
     workspaceDir: "/agent",
     dataDir: "/data",
