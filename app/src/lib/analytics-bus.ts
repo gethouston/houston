@@ -5,11 +5,12 @@
 // something worth points" is already expressed once, as an analytics event, and
 // re-deriving it from a dozen call sites would guarantee the two drift apart.
 //
-// Deliberately dependency-free (analytics.ts drags in PostHog and the engine
-// client, so it cannot be loaded outside a browser) and deliberately
-// SYNCHRONOUS, so a listener sees the event in the same tick the user acted.
+// Deliberately dependency-free — the event names come from the vocabulary, not
+// from analytics.ts, which drags in PostHog and the engine client and so cannot
+// be loaded outside a browser — and deliberately SYNCHRONOUS, so a listener
+// sees the event in the same tick the user acted.
 
-import type { AnalyticsEventName } from "./analytics";
+import type { AnalyticsEventName } from "./analytics-vocabulary";
 
 export type AnalyticsListener = (
   name: AnalyticsEventName,

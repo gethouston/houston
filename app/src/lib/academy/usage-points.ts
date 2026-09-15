@@ -6,7 +6,7 @@
 // what the streak rewards. Pure module — `now` is always injected, so a day
 // boundary is a test case rather than a thing you wait for.
 
-import type { AnalyticsEventName } from "../analytics";
+import type { AnalyticsEventName } from "../analytics-vocabulary";
 import { type AcademyRecord, createAcademyRecord } from "./academy-record.ts";
 
 /** Points a single day can pay out, however much the user does. */

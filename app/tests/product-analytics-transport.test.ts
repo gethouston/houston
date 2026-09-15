@@ -57,7 +57,7 @@ function harness(options: { gateway?: GatewayFetchDeps | null } = {}) {
   });
 
   return {
-    post: () => post(EVENTS),
+    post: (options?: { final: boolean }) => post(EVENTS, options),
     calls,
     reports,
     reply: (next: () => Promise<Response | null>) => {
@@ -69,12 +69,26 @@ function harness(options: { gateway?: GatewayFetchDeps | null } = {}) {
 describe("the product-analytics POST", () => {
   it("survives the window going away", async () => {
     const h = harness();
-    strictEqual((await h.post()).status, "ok");
+    strictEqual((await h.post({ final: true })).status, "ok");
     strictEqual(h.calls[0]?.path, PRODUCT_EVENTS_ROUTE);
     // The quit-time flush (`sink.ts` onAppHidden) is the whole point of the
     // goodbye: without keepalive the browser aborts it on pagehide.
     strictEqual(h.calls[0]?.init.keepalive, true);
     ok(h.calls[0]?.init.signal, "a hung POST must not own the pipe forever");
+  });
+
+  it("ships a normal flush without the keepalive body cap", async () => {
+    // keepalive caps the whole request body at 64 KiB — far below what this
+    // route accepts — and a browser refuses an oversized one as a network
+    // failure this pipe cannot tell from being offline, so the batch dies
+    // twice and is dropped. Only the goodbye is worth that price.
+    const h = harness();
+    strictEqual((await h.post()).status, "ok");
+    strictEqual(h.calls[0]?.init.keepalive, undefined);
+    ok(h.calls[0]?.init.signal, "a hung POST must not own the pipe forever");
+
+    strictEqual((await h.post({ final: false })).status, "ok");
+    strictEqual(h.calls[1]?.init.keepalive, undefined);
   });
 
   it("holds the batch while the app has no engine target yet", async () => {

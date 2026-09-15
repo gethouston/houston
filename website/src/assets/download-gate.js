@@ -18,12 +18,12 @@
     if (window.HoustonAnalytics) window.HoustonAnalytics.track(name, fields);
   }
 
-  var buttons = window.HoustonDLButtons.init({
-    track: track,
-    funnel: funnel,
-    // Read per click: which entry point opened the modal changes between opens.
-    source: () => currentSource,
-  });
+  // The download step's buttons ship as their own asset, so they are optional
+  // the same way the funnel sink is: `buttons` stays null when it did not load.
+  // It is initialised BELOW the listeners, after the modal itself works — an
+  // inert download button on every page is the one failure this gate must not
+  // risk for the sake of the rows inside it.
+  var buttons = null;
 
   // The landing drives the page with Lenis smooth scroll. Freezing the native
   // scroll alone is not enough: Lenis keeps its own position, so it has to be
@@ -64,12 +64,15 @@
   function showDownloadStep() {
     formStep.hidden = true;
     downloadStep.hidden = false;
-    buttons.applyOs();
+    buttons?.applyOs();
   }
 
   function openModal(source, os) {
     currentSource = source || "unknown";
-    var currentOs = buttons.applyOs(os || detectOs());
+    var wantedOs = os || detectOs();
+    // The buttons asset settles the platform (it may fall back when a build is
+    // missing for one); without it the page's own detection is the answer.
+    var currentOs = buttons ? buttons.applyOs(wantedOs) : wantedOs;
     track("app_download_clicked", { os: currentOs });
     track("download_clicked", { source: currentSource });
     if (isRegistered()) {
@@ -118,22 +121,37 @@
       closeModal();
   });
 
-  window.HoustonDLForm.init({
-    config: window.HOUSTON_DL_CONFIG,
-    track: track,
-    onSubmitted: (payload) => {
-      markRegistered();
-      // The address is handed over raw and hashed inside the analytics asset;
-      // only the SHA-256 digest is put on the wire.
-      funnel("download_form_completed", {
-        email: payload.email,
-        os: buttons.os(),
-      });
-      track("download_form_submitted", { source: currentSource });
-      track("download_unlocked", { source: currentSource });
-      showDownloadStep();
-    },
-  });
+  if (window.HoustonDLButtons) {
+    buttons = window.HoustonDLButtons.init({
+      track: track,
+      funnel: funnel,
+      // Read per click: which entry point opened the modal changes between opens.
+      source: () => currentSource,
+    });
+  }
+
+  // The registration step's own asset, optional for the same reason the two
+  // above are: if it never loaded there is nothing to submit, but the modal and
+  // every way out of it are this file's job and must not go down with it. A
+  // visitor who already registered never needed it — they land on the buttons.
+  if (window.HoustonDLForm) {
+    window.HoustonDLForm.init({
+      config: window.HOUSTON_DL_CONFIG,
+      track: track,
+      onSubmitted: (payload) => {
+        markRegistered();
+        // The address is handed over raw and hashed inside the analytics asset;
+        // only the SHA-256 digest is put on the wire.
+        funnel("download_form_completed", {
+          email: payload.email,
+          os: buttons ? buttons.os() : detectOs(),
+        });
+        track("download_form_submitted", { source: currentSource });
+        track("download_unlocked", { source: currentSource });
+        showDownloadStep();
+      },
+    });
+  }
 
   if (window.location.hash === "#download") openModal("hash", detectOs());
 })();

@@ -42,7 +42,9 @@ export function startProductAnalyticsSink(
     deps.queue.enqueue(name, props);
   });
   const stopWatchingForGoodbye = deps.onHidden(() => {
-    void deps.queue.flush();
+    // `final` is what buys this batch a request that survives the page going
+    // away; no other flush pays keepalive's 64 KiB body cap for it.
+    void deps.queue.flush({ final: true });
   });
   return () => {
     unsubscribe();

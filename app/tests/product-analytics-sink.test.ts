@@ -8,14 +8,16 @@ import { resolveClientDeployment } from "../src/lib/sentry-deployment.ts";
 function harness(hosted: boolean) {
   let seq = 0;
   const sent: string[][] = [];
+  const finals: boolean[] = [];
   const busListeners: Array<(name: string) => void> = [];
   const hiddenHandlers: Array<() => void> = [];
   let subscribeCalls = 0;
   let onHiddenCalls = 0;
 
   const queue = new ProductAnalyticsQueue({
-    transport: (events) => {
+    transport: (events, options) => {
       sent.push(events.map((e) => e.name));
+      finals.push(options.final);
       return Promise.resolve<ProductAnalyticsSendResult>({ status: "ok" });
     },
     now: () => Date.parse("2026-09-12T10:00:00.000Z"),
@@ -46,6 +48,7 @@ function harness(hosted: boolean) {
   return {
     queue,
     sent,
+    finals,
     stop,
     track: (name: string) => {
       for (const listener of [...busListeners]) listener(name);
@@ -92,6 +95,7 @@ describe("product analytics sink", () => {
     strictEqual(h.queue.size, 1, "the server owns chat_message_sent");
     await h.queue.flush();
     deepStrictEqual(h.sent, [["agent_created"]]);
+    deepStrictEqual(h.finals, [false], "a normal flush is not a goodbye");
   });
 
   it("flushes on the window's goodbye and stops on teardown", async () => {
@@ -100,6 +104,9 @@ describe("product analytics sink", () => {
     h.goodbye();
     await new Promise<void>((done) => setImmediate(done));
     deepStrictEqual(h.sent, [["command_palette_opened"]]);
+    // The window is going away: this batch's POST must outlive the page, which
+    // is the one thing keepalive buys and the only flush worth its body cap.
+    deepStrictEqual(h.finals, [true]);
     h.stop();
     deepStrictEqual(h.counts(), {
       subscribe: 1,

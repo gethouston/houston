@@ -37,6 +37,19 @@ export interface RejectedProductEvent {
   readonly reason: string;
 }
 
+/** What the queue tells the transport about the flush a batch belongs to. */
+export interface ProductAnalyticsSendOptions {
+  /**
+   * The goodbye ride (`sink.ts` onAppHidden): the window is going away, so the
+   * request has to outlive the page. That is what `keepalive` buys, and it is
+   * the ONLY flush worth its price — keepalive caps the whole request body at
+   * 64 KiB, far below what the ingest route accepts, and a browser refuses an
+   * oversized one as a network failure this pipe cannot tell from being
+   * offline (so the batch dies twice and is dropped, silently).
+   */
+  readonly final: boolean;
+}
+
 export type ProductAnalyticsSendResult =
   /** Stored (or knowingly discarded by the gateway); `rejected` names the
    *  events it refused, which are never worth resending. */

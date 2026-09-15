@@ -14,6 +14,7 @@ import type { GatewayFetchDeps, GatewayRequestInit } from "../gateway-fetch.ts";
 import type {
   ProductAnalyticsContext,
   ProductAnalyticsEvent,
+  ProductAnalyticsSendOptions,
   ProductAnalyticsSendResult,
   RejectedProductEvent,
 } from "./wire.ts";
@@ -53,6 +54,7 @@ export function createProductEventsPost(
   deps: ProductEventsPostDeps,
 ): (
   events: readonly ProductAnalyticsEvent[],
+  options?: ProductAnalyticsSendOptions,
 ) => Promise<ProductAnalyticsSendResult> {
   // Each of these is a fact about the deployment, not about one batch: a
   // second report would say the same thing with a bigger count.
@@ -63,7 +65,7 @@ export function createProductEventsPost(
     deps.report(message, detail);
   };
 
-  return async function post(events) {
+  return async function post(events, options) {
     const gateway = deps.gateway();
     // The engine globals are not installed yet: the sink listens from above
     // <EngineGate>, so a batch can be minted before the app has an engine
@@ -75,9 +77,11 @@ export function createProductEventsPost(
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ context: deps.context(), events }),
-        // The quit-time flush (`sink.ts` onAppHidden) is the last ride anything
-        // buffered will get; without this the browser aborts it on pagehide.
-        keepalive: true,
+        // The quit-time flush is the last ride anything buffered will get, and
+        // without this the browser aborts it on pagehide. Every other flush
+        // ships without it: keepalive caps the body at 64 KiB (see
+        // `ProductAnalyticsSendOptions`), which a full batch can exceed.
+        ...(options?.final ? { keepalive: true } : {}),
         signal: (deps.timeoutSignal ?? defaultTimeoutSignal)(),
       });
     } catch (error) {

@@ -13,13 +13,20 @@ import type { AnalyticsEventName } from "../analytics-vocabulary.ts";
 import type { PendingEvent } from "./backlog.ts";
 import { ProductAnalyticsBacklog, toWireEvent } from "./backlog.ts";
 import { isProductEvent, pickProductProps } from "./catalogue.ts";
+import {
+  defaultSchedule,
+  FLUSH_AT_QUEUED,
+  FLUSH_DELAY_MS,
+  type FlushScheduler,
+  MAX_ATTEMPTS,
+  MAX_BATCH,
+  nextHoldDelay,
+} from "./flush-policy.ts";
 import type {
   ProductAnalyticsEvent,
+  ProductAnalyticsSendOptions,
   ProductAnalyticsSendResult,
 } from "./wire.ts";
-
-/** Runs `run` after `ms`; the returned function cancels it. */
-export type FlushScheduler = (run: () => void, ms: number) => () => void;
 
 /**
  * Why events left the pipe without ever being stored: the gateway refused them
@@ -32,6 +39,7 @@ export type ProductAnalyticsLoss = "rejected" | "overflow" | "unexpected";
 export interface ProductAnalyticsQueueDeps {
   transport(
     events: readonly ProductAnalyticsEvent[],
+    options: ProductAnalyticsSendOptions,
   ): Promise<ProductAnalyticsSendResult>;
   /** Where lost events are reported. Analytics is silent to the user and never
    *  silent to us; the hook wires this to `reportError`. */
@@ -40,25 +48,6 @@ export interface ProductAnalyticsQueueDeps {
   uuid?(): string;
   schedule?: FlushScheduler;
 }
-
-/** Long enough to swallow a burst, short enough to survive a quick quit. */
-const FLUSH_DELAY_MS = 3_000;
-/** A burst this size ships at once instead of waiting out the debounce. */
-const FLUSH_AT_QUEUED = 25;
-/** The route refuses a bigger batch, so a backlog ships in slices. */
-const MAX_BATCH = 100;
-/** One send, one retry — a second failure drops the batch. */
-const MAX_ATTEMPTS = 2;
-/** Ceiling on the held re-poll: a signed-out app must not poll at the debounce
- *  rate forever, and a session arriving is never more than a minute away. */
-const MAX_HOLD_DELAY_MS = 60_000;
-
-const defaultSchedule: FlushScheduler = (run, ms) => {
-  const handle = setTimeout(run, ms);
-  // Never keep the process alive for an analytics flush (tests, shutdown).
-  (handle as { unref?: () => void }).unref?.();
-  return () => clearTimeout(handle);
-};
 
 export class ProductAnalyticsQueue {
   private readonly deps: ProductAnalyticsQueueDeps;
@@ -69,6 +58,8 @@ export class ProductAnalyticsQueue {
   private cancelScheduled: (() => void) | null = null;
   private inFlight = false;
   private flushRequested = false;
+  /** Whether the flush queued behind the open attempt is the goodbye one. */
+  private finalRequested = false;
   /** How long the next held re-poll waits; 0 when the pipe is not held. */
   private holdDelayMs = 0;
 
@@ -110,13 +101,20 @@ export class ProductAnalyticsQueue {
     else this.scheduleFlush();
   }
 
-  /** Ship what is queued now (a burst, a goodbye, a session arriving). */
-  async flush(): Promise<void> {
+  /**
+   * Ship what is queued now (a burst, a goodbye, a session arriving). Pass
+   * `final` for the goodbye: the transport gives that batch — and only that
+   * batch — a request that outlives the page (`ProductAnalyticsSendOptions`).
+   */
+  async flush(options: { final?: boolean } = {}): Promise<void> {
+    const final = options.final === true;
     if (this.inFlight) {
       // A session that arrives mid-attempt must not be stranded: the batch
       // that is about to land back in the backlog ships as soon as this
-      // attempt settles.
+      // attempt settles. A goodbye landing here still has to be the last
+      // ride, so the follow-up inherits it.
       this.flushRequested = true;
+      this.finalRequested ||= final;
       return;
     }
     this.unschedule();
@@ -130,7 +128,7 @@ export class ProductAnalyticsQueue {
     this.inFlight = true;
     let result: ProductAnalyticsSendResult;
     try {
-      result = await this.deps.transport(batch.map(toWireEvent));
+      result = await this.deps.transport(batch.map(toWireEvent), { final });
     } catch (error) {
       // The transport answers with a result for every expected outcome, the
       // device being offline included, so a throw is a bug worth hearing about.
@@ -142,7 +140,9 @@ export class ProductAnalyticsQueue {
     this.settle(batch, result);
     if (!this.flushRequested) return;
     this.flushRequested = false;
-    await this.flush();
+    const nextFinal = this.finalRequested;
+    this.finalRequested = false;
+    await this.flush({ final: nextFinal });
   }
 
   /** Forget everything queued (a deployment with nowhere to ship to). */
@@ -151,6 +151,7 @@ export class ProductAnalyticsQueue {
     this.backlog.clear();
     this.holdDelayMs = 0;
     this.flushRequested = false;
+    this.finalRequested = false;
   }
 
   private settle(
@@ -163,9 +164,7 @@ export class ProductAnalyticsQueue {
       // its own, because a session can arrive without the token change the
       // sink re-flushes on (a refresh landing mid-attempt).
       this.backlog.putBack(batch);
-      this.holdDelayMs = this.held
-        ? Math.min(this.holdDelayMs * 2, MAX_HOLD_DELAY_MS)
-        : FLUSH_DELAY_MS;
+      this.holdDelayMs = nextHoldDelay(this.holdDelayMs);
       this.scheduleFlush(this.holdDelayMs);
       return;
     }
