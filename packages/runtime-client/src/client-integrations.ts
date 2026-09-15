@@ -25,7 +25,7 @@ const JSON_HEADERS = { "Content-Type": "application/json" } as const;
 
 /** Composio is the only integration provider today; the gateway keys every
  *  route on this segment (`/v1/integrations/composio/*`). */
-const COMPOSIO = "composio";
+const COMPOSIO: IntegrationProviderId = "composio";
 
 /** Integrations (C1). All calls carry the session JWT. */
 export class IntegrationsClient {
@@ -92,12 +92,13 @@ export class IntegrationsClient {
   }
 
   /** Disconnect a toolkit for the user everywhere (removes its connections).
-   *  `opts.provider` is additive; omitted keeps the legacy composio route.
-   *  `opts.connectionId` narrows the removal to ONE account of the toolkit (a
-   *  toolkit can hold several — two Gmail logins); omitted removes them all. */
+   *  `opts.provider` names which integration surface holds it; omitted, it is
+   *  composio, the one every app connection lives on. `opts.connectionId`
+   *  narrows the removal to ONE account of the toolkit (a toolkit can hold
+   *  several — two Gmail logins); omitted removes them all. */
   async disconnect(
     toolkit: string,
-    opts?: { provider?: string; connectionId?: string },
+    opts?: { provider?: IntegrationProviderId; connectionId?: string },
   ): Promise<void> {
     const provider = opts?.provider ?? COMPOSIO;
     await this.r.request(

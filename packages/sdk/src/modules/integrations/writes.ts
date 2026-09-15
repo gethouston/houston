@@ -13,6 +13,7 @@
  * budget; the refetching facade methods there are untouched (iOS-safe).
  */
 
+import type { IntegrationProviderId } from "@houston/protocol";
 import type { IntegrationsClient } from "@houston/runtime-client";
 
 /** No-refetch integration writes for a host that owns its own reads. */
@@ -23,7 +24,7 @@ export interface IntegrationsWrites {
    *  several — two Gmail logins); omitted removes them all. */
   disconnect(
     toolkit: string,
-    opts?: { provider?: string; connectionId?: string },
+    opts?: { provider?: IntegrationProviderId; connectionId?: string },
   ): Promise<void>;
 }
 

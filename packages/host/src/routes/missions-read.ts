@@ -1,5 +1,9 @@
 import type { ServerResponse } from "node:http";
-import { loadActivities } from "@houston/domain";
+import {
+  loadActivities,
+  missionConversationId,
+  missionConversationKey,
+} from "@houston/domain";
 import type { ChatMessage } from "@houston/protocol";
 import { conversationKey } from "../paths";
 import { json } from "./http";
@@ -7,7 +11,7 @@ import {
   forwardMissionList,
   forwardMissionRead,
 } from "./missions-remote-forward";
-import { type MissionsCtx, missionSessionKey } from "./missions-sandbox";
+import type { MissionsCtx } from "./missions-sandbox";
 import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
 /**
@@ -63,7 +67,7 @@ export async function handleList(
       ...(a.updated_at ? { updated_at: a.updated_at } : {}),
       ...(a.origin_session_key ? { agent_started: true } : {}),
       ...(a.routine_id ? { from_routine: true } : {}),
-      ...(missionSessionKey(a) === ctx.conversationId
+      ...(missionConversationKey(a) === ctx.conversationId
         ? { this_conversation: true }
         : {}),
     }));
@@ -104,8 +108,8 @@ export async function handleMissionRead(
   // The convention id covers every mission this feature starts; an explicit
   // `session_key` covers a mission whose chat was keyed differently.
   const candidates = [
-    `activity-${id}`,
-    ...(mission ? [missionSessionKey(mission)] : []),
+    missionConversationId(id),
+    ...(mission ? [missionConversationKey(mission)] : []),
   ];
   for (const cid of new Set(candidates)) {
     const raw = await ctx.vfs.readText(

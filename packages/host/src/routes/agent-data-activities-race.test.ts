@@ -136,6 +136,14 @@ test("activity PATCH validates and deletes null provider/model pins", async () =
   expect(invalid.status).toBe(400);
 });
 
+test("a blank rename is refused, so no card is left without a name", async () => {
+  const store = slowStore();
+  await post(store, { id: "id-named", title: "Deck for Tuesday" });
+  const blank = await patch(store, "id-named", { title: "  " });
+  expect(blank.status).toBe(400);
+  expect(storedItems(store)[0]?.title).toBe("Deck for Tuesday");
+});
+
 test("create conflicts without replacing an existing mission or provenance", async () => {
   const store = slowStore();
   await post(store, { id: "existing", title: "Original" });

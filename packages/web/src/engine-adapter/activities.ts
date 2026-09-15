@@ -1,3 +1,8 @@
+import {
+  addressesMission,
+  missionConversationId,
+  missionConversationKey,
+} from "@houston/domain";
 import type {
   Activity,
   ActivityUpdate,
@@ -52,7 +57,7 @@ export function activityToConversation(
     description: a.description,
     status: a.status,
     type: "activity",
-    session_key: a.session_key ?? `activity-${a.id}`,
+    session_key: missionConversationKey(a),
     updated_at: a.updated_at,
     agent_path: agentPath,
     agent_name: agentName,
@@ -83,7 +88,7 @@ export function createActivity(
     title: input.title || "New chat",
     description: input.description ?? "",
     status: "running",
-    session_key: `activity-${id}`,
+    session_key: missionConversationId(id),
     agent: input.agent,
     provider: input.provider,
     model: input.model,
@@ -140,9 +145,7 @@ export function setStatusBySessionKey(
   pendingInteraction: PendingInteraction | null,
 ): void {
   const items = read(agentPath);
-  const idx = items.findIndex(
-    (a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
-  );
+  const idx = items.findIndex((a) => addressesMission(a, sessionKey));
   if (idx < 0) return;
   // A settle records the interaction it ended on; `null` (turn start, or any
   // settle with none) clears it so the card stops waiting on the user.

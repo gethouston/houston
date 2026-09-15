@@ -2001,7 +2001,11 @@ export const tauriIntegrations = {
     ),
   /** `connectionId` narrows the removal to ONE account of the toolkit (a
    *  toolkit can hold several — two Gmail logins); omitted removes them all. */
-  disconnect: (provider: string, toolkit: string, connectionId?: string) =>
+  disconnect: (
+    provider: IntegrationProviderId,
+    toolkit: string,
+    connectionId?: string,
+  ) =>
     call("integration_disconnect", () =>
       getEngine().disconnectIntegration(provider, toolkit, connectionId),
     ),

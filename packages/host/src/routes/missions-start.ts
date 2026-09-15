@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { loadActivities } from "@houston/domain";
+import { loadActivities, missionConversationKey } from "@houston/domain";
 import { json, readJson } from "./http";
 import { MAX_AGENT_STARTED_MISSIONS, missionFanout } from "./mission-fanout";
 import {
@@ -8,7 +8,7 @@ import {
   parseMissionStart,
 } from "./missions-remote";
 import { forwardMissionStart } from "./missions-remote-forward";
-import { type MissionsCtx, missionSessionKey } from "./missions-sandbox";
+import type { MissionsCtx } from "./missions-sandbox";
 import { startMission } from "./missions-start-run";
 import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
@@ -58,7 +58,9 @@ export async function handleMissionStart(
   // started at, so the chain is counted rather than guessed - a mission whose
   // own parent lives in another pod still knows how deep it sits.
   const { items: callerItems } = await loadActivities(ctx.vfs, ctx.root);
-  const parent = callerItems.find((a) => missionSessionKey(a) === parentCid);
+  const parent = callerItems.find(
+    (a) => missionConversationKey(a) === parentCid,
+  );
   const depth = parent?.origin_session_key ? (parent.origin_depth ?? 1) + 1 : 1;
   if (depth > MAX_MISSION_DEPTH) {
     return json(res, 409, {

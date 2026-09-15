@@ -9,6 +9,12 @@
  * (`getHistory` + `streamEvents`) are owned by the turns/feed module. This
  * module never touches history; it is the LIST only. Keep it that way.
  *
+ * SEAM — `listConversations` is spelled twice, for two different things. The
+ * engine adapter's method of that name
+ * (`packages/web/src/engine-adapter/client/activities-mixin.ts`) builds the
+ * BOARD out of an agent's missions; this module's `list` is the agent's chats,
+ * off the runtime. Neither calls the other.
+ *
  * SEAM — per-agent client. Protocol v3 nests conversations under agents
  * (`/v1/agents/:id/conversations/*`), while `@houston/runtime-client` speaks the
  * flat runtime shape. The kernel resolves the per-agent client (rooted at
@@ -56,13 +62,6 @@ export function createConversationsModule(ctx: ModuleContext) {
   // dropped, never published.
   const loadSeq = new Map<string, number>();
 
-  /**
-   * Lists an agent's chats.
-   *
-   * @param agentId The agent this acts on, by the id listAgents returns. An
-   *   agent's name is not its id, so read the id from listAgents first.
-   * @assistant group:chat
-   */
   const list = (agentId: string): Promise<ConversationSummary[]> =>
     clientFor(agentId).listConversations();
 
@@ -135,6 +134,12 @@ export function createConversationsModule(ctx: ModuleContext) {
   return {
     /** Scope string for `sdk.subscribe(...)` / `sdk.getSnapshot(...)`. */
     scope: conversationListScope,
+    /**
+     * Lists an agent's chats.
+     * @param agentId The agent this acts on, by the id listAgents returns. An
+     *   agent's name is not its id, so read the id from listAgents first.
+     * @assistant group:chat
+     */
     list,
     /** Fetch + publish the agent's conversation list. */
     refresh: (agentId: string): Promise<ConversationListVM> =>

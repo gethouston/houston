@@ -63,7 +63,7 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `updateCustomIntegrationDetails` - unconfirmed: Corrects the name and website on the card; the connection itself, its address and its credential are untouched.
 - `createActivity` - unconfirmed: Creates a board draft without starting work or spending model tokens.
 - `missions.search` - unroutable: it reads every agent's missions and then each unmatched mission's transcript, which is a search over many reads, not one route.
-- `renameMission` - unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is renamed back the same way.
+- `renameMission` - unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is changed back the same way.
 - `updateActivity` - hidden: its updates parameter also carries the lineage the runtime owns - session keys, routine run ids, and the pending interaction that authors an approval card - so a dispatched edit could rewrite far more than the mission's own words; a status move belongs to the coordinator's update_mission_status tool.
 - `getOrgProfiles` - hidden: UI plumbing; resolves member ids to the names and photos the app's avatars render.
 - `getOrgProfiles` - unroutable: the ids are one comma-joined query value, and a route can only map a query key to a whole scalar parameter - so the address is not derivable, and getOrgPeople is the roster read to dispatch.

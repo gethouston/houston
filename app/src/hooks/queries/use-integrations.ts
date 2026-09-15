@@ -82,7 +82,7 @@ export function useIntegrationToolkits(
  * so `.mutate()` never leaks an unhandled rejection. Adding an `onError` here
  * would double-toast (a second, more generic message on top of the engine's).
  */
-export function useDisconnectIntegration(provider: string) {
+export function useDisconnectIntegration(provider: IntegrationProviderId) {
   const qc = useQueryClient();
   return useMutation({
     // `connectionId` narrows the removal to ONE account of the toolkit (a

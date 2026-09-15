@@ -81,7 +81,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `deleteActivity` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:activities |
 | `listActivities` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `missions.search` | unroutable | unconfirmed: no callable route | visible | query: free text; agentId: resolved:agents |
-| `renameMission` | PATCH | unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is renamed back the same way. | visible | agentId: resolved:agents; id: resolved:activities; title: free text |
+| `renameMission` | PATCH | unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is changed back the same way. | visible | agentId: resolved:agents; id: resolved:activities; title: free text |
 | `updateActivity` | PATCH | confirmed: host approval required | its updates parameter also carries the lineage the runtime owns - session keys, routine run ids, and the pending interaction that authors an approval card - so a dispatched edit could rewrite far more than the mission's own words; a status move belongs to the coordinator's update_mission_status tool. | agentId: resolved:agents; id: resolved:activities; updates: free text |
 | `addOrgMember` | POST | confirmed: host approval required | visible | email: free text; role: enum |
 | `computeUsage` | GET | unconfirmed: read-only HTTP GET | visible | days: free text |

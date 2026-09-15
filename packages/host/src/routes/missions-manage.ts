@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   applyActivityUpdate,
   loadActivities,
+  missionConversationKey,
   saveActivities,
   upsertById,
 } from "@houston/domain";
@@ -11,11 +12,7 @@ import { json, readJson } from "./http";
 import { liveTurns } from "./live-turn";
 import { type MissionStatusInput, parseMissionStatus } from "./missions-remote";
 import { forwardMissionStatus } from "./missions-remote-forward";
-import {
-  fireActivityChanged,
-  type MissionsCtx,
-  missionSessionKey,
-} from "./missions-sandbox";
+import { fireActivityChanged, type MissionsCtx } from "./missions-sandbox";
 import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
 /**
@@ -66,7 +63,7 @@ export async function applyMissionStatus(
     const current = items.find((a) => a.id === id);
     if (!current) return "not_found" as const;
     if (current.status === "running") return "running" as const;
-    if (missionSessionKey(current) === ctx.conversationId)
+    if (missionConversationKey(current) === ctx.conversationId)
       return "self" as const;
     // applyActivityUpdate carries the user-move semantics: a move to `done`
     // strips the blocking interaction steps and keeps the clean-finish offers.
@@ -134,7 +131,7 @@ export async function handleMissionSettle(
   liveTurns.end(ctx.agent.id, cid);
   const settled = await withDocLock(`${ctx.root}#activity`, async () => {
     const { items } = await loadActivities(ctx.vfs, ctx.root);
-    const current = items.find((a) => missionSessionKey(a) === cid);
+    const current = items.find((a) => missionConversationKey(a) === cid);
     if (!current?.origin_session_key) return false;
     if (current.status !== "running") return false;
     const applied = applyActivityUpdate(

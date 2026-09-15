@@ -85,7 +85,7 @@ export function IntegrationsMixin<TBase extends BaseCtor>(Base: TBase) {
       );
     }
     async disconnectIntegration(
-      provider: string,
+      provider: IntegrationProviderId,
       toolkit: string,
       connectionId?: string,
     ): Promise<void> {

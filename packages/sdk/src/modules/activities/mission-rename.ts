@@ -12,6 +12,12 @@
  * tool, which refuses a running mission and forwards cross-pod.
  *
  * `updateActivity` stays exactly as it is: wide, hidden, and the app's.
+ *
+ * It issues the request itself rather than delegating to `updateActivity`: the
+ * catalog's route is read off the annotated function's OWN body
+ * (`ui/engine-client/scripts/assistant-route.ts`), so a one-line delegation
+ * here would leave this operation with no derivable route and the assistant
+ * with no way to perform it.
  */
 
 import type { Activity } from "@houston/protocol";
@@ -25,7 +31,7 @@ import { type HttpScope, httpRequest } from "../http";
  * @param id The mission to rename, by the id listActivities returns.
  * @param title The mission's new title, in the user's own words.
  * @assistant group:missions
- * @assistant unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is renamed back the same way.
+ * @assistant unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is changed back the same way.
  */
 export async function renameMission(
   scope: HttpScope,

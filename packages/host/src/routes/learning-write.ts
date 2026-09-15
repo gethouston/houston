@@ -1,4 +1,5 @@
 import {
+  addressesMission,
   jsonDoc,
   loadActivities,
   loadLearnings,
@@ -93,10 +94,8 @@ async function learningMission(
   if (!conversationId) return {};
   try {
     const { items } = await loadActivities(store, root);
-    const activity = items.find(
-      (item) =>
-        item.session_key === conversationId ||
-        `activity-${item.id}` === conversationId,
+    const activity = items.find((item) =>
+      addressesMission(item, conversationId),
     );
     if (!activity) return {};
     return {

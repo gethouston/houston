@@ -278,6 +278,145 @@ const CATALOG: AssistantCatalog = {
       },
     },
     {
+      name: "conversations.rename",
+      group: "chat",
+      description: "Retitle one of an agent's chats.",
+      confirm: false,
+      hidden: false,
+      params: [
+        {
+          name: "agentId",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+          source: "listAgents",
+        },
+        // `source` is how a parameter says it names a chat — the declaration
+        // the protected-chat guard reads (assistant-operation-guards.ts).
+        {
+          name: "id",
+          required: true,
+          schema: { type: "string" },
+          source: "conversations.list",
+        },
+        { name: "title", required: true, schema: { type: "string" } },
+      ],
+      returns: { type: "object" },
+      route: {
+        method: "PATCH",
+        path: "/agents/{agentId}/conversations/{id}",
+        pathParams: [
+          { name: "agentId", encoding: "segment" },
+          { name: "id", encoding: "segment" },
+        ],
+        query: {},
+        body: null,
+        bodyFields: { title: "title" },
+      },
+    },
+    {
+      name: "conversations.delete",
+      group: "chat",
+      description: "Delete one of an agent's chats.",
+      confirm: true,
+      hidden: false,
+      params: [
+        {
+          name: "agentId",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+          source: "listAgents",
+        },
+        {
+          name: "id",
+          required: true,
+          schema: { type: "string" },
+          source: "conversations.list",
+        },
+      ],
+      returns: { type: "object" },
+      route: {
+        method: "DELETE",
+        path: "/agents/{agentId}/conversations/{id}",
+        pathParams: [
+          { name: "agentId", encoding: "segment" },
+          { name: "id", encoding: "segment" },
+        ],
+        query: {},
+        body: null,
+        bodyFields: null,
+      },
+    },
+    {
+      name: "turns.cancel",
+      group: "chat",
+      description: "Stop the turn running in a chat.",
+      confirm: false,
+      hidden: false,
+      params: [
+        {
+          name: "agentId",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+          source: "listAgents",
+        },
+        {
+          name: "conversationId",
+          required: true,
+          schema: { type: "string" },
+          source: "conversations.list",
+        },
+      ],
+      returns: { type: "object" },
+      route: {
+        method: "POST",
+        path: "/agents/{agentId}/conversations/{conversationId}/cancel",
+        pathParams: [
+          { name: "agentId", encoding: "segment" },
+          { name: "conversationId", encoding: "segment" },
+        ],
+        query: {},
+        body: null,
+        bodyFields: null,
+      },
+    },
+    {
+      name: "turns.history",
+      group: "chat",
+      description: "Read what was said in a chat.",
+      confirm: false,
+      hidden: false,
+      params: [
+        {
+          name: "agentId",
+          required: true,
+          schema: { type: "string" },
+          resolver: "agents",
+          source: "listAgents",
+        },
+        {
+          name: "conversationId",
+          required: true,
+          schema: { type: "string" },
+          source: "conversations.list",
+        },
+      ],
+      returns: { type: "array" },
+      route: {
+        method: "GET",
+        path: "/agents/{agentId}/conversations/{conversationId}/messages",
+        pathParams: [
+          { name: "agentId", encoding: "segment" },
+          { name: "conversationId", encoding: "segment" },
+        ],
+        query: {},
+        body: null,
+        bodyFields: null,
+      },
+    },
+    {
       name: "downloadAgentFile",
       group: "files",
       description: "Catalogued, but no route could be derived from its source.",
@@ -1496,6 +1635,120 @@ test("an empty unserved set withholds nothing", async () => {
   const { calls, impl } = fetchStub(() => ({ body: { items: [] } }));
   const out = await call(
     { operation: "listOrgs", params: {} },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(200);
+  expect(calls).toHaveLength(1);
+});
+
+/**
+ * THE CHATS THAT ARE NOT THE ASSISTANT'S TO RENAME OR DELETE: the one this turn
+ * is running in, and the ones a mission card or a routine owns
+ * (assistant-operation-guards.ts).
+ */
+test("the chat this turn is running in cannot be renamed from inside itself", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await call(
+    {
+      operation: "conversations.rename",
+      params: { agentId: "Work/Ada", id: "conv-1", title: "New" },
+    },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(409);
+  expect(out.body).toMatchObject({ code: "protected_conversation" });
+  expect(String((out.body as { error: string }).error)).toContain(
+    "chat you are talking in",
+  );
+  expect(calls).toEqual([]);
+});
+
+test("deleting the chat this turn runs in is refused before a card is ever raised", async () => {
+  const approvals = new ApprovalStore();
+  const out = await call(
+    {
+      operation: "conversations.delete",
+      params: { agentId: "Work/Ada", id: "conv-1" },
+    },
+    { approvals, path: ASSISTANT_PENDING_PATH },
+  );
+  expect(out.status).toBe(409);
+  expect(out.body).toMatchObject({ code: "protected_conversation" });
+  expect(approvals.hasPending(ASSISTANT_AGENT, "conv-1")).toBe(false);
+});
+
+test("any other chat is renamed exactly as before", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await call(
+    {
+      operation: "conversations.rename",
+      params: { agentId: "Work/Ada", id: "conv-2", title: "New" },
+    },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(200);
+  expect(sent(calls).url).toBe(
+    "https://gateway.test/agents/Work%2FAda/conversations/conv-2",
+  );
+});
+
+test("a mission's transcript belongs to its card, and the refusal says so", async () => {
+  // Deleting it would leave the card on the board pointing at a chat that is
+  // gone, with no screen anywhere that would put it back.
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await approvedCall(
+    "conversations.delete",
+    { agentId: "Work/Ada", id: "activity-m1" },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(409);
+  expect(out.body).toMatchObject({ code: "protected_conversation" });
+  expect(String((out.body as { error: string }).error)).toContain(
+    "deleteActivity",
+  );
+  expect(calls).toEqual([]);
+});
+
+test("a routine's chat belongs to the routine, and the refusal says so", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await call(
+    {
+      operation: "conversations.rename",
+      params: { agentId: "Work/Ada", id: "routine-r1-run-2", title: "New" },
+    },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(409);
+  expect(String((out.body as { error: string }).error)).toContain(
+    "deleteRoutine",
+  );
+  expect(calls).toEqual([]);
+});
+
+test("stopping a mission's turn is still the assistant's to do", async () => {
+  // The guard claims the chat's own address, never what happens inside it: a
+  // mission the user wants stopped is cancelled exactly as before.
+  const { calls, impl } = fetchStub(() => ({ body: { ok: true } }));
+  const out = await call(
+    {
+      operation: "turns.cancel",
+      params: { agentId: "Work/Ada", conversationId: "activity-m1" },
+    },
+    { fetchImpl: impl },
+  );
+  expect(out.status).toBe(200);
+  expect(sent(calls).url).toBe(
+    "https://gateway.test/agents/Work%2FAda/conversations/activity-m1/cancel",
+  );
+});
+
+test("reading a protected chat is never refused", async () => {
+  const { calls, impl } = fetchStub(() => ({ body: [] }));
+  const out = await call(
+    {
+      operation: "turns.history",
+      params: { agentId: "Work/Ada", conversationId: "conv-1" },
+    },
     { fetchImpl: impl },
   );
   expect(out.status).toBe(200);

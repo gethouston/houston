@@ -9,6 +9,7 @@
  * the same card on every surface.
  */
 
+import { addressesMission, missionConversationKey } from "@houston/domain";
 import type { Activity } from "@houston/protocol";
 import type { ActivityItem } from "./types";
 
@@ -18,7 +19,7 @@ import type { ActivityItem } from "./types";
  * key (PARITY §6). A routine chat carries its own `session_key`.
  */
 export function sessionKeyOf(a: Activity): string {
-  return a.session_key ?? `activity-${a.id}`;
+  return missionConversationKey(a);
 }
 
 /**
@@ -32,7 +33,7 @@ export function matchesActivitySessionKey(
   a: Activity,
   sessionKey: string,
 ): boolean {
-  return a.session_key === sessionKey || `activity-${a.id}` === sessionKey;
+  return addressesMission(a, sessionKey);
 }
 
 /** Project a wire `Activity` onto the scope view-model item. Lossless for the
