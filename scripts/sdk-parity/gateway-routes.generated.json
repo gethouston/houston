@@ -1,0 +1,1102 @@
+[
+  {
+    "pattern": "/",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "the authenticated catch-all that answers the JSON 404 for any unknown path; it serves no resource of its own"
+  },
+  {
+    "pattern": "/a2a/{org}/{agent}",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "the A2A JSON-RPC interop surface third-party agent clients call with an API key; the Houston app drives missions over /v1/agents/{slug}/missions"
+  },
+  {
+    "pattern": "/a2a/{org}/{agent}/.well-known/agent-card.json",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "the A2A JSON-RPC interop surface third-party agent clients call with an API key; the Houston app drives missions over /v1/agents/{slug}/missions"
+  },
+  {
+    "pattern": "/agents/{slug}/{path...}",
+    "methods": [
+      "*"
+    ],
+    "classification": "runtime-proxy",
+    "reason": "served by the agent's engine; the SDK reaches it through @houston/runtime-client"
+  },
+  {
+    "pattern": "/internal/frp-auth",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "mounted only to answer a named 404 on every method: the callback without its secret segment serves nothing, and the exact pattern keeps ServeMux from redirecting it to the prefix"
+  },
+  {
+    "pattern": "/mcp",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "the MCP server surface third-party tool clients call with an API key; the Houston app drives missions over /v1/agents/{slug}/missions"
+  },
+  {
+    "pattern": "/setup-runtime",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "mounted only to answer a named 404 on every method: the family's own routes all live below it, and the exact pattern keeps ServeMux from redirecting it to the prefix"
+  },
+  {
+    "pattern": "/v1/auth/apple/return",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "Apple posts its sign-in form_post here and the gateway answers with the houston:// deep link; the user has no session yet"
+  },
+  {
+    "pattern": "/v1/integrations/custom/oauth/callback",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "the browser's OAuth return leg for a custom MCP sign-in; the pod's single-use state authenticates it and the relay answers with a page"
+  },
+  {
+    "pattern": "/v1/pod/boot-report/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod posts its own boot outcome with the injected pod token so the control plane can see why a cold start failed"
+  },
+  {
+    "pattern": "/v1/pod/credentials/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod fetches its org's provider credentials with the pod token the gateway injected; no user client holds one"
+  },
+  {
+    "pattern": "/v1/pod/custom-secrets/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod reads its agent-scoped custom-integration secrets with the injected pod token, keeping pods outside GCP IAM"
+  },
+  {
+    "pattern": "/v1/pod/shared-endpoint/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod resolves the org-shared local-model endpoint with the injected pod token before it can route a turn to it"
+  },
+  {
+    "pattern": "/v1/pod/transcripts/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod persists its conversation transcripts with the injected pod token; clients read them back through the agent proxy"
+  },
+  {
+    "pattern": "/v1/pod/turnlog/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod or pool worker appends durable turn-log frames with the injected pod token; replay is served to clients over /v1/events"
+  },
+  {
+    "pattern": "/v1/pod/usage/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod reports its own turn usage with the injected pod token; the app reads usage through /v1/org/compute-usage instead"
+  },
+  {
+    "pattern": "/v1/portable",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "mounted only to answer a named 501: the portable-workspace surface is a desktop-host feature the hosted gateway has no disk for"
+  },
+  {
+    "pattern": "/v1/portable/",
+    "methods": [
+      "*"
+    ],
+    "classification": "infra",
+    "reason": "mounted only to answer a named 501: the portable-workspace surface is a desktop-host feature the hosted gateway has no disk for"
+  },
+  {
+    "pattern": "/v1/keys/{id}",
+    "methods": [
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/me",
+    "methods": [
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org-invites/{inviteId}",
+    "methods": [
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/invites/{inviteId}",
+    "methods": [
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/orgs/{slug}",
+    "methods": [
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/agents",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/health",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "classification": "infra",
+    "reason": "an unauthenticated load-balancer and uptime probe for the gateway's own liveness, distinct from an agent engine's /health"
+  },
+  {
+    "pattern": "/healthz",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "classification": "infra",
+    "reason": "an unauthenticated load-balancer and uptime probe for the gateway's own liveness, distinct from an agent engine's /health"
+  },
+  {
+    "pattern": "/readyz",
+    "methods": [
+      "GET",
+      "HEAD"
+    ],
+    "classification": "infra",
+    "reason": "an unauthenticated load-balancer and uptime probe for the gateway's own liveness, distinct from an agent engine's /health"
+  },
+  {
+    "pattern": "/setup-runtime/auth/status",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/setup-runtime/providers",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/missions",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/missions/{id}",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/missions/{id}/events",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/model-choice",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/move/{moveId}",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/settings",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/trigger-status",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/creator-reports",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/queue",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/reports",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/agents",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/agents/{slug}",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/avatars/{key...}",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "a browser loads these avatar bytes directly from an \u003cimg\u003e src, so no client method wraps the request"
+  },
+  {
+    "pattern": "/v1/agentstore/categories",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/creators",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/creators/{handle}",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/handles/{handle}/available",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/me/agents",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/me/analytics",
+    "methods": [
+      "GET"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/me/profile",
+    "methods": [
+      "GET",
+      "PATCH"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/schema/agent",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "a public JSON-Schema document any client or agent fetches on its own to validate an Agent Store listing"
+  },
+  {
+    "pattern": "/v1/assistant",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/capabilities",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/catalog",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/certs/export",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "public participation-certificate pages served to event attendees, who are not Houston accounts and run no SDK client"
+  },
+  {
+    "pattern": "/v1/certs/{code}",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "public participation-certificate pages served to event attendees, who are not Houston accounts and run no SDK client"
+  },
+  {
+    "pattern": "/v1/events",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations/composio/connections",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations/composio/connections/{id}",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations/composio/toolkits",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations/composio/trigger-types",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/keys",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/local-model-bridges/legacy",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/local-model-bridges/{id}",
+    "methods": [
+      "GET",
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/local-model-bridges/{id}/connect",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/me/onboarding",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/me/profile",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/metrics/product",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "the internal operator dashboard's server pulls it with the shared GW_METRICS_TOKEN bearer; no Houston principal is behind the call and the app never reads it"
+  },
+  {
+    "pattern": "/v1/org",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/audit",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/billing",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/compute-usage",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/people",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/profiles",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/teams",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/teams/{teamId}/members",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/usage",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/orgs",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/pod/local-model-bridges/{orgHash}/{agentHash}/{sessionId}/v1/models",
+    "methods": [
+      "GET"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod calls the user's registered local model through this relay, authenticated by the host token derived for its (org, agent) pair"
+  },
+  {
+    "pattern": "/v1/preferences/{key}",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/user-context",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/version",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/workspace-context",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/workspaces",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/workspaces/{org}/shared-skills",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/workspaces/{org}/shared-skills/{slug}",
+    "methods": [
+      "GET",
+      "POST",
+      "PUT",
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/agents/{slug}",
+    "methods": [
+      "PATCH",
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agentstore/agents/{id}",
+    "methods": [
+      "PATCH",
+      "DELETE"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/org/members/{userId}",
+    "methods": [
+      "PATCH",
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/teams/{teamId}",
+    "methods": [
+      "PATCH",
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/workspaces/{id}",
+    "methods": [
+      "PATCH"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/feedback",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/internal/frp-auth/",
+    "methods": [
+      "POST"
+    ],
+    "classification": "internal-control-plane",
+    "reason": "frps authorizes each frpc login and proxy registration through this callback, authenticated by the shared secret in the path; no user client can present one"
+  },
+  {
+    "pattern": "/internal/stripe-webhook",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "Stripe posts subscription events here and the signature HMAC over the raw body is the trust boundary; no user session exists"
+  },
+  {
+    "pattern": "/setup-runtime/auth/{provider}/login",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/setup-runtime/auth/{provider}/login/cancel",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/setup-runtime/auth/{provider}/login/complete",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/setup-runtime/auth/{provider}/logout",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/setup-runtime/credential/api-key",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/setup-runtime/credential/capture",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/setup-runtime/credential/claude-oauth",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/setup-runtime/credential/forget",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{agentSlug}/routines/{routineId}/webhook-key",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/missions/{id}/cancel",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/move",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/creator-reports/{id}",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/creators/{handle}/grant",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/creators/{handle}/release",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/creators/{handle}/verify",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/purge",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/queue/{id}",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/admin/reports/{id}",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website's admin client calls it through @houston/agentstore-client; @houston/sdk carries no moderation surface"
+  },
+  {
+    "pattern": "/v1/agentstore/agents/{slug}/installs",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/agents/{slug}/reports",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/claim",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/creators/{handle}/reports",
+    "methods": [
+      "POST"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/agentstore/me/avatar",
+    "methods": [
+      "POST",
+      "DELETE"
+    ],
+    "classification": "store-client",
+    "reason": "the Agent Store website and the in-app store view call it through @houston/agentstore-client, the open store package @houston/sdk deliberately does not duplicate"
+  },
+  {
+    "pattern": "/v1/analytics/events",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/auth/email-otp/start",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "pre-auth sign-in bootstrap: the client holds no bearer yet, so the identity layer calls it directly and exchanges the minted custom token with GCIP"
+  },
+  {
+    "pattern": "/v1/auth/email-otp/verify",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "pre-auth sign-in bootstrap: the client holds no bearer yet, so the identity layer calls it directly and exchanges the minted custom token with GCIP"
+  },
+  {
+    "pattern": "/v1/certs/claim",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "public participation-certificate pages served to event attendees, who are not Houston accounts and run no SDK client"
+  },
+  {
+    "pattern": "/v1/certs/name",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "public participation-certificate pages served to event attendees, who are not Houston accounts and run no SDK client"
+  },
+  {
+    "pattern": "/v1/client-metrics",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/hooks/{routineId}/{secret}",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "a third-party service posts the automation's incoming webhook here; the per-routine path secret is the only credential"
+  },
+  {
+    "pattern": "/v1/integrations/composio/connect",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations/composio/disconnect",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations/composio/execute",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations/composio/search",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/integrations/composio/webhook",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "Composio posts trigger events here and the request is authenticated by an HMAC over the raw body, not by any user session"
+  },
+  {
+    "pattern": "/v1/local-model-bridges",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/local-model-bridges/{id}/sessions",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org-invites/{inviteId}/accept",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/billing/checkout",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/billing/portal",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/members",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/pod/local-model-bridges/{orgHash}/{agentHash}/{sessionId}/v1/chat/completions",
+    "methods": [
+      "POST"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod calls the user's registered local model through this relay, authenticated by the host token derived for its (org, agent) pair"
+  },
+  {
+    "pattern": "/v1/pool/claims/heartbeat",
+    "methods": [
+      "POST"
+    ],
+    "classification": "internal-control-plane",
+    "reason": "a pool worker heartbeats the turn claim it holds; a claim only ever exists inside the cluster, never in a user session"
+  },
+  {
+    "pattern": "/v1/pool/workers/heartbeat",
+    "methods": [
+      "POST"
+    ],
+    "classification": "internal-control-plane",
+    "reason": "a pool worker heartbeats its lease so the gateway knows which workers can still be dispatched a turn"
+  },
+  {
+    "pattern": "/v1/tunnel/credentials",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/web/events",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "the marketing website's anonymous browser beacon, posted before any Houston account exists; there is no signed-in user for an SDK call to authenticate as"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/assignments",
+    "methods": [
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/color",
+    "methods": [
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/team",
+    "methods": [
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/teams/{teamId}/members/{userId}",
+    "methods": [
+      "PUT",
+      "DELETE"
+    ],
+    "classification": "sdk"
+  }
+]

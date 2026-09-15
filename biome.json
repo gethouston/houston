@@ -19,6 +19,7 @@
       "!app/src/agents/builtin/store-templates",
       "!app/src/lib/ai-hub/model-catalog.json",
       "!packages/host/src/routes/routes.golden.json",
+      "!scripts/sdk-parity/gateway-routes.generated.json",
       "!website/src/assets/vendor"
     ]
   },

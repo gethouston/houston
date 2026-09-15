@@ -20,6 +20,7 @@
     "check:assistant-catalog": "node --experimental-strip-types ui/engine-client/scripts/check-assistant-catalog.ts",
     "check:assistant-coverage": "node --experimental-strip-types ui/engine-client/scripts/check-assistant-coverage.ts",
     "check:sdk-parity": "tsx scripts/check-sdk-parity.ts",
+    "vendor:gateway-routes": "tsx scripts/sdk-parity/vendor.ts",
     "generate:team-icons": "node scripts/generate-team-icons.mjs && biome format --write ui/layout/src/sidebar-group-glyph-data-*.ts ui/layout/src/sidebar-group-glyph-tags.ts",
     "prepare": "husky || true",
     "test": "pnpm -r --if-present --no-bail test",
