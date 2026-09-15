@@ -1,31 +1,38 @@
-import { it } from "vitest";
+import { expect, it } from "vitest";
+import { listRoutes } from "../routes/registry/all";
+import { OP_CHAIN, OP_EXCLUSIONS } from "./op-surface";
+
+/** Every group the registry's agent segment actually carries routes for. */
+function agentGroups(): string[] {
+  return [
+    ...new Set(
+      listRoutes()
+        .filter((route) => route.phase === "agent")
+        .map((route) => route.group),
+    ),
+  ];
+}
 
 /**
- * The pool-worker op chain (op/handler-chain.ts) is a SECOND hand-ordered copy
- * of the per-agent dispatch surface, and its own comment admits the hazard: "A
- * per-agent route added to the registry must be added here too, or its op
- * answers 404."
- *
- * Killing that drift is the registry's strongest internal payoff. Once every
- * per-agent route is declared (waves 5a, 5b and 6), wave 7 derives the op chain
- * from `listRoutes()` filtered to `phase: "agent"` minus a declared
- * OP_EXCLUSIONS — today `trigger-status` (gateway-native while an agent sleeps)
- * and `portable/anonymize` (its own op kind) — and this becomes a real test
- * asserting the two sets are equal.
- *
- * It is stated here, in wave 0, so the obligation cannot be forgotten between
- * the wave that makes it possible and the wave that must honour it.
+ * The pool-worker op chain used to be a SECOND hand-ordered copy of the
+ * per-agent dispatch surface, and its own comment admitted the hazard: a route
+ * added to one chain and not the other answered 404 as an op. It is now derived
+ * from the registry, and this is what holds the derivation honest — the served
+ * set is exactly the agent segment minus the groups the worker cannot answer.
  */
-it.todo(
-  "the pool-worker op chain equals listRoutes() phase:agent minus OP_EXCLUSIONS (wave 7)",
-);
+it("the op chain serves every agent-phase group except the declared exclusions", () => {
+  const expected = agentGroups().filter((group) => !(group in OP_EXCLUSIONS));
+  expect([...OP_CHAIN].sort()).toEqual([...expected].sort());
+});
 
-/**
- * `pnpm check:sdk-parity` runs on every `pnpm check` today but always exits 0:
- * the registry holds only the migrated routes, so rules 1 and 2 report counts
- * that are an artefact of the in-progress migration, not violations. Wave 7
- * makes an open violation fail the process — stated here for the same reason
- * as the obligation above: it must not be forgotten between the wave that
- * makes it possible and the wave that must honour it.
- */
-it.todo("check-sdk-parity exits non-zero on open violations (wave 7)");
+it("every exclusion names a live group and says why the worker cannot serve it", () => {
+  const groups = agentGroups();
+  for (const [group, reason] of Object.entries(OP_EXCLUSIONS)) {
+    expect(groups).toContain(group);
+    expect(reason.length).toBeGreaterThan(20);
+  }
+});
+
+it("no group is both excused and served", () => {
+  for (const group of OP_CHAIN) expect(OP_EXCLUSIONS).not.toHaveProperty(group);
+});

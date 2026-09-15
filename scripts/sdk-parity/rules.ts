@@ -13,6 +13,14 @@ export type Rule =
   | "route-served-twice"
   | "proxy-drift";
 
+/** Every rule, in the order the report states them. */
+export const RULES: Rule[] = [
+  "sdk-route-unbound",
+  "sdk-method-unserved",
+  "route-served-twice",
+  "proxy-drift",
+];
+
 export interface Violation {
   rule: Rule;
   /** Stable identity an exception entry addresses. */

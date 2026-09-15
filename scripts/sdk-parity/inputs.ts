@@ -35,11 +35,20 @@ export interface SdkMethod {
  * `METHOD /path/{}`. Every parameter spelling folds to one token — the host's
  * `:agentId`, the gateway's `{slug}` and an SDK template's `${id}` name the
  * same segment — and a trailing slash is dropped.
+ *
+ * A parameter that swallows the REST of the path folds to `{*}` instead, and
+ * only to `{*}`: the host's `*rest`, the gateway's Go-mux `{path...}` and an
+ * SDK parameter escaped per segment (`relPath`, which keeps its `/`s — the
+ * catalog marks it `encoding: "path"`, and `sdkMethods` rewrites it before it
+ * gets here) are the same slot, and folding them to `{}` would make a
+ * one-segment route and a whole-subtree route compare equal.
  */
 export function normalize(path: string): string {
   const folded = path
+    .replace(/\*[A-Za-z_][\w-]*/g, "{*}")
+    .replace(/\{[^}]*\.\.\.\}/g, "{*}")
     .replace(/\$\{[^}]*\}/g, "{}")
-    .replace(/\{[^}]*\}/g, "{}")
+    .replace(/\{[^}*]*\}/g, "{}")
     .replace(/:[^/]+/g, "{}");
   return folded.length > 1 && folded.endsWith("/")
     ? folded.slice(0, -1)
@@ -60,6 +69,24 @@ export { listRoutes };
 export function readGateway(): GatewayRoute[] | null {
   if (!existsSync(gatewayExport)) return null;
   return JSON.parse(readFileSync(gatewayExport, "utf8")) as GatewayRoute[];
+}
+
+/**
+ * The catalog path with its whole-subtree parameters spelled as such: an SDK
+ * parameter escaped per segment keeps its `/`s, so `{relPath}` addresses the
+ * same slot the host declares as `*rest`, not one segment of it.
+ */
+function restSpelled(route: {
+  path: string;
+  pathParams: { name: string; encoding: string }[];
+}): string {
+  return route.pathParams.reduce(
+    (path, param) =>
+      param.encoding === "path"
+        ? path.replaceAll(`{${param.name}}`, "{...}")
+        : path,
+    route.path,
+  );
 }
 
 /**
@@ -88,7 +115,7 @@ export function sdkMethods(): {
         ? [
             {
               name: operation.name,
-              key: keyOf(operation.route.method, operation.route.path),
+              key: keyOf(operation.route.method, restSpelled(operation.route)),
             },
           ]
         : [],

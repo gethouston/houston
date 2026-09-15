@@ -2,12 +2,20 @@ import type { Phase } from "./types";
 
 /**
  * Every dispatch group, in the order server.ts calls its slot, with the phase
- * that slot sits in. A migration wave appends its groups HERE and replaces its
- * handler's chain slot with one `dispatchGroup` line, so a group occupies
- * exactly the position its handler did and global order cannot move.
+ * that slot sits in. THIS TABLE IS THE CHAIN: server.ts walks it segment by
+ * segment (server-phases.ts), so a group's position here is the position its
+ * requests are matched at, and moving a line moves the route.
+ *
+ * The phases run public+sandbox → user → agent, and each phase's groups form
+ * ONE contiguous run — registry/order.test.ts holds that shape, because the
+ * segments are what the walk is built from.
  */
 export const GROUP_PHASES = {
+  // Health + the v3 meta surface: capabilities are not secrets, and the UI
+  // reads them before sign-in to shape itself.
   meta: "public",
+  // pi-ai's full static model catalog, the SAME on every deployment — static
+  // and not user-scoped, so it rides the public meta surface.
   catalog: "public",
   "sandbox-credential": "sandbox",
   "sandbox-credential-revoked": "sandbox",
@@ -28,11 +36,16 @@ export const GROUP_PHASES = {
   "pod-activity": "user",
   metrics: "user",
   feedback: "user",
+  // Marketplace reads (skills.sh search/popular, GitHub repo discovery) answer
+  // top-level for direct API callers; the shipped clients call the agent-scoped
+  // twins (routes/skills-remote.ts) so the hosted gateway can proxy them.
   "skills-directory": "user",
   "shared-skills": "user",
   account: "user",
   "portable-account": "user",
   "portable-from-store": "user",
+  // Desktop-local by design: the cloud gateway proxies only agent-scoped
+  // routes, so a managed pod never serves this listing.
   "migration-source": "user",
   "agent-configs": "user",
   // Custom-integration definitions BEFORE the generic provider family: the
@@ -42,6 +55,8 @@ export const GROUP_PHASES = {
   integrations: "user",
   "setup-runtime": "user",
   assistant: "user",
+  // Control-plane delivery into a managed pod, ahead of the per-agent
+  // dispatch because the agent's own runtime has no trigger or cron route.
   "trigger-events": "user",
   "routine-fires": "user",
   // Agent-scoped, yet a USER-phase group: it is mounted ahead of the per-agent
@@ -49,6 +64,9 @@ export const GROUP_PHASES = {
   // keeps the authz call inside its handler rather than taking the agent
   // phase's (which would answer 403 to a wrong method on someone else's agent).
   "agent-color": "user",
+  // The user's own agents, then everything scoped to ONE of them. Every group
+  // below is agent-phase: the dispatcher runs the ownership check for the agent
+  // the matched pattern names, so none of them can answer without one.
   agents: "user",
   "agent-crud": "agent",
   "agent-credentials": "agent",
@@ -92,3 +110,24 @@ export const GROUP_ORDER: GroupId[] =
 export type GroupsIn<P extends Phase> = {
   [K in GroupId]: (typeof GROUP_PHASES)[K] extends P ? K : never;
 }[GroupId];
+
+const isPreAuth = (group: GroupId): group is GroupsIn<"public" | "sandbox"> =>
+  GROUP_PHASES[group] === "public" || GROUP_PHASES[group] === "sandbox";
+
+const isUser = (group: GroupId): group is GroupsIn<"user"> =>
+  GROUP_PHASES[group] === "user";
+
+const isAgent = (group: GroupId): group is GroupsIn<"agent"> =>
+  GROUP_PHASES[group] === "agent";
+
+/**
+ * The chain's three segments, in chain order — what server-phases.ts walks.
+ *
+ * Public and sandbox share one segment because they share one entry context:
+ * both run before the 401 wall, and the public OAuth callback sits among the
+ * sandbox families precisely because the browser arriving on it holds no
+ * bearer token either.
+ */
+export const PRE_AUTH_GROUPS = GROUP_ORDER.filter(isPreAuth);
+export const USER_GROUPS = GROUP_ORDER.filter(isUser);
+export const AGENT_GROUPS = GROUP_ORDER.filter(isAgent);

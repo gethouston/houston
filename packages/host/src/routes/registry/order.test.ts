@@ -1,9 +1,14 @@
-import { readFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { expect, test } from "vitest";
 import { replayHost } from "../../testing/route-replay-host";
 import { dispatchGroup, listRoutes } from "./all";
-import { GROUP_ORDER, GROUP_PHASES, type GroupId } from "./groups";
+import {
+  AGENT_GROUPS,
+  GROUP_ORDER,
+  GROUP_PHASES,
+  PRE_AUTH_GROUPS,
+  USER_GROUPS,
+} from "./groups";
 import { registeredRoutes } from "./index";
 import { generalises } from "./match";
 import type { HttpMethod } from "./types";
@@ -148,22 +153,22 @@ test("GROUP_ORDER covers every group exactly once", () => {
   expect(new Set(GROUP_ORDER).size).toBe(GROUP_ORDER.length);
 });
 
-/** The `dispatchGroup("<id>"` literals one module calls, in source order. */
-function dispatchedGroups(module: string): GroupId[] {
-  const source = readFileSync(new URL(module, import.meta.url), "utf8");
-  return [...source.matchAll(/dispatchGroup\(\s*"([^"]+)"/g)].map(
-    (match) => match[1] as GroupId,
+/**
+ * server-phases.ts walks the table one SEGMENT at a time, so the segments are
+ * the shape the walk depends on: each phase's groups have to be one unbroken
+ * run, and the runs have to arrive in pipeline order. A group appended to the
+ * table in the wrong place would otherwise be dispatched in the wrong phase —
+ * with a context that has no user id, or behind an ownership check it never
+ * asked for — and the loop itself could not notice.
+ */
+test("GROUP_ORDER's phase segments are contiguous and in phase order", () => {
+  expect([...PRE_AUTH_GROUPS, ...USER_GROUPS, ...AGENT_GROUPS]).toEqual(
+    GROUP_ORDER,
   );
-}
-
-test("server.ts calls its groups in GROUP_ORDER order", () => {
-  const called = dispatchedGroups("../../server.ts");
-  expect(called.length).toBeGreaterThan(0);
-  for (const group of called) expect(GROUP_PHASES).toHaveProperty(group);
-  // Only INVERSIONS fail: a wave that appends a group to the table and wires
-  // its slot adds an entry here, and that must not turn this test red.
-  const positions = called.map((group) => GROUP_ORDER.indexOf(group));
-  expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  for (const group of PRE_AUTH_GROUPS)
+    expect(["public", "sandbox"]).toContain(GROUP_PHASES[group]);
+  for (const group of USER_GROUPS) expect(GROUP_PHASES[group]).toBe("user");
+  for (const group of AGENT_GROUPS) expect(GROUP_PHASES[group]).toBe("agent");
 });
 
 test("every declared shadow states a reason", () => {

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && tsgo -p scripts/tsconfig.json",
     "format": "biome format --write",
     "format:check": "biome format",
     "lint": "biome lint --error-on-warnings",
