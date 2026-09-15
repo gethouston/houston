@@ -155,8 +155,11 @@ export class LazyStoreVfs implements Vfs {
       if (children.length === 0) {
         throw new Error(`move: source not found: ${fromKey}`);
       }
+      // Typed, like the single-object refusal below: `moveOrRefuse` turns a
+      // VfsExistsError into the 409 "already exists there" the user can act
+      // on. A plain Error would surface a fixable name collision as a 500.
       if ((await this.listDetailed(toKey)).length > 0) {
-        throw new Error(`move: destination is not empty: ${toKey}`);
+        throw new VfsExistsError(toKey);
       }
       for (const child of children) {
         await this.move(

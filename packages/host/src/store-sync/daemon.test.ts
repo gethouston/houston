@@ -148,7 +148,7 @@ test("deletes remotely when a hydrated file is deleted locally", async () => {
   await daemon.stop();
 });
 
-test("never uploads credentials, db files, temp files, or runtime auth", async () => {
+test("never uploads credentials, db files, scratch files, or runtime auth", async () => {
   const { daemon, localRoot, remoteRoot } = setup();
   await daemon.hydrate();
   daemon.start();
@@ -157,7 +157,8 @@ test("never uploads credentials, db files, temp files, or runtime auth", async (
     "claude-login/.credentials.json": "secret",
     "db/houston.db": "db",
     "shared-mirror/skills/org/SKILL.md": "read-only cache",
-    "workspace/write.tmp": "temp",
+    "workspace/write.houston.tmp": "half-written",
+    "workspace/notes.tmp": "the user's own file",
     "workspaces/W/A/.houston/runtime/auth.json": "token",
     "claude-login/projects/resume.json": "resume",
   };
@@ -178,8 +179,12 @@ test("never uploads credentials, db files, temp files, or runtime auth", async (
     ),
   ).toThrow();
   expect(() =>
-    readFileSync(join(remoteRoot, "workspace", "write.tmp")),
+    readFileSync(join(remoteRoot, "workspace", "write.houston.tmp")),
   ).toThrow();
+  // A user's own `.tmp` is content, not scratch: it must be IN the store.
+  expect(readFileSync(join(remoteRoot, "workspace", "notes.tmp"), "utf8")).toBe(
+    "the user's own file",
+  );
   expect(() =>
     readFileSync(
       join(

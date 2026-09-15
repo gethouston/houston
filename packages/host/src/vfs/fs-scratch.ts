@@ -1,5 +1,6 @@
 import { rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import type { KeyCase } from "./vfs";
 
 /**
@@ -9,13 +10,11 @@ import type { KeyCase } from "./vfs";
  */
 
 /**
- * Suffix of the scratch files `FsVfs` renames into place or probes with.
- * Distinctive on purpose: a listing hides exactly these and nothing a user
- * could legitimately name (`notes.tmp`, `backup.1.tmp` stay visible).
+ * The suffix and its predicate come from `@houston/protocol`: the store-sync
+ * walk in `@houston/runtime-client` excludes by exactly this name, and a
+ * second definition here would be a leak or a loss the moment either drifted.
  */
-export const ATOMIC_TMP_SUFFIX = ".houston.tmp";
-
-export const isAtomicTemp = (name: string) => name.endsWith(ATOMIC_TMP_SUFFIX);
+export { ATOMIC_TMP_SUFFIX, isAtomicTemp } from "@houston/protocol";
 
 const uniqueInfix = () =>
   `${process.pid}.${Math.random().toString(36).slice(2, 8)}`;
@@ -26,7 +25,7 @@ const uniqueInfix = () =>
  * makes a walk skip it.
  */
 export function scratchPath(base: string): string {
-  return `${base}.${uniqueInfix()}${ATOMIC_TMP_SUFFIX}`;
+  return atomicTempPath(base, uniqueInfix());
 }
 
 /**
@@ -67,8 +66,7 @@ export interface ProbeResult {
 export async function probeKeyCase(root: string): Promise<ProbeResult> {
   const dir = await nearestExisting(root);
   const infix = uniqueInfix();
-  const spelling = (stem: string) =>
-    join(dir, `${stem}.${infix}${ATOMIC_TMP_SUFFIX}`);
+  const spelling = (stem: string) => atomicTempPath(join(dir, stem), infix);
   const written = spelling(PROBE_STEM);
   await writeFile(written, "");
   try {

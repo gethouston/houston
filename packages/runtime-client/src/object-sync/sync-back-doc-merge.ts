@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFile, rm, stat, writeFile } from "node:fs/promises";
+import { atomicTempPath } from "@houston/protocol";
 import { fileSha256 } from "./file-hash";
 import type { ObjectStore } from "./object-store";
 
@@ -104,7 +105,7 @@ export async function mergeSyncBackDocument(opts: {
     return undefined;
   }
   const localBody = await readFile(opts.abs, "utf8");
-  const remoteTemp = `${opts.abs}.${randomUUID()}.remote.tmp`;
+  const remoteTemp = atomicTempPath(opts.abs, `${randomUUID()}.remote`);
   try {
     await opts.store.download(opts.key, remoteTemp);
     const remoteBody = await readFile(remoteTemp, "utf8");

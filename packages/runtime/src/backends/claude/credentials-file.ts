@@ -1,4 +1,5 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { atomicTempPath } from "@houston/protocol";
 import {
   type ClaudeOAuthCredential,
   parseClaudeOAuthEnvelope,
@@ -47,7 +48,7 @@ export function writeClaudeOAuthCredentialFile(
     );
   mkdirSync(configDir, { recursive: true });
   const path = claudeCredentialsFile(configDir);
-  const tmp = `${path}.tmp`;
+  const tmp = atomicTempPath(path);
   writeFileSync(tmp, JSON.stringify({ claudeAiOauth: cred }), { mode: 0o600 });
   renameSync(tmp, path);
 }

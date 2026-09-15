@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 
 /** Provider harnesses whose native session histories cannot be interleaved. */
 export type TurnHarness = "claude" | "pi";
@@ -48,7 +49,7 @@ export function writeTurnHarness(
 ): void {
   const file = turnHarnessFile(dataDir, conversationId);
   mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
+  const tmp = atomicTempPath(file);
   writeFileSync(tmp, JSON.stringify({ backend }), { mode: 0o600 });
   renameSync(tmp, file);
 }

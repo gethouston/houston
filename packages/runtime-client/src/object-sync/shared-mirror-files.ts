@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { lstat, mkdir, readdir, rename, rm } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import type { ManifestObjectStore, ObjectMetadata } from "./object-manifest";
 
 export interface SharedMirrorFileState {
@@ -66,7 +67,7 @@ export async function downloadAtomic(
   destination: string,
 ): Promise<void> {
   await mkdir(dirname(destination), { recursive: true });
-  const temporary = `${destination}.${randomUUID()}.tmp`;
+  const temporary = atomicTempPath(destination, randomUUID());
   try {
     await store.download(object.key, temporary);
     if (!(await matches(temporary, object))) {

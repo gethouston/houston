@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import type { CustomIntegrationDef } from "./types";
 
 /**
@@ -67,7 +68,7 @@ export class FileCustomIntegrationStore implements CustomIntegrationStore {
 
   private write(shape: FileShape): void {
     mkdirSync(dirname(this.path), { recursive: true });
-    const tmp = `${this.path}.tmp`;
+    const tmp = atomicTempPath(this.path);
     writeFileSync(tmp, `${JSON.stringify(shape, null, 2)}\n`, "utf8");
     renameSync(tmp, this.path);
   }

@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import {
   isPersonalScope,
   TEAM_CREDENTIAL_SCOPE,
@@ -158,7 +159,7 @@ function writeJsonAtomic(path: string, contents: unknown): void {
   // SAME uid as the runtime, so what actually stops them reading a team member's
   // token is the file-tool deny rule in session/tools/fs-guard.ts.
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
-  const tmp = `${path}.tmp`;
+  const tmp = atomicTempPath(path);
   writeFileSync(tmp, JSON.stringify(contents), { mode: 0o600 }); // atomic write
   renameSync(tmp, path);
 }

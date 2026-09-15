@@ -9,6 +9,7 @@ import {
 } from "node:fs";
 import { dirname } from "node:path";
 import type { CredentialProvider } from "@executor-js/sdk/core";
+import { atomicTempPath } from "@houston/protocol";
 import { Effect } from "effect";
 import { parseBundle, resolveOAuthValue } from "./oauth-bundle";
 
@@ -72,7 +73,7 @@ export class FileCustomSecretStore implements CustomSecretStore {
 
   private write(map: Record<string, string>): void {
     mkdirSync(dirname(this.path), { recursive: true });
-    const tmp = `${this.path}.tmp`;
+    const tmp = atomicTempPath(this.path);
     writeFileSync(tmp, JSON.stringify(map), { encoding: "utf8", mode: 0o600 });
     if (process.platform === "win32" && existsSync(this.path)) {
       // Clears the read-only attribute (the one thing chmod maps to on

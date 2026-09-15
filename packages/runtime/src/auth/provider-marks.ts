@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import { config } from "../config";
 
 /**
@@ -102,7 +103,7 @@ export function writeProviderMarks(marks: ProviderMarks): void {
   });
   try {
     mkdirSync(dirname(path), { recursive: true });
-    const tmp = `${path}.tmp`;
+    const tmp = atomicTempPath(path);
     writeFileSync(tmp, body);
     renameSync(tmp, path);
   } catch (err) {

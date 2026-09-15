@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, posix } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import {
   fileSha256,
   mergeDocumentBodies,
@@ -53,7 +54,7 @@ async function refreshDocument<T>(
   }
   let generation: string | undefined;
   const versionedRead = opts.store.downloadVersioned !== undefined;
-  const remoteTemp = `${local}.${randomUUID()}.remote.tmp`;
+  const remoteTemp = atomicTempPath(local, `${randomUUID()}.remote`);
   try {
     if (opts.store.downloadVersioned) {
       generation = (await opts.store.downloadVersioned(key, remoteTemp))

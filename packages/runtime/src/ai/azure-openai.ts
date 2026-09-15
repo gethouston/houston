@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import { atomicTempPath } from "@houston/protocol";
 import { config } from "../config";
 
 /**
@@ -88,7 +89,7 @@ export function normalizeAzureEndpoint(raw: string): string {
 export function setAzureEndpointIn(dataDir: string, raw: string): void {
   const baseUrl = normalizeAzureEndpoint(raw);
   const file = azureEndpointFileIn(dataDir);
-  const tmp = `${file}.tmp`;
+  const tmp = atomicTempPath(file);
   writeFileSync(tmp, JSON.stringify({ baseUrl }, null, 2));
   renameSync(tmp, file);
 }

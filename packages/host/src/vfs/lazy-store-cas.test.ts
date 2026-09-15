@@ -12,6 +12,7 @@ import {
 import { expect, test } from "vitest";
 import { LazyStoreVfs } from "./lazy-store";
 import { LazyReadRefusedError } from "./lazy-store-types";
+import { VfsExistsError } from "./vfs";
 
 /**
  * The CAS guard behind lazy ownership: a generation-minting store must see
@@ -276,6 +277,6 @@ test("a folder move refuses a destination that already holds local writes", asyn
   await vfs.writeText("workspaces/P/Bob/target/local.txt", "l");
   await expect(
     vfs.move("workspaces/P/Bob/dir", "workspaces/P/Bob/target"),
-  ).rejects.toThrow(/not empty/);
+  ).rejects.toBeInstanceOf(VfsExistsError);
   expect(await vfs.readText("workspaces/P/Bob/dir/b.txt")).toBe("b");
 });

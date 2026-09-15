@@ -6,6 +6,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 import { endpointFileIn, OPENAI_COMPATIBLE } from "../ai/openai-compatible";
 import {
   credentialSiblingIds,
@@ -51,7 +52,7 @@ function loadSettings(dataDir: string): Settings {
 
 function writeJsonAtomic(file: string, value: unknown): void {
   mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
+  const tmp = atomicTempPath(file);
   writeFileSync(tmp, JSON.stringify(value, null, 2));
   renameSync(tmp, file);
 }

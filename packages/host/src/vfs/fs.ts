@@ -1,5 +1,13 @@
 import type { Stats } from "node:fs";
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import {
+  lstat,
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isVanished, statsUnder } from "./fs-listing";
 import { probeKeyCase, scratchPath } from "./fs-scratch";
@@ -101,7 +109,14 @@ export class FsVfs implements Vfs {
   async move(fromKey: string, toKey: string): Promise<void> {
     const from = this.pathFor(fromKey);
     const to = this.pathFor(toKey);
-    const source = await statOrNull(from);
+    // `lstat`, never `stat`, on BOTH sides: `rename(2)` moves the link itself,
+    // so the guard has to compare the same objects it will move. Following the
+    // links instead makes a symlink and its target report one inode — read as
+    // "one file, two spellings" the move is allowed, and `rename(2)` replaces
+    // the user's file with a symlink pointing at itself. A broken link at the
+    // destination is the mirror case: `stat` calls it absent, `lstat` sees the
+    // object that would be unlinked.
+    const source = await lstatOrNull(from);
     if (!source) throw new Error(`move: source not found: ${fromKey}`);
     // The last door before `rename(2)` deletes someone's file in silence, and
     // the only one that knows the volume's fold table and its Unicode
@@ -113,10 +128,21 @@ export class FsVfs implements Vfs {
     // normalization-only re-spelling the user asked for, which must still go
     // through (`rename(2)` performs it, and refusing would make the file
     // un-renameable on that volume).
-    const destination = await statOrNull(to);
+    const destination = await lstatOrNull(to);
     if (destination && !sameFile(source, destination)) {
       throw new VfsExistsError(toKey);
     }
+    // ACCEPTED RACE, stated rather than hidden: between the check above and
+    // the `rename(2)` below, another writer could create `toKey`, and the
+    // rename would then replace it silently. The window is the microseconds
+    // between two syscalls, and losing it needs a second writer aiming at the
+    // very same new name in that instant — not the human race (two people
+    // renaming to the same name), which the caller's pre-check and its 409
+    // already answer. Closing it would take `RENAME_NOREPLACE`, which Node
+    // does not expose; `link(2)`+`unlink(2)` is not a substitute — hard links
+    // are unsupported on exFAT and SMB (the volumes a workspace can legally
+    // sit on) and illegal for directories, so it would trade a microsecond
+    // race for moves that simply fail.
     await mkdir(dirname(to), { recursive: true });
     await rename(from, to);
   }
@@ -130,8 +156,17 @@ const sameFile = (a: Stats, b: Stats) => a.dev === b.dev && a.ino === b.ino;
 
 /** `stat`, with "it isn't there" as a value instead of a throw. */
 async function statOrNull(path: string): Promise<Stats | null> {
+  return orNull(stat(path));
+}
+
+/** `lstat`, same shape: the object AT the path, links not followed. */
+async function lstatOrNull(path: string): Promise<Stats | null> {
+  return orNull(lstat(path));
+}
+
+async function orNull(pending: Promise<Stats>): Promise<Stats | null> {
   try {
-    return await stat(path);
+    return await pending;
   } catch (err) {
     if (isVanished(err)) return null;
     throw err;

@@ -2,6 +2,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { XIAOMI_TOKEN_PLAN_SGP_MODELS } from "@earendil-works/pi-ai/providers/xiaomi-token-plan-sgp.models";
+import { atomicTempPath } from "@houston/protocol";
 import { config } from "../config";
 
 /**
@@ -83,7 +84,7 @@ export function setXiaomiEndpointIn(dataDir: string, endpointId: string): void {
   const endpoint = XIAOMI_ENDPOINTS.find((e) => e.id === endpointId);
   if (!endpoint) throw new Error(`unknown xiaomi endpoint: ${endpointId}`);
   const file = xiaomiEndpointFileIn(dataDir);
-  const tmp = `${file}.tmp`;
+  const tmp = atomicTempPath(file);
   writeFileSync(tmp, JSON.stringify({ endpoint: endpoint.id }, null, 2));
   renameSync(tmp, file);
 }

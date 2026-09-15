@@ -136,6 +136,23 @@ export function runVfsContract(name: string, make: () => Vfs): void {
       expect(await vfs.readText(`${P}/workspace/notes.md`)).toBe("mine");
     });
 
+    test("a directory moved onto a NON-EMPTY directory of another name is refused", async () => {
+      // Dropping a folder on a folder is one drag in the Files tab, and the
+      // backends disagree about what it MEANS: `rename(2)` merges nothing —
+      // it replaces, or fails ENOTEMPTY — while an object store has no
+      // directories to collide at all. What every adapter owes the user is the
+      // same outcome, whatever error it words it with: the call is refused and
+      // NEITHER folder loses a file.
+      const vfs = make();
+      await vfs.writeText(`${P}/workspace/2025/report.md`, "mine");
+      await vfs.writeText(`${P}/workspace/2024/taxes.md`, "theirs");
+      await expect(
+        vfs.move(`${P}/workspace/2025`, `${P}/workspace/2024`),
+      ).rejects.toThrow();
+      expect(await vfs.readText(`${P}/workspace/2024/taxes.md`)).toBe("theirs");
+      expect(await vfs.readText(`${P}/workspace/2025/report.md`)).toBe("mine");
+    });
+
     test("a case-only re-spell of one object is a rename, not a collision", async () => {
       // On a folded backend the destination "exists" — it IS the source. A
       // guard that read that as a collision would make the file impossible to

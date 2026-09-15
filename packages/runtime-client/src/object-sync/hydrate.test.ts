@@ -132,7 +132,9 @@ test("exclusions support basenames, subtrees, temp files, and runtime auth", () 
   expect(excluded("credentials.json", excludes)).toBe(true);
   expect(excluded("nested/credentials.json", excludes)).toBe(true);
   expect(excluded("db/houston.db", excludes)).toBe(true);
-  expect(excluded("workspace/write.tmp", excludes)).toBe(true);
+  // Houston's own half-written file, by suffix; a user's `.tmp` is content.
+  expect(excluded("workspace/write.houston.tmp", excludes)).toBe(true);
+  expect(excluded("workspace/write.tmp", excludes)).toBe(false);
   expect(excluded("workspaces/W/A/.houston/runtime/auth.json", excludes)).toBe(
     true,
   );

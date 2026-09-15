@@ -5,6 +5,7 @@ import { dirname } from "node:path";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { ReadableStream as NodeReadableStream } from "node:stream/web";
+import { atomicTempPath } from "@houston/protocol";
 import type { ReadResult } from "./object-store";
 
 /** Atomically land one successful object GET and retain its generation. */
@@ -18,7 +19,7 @@ export async function downloadFile(
     throw new Error(`object store GET ${key} returned no response body`);
   }
   await mkdir(dirname(destFile), { recursive: true });
-  const tempFile = `${destFile}.${randomUUID()}.tmp`;
+  const tempFile = atomicTempPath(destFile, randomUUID());
   try {
     await pipeline(
       Readable.fromWeb(response.body as NodeReadableStream),

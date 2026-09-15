@@ -8,6 +8,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import { atomicTempPath } from "@houston/protocol";
 
 /**
  * The "turn in flight" marker: one small file per conversation, written the
@@ -60,7 +61,7 @@ export function writeInflightMarker(
   const dir = inflightDir(dataDir);
   mkdirSync(dir, { recursive: true });
   const file = fileFor(dataDir, marker.conversationId);
-  const tmp = `${file}.tmp`;
+  const tmp = atomicTempPath(file);
   writeFileSync(tmp, JSON.stringify(marker));
   renameSync(tmp, file);
 }
