@@ -154,6 +154,15 @@ export const ENGINE_RESUMED_MESSAGE =
   "Your agent was interrupted by a restart and is picking up where it left off.";
 
 /**
+ * WHY the engine authored a system line, carried on the `system_message`
+ * feed item beside its English default. A surface renders its own copy by
+ * kind and never by matching the English text: the wording above is a
+ * default for surfaces without a dictionary, not a contract to compare
+ * against.
+ */
+export type EngineNoticeKind = "engine_restart" | "engine_resumed";
+
+/**
  * Whether a turn's terminal error is the user pressing Stop — the verbatim
  * message the runtime (and the control plane's relay) emit on a cancel. This is
  * an intentional, handled stop, not a turn failure, so the UI shows the message

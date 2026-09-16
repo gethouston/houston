@@ -119,7 +119,7 @@ function adoptReply(
     // work is not over, so this settles NEUTRALLY (no error status, no
     // needs_you card) and only accounts for the pause the user saw.
     if (reply.interrupted.resumed) finishResumed(s, ENGINE_RESUMED_MESSAGE);
-    else finishErr(s, ENGINE_RESTART_MESSAGE);
+    else finishErr(s, ENGINE_RESTART_MESSAGE, "engine_restart");
     return;
   }
   s.text = reply.content;

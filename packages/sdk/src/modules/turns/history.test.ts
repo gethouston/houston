@@ -338,6 +338,7 @@ describe("historyToFeed", () => {
     expect(feed).toContainEqual({
       feed_type: "system_message",
       data: "Your agent was interrupted by a restart and is picking up where it left off.",
+      notice: "engine_resumed",
       ts: 2,
       turnId: "t-1",
     });
@@ -365,6 +366,7 @@ describe("historyToFeed", () => {
       {
         feed_type: "system_message",
         data: "Your agent had to restart. Say continue and it will pick up where it left off.",
+        notice: "engine_restart",
         ts: 2,
         turnId: "t-1",
       },

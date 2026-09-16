@@ -4,6 +4,7 @@ import type {
   TokenUsage,
 } from "@houston/runtime-client";
 import type { FeedOutput, TerminalBoardStatus } from "./feed-output";
+import type { EngineNoticeKind } from "./turn-errors";
 import { isNotConnectedError, isStoppedByUser } from "./turn-errors";
 
 /**
@@ -153,7 +154,11 @@ export function finishOk(s: TurnState): void {
  * undelivered prompt with no reply and no affordance (HOU-676). The card
  * carries the refused prompt so "Send again" resends it verbatim.
  */
-export function finishErr(s: TurnState, msg: string): void {
+export function finishErr(
+  s: TurnState,
+  msg: string,
+  notice?: EngineNoticeKind,
+): void {
   if (s.settled) return;
   if (isNotConnectedError(msg)) {
     const card: ProviderError & { failed_prompt?: string } = {
@@ -178,6 +183,7 @@ export function finishErr(s: TurnState, msg: string): void {
   push(s, {
     feed_type: "system_message",
     data: msg,
+    ...(notice ? { notice } : {}),
     ...(failsSend ? { fails_pending: true } : {}),
   });
   if (isStoppedByUser(msg)) {
@@ -204,7 +210,7 @@ export function finishResumed(s: TurnState, msg: string): void {
   s.settled = true;
   if (s.thinking) push(s, { feed_type: "thinking", data: s.thinking });
   if (s.text) push(s, { feed_type: "assistant_text", data: s.text });
-  push(s, { feed_type: "system_message", data: msg });
+  push(s, { feed_type: "system_message", data: msg, notice: "engine_resumed" });
   invisibleFinal(s);
   s.output.sessionStatus(s.agentPath, s.sessionKey, "completed");
 }

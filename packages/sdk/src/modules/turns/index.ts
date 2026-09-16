@@ -167,6 +167,7 @@ export {
 export {
   ENGINE_RESTART_MESSAGE,
   ENGINE_RESUMED_MESSAGE,
+  type EngineNoticeKind,
   isEngineWakingRejection,
   isNotConnectedError,
   isStoppedByUser,

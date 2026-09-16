@@ -95,7 +95,6 @@ import {
 import { createMission } from "../lib/create-mission";
 import { resolveDictationLangHint } from "../lib/dictation/types";
 import { useDictation } from "../lib/dictation/use-dictation";
-import { engineRestartLine } from "../lib/engine-restart-line";
 import {
   genericErrorDescription,
   logAndReportError,
@@ -2117,12 +2116,12 @@ export function useAgentChatPanel({
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
-      // The two engine-restart lines the SDK authors in English (PRODUCT-1785):
-      // render the same centered note with the user's own language.
-      const restart = engineRestartLine(msg.content);
-      if (restart === "sayContinue")
+      // The engine's restart lines arrive typed (PRODUCT-1785): the same
+      // centered note, in the user's language, chosen by kind and never by the
+      // English default text.
+      if (msg.notice === "engine_restart")
         return <SystemNote text={t("chat:engineRestart.sayContinue")} />;
-      if (restart === "resuming")
+      if (msg.notice === "engine_resumed")
         return <SystemNote text={t("chat:engineRestart.resuming")} />;
       return undefined;
     },

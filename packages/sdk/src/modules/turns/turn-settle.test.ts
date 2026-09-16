@@ -350,6 +350,7 @@ test("an `interrupted` reply for our turnId settles as the ENGINE RESTART error,
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: ENGINE_RESTART_MESSAGE,
+    notice: "engine_restart",
     turnId: "t-1",
   });
   expect(items.some((i) => i.feed_type === "final_result")).toBe(false);
@@ -379,6 +380,7 @@ test("a RESUMED interruption settles neutrally: the pause line, no error, no ter
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: ENGINE_RESUMED_MESSAGE,
+    notice: "engine_resumed",
     turnId: "t-1",
   });
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);

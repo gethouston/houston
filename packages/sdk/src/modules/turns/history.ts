@@ -17,6 +17,7 @@ import type { ChatMessage } from "@houston/runtime-client";
 import {
   ENGINE_RESTART_MESSAGE,
   ENGINE_RESUMED_MESSAGE,
+  type EngineNoticeKind,
   STOPPED_BY_USER,
 } from "./turn-errors";
 import type { FeedAuthor, FeedMention } from "./vm-output";
@@ -39,6 +40,12 @@ export interface FeedFrame {
    *  conversation chips the same names the sent bubble did. Absent when the
    *  message mentioned nobody. */
   mentions?: FeedMention[];
+  /**
+   * Why the engine authored a `system_message`, when it did (a restart, a
+   * resume). `data` stays the English default; a surface renders its own copy
+   * by kind. Optional/additive; plain JSON across the bridge.
+   */
+  notice?: EngineNoticeKind;
   /**
    * Epoch-ms timestamp of the source `ChatMessage` this frame was folded from
    * (`ChatMessage.ts`). Carried on every frame attributable to a message so a
@@ -210,6 +217,7 @@ export function historyToFeed(
         data: m.interrupted.resumed
           ? ENGINE_RESUMED_MESSAGE
           : ENGINE_RESTART_MESSAGE,
+        notice: m.interrupted.resumed ? "engine_resumed" : "engine_restart",
         ts,
         ...turn,
       });
