@@ -7,10 +7,12 @@ import { BioSection } from "@/components/bio-section";
 import { CreatorBlock } from "@/components/creator-block";
 import { InstallPanel } from "@/components/install-panel";
 import { ReportDialog } from "@/components/report-dialog";
+import { RoutineList } from "@/components/routine-list";
 import { SkillList } from "@/components/skill-list";
 import { StoreNav } from "@/components/store-nav";
 import { taglineOrDescription } from "@/lib/export/shared";
 import { buildInstallInstructions } from "@/lib/install/instructions";
+import { routineWakeLabel } from "@/lib/routine-wake-label";
 import { siteConfig } from "@/lib/site-config";
 import { getAgentBySlug, getCreator } from "@/lib/store-api";
 
@@ -78,6 +80,11 @@ export default async function AgentDetailPage({ params }: PageParams) {
     bundleUrl: urls.skillZipUrl,
     pageUrl: urls.pageUrl,
   });
+  const routines = ir.routines.map((routine) => ({
+    id: routine.id,
+    name: routine.name,
+    wakeLabel: routineWakeLabel(routine),
+  }));
   let moreAgents: StoreAgentSummary[] = [];
   if (agent.creator.handle) {
     const creator = await getCreator(agent.creator.handle);
@@ -99,6 +106,7 @@ export default async function AgentDetailPage({ params }: PageParams) {
             learningsCount: ir.learnings.length,
           }}
           skills={ir.skills}
+          routines={routines}
           creator={
             <CreatorBlock
               creator={agent.creator}
@@ -117,6 +125,7 @@ export default async function AgentDetailPage({ params }: PageParams) {
             <BioSection tagline={tagline ?? null} description={description} />
           )}
           renderSkills={() => <SkillList skills={ir.skills} />}
+          renderRoutines={(rows) => <RoutineList routines={rows} />}
           moreAgents={moreAgents}
           agentHref={(item) => `/a/${item.slug}`}
           LinkComponent={Link}

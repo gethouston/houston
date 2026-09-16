@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 85
+version: 86
 
 components:
   - id: custom-integration-details
@@ -1253,8 +1253,8 @@ components:
 
   - id: agent-store-agent-detail-screen
     title: Agent Store agent detail screen
-    purpose: Canonical full agent detail composition across public and in-app surfaces.
-    anatomy: [header, creator, actions, bio, skills, integrations, learnings, recommendations, footer]
+    purpose: Canonical full agent detail composition across public and in-app surfaces, including the automations the agent brings with it.
+    anatomy: [header, creator, actions, bio, skills, routines, integrations, learnings, recommendations, footer]
     states: [loading, ready, error]
     variants: [website, in-app]
     behavior: Surfaces inject actions and safe content renderers without recomposing the screen.

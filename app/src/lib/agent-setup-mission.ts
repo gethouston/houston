@@ -20,6 +20,7 @@ import { createMission } from "./create-mission";
 import { publishCreatedMission } from "./created-mission-handoff";
 import { showErrorToast } from "./error-toast";
 import i18n from "./i18n";
+import type { RoutineSetupNeed } from "./routine-setup-needs";
 import { buildSetupMissionPrompt } from "./setup-mission-prompt";
 
 /**
@@ -33,7 +34,14 @@ import { buildSetupMissionPrompt } from "./setup-mission-prompt";
  */
 export async function startAgentSetupMission(
   agent: { id: string; name: string; color?: string; folderPath: string },
-  opts: { provider?: string; model?: string },
+  opts: {
+    provider?: string;
+    model?: string;
+    /** Automations that arrived with an import and still need the person (an
+     *  app to connect, a web address to create). The agent raises them itself
+     *  in the intro; the wizard has no screen left to raise them on. */
+    pendingRoutineSetup?: RoutineSetupNeed[];
+  },
   source: "created" | "imported",
 ): Promise<void> {
   try {
@@ -42,7 +50,12 @@ export async function startAgentSetupMission(
       i18n.t("agentOnboarding:setupMission.kickoff"),
       {
         title: i18n.t("agentOnboarding:setupMission.title"),
-        buildPrompt: () => buildSetupMissionPrompt(agent.name, i18n.language),
+        buildPrompt: () =>
+          buildSetupMissionPrompt(
+            agent.name,
+            i18n.language,
+            opts.pendingRoutineSetup ?? [],
+          ),
         providerOverride: opts.provider,
         modelOverride: opts.model,
         effortOverride: "medium",

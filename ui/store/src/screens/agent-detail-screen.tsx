@@ -7,6 +7,7 @@ import { resolveIntegrationLabels } from "../integrations";
 import type {
   StoreAgentRow,
   StoreLinkComponent,
+  StoreRoutineRow,
   StoreSkillRow,
 } from "../types";
 import { StoreScreenError, StoreScreenLoading } from "./screen-state";
@@ -16,6 +17,7 @@ const defaults = {
   installs: "installs",
   bio: "Bio",
   skills: "Skills",
+  routines: "Routines",
   worksWith: "Works with",
   learning: "learning",
   learnings: "learnings",
@@ -28,10 +30,12 @@ const defaults = {
 export function AgentDetailScreen({
   agent,
   skills,
+  routines = [],
   creator,
   actions,
   renderBio,
   renderSkills,
+  renderRoutines,
   moreAgents = [],
   agentHref,
   LinkComponent,
@@ -44,10 +48,13 @@ export function AgentDetailScreen({
 }: {
   agent: StoreAgentRow;
   skills: StoreSkillRow[];
+  /** The agent's automations. Omit or pass [] to hide the section entirely. */
+  routines?: StoreRoutineRow[];
   creator: ReactNode;
   actions?: ReactNode;
   renderBio: (description: string, tagline?: string | null) => ReactNode;
   renderSkills?: (skills: StoreSkillRow[]) => ReactNode;
+  renderRoutines?: (routines: StoreRoutineRow[]) => ReactNode;
   moreAgents?: StoreAgentRow[];
   agentHref: (agent: StoreAgentRow) => string;
   LinkComponent?: StoreLinkComponent;
@@ -77,6 +84,9 @@ export function AgentDetailScreen({
       actions={actions}
       bio={renderBio(agent.description, agent.tagline)}
       skills={skills.length && renderSkills ? renderSkills(skills) : undefined}
+      routines={
+        routines.length && renderRoutines ? renderRoutines(routines) : undefined
+      }
       integrations={
         integrations.length ? (
           <ul className="flex flex-wrap gap-x-8 gap-y-4">

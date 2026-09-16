@@ -73,6 +73,37 @@ export const exampleAgentIr: AgentIR = {
     },
   ],
   integrations: ["GMAIL", "GOOGLE_CALENDAR"],
+  routines: [
+    {
+      id: "morning-digest",
+      name: "Morning digest",
+      prompt:
+        "Summarize what arrived overnight and list the three things that need a reply today.",
+      wake: { kind: "schedule", cron: "0 8 * * 1-5" },
+      chatMode: "shared",
+      suppressWhenSilent: true,
+    },
+    {
+      id: "new-mail-summary",
+      name: "New mail summary",
+      prompt:
+        "When a new email arrives, summarize sender, subject and key points in two sentences.",
+      wake: {
+        kind: "composio",
+        toolkit: "gmail",
+        triggerSlug: "GMAIL_NEW_GMAIL_MESSAGE",
+        triggerConfig: { labelIds: "INBOX", userId: "me" },
+      },
+      chatMode: "per_run",
+    },
+    {
+      id: "external-ping",
+      name: "External ping",
+      prompt:
+        "Something outside Houston called this routine. Read the payload and report what happened.",
+      wake: { kind: "webhook" },
+    },
+  ],
   provenance: {
     createdVia: "houston",
     exporter: "houston-desktop",

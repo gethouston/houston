@@ -11,11 +11,12 @@
  * (a renamed/dropped top-level or identity key, a changed required set, a version
  * bump) so the two stay in lockstep.
  *
- * required-ness note: zod `.default([])` makes tags/skills/learnings/integrations
- * OPTIONAL on input, so they are NOT in the JSON Schema `required` arrays —
+ * required-ness note: zod `.default([])` makes
+ * tags/skills/learnings/integrations/routines OPTIONAL on input, so they are NOT in the JSON Schema `required` arrays —
  * matching exactly what the ingest endpoint accepts.
  */
 import { AGENT_IR_VERSION } from "./ir";
+import { agentRoutinesJsonSchema } from "./json-schema-routine";
 
 const SLUG_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
 const INTEGRATION_PATTERN = "^[A-Z0-9_]{1,64}$";
@@ -159,6 +160,7 @@ export const agentIrJsonSchema = {
       description: "Composio toolkit slugs the agent expects. Omit or send [].",
       items: { type: "string", pattern: INTEGRATION_PATTERN },
     },
+    routines: agentRoutinesJsonSchema,
     provenance: {
       type: "object",
       additionalProperties: false,

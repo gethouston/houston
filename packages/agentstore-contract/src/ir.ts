@@ -3,17 +3,26 @@
  *
  * A single, framework-agnostic representation of a shareable agent: identity,
  * the agent's CLAUDE.md (`instructions`), its skills as VERBATIM SKILL.md bodies,
- * captured learnings, the Composio toolkits it expects, and provenance. This is
- * the canonical shape validated before any version snapshot is stored and served
- * back over the API; the forgiving backfill lives in `normalize.ts`, never here.
+ * captured learnings, the Composio toolkits it expects, its routines, and
+ * provenance. This is the canonical shape validated before any version snapshot
+ * is stored and served back over the API; the forgiving backfill lives in
+ * `normalize.ts`, never here.
  *
  * The exported `AgentIR` type is `z.infer<typeof agentIrSchema>` so the schema is
  * the sole source of truth — there is no hand-written interface to drift from.
  */
 import { z } from "zod";
 
-/** The pinned IR version literal. MINOR = additive optional fields (no migration);
- *  MAJOR = breaking (prepend a step to IR_MIGRATIONS). */
+/**
+ * The pinned IR version literal. MINOR = additive optional fields (no
+ * migration); MAJOR = breaking (prepend a step to IR_MIGRATIONS).
+ *
+ * An ADDITIVE OPTIONAL FIELD DOES NOT BUMP THIS LITERAL. Readers pin the
+ * version as a const (zod `z.literal`, and the Go gateway's equality check), so
+ * a bump makes every already-shipped reader REJECT new listings outright, while
+ * an extra key is dropped harmlessly by both zod (`z.object` strips unknown
+ * keys) and Go (`encoding/json` ignores them). `routines` arrived this way.
+ */
 export const AGENT_IR_VERSION = "2.0.0" as const;
 
 /** Slug: starts with an alphanumeric, then up to 63 more of `[a-z0-9-]`. Used for
@@ -83,6 +92,62 @@ export const provenanceSchema = z.object({
 });
 export type AgentProvenance = z.infer<typeof provenanceSchema>;
 
+/** Composio toolkit slug AS A ROUTINE BINDING STORES IT: lowercase (`gmail`).
+ *  The IR's `integrations` chips use the uppercase form, hence two regexes. */
+export const ROUTINE_TOOLKIT_REGEX = /^[a-z0-9_]{1,64}$/;
+
+/** Composio trigger-type slug, e.g. `GMAIL_NEW_GMAIL_MESSAGE`. */
+export const ROUTINE_TRIGGER_SLUG_REGEX = /^[A-Z0-9_]{1,128}$/;
+
+/** Cap on the canonical `JSON.stringify` of a wake's `triggerConfig`. */
+export const MAX_TRIGGER_CONFIG_CHARS = 8000;
+
+/** Max routines in one listing. */
+export const MAX_ROUTINES = 32;
+
+// A cron is a bounded string here, not a parsed pattern: the store is not a
+// cron engine, and a pattern Houston rejects surfaces at install.
+const scheduleWake = z.object({
+  kind: z.literal("schedule"),
+  cron: z.string().min(1).max(120),
+});
+
+const composioWake = z.object({
+  kind: z.literal("composio"),
+  toolkit: z
+    .string()
+    .regex(ROUTINE_TOOLKIT_REGEX, "must match ^[a-z0-9_]{1,64}$"),
+  triggerSlug: z
+    .string()
+    .regex(ROUTINE_TRIGGER_SLUG_REGEX, "must match ^[A-Z0-9_]{1,128}$"),
+  /** User intent (which label, which channel) — never a credential. */
+  triggerConfig: z
+    .record(z.string(), z.unknown())
+    .refine(
+      (v) => JSON.stringify(v).length <= MAX_TRIGGER_CONFIG_CHARS,
+      `triggerConfig must serialize to at most ${MAX_TRIGGER_CONFIG_CHARS} chars`,
+    ),
+});
+
+const webhookWake = z.object({ kind: z.literal("webhook") });
+
+export const routineWakeSchema = z.discriminatedUnion("kind", [
+  scheduleWake,
+  composioWake,
+  webhookWake,
+]);
+export type AgentRoutineWake = z.infer<typeof routineWakeSchema>;
+
+export const routineSchema = z.object({
+  id: z.string().min(1).max(64),
+  name: z.string().min(1).max(120),
+  prompt: z.string().min(1).max(20000),
+  wake: routineWakeSchema,
+  chatMode: z.enum(["shared", "per_run"]).optional(),
+  suppressWhenSilent: z.boolean().optional(),
+});
+export type AgentRoutine = z.infer<typeof routineSchema>;
+
 export const agentIrSchema = z
   .object({
     irVersion: z.literal(AGENT_IR_VERSION),
@@ -97,76 +162,30 @@ export const agentIrSchema = z
       )
       .max(64)
       .default([]),
+    routines: z.array(routineSchema).max(MAX_ROUTINES).default([]),
     provenance: provenanceSchema,
   })
   .superRefine((ir, ctx) => {
-    const skillSlugs = new Set<string>();
-    ir.skills.forEach((s, i) => {
-      if (skillSlugs.has(s.slug)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["skills", i, "slug"],
-          message: `duplicate skill slug "${s.slug}"`,
-        });
-      }
-      skillSlugs.add(s.slug);
-    });
-
-    const learningIds = new Set<string>();
-    ir.learnings.forEach((l, i) => {
-      if (learningIds.has(l.id)) {
-        ctx.addIssue({
-          code: "custom",
-          path: ["learnings", i, "id"],
-          message: `duplicate learning id "${l.id}"`,
-        });
-      }
-      learningIds.add(l.id);
-    });
+    // One rule for every id-like field: a duplicate is a publisher mistake that
+    // would silently merge two skills / learnings / routines downstream.
+    const unique: Array<[string, string, string[]]> = [
+      ["skills", "slug", ir.skills.map((s) => s.slug)],
+      ["learnings", "id", ir.learnings.map((l) => l.id)],
+      ["routines", "id", ir.routines.map((r) => r.id)],
+    ];
+    for (const [field, key, values] of unique) {
+      const seen = new Set<string>();
+      values.forEach((value, i) => {
+        if (seen.has(value)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [field, i, key],
+            message: `duplicate ${field.slice(0, -1)} ${key} "${value}"`,
+          });
+        }
+        seen.add(value);
+      });
+    }
   });
 
 export type AgentIR = z.infer<typeof agentIrSchema>;
-
-/* -------------------------------------------------------------------------- */
-/* Up-migration chain (applied on READ; v2 is the floor — validating no-op)    */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Ordered up-migration steps. Each lifts a stored IR from one version to the
- * next. On a MAJOR bump, prepend the new step here and `migrateAgentIr` lifts any
- * stored snapshot to current before validation. v2.0.0 is the floor — v1 never
- * shipped, so the chain is empty and `migrateAgentIr` is a validating passthrough.
- */
-type MigrationStep = {
-  /** matches when raw.irVersion === from */
-  from: string;
-  to: typeof AGENT_IR_VERSION;
-  up: (raw: Record<string, unknown>) => Record<string, unknown>;
-};
-
-export const IR_MIGRATIONS: MigrationStep[] = [];
-
-/**
- * Lift any stored raw IR to the current version, then validate. Throws if the raw
- * payload cannot be validated after migration.
- */
-export function migrateAgentIr(input: unknown): AgentIR {
-  if (input === null || typeof input !== "object") {
-    throw new Error("migrateAgentIr: input must be an object");
-  }
-  let cur = { ...(input as Record<string, unknown>) };
-
-  let guard = 0;
-  while (
-    cur.irVersion !== AGENT_IR_VERSION &&
-    guard < IR_MIGRATIONS.length + 1
-  ) {
-    const step = IR_MIGRATIONS.find((m) => m.from === cur.irVersion);
-    if (!step) break;
-    cur = step.up(cur);
-    cur.irVersion = step.to;
-    guard += 1;
-  }
-
-  return agentIrSchema.parse(cur);
-}

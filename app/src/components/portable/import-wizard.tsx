@@ -54,6 +54,7 @@ import { ChatModelSelector } from "../chat-model-selector";
 import { STORE_VIEW_ID } from "../store-view";
 import { InstallFromLinkPanel } from "./install-from-link";
 import { PickListStep } from "./pick-list-step";
+import { useImportPendingSetup } from "./use-import-pending-setup";
 
 type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
 
@@ -132,6 +133,12 @@ export function ImportAgentWizard() {
     learningIds: new Set(),
   });
   const [installing, setInstalling] = useState(false);
+
+  // An imported routine that wakes on an app event cannot fire until that app
+  // is connected on THIS account, and a webhook routine cannot fire until its
+  // address is minted. The wizard closes on install, so the agent raises both
+  // itself in its first message (see `startAgentSetupMission`).
+  const pendingSetupOf = useImportPendingSetup(open);
 
   const steps = useMemo<StepId[]>(() => {
     const out: StepId[] = ["upload", "name"];
@@ -325,7 +332,14 @@ export function ImportAgentWizard() {
           color: installed.agent.color,
           folderPath: installed.agentPath,
         },
-        kickoffPin,
+        {
+          ...kickoffPin,
+          pendingRoutineSetup: pendingSetupOf(
+            (uploaded.preview.routines ?? []).filter((r) =>
+              selection.routineIds.has(r.id),
+            ),
+          ),
+        },
         "imported",
       );
     } catch (err) {

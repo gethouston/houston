@@ -28,3 +28,4 @@ export * from "./skills";
 export * from "./skills-manifest";
 export * from "./store";
 export * from "./store-ir";
+export * from "./store-ir-routines";

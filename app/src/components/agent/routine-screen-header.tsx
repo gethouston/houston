@@ -90,6 +90,7 @@ export function RoutineScreenHeader({
               agentId={agent.id}
               routineId={routine.id}
               trigger={routine.trigger}
+              createdBy={routine.created_by}
             />
           )}
           <Button variant="secondary" size="sm" onClick={onOpenRuns}>

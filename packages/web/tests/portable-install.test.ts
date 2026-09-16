@@ -1,6 +1,7 @@
-import { packAgent } from "@houston/domain";
+import type { AgentIR } from "@houston/agentstore-contract";
+import { packAgent, storePackageFromIrPayload } from "@houston/domain";
 import { HoustonClient } from "@houston/engine-adapter/client";
-import { previewUpload } from "@houston/engine-adapter/portable";
+import { parkUpload, previewUpload } from "@houston/engine-adapter/portable";
 import { agentColorId } from "@houston-ai/core";
 import { afterEach, expect, test, vi } from "vitest";
 
@@ -149,6 +150,104 @@ test("install creates the agent with the package as its seed payload", async () 
       name: "Sales",
     }),
   });
+});
+
+/** A store listing carrying one routine of each wake kind. */
+const STORE_IR: AgentIR = {
+  irVersion: "2.0.0",
+  identity: {
+    slug: "inbox-helper",
+    name: "Inbox Helper",
+    description: "Sorts the morning mail.",
+    category: "productivity",
+    tags: [],
+    creator: { displayName: "Avery Chen" },
+  },
+  instructions: "You are a calm inbox assistant.",
+  skills: [],
+  learnings: [],
+  integrations: ["GMAIL"],
+  routines: [
+    {
+      id: "morning-digest",
+      name: "Morning digest",
+      prompt: "Summarize what arrived overnight.",
+      wake: { kind: "schedule", cron: "0 8 * * 1-5" },
+    },
+    {
+      id: "new-mail-summary",
+      name: "New mail summary",
+      prompt: "Summarize each new email.",
+      wake: {
+        kind: "composio",
+        toolkit: "gmail",
+        triggerSlug: "GMAIL_NEW_GMAIL_MESSAGE",
+        triggerConfig: { labelIds: "INBOX" },
+      },
+    },
+    {
+      id: "external-ping",
+      name: "External ping",
+      prompt: "Report what called this.",
+      wake: { kind: "webhook" },
+    },
+  ],
+  provenance: { createdVia: "houston" },
+};
+
+test("a store listing's routines install under fresh ids with no minted key", async () => {
+  const pkg = storePackageFromIrPayload({ ir: STORE_IR }, "1.0.0");
+  if ("error" in pkg) throw new Error(pkg.error);
+  const { packageId } = parkUpload({ manifest: pkg.manifest, ...pkg.content });
+  const calls = stubFetch(
+    new Response(
+      JSON.stringify({ id: "beef1234beef1234", name: "Inbox", createdAt: 0 }),
+      { status: 201, headers: { "Content-Type": "application/json" } },
+    ),
+  );
+
+  const installed = await install({
+    packageId,
+    workspaceName: "Houston",
+    agentName: "Inbox",
+    selection: {
+      includeClaudeMd: true,
+      includeSkillSlugs: [],
+      includeRoutineIds: [
+        "morning-digest",
+        "new-mail-summary",
+        "external-ping",
+      ],
+      includeLearningIds: [],
+    },
+  });
+
+  const body = JSON.parse(String(calls[0]?.init?.body)) as {
+    seeds?: Record<string, string>;
+  };
+  const seeded = JSON.parse(
+    body.seeds?.[".houston/routines/routines.json"] ?? "",
+  ) as Array<{ id: string; name: string; trigger?: Record<string, unknown> }>;
+
+  expect(seeded.map((r) => r.name)).toEqual([
+    "Morning digest",
+    "New mail summary",
+    "External ping",
+  ]);
+  // The gateway's trigger tables key on routine id alone, so an install never
+  // reuses the listing's ids (PRODUCT-1808).
+  for (const r of seeded) {
+    expect(STORE_IR.routines.map((x) => x.id)).not.toContain(r.id);
+  }
+  expect(Object.keys(installed.routineIds).sort()).toEqual([
+    "external-ping",
+    "morning-digest",
+    "new-mail-summary",
+  ]);
+  // A listing can never hand over a webhook address: the installed routine
+  // mints its own.
+  expect(seeded[2]?.trigger).toEqual({ kind: "webhook" });
+  expect(JSON.stringify(seeded)).not.toContain("key_prefix");
 });
 
 test("installing an evicted packageId fails loudly without a request", async () => {

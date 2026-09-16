@@ -87,6 +87,34 @@ describe("scanIrForSecrets", () => {
     );
   });
 
+  it("scans routine names and prompts", () => {
+    const ir = clone();
+    const routine = ir.routines[0];
+    if (!routine) throw new Error("fixture lost its routines");
+    routine.prompt = `use ${`ghp_${"q".repeat(36)}`}`;
+    expect(scanIrForSecrets(ir).some((f) => f.pattern === "GitHub token")).toBe(
+      true,
+    );
+    const named = clone();
+    const first = named.routines[0];
+    if (!first) throw new Error("fixture lost its routines");
+    first.name = "AKIAIOSFODNN7EXAMPLE";
+    expect(
+      scanIrForSecrets(named).some((f) => f.pattern === "AWS access key id"),
+    ).toBe(true);
+  });
+
+  it("scans a composio wake's triggerConfig", () => {
+    const ir = clone();
+    const wake = ir.routines[1]?.wake;
+    if (wake?.kind !== "composio")
+      throw new Error("fixture lost its composio wake");
+    wake.triggerConfig = { token: `sk_live_${"a".repeat(24)}` };
+    expect(
+      scanIrForSecrets(ir).some((f) => f.pattern === "Stripe secret key"),
+    ).toBe(true);
+  });
+
   it("scans the instructions and description", () => {
     const ir = clone();
     ir.instructions = "AKIAIOSFODNN7EXAMPLE";

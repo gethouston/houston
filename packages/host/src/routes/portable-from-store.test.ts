@@ -47,6 +47,32 @@ const exampleAgentIr: AgentIR = {
     { id: "l2", text: "Finance emails are always urgent." },
   ],
   integrations: ["GMAIL"],
+  routines: [
+    {
+      id: "morning-digest",
+      name: "Morning digest",
+      prompt: "Summarize what arrived overnight.",
+      wake: { kind: "schedule", cron: "0 8 * * 1-5" },
+    },
+    {
+      id: "new-mail-summary",
+      name: "New mail summary",
+      prompt: "Summarize each new email in two sentences.",
+      wake: {
+        kind: "composio",
+        toolkit: "gmail",
+        triggerSlug: "GMAIL_NEW_GMAIL_MESSAGE",
+        triggerConfig: { labelIds: "INBOX" },
+      },
+      chatMode: "per_run",
+    },
+    {
+      id: "external-ping",
+      name: "External ping",
+      prompt: "Read the payload and report what happened.",
+      wake: { kind: "webhook" },
+    },
+  ],
   provenance: { createdVia: "houston" },
 };
 
@@ -116,7 +142,27 @@ test("maps a fetched IR into { manifest, content }", async () => {
   expect(manifest.exporter).toBe("Avery Chen");
   expect(manifest.formatVersion).toBe(1);
   expect((content.skills as unknown[]).length).toBe(2);
-  expect(content.routines).toEqual([]);
+  // The listing's automations install too: one per wake kind, install-ready
+  // (enabled, timestamped) and carrying no minted webhook key of the author's.
+  const routines = content.routines as Array<Record<string, unknown>>;
+  expect(routines.map((r) => r.name)).toEqual([
+    "Morning digest",
+    "New mail summary",
+    "External ping",
+  ]);
+  expect(routines.map((r) => r.schedule)).toEqual([
+    "0 8 * * 1-5",
+    undefined,
+    undefined,
+  ]);
+  expect(routines[1]?.trigger).toEqual({
+    kind: "composio",
+    toolkit: "gmail",
+    trigger_slug: "GMAIL_NEW_GMAIL_MESSAGE",
+    trigger_config: { labelIds: "INBOX" },
+  });
+  expect(routines[2]?.trigger).toEqual({ kind: "webhook" });
+  expect(routines.every((r) => r.enabled === true)).toBe(true);
   expect((content.learnings as unknown[]).length).toBe(2);
   expect(content.claudeMd).toBe(exampleAgentIr.instructions);
 });

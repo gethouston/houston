@@ -11,6 +11,11 @@
  * routine the host never reports on ends in a concrete error instead of
  * spinning forever. Reconnect routes to the Integrations surface, the same
  * hand-off the grid's row badge uses.
+ *
+ * One state beats the wire: when the bound app is not connected on this account
+ * at all (an installed listing's routine, most often), the chip says so and
+ * offers Connect immediately instead of spending the verification window on a
+ * spinner that can only end in "couldn't confirm".
  */
 
 import type { RoutineTriggerBinding } from "@houston/engine-adapter";
@@ -22,6 +27,7 @@ import { useAgentTriggerStatus } from "../../hooks/queries/use-triggers";
 import { useUIStore } from "../../stores/ui";
 import { INTEGRATIONS_VIEW_ID } from "../integrations-view/id";
 import { triggerActivationKind } from "./routine-trigger-maps";
+import { useRoutineConnectNeed } from "./use-routine-connect-need";
 import { useTriggerStatusTimeouts } from "./use-trigger-status-timeouts";
 import { WebhookActivationChip } from "./webhook-activation-chip";
 
@@ -32,12 +38,21 @@ interface Props {
    *  incoming-webhook binding needs the mint/rotate flow, a Composio binding
    *  the connect/reconnect health. */
   trigger: RoutineTriggerBinding;
+  /** Who the routine fires as (multiplayer). The connect offer only applies
+   *  when that is the viewer; a teammate's connections are not ours to judge. */
+  createdBy?: string;
 }
 
-export function RoutineActivationChip({ agentId, routineId, trigger }: Props) {
+export function RoutineActivationChip({
+  agentId,
+  routineId,
+  trigger,
+  createdBy,
+}: Props) {
   const { t } = useTranslation("routines");
   const setViewMode = useUIStore((s) => s.setViewMode);
 
+  const connectNeed = useRoutineConnectNeed(trigger, createdBy);
   const routineIds = useMemo(() => [routineId], [routineId]);
   const statusQuery = useAgentTriggerStatus(agentId, true, routineIds);
   const statuses = useTriggerStatusTimeouts(routineIds, statusQuery.data);
@@ -56,6 +71,30 @@ export function RoutineActivationChip({ agentId, routineId, trigger }: Props) {
         routineId={routineId}
         status={status}
       />
+    );
+  }
+
+  // A missing connection is the concrete, actionable cause: name the app and
+  // offer the connect flow rather than reporting the symptom the wire shows.
+  if (connectNeed) {
+    return (
+      <div className="flex max-w-[15rem] flex-col items-end gap-0.5">
+        <span className="inline-flex items-center gap-1.5 font-medium text-warning text-xs">
+          <AlertTriangle className="size-3.5 shrink-0" />
+          {t("triggerStep.notConnected")}
+        </span>
+        <p className="text-right text-ink-muted text-xs">
+          {t("triggerStep.connectReason", { app: connectNeed.appName })}
+        </p>
+        <Button
+          className="-mr-2"
+          onClick={onReconnect}
+          size="sm"
+          variant="ghost"
+        >
+          {t("triggerStep.connect")}
+        </Button>
+      </div>
     );
   }
 

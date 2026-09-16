@@ -4,8 +4,9 @@
  * `irFromPortable` assembles a publish-ready IR from an agent's gathered portable
  * content (CLAUDE.md + skills + learnings), the wizard's identity/creator choices,
  * and the Composio toolkits the agent expects. `portableFromIr` is its inverse for
- * the mappable surfaces (instructions <-> CLAUDE.md, skills 1:1, learnings 1:1);
- * routines have no place in the IR, so they always come back as an empty array.
+ * the mappable surfaces (instructions <-> CLAUDE.md, skills 1:1, learnings 1:1,
+ * routines mapped through `store-ir-routines.ts` — machine- and account-local
+ * fields dropped in one direction, defaulted in the other).
  *
  * The IR is run through the contract's own pipeline (`normalizeAgentIr` then
  * `agentIrSchema.parse`), so integrations are uppercased + deduped by the SAME
@@ -25,6 +26,16 @@ import {
   type PortableManifest,
 } from "@houston/protocol";
 import type { PortableContent } from "./portable";
+import { normalizeRoutines } from "./routines";
+import {
+  irRoutinesFromPortable,
+  portableRoutinesFromIr,
+  unionRoutineToolkits,
+} from "./store-ir-routines";
+
+/** Diagnostic key for the normalize pass an installed listing's routines run
+ *  through — they come off a listing, never off a file on disk. */
+const STORE_IR_ROUTINES_KEY = "store-ir:routines";
 
 /** The identity/creator/integration inputs a publish collects from the wizard. */
 export interface IrFromPortableOptions {
@@ -70,7 +81,8 @@ export function irFromPortable(
       text: l.text,
       ...(l.created_at ? { createdAt: l.created_at } : {}),
     })),
-    integrations: opts.integrations,
+    integrations: unionRoutineToolkits(opts.integrations, content.routines),
+    routines: irRoutinesFromPortable(content.routines),
     provenance: opts.provenance,
   };
   const { ir } = normalizeAgentIr(candidate);
@@ -78,9 +90,11 @@ export function irFromPortable(
 }
 
 /**
- * Inverse of `irFromPortable` for the round-trippable surfaces. `routines` is
- * always `[]` (the IR carries none); an empty `instructions` maps back to an
- * absent CLAUDE.md, since an empty file carries nothing.
+ * Inverse of `irFromPortable` for the round-trippable surfaces. An empty
+ * `instructions` maps back to an absent CLAUDE.md, since an empty file carries
+ * nothing. The mapped routines go through `normalizeRoutines`, so the install
+ * path receives exactly what a `.houstonagent` import would — one wake
+ * mechanism per routine, every default filled, nothing a later read would drop.
  */
 export function portableFromIr(ir: AgentIR): {
   content: PortableContent;
@@ -89,7 +103,10 @@ export function portableFromIr(ir: AgentIR): {
   const content: PortableContent = {
     ...(ir.instructions !== "" ? { claudeMd: ir.instructions } : {}),
     skills: ir.skills.map((s) => ({ slug: s.slug, body: s.body })),
-    routines: [],
+    routines: normalizeRoutines(
+      portableRoutinesFromIr(ir.routines, new Date().toISOString()),
+      STORE_IR_ROUTINES_KEY,
+    ).items,
     learnings: ir.learnings.map((l) => ({
       id: l.id,
       text: l.text,

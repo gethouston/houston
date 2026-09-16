@@ -67,8 +67,14 @@ export function scanForSecrets(text: string): SecretFinding[] {
 
 /**
  * Scan every user-authored text surface of an AgentIR: the instructions, the
- * identity name/tagline/description/tags, each skill body, and each learning
- * text. `name` and `tags` are v2 additions over the v1 source scan.
+ * identity name/tagline/description/tags, each skill body, each learning text,
+ * and each routine's name, prompt and trigger config. `name` and `tags` are v2
+ * additions over the v1 source scan.
+ *
+ * A routine's `triggerConfig` is scanned as its serialized JSON: it is meant to
+ * hold user intent (a label, a channel), but a publisher could have typed a
+ * token into a free-text config field, and the whole point of this net is that
+ * the shape of the container never decides whether a secret gets published.
  */
 export function scanIrForSecrets(ir: AgentIR): SecretFinding[] {
   const haystacks: string[] = [
@@ -79,6 +85,11 @@ export function scanIrForSecrets(ir: AgentIR): SecretFinding[] {
     ...ir.identity.tags,
     ...ir.skills.map((s) => s.body),
     ...ir.learnings.map((l) => l.text),
+    ...ir.routines.flatMap((r) => [
+      r.name,
+      r.prompt,
+      r.wake.kind === "composio" ? JSON.stringify(r.wake.triggerConfig) : "",
+    ]),
   ];
   return scanForSecrets(haystacks.join("\n"));
 }

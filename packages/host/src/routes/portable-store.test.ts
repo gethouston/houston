@@ -154,6 +154,83 @@ test("store-ir gathers content into an AgentIR and declares integrations", async
   expect(out.ir.skills.map((s) => s.slug)).toEqual(["mailer"]);
 });
 
+test("store-ir carries the selected routines and their toolkits", async () => {
+  const agentId = await seedAgent("rita", "Mailer");
+  const root = await rootFor("rita", agentId);
+  const stamp = "2026-01-01T00:00:00.000Z";
+  await vfs.writeText(
+    `${root}/.houston/routines/routines.json`,
+    JSON.stringify([
+      {
+        id: "r1",
+        name: "Daily",
+        prompt: "check inbox",
+        schedule: "0 9 * * *",
+        enabled: true,
+        suppress_when_silent: false,
+        chat_mode: "shared",
+        integrations: [],
+        created_at: stamp,
+        updated_at: stamp,
+      },
+      {
+        id: "r2",
+        name: "New mail",
+        prompt: "summarize the mail",
+        trigger: {
+          kind: "composio",
+          toolkit: "slack",
+          trigger_slug: "SLACK_NEW_MESSAGE",
+          trigger_config: { channel: "general" },
+          connected_account_id: "ca_rita",
+        },
+        enabled: true,
+        suppress_when_silent: false,
+        chat_mode: "shared",
+        integrations: [],
+        created_at: stamp,
+        updated_at: stamp,
+      },
+      {
+        id: "r3",
+        name: "Not picked",
+        prompt: "never travels",
+        schedule: "0 7 * * *",
+        enabled: true,
+        suppress_when_silent: false,
+        chat_mode: "shared",
+        integrations: [],
+        created_at: stamp,
+        updated_at: stamp,
+      },
+    ]),
+  );
+
+  const r = await fetch(`${base}/agents/${agentId}/portable/store-ir`, {
+    method: "POST",
+    headers: auth("rita"),
+    body: JSON.stringify({
+      ...irBody,
+      selection: { ...irBody.selection, routineIds: ["r1", "r2"] },
+    }),
+  });
+  expect(r.status).toBe(200);
+  const out = (await r.json()) as {
+    ir: {
+      integrations: string[];
+      routines: { id: string; name: string; wake: { kind: string } }[];
+    };
+  };
+  expect(out.ir.routines.map((x) => [x.id, x.wake.kind])).toEqual([
+    ["r1", "schedule"],
+    ["r2", "composio"],
+  ]);
+  // The routine's toolkit joins the skill frontmatter's chips, uppercased.
+  expect(out.ir.integrations).toEqual(["GMAIL", "SLACK"]);
+  // The creator's own connected account is machine-local and never travels.
+  expect(JSON.stringify(out.ir)).not.toContain("ca_rita");
+});
+
 test("store-ir rejects a request missing the identity name", async () => {
   const agentId = await seedAgent("nora", "Mailer");
   const r = await fetch(`${base}/agents/${agentId}/portable/store-ir`, {

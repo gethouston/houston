@@ -185,6 +185,7 @@ export function RoutineSetupChat({
         agentId={agent.id}
         routineId={routine.id}
         trigger={routine.trigger}
+        createdBy={routine.created_by}
       />
     ) : undefined;
 

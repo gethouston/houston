@@ -3,6 +3,12 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v86 - 2026-09-16
+
+The agent detail screen gains a Routines section beside Skills: a listing now
+carries the agent's automations, so the page says what it does on its own and
+what wakes each one. Hidden entirely for an agent with no routines.
+
 ## v85 - 2026-09-14
 
 The interaction card gains a hands-on step: an errand the person finishes on a

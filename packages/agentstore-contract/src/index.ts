@@ -6,8 +6,11 @@
  */
 export * from "./handle";
 export * from "./ir";
+export * from "./ir-migrate";
 export * from "./json-schema";
+export * from "./json-schema-routine";
 export * from "./normalize";
+export * from "./normalize-routines";
 export * from "./secrets";
 export * from "./skill-frontmatter";
 export * from "./slug";

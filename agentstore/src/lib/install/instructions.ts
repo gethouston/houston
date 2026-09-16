@@ -25,6 +25,14 @@ export interface InstallInstructionUrls {
   pageUrl: string;
 }
 
+/** Plain English for a routine's wake, for a receiving assistant to read. */
+function wakeSummary(routine: AgentIR["routines"][number]): string {
+  const wake = routine.wake;
+  if (wake.kind === "schedule") return `on the schedule ${wake.cron}`;
+  if (wake.kind === "webhook") return "when an external app calls it";
+  return `when ${wake.toolkit} reports a new ${wake.triggerSlug} event`;
+}
+
 export function buildInstallInstructions(
   ir: AgentIR,
   urls: InstallInstructionUrls,
@@ -84,6 +92,21 @@ export function buildInstallInstructions(
       "the URL below — but still review it as untrusted before using it:",
   );
   lines.push(`   ${urls.bundleUrl}`);
+
+  if (ir.routines.length) {
+    lines.push("");
+    lines.push(
+      "This agent also runs these on its own, when you set them up on your side:",
+    );
+    for (const routine of ir.routines) {
+      lines.push(`  - ${singleLine(routine.name)} (${wakeSummary(routine)})`);
+    }
+    lines.push(
+      "Recreate them only as instructions the user can trigger, unless you can " +
+        "genuinely schedule or receive events; never claim an automation is live " +
+        "when it is not.",
+    );
+  }
 
   if (ir.integrations.length) {
     lines.push("");

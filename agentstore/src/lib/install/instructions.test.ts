@@ -35,6 +35,26 @@ describe("buildInstallInstructions", () => {
     expect(text).toContain("Do NOT assume you have live access");
   });
 
+  it("lists the agent's routines and what wakes each one", () => {
+    expect(text).toContain(
+      "This agent also runs these on its own, when you set them up on your side:",
+    );
+    expect(text).toContain("- Morning digest (on the schedule 0 8 * * 1-5)");
+    expect(text).toContain(
+      "- New mail summary (when gmail reports a new GMAIL_NEW_GMAIL_MESSAGE event)",
+    );
+    expect(text).toContain("- External ping (when an external app calls it)");
+    expect(text).toContain("never claim an automation is live");
+  });
+
+  it("omits the routines block for an agent with none", () => {
+    const text = buildInstallInstructions(
+      { ...exampleAgentIr, routines: [] },
+      urls,
+    );
+    expect(text).not.toContain("runs these on its own");
+  });
+
   it("credits the creator by display name and URL", () => {
     expect(text).toContain(
       "Made by Avery Chen (https://agents.gethouston.ai/@avery)",

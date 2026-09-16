@@ -90,3 +90,11 @@ export interface StoreSkillRow {
   slug: string;
   body: string;
 }
+
+/** One automation a listing carries: its name and what wakes it, already
+ *  humanized by the surface (the store never renders a cron line or a slug). */
+export interface StoreRoutineRow {
+  id: string;
+  name: string;
+  wakeLabel: string;
+}

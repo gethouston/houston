@@ -28,6 +28,7 @@ describe("AgentIR JSON Schema", () => {
     expect(required).not.toContain("skills");
     expect(required).not.toContain("learnings");
     expect(required).not.toContain("integrations");
+    expect(required).not.toContain("routines");
     const identity = agentIrJsonSchema.properties.identity;
     expect([...identity.required]).not.toContain("tags");
   });
@@ -51,6 +52,49 @@ describe("AgentIR JSON Schema", () => {
       "description",
       "name",
       "slug",
+    ]);
+  });
+
+  it("declares routine wake as a oneOf discriminated by a const kind", () => {
+    const wake = agentIrJsonSchema.properties.routines.items.properties.wake;
+    expect(wake.oneOf.map((w) => w.properties.kind.const)).toEqual([
+      "schedule",
+      "composio",
+      "webhook",
+    ]);
+    for (const variant of wake.oneOf) {
+      expect(variant.additionalProperties).toBe(false);
+    }
+  });
+
+  it("requires exactly the non-optional routine keys", () => {
+    expect(
+      [...agentIrJsonSchema.properties.routines.items.required].sort(),
+    ).toEqual(["id", "name", "prompt", "wake"]);
+  });
+
+  it("declares the same routine property keys the fixture's routines carry", () => {
+    const declared = Object.keys(
+      agentIrJsonSchema.properties.routines.items.properties,
+    ).sort();
+    const carried = new Set(
+      exampleAgentIr.routines.flatMap((r) => Object.keys(r)),
+    );
+    expect(declared).toEqual([...carried].sort());
+  });
+
+  it("keeps the routines fragment in its contract position (before provenance)", () => {
+    // The emitted object is byte-copied into the Go gateway's schema file, so
+    // the key ORDER is part of the contract, not cosmetics.
+    expect(Object.keys(agentIrJsonSchema.properties)).toEqual([
+      "irVersion",
+      "identity",
+      "instructions",
+      "skills",
+      "learnings",
+      "integrations",
+      "routines",
+      "provenance",
     ]);
   });
 

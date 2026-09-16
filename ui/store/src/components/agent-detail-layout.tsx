@@ -9,6 +9,7 @@ export function AgentDetailLayout({
   actions,
   bio,
   skills,
+  routines,
   integrations,
   learnings,
   moreAgents,
@@ -20,6 +21,7 @@ export function AgentDetailLayout({
   actions?: ReactNode;
   bio: ReactNode;
   skills?: ReactNode;
+  routines?: ReactNode;
   integrations?: ReactNode;
   learnings?: number;
   moreAgents?: ReactNode;
@@ -29,6 +31,7 @@ export function AgentDetailLayout({
     installs: string;
     bio: string;
     skills: string;
+    routines: string;
     worksWith: string;
     learning: string;
     learnings: string;
@@ -41,6 +44,7 @@ export function AgentDetailLayout({
     installs: "installs",
     bio: "Bio",
     skills: "Skills",
+    routines: "Routines",
     worksWith: "Works with",
     learning: "learning",
     learnings: "learnings",
@@ -76,6 +80,7 @@ export function AgentDetailLayout({
             </Section>
           ) : null}
         </div>
+        {routines ? <Section title={text.routines}>{routines}</Section> : null}
         {integrations ? (
           <Section title={text.worksWith}>{integrations}</Section>
         ) : null}

@@ -11,9 +11,28 @@
  */
 
 import { outputLanguageName } from "../components/onboarding/personal-assistant-seeds.ts";
+import type { RoutineSetupNeed } from "./routine-setup-needs.ts";
 
 function languageNote(languageName: string): string {
   return `**LANGUAGE — read this first.** The user's app is set to ${languageName}. Write this ENTIRE conversation in ${languageName}: your introduction, every question you ask, and every choice or option you offer the user. For Spanish use Latin-American neutral (tú, computador). For Portuguese use Brazilian (você). If the user writes to you in a different language, switch to theirs and stay there. Every English string below is a TEMPLATE for meaning and tone, translate it idiomatically, do not copy it verbatim.`;
+}
+
+/**
+ * The paragraph that tells an imported agent which of its automations the person
+ * still has to switch on. An installed listing brings routines whose wake needs
+ * an account the installer has not connected, or a webhook address nobody has
+ * minted yet — the agent is the one talking to them, so it is the one that has
+ * to say so, in their language, without naming a slug or a screen.
+ */
+function pendingSetupNote(needs: RoutineSetupNeed[]): string {
+  const lines = needs.map((need) =>
+    need.kind === "connect_app"
+      ? `   - "${need.routineName}" wakes on activity in ${need.appName}, so the user has to connect that app before it can run.`
+      : `   - "${need.routineName}" wakes when an outside system calls it, so the user has to create its web address before it can run.`,
+  );
+  return `4. You arrived with automations that cannot run yet. Tell the user plainly, in one short line each, what is still needed, and offer to walk them through it:
+${lines.join("\n")}
+   Say it as something YOU need from them to start working, never as an error.`;
 }
 
 /**
@@ -26,8 +45,12 @@ function languageNote(languageName: string): string {
 export function buildSetupMissionPrompt(
   agentName: string,
   locale: string,
+  pendingSetup: RoutineSetupNeed[] = [],
 ): string {
   const languageName = outputLanguageName(locale);
+  const pending = pendingSetup.length
+    ? `\n\n${pendingSetupNote(pendingSetup)}`
+    : "";
   return `This is ${agentName}'s very first conversation with the user. Make a warm, human first impression and help the user set you up so you deliver real value fast. Keep every reply short and warm. Never mention files, folders, configs, or any technical internals, speak in terms of the work you do for them. This is the user's first impression of you.
 
 ${languageNote(languageName)}
@@ -42,7 +65,7 @@ Do this, in order:
    - Lasting preferences and facts about how you should behave (their tone, their name, standing do's and don'ts, context about them and their work) go into your instructions.
    - A repeatable procedure they want you to follow again later gets saved as a Skill.
    - Anything they want to happen on a schedule becomes a Routine: ask what time it should run and confirm with them before you create it.
-   Capture each thing the moment the user says it, then briefly confirm what you saved in one short line before moving on.
+   Capture each thing the moment the user says it, then briefly confirm what you saved in one short line before moving on.${pending}
 
 Keep replies short and warm throughout.`;
 }

@@ -10,6 +10,13 @@
  * surface what was inferred. The caller's object is never mutated.
  */
 import { AGENT_IR_VERSION, INTEGRATION_REGEX, SLUG_REGEX } from "./ir";
+import { normalizeRoutinesField } from "./normalize-routines";
+import {
+  disambiguate,
+  isNonEmptyString,
+  isRecord,
+  MAX_ID_LEN,
+} from "./normalize-shared";
 import { parseSkillFrontmatter } from "./skill-frontmatter";
 import { slugify } from "./slug";
 
@@ -17,31 +24,6 @@ const UNCLAIMED_DISPLAY_NAME = "Unclaimed";
 const DEFAULT_CATEGORY = "other";
 const DEFAULT_NAME = "Untitled agent";
 const DEFAULT_SLUG = "agent";
-
-/** Max length of a slug / learning id (SLUG_REGEX allows 64 chars). */
-const MAX_ID_LEN = 64;
-
-/**
- * Return a value not in `seen` by suffixing `-2`, `-3`, … onto `base`, trimming
- * `base` so the suffix always survives the 64-char cap. Suffixing without the
- * trim would infinite-loop on a 64-char `base`: `${base}-2`.slice(0, 64) drops
- * the suffix and yields `base`, which is already in `seen`.
- */
-const disambiguate = (base: string, seen: Set<string>): string => {
-  let uniq = base;
-  let n = 2;
-  while (seen.has(uniq)) {
-    const suffix = `-${n++}`;
-    uniq = base.slice(0, MAX_ID_LEN - suffix.length) + suffix;
-  }
-  return uniq;
-};
-
-const isRecord = (v: unknown): v is Record<string, unknown> =>
-  typeof v === "object" && v !== null && !Array.isArray(v);
-
-const isNonEmptyString = (v: unknown): v is string =>
-  typeof v === "string" && v.trim().length > 0;
 
 const isValidSlug = (v: unknown): v is string =>
   typeof v === "string" && SLUG_REGEX.test(v);
@@ -182,6 +164,10 @@ export function normalizeAgentIr(input: unknown): {
     }
     candidate.integrations = out;
   }
+
+  /* ---- routines ---------------------------------------------------------- */
+  const routines = normalizeRoutinesField(candidate.routines, notes);
+  if (routines !== undefined) candidate.routines = routines;
 
   /* ---- provenance -------------------------------------------------------- */
   const provenance: Record<string, unknown> = isRecord(candidate.provenance)

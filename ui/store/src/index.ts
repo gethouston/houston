@@ -132,5 +132,6 @@ export type {
   StoreCreatorProfile,
   StoreCreatorRow,
   StoreLinkComponent,
+  StoreRoutineRow,
   StoreSkillRow,
 } from "./types";

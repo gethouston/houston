@@ -2,6 +2,7 @@ import type { AgentProvenance } from "@houston/agentstore-contract";
 import type { Learning, Routine } from "@houston/protocol";
 import { describe, expect, test } from "vitest";
 import type { PortableContent } from "./portable";
+import { normalizeRoutines } from "./routines";
 import {
   irFromPortable,
   portableFromIr,
@@ -38,6 +39,45 @@ const routine: Routine = {
   created_at: "2026-01-01T00:00:00.000Z",
   updated_at: "2026-01-01T00:00:00.000Z",
 };
+
+const composioRoutine: Routine = {
+  id: "r2",
+  name: "New mail",
+  prompt: "summarize the mail",
+  trigger: {
+    kind: "composio",
+    toolkit: "gmail",
+    trigger_slug: "GMAIL_NEW_GMAIL_MESSAGE",
+    trigger_config: { labelIds: "INBOX" },
+    connected_account_id: "ca_local_only",
+  },
+  enabled: false,
+  suppress_when_silent: true,
+  chat_mode: "per_run",
+  provider: "anthropic",
+  model: "claude-opus-4-8",
+  effort: "high",
+  integrations: ["gmail"],
+  setup_activity_id: "act_1",
+  created_by: "user_1",
+  created_at: "2026-01-01T00:00:00.000Z",
+  updated_at: "2026-01-01T00:00:00.000Z",
+};
+
+const webhookRoutine: Routine = {
+  id: "r3",
+  name: "External ping",
+  prompt: "read the payload",
+  trigger: { kind: "webhook", key_prefix: "wh_abcd1234" },
+  enabled: true,
+  suppress_when_silent: false,
+  chat_mode: "shared",
+  integrations: [],
+  created_at: "2026-01-01T00:00:00.000Z",
+  updated_at: "2026-01-01T00:00:00.000Z",
+};
+
+const allThree = [routine, composioRoutine, webhookRoutine];
 
 describe("irFromPortable", () => {
   test("maps content + identity into a valid IR", () => {
@@ -112,6 +152,84 @@ describe("irFromPortable", () => {
     ]);
   });
 
+  test("maps all three wake kinds, dropping every machine-local field", () => {
+    const ir = irFromPortable(
+      { skills: [], routines: allThree, learnings: [] },
+      baseOpts,
+    );
+    expect(ir.routines).toEqual([
+      {
+        id: "r1",
+        name: "Daily",
+        prompt: "check inbox",
+        wake: { kind: "schedule", cron: "0 9 * * *" },
+        chatMode: "shared",
+        suppressWhenSilent: false,
+      },
+      {
+        id: "r2",
+        name: "New mail",
+        prompt: "summarize the mail",
+        wake: {
+          kind: "composio",
+          toolkit: "gmail",
+          triggerSlug: "GMAIL_NEW_GMAIL_MESSAGE",
+          triggerConfig: { labelIds: "INBOX" },
+        },
+        chatMode: "per_run",
+        suppressWhenSilent: true,
+      },
+      {
+        id: "r3",
+        name: "External ping",
+        prompt: "read the payload",
+        wake: { kind: "webhook" },
+        chatMode: "shared",
+        suppressWhenSilent: false,
+      },
+    ]);
+    const serialized = JSON.stringify(ir.routines);
+    for (const local of [
+      "ca_local_only",
+      "wh_abcd1234",
+      "claude-opus-4-8",
+      "anthropic",
+      "high",
+      "act_1",
+      "user_1",
+      "created_at",
+      "enabled",
+    ]) {
+      expect(serialized).not.toContain(local);
+    }
+  });
+
+  test("a routine with no wake fails validation instead of vanishing", () => {
+    const wakeless = { ...routine, schedule: undefined };
+    expect(() =>
+      irFromPortable(
+        { skills: [], routines: [wakeless], learnings: [] },
+        baseOpts,
+      ),
+    ).toThrow();
+  });
+
+  test("unions composio wake toolkits into integrations, keeping order", () => {
+    const ir = irFromPortable(
+      { skills: [], routines: allThree, learnings: [] },
+      { ...baseOpts, integrations: ["slack"] },
+    );
+    expect(ir.integrations).toEqual(["SLACK", "GMAIL"]);
+  });
+
+  test("never duplicates a toolkit the publisher already listed", () => {
+    const ir = irFromPortable(
+      { skills: [], routines: [composioRoutine], learnings: [] },
+      { ...baseOpts, integrations: ["GMAIL"] },
+    );
+    expect(ir.integrations).toEqual(["GMAIL"]);
+  });
+
   test("throws (never silently drops) on an unrepresentable IR", () => {
     // A description over the 20000-char cap cannot be normalized away.
     expect(() =>
@@ -142,8 +260,67 @@ describe("portableFromIr", () => {
   });
 });
 
+describe("portableFromIr routines", () => {
+  test("rebuilds each wake kind with install-ready defaults", () => {
+    const ir = irFromPortable(
+      { skills: [], routines: allThree, learnings: [] },
+      baseOpts,
+    );
+    const { content } = portableFromIr(ir);
+    expect(content.routines.map((r) => r.schedule)).toEqual([
+      "0 9 * * *",
+      undefined,
+      undefined,
+    ]);
+    expect(content.routines.map((r) => r.trigger)).toEqual([
+      undefined,
+      {
+        kind: "composio",
+        toolkit: "gmail",
+        trigger_slug: "GMAIL_NEW_GMAIL_MESSAGE",
+        trigger_config: { labelIds: "INBOX" },
+      },
+      { kind: "webhook" },
+    ]);
+    for (const r of content.routines) {
+      // An install lands enabled: the installer picked it in the wizard.
+      expect(r.enabled).toBe(true);
+      expect(r.created_at).not.toBe("");
+      expect(r.updated_at).toBe(r.created_at);
+    }
+    expect(content.routines.map((r) => r.chat_mode)).toEqual([
+      "shared",
+      "per_run",
+      "shared",
+    ]);
+    expect(content.routines.map((r) => r.suppress_when_silent)).toEqual([
+      false,
+      true,
+      false,
+    ]);
+    expect(content.routines.map((r) => r.integrations)).toEqual([
+      [],
+      ["gmail"],
+      [],
+    ]);
+  });
+
+  test("survives the normalize pass the install path runs", () => {
+    // portableFromIr already normalizes, so a second pass must be a no-op:
+    // every routine keeps exactly one wake mechanism and nothing is dropped.
+    const ir = irFromPortable(
+      { skills: [], routines: allThree, learnings: [] },
+      baseOpts,
+    );
+    const { content } = portableFromIr(ir);
+    const again = normalizeRoutines(content.routines, "test");
+    expect(again.diagnostics).toEqual([]);
+    expect(again.items).toEqual(content.routines);
+  });
+});
+
 describe("round-trip", () => {
-  test("portableFromIr(irFromPortable(x)).content equals x modulo routines", () => {
+  test("portableFromIr(irFromPortable(x)).content equals x modulo local fields", () => {
     const x: PortableContent = {
       claudeMd: "# Role\nAll the instructions.",
       skills: [
@@ -157,7 +334,18 @@ describe("round-trip", () => {
       ],
     };
     const { content } = portableFromIr(irFromPortable(x, baseOpts));
-    expect(content).toEqual({ ...x, routines: [] });
+    // The timestamps are the INSTALL's, not the source's — everything else
+    // about the routine round-trips unchanged.
+    expect(content).toEqual({
+      ...x,
+      routines: [
+        {
+          ...routine,
+          created_at: content.routines[0]?.created_at ?? "",
+          updated_at: content.routines[0]?.updated_at ?? "",
+        },
+      ],
+    });
   });
 
   test("round-trips content with no CLAUDE.md and no learnings", () => {
@@ -196,6 +384,20 @@ describe("storePackageFromIrPayload", () => {
     expect(pkg.content.claudeMd).toBe("# Role\nYou sell things.");
     expect(pkg.content.skills).toEqual([
       { slug: "research", body: "---\ntitle: Research\n---\nbody" },
+    ]);
+  });
+
+  test("carries routines into the installable package", () => {
+    const withRoutines = irFromPortable(
+      { skills: [], routines: allThree, learnings: [] },
+      baseOpts,
+    );
+    const pkg = storePackageFromIrPayload({ ir: withRoutines }, "9.9.9");
+    if ("error" in pkg) throw new Error(pkg.error);
+    expect(pkg.content.routines.map((r) => r.name)).toEqual([
+      "Daily",
+      "New mail",
+      "External ping",
     ]);
   });
 
