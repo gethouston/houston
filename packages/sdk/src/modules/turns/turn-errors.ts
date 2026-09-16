@@ -68,8 +68,9 @@ export function engineVerdictMessage(e: unknown): string | undefined {
  */
 /**
  * The engine answered the send with "not here, not now": the agent's pod is
- * waking, restarting (a release roll, a drain), or its runtime is still
- * booting, and the SAME send succeeds once it is back. Keyed on the exact
+ * waking, restarting (a release roll, a drain), its runtime is still booting,
+ * or its id is latched for the seconds a rename moves its directory
+ * (PRODUCT-1804), and the SAME send succeeds once it is back. Keyed on the exact
  * (status, reason) pairs the gateway and host mint for that state, never on a
  * bare 502/503 (a provider quota page on the same status is a real failure).
  * The web adapter's `isEngineWakingError` reads the same pairs across every

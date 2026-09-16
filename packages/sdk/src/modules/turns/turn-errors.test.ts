@@ -96,6 +96,18 @@ describe("isEngineWakingRejection", () => {
     ).toBe(true);
   });
 
+  // PRODUCT-1804: the host latches an agent id while a rename moves its
+  // directory; anything arriving with the old id in that window gets the same
+  // waking pair with the latch as detail, and the retry lands on the new id.
+  it("reads a rename latch as a wake", () => {
+    expect(
+      rejects(503, {
+        error: "engine unavailable",
+        detail: "agent 'ws/old' is being renamed - retry with its new id",
+      }),
+    ).toBe(true);
+  });
+
   it("never matches a bare status or a neighbouring reason", () => {
     expect(rejects(503, { error: "the host is shutting down" })).toBe(false);
     expect(
