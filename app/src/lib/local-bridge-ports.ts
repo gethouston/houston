@@ -18,13 +18,18 @@ import {
   osStartLocalBridge,
   osStopLocalBridge,
 } from "./os-bridge";
+import { quietErrorDetails } from "./quiet-error-class";
 import { reportQuietError } from "./quiet-error-report";
 
 /**
  * A gateway without the bridge capability is an expected deployment state,
  * not a broken connection: the guided dialog shows its own copy for it and the
  * boot-time resume stays silent to the user, so it reports only as the quiet
- * `bridge_unsupported` class instead of one bug per desktop boot.
+ * `bridge_unsupported` class instead of one bug per desktop boot. The other
+ * bridge quiet classes (`bridge_no_agent`, `bridge_state`) are the toast
+ * layer's gate. Whatever stays loud keeps its cause: the report error carries
+ * only the stack, so the status, gateway body and message ride as `extra`
+ * (every event used to arrive with `extra: null`, PRODUCT-1833).
  */
 export function reportLocalBridgeError(error: unknown): void {
   if (isBridgeUnsupported(error)) {
@@ -39,7 +44,17 @@ export function reportLocalBridgeError(error: unknown): void {
     );
     return;
   }
-  showErrorToast("local_model_bridge", "Local model connection failed", error);
+  const { status, body } = quietErrorDetails(error);
+  showErrorToast("local_model_bridge", "Local model connection failed", error, {
+    extra: {
+      cause:
+        error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : String(error),
+      http_status: status,
+      body,
+    },
+  });
 }
 
 export function bridgeIdentityKey(identity: LocalBridgeIdentity): string {

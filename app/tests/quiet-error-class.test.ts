@@ -2,6 +2,8 @@ import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { BridgeStateError } from "@houston/sdk/local-model-bridge/errors";
+import { NoAgentForProviderWriteError } from "@houston/sdk/no-agent-provider-write-error";
 import {
   agentKeyOf,
   classifyQuietError,
@@ -103,6 +105,26 @@ describe("classifyQuietError", () => {
         }),
       ),
       "engine_waking",
+    );
+  });
+
+  // PRODUCT-1833: the bridge bootstrap in a zero-agent space and the SDK's
+  // own retry states are expected, inline-surfaced states, never a red bug
+  // (HOUSTON-APP-5E0 / -5E1). The SDK names them; the app only binds.
+  it("names the bridge_no_agent and bridge_state classes off the SDK's errors", () => {
+    strictEqual(
+      classifyQuietError(new NoAgentForProviderWriteError()),
+      "bridge_no_agent",
+    );
+    const unavailable = new BridgeStateError("model_unavailable");
+    strictEqual(classifyQuietError(unavailable), "bridge_state");
+    deepStrictEqual(quietErrorDetails(unavailable), {
+      status: null,
+      body: "model_unavailable",
+    });
+    strictEqual(
+      classifyQuietError(named("BridgeStateError", "reconnecting")),
+      null,
     );
   });
 
@@ -249,6 +271,15 @@ describe("showErrorToast routes the quiet classes to their own surfaces", () => 
       ),
     );
     ok(body.includes("showEngineWakingToast(command, message, originalError)"));
-    ok(body.includes('reportQuietError("bridge_unsupported"'));
+    // PRODUCT-1833: the three bridge classes share one report-only branch.
+    for (const kind of [
+      "bridge_unsupported",
+      "bridge_no_agent",
+      "bridge_state",
+    ])
+      ok(body.includes(`case "${kind}":`), `${kind} is a report-only class`);
+    ok(
+      body.includes("reportQuietError(quiet, command, message, originalError)"),
+    );
   });
 });
