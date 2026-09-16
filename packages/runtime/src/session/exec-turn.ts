@@ -536,7 +536,12 @@ export async function execTurn(
         // would die at this same step — a wedged chat. `runAutocompact` reports
         // the refusal once and holds the retry off, and the turn runs on
         // uncompacted (session/autocompact-guard.ts).
-        if (await runAutocompact(conv.session, id)) {
+        if (
+          await runAutocompact(conv.session, id, {
+            provider: model.provider,
+            id: model.id,
+          })
+        ) {
           compaction = { trigger: "proactive", pre_tokens: fill };
           // Stream the boundary so the chat draws the divider + resets its
           // window estimate; persisted on the assistant message below so the
