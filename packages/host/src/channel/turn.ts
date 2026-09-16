@@ -8,7 +8,7 @@ import type {
   TurnPin,
 } from "../ports";
 import { LOCAL_PLACEHOLDER_KEY, OPENAI_COMPATIBLE } from "../providers";
-import { liveTurns } from "../routes/live-turn";
+import { liveTurnPin, liveTurns } from "../routes/live-turn";
 import {
   customEndpointKey,
   PROVIDER,
@@ -76,6 +76,7 @@ export class TurnChannel implements RuntimeChannel {
         actingAs,
         actingUser,
       },
+      liveTurnPin(pin),
     );
     const outcome = await dispatchTurn(
       this.deps,

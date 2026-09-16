@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "vitest";
-import { liveTurns } from "./live-turn";
+import { liveTurnPin, liveTurns } from "./live-turn";
 
 /**
  * The host's own answer to "what is this agent working on, in which mode, and
@@ -106,4 +106,31 @@ test("an end report for a chat with no record changes nothing", () => {
   liveTurns.end(AGENT, "conv-2");
   liveTurns.end(AGENT, "conv-2");
   expect(liveTurns.get(AGENT, "conv-1")?.mode).toBe("execute");
+});
+
+test("the send's provider pair rides the turn; a send that named none records none", () => {
+  liveTurns.start(
+    AGENT,
+    "conv-1",
+    "execute",
+    {},
+    {
+      provider: "anthropic",
+      model: "claude-sonnet-5",
+    },
+  );
+  liveTurns.start(AGENT, "conv-2", "execute");
+  expect(liveTurns.get(AGENT, "conv-1")?.pin).toEqual({
+    provider: "anthropic",
+    model: "claude-sonnet-5",
+  });
+  expect(liveTurns.get(AGENT, "conv-2")?.pin).toBeUndefined();
+});
+
+test("a fire's TurnPin becomes a live-turn pin only when it names a provider", () => {
+  expect(liveTurnPin(undefined)).toBeUndefined();
+  expect(liveTurnPin({ provider: null, model: "x" })).toBeUndefined();
+  expect(
+    liveTurnPin({ provider: "anthropic", model: null, effort: "high" }),
+  ).toEqual({ provider: "anthropic", effort: "high" });
 });

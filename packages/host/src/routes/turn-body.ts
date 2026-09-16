@@ -1,4 +1,5 @@
 import type { IncomingMessage } from "node:http";
+import type { LiveTurnPin } from "./live-turn";
 import { MAX_JSON_BYTES, readBody } from "./read-body";
 
 /**
@@ -49,4 +50,30 @@ export function turnModeOf(body: Buffer): unknown {
     // denial of service.
     return undefined;
   }
+}
+
+/**
+ * The provider/model/effort a turn body pins (the composer forwards its
+ * effective pair on every send; a programmatic fire carries the routine's).
+ * Undefined when the body names no provider: a model without a provider is
+ * not a pair the runtime could run, so nothing is recorded.
+ */
+export function turnPinOf(body: Buffer): LiveTurnPin | undefined {
+  let parsed: { provider?: unknown; model?: unknown; effort?: unknown };
+  try {
+    parsed = JSON.parse(body.toString("utf8") || "{}") as typeof parsed;
+  } catch {
+    // Same reasoning as turnModeOf: the channel answers an unparseable body.
+    return undefined;
+  }
+  if (typeof parsed.provider !== "string" || !parsed.provider) return undefined;
+  return {
+    provider: parsed.provider,
+    ...(typeof parsed.model === "string" && parsed.model
+      ? { model: parsed.model }
+      : {}),
+    ...(typeof parsed.effort === "string" && parsed.effort
+      ? { effort: parsed.effort }
+      : {}),
+  };
 }
