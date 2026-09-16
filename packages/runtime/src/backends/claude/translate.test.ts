@@ -364,6 +364,63 @@ test("the turn result settles an unverified call loudly (never a silent drop)", 
   expect(err).toHaveBeenCalledTimes(1);
 });
 
+test("a tool block whose stream broke before its stop is dropped at the next message_start, never settled by a later block at the same index (PRODUCT-1828)", () => {
+  const err = vi.spyOn(console, "error").mockImplementation(() => {});
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const msgStart = streamEvent({ type: "message_start", message: {} });
+  const textStart = (index: number) =>
+    streamEvent({
+      type: "content_block_start",
+      index,
+      content_block: { type: "text", text: "" },
+    });
+  const { events } = collect([
+    // Message 1: the connection dropped mid-Bash input; the CLI retried, so no
+    // content_block_stop and no assistant block ever arrive for index 2.
+    msgStart,
+    textStart(0),
+    textDelta("Running it. "),
+    blockStop(0),
+    toolStart(1, "sa", "suggest_actions"),
+    jsonDelta(1, '{"actions":[]}'),
+    assistantToolUse("sa", "suggest_actions", { actions: [] }),
+    blockStop(1),
+    toolStart(2, "bash1", "Bash"),
+    jsonDelta(2, '{"command": "python3 check.py 2>&1 | head -30; echo \\"'),
+    // Message 2 (the next API call): three blocks, the third a plain text block
+    // at index 2. Its stop must not "complete" the dead Bash block.
+    msgStart,
+    textStart(0),
+    textDelta("Done."),
+    blockStop(0),
+    toolStart(1, "sa2", "suggest_actions"),
+    jsonDelta(1, '{"actions":[]}'),
+    assistantToolUse("sa2", "suggest_actions", { actions: [] }),
+    blockStop(1),
+    textStart(2),
+    streamEvent({
+      type: "content_block_delta",
+      index: 2,
+      delta: { type: "text_delta", text: "Bye." },
+    }),
+    blockStop(2),
+    result({ input_tokens: 10, output_tokens: 2 }),
+  ]);
+  expect(events.filter((e) => e.type === "tool_start")).toEqual([
+    {
+      type: "tool_start",
+      data: { name: "suggest_actions", args: { actions: [] } },
+    },
+    {
+      type: "tool_start",
+      data: { name: "suggest_actions", args: { actions: [] } },
+    },
+  ]);
+  expect(err).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledTimes(1);
+  expect(String(warn.mock.calls[0]?.[0])).toContain('tool "Bash"');
+});
+
 test("tool_result maps to tool_end using the buffered tool_use_id → name map", () => {
   const { events } = collect([
     toolStart(0, "abc", "Write"),
