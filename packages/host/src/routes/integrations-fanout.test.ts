@@ -111,6 +111,95 @@ test("a curated alias scope reaches other providers as the real slug", async () 
   expect(composio.lastApp).toBe("highlevel");
 });
 
+test("a scope naming a custom integration EXACTLY is served by custom alone: no fuzzy Composio neighbour", async () => {
+  // PRODUCT-1841: "COMFER Odoo 19 JSON-2" also matched Composio's `odoo`
+  // toolkit by substring, so a dozen turned-off ODOO_* rows were listed ahead
+  // of the user's own integration and the model read them as the catalog.
+  const composio = new FakeIntegrationProvider({
+    id: "composio",
+    actions: [
+      {
+        action: "ODOO_CALL_ODOO_JSONRPC",
+        toolkit: "odoo",
+        description: "JSON-RPC endpoint",
+      },
+    ],
+  });
+  const custom = new FakeIntegrationProvider({
+    id: "custom",
+    toolkits: [
+      { slug: "comfer_odoo_19_json_2", name: "COMFER Odoo 19 JSON-2" },
+    ],
+    actions: [
+      {
+        action: "tools.comfer_odoo_19_json_2.org.default.json.getSaleOrder",
+        toolkit: "comfer_odoo_19_json_2",
+        description: "Read sale.order",
+        connected: true,
+        status: "connected",
+      },
+    ],
+  });
+  for (const app of ["COMFER Odoo 19 JSON-2", "comfer_odoo_19_json_2"]) {
+    composio.lastApp = undefined;
+    const result = await searchIntegrations({
+      registry: new IntegrationRegistry([composio, custom]),
+      userId: "user",
+      query: "getSaleOrder",
+      app,
+    });
+    expect(result.items.map((item) => item.action)).toEqual([
+      "tools.comfer_odoo_19_json_2.org.default.json.getSaleOrder",
+    ]);
+    expect(composio.lastApp).toBeUndefined();
+  }
+  // A scope no custom integration names exactly still fans out to everyone.
+  const loose = await searchIntegrations({
+    registry: new IntegrationRegistry([composio, custom]),
+    userId: "user",
+    query: "jsonrpc",
+    app: "odoo",
+  });
+  expect(loose.items.map((item) => item.action)).toContain(
+    "ODOO_CALL_ODOO_JSONRPC",
+  );
+  expect(composio.lastApp).toBe("odoo");
+});
+
+test("a failed custom definitions read keeps the other providers' scoped results, and surfaces when nothing else answers", async () => {
+  class BrokenStore extends FakeIntegrationProvider {
+    override async listToolkits(): Promise<never> {
+      throw new Error("custom-integrations.json is corrupt");
+    }
+  }
+  const composio = new FakeIntegrationProvider({
+    id: "composio",
+    actions: [
+      { action: "GMAIL_SEND_EMAIL", toolkit: "gmail", description: "Send" },
+    ],
+  });
+  const kept = await searchIntegrations({
+    registry: new IntegrationRegistry([
+      composio,
+      new BrokenStore({ id: "custom", actions: [] }),
+    ]),
+    userId: "user",
+    query: "send",
+    app: "gmail",
+  });
+  expect(kept.items.map((item) => item.action)).toEqual(["GMAIL_SEND_EMAIL"]);
+  await expect(
+    searchIntegrations({
+      registry: new IntegrationRegistry([
+        new BrokenStore({ id: "custom", actions: [] }),
+      ]),
+      userId: "user",
+      query: "send",
+      app: "gmail",
+    }),
+  ).rejects.toThrow("custom-integrations.json is corrupt");
+});
+
 test("execute routes tools-prefixed actions to custom", async () => {
   const custom = new FakeIntegrationProvider({ id: "custom" });
   const composio = new FakeIntegrationProvider({ id: "composio" });

@@ -15,6 +15,7 @@ import { looksLikeAuthFailure } from "./auth-failure";
 import type { CustomExecutorHost } from "./executor-host";
 import { searchCustomTools } from "./search";
 import type { CustomIntegrationStore } from "./store";
+import { attachToolParams } from "./tool-params";
 
 /** Executor tool addresses are `tools.<integration>.<owner>.<connection>.<tool>`. */
 export const CUSTOM_ACTION_PREFIX = "tools.";
@@ -112,7 +113,7 @@ export class CustomIntegrationProvider implements IntegrationProvider {
       this.host.ensure(),
     ]);
     const tools = await executor.tools.list();
-    return searchCustomTools(
+    const result = searchCustomTools(
       query,
       tools
         .filter((t) => t.integration !== "executor")
@@ -121,7 +122,6 @@ export class CustomIntegrationProvider implements IntegrationProvider {
           integration: t.integration,
           name: t.name,
           description: t.description,
-          inputSchema: t.inputSchema,
         })),
       defs.map((d) => ({
         slug: d.slug,
@@ -130,6 +130,14 @@ export class CustomIntegrationProvider implements IntegrationProvider {
       })),
       app,
     );
+    // The listing never carries an input schema (tool-params.ts): fetch
+    // each matched action's schema so the model gets real parameters.
+    return {
+      ...result,
+      items: await attachToolParams(result.items, (address) =>
+        executor.tools.schema(address),
+      ),
+    };
   }
 
   async execute(
