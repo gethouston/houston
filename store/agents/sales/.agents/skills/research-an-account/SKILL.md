@@ -6,6 +6,9 @@ category: Sales
 featured: no
 image: handshake
 integrations: [gmail, hubspot, salesforce, attio, linkedin, firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -49,6 +52,7 @@ I read your sales context first. For every required field that's missing I ask O
 - **Connected CRM**  -  Required for `warm-paths`. Why I need it: I cross-reference your past touches and mutual customers. If missing I ask: "Connect your CRM (HubSpot, Salesforce, Attio, Pipedrive, or Close) so I can find warm paths."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + playbook.** Gather missing required fields (ONE question each, best-modality first). Write atomically.
 

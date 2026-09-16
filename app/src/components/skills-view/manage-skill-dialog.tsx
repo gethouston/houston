@@ -6,19 +6,15 @@ import {
   Skeleton,
 } from "@houston-ai/core";
 import { EditableSkillTitle, skillRenameEscapeGuard } from "@houston-ai/skills";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
-import { queryKeys } from "../../lib/query-keys";
 import { withSkillTitle } from "../../lib/skill-title";
-import { tauriSharedSkills, tauriSkills } from "../../lib/tauri";
 import type { SharedSkillRow } from "../../lib/workspace-shared-skills";
 import { ManageSkillBody } from "./manage-skill-body";
 import { ManageSkillConfirms } from "./manage-skill-confirms";
 import type { ManageSkillDialogProps } from "./manage-skill-dialog-props";
 import { useManageSkillSave } from "./use-manage-skill-save";
-import { useMissingSkillDismiss } from "./use-missing-skill-dismiss";
+import { useSkillDetailSurface } from "./use-skill-detail-surface";
 
 export type {
   ManagedSkillRow,
@@ -26,8 +22,9 @@ export type {
 } from "./manage-skill-dialog-props";
 
 /**
- * The global skill's one detail surface (HOU-792, store-backed since ADR
- * 0003). For a workspace-shared row the content is the STORE copy: a save is
+ * A skill's detail surface on the PER-AGENT Skills tab (HOU-792, store-backed
+ * since ADR 0003); the shared library edits a skill on its own full page
+ * instead. For a workspace-shared row the content is the STORE copy: a save is
  * one store write plus reversible per-agent manifest toggles (so unassigning
  * needs no confirm), and agents holding a modified copy surface as overrides
  * with a revert. Copy-based rows (local skills, or deployments without the
@@ -46,28 +43,12 @@ export function ManageSkillDialog({
   onDisableForAgent,
 }: ManageSkillDialogProps) {
   const { t } = useTranslation(["skills", "common"]);
-  const isShared = shared !== undefined && row?.origin === "shared";
-  // On a shared-store deployment a LOCAL row never offers copy fan-out:
-  // holders render read-only and multi-agent use goes through "Share to
-  // workspace" (ADR 0003), so the checkbox list can't be mistaken for the
-  // org-level assignment it isn't.
-  const assignment = hideAssignment
-    ? ("hidden" as const)
-    : shared !== undefined && row?.origin === "local"
-      ? ("locked" as const)
-      : ("editable" as const);
-  const canonicalPath = row?.agents[0]?.folderPath;
-  const { data: detail, error } = useQuery({
-    queryKey: isShared
-      ? queryKeys.sharedSkillDetail(shared.workspaceId, row?.slug ?? "")
-      : queryKeys.skillDetail(canonicalPath ?? "", row?.slug ?? ""),
-    queryFn: () =>
-      isShared
-        ? tauriSharedSkills.load(shared.workspaceId, row?.slug ?? "")
-        : tauriSkills.load(canonicalPath ?? "", row?.slug ?? ""),
-    enabled: row !== null && (isShared || canonicalPath !== undefined),
-    staleTime: 30_000,
-  });
+  const surface = useSkillDetailSurface({ row, shared, onLeave: onClose });
+  const { isShared, store, canonicalPath, detail, error, rename, setRename } =
+    surface;
+  // The per-agent dialog edits ONLY that agent's copy, so it shows no
+  // assignment section at all; every other mode is the shared origin rule.
+  const assignment = hideAssignment ? ("hidden" as const) : surface.assignment;
   const flow = useManageSkillSave({
     row,
     agents,
@@ -75,17 +56,9 @@ export function ManageSkillDialog({
     shared,
     onApply,
     onDeleteEverywhere,
-    onClose,
+    onSaved: onClose,
+    onDeleted: onClose,
   });
-  // The header pencil's uncommitted rename (PRODUCT-1018): saved into the
-  // frontmatter `title:` when Save changes runs; the slug never moves.
-  const [rename, setRename] = useState<string | null>(null);
-  const slug = row?.slug;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: slug is the intentional change-trigger — a pending rename must die with the row it was typed for; the effect body deliberately reads none of it.
-  useEffect(() => {
-    setRename(null);
-  }, [slug]);
-  useMissingSkillDismiss({ row, error, isShared, shared, onClose });
 
   if (!row) return null;
   const overriddenBy = isShared ? (row.overriddenBy ?? []) : [];
@@ -114,23 +87,24 @@ export function ManageSkillDialog({
             <ManageSkillBody
               key={`${row.slug}:${isShared ? "shared" : canonicalPath}`}
               initialContent={detail.content}
+              workflow={detail.workflow}
               agents={agents}
               assignedIds={flow.assignedIds}
               allowEmptySelection={isShared}
               assignment={assignment}
               overrides={
-                isShared && overriddenBy.length > 0
+                store && overriddenBy.length > 0
                   ? {
                       agents: agents.filter((a) =>
                         overriddenBy.some((o) => o.id === a.id),
                       ),
-                      onRevert: (agent) => shared.onRevert(asShared, agent),
+                      onRevert: (agent) => store.onRevert(asShared, agent),
                     }
                   : undefined
               }
               onEnableAll={
-                isShared && flow.assignedIds.size < agents.length
-                  ? () => shared.onEnableAll(asShared)
+                store && flow.assignedIds.size < agents.length
+                  ? () => store.onEnableAll(asShared)
                   : undefined
               }
               onPromote={

@@ -6,6 +6,9 @@ version: 1
 category: Operaciones
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Primero leo tu contexto de operaciones. Por cada campo requerido que falte, hago
 - **Decisiones, revisiones o instantáneas de metas recientes** - Opcional. Por qué las necesito: más trabajo guardado significa evidencia más sólida. Si no las tienes, sigo adelante con TBD y me apoyo en lo que haya.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** Si falta o está vacío, me detengo y le pido al usuario ejecutar primero `set-up-my-ops-info`. Las prioridades y los contactos clave anclan la lógica del "responsable propuesto para destrabar".
 

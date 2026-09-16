@@ -1,5 +1,9 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Locator, Page } from "@playwright/test";
+import {
+  FOLLOW_UP_PLACEHOLDER,
+  NEW_TASK_PLACEHOLDER,
+} from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { openNewMission } from "./support/mission";
 import { missionCard } from "./support/team-nav";
@@ -33,7 +37,7 @@ test("sends a message and renders the streamed reply", async ({ page }) => {
   // is a second "New mission" affordance — the "+" card in the Running column.
   await openNewMission(page);
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await expect(composer).toBeVisible();
 
   await composer.fill("plan my week");
@@ -54,9 +58,7 @@ test("sends a message with the Submit button", async ({ page }) => {
   await page.goto("/");
   await openNewMission(page);
 
-  await page
-    .getByPlaceholder("What should the agent work on?")
-    .fill("water the plants");
+  await page.getByPlaceholder(NEW_TASK_PLACEHOLDER).fill("water the plants");
   await page.getByRole("button", { name: "Submit" }).click();
 
   await expect(userRow(page, "water the plants")).toBeVisible();
@@ -79,7 +81,7 @@ test("first message keeps the chat panel mounted while the board refetches", asy
   await page.goto("/");
   await openNewMission(page);
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await expect(composer).toBeVisible();
   await composer.fill("no flicker please");
 
@@ -133,7 +135,7 @@ test("recovers a dropped stream mid-turn and renders the full reply", async ({
   await page.goto("/");
   await openNewMission(page);
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await composer.fill("test reconnect");
   await composer.press("Enter");
 
@@ -174,7 +176,7 @@ test("settles the interrupted turn from history by turnId across a turn boundary
   await page.goto("/");
   await openNewMission(page);
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await composer.fill("test boundary");
   await composer.press("Enter");
 
@@ -215,7 +217,7 @@ test("a dead turn settles as an error with the reaper's message", async ({
   await page.goto("/");
   await openNewMission(page);
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await composer.fill("test dead turn");
   await composer.press("Enter");
 
@@ -236,7 +238,7 @@ test("sends a follow-up inside an existing mission", async ({ page }) => {
   await page.goto("/");
 
   await missionCard(page, "Plan a trip to Tokyo").click();
-  const composer = page.getByPlaceholder("Send a follow-up...");
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await expect(composer).toBeVisible();
 
   await composer.fill("what about the budget?");
@@ -260,7 +262,7 @@ test("edits a previous user message in place and rewinds the conversation", asyn
 }) => {
   await page.goto("/");
   await missionCard(page, "Plan a trip to Tokyo").click();
-  const composer = page.getByPlaceholder("Send a follow-up...");
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
 
   // Two settled turns.
   await composer.fill("first message");
@@ -336,7 +338,7 @@ test("copies a user and an agent message to the clipboard", async ({
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await page.goto("/");
   await missionCard(page, "Plan a trip to Tokyo").click();
-  const composer = page.getByPlaceholder("Send a follow-up...");
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await composer.fill("copy me please");
   await composer.press("Enter");
   await expect(page.getByText(/You said: .copy me please./)).toBeVisible({
@@ -367,7 +369,7 @@ test("searches and navigates a long conversation with the map", async ({
 
   // Two exchanges make the map useful enough to exercise both its outline and
   // all-message search modes.
-  const composer = page.getByPlaceholder("Send a follow-up...");
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await composer.fill("show me the budget");
   await composer.press("Enter");
   await expect(page.getByText(/You said: .show me the budget./)).toBeVisible({

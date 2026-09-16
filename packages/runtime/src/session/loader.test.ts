@@ -110,6 +110,23 @@ test("workspace CLAUDE.md is the context file; ancestor context files do NOT lea
   expect(JSON.stringify(agentsFiles)).not.toContain("LEAKED");
 });
 
+test("the job description's industry and role reach the model as plain lines", async () => {
+  const { ws } = freshWorkspace();
+  writeFileSync(
+    join(ws, "CLAUDE.md"),
+    "---\nindustry: Healthcare\nrole: Medical coder\n---\n\nYou code charts.\n",
+  );
+
+  const loader = loaderFor(ws);
+  await loader.reload();
+
+  const { agentsFiles } = loader.getAgentsFiles();
+  // The model never sees the YAML block: it reads the two answers as text.
+  expect(agentsFiles[0]?.content).toBe(
+    "Industry: Healthcare\nRole: Medical coder\n\nYou code charts.",
+  );
+});
+
 test("AGENTS.md wins over CLAUDE.md (pi's own precedence), root only", async () => {
   const { ws } = freshWorkspace();
   writeFileSync(join(ws, "AGENTS.md"), "agents-file");

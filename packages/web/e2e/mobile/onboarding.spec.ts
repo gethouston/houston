@@ -1,4 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
+import { NEW_TASK_PLACEHOLDER } from "../support/composer";
+import { fillAgentBrief } from "../support/create-agent";
 import { expect, test } from "../support/fixtures";
 import { moreRow, navBar, navItem } from "../support/mobile-nav";
 import { completeSurvey, resetToFirstRun } from "../support/onboarding";
@@ -38,11 +40,13 @@ async function tapMoreRow(page: Page, rowTitle: string, target: string) {
 
 /** The create-agent step: the Agents item, then the control on its home. */
 async function tapNewAgent(page: Page) {
-  await expect(page.getByRole("dialog", { name: "Open Agents" })).toBeVisible();
-  await expect(page.getByText("Tap Agents at the bottom")).toBeVisible();
+  await expect(
+    page.getByRole("dialog", { name: "Open AI Employees" }),
+  ).toBeVisible();
+  await expect(page.getByText("Tap AI Employees at the bottom")).toBeVisible();
   await navItem(page, "agents").tap();
   await expect(
-    page.getByRole("dialog", { name: "Click New agent" }),
+    page.getByRole("dialog", { name: "Click New AI Employee" }),
   ).toBeVisible();
   await page.getByTestId("agents-home-new-agent").tap();
 }
@@ -79,19 +83,24 @@ test("the guided setup completes on a phone: More rows, provider connect, first 
   await page.getByPlaceholder("Paste your API key").fill("sk-or-e2e-phone");
   await page.getByRole("button", { name: "Connect", exact: true }).tap();
   await centerCta(page, "Your AI is connected!").tap();
-  await centerCta(page, "Create your first agent").tap();
+  await centerCta(page, "Create your first AI Employee").tap();
 
-  // New agent lives on the Agents home; the dialog coaching is unchanged.
+  // New AI Employee lives on the Agents home; the dialog coaching is unchanged.
   await tapNewAgent(page);
   // In-dialog coaching sits outside the modal (aria-hidden), as on desktop.
-  await expect(page.getByText("Click Create new")).toBeVisible();
-  await page.getByRole("button", { name: "Create new", exact: true }).tap();
+  await expect(page.getByText("Tell it what it will do.")).toBeVisible();
+  // The dialog opens on the guided brief: the industry, then the job.
+  await fillAgentBrief(page);
   // The color palette wraps inside the phone dialog instead of running off
   // its right edge (ten swatches outgrow a phone-width card in one row).
   const naming = page.locator("[data-tutorial-target='createAgentNaming']");
   const frame = await naming.boundingBox();
   if (!frame) throw new Error("naming step did not lay out");
-  for (const swatch of await naming.locator("button[type='button']").all()) {
+  // The swatches alone: the name field and submit share the anchor and size
+  // by their own rules.
+  for (const swatch of await naming
+    .locator("button[style*='background-color']")
+    .all()) {
     const box = await swatch.boundingBox();
     if (!box) throw new Error("swatch did not lay out");
     expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
@@ -100,8 +109,8 @@ test("the guided setup completes on a phone: More rows, provider connect, first 
   await page
     .getByPlaceholder("e.g. Product manager, Sales, Jerry")
     .fill("Aurora");
-  await page.getByRole("button", { name: "Create Agent" }).tap();
-  await centerCta(page, "Agent created!").tap();
+  await page.getByRole("button", { name: "Create AI Employee" }).tap();
+  await centerCta(page, "AI Employee created!").tap();
   await centerCta(page, "Give it work").tap();
 
   // New task on the phone is the nav bar's own compose control — the only
@@ -118,7 +127,7 @@ test("the guided setup completes on a phone: More rows, provider connect, first 
   ).toBeVisible();
   const composer = page
     .getByTestId("mission-chat-screen")
-    .getByPlaceholder("What should the agent work on?");
+    .getByPlaceholder(NEW_TASK_PLACEHOLDER);
   // A real TAP before typing: `fill` skips hit-testing, and a stale spotlight
   // blocker sitting over the composer once passed this spec while a phone
   // user could not touch it.

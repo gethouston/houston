@@ -5,6 +5,9 @@ version: 1
 category: Operations
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ I read your operations context first. For every required field that's missing I 
   row count, any data-quality caveats.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`.** If
    missing/empty, stop, ask user run `set-up-my-ops-info` skill first. Priorities + tools anchor which

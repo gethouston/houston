@@ -7,6 +7,9 @@ category: Vendas
 featured: yes
 image: handshake
 integrations: [googlecalendar, hubspot, salesforce, attio, gong, fireflies, stripe, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -48,6 +51,7 @@ Primeiro leio o seu contexto de vendas. Para cada campo obrigatório que estiver
 - **Fonte de uso do produto**  -  Opcional, útil para `type=account-review`. Por que preciso: cito tendências de uso reais. Se você não tiver, sigo com TBD na seção de uso.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio o ledger e o playbook.** Coleto os campos obrigatórios que faltam (uma pergunta por vez, começando pela melhor modalidade). Escrevo de forma atômica.
 

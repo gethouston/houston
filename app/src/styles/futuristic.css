@@ -45,7 +45,7 @@
    ONLY `transform: scale()` — re-declaring the translate here would stack on top
    of the `translate` property and shove the panel half its size up-left during
    the animation (the top-left-then-centre jump). transform-origin stays centre.
-   No page recede — the scrim is core Dialog's single bg-black/40 overlay.
+   No page recede — the scrim is core Dialog's single bg-black/25 overlay.
    Reduced-motion collapses to opacity only. */
 .ai-hub-modal-surface[data-state="open"] {
   animation: ai-hub-modal-in 0.19s cubic-bezier(0.16, 1, 0.3, 1);

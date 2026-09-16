@@ -6,7 +6,7 @@
     },
     "blank": {
       "name": "Start from scratch",
-      "description": "A blank agent with no pre-configured actions, instructions, or learnings. Build it your way."
+      "description": "A blank AI Employee with no pre-configured actions, instructions, or learnings. Build it your way."
     },
     "bookkeeping": {
       "name": "Bookkeeper",
@@ -43,32 +43,38 @@
   },
   "toasts": {
     "renamed": "Workspace renamed",
-    "nameConflict": "An agent named {{name}} already exists",
+    "nameConflict": "An AI Employee named {{name}} already exists",
     "nameConflictDescription": "Choose a different name and try again.",
     "deleted": "Workspace deleted",
     "switchedModel": "Switched to {{provider}} ({{model}})",
     "timezoneSet": "Timezone set to {{zone}}"
   },
   "nameErrors": {
-    "invalidChars": "Agent names can't contain slashes or special characters",
-    "tooLong": "Agent names can be at most {{max}} characters"
+    "invalidChars": "AI Employee names can't contain slashes or special characters",
+    "tooLong": "AI Employee names can be at most {{max}} characters"
   },
   "instructions": {
-    "helper": "How this agent should think and act.",
-    "placeholder": "Write instructions for your agent…"
+    "specific": "Specific instructions",
+    "placeholder": "Write instructions for your AI Employee…",
+    "brief": {
+      "industry": "Industry",
+      "role": "Role",
+      "addIndustry": "Add industry",
+      "addRole": "Add role"
+    }
   },
   "learnings": {
     "emptyTitle": "No learnings yet",
-    "emptyDescription": "The agent jots things down as it works, or you can add them yourself.",
+    "emptyDescription": "The AI Employee jots things down as it works, or you can add them yourself.",
     "addLearning": "Add learning",
-    "helper": "Quick notes the agent picks up over time.",
+    "helper": "Quick notes the AI Employee picks up over time.",
     "inputPlaceholder": "Type a learning and press Enter…",
     "editAria": "Edit learning",
     "expandAria": "Expand learning",
     "collapseAria": "Collapse learning",
     "removeAria": "Remove learning",
     "confirmRemoveTitle": "Remove this learning?",
-    "confirmRemoveDescription": "The agent will lose this note. You can add it back later.",
+    "confirmRemoveDescription": "The AI Employee will lose this note. You can add it back later.",
     "confirmRemoveLabel": "Remove",
     "provenanceFromMission": "From {{name}} · {{mission}}",
     "provenanceFrom": "From {{name}}",
@@ -82,25 +88,25 @@
   "configure": {
     "projectContext": {
       "title": "Project context",
-      "description": "Injected into all agents. Describe your project, conventions, and rules.",
+      "description": "Injected into all AI Employees. Describe your project, conventions, and rules.",
       "placeholder": "Project context, coding conventions, architecture notes..."
     },
     "agentPrompts": {
-      "title": "Agent prompts",
-      "description": "Each agent mode gets its own system prompt.",
+      "title": "AI Employee prompts",
+      "description": "Each AI Employee mode gets its own system prompt.",
       "placeholder": "System prompt for {{name}}..."
     },
     "skills": {
       "title": "Skills",
-      "description": "Reusable procedures the agents can run."
+      "description": "Reusable procedures the AI Employees can run."
     },
     "learnings": {
       "title": "Learnings",
-      "description": "Agents save learnings as they work. You can add them manually too."
+      "description": "AI Employees save learnings as they work. You can add them manually too."
     },
     "settings": {
       "title": "Settings",
-      "description": "Agent configuration and runtime settings.",
+      "description": "AI Employee configuration and runtime settings.",
       "savingHint": "Saving...",
       "worktreeMode": "Worktree mode",
       "worktreeModeDescription": "Create a separate git worktree for each task",
@@ -221,12 +227,12 @@
     "modifiedToday": "Today"
   },
   "copyAgent": {
-    "row": "Copy agent",
+    "row": "Copy AI Employee",
     "rowDescription": "Create a duplicate in one of your teams. Conversations are not copied.",
     "title": "Copy {{name}}",
     "body": "The copy starts with the same job description, skills, routines, learnings and color. Conversations stay with the original and are never copied.",
     "nameLabel": "Name for the copy",
-    "nameTaken": "An agent named {{name}} already exists. Agent names are shared across all your teams, so give the copy its own name.",
+    "nameTaken": "An AI Employee named {{name}} already exists. AI Employee names are shared across all your teams, so give the copy its own name.",
     "teamLabel": "Team for the copy",
     "confirm": "Create copy",
     "copySuffix": "copy",
@@ -238,25 +244,24 @@
       "chatsCopiedDescription_other": "{{count}} conversations now live with {{name}} too."
     },
     "errors": {
-      "failed": "We couldn't copy the agent",
+      "failed": "We couldn't copy the AI Employee",
       "chatsFailed": "We couldn't copy the chats",
-      "chatsPartial": "Some chats did not make it. Copy the agent again to retry."
+      "chatsPartial": "Some chats did not make it. Copy the AI Employee again to retry."
     },
     "wizard": {
-      "eyebrow": "Copy an agent",
       "source": {
-        "title": "Which agent should we copy?",
-        "body": "The new agent starts out like the one you pick. On the next screens you choose what it keeps. Files stay with the original.",
-        "empty": "You have no agents to copy yet."
+        "title": "Which AI Employee should we copy?",
+        "body": "The new AI Employee starts out like the one you pick. On the next screens you choose what it keeps. Files stay with the original.",
+        "empty": "You have no AI Employees to copy yet."
       },
       "instructions": {
         "title": "What should the copy know?",
-        "body": "Everything is on to start, except the conversations. Turn off anything the new agent should not carry over.",
+        "body": "Everything is on to start, except the conversations. Turn off anything the new AI Employee should not carry over.",
         "instructionsLabel": "Job description",
         "instructionsRow": "Job description and rules",
         "noInstructions": "{{name}} has no job description yet.",
         "learningsLabel": "Learnings",
-        "learningsBody": "Notes the agent picked up while working. Personal ones can stay behind.",
+        "learningsBody": "Notes the AI Employee picked up while working. Personal ones can stay behind.",
         "chatsLabel": "Chats",
         "chatsRow": "Conversations",
         "chatsCount_one": "{{count}} conversation {{name}} has had so far",
@@ -275,7 +280,6 @@
         "heading": "Based on {{name}}"
       },
       "actions": {
-        "back": "Back",
         "next": "Continue",
         "selectAll": "Select all",
         "clearAll": "Clear"

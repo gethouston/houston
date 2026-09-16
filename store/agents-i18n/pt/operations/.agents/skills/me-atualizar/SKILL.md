@@ -7,6 +7,9 @@ category: Operações
 featured: yes
 image: clipboard
 integrations: [googledrive, googlecalendar, gmail, outlook, gong, fireflies, slack, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -49,6 +52,7 @@ Leio o seu contexto operacional primeiro. Para cada campo obrigatório que estiv
 - `meeting-post` - transcrição (Fireflies / Gong) → decisões + responsáveis + próximos passos + citações literais que vale a pena guardar. Escreve `meetings/{YYYY-MM-DD}-{slug}-post.md`.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. Leio `config/context-ledger.json`. Campo obrigatório faltando para o modo escolhido → faço UMA pergunta direcionada com dica de modalidade, escrevo a resposta.
 

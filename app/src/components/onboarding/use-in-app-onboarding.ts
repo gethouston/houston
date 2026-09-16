@@ -37,7 +37,7 @@ export function useInAppOnboarding() {
   const setActive = useUIStore((s) => s.setInAppOnboardingActive);
   const firstRun = useUIStore((s) => s.inAppOnboardingFirstRun);
   const viewMode = useUIStore((s) => s.viewMode);
-  const createDialogOpen = useUIStore((s) => s.createAgentDialogOpen);
+  const createDialogOpen = useUIStore((s) => s.createFlow !== null);
   const [step, setStep, clearResumeStep] = useInAppStep(firstRun);
   const signals = useInAppOnboardingSignals();
   const email = useGuidedEmailTask();
@@ -94,15 +94,13 @@ export function useInAppOnboarding() {
     baselineAgentCount,
   });
 
-  // The sidebar spot steps point into collapsible rail bands; a returning
-  // user may have folded them away (persisted), which would leave the
-  // spotlight nothing to find. Unfold before pointing.
-  const expandBand = (which: "myAccounts" | "teams") => {
+  // The create-agent spot points into the collapsible "Your teams" band; a
+  // returning user may have folded it away (persisted), which would leave the
+  // spotlight nothing to find. Unfold before pointing. The rows that LEAD the
+  // rail wear no band, so nothing has to be unfolded to spotlight them.
+  const expandTeamsBand = () => {
     const ui = useUIStore.getState();
-    if (which === "myAccounts" && ui.myAccountsSectionCollapsed)
-      ui.toggleMyAccountsSectionCollapsed();
-    if (which === "teams" && ui.teamsSectionCollapsed)
-      ui.toggleTeamsSectionCollapsed();
+    if (ui.teamsSectionCollapsed) ui.toggleTeamsSectionCollapsed();
   };
 
   const finish = () => {
@@ -136,10 +134,7 @@ export function useInAppOnboarding() {
     arrivedHasAgent: baselineAgentCount !== null && baselineAgentCount > 0,
     emailMode: email.armed,
     startAiIntro: () => setStep("connectAiIntro"),
-    startAiSpot: () => {
-      expandBand("myAccounts");
-      setStep("openAiHub");
-    },
+    startAiSpot: () => setStep("openAiHub"),
     skipAiStep: () => {
       if (signals.integrationsOn) setStep("integrationsIntro");
       else afterIntegrationsSequence();
@@ -148,13 +143,10 @@ export function useInAppOnboarding() {
       if (signals.integrationsOn) setStep("integrationsIntro");
       else afterIntegrationsSequence();
     },
-    startIntegrationsSpot: () => {
-      expandBand("myAccounts");
-      setStep("openIntegrations");
-    },
+    startIntegrationsSpot: () => setStep("openIntegrations"),
     afterIntegrationsSequence,
     startCreateAgentSpot: () => {
-      expandBand("teams");
+      expandTeamsBand();
       setBaselineAgentCount(signals.agentCount);
       setStep("createAgent");
     },

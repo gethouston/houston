@@ -41,21 +41,42 @@ only the web-e2e glue.
 ```
 e2e/
   config.ts         # web dev-server constants (WEB_PORT / WEB_URL) — harness glue
-  support/
-    seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
+  support/          # every helper, alphabetically:
+    activate-pending-connection.ts # finish a fake-host OAuth hand-off once the
+                    # connection it opened is pending
+    composer.ts     # the chat composer's placeholder copy, which the specs
+                    # locate a composer by
+    copy-agent.ts   # the copy-an-agent door on both breakpoints, plus the
+                    # content the seeded agent is given so every screen has some
+    create-agent.ts # the rail's "New AI Employee" row and the guided brief
+                    # behind it (the Agents home has a control of the same name)
     fixtures.ts     # the `test`/`expect` used by specs (resets the host per test)
+    global-setup.ts # warms the vite dev server once before the suite (see CI below)
     identity.ts     # sign the harness in as a known user (see Signed-in specs below)
+    machine-lock.ts # the machine-wide ONE-suite lock (an atomic mkdir in tmpdir,
+                    # the holder's pid inside so waiters can steal a dead one)
+    mission.ts      # open the board's empty new-mission composer
+    mobile-nav.ts   # the PHONE chrome: the floating nav bar, its More menu,
+                    # and the Teams tree (the phone's only section switcher)
+    onboarding.ts   # reach the first-run survey and walk it; write one ACCOUNT
+                    # preference straight onto the host
+    palette.ts      # open the ⌘K command palette (the press retries: the
+                    # shortcut listener is attached in an effect)
+    run-locked.ts   # run a full Playwright suite under the machine lock — the
+                    # `test:e2e` / `test:visual` entry point
+    seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
     settings-nav.ts # the rail's anchorless rows (Admin + its sections and
                     # Analytics lenses) and Settings + its sections (About me)
+    sidebar-create.ts # the rail band's ONE "+" and the create sheet behind it
+    sidebar-layout.ts # the sidebar's stored order + grouping, arranged by
+                    # writing it to the HOST before the app boots
+    skills-nav.ts   # open one agent's Skills section, landed
     team-nav.ts     # the rail (top-level rows) + the screen ON THE
                     # GLASS; open a team's section, and an agent's settings page
                     # through it ("focused agent screen", the ONE door onto agent policy)
-    mobile-nav.ts   # the PHONE chrome: the floating nav bar, its More menu,
-                    # and the Teams tree (the phone's only section switcher)
     tour-nav.ts     # arm the guided tour from the footer's help control
-    sidebar-create.ts # the rail band's ONE "+" menu: new agent / new team
-    global-setup.ts # warms the vite dev server once before the suite (see CI below)
   mobile/           # phone-project specs (see Mobile below)
+  visual/           # the visual-regression project + its baselines (see below)
   *.spec.ts         # the tests
 ```
 
@@ -74,6 +95,12 @@ its More menu (`mobile/more-menu.spec.ts`), the Teams tree
 (`mobile/routines.spec.ts`: list → a routine's own screen), and first-run
 (`mobile/onboarding.spec.ts`: the survey, then the whole in-app setup over
 the phone shell — More-menu rows, provider connect, first agent, first task).
+Beside it sit the surfaces a phone draws differently: the assistant as a
+full-height chat (`mobile/assistant.spec.ts`), the chat header's people stack
+(`mobile/chat-header-people.spec.ts`), the composer's one-row toolbar and its
+bottom-sheet pickers (`mobile/composer-toolbar.spec.ts`), copying an agent
+(`mobile/copy-agent.spec.ts`), and the guided brief's typed answer
+(`mobile/create-agent-brief.spec.ts`).
 Specs `.tap()`
 rather than `.click()` and assert zero horizontal overflow
 (`document.documentElement.scrollWidth - clientWidth <= 0`).

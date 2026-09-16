@@ -17,7 +17,8 @@ import { AgentSettingsPeople } from "./agent-settings-people.tsx";
  * The flush bodies (job description, people, apps, models) deliberately own no
  * width of their own, so the mounting surface does. This gives them the SAME
  * column the one self-padded body (learnings) brings — `max-w-3xl px-6` on one
- * `pt-2` top rhythm — so nothing shifts as the rail switches sections.
+ * `pt-2` top rhythm — so nothing shifts as the rail switches sections. Every
+ * section page-scrolls inside it.
  */
 function AccessColumn({ children }: { children: ReactNode }) {
   return (
@@ -49,16 +50,6 @@ function HeroAccessColumn({
   );
 }
 
-/** The same column, height-bounded: for a body that PINS a document card to
- *  the window's bottom gap (job description) instead of page-scrolling. */
-function FillColumn({ children }: { children: ReactNode }) {
-  return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-3xl flex-col px-6 pt-2">
-      {children}
-    </div>
-  );
-}
-
 /**
  * The ONE section switch: renders the section the rail selected into the right
  * pane. Every branch COMPOSES the existing section component rather than
@@ -72,9 +63,9 @@ export function AgentSettingsSectionView({
   switch (section) {
     case "job-description":
       return (
-        <FillColumn>
+        <AccessColumn>
           <AgentAdminInstructions agent={agent} />
-        </FillColumn>
+        </AccessColumn>
       );
     case "learnings":
       return <AgentAdminKnowledge agent={agent} />;

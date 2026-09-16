@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [googledocs, googledrive, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -45,6 +48,7 @@ Primero leo tu contexto de operaciones. Por cada campo obligatorio que falte hag
 - `investor-update`  -  narrativa con voz de CEO para la actualización mensual o trimestral. Salida: `investor-updates/{yyyy-qq}/update.md`.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. Leo `config/context-ledger.json`. Lleno los vacíos con UNA pregunta priorizada por modalidad.
 2. Leo `context/operations-context.md`  -  prioridades activas, ritmo operativo, líneas rojas, notas de voz. Ancla lo que significa "avance".

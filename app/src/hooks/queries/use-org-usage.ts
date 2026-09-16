@@ -1,11 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
-import {
-  isActiveTopLevelView,
-  SETTINGS_VIEW_ID,
-} from "../../lib/top-level-views";
-import { useUIStore } from "../../stores/ui";
+import { useWorkspaceSectionActive } from "../use-workspace-section-active";
 
 /** Default usage window (contract §5: host clamps `days` to ≤ 90). */
 export const USAGE_DEFAULT_DAYS = 30;
@@ -25,9 +21,7 @@ export function useOrgUsage(
   enabled: boolean,
   days: number = USAGE_DEFAULT_DAYS,
 ) {
-  const active = useUIStore((s) =>
-    isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID),
-  );
+  const active = useWorkspaceSectionActive();
   return useQuery({
     queryKey: queryKeys.orgUsage(days),
     queryFn: () => tauriOrg.usage(days),

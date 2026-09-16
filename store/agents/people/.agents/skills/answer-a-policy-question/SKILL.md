@@ -6,6 +6,9 @@ category: People
 featured: no
 image: busts-in-silhouette
 integrations: [googledocs, gmail, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -45,6 +48,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Jurisdiction** — Optional. Why I need it: leave and benefits answers vary by state and country. If you don't have it I keep going with TBD and surface jurisdictional gaps in the draft.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc.** Read
    `context/people-context.md`. If missing or empty, tell

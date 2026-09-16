@@ -113,11 +113,8 @@ test("a family whose doc projection failed is not announced", async () => {
   expect(result.changed).toEqual(["ConversationsChanged"]);
 });
 
-test("turn tool mutations publish the skills and custom definition views", async () => {
+test("turn tool mutations publish the custom definition view", async () => {
   const { deps, turn, filesystem, resolved, requests } = await claimedTurn(200);
-  filesystem.immediateWrites.add(
-    `${workspaceRel}/.agents/skills/example/SKILL.md`,
-  );
   filesystem.immediateWrites.add("custom-integrations.json");
   const result = await finishTurnDurability({
     deps,
@@ -127,25 +124,14 @@ test("turn tool mutations publish the skills and custom definition views", async
     heartbeat: null,
     outcome: {},
     transcript: null,
-    views: {
-      skills: { items: [{ name: "example" }], diagnostics: [] },
-      customDefinitions: { items: [{ slug: "example" }] },
-    },
+    views: { customDefinitions: { items: [{ slug: "example" }] } },
   });
 
   const viewPuts = requests.filter(
     (request) =>
-      request.method === "PUT" &&
-      /\/(skills|custom_definitions)$/.test(request.url),
+      request.method === "PUT" && /\/custom_definitions$/.test(request.url),
   );
   expect(viewPuts).toEqual([
-    {
-      url: "https://store.example/v1/pod/docs/w1/agent-1/skills",
-      method: "PUT",
-      body: JSON.stringify({
-        doc: { items: [{ name: "example" }], diagnostics: [] },
-      }),
-    },
     {
       url: "https://store.example/v1/pod/docs/w1/agent-1/custom_definitions",
       method: "PUT",
@@ -153,6 +139,6 @@ test("turn tool mutations publish the skills and custom definition views", async
     },
   ]);
   expect(result.changed).toEqual(
-    expect.arrayContaining(["SkillsChanged", "CustomIntegrationsChanged"]),
+    expect.arrayContaining(["CustomIntegrationsChanged"]),
   );
 });

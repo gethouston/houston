@@ -7,6 +7,9 @@ category: Personal
 featured: no
 image: busts-in-silhouette
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -54,6 +57,7 @@ conectada > archivo > URL > texto pegado) y espero.
 - **Muestras de noticias difíciles**: Opcional. Por qué las necesito: los rechazos y las aperturas de PIP suenan distinto a las notas de celebración. Si no las tienes, sigo adelante marcando la huella de noticias difíciles como pendiente.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal** (archivo propio):
    `context/people-context.md`. Leo la sección existente de notas de

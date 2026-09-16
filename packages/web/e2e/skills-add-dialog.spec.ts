@@ -1,5 +1,5 @@
 import { expect, test } from "./support/fixtures";
-import { openAgentSettings } from "./support/team-nav";
+import { openAgentSkills } from "./support/skills-nav";
 
 /**
  * Add Skills dialog, GitHub tab. Regression guard for the WebKit repaint ghost
@@ -19,10 +19,9 @@ test("GitHub install button keeps a stable width across label changes", async ({
 }) => {
   await page.goto("/");
 
-  // The agent's Skills tab → the Custom skills tab's empty-state CTA opens
-  // the GitHub / From-scratch dialog.
-  await openAgentSettings(page, "Houston", "Skills");
-  await page.getByRole("tab", { name: "Custom skills" }).click();
+  // The agent's Skills section → its empty-state CTA opens the GitHub /
+  // From-scratch dialog.
+  await openAgentSkills(page);
   await page.getByRole("button", { name: "Add skill" }).click();
 
   const dialog = page.getByRole("dialog");

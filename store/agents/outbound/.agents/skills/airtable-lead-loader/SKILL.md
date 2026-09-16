@@ -6,6 +6,9 @@ category: Outbound
 featured: no
 image: card-index-dividers
 integrations: [airtable]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -71,6 +74,7 @@ I create the table with these fields. Field types match Airtable's REST API conv
 - `Reply Status` (singleSelect: "no-reply", "interested", "not-now", "not-relevant", "unsubscribed", "bounced")  -  populated manually by you, not by me
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **List bases.** Call Airtable's "list bases" via Composio. If only one, use it. If many and the caller hasn't named one, ask the user which.
 

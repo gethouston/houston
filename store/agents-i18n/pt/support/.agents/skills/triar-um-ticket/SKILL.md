@@ -7,6 +7,9 @@ category: Suporte
 featured: yes
 image: headphone
 integrations: [gmail, outlook, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Eu leio o seu contexto de suporte primeiro. Para cada campo obrigatório que est
 - **Receita mensal / plano de cada cliente**. Opcional. Por que preciso: me permite ponderar a prioridade pelo status de cliente pagante. Se você não tiver, eu sigo em frente com TBD e pondero apenas pelos sinais do conteúdo.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 0. **Ler `context/support-context.md`.** Se não existir, paro. Aviso você para rodar `set-up-my-support-info` primeiro. Leio as regras de roteamento + faixas de tempo de resposta + lista de VIPs do documento, nunca deixo fixo no código.
 1. **Identificar a origem.** Você indica o canal ou a mensagem referenciada por um id externo. Uso `composio search <channel>` para encontrar o slug de busca correto (por exemplo, busca de thread no Gmail, busca de conversa no Intercom). NÃO deixo slugs de ferramentas fixos.
 2. **Buscar a conversa completa** via Composio. Extraio assunto, todas as mensagens, email do remetente, ids externos das mensagens.

@@ -159,15 +159,20 @@ describe("StoreHomeScreen", () => {
 });
 
 describe("screen-level drift guard", () => {
-  it("requires both Home surfaces to import StoreHomeScreen", () => {
-    for (const path of [
-      "../../../agentstore/src/components/home/catalog-results.tsx",
-      "../../../app/src/components/store-view/store-browse.tsx",
-    ]) {
-      assert.match(
-        readFileSync(new URL(path, import.meta.url), "utf8"),
-        /import[\s\S]*StoreHomeScreen[\s\S]*from "@houston-ai\/store"/,
-      );
-    }
+  // The store website (agents.gethouston.ai) is the ONE surface that renders
+  // the catalog Home, so the screen must stay its source of truth: a page that
+  // re-implements the hero/results layout locally is how the two drifted apart
+  // the first time.
+  it("requires the store website's Home to import StoreHomeScreen", () => {
+    assert.match(
+      readFileSync(
+        new URL(
+          "../../../agentstore/src/components/home/catalog-results.tsx",
+          import.meta.url,
+        ),
+        "utf8",
+      ),
+      /import[\s\S]*StoreHomeScreen[\s\S]*from "@houston-ai\/store"/,
+    );
   });
 });

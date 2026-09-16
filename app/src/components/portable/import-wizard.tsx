@@ -1,741 +1,116 @@
 /**
- * Import an agent shared by a friend — a small, calm flow.
+ * Import an agent a friend shared — the "From a friend" flow.
  *
  *   1. Upload + optional threat scan.
- *   2. Name + color + provider (helmet preview).
- *   3. Skills picker        — skipped if package has none.
- *   4. Routines picker      — skipped if package has none.
- *   5. Learnings picker     — skipped if package has none.
- *   6. Required integrations — skipped if no toolkit slug is referenced.
+ *   2. Name + colour + model (helmet preview).
+ *   3-5. Skills / Routines / Learnings pickers, each present only when the
+ *        package actually carries that kind.
  *
- * The CLAUDE.md (instructions) always rides along — it's the agent's
- * identity. The wizard does not expose a toggle for it.
+ * The frame is `FlowSheet`, which owns the surface, the header and the
+ * scrolling body: steps render bare content, and Back lives in the header's
+ * leading slot at every step but the first — where the close X is the only way
+ * out, so the flow never offers two ways to leave in one row.
  *
- * Visual language: `/DESIGN.md` plus the existing
- * `NamingStep` for name+color, so it feels exactly like creating an
- * agent from scratch.
+ * The first two steps ask one short thing each, so they wear the compact
+ * frame and state themselves in its title; the pickers are lists to scan, and
+ * take the tall one with their own headline over the list.
  */
 
-import type {
-  PortableScanResponse,
-  PortableUploadPreviewResponse,
-} from "@houston/engine-adapter";
-import {
-  AGENT_COLORS,
-  Button,
-  cn,
-  colorValue,
-  Dialog,
-  DialogContent,
-  HoustonAvatar,
-  Input,
-  resolveAgentColor,
-} from "@houston-ai/core";
-import { Check } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AsyncButton, Button, FlowSheet } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { useProviderStatuses } from "../../hooks/use-provider-statuses";
-import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
-import { finishAgentSetup } from "../../lib/agent-setup";
-import { startAgentSetupMission } from "../../lib/agent-setup-mission";
-import { analytics } from "../../lib/analytics";
-import { pickDefaultProviderModel } from "../../lib/default-provider-model";
-import { getEngine } from "../../lib/engine";
-import { genericErrorDescription } from "../../lib/error-report";
-import { openAgentBoard } from "../../lib/open-agent";
-import { osOpenPortableAgent } from "../../lib/os-bridge";
-import { providerIsConnected } from "../../lib/provider-connection";
-import { getDefaultModel } from "../../lib/providers";
-import { tauriProvider, toAgent } from "../../lib/tauri";
-import { useAgentStore } from "../../stores/agents";
-import { useUIStore } from "../../stores/ui";
-import { useWorkspaceStore } from "../../stores/workspaces";
-import { ChatModelSelector } from "../chat-model-selector";
-import { STORE_VIEW_ID } from "../store-view";
-import { InstallFromLinkPanel } from "./install-from-link";
-import { PickListStep } from "./pick-list-step";
-
-type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
-
-interface Selection {
-  skillSlugs: Set<string>;
-  routineIds: Set<string>;
-  learningIds: Set<string>;
-}
+import { ImportNameStep } from "./import-name-step";
+import { ImportPickStep } from "./import-pick-steps";
+import { ImportUploadStep } from "./import-upload-step";
+import { useImportWizard } from "./use-import-wizard";
+import { ProgressDots } from "./wizard-parts";
 
 export function ImportAgentWizard() {
-  const { t } = useTranslation(["portable", "agents"]);
-  const open = useUIStore((s) => s.importFromFriendOpen);
-  const setOpen = useUIStore((s) => s.setImportFromFriendOpen);
-  const addToast = useUIStore((s) => s.addToast);
-  const currentWorkspace = useWorkspaceStore((s) => s.current);
-  const existingAgents = useAgentStore((s) => s.agents);
-  const adoptAgent = useAgentStore((s) => s.adopt);
+  const { t } = useTranslation(["portable", "common"]);
+  const wizard = useImportWizard();
 
-  const [stepIndex, setStepIndex] = useState(0);
-  const [uploaded, setUploaded] =
-    useState<PortableUploadPreviewResponse | null>(null);
-  const [wantScan, setWantScan] = useState<boolean | null>(null);
-  const [scanning, setScanning] = useState(false);
-  const [scan, setScan] = useState<PortableScanResponse | null>(null);
-  const [name, setName] = useState("");
-  const [color, setColor] = useState<string>(AGENT_COLORS[0].id);
-  const [provider, setProvider] = useState<string>("anthropic");
-  const [model, setModel] = useState<string>(getDefaultModel("anthropic"));
-  const [lastUsed, setLastUsed] = useState<{
-    provider: string | null;
-    model: string | null;
-  } | null>(null);
-  const userPickedModelRef = useRef(false);
-  const { statuses: providerStatuses } = useProviderStatuses();
-  const connectedProviders = useMemo(
-    () =>
-      Object.values(providerStatuses)
-        .filter((status) => providerIsConnected(status))
-        .map((status) => status.provider),
-    [providerStatuses],
-  );
+  if (!wizard.open) return null;
 
-  // Resolve the sticky preference against confirmed connections whenever the
-  // wizard opens. An unconfirmed probe retains the non-blocking legacy fallback
-  // until statuses arrive.
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    tauriProvider.getLastUsed().then(({ provider: p, model: m }) => {
-      if (cancelled) return;
-      setLastUsed({ provider: p, model: m });
-      if (!userPickedModelRef.current && p) {
-        setProvider(p);
-        setModel(m ?? getDefaultModel(p));
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || userPickedModelRef.current) return;
-    if (Object.keys(providerStatuses).length === 0) return;
-    const next = pickDefaultProviderModel({
-      lastUsedProvider: lastUsed?.provider,
-      lastUsedModel: lastUsed?.model,
-      connectedProviders,
-    });
-    setProvider(next.provider);
-    setModel(next.model);
-  }, [connectedProviders, lastUsed, open, providerStatuses]);
-  const [selection, setSelection] = useState<Selection>({
-    skillSlugs: new Set(),
-    routineIds: new Set(),
-    learningIds: new Set(),
-  });
-  const [installing, setInstalling] = useState(false);
-
-  const steps = useMemo<StepId[]>(() => {
-    const out: StepId[] = ["upload", "name"];
-    if (!uploaded) return out;
-    if (uploaded.preview.skills.length > 0) out.push("skills");
-    if (uploaded.preview.routines.length > 0) out.push("routines");
-    if (uploaded.preview.learnings.length > 0) out.push("learnings");
-    return out;
-  }, [uploaded]);
-
-  const currentStep = steps[stepIndex] ?? "upload";
-  const isLast = stepIndex === steps.length - 1;
-
-  const reset = useCallback(() => {
-    setStepIndex(0);
-    setUploaded(null);
-    setScan(null);
-    setWantScan(null);
-    setName("");
-    setColor(AGENT_COLORS[0].id);
-    setLastUsed(null);
-    userPickedModelRef.current = false;
-    // Provider/model intentionally NOT reset here — the open-effect above
-    // re-hydrates them from `tauriProvider.getLastUsed()` on the next open.
-    setSelection({
-      skillSlugs: new Set(),
-      routineIds: new Set(),
-      learningIds: new Set(),
-    });
-  }, []);
-
-  const handleModelChange = (nextProvider: string, nextModel: string) => {
-    userPickedModelRef.current = true;
-    setProvider(nextProvider);
-    setModel(nextModel);
-  };
-
-  const runScan = async (packageId: string) => {
-    setScanning(true);
-    try {
-      setScan(await getEngine().importScan(packageId));
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  // Shared by both entry points into the wizard — a `.houstonagent` file and an
-  // Agent Store link. Both produce the same preview, so everything downstream
-  // (scan, name, pickers, install) is identical whichever way the agent arrived.
-  const applyPreview = useCallback((result: PortableUploadPreviewResponse) => {
-    setUploaded(result);
-    setSelection({
-      skillSlugs: new Set(result.preview.skills.map((s) => s.slug)),
-      routineIds: new Set(result.preview.routines.map((r) => r.id)),
-      learningIds: new Set(result.preview.learnings.map((l) => l.id)),
-    });
-    setName((prev) =>
-      !prev && result.manifest.agentName ? result.manifest.agentName : prev,
-    );
-  }, []);
-
-  // The Agent Store's one-click install opens the wizard with the preview
-  // already fetched: adopt the one-shot seed on open, exactly as if the user
-  // had pasted the listing's link — the scan choice and every later step stay
-  // in the flow untouched.
-  const seedPreview = useUIStore((s) => s.importSeedPreview);
-  useEffect(() => {
-    if (!open || !seedPreview) return;
-    useUIStore.getState().setImportSeedPreview(null);
-    applyPreview(seedPreview);
-  }, [open, seedPreview, applyPreview]);
-
-  const handleOpenFile = async () => {
-    try {
-      const bytes = await osOpenPortableAgent();
-      if (!bytes) return;
-      const u8 = new Uint8Array(bytes);
-      applyPreview(await getEngine().importPreview(u8.buffer));
-    } catch (err) {
-      addToast({
-        variant: "error",
-        title: t("import.errors.uploadFailed"),
-        description: genericErrorDescription("import_upload", err),
-      });
-    }
-  };
-
-  const handleChooseScan = async (yes: boolean) => {
-    setWantScan(yes);
-    if (yes && uploaded && !scan) {
-      await runScan(uploaded.packageId);
-    }
-  };
-
-  const findingsForId = useCallback(
-    (kind: string, id: string) =>
-      scan?.items.filter((i) => i.kind === kind && i.id === id) ?? [],
-    [scan],
-  );
-
-  const pickLabels = {
-    selectAll: t("import.actions.selectAll"),
-    clearAll: t("import.actions.clearAll"),
-    flagged: t("import.flagged"),
-  };
-
-  const handleInstall = async () => {
-    if (!uploaded || !currentWorkspace) return;
-    if (!name.trim()) {
-      addToast({ variant: "error", title: t("import.errors.nameRequired") });
-      return;
-    }
-    // Same pre-submit rule as the create dialog (HOU-1166): reject bad shapes
-    // and duplicates with friendly copy before the install round-trip.
-    const issue = agentNameIssue(
-      name,
-      existingAgents.map((a) => a.name),
-    );
-    if (issue) {
-      addToast({
-        variant: "error",
-        title:
-          issue === "taken"
-            ? t("agents:toasts.nameConflict", { name: name.trim() })
-            : issue === "tooLong"
-              ? t("agents:nameErrors.tooLong", { max: AGENT_NAME_MAX_LENGTH })
-              : t("agents:nameErrors.invalidChars"),
-      });
-      return;
-    }
-    const resolved = pickDefaultProviderModel({
-      lastUsedProvider: lastUsed?.provider,
-      lastUsedModel: lastUsed?.model,
-      connectedProviders,
-    });
-    const kickoffPin = userPickedModelRef.current
-      ? { provider, model }
-      : resolved.confirmed
-        ? { provider: resolved.provider, model: resolved.model }
-        : {};
-    setInstalling(true);
-    try {
-      const installed = await getEngine().importInstall({
-        packageId: uploaded.packageId,
-        workspaceName: currentWorkspace.name,
-        agentName: name.trim(),
-        agentColor: color,
-        selection: {
-          includeClaudeMd: true,
-          includeSkillSlugs: Array.from(selection.skillSlugs),
-          includeRoutineIds: Array.from(selection.routineIds),
-          includeLearningIds: Array.from(selection.learningIds),
-        },
-      });
-      // Keep the sticky last-used in sync (local, so it's cheap to await).
-      if (kickoffPin.provider && kickoffPin.model) {
-        await tauriProvider.setLastUsed(kickoffPin.provider, kickoffPin.model);
-      }
-      analytics.track("agent_imported", { agent_slug: installed.agentName });
-      // Reveal the agent NOW — the same optimistic contract as the
-      // create-agent dialog (HOU-710). `adopt` marks the agent provisioning
-      // (HOU-693): the sidebar shows it, chat parks sends behind the "being
-      // created" card, and a readiness probe clears the mark. The provider/
-      // model write dispatches to the agent's engine — on the hosted profile
-      // a pod still cold-starting — so awaiting it here would freeze the
-      // dialog for the whole warm-up; it finishes in the background and
-      // surfaces its own error toast on failure.
-      adoptAgent(toAgent(installed.agent));
-      addToast({
-        variant: "success",
-        title: t("import.toasts.installedTitle"),
-        description: t("import.toasts.installedDescription", {
-          name: installed.agentName,
-        }),
-      });
-      openAgentBoard(installed.agent.id);
-      setOpen(false);
-      reset();
-      void finishAgentSetup(installed.agentPath, {
-        ...kickoffPin,
-        routine: null,
-      });
-      // With the wizard dismissed, auto-start the agent's self-setup mission in
-      // the normal shell: it introduces itself and interviews the user,
-      // persisting what they say into instructions / Skills / Routines. No
-      // connect step on import.
-      void startAgentSetupMission(
-        {
-          id: installed.agent.id,
-          name: installed.agentName,
-          color: installed.agent.color,
-          folderPath: installed.agentPath,
-        },
-        kickoffPin,
-        "imported",
-      );
-    } catch (err) {
-      addToast({
-        variant: "error",
-        title: t("import.errors.installFailed"),
-        description: genericErrorDescription("import_install", err),
-      });
-    } finally {
-      setInstalling(false);
-    }
-  };
-
-  const handleClose = useCallback(() => {
-    setOpen(false);
-    reset();
-  }, [reset, setOpen]);
-
-  if (!open) return null;
-
-  const canAdvance =
-    currentStep === "upload"
-      ? !!uploaded && wantScan !== null && !scanning
-      : currentStep === "name"
-        ? name.trim().length > 0
-        : true;
+  const { currentStep, pkg } = wizard;
+  const compact = currentStep === "upload" || currentStep === "name";
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="sm:max-w-[680px] h-[78dvh] flex flex-col p-0 gap-0 overflow-hidden">
-        <header className="shrink-0 px-8 pt-6 pb-2 flex items-center gap-4">
-          <p className="text-xs text-ink-muted">{t("import.eyebrow")}</p>
-          <ProgressDots index={stepIndex} total={steps.length} />
-        </header>
-
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          {currentStep === "upload" && (
-            <Frame>
-              <UploadStep
-                uploaded={uploaded}
-                wantScan={wantScan}
-                onChooseScan={handleChooseScan}
-                onPick={handleOpenFile}
-                onPreview={applyPreview}
-                scanning={scanning}
-                scan={scan}
-              />
-            </Frame>
-          )}
-          {currentStep === "name" && (
-            <NameStep
-              name={name}
-              onNameChange={setName}
-              color={color}
-              onColorChange={setColor}
-              provider={provider}
-              model={model}
-              onProviderChange={handleModelChange}
-            />
-          )}
-          {currentStep === "skills" && uploaded && (
-            <Frame>
-              <PickListStep
-                title={t("import.step3.title")}
-                body={t("import.step3.body")}
-                items={uploaded.preview.skills}
-                selected={selection.skillSlugs}
-                setSelected={(next) =>
-                  setSelection({ ...selection, skillSlugs: next })
-                }
-                getId={(s) => s.slug}
-                renderRow={(s) => ({
-                  title: s.description || humanize(s.slug),
-                  subtitle: humanize(s.slug),
-                  flagged: findingsForId("skill", s.slug).length > 0,
-                })}
-                labels={pickLabels}
-              />
-            </Frame>
-          )}
-          {currentStep === "routines" && uploaded && (
-            <Frame>
-              <PickListStep
-                title={t("import.step4.title")}
-                body={t("import.step4.body")}
-                items={uploaded.preview.routines}
-                selected={selection.routineIds}
-                setSelected={(next) =>
-                  setSelection({ ...selection, routineIds: next })
-                }
-                getId={(r) => r.id}
-                renderRow={(r) => ({
-                  title: r.name,
-                  subtitle: r.promptExcerpt,
-                  flagged: findingsForId("routine", r.id).length > 0,
-                })}
-                labels={pickLabels}
-              />
-            </Frame>
-          )}
-          {currentStep === "learnings" && uploaded && (
-            <Frame>
-              <PickListStep
-                title={t("import.step5.title")}
-                body={t("import.step5.body")}
-                items={uploaded.preview.learnings}
-                selected={selection.learningIds}
-                setSelected={(next) =>
-                  setSelection({ ...selection, learningIds: next })
-                }
-                getId={(l) => l.id}
-                renderRow={(l) => ({
-                  title: l.text,
-                  flagged: findingsForId("learning", l.id).length > 0,
-                })}
-                labels={pickLabels}
-              />
-            </Frame>
-          )}
-        </div>
-
-        <footer className="shrink-0 px-8 py-4 flex items-center justify-between">
-          <button
-            type="button"
-            onClick={() =>
-              stepIndex > 0 ? setStepIndex(stepIndex - 1) : handleClose()
+    <FlowSheet
+      open
+      onOpenChange={(next) => {
+        if (!next) wizard.close();
+      }}
+      size={compact ? "compact" : "wide"}
+      title={
+        currentStep === "upload"
+          ? t("portable:import.step1.title")
+          : currentStep === "name"
+            ? t("portable:import.step2.title")
+            : t("portable:import.eyebrow")
+      }
+      back={
+        wizard.stepIndex > 0
+          ? {
+              label: t("portable:import.actions.back"),
+              onClick: wizard.goBack,
             }
-            className="text-sm text-ink-muted hover:text-ink"
-          >
-            {stepIndex > 0
-              ? t("import.actions.back")
-              : t("import.actions.cancel")}
-          </button>
-          {!isLast ? (
-            <Button
-              className="rounded-full"
-              onClick={() => setStepIndex(stepIndex + 1)}
-              disabled={!canAdvance}
-            >
-              {t("import.actions.next")}
-            </Button>
+          : undefined
+      }
+      progress={
+        <ProgressDots index={wizard.stepIndex} total={wizard.stepCount} />
+      }
+      labels={{ close: t("common:actions.close") }}
+      footer={
+        <div className="flex items-center justify-end">
+          {wizard.isLast ? (
+            // The button's own label is the pending affordance, so AsyncButton's
+            // spinner stays off; what it adds is holding the press for the whole
+            // round-trip.
+            <AsyncButton onClick={wizard.install} spinner={false}>
+              {wizard.installing
+                ? t("portable:import.actions.installing")
+                : t("portable:import.actions.install")}
+            </AsyncButton>
           ) : (
-            <Button
-              className="rounded-full"
-              onClick={handleInstall}
-              disabled={installing}
-            >
-              {installing
-                ? t("import.actions.installing")
-                : t("import.actions.install")}
+            <Button onClick={wizard.goNext} disabled={!wizard.canAdvance}>
+              {t("portable:import.actions.next")}
             </Button>
           )}
-        </footer>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Steps ─────────────────────────────────────────────────────────────
-
-function UploadStep({
-  uploaded,
-  wantScan,
-  onChooseScan,
-  onPick,
-  onPreview,
-  scanning,
-  scan,
-}: {
-  uploaded: PortableUploadPreviewResponse | null;
-  wantScan: boolean | null;
-  onChooseScan: (yes: boolean) => void;
-  onPick: () => void;
-  onPreview: (preview: PortableUploadPreviewResponse) => void;
-  scanning: boolean;
-  scan: PortableScanResponse | null;
-}) {
-  const { t } = useTranslation("portable");
-  return (
-    <div className="space-y-10">
-      <header>
-        <h1 className="text-[28px] font-normal leading-tight">
-          {t("import.step1.title")}
-        </h1>
-        <p className="mt-3 text-base text-ink-muted">
-          {t("import.step1.body")}
-        </p>
-      </header>
-
-      {!uploaded ? (
-        <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <Button onClick={onPick} className="rounded-full">
-              {t("import.step1.pickFile")}
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              {t("import.step1.or")}
-            </span>
-          </div>
-          <InstallFromLinkPanel onPreview={onPreview} />
-          <button
-            type="button"
-            onClick={() => {
-              const ui = useUIStore.getState();
-              ui.setImportFromFriendOpen(false);
-              ui.setViewMode(STORE_VIEW_ID);
-            }}
-            className="text-sm text-ink-muted underline-offset-4 transition-colors hover:text-ink hover:underline"
-          >
-            {t("import.link.browseStore")}
-          </button>
         </div>
-      ) : (
-        <section className="space-y-2 text-sm">
-          <p className="text-ink">{uploaded.manifest.agentName}</p>
-          <p className="text-ink-muted">
-            {t("import.step1.uploadedFrom", {
-              name: uploaded.manifest.exporter ?? t("import.step1.anonymous"),
-            })}
-          </p>
-          <p className="text-ink-muted tabular-nums">
-            {t("import.step1.counts", {
-              skills: uploaded.preview.skills.length,
-              routines: uploaded.preview.routines.length,
-              learnings: uploaded.preview.learnings.length,
-            })}
-          </p>
-          {uploaded.manifest.anonymized && (
-            <p className="text-ink-muted">{t("import.step1.anonymizedFlag")}</p>
-          )}
-        </section>
-      )}
-
-      {uploaded && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-medium">
-            {t("import.step1.scanChoiceLabel")}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <ChoiceCard
-              selected={wantScan === true}
-              onClick={() => onChooseScan(true)}
-              title={t("import.step1.scanYesTitle")}
-              body={t("import.step1.scanYesBody")}
-            />
-            <ChoiceCard
-              selected={wantScan === false}
-              onClick={() => onChooseScan(false)}
-              title={t("import.step1.scanNoTitle")}
-              body={t("import.step1.scanNoBody")}
-            />
-          </div>
-          {scanning && (
-            <p className="text-sm text-ink-muted">
-              {t("import.step1.scanning")}
-            </p>
-          )}
-          {!scanning && scan && wantScan && (
-            <div className="rounded-xl bg-chip p-4 text-sm">
-              <p className="text-ink">
-                {scan.items.length === 0
-                  ? t("import.step1.scanClean")
-                  : t("import.step1.scanFlagged", { count: scan.items.length })}
-              </p>
-              <p className="mt-1 text-xs text-ink-muted">{scan.disclaimer}</p>
-            </div>
-          )}
-        </section>
-      )}
-    </div>
-  );
-}
-
-/**
- * Name + color + provider — mirrors `NamingStep` from create-workspace
- * so users get the same "name your new agent" muscle memory.
- */
-function NameStep({
-  name,
-  onNameChange,
-  color,
-  onColorChange,
-  provider,
-  model,
-  onProviderChange,
-}: {
-  name: string;
-  onNameChange: (v: string) => void;
-  color: string;
-  onColorChange: (v: string) => void;
-  provider: string;
-  model: string;
-  onProviderChange: (p: string, m: string) => void;
-}) {
-  const { t } = useTranslation("portable");
-  const resolvedColor = resolveAgentColor(color);
-  return (
-    <div className="flex flex-col items-center justify-center min-h-full px-6 py-12">
-      <div className="flex flex-col items-center gap-4 mb-8">
-        <HoustonAvatar color={resolvedColor} diameter={80} />
-        <div className="text-center">
-          <p className="text-lg font-semibold">
-            {name.trim() || t("import.step2.placeholderName")}
-          </p>
-          <p className="text-sm text-ink-muted mt-1">
-            {t("import.step2.tagline")}
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 mb-6">
-        {AGENT_COLORS.map((c) => {
-          const swatch = colorValue(c);
-          const isSelected =
-            color === c.id || color === c.light || color === c.dark;
-          return (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => onColorChange(c.id)}
-              className={cn(
-                "h-7 w-7 rounded-full flex items-center justify-center transition-all duration-150",
-                isSelected
-                  ? "ring-2 ring-offset-2 ring-ink/30"
-                  : "hover:scale-110",
-              )}
-              style={{ backgroundColor: swatch }}
-            >
-              {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="w-full max-w-sm space-y-4">
-        <Input
-          autoFocus
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-          placeholder={t("import.step2.namePlaceholder")}
-          className="text-center rounded-full"
-        />
-        <div className="flex justify-center">
-          <ChatModelSelector
-            provider={provider}
-            model={model}
-            onSelect={onProviderChange}
-            agent={null}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Building blocks ──────────────────────────────────────────────────
-
-function Frame({ children }: { children: React.ReactNode }) {
-  return <div className="px-8 pt-2 pb-6">{children}</div>;
-}
-
-function ProgressDots({ index, total }: { index: number; total: number }) {
-  return (
-    <div className="flex items-center gap-1.5" aria-hidden>
-      {Array.from({ length: total }, (_, i) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: dots are purely positional — generated from a length, no real items or ids exist
-          key={i}
-          className={cn(
-            "size-2 rounded-full transition-colors",
-            i < index && "bg-ink/60",
-            i === index && "bg-ink",
-            i > index && "bg-ink/15",
-          )}
-        />
-      ))}
-    </div>
-  );
-}
-
-function ChoiceCard({
-  selected,
-  onClick,
-  title,
-  body,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  title: string;
-  body: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "rounded-xl border bg-input p-4 text-left transition-all",
-        "border-ink/5 hover:border-ink/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-        selected && "border-ink shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-      )}
+      }
     >
-      <p className="text-sm font-medium text-ink">{title}</p>
-      <p className="mt-1 text-xs text-ink-muted">{body}</p>
-    </button>
+      {currentStep === "upload" && (
+        <ImportUploadStep
+          uploaded={pkg.uploaded}
+          wantScan={pkg.wantScan}
+          onChooseScan={pkg.chooseScan}
+          onPick={pkg.pickFile}
+          scanning={pkg.scanning}
+          scan={pkg.scan}
+        />
+      )}
+      {currentStep === "name" && (
+        <ImportNameStep
+          name={wizard.name}
+          onNameChange={wizard.setName}
+          color={wizard.color}
+          onColorChange={wizard.setColor}
+          provider={wizard.providerModel.provider}
+          model={wizard.providerModel.model}
+          onProviderChange={wizard.providerModel.onProviderChange}
+          onAdvance={() => {
+            if (wizard.canAdvance) wizard.goNext();
+          }}
+        />
+      )}
+      {currentStep !== "upload" && currentStep !== "name" && pkg.uploaded && (
+        <ImportPickStep
+          step={currentStep}
+          uploaded={pkg.uploaded}
+          selection={pkg.selection}
+          onSelectionChange={pkg.setSelection}
+          findingsForId={pkg.findingsForId}
+        />
+      )}
+    </FlowSheet>
   );
-}
-
-function humanize(slug: string): string {
-  return slug
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
 }

@@ -1,6 +1,6 @@
 import { Badge, TooltipProvider } from "@houston-ai/core";
 import { SidebarNavItem } from "@houston-ai/layout";
-import { LayoutDashboard } from "lucide-react";
+import { Blocks } from "lucide-react";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -57,12 +57,12 @@ function LiveNav({ collapsed }: { collapsed?: boolean }) {
 
 function SidebarNavItemSpecimen() {
   const noop = () => undefined;
-  const [dashboard, integrations, store] = navEntries;
+  const [aiModels, integrations, academy] = navEntries;
   return (
     <TooltipProvider>
       <SpecimenPage
         title="SidebarNavItem"
-        intro="One destination above the agent list — Mission Control, Integrations, the Agent Store, Settings. Expanded it is a SidebarRowButton at block depth, so it shares its 28px box, its glyph column and its pill with every team header below it."
+        intro="One destination in the rail — Houston, AI Models, Integrations above the teams, the Academy and Settings in the footer. Expanded it is a SidebarRowButton at block depth, so it shares its 28px box, its glyph column and its pill with every team header below it."
       >
         <SpecimenSection
           title="Variants"
@@ -77,8 +77,8 @@ function SidebarNavItemSpecimen() {
           <SpecimenRow label="With a trailing badge">
             <Rail>
               <SidebarNavItem
-                icon={<LayoutDashboard className="size-4" />}
-                label="Mission Control"
+                icon={<Blocks className="size-4" />}
+                label="Integrations"
                 onClick={noop}
                 trailing={<Badge variant="outline">Beta</Badge>}
               />
@@ -98,8 +98,8 @@ function SidebarNavItemSpecimen() {
                 onClick={noop}
               />
               <SidebarNavItem
-                icon={<dashboard.icon className="size-4" />}
-                label={dashboard.label}
+                icon={<aiModels.icon className="size-4" />}
+                label={aiModels.label}
                 active
                 onClick={noop}
               />
@@ -114,8 +114,8 @@ function SidebarNavItemSpecimen() {
                 collapsed
               />
               <SidebarNavItem
-                icon={<dashboard.icon className="size-4" />}
-                label={dashboard.label}
+                icon={<aiModels.icon className="size-4" />}
+                label={aiModels.label}
                 active
                 onClick={noop}
                 collapsed
@@ -131,16 +131,16 @@ function SidebarNavItemSpecimen() {
           <SpecimenRow label="Full width vs. 36px square">
             <Rail>
               <SidebarNavItem
-                icon={<store.icon className="size-4" />}
-                label={store.label}
+                icon={<academy.icon className="size-4" />}
+                label={academy.label}
                 active
                 onClick={noop}
               />
             </Rail>
             <Rail collapsed>
               <SidebarNavItem
-                icon={<store.icon className="size-4" />}
-                label={store.label}
+                icon={<academy.icon className="size-4" />}
+                label={academy.label}
                 active
                 onClick={noop}
                 collapsed

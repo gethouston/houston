@@ -1,6 +1,6 @@
 {
   "agentAdmin": {
-    "title": "Configurações do agente",
+    "title": "Configurações do funcionário de IA",
     "rows": {
       "knowledge": {
         "title": "Aprendizados"
@@ -24,10 +24,10 @@
       "appCount_other": "apenas {{count}} apps"
     },
     "models": {
-      "question": "Quais modelos de IA este agente pode usar?",
-      "policyHelper": "Você decide com quais modelos este agente pode ser executado. Pessoas com acesso escolhem o próprio modelo entre os que você permitir.",
+      "question": "Quais modelos de IA este funcionário de IA pode usar?",
+      "policyHelper": "Você decide com quais modelos este funcionário de IA pode ser executado. Pessoas com acesso escolhem o próprio modelo entre os que você permitir.",
       "anyLabel": "Permitir todos os modelos",
-      "anyDesc": "Pessoas com acesso podem executar este agente com qualquer modelo disponível.",
+      "anyDesc": "Pessoas com acesso podem executar este funcionário de IA com qualquer modelo disponível.",
       "pickedLabel": "Apenas os modelos que você escolher",
       "pickedDesc": "Pessoas com acesso só podem usar os modelos que você permitir abaixo.",
       "allowModel": "Permitir {{name}}",
@@ -53,7 +53,7 @@
     }
   },
   "agentSettings": {
-    "railLabel": "Seções das configurações do agente",
+    "railLabel": "Seções das configurações do funcionário de IA",
     "manage": {
       "sectionTitle": "Configurações",
       "identity": "Alterar cor e nome",
@@ -61,28 +61,26 @@
       "moveTeam": "Mover para outra equipe",
       "chooseTeam": "Escolher uma equipe",
       "moveOrganization": "Mover para outra organização",
-      "moveOrganizationDescription": "Mova este agente para uma organização para que uma equipe possa trabalhar com ele.",
-      "publish": "Publicar na Loja de agentes",
-      "publishDescription": "Compartilhe este agente para que qualquer pessoa possa instalá-lo. As conversas continuam privadas.",
-      "delete": "Excluir agente"
+      "moveOrganizationDescription": "Mova este funcionário de IA para uma organização para que uma equipe possa trabalhar com ele.",
+      "delete": "Excluir funcionário de IA"
     },
     "people": {
-      "helper": "Escolha se toda a sua equipe pode usar este agente ou apenas as pessoas que você escolher.",
+      "helper": "Escolha se toda a sua equipe pode usar este funcionário de IA ou apenas as pessoas que você escolher.",
       "anyLabel": "Toda a sua equipe",
-      "anyDesc": "Qualquer pessoa da equipe pode usar este agente, incluindo quem entrar depois.",
+      "anyDesc": "Qualquer pessoa da equipe pode usar este funcionário de IA, incluindo quem entrar depois.",
       "pickedLabel": "Apenas pessoas específicas",
-      "pickedDesc": "Apenas as pessoas que você escolher abaixo podem usar este agente.",
-      "everyoneNote": "Toda a sua equipe pode usar este agente, então não há nada para definir pessoa por pessoa. Mude para Apenas pessoas específicas para gerenciar o acesso individualmente.",
+      "pickedDesc": "Apenas as pessoas que você escolher abaixo podem usar este funcionário de IA.",
+      "everyoneNote": "Toda a sua equipe pode usar este funcionário de IA, então não há nada para definir pessoa por pessoa. Mude para Apenas pessoas específicas para gerenciar o acesso individualmente.",
       "confirmEveryone": {
         "title": "Dar acesso a toda a equipe?",
-        "description": "Isso substitui a lista atual. Toda a sua equipe poderá usar este agente e o acesso de Manager concedido aqui será removido.",
+        "description": "Isso substitui a lista atual. Toda a sua equipe poderá usar este funcionário de IA e o acesso de Manager concedido aqui será removido.",
         "confirm": "Sim, dar acesso a todos",
         "cancel": "Cancelar"
       },
       "confirmSpecific": {
         "title": "Mudar para pessoas específicas?",
-        "description_one": "A {{count}} pessoa que pode usar este agente hoje mantém o acesso. Quem entrar depois não será adicionado automaticamente.",
-        "description_other": "As {{count}} pessoas que podem usar este agente hoje mantêm o acesso. Quem entrar depois não será adicionado automaticamente.",
+        "description_one": "A {{count}} pessoa que pode usar este funcionário de IA hoje mantém o acesso. Quem entrar depois não será adicionado automaticamente.",
+        "description_other": "As {{count}} pessoas que podem usar este funcionário de IA hoje mantêm o acesso. Quem entrar depois não será adicionado automaticamente.",
         "confirm": "Sim, escolher pessoas",
         "cancel": "Cancelar"
       }
@@ -92,10 +90,12 @@
     "create": {
       "title": "Criar uma equipe",
       "submit": "Criar equipe",
-      "newAgent": "Novo agente",
+      "newAgent": "Novo funcionário de IA",
       "members": "Membros, opcional",
       "membersSelected_one": "{{count}} membro selecionado",
-      "membersSelected_other": "{{count}} membros selecionados"
+      "membersSelected_other": "{{count}} membros selecionados",
+      "membersFailedTitle": "Não conseguimos adicionar algumas pessoas",
+      "membersFailedBody": "Não conseguimos adicionar {{names}} a {{team}}. Você pode tentar de novo na lista de Membros da equipe."
     },
     "form": {
       "iconAndName": "Ícone e nome",
@@ -110,7 +110,7 @@
       },
       "personal_space": {
         "title": "Só você está neste espaço",
-        "body": "Aqui você pode agrupar seus agentes em equipes. Para trabalhar com outras pessoas, crie uma organização."
+        "body": "Aqui você pode agrupar seus funcionários de IA em equipes. Para trabalhar com outras pessoas, crie uma organização."
       },
       "not_team_owner": {
         "title": "Só os proprietários desta equipe podem alterá-la",
@@ -138,8 +138,6 @@
       }
     },
     "leave": "Sair da equipe",
-    "memberCount_one": "{{count}} membro",
-    "memberCount_other": "{{count}} membros",
     "settings": {
       "members": {
         "title": "Pessoas",
@@ -158,10 +156,10 @@
   },
   "integrations": {
     "allowlist": {
-      "question": "Quais integrações este agente pode usar?",
-      "policyHelper": "Você decide quais integrações este agente pode usar. As pessoas com acesso ainda conectam as próprias contas para cada integração que você permitir.",
+      "question": "Quais integrações este funcionário de IA pode usar?",
+      "policyHelper": "Você decide quais integrações este funcionário de IA pode usar. As pessoas com acesso ainda conectam as próprias contas para cada integração que você permitir.",
       "anyLabel": "Permitir todas as integrações",
-      "anyDesc": "As pessoas com acesso podem conectar este agente a qualquer uma de mais de 1000 integrações.",
+      "anyDesc": "As pessoas com acesso podem conectar este funcionário de IA a qualquer uma de mais de 1000 integrações.",
       "pickedLabel": "Somente integrações que você escolher",
       "pickedDesc": "As pessoas com acesso só podem usar as integrações que você permitir abaixo.",
       "allowApp": "Permitir {{name}}",
@@ -172,40 +170,41 @@
     }
   },
   "org": {
-    "title": "Administração",
+    "title": "Espaço de trabalho",
     "tabs": {
-      "label": "Seções de administração",
+      "label": "Seções do espaço de trabalho",
       "people": "Pessoas",
       "billing": "Cobrança",
       "companyContext": "Contexto da empresa",
       "activity": "Atividade",
       "usage": "Uso",
-      "timeWorked": "Tempo trabalhado"
+      "timeWorked": "Tempo trabalhado",
+      "orgChart": "Organograma"
     },
-    "companyContextHint": "O que todos os seus agentes sabem em cada tarefa e rotina que executam.",
+    "companyContextHint": "O que todos os seus funcionários de IA sabem em cada tarefa e rotina que executam.",
     "loading": "Carregando seu espaço de trabalho...",
     "unavailable": "Não foi possível carregar seu espaço de trabalho."
   },
   "permissions": {
     "agentPeople": {
       "none": "Sem acesso",
-      "noneHint": "Não pode usar este agente.",
+      "noneHint": "Não pode usar este funcionário de IA.",
       "changeAccess": "Alterar acesso de {{name}}",
-      "viewerOnly": "Você pode usar este agente. Alguém que o gerencia pode alterar quem tem acesso.",
+      "viewerOnly": "Você pode usar este funcionário de IA. Alguém que o gerencia pode alterar quem tem acesso.",
       "empty": {
         "title": "Ainda não há pessoas",
-        "body": "Convide sua equipe pela página de Administração para gerenciar o acesso delas aqui."
+        "body": "Convide sua equipe em Configurações > Gerenciamento do espaço para gerenciar o acesso delas aqui."
       }
     }
   },
   "share": {
     "title": "Compartilhar {{name}}",
-    "subtitle": "Escolha quem pode usar este agente.",
+    "subtitle": "Escolha quem pode usar este funcionário de IA.",
     "button": "Compartilhar",
     "viewTitle": "Quem tem acesso a {{name}}",
-    "viewSubtitle": "Estas pessoas podem usar este agente compartilhado.",
-    "sectionTitle": "Compartilhar este agente",
-    "sectionHelper": "Adicione colegas que possam usar este agente e escolha quem pode gerenciá-lo.",
+    "viewSubtitle": "Estas pessoas podem usar este funcionário de IA compartilhado.",
+    "sectionTitle": "Compartilhar este funcionário de IA",
+    "sectionHelper": "Adicione colegas que possam usar este funcionário de IA e escolha quem pode gerenciá-lo.",
     "peopleCount_one": "{{count}} pessoa com acesso",
     "peopleCount_other": "{{count}} pessoas com acesso",
     "overflow": "+{{count}}",
@@ -214,24 +213,24 @@
     "noPeople": "Ninguém para adicionar.",
     "empty": {
       "title": "Ninguém mais tem acesso ainda",
-      "body": "Adicione um colega para que ele possa conversar com este agente."
+      "body": "Adicione um colega para que ele possa conversar com este funcionário de IA."
     },
-    "conversationNote": "Todos com acesso compartilham a conversa deste agente.",
+    "conversationNote": "Todos com acesso compartilham a conversa deste funcionário de IA.",
     "you": "Você",
     "ownerAccess": "Proprietário, sempre tem acesso",
     "remove": "Remover",
     "changeAccessFor": "Alterar o acesso de {{name}}",
-    "selfNote": "Alterar seu próprio acesso aqui pode remover sua capacidade de gerenciar este agente.",
-    "managerRequiresSeat": "Apenas colegas com um assento de Manager podem gerenciar agentes.",
+    "selfNote": "Alterar seu próprio acesso aqui pode remover sua capacidade de gerenciar este funcionário de IA.",
+    "managerRequiresSeat": "Apenas colegas com um assento de Manager podem gerenciar funcionários de IA.",
     "levels": {
       "manager": "Manager",
       "user": "Pode usar",
-      "managerHint": "Pode usar e reconfigurar este agente.",
-      "userHint": "Pode conversar com este agente, mas não alterá-lo."
+      "managerHint": "Pode usar e reconfigurar este funcionário de IA.",
+      "userHint": "Pode conversar com este funcionário de IA, mas não alterá-lo."
     },
     "selfLockout": {
       "title": "Alterar seu próprio acesso?",
-      "description": "Você está prestes a remover sua própria capacidade de gerenciar este agente. Talvez não consiga desfazer isso sozinho.",
+      "description": "Você está prestes a remover sua própria capacidade de gerenciar este funcionário de IA. Talvez não consiga desfazer isso sozinho.",
       "confirm": "Sim, alterar",
       "cancel": "Cancelar"
     }
@@ -260,8 +259,8 @@
     },
     "roleHelp": {
       "owner": "Os proprietários têm controle total da organização, incluindo pessoas e cobrança.",
-      "admin": "Os managers criam e executam agentes.",
-      "user": "Os membros usam os agentes compartilhados com eles."
+      "admin": "Os managers criam e executam funcionários de IA.",
+      "user": "Os membros usam os funcionários de IA compartilhados com eles."
     },
     "invites": {
       "title": "Convites pendentes",
@@ -279,13 +278,13 @@
     },
     "removeConfirm": {
       "title": "Remover {{name}}?",
-      "description": "Ela perderá o acesso a todos os agentes compartilhados com ela. Você pode adicioná-la novamente depois.",
+      "description": "Ela perderá o acesso a todos os funcionários de IA compartilhados com ela. Você pode adicioná-la novamente depois.",
       "confirm": "Remover",
       "cancel": "Cancelar"
     },
     "makeOwnerConfirm": {
       "title": "Tornar {{name}} proprietário?",
-      "description": "Os proprietários têm controle total desta organização: pessoas, agentes e cobrança. Você pode mudar isso depois, desde que a organização mantenha pelo menos um proprietário.",
+      "description": "Os proprietários têm controle total desta organização: pessoas, funcionários de IA e cobrança. Você pode mudar isso depois, desde que a organização mantenha pelo menos um proprietário.",
       "confirm": "Tornar proprietário"
     },
     "lastOwner": {
@@ -297,7 +296,7 @@
     "error": "Não foi possível carregar a atividade.",
     "empty": {
       "title": "Ainda não há atividade",
-      "body": "As mudanças na sua equipe, agentes e apps aparecem aqui."
+      "body": "As mudanças na sua equipe, funcionários de IA e apps aparecem aqui."
     },
     "loading": "Carregando...",
     "showMore": "Mostrar mais",
@@ -330,7 +329,7 @@
     "error": "Não foi possível carregar o uso.",
     "empty": {
       "title": "Ainda não há uso",
-      "body": "Quando sua equipe começar a conversar com os agentes, as contagens de mensagens aparecem aqui."
+      "body": "Quando sua equipe começar a conversar com os funcionários de IA, as contagens de mensagens aparecem aqui."
     },
     "summary_one": "{{count}} mensagem nos últimos 30 dias",
     "summary_other": "{{count}} mensagens nos últimos 30 dias",
@@ -340,7 +339,7 @@
   "createTeam": {
     "trigger": "Criar organização",
     "title": "Criar uma organização",
-    "description": "As organizações permitem compartilhar agentes e trabalhar em conjunto. Você pode convidar pessoas depois que ela existir.",
+    "description": "As organizações permitem compartilhar funcionários de IA e trabalhar em conjunto. Você pode convidar pessoas depois que ela existir.",
     "nameLabel": "Nome da organização",
     "namePlaceholder": "ex.: Marketing",
     "submit": "Criar organização",
@@ -351,12 +350,12 @@
     "successAction": "Convide sua equipe"
   },
   "shareViaTeam": {
-    "sectionHelper": "Este agente está no seu espaço pessoal. Mova-o para uma equipe para compartilhá-lo com seus colegas.",
+    "sectionHelper": "Este funcionário de IA está no seu espaço pessoal. Mova-o para uma equipe para compartilhá-lo com seus colegas.",
     "button": "Convide sua equipe",
     "title": "Compartilhar {{name}} com uma equipe",
     "pick": {
-      "subtitle": "Escolha uma equipe para mover este agente, ou crie uma nova.",
-      "empty": "Você ainda não tem uma equipe. Crie uma para compartilhar este agente.",
+      "subtitle": "Escolha uma equipe para mover este funcionário de IA, ou crie uma nova.",
+      "empty": "Você ainda não tem uma equipe. Crie uma para compartilhar este funcionário de IA.",
       "createTrigger": "Criar uma nova equipe",
       "namePlaceholder": "ex.: Marketing",
       "nameLabel": "Nome da equipe",
@@ -366,9 +365,9 @@
     },
     "confirm": {
       "body": "{{agent}} será movido para {{team}}. Você e seus colegas vão encontrá-lo lá.",
-      "downtime": "O agente reinicia durante a mudança, então pode ficar indisponível por um momento.",
+      "downtime": "O funcionário de IA reinicia durante a mudança, então pode ficar indisponível por um momento.",
       "cancel": "Cancelar",
-      "move": "Mover agente"
+      "move": "Mover funcionário de IA"
     },
     "moving": {
       "heading": "Movendo {{agent}} para {{team}}",
@@ -378,14 +377,14 @@
       "heading": "Preparando {{team}}"
     },
     "switchFailed": {
-      "body": "Seu agente foi movido para {{team}}, mas não conseguimos trocar para essa equipe. Tente de novo para continuar convidando.",
+      "body": "Seu funcionário de IA foi movido para {{team}}, mas não conseguimos trocar para essa equipe. Tente de novo para continuar convidando.",
       "retry": "Tentar de novo",
       "close": "Fechar"
     },
     "moveFailed": {
-      "unsupported_move": "Este agente não pode ser movido para essa equipe.",
-      "unmovable_volume": "O armazenamento deste agente ainda não pode ser movido automaticamente. Fale com o suporte.",
-      "needs_upgrade": "Esta equipe precisa de um upgrade antes de você mover agentes para ela.",
+      "unsupported_move": "Este funcionário de IA não pode ser movido para essa equipe.",
+      "unmovable_volume": "O armazenamento deste funcionário de IA ainda não pode ser movido automaticamente. Fale com o suporte.",
+      "needs_upgrade": "Esta equipe precisa de um upgrade antes de você mover funcionários de IA para ela.",
       "unknown": "Algo deu errado durante a mudança.",
       "timeout": "A mudança está demorando mais que o esperado. Ela ainda pode terminar em segundo plano. Você pode tentar de novo ou fechar.",
       "retry": "Tentar de novo",
@@ -419,29 +418,29 @@
   "moveTeam": {
     "title": "Mover {{team}} para uma organização",
     "confirm": {
-      "body_one": "Mover {{team}} e seu {{count}} agente para {{destination}}?",
-      "body_other": "Mover {{team}} e seus {{count}} agentes para {{destination}}?",
-      "downtime": "Os agentes ficam pausados durante a mudança.",
+      "body_one": "Mover {{team}} e seu {{count}} funcionário de IA para {{destination}}?",
+      "body_other": "Mover {{team}} e seus {{count}} funcionários de IA para {{destination}}?",
+      "downtime": "Os funcionários de IA ficam pausados durante a mudança.",
       "move": "Mover equipe"
     },
     "moving": "Movendo {{name}} ({{index}} de {{total}})",
-    "movingBody": "Os agentes são movidos um de cada vez. Mantenha esta janela aberta.",
+    "movingBody": "Os funcionários de IA são movidos um de cada vez. Mantenha esta janela aberta.",
     "cleanupSource": "Limpando a equipe pessoal",
     "switching": "Mudando para a organização",
     "recreate": "Recriando a equipe",
-    "placing": "Colocando os agentes na equipe",
-    "moveFailedFirst_one": "Não foi possível mover o agente.",
-    "moveFailedFirst_other": "Nenhum dos {{count}} agentes foi movido. O primeiro não pôde ser movido.",
-    "moveFailedNext": "{{moved}} de {{total}} agentes foram movidos. O próximo não pôde ser movido.",
-    "postscriptFailed_one": "O agente foi movido, mas a configuração não terminou.",
-    "postscriptFailed_other": "Todos os {{count}} agentes foram movidos, mas a configuração não terminou.",
+    "placing": "Colocando os funcionários de IA na equipe",
+    "moveFailedFirst_one": "Não foi possível mover o funcionário de IA.",
+    "moveFailedFirst_other": "Nenhum dos {{count}} funcionários de IA foi movido. O primeiro não pôde ser movido.",
+    "moveFailedNext": "{{moved}} de {{total}} funcionários de IA foram movidos. O próximo não pôde ser movido.",
+    "postscriptFailed_one": "O funcionário de IA foi movido, mas a configuração não terminou.",
+    "postscriptFailed_other": "Todos os {{count}} funcionários de IA foram movidos, mas a configuração não terminou.",
     "postscriptFailedEmpty": "A equipe não pôde terminar de se mover.",
     "retry": "Tentar novamente",
     "close": "Fechar"
   },
   "moveTeamResume": {
     "done": "{{team}} terminou de ser movida para a organização.",
-    "failed": "{{team}} moveu seus agentes, mas a configuração não terminou. O Houston vai tentar novamente na próxima vez que abrir."
+    "failed": "{{team}} moveu seus funcionários de IA, mas a configuração não terminou. O Houston vai tentar novamente na próxima vez que abrir."
   },
   "billing": {
     "unavailable": "Não foi possível carregar a cobrança desta equipe.",
@@ -515,7 +514,7 @@
     },
     "settingsTabs": {
       "context": "Contexto",
-      "agents": "Agentes",
+      "agents": "Funcionários de IA",
       "people": "Pessoas",
       "settings": "Configurações",
       "label": "Seções de configurações da equipe"
@@ -523,13 +522,13 @@
     "settingsActions": {
       "identity": "Alterar ícone e nome",
       "moveToOrganization": "Mover para uma organização",
-      "moveToOrganizationDescription": "Mova esta equipe e seus agentes para uma organização para que outras pessoas possam trabalhar com eles.",
+      "moveToOrganizationDescription": "Mova esta equipe e seus funcionários de IA para uma organização para que outras pessoas possam trabalhar com eles.",
       "leave": "Sair da equipe",
       "delete": "Excluir equipe",
       "onlyTeamDeleteDescription": "Esta é sua única equipe, então ela não pode ser excluída."
     },
     "agentTabs": {
-      "settings": "Configurações do agente"
+      "settings": "Configurações do funcionário de IA"
     },
     "archive": {
       "open": "Arquivadas",
@@ -537,61 +536,61 @@
     },
     "move": {
       "confirmTitle": "Mover {{agent}} para {{team}}?",
-      "confirmBody": "{{agent}} passa para {{team}}. As pessoas que podem ver essa equipe verão este agente nela.",
-      "confirm": "Mover agente",
+      "confirmBody": "{{agent}} passa para {{team}}. As pessoas que podem ver essa equipe verão este funcionário de IA nela.",
+      "confirm": "Mover funcionário de IA",
       "cancel": "Cancelar"
     },
     "agentMenu": {
-      "delete": "Excluir agente"
+      "delete": "Excluir funcionário de IA"
     },
     "context": {
       "title": "Contexto da equipe",
-      "explainer": "Todos os agentes desta equipe sabem disto.",
-      "placeholder": "O que cada agente desta equipe deveria saber? A empresa, os clientes, como vocês trabalham."
+      "explainer": "Todos os funcionários de IA desta equipe sabem disto.",
+      "placeholder": "O que cada funcionário de IA desta equipe deveria saber? A empresa, os clientes, como vocês trabalham."
     },
     "missionControl": {
       "empty": {
-        "workspaceTitle": "Você ainda não tem agentes",
-        "workspaceBody": "Crie seu primeiro agente e as tarefas dele aparecerão aqui.",
-        "createAgent": "Criar agente",
-        "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou use a seção Configurações do agente para movê-lo para {{name}}."
+        "workspaceTitle": "Você ainda não tem funcionários de IA",
+        "workspaceBody": "Crie seu primeiro funcionário de IA e as tarefas dele aparecerão aqui.",
+        "createAgent": "Criar funcionário de IA",
+        "teamTitle": "Esta equipe ainda não tem funcionários de IA",
+        "teamBody": "Crie um funcionário de IA aqui ou use a seção Configurações do funcionário de IA para movê-lo para {{name}}."
       }
     },
     "routines": {
       "newRoutine": "Nova rotina",
       "empty": {
-        "workspaceTitle": "Você ainda não tem agentes",
-        "workspaceBody": "Crie seu primeiro agente e tudo o que ele fizer sozinho aparecerá aqui.",
-        "createAgent": "Criar agente",
-        "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou use a seção Configurações do agente para movê-lo para {{name}}."
+        "workspaceTitle": "Você ainda não tem funcionários de IA",
+        "workspaceBody": "Crie seu primeiro funcionário de IA e tudo o que ele fizer sozinho aparecerá aqui.",
+        "createAgent": "Criar funcionário de IA",
+        "teamTitle": "Esta equipe ainda não tem funcionários de IA",
+        "teamBody": "Crie um funcionário de IA aqui ou use a seção Configurações do funcionário de IA para movê-lo para {{name}}."
       },
       "noRoutines": {
         "title": "Ainda não há nada rodando sozinho",
-        "body": "Crie uma rotina e os agentes desta equipe vão começar a trabalhar sem que você peça."
+        "body": "Crie uma rotina e os funcionários de IA desta equipe vão começar a trabalhar sem que você peça."
       },
       "unreadable": {
         "title": "Não foi possível carregar as rotinas desta equipe",
-        "body": "Nada aqui está faltando de propósito. Tente de novo acima para ver o que estes agentes fazem sozinhos."
+        "body": "Nada aqui está faltando de propósito. Tente de novo acima para ver o que estes funcionários de IA fazem sozinhos."
       },
       "pickAgent": {
-        "title": "Qual agente deve fazer isso?",
-        "description": "Escolha o agente que fará o trabalho. Você pode trocar enquanto configura a rotina."
+        "title": "Qual funcionário de IA deve fazer isso?",
+        "description": "Escolha o funcionário de IA que fará o trabalho. Você pode trocar enquanto configura a rotina."
       }
     },
     "files": {
       "empty": {
-        "workspaceTitle": "Você ainda não tem agentes",
-        "workspaceBody": "Crie seu primeiro agente e os arquivos que ele guardar aparecerão aqui.",
-        "createAgent": "Criar agente",
-        "teamTitle": "Esta equipe ainda não tem agentes",
-        "teamBody": "Crie um agente aqui ou use a seção Configurações do agente para movê-lo para {{name}}."
+        "workspaceTitle": "Você ainda não tem funcionários de IA",
+        "workspaceBody": "Crie seu primeiro funcionário de IA e os arquivos que ele guardar aparecerão aqui.",
+        "createAgent": "Criar funcionário de IA",
+        "teamTitle": "Esta equipe ainda não tem funcionários de IA",
+        "teamBody": "Crie um funcionário de IA aqui ou use a seção Configurações do funcionário de IA para movê-lo para {{name}}."
       }
     },
     "settings": {
-      "navUnavailable": "Ainda não conseguimos abrir as configurações deste agente",
-      "navUnavailableBody": "A equipe deste agente ainda está carregando. Espere um momento e tente de novo. Se continuar acontecendo, reporte como um erro.",
+      "navUnavailable": "Ainda não conseguimos abrir as configurações deste funcionário de IA",
+      "navUnavailableBody": "A equipe deste funcionário de IA ainda está carregando. Espere um momento e tente de novo. Se continuar acontecendo, reporte como um erro.",
       "policy": {
         "everyone": "Todos",
         "people_one": "{{count}} pessoa",
@@ -605,5 +604,23 @@
         "unavailable": "Não foi possível carregar"
       }
     }
+  },
+  "orgChart": {
+    "window": "Mensagens dos últimos 30 dias",
+    "people_one": "{{count}} pessoa",
+    "people_other": "{{count}} pessoas",
+    "agents_one": "{{count}} funcionário de IA",
+    "agents_other": "{{count}} funcionários de IA",
+    "people": "Pessoas",
+    "agents": "Funcionários de IA",
+    "empty": "Ainda não há equipes",
+    "emptyTeam": "Esta equipe ainda não tem funcionários de IA",
+    "membersUnavailable": "Não foi possível carregar as pessoas.",
+    "teamsUnavailable": "Não foi possível carregar as equipes.",
+    "usageUnavailable": "Uso indisponível",
+    "retry": "Tentar novamente",
+    "openTeam": "Abrir {{name}}",
+    "unknownPerson": "Membro da equipe",
+    "loading": "Carregando suas equipes..."
   }
 }

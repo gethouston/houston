@@ -42,13 +42,13 @@
   "notifications": {
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
-      "body": "Your agent has finished working.",
-      "question_one": "Your agent has a question for you.",
-      "question_other": "Your agent has questions for you.",
-      "signin": "Your agent needs you to sign in.",
-      "connect": "Your agent needs you to connect an app.",
-      "credential": "Your agent needs an API key to finish.",
-      "handsOn": "Your agent needs you to finish something in Houston."
+      "body": "Your AI Employee has finished working.",
+      "question_one": "Your AI Employee has a question for you.",
+      "question_other": "Your AI Employee has questions for you.",
+      "signin": "Your AI Employee needs you to sign in.",
+      "connect": "Your AI Employee needs you to connect an app.",
+      "credential": "Your AI Employee needs an API key to finish.",
+      "handsOn": "Your AI Employee needs you to finish something in Houston."
     },
     "mentioned": {
       "title": "{{name}} mentioned you",
@@ -56,7 +56,7 @@
       "body": "In {{mission}}"
     },
     "preprompt": {
-      "title": "Want a ping when your agent finishes?",
+      "title": "Want a ping when your AI Employee finishes?",
       "body": "Turn on notifications and Houston will let you know the moment a task finishes or needs you.",
       "cta": "Turn on notifications"
     },

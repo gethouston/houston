@@ -6,6 +6,9 @@ category: Sales
 featured: no
 image: handshake
 integrations: [hubspot, salesforce, attio, pipedrive, notion, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ I read your sales context first. For every required field that's missing I ask O
 - **Connected task tool**  -  Required for `queue-followup`. Why I need it: I push tasks somewhere you'll actually see them. If missing I ask: "Where should follow-ups land  -  Linear, Notion, Asana?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + playbook.** Gather missing required fields (ONE question each, best-modality first). Write atomic.
 

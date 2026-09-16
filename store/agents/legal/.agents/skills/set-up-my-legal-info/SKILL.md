@@ -6,6 +6,9 @@ category: Setup
 featured: yes
 image: scroll
 integrations: [googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -20,6 +23,7 @@ This is the foundation document this agent reads before every substantive task. 
 - Called implicitly by any other skill needing shared context when doc missing  -  only after confirming with user.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read config.** Load `config/entity.json`, `config/posture.json`, `config/templates.json`, `config/profile.json`. If any missing, ask ONE missing piece just-in-time using plain language (best-modality hint: connected app > file drop > URL > paste).
 

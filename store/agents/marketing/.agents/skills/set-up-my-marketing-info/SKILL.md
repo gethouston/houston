@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ I read your marketing context first. For every required field that's missing I a
 - **One or two anchor accounts**  -  Optional. If missing I ask: "Name one or two real customers, or target customers, you'd point at as the perfect fit. If you don't have it I keep going with TBD."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read config.** Load `config/company.json`, `config/ideal-customer.json`,
    `config/voice.md`. If any missing, run `onboard-me` first (or

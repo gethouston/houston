@@ -6,6 +6,9 @@ category: Support
 featured: no
 image: headphone
 integrations: [gmail, github, linear, jira]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ I read your support context first. For every required field that's missing I ask
 - `repeat-question`  -  scan last 30–60 days of `conversations.json`. Cluster semantically similar incoming questions. For each cluster ≥3 without matching article, append to `patterns.json` and surface as docs gap.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/support-context.md`.** If missing, stop.
 2. **Read ledger.** Fill gaps.

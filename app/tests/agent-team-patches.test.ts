@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AgentTeam } from "@houston/engine-adapter";
+import { QueryClient } from "@tanstack/react-query";
 import {
+  appendCreatedTeam,
   applyTeamIdentity,
   applyTeamSortOrder,
   moveAgentInTeams,
+  seedCreatedTeam,
   teamSortOrderBetween,
 } from "../src/lib/agent-team-patches.ts";
+import { queryKeys } from "../src/lib/query-keys.ts";
 
 // The pure patches an OPTIMISTIC C13 write applies to the cached teams.
 
@@ -199,5 +203,78 @@ describe("applyTeamIdentity", () => {
     );
     assert.deepEqual(next[0]?.agentSlugs, ["x"]);
     assert.equal(next[0]?.sortOrder, 3);
+  });
+});
+
+describe("appendCreatedTeam", () => {
+  const created = serverTeam({ id: "t-new", name: "Design" });
+
+  it("leaves an unread cache alone, so the first read still owns the list", () => {
+    assert.equal(appendCreatedTeam(undefined, created), undefined);
+  });
+
+  it("puts the created team in the cached list", () => {
+    const teams = [serverTeam({ id: "a" }), serverTeam({ id: "b" })];
+    const next = appendCreatedTeam(teams, created);
+    assert.deepEqual(
+      next?.map((t) => t.id),
+      ["a", "b", "t-new"],
+    );
+    assert.equal(next?.[2], created);
+  });
+
+  it("leaves the teams that were already there untouched", () => {
+    const teams = [serverTeam({ id: "a" })];
+    const next = appendCreatedTeam(teams, created);
+    assert.equal(next?.[0], teams[0]);
+    assert.deepEqual(
+      teams.map((t) => t.id),
+      ["a"],
+    );
+  });
+
+  it("appends nothing for a team the list already holds", () => {
+    // The create's own invalidation can land first; a second copy would draw
+    // the team twice in the rail.
+    const teams = [serverTeam({ id: "a" }), created];
+    assert.equal(appendCreatedTeam(teams, created), teams);
+  });
+
+  it("works from an empty list", () => {
+    assert.deepEqual(appendCreatedTeam([], created), [created]);
+  });
+});
+
+describe("seedCreatedTeam", () => {
+  const created = serverTeam({ id: "t-new", name: "Design" });
+
+  it("makes the new team readable from the teams cache in the same tick", () => {
+    // The create-team form lands the user in the team the moment the write
+    // resolves; the view guard sends them home for a team the cache lacks.
+    const qc = new QueryClient();
+    qc.setQueryData(queryKeys.agentTeams(), [serverTeam({ id: "a" })]);
+
+    seedCreatedTeam(qc, created);
+
+    assert.deepEqual(
+      qc.getQueryData<AgentTeam[]>(queryKeys.agentTeams())?.map((t) => t.id),
+      ["a", "t-new"],
+    );
+  });
+
+  it("writes nothing when no read has landed yet", () => {
+    const qc = new QueryClient();
+    seedCreatedTeam(qc, created);
+    assert.equal(qc.getQueryData(queryKeys.agentTeams()), undefined);
+  });
+
+  it("never seeds a duplicate when the refetch already brought the team", () => {
+    const qc = new QueryClient();
+    qc.setQueryData(queryKeys.agentTeams(), [created]);
+    seedCreatedTeam(qc, created);
+    assert.equal(
+      qc.getQueryData<AgentTeam[]>(queryKeys.agentTeams())?.length,
+      1,
+    );
   });
 });

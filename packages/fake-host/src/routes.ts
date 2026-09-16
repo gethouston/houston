@@ -55,7 +55,12 @@ export function handleAgents(
   if (rest.length === 0) {
     if (method === "GET") return json(state.listAgents());
     if (method === "POST")
-      return json(state.createAgent(String(body?.name ?? "Agent")));
+      return json(
+        state.createAgent(
+          String(body?.name ?? "Agent"),
+          typeof body?.claudeMd === "string" ? body.claudeMd : undefined,
+        ),
+      );
     return noContent(405);
   }
 

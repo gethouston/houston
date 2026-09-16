@@ -6,6 +6,9 @@ version: 1
 category: Vendas
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,9 @@ Eu leio seu contexto de vendas primeiro. Para cada campo obrigatório que estive
 - **A objeção nas palavras deles** - Obrigatório. Por que eu preciso: reformulo a frase real, não uma paráfrase. Se estiver faltando eu pergunto: "O que eles disseram, palavra por palavra?"
 - **Em qual negócio isso surgiu** - Obrigatório. Por que eu preciso: salvo a reformulação sob esse negócio e puxo contexto da call. Se estiver faltando eu pergunto: "Qual prospect ou negócio levantou isso?"
 - **Amostras de tom de voz** - Opcional. Por que eu preciso: deixa o e-mail pós-call soar como você. Se você não tiver, eu sigo em frente com PENDENTE e uso um tom neutro.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Ler o playbook.** Carrego `context/sales-context.md`. Procuro a entrada correspondente no manual de objeções. Se o playbook estiver faltando, peço para você rodar `set-up-my-sales-info` primeiro, e paro.
 

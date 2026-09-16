@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [notion, airtable]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Real before / after numbers**  -  Required for a strong case study. If missing I ask: "What measurable change did this customer see, and over what timeframe? If you don't have it I keep going with TBD."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read positioning doc**:
    `context/marketing-context.md`. If missing,

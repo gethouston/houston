@@ -7,6 +7,9 @@ category: Personal
 featured: no
 image: busts-in-silhouette
 integrations: [notion, linkedin, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -57,6 +60,7 @@ conectada > archivo > URL > texto pegado) y espero.
 - **Marco de niveles**: Obligatorio. Por qué lo necesito: la rúbrica de puntaje se ata al estándar de este nivel. Si falta, pregunto: "¿Para qué nivel estamos contratando, y cómo describirías qué significa 'cumplir el estándar' en ese nivel?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal** en
    `context/people-context.md`. ¿Falta o está vacío? Le digo al

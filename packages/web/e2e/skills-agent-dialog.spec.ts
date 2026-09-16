@@ -1,48 +1,56 @@
 import { expect, test } from "./support/fixtures";
-import { openAgentSettings } from "./support/team-nav";
+import { openSkillsLibrary } from "./support/settings-nav";
+import { installRepoSkills } from "./support/skills-nav";
 
 /**
  * The per-agent skill dialog is scoped to THAT agent: no "Agents with this
- * skill" section (cross-agent assignment lives only on the global Skills
- * page), while the global page's dialog keeps the section. Guards the split
- * so the per-agent surface can never quietly grow workspace-wide side
- * effects again.
+ * skill" section (cross-agent assignment lives only in the shared Skills
+ * library, Settings > Skills), while the library's full-page EDITOR keeps the
+ * section. Guards the split so the per-agent surface can never quietly grow
+ * workspace-wide side effects again — and that the library opens the editor
+ * beside the skill's chat, never a modal.
  */
-test("per-agent skill dialog hides cross-agent assignment; global keeps it", async ({
+test("per-agent skill dialog hides cross-agent assignment; the library editor keeps it", async ({
   page,
 }) => {
   await page.goto("/");
 
   // Install a skill on the seeded agent via the GitHub flow (the fake host
   // returns a canned dozen for any repo).
-  await openAgentSettings(page, "Houston", "Skills");
-  await page.getByRole("tab", { name: "Custom skills" }).click();
-  await page.getByRole("button", { name: "Add skill" }).click();
-  const addDialog = page.getByRole("dialog");
-  await addDialog.getByRole("button", { name: "GitHub" }).click();
-  await addDialog.getByPlaceholder("owner/repo").fill("mattpocock/skills");
-  await addDialog.getByRole("button", { name: "Find skills" }).click();
-  await expect(addDialog.getByText("12 skills found")).toBeVisible();
-  await addDialog.getByRole("button", { name: "Install 12" }).click();
-  await expect(addDialog.getByText(/Installed 12 skills/)).toBeVisible();
-  await page.keyboard.press("Escape");
+  await installRepoSkills(page);
 
   // Open an installed skill from this agent's strip: the dialog edits THIS
   // agent's copy only — no assignment section.
   await page.getByRole("button", { name: /^Repo Skill 1\b/ }).click();
   const agentDialog = page.getByRole("dialog");
   await expect(
-    agentDialog.getByLabel("Instructions for the agent"),
+    agentDialog.getByLabel("Instructions for the AI Employee"),
   ).toBeVisible();
-  await expect(agentDialog.getByText("Agents with this skill")).toHaveCount(0);
+  await expect(
+    agentDialog.getByText("AI Employees with this skill"),
+  ).toHaveCount(0);
   await page.keyboard.press("Escape");
 
-  // The global Skills page keeps the section for the same skill. The sidebar
-  // nav anchor disambiguates it from the agent's own Skills tab.
-  await page.locator('[data-tour-target="nav-skills"]').click();
+  // The shared library keeps the section for the same skill. Integrations,
+  // then its Skills tab: the door that disambiguates it from the agent's own.
+  await openSkillsLibrary(page);
   await page.getByRole("button", { name: /^Repo Skill 1\b/ }).click();
-  const globalDialog = page.getByRole("dialog");
-  await expect(globalDialog.getByText("Agents with this skill")).toBeVisible();
+
+  // The row opens the skill's own page IN PLACE of the list — no modal — with
+  // its chat claiming the shell's right-hand panel beside it.
+  const editor = page.getByTestId("skill-editor");
+  await expect(
+    editor.getByRole("heading", { name: "Repo Skill 1", level: 1 }),
+  ).toBeVisible();
+  await expect(editor.getByText("AI Employees with this skill")).toBeVisible();
+  await expect(page.getByTestId("mission-panel")).toBeVisible();
+
+  // Back returns to the library list.
+  await editor.getByRole("button", { name: "Back to skills" }).click();
+  await expect(page.getByTestId("skill-editor")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Create skill" }),
+  ).toBeVisible();
 });
 
 /**
@@ -56,17 +64,7 @@ test("rename pencil retitles a skill from the manage dialog", async ({
 }) => {
   await page.goto("/");
 
-  await openAgentSettings(page, "Houston", "Skills");
-  await page.getByRole("tab", { name: "Custom skills" }).click();
-  await page.getByRole("button", { name: "Add skill" }).click();
-  const addDialog = page.getByRole("dialog");
-  await addDialog.getByRole("button", { name: "GitHub" }).click();
-  await addDialog.getByPlaceholder("owner/repo").fill("mattpocock/skills");
-  await addDialog.getByRole("button", { name: "Find skills" }).click();
-  await expect(addDialog.getByText("12 skills found")).toBeVisible();
-  await addDialog.getByRole("button", { name: "Install 12" }).click();
-  await expect(addDialog.getByText(/Installed 12 skills/)).toBeVisible();
-  await page.keyboard.press("Escape");
+  await installRepoSkills(page);
 
   await page.getByRole("button", { name: /^Repo Skill 2\b/ }).click();
   const dialog = page.getByRole("dialog");

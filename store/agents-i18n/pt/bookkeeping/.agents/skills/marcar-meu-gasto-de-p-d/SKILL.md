@@ -6,6 +6,9 @@ version: 1
 category: Contabilidade
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Eu leio o seu contexto contábil primeiro. Para cada campo obrigatório que esti
 - **A proporção de P&D no seu gasto com hospedagem em nuvem** - Opcional. Por quê: empresas pré-receita geralmente tratam 100% da nuvem como P&D; empresas com receita dividem produção versus P&D. Se estiver faltando eu pergunto: "Quanto do seu gasto com AWS / GCP / Vercel é para desenvolvimento e pesquisa versus rodar o produto ao vivo? Se você não tiver isso, eu uso 100% de P&D como padrão pré-receita."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Registro obrigatório: `universal.company`, `domains.payroll`, `domains.tax.rdCreditEligible`. Se `rdCreditEligible == "no"`, avisar mas prosseguir se o usuário confirmar (créditos estaduais / amortização da Seção 174 ainda usam este detalhamento).
 

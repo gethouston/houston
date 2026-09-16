@@ -6,6 +6,9 @@ category: Sales
 featured: yes
 image: handshake
 integrations: [hubspot, salesforce, attio, linkedin, twitter, reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ I read your sales context first. For every required field that's missing I ask O
 - **Where to source from**  -  Required. Why I need it: each source uses a different connected tool. If missing I ask: "Should I expand lookalikes from your CRM, pull commenters from a LinkedIn post, scan a recent-funding feed, scrape a Google Maps area, or surface a subreddit thread?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + playbook.** Gather missing required fields
    (ONE question each, best-modality first). Write atomically.

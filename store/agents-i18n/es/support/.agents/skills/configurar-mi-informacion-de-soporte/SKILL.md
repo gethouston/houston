@@ -7,6 +7,9 @@ category: Soporte
 featured: yes
 image: headphone
 integrations: [googledocs, stripe, notion, github, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,9 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **Categorías de enrutamiento**  -  Obligatorio. Por qué lo necesito: la clasificación y la detección de señales mapean cada mensaje entrante a una de ellas. Si falta, pregunto: "Cuando llega un ticket, ¿en qué categorías lo clasificas? ¿Error, guía de uso, facturación, algo más?"
 - **Niveles de escalamiento**  -  Obligatorio. Por qué lo necesito: define P1 / P2 / P3 / P4 para la clasificación. Si falta, pregunto: "¿Qué hace que algo sea una emergencia, versus algo del mismo día, versus algo de esta semana?"
 - **Muestras textuales de tu voz**  -  Opcional. Por qué lo necesito: la sección de tono se siente más auténtica con frases reales. Si no las tienes, sigo con TBD y te recomiendo correr la calibración de voz.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Leo `config/context-ledger.json`.** Necesito `universal.company`, `universal.idealCustomer`, `domains.inbox.responseTimeTargets`, `domains.inbox.routingCategories`, `domains.quality.escalationTiers`. Si falta algún campo, hago UNA pregunta puntual con la pista de modalidad (app conectada > archivo > URL > pegar texto), escribo de forma atómica, y sigo.
 

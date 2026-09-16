@@ -35,15 +35,6 @@ export async function osOpenUrl(url: string): Promise<boolean> {
   return opened !== false;
 }
 
-/** Drain the cold-start `houston://store/install` deep link the Rust shell
- * stashed before the webview was ready (returns the raw URL and clears the
- * stash, so a later read gets null). Resolves null when nothing is pending.
- * Desktop only — a plain browser has no native stash. */
-export function osTakePendingStoreDeepLink(): Promise<string | null> {
-  if (!isTauri()) return Promise.resolve(null);
-  return invokeNative<string | null>("take_pending_store_deep_link");
-}
-
 /** Pull the Houston window to the front. Used when a flow finishes in the
  * user's browser (e.g. a Composio integration connection lands) and we want
  * the app to surface itself — the same snap-back the sign-in loopback does.
@@ -98,19 +89,6 @@ export interface WrittenFile {
   path: string;
   fileName: string;
   renamedFrom: string | null;
-}
-
-/** Native "Save as…" for an exported portable agent. Same raw-payload reason
- * as {@link osSaveDownload}: the archive is megabytes, and the desktop webview
- * has no download delegate. Resolves null when the user cancelled the dialog. */
-export function osSavePortableAgent(
-  defaultName: string,
-  bytes: Uint8Array,
-): Promise<WrittenFile | null> {
-  return invokeNative<WrittenFile | null>("save_portable_agent", {
-    default_name: defaultName,
-    bytes: Array.from(bytes),
-  });
 }
 
 /** Native "Open…" for a `.houstonagent` file on disk. Resolves null when the

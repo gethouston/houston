@@ -6,6 +6,9 @@ category: Operations
 featured: yes
 image: clipboard
 integrations: [googledrive, googlecalendar, gmail, outlook, gong, fireflies, slack, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -48,6 +51,7 @@ I read your operations context first. For every required field that's missing I 
 - `meeting-post`  -  transcript (Fireflies / Gong) → decisions + owners + follow-ups + verbatim quotes worth keeping. Writes `meetings/{YYYY-MM-DD}-{slug}-post.md`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. Read `config/context-ledger.json`. Missing required field for chosen mode → ask ONE targeted question with modality hint, write answer.
 

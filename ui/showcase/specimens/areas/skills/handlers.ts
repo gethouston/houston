@@ -3,7 +3,7 @@ import type { RepoSkill } from "@houston-ai/skills";
 import { delay, repoSkills } from "./sample";
 
 /**
- * The async callbacks `SkillsGrid` and `AddSkillDialog` need, faked with
+ * The async callbacks `AddSkillDialog` needs, faked with
  * timers: the dialog's stages (discovering → selecting → installing → done)
  * only exist while a promise is in flight, so a specimen that resolved
  * instantly would document half the component.
@@ -44,9 +44,4 @@ export async function createFromScratch(input: {
 }): Promise<string> {
   await delay(900);
   return input.name;
-}
-
-/** Deletes an installed skill; the grid awaits it behind its confirm. */
-export async function deleteSkill(_name: string): Promise<void> {
-  await delay(600);
 }

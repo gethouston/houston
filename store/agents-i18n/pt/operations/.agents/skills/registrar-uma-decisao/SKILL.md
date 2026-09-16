@@ -7,6 +7,9 @@ category: Operações
 featured: no
 image: clipboard
 integrations: [linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Leio o seu contexto operacional primeiro. Para cada campo obrigatório que estiv
 - **Prioridades ativas** - Obrigatório. Por que preciso: marco se a decisão é estrutural para o que você está priorizando. Se faltar, pergunto: "Quais são as 2 a 3 coisas que a empresa está priorizando neste trimestre?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio `context/operations-context.md`.** Se faltar ou estiver vazio, paro e peço para o usuário rodar `set-up-my-ops-info` primeiro. As prioridades ativas ancoram se a decisão é estrutural.
 

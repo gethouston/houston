@@ -7,6 +7,9 @@ category: Operações
 featured: no
 image: clipboard
 integrations: [linkedin, firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -57,6 +60,7 @@ Eu leio primeiro o seu contexto operacional. Para cada campo obrigatório que es
 - **Vetos**  -  Opcional para `compliance`. Por que preciso: me permite dar mais peso a frameworks específicos (HIPAA, PCI, SOC2) quando eles importam para você. Se você não tiver isso eu sigo com A DEFINIR e mostro toda lacuna que encontrar.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 ### Passos compartilhados (ambos os aspects)
 

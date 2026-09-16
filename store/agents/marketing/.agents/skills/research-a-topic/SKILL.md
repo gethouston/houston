@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Depth**  -  Optional, default standard. If missing I ask: "How deep should I go, a fifteen-minute scan, an hour-long dive, or a deep run? If you don't have a preference I keep going with standard depth."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Clarify scope in one short exchange (skip if user prompt already specific).** Ask:
    - What's the brief feeding next  -  blog post, ad angles, lifecycle email, social calendar, or just for your own reading?

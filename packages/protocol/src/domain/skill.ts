@@ -39,6 +39,33 @@ export interface SkillDetail {
   description: string;
   version: number;
   content: string;
+  /** Parsed only for Houston-authored skills with the versioned workflow marker. */
+  workflow?: SkillWorkflow | null;
+}
+
+export interface SkillWorkflow {
+  version: 1;
+  steps: SkillWorkflowStep[];
+}
+
+export interface SkillWorkflowStep {
+  title: string;
+  detail: string | null;
+  /**
+   * The connected app this step acts on, authored as a `[toolkit]` /
+   * `[toolkit:ACTION]` tag after the step's bold title. Null when the step
+   * touches no app, or when the tag was malformed (it stays literal text).
+   */
+  integration: SkillStepIntegration | null;
+}
+
+/** The connected app (and, when known, the exact action) a step runs. */
+export interface SkillStepIntegration {
+  /** Composio toolkit slug, lowercase (e.g. `gmail`). */
+  toolkit: string;
+  /** Exact `integration_execute` action slug, uppercase (e.g.
+   *  `GMAIL_SEND_EMAIL`); null when only the app is known. */
+  action: string | null;
 }
 
 /**
@@ -54,29 +81,6 @@ export interface SkillsManifest {
   enabled: string[];
 }
 
-/** A skill in the skills.sh community directory (marketplace search hit). */
-export interface CommunitySkill {
-  id: string;
-  skillId: string;
-  name: string;
-  installs: number;
-  /** GitHub `owner/repo` the skill installs from. */
-  source: string;
-}
-
-/** Full detail fetched on-demand for a community skill, read from its real SKILL.md. */
-export interface CommunitySkillPreview {
-  title: string | null;
-  description: string;
-  image: string | null;
-  category: string | null;
-  tags: string[];
-  /** Composio toolkit slugs declared in the skill's frontmatter (e.g. "gmail"). */
-  integrations: string[];
-  /** Full SKILL.md markdown body with frontmatter stripped; null when unavailable. */
-  content: string | null;
-}
-
 /** A skill discovered in a GitHub repo (one per SKILL.md found). */
 export interface RepoSkill {
   /** The install slug — the SKILL.md's frontmatter name or its directory. */
@@ -87,14 +91,4 @@ export interface RepoSkill {
   description: string;
   /** Full path within the repo (e.g. `research/SKILL.md`). */
   path: string;
-}
-
-export interface CreateSkill {
-  name: string;
-  description: string;
-  content: string;
-}
-
-export interface SaveSkill {
-  content: string;
 }

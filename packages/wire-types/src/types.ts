@@ -8,12 +8,9 @@
  * the same PR or the app compiles against a contract nothing serves.
  */
 
-import type {
-  CreatorDirectoryEntry,
-  CreatorDirectoryPage,
-  StoreAgentDetail,
-  StoreAgentSummary,
-} from "@houston/agentstore-client";
+import type { SkillWorkflow } from "@houston/protocol";
+
+export type { SkillWorkflow, SkillWorkflowStep } from "@houston/protocol";
 
 export const PROTOCOL_VERSION = 1 as const;
 
@@ -1315,6 +1312,7 @@ export interface SkillDetail {
   description: string;
   version: number;
   content: string;
+  workflow?: SkillWorkflow | null;
 }
 
 export interface CreateSkillRequest {
@@ -1350,33 +1348,6 @@ export interface InstallFromRepoRequest {
   workspacePath: string;
   source: string;
   skills: RepoSkill[];
-}
-
-export interface InstallCommunityRequest {
-  workspacePath: string;
-  source: string;
-  skillId: string;
-}
-
-export interface CommunitySkill {
-  id: string;
-  skillId: string;
-  name: string;
-  installs: number;
-  source: string;
-}
-
-/** Full detail fetched on-demand for a community skill, read from its real SKILL.md. */
-export interface CommunitySkillPreview {
-  title: string | null;
-  description: string;
-  image: string | null;
-  category: string | null;
-  tags: string[];
-  /** Composio toolkit slugs declared in the skill's frontmatter (e.g. "gmail"). */
-  integrations: string[];
-  /** Full SKILL.md markdown body with frontmatter stripped; null when unavailable. */
-  content: string | null;
 }
 
 // ---------- Providers / preferences ----------
@@ -1564,30 +1535,6 @@ export const LEGAL_ACCEPTANCE_KEY = "legal_acceptance";
  */
 export const MIGRATION_RECONNECT_DISMISSED_KEY =
   "migration_reconnect_dismissed";
-
-// ---------- Store ----------
-
-export interface StoreListing {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  author: string;
-  tags: string[];
-  icon_url: string;
-  integrations?: string[];
-  repo: string;
-  installs: number;
-  registered_at: string;
-  version?: string;
-  content_hash?: string;
-  bundled?: boolean;
-}
-
-export interface InstallAgent {
-  repo: string;
-  agentId: string;
-}
 
 export interface InstallFromGithub {
   githubUrl: string;
@@ -1976,18 +1923,6 @@ export interface PortableExportSelection {
   includeLearningIds: string[];
 }
 
-export interface PortableRoutineFieldOverride {
-  name?: string | null;
-  prompt?: string | null;
-}
-
-export interface PortableExportOverrides {
-  claudeMd?: string | null;
-  skillBodies?: Record<string, string>;
-  routineFields?: Record<string, PortableRoutineFieldOverride>;
-  learningTexts?: Record<string, string>;
-}
-
 export interface PortableExportMeta {
   agentId: string;
   agentName: string;
@@ -1998,59 +1933,7 @@ export interface PortableExportMeta {
 
 export interface PortableExportRequest {
   selection: PortableExportSelection;
-  overrides?: PortableExportOverrides;
   meta: PortableExportMeta;
-}
-
-export interface PortableAnonymizeRequest {
-  claudeMd: boolean;
-  skillSlugs: string[];
-  routineIds: string[];
-  learningIds: string[];
-  /**
-   * Run the AI pass on top of the pattern + secret scrub (the wizard's
-   * "Let my AI help" toggle). Absent means true; false is a deliberate
-   * user choice, so the response carries no `aiError`.
-   */
-  useAi?: boolean;
-}
-
-export interface PortableAnonymizedString {
-  before: string;
-  after: string;
-  summary: string;
-  becameEmpty: boolean;
-}
-
-export interface PortableAnonymizedItem {
-  id: string;
-  before: string;
-  after: string;
-  summary: string;
-  becameEmpty: boolean;
-}
-
-export interface PortableRoutineFieldDiff {
-  field: string;
-  before: string;
-  after: string;
-}
-
-export interface PortableAnonymizedRoutine {
-  id: string;
-  fieldDiffs: PortableRoutineFieldDiff[];
-  overridePayload: PortableRoutineFieldOverride;
-}
-
-export interface PortableAnonymizeResponse {
-  claudeMd: PortableAnonymizedString | null;
-  skills: PortableAnonymizedItem[];
-  routines: PortableAnonymizedRoutine[];
-  learnings: PortableAnonymizedItem[];
-  /** Which redactor produced the diffs: the AI pass, or the regex patterns fallback. */
-  mode: "ai" | "patterns";
-  /** Why the AI pass didn't run (set only when `mode` is "patterns"). */
-  aiError?: string;
 }
 
 export interface PortableManifestSummary {
@@ -2176,125 +2059,6 @@ export interface PortableInstalledAgent {
    *  pod (HOU-710). */
   agent: Agent;
 }
-
-// ────────────────────────────────────────────────────────────────────────
-// Agent Store publication ("Publish to the Agent Store")
-//
-// Account-based, no manage tokens. The host gathers the same portable content
-// the export flow produces and returns it as an AgentIR (no network); the APP
-// POSTs that IR to the gateway `/v1/agentstore` API with the user's own bearer,
-// then records a token-free pointer (store agent id + slug + share url) on the
-// host so the manage view can look up the live listing and re-publish the SAME
-// store agent instead of duplicating it.
-// ────────────────────────────────────────────────────────────────────────
-
-/** The listing metadata the publish wizard collects. */
-export interface StorePublishIdentity {
-  name: string;
-  description: string;
-  tagline?: string;
-  /** A seeded store category slug (see the store's category vocabulary). */
-  category: string;
-  tags?: string[];
-}
-
-/** Who is credited on the store listing. */
-export interface StorePublishCreator {
-  displayName: string;
-  url?: string;
-}
-
-/**
- * A publish (or update). The selection/overrides are the SAME portable
- * pick + anonymize outputs the export flow produces; the host re-gathers the
- * content from them, so a publish carries no packaged bytes.
- */
-export interface StorePublishRequest {
-  selection: PortableExportSelection;
-  overrides?: PortableExportOverrides;
-  identity: StorePublishIdentity;
-  creator: StorePublishCreator;
-  /** True when the pick ran through the anonymize pass (stamped on provenance). */
-  anonymized?: boolean;
-}
-
-export interface StorePublishResponse {
-  shareUrl: string;
-  slug: string;
-  storeAgentId: string;
-}
-
-export interface StoreUpdateResponse {
-  shareUrl: string;
-  slug: string;
-}
-
-export interface StoreUnpublishResponse {
-  ok: boolean;
-}
-
-/**
- * Whether this agent is linked to an Agent Store listing, and its live state.
- * Account-based, so it carries no secret of any kind.
- */
-export interface StorePublicationStatus {
-  /** The store agent's live state is `published` (visible via its share URL). */
-  published: boolean;
-  /** A machine-local pointer exists (this agent was published at least once). */
-  linked: boolean;
-  shareUrl?: string;
-  slug?: string;
-  /** The store agent's id (uuid), for update/unpublish against the gateway. */
-  storeAgentId?: string;
-  publishedAt?: string;
-  /** The public store site URL, for "browse the store". */
-  storeUrl: string;
-  /** The live listing fields, so the manage view can prefill the update form. */
-  identity?: StorePublishIdentity;
-}
-
-// The public catalog wire types are the unified Agent Store SDK shapes
-// (`@houston/agentstore-client`), reconciled against the authoritative Go
-// handlers. The historical `StoreCatalog*` names are kept as aliases/re-exports
-// so existing importers (the desktop store-view, the runtime adapter) compile
-// unchanged. `StoreCatalogAgentDetail.ir` widens from the former
-// `{ skills, learnings }` projection to the full `AgentIR` the gateway serves;
-// the app still reads only `ir.skills`/`ir.learnings`.
-// Owner + moderation wire shapes reused by the store-view surfaces: the "my
-// agents" manage panel (`MyAgent`), the abuse-report dialog (`ReportInput` /
-// `ReportReason`), and the browse filter's category vocabulary (`StoreCategory`).
-// Creator-profile shapes back the "publish as @handle" identity, its public
-// creator page, avatar upload, and the per-day install analytics panel.
-export type {
-  AgentIdentityPatch,
-  AvatarUploadResult,
-  CreatorAnalytics,
-  CreatorDirectoryEntry,
-  CreatorDirectoryPage,
-  CreatorInstallRow,
-  CreatorLinks,
-  CreatorProfile,
-  CreatorProfilePatch,
-  HandleAvailability,
-  MyAgent,
-  ReportInput,
-  ReportReason,
-  StoreCatalogPage,
-  StoreCatalogQuery,
-  StoreCatalogSort,
-  StoreCategory,
-  StoreCreatorPage,
-} from "@houston/agentstore-client";
-
-/** One public Agent Store listing, exactly as the catalog API serializes it. */
-export type StoreCatalogAgent = StoreAgentSummary;
-
-/** A listing's detail: the summary plus the full published-version IR. */
-export type StoreCatalogAgentDetail = StoreAgentDetail;
-
-/** One creator-directory result and its paged response. */
-export type StoreCreatorDirectoryEntry = CreatorDirectoryEntry;
-export type StoreCreatorDirectoryPage = CreatorDirectoryPage;
 
 // ── integrations (Composio, platform mode) ───────────────────────────────────
 // User-level: no provider account — the user only connects apps (Gmail, Slack…)

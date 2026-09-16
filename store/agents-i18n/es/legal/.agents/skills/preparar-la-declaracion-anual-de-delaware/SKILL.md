@@ -7,6 +7,9 @@ category: Entidad
 featured: no
 image: scroll
 integrations: [googledocs]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Preparar la declaración anual de Delaware
@@ -29,6 +32,7 @@ señala el ahorro.
 - El fundador recibió una factura alarmante de Delaware y quiere que se recalcule.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el contexto compartido.** Lee `context/legal-context.md`.
    Si falta o está vacío, pregunta al usuario en lenguaje sencillo: "Primero necesito unos datos básicos sobre tu empresa (estado de constitución, acciones autorizadas, directores). ¿Quieres configurarlos ahora?" Luego ejecuta `set-up-my-legal-info` si dice que sí. Detente hasta que eso esté hecho.

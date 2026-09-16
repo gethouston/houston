@@ -8,22 +8,15 @@ import type { SkillsContentProps } from "./skills-content-props";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
 import { useSkillsChatSurface } from "./use-skills-chat-surface";
 
-/** Approximate size of the skills.sh store, shown verbatim on the Available chip
- * (the store is async with no cheap total, so we label the ballpark). */
-const SKILL_STORE_SIZE_LABEL = "9000+";
-
 /**
  * The Skills body in the shared catalog grammar (the same layout as the
  * Integrations surfaces, minus a page header — the surface that mounts this
  * one, the agent settings rail's Skills section, carries that):
  * ONE search field on top drives everything, over the consolidated **Your
- * skills** strip of installed-skill tiles (a tile opens the manage dialog,
- * which carries the content editor and the delete), then the **Available**
- * discovery area via
- * {@link CatalogShell} — the **Store** tab (the skills.sh marketplace, its
- * category picker kept) and **Custom skills** (an empty state for now: the
- * explanation + the Add CTA opening the GitHub / From-scratch dialog). The one
- * query filters the strip AND the store; a strip with no matches is dropped.
+ * skills** strip of installed-skill tiles (a tile opens the manage dialog),
+ * then the **Available** custom-skill area via {@link CatalogShell}. The one
+ * query filters the strip and workspace skill sources; a strip with no matches
+ * is dropped.
  *
  * HOU-791: a skill's primary surface is its persistent setup CHAT (the same
  * experience a routine's setup chat gives) — a row click opens it inline in
@@ -33,9 +26,6 @@ export function SkillsContent({
   agent,
   skills,
   loading,
-  onSearch,
-  onInstallCommunity,
-  onPreviewCommunity,
   onListFromRepo,
   onInstallFromRepo,
   onCreateFromScratch,
@@ -43,7 +33,7 @@ export function SkillsContent({
 }: SkillsContentProps) {
   const { t } = useTranslation("skills");
   const dialogLabels = useSkillDialogLabels();
-  const [tab, setTab] = useState("store");
+  const [tab, setTab] = useState("custom");
   const [dialogOpen, setDialogOpen] = useState(false);
   // The open skill's MANAGE dialog (HOU-792) — the same content + agents +
   // Edit-in-chat dialog the global page opens.
@@ -86,15 +76,6 @@ export function SkillsContent({
     drafts: chat.drafts,
     onResumeDraft: chat.resumeDraft,
     onDiscardDraft: chat.discardDraft,
-    query,
-    onQueryChange: setQuery,
-    onSearch,
-    // The query survives an install (PRODUCT-1512): clearing it would snap the
-    // Store back to the browse shelves mid-flow, so the user can keep
-    // installing more results from the same search — matching the global
-    // skills page.
-    onInstallCommunity,
-    onPreviewCommunity,
     installedSkillNames,
   });
 
@@ -137,9 +118,6 @@ export function SkillsContent({
         installedCount={installedCount}
         installed={installed}
         availableTitle={t("grid.availableHeading")}
-        // The store-size label belongs to the Store tab only; on Custom
-        // the chip would contradict the visible content.
-        availableCount={tab === "store" ? SKILL_STORE_SIZE_LABEL : undefined}
         tabs={tabs}
         value={tab}
         onValueChange={setTab}

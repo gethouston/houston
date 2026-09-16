@@ -154,7 +154,7 @@ function ConfirmDialogSpecimen() {
       <SpecimenTokens
         classes={[
           "bg-dialog",
-          "bg-black/35",
+          "bg-black/25",
           "text-ink-muted",
           "bg-danger",
           "bg-action",

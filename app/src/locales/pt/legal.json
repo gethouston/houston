@@ -4,20 +4,20 @@
   "intro": "O Houston está em beta. Achamos que é ótimo, mas pode cometer erros, e queremos que você entenda como ele funciona antes de confiar tarefas importantes a ele.",
   "sections": [
     {
-      "heading": "Os agentes agem em seu nome",
-      "body": "Com sua permissão, os agentes de IA do Houston podem ler seus arquivos, modificá-los, enviar e-mails, navegar na internet e usar qualquer aplicativo que você conectar. Eles entram como você. Tudo o que você pode fazer, eles também podem."
+      "heading": "Os funcionários de IA agem em seu nome",
+      "body": "Com sua permissão, os funcionários de IA do Houston podem ler seus arquivos, modificá-los, enviar e-mails, navegar na internet e usar qualquer aplicativo que você conectar. Eles entram como você. Tudo o que você pode fazer, eles também podem."
     },
     {
       "heading": "Eles podem ser enganados",
-      "body": "Os agentes seguem suas instruções, mas instruções maliciosas podem se infiltrar em lugares inesperados, como um e-mail ou uma página da web que o agente leia. Quando isso acontece, um agente pode fazer algo que você não queria. Isso não é exclusivo do Houston. Qualquer ferramenta de IA que acesse contas reais tem esse risco. Contamos para que você não seja pego de surpresa."
+      "body": "Os funcionários de IA seguem suas instruções, mas instruções maliciosas podem se infiltrar em lugares inesperados, como um e-mail ou uma página da web que o funcionário de IA leia. Quando isso acontece, um funcionário de IA pode fazer algo que você não queria. Isso não é exclusivo do Houston. Qualquer ferramenta de IA que acesse contas reais tem esse risco. Contamos para que você não seja pego de surpresa."
     },
     {
       "heading": "Como manter o controle",
-      "body": "Comece com pouco. Teste tarefas simples primeiro para conhecer como seus agentes se comportam. Conecte apenas as contas que você precisa e desconecte-as quando quiser. Tudo o que um agente faz aparece no Houston, então você sempre pode ver o que está acontecendo. Se algo parecer estranho, pause o agente."
+      "body": "Comece com pouco. Teste tarefas simples primeiro para conhecer como seus funcionários de IA se comportam. Conecte apenas as contas que você precisa e desconecte-as quando quiser. Tudo o que um funcionário de IA faz aparece no Houston, então você sempre pode ver o que está acontecendo. Se algo parecer estranho, pause o funcionário de IA."
     },
     {
       "heading": "Seus arquivos continuam sendo seus",
-      "body": "O Houston vive no seu computador. Suas conversas e arquivos não vão para nossos servidores. Quando os agentes conversam com o Claude ou a OpenAI, essas mensagens passam pela sua própria conta com esses provedores, como se você estivesse usando os aplicativos deles diretamente."
+      "body": "O Houston vive no seu computador. Suas conversas e arquivos não vão para nossos servidores. Quando os funcionários de IA conversam com o Claude ou a OpenAI, essas mensagens passam pela sua própria conta com esses provedores, como se você estivesse usando os aplicativos deles diretamente."
     }
   ],
   "closing": "Ao clicar em \"Entendi e quero continuar\" você confirma que leu isto e aceita como o Houston funciona.",

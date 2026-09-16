@@ -240,7 +240,7 @@ test("each member gets their OWN credential store, never a shared one", async ()
   }
 });
 
-test("the one-shot path (titles, anonymize) isolates identically", async () => {
+test("the one-shot path (titles) isolates identically", async () => {
   // Same pod-shared config dir, same 401, same leak — so the same guard. A title
   // that quietly ran on the team account would be invisible in the UI.
   let env: Record<string, string> = {};

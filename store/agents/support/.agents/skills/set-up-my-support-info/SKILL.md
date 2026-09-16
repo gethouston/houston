@@ -6,6 +6,9 @@ category: Support
 featured: yes
 image: headphone
 integrations: [googledocs, stripe, notion, github, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,9 @@ I read your support context first. For every required field that's missing I ask
 - **Routing categories**  -  Required. Why I need it: triage and signal detection map every inbound message to one. If missing I ask: "When a ticket comes in, what buckets do you sort it into  -  bug, how-to, billing, anything else?"
 - **Escalation tiers**  -  Required. Why I need it: P1 / P2 / P3 / P4 definitions for triage. If missing I ask: "What makes something a fire-drill versus a same-day versus a this-week thing?"
 - **Verbatim voice samples**  -  Optional. Why I need it: tone section reads truer with real phrases. If you don't have it I keep going with TBD and recommend running voice calibration.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read `config/context-ledger.json`.** Need `universal.company`, `universal.idealCustomer`, `domains.inbox.responseTimeTargets`, `domains.inbox.routingCategories`, `domains.quality.escalationTiers`. Any missing field, ask ONE targeted question with modality hint (connected app > file > URL > paste), write atomic, continue.
 

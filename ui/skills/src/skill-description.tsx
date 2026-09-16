@@ -1,4 +1,4 @@
-import { formatSkillDescription } from "./skill-marketplace-util";
+import { formatSkillDescription } from "./skill-preview-util";
 
 export interface SkillDescriptionLabels {
   alsoMatches?: (keywords: string) => string;

@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [hubspot, stripe, quickbooks, xero, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Your stock-comp posture** — Optional. Why: ISO / NSO / RSU triggers a stock-based compensation expense line and APIC-SBC equity line. If missing I ask: "Do you grant equity to employees yet? If you don't have it I keep going without stock-comp lines and we add them later."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read config.** Load `config/context-ledger.json`. Required
    fields for good first-pass chart of accounts:

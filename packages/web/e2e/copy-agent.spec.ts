@@ -17,13 +17,13 @@ import { expect, test } from "./support/fixtures";
 import { litRows, rail, screen } from "./support/team-nav";
 
 /**
- * "Copy an agent": the create dialog's third door. Pick one of your agents,
- * then decide, item by item, what the new agent keeps: job description and
- * learnings, routines, skills, everything ON to start, and the chats, OFF to
- * start. The copy is the portable pipeline (preview, package, install) fed
- * that selection, so the fake host records what the package carried and the
- * spec asserts it; the chats ride the agent-scoped migration routes afterwards
- * and land on the copy's board.
+ * "Copy an AI Employee": the second of the two cards the create dialog opens on.
+ * Pick one of your agents, then decide, item by item, what the new agent
+ * keeps: job description and learnings, routines, skills, everything ON to
+ * start, and the chats, OFF to start. The copy is the portable pipeline
+ * (preview, package, install) fed that selection, so the fake host records
+ * what the package carried and the spec asserts it; the chats ride the
+ * agent-scoped migration routes afterwards and land on the copy's board.
  */
 test("copies an agent, leaving chosen items behind and bringing the chats", async ({
   page,
@@ -79,7 +79,7 @@ test("copies an agent, leaving chosen items behind and bringing the chats", asyn
     "e.g. Product manager, Sales, Jerry",
   );
   await expect(nameField).toHaveValue("Houston copy");
-  await dialog.getByRole("button", { name: "Create Agent" }).click();
+  await dialog.getByRole("button", { name: "Create AI Employee" }).click();
 
   // The copy lands in the rail and the dialog is gone.
   await expect(
@@ -126,7 +126,7 @@ test("copies an agent, leaving chosen items behind and bringing the chats", asyn
  * A source with no routines or skills skips those screens; the "know" screen
  * always shows since the chats choice exists for every source. Left OFF, the
  * copy's board starts empty. Back from the source list returns to the
- * dialog's chooser.
+ * dialog's opening choice.
  */
 test("a bare source skips the list screens; chats stay behind by default", async ({
   page,
@@ -138,7 +138,7 @@ test("a bare source skips the list screens; chats stay behind by default", async
   const dialog = createDialog(page);
   await dialog.getByRole("button", { name: "Back", exact: true }).click();
   await expect(
-    dialog.getByRole("button", { name: "Create new", exact: true }),
+    dialog.getByRole("heading", { name: "How do you want to start?" }),
   ).toBeVisible();
 
   await openCopyWizard(page);
@@ -154,7 +154,7 @@ test("a bare source skips the list screens; chats stay behind by default", async
   await expect(rowSwitch(page, "Conversations")).not.toBeChecked();
   await next(page);
   await expect(dialog.getByText("Based on Houston")).toBeVisible();
-  await dialog.getByRole("button", { name: "Create Agent" }).click();
+  await dialog.getByRole("button", { name: "Create AI Employee" }).click();
   await expect(dialog).toBeHidden();
   await expect(
     rail(page).getByText("Houston copy", { exact: true }),
@@ -168,7 +168,7 @@ test("a bare source skips the list screens; chats stay behind by default", async
  * navigating before it resolved the copy to the DEFAULT team, so the rail
  * lit "New Team" and its board showed the source's tasks instead of the copy.
  */
-test("a copy started from a server team's New agent row lands on that team, focused on the copy", async ({
+test("a copy started from a server team's New AI Employee row lands on that team, focused on the copy", async ({
   page,
 }) => {
   const OPS_TEAM = "team-ops";
@@ -198,7 +198,7 @@ test("a copy started from a server team's New agent row lands on that team, focu
   const opsBlock = rail(page).locator(
     `[data-sidebar-drop-section="${OPS_TEAM}"]`,
   );
-  await opsBlock.getByRole("button", { name: "New agent" }).click();
+  await opsBlock.getByRole("button", { name: "New AI Employee" }).click();
   await openCopyWizard(page);
   const dialog = createDialog(page);
   await dialog.getByRole("button", { name: "Houston", exact: true }).click();
@@ -209,7 +209,7 @@ test("a copy started from a server team's New agent row lands on that team, focu
   ).toBeVisible();
   await next(page);
   await expect(dialog.getByText("Based on Houston")).toBeVisible();
-  await dialog.getByRole("button", { name: "Create Agent" }).click();
+  await dialog.getByRole("button", { name: "Create AI Employee" }).click();
   await expect(dialog).toBeHidden();
 
   // The copy sits in Operations, its rail row is the current one, and the

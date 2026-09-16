@@ -6,6 +6,9 @@ category: Contracts
 featured: yes
 image: scroll
 integrations: [googledocs, googledrive, notion, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Reads `config/context-ledger.json` first.
 Required field missing → ask ONE targeted question with modality hint (connect Google Drive / paste contract text / URL to public PDF), write it, continue.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + legal context.** Gather missing required fields per above. Write atomically.
 2. **Acquire contract.** Priority: connected document-storage (Google Drive) > URL + Firecrawl scrape > file drop > paste. Only PDF supplied + no text-extraction tool connected → say so, ask for text-extractable version.

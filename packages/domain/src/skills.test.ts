@@ -67,6 +67,55 @@ Step one.
   const parsed = parseSkillMd("weekly-update", built);
   if ("error" in parsed) throw new Error(parsed.error);
   expect(parsed.summary.setupActivityId).toBe("act-42");
+  expect(parsed.workflow).toBeNull();
+});
+
+test("parses structured workflow only from Houston-authored skills", () => {
+  const content = `---
+name: inbox-triage
+description: Triage email
+x_houston:
+  created_by: houston
+  skill_schema: 1
+---
+
+## Workflow
+<!-- houston-workflow:v1 -->
+1. **Gather context** - Ask what mailbox and time window to review.
+2. **Sort messages** - Group urgent, waiting, and archive candidates.
+   • Keep newsletters separate.
+   Continue with messages from VIPs first.
+3. **Draft replies**
+
+## Pitfalls
+Keep private messages private.
+`;
+  const parsed = parseSkillMd("inbox-triage", content);
+  if ("error" in parsed) throw new Error(parsed.error);
+  expect(parsed.workflow).toEqual({
+    version: 1,
+    steps: [
+      {
+        title: "Gather context",
+        detail: "Ask what mailbox and time window to review.",
+        integration: null,
+      },
+      {
+        title: "Sort messages",
+        detail:
+          "Group urgent, waiting, and archive candidates.\n• Keep newsletters separate.\nContinue with messages from VIPs first.",
+        integration: null,
+      },
+      { title: "Draft replies", detail: null, integration: null },
+    ],
+  });
+
+  const imported = parseSkillMd(
+    "imported",
+    content.replace(/x_houston:[\s\S]*?---/, "---"),
+  );
+  if ("error" in imported) throw new Error(imported.error);
+  expect(imported.workflow).toBeNull();
 });
 
 test("frontmatter title: surfaces as the display title while name stays the directory slug", async () => {
@@ -168,6 +217,7 @@ test("compose → parse round-trip (create flow)", () => {
   expect(parsed.summary.version).toBe(1);
   expect(parsed.summary.featured).toBe(false);
   expect(parsed.body.trim()).toBe("## Procedure\nDo the thing.");
+  expect(md).toContain("x_houston:");
 });
 
 test("loadSkillDetail returns full content; unparseable file still readable (slug fallback)", async () => {

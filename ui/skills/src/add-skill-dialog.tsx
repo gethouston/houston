@@ -1,8 +1,7 @@
 /**
  * AddSkillDialog — modal to add a skill from a GitHub repo or from scratch.
  * DialogContent is a fixed-size flex column so switching views never resizes;
- * each view owns its own scroll region. (The community marketplace now lives
- * inline as a page section, see SkillMarketplaceSection.)
+ * each view owns its own scroll region.
  */
 
 import {
@@ -101,7 +100,7 @@ export function AddSkillDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl !gap-0 p-0 h-[80vh] max-h-[720px] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-3xl !gap-0 p-0 h-[80dvh] max-h-[720px] flex flex-col overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
           <DialogTitle>{l.title}</DialogTitle>
           <DialogDescription>{l.description}</DialogDescription>

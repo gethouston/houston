@@ -88,7 +88,6 @@ export function ComposedSidebar() {
                         <SidebarMenuBadge>{agent.badge}</SidebarMenuBadge>
                       ) : (
                         <SidebarMenuAction
-                          showOnHover
                           aria-label={`More for ${agent.name}`}
                         >
                           <MoreHorizontal />

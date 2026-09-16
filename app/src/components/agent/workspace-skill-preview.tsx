@@ -1,4 +1,4 @@
-import type { CommunitySkill, SkillPreviewState } from "@houston-ai/skills";
+import type { PreviewSkill, SkillPreviewState } from "@houston-ai/skills";
 import { SkillPreviewModal } from "@houston-ai/skills";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
@@ -8,8 +8,8 @@ import { skillIntegrationSlugs } from "../../lib/skill-integrations";
 import { skillBodyOf } from "../../lib/skill-md";
 import { tauriSharedSkills } from "../../lib/tauri";
 import type { SkillSummary } from "../../lib/types";
-import { IntegrationBadges } from "../integrations";
-import { useSkillMarketplaceSectionLabels } from "./use-skill-surface-labels";
+import { IntegrationBadges, SkillStepIntegrationChip } from "../integrations";
+import { useSkillPreviewLabels } from "./use-skill-surface-labels";
 
 interface Props {
   workspaceId: string;
@@ -25,8 +25,8 @@ interface Props {
 
 /**
  * The workspace-store skill preview (ADR 0003): the same
- * {@link SkillPreviewModal} the marketplace and the cross-agent section open
- * — title, description, connected apps, and the full body behind the
+ * {@link SkillPreviewModal} the cross-agent section opens — title,
+ * description, connected apps, and the full body behind the
  * expander — with the commit button meaning ENABLE (a reversible manifest
  * write), never a copy or an install. The body lives in the store, so it
  * loads on open through the shared-skills cache.
@@ -40,7 +40,7 @@ export function WorkspaceSkillPreview({
   onClose,
 }: Props) {
   const { t } = useTranslation("skills");
-  const marketplaceLabels = useSkillMarketplaceSectionLabels();
+  const previewLabels = useSkillPreviewLabels();
   const { data: detail, error } = useQuery({
     queryKey: queryKeys.sharedSkillDetail(workspaceId, skill?.name ?? ""),
     queryFn: () => tauriSharedSkills.load(workspaceId, skill?.name ?? ""),
@@ -49,7 +49,7 @@ export function WorkspaceSkillPreview({
     refetchOnWindowFocus: false,
   });
 
-  const modalSkill: CommunitySkill | null = useMemo(
+  const modalSkill: PreviewSkill | null = useMemo(
     () =>
       skill
         ? {
@@ -76,6 +76,7 @@ export function WorkspaceSkillPreview({
         tags: skill.tags,
         integrations: skill.integrations,
         content: skillBodyOf(detail.content) || null,
+        workflow: detail.workflow?.steps ?? null,
       },
     };
   }, [skill, detail, error]);
@@ -91,6 +92,9 @@ export function WorkspaceSkillPreview({
       installing={enabling}
       installed={enabled}
       onInstall={() => skill && onEnable(skill.name)}
+      renderIntegration={(integration) => (
+        <SkillStepIntegrationChip integration={integration} />
+      )}
       renderIntegrations={(slugs) => (
         <IntegrationBadges
           toolkits={skillIntegrationSlugs(slugs)}
@@ -98,7 +102,7 @@ export function WorkspaceSkillPreview({
         />
       )}
       labels={{
-        ...marketplaceLabels.preview,
+        ...previewLabels,
         install: t("fromWorkspace.enable"),
         installing: t("fromWorkspace.enabling"),
         installed: t("fromWorkspace.enabled"),

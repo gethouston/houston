@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
 
@@ -132,7 +133,7 @@ const srOnly = (within: Locator): Locator =>
 /** Open the spec's mission on the signed-in shell. */
 async function openMission(page: Page): Promise<void> {
   await page.getByText(MISSION_TITLE).click();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 }
 
 test("a shared chat gives every speaker a side, a face and a name", async ({

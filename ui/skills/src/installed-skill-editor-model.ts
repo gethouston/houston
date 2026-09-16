@@ -34,9 +34,3 @@ export function deriveInstalledSkillEditorState(args: {
   if (args.hasError) return { status: "error" };
   return { status: "loading" };
 }
-
-/** First display-letter for the monogram fallback when a skill has no image. */
-export function skillMonogram(title: string): string {
-  const trimmed = title.trim();
-  return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
-}

@@ -9,10 +9,7 @@ import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { MobileDrilledHeader } from "../shell/mobile-drilled-header";
 import { PageHeader } from "../shell/page-header/page-header";
-import { headerCollapsesTabs } from "../shell/page-header/page-header-layout";
-import { PageHeaderSwitcher } from "../shell/page-header/page-header-switcher";
 import { PageHeaderTabs } from "../shell/page-header/page-header-tabs";
-import { usePageHeaderMode } from "../shell/page-header/page-header-tools";
 
 const LABEL_KEYS = {
   routines: "teamView.tabs.routines",
@@ -48,7 +45,6 @@ export function AgentChrome({
   section: TeamSectionId;
 }) {
   const { t } = useTranslation(["teams", "shell"]);
-  const collapsed = headerCollapsesTabs(usePageHeaderMode());
   const openTeamView = useUIStore((state) => state.openTeamView);
   const openAgentsHome = useUIStore((state) => state.openAgentsHome);
   const isMobile = useIsMobile();
@@ -104,30 +100,12 @@ export function AgentChrome({
   return (
     <div data-agent-screen="">
       <PageHeader>
-        {collapsed ? (
-          <PageHeaderSwitcher
-            identity={identity}
-            items={items.map(({ id, label, dataAttrs }) => ({
-              id,
-              label:
-                id === "mission-control"
-                  ? t("teamView.tabs.missionControl")
-                  : label,
-              dataAttrs,
-            }))}
-            active={section}
-            label={t("teamView.tabs.label")}
-            onSelect={select}
-            dataAttrs={{ "data-team-section-switcher": "" }}
-          />
-        ) : (
-          <PageHeaderTabs
-            items={items}
-            active={section}
-            label={t("teamView.tabs.label")}
-            onSelect={select}
-          />
-        )}
+        <PageHeaderTabs
+          items={items}
+          active={section}
+          label={t("teamView.tabs.label")}
+          onSelect={select}
+        />
       </PageHeader>
     </div>
   );

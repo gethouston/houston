@@ -6,6 +6,9 @@ category: People
 featured: no
 image: busts-in-silhouette
 integrations: [googlesheets, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ I read your people context first. For every required field that's missing I ask 
 - **PTO refresh date** — Optional. Why I need it: anchors the annual PTO refresh entry. If you don't have it I keep going with TBD.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc.** Read `context/people-context.md` for review-cycle rhythm (annual / semi-annual / quarterly, next cycle date) + any policy-refresh cadence. If missing/empty, tell user: "I need the people-context doc first  -  run the set-up-my-people-info skill." Stop.
 2. **Read ledger.** `config/context-ledger.json` (HR platform read-only  -  never modify records). If HR platform not connected, ask ONE targeted question with modality hint ("Connect your HR platform  -  Gusto, Deel, Rippling, or Justworks  -  in the Integrations tab so I can pull start dates, work-authorization status, and vesting schedules").

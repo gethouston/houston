@@ -6,6 +6,9 @@ version: 1
 category: Contabilidade
 featured: yes
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Eu leio o seu contexto contábil primeiro. Para cada campo obrigatório que esti
 - **O período ou a data de referência** - Obrigatório. Por quê: me diz quais lançamentos contábeis incluir. Se estiver faltando eu pergunto: "Qual período você quer, por exemplo, março de 2025 para uma DRE, ou em 31 de março de 2025 para um balanço patrimonial?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json` (para `universal.accountingMethod` + `universal.openingBalances`), `config/chart-of-accounts.json` (TRAVADO - as demonstrações dependem de `statementSection`), e `config/opening-trial-balance.json`. Analisar argumentos: `statement` (uma das quatro) + `period` (`YYYY-MM` para DRE / fluxo de caixa / variação; data de referência para balanço patrimonial / balancete).
 

@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [linkedin, twitter, youtube, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Eu leio primeiro o seu contexto de marketing. Para cada campo obrigatório que e
 - **O formato de destino** - Obrigatório. Se estiver faltando, eu pergunto: "Em que você quer que eu transforme isso, cinco posts do LinkedIn, uma thread do X, uma newsletter, um rascunho de blog, ou uma lista de insights compartilháveis?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o documento de posicionamento**: `context/marketing-context.md`. Se estiver faltando, parar e avisar o usuário para rodar `set-up-my-marketing-info` primeiro. Voz e posicionamento são essenciais para conteúdo reaproveitado.
 2. **Ler configuração**: `config/site.json` e `config/tooling.json`.

@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primero leo tu contexto de contabilidad. Por cada campo requerido que falte, hag
 - **Una lista de correos de proveedores**, opcional. Por qué: me permite dirigir los correos de seguimiento a cada proveedor directamente. Si no la tienes, dejo el destinatario en blanco en cada borrador y te pido que lo completes.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto.** Cargar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Registro requerido: `universal.company` (nombre legal más EIN para el bloque de pagador 1099), `domains.tax` (nombre / correo del preparador para la nota de portada).
 

@@ -6,6 +6,9 @@ version: 1
 category: Contabilidade
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Eu leio o seu contexto contábil primeiro. Para cada campo obrigatório que esti
 - **Um histórico atual de lançamentos contábeis** - Obrigatório. Por quê: eu recalculo o saldo de cada provisão a partir dos lançamentos contábeis que atingem o seu código de conta. Se estiver faltando eu pergunto: "Já processamos algum período? Se não, vamos rodar um fechamento primeiro para que existam lançamentos contábeis para calcular."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Plano de contas faltando → parar, pedir ao usuário para rodar `build-chart-of-accounts` primeiro. Anotar a data de hoje + o período contábil atual (`YYYY-MM`).
 

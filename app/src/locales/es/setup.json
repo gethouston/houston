@@ -6,7 +6,7 @@
     "steps": {
       "connectAiIntro": {
         "title": "Conecta tu IA",
-        "body": "Tus agentes necesitan una IA para trabajar. Te muestro dónde conectarla.",
+        "body": "Tus empleados de IA necesitan un modelo para trabajar. Te muestro dónde conectarlo.",
         "cta": "Muéstrame"
       },
       "openMenu": {
@@ -18,12 +18,12 @@
       },
       "connectAi": {
         "title": "Elige la IA que ya usas.",
-        "hint": "Tus agentes funcionarán con ella",
+        "hint": "Tus empleados de IA funcionarán con ella",
         "already": "Ya tienes una IA conectada."
       },
       "integrationsIntro": {
         "title": "Conecta tus apps",
-        "body": "Tus agentes actúan a través de tus apps, como el correo y el calendario. Te muestro dónde.",
+        "body": "Tus empleados de IA actúan a través de tus apps, como el correo y el calendario. Te muestro dónde.",
         "cta": "Muéstrame"
       },
       "openIntegrations": {
@@ -36,54 +36,55 @@
       },
       "integrationConnected": {
         "title": "¡App conectada!",
-        "body": "Así de fácil. Tus agentes pueden acceder a más de 1000 apps de esta forma."
+        "body": "Así de fácil. Tus empleados de IA pueden acceder a más de 1000 apps de esta forma."
       },
       "createAgentIntro": {
-        "title": "Crea tu primer agente",
-        "body": "Los agentes son compañeros que te quitan trabajo de encima. Te muestro dónde crear uno.",
+        "title": "Crea tu primer empleado de IA",
+        "body": "Los empleados de IA son compañeros que te quitan trabajo de encima. Te muestro dónde crear uno.",
         "cta": "Muéstrame"
       },
       "createAgent": {
-        "title": "Haz clic en Nuevo agente",
-        "hint": "Ponle el nombre que quieras",
-        "already": "Ya tienes un agente."
+        "title": "Haz clic en Nuevo empleado de IA",
+        "hint": "Empieza por la industria en la que trabaja",
+        "already": "Ya tienes un empleado de IA."
       },
       "agentCreated": {
-        "title": "¡Agente creado!",
+        "title": "¡Empleado de IA creado!",
         "body": "Se está configurando solo ahora mismo. Ya puedes hablar con él."
       },
       "sendMissionIntro": {
         "title": "Dale trabajo",
-        "body": "Pides con tus palabras y tu agente se pone a trabajar. Te muestro dónde.",
+        "body": "Pides con tus palabras y tu empleado de IA se pone a trabajar. Te muestro dónde.",
         "cta": "Muéstrame"
       },
       "sendMission": {
         "title": "Haz clic en Nueva tarea",
-        "hint": "Así le das trabajo a los agentes",
+        "hint": "Así le das trabajo a los empleados de IA",
         "typeTitle": "Dile qué necesitas.",
         "typeHint": "Con tus palabras, y envíalo",
         "emailHint": "Su primera tarea ya está escrita",
         "sendTitle": "Solo presiona enviar.",
-        "sendHint": "Escribimos la primera tarea de tu agente por ti"
+        "sendHint": "Escribimos la primera tarea de tu empleado de IA por ti"
       },
       "missionSent": {
         "title": "¡Tarea enviada!",
-        "body": "Tu agente ya está en ello. Ese es el ciclo completo: tú pides, él trabaja.",
+        "body": "Tu empleado de IA ya está en ello. Ese es el ciclo completo: tú pides, él trabaja.",
         "cta": "Listo"
       },
       "createAgentDialog": {
-        "pickTitle": "Haz clic en Crear nuevo",
+        "briefTitle": "Dile qué va a hacer.",
+        "briefHint": "Elige la industria y luego el trabajo que va a tomar",
         "nameTitle": "Elige un color y ponle un nombre.",
-        "nameHint": "Luego haz clic en Crear agente"
+        "nameHint": "Luego haz clic en Crear empleado de IA"
       },
       "emailSending": {
-        "title": "Mira a tu agente trabajar.",
+        "title": "Mira a tu empleado de IA trabajar.",
         "hint": "Te está enviando un correo ahora mismo",
         "stuck": "¿Algo salió mal? Tu tarea se envió, puedes terminar la configuración."
       },
       "emailSent": {
         "title": "¡Revisa tu correo!",
-        "body": "Tu agente te acaba de enviar un correo real. Así trabaja para ti, de verdad."
+        "body": "Tu empleado de IA te acaba de enviar un correo real. Así trabaja para ti, de verdad."
       },
       "academyReveal": {
         "title": "¡Capítulo 1 completado!",
@@ -91,8 +92,8 @@
         "cta": "Ir a la Academia"
       },
       "openAgents": {
-        "hint": "Toca Agentes, abajo",
-        "title": "Abrir Agentes"
+        "hint": "Toca Empleados de IA, abajo",
+        "title": "Abrir Empleados de IA"
       }
     },
     "skipStep": "Omitir paso",
@@ -100,14 +101,14 @@
     "checklist": {
       "ai": "Conecta tu IA",
       "apps": "Conecta tus apps",
-      "agent": "Crea tu agente",
+      "agent": "Crea tu empleado de IA",
       "task": "Envíale su primera tarea"
     },
-    "stripFailed": "No pudimos quitar la nota de configuración de tu agente. Pídele que elimine la sección de configuración de Houston de sus instrucciones."
+    "stripFailed": "No pudimos quitar la nota de configuración de tu empleado de IA. Pídele que elimine la sección de configuración de Houston de sus instrucciones."
   },
   "name": {
     "title": "Nombra tu espacio de trabajo",
-    "description": "Los espacios de trabajo mantienen tus agentes organizados: uno personal, uno de trabajo, etc.",
+    "description": "Los espacios de trabajo mantienen tus empleados de IA organizados: uno personal, uno de trabajo, etc.",
     "placeholder": "p. ej. Personal, Trabajo, Acme Corp"
   },
   "provider": {
@@ -143,7 +144,7 @@
   "onboardingSurvey": {
     "industry": {
       "title": "¿En qué industria trabajas?",
-      "subtitle": "Para que Houston entienda el mundo en el que trabajas.",
+      "subtitle": "Para que Houston entienda el tipo de trabajo que haces.",
       "options": {
         "technology": "Tecnología",
         "finance": "Finanzas y banca",
@@ -204,7 +205,7 @@
       },
       "aiConnected": {
         "title": "¡Tu IA está conectada!",
-        "body": "Tu agente ya puede pensar. Estás un paso más cerca.",
+        "body": "Tu empleado de IA ya puede pensar. Estás un paso más cerca.",
         "cta": "Continuar"
       }
     }

@@ -28,6 +28,20 @@ test("the workspace/user context section is appended to the system prompt", () =
   expect(prompt).toContain("Juan, sales lead.");
 });
 
+test("the job description's industry and role reach the model as plain lines", () => {
+  const dir = freshWorkspace();
+  writeFileSync(
+    join(dir, "CLAUDE.md"),
+    "---\nindustry: Healthcare\nrole: Medical coder\n---\n\nYou code charts.\n",
+  );
+
+  const prompt = buildSystemPrompt(dir, "You are Houston.");
+  // The model never sees the YAML block: it reads the two answers as text.
+  expect(prompt).toContain("Industry: Healthcare\nRole: Medical coder");
+  expect(prompt).toContain("You code charts.");
+  expect(prompt).not.toContain("industry: Healthcare");
+});
+
 test("the section renders with empty markers even when no context is written", () => {
   const dir = freshWorkspace();
   const prompt = buildSystemPrompt(dir, "You are Houston.");

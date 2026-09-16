@@ -7,6 +7,9 @@ category: Prospección
 featured: no
 image: chains
 integrations: [apify, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Si Apify no está conectado, me detengo y te pido que la conectes desde la pesta
 - **Una cantidad objetivo de elementos**, opcional. Por defecto usa `defaultMaxItems` de tu contexto de prospección (500). Puedes indicar otra por llamada si solo quieres una prueba rápida.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Validar la URL.** Confirmo que la URL sea de una publicación de LinkedIn (`linkedin.com/posts/...` o `linkedin.com/feed/update/...`). Rechazo URLs de perfil, de artículo, de empresa. Si la entrada es un enlace corto o una redirección, la sigo una vez para resolver la URL canónica de la publicación antes de extraer.
 

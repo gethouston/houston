@@ -7,6 +7,9 @@ category: Configuración
 featured: yes
 image: scroll
 integrations: [googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Configurar mi información legal
@@ -20,6 +23,7 @@ Este es el documento base que el agente lee antes de cualquier tarea importante.
 - Llamado implícitamente por cualquier otra skill que necesite el contexto compartido cuando falta el documento, solo después de confirmar con el usuario.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee la configuración.** Carga `config/entity.json`, `config/posture.json`, `config/templates.json`, `config/profile.json`. Si falta algo, pregunta por UN dato faltante justo a tiempo en lenguaje sencillo (con la mejor pista de modalidad: app conectada > archivo subido > URL > texto pegado).
 

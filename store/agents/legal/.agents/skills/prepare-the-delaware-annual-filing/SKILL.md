@@ -6,6 +6,9 @@ category: Entity
 featured: no
 image: scroll
 integrations: [googledocs]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -26,6 +29,7 @@ lower tax (often $400-$1,000 small startup). Run both, flag savings.
 - Founder got scary invoice from Delaware, want recalc.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read shared context.** Read `context/legal-context.md`.
    If missing or empty, ask the user in plain language: "I need a few basics about your company first (state of formation, authorized shares, directors). Want to set those up now?" Then run `set-up-my-legal-info` if they say yes. Stop until that's done.

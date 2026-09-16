@@ -7,6 +7,9 @@ category: Operações
 featured: yes
 image: clipboard
 integrations: [linkedin, firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ Eu leio o seu contexto operacional primeiro. Para cada campo obrigatório que es
 - **Janela de tempo** - Opcional. Por que eu preciso: briefings semanais usam 7 dias por padrão, pesquisa aprofundada usa 30. Se você não tiver isso, eu sigo em frente com dado pendente usando esses padrões.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio `context/operations-context.md`.** A relevância se ancora nas prioridades ativas do fundador. Se estiver faltando: `set-up-my-ops-info` primeiro, paro.
 

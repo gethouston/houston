@@ -5,6 +5,9 @@ version: 1
 category: Operations
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ I read your operations context first. For every required field that's missing I 
 - `data-qa`  -  read-only DQ checks on target tables: nulls per column, dups on natural keys, freshness (MAX(updated_at) vs expected staleness), referential integrity on key joins, cardinality surprises. Output: `data-quality-reports/{YYYY-MM-DD}/report.md`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. Read `config/context-ledger.json`; fill gaps with ONE modality-ranked question.
 2. Read `context/operations-context.md`  -  active priorities + hard nos anchor what counts as "material".

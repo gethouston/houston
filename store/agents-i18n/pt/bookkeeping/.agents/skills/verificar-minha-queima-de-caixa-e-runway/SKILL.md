@@ -7,6 +7,9 @@ category: Contabilidade
 featured: yes
 image: ledger
 integrations: [quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Eu leio primeiro o seu contexto contábil. Para cada campo obrigatório que esti
 - **Um plano de contas com sinalizações de caixa e de itens não recorrentes** - Obrigatório. Por quê: me diz quais contas tratar como caixa e quais despesas são não recorrentes versus contínuas. Se estiver faltando, pergunto: "Temos um plano de contas configurado? Se não, vamos elaborar um primeiro, leva só alguns minutos."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json` (preciso de `domains.banks.accounts[]` para saber quais contas de caixa existem), `config/chart-of-accounts.json` (identificar quais contas são caixa / equivalentes de caixa). Anotar a data de hoje, define o nome do arquivo.
 

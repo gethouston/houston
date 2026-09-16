@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ Primero leo tu contexto de marketing. Por cada campo requerido que falte, te hag
 - **Una o dos cuentas ancla**  -  Opcional. Si falta, pregunto: "Nombra uno o dos clientes reales, o clientes objetivo, que señalarías como el ajuste perfecto. Si no lo tienes, sigo adelante con TBD."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer la configuración.** Cargar `config/company.json`, `config/ideal-customer.json`,
    `config/voice.md`. Si falta alguno, correr `onboard-me` primero (o

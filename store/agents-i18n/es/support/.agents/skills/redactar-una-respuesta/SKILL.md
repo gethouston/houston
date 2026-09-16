@@ -7,6 +7,9 @@ category: Soporte
 featured: yes
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **El hilo en sí**: Obligatorio. Por qué la necesito: redacto contra el mensaje real del cliente, no una paráfrasis. Si falta, pregunto: "¿Para cuál conversación redacto? Comparte el nombre del cliente o el correo más reciente."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer `context/support-context.md`.** Si falta o está vacío, me detengo y te digo que ejecutes primero `set-up-my-support-info`.
 2. **Cargar el hilo** desde `conversations/{id}/thread.json`. Identifico el mensaje más reciente del cliente: la respuesta va dirigida a eso.

@@ -5,6 +5,9 @@ version: 1
 category: Contracts
 featured: no
 image: scroll
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Plan Contract Pushback
@@ -17,6 +20,7 @@ image: scroll
 Run once per contract version after review. Counterparty counters → run again on new version.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read shared context.** Load `legal-context.md` for founder risk posture + escalation rules. Load `config/posture.json` for clause-level walk-away positions.
 

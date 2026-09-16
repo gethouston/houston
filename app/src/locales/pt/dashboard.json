@@ -1,6 +1,6 @@
 {
   "filter": {
-    "allAgents": "Todos os agentes"
+    "allAgents": "Todos os funcionários de IA"
   },
   "peopleFilter": {
     "label": "Filtrar por pessoa",
@@ -28,16 +28,16 @@
   },
   "empty": {
     "boardTitle": "Ainda sem conversas",
-    "boardDescription": "Comece uma conversa nova para delegar trabalho a um agente.",
+    "boardDescription": "Comece uma conversa nova para delegar trabalho a um funcionário de IA.",
     "newMission": "Nova tarefa"
   },
   "errors": {
-    "noAgentForMission": "Escolha um agente antes de iniciar uma tarefa.",
+    "noAgentForMission": "Escolha um funcionário de IA antes de iniciar uma tarefa.",
     "partialMissionLoad": "Algumas tarefas não puderam carregar. Estamos tentando novamente."
   },
   "agentPicker": {
-    "title": "Qual agente deve fazer isso?",
-    "description": "Escolha um agente para abrir uma nova conversa."
+    "title": "Qual funcionário de IA deve fazer isso?",
+    "description": "Escolha um funcionário de IA para abrir uma nova conversa."
   },
   "skillPicker": {
     "title": "Escolha um skill",

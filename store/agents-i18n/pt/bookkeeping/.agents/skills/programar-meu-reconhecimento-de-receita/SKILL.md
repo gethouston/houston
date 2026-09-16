@@ -7,6 +7,9 @@ category: Contabilidade
 featured: no
 image: ledger
 integrations: [hubspot, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Programar Meu Reconhecimento de Receita
@@ -40,6 +43,7 @@ Eu leio o seu contexto contábil primeiro. Para cada campo obrigatório que esti
 - **Se isto é um contrato novo ou uma modificação** - Opcional. Por quê: muda se eu trato como um cronograma novo ou como uma modificação prospectiva / de ajuste cumulativo. Se estiver faltando eu pergunto: "Isto é um contrato novo de cliente ou um upsell ou mudança em um existente? Se você não souber, eu assumo que é novo e sinalizo para você confirmar."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json` (precisa de `domains.revenue` - modelo + postura sobre ASC 606 + fonte de contratos), `config/chart-of-accounts.json` (precisa dos códigos de conta de receita diferida + receita). Se `domains.revenue` estiver faltando, fazer UMA pergunta direcionada com dica de modalidade (aplicativo conectado > arquivo > URL > colar), persistir, continuar.
 

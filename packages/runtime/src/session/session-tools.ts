@@ -8,7 +8,6 @@ import {
   missionTools,
   saveLearningTool,
   saveRoutineTool,
-  skillDirectoryTools,
 } from "./host-tools";
 import { personalAssistant } from "./runtime-role";
 import { withToolCallLog } from "./tool-call-log";
@@ -93,7 +92,6 @@ export const toolSelection = buildToolSelection({
   saveRoutine: hostReachable,
   saveLearning: hostReachable,
   missions: hostReachable,
-  skillDirectory: hostReachable,
   assistant: assistantTools.length > 0,
   personalAssistant,
 });
@@ -139,7 +137,6 @@ export const piCustomTools = [
   ...(saveRoutineTool ? [saveRoutineTool] : []),
   ...(saveLearningTool ? [saveLearningTool] : []),
   ...missionTools,
-  ...skillDirectoryTools,
   ...assistantTools,
   ...integrationTools,
   ...(hostReachable

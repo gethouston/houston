@@ -7,6 +7,9 @@ category: Soporte
 featured: no
 image: headphone
 integrations: [googledocs, stripe, notion, github, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Primero leo tu contexto de soporte. Para cada campo obligatorio que falte, hago 
 - **Quién aprueba los reembolsos**, Opcional. Por qué lo necesito: la regla de facturación nombra a una persona real. Si no lo tienes, sigo adelante con "por definir" y lo dejo como "el fundador aprueba."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/support-context.md`.** Si falta, primero ejecuto `set-up-my-support-info`.
 

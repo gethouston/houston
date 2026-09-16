@@ -11,6 +11,8 @@
  *
  * Both themes; determinism rules in ../README.md.
  */
+
+import { FOLLOW_UP_PLACEHOLDER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
 import { missionCard } from "../support/team-nav";
 import { pinTheme, THEMES } from "./support";
@@ -20,7 +22,7 @@ for (const theme of THEMES) {
     await page.goto("/");
 
     await missionCard(page, "Plan a trip to Tokyo").click();
-    const composer = page.getByPlaceholder("Send a follow-up...");
+    const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
     await expect(composer).toBeVisible();
 
     await composer.fill("what about the budget?");

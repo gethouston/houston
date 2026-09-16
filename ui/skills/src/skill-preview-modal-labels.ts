@@ -16,6 +16,8 @@ export interface SkillPreviewSheetLabels {
   /** Heading above the skill's authored category chip. */
   categoryHeading?: string;
   tagsHeading?: string;
+  /** Heading above a Houston-authored skill's numbered steps. */
+  workflowHeading?: string;
   /** Collapsed-state trigger for the full SKILL.md body. */
   viewInstructions?: string;
   /** Expanded-state trigger for the full SKILL.md body. */
@@ -41,6 +43,7 @@ export const DEFAULT_SKILL_PREVIEW_LABELS: Required<SkillPreviewSheetLabels> = {
     count === 1 ? `${formatted} install` : `${formatted} installs`,
   categoryHeading: "Category",
   tagsHeading: "Tags",
+  workflowHeading: "Workflow",
   viewInstructions: "View full instructions",
   hideInstructions: "Hide full instructions",
   instructionsHeading: "Full instructions",

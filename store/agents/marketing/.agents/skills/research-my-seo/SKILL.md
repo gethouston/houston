@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [semrush, ahrefs, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -55,6 +58,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Topic or angle to pitch on**  -  Optional for `backlinks`. If missing I ask: "What angle do you want me to pitch on? If you don't have a preference I keep going with your core positioning."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 ### Shared steps (both focuses)
 

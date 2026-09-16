@@ -7,6 +7,9 @@ category: Suporte
 featured: no
 image: headphone
 integrations: [googledocs, stripe, notion, github, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Eu leio o seu contexto de suporte primeiro. Para cada campo obrigatório que est
 - **Aprovador de reembolsos**. Opcional. Por que preciso: a regra de cobrança nomeia uma pessoa real. Se você não tiver, eu sigo em frente com TBD e deixo como "fundador aprova."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/support-context.md`.** Se não existir, rode `set-up-my-support-info` primeiro.
 

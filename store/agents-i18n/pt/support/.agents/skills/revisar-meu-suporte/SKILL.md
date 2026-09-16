@@ -7,6 +7,9 @@ category: Suporte
 featured: yes
 image: headphone
 integrations: [googledocs, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -58,6 +61,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
   investimento). Escreve em `account-reviews/{account}-{YYYY-MM-DD}.md`.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/support-context.md`.** Se estiver faltando, parar.
 2. **Ler o ledger.** Preencher lacunas.

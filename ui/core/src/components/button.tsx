@@ -41,18 +41,28 @@ function Button({
   variant = "default",
   size = "default",
   asChild = false,
+  type,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean;
   }) {
   const Comp = asChild ? Slot.Root : "button";
+  // HTML defaults a typeless <button> to SUBMIT, so a plain Button among a
+  // form's fields was silently a second submit control — the copy-agent
+  // dialog's team rows saved the form with the PREVIOUSLY selected team
+  // (PRODUCT-1523). The default is inert; the one control that means to submit
+  // says `type="submit"`. `asChild` keeps whatever the caller passed and
+  // nothing more: it styles someone else's element (an anchor, a Radix
+  // trigger), where `type` is usually not a valid attribute at all.
+  const resolvedType = asChild ? type : (type ?? "button");
 
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
+      type={resolvedType}
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />

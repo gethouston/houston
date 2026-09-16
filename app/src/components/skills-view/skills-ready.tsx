@@ -8,20 +8,14 @@ export function SkillsReady({
   query,
   onQueryChange,
   onCreateWithAi,
-  onAddManually,
   installed,
   installedCount,
-  storeTab,
-  storeSizeLabel,
 }: {
   query: string;
   onQueryChange: (query: string) => void;
   onCreateWithAi: () => void;
-  onAddManually: () => void;
   installed: ReactNode;
   installedCount: number;
-  storeTab: ReactNode;
-  storeSizeLabel: string;
 }) {
   const { t } = useTranslation("skills");
 
@@ -33,7 +27,6 @@ export function SkillsReady({
             query={query}
             onQueryChange={onQueryChange}
             onCreateWithAi={onCreateWithAi}
-            onAddManually={onAddManually}
             variant={inStrip ? "strip" : "row"}
           />
         )}
@@ -42,9 +35,7 @@ export function SkillsReady({
         installedTitle={t("grid.yourSkillsHeading")}
         installedCount={installedCount}
         installed={installed}
-        availableTitle={t("grid.availableHeading")}
-        availableCount={storeSizeLabel}
-        tabs={[{ value: "store", label: t("tabs.store"), content: storeTab }]}
+        tabs={[]}
       />
     </>
   );

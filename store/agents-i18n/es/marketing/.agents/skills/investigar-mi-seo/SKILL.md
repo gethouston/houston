@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [semrush, ahrefs, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -56,6 +59,7 @@ Primero leo tu contexto de marketing. Por cada campo obligatorio que falte, te h
 - **Tema o ángulo para el pitch**: Opcional para `backlinks`. Si falta, pregunto: "¿Sobre qué ángulo quieres que redacte el pitch? Si no tienes preferencia, sigo con tu posicionamiento base."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 ### Pasos compartidos (ambos enfoques)
 

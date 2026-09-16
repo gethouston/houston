@@ -7,6 +7,9 @@ category: Pessoas
 featured: no
 image: busts-in-silhouette
 integrations: [notion, linear, slack, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Leio primeiro o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Framework de níveis** - Obrigatório. Por que preciso: as faixas de contratar / não contratar mapeiam para o seu padrão nesse nível. Se faltar, pergunto: "Como você descreveria o que é 'atingir o padrão' nesse nível?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o documento de contexto de pessoas** em `context/people-context.md`. Se estiver ausente/vazio, digo ao usuário: "Primeiro preciso do seu contexto de pessoas, rode a habilidade configurar-minhas-informacoes-de-pessoas." Paro. Busco o framework de níveis para o nível alvo, os valores, os limites inegociáveis, as regras de escalonamento.
 2. **Leio a vaga.** Abro `reqs/{role-slug}.md` para a rubrica de critérios.

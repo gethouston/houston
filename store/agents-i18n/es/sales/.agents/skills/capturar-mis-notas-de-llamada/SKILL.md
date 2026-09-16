@@ -7,6 +7,9 @@ category: Ventas
 featured: no
 image: handshake
 integrations: [gong, fireflies]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,9 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, hago UN
 - **La transcripción o grabación**  -  Obligatorio. Por qué lo necesito: extraigo dolores, decisiones, y pendientes de lo que realmente se dijo. Si falta, pregunto: "Suelta la grabación, pega la transcripción, o dime qué reunión de Gong/Fireflies buscar."
 - **A qué lead o negocio pertenece esta llamada**  -  Obligatorio. Por qué lo necesito: relaciono las notas con el lead correcto y actualizo su expediente. Si falta, pregunto: "¿Con qué prospecto o cliente fue esta llamada?"
 - **Si debo enviar las notas a tu CRM**  -  Opcional. Por qué lo necesito: solo sincronizo con tu visto bueno. Si no tienes preferencia, sigo con TBD y pregunto antes de cualquier sincronización externa.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Obtener la transcripción.** Si fue pegada, la uso. Si es un archivo, lo leo. Si el
    usuario señala un proveedor conectado, corro `composio search` para la

@@ -85,9 +85,9 @@ describe("isNetworkTransportError", () => {
     );
   });
 
-  // PRODUCT-1735: the Agent Store client wraps a thrown fetch in a status-0
-  // StoreApiError that keeps the transport TypeError as its `cause`. That
-  // wrapper IS the offline drop; one level of cause is unwrapped, no more.
+  // PRODUCT-1735: a client that wraps a thrown fetch keeps the transport
+  // TypeError as its `cause`. That wrapper IS the offline drop; one level of
+  // cause is unwrapped, no more.
   it("unwraps one level of `cause` around a transport failure", () => {
     const wrapped = new Error("Failed to fetch", {
       cause: new TypeError("Failed to fetch"),

@@ -140,7 +140,7 @@ function NewAgentButton({ label }: { label: string }) {
       aria-label={label}
       data-testid="agents-home-new-agent"
       {...tourAnchor("newAgent")}
-      onClick={() => useUIStore.getState().setCreateAgentDialogOpen(true)}
+      onClick={() => useUIStore.getState().openCreateFlow("agent")}
       className="flex size-10 shrink-0 items-center justify-center rounded-full bg-chip text-ink transition-colors active:scale-[0.96] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ht-hairline"
     >
       <UserRoundPlus className="size-5" />

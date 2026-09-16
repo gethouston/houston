@@ -46,7 +46,6 @@ describe("usagePointsFor", () => {
     strictEqual(usagePointsFor("integration_connected"), 2);
     strictEqual(usagePointsFor("routine_scheduled"), 2);
     strictEqual(usagePointsFor("agent_created"), 2);
-    strictEqual(usagePointsFor("agent_installed_from_store"), 2);
   });
 
   it("pays nothing for an event the economy never named", () => {

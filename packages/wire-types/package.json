@@ -21,7 +21,6 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@houston/agentstore-client": "workspace:*",
     "@houston/protocol": "workspace:*"
   },
   "devDependencies": {

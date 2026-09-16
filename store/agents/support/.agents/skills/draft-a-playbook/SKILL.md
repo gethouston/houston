@@ -6,6 +6,9 @@ category: Support
 featured: no
 image: headphone
 integrations: [github, linear, slack, microsoftteams]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ I read your support context first. For every required field that's missing I ask
 - **Customer comms voice**  -  Optional. Why I need it: incident templates read truer in your tone. If you don't have it I keep going with TBD and recommend running voice calibration.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/support-context.md`.** Pull current response-time tiers, VIP list, escalation contacts. Missing? Run `set-up-my-support-info` first.
 

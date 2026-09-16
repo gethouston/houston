@@ -21,8 +21,8 @@ import { type HttpScope, httpRequest } from "../http";
 import { requireString } from "../payload";
 import { AgentsCommand, type InstalledConfig } from "./types";
 
-// Agent-config library: user-scoped like the marketplace reads — a template
-// belongs to the account, not to any existing agent.
+// Agent-config library: user-scoped — a template belongs to the account, not
+// to any existing agent.
 /**
  * Lists the agent templates installed in Houston.
  * @assistant group:agents

@@ -15,7 +15,7 @@ import { createStreamTranslator } from "./translate";
 /**
  * Generic one-shot prompt through the Claude Agent SDK. The COMPLIANCE reason
  * this exists: when the active provider is `anthropic`, ANY throwaway LLM call
- * (title, anonymize, ...) must run through the `claude` subprocess (token in
+ * (a conversation title, ...) must run through the `claude` subprocess (token in
  * `options.env`) exactly like a turn — never pi's in-process Anthropic client,
  * which is the harness-spoofing path Anthropic server-blocks.
  *

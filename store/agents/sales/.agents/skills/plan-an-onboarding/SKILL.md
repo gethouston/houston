@@ -5,6 +5,9 @@ version: 1
 category: Sales
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **Which customer this is for**  -  Required. Why I need it: I read that deal's close-plan and proposal to lift their stated problem. If missing I ask: "Which customer is this onboarding for?"
 - **Their success metric in their words**  -  Required. Why I need it: the plan is anchored to the metric they care about, not ours. If missing I ask: "How will the customer know this worked  -  what did they say success looks like?"
 - **Kickoff date**  -  Optional. Why I need it: anchors the 90-day timeline. If you don't have it I keep going with TBD and propose a date based on contract start.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read the playbook.** `context/sales-context.md`.
 

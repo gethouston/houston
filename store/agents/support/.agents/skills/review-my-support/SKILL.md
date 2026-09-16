@@ -6,6 +6,9 @@ category: Support
 featured: yes
 image: headphone
 integrations: [googledocs, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -57,6 +60,7 @@ I read your support context first. For every required field that's missing I ask
   investment). Writes to `account-reviews/{account}-{YYYY-MM-DD}.md`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/support-context.md`.** If missing, stop.
 2. **Read ledger.** Fill gaps.

@@ -1,5 +1,6 @@
 import { expect, test } from "./support/fixtures";
-import { openAgentSettings } from "./support/team-nav";
+import { openSkillsLibrary } from "./support/settings-nav";
+import { openAgentSkills } from "./support/skills-nav";
 
 /**
  * The skills surfaces must render without React integrity errors. Guards two
@@ -30,21 +31,15 @@ test("skills surfaces render without React integrity errors", async ({
   });
 
   await page.goto("/");
-  await openAgentSettings(page, "Houston", "Skills");
-  await page.getByRole("tab", { name: "Custom skills" }).click();
+  await openAgentSkills(page);
   await expect(page.getByText("From your workspace")).toBeVisible();
 
-  // The global Skills page, via the sidebar nav anchor (disambiguates it from
-  // the agent's own Skills tab).
-  await page.locator('[data-tour-target="nav-skills"]').click();
+  // The shared library, reached the way a user reaches it: Integrations, then
+  // its Skills tab (which disambiguates it from the agent's own Skills tab).
+  await openSkillsLibrary(page);
   await expect(page.getByRole("tab")).toHaveCount(0);
-  await page.getByRole("button", { name: "New skill" }).click();
-  await expect(
-    page.getByRole("menuitem", { name: "Create with AI" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", { name: "Add manually" }),
-  ).toBeVisible();
+  await page.getByRole("button", { name: "Create skill" }).click();
+  await expect(page.getByTestId("mission-panel")).toBeVisible();
 
   const react = errors.filter(
     (e) =>

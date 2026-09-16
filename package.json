@@ -37,7 +37,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
-    "@houston/agentstore-client": "workspace:*",
     "@houston/agentstore-contract": "workspace:*",
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",

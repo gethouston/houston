@@ -7,6 +7,9 @@ category: Suporte
 featured: no
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - `stale-threads`: conversas quietas há mais de 48h em que fui o último a responder, agrupadas em "o cliente respondeu e eu não vi" vs "eu devo algo a ele". Escreve em `stale-rescues/{YYYY-MM-DD}.md`.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/support-context.md`.** Se estiver faltando, parar. Me avisar para rodar `set-up-my-support-info` primeiro.
 2. **Ler o ledger.** Preencher lacunas.

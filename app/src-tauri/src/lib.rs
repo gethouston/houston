@@ -26,7 +26,6 @@ mod oauth_loopback;
 mod redirection_guard;
 mod sentry_filter;
 mod shell_env;
-mod store_deep_link;
 mod window_focus;
 // Pure decision logic compiles and tests everywhere; only the Win32 probe
 // and dialog are Windows-only.
@@ -318,25 +317,14 @@ pub fn run() {
             //    link can never complete a sign-in it didn't start.
             //  - `houston://open` (the loopback success page's "Open Houston"
             //    button) and anything else — purely a focus affordance.
-            //  - `houston://store/install?slug=<slug>` — the Agent Store "Open in
-            //    Houston" button. Forwarded onto the disjoint `store://deep-link`
-            //    event (and stashed for cold-start pull) to seed the import wizard
-            //    preview; never touches the auth channel and never auto-installs.
-            //  - `houston://store/creator?handle=<handle>` — a creator profile
-            //    link. Rides the SAME `store://deep-link` event/stash (the
-            //    frontend disambiguates by URL path) to open the creator pane.
-            //
-            // Managed BEFORE `on_open_url` is wired so a launch-by-deep-link URL
-            // that arrives immediately has somewhere to land.
-            app.manage(store_deep_link::PendingStoreDeepLinkState::default());
             // Runtime `houston://` scheme registration. Only macOS registers
             // the scheme at install time (the bundler bakes it into
             // Info.plist). Neither of Windows' MSI/WiX installers register a
             // custom URL scheme, and a Linux AppImage is never "installed" at
             // all — so Windows AND Linux must register the handler at runtime,
-            // on every launch, or `houston://auth-callback` (Apple sign-in),
-            // the Agent Store "Open in Houston" links, and the loopback success
-            // page's "Open Houston" button never reach the app.
+            // on every launch, or `houston://auth-callback` (Apple sign-in)
+            // and the loopback success page's "Open Houston" button never
+            // reach the app.
             //   - Windows: `register_all()` writes HKCU\Software\Classes\houston
             //     pointing at the current exe (per-user, no admin, idempotent).
             //   - Linux: it writes
@@ -350,7 +338,7 @@ pub fn run() {
                 if let Err(e) = app.deep_link().register_all() {
                     tracing::warn!(
                         "[deep-link] runtime houston:// registration failed — \
-                         Apple sign-in and store links won't reach this install: {e}"
+                         Apple sign-in won't reach this install: {e}"
                     );
                 }
             }
@@ -367,14 +355,6 @@ pub fn run() {
                     for url in event.urls() {
                         if auth::is_auth_callback_deep_link(url.as_str()) {
                             auth::emit_deep_link(&handle, url.as_str());
-                        } else if store_deep_link::is_store_install_deep_link(url.as_str())
-                            || store_deep_link::is_store_creator_deep_link(url.as_str())
-                        {
-                            store_deep_link::stash_and_emit(
-                                &handle,
-                                &handle.state::<store_deep_link::PendingStoreDeepLinkState>(),
-                                url.as_str(),
-                            );
                         }
                     }
                     window_focus::bring_to_front(&handle);
@@ -477,7 +457,6 @@ pub fn run() {
             commands::os::reveal_file,
             commands::os::reveal_agent,
             commands::os::reveal_path,
-            commands::portable::save_portable_agent,
             commands::portable::open_portable_agent,
             // One-click desktop→cloud migration (HOU-719): detect legacy data
             // and run the bundled host briefly as a passive read-only source.
@@ -511,9 +490,6 @@ pub fn run() {
             bug_report::report_bug,
             // Engine handshake pull (race-free fallback for `EngineGate`).
             get_engine_handshake,
-            // Cold-start pull for a `houston://store/install` deep link whose
-            // event fired before the webview's listener registered.
-            store_deep_link::take_pending_store_deep_link,
             // Keychain-backed storage for the identity session (GCIP/Firebase).
             auth::auth_get_item,
             auth::auth_set_item,

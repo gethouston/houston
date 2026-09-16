@@ -6,6 +6,9 @@ version: 1
 category: Contratos
 featured: no
 image: scroll
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Planear objeciones a un contrato
@@ -18,6 +21,7 @@ image: scroll
 Ejecútalo una vez por cada versión del contrato después de la revisión. Si la contraparte hace una contraoferta, ejecútalo de nuevo sobre la nueva versión.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el contexto compartido.** Carga `legal-context.md` para conocer la postura de riesgo del fundador y las reglas de escalamiento. Carga `config/posture.json` para las posiciones límite (punto de ruptura) a nivel de cláusula.
 

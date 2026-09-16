@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { APIRequestContext, Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { openSkillsLibrary } from "./support/settings-nav";
 import { createTeam } from "./support/sidebar-create";
 import {
   openAgentScreen,
@@ -138,7 +139,7 @@ test("a team's Tasks tab opens that team's board, named once and scoped", async 
   await expect(teamTitle(page, "New Team")).toBeVisible();
   await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
   await expect(screen(page).getByText("Tasks", { exact: true })).toHaveCount(0);
-  await expect(screen(page).getByText("All agents")).toHaveCount(0);
+  await expect(screen(page).getByText("All AI Employees")).toHaveCount(0);
   await expect(screen(page).getByRole("heading", { level: 2 })).toHaveCount(0);
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
@@ -149,7 +150,7 @@ test("a team's Tasks tab opens that team's board, named once and scoped", async 
   await sectionTab(page, "Tasks").click();
   await expect(teamTitle(page, "Work")).toBeVisible();
   await expect(
-    screen(page).getByText("No agents in this team yet"),
+    screen(page).getByText("No AI Employees in this team yet"),
   ).toBeVisible();
   // ...and offers the create-an-agent door, which files the new agent into
   // THIS team rather than the default one.
@@ -183,7 +184,7 @@ test("the lozenge cluster is the only section switch, and it lights the open one
   ).toHaveCount(1);
 });
 
-test("an agent row opens its own screen and managers can enter and leave Agent settings", async ({
+test("an agent row opens its own screen and managers can enter and leave AI Employee settings", async ({
   page,
   request,
 }) => {
@@ -275,13 +276,13 @@ test("an agent row opens its focused screen and settings page", async ({
   await expect(
     screen(page).locator("[data-agent-section-tab='people']"),
   ).toBeVisible();
-  // Identity lives on the back chip now; the first lens carries the heading,
-  // and Settings leads the rail.
+  // Identity lives on the back chip; the lens the user is ON carries the
+  // heading, and the helper lands on Job description.
   await expect(
     screen(page).locator("[data-agent-settings-back]"),
   ).toContainText("Kai");
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Settings" }),
+    screen(page).getByRole("heading", { level: 1, name: "Job description" }),
   ).toBeVisible();
   // ...and the chip goes back to the agent's own screen.
   await screen(page).locator("[data-agent-settings-back]").click();
@@ -328,7 +329,7 @@ test("a team's archive lets go of the shared panel when the user leaves", async 
   await screen(page).getByText("Old expense report").first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
-  await page.locator("[data-tour-target='nav-skills']").click();
+  await openSkillsLibrary(page);
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
@@ -373,5 +374,5 @@ test("a plain member lands on Tasks, with the team named once", async ({
   );
   await expect(teamTitle(page, "New Team")).toBeVisible();
   // No agent pinned, so the crumb is the team and nothing else.
-  await expect(screen(page).getByText("All agents")).toHaveCount(0);
+  await expect(screen(page).getByText("All AI Employees")).toHaveCount(0);
 });

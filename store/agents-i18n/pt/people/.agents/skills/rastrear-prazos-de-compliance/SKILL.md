@@ -7,6 +7,9 @@ category: Pessoas
 featured: no
 image: busts-in-silhouette
 integrations: [googlesheets, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primeiro leio o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Data de renovação de PTO** , Opcional. Por que preciso: ancora a entrada anual de renovação de PTO. Se você não tiver isso, sigo com "a definir".
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio o documento de contexto de pessoas.** Leio `context/people-context.md` para o ritmo do ciclo de avaliação (anual / semestral / trimestral, data do próximo ciclo) e qualquer frequência de atualização de políticas. Se estiver faltando ou vazio, aviso o usuário: "Preciso primeiro do documento de contexto de pessoas, rode a habilidade set-up-my-people-info." Paro.
 2. **Leio a configuração.** `config/context-ledger.json` (plataforma de RH somente leitura, nunca modifico registros). Se a plataforma de RH não estiver conectada, faço UMA pergunta direcionada com dica de modalidade ("Conecte sua plataforma de RH, Gusto, Deel, Rippling ou Justworks, na aba Integrações para eu poder buscar datas de início, status de autorização de trabalho e cronogramas de vesting").

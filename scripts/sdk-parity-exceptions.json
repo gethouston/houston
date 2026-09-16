@@ -1,26 +1,11 @@
 {
   "$comment": "Written exceptions for scripts/check-sdk-parity.ts, which FAILS the process on any violation not listed here. An entry is { rule, key, reason } and nothing else; `key` is the violation identity the report prints, and `reason` must be at least 20 characters saying WHY parity stops here. An entry whose violation no longer reproduces fails the gate as stale: the PR that binds the route is the one that deletes its excuse and lowers `baseline`. Keys read as the report prints them: `host|gateway METHOD /path` for a route, `proxy METHOD /path` for a runtime-proxy member, and `client <adapter method>` for a method of the shipped client's mixin chain that reaches a server with no @houston/sdk method behind it. `baseline` may only go down on its own; raising it is a visible diff a reviewer must accept, because it means a new route shipped with no client behind it.",
-  "baseline": 134,
+  "baseline": 105,
   "entries": [
     {
       "rule": "sdk-route-unbound",
-      "key": "host POST /v1/skills/community/search",
-      "reason": "the user-level spelling of the marketplace reads; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twins the Add Skills dialog browses with"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host POST /v1/skills/community/popular",
-      "reason": "the user-level spelling of the marketplace reads; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twins the Add Skills dialog browses with"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host POST /v1/skills/community/preview",
-      "reason": "the user-level spelling of the marketplace reads; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twins the Add Skills dialog browses with"
-    },
-    {
-      "rule": "sdk-route-unbound",
       "key": "host POST /v1/skills/repo/list",
-      "reason": "the user-level spelling of the marketplace reads; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twins the Add Skills dialog browses with"
+      "reason": "the user-level spelling of the GitHub repo listing; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twin the Add Skills dialog browses with"
     },
     {
       "rule": "sdk-route-unbound",
@@ -34,13 +19,8 @@
     },
     {
       "rule": "sdk-route-unbound",
-      "key": "host POST /v1/portable/fetch-from-store",
-      "reason": "permanent: the portable surface lives in the web adapter, which unpacks the uploaded archive in the browser and runs the domain threat scan there"
-    },
-    {
-      "rule": "sdk-route-unbound",
       "key": "host GET /v1/migration/source",
-      "reason": "the source scan of the desktop-to-cloud wizard, read from the passive host the app spawns over the old ~/.houston tree \u2014 a second peer with its own base URL and static bearer, which a module scope rooted at the one engine base cannot address"
+      "reason": "the source scan of the desktop-to-cloud wizard, read from the passive host the app spawns over the old ~/.houston tree — a second peer with its own base URL and static bearer, which a module scope rooted at the one engine base cannot address"
     },
     {
       "rule": "sdk-route-unbound",
@@ -60,12 +40,12 @@
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /setup-runtime/credential/capture",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /setup-runtime/credential/api-key",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
@@ -105,12 +85,12 @@
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /agents/{}/credential/capture",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /agents/{}/credential/api-key",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
@@ -174,11 +154,6 @@
     },
     {
       "rule": "sdk-route-unbound",
-      "key": "host POST /agents/{}/skills/community/popular",
-      "reason": "the agent-scoped popular list the host serves beside search and preview; the SDK's marketplace module offers search, preview and install, and no shipped client asks for popular"
-    },
-    {
-      "rule": "sdk-route-unbound",
       "key": "host GET /agents/{}/files/download",
       "reason": "permanent: a binary download the SDK does not carry, because a Blob cannot cross its dispatch boundary; it stays in project-files-mixin"
     },
@@ -199,11 +174,6 @@
     },
     {
       "rule": "sdk-route-unbound",
-      "key": "host POST /agents/{}/portable/anonymize",
-      "reason": "permanent: the portable surface lives in the web adapter, which unpacks the uploaded archive in the browser and runs the domain threat scan there"
-    },
-    {
-      "rule": "sdk-route-unbound",
       "key": "host POST /agents/{}/portable/export",
       "reason": "permanent: the portable surface lives in the web adapter, which unpacks the uploaded archive in the browser and runs the domain threat scan there"
     },
@@ -211,26 +181,6 @@
       "rule": "sdk-route-unbound",
       "key": "host POST /agents/{}/migration/import",
       "reason": "sdk.migration.migrationImport issues it, but the catalog cannot route a request that carries a zip content type and spells its query keys conditionally, so the parity join never sees the method; the binding is pinned byte for byte by packages/web/tests/wire-migration.test.ts"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host POST /agents/{}/portable/store-ir",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host GET /agents/{}/portable/store-publication",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host POST /agents/{}/portable/store-publication",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host DELETE /agents/{}/portable/store-publication",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
     },
     {
       "rule": "sdk-route-unbound",
@@ -340,12 +290,12 @@
     {
       "rule": "sdk-route-unbound",
       "key": "gateway POST /setup-runtime/credential/api-key",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
       "key": "gateway POST /setup-runtime/credential/capture",
-      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did \u2014 and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
+      "reason": "sdk.providers.credentials issues this route, but its optional argument (the provider to capture, the endpoint beside the key) is spread into the request conditionally so the web app sends the same bytes it always did — and the catalog extractor derives no route from a conditional spread, so the operation publishes with route: null and the gate cannot see the binding. Un-blinding it edits OPERATION_POLICY_FLOOR, which is a reviewed change of its own."
     },
     {
       "rule": "sdk-route-unbound",
@@ -511,101 +461,6 @@
       "rule": "client-route-unbound",
       "key": "client portablePackage",
       "reason": "permanent: the portable surface lives in the web adapter, which unpacks the uploaded archive in the browser and runs the domain threat scan there"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client portableAnonymize",
-      "reason": "permanent: the portable surface lives in the web adapter, which unpacks the uploaded archive in the browser and runs the domain threat scan there"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client importFromStoreLink",
-      "reason": "permanent: the portable surface lives in the web adapter, which unpacks the uploaded archive in the browser and runs the domain threat scan there"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client publishAgentToStore",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client updateStorePublication",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client unpublishFromStore",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client getStorePublication",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client listMyStoreAgents",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client requestStorePublic",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client setStoreVisibilityUnlisted",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client publishStoreAgentById",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client updateStoreAgentIdentity",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client unpublishStoreAgentById",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client deleteStoreAgentById",
-      "reason": "permanent: the Agent Store publication surface, which store-mixin drives against the agentstore contract with the caller's own bearer"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client getMyStoreProfile",
-      "reason": "permanent: the creator-profile surface on the gateway's /agentstore/me routes, driven with the caller's own bearer against the agentstore contract"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client updateMyStoreProfile",
-      "reason": "permanent: the creator-profile surface on the gateway's /agentstore/me routes, driven with the caller's own bearer against the agentstore contract"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client checkStoreHandle",
-      "reason": "permanent: the creator-profile surface on the gateway's /agentstore/me routes, driven with the caller's own bearer against the agentstore contract"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client uploadStoreAvatar",
-      "reason": "permanent: the creator-profile surface on the gateway's /agentstore/me routes, driven with the caller's own bearer against the agentstore contract"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client deleteStoreAvatar",
-      "reason": "permanent: the creator-profile surface on the gateway's /agentstore/me routes, driven with the caller's own bearer against the agentstore contract"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client getMyStoreAnalytics",
-      "reason": "permanent: the creator-profile surface on the gateway's /agentstore/me routes, driven with the caller's own bearer against the agentstore contract"
     },
     {
       "rule": "client-route-unbound",

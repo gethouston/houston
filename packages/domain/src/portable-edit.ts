@@ -1,16 +1,11 @@
-import type {
-  PortableExportOverrides,
-  PortableSelection,
-} from "@houston/protocol";
+import type { PortableSelection } from "@houston/protocol";
 import { docKey } from "./layout";
 import type { PortableContent, PortablePackage } from "./portable";
 import { skillKey } from "./skills";
 import { jsonDoc } from "./store";
 
-/**
- * Pure edits on portable content: the install-time subset and the accepted
- * anonymize diffs applied at export-pack time.
- */
+/** Pure edits on portable content: the install-time subset and the seed
+ *  serialization an install rides. */
 
 /**
  * Keep only the selected parts of an unpacked package — the install-time
@@ -63,39 +58,5 @@ export function packageSeed(content: PortableContent): {
   return {
     ...(content.claudeMd !== undefined ? { claudeMd: content.claudeMd } : {}),
     seeds,
-  };
-}
-
-/**
- * Replace content bodies with the anonymize diffs the user accepted in the
- * export wizard. Absent overrides leave the original text; a routine
- * override only touches the fields it names.
- */
-export function applyOverrides(
-  content: PortableContent,
-  ov: PortableExportOverrides | undefined,
-): PortableContent {
-  if (!ov) return content;
-  return {
-    ...(content.claudeMd !== undefined
-      ? { claudeMd: ov.claudeMd ?? content.claudeMd }
-      : {}),
-    skills: content.skills.map((s) => {
-      const body = ov.skillBodies?.[s.slug];
-      return body !== undefined ? { ...s, body } : s;
-    }),
-    routines: content.routines.map((r) => {
-      const f = ov.routineFields?.[r.id];
-      if (!f) return r;
-      return {
-        ...r,
-        name: f.name ?? r.name,
-        prompt: f.prompt ?? r.prompt,
-      };
-    }),
-    learnings: content.learnings.map((l) => {
-      const text = ov.learningTexts?.[l.id];
-      return text !== undefined ? { ...l, text } : l;
-    }),
   };
 }

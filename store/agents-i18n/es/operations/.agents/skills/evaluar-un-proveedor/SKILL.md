@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [linkedin, firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -57,6 +60,7 @@ Primero leo tu contexto operativo. Por cada campo requerido que falte hago UNA p
 - **Límites innegociables** - Opcional para `compliance`. Por qué lo necesito: me permite ponderar más ciertos marcos de referencia (HIPAA, PCI, SOC2) cuando te importan. Si no los tienes, sigo adelante con TBD y muestro cada vacío que encuentre.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 ### Pasos compartidos (ambos aspectos)
 

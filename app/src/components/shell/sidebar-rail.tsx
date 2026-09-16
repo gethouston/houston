@@ -10,7 +10,7 @@ import type { ReactNode } from "react";
 import type { Workspace } from "../../lib/types";
 import { SidebarInviteInbox } from "./pending-invites";
 import { buildSidebarLabels, SidebarWorkspaceHeader } from "./sidebar-chrome";
-import { SidebarCreateDialog } from "./sidebar-create-dialog";
+import { SidebarCreateButton } from "./sidebar-create-button";
 import { SidebarFooter } from "./sidebar-footer";
 import type { ServerTeamActions } from "./use-server-team-actions";
 import { tourAnchor } from "./workspace-tour-steps.ts";
@@ -40,10 +40,13 @@ export interface SidebarRailModel {
   /** Fold the whole "Your teams" list (persisted in the UI store). */
   sectionCollapsed: boolean;
   onToggleSectionCollapsed: () => void;
+  /** Absent when this caller may not create teams. */
   onNewTeam: (() => void) | undefined;
   onAddAgentToTeam: ((teamId: string | null) => void) | undefined;
   /** Absent when this caller may not create agents. */
   onAddAgent: (() => void) | undefined;
+  /** The band's "+": open the create sheet on its opening choice. */
+  onOpenCreate: () => void;
 }
 
 /**
@@ -93,6 +96,7 @@ export function SidebarRail({
     onNewTeam,
     onAddAgentToTeam,
     onAddAgent,
+    onOpenCreate,
   } = model;
   const effectiveCollapsed = mobile ? false : collapsed;
 
@@ -124,19 +128,19 @@ export function SidebarRail({
       navSections={navSections}
       activeNavId={activeNavId}
       sectionLabel={t("shell:sidebar.yourTeams")}
-      // ONE control on the band: everything a user can ADD to this rail. The
-      // dialog itself decides whether there is a choice to make, and collapses
-      // to a plain button when there is only one thing to create.
+      // ONE control on the band: everything a user can ADD to this rail, behind
+      // a single "+" that opens the create sheet. The sheet decides whether
+      // there is a choice to make.
       sectionAction={
-        <SidebarCreateDialog
+        <SidebarCreateButton
           labels={{
             title: t("shell:sidebar.createDialog"),
-            close: t("common:actions.close"),
             newAgent: t("shell:sidebar.addAgent"),
             newTeam: t("shell:sidebar.newTeam"),
           }}
-          onAddAgent={onAddAgent}
-          onNewTeam={onNewTeam}
+          canAddAgent={onAddAgent !== undefined}
+          canAddTeam={onNewTeam !== undefined}
+          onOpen={onOpenCreate}
         />
       }
       sectionCollapsed={sectionCollapsed}

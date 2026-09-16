@@ -5,6 +5,9 @@ version: 1
 category: Support
 featured: no
 image: headphone
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,7 @@ I read your support context first. For every required field that's missing I ask
 - **Conversation or customer link**  -  Optional. Why I need it: lets me file the followup against the right thread. If you don't have it I keep going with TBD and ask you to point me at the thread later.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 1. **Extract promise text** verbatim from message or draft (keep original phrasing  -  may want see what they said).
 2. **Parse due date.**
    - Explicit date ("Friday", "March 3") → next occurrence in local timezone → ISO-8601 UTC.

@@ -1,5 +1,6 @@
 /**
- * Pure, DOM-free validation for the Create-team dialog (C8 §Share-triggers-team
+ * Pure, DOM-free validation for the create-organization dialog (C8
+ * §Share-triggers-team
  * / self-serve team creation). Extracted so the "what's a valid team name" rule
  * is unit-tested in isolation and the dialog stays a thin view over it. The
  * gateway is the real authority (`POST /v1/orgs` re-validates); this only gates
@@ -14,7 +15,7 @@ export const MAX_TEAM_NAME_LENGTH = 60;
 /** Why a raw team-name input is not yet submittable. */
 export type TeamNameError = "empty" | "too_long";
 
-export type TeamNameValidation =
+type TeamNameValidation =
   | { ok: true; name: string }
   | { ok: false; reason: TeamNameError };
 

@@ -8,7 +8,6 @@ import {
 import { anyTurnRunning } from "../session/bus";
 import { isDraining } from "../session/drain";
 import { settleInterruptedTurns } from "../session/settle-interrupted-turns";
-import { handleAnonymizeRoute } from "./anonymize-route";
 import { handleConversationRoute } from "./conversation-routes";
 import { applyCors } from "./cors";
 import { handleGenerateRoute } from "./generate-route";
@@ -50,7 +49,6 @@ async function handle(ctx: RouteContext) {
   if (await handleProviderRoute(ctx)) return;
   if (await handleConversationRoute(ctx)) return;
   if (await handleGenerateRoute(ctx)) return;
-  if (await handleAnonymizeRoute(ctx)) return;
 
   json(ctx.res, 404, { error: "not found" });
 }

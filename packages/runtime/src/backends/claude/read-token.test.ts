@@ -590,9 +590,8 @@ test("a disk that cannot drop the superseded entry still resolves the login", ()
 // ── The shared login file is parsed once per CHANGE, not once per read ─────
 
 test("an unchanged shared login file is read from disk once, not per call", () => {
-  // Every credential read of a turn lands here (prompt prep, summarizer,
-  // anonymizer, each cache lookup), and each one used to open, read and parse
-  // the file again.
+  // Every credential read of a turn lands here (prompt prep, summarizer, each
+  // cache lookup), and each one used to open, read and parse the file again.
   writeSharedLoginFile(envelope("sk-ant-oat01-shared", Date.now() + HOUR));
   const path = claudeCredentialsFile(claudeLoginConfigDir());
   vi.mocked(readFileSync).mockClear();

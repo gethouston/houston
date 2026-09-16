@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [hubspot, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Programar mi reconocimiento de ingresos
@@ -40,6 +43,7 @@ Primero leo tu contexto contable. Por cada campo obligatorio que falte, hago UNA
 - **Si esto es un contrato nuevo o una modificación** - Opcional. Por qué: cambia si lo trato como un cronograma nuevo o como una modificación prospectiva / con ajuste acumulado. Si falta, pregunto: "¿Este es un contrato de cliente completamente nuevo, o un upsell o cambio a uno existente? Si no lo tengo, asumo que es nuevo y te lo marco para que confirmes."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el contexto.** Cargo `context/bookkeeping-context.md`, `config/context-ledger.json` (necesito `domains.revenue`, el modelo + postura ASC 606 + fuente de contratos), `config/chart-of-accounts.json` (necesito los códigos de cuenta de ingresos diferidos + ingresos). Si falta `domains.revenue`, hago una pregunta puntual con pista de modalidad (app conectada > archivo > URL > texto pegado), la guardo, y continúo.
 

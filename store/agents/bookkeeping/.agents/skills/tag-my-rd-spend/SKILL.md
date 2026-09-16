@@ -5,6 +5,9 @@ version: 1
 category: Bookkeeping
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Your cloud-hosting R&D share** — Optional. Why: pre-revenue companies usually treat 100% of cloud as R&D; revenue companies split production vs. R&D. If missing I ask: "How much of your AWS / GCP / Vercel spend is for development and research vs. running the live product? If you don't have it I default to 100% R&D pre-revenue."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Required ledger: `universal.company`, `domains.payroll`, `domains.tax.rdCreditEligible`. If `rdCreditEligible == "no"`, warn but proceed if user confirms (state credits / Section 174 amortization still use this breakout).
 

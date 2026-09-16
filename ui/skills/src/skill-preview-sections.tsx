@@ -1,17 +1,13 @@
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-  cn,
-} from "@houston-ai/core";
-import { ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { cn } from "@houston-ai/core";
+import { InstallStatusIcon } from "./install-status-icon";
+import { SkillInstructionsDisclosure } from "./skill-instructions-disclosure";
 import type { SkillPreviewSheetLabels } from "./skill-preview-modal-labels";
 
 /**
- * The optional detail blocks of {@link SkillPreviewModal}: the skill's authored
- * taxonomy (category + tags) and the collapsed-by-default full SKILL.md body.
- * Neither is exported from the package — the modal is the public surface.
+ * The blocks of {@link SkillPreviewModal}: the skill's authored taxonomy
+ * (category + tags), the collapsed-by-default full SKILL.md body, and the
+ * install action. None is exported from the package — the modal is the public
+ * surface.
  */
 
 type Labels = Required<SkillPreviewSheetLabels>;
@@ -65,14 +61,12 @@ export function SkillPreviewTaxonomy({
 }
 
 /**
- * The skill's full SKILL.md body behind an always-visible expander (never a
- * hover-gated affordance). Collapsed by default so the modal opens at its
- * familiar size; expanded, the raw markdown gets the same read-only monospace
- * treatment as the installed skill's editor, height-capped with its own scroll
- * so a long skill grows the dialog by a bounded amount instead of running off
- * the screen. The reveal is instant: this repo compiles no enter/exit animate
- * utilities, and an immediate toggle is the right call for a high-frequency
- * disclosure anyway.
+ * The skill's full SKILL.md body behind an always-visible disclosure — the
+ * secondary read of the skill once its workflow steps are the primary body,
+ * and the only one an imported skill has. Expanded, the raw markdown gets the
+ * same read-only monospace treatment as the installed skill's editor,
+ * height-capped with its own scroll so a long skill grows the dialog by a
+ * bounded amount instead of running off the screen.
  */
 export function SkillPreviewInstructions({
   content,
@@ -81,35 +75,68 @@ export function SkillPreviewInstructions({
   content: string;
   labels: Labels;
 }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="inline-flex items-center gap-1.5 rounded-full font-medium text-ink-muted text-sm transition-colors duration-200 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus motion-reduce:transition-none">
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-        />
-        {open ? l.hideInstructions : l.viewInstructions}
-      </CollapsibleTrigger>
-      <CollapsibleContent className="mt-3 outline-none">
-        {/* A focusable landmark with a stable name: overflow panes are not
-            keyboard-reachable by default (WKWebView/Gecko), so tabIndex lets
-            keyboard users scroll a long body; the aria-label stays constant
-            while the trigger's text toggles. */}
-        <section
-          aria-label={l.instructionsHeading}
-          // biome-ignore lint/a11y/noNoninteractiveTabindex: a height-capped scroll pane must be focusable or keyboard users cannot scroll it (WCAG 2.1.1); the aria-label names the region.
-          tabIndex={0}
-          className="max-h-64 overflow-y-auto overscroll-contain rounded-lg border border-line/20 bg-input px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          <pre className="whitespace-pre-wrap break-words font-mono text-ink text-sm leading-relaxed">
-            {content}
-          </pre>
-        </section>
-      </CollapsibleContent>
-    </Collapsible>
+    <SkillInstructionsDisclosure
+      labels={{ show: l.viewInstructions, hide: l.hideInstructions }}
+    >
+      {/* A focusable landmark with a stable name: overflow panes are not
+          keyboard-reachable by default (WKWebView/Gecko), so tabIndex lets
+          keyboard users scroll a long body; the aria-label stays constant
+          while the trigger's text toggles. */}
+      <section
+        aria-label={l.instructionsHeading}
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a height-capped scroll pane must be focusable or keyboard users cannot scroll it (WCAG 2.1.1); the aria-label names the region.
+        tabIndex={0}
+        className="max-h-64 overflow-y-auto overscroll-contain rounded-lg border border-line/20 bg-input px-4 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      >
+        <pre className="whitespace-pre-wrap break-words font-mono text-ink text-sm leading-relaxed">
+          {content}
+        </pre>
+      </section>
+    </SkillInstructionsDisclosure>
+  );
+}
+
+/**
+ * The modal's one action. It stays enabled after a failed description fetch —
+ * a load error never blocks installing — and locks only while the install is
+ * in flight or already done.
+ */
+export function SkillPreviewInstallButton({
+  installing,
+  installed,
+  onInstall,
+  labels: l,
+}: {
+  installing: boolean;
+  installed: boolean;
+  onInstall: () => void;
+  labels: Labels;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onInstall}
+      disabled={installing || installed}
+      className={cn(
+        "flex h-11 w-full items-center justify-center gap-2 rounded-full bg-action font-medium text-action-text text-sm transition-colors hover:bg-action/90",
+        (installing || installed) && "opacity-60",
+        installing && "cursor-wait",
+      )}
+    >
+      {installing ? (
+        <>
+          <InstallStatusIcon status="installing" className="size-4" />
+          {l.installing}
+        </>
+      ) : installed ? (
+        <>
+          <InstallStatusIcon status="installed" className="size-4" />
+          {l.installed}
+        </>
+      ) : (
+        l.install
+      )}
+    </button>
   );
 }

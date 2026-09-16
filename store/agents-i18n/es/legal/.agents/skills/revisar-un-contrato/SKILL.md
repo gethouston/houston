@@ -7,6 +7,9 @@ category: Contratos
 featured: yes
 image: scroll
 integrations: [googledocs, googledrive, notion, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Revisar un contrato
@@ -39,6 +42,7 @@ Lee primero `config/context-ledger.json`.
 Si falta un campo requerido, haz UNA pregunta puntual con una pista de modalidad (conectar Google Drive / pegar el texto del contrato / URL a un PDF público), escríbelo, continúa.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el registro y el contexto legal.** Reúne los campos requeridos que falten según lo anterior. Escribe de forma atómica.
 2. **Consigue el contrato.** Prioridad: almacenamiento de documentos conectado (Google Drive) > URL + extracción con Firecrawl > archivo subido > texto pegado. Si solo hay un PDF y ninguna herramienta de extracción de texto está conectada, dilo y pide una versión con texto extraíble.

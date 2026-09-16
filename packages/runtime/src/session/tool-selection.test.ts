@@ -163,44 +163,6 @@ describe("buildToolSelection", () => {
       "save_learning",
     );
   });
-
-  test("the skill-directory tools are added when the host is reachable, off by default", () => {
-    const off = buildToolSelection({
-      codeExecution: "disabled",
-      integrations: false,
-    });
-    expect(off.toolNames).not.toContain("find_skills");
-    expect(off.toolNames).not.toContain("install_skill");
-
-    const on = buildToolSelection({
-      codeExecution: "disabled",
-      integrations: false,
-      skillDirectory: true,
-    });
-    // Same reachability gate as save_learning, independent of Composio: the
-    // open skills directory lives behind the host, not behind an integration.
-    expect(on.toolNames).toEqual([
-      ...CLAMPED_FILE_TOOL_NAMES,
-      "ask_user",
-      "suggest_reusable",
-      SUGGEST_ACTIONS_TOOL_NAME,
-      "find_skills",
-      "install_skill",
-    ]);
-  });
-
-  test("the skill-directory tools reach execute and auto but never plan", () => {
-    const on = buildToolSelection({
-      codeExecution: "disabled",
-      integrations: false,
-      skillDirectory: true,
-    });
-    for (const name of ["find_skills", "install_skill"]) {
-      expect(toolNamesForMode("execute", on.toolNames)).toContain(name);
-      expect(toolNamesForMode("auto", on.toolNames)).toContain(name);
-      expect(toolNamesForMode("plan", on.toolNames)).not.toContain(name);
-    }
-  });
 });
 
 /**
@@ -514,7 +476,6 @@ describe("the personal assistant's tool set", () => {
       saveRoutine: true,
       saveLearning: true,
       missions: true,
-      skillDirectory: true,
       assistant: true,
       personalAssistant: true,
     });
@@ -550,8 +511,6 @@ describe("the personal assistant's tool set", () => {
       "find",
       "integration_search",
       "integration_execute",
-      "find_skills",
-      "install_skill",
       "save_routine",
     ]) {
       expect(names).not.toContain(banned);
@@ -575,11 +534,9 @@ describe("the personal assistant's tool set", () => {
       saveRoutine: true,
       saveLearning: true,
       missions: true,
-      skillDirectory: true,
       assistant: true,
     });
     expect(normal.toolNames).toContain("bash");
-    expect(normal.toolNames).toContain("find_skills");
     expect(normal.toolNames).toEqual(
       buildToolSelection({
         codeExecution: "local",
@@ -587,7 +544,6 @@ describe("the personal assistant's tool set", () => {
         saveRoutine: true,
         saveLearning: true,
         missions: true,
-        skillDirectory: true,
         assistant: true,
         personalAssistant: false,
       }).toolNames,

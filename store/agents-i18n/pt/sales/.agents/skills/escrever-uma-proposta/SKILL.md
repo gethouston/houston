@@ -6,6 +6,9 @@ version: 1
 category: Vendas
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,9 @@ Leio seu contexto de vendas primeiro. Para cada campo obrigatório que estiver f
 - **Para qual negócio é esta proposta** - Obrigatório. Por que preciso: extraio a declaração literal do problema e a métrica de sucesso do histórico de calls daquele negócio. Se faltando, pergunto: "Para qual prospect ou negócio é esta proposta?"
 - **A declaração literal do problema deles e a métrica de sucesso** - Obrigatório. Por que preciso: uma página de uma folha só funciona quando o problema está nas palavras deles. Se estiver faltando nas anotações de call, pergunto: "Como o prospect descreveu o problema com as próprias palavras, e qual métrica vai mostrar para eles que funcionou?"
 - **Premissas de preço (número de usuários, prazo, volume)** - Obrigatório. Por que preciso: preciso mostrar a conta, não inventar. Se faltando, pergunto: "O que estamos propondo, quantos assentos ou qual volume, qual duração de contrato?"
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Ler o playbook.** Carregar `context/sales-context.md`. Obrigatório. Sem ele, parar.
 

@@ -3,7 +3,7 @@ import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
 import {
   isActiveTopLevelView,
-  ORGANIZATION_VIEW_ID,
+  SETTINGS_VIEW_ID,
 } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 
@@ -29,8 +29,10 @@ export const COMPUTE_USAGE_DAYS = 90;
  * Failures surface via `tauriOrg.computeUsage` → `call()` (toast + Report bug).
  */
 export function useComputeUsage(enabled: boolean) {
-  const active = useUIStore((s) =>
-    isActiveTopLevelView(s.viewMode, ORGANIZATION_VIEW_ID),
+  const active = useUIStore(
+    (s) =>
+      isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID) &&
+      s.settingsSection === "workspace",
   );
   return useQuery({
     queryKey: queryKeys.computeUsage(COMPUTE_USAGE_DAYS),

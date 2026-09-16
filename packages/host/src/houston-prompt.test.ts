@@ -52,10 +52,29 @@ test("missions guidance teaches the start/review/move loop (PRODUCT-1244)", () =
 test("skill guidance uses the current SKILL.md layout and omits legacy fields", () => {
   const p = houstonSystemPrompt();
   expect(p).toContain(".agents/skills/<skill-name>/SKILL.md");
-  expect(p).toContain("## Procedure");
+  expect(p).toContain("## Workflow");
+  expect(p).toContain("<!-- houston-workflow:v1 -->");
+  expect(p).toContain("created_by: houston");
+  expect(p).not.toContain("find_skills");
   expect(p).not.toContain("tags:");
   expect(p).not.toContain("inputs");
   expect(p).not.toContain("prompt_template");
+});
+
+test("instructions guidance teaches the job description's frontmatter block", () => {
+  const p = houstonSystemPrompt();
+  expect(p).toContain("### Instructions (Self-Editing)");
+  expect(p).toContain("Your own instructions live in `CLAUDE.md`");
+  // The block the app writes and the agent must not drop when it rewrites the
+  // file: the user's own answer to what this agent is for.
+  expect(p).toContain("`industry` and `role`");
+  expect(p).toContain("industry: Healthcare\nrole: Medical coder");
+  expect(p).toContain(
+    "keep it intact and at the top every time you write the file",
+  );
+  expect(p).toContain(
+    "When the user tells you their industry or their role changed, update those two lines to match.",
+  );
 });
 
 test("memory guidance requires explicit opt-in via the reflection step", () => {

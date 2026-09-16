@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: yes
 image: ledger
 integrations: [quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **A chart of accounts with cash and one-time flags** — Required. Why: tells me which accounts to treat as cash and which expenses are one-time vs. ongoing. If missing I ask: "Do we have a chart of accounts set up? If not, let's draft one first, it only takes a few minutes."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json` (need `domains.banks.accounts[]` to know which cash accounts exist), `config/chart-of-accounts.json` (identify which accounts are cash / cash-equivalents). Note today date  -  drives filename.
 

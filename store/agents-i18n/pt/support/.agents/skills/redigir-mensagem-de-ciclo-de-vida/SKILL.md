@@ -7,6 +7,9 @@ category: Suporte
 featured: no
 image: headphone
 integrations: [hubspot, attio, stripe, mailchimp, customerio, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -49,6 +52,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - `churn-save`: UMA mensagem de retenção para `{account}` ancorada no sinal de risco exato de `churn-flags.json`, oferecendo uma opção genuína (pausa / downgrade / concierge / reembolso). Escreve `saves/{account}.md`.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `config/context-ledger.json` e `config/voice.md`.** Preencher lacunas com uma pergunta direcionada.
 2. **Ler `context/support-context.md`.** Faltando → parar e me avisar para rodar `set-up-my-support-info` primeiro.

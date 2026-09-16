@@ -6,6 +6,9 @@ version: 1
 category: Operaciones
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -48,6 +51,7 @@ Primero leo tu contexto de operaciones. Por cada campo requerido que falte hago 
   el conteo de filas y cualquier advertencia de calidad de datos.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** Si
    falta o está vacío, me detengo y te pido correr primero la habilidad `set-up-my-ops-info`. Las prioridades y las herramientas anclan qué

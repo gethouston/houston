@@ -8,7 +8,7 @@ import { readClaudeOAuthCredentialFile } from "./credentials-file";
  * that file is).
  *
  * This resolution runs on every credential read of a turn — prompt preparation,
- * the summarizer, the anonymizer, each cache lookup — and each one used to open,
+ * the summarizer, each cache lookup — and each one used to open,
  * read and JSON-parse the file again. `statSync` is a single cheap syscall, and
  * identity (inode) + size + mtime together settle whether the bytes can have
  * moved: the writers are atomic tmp+rename (a NEW inode every time), so a

@@ -6,6 +6,9 @@ category: Sales
 featured: no
 image: handshake
 integrations: [notion, reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **Prospect name and competitor name**  -  Required. Why I need it: card is anchored to one specific deal versus one specific competitor, not a generic sheet. If missing I ask: "Which prospect deal is this for, and which competitor are they comparing us to?"
 - **Your top differentiator and biggest weakness vs this competitor**  -  Required. Why I need it: card is honest only if I know how you actually win and lose. If missing I ask: "What's your honest top differentiator vs this competitor, and your biggest weakness?"
 - **Anchor customer wins matching the prospect**  -  Optional. Why I need it: proof points land harder when they match the prospect's profile. If you don't have it I keep going with TBD.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Identify prospect + competitor.** Load lead row in `leads.json` and `calls/{slug}/notes-*.md` if call exists  -  prospect's specific evaluation criteria and stated pains = anchor.
 2. **Read our product + positioning.** `context/sales-context.md` for what we claim  -  especially "Top 3 competitors" and "Category & differentiators" sections. If thin, ask once: "What's your honest top-3 differentiator vs {competitor}? And biggest weakness? (Roll into playbook  -  paste, or point at Notion / Google Doc URL.)"

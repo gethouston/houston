@@ -35,8 +35,8 @@ import {
  *
  * SCOPE (HOU-976): `store.get` resolves the ambient acting identity, so on a
  * shared pod this returns the ACTING member's anthropic token — read inside the
- * turn's async subtree by every caller (conversation-cache, summarize,
- * anonymize). The shared-login-dir fallback below is TEAM-scope only, mirroring
+ * turn's async subtree by every caller (conversation-cache, summarize). The
+ * shared-login-dir fallback below is TEAM-scope only, mirroring
  * the write refusal in `credentials-file.ts`.
  */
 const [OAUTH_TOKEN_PREFIX, API_KEY_PREFIX] = ANTHROPIC_TOKEN_PREFIXES;

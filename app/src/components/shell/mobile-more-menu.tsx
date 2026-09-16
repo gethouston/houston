@@ -55,10 +55,7 @@ export function MobileMoreMenu() {
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const [createWsOpen, setCreateWsOpen] = useState(false);
 
-  const { navSections } = useSidebarNavItems(t, close, {
-    nav: "reset",
-    unfolded: true,
-  });
+  const { navSections } = useSidebarNavItems(t, close, { nav: "reset" });
   const groups = mobileMoreItems(navSections);
   // The rail's footer cluster, mirrored: the Academy closes the destinations
   // here exactly as it closes the rail above Settings, and it is the SAME row

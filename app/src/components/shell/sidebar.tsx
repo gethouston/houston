@@ -7,7 +7,6 @@ import { hasAgentTeams } from "../../lib/org-roles";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { CreateAgentTeamDialog } from "./create-agent-team-dialog";
 import { EditTeamIdentityDialog } from "./edit-team-identity-dialog";
 import { SidebarDialogs } from "./sidebar-dialogs";
 import { SidebarRail, type SidebarRailModel } from "./sidebar-rail";
@@ -33,11 +32,9 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const agents = useAgentStore((s) => s.agents);
   const [createWsOpen, setCreateWsOpen] = useState(false);
 
-  const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
-  // Store-owned so the phone's Teams home (which has no rail) opens the same
-  // dialog this component mounts.
-  const createTeamOpen = useUIStore((s) => s.createTeamDialogOpen);
-  const setCreateTeamOpen = useUIStore((s) => s.setCreateTeamDialogOpen);
+  // Store-owned so every other door into the create sheet (the phone's Teams
+  // home, a team's empty board) opens the one the shell mounts.
+  const openCreateFlow = useUIStore((s) => s.openCreateFlow);
   const { canCreate: canCreateAgents } = useCanCreateAgents();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
@@ -108,20 +105,26 @@ export function Sidebar({ children }: { children: ReactNode }) {
     sectionCollapsed: teamsSectionCollapsed,
     onToggleSectionCollapsed: toggleTeamsSectionCollapsed,
     onNewTeam: teamActions.canCreateTeam
-      ? () => setCreateTeamOpen(true)
+      ? () => openCreateFlow("team")
       : undefined,
     onAddAgentToTeam: canCreateAgents
       ? (teamId) => {
-          setDialogOpen(true, teamId);
+          openCreateFlow("agent", teamId);
           closeMobileMenu();
         }
       : undefined,
     onAddAgent: canCreateAgents
       ? () => {
-          setDialogOpen(true);
+          openCreateFlow("agent");
           closeMobileMenu();
         }
       : undefined,
+    // The band's "+" knows only that the user wants to add something; the
+    // sheet resolves that against what they may actually create.
+    onOpenCreate: () => {
+      openCreateFlow("choose");
+      closeMobileMenu();
+    },
   };
 
   /* Gutter around the floating "screen" (Arc canvas). On the desktop the small
@@ -140,12 +143,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
       <SidebarDialogs
         createWorkspaceOpen={createWsOpen}
         onCreateWorkspaceOpenChange={setCreateWsOpen}
-      />
-      <CreateAgentTeamDialog
-        open={createTeamOpen}
-        onOpenChange={setCreateTeamOpen}
-        serverBacked={serverBacked}
-        sidebar={sidebar}
       />
       <EditTeamIdentityDialog
         teams={teams}

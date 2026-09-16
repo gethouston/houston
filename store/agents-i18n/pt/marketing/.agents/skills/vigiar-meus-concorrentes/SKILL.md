@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [linkedin, twitter, reddit, instagram, googleads, metaads, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ Leio seu contexto de marketing primeiro. Para cada campo obrigatório que estive
 - **Suas plataformas sociais e temas**  -  Obrigatório para `social-feed`. Por que preciso: me diz qual feed escanear e o que conta como relevante. Se faltar, pergunto: "Em quais plataformas você publica, e que temas você quer que eu acompanhe no seu feed?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o ledger + posicionamento.** Extraio a lista nomeada de concorrentes + nossos diferenciais + as 2-3 principais objeções do cliente ideal. Coleto os campos obrigatórios que faltam (UMA pergunta cada).
 2. **Determinar modo + lista de alvos.**

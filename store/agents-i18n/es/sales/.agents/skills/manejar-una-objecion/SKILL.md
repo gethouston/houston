@@ -6,6 +6,9 @@ version: 1
 category: Ventas
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,9 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, hago UN
 - **La objeción en sus propias palabras**  -  Obligatorio. Por qué lo necesito: replanteo la frase real, no una paráfrasis. Si falta, pregunto: "¿Qué dijeron, palabra por palabra?"
 - **En qué negocio surgió**  -  Obligatorio. Por qué lo necesito: guardo el replanteamiento bajo ese negocio y traigo contexto de la llamada. Si falta, pregunto: "¿Qué prospecto o negocio la planteó?"
 - **Muestras de tu tono**  -  Opcional. Por qué lo necesito: hace que el correo post-llamada suene como tú. Si no las tienes, sigo con TBD y uso un tono neutral.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Leer el playbook.** Cargo `context/sales-context.md`. Busco la entrada que coincide en el manual de objeciones. Si falta el playbook, le pido al usuario que corra `set-up-my-sales-info` primero, y me detengo.
 

@@ -8,7 +8,6 @@ import { ASK_USER_TOOL_NAME } from "./tools/ask-user";
 import { ASSISTANT_TOOL_NAMES } from "./tools/assistant";
 import { CLAMPED_FILE_TOOL_NAMES } from "./tools/clamped-fs";
 import { CUSTOM_INTEGRATION_TOOL_NAMES } from "./tools/custom-integrations";
-import { SKILL_DIRECTORY_TOOL_NAMES } from "./tools/find-skills";
 import {
   INTEGRATION_TOOL_NAMES,
   REQUEST_CONNECTION_TOOL_NAME,
@@ -92,12 +91,6 @@ export function buildToolSelection(input: ToolSelectionInput): ToolSelection {
           UPDATE_MISSION_STATUS_TOOL_NAME,
         ]
       : []),
-    // find_skills + install_skill reach execute AND auto, never plan. Finding
-    // is a read, but installing is a real write, and the pair is only useful
-    // together — a plan turn that can find a skill it cannot add would just
-    // dead-end. PLAN_MODE_TOOL_NAMES omits both so planToolNames filters them
-    // out; neither is in AUTO_MODE_EXCLUDED_TOOL_NAMES so auto keeps them.
-    ...(input.skillDirectory ? [...SKILL_DIRECTORY_TOOL_NAMES] : []),
     // The assistant family shares save_routine's reach: execute AND auto,
     // never plan. Searching the catalog is a read, but the family exists to
     // ACT on the user's account (`houston_call`), and a plan turn that could

@@ -6,6 +6,9 @@ category: Support
 featured: no
 image: headphone
 integrations: [googledocs, stripe, notion, github, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ I read your support context first. For every required field that's missing I ask
 - **Refund approver**  -  Optional. Why I need it: billing rule names a real human. If you don't have it I keep going with TBD and leave it as "founder approves."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/support-context.md`.** If missing, run `set-up-my-support-info` first.
 

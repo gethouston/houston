@@ -7,6 +7,9 @@ category: Soporte
 featured: no
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **Audiencia del resumen**: Opcional. Por qué la necesito: tres puntos para ti se leen distinto que un traspaso para un compañero de equipo. Si no la tienes, sigo con TBD y lo escribo pensando en que lo leas tú.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 1. **Cargar** `conversations/{id}/thread.json` y la fila del índice en `conversations.json`.
 2. **Recorrer el hilo cronológicamente.** Anota: la petición original del cliente, cambios de alcance, cada promesa hecha, cada respuesta dada.
 3. **Producir exactamente tres puntos:**

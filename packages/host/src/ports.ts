@@ -267,17 +267,6 @@ export interface RuntimeChannel {
   /** Cheap runtime/channel state for diagnostics and idle-sleep callers. */
   runtimeStatus?(ctx: ChannelCtx): Promise<RuntimeState | "unknown">;
   /**
-   * AI-redact the given texts in the agent's runtime — the export wizard's
-   * anonymize pass runs the LLM where the provider credentials live. Optional:
-   * channels with no standing runtime omit it and the caller falls back to
-   * the regex redactor (visibly — the response says why). Throws with the
-   * runtime's real reason (no provider connected, unparseable model reply).
-   */
-  anonymizeTexts?(
-    ctx: ChannelCtx,
-    items: { id: string; text: string }[],
-  ): Promise<{ id: string; text: string; summary: string }[]>;
-  /**
    * Run `fn` with the agent's STANDING runtime stopped (kill / scale to zero,
    * persisting its state — destroying nothing; the runtime respawns on the
    * next dispatch) AND the agent id latched against respawn until `fn`

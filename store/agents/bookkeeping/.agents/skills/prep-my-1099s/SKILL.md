@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **A vendor email list** — Optional. Why: lets me address chase emails to each vendor directly. If you don't have it I leave the recipient blank in each draft and ask you to fill it in.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Required ledger: `universal.company` (legal name + EIN for 1099 payer block), `domains.tax` (preparer name / email for cover note).
 

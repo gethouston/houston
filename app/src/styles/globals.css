@@ -22,7 +22,6 @@
 @source "../../node_modules/@houston-ai/routines/src";
 @source "../../node_modules/@houston-ai/skills/src";
 @source "../../node_modules/@houston-ai/agent/src";
-@source "../../node_modules/@houston-ai/store/src";
 /* Streamdown (chat markdown renderer) emits Tailwind utilities of its own
    (list-inside, list-disc, …). It lives under ui/chat's node_modules, so scan
    it through the workspace symlink or its classes never get generated and
@@ -155,5 +154,86 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .connect-card-body {
     animation: none;
+  }
+}
+
+/* The guided create-agent setup moving between its three questions. The
+   incoming screen enters from the side the move travels, so Back visibly
+   rewinds instead of replaying the way in; transform + opacity only, 200ms on
+   the entrance curve, and no exit at all (exits faster than entrances, and the
+   outgoing screen is already gone). Reduced motion keeps the cross-fade and
+   drops the travel. */
+@keyframes create-step-in-forward {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes create-step-in-back {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes create-step-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.create-step-in {
+  animation: create-step-in-forward 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.create-step-in[data-direction="back"] {
+  animation-name: create-step-in-back;
+}
+
+/* A typed answer ("Something else") or an empty search result appearing in
+   place, under the run it belongs to: the same curve, travelling down instead
+   of sideways because nothing moved between screens. */
+@keyframes create-inline-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.create-inline-in {
+  animation: create-inline-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* The search row and the typed answer trade places in the SAME slot, so the
+   change is a crossfade: nothing travels, which is also all reduced motion
+   would have allowed. */
+@keyframes create-swap-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.create-swap-in {
+  animation: create-swap-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .create-step-in,
+  .create-step-in[data-direction="back"],
+  .create-inline-in {
+    animation-name: create-step-fade-in;
   }
 }

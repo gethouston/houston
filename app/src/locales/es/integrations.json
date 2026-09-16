@@ -7,7 +7,7 @@
   "unavailable": "Las integraciones no están disponibles en esta configuración.",
   "signin": {
     "title": "Inicia sesión para conectar aplicaciones",
-    "body": "Inicia sesión en Houston para conectar tus aplicaciones. Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
+    "body": "Inicia sesión en Houston para conectar tus aplicaciones. Tus cuentas siguen siendo tuyas; el empleado de IA actúa en tu nombre.",
     "button": "Iniciar sesión en Houston",
     "failed": "No se pudo iniciar sesión. Inténtalo de nuevo."
   },
@@ -38,7 +38,7 @@
   "grants": {
     "disconnect": {
       "confirmTitle": "¿Desconectar {{name}} en todas partes?",
-      "confirmBody": "Esto quita {{name}} de todos tus agentes, no solo de este. Puedes volver a conectarla cuando quieras.",
+      "confirmBody": "Esto quita {{name}} de todos tus empleados de IA, no solo de este. Puedes volver a conectarla cuando quieras.",
       "confirmAction": "Desconectar en todas partes"
     }
   },
@@ -109,7 +109,7 @@
     "fallback": "Cuenta {{number}}",
     "remove": "Desconectar {{name}}",
     "disconnectTitle": "¿Desconectar {{account}}?",
-    "disconnectBody": "Esto quita la cuenta {{account}} de {{name}} para todos tus agentes. Tus otras cuentas de {{name}} siguen conectadas.",
+    "disconnectBody": "Esto quita la cuenta {{account}} de {{name}} para todos tus empleados de IA. Tus otras cuentas de {{name}} siguen conectadas.",
     "disconnectAction": "Desconectar cuenta"
   },
   "custom": {
@@ -137,8 +137,8 @@
     "enterKey": "Ingresar clave",
     "add": {
       "title": "Agregar una integración personalizada",
-      "chatTitle": "Configúrala con tu agente",
-      "chatDesc": "Cuéntale a tu agente qué quieres conectar y te guiará paso a paso en el chat.",
+      "chatTitle": "Configúrala con tu empleado de IA",
+      "chatDesc": "Cuéntale a tu empleado de IA qué quieres conectar y te guiará paso a paso en el chat.",
       "manualTitle": "Agregarla manualmente",
       "manualDesc": "Pega la dirección de una API o de un servidor MCP y completa los datos tú mismo.",
       "kindLabel": "Tipo de conexión",
@@ -150,7 +150,7 @@
       "detected": {
         "api": "Reconocimos un servicio de API.",
         "mcp": "Reconocimos un servidor MCP.",
-        "unknown": "No pudimos reconocer esta dirección. Revisa la URL o deja que tu agente te ayude en el chat.",
+        "unknown": "No pudimos reconocer esta dirección. Revisa la URL o deja que tu empleado de IA te ayude en el chat.",
         "mcpOauth": "Este servidor inicia sesión con su propia cuenta (OAuth) y Houston aún no puede conectarse a él. Una clave de API no funcionará aquí.",
         "mcpOauthOk": "Este servidor MCP usa su propio inicio de sesión. Después de agregarlo, iniciarás sesión en tu navegador."
       },
@@ -167,7 +167,7 @@
       "url": "Dirección",
       "added": "Agregada",
       "actions": "Acciones",
-      "activeBody": "Conectada y funcionando. Tus agentes pueden usar sus acciones en cualquier chat.",
+      "activeBody": "Conectada y funcionando. Tus empleados de IA pueden usar sus acciones en cualquier chat.",
       "pendingBody": "Esperando una clave de API. Ingresa la clave para activarla.",
       "errorBody": "No está funcionando en este momento: {{message}}",
       "updateKey": "Actualizar clave",
@@ -195,7 +195,7 @@
     },
     "delete": {
       "title": "¿Quitar {{name}}?",
-      "description": "Tus agentes perderán acceso a sus acciones. Esto no se puede deshacer.",
+      "description": "Tus empleados de IA perderán acceso a sus acciones. Esto no se puede deshacer.",
       "confirm": "Quitar",
       "cancel": "Cancelar"
     },
@@ -215,7 +215,7 @@
     "signInAgain": "Iniciar sesión de nuevo",
     "oauth": {
       "openedToast": "Termina de iniciar sesión en {{name}} en tu navegador",
-      "blockedToast": "Tu navegador bloqueó la ventana de inicio de sesión. Abre {{name}} y pulsa Iniciar sesión para intentarlo de nuevo."
+      "blockedToast": "Tu navegador bloqueó la ventana de inicio de sesión. Abre {{name}} y toca Iniciar sesión para intentarlo de nuevo."
     }
   },
   "curated": {
@@ -227,7 +227,7 @@
       "description": "Tu CRM de HighLevel (GoHighLevel): contactos, conversaciones, embudos, calendarios, facturas y redes sociales. Una subcuenta por conexión.",
       "keyTitle": "Conectar con un token de HighLevel",
       "keyDesc": "Crea un token de integración privada en tu subcuenta y pégalo aquí.",
-      "keyHelp": "En HighLevel, abre la subcuenta que quieres conectar, ve a Configuración (Settings), luego a Integraciones privadas (Private Integrations) y crea un token con los permisos que necesitan tus agentes (contactos, conversaciones, oportunidades, calendarios). Pégalo aquí; empieza con pit-.",
+      "keyHelp": "En HighLevel, abre la subcuenta que quieres conectar, ve a Configuración (Settings), luego a Integraciones privadas (Private Integrations) y crea un token con los permisos que necesitan tus empleados de IA (contactos, conversaciones, oportunidades, calendarios). Pégalo aquí; empieza con pit-.",
       "headerLabel": "ID de la subcuenta",
       "headerHelp": "Lo encuentras en la subcuenta, en Configuración, Perfil del negocio (Business Profile), o en la dirección web de HighLevel después de /location/.",
       "providerTitle": "Conectar HighLevel con Composio",

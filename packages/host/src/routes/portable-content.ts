@@ -8,8 +8,8 @@ import type { PortableSelection } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 
 /**
- * Gather an agent's selected shareable content off the vfs — the common
- * read behind portable export and anonymize. The selection is untrusted
+ * Gather an agent's selected shareable content off the vfs, behind portable
+ * export. The selection is untrusted
  * wizard input, so every read stays defensive (optional chaining, unknown
  * ids simply don't match).
  */

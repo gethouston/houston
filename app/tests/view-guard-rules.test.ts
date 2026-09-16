@@ -59,7 +59,7 @@ describe("bootGuardStep", () => {
     const armed = { workspaceId: "ws-1", armed: true };
     const moved = bootGuardStep(armed, {
       workspaceId: "ws-1",
-      viewMode: "agent-store",
+      viewMode: "integrations-home",
       hasHomeTeam: false,
     });
     assert.equal(moved.action, "wait");
@@ -98,7 +98,6 @@ describe("bootGuardStep", () => {
 describe("deadViewStep", () => {
   const base = {
     showAiModels: true,
-    showOrganization: true,
     showAssistant: true,
     gatesReady: true,
     teams: TEAMS,
@@ -111,16 +110,19 @@ describe("deadViewStep", () => {
     // Ungated: no gate can take the Academy away, so the guard must never
     // send a user home off it.
     assert.equal(deadViewStep({ ...base, viewMode: "academy" }), "keep");
-    assert.equal(deadViewStep({ ...base, viewMode: "organization" }), "keep");
   });
 
   it("sends a view no screen answers to home", () => {
     assert.equal(deadViewStep({ ...base, viewMode: "chat" }), "go-home");
-    // Retired ids an older install may still have pinned: the Inbox screen is
-    // gone and About me is a Settings section, so both are stale `viewMode`s
-    // that must land the user home rather than on a blank card.
+    // Retired ids an older install may still have pinned. These are stale
+    // `viewMode`s that must land the user home rather than on a blank card.
     assert.equal(deadViewStep({ ...base, viewMode: "inbox" }), "go-home");
     assert.equal(deadViewStep({ ...base, viewMode: "about-me" }), "go-home");
+    assert.equal(deadViewStep({ ...base, viewMode: "agent-store" }), "go-home");
+    assert.equal(
+      deadViewStep({ ...base, viewMode: "organization" }),
+      "go-home",
+    );
   });
 
   it("sends the assistant home on a deployment that serves none", () => {
@@ -164,31 +166,16 @@ describe("deadViewStep", () => {
     }
   });
 
-  it("sends Admin home once the org gate resolves against it", () => {
-    // A role demotion, or a switch back to the personal space, hides it. The
-    // screen the user left open is then unmounted, so staying would strand them
-    // on a blank card.
-    assert.equal(
-      deadViewStep({
-        ...base,
-        viewMode: "organization",
-        showOrganization: false,
-      }),
-      "go-home",
-    );
-  });
-
   it("waits out a gated view while the capabilities are still loading", () => {
     // Every gate reads false off null capabilities, so acting on that window
     // would bounce the user off a screen they are entitled to, on every boot
     // and every space switch.
-    for (const viewMode of ["ai-hub", "organization"]) {
+    for (const viewMode of ["ai-hub"]) {
       assert.equal(
         deadViewStep({
           ...base,
           viewMode,
           showAiModels: false,
-          showOrganization: false,
           gatesReady: false,
         }),
         "wait",

@@ -1,11 +1,9 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import { skillPreviewSections } from "../src/skill-preview-sections-model.ts";
-import type { CommunitySkillPreview } from "../src/types.ts";
+import type { PreviewSkillDetail } from "../src/types.ts";
 
-function preview(
-  over: Partial<CommunitySkillPreview> = {},
-): CommunitySkillPreview {
+function preview(over: Partial<PreviewSkillDetail> = {}): PreviewSkillDetail {
   return {
     title: null,
     description: "",
@@ -26,6 +24,7 @@ describe("skillPreviewSections", () => {
       tags: [],
       integrations: [],
       instructions: null,
+      workflow: [],
     });
   });
 
@@ -35,6 +34,7 @@ describe("skillPreviewSections", () => {
       tags: [],
       integrations: [],
       instructions: null,
+      workflow: [],
     });
   });
 
@@ -100,6 +100,90 @@ describe("skillPreviewSections", () => {
     assert.equal(
       skillPreviewSections(preview({ content: null })).instructions,
       null,
+    );
+  });
+});
+
+describe("skillPreviewSections workflow", () => {
+  it("keeps a Houston skill's parsed steps, trimmed", () => {
+    assert.deepEqual(
+      skillPreviewSections(
+        preview({
+          workflow: [
+            {
+              title: "  Read the playbook  ",
+              detail: "  Load context.  ",
+              integration: null,
+            },
+            { title: "Send it", detail: null, integration: null },
+          ],
+        }),
+      ).workflow,
+      [
+        {
+          title: "Read the playbook",
+          detail: "Load context.",
+          integration: null,
+        },
+        { title: "Send it", detail: null, integration: null },
+      ],
+    );
+  });
+
+  it("keeps the app a step acts on, trimmed, action and all", () => {
+    assert.deepEqual(
+      skillPreviewSections(
+        preview({
+          workflow: [
+            {
+              title: "Send it",
+              detail: null,
+              integration: { toolkit: " gmail ", action: " GMAIL_SEND_EMAIL " },
+            },
+          ],
+        }),
+      ).workflow[0]?.integration,
+      { toolkit: "gmail", action: "GMAIL_SEND_EMAIL" },
+    );
+  });
+
+  it("drops an app tag with no toolkit rather than chipping a blank one", () => {
+    const workflow = skillPreviewSections(
+      preview({
+        workflow: [
+          {
+            title: "Send it",
+            detail: null,
+            integration: { toolkit: "  ", action: "SEND" },
+          },
+          {
+            title: "File it",
+            detail: null,
+            integration: "gmail" as unknown as { toolkit: string },
+          },
+        ] as never,
+      }),
+    ).workflow;
+    assert.equal(workflow[0]?.integration, null);
+    assert.equal(workflow[1]?.integration, null);
+  });
+
+  it("leaves an imported skill with no steps, so the raw body stays primary", () => {
+    assert.deepEqual(skillPreviewSections(preview()).workflow, []);
+    assert.deepEqual(
+      skillPreviewSections(preview({ workflow: null })).workflow,
+      [],
+    );
+  });
+
+  it("drops a step the parser could not title", () => {
+    assert.deepEqual(
+      skillPreviewSections(
+        preview({
+          workflow: [{ title: "   ", detail: "orphan", integration: null }],
+        }),
+      ).workflow,
+      [],
     );
   });
 });

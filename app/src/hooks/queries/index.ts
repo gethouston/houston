@@ -94,7 +94,6 @@ export {
 } from "./use-settled-conversations";
 export {
   useCreateSkill,
-  useInstallCommunitySkill,
   useInstallSkillFromRepo,
   useListSkillsFromRepo,
   useSkillDetail,

@@ -6,10 +6,15 @@ import {
   SpecimenSection,
   SpecimenTokens,
 } from "../../../src/specimen";
-import { bareSkillPreview, communitySkills, skillPreview } from "./sample";
+import {
+  bareSkillPreview,
+  houstonSkillPreview,
+  previewSkills,
+  skillPreview,
+} from "./sample";
 import { PreviewDemo, previewProps } from "./skill-preview-modal-parts";
 
-const [contracts, triage, , , oneInstall] = communitySkills;
+const [contracts, triage, , , oneInstall] = previewSkills;
 
 function SkillPreviewModalSpecimen() {
   return (
@@ -36,6 +41,19 @@ function SkillPreviewModalSpecimen() {
             preview={{ status: "loaded", preview: skillPreview }}
             withIntegrations
           />
+        </SpecimenRow>
+        <SpecimenRow label="Houston-written skill">
+          <PreviewDemo
+            label="Close my month"
+            variant="outline"
+            skill={contracts}
+            preview={{ status: "loaded", preview: houstonSkillPreview }}
+          />
+          <p className="max-w-prose text-[13px] text-ink-muted leading-[1.4]">
+            Houston wrote this one, so its procedure is parsed out of the
+            SKILL.md: the steps are the body and the raw markdown moves behind
+            the same disclosure an imported skill uses.
+          </p>
         </SpecimenRow>
         <SpecimenRow label="Bare skill">
           <PreviewDemo

@@ -7,6 +7,9 @@ category: Pessoas
 featured: yes
 image: busts-in-silhouette
 integrations: [googlesheets, googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -51,6 +54,7 @@ Primeiro leio o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Limites inegociáveis** , Opcional. Por que preciso: molda as regras de contraproposta e outros rascunhos derivados. Se você não tiver isso, sigo com "a definir".
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio `config/context-ledger.json`.** Preencho lacunas com uma
    pergunta única e direcionada.

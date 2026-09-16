@@ -1,4 +1,5 @@
 import type { Locator, Page } from "@playwright/test";
+import { ASSISTANT_COMPOSER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
 import { navBar, openMoreMenu } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
@@ -29,7 +30,7 @@ test("opens from More as a full-height chat with no nav bar under it", async ({
   await expect(navBar(page)).toHaveCount(0);
 
   // The composer is the last thing on the screen: nothing sits below it.
-  const composer = chat.getByPlaceholder("Send a follow-up...");
+  const composer = chat.getByPlaceholder(ASSISTANT_COMPOSER);
   await expect(composer).toBeVisible();
   const composerBottom = await composer.evaluate((el) => {
     const form = el.closest("form") ?? el;

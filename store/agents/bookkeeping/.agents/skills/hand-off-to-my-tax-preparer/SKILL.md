@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [googledrive, gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Clean monthly closes through year-end** — Required. Why: the handoff is gated on books being clean; open recon breaks and uncategorized items have to close first. If missing I ask: "Have we closed every month of the fiscal year yet? If not, let's finish those first, otherwise the handoff has too many open items."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`,
    `config/context-ledger.json`, `config/chart-of-accounts.json`.

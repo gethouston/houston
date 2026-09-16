@@ -1,4 +1,5 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
+import { NEW_TASK_PLACEHOLDER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
 import {
   newTaskButton,
@@ -46,12 +47,9 @@ test("the list groups the seeded missions by section, with their status glyphs",
   await expect(list.getByRole("img", { name: "Needs you" })).toHaveCount(1);
   await expect(list.getByRole("img", { name: "Done" })).toHaveCount(1);
 
-  // No section switcher anywhere on the phone team screen — the Teams tree one
-  // level up chose the section, and the screen retreats to it by chip.
+  // No section navigation anywhere on the phone team screen — the Teams tree
+  // one level up chose the section, and the screen retreats to it by chip.
   await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(0);
-  await expect(
-    screen(page).locator("[data-team-section-switcher]"),
-  ).toHaveCount(0);
   await expect(screen(page).getByTestId("team-mobile-back")).toBeVisible();
   // ONE compose in the chrome: the nav bar's. The list carries none.
   await expect(list.getByRole("button", { name: "New task" })).toHaveCount(0);
@@ -160,9 +158,7 @@ test("the nav bar's New task composes from the team screen", async ({
   // One seeded agent on the team: the flow skips the picker and pushes the
   // draft chat straight away.
   const chat = page.getByTestId("mission-chat-screen");
-  await expect(
-    chat.getByPlaceholder("What should the agent work on?"),
-  ).toBeVisible();
+  await expect(chat.getByPlaceholder(NEW_TASK_PLACEHOLDER)).toBeVisible();
 });
 
 test("a running mission joins the list under its own band", async ({

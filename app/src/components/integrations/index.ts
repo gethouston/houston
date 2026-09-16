@@ -77,6 +77,7 @@ export {
   pollConnectionUntilActive,
 } from "./model";
 export { SectionHeader } from "./section-header";
+export { SkillStepIntegrationChip } from "./skill-step-integration-chip";
 export {
   LoadingState,
   ReconnectBanner,

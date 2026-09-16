@@ -14,7 +14,6 @@ export function ProviderApiKeyField({
   showLabel,
   hideLabel,
   value,
-  disabled,
   onChange,
 }: {
   label: string;
@@ -24,14 +23,13 @@ export function ProviderApiKeyField({
   /** Accessible name for the reveal toggle while the key is visible. */
   hideLabel: string;
   value: string;
-  disabled: boolean;
   onChange: (value: string) => void;
 }) {
   const [show, setShow] = useState(false);
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor="provider-api-key" className="text-[13px] font-medium">
+      <label htmlFor="provider-api-key" className="text-sm font-medium">
         {label}
       </label>
       <div className="relative">
@@ -44,8 +42,7 @@ export function ProviderApiKeyField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-md border bg-input px-3 py-2 pr-10 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
-          disabled={disabled}
+          className="w-full rounded-md border bg-input px-3 py-2 pr-10 text-base font-mono focus:outline-none focus:ring-2 focus:ring-focus"
         />
         <button
           type="button"

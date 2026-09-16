@@ -7,6 +7,9 @@ category: Contabilidade
 featured: no
 image: ledger
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Eu leio o seu contexto contábil primeiro. Para todo campo obrigatório que esti
 - **Uma lista de e-mails de fornecedores**, opcional. Motivo: permite endereçar os e-mails de cobrança diretamente a cada fornecedor. Se você não tiver, deixo o destinatário em branco em cada rascunho e peço para você preencher.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Registro obrigatório: `universal.company` (razão social mais EIN para o bloco do pagador do 1099), `domains.tax` (nome/e-mail do contador para a nota de capa).
 

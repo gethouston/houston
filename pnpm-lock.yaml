@@ -25,9 +25,6 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.0
         version: 2.5.0
-      '@houston/agentstore-client':
-        specifier: workspace:*
-        version: link:packages/agentstore-client
       '@houston/agentstore-contract':
         specifier: workspace:*
         version: link:packages/agentstore-contract
@@ -179,12 +176,6 @@ importers:
       '@houston-ai/skills':
         specifier: workspace:*
         version: link:../ui/skills
-      '@houston-ai/store':
-        specifier: workspace:*
-        version: link:../ui/store
-      '@houston/agentstore-contract':
-        specifier: workspace:*
-        version: link:../packages/agentstore-contract
       '@houston/design-tokens':
         specifier: workspace:*
         version: link:../packages/design-tokens
@@ -390,9 +381,6 @@ importers:
       '@houston-ai/agent-schemas':
         specifier: workspace:*
         version: link:../../ui/agent-schemas
-      '@houston/agentstore-contract':
-        specifier: workspace:*
-        version: link:../agentstore-contract
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -424,9 +412,6 @@ importers:
       '@houston-ai/core':
         specifier: workspace:*
         version: link:../../ui/core
-      '@houston/agentstore-client':
-        specifier: workspace:*
-        version: link:../agentstore-client
       '@houston/agentstore-contract':
         specifier: workspace:*
         version: link:../agentstore-contract
@@ -510,9 +495,6 @@ importers:
       '@executor-js/sdk':
         specifier: 1.5.37
         version: 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.30(ioredis@5.11.1))
-      '@houston/agentstore-contract':
-        specifier: workspace:*
-        version: link:../agentstore-contract
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
@@ -729,12 +711,6 @@ importers:
       '@houston-ai/skills':
         specifier: workspace:*
         version: link:../../ui/skills
-      '@houston/agentstore-client':
-        specifier: workspace:*
-        version: link:../agentstore-client
-      '@houston/agentstore-contract':
-        specifier: workspace:*
-        version: link:../agentstore-contract
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
@@ -850,9 +826,6 @@ importers:
 
   packages/wire-types:
     dependencies:
-      '@houston/agentstore-client':
-        specifier: workspace:*
-        version: link:../agentstore-client
       '@houston/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -1012,6 +985,10 @@ importers:
       tailwindcss:
         specifier: ^4.0.0
         version: 4.3.2
+    devDependencies:
+      tsx:
+        specifier: 4.23.0
+        version: 4.23.0
 
   ui/events:
     dependencies:

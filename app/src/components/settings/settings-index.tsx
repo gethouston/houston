@@ -1,5 +1,6 @@
 import {
   Bug,
+  Building2,
   CircleUserRound,
   CloudUpload,
   Keyboard,
@@ -25,19 +26,17 @@ interface SettingsIndexProps {
 }
 
 /**
- * The settings landing page, and ONLY settings: the things every user adjusts
- * about their own app.
+ * The settings landing page: the standing setup a person adjusts, about their
+ * own app and about the space they run.
  *
- * Only preferences live here. The guided tour starts from the Agent Store, and
- * Time worked, Admin and Permissions are screens of their own in the rail's
- * "Workspace" band, because none of them is something a person adjusts about
- * their own app. What the page holds is ONE general group everybody sees
- * (identity, About me, appearance, language, notifications, account, then the
- * help-shaped rows), plus Danger. There is no role gate on this page.
+ * The page holds ONE general group (identity, About me, appearance, language,
+ * notifications, then the standing setup of the space and the help-shaped
+ * rows), plus Danger. One row administers the SPACE rather than the person:
+ * Workspace management. The shared Skills library lives on the Integrations
+ * screen, as its Skills tab.
  *
- * The page OPENS on the signed-in person: the rail's avatar menu was a second
- * door onto this page and is gone, so identity is a header here rather than a
- * row buried in the general group. Everything below it is a preference.
+ * The page OPENS on the signed-in person: identity is the header, and
+ * everything below it is a preference.
  *
  * Simple settings are resolved inline as control rows; the heavier ones
  * (shortcuts, bug report) are navigable rows that drill into their own screen.
@@ -95,6 +94,12 @@ export function SettingsIndex({
           <AppearanceSection />
           <LanguageSection />
           <NotificationsSection />
+          <SettingsRow
+            icon={Building2}
+            title={t("settings:nav.workspace")}
+            description={t("settings:index.rows.workspace")}
+            onClick={() => onSelect("workspace")}
+          />
           {/* The API-keys row is HIDDEN for now (HOU-806): the Agents API
               surface lives in the Routines tab. The section, its strings, and
               all plumbing remain — restore by re-adding this row (and the

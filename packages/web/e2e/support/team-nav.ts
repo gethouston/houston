@@ -15,11 +15,10 @@ import { expect, type Locator, type Page } from "@playwright/test";
  *
  * English is forced by the boot seed, so label selectors are stable.
  *
- * The functional desktop projects use a 1440px-wide viewport deliberately:
- * after the rail takes its space, the team strip remains above its one-row
- * threshold and these helpers exercise the full lozenge grammar. Compact
- * switcher behavior belongs in explicit narrow-viewport specs, rather than
- * becoming the accidental default for every desktop flow.
+ * The lozenges are on the strip at every DESKTOP width: a narrow strip sends
+ * the section's tools to their own row and keeps the cluster, so these helpers
+ * address a lozenge and never a menu. The phone reaches a team's sections one
+ * level up, through the Teams tree (`mobile-nav.ts`).
  */
 
 /** The rail. Section rows and agent rows both live here. */
@@ -28,22 +27,19 @@ export function rail(page: Page): Locator {
 }
 
 /** The top-level rail rows, by the tour anchor the shell stamps on each. */
-export type NavRowId =
-  | "agent-store"
-  | "integrations"
-  | "ai-hub"
-  | "skills"
-  | "settings";
+export type NavRowId = "integrations" | "ai-hub" | "settings";
 
 /**
  * One top-level rail row — a destination that belongs to nobody.
  *
- * The AI Manager and the Agent Store lead the rail unlabelled, then the
- * "My accounts" band (Integrations, AI Models) and the "Workspace" band (Admin,
- * Skills), with the Academy and Settings in the footer. **The AI Manager and the
- * Academy are deliberately absent from this union**: neither carries a tour
- * anchor, because a target the tour never spotlights is dead weight — address
- * the AI Manager by its own test id (`settings-nav.ts` `assistantRow`).
+ * The rail is ONE unlabelled run — the AI Manager, AI Models and Integrations,
+ * the destinations a user reaches for without being asked — over "Your teams",
+ * with the Academy and Settings in the footer. The shared Skills library is the
+ * Skills TAB of the Integrations screen (`settings-nav.ts` `openSkillsLibrary`),
+ * not a row here. **The AI Manager and the Academy are deliberately absent from
+ * this union**: neither carries a tour anchor, because a target the tour never
+ * spotlights is dead weight — address the AI Manager by its own test id
+ * (`settings-nav.ts` `assistantRow`).
  *
  * There is NO global mission board among them: every board belongs to a team,
  * so a spec that wants the app's home board asks for
@@ -138,43 +134,27 @@ export function teamSettingsTab(page: Page, tab: TeamSettingsTab): Locator {
   );
 }
 
-/** The compact replacement for the Team Settings lozenge cluster. */
-function teamSettingsSwitcher(page: Page): Locator {
-  return headerChrome(page).locator("[data-team-settings-switcher]");
-}
-
 /**
  * Open the drilled Team Settings level.
  *
- * Arrival is "one of the two navigation surfaces is drawn", never the Context
- * lozenge alone: the drilled strip collapses into its switcher exactly as the
- * team strip does, and it collapses OFTEN here — a team whose board is empty
- * opens the composer panel beside it, which is enough to cross the threshold.
+ * Arrival is the Context lozenge: the drilled strip keeps its cluster at every
+ * desktop width — a panel opening beside the board moves the TOOLS to their own
+ * row, never the sections.
  */
 export async function openTeamSettings(page: Page): Promise<void> {
   await openTeamSection(page, "Team Settings");
   await expect(
-    teamSettingsTab(page, "Context").or(teamSettingsSwitcher(page)).first(),
+    teamSettingsTab(page, "Context"),
     "the Team Settings navigation should become available",
   ).toBeVisible();
 }
 
-/** Pick a tab of the OPEN Team Settings level, in either layout. */
+/** Pick a tab of the OPEN Team Settings level. */
 export async function openTeamSettingsSection(
   page: Page,
   tab: TeamSettingsTab,
 ): Promise<void> {
-  const lozenge = teamSettingsTab(page, tab);
-  if (await lozenge.isVisible()) {
-    await lozenge.click();
-    return;
-  }
-  await teamSettingsSwitcher(page).click();
-  await page
-    .locator(
-      `[role='menuitemcheckbox'][data-team-settings-tab='${TEAM_SETTINGS_TAB_IDS[tab]}']`,
-    )
-    .click();
+  await teamSettingsTab(page, tab).click();
 }
 
 export async function openArchivedTasks(page: Page): Promise<void> {
@@ -211,92 +191,22 @@ function currentTeamRow(page: Page): Locator {
     .first();
 }
 
-/** The compact replacement for the full team-section lozenge cluster. */
-function teamSectionSwitcher(page: Page): Locator {
-  return headerChrome(page).locator("[data-team-section-switcher]");
-}
-
-/** Assert the selected section in either the full strip or compact menu. */
+/** Assert the selected section on the strip. */
 export async function expectTeamSectionSelected(
   page: Page,
   section: TeamSection,
 ): Promise<void> {
-  const tab = teamTab(page, section);
-  if (await tab.isVisible()) {
-    await expect(tab).toHaveAttribute("aria-current", "page");
-    return;
-  }
-
-  const switcher = teamSectionSwitcher(page);
-  await expect(switcher).toBeVisible();
-  await switcher.click();
-  await expect(
-    page.locator(
-      `[role='menuitemcheckbox'][data-team-section-tab='${TEAM_SECTION_TAB_IDS[section]}']`,
-    ),
-  ).toHaveAttribute("aria-checked", "true");
-  await page.keyboard.press("Escape");
+  await expect(teamTab(page, section)).toHaveAttribute("aria-current", "page");
 }
 
-/** Assert exactly which sections the current team offers in either layout. */
+/** Assert exactly which sections the current team offers. */
 export async function expectTeamSections(
   page: Page,
   sections: readonly TeamSection[],
 ): Promise<void> {
-  const tabs = teamTabs(page);
-  if (await tabs.first().isVisible()) {
-    await expect(tabs).toHaveCount(sections.length);
-    for (const section of sections)
-      await expect(teamTab(page, section)).toBeVisible();
-    return;
-  }
-
-  const switcher = teamSectionSwitcher(page);
-  await expect(switcher).toBeVisible();
-  await switcher.click();
-  const menuSections = page.locator(
-    "[role='menuitemcheckbox'][data-team-section-tab]",
-  );
-  await expect(menuSections).toHaveCount(sections.length);
-  for (const section of sections) {
-    await expect(
-      page.locator(
-        `[role='menuitemcheckbox'][data-team-section-tab='${TEAM_SECTION_TAB_IDS[section]}']`,
-      ),
-    ).toBeVisible();
-  }
-  await page.keyboard.press("Escape");
-}
-
-async function clickVisibleTeamSection(
-  page: Page,
-  section: TeamSection,
-): Promise<boolean> {
-  const tab = teamTab(page, section);
-  if (await tab.isVisible()) {
-    try {
-      await tab.click({ timeout: 5_000 });
-      return true;
-    } catch {
-      // The strip re-modes when its width observer reports — on a slow CI box
-      // that can land BETWEEN the visibility check and the click, unmounting
-      // the tab cluster into the compact switcher. The section is still
-      // reachable; it just moved. Fall through to the switcher path.
-    }
-  }
-
-  const switcher = teamSectionSwitcher(page);
-  if (await switcher.isVisible()) {
-    await switcher.click();
-    await page
-      .locator(
-        `[role='menuitemcheckbox'][data-team-section-tab='${TEAM_SECTION_TAB_IDS[section]}']`,
-      )
-      .click();
-    return true;
-  }
-
-  return false;
+  await expect(teamTabs(page)).toHaveCount(sections.length);
+  for (const section of sections)
+    await expect(teamTab(page, section)).toBeVisible();
 }
 
 /**
@@ -312,7 +222,7 @@ async function clickVisibleTeamSection(
  * of this helper: asking for "Tasks" while already on a PINNED board clears
  * the pin instead of navigating, because there is nowhere to navigate to.
  *
- * The rail is a way back only from a TOP-LEVEL view (the Agent Store, the
+ * The rail is a way back only from a TOP-LEVEL view (Integrations, the
  * Skills page), where no screen on the glass carries sections at all and the
  * caller is asking to return to a team. It is NEVER a way to recover a section
  * a section-bearing screen failed to offer: clicking a team's row THERE would
@@ -324,9 +234,9 @@ export async function openTeamSection(
   page: Page,
   section: TeamSection,
 ): Promise<void> {
-  // Every screen that carries sections carries the home lozenge, in one mode
-  // or the other — team screen and focused agent screen alike.
-  const sectioned = teamTab(page, "Tasks").or(teamSectionSwitcher(page));
+  // Every screen that carries sections carries the home lozenge — team screen
+  // and focused agent screen alike.
+  const sectioned = teamTab(page, "Tasks");
   // `.first()` on every or-chain wait: more than one surface being visible at
   // once (tab cluster on screen AND the team's rail row) is the NORMAL state,
   // and a bare or-chain trips strict mode exactly then. These waits ask "has
@@ -336,32 +246,25 @@ export async function openTeamSection(
     `a team navigation surface for "${section}" should become available`,
   ).toBeVisible();
 
-  // The strip re-modes when its width observer reports, and on a slow CI box
-  // there is a WINDOW where the tab cluster has unmounted and the compact
-  // switcher has not yet arrived — neither control is clickable for a beat.
-  // Retry through that window; only a screen that STILL offers no control
-  // after real patience is a broken navigation worth failing on.
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    if (await clickVisibleTeamSection(page, section)) return;
-    if (!(await sectioned.first().isVisible())) break;
-    await page.waitForTimeout(400);
+  if (!(await sectioned.isVisible())) {
+    await currentTeamRow(page).getByRole("button").first().click();
+    await expect(
+      sectioned,
+      `the team section controls should appear after returning to the team`,
+    ).toBeVisible();
   }
 
-  if (await sectioned.first().isVisible()) {
-    throw new Error(
-      `Cannot open team section "${section}": the screen on the glass carries sections, but neither that section's lozenge nor the compact switcher was clickable. Coming back through the rail would silently swap a focused agent's screen for its team's.`,
-    );
-  }
-
-  await currentTeamRow(page).getByRole("button").first().click();
+  // The cluster is one render: the home lozenge and its siblings arrive
+  // together, so a section that is not here once the home lozenge is will
+  // never be. Asserting rather than probing keeps the one true failure (a
+  // sectioned screen that does not offer this section) from hiding behind a
+  // `isVisible()` snapshot taken while the screen was still mounting.
+  const tab = teamTab(page, section);
   await expect(
-    sectioned.first(),
-    `the team section controls should appear after returning to the team`,
+    tab,
+    `Cannot open team section "${section}": the screen on the glass carries sections, but that section has no lozenge. Coming back through the rail would silently swap a focused agent's screen for its team's.`,
   ).toBeVisible();
-
-  if (!(await clickVisibleTeamSection(page, section))) {
-    throw new Error(`Cannot open team section "${section}"`);
-  }
+  await tab.click();
 }
 
 /** The labels of the agent settings lozenges. */
@@ -393,6 +296,55 @@ export function agentSectionTab(
   );
 }
 
+/** The whole agent-settings lozenge cluster, on the screen on the glass. */
+export function agentSectionTabs(page: Page): Locator {
+  return headerChrome(page).locator("[data-agent-section-tab]");
+}
+
+/** The phone's replacement for the full agent-settings lozenge cluster. */
+function agentSectionSwitcher(page: Page): Locator {
+  return headerChrome(page).locator("[data-agent-section-switcher]");
+}
+
+/**
+ * Assert exactly which sections an agent's settings page offers, in either
+ * layout.
+ *
+ * Reading the WHOLE cluster is what makes an absence meaningful: a personal
+ * space drops the access sections (`agentAccessSections` → `[]`), so "People
+ * has no lozenge" must be read against the sections that ARE drawn, never
+ * against a bare count of zero. The phone folds the drilled cluster into the
+ * back chip's menu, which is the second form below.
+ */
+export async function expectAgentSettingsSections(
+  page: Page,
+  sections: readonly AgentSettingsSection[],
+): Promise<void> {
+  const tabs = agentSectionTabs(page);
+  if (await tabs.first().isVisible()) {
+    await expect(tabs).toHaveCount(sections.length);
+    for (const section of sections)
+      await expect(agentSectionTab(page, section)).toBeVisible();
+    return;
+  }
+
+  const switcher = agentSectionSwitcher(page);
+  await expect(switcher).toBeVisible();
+  await switcher.click();
+  const menuSections = page.locator(
+    "[role='menuitemcheckbox'][data-agent-section-tab]",
+  );
+  await expect(menuSections).toHaveCount(sections.length);
+  for (const section of sections) {
+    await expect(
+      page.locator(
+        `[role='menuitemcheckbox'][data-agent-section-tab='${AGENT_SECTION_IDS[section]}']`,
+      ),
+    ).toBeVisible();
+  }
+  await page.keyboard.press("Escape");
+}
+
 /**
  * ONE agent's row in the rail.
  *
@@ -410,11 +362,9 @@ export function agentRow(page: Page, agentName: string): Locator {
 /**
  * Open one agent's focused screen through its rail row.
  *
- * The arrival check reads the screen's IDENTITY rather than a heading by
- * accessible name: below `TEAM_STRIP_ONE_ROW_MIN` the lozenge cluster collapses
- * into a switcher whose h1 is named for the menu, and the agent's own name
- * survives only as the trigger's content. An empty board opens the composer
- * panel on its own, so the narrow layout is the NORMAL one here, not an edge.
+ * The arrival check reads the screen's IDENTITY marker rather than a heading:
+ * the marker rides the desktop strip and the phone's drilled header alike, so
+ * one wait covers both trees.
  */
 export async function openAgentScreen(
   page: Page,
@@ -438,10 +388,10 @@ export async function openAgentSettings(
 ): Promise<void> {
   await openAgentScreen(page, agentName);
   // The agent screen wears the same strip as the team screen, so its Settings
-  // lozenge collapses into the same switcher: go through whichever is drawn.
-  if (!(await clickVisibleTeamSection(page, "Team Settings"))) {
-    throw new Error(`Cannot open ${agentName}'s settings`);
-  }
+  // lozenge is addressed the same way.
+  const settings = teamTab(page, "Team Settings");
+  await expect(settings, `Cannot open ${agentName}'s settings`).toBeVisible();
+  await settings.click();
   if (section !== null) {
     await openAgentSettingsSection(page, section);
   }
@@ -450,23 +400,47 @@ export async function openAgentSettings(
 /**
  * Pick a section on an already-open agent settings page.
  *
- * The drilled strip collapses too — its cluster becomes
- * `[data-agent-section-switcher]` — so a section is reached through whichever
- * form the width allows.
+ * On the phone the drilled cluster folds into `[data-agent-section-switcher]`,
+ * so a section is reached through whichever form the breakpoint draws. A
+ * section this page does not offer at all (a personal space drops the access
+ * sections, `agentAccessSections` → `[]`) is reachable through NEITHER control,
+ * and that throws — waiting on a switcher the layout will never draw would
+ * spend the whole test budget to report a timeout instead of the missing
+ * section.
  */
 export async function openAgentSettingsSection(
   page: Page,
   section: AgentSettingsSection,
 ): Promise<void> {
-  const tab = agentSectionTab(page, section);
-  if (await tab.isVisible()) {
-    await tab.click();
-    return;
+  // A phone's strip paints its safe collapsed form until the width observer
+  // reports, so the cluster can swap forms once between the visibility check
+  // and the click. Retry through that window before calling the section
+  // genuinely absent.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const tab = agentSectionTab(page, section);
+    if (await tab.isVisible()) {
+      try {
+        await tab.click({ timeout: 5_000 });
+        return;
+      } catch {
+        // Re-moded mid-click: the section moved into the switcher, not away.
+      }
+    }
+
+    const switcher = agentSectionSwitcher(page);
+    if (await switcher.isVisible()) {
+      await switcher.click();
+      await page
+        .locator(
+          `[role='menuitemcheckbox'][data-agent-section-tab='${AGENT_SECTION_IDS[section]}']`,
+        )
+        .click();
+      return;
+    }
+    await page.waitForTimeout(400);
   }
-  await headerChrome(page).locator("[data-agent-section-switcher]").click();
-  await page
-    .locator(
-      `[role='menuitemcheckbox'][data-agent-section-tab='${AGENT_SECTION_IDS[section]}']`,
-    )
-    .click();
+
+  throw new Error(
+    `Cannot open agent settings section "${section}": neither its lozenge nor the phone switcher is on the agent's settings page, so this page does not offer that section at all.`,
+  );
 }

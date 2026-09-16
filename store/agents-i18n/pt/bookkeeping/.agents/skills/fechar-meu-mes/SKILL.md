@@ -7,6 +7,9 @@ category: Contabilidade
 featured: yes
 image: ledger
 integrations: [quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -45,6 +48,7 @@ Eu leio primeiro o seu contexto contábil. Para cada campo obrigatório que esti
 - **Um orçamento atual** - Opcional. Por quê: a análise de variação roda contra o orçamento se disponível, senão contra o período anterior. Se você não tiver um, eu continuo e rodo só a variação de período anterior.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Analisar as entradas e ler o contexto.**
    - Obrigatório: `period` (`YYYY-MM`). Analisar para `{periodStart, periodEnd}`.

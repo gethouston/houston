@@ -1,3 +1,4 @@
+import { cn } from "@houston-ai/core";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -146,6 +147,14 @@ interface SettingsControlRowProps {
   title: string;
   description?: string;
   destructive?: boolean;
+  /**
+   * Give the control its OWN full-width line under the label on phones (it
+   * keeps the right seat from `md:` up). For a control whose value is a phrase
+   * the user wrote — an industry, a job title — which would otherwise be
+   * squeezed into whatever the label leaves of a 360px row. A toggle or a
+   * short menu stays beside its label and leaves this off.
+   */
+  stack?: boolean;
   /** The inline control rendered on the right (input, toggle, select, button). */
   children: ReactNode;
 }
@@ -157,17 +166,29 @@ export function SettingsControlRow({
   title,
   description,
   destructive,
+  stack = false,
   children,
 }: SettingsControlRowProps) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <Leading icon={icon} leading={leading} destructive={destructive} />
-      <RowText
-        title={title}
-        description={description}
-        destructive={destructive}
-      />
-      <div className="shrink-0">{children}</div>
+    <div
+      className={cn(
+        "flex px-4 py-3",
+        stack
+          ? "flex-col items-stretch gap-2 md:flex-row md:items-center md:gap-3"
+          : "items-center gap-3",
+      )}
+    >
+      {/* The mark and the words are ONE line whichever way the row runs, so a
+          stacked row never drops its icon onto a line of its own. */}
+      <span className="flex min-w-0 flex-1 items-center gap-3">
+        <Leading icon={icon} leading={leading} destructive={destructive} />
+        <RowText
+          title={title}
+          description={description}
+          destructive={destructive}
+        />
+      </span>
+      <div className={stack ? "md:shrink-0" : "shrink-0"}>{children}</div>
     </div>
   );
 }

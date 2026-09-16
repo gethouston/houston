@@ -7,7 +7,7 @@ import {
 } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CreateTeamDialog } from "../shell/create-team-dialog";
+import { CreateOrganizationDialog } from "../shell/create-organization-dialog";
 
 /** Shared personal-space face for every People surface. */
 export function CreateOrganizationInviteEmpty() {
@@ -27,7 +27,10 @@ export function CreateOrganizationInviteEmpty() {
           {t("people.createOrganization.cta")}
         </Button>
       </Empty>
-      <CreateTeamDialog open={dialogOpen} onOpenChange={setDialogOpen} />
+      <CreateOrganizationDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </>
   );
 }

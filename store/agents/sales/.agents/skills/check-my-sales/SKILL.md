@@ -6,6 +6,9 @@ category: Sales
 featured: yes
 image: handshake
 integrations: [hubspot, salesforce, attio, gong, fireflies]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ I read your sales context first. For every required field that's missing I ask O
 - **Connected CRM**  -  Required for `win-loss` and `pipeline`. Why I need it: I pull closed deals and stage snapshots. If missing I ask: "Connect your CRM (HubSpot, Salesforce, Attio, Pipedrive, or Close), or paste a recent stage list."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + playbook.** Gather missing required fields (ONE question each, best-modality first). Write atomically.
 

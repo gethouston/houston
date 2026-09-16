@@ -5,18 +5,16 @@ import {
   DropdownMenuTrigger,
 } from "@houston-ai/core";
 import { sidebarRowAffordanceClasses } from "@houston-ai/layout";
-import { Copy, MoreHorizontal, Store, Trash2 } from "lucide-react";
+import { Copy, MoreHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentActions } from "../../hooks/use-agent-actions";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useTeams } from "../../hooks/use-teams";
-import { isIdentityConfigured } from "../../lib/identity";
 import { hasAgentTeams } from "../../lib/org-roles";
 import { teamOfAgent } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { AgentCopyDialog } from "../agent-actions/agent-copy-action";
 import { AgentDeleteDialog } from "../agent-actions/agent-delete-action";
@@ -44,7 +42,6 @@ type RowDialog = "copy" | "delete";
  */
 export function AgentRowMenu({ agent }: { agent: Agent }) {
   const { t } = useTranslation(["agents", "teams"]);
-  const setShareAgentId = useUIStore((s) => s.setShareAgentId);
   const [dialog, setDialog] = useState<RowDialog | null>(null);
   return (
     <>
@@ -64,12 +61,6 @@ export function AgentRowMenu({ agent }: { agent: Agent }) {
             <Copy className="size-3.5" />
             {t("agents:copyAgent.row")}
           </DropdownMenuItem>
-          {isIdentityConfigured() && (
-            <DropdownMenuItem onSelect={() => setShareAgentId(agent.id)}>
-              <Store className="size-3.5" />
-              {t("teams:agentSettings.manage.publish")}
-            </DropdownMenuItem>
-          )}
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => setDialog("delete")}

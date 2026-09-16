@@ -129,6 +129,9 @@ describe("skill chat setup message", () => {
       "approval",
       "Never mention files, markdown, JSON, schemas, tools, or field names",
       '"setup_activity_id" set to exactly "act-42"',
+      // A step that uses a connected app names it, so the built skill can run
+      // the app action directly instead of searching for it.
+      "carries that app's tag",
     ]) {
       ok(prompt.includes(needle), `prompt must mention: ${needle}`);
     }
@@ -159,6 +162,8 @@ describe("skill chat setup message", () => {
       '"description" is the one-line card text',
       "step-by-step procedure",
       '"setup_activity_id" field exactly as it is',
+      // Moving a step to another app is a tag change, not just prose.
+      "update that step's tag too",
       "approval",
     ]) {
       ok(prompt.includes(needle), `prompt must mention: ${needle}`);
@@ -558,13 +563,17 @@ describe("the agent Skills section's one writable door", () => {
     ok(surface.includes("useSkills("));
   });
 
-  it("keeps the search query across a store install", () => {
-    // PRODUCT-1512: the section once wrapped `onInstallCommunity` in a
-    // `setQuery("")` reset, which snapped the Store from the search results
-    // back to the browse shelves after every install. The handler must pass
-    // through untouched (as the global skills page does) so the user can keep
-    // installing from the same search.
-    ok(content.includes("onInstallCommunity,"));
-    ok(!content.includes('setQuery("")'));
+  it("offers no skills.sh community browse", () => {
+    // The skills.sh marketplace is gone: a skill arrives from the agent-guided
+    // create chat, a GitHub repo, from scratch, the workspace store, or another
+    // of the user's agents. Nothing here may reach a community directory again.
+    for (const [name, src] of [
+      ["skills-content", content],
+      ["skills-content-props", props],
+      ["use-skill-surface", surface],
+    ] as const) {
+      ok(!src.includes("Community"), `${name} must not touch community skills`);
+      ok(!src.includes("Marketplace"), `${name} must mount no marketplace`);
+    }
   });
 });

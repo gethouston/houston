@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: yes
 image: ledger
 integrations: [stripe, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Vendor rules from a prior period** — Optional. Why: lets me match new charges to known vendors and skip asking you the same question twice. If you don't have it I keep going and learn from this run.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context & lock the chart of accounts.** Load:
    - `context/bookkeeping-context.md`  -  if missing, stop, ask user to run `set-up-my-books` first.

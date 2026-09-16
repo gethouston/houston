@@ -4,7 +4,6 @@ import {
   AvatarFallback,
   AvatarImage,
   Button,
-  ConfirmDialog,
   Select,
   SelectContent,
   SelectItem,
@@ -16,10 +15,14 @@ import { useTranslation } from "react-i18next";
 import { useRemoveMember, useSetMemberRole } from "../../hooks/queries";
 import { GRANTABLE_ROLES } from "../../lib/org-roles";
 import {
+  type PendingAction,
+  PeopleRosterConfirm,
+} from "./people-roster-confirm";
+import {
   canEditMember,
   grantsOwner,
   initialsFor,
-  memberLabel,
+  rosterPersonName,
 } from "./people-tab-model";
 
 /**
@@ -30,13 +33,9 @@ import {
  * owner (full org authority). Demoting/removing a sole owner is refused by the
  * gateway's `last_owner` 409, surfaced as a plain informational toast. The role
  * Select and Remove disable while their mutation is in flight. This is
- * membership only — inspecting a person's per-agent access lives in the
- * Permissions view, so a row's identity is not a drill-in here.
+ * membership only: a person's per-agent access is read on that agent's own
+ * settings screen, so a row's identity is not a drill-in here.
  */
-type PendingAction =
-  | { kind: "remove"; member: OrgMember }
-  | { kind: "makeOwner"; member: OrgMember };
-
 export function PeopleRoster({
   members,
   selfId,
@@ -79,7 +78,7 @@ export function PeopleRoster({
           });
           // Display name is primary when the gateway resolved one; the email
           // then drops to a muted secondary line. Falls back to email/id.
-          const name = member.displayName ?? memberLabel(member);
+          const name = rosterPersonName(member);
           const secondaryEmail =
             member.displayName && member.email ? member.email : null;
           const avatarUrl = member.photoUrl ?? null;
@@ -133,9 +132,7 @@ export function PeopleRoster({
                 >
                   <SelectTrigger
                     className="h-8 w-32 rounded-full"
-                    aria-label={t("people.roster.changeRole", {
-                      name: memberLabel(member),
-                    })}
+                    aria-label={t("people.roster.changeRole", { name })}
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -157,9 +154,7 @@ export function PeopleRoster({
                   variant="ghost"
                   className="rounded-full text-danger hover:text-danger"
                   disabled={removeMember.isPending}
-                  aria-label={t("people.roster.removeLabel", {
-                    name: memberLabel(member),
-                  })}
+                  aria-label={t("people.roster.removeLabel", { name })}
                   onClick={() => setPending({ kind: "remove", member })}
                 >
                   {t("people.roster.remove")}
@@ -170,31 +165,9 @@ export function PeopleRoster({
         })}
       </ul>
 
-      <ConfirmDialog
-        open={pending !== null}
-        onOpenChange={(open) => {
-          if (!open) setPending(null);
-        }}
-        title={
-          pending?.kind === "makeOwner"
-            ? t("people.makeOwnerConfirm.title", {
-                name: pending ? memberLabel(pending.member) : "",
-              })
-            : t("people.removeConfirm.title", {
-                name: pending ? memberLabel(pending.member) : "",
-              })
-        }
-        description={
-          pending?.kind === "makeOwner"
-            ? t("people.makeOwnerConfirm.description")
-            : t("people.removeConfirm.description")
-        }
-        confirmLabel={
-          pending?.kind === "makeOwner"
-            ? t("people.makeOwnerConfirm.confirm")
-            : t("people.removeConfirm.confirm")
-        }
-        cancelLabel={t("people.removeConfirm.cancel")}
+      <PeopleRosterConfirm
+        pending={pending}
+        onCancel={() => setPending(null)}
         onConfirm={confirmPending}
       />
     </section>

@@ -1,9 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { applyOverrides, packAgent } from "@houston/domain";
-import type {
-  PortableExportOverrides,
-  PortableSelection,
-} from "@houston/protocol";
+import { packAgent } from "@houston/domain";
+import type { PortableSelection } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
@@ -20,10 +17,9 @@ const HOUSTON_VERSION = "0.0.0";
 /**
  * Export an agent as a `.houstonagent` (agent-scoped: POST
  * .../portable/export). The body is either a bare PortableSelection (the
- * original contract) or `{ selection, overrides?, meta? }` — `overrides`
- * carries the anonymize diffs the user accepted, `meta.anonymized` stamps
- * the manifest. Gathers the selected content off the vfs and returns the
- * zip. Returns true when handled.
+ * original contract) or `{ selection, meta? }`, where `meta.anonymized` stamps
+ * the manifest. Gathers the selected content off the vfs and returns the zip.
+ * Returns true when handled.
  */
 export async function handlePortableExport(
   deps: { vfs?: Vfs; paths?: WorkspacePaths },
@@ -44,17 +40,11 @@ export async function handlePortableExport(
   const body = await readJson(req);
   const wrapped = body.selection !== undefined;
   const sel = (wrapped ? body.selection : body) as PortableSelection;
-  const overrides = wrapped
-    ? (body.overrides as PortableExportOverrides | undefined)
-    : undefined;
   const anonymized = wrapped
     ? Boolean((body.meta as { anonymized?: boolean } | undefined)?.anonymized)
     : false;
 
-  const content = applyOverrides(
-    await gatherPortableContent(deps.vfs, root, sel),
-    overrides,
-  );
+  const content = await gatherPortableContent(deps.vfs, root, sel);
 
   const bytes = packAgent(
     content,

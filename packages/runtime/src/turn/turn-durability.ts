@@ -133,15 +133,12 @@ export async function finishTurnDurability(
     );
     without("ConversationsChanged");
   }
-  for (const family of await publishTurnSandboxViews(
+  const viewFailures = await publishTurnSandboxViews(
     opts.deps,
     opts.turn,
     opts.views,
-  )) {
-    without(
-      family === "skills" ? "SkillsChanged" : "CustomIntegrationsChanged",
-    );
-  }
+  );
+  if (viewFailures.length > 0) without("CustomIntegrationsChanged");
 
   const activityChanged = uploaded.includes(
     turnActivityKey(opts.filesystem.workspaceRel),

@@ -7,6 +7,9 @@ category: Personal
 featured: yes
 image: busts-in-silhouette
 integrations: [googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ Primero leo tu contexto de personal. Por cada campo obligatorio que falte, hago 
 - **Roster**: Obligatorio. Por qué lo necesito: el documento de calibración lista quién evalúa a quién. Si falta, pregunto: "Conecta tu plataforma de RR.HH. para que pueda traer el equipo, o pega el roster actual."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal:**
    `context/people-context.md`. ¿Falta o está vacío? Le digo al usuario

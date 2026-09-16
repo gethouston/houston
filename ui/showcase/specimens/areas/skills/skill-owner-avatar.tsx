@@ -1,4 +1,4 @@
-import { PoweredByVercelBadge, SkillOwnerAvatar } from "@houston-ai/skills";
+import { SkillOwnerAvatar } from "@houston-ai/skills";
 
 import type { Specimen } from "../../../src/specimen";
 import {
@@ -77,24 +77,6 @@ function SkillOwnerAvatarSpecimen() {
         </SpecimenRow>
       </SpecimenSection>
 
-      <SpecimenSection
-        title="Attribution"
-        note="`PoweredByVercelBadge` is the marketplace's one credit line: the Vercel logomark in `currentColor` and a label, sized to sit inline with a subheading."
-      >
-        <SpecimenRow label="Default label">
-          <PoweredByVercelBadge />
-        </SpecimenRow>
-        <SpecimenRow label="Translated label">
-          <PoweredByVercelBadge label="Con tecnología de Vercel" />
-        </SpecimenRow>
-        <SpecimenRow label="In a section subheading">
-          <span className="flex flex-wrap items-center gap-x-2 text-[13px] text-ink-muted leading-[1.4]">
-            <span>Add ready-made skills from the community</span>
-            <PoweredByVercelBadge />
-          </span>
-        </SpecimenRow>
-      </SpecimenSection>
-
       <SpecimenProps
         items={[
           {
@@ -108,14 +90,9 @@ function SkillOwnerAvatarSpecimen() {
             note: "SkillOwnerAvatar. Defaults to `md`.",
           },
           {
-            name: "label",
-            type: "string",
-            note: 'PoweredByVercelBadge. Already-translated text; defaults to "Powered by Vercel".',
-          },
-          {
             name: "className",
             type: "string",
-            note: "Merged onto the avatar box / the badge span.",
+            note: "Merged onto the avatar box.",
           },
         ]}
       />
@@ -130,7 +107,7 @@ function SkillOwnerAvatarSpecimen() {
  * reads them to build the "Used in" map, so they are the exported names
  * exactly as a consumer imports them.
  */
-export const sources: string[] = ["SkillOwnerAvatar", "PoweredByVercelBadge"];
+export const sources: string[] = ["SkillOwnerAvatar"];
 
 export const specimen: Specimen = {
   id: "skills-owner-avatar",

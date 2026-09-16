@@ -30,7 +30,7 @@ export function useBoardChatWiring(source: BoardSource) {
   const { t } = useTranslation(["dashboard", "board"]);
   const addToast = useUIStore((s) => s.addToast);
   const queuedLabels = useQueuedMessageLabels();
-  const { cardLabels, composerLabels } = useBoardLabels();
+  const { labels, cardLabels, composerLabels } = useBoardLabels();
   const { drafts, onDraftChange } = useBoardDrafts(source.draftScope);
 
   // The panel's own task line, composed here rather than left to `ui/`'s
@@ -153,6 +153,7 @@ export function useBoardChatWiring(source: BoardSource) {
     drafts,
     onDraftChange,
     onNotice: handleNotice,
+    labels,
     composerLabels,
     currentUserId: panel.currentUserId,
     authorLabels: panel.authorLabels,

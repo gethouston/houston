@@ -6,6 +6,9 @@ version: 1
 category: Contabilidad
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Primero leo tu contexto de contabilidad. Por cada campo requerido que falte, hag
 - **Al menos un estado de resultados anterior (el mes pasado o el mismo mes del año pasado)**, opcional pero muy recomendable. Por qué: me da una línea base contra la cual comparar. Si no tienes uno, reporto solo los reales y señalo que todavía no hay nada contra qué comparar.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto.** Cargar `context/bookkeeping-context.md`, `config/context-ledger.json` (para `domains.budget`, cadencia más ruta), `config/chart-of-accounts.json`. Leer `config/budget.json` si existe (`[{period, glCode, amount, note?}]`).
 

@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [reddit, firecrawl, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -79,6 +82,7 @@ I read your marketing context first. For every required field that's missing I a
 - **The copy to edit**  -  Required for `edit`. If missing I ask: "Paste the copy you want edited, or give me the URL of the page."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 ### Shared steps (all jobs)
 

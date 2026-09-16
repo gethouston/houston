@@ -7,6 +7,9 @@ category: Pessoas
 featured: no
 image: busts-in-silhouette
 integrations: [googlecalendar, outlook, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Leio primeiro o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Fuso horário** - Obrigatório quando o painel está em regiões diferentes. Por que preciso: evita surpresas de reunião às 6 da manhã. Se faltar, pergunto: "Qual fuso horário devo usar como referência para o processo?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o documento de contexto de pessoas** em `context/people-context.md`. Se estiver ausente/vazio, digo ao usuário: "Primeiro preciso do seu contexto de pessoas, rode a habilidade configurar-minhas-informacoes-de-pessoas." Paro.
 2. **Ler o registro do candidato** em `candidates/{candidate-slug}.md`. Se estiver ausente, digo ao usuário para rodar `screen-resume` ou `score-candidate` primeiro. Paro.

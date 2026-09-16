@@ -17,10 +17,7 @@ import {
 } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
 import { PageHeader } from "../shell/page-header/page-header";
-import { headerCollapsesTabs } from "../shell/page-header/page-header-layout";
-import { PageHeaderSwitcher } from "../shell/page-header/page-header-switcher";
 import { PageHeaderTabs } from "../shell/page-header/page-header-tabs";
-import { usePageHeaderMode } from "../shell/page-header/page-header-tools";
 import { TeamGlyph } from "../shell/team-glyph";
 import { teamPinnedAgent } from "./team-agent-choice";
 import { TeamMobileHeader } from "./team-mobile-header";
@@ -54,10 +51,11 @@ import { teamSectionTabs } from "./team-section-tabs-model";
  * the lozenge is the team alone — showing a segment there would claim a
  * narrowing the user never set, and offer to clear a pin nothing is using.
  *
- * **Narrow:** the cluster first collapses into the identity lozenge. Only below
- * `TEAM_STRIP_COMPACT_MIN` do the tools take their own row. Both thresholds are
- * measured in `team-chrome-layout.ts`, so neither form is squeezed into space
- * it does not honestly have.
+ * **Narrow:** the lozenges stay. Below `TEAM_STRIP_ONE_ROW_MIN` — measured in
+ * `team-chrome-layout.ts`, and crossed the moment a panel opens beside the
+ * board — the section's TOOLS take their own row under the strip, which is the
+ * zone that has somewhere else to go. The cluster keeps the strip and scrolls
+ * inside it if a long team name asks for more room.
  */
 export function TeamChrome({
   team,
@@ -71,8 +69,6 @@ export function TeamChrome({
   section: TeamSectionId;
 }) {
   const { t } = useTranslation("teams");
-  const mode = usePageHeaderMode();
-  const collapsed = headerCollapsesTabs(mode);
   const openTeamView = useUIStore((s) => s.openTeamView);
   const teamAgentFilter = useUIStore((s) => s.teamAgentFilter);
   const setTeamAgentFilter = useUIStore((s) => s.setTeamAgentFilter);
@@ -127,21 +123,6 @@ export function TeamChrome({
       dataAttrs: { "data-team-section-tab": tab.id },
     })),
   ];
-  // The switcher MENU has to name the board, which the lozenge itself never
-  // does: inside a list of section names, "the team's lozenge stands for it"
-  // stops being legible.
-  const switcherSections = [
-    {
-      id: "mission-control" as const,
-      label: t("teamView.tabs.missionControl"),
-      dataAttrs: { "data-team-section-tab": "mission-control" },
-    },
-    ...labelled.map((tab) => ({
-      ...tab,
-      dataAttrs: { "data-team-section-tab": tab.id },
-    })),
-  ];
-
   const select = (next: TeamSectionId) => {
     if (next === "settings") {
       openTeamView(team.id, "context", { teamSettingsFocus: true });
@@ -166,23 +147,12 @@ export function TeamChrome({
 
   return (
     <PageHeader>
-      {collapsed ? (
-        <PageHeaderSwitcher
-          identity={identity}
-          items={switcherSections}
-          active={section}
-          label={t("teamView.tabs.label")}
-          onSelect={select}
-          dataAttrs={{ "data-team-section-switcher": "" }}
-        />
-      ) : (
-        <PageHeaderTabs
-          items={tabs}
-          active={teamHomeLozengeActive(section) ? "mission-control" : section}
-          label={t("teamView.tabs.label")}
-          onSelect={select}
-        />
-      )}
+      <PageHeaderTabs
+        items={tabs}
+        active={teamHomeLozengeActive(section) ? "mission-control" : section}
+        label={t("teamView.tabs.label")}
+        onSelect={select}
+      />
     </PageHeader>
   );
 }

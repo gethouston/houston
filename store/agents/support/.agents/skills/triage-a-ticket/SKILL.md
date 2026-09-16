@@ -6,6 +6,9 @@ category: Support
 featured: yes
 image: headphone
 integrations: [gmail, outlook, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,7 @@ I read your support context first. For every required field that's missing I ask
 - **Monthly revenue / plan tier per customer**  -  Optional. Why I need it: lets me weight priority by paying-customer status. If you don't have it I keep going with TBD and weight by content signals only.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 0. **Read `context/support-context.md`.** If missing, stop. Tell me run `set-up-my-support-info` first. Read routing rules + response-time tiers + VIP list from doc  -  never hardcode.
 1. **Identify source**  -  you name channel or message referenced by external id. Use `composio search <channel>` to find correct fetch slug (e.g. Gmail thread fetch, Intercom conversation fetch). Do NOT hardcode tool slugs.
 2. **Fetch raw thread** via Composio. Pull subject, all messages, sender email, external message ids.

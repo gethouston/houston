@@ -5,6 +5,9 @@ version: 1
 category: Bookkeeping
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **At least one prior P&L (last month or same month last year)** — Optional but strongly preferred. Why: gives me a baseline to compare against. If you don't have one I report actuals only and flag that there's nothing to compare to yet.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json` (for `domains.budget`  -  cadence + path), `config/chart-of-accounts.json`. Read `config/budget.json` if exists (`[{period, glCode, amount, note?}]`).
 

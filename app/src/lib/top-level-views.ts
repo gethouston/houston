@@ -18,19 +18,16 @@
  * detail panel. It is the one view gated on DISCOVERY rather than on a role —
  * a deployment that holds no assistant has neither the row nor the screen.
  *
- * Admin is here, in the rail's "Workspace" band, and the Academy is here at the
- * foot of the rail: neither is a preference, so neither is a Settings section.
- * Each owns the whole window, and a read one of them owns is active while ITS
- * OWN screen is — not while `settings` is. Settings itself is general
- * preferences (About me among them), plus Danger
+ * The Academy is here, at the foot of the rail: learning to fly is a place the
+ * user goes, so it owns the whole window, and a read it owns is active while
+ * ITS OWN screen is, never while `settings` is. Settings holds the standing
+ * setup (About me, Workspace management, the shared Skills library) plus Danger
  * (`lib/settings-sections.ts`).
  *
- * There is no top-level Permissions view any more. It listed the space's agents
- * so an admin could open one's settings page, which is exactly what every
- * team's focused agent screen already does, per team, in every deployment:
- * agent policy is DISCOVERED through the team that owns the agent. Time worked
- * is gone from here too — it is a lens inside Admin > Analytics now, beside the
- * activity feed and the usage bars it was always read against.
+ * Two things deliberately live one level down instead of here: agent policy,
+ * which is discovered through the focused agent screen of the team that owns
+ * the agent, and Time worked, a lens inside Workspace management beside the
+ * activity feed and usage bars it is read against.
  *
  * The team view is ONE id (`team`) rather than one per team: which team and
  * which of its sections are open is store state (`activeTeamId` /
@@ -41,9 +38,6 @@ import { ACADEMY_VIEW_ID } from "../components/academy/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../components/agents-home/id.ts";
 import { ASSISTANT_VIEW_ID } from "../components/assistant/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
-import { ORGANIZATION_VIEW_ID } from "../components/organization/id.ts";
-import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
-import { STORE_VIEW_ID } from "../components/store-view/id.ts";
 import { TEAMS_HOME_VIEW_ID } from "../components/teams-home/id.ts";
 import { TEAM_VIEW_ID, type TeamSectionId } from "./teams-model.ts";
 
@@ -52,9 +46,6 @@ export {
   AGENTS_HOME_VIEW_ID,
   ASSISTANT_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
-  ORGANIZATION_VIEW_ID,
-  SKILLS_VIEW_ID,
-  STORE_VIEW_ID,
   TEAM_VIEW_ID,
   TEAMS_HOME_VIEW_ID,
 };
@@ -69,9 +60,6 @@ export type TopLevelViewId =
   | typeof SETTINGS_VIEW_ID
   | typeof AI_HUB_VIEW_ID
   | typeof INTEGRATIONS_VIEW_ID
-  | typeof ORGANIZATION_VIEW_ID
-  | typeof SKILLS_VIEW_ID
-  | typeof STORE_VIEW_ID
   | typeof TEAM_VIEW_ID
   | typeof TEAMS_HOME_VIEW_ID;
 
@@ -82,9 +70,6 @@ export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   SETTINGS_VIEW_ID,
   AI_HUB_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
-  ORGANIZATION_VIEW_ID,
-  SKILLS_VIEW_ID,
-  STORE_VIEW_ID,
   TEAM_VIEW_ID,
   TEAMS_HOME_VIEW_ID,
 ]);
@@ -142,9 +127,9 @@ export function isActiveTopLevelView(
 
 /**
  * Whether a top-level `viewMode` points at a view whose gate is off for this
- * caller: the AI Models hub hides from plain members, Admin is multiplayer
- * owner/admin territory in a TEAM space, and the assistant exists only where
- * discovery hands out an address. The sidebar entry is already hidden,
+ * caller: the AI Models hub hides from plain members, and the assistant exists
+ * only where discovery hands out an address. The sidebar entry is already
+ * hidden,
  * so a STALE `viewMode` (the role changed on a space switch, or the install
  * moved off the hosted cloud, while the page was open) would otherwise fall
  * through every render branch and strand the user on the shell's engine pane
@@ -161,12 +146,10 @@ export function blockedTopLevelView(
   viewMode: string,
   gates: {
     showAiModels: boolean;
-    showOrganization: boolean;
     showAssistant: boolean;
   },
 ): boolean {
   if (viewMode === AI_HUB_VIEW_ID) return !gates.showAiModels;
-  if (viewMode === ORGANIZATION_VIEW_ID) return !gates.showOrganization;
   if (viewMode === ASSISTANT_VIEW_ID) return !gates.showAssistant;
   return false;
 }

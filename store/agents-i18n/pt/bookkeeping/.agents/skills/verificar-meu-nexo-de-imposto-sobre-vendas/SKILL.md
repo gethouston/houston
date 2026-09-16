@@ -7,6 +7,9 @@ category: Contabilidade
 featured: no
 image: ledger
 integrations: [stripe, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Eu leio primeiro o seu contexto contábil. Para cada campo obrigatório que esti
 - **Onde seus funcionários trabalham fisicamente** - Opcional. Por quê: qualquer funcionário W-2 em um estado cria nexo físico independentemente da receita. Se estiver faltando, pergunto: "Vocês têm funcionários trabalhando em estados além do estado sede? Se não tiver, eu anoto como pendente e destaco as verificações de nexo físico para o usuário confirmar."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Registro obrigatório: `universal.company.state`, `domains.revenue.contractSource`, `domains.tax.stateFilingFootprint`. A tributação de SaaS varia por estado, calcular a exposição independentemente da postura de tributação.
 

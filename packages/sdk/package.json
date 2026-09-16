@@ -19,6 +19,10 @@
       "types": "./src/agent-name.ts",
       "import": "./src/agent-name.ts"
     },
+    "./job-description": {
+      "types": "./src/job-description.ts",
+      "import": "./src/job-description.ts"
+    },
     "./provider-catalog": {
       "types": "./src/provider-catalog.ts",
       "import": "./src/provider-catalog.ts"

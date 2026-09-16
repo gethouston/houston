@@ -18,7 +18,6 @@
 import type {
   AddCustomIntegrationInput,
   AgentAssignment,
-  CommunitySkillPreview,
   CredentialScope,
   CustomEndpoint,
   EditableProfileUpdate,
@@ -83,11 +82,6 @@ import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
-import {
-  isExpectedSkillPreviewError,
-  isUnavailableSkillError,
-} from "./skill-install-expected-state";
-import { isExpectedSkillSearchError } from "./skill-search-expected-state";
 import { isStaleAttachmentError } from "./stale-attachment";
 import {
   isLastOwnerError,
@@ -100,7 +94,6 @@ import {
 } from "./toolkit-connect-refusals";
 import type {
   Agent,
-  CommunitySkillResult,
   FileEntry,
   RepoSkill,
   SkillDetail,
@@ -847,73 +840,6 @@ export const tauriSkills = {
       { toast: false },
     );
   },
-  searchCommunity: (agentPath: string, query: string, signal?: AbortSignal) =>
-    call<CommunitySkillResult[]>(
-      "search_community_skills",
-      async () =>
-        (await getEngine().searchCommunitySkills(agentPath, query, signal)).map(
-          (s) => ({
-            id: s.id,
-            skillId: s.skillId,
-            name: s.name,
-            installs: s.installs,
-            source: s.source,
-          }),
-        ),
-      undefined,
-      // skills.sh slow / unreachable / rate limiting is upstream weather the
-      // grid renders inline (PRODUCT-1728); a real upstream error stays loud.
-      { toast: false, silence: isExpectedSkillSearchError },
-    ),
-  previewCommunity: (
-    agentPath: string,
-    source: string,
-    skillId: string,
-    signal?: AbortSignal,
-  ) =>
-    call<CommunitySkillPreview>(
-      "preview_community_skill",
-      () =>
-        getEngine().previewCommunitySkill(agentPath, source, skillId, signal),
-      undefined,
-      // A missing skill (`skill_not_in_repo`), a deleted repo
-      // (`repo_not_found`), or GitHub not listable right now on a preview is
-      // an expected upstream state, not a Houston bug: the skills.sh index
-      // keeps listing skills whose GitHub repo was deleted, and preview
-      // deliberately skips the recursive scan that install runs
-      // (github-lookup.ts), so deeply nested skills miss here yet install
-      // fine. The detail modal already shows its visible error state
-      // (use-skill-preview.ts), so no Sentry capture — that second surface is
-      // what kept HOUSTON-APP-4XZ alive after PRODUCT-1382 fixed every
-      // findable layout. Every other failure stays captured.
-      { toast: false, silence: isExpectedSkillPreviewError },
-    ),
-  installCommunity: (
-    agentPath: string,
-    source: string,
-    skillId: string,
-    signal?: AbortSignal,
-  ) => {
-    blockWriteWhileWarming(agentPath);
-    return call<string>(
-      "install_community_skill",
-      () =>
-        getEngine().installCommunitySkill(
-          {
-            workspacePath: agentPath,
-            source,
-            skillId,
-          },
-          signal,
-        ),
-      undefined,
-      // The same expected upstream states as preview (PRODUCT-1729): the host
-      // proved the skill or its repo is gone, the handler shows the authored
-      // "no longer available" state and drops the card. Every other install
-      // failure (rate limit, offline, malformed) stays captured.
-      { toast: false, silence: isUnavailableSkillError },
-    );
-  },
 };
 
 export const tauriSharedSkills = {
@@ -978,16 +904,6 @@ export const tauriSharedSkills = {
   load: (workspaceId: string, slug: string) =>
     call<SkillDetail>("load_shared_skill", () =>
       getEngine().loadSharedSkill(workspaceId, slug),
-    ),
-  create: (
-    workspaceId: string,
-    input: { name: string; description: string; content: string },
-  ) =>
-    call<SkillDetail>("create_shared_skill", () =>
-      getEngine().createSharedSkill(workspaceId, {
-        workspacePath: workspaceId,
-        ...input,
-      }),
     ),
   save: (workspaceId: string, slug: string, content: string) =>
     call<void>("save_shared_skill", () =>

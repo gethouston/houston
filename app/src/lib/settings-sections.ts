@@ -5,16 +5,22 @@
  * without pulling in React/lucide — and so the store never has to depend on a
  * component module.
  *
- * Every id below is the user's own app: their profile, what their agents know
- * about them, their keys, their shortcuts, a bug report, their migration. None
- * of them is gated and all of them read the current workspace, so there is no
- * per-section gate here and no opt-out from the Settings workspace gate — Admin
- * and Permissions, the two surfaces that needed both, are TOP-LEVEL views again
- * in the rail's "Workspace" band (`lib/top-level-views.ts`).
+ * Settings holds the standing setup a person adjusts rather than the places
+ * work happens: their profile, what their agents know about them, their keys,
+ * their shortcuts, a bug report, their migration, plus Workspace management,
+ * which administers the SPACE. Every section reads the current workspace, so
+ * the whole screen sits behind the ONE workspace gate and no section opts out
+ * of it. The gates that hide a section hide its INDEX ROW
+ * (`hooks/use-surface-gates.ts`); the gateway is what enforces the claim.
+ *
+ * The shared Skills library is NOT here: it is the Skills tab of the
+ * Integrations screen, beside the apps catalog, because both answer what a
+ * person's agents can reach outside themselves.
  */
 export const SETTINGS_SECTION_IDS = [
   "profile",
   "aboutMe",
+  "workspace",
   "apiKeys",
   "shortcuts",
   "reportBug",

@@ -69,7 +69,6 @@ export const HOST_ONLY: ReadonlySet<string> = new Set([
   "HOUSTON_STORE_SYNC_QUIET_MS",
   "HOUSTON_STORE_SYNC_INTERVAL_MS",
   // Host-side service endpoints and dev seams.
-  "HOUSTON_AGENTSTORE_API_URL",
   "HOUSTON_FAKE_ENGINE_URL",
   // Stamped per-spawn by `runtime-env.ts` from the host's own construction, so
   // inheriting either would let a stale parent value outrank the decision.

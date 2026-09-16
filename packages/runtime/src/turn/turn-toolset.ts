@@ -7,7 +7,6 @@ import {
   type ToolSelection,
 } from "../session/tool-selection";
 import { credentialTools } from "../session/tools/credential-tools";
-import { makeSkillDirectoryTools } from "../session/tools/find-skills";
 import { makeIntegrationTools } from "../session/tools/integrations";
 import { makeRequestHandsOnTool } from "../session/tools/request-hands-on";
 import { makeRequestProviderConnectionTool } from "../session/tools/request-provider-connection";
@@ -38,7 +37,6 @@ export function buildTurnToolSelection(
     providerConnections: enabled.providerConnections,
     saveRoutine: enabled.agentWrites,
     saveLearning: enabled.agentWrites,
-    skillDirectory: enabled.agentWrites,
     missions: false,
   });
 }
@@ -75,7 +73,6 @@ export function buildTurnHostTools(
       ? [
           makeSaveRoutineTool({ call: turn.sandbox.call }),
           makeSaveLearningTool({ call: turn.sandbox.call }),
-          ...makeSkillDirectoryTools({ call: turn.sandbox.call }),
         ]
       : []),
   ];

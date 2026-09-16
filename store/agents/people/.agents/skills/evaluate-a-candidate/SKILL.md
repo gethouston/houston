@@ -6,6 +6,9 @@ category: People
 featured: yes
 image: busts-in-silhouette
 integrations: [googlesheets, googledrive, linkedin, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -45,6 +48,7 @@ I read your people context first. For every required field that's missing I ask 
 - `linkedin`  -  scrapes LinkedIn or public-profile URL via Composio web-scrape tool (Firecrawl). Output: 0-100 total + 4-6 sub-scores (level-fit, domain-fit, scope, tenure, culture-signal) with profile evidence cited per sub-score.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger**, fill gaps with ONE targeted question.
 2. **Read `context/people-context.md`.** Missing or empty → tell you: "I need people context first  -  run set-up-my-people-info skill." Stop. Pull leveling framework for target level.

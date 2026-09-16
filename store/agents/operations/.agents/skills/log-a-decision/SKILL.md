@@ -6,6 +6,9 @@ category: Operations
 featured: no
 image: clipboard
 integrations: [linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ I read your operations context first. For every required field that's missing I 
 - **Active priorities**  -  Required. Why I need it: I tag whether the decision is load-bearing for what you're pushing on. If missing I ask: "What are the 2 to 3 things the company is pushing on this quarter?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`.** If missing or empty, stop and ask user run `set-up-my-ops-info` first. Active priorities anchor whether decision load-bearing.
 

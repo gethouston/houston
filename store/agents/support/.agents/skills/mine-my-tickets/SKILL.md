@@ -6,6 +6,9 @@ category: Support
 featured: yes
 image: headphone
 integrations: [gmail]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your support context first. For every required field that's missing I ask
 - **Segment filter**  -  Optional. Why I need it: lets me cluster by customer type instead of mixing everything. If you don't have it I keep going with TBD and surface mixed clusters.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/support-context.md`.** For current positioning + VIP list. If missing, run `set-up-my-support-info` first.
 

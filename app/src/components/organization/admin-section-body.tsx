@@ -6,6 +6,7 @@ import ActivityTab from "./activity-tab";
 import BillingTab from "./billing-tab";
 import CompanyContextTab from "./company-context-tab";
 import MembersTab from "./members-tab";
+import OrgChartTab from "./org-chart-tab";
 import type { OrgTabId } from "./org-view-model";
 import type { OrgTabProps, OrgViewContext } from "./organization-view";
 import UsageTab from "./usage-tab";
@@ -18,6 +19,7 @@ const SECTION_COMPONENTS: Record<
   people: MembersTab,
   billing: BillingTab,
   companyContext: CompanyContextTab,
+  orgChart: OrgChartTab,
   activity: ActivityTab,
   usage: UsageTab,
 };

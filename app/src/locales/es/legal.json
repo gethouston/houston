@@ -4,20 +4,20 @@
   "intro": "Houston está en beta. Creemos que es genial, pero puede cometer errores, y queremos que entiendas cómo funciona antes de confiarle tareas importantes.",
   "sections": [
     {
-      "heading": "Los agentes actúan en tu nombre",
-      "body": "Con tu permiso, los agentes de IA de Houston pueden leer tus archivos, modificarlos, enviar correos, navegar por internet y usar cualquier aplicación que conectes. Entran con tu cuenta. Lo que tú puedes hacer, ellos también."
+      "heading": "Los empleados de IA actúan en tu nombre",
+      "body": "Con tu permiso, los empleados de IA de Houston pueden leer tus archivos, modificarlos, enviar correos, navegar por internet y usar cualquier aplicación que conectes. Entran con tu cuenta. Lo que tú puedes hacer, ellos también."
     },
     {
       "heading": "Pueden ser engañados",
-      "body": "Los agentes siguen tus instrucciones, pero instrucciones maliciosas pueden colarse en lugares inesperados, como un correo o una página web que el agente lea. Cuando eso pasa, un agente podría hacer algo que tú no querías. Esto no es exclusivo de Houston. Cualquier herramienta de IA que acceda a cuentas reales tiene este riesgo. Te lo contamos para que no te tome por sorpresa."
+      "body": "Los empleados de IA siguen tus instrucciones, pero instrucciones maliciosas pueden colarse en lugares inesperados, como un correo o una página web que el empleado de IA lea. Cuando eso pasa, un empleado de IA podría hacer algo que tú no querías. Esto no es exclusivo de Houston. Cualquier herramienta de IA que acceda a cuentas reales tiene este riesgo. Te lo contamos para que no te tome por sorpresa."
     },
     {
       "heading": "Cómo mantener el control",
-      "body": "Empieza con poco. Prueba tareas simples primero para conocer cómo se comportan tus agentes. Conecta solo las cuentas que necesites y desconéctalas cuando quieras. Todo lo que hace un agente aparece en Houston, así que siempre puedes ver qué está pasando. Si algo te parece raro, pausa al agente."
+      "body": "Empieza con poco. Prueba tareas simples primero para conocer cómo se comportan tus empleados de IA. Conecta solo las cuentas que necesites y desconéctalas cuando quieras. Todo lo que hace un empleado de IA aparece en Houston, así que siempre puedes ver qué está pasando. Si algo te parece raro, pausa al empleado de IA."
     },
     {
       "heading": "Tus archivos siguen siendo tuyos",
-      "body": "Houston vive en tu computador. Tus conversaciones y archivos no van a nuestros servidores. Cuando los agentes hablan con Claude u OpenAI, esos mensajes pasan por tu propia cuenta con esos proveedores, igual que si usaras sus aplicaciones directamente."
+      "body": "Houston vive en tu computador. Tus conversaciones y archivos no van a nuestros servidores. Cuando los empleados de IA hablan con Claude u OpenAI, esos mensajes pasan por tu propia cuenta con esos proveedores, igual que si usaras sus aplicaciones directamente."
     }
   ],
   "closing": "Al hacer clic en \"Entiendo y quiero continuar\" confirmas que has leído esto y aceptas cómo funciona Houston.",

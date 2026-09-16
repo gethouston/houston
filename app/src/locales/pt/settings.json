@@ -1,5 +1,8 @@
 {
   "title": "Configurações",
+  "workspace": {
+    "title": "Nome do espaço de trabalho"
+  },
   "nav": {
     "profile": "Perfil",
     "aboutMe": "Sobre mim",
@@ -7,8 +10,8 @@
     "language": "Idioma",
     "shortcuts": "Atalhos de teclado",
     "reportBug": "Reportar bug",
-    "danger": "Excluir espaço",
-    "organization": "Administração"
+    "danger": "Excluir espaço de trabalho",
+    "workspace": "Gerenciamento do espaço de trabalho"
   },
   "workspaceGate": {
     "failedTitle": "Não conseguimos carregar suas configurações",
@@ -69,10 +72,10 @@
   },
   "dangerZone": {
     "title": "Zona de perigo",
-    "description": "Exclui este espaço de trabalho e todos os seus agentes de forma permanente.",
+    "description": "Exclui este espaço de trabalho e todos os seus funcionários de IA de forma permanente.",
     "deleteButton": "Excluir espaço de trabalho",
     "confirmTitle": "Excluir \"{{name}}\"?",
-    "confirmDescription": "Isso exclui este espaço de trabalho e todos os seus agentes de forma permanente. Não dá para desfazer.",
+    "confirmDescription": "Isso exclui este espaço de trabalho e todos os seus funcionários de IA de forma permanente. Não dá para desfazer.",
     "confirmLabel": "Excluir",
     "deleting": "Excluindo…",
     "deleted": "\"{{name}}\" foi excluído.",
@@ -93,10 +96,10 @@
   },
   "deleteAccount": {
     "title": "Excluir conta",
-    "description": "Exclui de forma permanente a sua conta, os seus agentes e tudo o que está guardado no Houston.",
+    "description": "Exclui de forma permanente a sua conta, os seus funcionários de IA e tudo o que está guardado no Houston.",
     "button": "Excluir conta",
     "confirmTitle": "Excluir sua conta para sempre?",
-    "confirmBody": "Isso exclui de forma permanente a sua conta, os seus agentes e todos os seus dados guardados no Houston, e encerra sua sessão em todos os seus dispositivos. Não dá para recuperar nada depois. Os arquivos salvos no seu computador ficam onde estão.",
+    "confirmBody": "Isso exclui de forma permanente a sua conta, os seus funcionários de IA e todos os seus dados guardados no Houston, e encerra sua sessão em todos os seus dispositivos. Não dá para recuperar nada depois. Os arquivos salvos no seu computador ficam onde estão.",
     "typeToConfirm": "Digite {{word}} para confirmar.",
     "confirmWord": "EXCLUIR",
     "cancel": "Cancelar",
@@ -146,21 +149,22 @@
     },
     "rows": {
       "profile": "Seu nome e sua foto",
-      "aboutMe": "O que seus agentes sabem sobre você antes de começar",
-      "apiKeys": "Permita que outros apps e assistentes de IA iniciem tarefas com seus agentes",
+      "aboutMe": "O que seus funcionários de IA sabem sobre você antes de começar",
+      "apiKeys": "Permita que outros apps e assistentes de IA iniciem tarefas com seus funcionários de IA",
       "shortcuts": "Use o Houston sem o mouse",
       "reportBug": "Algo quebrou ou você tem uma ideia? Conte para nós",
-      "migration": "Retome sua mudança para a nuvem"
+      "migration": "Retome sua mudança para a nuvem",
+      "workspace": "Pessoas, cobrança, atividade, uso e contexto compartilhado"
     }
   },
   "apiKeys": {
     "title": "Chaves de API",
-    "intro": "Outros apps, assistentes de IA e ferramentas de automação podem iniciar tarefas com seus agentes. Cada conexão precisa de uma chave que você cria aqui. <docs>Leia a documentação para desenvolvedores</docs>.",
+    "intro": "Outros apps, assistentes de IA e ferramentas de automação podem iniciar tarefas com seus funcionários de IA. Cada conexão precisa de uma chave que você cria aqui. <docs>Leia a documentação para desenvolvedores</docs>.",
     "dialogClose": "Fechar",
     "createButton": "Criar chave",
     "empty": {
       "title": "Você ainda não tem chaves de API",
-      "description": "Uma chave permite que um app de sua confiança inicie tarefas com seus agentes. Crie uma para conectar seu primeiro app."
+      "description": "Uma chave permite que um app de sua confiança inicie tarefas com seus funcionários de IA. Crie uma para conectar seu primeiro app."
     },
     "error": {
       "title": "Não foi possível carregar suas chaves",

@@ -7,6 +7,9 @@ category: Pessoas
 featured: no
 image: busts-in-silhouette
 integrations: [googledocs, gmail, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Leio primeiro o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Jurisdição** - Opcional. Por que preciso: respostas sobre licenças e benefícios variam por estado e país. Se você não tiver essa informação, eu sigo em frente com A DEFINIR e destaco as lacunas de jurisdição no rascunho.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o documento de contexto de pessoas.** Leio `context/people-context.md`. Se estiver ausente ou vazio, digo ao usuário: "Primeiro preciso do seu documento de contexto de pessoas, rode a habilidade configurar-minhas-informacoes-de-pessoas." Paro.
 2. **Ler especificamente a seção de regras de escalonamento** de `context/people-context.md`. Defino quais categorias vão para o advogado humano / fundador (normalmente: discriminação, assédio, disputas salariais, pareceres jurídicos sobre visto, ações de desempenho envolvendo classes protegidas). Mantenho essa lista explícita no escopo antes de classificar.

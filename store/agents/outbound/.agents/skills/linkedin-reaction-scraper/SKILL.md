@@ -6,6 +6,9 @@ category: Outbound
 featured: no
 image: link
 integrations: [apify, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ If Apify isn't connected I stop and ask you to connect it from the Integrations 
 - **A target item count** - Optional. Defaults to `defaultMaxItems` from your outbound context (500). Reactor pulls regularly hit 500+ on a popular post; bump higher if you want full coverage of a viral post.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Validate URL.** Same rules as the comment scraper: must be a LinkedIn post URL. Reject profile / article / company URLs. Resolve short links once.
 

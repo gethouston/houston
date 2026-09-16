@@ -6,6 +6,9 @@ version: 1
 category: Operaciones
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -54,6 +57,7 @@ Primero leo tu contexto operativo. Por cada campo requerido que falte hago UNA p
 - **Prioridades activas** - Requerido para `scope=dashboard`. Por qué lo necesito: define qué métricas van en el mosaico principal. Si falta, pregunto: "¿Cuáles son las 2 o 3 cosas que la empresa está empujando este trimestre?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 ### Pasos compartidos (ambos alcances)
 

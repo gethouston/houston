@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { closeActivityPanel } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 import { startMission } from "./support/mission";
@@ -87,7 +88,7 @@ test("suggested action pills settle the card in Needs you, prefill the composer,
   await expect(
     page.locator('[data-kanban-column="done"]').getByText("prepare the update"),
   ).toHaveCount(0);
-  const followUp = page.getByPlaceholder("Send a follow-up...");
+  const followUp = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await expect(followUp).toBeVisible();
   // HOU-1050: a pill click prefills the composer instead of sending, and the
   // pills stay up so the user can still pick a different one (each click
@@ -132,8 +133,8 @@ test("suggested action pills settle the card in Needs you, prefill the composer,
       },
     },
   });
-  await page.getByPlaceholder("Send a follow-up...").fill("again");
-  await page.getByPlaceholder("Send a follow-up...").press("Enter");
+  await page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER).fill("again");
+  await page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER).press("Enter");
   await expect(
     page.getByRole("button", { name: "Dismiss suggested actions" }),
   ).toBeVisible();
@@ -171,7 +172,7 @@ test("the user's move to Done keeps the finished mission's offers", async ({
     page.getByRole("button", { name: "Draft an email" }),
   ).toBeVisible();
   await expect(page.getByText("Save this for next time")).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
   await expect(
     page
       .locator('[data-kanban-column="needs_you"]')
@@ -256,7 +257,7 @@ test("the user's move to Done retires a blocking question, live", async ({
   // stands alone. No reload — this is exactly the case that used to keep the
   // stepper until the app was restarted.
   await card.click();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible({
     timeout: 10_000,
   });
   await expect(page.getByPlaceholder("Type your answer...")).toHaveCount(0);

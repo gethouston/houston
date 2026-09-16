@@ -7,6 +7,9 @@ category: Personal
 featured: yes
 image: busts-in-silhouette
 integrations: [googlesheets, googledrive, linkedin, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -73,6 +76,7 @@ conectada > archivo > URL > texto pegado) y espero.
   perfil citada por cada subpuntaje.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el registro**, llenar los vacíos con UNA pregunta puntual.
 2. **Leer `context/people-context.md`.** Si falta o está vacío, te

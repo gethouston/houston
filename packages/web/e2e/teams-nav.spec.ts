@@ -4,6 +4,7 @@ import {
   SEED_AGENT_NAME,
 } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { openPalette } from "./support/palette";
 import { litRows, rail, screen } from "./support/team-nav";
@@ -76,7 +77,7 @@ test("the palette's recent missions open the mission's chat on that team board",
   ).toHaveCount(1);
   await expect(litRows(teamRow(page))).toHaveCount(0);
   await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 test("a team the user holds no membership in is drawn, and the palette jumps into it", async ({

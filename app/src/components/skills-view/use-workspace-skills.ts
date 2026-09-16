@@ -20,8 +20,6 @@ import {
  */
 export function useWorkspaceSkills(agents: Agent[]): {
   rows: WorkspaceSkillRow[];
-  /** Lowercase slugs installed on ANY agent — the store's "installed" marks. */
-  installedSkillNames: Set<string>;
   /** folderPath → that agent's current list (undefined while loading). */
   listsByPath: Map<string, SkillSummary[] | undefined>;
   loading: boolean;
@@ -52,10 +50,5 @@ export function useWorkspaceSkills(agents: Agent[]): {
     [agents, listsByPath],
   );
 
-  const installedSkillNames = useMemo(
-    () => new Set(rows.map((row) => row.slug.toLowerCase())),
-    [rows],
-  );
-
-  return { rows, installedSkillNames, listsByPath, loading };
+  return { rows, listsByPath, loading };
 }

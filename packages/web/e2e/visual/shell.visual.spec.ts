@@ -16,6 +16,8 @@
  * masks; the phone screens (Agents home, the per-agent missions drill) render
  * relative times against the wall clock and mask those spans.
  */
+
+import { FOLLOW_UP_PLACEHOLDER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
 import {
   awaitAgentsHome,
@@ -32,7 +34,7 @@ for (const theme of THEMES) {
     await page.goto("/");
 
     // Anchor on the shell being fully painted before pinning theme + comparing.
-    await expect(navRow(page, "agent-store")).toBeVisible();
+    await expect(navRow(page, "integrations")).toBeVisible();
     await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
     await expect(missionCard(page, "Draft the launch email")).toBeVisible();
     await pinTheme(page, theme);
@@ -131,7 +133,7 @@ for (const theme of THEMES) {
       .click();
     const chat = page.getByTestId("mission-chat-screen");
     await expect(chat.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
-    await expect(chat.getByPlaceholder("Send a follow-up...")).toBeVisible();
+    await expect(chat.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
     await page.mouse.move(0, 0);
     await pinTheme(page, theme);
 
@@ -209,7 +211,7 @@ for (const theme of THEMES) {
     await navItem(page, "more").click();
     await expect(moreMenu(page)).toBeVisible();
     await expect(
-      moreMenu(page).getByRole("button", { name: "Agent Store" }),
+      moreMenu(page).getByRole("button", { name: "Integrations" }),
     ).toBeVisible();
     await page.mouse.move(0, 0);
     await pinTheme(page, theme);

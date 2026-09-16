@@ -7,6 +7,9 @@ category: Pessoas
 featured: no
 image: busts-in-silhouette
 integrations: [notion, linkedin, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Primeiro leio o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Framework de níveis** , Obrigatório. Por que preciso: a rubrica de pontuação está atrelada ao patamar esperado nesse nível. Se estiver faltando, pergunto: "Para qual nível estamos contratando, e como você descreveria o que é 'atingir o patamar' nesse nível?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio o documento de contexto de pessoas** em `context/people-context.md`. Faltando ou vazio? Aviso o usuário: "Preciso primeiro do seu contexto de pessoas, rode a habilidade set-up-my-people-info." Paro. Extraio framework de níveis, valores, regras de escalonamento.
 2. **Leio a vaga.** Abro `reqs/{role-slug}.md` para a rubrica de critérios. Faltando? Faço UMA pergunta direcionada, escrevo o arquivo.

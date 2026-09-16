@@ -7,6 +7,9 @@ category: Pessoas
 featured: yes
 image: busts-in-silhouette
 integrations: [github, linkedin, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Primeiro leio o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Empresas a excluir** , Opcional. Por que preciso: mantém fora da lista pessoas que você já descartou. Se você não tiver isso, sigo com "a definir".
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio o documento de contexto de pessoas** em `context/people-context.md`. Se estiver faltando ou vazio, aviso o usuário: "Preciso primeiro do seu contexto de pessoas, rode a habilidade set-up-my-people-info." Paro. Extraio o framework de nivelamento e notas existentes sobre a estrutura da equipe para a vaga-alvo.
 2. **Leio a vaga.** Procuro `reqs/{role-slug}.md`. Se estiver faltando, faço UMA pergunta direcionada ("Qual é o nível-alvo e os 3 principais requisitos essenciais para {vaga}? Vou salvar uma rubrica curta em `reqs/{role-slug}.md` e continuar."). Escrevo o arquivo, continuo.

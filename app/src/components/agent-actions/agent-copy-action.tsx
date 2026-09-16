@@ -1,18 +1,9 @@
-import {
-  AsyncButton,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-} from "@houston-ai/core";
+import { Button, FormDialog, Input } from "@houston-ai/core";
 import { Check } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
+import { stayOpen } from "../../lib/dialog-stay-open";
 import { teamDisplayName } from "../../lib/team-display";
 import type { TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
@@ -75,73 +66,65 @@ export function AgentCopyDialog({
           : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {t("agents:copyAgent.title", { name: agent.name })}
-          </DialogTitle>
-          <DialogDescription>{t("agents:copyAgent.body")}</DialogDescription>
-        </DialogHeader>
-        <div className="grid gap-4 pt-2">
-          <div className="grid gap-1.5">
-            <label
-              htmlFor="agent-copy-name"
-              className="text-sm font-medium text-ink"
-            >
-              {t("agents:copyAgent.nameLabel")}
-            </label>
-            <Input
-              id="agent-copy-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={AGENT_NAME_MAX_LENGTH}
-            />
-            {issueText && <p className="text-xs text-danger">{issueText}</p>}
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={t("agents:copyAgent.title", { name: agent.name })}
+      description={t("agents:copyAgent.body")}
+      primary={{
+        label: t("agents:copyAgent.confirm"),
+        disabled: name.trim().length === 0 || issue !== null,
+        onClick: async () => {
+          const team = teams.find((entry) => entry.id === teamId) ?? null;
+          // A refused copy (a name that was taken while the dialog was open)
+          // keeps the form on screen with the typed name — the caller has
+          // already said why.
+          if (!(await onCopy(name, team))) return stayOpen();
+        },
+      }}
+      labels={{ cancel: t("common:actions.cancel") }}
+    >
+      <div className="grid gap-1.5">
+        <label
+          htmlFor="agent-copy-name"
+          className="text-sm font-medium text-ink"
+        >
+          {t("agents:copyAgent.nameLabel")}
+        </label>
+        <Input
+          id="agent-copy-name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={AGENT_NAME_MAX_LENGTH}
+        />
+        {issueText && <p className="text-xs text-danger">{issueText}</p>}
+      </div>
+      {teams.length > 1 && (
+        <div className="grid gap-1.5">
+          <span className="text-sm font-medium text-ink">
+            {t("agents:copyAgent.teamLabel")}
+          </span>
+          <div className="grid gap-2">
+            {teams.map((team) => (
+              <Button
+                key={team.id}
+                variant="outline"
+                className="justify-start gap-2"
+                aria-pressed={team.id === teamId}
+                onClick={() => setTeamId(team.id)}
+              >
+                <TeamGlyph team={team} className="size-4 shrink-0" />
+                <span className="truncate">
+                  {teamDisplayName(team, t("teams:teamView.defaultName"))}
+                </span>
+                {team.id === teamId && (
+                  <Check className="ml-auto size-4 shrink-0" />
+                )}
+              </Button>
+            ))}
           </div>
-          {teams.length > 1 && (
-            <div className="grid gap-1.5">
-              <span className="text-sm font-medium text-ink">
-                {t("agents:copyAgent.teamLabel")}
-              </span>
-              <div className="grid gap-2">
-                {teams.map((team) => (
-                  <Button
-                    key={team.id}
-                    variant="outline"
-                    className="justify-start gap-2"
-                    aria-pressed={team.id === teamId}
-                    onClick={() => setTeamId(team.id)}
-                  >
-                    <TeamGlyph team={team} className="size-4 shrink-0" />
-                    <span className="truncate">
-                      {teamDisplayName(team, t("teams:teamView.defaultName"))}
-                    </span>
-                    {team.id === teamId && (
-                      <Check className="ml-auto size-4 shrink-0" />
-                    )}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            {t("common:actions.cancel")}
-          </Button>
-          <AsyncButton
-            className="rounded-full"
-            disabled={name.trim().length === 0 || issue !== null}
-            onClick={async () => {
-              const team = teams.find((entry) => entry.id === teamId) ?? null;
-              if (await onCopy(name, team)) onOpenChange(false);
-            }}
-          >
-            {t("agents:copyAgent.confirm")}
-          </AsyncButton>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      )}
+    </FormDialog>
   );
 }

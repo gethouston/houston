@@ -9,9 +9,8 @@
  * `node --test`.
  *
  * The crop geometry and the decode ladder are NOT redefined here: both come
- * from `lib/image-crop.ts`, which the Agent Store's avatar upload already uses.
- * The only thing that differs between the two paths is the encoder — a blob for
- * the store's multipart POST, a capped data URI for this one.
+ * from `lib/image-crop.ts`, so a change to how a face is squared lands in one
+ * place. This module adds only the encoder: a capped data URI.
  */
 
 // Explicit `.ts` so this module resolves under `node --experimental-strip-types`

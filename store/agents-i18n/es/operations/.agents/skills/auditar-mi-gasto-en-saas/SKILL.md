@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [gmail, outlook, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primero leo tu contexto de operaciones. Por cada campo requerido que falte hago 
 - **Auditoría anterior** - Opcional. Por qué lo necesito: me permite marcar variaciones de precio desde la última vez. Si no la tienes, omito la sección de variación de precios.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`** - la etapa y la postura frente a proveedores anclan los umbrales de severidad. Si falta: me detengo y pido `set-up-my-ops-info`.
 

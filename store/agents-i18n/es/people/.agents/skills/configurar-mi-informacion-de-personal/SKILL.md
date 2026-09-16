@@ -7,6 +7,9 @@ category: Personal
 featured: yes
 image: busts-in-silhouette
 integrations: [googlesheets, googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -52,6 +55,7 @@ Primero leo tu contexto de personal. Por cada campo obligatorio que falte, hago 
 - **Límites innegociables**: Opcional. Por qué lo necesito: moldea las reglas de contraofertas y otros borradores posteriores. Si no los tienes, sigo con TBD.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer `config/context-ledger.json`.** Relleno los vacíos con una
    pregunta puntual.

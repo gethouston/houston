@@ -7,6 +7,9 @@ category: Prospección
 featured: no
 image: magnifying-glass-tilted-left
 integrations: [airtable, apollo]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Si falta cualquiera de las dos, me detengo y te pido que la conectes.
 - **Una etiqueta de contacto de Apollo**, opcional. Por defecto es `LinkedIn {sourceType} - {sourceAuthor} Post`, derivada de los campos `Source Type` y `Source Author` de la tabla (toda fila de una tabla dada tiene el mismo origen). Puedes indicar otra por llamada.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Extraer todos los registros.** Recorro la tabla de Airtable de 100 registros a la vez hasta terminar. Recolecto las filas donde `Email` está vacío (no vuelvo a enriquecer filas que ya tienen email). Guardo el `Profile URL`, `Full Name`, `Headline` de origen y el `record_id` de Airtable de cada fila.
 

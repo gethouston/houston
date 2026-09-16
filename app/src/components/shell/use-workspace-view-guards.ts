@@ -45,12 +45,11 @@ import {
  */
 export function useWorkspaceViewGuards(gates: {
   showAiModels: boolean;
-  showOrganization: boolean;
   showAssistant: boolean;
   /** False while the reads behind the gates are still loading. */
   ready: boolean;
 }): void {
-  const { showAiModels, showOrganization, showAssistant, ready } = gates;
+  const { showAiModels, showAssistant, ready } = gates;
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const openTeamView = useUIStore((s) => s.openTeamView);
@@ -93,7 +92,6 @@ export function useWorkspaceViewGuards(gates: {
     const action = deadViewStep({
       viewMode,
       showAiModels,
-      showOrganization,
       showAssistant,
       gatesReady: ready,
       teams,
@@ -112,7 +110,6 @@ export function useWorkspaceViewGuards(gates: {
     setViewMode,
     showAiModels,
     showAssistant,
-    showOrganization,
     teams,
     viewMode,
   ]);

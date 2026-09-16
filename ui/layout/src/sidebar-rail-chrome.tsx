@@ -44,7 +44,7 @@ export function SidebarCollapseToggle({
  *
  * A LABELLED run is a {@link SidebarBand}, the same component "Your teams"
  * uses below: the band, its triangle, its fold and the flush rhythm under it
- * all live there, so the three bands in this rail cannot drift apart. Folding
+ * all live there, so the bands in this rail cannot drift apart. Folding
  * is a host-CONTROLLED prop because the host persists it.
  *
  * Sections that a host's gates emptied are DROPPED here rather than at the call

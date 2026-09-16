@@ -49,29 +49,34 @@ function gatedRuns(source: string): [string, string][] {
   );
 }
 
-describe("the rail's unlabelled run", () => {
+describe("the rail's primary run", () => {
   const primary = navSection("primary");
 
-  it("is the Assistant then the Agent store, and nothing else", () => {
-    assert.ok(
-      primary.indexOf("id: STORE_VIEW_ID,") >= 0,
-      "the Agent store row is declared",
-    );
+  it("is Houston, AI Models, and Integrations only", () => {
+    assert.deepEqual(gatedRuns(primary), [
+      ["showAssistant", "assistant"],
+      ["showAiModels", "aiModels"],
+    ]);
     assert.equal(
       primary.match(/\n {10}id: /g)?.length,
       1,
-      "the run declares exactly one unconditional row inline",
+      "the run declares Integrations as its only unconditional row",
     );
+    assert.ok(primary.includes("id: INTEGRATIONS_VIEW_ID"));
   });
 
-  it("is led by the Assistant, on the one gate that is not a role", () => {
+  it("is led by the Assistant, then AI Models, then Integrations", () => {
     // Discovery, not a role: a deployment that serves no assistant has no
     // address to open a chat at, so the row must not exist there. It leads the
-    // run, ahead of the Agent store, and it is the run's ONLY gated row.
-    assert.deepEqual(gatedRuns(primary), [["showAssistant", "assistant"]]);
+    // run, ahead of AI Models and Integrations.
     assert.ok(
-      primary.indexOf("showAssistant ?") < primary.indexOf("id: STORE_VIEW_ID"),
-      "it leads the run",
+      primary.indexOf("showAssistant ?") < primary.indexOf("showAiModels ?"),
+      "Houston leads the run",
+    );
+    assert.ok(
+      primary.indexOf("showAiModels ?") <
+        primary.indexOf("id: INTEGRATIONS_VIEW_ID"),
+      "AI Models comes before Integrations",
     );
     assert.ok(NAV.includes("onClick: () => setViewMode(ASSISTANT_VIEW_ID)"));
     assert.ok(NAV.includes('label: t("shell:sidebar.assistant")'));
@@ -126,51 +131,39 @@ describe("the rail's unlabelled run", () => {
   });
 });
 
-describe("the rail's Workspace band", () => {
-  const workspace = navSection("workspace");
-
-  it("is Admin and Skills, each on its own gate, and nothing else", () => {
-    // Permissions is gone (a team's focused agent screen is the one door onto
-    // agent policy) and Time worked is a section inside Admin, so the
-    // band is down to the two rows that are still their own screen.
-    assert.deepEqual(gatedRuns(workspace), [
-      ["showOrganization", "organization"],
-      ["showSkills", "skills"],
-    ]);
-  });
-
-  it("comes out EMPTY when every gate is off, so the library drops it", () => {
-    // The band is not conditional anywhere: `SidebarNavList` filters sections
-    // on `items.length`, so proving no row is UNGATED proves a plain member
-    // sees no Workspace band at all.
-    const items = workspace.slice(workspace.indexOf("items: ["));
-    const ungated = items.replace(/\.\.\.\(\w+ \? \[[^\]]*\] : \[\]\),/g, "");
-    assert.ok(!ungated.includes("id:"), "no row sits outside a gate");
-  });
-
-  it("routes Admin at the promoted top-level view, always onto its home", () => {
-    assert.ok(NAV.includes("id: ORGANIZATION_VIEW_ID"));
-    // The rail rule: the door opens the screen's HOME, never the kept-alive
-    // leftover — so the click pins the landing section before navigating.
-    assert.ok(
-      NAV.includes("useOrgNav.getState().requestTab(DEFAULT_ORG_TAB)"),
-      "pins the landing section",
+describe("the rail's labelled bands", () => {
+  it("declares exactly ONE run, so nothing is labelled above Your teams", () => {
+    // "Your teams" is the rail's only band. A second heading over a run of
+    // destinations would be a second rule for one row shape, and the rows that
+    // LEAD the rail need no heading to be found.
+    assert.equal(
+      SECTIONS.match(/\n {6}id: "/g)?.length,
+      1,
+      "one nav section is composed",
     );
-    assert.ok(NAV.includes("setViewMode(ORGANIZATION_VIEW_ID)"));
+    assert.ok(!SECTIONS.includes('id: "workspace"'), "no Workspace band");
+    assert.ok(!SECTIONS.includes('label: t("shell:sidebar.workspace")'));
+    assert.ok(!SECTIONS.includes("collapsed:"), "no band fold to compose");
+    assert.ok(!HOOK.includes("workspaceSectionCollapsed"), "and none to read");
+  });
+
+  it("does not route Admin as a top-level destination", () => {
+    assert.ok(!NAV.includes("id: ORGANIZATION_VIEW_ID"));
+    assert.ok(!NAV.includes("setViewMode(ORGANIZATION_VIEW_ID)"));
     assert.ok(!NAV.includes("PERMISSIONS_VIEW_ID"), "no Permissions row");
     assert.ok(!NAV.includes("TIME_WORKED_VIEW_ID"), "no Time worked row");
   });
 
-  it("names it with the string the Settings index already owned", () => {
-    // ONE `t` for the whole rail: `settings` joined `SidebarChromeT` rather
-    // than the hook taking a second subscription, and the screen keeps the name
-    // it already had instead of growing a duplicate string.
-    assert.ok(NAV.includes('label: t("settings:nav.organization")'));
-    assert.equal(HOOK.includes("useTranslation"), false);
-  });
-
-  it("keeps the Skills row's tour anchor", () => {
-    assert.ok(NAV.includes('dataAttrs: tourAnchor("nav-skills")'));
+  it("leaves Workspace management to Settings and Skills to Integrations", () => {
+    // Administering the space is standing setup, so it is a Settings section.
+    // The shared library rides the Integrations row instead, as its Skills
+    // tab: neither is a rail destination of its own.
+    assert.ok(SETTINGS_SECTIONS.includes('"workspace"'));
+    assert.ok(!SETTINGS_SECTIONS.includes('"skills"'), "not a section");
+    assert.ok(!NAV.includes('label: t("settings:nav.workspace")'));
+    assert.ok(!NAV.includes("SKILLS_VIEW_ID"), "no Skills row");
+    assert.ok(!NAV.includes('tourAnchor("nav-skills")'), "no Skills anchor");
+    assert.ok(!VIEWS.includes("SKILLS_VIEW_ID"), "no such top-level view");
   });
 });
 

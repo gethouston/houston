@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { FOLLOW_UP_PLACEHOLDER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
 
 /**
@@ -26,7 +27,7 @@ test("opening a chat leaves the composer unfocused (no keyboard)", async ({
   page,
 }) => {
   const chat = await openTokyoChat(page);
-  const composer = chat.getByPlaceholder("Send a follow-up...");
+  const composer = chat.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await expect(composer).toBeVisible();
   // The desktop board focuses the composer as a chat opens; on a phone that
   // raises the keyboard over the log, so the phone must not.

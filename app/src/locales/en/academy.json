@@ -27,7 +27,7 @@
   "chapters": {
     "setup": {
       "title": "Set up Houston",
-      "description": "A guided walk through the app, from your first agent to your first mission."
+      "description": "A guided walk through the app, from your first AI Employee to your first mission."
     }
   },
   "actions": {
@@ -54,19 +54,19 @@
     },
     "send-first-task": {
       "title": "Send your first task",
-      "description": "Ask an agent for something and watch it get done.",
+      "description": "Ask an AI Employee for something and watch it get done.",
       "steps": {
         "watch": {
           "title": "Send your first task",
-          "body": "See how a task travels from you to your agent."
+          "body": "See how a task travels from you to your AI Employee."
         },
         "intro": {
           "title": "Your turn",
-          "body": "Open a new task and tell your agent what you need.",
+          "body": "Open a new task and tell your AI Employee what you need.",
           "cta": "Show me"
         },
         "newTask": {
-          "body": "Click New task to open one for your agent."
+          "body": "Click New task to open one for your AI Employee."
         }
       }
     }

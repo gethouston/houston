@@ -7,6 +7,9 @@ category: Redacción
 featured: yes
 image: scroll
 integrations: [googledocs, googledrive, notion, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -60,6 +63,7 @@ Primero lee `config/context-ledger.json`.
 - `universal.posture.escalationThreshold`, requerido para `escalation-brief` (encuadra el "por qué necesitamos un abogado").
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el registro y el contexto legal.** Reúne los campos requeridos que falten según lo anterior. Escribe de forma atómica.
 2. **Descubre las herramientas vía Composio** solo cuando el tipo lo necesite: `googledocs` / `notion` para la copia espejo (opcional), `googledrive` para leer la biblioteca de plantillas, `firecrawl` para el rastreo de la landing page (privacy-policy, tos).

@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [twitter]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Eu leio primeiro o seu contexto de marketing. Para cada campo obrigatório que e
 - **Programas para excluir** - Opcional. Se estiver faltando, eu pergunto: "Algum programa que você já contatou ou quer pular? Se não tiver uma lista, eu sigo sem exclusões."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o documento de posicionamento**: `context/marketing-context.md`. Ausente ou vazio -> parar, avisar o usuário para rodar `set-up-my-marketing-info` primeiro.
 

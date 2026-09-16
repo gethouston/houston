@@ -6,6 +6,9 @@ category: Sales
 featured: yes
 image: handshake
 integrations: [googlecalendar, hubspot, salesforce, attio, gong, fireflies, stripe, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ I read your sales context first. For every required field that's missing I ask O
 - **Product usage source**  -  Optional, helpful for `type=account-review`. Why I need it: I cite real usage trends. If you don't have it I keep going with TBD on the usage section.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + playbook.** Gather missing required fields (ONE question each, best-modality first). Write atomically.
 

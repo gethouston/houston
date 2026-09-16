@@ -1,6 +1,7 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
-import { StoreApiError } from "../../packages/agentstore-client/src/errors.ts";
 import {
   agentKeyOf,
   classifyQuietError,
@@ -18,6 +19,20 @@ function named(
   const err = new Error(message);
   err.name = name;
   return Object.assign(err, fields);
+}
+
+/**
+ * A gateway client's error shape: an HTTP `status` with the observed payload on
+ * `body`, and — on a network-level failure (`status: 0`) — the thrown transport
+ * error kept as BOTH the body and the standard `cause`.
+ */
+function gatewayError(status: number, message: string, body: unknown): Error {
+  const err = new Error(
+    message,
+    body instanceof Error ? { cause: body } : undefined,
+  );
+  err.name = "GatewayApiError";
+  return Object.assign(err, { status, body });
 }
 
 const dial = "dial tcp: lookup agent-abc.svc.cluster.local: no such host";
@@ -44,25 +59,18 @@ describe("classifyQuietError", () => {
     strictEqual(classifyQuietError(new TypeError("x is not a function")), null);
   });
 
-  // PRODUCT-1735: the Agent Store client's status-0 wrapper around a thrown
-  // fetch is the offline class; a real gateway status from the store stays a
-  // bug (a store 5xx is ours to fix).
-  it("names the offline class for the store client's network-failure wrapper", () => {
-    const offline = new StoreApiError(
+  // PRODUCT-1735: a client's status-0 wrapper around a thrown fetch is the
+  // offline class; a real gateway status stays a bug (a 5xx is ours to fix).
+  it("names the offline class for a client's network-failure wrapper", () => {
+    const offline = gatewayError(
       0,
       "Failed to fetch",
-      null,
       new TypeError("Failed to fetch"),
     );
     strictEqual(classifyQuietError(offline), "offline");
     strictEqual(
       classifyQuietError(
-        new StoreApiError(
-          502,
-          "Gateway request failed (502).",
-          null,
-          "Bad Gateway",
-        ),
+        gatewayError(502, "Gateway request failed (502).", "Bad Gateway"),
       ),
       null,
     );
@@ -161,10 +169,10 @@ describe("quietErrorDetails", () => {
     );
   });
 
-  it("reads the store client's status-0 wrapper as a transport drop", () => {
+  it("reads a client's status-0 wrapper as a transport drop", () => {
     deepStrictEqual(
       quietErrorDetails(
-        new StoreApiError(0, "Load failed", null, new TypeError("Load failed")),
+        gatewayError(0, "Load failed", new TypeError("Load failed")),
       ),
       { status: null, body: "Load failed" },
     );
@@ -204,5 +212,43 @@ describe("agentKeyOf", () => {
   it("is null when no layer scoped the call", () => {
     strictEqual(agentKeyOf(new TypeError("Load failed")), null);
     strictEqual(agentKeyOf(undefined, { agentPath: "" }), null);
+  });
+});
+
+/**
+ * PRODUCT-1735 (HOUSTON-APP-54J / 55K): `showErrorToast` is the last reporting
+ * surface a raw TanStack query error can reach without passing through the
+ * engine-call layer's quiet-class gate, so an offline device was captured as a
+ * per-user bug 36 times. The gate has to run BEFORE the per-event Sentry
+ * capture, and each class has to keep its own informational surface.
+ *
+ * Asserted against the source: `error-toast` pulls i18n and the Zustand store,
+ * neither of which loads under this suite's runner (the same constraint
+ * `error-toast-not-shown.test.ts` works around).
+ */
+describe("showErrorToast routes the quiet classes to their own surfaces", () => {
+  const source = readFileSync(
+    join(import.meta.dirname, "../src/lib/error-toast.ts"),
+    "utf8",
+  );
+  const body = source.slice(source.indexOf("export function showErrorToast("));
+
+  it("classifies before the per-event Sentry capture", () => {
+    ok(source.includes('from "./quiet-error-class"'));
+    const guard = body.indexOf("classifyQuietError(originalError)");
+    const capture = body.indexOf("sentryCapture(");
+    ok(guard !== -1, "showErrorToast must classify quiet errors");
+    ok(capture !== -1, "every other failure keeps its per-event capture");
+    ok(guard < capture, "the quiet guard must run before the capture");
+  });
+
+  it("keeps each class on its existing informational surface", () => {
+    ok(
+      body.includes(
+        "showConnectivityErrorToast(command, message, originalError)",
+      ),
+    );
+    ok(body.includes("showEngineWakingToast(command, message, originalError)"));
+    ok(body.includes('reportQuietError("bridge_unsupported"'));
   });
 });

@@ -29,21 +29,19 @@ export const GROUP_PHASES = {
   "sandbox-routines": "sandbox",
   "sandbox-learnings": "sandbox",
   "sandbox-missions": "sandbox",
-  "sandbox-skills": "sandbox",
   "sandbox-assistant": "sandbox",
   "sandbox-transcripts": "sandbox",
   events: "user",
   "pod-activity": "user",
   metrics: "user",
   feedback: "user",
-  // Marketplace reads (skills.sh search/popular, GitHub repo discovery) answer
-  // top-level for direct API callers; the shipped clients call the agent-scoped
-  // twins (routes/skills-remote.ts) so the hosted gateway can proxy them.
-  "skills-directory": "user",
+  // The GitHub repo listing answers top-level for direct API callers; the
+  // shipped clients call the agent-scoped twin (routes/skills-remote.ts) so the
+  // hosted gateway can proxy it.
+  "skills-repo-list": "user",
   "shared-skills": "user",
   account: "user",
   "portable-account": "user",
-  "portable-from-store": "user",
   // Desktop-local by design: the cloud gateway proxies only agent-scoped
   // routes, so a managed pod never serves this listing.
   "migration-source": "user",
@@ -88,10 +86,8 @@ export const GROUP_PHASES = {
   "workspace-files": "agent",
   attachments: "agent",
   "portable-preview": "agent",
-  "portable-anonymize": "agent",
   "portable-export": "agent",
   migration: "agent",
-  "portable-store": "agent",
   // LAST, and deliberately: it claims every remaining `/agents/:agentId/…`
   // path for the agent's own engine, so anything the host serves itself has to
   // be declared above it.

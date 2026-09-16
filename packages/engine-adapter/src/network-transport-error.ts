@@ -34,10 +34,9 @@ const TRANSPORT_MESSAGE =
  * WebKit's "Load failed"). These are an expected, explainable environment
  * state — surfaced as a connectivity toast, never the red bug pair + Sentry.
  *
- * A wrapper that kept the thrown transport error as its standard `cause`
- * (the Agent Store client's status-0 `StoreApiError`) is the same failure:
- * one level of `cause` is unwrapped, never more, so a wrapper chain cannot
- * loop and a coding-bug wrapper stays a bug.
+ * A wrapper that kept the thrown transport error as its standard `cause` is
+ * the same failure: one level of `cause` is unwrapped, never more, so a
+ * wrapper chain cannot loop and a coding-bug wrapper stays a bug.
  */
 export function isNetworkTransportError(err: unknown): boolean {
   return (

@@ -6,6 +6,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [googledocs, linkedin, twitter, reddit, mailchimp, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -58,6 +61,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Your email platform**  -  Required for `newsletter` (so I can name the tool you'll paste into). If missing I ask: "Which email tool do you use to send your newsletter?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + positioning.** Load `config/context-ledger.json`
    and `context/marketing-context.md`. Gather missing required fields

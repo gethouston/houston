@@ -6,6 +6,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [linkedin, firecrawl, semrush]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Your website domain**  -  Required for `content-gap` (the site I compare against the competitor). If missing I ask: "What's your website? Paste the URL."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + positioning.** Gather missing required fields (ONE question each, best-modality first).
 2. **Branch on subject.**

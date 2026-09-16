@@ -4,6 +4,7 @@ import {
   isBenignAbortRejection,
   isBenignLockRejection,
 } from "./benign-rejections";
+import { isStayOpenSignal } from "./dialog-stay-open";
 import { isEngineWakingError } from "./engine-waking-error";
 import {
   showConnectivityErrorToast,
@@ -68,6 +69,14 @@ export function installGlobalErrorHandlers(): void {
         "[global:unhandledrejection] ignored WebKit fetch-abort teardown noise:",
         message,
       );
+      return;
+    }
+    // A form dialog saying "stay open" after a failure the user is already
+    // reading under the field (`dialog-stay-open.ts`). A control signal, not an
+    // error: nothing to log, and the layer that produced the real failure
+    // reported whatever was worth reporting.
+    if (isStayOpenSignal(event.reason)) {
+      event.preventDefault();
       return;
     }
     // A write blocked while the agent's engine warms up (HOU-693) already

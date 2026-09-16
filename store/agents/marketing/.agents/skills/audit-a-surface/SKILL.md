@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [firecrawl, semrush, ahrefs, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -64,6 +67,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Your SEO tool**  -  Required for `site-seo` and `ai-search`. If missing I ask: "Open Integrations and connect Semrush or Ahrefs, or paste a list of pages you want me to grade."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + positioning.** Gather missing required fields per
    above (ONE question each, best-modality first). Write atomically.

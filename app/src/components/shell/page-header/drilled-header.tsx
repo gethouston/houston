@@ -1,19 +1,25 @@
 import type { ReactNode } from "react";
+import { headingItems } from "./drilled-header-heading";
 import { PageHeader } from "./page-header";
 import { PageHeaderBackChip } from "./page-header-back-chip";
-import { headerCollapsesTabs } from "./page-header-layout";
 import { PageHeaderSwitcher } from "./page-header-switcher";
 import { PageHeaderTabs } from "./page-header-tabs";
-import { usePageHeaderMode } from "./page-header-tools";
+import { usePageHeaderTabsCollapsed } from "./page-header-tools";
 
-export interface DrilledHeaderItem<Id extends string> {
+interface DrilledHeaderItem<Id extends string> {
   id: Id;
   label: string;
   heading?: boolean;
   dataAttrs?: Record<string, string>;
 }
 
-/** Shared second-level chrome: identity back chip plus section lozenges. */
+/**
+ * Shared second-level chrome: identity back chip plus section lozenges.
+ *
+ * The phone folds those lozenges into the chip's menu — the strip there is one
+ * row wide and the back chip is already standing in it. The desktop keeps them
+ * drawn whatever the strip's width ({@link usePageHeaderTabsCollapsed}).
+ */
 export function DrilledHeader<Id extends string>(props: {
   backLabel: string;
   backIcon: ReactNode;
@@ -26,7 +32,7 @@ export function DrilledHeader<Id extends string>(props: {
   onSelect: (id: Id) => void;
   onBack: () => void;
 }) {
-  const collapsed = headerCollapsesTabs(usePageHeaderMode());
+  const collapsed = usePageHeaderTabsCollapsed();
   const activeLabel = props.items.find(
     (item) => item.id === props.active,
   )?.label;
@@ -50,7 +56,7 @@ export function DrilledHeader<Id extends string>(props: {
           />
         ) : (
           <PageHeaderTabs
-            items={props.items}
+            items={headingItems(props.items, props.active)}
             active={props.active}
             label={props.label}
             onSelect={props.onSelect}

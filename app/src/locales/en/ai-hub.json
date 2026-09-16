@@ -124,7 +124,7 @@
       "description": "Claude and more on your own AWS account, built for companies."
     },
     "minimax": {
-      "description": "Fast, affordable models tuned for agent work."
+      "description": "Fast, affordable models tuned for AI Employees."
     },
     "nvidia": {
       "description": "Free NVIDIA-hosted models: Llama, Nemotron, GPT-OSS and more."
@@ -133,7 +133,7 @@
       "description": "Run models on your own computer with Ollama, LM Studio, and friends."
     },
     "xiaomi": {
-      "description": "MiMo models from Xiaomi: fast, low-cost, built for agent work."
+      "description": "MiMo models from Xiaomi: fast, low-cost, built for AI Employees."
     }
   },
   "toast": {},
@@ -165,8 +165,8 @@
       "month": "30 days",
       "quarter": "3 months"
     },
-    "summary": "Your agents worked {{duration}}",
-    "byAgent": "By agent",
+    "summary": "Your AI Employees worked {{duration}}",
+    "byAgent": "By AI Employee",
     "duration": {
       "hm": "{{hours}}h {{minutes}}m",
       "m": "{{minutes}}m",
@@ -176,9 +176,9 @@
     "barLabel": "{{date}}: worked {{duration}}, {{messages}}",
     "empty": {
       "title": "No time worked yet",
-      "body": "When your agents work, their time will show here."
+      "body": "When your AI Employees work, their time will show here."
     },
-    "error": "Couldn't load your agents' time right now. Try again in a moment.",
+    "error": "Couldn't load your AI Employees' time right now. Try again in a moment.",
     "messages_one": "{{count}} message",
     "messages_other": "{{count}} messages"
   }

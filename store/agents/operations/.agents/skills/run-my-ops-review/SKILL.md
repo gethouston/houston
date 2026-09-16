@@ -6,6 +6,9 @@ category: Operations
 featured: yes
 image: clipboard
 integrations: [googlesheets]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ I read your operations context first. For every required field that's missing I 
 - `metrics-rollup`  -  cross-metric weekly pulse. Reads every tracked metric, computes week-over-week change, classifies vs direction, flags open anomalies. Feeds `weekly` review. Output: `rollups/{YYYY-MM-DD}.md`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. Read `config/context-ledger.json`. Fill gaps with ONE modality-ranked question.
 2. Read `context/operations-context.md`  -  active priorities, operating rhythm, key contacts, vendor posture, hard nos.
