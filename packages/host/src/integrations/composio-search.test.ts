@@ -5,7 +5,11 @@ import {
   resolveCatalogToolkits,
   resolveScopeToolkits,
 } from "./composio-resolve";
-import { type SearchDeps, searchComposio } from "./composio-search";
+import {
+  actionSlugOf,
+  type SearchDeps,
+  searchComposio,
+} from "./composio-search";
 import type { Connection, Toolkit, ToolMatch } from "./types";
 
 /**
@@ -204,6 +208,53 @@ test("explicit app scope: ONLY the named app's actions, via the listing fallback
   expect(out.items[0]?.status).toBe("connected");
   // Hard filter: no global or connected-scoped query ever ran.
   expect(calls.every((q) => q.toolkit_slug === "posthog")).toBe(true);
+});
+
+test("a slug-shaped scoped query fetches that action directly and ranks it first", async () => {
+  // PRODUCT-1841: Composio's full-text ranked "WHATSAPP_SEND_MESSAGE" by the
+  // toolkit token, so the 10-row page was alphabetical and stopped before
+  // SEND_MESSAGE; the model concluded the action did not exist.
+  const catalog: Toolkit[] = [{ slug: "whatsapp", name: "WhatsApp" }];
+  const page: ToolMatch[] = ["BLOCK_USERS", "SEND_CONTACTS"].map((n) => ({
+    action: `WHATSAPP_${n}`,
+    toolkit: "whatsapp",
+    description: n,
+  }));
+  const send: ToolMatch = {
+    action: "WHATSAPP_SEND_MESSAGE",
+    toolkit: "whatsapp",
+    description: "Send a text message",
+  };
+  const { deps, calls } = fakeDeps({
+    catalog,
+    reply: (q) => (q.tool_slugs === "WHATSAPP_SEND_MESSAGE" ? [send] : page),
+  });
+  const out = await searchComposio(deps, "WHATSAPP_SEND_MESSAGE", "whatsapp");
+  expect(out.items.map((m) => m.action)).toEqual([
+    "WHATSAPP_SEND_MESSAGE",
+    "WHATSAPP_BLOCK_USERS",
+    "WHATSAPP_SEND_CONTACTS",
+  ]);
+  expect(calls).toContainEqual({
+    tool_slugs: "WHATSAPP_SEND_MESSAGE",
+    toolkit_slug: "whatsapp",
+  });
+  // A plain phrasing never spends the direct fetch.
+  const plain = fakeDeps({ catalog, reply: () => page });
+  await searchComposio(plain.deps, "send a text", "whatsapp");
+  expect(plain.calls.some((q) => "tool_slugs" in q)).toBe(false);
+});
+
+test("actionSlugOf: only an UPPER_SNAKE slug prefixed by the toolkit counts", () => {
+  expect(actionSlugOf("WHATSAPP_SEND_MESSAGE", "whatsapp")).toBe(
+    "WHATSAPP_SEND_MESSAGE",
+  );
+  expect(actionSlugOf(" whatsapp_send_message ", "whatsapp")).toBe(
+    "WHATSAPP_SEND_MESSAGE",
+  );
+  expect(actionSlugOf("GMAIL_SEND_EMAIL", "whatsapp")).toBeNull();
+  expect(actionSlugOf("send whatsapp message", "whatsapp")).toBeNull();
+  expect(actionSlugOf("WHATSAPP", "whatsapp")).toBeNull();
 });
 
 test("explicit app scope with no action match still returns the app row", async () => {

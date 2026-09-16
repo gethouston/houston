@@ -52,7 +52,24 @@ export interface SearchDeps {
   catalog(): Promise<Toolkit[]>;
 }
 
-/** One named-app lookup: the query scoped hard to the toolkit. A zero score
+/**
+ * A query that IS an action slug of the toolkit ("WHATSAPP_SEND_MESSAGE" for
+ * whatsapp): the model asking for one action by the name it already knows.
+ * Composio's full-text ranks such a query by the toolkit token, so the 10-row
+ * scoped page comes back alphabetical and the named action is often past it
+ * (PRODUCT-1841: BLOCK_USERS … SEND_INTERACTIVE_LIST, no SEND_MESSAGE).
+ */
+export function actionSlugOf(
+  query: string,
+  toolkitSlug: string,
+): string | null {
+  const slug = query.trim().toUpperCase();
+  const prefix = `${toolkitSlug.toUpperCase()}_`;
+  return /^[A-Z0-9_]+$/.test(slug) && slug.startsWith(prefix) ? slug : null;
+}
+
+/** One named-app lookup: the query scoped hard to the toolkit. A slug-shaped
+ *  query fetches that action directly first (`tool_slugs`); a zero score
  *  with `list` degrades to retrieving the toolkit's actions directly — the
  *  deterministic fallback for a named app whose actions full-text missed. */
 async function namedAppLookup(
@@ -61,12 +78,15 @@ async function namedAppLookup(
   slug: string,
   list: boolean,
 ): Promise<ToolMatch[]> {
-  const scoped = await deps.queryTools({
-    query,
-    limit: "10",
-    toolkit_slug: slug,
-  });
-  if (scoped.length > 0 || !list) return scoped;
+  const actionSlug = actionSlugOf(query, slug);
+  const [direct, scoped] = await Promise.all([
+    actionSlug
+      ? deps.queryTools({ tool_slugs: actionSlug, toolkit_slug: slug })
+      : Promise.resolve<ToolMatch[]>([]),
+    deps.queryTools({ query, limit: "10", toolkit_slug: slug }),
+  ]);
+  if (direct.length > 0 || scoped.length > 0 || !list)
+    return [...direct, ...scoped];
   return deps.queryTools({ limit: "50", toolkit_slug: slug });
 }
 
