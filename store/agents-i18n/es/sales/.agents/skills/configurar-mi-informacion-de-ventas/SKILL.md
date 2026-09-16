@@ -7,6 +7,9 @@ category: Ventas
 featured: yes
 image: handshake
 integrations: [googledocs, hubspot, salesforce, attio, pipedrive, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, te hago
 - **Postura de precios**. Opcional. Por qué lo necesito: me permite escribir una sección de precios real en vez de dejarla como TBD. Si no la tienes, sigo adelante con TBD.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el registro y el playbook existente.** Si `context/sales-context.md` existe, lo leo para que la ejecución sea una actualización, no una reescritura. Preservo lo que el fundador ya perfeccionó; cambio solo lo desactualizado o nuevo.
 

@@ -1,5 +1,4 @@
 import {
-  cn,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -8,35 +7,40 @@ import {
 } from "@houston-ai/core";
 import { AlertCircle } from "lucide-react";
 import type { ReactNode } from "react";
-import { InstallStatusIcon } from "./install-status-icon";
 import { SkillDescription } from "./skill-description";
-import {
-  formatInstalls,
-  kebabToTitle,
-  ownerOf,
-  repoOf,
-} from "./skill-marketplace-util";
 import { SkillOwnerAvatar } from "./skill-owner-avatar";
 import {
   DEFAULT_SKILL_PREVIEW_LABELS,
   type SkillPreviewSheetLabels,
 } from "./skill-preview-modal-labels";
 import {
+  SkillPreviewInstallButton,
   SkillPreviewInstructions,
   SkillPreviewTaxonomy,
 } from "./skill-preview-sections";
 import { skillPreviewSections } from "./skill-preview-sections-model";
-import type { CommunitySkill, CommunitySkillPreview } from "./types";
+import {
+  formatInstalls,
+  kebabToTitle,
+  ownerOf,
+  repoOf,
+} from "./skill-preview-util";
+import { SkillWorkflowSteps } from "./skill-workflow-steps";
+import type {
+  PreviewSkill,
+  PreviewSkillDetail,
+  SkillStepIntegration,
+} from "./types";
 
 export type SkillPreviewState =
   | { status: "loading" }
-  | { status: "loaded"; preview: CommunitySkillPreview }
+  | { status: "loaded"; preview: PreviewSkillDetail }
   | { status: "error" };
 
 export interface SkillPreviewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  skill: CommunitySkill | null;
+  skill: PreviewSkill | null;
   preview: SkillPreviewState;
   installing: boolean;
   installed: boolean;
@@ -47,16 +51,23 @@ export interface SkillPreviewModalProps {
    * catalog concern owned by `app/`; without it the section simply doesn't show.
    */
   renderIntegrations?: (slugs: string[]) => ReactNode;
+  /**
+   * Renders the app a single workflow step acts on, as a chip beside that
+   * step's title. Same ownership as {@link renderIntegrations}; without it the
+   * step falls back to the toolkit slug and the action's plain name.
+   */
+  renderIntegration?: (integration: SkillStepIntegration) => ReactNode;
   labels?: SkillPreviewSheetLabels;
 }
 
 /**
- * SkillPreviewModal — the overlay detail modal for a marketplace skill,
- * replacing the old in-dialog body-swap sheet. It shows the owner avatar +
+ * SkillPreviewModal — the overlay detail modal for a skill the user can add.
+ * It shows the owner avatar +
  * title + source, then the skill's plain-text SKILL.md description (loading
  * skeletons, then the parsed description or a "no description" note), the apps
- * it works with, its category + tags, the full SKILL.md body behind an
- * expander, and a full-width install button. Every one of those sections shows
+ * it works with, its category + tags, a Houston-authored skill's numbered
+ * workflow, the full SKILL.md body behind a disclosure, and a full-width
+ * install button. Every one of those sections shows
  * only when the loaded preview carries it, so a bare skill looks exactly as it
  * did before. Install stays enabled even when the description fetch fails, so a
  * load error never blocks installing.
@@ -70,6 +81,7 @@ export function SkillPreviewModal({
   installed,
   onInstall,
   renderIntegrations,
+  renderIntegration,
   labels,
 }: SkillPreviewModalProps) {
   const l = { ...DEFAULT_SKILL_PREVIEW_LABELS, ...labels };
@@ -85,7 +97,7 @@ export function SkillPreviewModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Capped to the viewport: an expanded instructions block (itself
           height-capped) must never push the dialog past the window. */}
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
         {skill && (
           <>
             <DialogHeader>
@@ -133,6 +145,14 @@ export function SkillPreviewModal({
               )}
             </div>
 
+            {sections.workflow.length > 0 && (
+              <SkillWorkflowSteps
+                steps={sections.workflow}
+                renderIntegration={renderIntegration}
+                labels={{ heading: l.workflowHeading }}
+              />
+            )}
+
             {renderIntegrations &&
               sections.integrations.length > 0 &&
               renderIntegrations(sections.integrations)}
@@ -151,30 +171,12 @@ export function SkillPreviewModal({
             )}
 
             <div>
-              <button
-                type="button"
-                onClick={onInstall}
-                disabled={installing || installed}
-                className={cn(
-                  "flex h-11 w-full items-center justify-center gap-2 rounded-full bg-action font-medium text-action-text text-sm transition-colors hover:bg-action/90",
-                  (installing || installed) && "opacity-60",
-                  installing && "cursor-wait",
-                )}
-              >
-                {installing ? (
-                  <>
-                    <InstallStatusIcon status="installing" className="size-4" />
-                    {l.installing}
-                  </>
-                ) : installed ? (
-                  <>
-                    <InstallStatusIcon status="installed" className="size-4" />
-                    {l.installed}
-                  </>
-                ) : (
-                  l.install
-                )}
-              </button>
+              <SkillPreviewInstallButton
+                installing={installing}
+                installed={installed}
+                onInstall={onInstall}
+                labels={l}
+              />
             </div>
           </>
         )}

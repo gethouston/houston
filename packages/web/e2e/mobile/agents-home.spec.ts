@@ -45,7 +45,7 @@ test("boot lands on the Agents home: one chat-list row per agent", async ({
   // is what lets the guided setup ring the same step on both breakpoints.
   const newAgent = screen(page).getByTestId("agents-home-new-agent");
   await expect(newAgent).toBeVisible();
-  await expect(newAgent).toHaveAttribute("aria-label", "New agent");
+  await expect(newAgent).toHaveAttribute("aria-label", "New AI Employee");
   await expect(newAgent).toHaveAttribute("data-tour-target", "newAgent");
   // A single (default) team: nothing to narrow by, so no team selector.
   await expect(page.getByTestId("agents-home-team-filter")).toHaveCount(0);

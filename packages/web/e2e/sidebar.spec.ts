@@ -11,7 +11,7 @@ test("collapsed sidebar expands from the top monogram and rail clicks", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(navRow(page, "agent-store")).toBeVisible();
+  await expect(navRow(page, "integrations")).toBeVisible();
 
   const sidebar = page.locator("[data-tour-target='sidebar']");
 
@@ -63,14 +63,14 @@ test("an agent row's ... menu offers copy and delete behind their own dialogs", 
 
   // Copy opens the copy dialog, pre-named with the first free name.
   await trigger.click();
-  await page.getByRole("menuitem", { name: "Copy agent" }).click();
+  await page.getByRole("menuitem", { name: "Copy AI Employee" }).click();
   await expect(page.locator("#agent-copy-name")).toHaveValue("Houston copy");
   await page.keyboard.press("Escape");
   await expect(page.locator("#agent-copy-name")).toHaveCount(0);
 
   // Delete asks for confirmation first; cancelling keeps the agent.
   await trigger.click();
-  await page.getByRole("menuitem", { name: "Delete agent" }).click();
+  await page.getByRole("menuitem", { name: "Delete AI Employee" }).click();
   await expect(
     page.getByRole("alertdialog").or(page.getByRole("dialog")).first(),
   ).toContainText("Delete");

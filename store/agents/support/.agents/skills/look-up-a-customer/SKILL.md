@@ -6,6 +6,9 @@ category: Support
 featured: no
 image: headphone
 integrations: [gmail, hubspot, salesforce, attio, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ I read your support context first. For every required field that's missing I ask
 - `churn-risk`  -  open risk flag with signal (cancellation language, repeated friction, usage cliff), severity, recommended action. Writes entry to `churn-flags.json`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Resolve `{account}` or `{slug}`.** Gave customer name? Look up in `customers.json` by name / email / domain. No match? Ask for CRM identifier (HubSpot / Attio / Salesforce via Composio) or paste profile.
 2. **Read `config/context-ledger.json`.** Fill gaps.

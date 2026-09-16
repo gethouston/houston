@@ -124,7 +124,7 @@
       "description": "Claude e muito mais na sua própria conta AWS, feito para empresas."
     },
     "minimax": {
-      "description": "Modelos rápidos e acessíveis ajustados para o trabalho com agentes."
+      "description": "Modelos rápidos e acessíveis ajustados para o trabalho com funcionários de IA."
     },
     "nvidia": {
       "description": "Modelos grátis hospedados pela NVIDIA: Llama, Nemotron, GPT-OSS e mais."
@@ -133,7 +133,7 @@
       "description": "Rode modelos no seu próprio computador com Ollama, LM Studio e afins."
     },
     "xiaomi": {
-      "description": "Modelos MiMo da Xiaomi: rápidos, acessíveis e feitos para o trabalho com agentes."
+      "description": "Modelos MiMo da Xiaomi: rápidos, acessíveis e feitos para o trabalho com funcionários de IA."
     }
   },
   "toast": {},
@@ -165,8 +165,8 @@
       "month": "30 dias",
       "quarter": "3 meses"
     },
-    "summary": "Seus agentes trabalharam {{duration}}",
-    "byAgent": "Por agente",
+    "summary": "Seus funcionários de IA trabalharam {{duration}}",
+    "byAgent": "Por funcionário de IA",
     "duration": {
       "hm": "{{hours}}h {{minutes}}m",
       "m": "{{minutes}}m",
@@ -176,9 +176,9 @@
     "barLabel": "{{date}}: trabalharam {{duration}}, {{messages}}",
     "empty": {
       "title": "Ainda não há tempo trabalhado",
-      "body": "Quando seus agentes trabalharem, o tempo deles vai aparecer aqui."
+      "body": "Quando seus funcionários de IA trabalharem, o tempo deles vai aparecer aqui."
     },
-    "error": "Não foi possível carregar o tempo dos seus agentes. Tente novamente em instantes.",
+    "error": "Não foi possível carregar o tempo dos seus funcionários de IA. Tente novamente em instantes.",
     "messages_one": "{{count}} mensagem",
     "messages_other": "{{count}} mensagens"
   }

@@ -7,6 +7,9 @@ category: Cumplimiento
 featured: no
 image: scroll
 integrations: [googlesheets, googledocs, googledrive, airtable]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ R: Sí, encriptación AES-256 en reposo mediante el cifrado administrado
 Buckets de tema (personalízalos si el cuestionario se desvía): control de acceso, autenticación, datos en reposo, datos en tránsito, residencia de datos, subprocesadores, respaldos y recuperación ante desastres, respuesta a incidentes, ciclo de vida seguro de desarrollo de software, gestión de vulnerabilidades, registro y monitoreo, seguridad del personal (contratación, salida y capacitación), seguridad física (normalmente "No aplica, somos remotos, alojados en {cloud}"), certificaciones de cumplimiento (SOC 2, ISO, HIPAA, GDPR), IA / entrenamiento de modelos, acceso del soporte al cliente a los datos, retención y eliminación de datos.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el contexto compartido**: `context/legal-context.md`. Si falta o está vacío, pregunta al usuario en lenguaje simple: "Necesito conocer algunos datos básicos de tu empresa antes de responder esto bien. ¿Quieres configurarlos ahora?" Luego ejecuta `set-up-my-legal-info` si dice que sí. Detente hasta que eso esté listo. Extrae el nombre de la entidad, la geografía de datos, y los acuerdos vigentes con clientes enterprise que puedan limitar las respuestas.
 2. **Lee la biblioteca de respuestas**: `config/security-answers.md`. Si falta, es el primer cuestionario, está bien, la biblioteca se siembra con las respuestas capturadas aquí. Anota en el resultado cuántas respuestas previas tienes a la mano.

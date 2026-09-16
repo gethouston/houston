@@ -4,7 +4,7 @@ import type { NavMode } from "../../lib/nav-stack";
 import { isTopLevelView } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import type { SidebarChromeT } from "./sidebar-chrome";
-import { buildSidebarNavItems, type SectionFold } from "./sidebar-nav-sections";
+import { buildSidebarNavItems } from "./sidebar-nav-sections";
 
 /**
  * The rail's top-level nav sections and which row is lit.
@@ -30,44 +30,16 @@ export function useSidebarNavItems(
      *  The phone's More menu passes `reset`: reaching a destination from the
      *  menu is a tab-level move, not a level pushed onto the current tree. */
     nav?: NavMode;
-    /** Draw every labelled band open, whatever the rail's persisted folds
-     *  say. The menu lists its rows flat, so a fold there would hide
-     *  destinations that have no band to unfold. */
-    unfolded?: boolean;
   },
 ): { navSections: SidebarNavSection[]; activeNavId: string | undefined } {
-  const { showAiModels, showOrganization, showSkills, showAssistant } =
-    useSurfaceGates();
-  // The two labelled bands fold and persist exactly like `teamsSectionCollapsed`
-  // does for "Your teams" — three bands, one rule, one storage shape.
-  const myAccountsCollapsed = useUIStore((s) => s.myAccountsSectionCollapsed);
-  const toggleMyAccounts = useUIStore(
-    (s) => s.toggleMyAccountsSectionCollapsed,
-  );
-  const workspaceCollapsed = useUIStore((s) => s.workspaceSectionCollapsed);
-  const toggleWorkspace = useUIStore((s) => s.toggleWorkspaceSectionCollapsed);
+  const { showAiModels, showAssistant } = useSurfaceGates();
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const openFold: SectionFold = { collapsed: false, onToggle: noop };
   return {
     navSections: buildSidebarNavItems({
       t,
       showAiModels,
-      showOrganization,
-      showSkills,
       showAssistant,
-      folds: opts?.unfolded
-        ? { myAccounts: openFold, workspace: openFold }
-        : {
-            myAccounts: {
-              collapsed: myAccountsCollapsed,
-              onToggle: toggleMyAccounts,
-            },
-            workspace: {
-              collapsed: workspaceCollapsed,
-              onToggle: toggleWorkspace,
-            },
-          },
       setViewMode: (view) => {
         setViewMode(view, opts?.nav ? { nav: opts.nav } : undefined);
         closeMobileMenu();
@@ -76,6 +48,3 @@ export function useSidebarNavItems(
     activeNavId: isTopLevelView(viewMode) ? viewMode : undefined,
   };
 }
-
-/** The toggle a band that cannot fold still has to carry. */
-function noop(): void {}

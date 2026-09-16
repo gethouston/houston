@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [gmail, outlook, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **A registered Founder Loan Payable account** — Optional. Why: needed only if the receipt was paid out-of-pocket. If you don't have it I ask once and add it to your chart of accounts.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context & lock the chart of accounts.** Load `context/bookkeeping-context.md` (stop if missing  -  ask for `set-up-my-books`), `config/context-ledger.json`, `config/chart-of-accounts.json` (**locked** for run  -  stop if absent), `config/prior-categorizations.json`, and `config/party-rules.json`.
 

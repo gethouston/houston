@@ -75,7 +75,7 @@ describe("product analytics catalogue", () => {
 
   it("recognizes nothing outside the table", () => {
     strictEqual(isProductEvent("agent_created"), true);
-    strictEqual(isProductEvent("agent_published"), false);
+    strictEqual(isProductEvent("agent_copied"), false);
     strictEqual(isProductEvent("not_an_event"), false);
     strictEqual(isProductEvent("toString"), false);
   });
@@ -84,13 +84,13 @@ describe("product analytics catalogue", () => {
 describe("pickProductProps", () => {
   it("keeps the event's own properties and drops every other key", () => {
     deepStrictEqual(
-      pickProductProps("agent_installed_from_store", {
-        agent_slug: "opaque-slug",
-        source: "store",
+      pickProductProps("skill_installed", {
+        skill_slug: "opaque-slug",
+        source: "github",
         // Tracked on the same call, but not part of what this event gathers.
         agent_id: "opaque-id",
       }),
-      { agent_slug: "opaque-slug", source: "store" },
+      { skill_slug: "opaque-slug", source: "github" },
     );
   });
 

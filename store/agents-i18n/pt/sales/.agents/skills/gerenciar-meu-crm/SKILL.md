@@ -7,6 +7,9 @@ category: Vendas
 featured: no
 image: handshake
 integrations: [hubspot, salesforce, attio, pipedrive, notion, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -48,6 +51,7 @@ Eu leio seu contexto de vendas primeiro. Para cada campo obrigatório que estive
 - **Ferramenta de tarefas conectada** - Obrigatório para `queue-followup`. Por que eu preciso: envio tarefas para um lugar que você realmente vai ver. Se estiver faltando eu pergunto: "Onde os acompanhamentos devem cair, Linear, Notion, Asana?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o registro + o playbook.** Reúno os campos obrigatórios que faltam (UMA pergunta cada, começando pelo melhor formato). Escrevo atomicamente.
 

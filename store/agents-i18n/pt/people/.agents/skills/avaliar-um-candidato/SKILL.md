@@ -7,6 +7,9 @@ category: Pessoas
 featured: yes
 image: busts-in-silhouette
 integrations: [googlesheets, googledrive, linkedin, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ Leio primeiro o seu contexto de pessoas. Para cada campo obrigatório que estive
 - `linkedin` - coleta a URL do LinkedIn ou de perfil público via ferramenta de coleta na web do Composio (Firecrawl). Resultado: total de 0-100 + 4 a 6 subnotas (adequação de nível, adequação de área, escopo, tempo de casa, sinal cultural) com evidências do perfil citadas por subnota.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio o registro**, preencho lacunas com UMA pergunta objetiva.
 2. **Leio `context/people-context.md`.** Se estiver ausente ou vazio → digo a você: "Primeiro preciso do contexto de pessoas, rode a habilidade configurar-minhas-informacoes-de-pessoas." Paro. Busco o framework de níveis para o nível alvo.

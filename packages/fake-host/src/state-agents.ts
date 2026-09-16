@@ -21,7 +21,10 @@ const SKILL_FILE = /^\.agents\/skills\/([^/]+)\/SKILL\.md$/;
 export function listAgents(): CpAgent[] {
   return state.agents;
 }
-export function createAgent(name: string): CpAgent {
+/** `claudeMd` is the job description the create request carries (the real host
+ *  writes it to `CLAUDE.md` before the agent ever runs), so a surface that
+ *  reads the file back sees what creation put there. */
+export function createAgent(name: string, claudeMd?: string): CpAgent {
   const agent: CpAgent = {
     id: `agent-${++state.agentSeq}`,
     workspaceId: SEED_WORKSPACE_ID,
@@ -30,6 +33,7 @@ export function createAgent(name: string): CpAgent {
   };
   state.agents.push(agent);
   state.files.set(fileKey(agent.id, ACTIVITY_PATH), "[]");
+  if (claudeMd) state.files.set(fileKey(agent.id, "CLAUDE.md"), claudeMd);
   emitDomain("AgentsChanged");
   return agent;
 }

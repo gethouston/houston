@@ -7,6 +7,9 @@ category: Propiedad intelectual
 featured: no
 image: scroll
 integrations: [firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -22,6 +25,7 @@ No es una opinión de autorización, es un filtro de descarte. El filtro de desc
 - Antes de presentar una solicitud de intención de uso 1(b).
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el contexto compartido.** Lee `context/legal-context.md`. Si falta o está vacío, pregunta al usuario en lenguaje simple: "Necesito saber algunos datos básicos de tu empresa primero. ¿Quieres configurarlos ahora?" Luego ejecuta `set-up-my-legal-info` si dice que sí. Detente hasta que eso esté listo.
 

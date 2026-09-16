@@ -5,6 +5,9 @@ version: 1
 category: Operations
 featured: yes
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ I read your operations context first. For every required field that's missing I 
 - **Hard nos**  -  Optional. Why I need it: stops me from drafting things you'd never send. If you don't have it I keep going with TBD using the workspace defaults.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read config.** Load `config/company.json`, `config/rhythm.json`, `config/voice.md`. If any missing, run `onboard-me` first (or ask ONE missing piece just-in-time with best-modality hint: connected app > file > URL > paste).
 

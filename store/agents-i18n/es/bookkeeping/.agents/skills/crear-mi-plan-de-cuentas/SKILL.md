@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [hubspot, stripe, quickbooks, xero, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ Leo primero tu contexto contable. Por cada campo requerido que falte, hago UNA p
 - **Tu postura de compensación en acciones** - Opcional. Por qué: ISO / NSO / RSU activa una línea de gasto de compensación en acciones y una línea de patrimonio APIC-SBC. Si falta, pregunto: "¿Ya otorgan acciones a los empleados? Si no tienes eso, sigo sin las líneas de compensación en acciones y las agregamos después."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer la configuración.** Cargar `config/context-ledger.json`. Campos
    requeridos para un buen primer borrador del plan de cuentas:

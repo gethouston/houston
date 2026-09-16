@@ -1,7 +1,7 @@
 {
   "page": {
     "title": "Skills",
-    "description": "Reusable procedures this agent can run."
+    "description": "Reusable procedures this AI Employee can run."
   },
   "grid": {
     "loading": "Loading skills...",
@@ -16,7 +16,7 @@
   },
   "addDialog": {
     "title": "Add skills",
-    "description": "Install reusable procedures for your agent.",
+    "description": "Install reusable procedures for your AI Employee.",
     "repoTab": "GitHub",
     "scratchTab": "From scratch",
     "repo": {
@@ -40,9 +40,9 @@
       "descriptionLabel": "One-line description",
       "descriptionPlaceholder": "Drafts a starter contract you can review and sign.",
       "descriptionHint": "Shown on the skill card. Say what the user gets, not how it works.",
-      "bodyLabel": "Instructions for the agent",
+      "bodyLabel": "Instructions for the AI Employee",
       "bodyPlaceholder": "## Procedure\n\n1. Ask the user what kind of contract.\n2. Pull the latest version from Drive.\n3. Fill it in and share for review.\n",
-      "bodyHint": "Markdown. The agent reads this when the skill runs.",
+      "bodyHint": "Markdown. The AI Employee reads this when the skill runs.",
       "submit": "Create skill",
       "submitting": "Creating...",
       "errorTitleRequired": "Give your skill a title.",
@@ -51,72 +51,49 @@
       "errorSlugTaken": "A skill with this name already exists."
     }
   },
-  "store": {
-    "heading": "Discover skills",
-    "subheading": "Add ready-made skills from the community",
-    "searchPlaceholder": "Search more than 90K skills...",
-    "publisherAll": "All",
-    "allCategories": "All categories",
-    "categoryAria": "Filter skills by category",
-    "retry": "Try again",
-    "browseUnavailable": "Couldn't load skills. Check your internet and try again.",
-    "noResults": "No skills found for \"{{query}}\"",
-    "searchRateLimited": "Skills.sh is busy right now. Wait a moment and try again.",
-    "searchOffline": "Couldn't reach Skills.sh. Check your internet and try again.",
-    "searchSlow": "Skill search is slow right now. Try again in a moment.",
-    "searchGeneric": "Skill search hit a snag. Wait a moment and try again.",
-    "typeToSearch": "Type to search for skills",
-    "minQuery": "Type at least 2 characters to search",
-    "poweredByVercel": "Powered by Vercel",
-    "seeAll": "See all",
-    "shelves": {
-      "marketing": "Marketing",
-      "sales": "Sales",
-      "writing": "Writing",
-      "research": "Research",
-      "legal": "Legal",
-      "productivity": "Productivity"
-    },
-    "installFailedAlready": "Already installed",
-    "installUnavailable": "This skill is no longer available from its author.",
-    "installFailedMalformed": "This skill's file is broken. Try a different one.",
-    "installFailedRateLimited": "Skills.sh is busy. Wait a moment and click again.",
-    "installFailedOffline": "Couldn't connect. Check your internet and try again.",
-    "installFailedGeneric": "Couldn't install that skill. Wait a moment and try again.",
-    "card": {
-      "installAria": "Install {{name}}",
-      "installedAria": "{{name}} installed",
-      "installsCount_one": "{{formatted}} install",
-      "installsCount_other": "{{formatted}} installs",
-      "bySource": "by {{owner}}"
-    },
-    "preview": {
-      "install": "Install",
-      "installing": "Installing...",
-      "installed": "Installed",
-      "loadFailed": "Couldn't load the full description. You can still install.",
-      "noDescription": "No description provided.",
-      "bySource": "by {{owner}} · {{repo}}",
-      "installsCount_one": "{{formatted}} install",
-      "installsCount_other": "{{formatted}} installs",
-      "categoryHeading": "Category",
-      "tagsHeading": "Tags",
-      "viewInstructions": "View full instructions",
-      "hideInstructions": "Hide full instructions",
-      "instructionsHeading": "Full instructions",
-      "alsoMatches": "Also matches: {{keywords}}"
-    }
+  "preview": {
+    "install": "Install",
+    "installing": "Installing...",
+    "installed": "Installed",
+    "loadFailed": "Couldn't load the full description. You can still install.",
+    "noDescription": "No description provided.",
+    "bySource": "by {{owner}} · {{repo}}",
+    "installsCount_one": "{{formatted}} install",
+    "installsCount_other": "{{formatted}} installs",
+    "categoryHeading": "Category",
+    "tagsHeading": "Tags",
+    "viewInstructions": "View full instructions",
+    "hideInstructions": "Hide full instructions",
+    "instructionsHeading": "Full instructions",
+    "alsoMatches": "Also matches: {{keywords}}"
   },
   "detail": {
     "saveChanges": "Save changes",
-    "savingChanges": "Saving...",
     "loadFailed": "Couldn't load this skill's instructions.",
     "unavailableToast": "That skill no longer exists.",
     "instructionsPlaceholder": "Instructions for this skill...",
+    "workflowHeading": "Workflow",
+    "showInstructions": "Show instructions",
+    "hideInstructions": "Hide instructions",
     "integrations": "Works with",
-    "rename": "Rename skill",
-    "deleteTitle": "Delete “{{name}}”?",
-    "deleteDescription": "The agent will no longer have this skill. This cannot be undone."
+    "rename": "Rename skill"
+  },
+  "editor": {
+    "back": "Back to skills",
+    "viewLabel": "How to view this skill",
+    "workflowView": "Workflow",
+    "textView": "Text",
+    "openChat": "Open chat",
+    "menuLabel": "More actions",
+    "noWorkflowTitle": "This skill has no step-by-step workflow yet",
+    "noWorkflowBody": "It was written as plain instructions. Open the text to read or change them, or ask in the chat to turn them into steps.",
+    "switchToText": "Open the text",
+    "discard": "Discard",
+    "discardConfirmTitle": "Discard changes?",
+    "discardConfirmBody": "Your unsaved changes to this skill will be lost.",
+    "discardConfirmConfirm": "Discard changes",
+    "updatedInChat": "This skill was updated in the chat.",
+    "reload": "Reload"
   },
   "categories": {
     "Advisory": "Advisory",
@@ -137,16 +114,14 @@
     "Tracking": "Tracking"
   },
   "tabs": {
-    "store": "Store",
     "custom": "Custom skills",
-    "customEmptyDescription": "Describe what you need and build it together with your agent, or add one yourself.",
+    "customEmptyDescription": "Describe what you need and build it together with your AI Employee, or add one yourself.",
     "createSkill": "Create skill"
   },
   "setupChat": {
     "missionTitle": "New skill",
     "skillLabel": "Skill: {{name}}",
     "opening": "Opening chat...",
-    "back": "Back to skills",
     "editManually": "Edit manually",
     "draftInProgress": "Skill in progress. Pick up where you left off.",
     "discardDraft": "Discard draft",
@@ -154,67 +129,54 @@
   },
   "global": {
     "pageTitle": "Skills",
-    "headerLabel": "Skills sections",
-    "newSkill": "New skill",
-    "createWithAi": "Create with AI",
-    "addManually": "Add manually",
-    "alreadyHasIt": "Already has it",
-    "noAgentsTitle": "No agents yet",
-    "noAgentsDescription": "Create an agent first. Skills live with your agents, and this page manages them across all of them.",
-    "installedTo_one": "Added to {{count}} agent",
-    "installedTo_other": "Added to {{count}} agents",
+    "createSkill": "Create skill",
+    "noAgentsTitle": "No AI Employees yet",
+    "noAgentsDescription": "Create an AI Employee first. Skills live with your AI Employees, and this page manages them across all of them.",
+    "installedTo_one": "Added to {{count}} AI Employee",
+    "installedTo_other": "Added to {{count}} AI Employees",
     "installFailedFor": "We couldn't add the skill for {{names}}",
-    "createdFor_one": "Skill created for {{count}} agent",
-    "createdFor_other": "Skill created for {{count}} agents",
     "skillUpdated": "Skill updated",
     "skillRemoved": "Skill removed",
     "install": {
-      "title": "Add \"{{name}}\" to agents",
-      "description": "Choose which agents get this skill.",
-      "confirm_one": "Add to {{count}} agent",
-      "confirm_other": "Add to {{count}} agents"
-    },
-    "create": {
-      "title": "New skill",
-      "description": "Write the skill once, then choose which agents learn it.",
-      "agentsLabel": "Create for",
-      "confirm_one": "Create for {{count}} agent",
-      "confirm_other": "Create for {{count}} agents"
+      "title": "Add \"{{name}}\" to AI Employees",
+      "description": "Choose which AI Employees get this skill.",
+      "confirm_one": "Add to {{count}} AI Employee",
+      "confirm_other": "Add to {{count}} AI Employees"
     },
     "manage": {
-      "agentsLabel": "Agents with this skill",
-      "keepOneAgent": "Keep at least one agent, or use Delete to remove the skill everywhere.",
+      "agentsLabel": "AI Employees with this skill",
+      "keepOneAgent": "Keep at least one AI Employee, or use Delete to remove the skill everywhere.",
       "hasSkillNote": "Has this skill",
-      "shareToManage": "To use this skill with other agents, share it to the workspace. Shared skills keep one version for every agent.",
-      "removeConfirmTitle_one": "Remove from {{count}} agent?",
-      "removeConfirmTitle_other": "Remove from {{count}} agents?",
+      "shareToManage": "To use this skill with other AI Employees, share it to the workspace. Shared skills keep one version for every AI Employee.",
+      "removeConfirmTitle_one": "Remove from {{count}} AI Employee?",
+      "removeConfirmTitle_other": "Remove from {{count}} AI Employees?",
       "removeConfirmDescription": "Saving will remove this skill from {{names}}. This cannot be undone.",
       "deleteConfirmTitle": "Delete \"{{name}}\"?",
-      "deleteConfirmDescription_one": "This removes the skill from {{count}} agent ({{names}}). This cannot be undone.",
-      "deleteConfirmDescription_other": "This removes the skill from {{count}} agents ({{names}}). This cannot be undone.",
+      "deleteConfirmDescription_one": "This removes the skill from {{count}} AI Employee ({{names}}). This cannot be undone.",
+      "deleteConfirmDescription_other": "This removes the skill from {{count}} AI Employees ({{names}}). This cannot be undone.",
       "editInChat": "Edit in chat",
-      "enableAll": "Enable for all agents",
+      "enableAll": "Enable for all AI Employees",
       "modifiedOn": "{{name}} has a modified copy",
       "revert": "Use workspace version",
-      "deleteSharedDescription": "This removes the skill from the workspace for every agent. Agents with a modified copy keep their own version.",
+      "deleteSharedDescription": "This removes the skill from the workspace for every AI Employee. AI Employees with a modified copy keep their own version.",
       "shareToWorkspace": "Share to workspace",
-      "disableForAgent": "Disable for this agent"
+      "disableForAgent": "Disable for this AI Employee"
     },
     "chatPick": {
       "title": "Who should build it with you?",
-      "description": "The chat runs with this agent, who also gets the skill. It lands in your workspace, so you can add it to other agents whenever you want."
+      "description": "The chat runs with this AI Employee, who also gets the skill. It lands in your workspace, so you can add it to other AI Employees whenever you want."
     },
     "createdShared": "Skill added to your workspace",
-    "enabledForAll_one": "Enabled for {{count}} agent",
-    "enabledForAll_other": "Enabled for {{count}} agents",
+    "enabledForAll_one": "Enabled for {{count}} AI Employee",
+    "enabledForAll_other": "Enabled for {{count}} AI Employees",
     "overrideReverted": "{{name}} is back on the workspace version",
     "promoted": "Skill is now shared across your workspace"
   },
   "fromYourAgents": {
-    "heading": "From your other agents",
-    "installAria": "Add {{name}} to this agent",
-    "installedAria": "{{name}} is already on this agent",
-    "fromAgent": "From the {{agent}} agent"
+    "heading": "From your other AI Employees",
+    "installAria": "Add {{name}} to this AI Employee",
+    "installedAria": "{{name}} is already on this AI Employee",
+    "fromAgent": "From the {{agent}} AI Employee"
   },
   "fromWorkspace": {
     "heading": "From your workspace",

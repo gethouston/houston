@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { storeBrowseQueryOptions } from "../components/store-view/store-browse";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 import { screenPrefetchPlan } from "../lib/screen-prefetch-plan";
@@ -52,12 +51,6 @@ export function useScreenPrefetch() {
           queryFn: () => tauriOrg.get(),
           staleTime: 30_000,
         });
-      }
-      if (item === "store-catalog") {
-        const store = storeBrowseQueryOptions();
-        void queryClient.prefetchQuery(store.catalog);
-        void queryClient.prefetchQuery(store.categories);
-        void queryClient.prefetchQuery(store.creators);
       }
     }
   }, [agentsLoaded, capabilities]);

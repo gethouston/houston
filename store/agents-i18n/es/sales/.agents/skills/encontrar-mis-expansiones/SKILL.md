@@ -7,6 +7,9 @@ category: Ventas
 featured: no
 image: handshake
 integrations: [linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,9 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, hago UN
 - **Facturación conectada**  -  Obligatorio. Por qué lo necesito: los datos de asientos y uso fundamentan cada candidato de expansión. Si falta, pregunto: "Conecta Stripe para poder leer el conteo de asientos, los planes, y el uso."
 - **CRM conectado**  -  Obligatorio. Por qué lo necesito: leo qué clientes están VERDE y traigo los patrones recientes de solicitud de funciones. Si falta, pregunto: "Conecta tu CRM (HubSpot, Salesforce, Attio, Pipedrive, o Close) para poder leer tu cartera de clientes."
 - **Fuente de uso del producto**  -  Opcional. Por qué lo necesito: los picos de uso son la señal de expansión más fuerte. Si no la tienes, sigo con TBD en esa señal y me apoyo en las señales de asientos y crecimiento de equipo.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Leer el playbook.** `context/sales-context.md` para la postura de precios + la lista de SKU.
 

@@ -42,13 +42,13 @@
   "notifications": {
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
-      "body": "Tu agente terminó de trabajar.",
-      "question_one": "Tu agente tiene una pregunta para ti.",
-      "question_other": "Tu agente tiene preguntas para ti.",
-      "signin": "Tu agente necesita que inicies sesión.",
-      "connect": "Tu agente necesita que conectes una aplicación.",
-      "credential": "Tu agente necesita una clave de API para terminar.",
-      "handsOn": "Tu agente necesita que termines algo en Houston."
+      "body": "Tu empleado de IA terminó de trabajar.",
+      "question_one": "Tu empleado de IA tiene una pregunta para ti.",
+      "question_other": "Tu empleado de IA tiene preguntas para ti.",
+      "signin": "Tu empleado de IA necesita que inicies sesión.",
+      "connect": "Tu empleado de IA necesita que conectes una aplicación.",
+      "credential": "Tu empleado de IA necesita una clave de API para terminar.",
+      "handsOn": "Tu empleado de IA necesita que termines algo en Houston."
     },
     "mentioned": {
       "title": "{{name}} te mencionó",
@@ -56,7 +56,7 @@
       "body": "En {{mission}}"
     },
     "preprompt": {
-      "title": "¿Quieres un aviso cuando tu agente termine?",
+      "title": "¿Quieres un aviso cuando tu empleado de IA termine?",
       "body": "Activa las notificaciones y Houston te avisará en cuanto una tarea termine o te necesite.",
       "cta": "Activar notificaciones"
     },

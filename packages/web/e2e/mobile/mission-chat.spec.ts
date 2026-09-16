@@ -1,3 +1,7 @@
+import {
+  FOLLOW_UP_PLACEHOLDER,
+  NEW_TASK_PLACEHOLDER,
+} from "../support/composer";
 import { expect, test } from "../support/fixtures";
 import { newTaskButton, openPhoneTeamSection } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
@@ -35,7 +39,7 @@ test("a follow-up sent from the pushed chat round-trips", async ({ page }) => {
     .tap();
 
   const chat = page.getByTestId("mission-chat-screen");
-  const composer = chat.getByPlaceholder("Send a follow-up...");
+  const composer = chat.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await expect(composer).toBeVisible();
   await composer.fill("Also check the trains");
   await composer.press("Enter");
@@ -58,7 +62,7 @@ test("the compose draft chat creates its mission on first send", async ({
   await newTaskButton(page).tap();
 
   const chat = page.getByTestId("mission-chat-screen");
-  const composer = chat.getByPlaceholder("What should the agent work on?");
+  const composer = chat.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await expect(composer).toBeVisible();
   await composer.fill("Book a hotel in Kyoto");
   await composer.press("Enter");

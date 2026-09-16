@@ -72,7 +72,7 @@ export function RoutineSetupChatBoard({
   const path = agent.folderPath;
   const openHref = useOpenAgentHref(path);
   const queuedLabels = useQueuedMessageLabels();
-  const { composerLabels } = useBoardLabels();
+  const { labels, composerLabels } = useBoardLabels();
   const addToast = useUIStore((s) => s.addToast);
 
   const panel = useAgentChatPanel({
@@ -175,6 +175,7 @@ export function RoutineSetupChatBoard({
         // it turns the guided setup into a dead chat.
         composerOverride={panel.composerOverride}
         composerOverrideMode={panel.composerOverrideMode}
+        labels={labels}
         composerLabels={composerLabels}
         prepareAttachments={attachmentValidation.prepareAttachments}
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}

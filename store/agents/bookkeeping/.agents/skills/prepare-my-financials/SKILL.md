@@ -5,6 +5,9 @@ version: 1
 category: Bookkeeping
 featured: yes
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **The period or as-of date** — Required. Why: tells me which journal entries to include. If missing I ask: "Which period do you want, e.g. March 2025 for a P&L, or as-of March 31 2025 for a balance sheet?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json` (for `universal.accountingMethod` + `universal.openingBalances`), `config/chart-of-accounts.json` (LOCKED  -  statements key off `statementSection`), and `config/opening-trial-balance.json`. Parse args: `statement` (one of four) + `period` (`YYYY-MM` for P&L / cash-flow / variance; as-of date for balance-sheet / trial-balance).
 

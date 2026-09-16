@@ -7,6 +7,9 @@ category: Prospección
 featured: yes
 image: envelope-with-arrow
 integrations: [apify, airtable, apollo, instantly, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -76,6 +79,7 @@ Paused campaign ready for your review
 ```
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Validar entradas.** Confirmo que la URL sea de una publicación de LinkedIn (no un perfil, no un artículo), verifico las cuatro conexiones de Composio, leo `config/context-ledger.json`. Genero un `runId` con la forma `{YYYY-MM-DD}-{post-slug}` y creo `runs/{runId}/notes.md` para el diario de la ejecución.
 

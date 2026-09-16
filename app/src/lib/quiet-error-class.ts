@@ -66,9 +66,9 @@ export interface QuietErrorDetails {
  * carries the raw text as its message, the runtime client's `EngineError`
  * keeps the raw text on `body`) — the searchable payload the Sentry event
  * exists to carry. A transport `TypeError` has no status and its message IS
- * the diagnostic; a status-0 wrapper around one (the store client's
- * `StoreApiError`) reads the same way, since `0` is "no response", not an
- * HTTP status, and its `body` is the thrown error itself.
+ * the diagnostic; a status-0 wrapper around one reads the same way, since `0`
+ * is "no response", not an HTTP status, and its `body` is the thrown error
+ * itself.
  */
 export function quietErrorDetails(err: unknown): QuietErrorDetails {
   if (!(err instanceof Error)) return { status: null, body: null };

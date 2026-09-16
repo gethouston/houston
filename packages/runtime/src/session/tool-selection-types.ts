@@ -40,15 +40,6 @@ export interface ToolSelectionInput {
    */
   missions?: boolean;
   /**
-   * Whether this runtime can reach its host with a sandbox token — the SAME
-   * reachability `saveRoutine` / `saveLearning` need. Adds `find_skills` +
-   * `install_skill`, the agent's front door to the open skills directory
-   * (PRODUCT-1238), so "is there a skill for X?" is answered in chat instead of
-   * by sending the user to browse the Skills page. Absent/false leaves both off
-   * and the agent simply has no directory to consult.
-   */
-  skillDirectory?: boolean;
-  /**
    * Whether this runtime may perform user-facing Houston operations itself.
    * Requires host reachability (the tools proxy to `/sandbox/assistant/call`)
    * AND a loaded operation catalog, so it is decided by the caller, not here.

@@ -2,18 +2,14 @@ import { useIsMobile } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { HoustonLogo } from "../shell/experience-card";
 import { tourSelector } from "../shell/workspace-tour-steps.ts";
-import {
-  TutorialCenterCard,
-  TutorialSpotlight,
-  tutorialSelector,
-} from "../tutorial";
+import { TutorialCenterCard, TutorialSpotlight } from "../tutorial";
+import { CreateAgentDialogSpotlight } from "./create-agent-dialog-spotlight";
 import { MobileSpotlight } from "./in-app-mobile-spotlight";
 import {
   sendMissionSelector,
   sendMissionSurface,
 } from "./in-app-mobile-targets";
 import type { useInAppOnboarding } from "./use-in-app-onboarding";
-import { useNamingPhase } from "./use-naming-phase";
 import { useSetupChecklist } from "./use-setup-checklist";
 
 /**
@@ -32,7 +28,6 @@ export function InAppOnboardingAgentSteps({
   const { t } = useTranslation("setup");
   const isMobile = useIsMobile();
   const checklist = useSetupChecklist(o);
-  const namingPhase = useNamingPhase(o.step === "createAgentDialog");
 
   switch (o.step) {
     case "createAgentIntro":
@@ -61,29 +56,7 @@ export function InAppOnboardingAgentSteps({
         />
       );
     case "createAgentDialog":
-      // Coached INSIDE the real dialog (z-lifted, no blockers — the dialog's
-      // own modality isolates the app): first the "Create new" tile, then the
-      // name + color phase the moment it renders.
-      return (
-        <TutorialSpotlight
-          inDialog
-          selector={
-            namingPhase
-              ? tutorialSelector("createAgentNaming")
-              : tutorialSelector("createAgentBlankTile")
-          }
-          title={
-            namingPhase
-              ? t("inApp.steps.createAgentDialog.nameTitle")
-              : t("inApp.steps.createAgentDialog.pickTitle")
-          }
-          hint={
-            namingPhase
-              ? t("inApp.steps.createAgentDialog.nameHint")
-              : undefined
-          }
-        />
-      );
+      return <CreateAgentDialogSpotlight />;
     case "agentCreated":
       return (
         <TutorialCenterCard

@@ -77,26 +77,48 @@ describe("ORG_TAB_IDS", () => {
     // (the landing section), and it is unconditional because the whole Admin
     // view is already gated on `canSeeOrganization`, which is false in a
     // personal space, so a second branch for it here would be dead code.
-    strictEqual(ORG_TAB_IDS.join(","), "companyContext,people,activity,usage");
+    strictEqual(
+      ORG_TAB_IDS.join(","),
+      "companyContext,orgChart,people,activity,usage",
+    );
   });
 });
 
 describe("orgTabIds", () => {
   it("splices billing in after People only when it is in scope", () => {
     strictEqual(
-      orgTabIds({ billing: false, timeWorked: false }).join(","),
-      "companyContext,people,activity,usage",
+      orgTabIds({ personal: false, billing: false, timeWorked: false }).join(
+        ",",
+      ),
+      "companyContext,orgChart,people,activity,usage",
     );
     strictEqual(
-      orgTabIds({ billing: true, timeWorked: false }).join(","),
-      "companyContext,people,billing,activity,usage",
+      orgTabIds({ personal: false, billing: true, timeWorked: false }).join(
+        ",",
+      ),
+      "companyContext,orgChart,people,billing,activity,usage",
     );
   });
 
   it("adds Time worked last only when compute usage is in scope", () => {
     strictEqual(
-      orgTabIds({ billing: false, timeWorked: true }).join(","),
-      "companyContext,people,activity,usage,timeWorked",
+      orgTabIds({ personal: false, billing: false, timeWorked: true }).join(
+        ",",
+      ),
+      "companyContext,orgChart,people,activity,usage,timeWorked",
+    );
+  });
+});
+
+describe("personal workspace sections", () => {
+  it("keeps context, org chart, and usage without organizational administration", () => {
+    strictEqual(
+      orgTabIds({ personal: true, billing: true, timeWorked: false }).join(","),
+      "companyContext,orgChart,usage",
+    );
+    strictEqual(
+      orgTabIds({ personal: true, billing: false, timeWorked: true }).join(","),
+      "companyContext,orgChart,usage,timeWorked",
     );
   });
 });

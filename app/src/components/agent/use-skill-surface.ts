@@ -7,12 +7,10 @@ import {
   useSkills,
 } from "../../hooks/queries";
 import { analytics } from "../../lib/analytics";
-import { useCommunitySkillHandlers } from "./use-community-skill-handlers";
 
 /**
  * What an agent's Skills section needs from the host: the installed list, and
- * the three ways a skill arrives (community search + install, a GitHub repo,
- * from scratch).
+ * the two manual ways a skill arrives (a GitHub repo, or from scratch).
  *
  * Editing and deleting are NOT here. A skill's row opens the manage dialog
  * (`AgentSkillManageDialog`), which resolves the slug itself — a local copy is
@@ -25,9 +23,6 @@ export function useSkillSurface(agentPath: string) {
   const createSkill = useCreateSkill(agentPath);
   const listFromRepo = useListSkillsFromRepo(agentPath);
   const installFromRepo = useInstallSkillFromRepo(agentPath);
-  const { handleSearch, handlePreview, handleInstallCommunity } =
-    useCommunitySkillHandlers(agentPath);
-
   /**
    * Lowercase set of locally-installed skill slugs. The create dialog uses
    * this to render "Already exists" badges before the user even tries to
@@ -71,9 +66,6 @@ export function useSkillSurface(agentPath: string) {
   return {
     skills: summaries ?? [],
     skillsLoading,
-    handleSearch,
-    handleInstallCommunity,
-    handlePreview,
     handleListFromRepo,
     handleInstallFromRepo,
     handleCreateFromScratch,

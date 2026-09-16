@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [gmail, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Primero leo tu contexto de operaciones. Por cada campo requerido que falte, hago
 - **Tu tono** - Opcional. Por qué lo necesito: el recordatorio suena como tú, no como un bot. Si no lo tienes, sigo adelante con TBD usando un tono neutral; lo mejor es que conectes tu bandeja de entrada para que pueda muestrear 20 a 30 mensajes enviados.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** Si la sección "Key contacts / Team" está ausente, vacía o tiene N≤1 (solo el fundador), me detengo y digo:
 

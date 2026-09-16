@@ -6,7 +6,7 @@
     "scheduleOptionTitle": "Según un horario",
     "eventOptionTitle": "Cuando algo pase en una app",
     "triggerDescription": "Elige la app que quieres vigilar. Dirás en el chat qué debe pasar en ella.",
-    "build": "Créala con tu agente",
+    "build": "Créala con tu empleado de IA",
     "webhookOptionTitle": "Desde una app externa",
     "webhookTitle": "Actívala desde una dirección web",
     "webhookDescription": "Obtendrás una dirección web única que activa esta rutina cada vez que algo la llame."
@@ -121,8 +121,8 @@
       "cancelled": "Detenida"
     },
     "model": {
-      "followsAgent": "Sigue el modelo del agente",
-      "reset": "Usar el modelo del agente"
+      "followsAgent": "Sigue el modelo del empleado de IA",
+      "reset": "Usar el modelo del empleado de IA"
     },
     "health": {
       "connected": "Conectado",
@@ -241,7 +241,7 @@
     "waitingFirstEvent": "Activa. Esperando el primer evento.",
     "reconnect": "Reconectar",
     "statusDisconnectedHint": "La cuenta conectada se desconectó.",
-    "statusRevokedHint": "Esta app se desactivó para este agente.",
+    "statusRevokedHint": "Esta app se desactivó para este empleado de IA.",
     "rowSummary": "Se activa con un evento en {{app}}",
     "loadFailed": "No se pudieron cargar los activadores de eventos",
     "webhookRowSummary": "Se activa cuando llaman a su dirección de webhook"

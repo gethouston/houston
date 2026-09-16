@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [gmail, outlook, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ Primero leo tu contexto de contabilidad. Por cada campo requerido que falte, hag
 - **Una cuenta de Préstamo del Fundador por Pagar registrada**, opcional. Por qué: solo hace falta si el recibo se pagó de tu propio bolsillo. Si no la tienes, pregunto una vez y la agrego a tu plan de cuentas.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto y bloquear el plan de cuentas.** Cargar `context/bookkeeping-context.md` (detenerse si falta, pedir que se corra `set-up-my-books`), `config/context-ledger.json`, `config/chart-of-accounts.json` (**bloqueado** para la ejecución, detenerse si no existe), `config/prior-categorizations.json`, y `config/party-rules.json`.
 

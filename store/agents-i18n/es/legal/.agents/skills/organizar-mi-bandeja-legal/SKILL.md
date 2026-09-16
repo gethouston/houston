@@ -7,6 +7,9 @@ category: Bandeja de entrada
 featured: no
 image: scroll
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Organizar mi bandeja legal
@@ -18,6 +21,7 @@ integrations: [gmail, outlook]
 - Segura para usar bajo demanda: a diario o varias veces por semana para un fundador solo. Ventana por defecto: últimos 7 días si no se especifica.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el contexto compartido**: `context/legal-context.md`. Si falta o está vacío, pregunta al usuario en lenguaje sencillo: "Primero necesito unos datos básicos sobre tu empresa. ¿Quieres configurarlos ahora?" Luego ejecuta `set-up-my-legal-info` si dice que sí. Detente hasta que eso esté hecho.
 2. **Lee la configuración**: `config/counterparty-stack.json`. Si tu bandeja no está conectada, pregunta al usuario en lenguaje sencillo: "Necesito conectar tu bandeja de entrada para revisarla. ¿Quieres conectar Gmail u Outlook ahora?" Detente hasta que esté conectada.

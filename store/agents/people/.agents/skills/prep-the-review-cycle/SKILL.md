@@ -6,6 +6,9 @@ category: People
 featured: yes
 image: busts-in-silhouette
 integrations: [googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Roster** — Required. Why I need it: calibration doc lists who's reviewing whom. If missing I ask: "Connect your HR platform so I can pull the team, or paste the current roster."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc:**
    `context/people-context.md`. Missing or empty? tell

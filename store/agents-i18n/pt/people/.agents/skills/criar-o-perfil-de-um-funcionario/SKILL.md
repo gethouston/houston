@@ -7,6 +7,9 @@ category: Pessoas
 featured: no
 image: busts-in-silhouette
 integrations: [notion, slack, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Primeiro leio o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Fonte da equipe atual** , Obrigatório quando a plataforma de RH não estiver conectada. Por que preciso: preciso de algum lugar para ler as informações básicas. Se estiver faltando, pergunto: "Conecte sua plataforma de RH para eu buscar isso diretamente, ou cole o registro do funcionário."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio o documento de contexto de pessoas.** Leio `context/people-context.md` para as regras de nivelamento, faixas salariais, confidencialidade em torno do conteúdo do dossiê. Se estiver faltando ou vazio, aviso o usuário: "Preciso primeiro do documento de contexto de pessoas, rode a habilidade set-up-my-people-info." Paro.
 2. **Leio a configuração.** `config/context-ledger.json`. Se a plataforma de RH não estiver conectada e não houver link de equipe registrado, faço UMA pergunta direcionada com dica de modalidade: "Conecte sua plataforma de RH (Gusto, Deel, Rippling ou Justworks) na aba Integrações, ou cole o registro do funcionário." Registro a resolução, continuo.

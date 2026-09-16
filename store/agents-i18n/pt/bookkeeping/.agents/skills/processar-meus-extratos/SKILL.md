@@ -7,6 +7,9 @@ category: Contabilidade
 featured: no
 image: ledger
 integrations: [googlesheets, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -107,6 +110,7 @@ O usuário fornece um ou mais destes:
 4. (Opcional) arquivo de plano de contas personalizado (xlsx / csv / texto colado), lista de fornecedores, ou Detalhamento de Transações anterior.
 
 ## Procedimento
+<!-- houston-workflow:v1 -->
 
 ### Etapa 1, Inicializar o contexto e travar o plano de contas
 

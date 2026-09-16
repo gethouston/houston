@@ -1,3 +1,23 @@
+/** The connected app (and, when known, the exact action) a workflow step runs. */
+export interface SkillStepIntegration {
+  /** Composio toolkit slug, lowercase (e.g. "gmail"). */
+  toolkit: string;
+  /**
+   * Exact action slug, uppercase (e.g. "GMAIL_SEND_EMAIL"); null when the step
+   * names the app but not which of its actions it runs.
+   */
+  action: string | null;
+}
+
+/** One step of a skill's workflow, as the domain parser reads it out of SKILL.md. */
+export interface SkillWorkflowStepItem {
+  title: string;
+  /** The step's supporting lines, newline-separated; null when the title says it all. */
+  detail: string | null;
+  /** The app the step acts on; null when it touches none. */
+  integration: SkillStepIntegration | null;
+}
+
 export interface Skill {
   id: string;
   name: string;
@@ -8,16 +28,18 @@ export interface Skill {
   file_path: string;
 }
 
-export interface CommunitySkill {
+/** Identity of the skill a {@link SkillPreviewModal} is showing. */
+export interface PreviewSkill {
   id: string;
   skillId: string;
   name: string;
   installs: number;
+  /** Where the skill comes from, rendered as the modal's by-line. */
   source: string;
 }
 
-/** Full detail fetched on-demand for a community skill, read from its real SKILL.md. */
-export interface CommunitySkillPreview {
+/** Full detail a preview shows, read from the skill's real SKILL.md. */
+export interface PreviewSkillDetail {
   title: string | null;
   description: string;
   image: string | null;
@@ -27,6 +49,8 @@ export interface CommunitySkillPreview {
   integrations: string[];
   /** Full SKILL.md markdown body with frontmatter stripped; null when unavailable. */
   content: string | null;
+  /** The parsed procedure of a Houston-authored skill; absent for imported ones. */
+  workflow?: SkillWorkflowStepItem[] | null;
 }
 
 /** A skill discovered in a GitHub repo */
@@ -35,29 +59,4 @@ export interface RepoSkill {
   name: string;
   description: string;
   path: string;
-}
-
-export type LearningCategory =
-  | "pattern"
-  | "pitfall"
-  | "preference"
-  | "procedure";
-
-export const CATEGORY_LABELS: Record<LearningCategory, string> = {
-  pattern: "Pattern",
-  pitfall: "Pitfall",
-  preference: "Preference",
-  procedure: "Procedure",
-};
-
-export interface SkillLearning {
-  id: string;
-  skill_id: string;
-  project_id: string;
-  content: string;
-  rationale: string;
-  category: LearningCategory;
-  source_issue_id: string | null;
-  source_issue_title: string | null;
-  created_at: string;
 }

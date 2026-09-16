@@ -4,6 +4,7 @@ import {
   formatSkillsForPrompt,
   loadSkillsFromDir,
 } from "@earendil-works/pi-coding-agent";
+import { renderJobDescriptionForPrompt } from "@houston/domain";
 import type { TurnMode } from "@houston/protocol";
 import { config } from "../../config";
 import { buildAssistantRulesSection } from "../../session/assistant-rules-context";
@@ -89,11 +90,17 @@ function buildSkillsSection(cwd: string): string {
   return formatSkillsForPrompt(skills);
 }
 
-/** The first workspace-root context file's contents, or null when none exists. */
+/**
+ * The first workspace-root context file, or null when none exists. The job
+ * description is structured (`industry`/`role` frontmatter + the free
+ * description): the model reads those two as plain lines, never YAML — the
+ * same rendering the pi backend applies (session/resource-loader.ts).
+ */
 function loadWorkspaceContextFile(cwd: string): string | null {
   for (const name of CONTEXT_CANDIDATES) {
     const path = join(cwd, name);
-    if (existsSync(path)) return readFileSync(path, "utf8");
+    if (existsSync(path))
+      return renderJobDescriptionForPrompt(readFileSync(path, "utf8"));
   }
   return null;
 }

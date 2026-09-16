@@ -15,7 +15,9 @@ import { expect, type Locator, type Page } from "@playwright/test";
  * shortcut's toggle from closing a palette that did open.
  */
 export async function openPalette(page: Page): Promise<Locator> {
-  const search = page.getByPlaceholder("Search agents, tasks, actions...");
+  const search = page.getByPlaceholder(
+    "Search AI Employees, tasks, actions...",
+  );
   await expect(async () => {
     if (!(await search.isVisible())) {
       await page.keyboard.press("ControlOrMeta+KeyK");

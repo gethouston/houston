@@ -7,6 +7,9 @@ category: Personal
 featured: no
 image: busts-in-silhouette
 integrations: [googlesheets, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primero leo tu contexto de personal. Por cada campo obligatorio que falte, hago 
 - **Fecha de renovación de PTO**: Opcional. Por qué lo necesito: ancla la entrada anual de renovación de PTO. Si no la tienes, sigo con TBD.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal.** Leo `context/people-context.md` para el ritmo del ciclo de evaluaciones (anual / semestral / trimestral, próxima fecha de ciclo) y cualquier frecuencia de actualización de políticas. Si falta o está vacío, le digo al usuario: "Primero necesito tu contexto de personal, corre la habilidad set-up-my-people-info." Me detengo.
 2. **Leer el registro.** `config/context-ledger.json` (plataforma de RR.HH. de solo lectura, nunca modifico registros). Si la plataforma de RR.HH. no está conectada, hago UNA pregunta puntual con sugerencia de modalidad ("Conecta tu plataforma de RR.HH., Gusto, Deel, Rippling o Justworks, en la pestaña de Integraciones para que pueda traer fechas de inicio, estatus de autorización de trabajo y calendarios de vesting").

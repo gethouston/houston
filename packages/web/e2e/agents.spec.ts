@@ -3,8 +3,8 @@ import { expect, test } from "./support/fixtures";
 import { rail, screen } from "./support/team-nav";
 
 /**
- * Agent lifecycle through the UI. Creating an agent goes New agent → From
- * scratch → name + create, which POSTs to the fake host's `/agents`, fires the
+ * Agent lifecycle through the UI. Creating an agent goes New AI Employee → the
+ * guided brief → name + create, which POSTs to the fake host's `/agents`, fires the
  * agent's self-setup mission, and auto-opens its chat panel (dismissed by the
  * shared `createAgent` helper), landing the new agent in the sidebar (via the
  * AgentsChanged reactivity event).

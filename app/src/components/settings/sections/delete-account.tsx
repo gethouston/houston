@@ -1,19 +1,10 @@
-import {
-  AsyncButton,
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-} from "@houston-ai/core";
+import { Button, FormDialog, Input } from "@houston-ai/core";
 import { UserX } from "lucide-react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSession } from "../../../hooks/use-session";
 import { deleteAccountAndSignOut } from "../../../lib/delete-account-flow";
+import { stayOpen } from "../../../lib/dialog-stay-open";
 import { isHostedGatewayEngine } from "../../../lib/engine";
 import { isIdentityConfigured } from "../../../lib/identity";
 import {
@@ -57,10 +48,6 @@ export function DeleteAccountSection() {
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState("");
   const [failure, setFailure] = useState<Failure | null>(null);
-  // Synchronous in-flight guard shared by the AsyncButton click and the Enter
-  // keydown (the api-key dialog's double-submit lesson): a ref flips before
-  // React re-renders, so two rapid Enters can never fire two delete requests.
-  const submitting = useRef(false);
 
   if (!available) return null;
 
@@ -74,8 +61,6 @@ export function DeleteAccountSection() {
   }
 
   async function submit() {
-    if (submitting.current || !armed) return;
-    submitting.current = true;
     setFailure(null);
     try {
       // On success the session goes null and the sign-in screen replaces this
@@ -83,9 +68,10 @@ export function DeleteAccountSection() {
       // surface on the auth-error bus, which that screen renders.
       await deleteAccountAndSignOut();
     } catch (e) {
+      // Three states the user can act on, each explained under the field: the
+      // dialog stays with the typed word so the retry is one click.
       setFailure(failureOf(e));
-    } finally {
-      submitting.current = false;
+      return stayOpen();
     }
   }
 
@@ -102,54 +88,46 @@ export function DeleteAccountSection() {
         </Button>
       </SettingsControlRow>
 
-      <Dialog open={open} onOpenChange={(next) => !next && close()}>
-        <DialogContent closeLabel={t("deleteAccount.dialogClose")}>
-          <DialogHeader>
-            <DialogTitle>{t("deleteAccount.confirmTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("deleteAccount.confirmBody")}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-sm text-ink-muted">
-              {t("deleteAccount.typeToConfirm", { word: confirmWord })}
+      <FormDialog
+        open={open}
+        onOpenChange={(next) => !next && close()}
+        title={t("deleteAccount.confirmTitle")}
+        description={t("deleteAccount.confirmBody")}
+        primary={{
+          label: t("deleteAccount.confirm"),
+          variant: "destructive",
+          onClick: submit,
+          disabled: !armed,
+        }}
+        labels={{
+          cancel: t("deleteAccount.cancel"),
+          close: t("deleteAccount.dialogClose"),
+        }}
+      >
+        <div className="space-y-2">
+          <p className="text-sm text-ink-muted">
+            {t("deleteAccount.typeToConfirm", { word: confirmWord })}
+          </p>
+          <Input
+            autoFocus
+            value={typed}
+            placeholder={confirmWord}
+            aria-label={t("deleteAccount.typeToConfirm", {
+              word: confirmWord,
+            })}
+            onChange={(e) => setTyped(e.target.value)}
+          />
+          {failure && (
+            <p className="text-xs text-danger">
+              {failure === "team_member"
+                ? t("deleteAccount.errors.teamMember")
+                : failure === "network"
+                  ? t("deleteAccount.errors.network")
+                  : t("deleteAccount.errors.generic")}
             </p>
-            <Input
-              autoFocus
-              value={typed}
-              placeholder={confirmWord}
-              aria-label={t("deleteAccount.typeToConfirm", {
-                word: confirmWord,
-              })}
-              onChange={(e) => setTyped(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && armed) void submit();
-              }}
-            />
-            {failure && (
-              <p className="text-xs text-destructive">
-                {failure === "team_member"
-                  ? t("deleteAccount.errors.teamMember")
-                  : failure === "network"
-                    ? t("deleteAccount.errors.network")
-                    : t("deleteAccount.errors.generic")}
-              </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={close}>
-              {t("deleteAccount.cancel")}
-            </Button>
-            <AsyncButton
-              variant="destructive"
-              onClick={submit}
-              disabled={!armed}
-            >
-              {t("deleteAccount.confirm")}
-            </AsyncButton>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          )}
+        </div>
+      </FormDialog>
     </>
   );
 }

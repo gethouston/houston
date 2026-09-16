@@ -6,6 +6,9 @@ category: Inbox
 featured: no
 image: scroll
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -18,6 +21,7 @@ integrations: [gmail, outlook]
 - Safe on-demand  -  daily or few times/week for solo founder. Default window: last 7 days if unspecified.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read shared context**: `context/legal-context.md`. If missing/empty, ask the user in plain language: "I need a few basics about your company first. Want to set those up now?" Then run `set-up-my-legal-info` if yes. Stop until that's done.
 2. **Read config**: `config/counterparty-stack.json`. If your inbox isn't connected, ask the user in plain language: "I need to connect your inbox to look through it. Want to connect Gmail or Outlook now?" Stop until connected.

@@ -93,7 +93,7 @@ test("leaving the board for another TOP-LEVEL view resets its archived board too
   // reach. The team screen is kept alive, so nothing unmounts and nothing
   // resets on its own: without the surface router the user returns to the
   // archive they walked away from.
-  await page.locator("[data-tour-target='nav-agent-store']").click();
+  await page.locator("[data-tour-target='nav-integrations']").click();
   await openTeamSection(page, "Tasks");
   await expect(screen(page).getByText("Left open")).toHaveCount(0);
   await expect(

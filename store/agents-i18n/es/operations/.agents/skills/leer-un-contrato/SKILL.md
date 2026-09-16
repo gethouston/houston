@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [googledrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ Primero leo tu contexto de operaciones. Por cada campo obligatorio que falte hag
 - **Documento de contexto operativo**  -  Obligatorio. Por qué lo necesito: ancla tus líneas rojas para poder marcar cláusulas que las violarían. Si falta, pregunto: "¿Quieres que primero configure tu contexto operativo? Me ayuda a detectar términos desfavorables con más confianza."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** Si falta: me detengo y te pido correr primero la habilidad `set-up-my-ops-info`. La postura frente a proveedores + las líneas rojas anclan las advertencias de "términos desfavorables".
 

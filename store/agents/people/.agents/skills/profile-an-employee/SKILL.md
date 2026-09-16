@@ -6,6 +6,9 @@ category: People
 featured: no
 image: busts-in-silhouette
 integrations: [notion, slack, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Roster source** — Required when HR platform isn't connected. Why I need it: I need somewhere to read the basics. If missing I ask: "Connect your HR platform so I can pull this directly, or paste the employee record."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc.** Read `context/people-context.md` for leveling, comp bands, confidentiality rules around dossier content. If missing/empty, tell user: "I need the people-context doc first  -  run the set-up-my-people-info skill." Stop.
 2. **Read ledger.** `config/context-ledger.json`. If HR platform not connected and no roster link recorded, ask ONE targeted question with modality hint  -  "Connect your HR platform (Gusto, Deel, Rippling, or Justworks) in Integrations tab, or paste employee record." Write resolution, continue.

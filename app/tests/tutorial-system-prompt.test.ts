@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { parseJobDescription } from "@houston/sdk/job-description";
 import {
   appendSetupSection,
   stripSetupSection,
@@ -23,4 +24,20 @@ test("append -> strip round-trips the user's CLAUDE.md byte-for-byte-ish", () =>
 test("append is idempotent: an existing section is never doubled", () => {
   const once = appendSetupSection("hello", CHOICES);
   assert.equal(appendSetupSection(once, CHOICES), once);
+});
+
+test("the directive rides BELOW the job description's block of facts", () => {
+  // The tutorial writes into the same file the Job description tab edits, so
+  // the facts at its head must survive an append and a strip untouched —
+  // otherwise a tutorial run would silently un-hire the agent.
+  const original = "---\nindustry: Healthcare\nrole: Medical coder\n---\n";
+  const appended = appendSetupSection(original, CHOICES);
+  assert.deepEqual(parseJobDescription(appended), {
+    fields: { industry: "Healthcare", role: "Medical coder" },
+    body: appended
+      .slice(appended.indexOf("<!-- HOUSTON_SETUP_BEGIN -->"))
+      .trim(),
+    extraKeys: {},
+  });
+  assert.equal(stripSetupSection(appended), original);
 });

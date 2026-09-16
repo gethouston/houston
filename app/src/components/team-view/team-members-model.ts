@@ -1,6 +1,6 @@
 import type { AgentTeamMember, OrgMember } from "@houston/engine-adapter";
 import { canLeaveTeam, type TeamView } from "../../lib/teams-model.ts";
-import { memberLabel } from "../organization/people-tab-model.ts";
+import { rosterPersonName } from "../organization/people-tab-model.ts";
 
 /**
  * Pure, DOM-free logic behind Team Settings' Members card (C13): which face the
@@ -18,7 +18,10 @@ import { memberLabel } from "../organization/people-tab-model.ts";
 
 /** The roster fields naming a person needs: the org read's members, narrowed so
  *  the card (and a test) hands over only what it actually reads. */
-export type TeamRosterPerson = Pick<OrgMember, "userId" | "email">;
+export type TeamRosterPerson = Pick<
+  OrgMember,
+  "userId" | "email" | "displayName"
+>;
 
 /** One person in the team's Members card. */
 export interface TeamMemberRow {
@@ -69,7 +72,7 @@ export function buildTeamMemberRows(input: {
     const isSelf = member.userId === input.selfId;
     return {
       userId: member.userId,
-      name: person ? memberLabel(person) : member.userId,
+      name: person ? rosterPersonName(person) : member.userId,
       owner: member.owner,
       isSelf,
       editable: !input.readOnly && !isSelf,

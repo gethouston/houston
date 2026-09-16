@@ -7,7 +7,6 @@ import { isAgentManager } from "../../lib/agent-access";
 import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { getEngine } from "../../lib/engine";
 import { genericErrorDescription } from "../../lib/error-report";
-import type { WizardSelection } from "../../lib/portable-share";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
@@ -18,6 +17,7 @@ import {
   copyWizardSteps,
   fullCopySelection,
   toCopySelection,
+  type WizardSelection,
 } from "./copy-agent-wizard-model";
 
 /**
@@ -106,6 +106,24 @@ export function useCopyAgentWizard(args: {
     stepIndex > 0 ? setStepIndex(stepIndex - 1) : args.onBack();
   const next = () => setStepIndex(stepIndex + 1);
 
+  /**
+   * Forget the whole wizard. The sheet that hosts it keeps this state alive
+   * across its other screens (its header reads the wizard's own steps), so
+   * leaving the copy path has to say so out loud: without this, coming back
+   * would land on a source list under a progress bar counting the LAST
+   * source's screens.
+   */
+  const reset = () => {
+    setSource(null);
+    setPreview(null);
+    setSelection(null);
+    setStepIndex(0);
+    setName("");
+    setColor(undefined);
+    setCopyChats(false);
+    setChatCount(0);
+  };
+
   const submit = async () => {
     if (creating || !source || !selection || !name.trim() || nameIssue) return;
     setCreating(true);
@@ -146,6 +164,10 @@ export function useCopyAgentWizard(args: {
     pick,
     back,
     next,
+    reset,
     submit,
   };
 }
+
+/** The wizard's whole state, as the sheet that frames it reads it. */
+export type CopyAgentWizardState = ReturnType<typeof useCopyAgentWizard>;

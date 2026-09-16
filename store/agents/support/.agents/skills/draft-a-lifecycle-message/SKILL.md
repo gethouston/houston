@@ -6,6 +6,9 @@ category: Support
 featured: no
 image: headphone
 integrations: [hubspot, attio, stripe, mailchimp, customerio, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -48,6 +51,7 @@ I read your support context first. For every required field that's missing I ask
 - `churn-save`  -  ONE save message for `{account}` grounded in exact risk signal from `churn-flags.json`, offering genuine option (pause / downgrade / concierge / refund). Writes `saves/{account}.md`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `config/context-ledger.json` and `config/voice.md`.** Fill gap with one targeted question.
 2. **Read `context/support-context.md`.** Missing → stop, tell me run `set-up-my-support-info` first.

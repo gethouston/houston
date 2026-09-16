@@ -1,7 +1,7 @@
 import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import type { SidebarGroupView, SidebarItem } from "@houston-ai/layout";
 import type { LucideIcon } from "lucide-react";
-import { Blocks, LayoutDashboard, Settings, Store, Users } from "lucide-react";
+import { Blocks, Boxes, GraduationCap, Settings, Users } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
@@ -99,16 +99,24 @@ export const agentGroups: SidebarGroupView[] = [
   },
 ];
 
-/** The shell's top-level destinations, in the order `sidebar-chrome.tsx` builds
- *  them (Mission Control, Integrations, Agent Store, Settings). */
+/**
+ * The shell's top-level destinations that wear a Lucide glyph, in the order the
+ * rail builds them: AI Models and Integrations lead
+ * (`sidebar-nav-sections.tsx`), then the footer cluster, Academy over Settings
+ * (`sidebar-footer.tsx`).
+ *
+ * The rail's FIRST row, the Houston assistant, is deliberately absent: it wears
+ * the product's own helmet mark rather than a Lucide glyph, so it would make
+ * this sample lie about what a nav entry carries.
+ */
 export const navEntries: readonly {
   id: string;
   label: string;
   icon: LucideIcon;
 }[] = [
-  { id: "dashboard", label: "Mission Control", icon: LayoutDashboard },
+  { id: "ai-hub", label: "AI Models", icon: Boxes },
   { id: "integrations", label: "Integrations", icon: Blocks },
-  { id: "store", label: "Agent Store", icon: Store },
+  { id: "academy", label: "Academy", icon: GraduationCap },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 

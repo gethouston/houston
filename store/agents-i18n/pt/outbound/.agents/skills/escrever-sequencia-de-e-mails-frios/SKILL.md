@@ -7,6 +7,9 @@ category: Prospecção
 featured: yes
 image: pencil
 integrations: []
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -80,6 +83,7 @@ Se faltar gatilho, produto, prova social ou oferta, eu peço isso na hora antes 
 - Escreva como se estivesse mandando mensagem para um colega.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 ### Passo 1: Reunir as entradas
 

@@ -7,6 +7,9 @@ category: Personal
 featured: yes
 image: busts-in-silhouette
 integrations: [github, linkedin, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Primero leo tu contexto de personal. Por cada campo obligatorio que falte, hago 
 - **Empresas a excluir**: Opcional. Por qué lo necesito: mantiene fuera de la lista a personas que ya descartaste antes. Si no lo tienes, sigo con TBD.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal** en `context/people-context.md`. Si falta o está vacío, le digo al usuario: "Primero necesito tu contexto de personal, corre la habilidad set-up-my-people-info." Me detengo. Extraigo el marco de niveles y las notas existentes sobre la forma del equipo para el puesto objetivo.
 2. **Leer la vacante.** Busco `reqs/{role-slug}.md`. Si falta, hago UNA pregunta puntual ("¿Cuál es el nivel objetivo y los 3 requisitos indispensables principales para {puesto}? Voy a guardar una rúbrica corta en `reqs/{role-slug}.md` y continuar."). La escribo y continúo.

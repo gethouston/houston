@@ -5,6 +5,9 @@ version: 1
 category: Sales
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **The objection in their words**  -  Required. Why I need it: I reframe the actual phrase, not a paraphrase. If missing I ask: "What did they say, word for word?"
 - **Which deal this came up on**  -  Required. Why I need it: I save the reframe under that deal and pull context from the call. If missing I ask: "Which prospect or deal raised this?"
 - **Voice samples**  -  Optional. Why I need it: makes the post-call email sound like you. If you don't have it I keep going with TBD and use a neutral tone.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read the playbook.** Load `context/sales-context.md`. Find matching entry in Objection handbook. If playbook missing, ask user to run `set-up-my-sales-info` first, stop.
 

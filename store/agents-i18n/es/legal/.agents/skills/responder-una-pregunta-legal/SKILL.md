@@ -7,6 +7,9 @@ category: Asesoría
 featured: yes
 image: scroll
 integrations: [stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -22,6 +25,7 @@ integrations: [stripe]
 - Cualquier "¿necesito X?" o "¿me aplica X?" encaja en un memo breve.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el contexto compartido.** Carga `legal-context.md` para conocer la entidad, la geografía de datos de los usuarios actuales, los acuerdos vigentes, la postura de riesgo del fundador y las reglas de escalamiento. Lee también las entradas relevantes anteriores en `advice-memos/`, no vuelvas a responder algo que ya quedó resuelto.
 

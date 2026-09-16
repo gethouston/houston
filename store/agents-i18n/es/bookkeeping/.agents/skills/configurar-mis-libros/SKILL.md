@@ -7,6 +7,9 @@ category: Contabilidad
 featured: yes
 image: ledger
 integrations: [stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -45,6 +48,7 @@ Primero leo tu contexto contable. Por cada campo obligatorio que falte, hago UNA
 - **Un balance de apertura, en `mode=opening-balances`**, Obligatorio para ese modo. Por qué: ancla cada cifra del balance general de aquí en adelante. Si falta, pregunto: "¿Tienes un balance de cierre de tus libros anteriores o de tu contador? Compártelo como hoja de cálculo o CSV con código de cuenta, nombre, débito, y crédito."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el estado existente.** Cargo `config/context-ledger.json` (creo un esqueleto vacío `{"universal":{},"domains":{}}` si no existe) y `context/bookkeeping-context.md` si existe  -  esta ejecución es actualización, no reescritura. Preservo todo lo que el fundador afinó; toco solo lo obsoleto o nuevo.
 

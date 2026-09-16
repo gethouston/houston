@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [hubspot, salesforce, attio]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Top accounts to learn from**  -  Required. Why I need it: I won't invent demographics. If missing I ask: "Connect your CRM so I can pull your closed-won list, or paste five accounts (won or target) you want me to learn from."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read positioning doc** (own file, since this is HoM): `context/marketing-context.md`. If missing, run `set-up-my-marketing-info` first  -  persona work wasted without positioning anchor.
 

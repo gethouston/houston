@@ -104,9 +104,7 @@ export type AnalyticsEventName =
   // error: it shows which providers' key pages confuse users (PRODUCT-1730).
   | "provider_key_rejected"
   | "agent_created"
-  | "agent_installed_from_store"
   | "agent_shared"
-  | "agent_published"
   | "agent_imported"
   // A workspace-internal duplicate (`agent_slug` is the SOURCE agent);
   // `source` names the door: the agent's Settings row or the create dialog.

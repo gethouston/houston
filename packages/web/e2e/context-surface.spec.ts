@@ -12,18 +12,19 @@ import { screen } from "./support/team-nav";
  *    about themselves, so it is a SECTION of Settings, beside their name and
  *    their language. It is ungated: it exists in every deployment, including a
  *    solo desktop install.
- *  - **Admin > Company context** — what the agents know about the COMPANY. It is
+ *  - **Company context** — what the agents know about the COMPANY. It is
  *    shared by everyone in the space, so it is the space owner's: a section of
- *    the Admin dashboard, which is itself gated to a team space and therefore
- *    never appears on a personal/solo install.
+ *    the Admin dashboard behind Settings > Workspace management, which is itself
+ *    gated to a team space and therefore never appears on a personal/solo
+ *    install.
  *
  * The underlying data did not move: each half still reads and writes its own
  * slot of the same blob (`WORKSPACE.md` / `USER.md` locally, the org+user blobs
  * in cloud) through `use-workspace-context`.
  */
 
-/** Teams owner on a non-spaces host: the sole workspace is the org, so Admin
- *  (and with it Company context) is theirs. */
+/** Teams owner on a non-spaces host: the sole workspace is the org, so the
+ *  Admin dashboard (and with it Company context) is theirs. */
 async function armOwner(request: APIRequestContext): Promise<void> {
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
     data: { multiplayer: true, teams: true, role: "owner" },
@@ -48,7 +49,7 @@ test("About me is a Settings section, drilled from the index", async ({
 
   await expect(
     screen(page).getByText(
-      "What every agent knows about you before it starts.",
+      "What every AI Employee knows about you before it starts.",
     ),
   ).toBeVisible();
   // No invite empty state on a standing-context page: the editor is already
@@ -84,23 +85,24 @@ test("Company context is a section of Admin, editing the workspace's half", asyn
   await expect(screen(page).getByText("How we communicate")).toBeVisible();
   await expect(screen(page).getByText("## Who we are")).toHaveCount(0);
 
-  // And only that half. The person's context is not duplicated inside Admin —
-  // it is theirs, not the admin's, which is the whole reason the two split.
+  // And only that half. The person's context is not duplicated inside the Admin
+  // dashboard — it is theirs, not the admin's, which is the whole reason the two
+  // split.
   await expect(editor).toHaveCount(1);
   await expect(screen(page).getByText(/I'm Juan/)).toHaveCount(0);
 
-  // The identity lozenge ("Admin") stands for this very section, so it is
+  // The identity lozenge ("Workspace") stands for this very section, so it is
   // the current one — and the section titles ITSELF: a level-2 hero naming
   // Company context and what belongs in it, since the lozenge doesn't.
   await expect(
-    screen(page).getByRole("button", { name: "Admin", exact: true }),
+    screen(page).getByRole("button", { name: "Workspace", exact: true }),
   ).toHaveAttribute("aria-current", "page");
   await expect(
     screen(page).getByRole("heading", { name: "Company context", level: 2 }),
   ).toBeVisible();
   await expect(
     screen(page).getByText(
-      "What all your agents know on every task and routine they run.",
+      "What all your AI Employees know on every task and routine they run.",
     ),
   ).toBeVisible();
 });

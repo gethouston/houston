@@ -1,7 +1,11 @@
 import type { Locator, Page } from "@playwright/test";
 import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
-import { startNewTeam } from "./support/sidebar-create";
+import {
+  createSheet,
+  startNewTeam,
+  teamNameField,
+} from "./support/sidebar-create";
 
 /**
  * Sidebar TEAM drag (@dnd-kit, always-on), against the REAL rail.
@@ -63,11 +67,8 @@ function defaultRows(sidebar: Locator): Locator {
 /** A named team holding nobody yet, created through the rail's own flow. */
 async function createTeamNamed(page: Page, name: string) {
   await startNewTeam(page);
-  const dialog = page.getByRole("dialog", { name: "Create a team" });
-  const nameInput = dialog.getByRole("textbox", { name: "Team name" });
-  await nameInput.waitFor({ state: "visible" });
-  await nameInput.pressSequentially(name);
-  await dialog.getByRole("button", { name: "Create team" }).click();
+  await teamNameField(page).pressSequentially(name);
+  await createSheet(page).getByRole("button", { name: "Create team" }).click();
 }
 
 test("team create + type name + reorder agents inside the default team", async ({

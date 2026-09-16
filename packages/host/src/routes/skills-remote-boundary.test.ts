@@ -3,9 +3,9 @@ import { createControlPlaneServer } from "../server";
 import { close, listen, replayHost } from "../testing/route-replay-host";
 
 /**
- * WHERE THE MARKETPLACE FAMILY STOPS. Its regex claims `skills/{community,repo}/
- * <lower-case action>`, which is WIDER than the six pairs it serves, and the
- * difference is behaviour a route list alone cannot state:
+ * WHERE THE REPOSITORY FAMILY STOPS. Its regex claims `skills/repo/<lower-case
+ * action>`, which is WIDER than the two pairs it serves, and the difference is
+ * behaviour a route list alone cannot state:
  *
  *  - a lower-case action nobody serves is the family's own 404;
  *  - a wrong method on a real action is the family's blanket 405;
@@ -43,14 +43,12 @@ async function probe(
 }
 
 test("an unknown lower-case action is the family's 404, never the engine's", async () => {
-  for (const rest of ["skills/community/bogus", "skills/repo/bogus"]) {
-    const answer = await probe("POST", rest);
-    expect(answer).toEqual({ status: 404, error: "not found", forwarded: [] });
-  }
+  const answer = await probe("POST", "skills/repo/bogus");
+  expect(answer).toEqual({ status: 404, error: "not found", forwarded: [] });
 });
 
 test("a wrong method on a served action is the family's blanket 405", async () => {
-  const answer = await probe("GET", "skills/community/search");
+  const answer = await probe("GET", "skills/repo/list");
   expect(answer).toEqual({
     status: 405,
     error: "method not allowed",
@@ -61,7 +59,7 @@ test("a wrong method on a served action is the family's blanket 405", async () =
 test("an action the regex never matched reaches the agent's engine", async () => {
   // Upper case, and a percent-escaped slug: both fall outside `[a-z]+`, so the
   // family declines and the chain walks on to the proxy.
-  for (const rest of ["skills/community/Search", "skills/community/%73earch"]) {
+  for (const rest of ["skills/repo/List", "skills/repo/%6cist"]) {
     const answer = await probe("POST", rest);
     expect(answer.status).toBe(200);
     expect(answer.forwarded).toEqual([`POST /${rest}`]);

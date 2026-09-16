@@ -46,7 +46,7 @@ export type BootGuardAction = "wait" | "open-home-team";
  *   first team. The view open on the tick the id changes belongs to the space
  *   the user just LEFT, so that tick only arms: reading it as "the user
  *   navigated" would disarm every space switch before its new landing was even
- *   set, and `create-team-dialog`'s `openHome()` (which lands on the Agents
+ *   set, and `create-organization-dialog`'s `openHome()` (which lands on the Agents
  *   home while the new space's teams are still in flight) would strand the
  *   user there.
  * - **The user always wins.** A view other than the Agents home, on any tick
@@ -106,7 +106,6 @@ export type DeadViewAction = "keep" | "wait" | "go-home";
 export function deadViewStep(input: {
   viewMode: string;
   showAiModels: boolean;
-  showOrganization: boolean;
   showAssistant: boolean;
   /** False while the capabilities behind the gates are still loading. */
   gatesReady: boolean;
@@ -120,7 +119,6 @@ export function deadViewStep(input: {
   );
   const gateDead = blockedTopLevelView(input.viewMode, {
     showAiModels: input.showAiModels,
-    showOrganization: input.showOrganization,
     showAssistant: input.showAssistant,
   });
   if (gateDead && !input.gatesReady) return "wait";

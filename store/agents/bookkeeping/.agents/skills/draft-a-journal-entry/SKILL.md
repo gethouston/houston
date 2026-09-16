@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [quickbooks, xero, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -45,6 +48,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **A pay-period summary, for `type=payroll`** — Required for that type. Why: I split wages by R&D / Sales & Marketing / General & Admin from this. If missing I ask: "Can you connect Gusto, Rippling, or Justworks, or paste the pay-period summary with gross, taxes, benefits, and net pay by department?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Parse inputs.** Required: `type` (one of `accrual` | `prepaid` | `payroll` | `revrec` | `depreciation` | `stock-comp` | `adjustment` | `reclass`) and `period` (`YYYY-MM`). Optional: `mode` (only meaningful when `type=accrual`  -  `reversing`), short `slug` for filename.
 

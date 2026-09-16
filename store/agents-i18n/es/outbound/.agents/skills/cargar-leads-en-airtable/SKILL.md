@@ -7,6 +7,9 @@ category: Prospección
 featured: no
 image: card-index-dividers
 integrations: [airtable]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -72,6 +75,7 @@ Creo la tabla con estos campos. Los tipos de campo siguen las convenciones de la
 - `Reply Status` (singleSelect: "no-reply", "interested", "not-now", "not-relevant", "unsubscribed", "bounced"), lo actualizas tú manualmente, no yo
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Listar bases.** Llamo a "list bases" de Airtable vía Composio. Si hay una sola, la uso. Si hay varias y no me indicaste ninguna, te pregunto cuál.
 

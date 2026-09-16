@@ -4,7 +4,7 @@ import type { TFunction } from "i18next";
 import { useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { hasSpaces } from "../../lib/org-roles";
-import { CreateTeamDialog } from "./create-team-dialog";
+import { CreateOrganizationDialog } from "./create-organization-dialog";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
@@ -36,10 +36,10 @@ export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
  * The workspace switcher header, with its labels wired through `t()`.
  *
  * The create action routes on `capabilities.spaces` (C8): on a hosted
- * deployment that serves Spaces it opens the Create-team dialog and reads
- * "Create team"; otherwise it falls back to the caller's `onCreate` (the local
- * workspace-create dialog) and reads the truthful "Create workspace" label —
- * the old "createOrganization" copy was a known mislabel.
+ * deployment that serves Spaces it opens the create-organization dialog and
+ * reads "Create organization"; otherwise it falls back to the caller's
+ * `onCreate` (the local workspace-create dialog) and reads the truthful
+ * "Create workspace" label.
  *
  * Pending invitations addressed to the caller render directly BELOW this
  * header, in the sidebar's `headerBelow` band (`SidebarInviteInbox`,
@@ -60,7 +60,7 @@ export function SidebarWorkspaceHeader(props: {
   const { t } = props;
   const { capabilities } = useCapabilities();
   const spacesEnabled = hasSpaces(capabilities);
-  const [createTeamOpen, setCreateTeamOpen] = useState(false);
+  const [createOrganizationOpen, setCreateOrganizationOpen] = useState(false);
   return (
     <div {...tourAnchor("spaceSwitcher")}>
       <WorkspaceSwitcher
@@ -69,7 +69,7 @@ export function SidebarWorkspaceHeader(props: {
         currentName={props.currentName ?? t("shell:sidebar.selectWorkspace")}
         onSwitch={props.onSwitch}
         onCreate={
-          spacesEnabled ? () => setCreateTeamOpen(true) : props.onCreate
+          spacesEnabled ? () => setCreateOrganizationOpen(true) : props.onCreate
         }
         collapsed={props.collapsed}
         createLabel={
@@ -81,9 +81,9 @@ export function SidebarWorkspaceHeader(props: {
         expandLabel={t("shell:sidebar.expand")}
       />
       {spacesEnabled ? (
-        <CreateTeamDialog
-          open={createTeamOpen}
-          onOpenChange={setCreateTeamOpen}
+        <CreateOrganizationDialog
+          open={createOrganizationOpen}
+          onOpenChange={setCreateOrganizationOpen}
         />
       ) : null}
     </div>

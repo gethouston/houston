@@ -7,6 +7,9 @@ category: Soporte
 featured: yes
 image: headphone
 integrations: [gmail, outlook, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **Ingreso mensual / nivel de plan por cliente**  -  Opcional. Por qué lo necesito: me permite ponderar la prioridad según el estatus de cliente pagante. Si no lo tienes, sigo con TBD y pondero solo con las señales del contenido.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 0. **Leo `context/support-context.md`.** Si no existe, me detengo. Te digo que corras primero `set-up-my-support-info`. Leo las reglas de enrutamiento + los niveles de tiempo de respuesta + la lista VIP del documento, nunca los dejo fijos en el código.
 1. **Identifico la fuente**: tú nombras el canal o el mensaje se referencia por su id externo. Uso `composio search <channel>` para encontrar el slug correcto (por ejemplo, traer un hilo de Gmail, traer una conversación de Intercom). NO dejo slugs de herramientas fijos en el código.
 2. **Traigo el hilo completo** vía Composio. Obtengo el asunto, todos los mensajes, el correo del remitente, los ids externos de los mensajes.

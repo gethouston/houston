@@ -7,6 +7,9 @@ category: Personal
 featured: yes
 image: busts-in-silhouette
 integrations: [googledocs, notion, loops, gmail, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -121,6 +124,7 @@ conectada > archivo > URL > texto pegado) y espero.
 - **Identidad del empleado**: Obligatoria. Si falta, pregunto: "¿Qué empleado, nombre completo, puesto, y cuánto tiempo lleva aquí?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal** en
    `context/people-context.md`. Si falta o está vacío: "Primero

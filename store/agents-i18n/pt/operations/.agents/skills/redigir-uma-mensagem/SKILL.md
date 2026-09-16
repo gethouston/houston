@@ -7,6 +7,9 @@ category: Operações
 featured: no
 image: clipboard
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ Leio o seu contexto operacional primeiro. Para cada campo obrigatório que estiv
 - `vendor` - contato de renovação / cancelamento / teste / verificação de referência. Baseado nos termos do contrato em `contracts/` + na postura com fornecedores de `context/operations-context.md`. Saída: `drafts/vendor-{type}-{vendor-slug}.md`.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. Leio o registro; preencho `universal.voice` + qualquer lacuna em `domains.vendors.posture` com UMA pergunta classificada por modalidade.
 2. Leio `context/operations-context.md` - prioridades, contatos-chave, limites inegociáveis, notas de voz.

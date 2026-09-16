@@ -6,6 +6,9 @@ category: Support
 featured: yes
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ I read your support context first. For every required field that's missing I ask
 - **The thread itself**  -  Required. Why I need it: I draft against the actual customer message, not a paraphrase. If missing I ask: "Which conversation should I draft for  -  share the customer's name or the latest email?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/support-context.md`.** If missing/empty, stop and tell me run `set-up-my-support-info` first.
 2. **Load thread** from `conversations/{id}/thread.json`. Identify latest customer message  -  draft respond to that.

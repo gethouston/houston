@@ -7,6 +7,9 @@ category: Soporte
 featured: no
 image: headphone
 integrations: [googledocs, notion, github, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -69,6 +72,7 @@ Primero leo tu contexto de soporte. Para cada campo obligatorio que falte, hago 
   `needsReview: true` en `outputs.json` y redacto la actualización.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/support-context.md`.** ¿Falta? Me detengo.
 2. **Leo el historial.** Completo los vacíos.

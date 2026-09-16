@@ -6,6 +6,14 @@ import type * as React from "react";
 
 import { cn } from "../utils";
 import { Button } from "./button";
+import {
+  DIALOG_CONTENT_CLASS,
+  DIALOG_DESCRIPTION_CLASS,
+  DIALOG_FOOTER_CLASS,
+  DIALOG_HEADER_CLASS,
+  DIALOG_OVERLAY_CLASS,
+  DIALOG_TITLE_CLASS,
+} from "./dialog-frame";
 
 function Dialog({
   ...props
@@ -38,10 +46,7 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn(
-        "fixed inset-0 z-50 bg-black/25 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
-        className,
-      )}
+      className={cn(DIALOG_OVERLAY_CLASS, className)}
       {...props}
     />
   );
@@ -64,16 +69,11 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          // Modal surface token `bg-dialog`: SOLID in both modes (white in
-          // light, neutral.800 in dark) — modals sit over arbitrary content
-          // and must never bleed it through. Not `bg-card` (glass in both
-          // modes).
-          // `grid-cols-[minmax(0,1fr)]`, not a bare `grid`: an implicit auto
-          // track refuses to shrink below its content's min-content width, so
-          // ONE nowrap child (a truncating title, a long unbroken word, a wide
-          // table) silently pushed the whole surface past its max-width
-          // (PRODUCT-1231). minmax(0,…) lets children clip or scroll instead.
-          "fixed top-[50%] left-[50%] z-50 grid grid-cols-[minmax(0,1fr)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-5 rounded-2xl border border-line/50 bg-dialog p-6 shadow-[0_4px_4px_rgba(0,0,0,0.04),0_4px_80px_8px_rgba(0,0,0,0.04),0_0_1px_rgba(0,0,0,0.62)] dark:shadow-[0_4px_4px_rgba(0,0,0,0.1),0_4px_80px_8px_rgba(0,0,0,0.2),0_0_1px_rgba(255,255,255,0.1)] duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          DIALOG_CONTENT_CLASS,
+          // The default width. A caller sizes its own dialog with another
+          // `sm:max-w-*`; `sm:` because the frame's unprefixed cap is the
+          // phone gutter.
+          "sm:max-w-lg",
           className,
         )}
         {...props}
@@ -97,7 +97,7 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      className={cn(DIALOG_HEADER_CLASS, className)}
       {...props}
     />
   );
@@ -117,10 +117,7 @@ function DialogFooter({
   return (
     <div
       data-slot="dialog-footer"
-      className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
-        className,
-      )}
+      className={cn(DIALOG_FOOTER_CLASS, className)}
       {...props}
     >
       {children}
@@ -140,7 +137,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-tight font-semibold", className)}
+      className={cn(DIALOG_TITLE_CLASS, className)}
       {...props}
     />
   );
@@ -153,7 +150,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-ink-muted", className)}
+      className={cn(DIALOG_DESCRIPTION_CLASS, className)}
       {...props}
     />
   );

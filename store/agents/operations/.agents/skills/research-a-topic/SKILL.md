@@ -6,6 +6,9 @@ category: Operations
 featured: yes
 image: clipboard
 integrations: [linkedin, firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ I read your operations context first. For every required field that's missing I 
 - **Time window**  -  Optional. Why I need it: weekly briefings default to 7 days, deep research to 30. If you don't have it I keep going with TBD using these defaults.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`.** Relevance anchors off founder's active priorities. If missing: `set-up-my-ops-info` first, stop.
 

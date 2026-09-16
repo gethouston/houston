@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [googlesheets, notion, airtable, linear, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primero leo tu contexto operativo. Por cada campo requerido que falte hago UNA p
 - **Curva de cumplimiento** - Opcional. Por qué lo necesito: las métricas de meta cargadas al inicio y las cargadas al final se clasifican distinto a mitad de trimestre. Si no la tienes, sigo adelante con TBD usando una curva lineal por defecto.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer `context/operations-context.md`.** Si
    falta o está vacío, detenerse y pedirte que ejecutes

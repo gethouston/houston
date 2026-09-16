@@ -6,6 +6,9 @@ version: 1
 category: Soporte
 featured: no
 image: headphone
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **Niveles de plan**: Opcional. Por qué la necesito: los huecos que afectan a clientes que pagan se ordenan más arriba que los que afectan al nivel gratuito. Si no la tienes, sigo con peso igual por ticket.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. Leer `patterns.json` (grupos de preguntas repetidas) y `articles/` (base de conocimiento existente). Filtrar los patrones sin artículo correspondiente.
 2. Si la lista está vacía, ejecutar primero `flag-a-signal signal=repeat-question` (o decirte que ya lo ejecuté y todavía no hay nada).

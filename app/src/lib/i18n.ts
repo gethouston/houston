@@ -34,7 +34,6 @@ import settingsEn from "../locales/en/settings.json";
 import setupEn from "../locales/en/setup.json";
 import shellEn from "../locales/en/shell.json";
 import skillsEn from "../locales/en/skills.json";
-import storeEn from "../locales/en/store.json";
 import teamsEn from "../locales/en/teams.json";
 import academyEs from "../locales/es/academy.json";
 import agentOnboardingEs from "../locales/es/agent-onboarding.json";
@@ -59,7 +58,6 @@ import settingsEs from "../locales/es/settings.json";
 import setupEs from "../locales/es/setup.json";
 import shellEs from "../locales/es/shell.json";
 import skillsEs from "../locales/es/skills.json";
-import storeEs from "../locales/es/store.json";
 import teamsEs from "../locales/es/teams.json";
 import academyPt from "../locales/pt/academy.json";
 import agentOnboardingPt from "../locales/pt/agent-onboarding.json";
@@ -84,7 +82,6 @@ import settingsPt from "../locales/pt/settings.json";
 import setupPt from "../locales/pt/setup.json";
 import shellPt from "../locales/pt/shell.json";
 import skillsPt from "../locales/pt/skills.json";
-import storePt from "../locales/pt/store.json";
 import teamsPt from "../locales/pt/teams.json";
 import { bindDocumentLanguage } from "./document-language";
 import {
@@ -158,7 +155,6 @@ const resources = {
     integrations: integrationsEn,
     migration: migrationEn,
     portable: portableEn,
-    store: storeEn,
     context: contextEn,
     teams: teamsEn,
     agentOnboarding: agentOnboardingEn,
@@ -185,7 +181,6 @@ const resources = {
     integrations: integrationsEs,
     migration: migrationEs,
     portable: portableEs,
-    store: storeEs,
     context: contextEs,
     teams: teamsEs,
     agentOnboarding: agentOnboardingEs,
@@ -212,7 +207,6 @@ const resources = {
     integrations: integrationsPt,
     migration: migrationPt,
     portable: portablePt,
-    store: storePt,
     context: contextPt,
     teams: teamsPt,
     agentOnboarding: agentOnboardingPt,
@@ -261,7 +255,6 @@ void i18n
       "integrations",
       "migration",
       "portable",
-      "store",
       "context",
       "teams",
       "agentOnboarding",

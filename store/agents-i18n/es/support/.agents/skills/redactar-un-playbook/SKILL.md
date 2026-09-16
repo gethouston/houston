@@ -7,6 +7,9 @@ category: Soporte
 featured: no
 image: headphone
 integrations: [github, linear, slack, microsoftteams]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **Voz para la comunicación con clientes**: Opcional. Por qué la necesito: las plantillas de incidentes se leen más genuinas en tu tono. Si no la tienes, sigo con TBD y recomiendo ejecutar la calibración de voz.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer `context/support-context.md`.** Extraigo los niveles de tiempo de respuesta actuales, la lista VIP, los contactos de escalamiento. ¿Falta? Ejecuta primero `set-up-my-support-info`.
 

@@ -7,6 +7,9 @@ category: Soporte
 featured: no
 image: headphone
 integrations: [hubspot, attio, stripe, mailchimp, customerio, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -49,6 +52,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - `churn-save`: UN solo mensaje de retención para `{account}` fundamentado en la señal de riesgo exacta de `churn-flags.json`, que ofrezca una opción genuina (pausa / bajar de plan / atención personalizada / reembolso). Escribe `saves/{account}.md`.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer `config/context-ledger.json` y `config/voice.md`.** Relleno vacíos con una pregunta puntual.
 2. **Leer `context/support-context.md`.** Si falta, me detengo y te digo que ejecutes primero `set-up-my-support-info`.

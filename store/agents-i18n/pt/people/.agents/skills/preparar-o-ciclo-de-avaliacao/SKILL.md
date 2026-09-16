@@ -7,6 +7,9 @@ category: Pessoas
 featured: yes
 image: busts-in-silhouette
 integrations: [googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ Primeiro leio o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Equipe atual** , Obrigatório. Por que preciso: o documento de calibração lista quem está avaliando quem. Se estiver faltando, pergunto: "Conecte sua plataforma de RH para eu buscar a equipe, ou cole a lista atual da equipe."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio o documento de contexto de pessoas:**
    `context/people-context.md`. Faltando ou vazio? Aviso o

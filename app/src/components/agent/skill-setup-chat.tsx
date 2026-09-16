@@ -31,8 +31,9 @@ interface Props {
   /** Close the pane and clear the selection (the catalog stays put). Wired
    *  to the panel chrome's close X and Escape. */
   onClose: () => void;
-  /** The manual escape hatch (HOU-791 keeps it): opens the raw markdown edit
-   *  modal for THIS skill. Only offered on an installed skill's chat. */
+  /** The manual escape hatch (HOU-791 keeps it): THIS skill's raw markdown —
+   *  the editor's Text view beside the chat on the Skills library, the edit
+   *  modal on the per-agent surface. Only offered on an installed skill's chat. */
   onEditManually?: () => void;
 }
 

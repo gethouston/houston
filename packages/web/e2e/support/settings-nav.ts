@@ -1,39 +1,34 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { ASSISTANT_COMPOSER } from "./composer";
 import { screen } from "./team-nav";
 
 /**
  * Navigating the rail's ANCHORLESS top-level destinations, plus Settings and
  * the sections inside it.
  *
- * **Admin is the one top-level screen this helper reaches.** It is the whole of
- * the rail's "Workspace" band that belongs here: Permissions is gone (agent
- * policy is discovered through a team's focused agent screen, see
- * `team-nav.ts` `openAgentSettings`). The **Assistant** joins it, leading the
- * rail's lead run, so it is addressed the same way.
+ * The **Assistant** is the one rail row addressed here: it leads the rail's
+ * unlabelled run, carries no tour anchor (the tour does not walk it), and is
+ * gated on discovery rather than on a role.
  *
- * Neither carries a tour anchor (the tour walks neither), so each is addressed
- * by its accessible name inside the rail; English is forced by the boot seed,
- * so the labels are stable (`app/src/locales/en/settings.json`
- * `nav.organization` = "Admin", `shell:sidebar.assistant` = "AI Manager").
- * Settings is the exception and keeps its `nav-settings` anchor.
+ * Everything else here is inside SETTINGS. **Workspace management** is a
+ * Settings section (`settings:nav.workspace` = "Workspace management"): it
+ * holds the Admin dashboard for whoever passes the org gate, and the plain
+ * workspace-name card for everyone else. Per-agent policy is not here at all —
+ * it is discovered through a team's focused agent screen (`team-nav.ts`
+ * `openAgentSettings`).
  *
- * Scoped to the WHOLE rail (`sidebar`), not to `agents`: that inner anchor wraps
- * only the "Your teams" band, and the top-level destinations sit above it.
+ * The shared **Skills** library is not a Settings section: it is the Skills TAB
+ * of the Integrations screen, shown to the space owner. Its two helpers live
+ * here because every spec that reaches for them reaches for the Settings ones
+ * in the same breath.
+ *
+ * English is forced by the boot seed, so the labels are stable. Settings itself
+ * keeps its `nav-settings` anchor.
  *
  * Everything BELOW a rail row is scoped through `screen()` — every top-level
  * view is kept alive, so several screens sit in the DOM at once and a bare
  * page-level lookup can match a hidden one.
  */
-function railRow(page: Page, name: string): Locator {
-  return page
-    .locator("[data-tour-target='sidebar']")
-    .getByRole("button", { name, exact: true });
-}
-
-/** The rail's Admin row (absent whenever the org gate is off). */
-export function adminRow(page: Page): Locator {
-  return railRow(page, "Admin");
-}
 
 /**
  * The Settings index's About me row. What the agents know about the PERSON is
@@ -71,24 +66,105 @@ export function assistantRow(page: Page): Locator {
  */
 export async function openAssistant(page: Page): Promise<void> {
   await assistantRow(page).click();
+  await expect(screen(page).getByPlaceholder(ASSISTANT_COMPOSER)).toBeVisible();
+}
+
+/**
+ * The way back to the Settings index, named as the level it returns to
+ * ("settings:title" = "Settings"). ONE control in two frames: a section that
+ * frames itself with a header strip carries it INSIDE that strip, before the
+ * identity lozenge; a plain section wears it on the back bar above its reading
+ * column. This locator is the frame-agnostic one — use it where the face is
+ * the thing under test.
+ */
+export function settingsBack(page: Page): Locator {
+  return screen(page).getByRole("button", { name: "Settings", exact: true });
+}
+
+/**
+ * The same control, pinned to the MERGED strip: back, identity and tools on
+ * one row, the way every other page is framed. What proves a full-width
+ * section (the Admin dashboard) landed.
+ */
+export function settingsBackInStrip(page: Page): Locator {
+  return screen(page)
+    .getByTestId("page-header")
+    .getByRole("button", { name: "Settings", exact: true });
+}
+
+/**
+ * The Settings index's Workspace management row — the door to everything that
+ * administers the SPACE. Always present; what lies behind it is what the org
+ * gate decides.
+ *
+ * Anchored on the row's TITLE, like `aboutMeRow`: the accessible name folds in
+ * the row's description too.
+ */
+export function workspaceRow(page: Page): Locator {
+  return screen(page).getByRole("button", { name: /^Workspace management/ });
+}
+
+/**
+ * The Admin dashboard's identity heading — the `<h1>` inside the header
+ * cluster (`teams:org.title` = "Workspace"). Its ABSENCE is what proves a
+ * caller who fails the org gate got the plain workspace card instead.
+ */
+export function adminHeading(page: Page): Locator {
+  return screen(page).getByRole("heading", { name: "Workspace", level: 1 });
+}
+
+/**
+ * Open the Workspace management section of Settings. Two steps, because it IS
+ * two levels — the index, then the drill-in, whose way back proves it landed.
+ * Says nothing about WHICH face arrived: the Admin dashboard carries the back
+ * control in its own header strip and the plain workspace card wears it on a
+ * back bar, so the wait is the frame-agnostic locator. Callers assert the face
+ * themselves.
+ */
+export async function openWorkspaceManagement(page: Page): Promise<void> {
+  await openSettings(page);
+  await workspaceRow(page).click();
+  await expect(settingsBack(page)).toBeVisible();
+}
+
+/**
+ * The Integrations header's Skills lozenge — the door to the shared library
+ * every agent in the space draws from. Shown to the SPACE OWNER, because
+ * editing a skill edits everyone's agents at once.
+ *
+ * Addressed by its `data-integrations-tab` id, like Admin's section lozenges,
+ * so it survives label changes and matches in either header form (the wide
+ * cluster and the narrow switcher's menu both carry it).
+ */
+export function skillsTab(page: Page): Locator {
+  return screen(page).locator("[data-integrations-tab='skills']");
+}
+
+/**
+ * Open the shared Skills library: the Integrations screen, on its Skills tab.
+ * The landing waits on the BODY's `data-integrations-section` marker, not just
+ * the lozenge's `aria-current` — the lozenge repaints synchronously on click,
+ * so only the body attribute proves the tab actually swapped in before a
+ * spec's first assertion runs.
+ */
+export async function openSkillsLibrary(page: Page): Promise<void> {
+  await page.locator('[data-tour-target="nav-integrations"]').click();
+  await skillsTab(page).click();
   await expect(
-    screen(page).getByPlaceholder("Send a follow-up..."),
+    screen(page).locator("[data-integrations-section='skills']"),
   ).toBeVisible();
 }
 
 /**
- * Open the Admin (Organization) dashboard from the rail, ALWAYS on its home:
- * the rail door pins the landing section, so the kept-alive screen never
- * resumes on a leftover one. Home is Company context, standing behind the
- * header's identity lozenge — which wears the rail row's glyph and name
- * ("Admin") and carries the screen's `<h1>`; the section titles itself in its
+ * Open the Admin (Organization) dashboard, ALWAYS on its home: the section
+ * door pins the landing section, so the kept-alive screen never resumes on a
+ * leftover one. Home is Company context, standing behind the header's identity
+ * lozenge — which carries the screen's `<h1>`; the section titles itself in its
  * body instead.
  */
 export async function openAdmin(page: Page): Promise<void> {
-  await adminRow(page).click();
-  await expect(
-    screen(page).getByRole("heading", { name: "Admin", level: 1 }),
-  ).toBeVisible();
+  await openWorkspaceManagement(page);
+  await expect(adminHeading(page)).toBeVisible();
 }
 
 /**
@@ -111,17 +187,68 @@ export type AdminSection =
   | "Activity"
   | "Usage"
   | "Time worked"
+  | "Org chart"
   | "Company context";
 
 /** Section name -> the `data-admin-section-tab` value its lozenge carries. */
 export const ADMIN_SECTION_TAB_IDS: Readonly<Record<AdminSection, string>> = {
   "Company context": "companyContext",
+  "Org chart": "orgChart",
   People: "people",
   Billing: "billing",
   Activity: "activity",
   Usage: "usage",
   "Time worked": "timeWorked",
 };
+
+/** One section lozenge of the Admin header cluster, by section. */
+export function adminSectionTab(page: Page, name: AdminSection): Locator {
+  return screen(page).locator(
+    `[data-admin-section-tab='${ADMIN_SECTION_TAB_IDS[name]}']`,
+  );
+}
+
+/** The phone's replacement for the full Admin section cluster. */
+function adminSectionSwitcher(page: Page): Locator {
+  return screen(page).locator("[data-admin-section-switcher]");
+}
+
+/**
+ * Assert exactly which sections Admin offers, in either layout.
+ *
+ * Reading the WHOLE cluster is what makes an absence meaningful: on the phone
+ * the lozenges live in a closed menu, so a bare "this section's lozenge has
+ * count 0" would pass on every collapsed header whatever the space's gates
+ * say.
+ */
+export async function expectAdminSections(
+  page: Page,
+  names: readonly AdminSection[],
+): Promise<void> {
+  const tabs = screen(page).locator("[data-admin-section-tab]");
+  if (await tabs.first().isVisible()) {
+    await expect(tabs).toHaveCount(names.length);
+    for (const name of names)
+      await expect(adminSectionTab(page, name)).toBeVisible();
+    return;
+  }
+
+  const switcher = adminSectionSwitcher(page);
+  await expect(switcher).toBeVisible();
+  await switcher.click();
+  const menuSections = page.locator(
+    "[role='menuitemcheckbox'][data-admin-section-tab]",
+  );
+  await expect(menuSections).toHaveCount(names.length);
+  for (const name of names) {
+    await expect(
+      page.locator(
+        `[role='menuitemcheckbox'][data-admin-section-tab='${ADMIN_SECTION_TAB_IDS[name]}']`,
+      ),
+    ).toBeVisible();
+  }
+  await page.keyboard.press("Escape");
+}
 
 /**
  * Open Admin on one of its sections.
@@ -139,9 +266,17 @@ export async function openAdminSection(
 ): Promise<void> {
   await openAdmin(page);
   const id = ADMIN_SECTION_TAB_IDS[name];
-  const tab = screen(page).locator(`[data-admin-section-tab='${id}']`);
-  await tab.click();
-  await expect(tab).toHaveAttribute("aria-current", "page");
+  const tab = adminSectionTab(page, name);
+  if (await tab.isVisible()) {
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-current", "page");
+  } else {
+    // Phone: the cluster is a menu, so the section is picked from inside it.
+    await adminSectionSwitcher(page).click();
+    await page
+      .locator(`[role='menuitemcheckbox'][data-admin-section-tab='${id}']`)
+      .click();
+  }
   await expect(
     screen(page).locator(`[data-admin-section-body='${id}']`),
   ).toBeVisible();

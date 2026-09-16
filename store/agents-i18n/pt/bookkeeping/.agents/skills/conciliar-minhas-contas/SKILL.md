@@ -7,6 +7,9 @@ category: Contabilidade
 featured: no
 image: ledger
 integrations: [stripe, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -48,6 +51,7 @@ Eu leio o seu contexto contábil primeiro. Para cada campo obrigatório que esti
 - **O lado do banco ou do processador para o período** - Obrigatório. Por quê: preciso dos dois lados para a prova de três vias. Se estiver faltando eu pergunto: "Você pode conectar o feed bancário ou o QuickBooks, ou enviar o PDF ou CSV do extrato deste período?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Analisar entradas.** Obrigatório: `account_last4` (ou `all` para
    `mode=transfer-detect`) e `period` (`YYYY-MM` ou `YYYY-QN`).

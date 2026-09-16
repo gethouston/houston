@@ -14,7 +14,7 @@
   },
   "tags": {
     "routine": "Rutina",
-    "agentStarted": "Iniciada por el agente"
+    "agentStarted": "Iniciada por el empleado de IA"
   },
   "panel": {
     "taskLabel": "Tarea: {{title}}",
@@ -53,6 +53,11 @@
     "subheading": "Toca un skill para empezar, o escribe lo que necesitas abajo.",
     "seeMore_one": "Ver {{count}} skill más",
     "seeMore_other": "Ver {{count}} skills más"
+  },
+  "composer": {
+    "placeholder": "¿En qué debería trabajar el empleado de IA?",
+    "followUp": "Continúa la conversación...",
+    "assistantPlaceholder": "¿En qué debería trabajar Houston?"
   },
   "composerSkill": {
     "browse": "Skills"

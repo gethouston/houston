@@ -5,6 +5,9 @@ version: 1
 category: Sales
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **Which deal this plan is for**  -  Required. Why I need it: I read the call history for that specific deal. If missing I ask: "Which prospect or deal should I build this close plan for?"
 - **Target close date**  -  Optional. Why I need it: anchors the timeline. If you don't have it I propose one based on your typical close cycle and flag TBD.
 - **Champion, economic buyer, and blocker names**  -  Optional. Why I need it: these become the rows of the plan. If you don't have them I write UNKNOWN and surface each as something to learn on the next call.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read the playbook.** Load `context/sales-context.md`. Need deal stages + qualification to know what still open.
 

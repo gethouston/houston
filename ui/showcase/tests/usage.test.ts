@@ -190,7 +190,6 @@ describe("the surface rules", () => {
       "app/src/components/agent/routines-tab.tsx": "Routines",
       "app/src/components/agent/skill-card.tsx": "Skills",
       "app/src/components/agent/files-tab.tsx": "Files",
-      "app/src/components/store-view/store-page.tsx": "Agent Store (in app)",
       "app/src/components/settings/general.tsx": "Settings",
       "app/src/components/shell/sidebar.tsx": "App shell",
       "app/src/components/shell/agent-sidebar-items.tsx": "Your Agents",

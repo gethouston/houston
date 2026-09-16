@@ -1,7 +1,8 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { adminRow } from "./support/settings-nav";
+import { adminHeading, openWorkspaceManagement } from "./support/settings-nav";
+import { screen } from "./support/team-nav";
 
 /**
  * The integrations permissioning information architecture (the IA end-state).
@@ -12,8 +13,10 @@ import { adminRow } from "./support/settings-nav";
  *    Covered by `agent-policy.spec.ts`; it is NOT the global Integrations page,
  *    which is always the personal catalog now;
  *  - CATALOG + ACCOUNTS (the caller's personal connected apps) → the global
- *    Integrations page, visible to EVERY role in every mode (a plain member
- *    keeps its nav). Opening a connected app's detail modal shows info +
+ *    Integrations page, its landing tab, visible to EVERY role in every mode (a
+ *    plain member keeps its nav). The SHARED SKILLS library is the screen's
+ *    second tab, behind the space-owner gate (`settings-ia.spec.ts`,
+ *    `spaces-gating.spec.ts`). Opening a connected app's detail modal shows info +
  *    reconnect + disconnect ONLY — which agents may use an app is managed in one
  *    place, the agent's own settings page, never here. Settings > Connected
  *    accounts is GONE (no settings row at all; the sidebar nav is the one way
@@ -49,9 +52,9 @@ async function openIntegrations(page: Page): Promise<void> {
   await page.locator('[data-tour-target="nav-integrations"]').click();
 }
 
-// ── 1. Plain member: no Admin nav, but the personal catalog stays ──────────
+// ── 1. Plain member: no Admin dashboard, but the personal catalog stays ────
 
-test("Teams member: no Admin nav, but the Integrations nav opens the personal catalog", async ({
+test("Teams member: no Admin dashboard, but the Integrations nav opens the personal catalog", async ({
   page,
   request,
 }) => {
@@ -67,13 +70,24 @@ test("Teams member: no Admin nav, but the Integrations nav opens the personal ca
   const integrationsNav = page.locator('[data-tour-target="nav-integrations"]');
   await expect(integrationsNav).toBeVisible();
 
-  // No Admin row for a plain member: it is a top-level rail screen behind the
-  // org gate, so the absence is asserted on the rail itself.
-  await expect(adminRow(page)).toHaveCount(0);
+  // No Admin dashboard for a plain member: Workspace management is everyone's
+  // door, and behind the org gate it falls back to the read-only workspace-name
+  // row, so the absence is asserted on the FACE rather than on a rail row.
+  await openWorkspaceManagement(page);
+  await expect(adminHeading(page)).toHaveCount(0);
+  await expect(
+    screen(page).getByText("Workspace name", { exact: true }),
+  ).toBeVisible();
 
+  // The rail stays put while Settings is open, so the catalog is one click
+  // away. The identity lozenge carries the screen's h1 whether or not the
+  // Skills tab stands beside it.
   await integrationsNav.click();
   await expect(
     page.getByRole("heading", { name: "Integrations", exact: true }),
+  ).toBeVisible();
+  await expect(
+    screen(page).locator("[data-integrations-section='catalog']"),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
@@ -81,10 +95,8 @@ test("Teams member: no Admin nav, but the Integrations nav opens the personal ca
     }),
   ).toHaveCount(0);
 
-  // The Agent Store and Settings remain too, the rows every caller gets.
-  await expect(
-    page.locator('[data-tour-target="nav-agent-store"]'),
-  ).toBeVisible();
+  // AI Models and Settings remain too, the rows every caller gets.
+  await expect(page.locator('[data-tour-target="nav-ai-hub"]')).toBeVisible();
   await expect(page.locator('[data-tour-target="nav-settings"]')).toBeVisible();
 });
 

@@ -6,6 +6,9 @@ category: Sales
 featured: no
 image: handshake
 integrations: [gong, fireflies]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **The transcript or recording**  -  Required. Why I need it: I extract pains, decisions, and action items from what was actually said. If missing I ask: "Drop the recording, paste the transcript, or tell me which Gong/Fireflies meeting to grab."
 - **Which lead or deal this call belongs to**  -  Required. Why I need it: I link notes to the right lead and update their dossier. If missing I ask: "Which prospect or customer was this call with?"
 - **Whether to push notes to your CRM**  -  Optional. Why I need it: I sync only with your nod. If you don't have a preference I keep going with TBD and ask before any external sync.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Source transcript.** If pasted, use it. If file, read it. If
    user points to connected provider, run `composio search` for

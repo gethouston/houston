@@ -300,57 +300,7 @@ test("install honors an explicit selection (unticked parts stay out)", async () 
   ).toBeNull();
 });
 
-test("anonymize returns redaction diffs for the selected content", async () => {
-  const privId = (
-    (await (
-      await fetch(`${base}/agents`, {
-        method: "POST",
-        headers: auth("alice"),
-        body: JSON.stringify({ name: "Priv" }),
-      })
-    ).json()) as { id: string }
-  ).id;
-  const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const priv = (await store.listAgents(ws.id)).find((a) => a.id === privId);
-  if (!priv) throw new Error("Expected the Priv agent to exist");
-  await vfs.writeText(
-    `${workspaceRoot(ws, priv)}/CLAUDE.md`,
-    "Contact dan@example.com for escalations.",
-  );
-
-  const r = await fetch(`${base}/agents/${privId}/portable/anonymize`, {
-    method: "POST",
-    headers: auth("alice"),
-    body: JSON.stringify({
-      claudeMd: true,
-      skillSlugs: [],
-      routineIds: [],
-      learningIds: [],
-    }),
-  });
-  expect(r.status).toBe(200);
-  const out = (await r.json()) as {
-    claudeMd: {
-      before: string;
-      after: string;
-      summary: string;
-      becameEmpty: boolean;
-    } | null;
-    skills: unknown[];
-    mode: string;
-    aiError?: string;
-  };
-  expect(out.claudeMd?.after).toBe("Contact <email> for escalations.");
-  expect(out.claudeMd?.summary).toContain("1 email");
-  expect(out.claudeMd?.becameEmpty).toBe(false);
-  expect(out.skills).toEqual([]);
-  // This harness's runtime endpoint is unreachable — the AI pass fails and
-  // the regex fallback ships WITH the reason.
-  expect(out.mode).toBe("patterns");
-  expect(out.aiError).toBeTruthy();
-});
-
-test("export applies accepted overrides and stamps the manifest anonymized", async () => {
+test("export stamps the manifest anonymized when the caller says so", async () => {
   const exp = await fetch(`${base}/agents/${agentId}/portable/export`, {
     method: "POST",
     headers: auth("alice"),
@@ -361,18 +311,13 @@ test("export applies accepted overrides and stamps the manifest anonymized", asy
         routineIds: [],
         learningIds: [],
       },
-      overrides: {
-        claudeMd: "# Role\nYou are the <redacted> agent.",
-        skillBodies: { research: "## Procedure\nredacted" },
-      },
       meta: { anonymized: true },
     }),
   });
   expect(exp.status).toBe(200);
   const pkg = unpackAgent(new Uint8Array(await exp.arrayBuffer()));
   expect(pkg.manifest.anonymized).toBe(true);
-  expect(pkg.claudeMd).toBe("# Role\nYou are the <redacted> agent.");
-  expect(pkg.skills).toEqual([
-    { slug: "research", body: "## Procedure\nredacted" },
-  ]);
+  expect(pkg.claudeMd).toBe("# Role\nYou are the sales agent.");
+  expect(pkg.skills.map((sk) => sk.slug)).toEqual(["research"]);
+  expect(pkg.skills[0]?.body).toContain("## Procedure");
 });

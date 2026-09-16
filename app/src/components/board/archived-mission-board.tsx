@@ -7,6 +7,7 @@ import type { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import type { useMissionSearch } from "../use-mission-search";
 import { panelTaskLabel } from "./panel-task-label";
 import { PanelBackToBoard, PanelWidthToggle } from "./panel-width-controls";
+import { useBoardLabels } from "./use-board-labels";
 import type { useMissionControlArchived } from "./use-mission-control-archived";
 import type { useMissionControlArchivedPanel } from "./use-mission-control-archived-panel";
 
@@ -44,6 +45,7 @@ export function ArchivedMissionBoard({
   setPanelOpen: ShellDetailPanel["setPanelOpen"];
 }) {
   const { t } = useTranslation("board");
+  const { labels } = useBoardLabels();
   const addToast = useUIStore((s) => s.addToast);
   const chatWide = useUIStore((s) => s.chatWide);
   const { selectedItem, activeAgent } = data;
@@ -108,6 +110,7 @@ export function ArchivedMissionBoard({
           panelAvatar={
             <AgentPanelAvatar color={activeAgent?.color} running={false} />
           }
+          labels={labels}
           cardLabels={{
             deleteTooltip: t("cardActions.deleteTooltip"),
             deleteTitle: (name: string) =>

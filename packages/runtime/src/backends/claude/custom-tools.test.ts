@@ -119,8 +119,6 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "list_missions",
       "read_mission",
       "update_mission_status",
-      "find_skills",
-      "install_skill",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -143,8 +141,6 @@ test("exposes ask_user + suggest_reusable + integration tools when the integrati
       "mcp__houston__list_missions",
       "mcp__houston__read_mission",
       "mcp__houston__update_mission_status",
-      "mcp__houston__find_skills",
-      "mcp__houston__install_skill",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",
@@ -247,26 +243,6 @@ test("save_learning is bridged for execute/auto but stripped from plan", () => {
   );
 });
 
-test("the skill-directory tools are bridged for execute/auto but stripped from plan", () => {
-  // Same gate and same reach as save_learning: find_skills/install_skill proxy
-  // to the host under the sandbox token, so they exist only when the host is
-  // reachable. Finding is a read, but installing is a write and the pair is
-  // only useful together, so neither reaches read-only plan mode.
-  for (const name of ["find_skills", "install_skill"]) {
-    expect(build(INTEGRATIONS).tools.map((t) => t.name)).toContain(name);
-    expect(build(INTEGRATIONS, "execute").tools.map((t) => t.name)).toContain(
-      name,
-    );
-    expect(build(INTEGRATIONS, "auto").tools.map((t) => t.name)).toContain(
-      name,
-    );
-    expect(build(INTEGRATIONS, "plan").tools.map((t) => t.name)).not.toContain(
-      name,
-    );
-    expect(build(undefined).tools.map((t) => t.name)).not.toContain(name);
-  }
-});
-
 /** The assistant family's own gate: a catalog + the host transport. */
 const ASSISTANT: AssistantToolOptions = {
   catalog: { version: 3, sourceHash: "fixture", operations: [] },
@@ -310,8 +286,6 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
       "list_missions",
       "read_mission",
       "update_mission_status",
-      "find_skills",
-      "install_skill",
       "integration_search",
       "integration_execute",
       "request_connection",
@@ -333,8 +307,6 @@ test("auto mode keeps the integration + suggest_reusable tools but drops ask_use
       "mcp__houston__list_missions",
       "mcp__houston__read_mission",
       "mcp__houston__update_mission_status",
-      "mcp__houston__find_skills",
-      "mcp__houston__install_skill",
       "mcp__houston__integration_search",
       "mcp__houston__integration_execute",
       "mcp__houston__request_connection",
@@ -664,7 +636,6 @@ test("the assistant's bridged set is the coordinator surface, nothing that works
   );
   for (const banned of [
     "mcp__houston__integration_execute",
-    "mcp__houston__install_skill",
     "mcp__houston__save_routine",
   ]) {
     expect(mcp.allowedTools).not.toContain(banned);

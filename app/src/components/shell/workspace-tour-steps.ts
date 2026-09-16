@@ -4,7 +4,8 @@
  * A caller names one of these and builds its selector with `tourSelector`,
  * never a hand-written string, so a typo is a compile error instead of a
  * spotlight that silently finds nothing. Every name here is rendered by a real
- * element: `sidebar-nav-sections.tsx` (the rail's nav rows), `sidebar-chrome.tsx`
+ * element: `sidebar-nav-sections.tsx` and `sidebar-nav-rows.tsx` (the rail's
+ * nav rows), `sidebar-chrome.tsx`
  * (the space switcher), `sidebar-rail.tsx` (`newAgent`), `sidebar-footer.tsx`
  * (`nav-settings`), `sidebar-help-menu.tsx` (`appTour`, the help control the
  * in-app setup is started from), `@houston-ai/layout`'s sidebar (`agents`),
@@ -24,11 +25,9 @@ export const TOUR_TARGETS = [
   "main",
   "newMission",
   "nav-integrations",
-  "nav-skills",
   "nav-ai-hub",
   "nav-settings",
   "newAgent",
-  "nav-agent-store",
   "appTour",
   "mobileMenu",
   "mobileAgentsTab",

@@ -6,6 +6,9 @@ version: 1
 category: Contabilidade
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ Eu leio primeiro o seu contexto contábil. Para cada campo obrigatório que esti
 - **Sua solicitação de auditor ou de diligência prévia, no `mode=audit-response`** - Obrigatório para esse modo. Por quê: eu não consigo amostrar nem montar sem o pedido de fato. Se estiver faltando, pergunto: "Cole ou envie a solicitação do auditor ou da equipe de diligência, idealmente o e-mail completo ou o PDF com os itens que eles querem."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Anotar a data de hoje como data de execução.
 

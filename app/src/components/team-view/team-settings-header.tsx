@@ -22,9 +22,7 @@ export function TeamSettingsHeader(props: {
   const { t } = useTranslation(["teams", "shell"]);
   const openTeamView = useUIStore((s) => s.openTeamView);
   const openTeamsHome = useUIStore((s) => s.openTeamsHome);
-  const setCreateAgentDialogOpen = useUIStore(
-    (s) => s.setCreateAgentDialogOpen,
-  );
+  const openCreateFlow = useUIStore((s) => s.openCreateFlow);
   const isMobile = useIsMobile();
   const teamName = teamDisplayName(props.team, t("teamView.defaultName"));
   const tabs = IDS.filter((id) => props.sections.includes(id));
@@ -73,12 +71,11 @@ export function TeamSettingsHeader(props: {
       items={items}
       active={props.active as TeamSettingsSection}
       label={t("teamView.settingsTabs.label")}
-      switcherDataAttrs={{ "data-team-settings-switcher": "" }}
       tools={
         props.active === "agents" && props.canCreateAgent ? (
           <Button
             size="sm"
-            onClick={() => setCreateAgentDialogOpen(true, props.team.id)}
+            onClick={() => openCreateFlow("agent", props.team.id)}
           >
             <Plus className="size-4" />
             {t("agentTeams.create.newAgent")}

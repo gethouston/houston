@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [firecrawl, semrush, ahrefs, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -68,6 +71,7 @@ Primero leo tu contexto de marketing. Por cada campo requerido que falte, hago U
 - **Tu herramienta de SEO**  -  Requerido para `site-seo` y `ai-search`. Si falta, pregunto: "Abre Integraciones y conecta Semrush o Ahrefs, o pégame una lista de páginas que quieres que califique."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el registro + el posicionamiento.** Reúno los campos
    requeridos que falten según lo anterior (UNA pregunta cada uno,

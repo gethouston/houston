@@ -2,12 +2,19 @@ import type {
   PortableExportSelection,
   PortableInventoryPreview,
 } from "@houston/engine-adapter";
-import type { WizardSelection } from "../../lib/portable-share";
 
 /**
  * The pure rules behind the create dialog's "Copy an agent" path. Unit-tested
  * in `app/tests/copy-agent-wizard-model.test.ts`.
  */
+
+/** The pick steps' selection (Sets while the user toggles rows). */
+export interface WizardSelection {
+  claudeMd: boolean;
+  skillSlugs: Set<string>;
+  routineIds: Set<string>;
+  learningIds: Set<string>;
+}
 
 export type CopyWizardStep =
   | "source"

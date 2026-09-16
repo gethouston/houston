@@ -24,7 +24,9 @@ test("More opens the card and closes again without navigating", async ({
   await page.goto("/");
 
   const menu = await openMoreMenu(page);
-  await expect(menu.getByRole("button", { name: "Agent Store" })).toBeVisible();
+  await expect(
+    menu.getByRole("button", { name: "Integrations" }),
+  ).toBeVisible();
 
   await page.keyboard.press("Escape");
   await expect(moreMenu(page)).toBeHidden();
@@ -39,27 +41,23 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
   await page.goto("/");
   const menu = await openMoreMenu(page);
 
-  for (const label of ["Agent Store", "Integrations", "AI Models", "Skills"]) {
+  for (const label of ["Integrations", "AI Models"]) {
     await expect(
       menu.getByRole("button", { name: label, exact: true }),
       `"${label}" should be a row of the More menu`,
     ).toBeVisible();
   }
 
-  // Admin is the one gated row the fake host's DEFAULT capabilities refuse:
-  // single-player (no `multiplayer`, no role), so `showOrganization` is false
-  // and the row must not exist — a gate the phone re-derives would drift.
-  await expect(menu.getByRole("button", { name: "Admin" })).toHaveCount(0);
+  // Administering the space is a Settings section, reached through the gear in
+  // this menu's header line, and the shared Skills library is a TAB of the
+  // Integrations row above — never destination rows of their own here.
+  for (const name of ["Workspace management", "Skills"]) {
+    await expect(menu.getByRole("button", { name })).toHaveCount(0);
+  }
 
   // The rows carry the RAIL's tour anchors, which is what lets the guided
   // setup ring the same destination on both breakpoints.
-  for (const anchor of [
-    "nav-agent-store",
-    "nav-integrations",
-    "nav-ai-hub",
-    "nav-skills",
-    "nav-settings",
-  ]) {
+  for (const anchor of ["nav-integrations", "nav-ai-hub", "nav-settings"]) {
     await expect(
       moreRow(page, anchor),
       `the menu should carry the "${anchor}" anchor`,
@@ -93,9 +91,12 @@ test("a destination row lands on its screen and closes the menu", async ({
   await page.goto("/");
   await openMoreMenu(page);
 
-  await moreRow(page, "nav-agent-store").tap();
+  await moreRow(page, "nav-integrations").tap();
   await expect(moreMenu(page)).toBeHidden();
-  await expect(screen(page)).toHaveAttribute("data-screen", "agent-store");
+  await expect(screen(page)).toHaveAttribute(
+    "data-screen",
+    "integrations-home",
+  );
   await expect(navItem(page, "more")).toHaveAttribute("aria-current", "page");
 });
 

@@ -7,6 +7,9 @@ category: Prospección
 featured: yes
 image: pencil
 integrations: []
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -80,6 +83,7 @@ Si falta el gatillo, el producto, la prueba social o la oferta, te pregunto por 
 - Escribe como si le mandaras un mensaje a un colega.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 ### Paso 1: reunir la información
 

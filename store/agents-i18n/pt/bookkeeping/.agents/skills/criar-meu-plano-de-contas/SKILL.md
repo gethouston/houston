@@ -7,6 +7,9 @@ category: Contabilidade
 featured: no
 image: ledger
 integrations: [hubspot, stripe, quickbooks, xero, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ Eu leio primeiro o seu contexto contábil. Para cada campo obrigatório que esti
 - **Sua postura de remuneração em ações** - Opcional. Por quê: ISO / NSO / RSU aciona uma linha de despesa de remuneração em ações e uma linha de patrimônio APIC-SBC. Se estiver faltando, pergunto: "Vocês já concedem participação acionária a funcionários? Se ainda não tiver, eu continuo sem as linhas de remuneração em ações e as adicionamos depois."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler a configuração.** Carregar `config/context-ledger.json`. Campos
    obrigatórios para um bom primeiro rascunho de plano de contas:

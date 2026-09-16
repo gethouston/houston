@@ -7,6 +7,9 @@ category: Operações
 featured: no
 image: clipboard
 integrations: [googledrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ Eu leio o seu contexto operacional primeiro. Para cada campo obrigatório que es
 - **Documento de contexto operacional** - Obrigatório. Por que eu preciso: ancora os limites inegociáveis para eu sinalizar cláusulas que os violariam. Se estiver faltando, eu pergunto: "Quer que eu configure seu contexto operacional primeiro? Ajuda a identificar termos desfavoráveis com mais confiança."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio `context/operations-context.md`.** Se estiver faltando: paro, peço ao usuário para rodar a habilidade `set-up-my-ops-info` primeiro. Postura com fornecedores + limites inegociáveis ancoram os alertas de "termos desfavoráveis".
 

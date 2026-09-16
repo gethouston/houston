@@ -6,6 +6,9 @@ category: Sales
 featured: no
 image: handshake
 integrations: [hubspot, salesforce, attio, pipedrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **The segment to profile**  -  Required. Why I need it: persona is segment-specific, not generic. If missing I ask: "Which segment should I profile  -  industry, company size, geography?"
 - **Source for accounts**  -  Required. Why I need it: I either pull from your CRM or work from examples you give me. If missing I ask: "Should I pull closed-won in this segment from your connected CRM, or do you want to walk me through 2 or 3 real accounts?"
 - **Who signed and who blocked on past deals**  -  Optional. Why I need it: sharpens the economic-buyer and blocker patterns. If you don't have it I keep going with TBD on the blocker section.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read playbook.** Load `context/sales-context.md`. If missing, run `set-up-my-sales-info` first.
 

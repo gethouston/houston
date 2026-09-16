@@ -25,7 +25,6 @@ export const USAGE_POINT_EVENTS: Partial<Record<AnalyticsEventName, number>> = {
   integration_connected: 2,
   routine_scheduled: 2,
   agent_created: 2,
-  agent_installed_from_store: 2,
 };
 
 export function usagePointsFor(event: AnalyticsEventName): number {

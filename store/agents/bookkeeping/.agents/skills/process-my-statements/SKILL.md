@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [googlesheets, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -106,6 +109,7 @@ User provides one or more:
 4. (Optional) custom chart of accounts file (xlsx / csv / inline text), vendor list, or prior Transaction Detail.
 
 ## Procedure
+<!-- houston-workflow:v1 -->
 
 ### Step 1  -  Bootstrap context + lock chart of accounts
 

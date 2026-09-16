@@ -6,6 +6,9 @@ category: Outbound
 featured: no
 image: magnifying-glass-tilted-left
 integrations: [airtable, apollo]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ If either is missing I stop and ask you to connect it.
 - **An Apollo contact label** - Optional. Defaults to `LinkedIn {sourceType} - {sourceAuthor} Post`, derived from the table's `Source Type` and `Source Author` fields (every row in a given table has the same source). Override per call.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Pull all records.** Page through the Airtable table 100 records at a time until done. Collect rows where `Email` is empty (don't re-enrich rows that already have an email). Stash the source `Profile URL`, `Full Name`, `Headline`, and Airtable `record_id` for each.
 

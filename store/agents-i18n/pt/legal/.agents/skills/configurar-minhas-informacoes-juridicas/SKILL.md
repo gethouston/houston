@@ -7,6 +7,9 @@ category: Configuração
 featured: yes
 image: scroll
 integrations: [googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -21,6 +24,7 @@ Este é o documento fundamental que este agente lê antes de qualquer tarefa rel
 - Chamada implicitamente por qualquer outra skill que precise do contexto compartilhado quando o documento não existir, mas só depois de confirmar com o usuário.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia a configuração.** Carregue `config/entity.json`, `config/posture.json`, `config/templates.json`, `config/profile.json`. Se algo estiver faltando, pergunte APENAS a informação que falta, no momento certo, usando linguagem simples (ordem de preferência: app conectado > arquivo enviado > URL > texto colado).
 

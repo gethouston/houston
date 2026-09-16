@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -94,7 +95,9 @@ test("a multi-agent workspace interposes ONLY the agent picker before the chat",
   await openCustomIntegrations(page);
 
   await page.getByRole("button", { name: "Add custom integration" }).click();
-  await expect(page.getByText("Which agent should run this?")).toBeVisible();
+  await expect(
+    page.getByText("Which AI Employee should run this?"),
+  ).toBeVisible();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Houston" })
@@ -180,7 +183,7 @@ test("the interview surface renders: an ask_user question card replaces the comp
     page.getByText("Which service do you want to connect?"),
   ).toBeVisible({ timeout: 45_000 });
   await expect(page.getByRole("radio")).toHaveCount(2);
-  await expect(page.getByPlaceholder("Send a follow-up...")).not.toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).not.toBeVisible();
   await expect(page.getByPlaceholder("Type another option...")).toBeVisible();
 });
 

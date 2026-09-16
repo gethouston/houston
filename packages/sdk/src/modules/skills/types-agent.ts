@@ -4,8 +4,8 @@
  * command vocabulary the bridge dispatches them by.
  *
  * Everything here is agent-scoped: every operation names an agent id. The
- * workspace-wide shared library and the marketplace are separate families with
- * their own types in this module.
+ * workspace-wide shared library and the GitHub repositories are separate
+ * families with their own types in this module.
  */
 
 import { SdkHttpError } from "../http";
@@ -16,8 +16,8 @@ import { requireString } from "../payload";
  *
  * Every command in the SDK is `<family>/<verb>`, so an agent's own skills are
  * plain `skills/*`. The two sibling families name themselves apart in the
- * family half (`skills.shared/*`, `skills.marketplace/*`) rather than by
- * repeating the noun in each verb.
+ * family half (`skills.shared/*`, `skills.repo/*`) rather than by repeating
+ * the noun in each verb.
  */
 export const AgentSkillsCommand = {
   List: "skills/list",

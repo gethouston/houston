@@ -6,16 +6,17 @@ import { screen } from "./support/team-nav";
 
 /**
  * Time worked — hosted-cloud analytics of how long each agent's engine actually
- * ran per day. It is a first-level Admin section beside Activity and Usage; the standalone
- * rail screen is gone, because it held nothing else (per-AI-account usage moved
- * onto the AI Models hub's Connected rows, HOU-789) and a screen of one section
- * is a section.
+ * ran per day. It is a first-level section of the Admin dashboard beside
+ * Activity and Usage, reached through Settings > Workspace management; the
+ * standalone rail screen is gone, because it held nothing else (per-AI-account
+ * usage moved onto the AI Models hub's Connected rows, HOU-789) and a screen of
+ * one section is a section.
  *
  * The section exists solely where the
  * gateway advertises `capabilities.computeUsage` (desktop/self-host never do),
  * and elsewhere its lozenge is absent, which also keeps its query from firing.
  *
- * Reaching it needs Admin, so every test here arms a Teams OWNER on top of the
+ * Reaching it needs the Admin dashboard, so every test here arms a Teams OWNER on top of the
  * compute capability. The data comes from `GET /v1/org/compute-usage`, armed via
  * the fake host's `/__test__/compute-usage` control. See `@houston/fake-host`
  * README + `packages/web/e2e/README.md`.
@@ -46,7 +47,7 @@ function row(
 }
 
 /**
- * Arm the deployment: a Teams owner (so Admin exists in the rail at all) plus
+ * Arm the deployment: a Teams owner (so the Admin dashboard exists at all) plus
  * the compute capability, which decides whether the Time worked section is
  * offered. `seed: null` is the desktop/self-host shape — no capability, no data.
  */
@@ -138,7 +139,7 @@ test("with data the section shows the total, daily bars, and per-agent rows", as
   // (10 + 3). Deleted agents and ghosts contribute nothing anywhere.
   // With only one visible agent the summary equals its row, so scope the
   // message count to the summary paragraph (strict mode would match both).
-  const summary = screen(page).getByText("Your agents worked 3h 05m");
+  const summary = screen(page).getByText("Your AI Employees worked 3h 05m");
   await expect(summary).toBeVisible();
   await expect(summary).toContainText("13 messages");
 

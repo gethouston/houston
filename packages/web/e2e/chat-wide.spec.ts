@@ -78,7 +78,7 @@ test("the wide preference never hides a setup chat's host", async ({
   // wide: the rail is the way to another screen. Leaving the board releases
   // its claim and the board comes back; then the Routines intake claims the
   // panel WITHOUT wide consent, so its list stays beside the chat.
-  await navRow(page, "skills").click();
+  await navRow(page, "integrations").click();
   await expect(page.locator("main")).toBeVisible();
   await expect(panel).toBeHidden();
   await openTeamSection(page, "Routines");

@@ -193,13 +193,6 @@ describe("entityRuleFor", () => {
     ).toBe("members");
   });
 
-  it("sources both identifiers in a community preview from the external catalog", () => {
-    const preview = at("/agents/{agentId}/skills/community/preview");
-    expect(entitySourceFor("source", preview)).toBe("searchCommunitySkills");
-    expect(entitySourceFor("skillId", preview)).toBe("searchCommunitySkills");
-    expect(entityRuleFor("skillId", preview)?.collection).toBeUndefined();
-  });
-
   it("every rule either resolves its values or says why it cannot", () => {
     for (const rule of ENTITY_SOURCES)
       expect([rule.collection, rule.unlisted].filter(Boolean)).toHaveLength(1);

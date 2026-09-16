@@ -7,6 +7,9 @@ category: Vendas
 featured: yes
 image: handshake
 integrations: [googlecalendar, gmail, outlook, hubspot, salesforce, attio, pipedrive, gong, fireflies, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -54,6 +57,7 @@ Leio seu contexto de vendas primeiro. Para cada campo obrigatório que estiver f
 - **Faturamento conectado** - Opcional, útil para `churn-save`. Por que preciso: ancoro o salvamento no sinal real de downgrade ou cancelamento. Se você não tiver isso, sigo em frente com TBD e peço para você descrever o sinal.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o registro + o playbook.** Reunir os campos obrigatórios que faltam conforme acima (uma pergunta cada, melhor modalidade primeiro). Escrever de forma atômica.
 

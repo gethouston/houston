@@ -5,23 +5,20 @@ import type { OrgTabId } from "./org-view-model.ts";
  * A one-shot request to open the Organization dashboard on a specific tab.
  *
  * The dashboard owns its own tab state, but the requests arrive from OUTSIDE
- * it — three callers: the C8 team-status banner / trial pill (in the shell)
- * deep-links to Billing, the rail's Admin row pins the landing section on
- * every click (the rail rule: a rail door opens its screen's HOME, never the
- * kept-alive leftover), and an agent's hands-on errand card sends the person to
- * Billing. Rather than lift that state into the shared UI store
- * (and couple every consumer to it), this tiny colocated store carries the
- * intent: the caller sets the request, then navigates with
- * `setViewMode(ORGANIZATION_VIEW_ID)`. `OrganizationView` consumes it and clears
- * it.
+ * it — two callers: the C8 team-status banner / trial pill (in the shell)
+ * deep-links to Billing, and an agent's hands-on errand card sends the person
+ * to Billing. Rather than lift that state into the shared UI store (and couple
+ * every consumer to it), this tiny colocated store carries the intent: the
+ * caller sets the request, then navigates with `openSettings("workspace")`.
+ * `OrganizationView` consumes it and clears it.
  *
- * Admin is a KEPT-ALIVE top-level screen, so it does not remount per
- * navigation: the view consumes the pin from an effect on this field, which
- * fires on the first mount AND while the screen is already open (the same shape
+ * Settings is KEPT ALIVE, so the dashboard does not remount per navigation: the
+ * view consumes the pin from an effect on this field, which fires on the first
+ * mount AND while the screen is already open (the same shape
  * `team-view/agent-settings-nav-store.ts` uses). A pin nothing consumes — the
- * gates hide Admin, so the screen is never mounted — cannot mislead either:
- * every caller sits beside the same gates that mount the screen (the errand
- * card through `lib/hands-on-gates.ts`, which withholds its Open button when
+ * gates hide the dashboard, so it is never drawn — cannot mislead either:
+ * every caller sits beside the same gates that draw it (the errand card
+ * through `lib/hands-on-gates.ts`, which withholds its Open button when
  * Billing is not this person's to open).
  *
  * (Per-agent settings are opened directly by `lib/open-agent.ts`, which routes

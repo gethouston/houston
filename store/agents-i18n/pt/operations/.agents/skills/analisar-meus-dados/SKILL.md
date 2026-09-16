@@ -6,6 +6,9 @@ version: 1
 category: Operações
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ Leio o seu contexto operacional primeiro. Para cada campo obrigatório que estiv
 - `data-qa` - verificações de DQ somente leitura nas tabelas alvo: nulos por coluna, duplicatas nas chaves naturais, atualidade (MAX(updated_at) versus desatualização esperada), integridade referencial nos joins-chave, surpresas de cardinalidade. Saída: `data-quality-reports/{YYYY-MM-DD}/report.md`.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. Leio `config/context-ledger.json`; preencho lacunas com UMA pergunta classificada por modalidade.
 2. Leio `context/operations-context.md`, as prioridades ativas e os limites inegociáveis ancoram o que conta como "material".

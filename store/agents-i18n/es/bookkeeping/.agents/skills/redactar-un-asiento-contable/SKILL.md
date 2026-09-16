@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [quickbooks, xero, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ Primero leo tu contexto de contabilidad. Por cada campo requerido que falte, hag
 - **Un resumen del período de pago, para `type=payroll`**, requerido para ese tipo. Por qué: divido los salarios entre I+D / Ventas y Marketing / Administración General a partir de esto. Si falta, pregunto: "¿Puedes conectar Gusto, Rippling o Justworks, o pegar el resumen del período de pago con bruto, impuestos, beneficios y pago neto por departamento?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Analizar las entradas.** Requerido: `type` (uno de `accrual` | `prepaid` | `payroll` | `revrec` | `depreciation` | `stock-comp` | `adjustment` | `reclass`) y `period` (`YYYY-MM`). Opcional: `mode` (solo tiene sentido cuando `type=accrual`, `reversing`), un `slug` corto para el nombre del archivo.
 

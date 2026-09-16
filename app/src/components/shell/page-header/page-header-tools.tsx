@@ -1,3 +1,4 @@
+import { useIsMobile } from "@houston-ai/core";
 import {
   createContext,
   type ReactNode,
@@ -11,6 +12,7 @@ import { createPortal } from "react-dom";
 import {
   type HeaderMode,
   type HeaderThresholds,
+  headerCollapsesTabs,
   headerHoldsTools,
   headerMode,
 } from "./page-header-layout";
@@ -92,6 +94,19 @@ export function usePageHeaderSlotRef(name: SlotName) {
 
 export function usePageHeaderMode(): HeaderMode {
   return useContext(ToolsContext).mode;
+}
+
+/**
+ * "Tabs or switcher", answered ONCE for every header that carries a cluster.
+ *
+ * The rule crosses the strip's measured mode with the phone fork
+ * ({@link headerCollapsesTabs}), so no screen can decide for itself that its
+ * sections should become a menu: a header reads this, never the rule directly.
+ */
+export function usePageHeaderTabsCollapsed(): boolean {
+  const mode = usePageHeaderMode();
+  const isMobile = useIsMobile();
+  return headerCollapsesTabs(mode, isMobile);
 }
 
 /**

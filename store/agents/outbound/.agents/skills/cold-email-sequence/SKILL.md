@@ -6,6 +6,9 @@ category: Outbound
 featured: yes
 image: pencil
 integrations: []
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -79,6 +82,7 @@ If any of trigger / product / social proof / offer is missing I ask for it inlin
 - Write like you're texting a colleague.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 ### Step 1: Gather inputs
 

@@ -133,7 +133,7 @@ async function openShell(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.getByText("Your teams")).toBeVisible();
   const picker = page.getByRole("dialog", {
-    name: "Which agent should run this?",
+    name: "Which AI Employee should run this?",
   });
   await picker.waitFor({ state: "visible" });
   await page.keyboard.press("Escape");
@@ -192,7 +192,7 @@ test("the team's shared context tab saves into the layout", async ({
     screen(page).getByRole("heading", { name: "Team context" }),
   ).toBeVisible();
   await expect(
-    screen(page).getByText("Every agent in this team knows this."),
+    screen(page).getByText("Every AI Employee in this team knows this."),
   ).toBeVisible();
 
   const box = screen(page).getByTestId("team-context-input");
@@ -230,11 +230,11 @@ test("the member EDITS the agent they manage, and the one they only use offers n
   // Their own agent: the editable face. The standing-prose editor is always
   // open (no invite empty state), so the greyed write invitation is the tell.
   await openJobDescription(page, "Payroll Bot");
-  const jobBox = () => page.getByLabel("Job description");
+  const jobBox = () => page.getByLabel("Specific instructions");
   await expect(jobBox()).toBeEditable();
   await expect(jobBox()).toHaveAttribute("contenteditable", "true");
   await expect(
-    page.getByText("Write instructions for your agent…"),
+    page.getByText("Write instructions for your AI Employee…"),
   ).toBeVisible();
 
   // The back chip returns to the agent it configures — its own screen, board

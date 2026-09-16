@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [googledocs]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Contract data spanning at least 13 months** — Optional. Why: needed for trailing-twelve-month NRR and cohort retention. If you don't have it I skip those sections and note that they'll show up once you have enough history.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Required ledger fields: `universal.company`, `universal.accountingMethod`, `domains.revenue.model`, `domains.investors.anchorKpis`. Missing field → one targeted question with modality hint (connected app > file > URL > paste), write atomically before continuing.
 

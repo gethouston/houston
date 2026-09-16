@@ -3,15 +3,78 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v85 - 2026-09-14
+## v93 - 2026-09-15
 
+The flow choice row is a rectangular button: a glyph and a title, in the
+chip's fill with the input's radius. Its description line, chevron and the
+hairline between rows are gone; the list stacks the buttons with a small gap.
+
+## v92 - 2026-09-15
+
+The flow sheet gains a size per STEP. A step with a short answer -- a two-row
+choice, a name and a colour, a team's form -- wears the confirm dialog's
+hand-sized frame and states its own question as the dialog title; a catalog to
+scan keeps the tall surface. The size switches as the flow walks without
+animating the box, and the compact frame holds no scrolling box of its own:
+it is sized by the step, and past its cap the whole dialog scrolls as one.
+
+## v91 - 2026-09-15
+
+Two dialog recipes end the per-dialog frame. A form dialog carries the delete
+confirm's settled look for anything that asks for input -- one of two widths,
+one header, one footer, and an async primary that holds the surface open while
+it works and keeps the typing when it fails. A flow sheet is the one multi-step
+surface: a header of three slots that never move, the body as the only
+scrolling part, and a bottom bar that clears the home indicator. The choice
+row and the hairline-parted list it stacks in are the grammar a flow opens
+with.
+
+## v90 - 2026-09-14
+
+The shared skills library hangs off the connected-apps destination as its
+second tab, beside the apps catalog: one screen for everything a person's
+agents can reach outside themselves. The rail and the phone's More menu carry
+one row for both, and the standing-setup screen keeps only the space
+administration.
+
+## v89 - 2026-09-12
+
+A workflow step says which connected app it acts on: the app's mark and name
+sit on the step's title row with the action it runs ("Gmail - Send email"),
+wrapping under the title on a phone. A step that touches no app carries no
+chip.
+
+## v88 - 2026-09-12
+
+The rail's top-level destinations are ONE unlabelled run: the assistant, the AI
+accounts and the connected apps. What the space is made of leaves the rail --
+administering it and the shared skills library are sections of Settings -- so
+"Your teams" is the rail's only heading, and the nav run carries no band label,
+no fold and no count badge.
+
+## v87 - 2026-09-12
+
+A skill Houston wrote now reads as its numbered workflow -- an index chip, the
+short action, the detail underneath -- in the skill's manage dialog and in the
+preview a row opens. Its raw SKILL.md moves behind an always-visible
+disclosure, which is also how an imported skill's instructions have always
+been reached. An imported skill has no parsed steps and keeps its instructions
+as the body.
+
+## v86 - 2026-09-12
+
+The Agent Store leaves the product app. Its ten inventoried components -- store
+navigation, catalog controls, agent and creator cards, the detail layout, the
+skill list, the creator block, and the home / agent-detail / creator-profile
+screens -- are no longer cross-surface: they are drawn only by the public
+agents.gethouston.ai site, which is outside this contract.
+
+## v85 - 2026-09-14
 The interaction card gains a hands-on step: an errand the person finishes on a
 Houston screen themselves (billing, a key shown once, files from their device,
 destroying a shared space). It opens the screen for them and asks whether they
 finished or skipped, since nothing can observe the outcome.
-
 ## v84 - 2026-09-14
-
 The interaction card supports AI provider connections through the existing
 secure sign-in and key-entry flows. The personal assistant can request app
 and provider connections, with automatic continuation after confirmed success.

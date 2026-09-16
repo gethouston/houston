@@ -8,6 +8,7 @@ import {
   teamSettingsTab,
   teamSettingsTabs,
 } from "../support/mobile-nav";
+import { teamNameField } from "../support/sidebar-create";
 import { screen } from "../support/team-nav";
 
 /**
@@ -63,13 +64,10 @@ test("Tasks pushes the team screen, and the back chip returns to the tree", asyn
   await page.goto("/");
   await openPhoneTeamSection(page, "mission-control");
 
-  // The pushed team screen: the seeded board, titled, with no section
-  // switcher — the tree one level up already is the switcher.
+  // The pushed team screen: the seeded board, titled, with none of the
+  // desktop strip's section lozenges — the tree one level up is the switcher.
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
   await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(0);
-  await expect(
-    screen(page).locator("[data-team-section-switcher]"),
-  ).toHaveCount(0);
 
   const back = screen(page).getByTestId("team-mobile-back");
   await expect(back).toHaveAttribute("aria-label", "Teams");
@@ -124,7 +122,7 @@ test("Team Settings lands on the drilled level with the desktop's tabs", async (
   ).toHaveCount(1);
   await expect(teamSettingsTabs(page)).toHaveText([
     "Context",
-    "Agents",
+    "AI Employees",
     "Settings",
   ]);
   await expect(teamSettingsTab(page, "context")).toHaveAttribute(
@@ -162,7 +160,7 @@ test("the Team Settings back chip retreats to the tree", async ({ page }) => {
   await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
 });
 
-test("the title row's New team control opens the create-team dialog", async ({
+test("the title row's New team control opens the create sheet on the team form", async ({
   page,
 }) => {
   await page.goto("/");
@@ -170,9 +168,8 @@ test("the title row's New team control opens the create-team dialog", async ({
   await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
 
   // The rail that carries "New team" on the desktop is not rendered on the
-  // phone, so the tree's title row offers the same dialog.
+  // phone, so the tree's title row opens the same sheet, straight on the form:
+  // a caller that already knows what it is adding skips the opening choice.
   await page.getByTestId("teams-home-new-team").tap();
-  await expect(
-    page.getByRole("dialog", { name: "Create a team" }),
-  ).toBeVisible();
+  await expect(teamNameField(page)).toBeVisible();
 });

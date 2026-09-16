@@ -6,6 +6,9 @@ category: Support
 featured: no
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,7 @@ I read your support context first. For every required field that's missing I ask
 - **Forbidden phrases**  -  Optional. Why I need it: phrases that sound wrong coming from you go on a never-use list. If you don't have it I keep going with TBD and infer from samples.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/support-context.md`.** If missing, run `set-up-my-support-info` first (or stop and tell me).
 

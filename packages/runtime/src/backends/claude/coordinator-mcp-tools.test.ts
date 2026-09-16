@@ -7,8 +7,8 @@ import { buildBridgedToolSet } from "./mcp-tool-set";
 /**
  * WHAT THE COORDINATOR ACTUALLY GETS on the Claude backend.
  *
- * A live runtime log listed `save_routine`, `find_skills`, `install_skill`,
- * `integration_execute` and `request_connection` among the assistant's
+ * A live runtime log listed `save_routine`, `integration_execute` and
+ * `request_connection` among the assistant's
  * registered MCP tools - tools the coordinator is not allowed to have, because
  * every one of them does WORK, and work belongs on an agent's board where the
  * user can see it. The clamp exists (`buildBridgedToolSet` filters to
@@ -48,8 +48,6 @@ test("no working tool reaches the coordinator, in any mode", () => {
   // The exact names the stale log carried. Every one of them DOES work.
   const forbidden = [
     "save_routine",
-    "find_skills",
-    "install_skill",
     "integration_search",
     "integration_execute",
     "bash",

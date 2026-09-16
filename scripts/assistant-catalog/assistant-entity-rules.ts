@@ -145,13 +145,6 @@ export const ENTITY_SOURCES: readonly EntityRule[] = [
     unlisted:
       "A connection lives with the integration provider, so read its id from integrationConnections.",
   },
-  {
-    names: ["source", "skillId"],
-    pathContains: "/skills/community",
-    discovery: "searchCommunitySkills",
-    unlisted:
-      "The community catalogue is outside Houston, so read both values from searchCommunitySkills.",
-  },
   // A chat: it lives in the agent's own engine, which no directory collection
   // covers, so the id comes from the `conversations.list` read. `after` claims
   // the `{id}` the rename and delete routes carry; `names` claims the body and

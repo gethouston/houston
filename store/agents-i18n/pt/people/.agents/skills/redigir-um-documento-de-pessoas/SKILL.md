@@ -7,6 +7,9 @@ category: Pessoas
 featured: yes
 image: busts-in-silhouette
 integrations: [googledocs, notion, loops, gmail, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -76,6 +79,7 @@ Leio primeiro o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Identidade do funcionário** - Obrigatório. Se faltar, pergunto: "Qual funcionário, nome completo, cargo, e há quanto tempo está na empresa?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o documento de contexto de pessoas** em `context/people-context.md`. Se estiver ausente/vazio: "Primeiro preciso do seu contexto de pessoas, rode a habilidade configurar-minhas-informacoes-de-pessoas." Paro. Busco o framework de níveis, as faixas salariais, a posição sobre equity, as notas de voz, os limites inegociáveis, as regras de escalonamento. Essencial para todo tipo.
 2. **Leio o registro** + preencho lacunas com UMA pergunta objetiva por campo obrigatório que faltar, conforme a seção Informações do tipo em questão.

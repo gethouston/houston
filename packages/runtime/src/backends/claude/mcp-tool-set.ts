@@ -10,7 +10,6 @@ import {
   makeAssistantTools,
 } from "../../session/tools/assistant";
 import { credentialTools } from "../../session/tools/credential-tools";
-import { makeSkillDirectoryTools } from "../../session/tools/find-skills";
 import {
   type IntegrationToolOptions,
   makeIntegrationTools,
@@ -134,11 +133,6 @@ export function buildBridgedToolSet(
               personalAssistant: input.personalAssistant ?? false,
             }),
           ]
-        : []),
-      // find_skills + install_skill reach the host with the SAME sandbox token,
-      // and have the same reach as save_routine: execute/auto, never plan.
-      ...(input.integrations
-        ? makeSkillDirectoryTools(input.integrations)
         : []),
       // The assistant family rides its OWN gate (not the integrations one) and
       // has the same reach as save_routine: execute/auto, never plan.

@@ -7,6 +7,9 @@ category: Contabilidade
 featured: yes
 image: ledger
 integrations: [stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -45,6 +48,7 @@ Eu leio o seu contexto contábil primeiro. Para cada campo obrigatório que esti
 - **Um balancete de abertura, no `mode=opening-balances`** - Obrigatório para esse submodo. Por quê: ancora todo número do balanço patrimonial daqui para frente. Se estiver faltando eu pergunto: "Você tem um balancete de fechamento dos seus livros anteriores ou do seu contador? Envie como planilha ou CSV com código de conta, nome, débito, e crédito."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o estado existente.** Carregar `config/context-ledger.json` (criar um esqueleto vazio `{"universal":{},"domains":{}}` se ausente) e `context/bookkeeping-context.md` se existir - esta execução é uma atualização, não uma reescrita. Preservar tudo o que o fundador refinou; tocar apenas no que está desatualizado ou é novo.
 

@@ -7,6 +7,9 @@ category: Ventas
 featured: yes
 image: handshake
 integrations: [googlecalendar, gmail, outlook, hubspot, salesforce, attio, pipedrive, gong, fireflies, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -54,6 +57,7 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, te hago
 - **Facturación conectada**. Opcional, útil para `churn-save`. Por qué lo necesito: ancla el rescate en la señal real de baja de plan o cancelación. Si no la tienes, sigo adelante con TBD y te pido que describas la señal.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el registro y el playbook.** Reúno los campos obligatorios que falten según lo anterior (UNA pregunta cada uno, mejor modalidad primero). Escribo de forma atómica.
 

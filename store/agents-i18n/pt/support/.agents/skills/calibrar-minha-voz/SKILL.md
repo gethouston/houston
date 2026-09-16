@@ -7,6 +7,9 @@ category: Suporte
 featured: no
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - **Frases proibidas**, opcional. Por que preciso: frases que soam erradas vindo de você entram numa lista de nunca-usar. Se você não tiver, eu sigo com TBD e infiro a partir das amostras.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/support-context.md`.** Se estiver faltando, rode `set-up-my-support-info` primeiro (ou pare e me avise).
 

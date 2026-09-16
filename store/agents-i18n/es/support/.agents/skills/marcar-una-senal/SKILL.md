@@ -7,6 +7,9 @@ category: Soporte
 featured: no
 image: headphone
 integrations: [gmail, github, linear, jira]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - `repeat-question`: escaneo los últimos 30 a 60 días de `conversations.json`. Agrupo preguntas entrantes semánticamente similares. Por cada grupo ≥3 sin artículo correspondiente, añado a `patterns.json` y lo muestro como hueco de documentación.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer `context/support-context.md`.** Si falta, me detengo.
 2. **Leer el registro.** Relleno los vacíos.

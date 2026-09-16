@@ -1,159 +1,77 @@
-import { CATALOG_PLANE_MAX_W, CatalogGrid, cn } from "@houston-ai/core";
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { claimSignInTab, useIntegrationToolkits } from "../../hooks/queries";
-import {
-  AddCustomButton,
-  CustomIntegrationRow,
-  CustomSurfaceSupport,
-  INTEGRATION_PROVIDER,
-  LoadingState,
-  SigninState,
-  UnavailableState,
-  useConnectedApps,
-  useCustomIntegrationsSurface,
-  useIntegrationsGate,
-} from "../integrations";
-import {
-  curatedToolkits,
-  withoutAddedCurated,
-} from "../integrations/curated-integrations";
-import { curatedLogoUrl } from "../integrations/curated-logos";
-import {
-  PageHeaderTools,
-  PageHeaderToolsProvider,
-} from "../shell/page-header/page-header-tools";
-import { PageContainer } from "../shell/page-shell";
-import { tutorialAnchor } from "../tutorial";
+import { useCallback, useEffect } from "react";
+import { useSurfaceGates } from "../../hooks/use-surface-gates";
+import { analytics } from "../../lib/analytics";
+import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
+import { SkillsBody } from "../skills-view";
+import { CatalogTab } from "./catalog-tab";
 import {
   INTEGRATIONS_HEADER_THRESHOLDS,
   IntegrationsHeader,
 } from "./integrations-header";
-import { IntegrationsReady } from "./integrations-ready";
-import { useCatalogSurface } from "./use-catalog-surface";
+import { useIntegrationsNav } from "./integrations-nav-store";
+import {
+  DEFAULT_INTEGRATIONS_TAB,
+  type IntegrationsTabId,
+  integrationsTabIds,
+} from "./integrations-view-model";
 
-/** The global personal Integrations surface, with identity outside every gate. */
+/**
+ * The global personal Integrations surface: what this person's agents can
+ * reach outside themselves, in two tabs under one lozenge cluster. The apps
+ * CATALOG is the landing tab and the identity lozenge; the shared SKILLS
+ * library follows for the space owner who holds it.
+ *
+ * ONE tools provider spans both tabs, so whichever body is mounted portals its
+ * own search and actions into the same strip — and only one is ever mounted,
+ * so the two can never claim it at once. Opening a skill hands the WHOLE
+ * screen to that skill's editor: it replaces the tab cluster with its own
+ * strip (whose back arrow returns to the library), exactly as it replaced the
+ * library's header before.
+ */
 export function IntegrationsView() {
-  const { t } = useTranslation("integrations");
-  const gate = useIntegrationsGate();
-  const custom = useCustomIntegrationsSurface();
-  const customItems = useMemo(
-    () => (Array.isArray(custom.items) ? custom.items : []),
-    [custom.items],
+  const { showSkills } = useSurfaceGates();
+  const tab = useIntegrationsNav((s) => s.tab);
+  const requestTab = useIntegrationsNav((s) => s.requestTab);
+  const visibleIds = integrationsTabIds({ showSkills });
+
+  // One event per tab OPENED (a lozenge click or a deep link), keyed like the
+  // global view switches so a single tab_name breakdown covers everything.
+  // Landing on the screen at all is the shell's own `tab_opened`, so this fires
+  // strictly below it — never on the tab already open — and the two never
+  // double-count.
+  const openTab = useCallback(
+    (next: IntegrationsTabId) => {
+      if (next !== tab)
+        analytics.track("tab_opened", { tab_name: `integrations:${next}` });
+      requestTab(next);
+    },
+    [tab, requestTab],
   );
-  // Curated entries (Croma, HighLevel) join the browse catalog unless already
-  // added — then their row lives in the Installed strip via the custom list —
-  // or unless the provider catalog carries the slug itself (Composio's
-  // HighLevel app), in which case that toolkit is the card and leaves the
-  // catalog once the MCP definition is added, like any connected app would.
-  const providerCatalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
-  const curated = useMemo(
-    () =>
-      curatedToolkits(
-        customItems,
-        (c) => t(c.descriptionKey),
-        curatedLogoUrl,
-        providerCatalog.data ?? [],
-      ),
-    [customItems, providerCatalog.data, t],
+
+  // If the gate drops the open tab (the caller stops owning the space on a
+  // space switch), fall back to the landing tab rather than a blank body.
+  useEffect(() => {
+    if (!visibleIds.includes(tab)) requestTab(DEFAULT_INTEGRATIONS_TAB);
+  }, [visibleIds, tab, requestTab]);
+
+  const header = (
+    <IntegrationsHeader
+      active={tab}
+      visibleIds={visibleIds}
+      onSelect={openTab}
+    />
   );
-  const merged = useConnectedApps(curated);
-  const apps = useMemo(
-    () => ({
-      ...merged,
-      catalogData: withoutAddedCurated(merged.catalogData, customItems),
-    }),
-    [merged, customItems],
-  );
-  const surface = useCatalogSurface({
-    active: apps.activeRows,
-    catalog: apps.catalogData,
-    connections: apps.connData,
-    custom: customItems,
-  });
 
   return (
     <PageHeaderToolsProvider thresholds={INTEGRATIONS_HEADER_THRESHOLDS}>
-      <div className="flex h-full flex-col">
-        <IntegrationsHeader />
-        <div className="flex-1 overflow-auto">
-          <PageContainer width="wide" className="pt-6 pb-10">
-            {/* The catalog column caps at its own natural width (two capped
-                cells) and centers in the wide page — headings and rows keep
-                one shared left edge, and the page's margin absorbs the rest,
-                split evenly, instead of piling up right of the grid. */}
-            <div
-              {...tutorialAnchor("integrationsCatalog")}
-              className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}
-            >
-              {gate.kind === "ready" ? (
-                <IntegrationsReady
-                  reconnectNotice={gate.reconnectNotice}
-                  dismissReconnect={gate.dismissReconnect}
-                  apps={apps}
-                  surface={surface}
-                  custom={custom}
-                />
-              ) : gate.kind === "loading" ? (
-                <LoadingState />
-              ) : (
-                <>
-                  {Array.isArray(custom.items) && (
-                    <PageHeaderTools>
-                      {(inStrip) => (
-                        <AddCustomButton surface={custom} compact={inStrip} />
-                      )}
-                    </PageHeaderTools>
-                  )}
-                  {gate.kind === "signin" ? (
-                    <SigninState
-                      onSignIn={gate.signIn}
-                      signingIn={gate.signingIn}
-                    />
-                  ) : Array.isArray(custom.items) ? (
-                    // The catalog is off but custom integrations WORK right
-                    // below — a flat "not available" over a working surface
-                    // would be a lie (self-host without a Composio key).
-                    <p className="text-sm text-ink-muted">
-                      {t("custom.catalogUnavailable")}
-                    </p>
-                  ) : (
-                    <UnavailableState />
-                  )}
-                  <CustomSurfaceSupport surface={custom} />
-                  {Array.isArray(custom.items) && custom.items.length > 0 && (
-                    <div className="mt-8">
-                      <CatalogGrid>
-                        {custom.items.map((item) => (
-                          <CustomIntegrationRow
-                            key={item.slug}
-                            integration={item}
-                            onOpen={(value) =>
-                              custom.selection.openDetail(value.slug)
-                            }
-                            onEnterKey={(value) =>
-                              custom.selection.openKey(value.slug)
-                            }
-                            onSignIn={(value) =>
-                              custom.signIn.mutate({
-                                slug: value.slug,
-                                tab: claimSignInTab(),
-                              })
-                            }
-                            onRemove={(value) =>
-                              custom.selection.openRemove(value.slug)
-                            }
-                          />
-                        ))}
-                      </CatalogGrid>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          </PageContainer>
+      {tab === "skills" && showSkills ? (
+        <SkillsBody listHeader={header} />
+      ) : (
+        <div className="flex h-full min-h-0 flex-col">
+          {header}
+          <CatalogTab />
         </div>
-      </div>
+      )}
     </PageHeaderToolsProvider>
   );
 }

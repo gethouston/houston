@@ -7,6 +7,9 @@ category: Operaciones
 featured: yes
 image: clipboard
 integrations: [googlesheets]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ Primero leo tu contexto de operaciones. Por cada campo obligatorio que falte hag
 - `metrics-rollup`  -  pulso semanal transversal de métricas. Lee cada métrica monitoreada, calcula el cambio semana contra semana, clasifica frente a la dirección declarada, señala anomalías abiertas. Alimenta la revisión `weekly`. Salida: `rollups/{YYYY-MM-DD}.md`.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. Leo `config/context-ledger.json`. Lleno los vacíos con UNA pregunta priorizada por modalidad.
 2. Leo `context/operations-context.md`  -  prioridades activas, ritmo operativo, contactos clave, postura frente a proveedores, líneas rojas.

@@ -5,6 +5,9 @@ version: 1
 category: Operations
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,7 @@ I read your operations context first. For every required field that's missing I 
 - **Recent decisions, reviews, or goal snapshots**  -  Optional. Why I need it: more saved work means stronger evidence. If you don't have it I keep going with TBD and lean on what's there.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`.** If missing or empty, stop and ask user run `set-up-my-ops-info` first. Priorities and key-contacts anchor "proposed owner to unblock" logic.
 

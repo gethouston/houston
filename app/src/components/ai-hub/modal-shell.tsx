@@ -50,12 +50,15 @@ export function ModalShell({
         if (!next) onClose();
       }}
     >
-      {/* Core's DialogContent renders the single `bg-black/40` scrim itself, so
-          the panel just floats over it — one overlay, no second blur layer. */}
+      {/* Core's DialogContent renders the single `bg-black/25` scrim itself, so
+          the panel just floats over it — one overlay, no second blur layer.
+          The width is this panel's own (`w-[min(620px,…)]`), so the cap is only
+          lifted from `sm:` up — the frame's unprefixed cap is the phone gutter
+          and an unprefixed `max-w-none` here would delete it. */}
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "grid max-h-[84dvh] min-h-[60dvh] w-[min(620px,calc(100vw-2.5rem))] max-w-none grid-rows-[auto_1fr_auto] gap-0 overflow-hidden rounded-2xl border-0 bg-dialog p-0 ht-shadow-modal ai-hub-modal-surface sm:max-w-none",
+          "grid max-h-[84dvh] min-h-[60dvh] w-[min(620px,calc(100vw-2.5rem))] grid-rows-[auto_1fr_auto] gap-0 overflow-hidden rounded-2xl border-0 bg-dialog p-0 ht-shadow-modal ai-hub-modal-surface sm:max-w-none",
           className,
         )}
       >

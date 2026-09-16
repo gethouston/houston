@@ -58,7 +58,9 @@ export const SECTION_GROUP: Record<AgentSettingsSection, AgentSettingsGroupId> =
  */
 export function agentAccessSections(
   caps: Capabilities | null | undefined,
+  personalSpace = false,
 ): AgentSettingsSection[] {
+  if (personalSpace) return [];
   if (!isMultiplayer(caps)) return [];
   return caps?.teams === true
     ? ["people", "integrations", "models"]
@@ -79,13 +81,14 @@ export function agentAccessSections(
  */
 export function agentSettingsSections(
   caps: Capabilities | null | undefined,
+  personalSpace = false,
 ): AgentSettingsSection[] {
   return [
     "manage",
     "job-description",
     "skills",
     "learnings",
-    ...agentAccessSections(caps),
+    ...agentAccessSections(caps, personalSpace),
   ];
 }
 

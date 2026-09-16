@@ -11,6 +11,7 @@ import {
   type ShareAction,
   type SharePerson,
 } from "../agent/agent-access-model.ts";
+import { rosterPersonName } from "../organization/people-tab-model.ts";
 
 /**
  * Pure, DOM-free logic behind the Permissions agent People tab: ONE agent, every
@@ -103,9 +104,9 @@ export function buildAgentPeople(opts: {
   return rows.sort((a, b) => {
     const r = rankOf(a) - rankOf(b);
     if (r !== 0) return r;
-    const an = a.member.email ?? a.member.userId;
-    const bn = b.member.email ?? b.member.userId;
-    return an.localeCompare(bn);
+    // Ordered by the name each row SHOWS: sorting on a key the user cannot
+    // read (the email behind a display name) makes the list look unsorted.
+    return rosterPersonName(a.member).localeCompare(rosterPersonName(b.member));
   });
 }
 

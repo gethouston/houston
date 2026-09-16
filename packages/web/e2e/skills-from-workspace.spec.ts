@@ -1,10 +1,10 @@
 import { expect, test } from "./support/fixtures";
-import { openAgentSettings } from "./support/team-nav";
+import { openAgentSkills } from "./support/skills-nav";
 
 /**
  * "From your workspace" (ADR 0003): once a skill is shared it stops living ON
- * agents, so the Custom tab's "From your other agents" section can no longer
- * offer it — this section does. Enabling is a one-click reversible manifest
+ * agents, so the discovery list's "From your other AI Employees" section can no
+ * longer offer it — this section does. Enabling is a one-click reversible manifest
  * write (never a copy), an enabled store skill is the agent's skill and shows
  * in its "Your skills" strip, and a row opens the preview modal.
  */
@@ -15,12 +15,6 @@ const SKILL = {
   content:
     '---\nname: meeting-prep\ntitle: "Meeting prep"\ndescription: "Prep before meetings"\n---\n# Steps\n',
 };
-
-async function openAgentCustomTab(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await openAgentSettings(page, "Houston", "Skills");
-  await page.getByRole("tab", { name: "Custom skills" }).click();
-}
 
 test("a workspace-shared skill is one-click enabled and joins Your skills", async ({
   page,
@@ -33,7 +27,8 @@ test("a workspace-shared skill is one-click enabled and joins Your skills", asyn
   );
   expect(res.status()).toBe(201);
 
-  await openAgentCustomTab(page);
+  await page.goto("/");
+  await openAgentSkills(page);
   await expect(page.getByText("From your workspace")).toBeVisible();
   await expect(page.getByText("Prep before meetings")).toBeVisible();
   // Not enabled yet: no strip, no check.
@@ -65,7 +60,8 @@ test("a workspace row opens the preview and its Enable commits", async ({
   );
   expect(res.status()).toBe(201);
 
-  await openAgentCustomTab(page);
+  await page.goto("/");
+  await openAgentSkills(page);
   await page.getByRole("button", { name: /^Meeting prep\b/ }).click();
 
   // The preview modal: workspace by-line, full body, Enable as the commit.
@@ -93,7 +89,8 @@ test("an active workspace skill is editable and can be disabled here", async ({
   );
   expect(res.status()).toBe(201);
 
-  await openAgentCustomTab(page);
+  await page.goto("/");
+  await openAgentSkills(page);
   await page
     .getByRole("button", { name: "Enable Meeting prep", exact: true })
     .click();
@@ -102,18 +99,18 @@ test("an active workspace skill is editable and can be disabled here", async ({
   ).toBeVisible();
 
   // The strip row opens the MANAGE dialog: editable content, Edit in chat,
-  // and "Disable for this agent" instead of Delete.
+  // and "Disable for this AI Employee" instead of Delete.
   await page
     .getByRole("button", { name: /^Meeting prep\b/ })
     .first()
     .click();
   const dialog = page.getByRole("dialog");
-  const editor = dialog.getByLabel("Instructions for the agent");
+  const editor = dialog.getByLabel("Instructions for the AI Employee");
   await expect(editor).toBeVisible();
   await expect(
     dialog.getByRole("button", { name: "Edit in chat" }),
   ).toBeVisible();
-  await expect(dialog.getByText("Agents with this skill")).toHaveCount(0);
+  await expect(dialog.getByText("AI Employees with this skill")).toHaveCount(0);
 
   // A content edit saves to the ONE workspace copy.
   await editor.fill("---\nname: meeting-prep\n---\n# Steps v2\n");
@@ -124,13 +121,13 @@ test("an active workspace skill is editable and can be disabled here", async ({
     .first()
     .click();
   await expect(
-    page.getByRole("dialog").getByLabel("Instructions for the agent"),
+    page.getByRole("dialog").getByLabel("Instructions for the AI Employee"),
   ).toHaveValue(/# Steps v2/);
 
   // Disabling is reversible: the skill leaves this agent, stays in the store.
   await page
     .getByRole("dialog")
-    .getByRole("button", { name: "Disable for this agent" })
+    .getByRole("button", { name: "Disable for this AI Employee" })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(

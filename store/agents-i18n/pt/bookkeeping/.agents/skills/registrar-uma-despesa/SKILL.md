@@ -7,6 +7,9 @@ category: Contabilidade
 featured: no
 image: ledger
 integrations: [gmail, outlook, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ Eu leio o seu contexto contábil primeiro. Para todo campo obrigatório que esti
 - **Uma conta registrada de Empréstimo do Fundador a Pagar**, opcional. Motivo: necessária apenas se o recibo foi pago do próprio bolso. Se você não tiver, pergunto uma vez e adiciono ao seu plano de contas.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto e travar o plano de contas.** Carregar `context/bookkeeping-context.md` (parar se ausente, pedir para rodar `set-up-my-books`), `config/context-ledger.json`, `config/chart-of-accounts.json` (**travado** para a execução, parar se ausente), `config/prior-categorizations.json`, e `config/party-rules.json`.
 

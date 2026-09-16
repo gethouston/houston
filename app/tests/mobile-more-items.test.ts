@@ -7,7 +7,9 @@ import {
 } from "../src/components/shell/mobile-more-items.ts";
 
 // The phone More menu's model: the rail's own destination runs, minus the
-// ones a gate emptied, plus the two help actions.
+// ones a gate emptied, plus the two help actions. The rail composes ONE
+// unlabelled run today; the mapper mirrors the library's section shape, bands
+// and all, so the menu draws whatever the rail hands it.
 
 const row = (id: string): MobileMoreGroup["items"][number] => ({
   id,
@@ -19,14 +21,17 @@ const row = (id: string): MobileMoreGroup["items"][number] => ({
 describe("mobileMoreItems", () => {
   it("keeps the rail's runs, labels and order", () => {
     const groups = mobileMoreItems([
-      { id: "primary", items: [row("assistant"), row("store")] },
-      { id: "my-accounts", label: "My accounts", items: [row("integrations")] },
+      {
+        id: "primary",
+        items: [row("assistant"), row("ai-hub"), row("integrations")],
+      },
+      { id: "teams", label: "Your teams", items: [row("team")] },
     ]);
     assert.deepEqual(
       groups.map((g) => [g.id, g.label, g.items.map((i) => i.id)]),
       [
-        ["primary", undefined, ["assistant", "store"]],
-        ["my-accounts", "My accounts", ["integrations"]],
+        ["primary", undefined, ["assistant", "ai-hub", "integrations"]],
+        ["teams", "Your teams", ["team"]],
       ],
     );
   });
@@ -36,7 +41,7 @@ describe("mobileMoreItems", () => {
     // library applies to its own sections.
     const groups = mobileMoreItems([
       { id: "primary", items: [row("assistant")] },
-      { id: "workspace", label: "Workspace", items: [] },
+      { id: "teams", label: "Your teams", items: [] },
     ]);
     assert.deepEqual(
       groups.map((g) => g.id),

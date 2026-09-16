@@ -6,6 +6,9 @@ version: 1
 category: Contabilidad
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Primero leo tu contexto contable. Por cada campo obligatorio que falte, hago UNA
 - **Un historial de asientos contables actualizado** - Obligatorio. Por qué: recalculo el saldo de cada devengo a partir de los asientos contables que afectan su código de cuenta. Si falta, pregunto: "¿Ya procesamos algún período? Si no, hagamos primero un cierre para que existan asientos contables sobre los cuales calcular."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el contexto.** Cargo `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Si falta el plan de cuentas, me detengo y pido que corras `build-chart-of-accounts` primero. Anoto la fecha de hoy + el período contable actual (`YYYY-MM`).
 

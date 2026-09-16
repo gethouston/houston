@@ -1,8 +1,9 @@
 import type { PortableInventoryPreview } from "@houston/engine-adapter";
 import { useTranslation } from "react-i18next";
-import type { WizardSelection } from "../../lib/portable-share";
+import { jobDescriptionExcerpt } from "../../lib/job-description-excerpt";
 import { PickListStep } from "../portable/pick-list-step";
 import { humanize, SwitchRow } from "../portable/wizard-parts";
+import type { WizardSelection } from "./copy-agent-wizard-model";
 
 interface ContentStepProps {
   sourceName: string;
@@ -63,7 +64,9 @@ export function InstructionsStep({
               setSelection({ ...selection, claudeMd: !selection.claudeMd })
             }
             title={t("copyAgent.wizard.instructions.instructionsRow")}
-            subtitle={preview.claudeMd.excerpt}
+            // The file opens with a fenced block of facts; a person reading
+            // this row wants the job, not the fence.
+            subtitle={jobDescriptionExcerpt(preview.claudeMd.excerpt)}
           />
         ) : (
           <p className="text-sm text-ink-muted">

@@ -6,6 +6,9 @@ category: Advisory
 featured: yes
 image: scroll
 integrations: [stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -21,6 +24,7 @@ integrations: [stripe]
 - Any "do I need X?" or "does X apply?" fits short memo.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read shared context.** Load `legal-context.md` for entity, data geography of current users, standing agreements, founder risk posture, escalation rules. Also read relevant prior `advice-memos/` entries  -  don't re-answer decided stuff.
 

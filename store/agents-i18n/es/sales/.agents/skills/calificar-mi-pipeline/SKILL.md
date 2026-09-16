@@ -7,6 +7,9 @@ category: Ventas
 featured: no
 image: handshake
 integrations: [hubspot, salesforce, attio, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -48,6 +51,7 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, hago UN
 - **Fuente de uso del producto**: opcional, útil para `customer-health`. Por qué lo necesito: la tendencia de uso es el factor de salud más fuerte. Si no la tienes, sigo adelante con TBD en ese factor.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el registro de contexto y el playbook.** Reúno los campos obligatorios que falten (una pregunta cada uno, empezando por la mejor modalidad). Escribo de forma atómica.
 

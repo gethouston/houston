@@ -6,6 +6,9 @@ category: Operations
 featured: no
 image: clipboard
 integrations: [googledocs, googledrive, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ I read your operations context first. For every required field that's missing I 
 - `investor-update`  -  CEO-voice narrative for monthly or quarterly update. Output: `investor-updates/{yyyy-qq}/update.md`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. Read `config/context-ledger.json`. Fill gaps with ONE modality-ranked question.
 2. Read `context/operations-context.md`  -  active priorities, operating rhythm, hard nos, voice notes. Anchors what "progress" means.

@@ -6,6 +6,9 @@ category: Sales
 featured: yes
 image: handshake
 integrations: [googledocs, hubspot, salesforce, attio, pipedrive, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ I read your sales context first. For every required field that's missing I ask O
 - **Pricing stance**  -  Optional. Why I need it: lets me write a real pricing section instead of TBD. If you don't have it I keep going with TBD.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + existing playbook.** If `context/sales-context.md` exists, read so run is update, not rewrite. Preserve what founder already sharpened; change only stale or new.
 

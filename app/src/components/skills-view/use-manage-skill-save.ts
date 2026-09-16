@@ -11,13 +11,18 @@ import type {
 } from "./manage-skill-dialog-props";
 
 /**
- * {@link ManageSkillDialog}'s save + destructive-confirm flow, split out for
- * the file law. A shared row's save is one store write plus reversible
- * manifest toggles (no confirm); a copy-based save that unassigns agents
- * parks as `pendingRemove` until the confirm dialog resolves it. Delete goes
- * through `confirmDelete` either way. Failures are already toasted by the
- * `call` wrapper — catches here only prevent unhandled rejections, and the
- * dialog stays open so the user can retry.
+ * The shared save + destructive-confirm flow behind both skill detail
+ * surfaces (the manage dialog and the full-page editor), split out for the
+ * file law. A shared row's save is one store write plus reversible manifest
+ * toggles (no confirm); a copy-based save that unassigns agents parks as
+ * `pendingRemove` until the confirm dialog resolves it. Delete goes through
+ * `confirmDelete` either way. Failures are already toasted by the `call`
+ * wrapper — catches here only prevent unhandled rejections, and the surface
+ * stays open so the user can retry.
+ *
+ * `onSaved` and `onDeleted` are separate because the two hosts end
+ * differently: the dialog closes on both, while the editor stays on the skill
+ * it just saved and only leaves once the skill is gone.
  */
 export function useManageSkillSave(args: {
   row: ManagedSkillRow | null;
@@ -26,7 +31,10 @@ export function useManageSkillSave(args: {
   shared: ManageSkillDialogProps["shared"];
   onApply: ManageSkillDialogProps["onApply"];
   onDeleteEverywhere: ManageSkillDialogProps["onDeleteEverywhere"];
-  onClose: () => void;
+  /** A save landed (content and/or assignment). */
+  onSaved: () => void;
+  /** The skill no longer exists anywhere this surface manages it. */
+  onDeleted: () => void;
 }) {
   const { row, agents, isShared, shared, onApply, onDeleteEverywhere } = args;
   const [pendingRemove, setPendingRemove] = useState<{
@@ -64,7 +72,7 @@ export function useManageSkillSave(args: {
           after: pathsFor(draft.afterIds),
         }),
       );
-      args.onClose();
+      args.onSaved();
       return;
     }
     const plan = planSkillAssignment({
@@ -77,7 +85,7 @@ export function useManageSkillSave(args: {
       return;
     }
     await onApply(row, saveArgs, plan);
-    args.onClose();
+    args.onSaved();
   };
 
   return {
@@ -94,7 +102,7 @@ export function useManageSkillSave(args: {
           ? shared.onDelete(row as SharedSkillRow)
           : onDeleteEverywhere(row)
       )
-        .then(args.onClose)
+        .then(args.onDeleted)
         .catch(() => {});
     },
     pendingRemoveCount: pendingRemove?.plan.deletes.length ?? 0,
@@ -105,7 +113,7 @@ export function useManageSkillSave(args: {
       setPendingRemove(null);
       if (!pending || !row) return;
       void onApply(row, pending.args, pending.plan)
-        .then(args.onClose)
+        .then(args.onSaved)
         .catch(() => {});
     },
   };

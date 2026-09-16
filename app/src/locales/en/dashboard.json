@@ -1,6 +1,6 @@
 {
   "filter": {
-    "allAgents": "All agents"
+    "allAgents": "All AI Employees"
   },
   "peopleFilter": {
     "label": "Filter by person",
@@ -28,16 +28,16 @@
   },
   "empty": {
     "boardTitle": "No conversations yet",
-    "boardDescription": "Start a new conversation to delegate work to an agent.",
+    "boardDescription": "Start a new conversation to delegate work to an AI Employee.",
     "newMission": "New task"
   },
   "errors": {
-    "noAgentForMission": "Pick an agent before starting a task.",
+    "noAgentForMission": "Pick an AI Employee before starting a task.",
     "partialMissionLoad": "Some tasks could not load. We are trying again."
   },
   "agentPicker": {
-    "title": "Which agent should run this?",
-    "description": "Pick an agent to open a fresh conversation."
+    "title": "Which AI Employee should run this?",
+    "description": "Pick an AI Employee to open a fresh conversation."
   },
   "skillPicker": {
     "title": "Pick a skill",

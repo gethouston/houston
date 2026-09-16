@@ -1,13 +1,13 @@
 import type {
-  CommunitySkill,
-  CommunitySkillPreview,
+  PreviewSkill,
+  PreviewSkillDetail,
   RepoSkill,
   Skill,
 } from "@houston-ai/skills";
 
 /**
- * The Skills area's shared fixtures: one founder's installed skills, the
- * skills.sh rows the marketplace shows them, and the SKILL.md a preview loads.
+ * The Skills area's shared fixtures: one founder's installed skills, the rows
+ * a preview modal opens over, and the SKILL.md that preview loads.
  * Real Houston content — an agent's actual procedures — so every page on this
  * area reviews the component against the copy lengths the product produces.
  *
@@ -15,7 +15,7 @@ import type {
  * the pages beside it.
  */
 
-/** Installed skills, as `SkillsGrid` receives them (unsorted on purpose). */
+/** Installed skills, as a list receives them (unsorted on purpose). */
 export const installedSkills: Skill[] = [
   {
     id: "skill-weekly-report",
@@ -59,8 +59,8 @@ export const installedSlugs: Set<string> = new Set(
   installedSkills.map((skill) => skill.name),
 );
 
-/** skills.sh rows: `skillId` drives the title, `source` the owner avatar. */
-export const communitySkills: CommunitySkill[] = [
+/** Preview rows: `skillId` drives the title, `source` the owner avatar. */
+export const previewSkills: PreviewSkill[] = [
   {
     id: "cs-contract-drafting",
     skillId: "contract-drafting",
@@ -135,10 +135,10 @@ export const repoSkills: RepoSkill[] = [
 
 /**
  * A loaded SKILL.md: the `description:` frontmatter carries the run-on
- * `(1) … (2) …` enumeration and the trailing `Triggers on:` clause community
- * skills really ship, so the preview's description formatting is under review.
+ * `(1) … (2) …` enumeration and the trailing `Triggers on:` clause real skills
+ * ship, so the preview's description formatting is under review.
  */
-export const skillPreview: CommunitySkillPreview = {
+export const skillPreview: PreviewSkillDetail = {
   title: "Contract drafting",
   description:
     'Drafts a starter contract from your own templates: (1) asks which agreement you need, (2) pulls the latest template from Drive, (3) fills the parties and dates, (4) shares it for review. Triggers on: "contract", "NDA", "agreement", "sign"',
@@ -150,8 +150,51 @@ export const skillPreview: CommunitySkillPreview = {
     "# Contract drafting\n\n## Procedure\n\n1. Ask which agreement the founder needs.\n2. Pull the latest template from Drive.\n3. Fill in the parties, dates and amounts.\n4. Share the draft for review — never send it.\n\n## Notes\n\nEscalate anything with a non-standard liability clause.\n",
 };
 
+/**
+ * A skill Houston wrote: the same SKILL.md, plus the numbered procedure the
+ * domain parser reads out of it. Steps become the body; the markdown moves
+ * behind the disclosure.
+ */
+export const houstonSkillPreview: PreviewSkillDetail = {
+  ...skillPreview,
+  title: "Close my month",
+  workflow: [
+    {
+      title: "Read the inputs",
+      detail:
+        "The period to close, in YYYY-MM.\n• The chart of accounts, locked for the run.\n• Last month's closing balances.",
+      integration: null,
+    },
+    {
+      title: "Reconcile every account",
+      detail:
+        "One pass per bank account. Stop and ask before plugging a difference over $100.",
+      integration: { toolkit: "googlesheets", action: "GOOGLESHEETS_GET_ROWS" },
+    },
+    {
+      title: "Draft each pending journal entry",
+      detail:
+        "Reversals first, then accruals, prepaids, payroll, revenue recognition and depreciation. Everything stays a draft.",
+      integration: { toolkit: "quickbooks", action: null },
+    },
+    {
+      title: "Assemble the close package",
+      detail: null,
+      integration: {
+        toolkit: "googledrive",
+        action: "GOOGLEDRIVE_CREATE_FOLDER",
+      },
+    },
+    {
+      title: "Summarize for the founder",
+      detail: "Net income, closing cash, and the four things still open.",
+      integration: { toolkit: "gmail", action: "GMAIL_SEND_EMAIL" },
+    },
+  ],
+};
+
 /** The same skill with nothing but a body — the bare-preview shape. */
-export const bareSkillPreview: CommunitySkillPreview = {
+export const bareSkillPreview: PreviewSkillDetail = {
   title: null,
   description: "",
   image: null,

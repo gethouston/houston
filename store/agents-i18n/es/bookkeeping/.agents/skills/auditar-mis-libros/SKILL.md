@@ -6,6 +6,9 @@ version: 1
 category: Contabilidad
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ Leo primero tu contexto contable. Por cada campo requerido que falte, hago UNA p
 - **Tu solicitud de auditor o de diligencia debida, en `mode=audit-response`** - Requerido para ese modo. Por qué: no puedo muestrear ni armar nada sin la solicitud real. Si falta, pregunto: "Pega o suelta la solicitud del auditor o del equipo de diligencia debida, idealmente el correo completo o el PDF con los puntos que quieren."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto.** Cargar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Anotar la fecha de hoy como fecha de ejecución.
 

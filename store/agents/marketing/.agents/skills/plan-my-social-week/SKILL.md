@@ -6,6 +6,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [linkedin, twitter, reddit, youtube]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Posting cadence**  -  Optional, default LinkedIn 3 / X 5 / Reddit 2 per week. If missing I ask: "How many posts per week per platform do you want to aim for? If you don't have a number I keep going with the default."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read positioning doc**:
    `context/marketing-context.md`. If missing or

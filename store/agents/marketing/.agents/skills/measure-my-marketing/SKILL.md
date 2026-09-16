@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [linkedin, reddit]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -66,6 +69,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Your topics**  -  Required for `linkedin-digest`. Why I need it: filters which network posts are worth engaging with. If missing I ask: "What topics do you want me to track, three to five themes you actually care about?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 ### Shared steps (all scopes)
 

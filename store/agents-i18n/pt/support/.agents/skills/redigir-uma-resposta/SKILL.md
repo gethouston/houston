@@ -7,6 +7,9 @@ category: Suporte
 featured: yes
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - **A própria conversa**. Obrigatória. Por que preciso: eu redijo com base na mensagem real do cliente, não em uma paráfrase. Se estiver faltando, eu pergunto: "Para qual conversa devo redigir? Compartilhe o nome do cliente ou o email mais recente."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/support-context.md`.** Se estiver faltando ou vazio, paro e digo para você rodar `set-up-my-support-info` primeiro.
 2. **Carregar a conversa** de `conversations/{id}/thread.json`. Identifico a mensagem mais recente do cliente, o rascunho responde a ela.

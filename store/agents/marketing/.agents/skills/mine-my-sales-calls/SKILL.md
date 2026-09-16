@@ -6,6 +6,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [gong, fireflies, fathom]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Pasted transcripts**  -  Required only if no meeting-notes app is connected. If missing I ask: "Drop one to three call recordings or paste the transcripts you want me to read."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read positioning doc** (own file): `context/marketing-context.md`. Anchor mining  -  look for quotes that support, update, or contradict current claims.
 

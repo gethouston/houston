@@ -11,9 +11,10 @@ import {
 /** The Teams gates that decide which non-agent surfaces this caller can reach. */
 export interface SurfaceGates {
   /**
-   * Admin, the lead row of the rail's "Workspace" band. Multiplayer owner/admin
-   * only on a non-spaces multiplayer host. A C8 Spaces personal space also
-   * shows Admin because its sole caller owns that space.
+   * The Admin dashboard behind Settings' "Workspace management" section; every
+   * other caller gets the plain workspace-name card there. Multiplayer
+   * owner/admin only on a non-spaces multiplayer host. A C8 Spaces personal
+   * space also shows Admin because its sole caller owns that space.
    */
   showOrganization: boolean;
   /**
@@ -38,12 +39,13 @@ export interface SurfaceGates {
    */
   showAiModels: boolean;
   /**
-   * The Skills library, in the rail's "Workspace" run. Skills are what every
-   * agent in the space can do, so editing them edits everyone's agents at once:
-   * that belongs to whoever OWNS the space (`isSpaceOwner`), not to the manager
-   * who runs it and not to a member who uses it. A RAIL gate only — nothing
-   * bounces a caller out of the screen, because the gateway is the enforcer and
-   * a hidden nav row is the whole of the claim being made here.
+   * The Skills TAB of the Integrations screen, beside the apps catalog. Skills
+   * are what every agent in the space can do, so editing them edits everyone's
+   * agents at once: that belongs to whoever OWNS the space (`isSpaceOwner`),
+   * not to the manager who runs it and not to a member who uses it. A LOZENGE
+   * gate — a caller without it sees the catalog alone, and the screen falls
+   * back to it if the gate closes under an open tab. The gateway is the
+   * enforcer; a hidden tab is the whole of the claim being made here.
    */
   showSkills: boolean;
   /**

@@ -7,6 +7,9 @@ category: Soporte
 featured: yes
 image: headphone
 integrations: [googledocs, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - `account-review`  -  revisión por cuenta. 4 secciones: logros (lo alcanzado), solicitudes-entregadas (solicitudes que entregué), fricción (dolores todavía abiertos), próximos pasos (renovación / expansión / inversión). Escribe en `account-reviews/{account}-{YYYY-MM-DD}.md`.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/support-context.md`.** Si no existe, me detengo.
 2. **Leo el ledger.** Relleno lo que falte.

@@ -6,6 +6,9 @@ category: People
 featured: no
 image: busts-in-silhouette
 integrations: [googlecalendar, outlook, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Timezone** — Required when panel spans regions. Why I need it: avoids 6 a.m. surprises. If missing I ask: "What timezone should I use as the anchor for the loop?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc** at `context/people-context.md`. If missing/empty, tell user: "I need your people context first  -  run the set-up-my-people-info skill." Stop.
 2. **Read candidate record** at `candidates/{candidate-slug}.md`. If missing, tell user run `screen-resume` or `score-candidate` first. Stop.

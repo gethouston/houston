@@ -7,6 +7,9 @@ category: Vendas
 featured: yes
 image: handshake
 integrations: [hubspot, salesforce, attio, gong, fireflies]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ Eu leio seu contexto de vendas primeiro. Para cada campo obrigatório que estive
 - **CRM conectado** - Obrigatório para `win-loss` e `pipeline`. Por que eu preciso: puxo negócios fechados e fotos de estágio. Se estiver faltando eu pergunto: "Conecte seu CRM (HubSpot, Salesforce, Attio, Pipedrive ou Close), ou cole uma lista recente de estágios."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o registro + o playbook.** Reúno os campos obrigatórios que faltam (UMA pergunta cada, começando pelo melhor formato). Escrevo atomicamente.
 

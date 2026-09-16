@@ -2,7 +2,7 @@ import { cn } from "@houston-ai/core";
 import { Check, Loader2, Plus } from "lucide-react";
 
 /**
- * Shared install-status glyph for the marketplace card and preview sheet: a
+ * Install-status glyph for the skill preview modal: a
  * spinner while installing, a check once installed, otherwise a plus. Callers
  * size it via `className` (e.g. `size-4`).
  */

@@ -38,7 +38,6 @@ import { ConfigPrefsMixin } from "./client/config-prefs-mixin";
 import type { HoustonClientOptions } from "./client/context";
 import { CustomIntegrationsMixin } from "./client/custom-integrations-mixin";
 import { IntegrationsMixin } from "./client/integrations-mixin";
-import { MarketplaceMixin } from "./client/marketplace-mixin";
 import { MeProfileMixin } from "./client/me-profile-mixin";
 import type { BaseCtor } from "./client/mixin";
 import { OrgTeamsMixin } from "./client/org-teams-mixin";
@@ -51,8 +50,8 @@ import { ProviderStatusMixin } from "./client/provider-status-mixin";
 import { RoutinesMixin } from "./client/routines-mixin";
 import { SharedSkillsMixin } from "./client/shared-skills-mixin";
 import { SkillsMixin } from "./client/skills-mixin";
+import { SkillsRepoMixin } from "./client/skills-repo-mixin";
 import { SpacesMixin } from "./client/spaces-mixin";
-import { StoreMixin } from "./client/store-mixin";
 import { TeamsMixin } from "./client/teams-mixin";
 import { WorkspacesMixin } from "./client/workspaces-mixin";
 
@@ -67,7 +66,6 @@ import { WorkspacesMixin } from "./client/workspaces-mixin";
  */
 export const MIXINS = [
   PortableMixin,
-  StoreMixin,
   ApiKeysMixin,
   TeamsMixin,
   OrgTeamsMixin,
@@ -83,7 +81,7 @@ export const MIXINS = [
   ChatHistoryMixin,
   ChatSendMixin,
   ChatControlsMixin,
-  MarketplaceMixin,
+  SkillsRepoMixin,
   SkillsMixin,
   RoutinesMixin,
   SharedSkillsMixin,

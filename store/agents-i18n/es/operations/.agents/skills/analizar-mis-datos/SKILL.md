@@ -6,6 +6,9 @@ version: 1
 category: Operaciones
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ Primero leo tu contexto de operaciones. Por cada campo requerido que falte hago 
 - `data-qa` - chequeos de calidad de solo lectura sobre las tablas objetivo: nulos por columna, duplicados sobre claves naturales, actualidad (MAX(updated_at) vs la desactualización esperada), integridad referencial en los joins clave, sorpresas de cardinalidad. Salida: `data-quality-reports/{YYYY-MM-DD}/report.md`.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. Leo `config/context-ledger.json`; lleno los vacíos con UNA pregunta ordenada por modalidad.
 2. Leo `context/operations-context.md`: las prioridades activas y los límites innegociables anclan lo que cuenta como "relevante".

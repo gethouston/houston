@@ -4,42 +4,45 @@ import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
 import {
   aboutMeRow,
-  adminRow,
+  adminHeading,
   assistantRow,
   openAdmin,
   openSettings,
+  settingsBackInStrip,
+  skillsTab,
 } from "./support/settings-nav";
 import { navRow, screen } from "./support/team-nav";
 
 /**
  * The rail's information architecture, and what Settings is left holding.
  *
- * Admin is a TOP-LEVEL screen in the rail's "Workspace" band, not a Settings
- * section: it is not a preference and it owns the whole window. Six things must
+ * Administering the space is the "Workspace management" SECTION of Settings:
+ * members, roles, billing, the activity feed, the org chart. Six things must
  * hold, and each of them broke a real user path when it didn't:
  *
- * 1. the rail carries exactly the top-level entries the IA names — the
- *    unlabelled lead run (Assistant, Agent Store), "My accounts"
- *    (Integrations, AI Models) and "Workspace" (Admin, Skills) — with the
- *    Academy, Settings and the help control in the footer;
- * 2. the two rows that band used to carry are GONE from the rail entirely.
- *    **Permissions** listed the space's agents to reach one's settings page,
- *    which every team's focused agent screen already does per team, in every
- *    deployment; **Time worked** is a capability-gated Admin section. Both are
- *    asserted absent by their old names, so resurrecting either fails here;
- * 3. Settings holds ONLY settings: the general group everybody sees, plus
- *    Danger. The guided tour, the Context editors, Time worked, Admin and
- *    Permissions all left, and the "Help" / "Context" / "Support" / "Team"
- *    headings died with them;
- * 4. Admin opens from the rail in ONE click and shows NO back affordance at its
- *    top level — it has no level above it;
+ * 1. the rail carries exactly the top-level entries the IA names — ONE
+ *    unlabelled run (Assistant, AI Models, Integrations) over "Your teams" —
+ *    with the Academy, Settings and the help control in the footer;
+ * 2. four destinations live BEHIND that run rather than in it: agent policy is
+ *    reached through each team's focused agent screen (per team, in every
+ *    deployment), **Time worked** and **Admin** are sections of Workspace
+ *    management, and **Skills** is a tab of the Integrations screen. Each is
+ *    asserted absent from the rail by name, so a top-level row for any of them
+ *    fails here;
+ * 3. Settings holds the standing setup: the general group everybody sees, the
+ *    two rows that administer the space, plus Danger. The guided tour lives in
+ *    the footer's help control and the Context editors in their own surfaces,
+ *    so Settings carries no "Help" / "Context" / "Support" / "Team" heading;
+ * 4. Workspace management opens the Admin dashboard one level UNDER the
+ *    Settings index, so the way back to that index leads the dashboard's own
+ *    header strip — one top row, not a back bar stacked over it;
  * 5. the rail's Settings entry ALWAYS lands on the index, including from inside
  *    a section — otherwise it is a dead click, since the view is already
  *    `settings`;
- * 6. Settings is the app's ONE identity control. The rail's avatar menu (edit
- *    profile / account settings / send feedback / sign out) was a second door
- *    onto this page, so the index now opens on the signed-in person and carries
- *    the only Sign out in the product.
+ * 6. Settings is the app's ONE identity control: the index opens on the
+ *    signed-in person and carries the only Sign out in the product, so the rail
+ *    keeps no avatar menu (edit profile / account settings / send feedback /
+ *    sign out) as a second door onto the same page.
  *
  * The footer's help control is the seventh: "Guide me" and "Report a problem",
  * the two things a stuck user reaches for, behind one "?" beside the gear —
@@ -47,8 +50,9 @@ import { navRow, screen } from "./support/team-nav";
  */
 
 /**
- * Teams owner on a gateway that meters running time, so the whole "Workspace"
- * band exists: Admin rides the org role, Skills rides space ownership.
+ * Teams owner on a gateway that meters running time, so the Skills tab exists
+ * on Integrations (it rides space ownership) and the Admin dashboard is this
+ * caller's to open.
  *
  * `computeUsage` is on deliberately even though nothing in this spec opens
  * Time worked: this deployment advertises the compute capability, so it is the
@@ -76,39 +80,37 @@ function railButton(page: Page, name: string): Locator {
     .getByRole("button", { name, exact: true });
 }
 
-test("the sidebar carries only the IA's top-level entries, under their bands", async ({
+test("the sidebar carries only the IA's top-level entries", async ({
   page,
   request,
 }) => {
   await armOwner(request);
   await page.goto("/");
 
-  // The lead run needs no band; the rest are named by one. The Assistant sits
-  // in it without a tour anchor, so it is addressed by name.
+  // ONE unlabelled run, which needs no heading. The Assistant sits in it
+  // without a tour anchor, so it is addressed by name.
   const sidebar = page.locator("[data-tour-target='sidebar']");
   await expect(assistantRow(page)).toBeVisible();
-  await expect(navRow(page, "agent-store")).toBeVisible();
-
-  await expect(sidebar.getByText("My accounts")).toBeVisible();
-  for (const id of ["integrations", "ai-hub"] as const) {
+  for (const id of ["ai-hub", "integrations"] as const) {
     await expect(navRow(page, id)).toBeVisible();
   }
-  await expect(sidebar.getByText("Workspace", { exact: true })).toBeVisible();
-  // The caller is the space owner AND the org owner, so the whole band is
-  // theirs — and it is exactly two rows. Settings lives in the rail footer,
-  // outside the band.
-  await expect(adminRow(page)).toBeVisible();
-  await expect(navRow(page, "skills")).toBeVisible();
+  // "Your teams" is the rail's ONE band: nothing is labelled above it, even
+  // for the space owner, whose Skills library is a tab of Integrations.
+  await expect(sidebar.getByText("Workspace", { exact: true })).toHaveCount(0);
+  await expect(sidebar.getByText("Your teams")).toBeVisible();
   // The footer cluster: the Academy directly above Settings. The Academy
   // carries no tour anchor, so its name is the handle.
   await expect(railButton(page, "Academy")).toBeVisible();
   await expect(navRow(page, "settings")).toBeVisible();
 
   // The rows this IA deleted, asserted by the names they used to wear. An owner
-  // on a compute-metering gateway is the ONE caller who saw both, so if either
-  // ever comes back it comes back here.
+  // on a compute-metering gateway is the ONE caller who saw all three, so if
+  // any of them ever comes back it comes back here.
   await expect(railButton(page, "Permissions")).toHaveCount(0);
   await expect(railButton(page, "Time worked")).toHaveCount(0);
+  await expect(railButton(page, "Admin")).toHaveCount(0);
+  // Skills went the same way: the shared library is a tab of Integrations.
+  await expect(railButton(page, "Skills")).toHaveCount(0);
   // About me is a Settings section and the Inbox screen is gone, so neither
   // may hold a rail slot as well.
   await expect(railButton(page, "About me")).toHaveCount(0);
@@ -125,19 +127,18 @@ test("the sidebar carries only the IA's top-level entries, under their bands", a
   await expect(page.locator('[data-tour-target="nav-usage"]')).toHaveCount(0);
 });
 
-test("a plain member gets no Workspace band at all", async ({
+test("a plain member gets no Skills tab on Integrations", async ({
   page,
   request,
 }) => {
-  // The band is two rows, and each is somebody's authority: Admin is the org's
-  // (owner/admin), Skills is the space owner's. A plain member holds neither, so
-  // the band empties and the library drops it heading and all — a heading may
-  // never outlive the rows it names.
+  // The shared library is the space OWNER's authority: editing a skill edits
+  // every agent in the space at once. A plain member does not hold it, so the
+  // Integrations header carries the catalog lozenge alone.
   //
   // NO `spaces` on purpose: on a C8 host the PERSONAL space has single-player
   // semantics, so `isSpaceOwner` hands Skills back to whoever is in it whatever
-  // their org role, and the band would not be empty. This is the legacy Teams
-  // shape, where the sole workspace really is the org.
+  // their org role. This is the legacy Teams shape, where the sole workspace
+  // really is the org.
   await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
     data: { multiplayer: true, teams: true, role: "user" },
   });
@@ -147,16 +148,28 @@ test("a plain member gets no Workspace band at all", async ({
   // rail: Integrations is unconditional for every role in every mode.
   await expect(navRow(page, "integrations")).toBeVisible();
 
-  const sidebar = page.locator("[data-tour-target='sidebar']");
-  await expect(sidebar.getByText("Workspace", { exact: true })).toHaveCount(0);
-  await expect(adminRow(page)).toHaveCount(0);
-  await expect(navRow(page, "skills")).toHaveCount(0);
-  // Ungated rows are untouched by the band's collapse: the Academy is
-  // everyone's, Settings is everyone's chrome, and the Assistant rides
-  // discovery rather than a role, so a plain member keeps it.
+  // Ungated rows are untouched: the Academy is everyone's, Settings is
+  // everyone's chrome, and the Assistant rides discovery rather than a role,
+  // so a plain member keeps it.
   await expect(assistantRow(page)).toBeVisible();
   await expect(railButton(page, "Academy")).toBeVisible();
   await expect(navRow(page, "settings")).toBeVisible();
+
+  // On the Integrations screen the catalog paints (it is everyone's) and the
+  // Skills lozenge is simply absent — the gate, not an unpainted page.
+  await navRow(page, "integrations").click();
+  await expect(
+    screen(page).locator("[data-integrations-section='catalog']"),
+  ).toBeVisible();
+  await expect(skillsTab(page)).toHaveCount(0);
+
+  // Settings keeps no door to it either: the library left the index with the
+  // section, so its old row must not come back.
+  await openSettings(page);
+  await expect(aboutMeRow(page)).toBeVisible();
+  await expect(
+    screen(page).getByRole("button", { name: /^Skills/ }),
+  ).toHaveCount(0);
 });
 
 test("Settings holds only settings, under one heading", async ({
@@ -176,9 +189,9 @@ test("Settings holds only settings, under one heading", async ({
   await expect(group("General")).toBeVisible();
   // The five headings that named things which are not settings. Each died with
   // its rows: the tour is armed from the footer's help control, what the agents
-  // know about the COMPANY is a section of Admin, Time worked is another Admin
-  // section, Admin itself is a rail screen, and the help-shaped rows sit in
-  // General rather than keeping a group of their own.
+  // know about the COMPANY is a section of the Admin dashboard, Time worked is
+  // another of its sections, and the help-shaped rows sit in General rather
+  // than keeping a group of their own.
   for (const heading of ["Help", "Context", "Support", "Workspace", "Team"]) {
     await expect(group(heading)).toHaveCount(0);
   }
@@ -234,21 +247,21 @@ test.describe("Settings is the app's one identity control", () => {
   });
 });
 
-test("Admin opens from the rail with no back bar above it", async ({
+test("Workspace management opens Admin with the way back in its own strip", async ({
   page,
   request,
 }) => {
   await armOwner(request);
   await page.goto("/");
 
-  // A top-level screen owns the whole window, so its top level offers no way
-  // "back" — a bar naming Settings would be the old two-step IA leaking through.
-  // Scoped to the screen ON THE GLASS: every top-level view is kept alive, so an
-  // unscoped lookup could read another screen's own back bar.
+  // One level under the index, so it carries that index's way back — and Admin
+  // frames itself, so that control rides IN its header strip beside the
+  // identity lozenge rather than on a second row above it. Scoped to the screen
+  // ON THE GLASS: every top-level view is kept alive, so an unscoped lookup
+  // could read another screen's own back control.
   await openAdmin(page);
-  await expect(
-    screen(page).getByRole("button", { name: "Settings", exact: true }),
-  ).toHaveCount(0);
+  await expect(adminHeading(page)).toBeVisible();
+  await expect(settingsBackInStrip(page)).toBeVisible();
 });
 
 test("the footer's help control offers exactly Guide me and Report a problem", async ({

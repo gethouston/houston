@@ -2,10 +2,10 @@
  * Where a file lives → what the user calls that place.
  *
  * The navigation labels are the product's own words: they come from
- * `app/src/locales/en/shell.json` → `sidebar` (Mission Control, Integrations,
- * Skills, AI Models, Agent Store, Settings, Your teams) plus
- * `sidebar.teamSections` (Mission Control, Routines, Files, Team Settings), all
- * wired in `app/src/components/shell/sidebar-chrome.tsx`.
+ * `app/src/locales/en/shell.json` → `sidebar` (Houston, AI Models,
+ * Integrations, Your teams, Academy, Settings), built by
+ * `app/src/components/shell/sidebar-nav-sections.tsx` and drawn by
+ * `app/src/components/shell/sidebar-chrome.tsx`.
  *
  * The remaining per-area labels below (Activity, Chat, Routines, Skills,
  * Integrations, Files, Archived, Permissions, Agent Settings) are HISTORICAL
@@ -100,7 +100,8 @@ export const SURFACE_RULES = {
   "app/src/components/shell/agent-sidebar-": "Your Agents",
   "app/src/components/shell/agent-warming-dialog": "Your Agents",
   "app/src/components/shell/experience-": "Your Agents",
-  "app/src/components/shell/create-workspace-dialog": "Your Agents",
+  "app/src/components/shell/add-to-workspace-sheet": "Your Agents",
+  "app/src/components/shell/add-choice-step": "Your Agents",
   "app/src/components/shell/workspace-dialog": "Your Agents",
   "app/src/components/agent-picker-dialog": "Your Agents",
   "app/src/components/shell/create-team-": "Organization",
@@ -109,7 +110,6 @@ export const SURFACE_RULES = {
   "app/src/components/shell/local-model-": "AI Models",
   "app/src/components/shell/openai-compatible-": "AI Models",
   "app/src/components/shell/provider-": "AI Models",
-  "app/src/components/shell/agent-picker-step": "Onboarding",
   "app/src/components/shell/ai-": "Onboarding",
   "app/src/components/shell/disclaimer-gate": "Onboarding",
   "app/src/components/shell/language-gate": "Onboarding",
@@ -128,7 +128,6 @@ export const SURFACE_RULES = {
   "app/src/components/ai-hub/": "AI Models",
   "app/src/components/provider-browser/": "AI Models",
   "app/src/components/provider-switch-dialog": "AI Models",
-  "app/src/components/store-view/": "Agent Store (in app)",
   "app/src/components/organization/": "Organization",
   "app/src/components/settings/": "Settings",
   "app/src/components/dictation-setup-dialog": "Settings",

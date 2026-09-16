@@ -1,3 +1,7 @@
+import type { SkillWorkflow } from "@houston/protocol";
+
+export type { SkillWorkflow, SkillWorkflowStep } from "@houston/protocol";
+
 /** A workspace (top-level container, formerly "Space") */
 export interface Workspace {
   id: string;
@@ -138,15 +142,7 @@ export interface SkillDetail {
   description: string;
   version: number;
   content: string;
-}
-
-/** Community skill search result */
-export interface CommunitySkillResult {
-  id: string;
-  skillId: string;
-  name: string;
-  installs: number;
-  source: string;
+  workflow?: SkillWorkflow | null;
 }
 
 /** A skill discovered in a GitHub repo */

@@ -1,3 +1,4 @@
+import { NEW_TASK_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { openNewMission } from "./support/mission";
 
@@ -23,9 +24,7 @@ test("composer is replaced by the connect-AI empty state when no provider is con
   await expect(page.getByRole("button", { name: "Connect AI" })).toBeVisible({
     timeout: 15_000,
   });
-  await expect(
-    page.getByPlaceholder("What should the agent work on?"),
-  ).toHaveCount(0);
+  await expect(page.getByPlaceholder(NEW_TASK_PLACEHOLDER)).toHaveCount(0);
 
   await page.getByRole("button", { name: "Connect AI" }).click();
   await expect(
@@ -38,8 +37,6 @@ test("composer renders normally while the provider is connected", async ({
 }) => {
   await page.goto("/");
   await openNewMission(page);
-  await expect(
-    page.getByPlaceholder("What should the agent work on?"),
-  ).toBeVisible();
+  await expect(page.getByPlaceholder(NEW_TASK_PLACEHOLDER)).toBeVisible();
   await expect(page.getByRole("button", { name: "Connect AI" })).toHaveCount(0);
 });

@@ -30,17 +30,6 @@ export type AgentOp =
     }
   | { kind: "title"; text: string }
   | {
-      kind: "anonymize";
-      /** Fully defaulted by the parser — one normalization layer, here. */
-      input: {
-        claudeMd: boolean;
-        skillSlugs: string[];
-        routineIds: string[];
-        learningIds: string[];
-        useAi: boolean;
-      };
-    }
-  | {
       kind: "settings";
       action: "put";
       input: { activeProvider?: string; model?: string; effort?: string };
@@ -96,20 +85,6 @@ export function parseAgentOp(raw: Record<string, unknown>): AgentOp {
       return parseRouteOp(raw);
     case "title":
       return { kind: "title", text: str(raw.text, "op.text") };
-    case "anonymize": {
-      const input = (raw.input ?? {}) as Record<string, unknown>;
-      return {
-        kind: "anonymize",
-        input: {
-          claudeMd: input.claudeMd === true,
-          skillSlugs: strings(input.skillSlugs),
-          routineIds: strings(input.routineIds),
-          learningIds: strings(input.learningIds),
-          // Mirrors the pod route: absent means the AI pass is wanted.
-          useAi: input.useAi !== false,
-        },
-      };
-    }
     case "settings":
       return parseSettingsOp(raw);
     case "credential": {

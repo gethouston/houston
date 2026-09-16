@@ -30,7 +30,7 @@ import { useUIStore } from "../../stores/ui";
  * ("its missions", "its routines", "the files it keeps"), and the branch that
  * decides WHICH shape lives here, once.
  */
-export function TeamEmpty({
+function TeamEmpty({
   team,
   title,
   body,
@@ -43,9 +43,7 @@ export function TeamEmpty({
   createLabel: string;
 }) {
   const { canCreate } = useCanCreateAgents();
-  const setCreateAgentDialogOpen = useUIStore(
-    (s) => s.setCreateAgentDialogOpen,
-  );
+  const openCreateFlow = useUIStore((s) => s.openCreateFlow);
 
   return (
     <div className="flex h-full items-center justify-center">
@@ -59,7 +57,7 @@ export function TeamEmpty({
             className="mt-4 rounded-full"
             data-testid="team-empty-create-agent"
             onClick={() =>
-              setCreateAgentDialogOpen(true, team.isDefault ? null : team.id)
+              openCreateFlow("agent", team.isDefault ? null : team.id)
             }
           >
             <Plus className="h-4 w-4" />

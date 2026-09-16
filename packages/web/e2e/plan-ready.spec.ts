@@ -1,4 +1,5 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { startMission } from "./support/mission";
 
@@ -54,7 +55,7 @@ test("keeps a large plan approval compact, collapsible, and actionable", async (
   );
   await expect(integratedInput).toBeVisible();
   await expect(
-    page.getByPlaceholder("Send a follow-up...", { exact: true }),
+    page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER, { exact: true }),
   ).toBeHidden();
   await integratedInput.fill("Add a launch checklist before starting.");
   await page.getByRole("button", { name: "Send", exact: true }).click();
@@ -74,7 +75,7 @@ test("keeps a large plan approval compact, collapsible, and actionable", async (
     ),
   ).toBeVisible();
   await expect(page.getByText("Plan ready", { exact: true })).toBeHidden();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 test("renders an empty-summary plan card without a lede and keeps its input actionable", async ({
@@ -144,7 +145,7 @@ test("a dismissed plan card does not suppress a plan card from the next turn", a
     .click();
   await expect(page.getByText("Plan ready", { exact: true })).toHaveCount(0);
 
-  const composer = page.getByPlaceholder("Send a follow-up...", {
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER, {
     exact: true,
   });
   await composer.fill("Revise the plan.");

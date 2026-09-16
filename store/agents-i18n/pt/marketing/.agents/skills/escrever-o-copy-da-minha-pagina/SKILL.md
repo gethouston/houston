@@ -7,6 +7,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -51,6 +54,7 @@ Leio seu contexto de marketing primeiro. Para cada campo obrigatório que estive
 - **A URL ou screenshot da página**  -  Obrigatório. Se faltar, pergunto: "Cole a URL da página que você quer reescrever. Se for uma superfície dentro do produto, mande um screenshot ou cole o copy atual."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o ledger + posicionamento.** Coleto os campos obrigatórios faltantes conforme acima (UMA pergunta cada, melhor modalidade primeiro). Escrevo atomicamente.
 2. **Buscar o estado atual.** Superfícies acessíveis por URL: rodo `composio search web-scrape` e executo pelo slug (Firecrawl / ScrapingBee / equivalente) para puxar o HTML renderizado + texto visível + URLs das imagens principais + CTA atual. Superfícies dentro do produto (onboarding / alguns paywalls / popups): aceito screenshots, Loom, ou copy colado. Nada utilizável → peço uma colagem, paro.

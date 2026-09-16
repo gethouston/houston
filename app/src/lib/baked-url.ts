@@ -17,8 +17,8 @@
  * `loadEnv` copies every `VITE_`-prefixed `process.env` key through verbatim,
  * empty values included. `??` only catches `null`/`undefined`, so a blank bake
  * would read as configured and collapse the URL to `""` — a relative fetch
- * against `tauri://localhost`, or a store publish aimed at the local sidecar,
- * which serves no `/v1/agentstore` routes.
+ * against `tauri://localhost`, or a hosted-gateway call aimed at the local
+ * sidecar, which serves no gateway routes.
  *
  * Treat "set but blank" as "not set", and trim the trailing slash so callers
  * can concatenate paths.

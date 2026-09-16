@@ -1,5 +1,5 @@
 import { Button } from "@houston-ai/core";
-import type { CommunitySkill, SkillPreviewState } from "@houston-ai/skills";
+import type { PreviewSkill, SkillPreviewState } from "@houston-ai/skills";
 import { SkillPreviewModal } from "@houston-ai/skills";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -47,7 +47,7 @@ export function PreviewDemo({
   variant,
 }: {
   label: string;
-  skill: CommunitySkill;
+  skill: PreviewSkill;
   preview: SkillPreviewState;
   installing?: boolean;
   installed?: boolean;
@@ -88,7 +88,7 @@ export const previewProps: SpecimenProp[] = [
   },
   {
     name: "skill",
-    type: "CommunitySkill | null",
+    type: "PreviewSkill | null",
     note: "The row that was clicked. `null` renders an empty shell — the modal never guesses a title.",
   },
   {

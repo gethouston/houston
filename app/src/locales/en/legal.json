@@ -4,20 +4,20 @@
   "intro": "Houston is in beta. We think it's great, but it can make mistakes, and we want you to understand how it works before you trust it with real tasks.",
   "sections": [
     {
-      "heading": "Agents act on your behalf",
-      "body": "With your permission, Houston's AI agents can read your files, change them, send emails, browse the web, and use any app you connect. They sign in as you. Anything you can do, they can do."
+      "heading": "AI Employees act on your behalf",
+      "body": "With your permission, Houston's AI Employees can read your files, change them, send emails, browse the web, and use any app you connect. They sign in as you. Anything you can do, they can do."
     },
     {
       "heading": "They can be fooled",
-      "body": "Agents follow your instructions, but bad instructions can sneak into places you don't expect, like an email or a webpage an agent reads. When that happens, an agent might take an action you didn't want. This isn't unique to Houston. Every AI tool that touches real accounts has this risk. We mention it so you're not surprised."
+      "body": "AI Employees follow your instructions, but bad instructions can sneak into places you don't expect, like an email or a webpage an AI Employee reads. When that happens, an AI Employee might take an action you didn't want. This isn't unique to Houston. Every AI tool that touches real accounts has this risk. We mention it so you're not surprised."
     },
     {
       "heading": "Staying in control",
-      "body": "Start small. Try simple tasks first so you learn how your agents behave. Only connect the accounts you need, and disconnect any of them whenever you like. Everything an agent does shows up in Houston, so you can always see what's happening. If something feels off, pause the agent."
+      "body": "Start small. Try simple tasks first so you learn how your AI Employees behave. Only connect the accounts you need, and disconnect any of them whenever you like. Everything an AI Employee does shows up in Houston, so you can always see what's happening. If something feels off, pause the AI Employee."
     },
     {
       "heading": "Your files stay yours",
-      "body": "Houston lives on your computer. Your conversations and files don't go to our servers. When agents talk to Claude or OpenAI, those messages go through your own account with those providers, just like if you used their apps directly."
+      "body": "Houston lives on your computer. Your conversations and files don't go to our servers. When AI Employees talk to Claude or OpenAI, those messages go through your own account with those providers, just like if you used their apps directly."
     }
   ],
   "closing": "By clicking \"I understand and want to continue\" you confirm you've read this and accept how Houston works.",

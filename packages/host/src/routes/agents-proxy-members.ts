@@ -108,10 +108,8 @@ export const PROXY_MEMBERS: ProxyMember[] = [
 ];
 
 /**
- * The one pair the standing engine implements that never reaches it: the host
- * answers `POST portable/anonymize` itself (routes/portable-anonymize.ts), from
- * a slot ahead of this family, because the export wizard runs on the host's
- * gathered selection. Declared so the drift test can still assert that this
- * list and the engine's transport tables are the same set.
+ * Pairs the standing engine implements that the host answers itself, from a
+ * slot ahead of this family. Declared so the drift test can still assert that
+ * this list and the engine's transport tables are the same set.
  */
-export const HOST_SERVED_RESTS: string[] = ["POST portable/anonymize"];
+export const HOST_SERVED_RESTS: string[] = [];

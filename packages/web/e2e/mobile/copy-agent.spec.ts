@@ -11,9 +11,10 @@ import { screen } from "../support/team-nav";
 
 /**
  * The phone runs the SAME copy wizard inside the same create dialog; only the
- * door differs (the Agents home title row's New-agent control). The chooser's
- * tiles stack as full-width rows below 768px, and every wizard screen fits
- * the phone dialog without horizontal overflow.
+ * control that opens the dialog differs (the Agents home title row's New-agent
+ * control). The copy card is one of the two the dialog opens on, stacked on a
+ * phone, and every wizard screen fits the phone dialog without horizontal
+ * overflow.
  */
 test("copies an agent from the Agents home on the phone", async ({
   page,
@@ -25,16 +26,10 @@ test("copies an agent from the Agents home on the phone", async ({
 
   await screen(page).getByTestId("agents-home-new-agent").click();
   const dialog = createDialog(page);
-  // Three choices, stacked: each tile is as wide as the dialog's content.
-  const tiles = dialog.getByRole("button", {
-    name: /^(From the store|Create new|Copy an agent)$/,
-  });
-  await expect(tiles).toHaveCount(3);
-  const boxes = await tiles.evaluateAll((els) =>
-    els.map((el) => el.getBoundingClientRect()),
-  );
-  for (const box of boxes) expect(box.width).toBe(boxes[0].width);
-  expect(boxes[1].top).toBeGreaterThan(boxes[0].bottom - 1);
+  // The dialog opens on the two ways to get an agent, stacked on a phone.
+  await expect(
+    dialog.getByRole("heading", { name: "How do you want to start?" }),
+  ).toBeVisible();
 
   await openCopyWizard(page);
   await dialog.getByRole("button", { name: "Houston", exact: true }).click();
@@ -47,7 +42,7 @@ test("copies an agent from the Agents home on the phone", async ({
   await next(page);
 
   await expect(dialog.getByText("Based on Houston")).toBeVisible();
-  await dialog.getByRole("button", { name: "Create Agent" }).click();
+  await dialog.getByRole("button", { name: "Create AI Employee" }).click();
   await expect(dialog).toBeHidden();
 
   // Nothing forced the document wider than the phone.

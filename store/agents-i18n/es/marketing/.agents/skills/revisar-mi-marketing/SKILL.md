@@ -7,6 +7,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [linkedin, firecrawl, semrush]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ Primero leo tu contexto de marketing. Por cada campo obligatorio que falte, hago
 - **El dominio de tu sitio web**  -  Obligatorio para `content-gap` (el sitio que comparo contra el del competidor). Si falta, pregunto: "¿Cuál es tu sitio web? Pega la URL."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el registro (ledger) más el posicionamiento.** Recojo los campos obligatorios que falten (una pregunta cada uno, priorizando la mejor modalidad).
 2. **Me ramifico según el `subject`.**

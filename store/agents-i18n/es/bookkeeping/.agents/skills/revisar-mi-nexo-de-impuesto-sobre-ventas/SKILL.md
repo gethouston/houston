@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [stripe, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Leo primero tu contexto contable. Por cada campo requerido que falte, hago UNA p
 - **Dónde trabajan físicamente tus empleados** - Opcional. Por qué: cualquier empleado W-2 en un estado crea nexo físico sin importar los ingresos. Si falta, pregunto: "¿Tienes empleados trabajando en estados además del de la sede? Si no tienes eso, lo anoto como pendiente y señalo verificaciones de nexo físico para que el usuario confirme."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto.** Cargar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Contexto contable requerido: `universal.company.state`, `domains.revenue.contractSource`, `domains.tax.stateFilingFootprint`. La imponibilidad de SaaS varía por estado, calcular la exposición sin importar la postura de imponibilidad.
 

@@ -7,6 +7,9 @@ category: Prospecção
 featured: no
 image: rocket
 integrations: [instantly]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ Se o Instantly não estiver conectado, eu paro e peço para você conectar.
 - **Horário** - Opcional. Vem por padrão de `config/context-ledger.json` (padrão `America/Vancouver`, seg-sex, 8h-17h).
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler as entradas.** Analise o arquivo da sequência em `{subject, body}` por e-mail. Leia o arquivo de contatos em uma lista de `{firstName, fullName, email, company, title, linkedinUrl, personalizationFields}`. Verifique que todo e-mail está preenchido e todo corpo está preenchido.
 

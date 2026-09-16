@@ -174,7 +174,7 @@ function AlertDialogSpecimen() {
       <SpecimenTokens
         classes={[
           "bg-dialog",
-          "bg-black/35",
+          "bg-black/25",
           "bg-chip-subtle",
           "text-ink-muted",
           "border",

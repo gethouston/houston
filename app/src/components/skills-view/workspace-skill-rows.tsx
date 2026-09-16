@@ -50,8 +50,9 @@ export function AgentStack({ agents }: { agents: WorkspaceSkillAgent[] }) {
 /**
  * The global page's **Your skills** strip (HOU-792): the per-agent strip's row
  * grammar, aggregated per slug across the workspace — each row carries the
- * stack of agents holding a copy, and opens the manage dialog. Preview-capped
- * behind "Show all" at rest; an active query drops the cap.
+ * stack of agents holding a copy, and opens that skill's full-page editor in
+ * place of the list. Preview-capped behind "Show all" at rest; an active query
+ * drops the cap.
  */
 /** Rows carry the store fields when the deployment shares (ADR 0003). */
 type PageSkillRow = WorkspaceSkillRow & {
@@ -62,7 +63,8 @@ type PageSkillRow = WorkspaceSkillRow & {
 export function useWorkspaceSkillRows(
   rows: PageSkillRow[],
   query: string,
-  onOpen: (row: PageSkillRow) => void,
+  /** Open the skill's editor (the library list steps aside for it). */
+  onOpenEditor: (row: PageSkillRow) => void,
 ): { installedCount: number; installed: ReactNode | undefined } {
   const { t } = useTranslation("skills");
   const [expanded, setExpanded] = useState(false);
@@ -106,7 +108,7 @@ export function useWorkspaceSkillRows(
                   />
                 </div>
               }
-              onClick={() => onOpen(row)}
+              onClick={() => onOpenEditor(row)}
             />
           ))}
         </CatalogGrid>

@@ -7,6 +7,9 @@ category: Vendas
 featured: no
 image: handshake
 integrations: [notion, reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,9 @@ Eu leio seu contexto de vendas primeiro. Para cada campo obrigatório que estive
 - **Nome do prospect e nome do concorrente** - Obrigatório. Por que eu preciso: o card é ancorado em um negócio específico contra um concorrente específico, não uma folha genérica. Se estiver faltando eu pergunto: "Para qual negócio é isso, e com qual concorrente eles estão nos comparando?"
 - **Seu principal diferencial e sua maior fraqueza contra esse concorrente** - Obrigatório. Por que eu preciso: o card só é honesto se eu souber como você realmente ganha e perde. Se estiver faltando eu pergunto: "Qual é honestamente seu principal diferencial contra esse concorrente, e sua maior fraqueza?"
 - **Vitórias com clientes âncora parecidos com o prospect** - Opcional. Por que eu preciso: os pontos de prova pesam mais quando combinam com o perfil do prospect. Se você não tiver, eu sigo em frente com PENDENTE.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Identificar prospect + concorrente.** Carrego a linha do lead em `leads.json` e `calls/{slug}/notes-*.md` se a call existir, os critérios de avaliação específicos do prospect e as dores declaradas viram a âncora.
 2. **Ler nosso produto + posicionamento.** `context/sales-context.md` para o que afirmamos, especialmente as seções "Top 3 concorrentes" e "Categoria e diferenciais". Se estiver fraco, pergunto uma vez: "Qual é honestamente seu top 3 de diferenciais contra {concorrente}? E sua maior fraqueza? (Para incorporar ao playbook, cole aqui ou aponte para uma URL do Notion / Google Docs.)"

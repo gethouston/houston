@@ -1,23 +1,14 @@
-import {
-  Building2,
-  Copy,
-  Palette,
-  Store,
-  Trash2,
-  UsersRound,
-} from "lucide-react";
+import { Building2, Copy, Palette, Trash2, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAgentActions } from "../../hooks/use-agent-actions";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
-import { isIdentityConfigured } from "../../lib/identity";
 import { hasAgentTeams } from "../../lib/org-roles";
 import { type TeamView, teamOfAgent } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import { AgentCopyDialog } from "../agent-actions/agent-copy-action";
@@ -59,7 +50,6 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
   const saveIdentity = useAgentIdentitySave(agent, t);
   const moveAgent = useMoveAgentTeam();
   const copyAgent = useCopyAgent();
-  const setShareAgentId = useUIStore((state) => state.setShareAgentId);
   const [identityOpen, setIdentityOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [pendingTeam, setPendingTeam] = useState<TeamView | null>(null);
@@ -119,14 +109,6 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
           description={t("agents:copyAgent.rowDescription")}
           onClick={() => setCopyOpen(true)}
         />
-        {isIdentityConfigured() && (
-          <SettingsRow
-            icon={Store}
-            title={t("teams:agentSettings.manage.publish")}
-            description={t("teams:agentSettings.manage.publishDescription")}
-            onClick={() => setShareAgentId(agent.id)}
-          />
-        )}
         <SettingsRow
           icon={Trash2}
           title={t("teams:agentSettings.manage.delete")}

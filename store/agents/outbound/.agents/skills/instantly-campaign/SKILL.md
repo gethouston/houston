@@ -6,6 +6,9 @@ category: Outbound
 featured: no
 image: rocket
 integrations: [instantly]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ If Instantly isn't connected I stop and ask you to connect it.
 - **Schedule** - Optional. Defaults from `config/context-ledger.json` (default `America/Vancouver`, Mon-Fri, 8-5).
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read inputs.** Parse the sequence file into `{subject, body}` per email. Read the contacts file into a list of `{firstName, fullName, email, company, title, linkedinUrl, personalizationFields}`. Sanity-check that every email is non-empty and every body is non-empty.
 

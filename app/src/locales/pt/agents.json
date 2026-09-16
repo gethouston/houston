@@ -6,7 +6,7 @@
     },
     "blank": {
       "name": "Começar do zero",
-      "description": "Um agente em branco, sem ações, instruções ou aprendizados pré-configurados. Monte do seu jeito."
+      "description": "Um funcionário de IA em branco, sem ações, instruções ou aprendizados pré-configurados. Monte do seu jeito."
     },
     "bookkeeping": {
       "name": "Contador",
@@ -43,32 +43,38 @@
   },
   "toasts": {
     "renamed": "Espaço de trabalho renomeado",
-    "nameConflict": "Já existe um agente chamado {{name}}",
+    "nameConflict": "Já existe um funcionário de IA chamado {{name}}",
     "nameConflictDescription": "Escolha um nome diferente e tente novamente.",
     "deleted": "Espaço de trabalho excluído",
     "switchedModel": "Mudou para {{provider}} ({{model}})",
     "timezoneSet": "Fuso horário definido como {{zone}}"
   },
   "nameErrors": {
-    "invalidChars": "O nome do agente não pode conter barras nem caracteres especiais",
-    "tooLong": "O nome do agente pode ter no máximo {{max}} caracteres"
+    "invalidChars": "O nome do funcionário de IA não pode conter barras nem caracteres especiais",
+    "tooLong": "O nome do funcionário de IA pode ter no máximo {{max}} caracteres"
   },
   "instructions": {
-    "helper": "Como este agente deve pensar e agir.",
-    "placeholder": "Escreva as instruções para o seu agente…"
+    "specific": "Instruções específicas",
+    "placeholder": "Escreva as instruções para o seu funcionário de IA…",
+    "brief": {
+      "industry": "Setor",
+      "role": "Cargo",
+      "addIndustry": "Adicionar setor",
+      "addRole": "Adicionar cargo"
+    }
   },
   "learnings": {
     "emptyTitle": "Ainda sem aprendizados",
-    "emptyDescription": "O agente vai anotando coisas enquanto trabalha, ou você pode adicionar as suas.",
+    "emptyDescription": "O funcionário de IA vai anotando coisas enquanto trabalha, ou você pode adicionar as suas.",
     "addLearning": "Adicionar aprendizado",
-    "helper": "Anotações rápidas que o agente vai juntando com o tempo.",
+    "helper": "Anotações rápidas que o funcionário de IA vai juntando com o tempo.",
     "inputPlaceholder": "Digite um aprendizado e aperte Enter…",
     "editAria": "Editar aprendizado",
     "expandAria": "Expandir aprendizado",
     "collapseAria": "Recolher aprendizado",
     "removeAria": "Remover aprendizado",
     "confirmRemoveTitle": "Remover este aprendizado?",
-    "confirmRemoveDescription": "O agente vai perder esta nota. Você pode adicionar de novo depois.",
+    "confirmRemoveDescription": "O funcionário de IA vai perder esta nota. Você pode adicionar de novo depois.",
     "confirmRemoveLabel": "Remover",
     "provenanceFromMission": "De {{name}} · {{mission}}",
     "provenanceFrom": "De {{name}}",
@@ -82,25 +88,25 @@
   "configure": {
     "projectContext": {
       "title": "Contexto do projeto",
-      "description": "Injetado em todos os agentes. Descreva seu projeto, convenções e regras.",
+      "description": "Injetado em todos os funcionários de IA. Descreva seu projeto, convenções e regras.",
       "placeholder": "Contexto do projeto, convenções de código, notas de arquitetura..."
     },
     "agentPrompts": {
-      "title": "Instruções do agente",
-      "description": "Cada modo do agente tem sua própria instrução.",
+      "title": "Instruções do funcionário de IA",
+      "description": "Cada modo do funcionário de IA tem sua própria instrução.",
       "placeholder": "Instrução para {{name}}..."
     },
     "skills": {
       "title": "Skills",
-      "description": "Procedimentos reutilizáveis que os agentes podem executar."
+      "description": "Procedimentos reutilizáveis que os funcionários de IA podem executar."
     },
     "learnings": {
       "title": "Aprendizados",
-      "description": "Os agentes salvam aprendizados enquanto trabalham. Você também pode adicionar os seus."
+      "description": "Os funcionários de IA salvam aprendizados enquanto trabalham. Você também pode adicionar os seus."
     },
     "settings": {
       "title": "Configurações",
-      "description": "Configuração do agente e opções de execução.",
+      "description": "Configuração do funcionário de IA e opções de execução.",
       "savingHint": "Salvando...",
       "worktreeMode": "Modo worktree",
       "worktreeModeDescription": "Criar um worktree do git separado para cada tarefa",
@@ -221,12 +227,12 @@
     "modifiedToday": "Hoje"
   },
   "copyAgent": {
-    "row": "Copiar agente",
+    "row": "Copiar funcionário de IA",
     "rowDescription": "Crie uma cópia em uma das suas equipes. As conversas não são copiadas.",
     "title": "Copiar {{name}}",
     "body": "A cópia começa com a mesma descrição do cargo, skills, rotinas, aprendizados e cor. As conversas ficam com o original e nunca são copiadas.",
     "nameLabel": "Nome da cópia",
-    "nameTaken": "Já existe um agente chamado {{name}}. Os nomes de agentes são compartilhados entre todas as suas equipes, então dê à cópia um nome próprio.",
+    "nameTaken": "Já existe um funcionário de IA chamado {{name}}. Os nomes de funcionários de IA são compartilhados entre todas as suas equipes, então dê à cópia um nome próprio.",
     "teamLabel": "Equipe da cópia",
     "confirm": "Criar cópia",
     "copySuffix": "cópia",
@@ -238,25 +244,24 @@
       "chatsCopiedDescription_other": "{{count}} conversas agora também vivem com {{name}}."
     },
     "errors": {
-      "failed": "Não foi possível copiar o agente",
+      "failed": "Não foi possível copiar o funcionário de IA",
       "chatsFailed": "Não foi possível copiar os chats",
-      "chatsPartial": "Alguns chats não chegaram. Copie o agente de novo para tentar outra vez."
+      "chatsPartial": "Alguns chats não chegaram. Copie o funcionário de IA de novo para tentar outra vez."
     },
     "wizard": {
-      "eyebrow": "Copiar um agente",
       "source": {
-        "title": "Qual agente devemos copiar?",
-        "body": "O novo agente começa igual ao que você escolher. Nas próximas telas você decide o que ele mantém. Os arquivos ficam com o original.",
-        "empty": "Você ainda não tem agentes para copiar."
+        "title": "Qual funcionário de IA devemos copiar?",
+        "body": "O novo funcionário de IA começa igual ao que você escolher. Nas próximas telas você decide o que ele mantém. Os arquivos ficam com o original.",
+        "empty": "Você ainda não tem funcionários de IA para copiar."
       },
       "instructions": {
         "title": "O que a cópia deve saber?",
-        "body": "Tudo começa ativado, menos as conversas. Desative o que o novo agente não deve levar.",
+        "body": "Tudo começa ativado, menos as conversas. Desative o que o novo funcionário de IA não deve levar.",
         "instructionsLabel": "Descrição do cargo",
         "instructionsRow": "Descrição do cargo e regras",
         "noInstructions": "{{name}} ainda não tem descrição do cargo.",
         "learningsLabel": "Aprendizados",
-        "learningsBody": "Anotações que o agente fez enquanto trabalhava. As pessoais podem ficar de fora.",
+        "learningsBody": "Anotações que o funcionário de IA fez enquanto trabalhava. As pessoais podem ficar de fora.",
         "chatsLabel": "Chats",
         "chatsRow": "Conversas",
         "chatsCount_one": "{{count}} conversa que {{name}} teve até agora",
@@ -275,7 +280,6 @@
         "heading": "Baseado em {{name}}"
       },
       "actions": {
-        "back": "Voltar",
         "next": "Continuar",
         "selectAll": "Selecionar tudo",
         "clearAll": "Limpar"

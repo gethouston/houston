@@ -7,6 +7,9 @@ category: Contabilidad
 featured: yes
 image: ledger
 integrations: [stripe, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ Leo primero tu contexto contable. Por cada campo requerido que falte, hago UNA p
 - **Reglas de proveedor de un período anterior** - Opcional. Por qué: me permite emparejar cargos nuevos con proveedores conocidos y evitar preguntarte lo mismo dos veces. Si no tienes esto, sigo adelante y aprendo de esta ejecución.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto y bloquear el plan de cuentas.** Cargar:
    - `context/bookkeeping-context.md`, si falta, detenerme, pedir al usuario que ejecute `set-up-my-books` primero.

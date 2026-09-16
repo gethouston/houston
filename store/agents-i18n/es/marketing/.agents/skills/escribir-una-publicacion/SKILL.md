@@ -7,6 +7,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [googledocs, linkedin, twitter, reddit, mailchimp, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -53,6 +56,7 @@ Primero leo tu contexto de marketing. Por cada campo obligatorio que falte, te h
 - **Tu plataforma de correo**: Obligatoria para `newsletter` (para poder nombrar la herramienta en la que vas a pegar el contenido). Si falta, pregunto: "¿Qué herramienta de correo usas para enviar tu newsletter?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el registro y el posicionamiento.** Cargo `config/context-ledger.json` y `context/marketing-context.md`. Reúno los campos obligatorios que falten según la lista de arriba (una pregunta cada uno, con la mejor modalidad primero).
 2. **Resuelvo canal y tema.** Confirmo el parámetro. Si el tema no es explícito, hago UNA pregunta: "¿Cuál es el ángulo / gancho / palabra clave objetivo?"

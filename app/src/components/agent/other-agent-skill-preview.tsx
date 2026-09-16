@@ -1,4 +1,4 @@
-import type { CommunitySkill, SkillPreviewState } from "@houston-ai/skills";
+import type { PreviewSkill, SkillPreviewState } from "@houston-ai/skills";
 import { SkillPreviewModal } from "@houston-ai/skills";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
@@ -6,8 +6,8 @@ import { useSkillDetail } from "../../hooks/queries";
 import { skillIntegrationSlugs } from "../../lib/skill-integrations";
 import { skillBodyOf } from "../../lib/skill-md";
 import type { WorkspaceSkillRow } from "../../lib/workspace-skills";
-import { IntegrationBadges } from "../integrations";
-import { useSkillMarketplaceSectionLabels } from "./use-skill-surface-labels";
+import { IntegrationBadges, SkillStepIntegrationChip } from "../integrations";
+import { useSkillPreviewLabels } from "./use-skill-surface-labels";
 
 interface Props {
   /** The row under preview; null keeps the modal closed. */
@@ -22,13 +22,13 @@ interface Props {
 
 /**
  * The "From your other agents" preview (HOU-792): the same
- * {@link SkillPreviewModal} the marketplace and the Houston library open —
- * title, description, connected apps, category, and the full step-by-step
- * body behind the expander — so a cross-agent row NEVER installs on click;
- * the modal's Install button is the one commit point. Unlike the bundled
- * library, the body lives on the holder agent, so it loads on open (the
- * skeleton state) through the same `useSkillDetail` cache the manage dialog
- * reads. The by-line names the holder: "From the {agent} agent".
+ * {@link SkillPreviewModal} the workspace store opens — title, description,
+ * connected apps, category, and the full step-by-step body behind the
+ * expander — so a cross-agent row NEVER installs on click; the modal's Install
+ * button is the one commit point. The body lives on the holder agent, so it
+ * loads on open (the skeleton state) through the same `useSkillDetail` cache
+ * the manage dialog reads. The by-line names the holder: "From the {agent}
+ * agent".
  */
 export function OtherAgentSkillPreview({
   row,
@@ -38,13 +38,13 @@ export function OtherAgentSkillPreview({
   installedSkillNames,
 }: Props) {
   const { t } = useTranslation("skills");
-  const marketplaceLabels = useSkillMarketplaceSectionLabels();
+  const previewLabels = useSkillPreviewLabels();
   const { data: detail, error } = useSkillDetail(
     row?.agents[0]?.folderPath,
     row?.slug,
   );
 
-  const modalSkill: CommunitySkill | null = useMemo(
+  const modalSkill: PreviewSkill | null = useMemo(
     () =>
       row
         ? {
@@ -71,6 +71,7 @@ export function OtherAgentSkillPreview({
         tags: row.summary.tags,
         integrations: row.summary.integrations,
         content: skillBodyOf(detail.content) || null,
+        workflow: detail.workflow?.steps ?? null,
       },
     };
   }, [row, detail, error]);
@@ -86,6 +87,9 @@ export function OtherAgentSkillPreview({
       installing={installing !== null && installing === row?.slug}
       installed={!!row && !!installedSkillNames?.has(row.slug.toLowerCase())}
       onInstall={() => row && install(row)}
+      renderIntegration={(integration) => (
+        <SkillStepIntegrationChip integration={integration} />
+      )}
       renderIntegrations={(slugs) => (
         <IntegrationBadges
           toolkits={skillIntegrationSlugs(slugs)}
@@ -93,7 +97,7 @@ export function OtherAgentSkillPreview({
         />
       )}
       labels={{
-        ...marketplaceLabels.preview,
+        ...previewLabels,
         bySource: () =>
           t("fromYourAgents.fromAgent", { agent: row?.agents[0]?.name ?? "" }),
       }}

@@ -1,4 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   agentTeamErrorCopy,
   isExpectedAgentTeamError,
@@ -43,6 +47,29 @@ export interface TeamMemberVars {
   userId: string;
 }
 
+/** The two seams a non-optimistic agent-teams write may take. Both default to
+ *  the shared behaviour, so a mutation that passes neither is wired exactly
+ *  like every other one. */
+export interface AgentTeamWriteOptions<TVars, TData> {
+  /** The team whose member rows this write also changes, when it changes any. */
+  membersOf?: (vars: TVars) => string;
+  /**
+   * Put what this write just MADE into the cache. It runs in the same tick the
+   * gateway answers — `mutateAsync` awaits it — so a caller that navigates on
+   * the very next line finds the row in the list instead of racing the
+   * invalidation's refetch.
+   */
+  seed?: (qc: QueryClient, data: TData, vars: TVars) => void;
+  /**
+   * False ONLY where the caller answers the expected states ITSELF, in one
+   * authored message covering a RUN of these writes (the create-team form adds
+   * each picked person on their own and names every refusal in a single summary
+   * toast). Left alone everywhere else, so "exactly one surface per action"
+   * still holds for every other caller.
+   */
+  surfaceExpected?: boolean;
+}
+
 /**
  * Every non-optimistic agent-teams write, wired identically: the shared
  * expected-error surface plus the invalidations. They run on SETTLED because a
@@ -52,13 +79,17 @@ export interface TeamMemberVars {
  */
 export function useAgentTeamWrite<TVars, TData>(
   mutationFn: (vars: TVars) => Promise<TData>,
-  /** The team whose member rows this write also changes, when it changes any. */
-  membersOf?: (vars: TVars) => string,
+  {
+    membersOf,
+    seed,
+    surfaceExpected = true,
+  }: AgentTeamWriteOptions<TVars, TData> = {},
 ) {
   const qc = useQueryClient();
   return useMutation<TData, unknown, TVars>({
     mutationFn,
-    onError: surfaceExpectedAgentTeamError,
+    onSuccess: seed ? (data, vars) => seed(qc, data, vars) : undefined,
+    onError: surfaceExpected ? surfaceExpectedAgentTeamError : undefined,
     onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: queryKeys.agentTeams() });
       if (membersOf) {

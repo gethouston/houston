@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [googledrive, gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ Primero leo tu contexto de contabilidad. Por cada campo requerido que falte, hag
 - **Cierres mensuales limpios hasta fin de año**, requerido. Por qué: la entrega está sujeta a que los libros estén limpios; las brechas abiertas de conciliación y los ítems sin categorizar tienen que cerrarse primero. Si falta, pregunto: "¿Ya cerramos todos los meses del año fiscal? Si no, terminemos eso primero, de lo contrario la entrega tendrá demasiados pendientes abiertos."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto.** Cargar `context/bookkeeping-context.md`,
    `config/context-ledger.json`, `config/chart-of-accounts.json`.

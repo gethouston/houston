@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [stripe, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Where your employees physically work** — Optional. Why: any W-2 employee in a state creates physical nexus regardless of revenue. If missing I ask: "Do you have employees working in states besides the headquarters state? If you don't have it I note it as TBD and call out physical-nexus checks for the user to confirm."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Required ledger: `universal.company.state`, `domains.revenue.contractSource`, `domains.tax.stateFilingFootprint`. SaaS taxability vary by state  -  compute exposure regardless of taxability posture.
 

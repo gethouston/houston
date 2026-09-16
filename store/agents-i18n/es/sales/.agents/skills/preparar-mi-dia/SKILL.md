@@ -7,6 +7,9 @@ category: Ventas
 featured: no
 image: handshake
 integrations: [googlecalendar]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,9 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, hago UN
 
 - **Tu playbook de ventas**  -  Opcional. Por qué lo necesito: me permite marcar las reuniones que necesitan preparación según tu marco de calificación. Si no lo tienes, sigo con TBD y me salto la marca de preparación.
 - **El calendario de hoy**  -  Obligatorio. Por qué lo necesito: el resumen se ancla en tu día real. Si falta, pregunto: "Conecta Google Calendar u Outlook para poder traer las reuniones de hoy, o pégame tu día."
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Leer el playbook.** Cargo `context/sales-context.md`. Si falta, aviso al usuario pero continúo, el resumen sigue siendo útil sin él.
 

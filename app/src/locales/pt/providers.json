@@ -28,7 +28,7 @@
     "cancelFailed": "Não foi possível cancelar o login de {{provider}}",
     "catalogLoadFailed": "Não foi possível carregar seus modelos de IA disponíveis. A lista pode estar incompleta até isso funcionar.",
     "orgAdminRequiredTitle": "Peça a um administrador para conectar isso",
-    "orgAdminRequiredBody": "Só um proprietário ou administrador pode conectar a IA da organização. Peça a um deles para configurar, ou para adicionar você a um agente para conectar sua própria conta."
+    "orgAdminRequiredBody": "Só um proprietário ou administrador pode conectar a IA da organização. Peça a um deles para configurar, ou para adicionar você a um funcionário de IA para conectar sua própria conta."
   },
   "providerLogin": {
     "title": "Termine de entrar em {{name}}",
@@ -107,7 +107,7 @@
     "errorHuggingfaceInferenceGated": "Seu token é válido, mas não tem permissão para executar modelos. Abra a página de tokens do Hugging Face com o botão acima e crie um token com \"Make calls to Inference Providers\" marcado (um token \"Read\" também funciona), depois cole aqui.",
     "errorGoogleKeyRestricted": "O Google está bloqueando esta chave pelas configurações dela. No Google AI Studio ou no Google Cloud, abra a chave, remova as restrições de aplicativo e de API (ou permita a Generative Language API), ou crie uma chave nova sem restrições com o botão acima, depois cole aqui.",
     "errorProviderUnavailable": "Não conseguimos acessar {{name}} para verificar sua chave, então nada foi salvo. Tente de novo em instantes.",
-    "errorOrgAdminRequired": "Só um proprietário ou administrador pode conectar a IA da organização. Peça a um deles para configurar, ou para adicionar você a um agente para conectar sua própria chave."
+    "errorOrgAdminRequired": "Só um proprietário ou administrador pode conectar a IA da organização. Peça a um deles para configurar, ou para adicionar você a um funcionário de IA para conectar sua própria chave."
   },
   "copilot": {
     "title": "Conectar GitHub Copilot",
@@ -147,10 +147,10 @@
     "cancel": "Cancelar",
     "cloudOnly": {
       "title": "A nuvem não consegue acessar esse endereço",
-      "notHttps": "Agentes na nuvem só conseguem acessar endereços https:// públicos. Informe um endereço https:// ou exponha o seu servidor com um túnel como cloudflared ou ngrok.",
-      "customPort": "Agentes na nuvem só conseguem acessar endereços na porta https padrão. Remova a porta do endereço.",
-      "privateHost": "Agentes na nuvem não conseguem acessar diretamente o seu computador nem a sua rede local. Use um endereço https:// público ou exponha o seu servidor com um túnel como cloudflared, ngrok ou Tailscale Funnel.",
-      "unspecified": "Agentes na nuvem só conseguem acessar endereços https:// públicos. Use um endereço https:// público ou exponha o seu servidor com um túnel como cloudflared ou ngrok."
+      "notHttps": "Funcionários de IA na nuvem só conseguem acessar endereços https:// públicos. Informe um endereço https:// ou exponha o seu servidor com um túnel como cloudflared ou ngrok.",
+      "customPort": "Funcionários de IA na nuvem só conseguem acessar endereços na porta https padrão. Remova a porta do endereço.",
+      "privateHost": "Funcionários de IA na nuvem não conseguem acessar diretamente o seu computador nem a sua rede local. Use um endereço https:// público ou exponha o seu servidor com um túnel como cloudflared, ngrok ou Tailscale Funnel.",
+      "unspecified": "Funcionários de IA na nuvem só conseguem acessar endereços https:// públicos. Use um endereço https:// público ou exponha o seu servidor com um túnel como cloudflared ou ngrok."
     }
   },
   "claudeLogin": {
@@ -200,7 +200,7 @@
     },
     "share": {
       "label": "Compartilhar com minha equipe",
-      "help": "Os agentes dos seus colegas podem usar este modelo. As solicitações deles são processadas no seu computador enquanto ele estiver online."
+      "help": "Os funcionários de IA dos seus colegas podem usar este modelo. As solicitações deles são processadas no seu computador enquanto ele estiver online."
     },
     "error": {
       "body": "Algo deu errado ao conectar. Confira se o app ainda está aberto no seu computador e tente de novo.",

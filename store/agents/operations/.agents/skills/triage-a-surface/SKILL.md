@@ -6,6 +6,9 @@ category: Operations
 featured: yes
 image: clipboard
 integrations: [googlecalendar, gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ I read your operations context first. For every required field that's missing I 
 - `calendar`  -  scan next 7 days for overbooks, missing buffers, focus-block clashes, unprotected VIP slots, meetings without prep. Writes `calendar-scans/{YYYY-MM-DD}.md` + upserts `calendar-conflicts.json`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. Read `config/context-ledger.json`. Fill gaps with ONE targeted question.
 2. Read `context/operations-context.md`. Missing: stop, ask me run `set-up-my-ops-info` first  -  no invent priorities.

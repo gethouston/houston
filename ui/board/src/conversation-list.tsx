@@ -5,6 +5,12 @@ import type { ConversationEntry } from "./types";
 export interface ConversationListProps {
   entries: ConversationEntry[];
   onSelect: (entry: ConversationEntry) => void;
+  /** Status id → shown text. Falls back to the English defaults, then to the
+   *  raw status for ids the map doesn't know. */
+  statusLabels?: Record<string, string>;
+  /** Renders an entry's `updatedAt` as an age. Defaults to English shorthand
+   *  ("just now", "5m ago"); the app passes a localized formatter. */
+  formatRelativeTime?: (iso: string) => string;
 }
 
 const STATUS_VARIANT: Record<
@@ -36,7 +42,12 @@ function formatRelative(iso?: string): string {
   return `${days}d ago`;
 }
 
-export function ConversationList({ entries, onSelect }: ConversationListProps) {
+export function ConversationList({
+  entries,
+  onSelect,
+  statusLabels,
+  formatRelativeTime = formatRelative,
+}: ConversationListProps) {
   return (
     <div className="flex flex-col gap-2">
       {entries.map((entry) => (
@@ -64,7 +75,7 @@ export function ConversationList({ entries, onSelect }: ConversationListProps) {
             <div className="flex items-center gap-2 shrink-0">
               {entry.updatedAt && (
                 <span className="text-xs text-ink-muted">
-                  {formatRelative(entry.updatedAt)}
+                  {formatRelativeTime(entry.updatedAt)}
                 </span>
               )}
               {entry.status && (
@@ -72,7 +83,9 @@ export function ConversationList({ entries, onSelect }: ConversationListProps) {
                   variant={STATUS_VARIANT[entry.status] ?? "outline"}
                   className="rounded-full text-xs"
                 >
-                  {STATUS_LABEL[entry.status] ?? entry.status}
+                  {statusLabels?.[entry.status] ??
+                    STATUS_LABEL[entry.status] ??
+                    entry.status}
                 </Badge>
               )}
             </div>

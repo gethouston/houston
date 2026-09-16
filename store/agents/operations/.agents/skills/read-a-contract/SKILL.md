@@ -6,6 +6,9 @@ category: Operations
 featured: no
 image: clipboard
 integrations: [googledrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ I read your operations context first. For every required field that's missing I 
 - **Operating context doc**  -  Required. Why I need it: anchors hard nos so I flag clauses that would violate them. If missing I ask: "Want me to set up your operating context first? Helps me catch unfavorable terms more reliably."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`.** If missing: stop, ask user run `set-up-my-ops-info` skill first. Vendor posture + hard nos anchor "unfavorable terms" flags.
 

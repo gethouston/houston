@@ -7,6 +7,9 @@ category: Personal
 featured: no
 image: busts-in-silhouette
 integrations: [notion, slack, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Primero leo tu contexto de personal. Por cada campo obligatorio que falte, hago 
 - **Fuente del roster**: Obligatorio cuando la plataforma de RR.HH. no está conectada. Por qué lo necesito: necesito algún lugar de donde leer los datos básicos. Si falta, pregunto: "Conecta tu plataforma de RR.HH. para que pueda traer esto directamente, o pega el registro del empleado."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal.** Leo `context/people-context.md` para niveles, bandas salariales y reglas de confidencialidad sobre el contenido del dossier. Si falta o está vacío, le digo al usuario: "Primero necesito tu contexto de personal, corre la habilidad set-up-my-people-info." Me detengo.
 2. **Leer la configuración.** `config/context-ledger.json`. Si la plataforma de RR.HH. no está conectada y no hay un enlace de roster guardado, hago UNA pregunta puntual con sugerencia de modalidad: "Conecta tu plataforma de RR.HH. (Gusto, Deel, Rippling o Justworks) en la pestaña de Integraciones, o pega el registro del empleado." Guardo la respuesta y continúo.

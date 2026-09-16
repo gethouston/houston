@@ -6,6 +6,9 @@ version: 1
 category: Contratos
 featured: no
 image: scroll
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Planejar Contestações a um Contrato
@@ -18,6 +21,7 @@ image: scroll
 Execute uma vez por versão do contrato após a revisão. Se a contraparte fizer uma contraproposta → execute novamente na nova versão.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia o contexto compartilhado.** Carregue o `legal-context.md` para a postura de risco do fundador e as regras de escalonamento. Carregue `config/posture.json` para as posições de limite por cláusula.
 

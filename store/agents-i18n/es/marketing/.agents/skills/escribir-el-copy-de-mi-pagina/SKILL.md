@@ -7,6 +7,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -51,6 +54,7 @@ Primero leo tu contexto de marketing. Por cada campo requerido que falte, hago U
 - **La URL de la página o una captura de pantalla** - Requerido. Si falta, pregunto: "Pégame la URL de la página que quieres reescribir. Si es una superficie dentro del producto, mándame una captura de pantalla o pega el copy actual."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el registro + el posicionamiento.** Recopilo los campos requeridos que falten según lo de arriba (UNA pregunta cada uno, mejor modalidad primero). Escribo de forma atómica.
 2. **Traer el estado actual.** Superficies accesibles por URL: corro `composio search web-scrape` y ejecuto por slug (Firecrawl / ScrapingBee / equivalente) para traer el HTML renderizado + el texto visible + las URLs de las imágenes principales + el CTA actual. Superficies dentro del producto (onboarding / algunos paywalls / popups): acepto capturas de pantalla, Loom, o copy pegado. Si no hay nada usable, pido que lo peguen y me detengo.

@@ -406,7 +406,7 @@ function SidebarGroupLabel({
       data-slot="sidebar-group-label"
       data-sidebar="group-label"
       className={cn(
-        "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-text/70 ring-sidebar-ring outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "flex h-8 shrink-0 items-center rounded-md px-2 text-xs font-medium text-sidebar-text/70 ring-focus outline-hidden transition-[margin,opacity] duration-200 ease-linear focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         "group-data-[collapsible=icon]:-mt-8 group-data-[collapsible=icon]:opacity-0",
         className,
       )}
@@ -427,7 +427,7 @@ function SidebarGroupAction({
       data-slot="sidebar-group-action"
       data-sidebar="group-action"
       className={cn(
-        "absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-text ring-sidebar-ring outline-hidden transition-transform hover:bg-sidebar-hover hover:text-sidebar-hover-text focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-text ring-focus outline-hidden transition-transform hover:bg-sidebar-hover hover:text-sidebar-hover-text focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 md:after:hidden",
         "group-data-[collapsible=icon]:hidden",
@@ -475,13 +475,18 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 }
 
 const sidebarMenuButtonVariants = cva(
-  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-hover hover:text-sidebar-hover-text focus-visible:ring-2 active:bg-sidebar-hover active:text-sidebar-hover-text disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-hover data-[active=true]:font-medium data-[active=true]:text-sidebar-hover-text data-[state=open]:hover:bg-sidebar-hover data-[state=open]:hover:text-sidebar-hover-text [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
+  "peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-focus outline-hidden transition-[width,height,padding] group-has-data-[sidebar=menu-action]/menu-item:pr-8 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-2! hover:bg-sidebar-hover hover:text-sidebar-hover-text focus-visible:ring-2 active:bg-sidebar-hover active:text-sidebar-hover-text disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 data-[active=true]:bg-sidebar-hover data-[active=true]:font-medium data-[active=true]:text-sidebar-hover-text data-[state=open]:hover:bg-sidebar-hover data-[state=open]:hover:text-sidebar-hover-text [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0",
   {
     variants: {
       variant: {
         default: "hover:bg-sidebar-hover hover:text-sidebar-hover-text",
+        // A 1px ring rather than a border: the row's height is fixed, so an
+        // outline variant that ate a pixel of it would sit a pixel shorter
+        // than its siblings. `ring-*` takes the sidebar's own line token —
+        // shadcn's `--sidebar-border` / `--sidebar-accent` were never defined
+        // here, so the shadow this replaces resolved to nothing at all.
         outline:
-          "bg-input shadow-[0_0_0_1px_hsl(var(--sidebar-border))] hover:bg-sidebar-hover hover:text-sidebar-hover-text hover:shadow-[0_0_0_1px_hsl(var(--sidebar-accent))]",
+          "bg-input ring-1 ring-sidebar-line hover:bg-sidebar-hover hover:text-sidebar-hover-text hover:ring-sidebar-active",
       },
       size: {
         default: "h-8 text-sm",
@@ -546,14 +551,19 @@ function SidebarMenuButton({
   );
 }
 
+/**
+ * The trailing control on a menu row.
+ *
+ * Always visible: DESIGN.md bans hover-only affordances, so there is no
+ * `showOnHover` — an action a mouse has to find is an action a keyboard and a
+ * touch screen never find at all.
+ */
 function SidebarMenuAction({
   className,
   asChild = false,
-  showOnHover = false,
   ...props
 }: React.ComponentProps<"button"> & {
   asChild?: boolean;
-  showOnHover?: boolean;
 }) {
   const Comp = asChild ? Slot.Root : "button";
 
@@ -562,15 +572,13 @@ function SidebarMenuAction({
       data-slot="sidebar-menu-action"
       data-sidebar="menu-action"
       className={cn(
-        "absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-text ring-sidebar-ring outline-hidden transition-transform peer-hover/menu-button:text-sidebar-hover-text hover:bg-sidebar-hover hover:text-sidebar-hover-text focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
+        "absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-text ring-focus outline-hidden transition-transform peer-hover/menu-button:text-sidebar-hover-text hover:bg-sidebar-hover hover:text-sidebar-hover-text focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0",
         // Increases the hit area of the button on mobile.
         "after:absolute after:-inset-2 md:after:hidden",
         "peer-data-[size=sm]/menu-button:top-1",
         "peer-data-[size=default]/menu-button:top-1.5",
         "peer-data-[size=lg]/menu-button:top-2.5",
         "group-data-[collapsible=icon]:hidden",
-        showOnHover &&
-          "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-hover-text data-[state=open]:opacity-100 md:opacity-0",
         className,
       )}
       {...props}
@@ -687,7 +695,7 @@ function SidebarMenuSubButton({
       data-size={size}
       data-active={isActive}
       className={cn(
-        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-text ring-sidebar-ring outline-hidden hover:bg-sidebar-hover hover:text-sidebar-hover-text focus-visible:ring-2 active:bg-sidebar-hover active:text-sidebar-hover-text disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-hover-text",
+        "flex h-7 min-w-0 -translate-x-px items-center gap-2 overflow-hidden rounded-md px-2 text-sidebar-text ring-focus outline-hidden hover:bg-sidebar-hover hover:text-sidebar-hover-text focus-visible:ring-2 active:bg-sidebar-hover active:text-sidebar-hover-text disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50 [&>span:last-child]:truncate [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-sidebar-hover-text",
         "data-[active=true]:bg-sidebar-hover data-[active=true]:text-sidebar-hover-text",
         size === "sm" && "text-xs",
         size === "md" && "text-sm",

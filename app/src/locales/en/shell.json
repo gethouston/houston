@@ -1,8 +1,7 @@
 {
   "sidebar": {
     "academy": "Academy",
-    "addAgent": "New agent",
-    "agentStore": "Agent Store",
+    "addAgent": "New AI Employee",
     "aiModels": "AI Models",
     "assistant": "AI Manager",
     "changeColor": "Change color",
@@ -26,7 +25,6 @@
     "guideMe": "Guide me",
     "help": "Help",
     "integrations": "Integrations",
-    "myAccounts": "My accounts",
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "newMission": "New task",
@@ -36,7 +34,6 @@
     "runningCount_other": "{{count}} issues running",
     "selectWorkspace": "Select workspace",
     "settings": "Settings",
-    "skills": "Skills",
     "teams": {
       "identity": "Change icon & name",
       "identityIcons": "Icons",
@@ -382,19 +379,18 @@
       "work": "work",
       "writing": "writing"
     },
-    "workspace": "Workspace",
     "yourTeams": "Your teams"
   },
   "missionChat": {
     "back": "Back"
   },
   "agentsHome": {
-    "title": "Agents",
+    "title": "AI Employees",
     "taskCount_one": "{{count}} task",
     "taskCount_other": "{{count}} tasks",
     "empty": {
-      "title": "No agents yet",
-      "description": "Create an agent to get started. Everything they work on shows up here."
+      "title": "No AI Employees yet",
+      "description": "Create an AI Employee to get started. Everything they work on shows up here."
     },
     "allTeams": "All teams",
     "noTasks": "No tasks yet",
@@ -426,7 +422,7 @@
     "newTeam": "New team"
   },
   "tabBar": {
-    "agents": "Agents",
+    "agents": "AI Employees",
     "label": "Main navigation",
     "more": "More",
     "teams": "Teams"
@@ -439,12 +435,12 @@
     "genericDescription": "Something unexpected went wrong. Please try again.",
     "offlineTitle": "Houston, connection lost",
     "offlineDescription": "We can't reach Houston right now. Check your internet connection and try again.",
-    "engineWakingTitle": "Houston, your agent is waking up",
+    "engineWakingTitle": "Houston, your AI Employee is waking up",
     "engineWakingDescription": "It usually takes about 20 seconds. You don't need to send your message again.",
     "updateStuckTitle": "Houston, updates can't reach you",
     "updateStuckDescription": "We haven't been able to check for updates. Your network may be blocking them. You can always get the latest version at gethouston.ai.",
-    "noAgentTitle": "Houston, you need an agent first",
-    "noAgentDescription": "Create an agent, then connect from its settings. This connection lives on an agent."
+    "noAgentTitle": "Houston, you need an AI Employee first",
+    "noAgentDescription": "Create an AI Employee, then connect from its settings. This connection lives on an AI Employee."
   },
   "openUrl": {
     "noBrowserTitle": "Houston, we couldn't find a web browser",
@@ -452,15 +448,15 @@
     "failedTitle": "Houston, that link didn't open"
   },
   "agentDelete": {
-    "title": "Delete agent?",
-    "description": "This will permanently delete the agent and all its data. This cannot be undone."
+    "title": "Delete AI Employee?",
+    "description": "This will permanently delete the AI Employee and all its data. This cannot be undone."
   },
   "workspaceDialog": {
     "title": "New workspace",
     "createFailed": "We couldn't create the workspace. Please try again."
   },
   "agentUpdate": {
-    "title": "Agent update available",
+    "title": "AI Employee update available",
     "descriptionOne": "{{name}} has a new version available.",
     "descriptionMany": "{{names}} have new versions available.",
     "descriptionSuffix": "The update has been downloaded. Reload to apply it.",
@@ -468,7 +464,7 @@
   },
   "authReconnect": {
     "heading": "Houston, we have a problem",
-    "body": "Your {{provider}} session expired. Sign in again to keep your agents running.",
+    "body": "Your {{provider}} session expired. Sign in again to keep your AI Employees running.",
     "waiting": "Waiting for browser sign-in...",
     "signInWith": "Sign in with {{provider}}"
   },
@@ -480,11 +476,11 @@
     "launchError": "Could not open sign-in. Try again."
   },
   "agentProvisioning": {
-    "title": "We are creating your agent",
-    "stillStarting": "Your agent is taking longer than usual to start. We are still trying, hang tight.",
-    "blockedBody": "It is almost ready. This action will be available in a moment, as soon as your agent finishes setting up.",
+    "title": "We are creating your AI Employee",
+    "stillStarting": "Your AI Employee is taking longer than usual to start. We are still trying, hang tight.",
+    "blockedBody": "It is almost ready. This action will be available in a moment, as soon as your AI Employee finishes setting up.",
     "stalledTitle": "Still working on it",
-    "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your agent answers."
+    "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your AI Employee answers."
   },
   "reportBug": {
     "reportSuccessTitle": "Report sent",
@@ -509,21 +505,19 @@
     "restarting": "Restarting..."
   },
   "naming": {
-    "dialogTitle": "Name your Agent",
-    "newAgentFallback": "New Agent",
-    "tagline": "Pick a color and name your agent",
+    "dialogTitle": "Name your AI Employee",
+    "tagline": "Name your AI Employee and tell it what job it does",
     "namePlaceholder": "e.g. Product manager, Sales, Jerry",
     "linkExistingProject": "Link existing project",
-    "createAgent": "Create Agent"
+    "createAgent": "Create AI Employee"
   },
   "newAgent": {
-    "dialogTitle": "New agent",
-    "storeCard": "From the store",
-    "createCard": "Create new",
-    "copyCard": "Copy an agent"
+    "chooseHeadline": "How do you want to start?",
+    "hireTitle": "Hire a new AI Employee",
+    "copyTitle": "Copy an existing AI Employee"
   },
   "engineGate": {
-    "starting": "Loading your agents…",
+    "starting": "Loading your AI Employees…",
     "reconnected": "Houston reconnected",
     "loadFailed": "Couldn't load your available AI models. Check your connection and try again.",
     "authRequiredTitle": "Sign-in required",
@@ -626,7 +620,7 @@
     }
   },
   "agentReads": {
-    "failed": "Couldn't load {{failed}} of {{total}} agents",
+    "failed": "Couldn't load {{failed}} of {{total}} AI Employees",
     "failedOne": "Couldn't load {{name}}",
     "retry": "Try again",
     "report": "Report bug"
@@ -634,11 +628,11 @@
   "palette": {
     "title": "Command palette",
     "description": "Jump anywhere in Houston",
-    "placeholder": "Search agents, tasks, actions...",
+    "placeholder": "Search AI Employees, tasks, actions...",
     "empty": "Nothing matched. Try a different word.",
     "groups": {
       "actions": "Actions",
-      "agents": "Agents",
+      "agents": "AI Employees",
       "recentMissions": "Recent tasks",
       "teams": "Teams"
     },
@@ -660,8 +654,8 @@
     "rows": {
       "palette": "Open command palette",
       "newMission": "Start new task",
-      "prevAgent": "Previous agent",
-      "nextAgent": "Next agent",
+      "prevAgent": "Previous AI Employee",
+      "nextAgent": "Next AI Employee",
       "boardNavigate": "Move between tasks",
       "boardOpen": "Open highlighted task",
       "panelEscape": "Leave chat, then close",
@@ -671,5 +665,11 @@
   "moreMenu": {
     "help": "Help",
     "title": "More"
+  },
+  "addToWorkspace": {
+    "title": "Add to your workspace",
+    "headline": "What do you want to add?",
+    "agentTitle": "AI Employee",
+    "teamTitle": "Team"
   }
 }

@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Primero leo tu contexto de operaciones. Por cada campo requerido que falte, hago
 - **Prioridades activas** - Requerido. Por qué las necesito: etiqueto si la decisión es estructural para lo que estás impulsando. Si faltan, pregunto: "¿Cuáles son las 2 o 3 cosas que la empresa está impulsando este trimestre?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** Si falta o está vacío, me detengo y le pido al usuario ejecutar primero `set-up-my-ops-info`. Las prioridades activas anclan si la decisión es estructural.
 

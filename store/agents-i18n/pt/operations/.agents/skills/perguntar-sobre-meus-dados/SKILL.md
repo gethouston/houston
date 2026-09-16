@@ -6,6 +6,9 @@ version: 1
 category: Operações
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -48,6 +51,7 @@ Leio o seu contexto operacional primeiro. Para cada campo obrigatório que estiv
   a contagem de linhas, qualquer ressalva de qualidade de dados.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio `context/operations-context.md`.** Se
    faltar/estiver vazio, paro, peço ao usuário para rodar a habilidade `set-up-my-ops-info` primeiro. Prioridades + ferramentas ancoram qual

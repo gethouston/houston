@@ -27,7 +27,7 @@
   "chapters": {
     "setup": {
       "title": "Configura Houston",
-      "description": "Un recorrido guiado por la app, desde tu primer agente hasta tu primera misión."
+      "description": "Un recorrido guiado por la app, desde tu primer empleado de IA hasta tu primera misión."
     }
   },
   "actions": {
@@ -54,19 +54,19 @@
     },
     "send-first-task": {
       "title": "Envía tu primera tarea",
-      "description": "Pídele algo a un agente y mira cómo lo resuelve.",
+      "description": "Pídele algo a un empleado de IA y mira cómo lo resuelve.",
       "steps": {
         "watch": {
           "title": "Envía tu primera tarea",
-          "body": "Mira cómo una tarea viaja de ti a tu agente."
+          "body": "Mira cómo una tarea viaja de ti a tu empleado de IA."
         },
         "intro": {
           "title": "Te toca",
-          "body": "Abre una tarea nueva y dile a tu agente qué necesitas.",
+          "body": "Abre una tarea nueva y dile a tu empleado de IA qué necesitas.",
           "cta": "Muéstrame"
         },
         "newTask": {
-          "body": "Haz clic en Tarea nueva para abrir una para tu agente."
+          "body": "Haz clic en Tarea nueva para abrir una para tu empleado de IA."
         }
       }
     }

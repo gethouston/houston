@@ -18,7 +18,7 @@ export interface SidebarNavItemProps {
 
 /**
  * One top-level destination above the agent list: Mission Control,
- * Integrations, Skills, AI Models, the Agent Store, Settings.
+ * Integrations, Skills, AI Models, Settings.
  *
  * Expanded, it is a {@link SidebarRowButton} at BLOCK depth — the same row, the
  * same 28px box, the same glyph column and the same pill as the team headers

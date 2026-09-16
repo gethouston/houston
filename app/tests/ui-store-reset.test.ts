@@ -3,7 +3,7 @@ import { afterEach, describe, it } from "node:test";
 import { useUIStore } from "../src/stores/ui.ts";
 
 // HOU-903: on an identity change the UI store must drop the outgoing account's
-// ephemeral view state back to its initial values, while keeping the two
+// ephemeral view state back to its initial values, while keeping the
 // per-machine layout preferences (which are device-, not account-, scoped).
 
 afterEach(() => useUIStore.getState().reset());
@@ -13,7 +13,6 @@ describe("useUIStore.reset", () => {
     const s = useUIStore.getState();
     s.setViewMode("settings");
     s.setActivityPanelId("activity-42", { forceOpen: true });
-    s.setShareAgentId("agent-a");
     s.setPaletteOpen(true);
     s.openTeamView("team:default", "routines", {
       agentFilter: "agent-a",
@@ -30,7 +29,6 @@ describe("useUIStore.reset", () => {
     // moves the user on once a team lands).
     strictEqual(next.viewMode, "agents-home");
     strictEqual(next.activityPanelId, null);
-    strictEqual(next.shareAgentId, null);
     strictEqual(next.paletteOpen, false);
     strictEqual(next.activeTeamId, null);
     strictEqual(next.teamSection, null);
@@ -41,12 +39,10 @@ describe("useUIStore.reset", () => {
 
   it("keeps the per-machine layout preferences", () => {
     useUIStore.getState().setSidebarCollapsed(true);
-    // All THREE rail bands fold and survive the same way. They are one band
-    // anatomy wearing three labels, so a reset that kept one and dropped the
-    // others would make the rail come back half the way the user left it.
+    // "Your teams" is the rail's one labelled band, and its fold is a layout
+    // pref like the rail's own width: the rail must come back the way the user
+    // left it, whoever signs in next.
     useUIStore.getState().toggleTeamsSectionCollapsed();
-    useUIStore.getState().toggleMyAccountsSectionCollapsed();
-    useUIStore.getState().toggleWorkspaceSectionCollapsed();
     // The wide chat is the same kind of pref: how THIS machine lays out the
     // chat, not something the next account should have to choose again.
     useUIStore.getState().setChatWide(true);
@@ -57,8 +53,6 @@ describe("useUIStore.reset", () => {
     strictEqual(next.sidebarCollapsed, true);
     strictEqual(next.chatWide, true);
     strictEqual(next.teamsSectionCollapsed, true);
-    strictEqual(next.myAccountsSectionCollapsed, true);
-    strictEqual(next.workspaceSectionCollapsed, true);
   });
 
   it("drops a one-shot routine-chat target on an identity change", () => {

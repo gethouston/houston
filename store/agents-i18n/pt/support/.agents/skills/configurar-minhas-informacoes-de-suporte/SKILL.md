@@ -7,6 +7,9 @@ category: Suporte
 featured: yes
 image: headphone
 integrations: [googledocs, stripe, notion, github, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,9 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - **Categorias de roteamento**, Obrigatório. Por que preciso disso: a triagem e a detecção de sinais mapeiam cada mensagem recebida para uma delas. Se faltar, eu pergunto: "Quando um ticket chega, em quais baldes você o separa, bug, dúvida de uso, cobrança, algo mais?"
 - **Níveis de escalonamento**, Obrigatório. Por que preciso disso: definições de P1 / P2 / P3 / P4 para a triagem. Se faltar, eu pergunto: "O que torna algo um incêndio versus algo para o mesmo dia versus algo para esta semana?"
 - **Amostras literais de voz**, Opcional. Por que preciso disso: a seção de tom soa mais verdadeira com frases reais. Se você não tiver, eu sigo com TBD e recomendo rodar a calibração de voz.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Ler `config/context-ledger.json`.** Preciso de `universal.company`, `universal.idealCustomer`, `domains.inbox.responseTimeTargets`, `domains.inbox.routingCategories`, `domains.quality.escalationTiers`. Para qualquer campo faltando, faço UMA pergunta direcionada com dica de modalidade (app conectado > arquivo > URL > colar), escrevo atomicamente, continuo.
 

@@ -7,6 +7,9 @@ category: Suporte
 featured: no
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - **Público do resumo**, opcional. Por que preciso: um resumo de 3 tópicos para você é diferente de uma passagem de bastão para um colega. Se você não tiver, eu sigo com TBD e escrevo para os seus olhos.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 1. **Carregar** `conversations/{id}/thread.json` e a linha do índice em `conversations.json`.
 2. **Percorrer a conversa em ordem cronológica.** Anotar: o pedido original do cliente, mudanças de escopo, cada promessa feita, cada resposta dada.
 3. **Produzir exatamente três tópicos:**

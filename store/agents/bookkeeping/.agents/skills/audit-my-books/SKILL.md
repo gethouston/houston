@@ -5,6 +5,9 @@ version: 1
 category: Bookkeeping
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Your auditor or diligence request, in `mode=audit-response`** — Required for that mode. Why: I can't sample or assemble without the actual ask. If missing I ask: "Paste or drop the request from the auditor or diligence team, ideally the full email or PDF with the items they want."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Note today's date as run date.
 

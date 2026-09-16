@@ -6,13 +6,14 @@ import { useSkillChatSetup } from "../agent/use-skill-chat-setup";
 import { useSkillSetupView } from "../agent/use-skill-setup-view";
 
 /**
- * The global Skills page's create-with-AI chat (HOU-792): mounts the same
- * per-agent setup-chat machinery (HOU-791) for the PICKED agent and starts a
- * fresh create draft immediately. The chat renders in the shell's right-hand
- * panel (via {@link SkillSetupChat}) while the global page stays on the left;
- * the draft→skill claim swap keeps the same conversation running once the
- * agent writes the SKILL.md. Closing the pane (X / Escape) unmounts this via
- * `onClose`.
+ * The global Skills page's chat (HOU-792): mounts the same per-agent
+ * setup-chat machinery (HOU-791) for the PICKED agent and opens what it was
+ * asked for immediately — a fresh create draft, or an existing skill's own
+ * conversation when its editor opens. The chat renders in the shell's
+ * right-hand panel (via {@link SkillSetupChat}) while the page stays on the
+ * left; the draft→skill claim swap keeps the same conversation running once
+ * the agent writes the SKILL.md. Closing the pane (X / Escape) unmounts this
+ * via `onClose`.
  */
 export function GlobalSkillChat({
   agent,
@@ -29,8 +30,8 @@ export function GlobalSkillChat({
    *  manage dialog's "Edit in chat"). */
   initial: { kind: "create" } | { kind: "skill"; slug: string };
   onClose: () => void;
-  /** The chat header's "Edit manually" for a claimed skill — opens the
-   *  global manage dialog. */
+  /** The chat header's "Edit manually" for a claimed skill — shows that
+   *  skill's markdown in the editor on the left. */
   onEditSkill: (slug: string) => void;
 }) {
   const chatSetup = useSkillChatSetup(agent, skills);

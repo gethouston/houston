@@ -6,6 +6,9 @@ version: 1
 category: Operaciones
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primero leo tu contexto de operaciones. Por cada campo obligatorio que falte hag
 - **Líneas rojas**  -  Opcional. Por qué las necesito: me permiten rechazar de inmediato cualquier cosa que las viole. Si no las tienes, sigo adelante con TBD usando los valores por defecto del espacio de trabajo.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** Las prioridades activas, las líneas rojas y las posiciones propias del fundador anclan cada evaluación con rúbrica. Si falta → primero `set-up-my-ops-info`, me detengo.
 

@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [notion, airtable]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Leio seu contexto de marketing primeiro. Para cada campo obrigatório que estive
 - **Números reais de antes / depois**  -  Obrigatório para um case de sucesso forte. Se faltar, pergunto: "Que mudança mensurável esse cliente viu, e em qual período? Se você não tiver, eu sigo com TBD."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o documento de posicionamento**:
    `context/marketing-context.md`. Se estiver faltando,

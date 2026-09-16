@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { NEW_TASK_PLACEHOLDER } from "./composer";
 import { expect } from "./fixtures";
 
 /**
@@ -18,7 +19,7 @@ export async function openNewMission(
     .first()
     .click();
 
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   const agentChoice = page
     .getByRole("dialog")
     .getByRole("button", { name: agentName, exact: true });
@@ -37,7 +38,7 @@ export async function openNewMission(
 export async function startMission(page: Page, text: string): Promise<void> {
   await page.goto("/");
   await openNewMission(page);
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await expect(composer).toBeVisible();
   await composer.fill(text);
   await composer.press("Enter");

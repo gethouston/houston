@@ -78,10 +78,6 @@ const CATALOGUE = {
     definition: "A new agent was created from scratch.",
     props: ["source"],
   },
-  agent_installed_from_store: {
-    definition: "An agent was installed from the Agent Store.",
-    props: ["agent_slug", "source"],
-  },
   agent_shared: {
     definition: "The user shared or exported an agent.",
     props: ["source"],

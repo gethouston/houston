@@ -2,7 +2,11 @@ import type { Agent } from "../../lib/types";
 import type { SharedSkillRow } from "../../lib/workspace-shared-skills";
 import type { WorkspaceSkillRow } from "../../lib/workspace-skills";
 
-/** Props contract for {@link ManageSkillDialog}, split out for the file law. */
+/**
+ * The shared props contract of the two skill detail surfaces — the per-agent
+ * manage dialog and the library's full-page editor — split out for the file
+ * law so both can read it without importing each other.
+ */
 
 /** A page row: copy-based everywhere, store-backed when the deployment shares. */
 export type ManagedSkillRow = WorkspaceSkillRow & Partial<SharedSkillRow>;

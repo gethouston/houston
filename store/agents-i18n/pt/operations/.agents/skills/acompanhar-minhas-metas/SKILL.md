@@ -7,6 +7,9 @@ category: Operações
 featured: no
 image: clipboard
 integrations: [googlesheets, notion, airtable, linear, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Eu leio primeiro o seu contexto operacional. Para cada campo obrigatório que es
 - **Curva de cumprimento**  -  Opcional. Por que preciso: métricas de meta concentradas no início versus no final do período classificam de forma diferente no meio do trimestre. Se você não tiver isso eu sigo com A DEFINIR usando um padrão linear.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/operations-context.md`.** Se
    faltando ou vazio, parar e pedir para você rodar

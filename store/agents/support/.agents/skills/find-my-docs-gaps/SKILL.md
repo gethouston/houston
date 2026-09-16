@@ -5,6 +5,9 @@ version: 1
 category: Support
 featured: no
 image: headphone
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -33,6 +36,7 @@ I read your support context first. For every required field that's missing I ask
 - **Plan tiers**  -  Optional. Why I need it: gaps hitting paying customers rank higher than free-tier hits. If you don't have it I keep going with equal weight per ticket.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. Read `patterns.json` (clusters of repeat questions) and `articles/` (existing KB). Filter patterns without matching article.
 2. List empty → run `flag-a-signal signal=repeat-question` first (or tell me just ran, nothing yet).

@@ -47,14 +47,12 @@ export const sidebarClasses = {
  * The ONE horizontal inset the rail's contents sit on: every band heading and
  * every run of rows a band names, and nothing else in the rail may add another.
  *
- * It lives here because it was a bug first. `SidebarNavList` put `px-2` on its
- * `<nav>` AND `SidebarBand` put `px-2` on its heading, so "My accounts" and
- * "Workspace" were inset twice while "Your teams" — rendered from `sidebar.tsx`
- * inside an unpadded wrapper — was inset once. The three bands' child ROWS all
- * sat on 8px, so only the three labels drifted: two of the rail's three
- * headings hung 8px right of the third, which reads as two lists that happen to
- * be stacked rather than one rail. Spending the value from one export is what
- * makes that unrepeatable: a consumer cannot double it without doubling this.
+ * It lives here because a heading inset twice reads as a second list: the
+ * `<nav>` that holds a band and `SidebarBand`'s own heading would each add
+ * `px-2`, hanging that label 8px right of a band rendered from `sidebar.tsx`
+ * inside an unpadded wrapper, while every band's child ROWS stayed on 8px.
+ * Spending the value from one export is what makes that unrepeatable: a
+ * consumer cannot double it without doubling this.
  */
 export const sidebarBandInset = "px-2";
 

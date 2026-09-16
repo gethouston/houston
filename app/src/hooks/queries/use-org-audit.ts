@@ -26,8 +26,10 @@ import { useUIStore } from "../../stores/ui";
  * `tauriOrg.audit` → `call()` path (toast + Report bug), no `onError` needed.
  */
 export function useOrgAudit(enabled: boolean) {
-  const active = useUIStore((s) =>
-    isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID),
+  const active = useUIStore(
+    (s) =>
+      isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID) &&
+      s.settingsSection === "workspace",
   );
   return useInfiniteQuery({
     queryKey: queryKeys.orgAudit(),

@@ -4,7 +4,7 @@ import type { TurnSandboxViews } from "./turn-sandbox";
 import { poolIdentity } from "./turn-store";
 import type { TurnRequest } from "./types";
 
-type TurnViewFamily = "skills" | "custom_definitions";
+type TurnViewFamily = "custom_definitions";
 
 /** Publish mutation-derived views so claimed turns update asleep reads. */
 export async function publishTurnSandboxViews(
@@ -17,9 +17,6 @@ export async function publishTurnSandboxViews(
   if (!baseUrl) return [];
   const { org, agent } = poolIdentity(turn.gcsPrefix);
   const documents: Array<{ family: TurnViewFamily; doc: unknown }> = [];
-  if (views.skills !== undefined) {
-    documents.push({ family: "skills", doc: views.skills });
-  }
   if (views.customDefinitions !== undefined) {
     documents.push({
       family: "custom_definitions",

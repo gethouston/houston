@@ -25,6 +25,12 @@ export interface EditableSkillTitleProps {
   onRename?: (title: string) => void;
   /** Accessible label for the pencil button and the name input. */
   renameLabel?: string;
+  /**
+   * Render the name as a page heading (`<h1>`) instead of a `DialogTitle`.
+   * Radix's dialog title reads a context only a `Dialog` provides, so a
+   * full-page host (the skill editor) must ask for the heading form.
+   */
+  heading?: boolean;
 }
 
 /**
@@ -36,12 +42,14 @@ export interface EditableSkillTitleProps {
  * skill dialogs can ride their existing save paths.
  *
  * The `DialogTitle` stays mounted (visually hidden while editing) so Radix
- * always finds the dialog's accessible title.
+ * always finds the dialog's accessible title. A `heading` host swaps that node
+ * for an `<h1>`, which carries the same name for the same reason.
  */
 export function EditableSkillTitle({
   title,
   onRename,
   renameLabel = "Rename skill",
+  heading = false,
 }: EditableSkillTitleProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
@@ -62,11 +70,17 @@ export function EditableSkillTitle({
     if (next && next !== title) onRename?.(next);
   }, [draft, title, onRename]);
 
+  const nameClass = cn("truncate", editing && "sr-only");
+
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <DialogTitle className={cn("truncate", editing && "sr-only")}>
-        {title}
-      </DialogTitle>
+      {heading ? (
+        <h1 className={cn(nameClass, "font-normal text-ink text-2xl")}>
+          {title}
+        </h1>
+      ) : (
+        <DialogTitle className={nameClass}>{title}</DialogTitle>
+      )}
       {editing ? (
         <input
           // biome-ignore lint/a11y/noAutofocus: the input replaces the title the user just clicked to edit.
@@ -89,7 +103,8 @@ export function EditableSkillTitle({
           aria-label={renameLabel}
           className={cn(
             "min-w-0 flex-1 rounded-md border border-line/20 bg-input px-2 py-0.5",
-            "text-lg leading-tight font-semibold text-ink",
+            "leading-tight text-ink",
+            heading ? "font-normal text-2xl" : "font-semibold text-lg",
             "outline-none transition-shadow duration-200 focus:shadow-sm",
           )}
         />

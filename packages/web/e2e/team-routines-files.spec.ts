@@ -197,11 +197,11 @@ test("the Routines dropdown narrows the list to one agent, and drops the owner c
   await openTeamSection(page, "Routines");
   await expect(routineRows(page)).toHaveCount(2);
   await expect(
-    screen(page).getByRole("button", { name: "All agents" }),
+    screen(page).getByRole("button", { name: "All AI Employees" }),
   ).toBeVisible();
 
   // Narrowing is this SECTION's own act, through its own capsule.
-  await screen(page).getByRole("button", { name: "All agents" }).click();
+  await screen(page).getByRole("button", { name: "All AI Employees" }).click();
   await page.getByRole("menuitem", { name: "Kai" }).click();
 
   // One owner in view, so the chip that names the owner stops earning its
@@ -245,7 +245,7 @@ test("an agent whose routines fail is named, not silently dropped", async ({
   // scoped to it. Dropping Kai would show one routine as the team's routines.
   await expect(screen(page).getByText("Morning digest")).toBeVisible();
   const strip = failedStrip(page);
-  await expect(strip).toContainText("Couldn't load 1 of 2 agents");
+  await expect(strip).toContainText("Couldn't load 1 of 2 AI Employees");
   await expect(strip).toContainText("Kai");
 
   // Retry once the pod is back: only the failed agent is refetched, and its
@@ -278,7 +278,7 @@ test("a routine whose RUNS read failed still names its agent, and retries", asyn
   // says which agent this list cannot tell the whole truth about.
   await expect(routineRows(page)).toHaveCount(2);
   const strip = failedStrip(page);
-  await expect(strip).toContainText("Couldn't load 1 of 2 agents");
+  await expect(strip).toContainText("Couldn't load 1 of 2 AI Employees");
   await expect(strip).toContainText("Kai");
 
   // Retry reaches the read that failed, not only the one that worked.
@@ -302,7 +302,7 @@ test("with every agent unreadable the list never claims the team is idle", async
 
   // Nothing answered, so an empty list is not evidence of an empty team.
   const strip = failedStrip(page);
-  await expect(strip).toContainText("Couldn't load 2 of 2 agents");
+  await expect(strip).toContainText("Couldn't load 2 of 2 AI Employees");
   await expect(
     screen(page).getByText("Couldn't load this team's routines"),
   ).toBeVisible();

@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [hubspot, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Schedule My Revenue
@@ -39,6 +42,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Whether this is a new contract or a modification** — Optional. Why: changes whether I treat it as a fresh schedule or a prospective / cumulative-catch-up modification. If missing I ask: "Is this a brand-new customer contract or an upsell or change to an existing one? If you don't have it I assume new and flag it for you to confirm."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json` (needs `domains.revenue`  -  model + ASC 606 posture + contract source), `config/chart-of-accounts.json` (needs deferred-revenue + revenue account codes). If `domains.revenue` missing, ask ONE targeted question with modality hint (connected app > file > URL > paste), persist, continue.
 

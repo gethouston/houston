@@ -6,6 +6,9 @@ version: 1
 category: Operações
 featured: yes
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ Eu leio o seu contexto operacional primeiro. Para cada campo obrigatório que es
 - **Limites inegociáveis** - Opcional. Por que eu preciso: me impede de redigir coisas que você nunca enviaria. Se você não tiver isso, eu sigo em frente com dado pendente usando os padrões do workspace.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio a configuração.** Carrego `config/company.json`, `config/rhythm.json`, `config/voice.md`. Se algum estiver faltando, rodo `onboard-me` primeiro (ou peço UMA peça faltante bem na hora, com a melhor dica de modalidade: app conectado > arquivo > URL > colar).
 

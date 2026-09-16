@@ -5,6 +5,12 @@
 export type { MessageMention } from "@houston-ai/chat";
 export type { AIBoardProps, NewPanelOpener, NewPanelOptions } from "./ai-board";
 export { AIBoard } from "./ai-board";
+export type { AIBoardLabels } from "./board-labels";
+export {
+  composerHasHistory,
+  composerPlaceholder,
+  DEFAULT_AI_BOARD_LABELS,
+} from "./board-labels";
 export type {
   BulkActionBarLabels,
   BulkActionBarProps,

@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [linkedin, reddit]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -67,6 +70,7 @@ Eu leio seu contexto de marketing primeiro. Para cada campo obrigatório que est
 - **Seus tópicos**  -  Obrigatório para `linkedin-digest`. Por que eu preciso: filtra quais publicações da rede valem interação. Se faltar, eu pergunto: "Quais tópicos você quer que eu acompanhe, três a cinco temas que realmente te importam?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 ### Passos compartilhados (todos os escopos)
 

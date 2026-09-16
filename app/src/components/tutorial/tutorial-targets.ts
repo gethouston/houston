@@ -14,9 +14,11 @@ export const TUTORIAL_TARGETS = [
   // The Integrations view's catalog plane (`integrations-view.tsx`) — the
   // connect-integration step spotlights it the same way.
   "integrationsCatalog",
-  // Inside the create-agent dialog (`agent-picker-step.tsx` /
-  // `naming-step.tsx`) — the tutorial coaches through the REAL dialog.
-  "createAgentBlankTile",
+  // Inside the create-agent dialog, one anchor per screen of it: the guided
+  // setup's chip runs (`choice-step.tsx`, which both questions render) and the
+  // name-and-colour form (`agent-identity-form.tsx`). The tutorial coaches
+  // through the REAL dialog.
+  "createAgentBrief",
   "createAgentNaming",
 ] as const;
 

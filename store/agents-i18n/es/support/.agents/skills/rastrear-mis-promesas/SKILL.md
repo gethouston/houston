@@ -6,6 +6,9 @@ version: 1
 category: Soporte
 featured: no
 image: headphone
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **Vínculo con la conversación o el cliente**  -  Opcional. Por qué lo necesito: me permite archivar el seguimiento contra el hilo correcto. Si no lo tienes, sigo con TBD y te pido que me indiques el hilo más adelante.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 1. **Extraigo el texto de la promesa** de forma textual del mensaje o el borrador (conservo la redacción original, tal vez quieras ver qué se dijo).
 2. **Interpreto la fecha límite.**
    - Fecha explícita ("viernes", "3 de marzo") → próxima ocurrencia en tu zona horaria local → ISO-8601 UTC.

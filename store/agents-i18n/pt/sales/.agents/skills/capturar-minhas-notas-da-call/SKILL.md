@@ -7,6 +7,9 @@ category: Vendas
 featured: no
 image: handshake
 integrations: [gong, fireflies]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,9 @@ Eu leio seu contexto de vendas primeiro. Para cada campo obrigatório que estive
 - **A transcrição ou gravação** - Obrigatório. Por que eu preciso: extraio dores, decisões e itens de ação do que foi realmente dito. Se estiver faltando eu pergunto: "Solte a gravação, cole a transcrição, ou me diga qual reunião pegar no Gong/Fireflies."
 - **A qual lead ou negócio essa call pertence** - Obrigatório. Por que eu preciso: relaciono as notas com o lead certo e atualizo o dossiê dele. Se estiver faltando eu pergunto: "Com qual prospect ou cliente foi essa call?"
 - **Se devo enviar as notas para seu CRM** - Opcional. Por que eu preciso: só sincronizo com sua aprovação. Se você não tiver preferência, eu sigo em frente com PENDENTE e pergunto antes de qualquer sincronização externa.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Fonte da transcrição.** Se colada, uso ela. Se for um arquivo,
    leio ele. Se você apontar para um provedor conectado, rodo

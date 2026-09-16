@@ -15,6 +15,7 @@
 
 import { registerSetupGreeting } from "../hooks/use-setup-greeting";
 import { useUIStore } from "../stores/ui";
+import type { AgentRoleContext } from "./agent-role-context";
 import { analytics } from "./analytics";
 import { createMission } from "./create-mission";
 import { publishCreatedMission } from "./created-mission-handoff";
@@ -35,6 +36,7 @@ export async function startAgentSetupMission(
   agent: { id: string; name: string; color?: string; folderPath: string },
   opts: { provider?: string; model?: string },
   source: "created" | "imported",
+  roleContext?: AgentRoleContext,
 ): Promise<void> {
   try {
     const result = await createMission(
@@ -42,7 +44,8 @@ export async function startAgentSetupMission(
       i18n.t("agentOnboarding:setupMission.kickoff"),
       {
         title: i18n.t("agentOnboarding:setupMission.title"),
-        buildPrompt: () => buildSetupMissionPrompt(agent.name, i18n.language),
+        buildPrompt: () =>
+          buildSetupMissionPrompt(agent.name, i18n.language, roleContext),
         providerOverride: opts.provider,
         modelOverride: opts.model,
         effortOverride: "medium",
