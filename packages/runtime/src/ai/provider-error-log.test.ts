@@ -160,4 +160,34 @@ describe("logProviderError", () => {
       expect.stringContaining("kind=rate_limited ::"),
     );
   });
+  it("keeps ChatGPT's reason-less refusal a warning even when nothing explains it (PRODUCT-1832)", () => {
+    // `{"detail":"Bad Request"}` / a bare `Not Found` is the Codex gateway
+    // dropping the explanation of a refusal it gave in full moments earlier
+    // (ai/codex-terse-refusal.ts). The card stays `unknown`; a Sentry error
+    // per turn only re-counts HOUSTON-APP-56R.
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    logProviderError(
+      {
+        kind: "unknown",
+        provider: "openai-codex",
+        raw_excerpt: '{"detail":"Bad Request"}',
+      },
+      { model: "gpt-5.4-mini" },
+    );
+    logProviderError({
+      kind: "unknown",
+      provider: "openai-codex",
+      raw_excerpt: "Not Found",
+    });
+    expect(error).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(2);
+    // The same body from any other provider is still unclassified territory.
+    logProviderError({
+      kind: "unknown",
+      provider: "openrouter",
+      raw_excerpt: '{"detail":"Bad Request"}',
+    });
+    expect(error).toHaveBeenCalledTimes(1);
+  });
 });

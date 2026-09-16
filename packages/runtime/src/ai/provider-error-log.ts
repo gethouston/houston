@@ -1,4 +1,5 @@
 import type { ProviderError } from "@houston/runtime-client";
+import { isCodexTerseRefusal } from "./codex-terse-refusal";
 
 /**
  * Kinds that are expected operational states of an EXTERNAL provider (or of
@@ -88,7 +89,14 @@ export function logProviderError(
         error.cause === "org_policy_blocked")) ||
     (error.kind === "unauthenticated" &&
       EXPECTED_AUTH_DETAIL.test(verbatim ?? "")) ||
-    (error.kind === "unknown" && EXPECTED_UNKNOWN_DETAIL.test(verbatim ?? ""));
+    (error.kind === "unknown" &&
+      EXPECTED_UNKNOWN_DETAIL.test(verbatim ?? "")) ||
+    // ChatGPT's reason-less refusal that nothing recent could explain
+    // (ai/codex-terse-refusal.ts): a known gateway behaviour, not a new
+    // failure. The card stays `unknown`; the Sentry error would only re-count
+    // HOUSTON-APP-56R.
+    (error.kind === "unknown" &&
+      isCodexTerseRefusal(error.provider, verbatim ?? ""));
   if (expected) console.warn(line);
   else console.error(line);
 }
