@@ -1,11 +1,10 @@
-# @houston/engine (TypeScript)
+# @houston/runtime
 
-The new Houston engine — a single-workspace, single-user agent runtime built on
-[`pi-coding-agent`](https://github.com/earendil-works/pi). It owns the agent loop
+The pi runtime, Houston's only agent loop. A single-workspace, tenancy-free
+agent runtime built on
+[`pi-coding-agent`](https://github.com/earendil-works/pi). It owns the loop
 in-process (no provider CLIs) and talks to providers directly via `pi-ai`.
-
-**MVP status:** log in with your Claude Code (Anthropic) subscription via OAuth,
-then chat with the agent. Streaming over SSE. Runs on Node via pnpm/tsx in dev and Docker.
+Streaming over SSE. Runs on Node via pnpm/tsx in dev and in Docker.
 
 ## Run it
 

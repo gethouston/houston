@@ -25,7 +25,8 @@
 
 ---
 
-Houston uses a single TypeScript engine. See `convergence/README.md`.
+Houston is one TypeScript engine (the pi runtime behind the host), serving the
+desktop app, the browser app and the managed cloud from the same code.
 
 ## What Houston is
 
@@ -77,7 +78,7 @@ Connect model providers from the AI Models screen inside the app. Anthropic and 
 
 Connected apps (Gmail, Slack, and about 1000 more) run in platform mode through [Composio](https://composio.dev). The packaged desktop app forwards these calls through Houston's cloud with your signed-in session, so it holds no provider key. To run integrations fully locally instead, create your own free Composio project and launch the app (or the host, in the dev loop) with `COMPOSIO_API_KEY` set in the environment: the host then talks to Composio directly and no integration call touches Houston's cloud. Leave both unset to run with integrations off. See `.env.example` for the dev wiring.
 
-> Committed `.env.development` + secrets-only `.env.local` is the whole env story — the doctor refuses to boot if `.env.local` re-defines a committed key, so no two teammates can run different stacks. See [`convergence/README.md`](convergence/README.md) for hot reload and watch mode.
+> Committed `.env.development` + secrets-only `.env.local` is the whole env story — the doctor refuses to boot if `.env.local` re-defines a committed key, so no two teammates can run different stacks. Each pane also writes `~/.dev-houston/logs/dev-<pane>.log`, so a bug stays readable after the stack is gone.
 
 ### Test like production (Kubernetes)
 
@@ -214,7 +215,7 @@ houston/
 │   └── src-tauri/           Tauri shell (spawns the host sidecar; OS-native glue)
 ├── website/                 Houston Website — gethouston.ai
 ├── teams/                   Houston Teams (TBD — hosted multi-tenant)
-├── packages/               THE CONVERGENCE — the single TypeScript engine (see convergence/README.md)
+├── packages/               The single TypeScript engine and the packages around it
 │   ├── runtime/             pi runtime — the only agent loop
 │   ├── host/                the host (cloud + local desktop, adapter profiles) — OPEN
 │   ├── domain/              shared domain logic (.houston layout, schemas, cron, portable)
@@ -223,17 +224,10 @@ houston/
 │   └── code-sandbox/        egress-locked code-execution sandbox (cloud)
 ├── BOUNDARY.md             Everything here is OPEN; cloud-lib-free, enforced by scripts/check-boundaries.mjs
 ├── selfhost/               Self-host the TS engine on a VPS (Docker + Caddy TLS)
-├── convergence/            The single-engine convergence plan + status (SOURCE OF TRUTH)
+├── convergence/            Historical: the record of the Rust→TS cutover
 │
 └── ui/                      Houston UI — @houston-ai/* React packages
 ```
-
-> The legacy Rust engine and its Tauri adapter were removed during convergence.
-> `packages/` now contains the only engine, which the `app/src-tauri` shell
-> launches as a sidecar.
-
-> `packages/control-plane` was renamed to `packages/host`. The host still owns
-> the cloud-control-plane role, but the package and path are now host-first.
 
 See `CLAUDE.md` for the repo map and conventions.
 

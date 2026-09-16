@@ -9,6 +9,13 @@ Why one client? Every surface used to grow its own fetch/cache/state glue and
 drift. `@houston/sdk` collapses that into a single kernel + typed modules, so a
 behaviour is implemented once and observed identically everywhere.
 
+It is the single source of truth for client capability: one module per gateway
+family, bound by the engine adapter through its `viaSdk` mixins, which is the
+desktop client too, since `app/src` runs verbatim as `packages/web`. The wire
+each family puts on the network is pinned by `packages/web/tests/wire-*.test.ts`,
+and `pnpm check:sdk-parity` fails on a gateway route the app calls with no
+method here.
+
 > **Changing client behavior?** Follow procedure a of the three-surface
 > maintenance contract (root `CLAUDE.md` → "Client-surface changes (SDK first)").
 > A VM-snapshot change is a contract change — additive only, same discipline as
@@ -35,7 +42,8 @@ imports no `cloud` code.
 ## The model — scopes, snapshots, commands
 
 **Reads are snapshots keyed by scope.** A scope is a string address for a
-reactive surface. As built, the four modules own these scopes:
+reactive surface. There is one module per gateway family (`src/modules/`), and
+the reactive ones own these scopes:
 
 | Module | Scope | Snapshot (view-model) | Commands |
 | --- | --- | --- | --- |
@@ -90,7 +98,7 @@ src/
   module-context.ts  # ModuleContext handed to every module factory
   sdk.ts             # HoustonSdk — composes store + per-agent clients + modules
   index.ts           # public entry (kernel + each module's contract)
-  modules/           # session, agents, conversations, turns
+  modules/           # one per gateway family (session, agents, turns, files, billing, …)
   react/             # React bindings (exported as @houston/sdk/react)
   bridge/            # native-bridge dispatcher + embeddable bundle (see below)
 ```
@@ -160,9 +168,6 @@ Deliberately not built yet (add when a real surface needs them):
   SSE via the injected `fetch` plus snapshot publishes.
 - **Offline writes** — no command queue/outbox; commands assume connectivity and
   fail with `ok: false` when the engine is unreachable.
-- **Full control-plane migration** — the SDK wraps the conversation/agent surface
-  first; broader control-plane operations stay on their current paths until
-  migrated deliberately.
 - **Native host app** — the JS-side bridge dispatcher + embeddable bundle now
   ship here (`bridge/`, see above), but the actual iOS/Android shell that loads
   the bundle and backs the native ports lives in its own app, not this package.

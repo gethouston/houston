@@ -6,8 +6,9 @@
 
 ## 0. Architecture facts that gate everything
 
-- iOS data path: Swift → SDK bridge bundle → `@houston/sdk` → `@houston/runtime-client`. iOS does
-  NOT use the engine adapter (the desktop/web front door).
+- iOS data path: Swift → SDK bridge bundle → `@houston/sdk` → `@houston/runtime-client`. Every
+  surface binds the same `@houston/sdk`; desktop and web bind it through `@houston/engine-adapter`,
+  which iOS does not load.
 - Per-agent URL scoping: `sdk.ts clientFor(agentId)` → `${baseUrl}/agents/<id>/…`; flat calls go to
   `${baseUrl}/…`. The injected fetch carries the Firebase ID token (GCIP).
 - **Provider credentials are per-agent-pod** in hosted mode (`/auth/*`, `/providers`, `/settings`

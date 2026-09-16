@@ -3,20 +3,17 @@
 Standalone browser build of the Houston desktop UI. It composes `app/src`
 verbatim and swaps Tauri/OS imports for browser shims at build time.
 
-The current target backend is the Houston host (`packages/host`) over protocol
-v3. The legacy Rust-engine connect flow still exists as the default path until
-final cutover, but normal convergence work uses host mode.
+The backend is the Houston host (`packages/host`) over protocol v3, the only
+engine. Which root mounts depends on the deployment, not on the engine.
 
 ## Modes
 
-- **Host mode**: `VITE_CONTROL_PLANE_URL` is set. Domain calls go to the host
-  through `@houston/engine-adapter`, and the app signs in if Firebase (GCIP)
-  env is present.
-- **External new-engine mode**: `VITE_NEW_ENGINE=1` or `VITE_NEW_ENGINE_URL` is
-  set. The browser shows the new-engine connect screen unless URL/token are
-  pre-seeded.
-- **Legacy mode**: no host/new-engine env. The old connect screen points at a
-  Rust `houston-engine` URL + token. Kept only until final cutover.
+- **Cloud host mode**: `VITE_CONTROL_PLANE_URL` is set. Domain calls go to the
+  host through `@houston/engine-adapter`, the app's own GCIP (Firebase) auth
+  gates sign-in, and `/admin` mounts the operator dashboard.
+- **Self-host mode**: no control-plane URL. The host URL + token come from a
+  stored config, from `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN`, or from
+  the Connect screen at runtime.
 
 ## Running in dev
 
@@ -31,7 +28,7 @@ prevent.
 
 ```
 src/
-  main.tsx          chooses host/new-engine/legacy mode from env
+  main.tsx          chooses cloud-host / self-host root from env
   cloud-login.tsx   host-mode auth wrapper
   app-tree.tsx      app/src providers + gates + <App />
   new-engine/       external-host connect screen + app wrapper
@@ -65,7 +62,6 @@ The Agent Store is fully wired here, not stubbed:
 - `VITE_CONTROL_PLANE_URL` / `VITE_CP_DEV_TOKEN` — host-mode endpoint + dev token.
 - `VITE_NEW_ENGINE` / `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN` — external
   new-engine mode.
-- `SUPABASE_URL` / `SUPABASE_ANON_KEY` — account sign-in for cloud host mode.
 - `VITE_AGENTSTORE_GATEWAY_URL` — store gateway for the public catalog reads.
   There is no production fallback: a build without it has no store, loudly.
 - `VITE_AGENTSTORE_SITE_URL` — public store site for "browse the store" links
@@ -111,5 +107,4 @@ the native boundary too (see `app/src/lib/desktop-native-commands.ts`).
 
 - `app/` — Tauri desktop app, same React tree plus native shell.
 - `packages/web` — same UI in a browser tab, backed by the host.
-
-`mobile/` and `houston-relay/` were removed in the convergence.
+- `mobile/ios` — the native SwiftUI app over `@houston/sdk`, not this tree.

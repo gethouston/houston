@@ -46,7 +46,7 @@ await engine.sendMessage(id, "hi"); // returns 202; events arrive on the stream 
 - Types: `AuthStatus`, `ConversationSummary`, `ConversationHistory`, `ChatMessage`,
   `WireEvent`, `WireFrame`, `EngineClientConfig`, … — import for component props.
 
-Full protocol: [`packages/runtime/docs/engine-api.md`](../engine/docs/engine-api.md).
+Full protocol: [`packages/runtime/docs/runtime-api.md`](../runtime/docs/runtime-api.md).
 
 ## Usage
 

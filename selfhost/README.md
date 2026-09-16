@@ -78,6 +78,11 @@ Without the key, integrations are simply off (`"integrations":[]`). A managed
 deployment supplies `HOUSTON_HOST_TOKEN`, mounts `/data` on the user's persistent
 volume, and fronts the pod with authenticated proxying.
 
+Spaces, teams and billing are operations of the managed cloud, so a self-host
+does not serve them. The host works that out from its own route table and tells
+the AI Manager: it omits those operations from what it offers, and answers
+`operation_unavailable_here` if one is asked for anyway.
+
 ### Published GHCR Image
 
 The manual GitHub Actions workflow **TS Engine Image** publishes this same

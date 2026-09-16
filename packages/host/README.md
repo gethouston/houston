@@ -34,10 +34,21 @@ src/
   schedule/            routine scheduler + firer
   integrations/        Composio REST integration provider port + adapter
   vfs/                 open Vfs port + memory/FS adapters
+  assistant/           the AI Manager catalog, entity directory, served set
 ```
 
-The exported builder is still named `createControlPlaneServer`; renaming the
-internal symbol is tracked in `convergence/follow-ups.md`.
+`vfs/` is where a workspace's file semantics live: `keyCase()` probes the
+filesystem's own folding and unicode normalization (it has to write to answer),
+`exists()` and `VfsExistsError` are how a move or rename onto an occupied name
+becomes a `409 name_taken` instead of an overwrite, and half-written files carry
+`ATOMIC_TMP_SUFFIX` so the walk and the listing both skip them.
+
+`assistant/served-operations.ts` derives what THIS deployment can do by probing
+the catalog's routes against the live route registry. A desktop has no spaces,
+teams or billing, and the AI Manager is told so rather than discovering it as a
+404 mid-sentence. Never a hand-kept list.
+
+The exported builder is named `createControlPlaneServer`.
 
 Route modules declare themselves beside their handler; `server.ts` holds no
 route list. It walks `routes/registry/groups.ts`'s `GROUP_PHASES` table
@@ -81,7 +92,8 @@ pnpm dev          # local desktop/web host, src/local/main.ts, serves :4318
 The cloud profile is this same server wired by the private gateway repo's
 deployment (one engine pod per agent); there is no in-repo cloud entry point.
 
-See `convergence/README.md` for the full desktop/web + host local dev loop.
+The full desktop/web + host dev loop is `pnpm dev` from the repo root (root
+`CLAUDE.md` → Dev loop); this pane logs to `~/.dev-houston/logs/dev-host.log`.
 
 ## Test
 
@@ -90,4 +102,6 @@ cd packages/host
 pnpm test && pnpm typecheck
 ```
 
-See `convergence/README.md` for architecture and parity gates.
+The parity gates run from the repo root: `pnpm check` (`check:sdk-parity`,
+`check:assistant-catalog`, `check:assistant-coverage`) and
+`pnpm check:boundaries`.

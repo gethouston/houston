@@ -1,6 +1,6 @@
 ---
 name: debug
-description: Debug bugs in Houston. NEVER guess. Read log files first (backend + frontend). Add targeted tracing/logger if not enough info. Never ask user to copy-paste terminal output.
+description: Debug bugs in Houston. NEVER guess. Read log files first (dev panes + agent runtime). Add targeted logging if not enough info. Never ask user to copy-paste terminal output.
 ---
 
 # /debug
@@ -12,32 +12,26 @@ description: Debug bugs in Houston. NEVER guess. Read log files first (backend +
 Bug occurs + fix not obvious →
 1. **Read log files FIRST.** They have all errors.
 2. Diagnose from ACTUAL error in logs. Not assumptions.
-3. Not enough info? Add targeted `tracing::debug!()` (Rust) or `logger.debug()` (TS).
+3. Not enough info? Add a targeted `logger.debug()` at the branch point.
 4. **Never** ask user to copy-paste terminal output. Read logs directly.
 
 ## Log locations
 
+`HOUSTON_HOME` is `~/.dev-houston` in the dev loop, `~/.houston` in production.
+
 | Layer | File | Contents |
 |-------|------|----------|
-| Backend | `~/.houston/logs/backend.log` | Rust tracing — sessions, agent store, channels, watcher |
-| Frontend | `~/.houston/logs/frontend.log` | JS console.error/warn, React crashes, Tauri cmd failures |
+| Dev stack panes | `~/.dev-houston/logs/dev-<pane>.log` (previous boot kept as `.prev`) | Host, gateway, control-plane: everything an mprocs pane prints, and the only place they print. The pane's scrollback dies with the stack; this file does not |
+| Agent runtime | `<HOUSTON_HOME>/workspaces/<ws>/<agent>/.houston/runtime/runtime.log` | The agent loop: provider requests, tool calls, and the FULL provider error. The single best source for a turn that went wrong |
+| Tauri shell | `<HOUSTON_HOME>/logs/backend.log.<date>` | Desktop shell only: window, sidecar spawn, OS-native commands. Daily rolling, latest = current file |
+| Frontend | `<HOUSTON_HOME>/logs/frontend.log` | JS console.error/warn, React crashes, native command failures |
+| Cloud dev pods | `~/.dev-houston-cloud/<org>/<slug>/workspaces/…` | One tree per dev engine pod, each with the same per-agent `runtime.log` |
 
-Both daily rolling. Latest = current file.
+If no log covers the problem, don't guess: give the user exact steps to run the
+app so the logs get generated, then read them.
 
 ## Logging APIs
 
-### Rust
-```rust
-tracing::info!("session {id} started");
-tracing::warn!(?error, "unexpected");
-tracing::error!(?err, "failed to write");
-tracing::debug!(agent = %agent_id, "received event");
-```
-Output → `backend.log` via `tracing-subscriber` + daily rolling file appender.
-
-Levels: default `info` globally. `debug` for `houston_terminal_manager` + `houston_tauri`. Override: `RUST_LOG=debug,crate_name=trace`.
-
-### Frontend
 ```typescript
 import { logger } from "@/lib/logger";
 logger.error("fetch failed", { url, status });
@@ -45,22 +39,25 @@ logger.warn("retry", { attempt });
 logger.info("user clicked");
 logger.debug("render", { props });
 ```
-Also `console.error` + `console.warn` patched to auto-write to `frontend.log`.
+
+`console.error` + `console.warn` are patched to auto-write to `frontend.log`.
+The host and runtime log through their own structured loggers; the Tauri shell
+is the one Rust surface, `tracing::{info,warn,error,debug}!` → `backend.log`
+(default level `info`, override with `RUST_LOG=debug,crate_name=trace`).
 
 ## Bug reports
 
 "Report bug" button on error toasts auto-attaches last 50 lines from both logs.
 
-## Adding tracing when logs insufficient
+## Adding logging when logs are insufficient
 
 1. Identify suspected code path
-2. Add `tracing::debug!(?relevant_vars, "descriptive message")` at branch points
-3. Commit to `claude/wip`
-4. Ask user to reproduce
-5. Read updated logs
-6. Fix w/ actual knowledge
+2. Add `logger.debug("descriptive message", { relevant_vars })` at branch points
+3. Ask user to reproduce
+4. Read updated logs
+5. Fix w/ actual knowledge
 
-Don't leave debug logs in. Remove after fix or downgrade to `trace!`.
+Don't leave debug logs in. Remove after fix.
 
 ## Anti-patterns
 
@@ -72,14 +69,14 @@ Don't leave debug logs in. Remove after fix or downgrade to `trace!`.
 ## Quick checks
 
 ```bash
-# Tail backend
-tail -f ~/.houston/logs/backend.log
+# Tail the host pane
+tail -f ~/.dev-houston/logs/dev-host.log
 
-# Last 100 lines
-tail -100 ~/.houston/logs/backend.log
+# The agent that misbehaved
+tail -100 ~/.dev-houston/workspaces/Personal/<Agent>/.houston/runtime/runtime.log
 
 # Grep for pattern
-grep -i error ~/.houston/logs/backend.log
+grep -i error ~/.dev-houston/logs/dev-gateway.log
 ```
 
 Use the dedicated Read tool, not bash `cat`/`head`/`tail`, when operating through Claude Code.
