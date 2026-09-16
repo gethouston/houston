@@ -22,6 +22,11 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `createCheckout`: Starts the checkout that subscribes the team workspace to a paid plan. **Confirmation required.**
 - `getBilling`: Shows the plan, trial, and payment status of the team workspace.
 
+## channels
+
+- `disconnectChannel`: Disconnects a messaging account from the personal assistant. **Confirmation required.**
+- `getChannels`: Shows which messaging accounts are connected to the personal assistant.
+
 ## chat
 
 - `conversations.delete`: Deletes one of an agent's chats, with everything said in it. **Confirmation required.**

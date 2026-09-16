@@ -15,6 +15,10 @@
       "types": "./src/access-digest.ts",
       "import": "./src/access-digest.ts"
     },
+    "./message-admission-file": {
+      "types": "./src/message-admission-file.ts",
+      "import": "./src/message-admission-file.ts"
+    },
     "./google-key": {
       "types": "./src/google-key.ts",
       "import": "./src/google-key.ts"

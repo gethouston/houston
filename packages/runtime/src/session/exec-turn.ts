@@ -153,7 +153,7 @@ export function recordUserTurn(
   // `mentions` is the @mention sidecar (HOU-944): the model already sees the
   // names as plain text inside `text`, so this only travels so a reader can map
   // "@Name" back to a person. Persisted AND published, exactly like `author`.
-  appendUserMessage(id, text, { author, turnId, displayText, mentions });
+  appendUserMessage(id, text, { author, turnId, nonce, displayText, mentions });
   // The turn is now in flight on disk (turn-inflight-marker.ts): cleared by
   // execTurn's finally on every in-process end, so a marker found at the next
   // boot is a turn this process died on — the boot settle answers it. Written

@@ -12,6 +12,7 @@ import {
   navigated,
   viewFieldsOf,
 } from "../lib/nav-stack.ts";
+import type { SlackCompletion } from "../lib/settings-landing.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
 import {
@@ -222,6 +223,11 @@ interface UIState {
   activeLessonId: string | null;
   /** Whether the "From a friend" import wizard is open. */
   importFromFriendOpen: boolean;
+  /** The one-time Slack completion a public callback landed with
+   * (`?settings=channels&slack=…`), queued for the Channels section, which
+   * redeems it once and clears it. Ephemeral, never persisted and never logged:
+   * a reload must not retry a ticket, and the ticket is a bearer secret. */
+  pendingSlackCompletion: SlackCompletion | null;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
   /**
@@ -369,6 +375,7 @@ interface UIState {
   setTutorialComposerLock: (locked: boolean) => void;
   setActiveLessonId: (lessonId: string | null) => void;
   setImportFromFriendOpen: (open: boolean) => void;
+  setPendingSlackCompletion: (completion: SlackCompletion | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
   toggleTeamsSectionCollapsed: () => void;
@@ -415,6 +422,7 @@ const initialUIState = {
   tutorialComposerLock: false,
   activeLessonId: null,
   importFromFriendOpen: false,
+  pendingSlackCompletion: null,
   sidebarCollapsed: false,
   chatWide: false,
   teamsSectionCollapsed: false,
@@ -670,6 +678,8 @@ export const useUIStore = create<UIState>()(
       setActiveLessonId: (activeLessonId) => set({ activeLessonId }),
       setImportFromFriendOpen: (importFromFriendOpen) =>
         set({ importFromFriendOpen }),
+      setPendingSlackCompletion: (pendingSlackCompletion) =>
+        set({ pendingSlackCompletion }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       setChatWide: (chatWide) => set({ chatWide }),
       toggleChatWide: () => set((s) => ({ chatWide: !s.chatWide })),

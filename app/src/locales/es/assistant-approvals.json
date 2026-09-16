@@ -24,6 +24,7 @@
     "deleteSkill": "Eliminar esta habilidad para que el empleado de IA ya no la tenga.",
     "detectAgentCustomIntegration": "Revisar a qué tipo de servicio apunta este enlace, usando este empleado de IA.",
     "detectCustomIntegration": "Revisar a qué tipo de servicio apunta este enlace.",
+    "disconnectChannel": "Desconectar esta cuenta de Slack de tu asistente. Va a dejar de leer y responder ahí.",
     "forgetCredential": "Cerrar la sesión de este espacio de trabajo en la cuenta de IA.",
     "installAgentFromGithub": "Instalar un empleado de IA desde un repositorio de GitHub.",
     "installSkillsFromRepo": "Instalar en el empleado de IA habilidades desde un repositorio de GitHub.",
@@ -116,6 +117,9 @@
     },
     "deleteSkill": {
       "slug": "habilidad"
+    },
+    "disconnectChannel": {
+      "connectionId": "cuenta de Slack"
     },
     "integrations.disconnect": {
       "toolkit": "app"

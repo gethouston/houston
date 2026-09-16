@@ -2,6 +2,7 @@ import type { SettingsSectionId } from "../../lib/settings-sections";
 import { BackBarScreen } from "../shell/back-bar-screen";
 import { AboutMeSection } from "./sections/about-me";
 import { ApiKeysSection } from "./sections/api-keys";
+import { ChannelsSection } from "./sections/channels";
 import { MigrationSection } from "./sections/migration";
 import { ProfileSection } from "./sections/profile";
 import { ReportBugSection } from "./sections/report-bug";
@@ -44,6 +45,7 @@ export function SettingsSectionBody({
             so only a programmatic deep-link pin reaches it. The section and its
             plumbing stay intact for when it returns. */}
         {active === "apiKeys" && <ApiKeysSection />}
+        {active === "channels" && <ChannelsSection />}
         {active === "shortcuts" && <ShortcutsSection />}
         {active === "reportBug" && <ReportBugSection />}
         {active === "migration" && <MigrationSection />}

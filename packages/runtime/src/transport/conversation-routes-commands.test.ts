@@ -1,6 +1,9 @@
+import { mkdtempSync, rmSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Readable } from "node:stream";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterAll, beforeEach, expect, test, vi } from "vitest";
 
 /**
  * The turn route is where every channel's message enters the runtime, so it is
@@ -42,7 +45,13 @@ vi.mock("../session/conversation-command-run", () => ({
   runConversationCommand: commands.runConversationCommand,
 }));
 
+const dataDir = mkdtempSync(join(tmpdir(), "conversation-command-route-"));
+vi.stubEnv("HOUSTON_DATA_DIR", dataDir);
 const { handleConversationRoute } = await import("./conversation-routes");
+afterAll(() => {
+  vi.unstubAllEnvs();
+  rmSync(dataDir, { recursive: true, force: true });
+});
 
 function post(body: unknown) {
   const out: { status?: number; body?: unknown; headers?: unknown } = {};
@@ -86,6 +95,7 @@ test("a command runs as a command and never as a prompt", async () => {
     "compact",
     "/compact",
     "n1",
+    expect.any(String),
   );
   expect(chat.runTurn).not.toHaveBeenCalled();
 });

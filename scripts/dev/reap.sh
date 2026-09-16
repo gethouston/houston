@@ -28,7 +28,8 @@ cli.mjs src/local/main.ts
 loader.mjs src/local/main.ts
 packages/runtime/src/main.ts
 --filter @houston/host dev
---filter houston-web dev"
+--filter houston-web dev
+cloudflared tunnel run"
 # What a Houston-owned port holder may look like (vite/tauri/node stragglers).
 OWNED_RE='mprocs|vite|tauri|gateway|control-plane|tsx|pnpm|node|cargo'
 

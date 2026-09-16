@@ -96,6 +96,14 @@ export const queryKeys = {
   apiKeys: () => ["api-keys"] as const,
 
   /**
+   * Messaging channels connected to the personal assistant (`GET /v1/channels`).
+   * Space-scoped: the gateway answers for the caller's CURRENT space, so the id
+   * is in the key and a space switch reads its own connections rather than the
+   * previous one's. Connect, complete and disconnect self-invalidate it.
+   */
+  channels: (spaceId?: string) => ["channels", spaceId] as const,
+
+  /**
    * Per-workspace sidebar arrangement (sort mode + named groups + drag order).
    * Optimistically updated by the layout mutation; also invalidated on the
    * `SidebarLayoutChanged` event for best-effort cross-surface/tab sync.

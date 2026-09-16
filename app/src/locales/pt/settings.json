@@ -199,5 +199,36 @@
       "confirm": "Revogar",
       "cancel": "Cancelar"
     }
+  },
+  "channels": {
+    "title": "Canais",
+    "navDescription": "Converse com seu assistente pelo Slack",
+    "intro": "Seu assistente pessoal, onde você preferir conversar. Continue a mesma conversa no Houston e no Slack.",
+    "space": "Espaço do Houston: {{name}}",
+    "empty": "Conecte o Slack para enviar mensagens diretas ao seu assistente.",
+    "connected": "Conectado",
+    "connect": "Conectar Slack",
+    "connecting": "Abrindo Slack…",
+    "finishInSlack": "Termine de conectar no Slack e volte aqui.",
+    "blocked": "Seu navegador não abriu o Slack. Abra para terminar de conectar.",
+    "openSlack": "Abrir Slack",
+    "completing": "Finalizando sua conexão com o Slack…",
+    "completeInvalid": "Esse link de conexão com o Slack é inválido ou expirou. Conecte novamente.",
+    "completeAlready": "Essa conta do Slack já está conectada a outra conta do Houston. Desconecte por lá e conecte novamente.",
+    "alreadyAdded": "Já adicionou o Houston ao Slack?",
+    "newCode": "Obter um novo código de conexão",
+    "linkInstructions": "Abra sua mensagem direta com o Houston no Slack e envie este comando.",
+    "commandLabel": "Comando de conexão do Slack",
+    "copy": "Copiar comando",
+    "copied": "Copiado",
+    "linkExpires": "Use este código antes das {{time}}.",
+    "linkExpired": "Este código expirou. Obtenha um novo para conectar.",
+    "disconnect": "Desconectar",
+    "disconnectTitle": "Desconectar o Slack?",
+    "disconnectDescription": "{{name}} deixará de receber respostas do assistente no Slack. Sua conversa continua no Houston.",
+    "cancel": "Cancelar",
+    "refresh": "Atualizar conexões",
+    "notConfigured": "As conexões do Slack ainda não estão prontas para este espaço do Houston. Peça ao administrador do Houston para concluir a configuração do Slack e atualize.",
+    "unsupported": "Os canais não estão disponíveis nesta instalação do Houston."
   }
 }
