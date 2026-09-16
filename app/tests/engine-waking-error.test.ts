@@ -126,6 +126,18 @@ describe("isEngineWakingError (SDK agent-write shape)", () => {
     );
   });
 
+  it("matches the host's rename-latch 503 body (PRODUCT-1804)", () => {
+    strictEqual(
+      isEngineWakingError(
+        agentsHttpError(
+          503,
+          '{"detail":"agent \'ws/old\' is being renamed - retry with its new id","error":"engine unavailable"}',
+        ),
+      ),
+      true,
+    );
+  });
+
   it("matches the rename route's pod-unusable 502 body", () => {
     strictEqual(
       isEngineWakingError(

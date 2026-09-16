@@ -82,6 +82,21 @@ export class LauncherClosedError extends Error {
   }
 }
 
+/**
+ * The launcher holds this agent id against respawn while a rename moves its
+ * directory (`RuntimeLauncher.hold`, HOU-827). The runtime was just slept for
+ * that move, so everything that arrives with the OLD id during the window
+ * (the app's reconnect storm, the dying runtime's own serve sync) is expected
+ * traffic, not a fault: routes answer the same 503 + Retry-After as a drain
+ * and the caller re-sends once the rename has landed.
+ */
+export class AgentRenamingError extends Error {
+  constructor(readonly agentId: AgentId) {
+    super(`agent '${agentId}' is being renamed - retry with its new id`);
+    this.name = "AgentRenamingError";
+  }
+}
+
 /** Persistence for workspaces + agents. Impls: MemoryWorkspaceStore, PgWorkspaceStore. */
 export interface WorkspaceStore {
   /** The user's personal workspace, creating it on first access (lazy provisioning). */

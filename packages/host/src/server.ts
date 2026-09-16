@@ -7,7 +7,7 @@ import {
 import type { ControlPlaneDeps } from "./control-plane-deps";
 import { attachViewCapture, viewForPath } from "./docs/view-capture";
 import type { UserId } from "./domain/types";
-import { LauncherClosedError } from "./ports";
+import { AgentRenamingError, LauncherClosedError } from "./ports";
 import { bearer, json } from "./routes/http";
 import { BodyTooLargeError } from "./routes/read-body";
 import { handleStoreFenceGate } from "./routes/store-fence-gate";
@@ -128,17 +128,19 @@ export function createControlPlaneServer(deps: ControlPlaneDeps): Server {
     }
     handle(counted, req, res).catch((err) => {
       // An over-cap body maps to 413 (Payload Too Large) with its own clean
-      // message; a host mid-shutdown refusing to wake a runtime answers the
-      // gateway's waking shape (503 + Retry-After) so the client re-sends
-      // against the replacement instead of rendering a bug; everything else
-      // is a 500. Close the connection on 413: capping the body leaves unread
+      // message; a host mid-shutdown refusing to wake a runtime, or a rename
+      // latch refusing the old id for the few seconds the directory moves
+      // (PRODUCT-1804), answers the gateway's waking shape (503 + Retry-After)
+      // so the client re-sends instead of rendering a bug; everything else is
+      // a 500. Close the connection on 413: capping the body leaves unread
       // bytes on the socket that would poison keep-alive.
       const tooLarge = err instanceof BodyTooLargeError;
-      const closed = err instanceof LauncherClosedError;
+      const unavailable =
+        err instanceof LauncherClosedError || err instanceof AgentRenamingError;
       const message = err instanceof Error ? err.message : String(err);
       try {
         if (!res.headersSent) {
-          if (closed) {
+          if (unavailable) {
             json(
               res,
               503,
