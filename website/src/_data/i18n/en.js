@@ -13,6 +13,11 @@
 // - The `js` subtree is serialized into the page as window.HOUSTON_I18N by
 //   _includes/landing/i18n-data.njk. Only put runtime strings there.
 
+// The download gate's generic failure. It is rendered into the markup as the
+// form's error line and re-applied at runtime by download-gate-form.js, so it
+// lives in one place and is used in both.
+const GATE_FORM_ERROR = "Something went wrong. Please try again.";
+
 export default {
   meta: {
     title: "Houston: AI agents that actually do the work",
@@ -583,7 +588,7 @@ export default {
       menuLabel: "Country list",
     },
     submit: "Continue to download",
-    formError: "Something went wrong. Please try again.",
+    formError: GATE_FORM_ERROR,
     fineprintHtml:
       'By continuing you agree to receive product updates from Houston. Unsubscribe anytime. See our <a href="/privacy/">Privacy Policy</a>.',
     done: {
@@ -753,6 +758,8 @@ export default {
     gate: {
       preparing: "Preparing your download…",
       submit: "Continue to download",
+      formError: GATE_FORM_ERROR,
+      formErrorBusy: "Too many attempts. Please wait a moment and try again.",
       needOther: "Need it for a different OS?",
       countrySearch: "Search countries",
       countryEmpty: "No matches",

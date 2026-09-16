@@ -138,6 +138,9 @@
     window.HoustonDLForm.init({
       config: window.HOUSTON_DL_CONFIG,
       track: track,
+      // Read per submit, same as the buttons above: the lead carries the entry
+      // point the visitor opened the gate from.
+      source: () => currentSource,
       onSubmitted: (payload) => {
         markRegistered();
         // The address is handed over raw and hashed inside the analytics asset;
