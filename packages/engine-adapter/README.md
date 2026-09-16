@@ -51,6 +51,24 @@ a subpath because Node, not a bundler, runs them (above).
 
 `pnpm --filter @houston/engine-adapter test` (vitest, co-located `*.test.ts`) and
 `pnpm --filter @houston/engine-adapter typecheck`. The wire specs that drive the
-client against `@houston/fake-host` live in `packages/web/tests`, and the
-assistant catalog is generated from `src/cp/` + `src/client/*-mixin.ts`
-(`scripts/assistant-catalog/`).
+client against `@houston/fake-host` live in `packages/web/tests`.
+
+## The assistant catalog
+
+The AI Manager's catalog is generated from this package (`src/cp/` +
+`src/client/*-mixin.ts`) plus the SDK's modules by `pnpm gen:assistant-catalog`,
+and rendered into `docs/assistant/`. What the generator reads is the `@assistant`
+JSDoc tag on each operation, whose grammar is stated once in
+`scripts/assistant-catalog/assistant-jsdoc.ts`: `group:<slug>`,
+`confirm: <reason>`, `unconfirmed: <reason>`, `hidden: <reason>`,
+`hands: <card>`, `unroutable: <reason>`, `unschematized: <reason>`. A reason runs
+to the end of its line, so a reason-bearing tag is the last one on it.
+
+`pnpm check:assistant-coverage` refuses anything less than a properly annotated,
+routable operation or a written reason why it is not. The rule list lives in
+`scripts/assistant-catalog/assistant-gate.ts`, each violation naming the exact
+edit that clears it. Its sharpest edges: `confirm-unstated` (a bare `confirm`
+with no reason), `stale-unroutable` (an `unroutable:` reason on an operation the
+generator can now route), `route-conflict` (two operations claiming one address),
+and the three that guard a hidden operation's escape hatch, `hands-missing`,
+`hands-unhidden`, `hands-unknown` (a card outside `HANDS_ON_SURFACES`).

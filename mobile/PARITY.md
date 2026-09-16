@@ -41,7 +41,9 @@ settles `sessionStatus === "error"` **but** `boardStatus === "needs_you"`. **Rea
 `boardStatus:"needs_you"` = handled / your attention; `boardStatus:"error"` = genuine failure.
 `ConversationVM` exposes `{ feed, running, sessionStatus, boardStatus, queued?, pendingInteraction? }`
 (`queued` additive — see §5; `pendingInteraction` additive — the steps a settled turn on `needs_you`
-is waiting on the user for, rendered by the in-chat interaction card, see PARITY-CHAT §9).
+is waiting on the user for, rendered by the in-chat interaction card, see PARITY-CHAT §9). The step
+kinds include `hands_on`: an errand only the person can finish, naming one screen from the closed
+`apiKeys | billing | files | routineWebhook | orgDanger` vocabulary.
 
 ### BRIDGE addressing — the conversation VM scope (agent-qualified)
 `packages/sdk/src/modules/turns/vm-output.ts:83-87` (`conversationScope`): the conversation VM is

@@ -63,7 +63,7 @@ Re-screenshot the full matrix, re-critique. **Minimum 2 passes; stop only when a
 ## Gate — all must hold before "done"
 
 - The loop passes (a clean pass, nothing above minor).
-- Scoped checks pass: **`pnpm check`** (biome, on touched paths — `pnpm check:fix` first) + the relevant **vitest / e2e** (`pnpm --filter houston-web test:e2e`, or the touched package's tests).
+- Scoped checks pass: **`pnpm check`** (biome + the desktop-native, assistant-catalog and sdk-parity gates — `pnpm check:fix` first) + the relevant **vitest / e2e** (`pnpm --filter houston-web test:e2e`, or the touched package's tests).
 - **Visual regression** — after UI changes to a key screen (mission board, chat, first-run), run **`pnpm --filter houston-web test:visual`**. When the visual change is intentional, re-record with **`pnpm --filter houston-web test:visual:update`**, eyeball the new PNGs, and commit them in the same PR — never blindly re-record to turn a red run green (`packages/web/e2e/README.md` → Visual regression).
 - **`pnpm check:parity`** if a shared cross-surface component changed (with `design/inventory/inventory.yaml` + CHANGELOG bumped in the same change).
 

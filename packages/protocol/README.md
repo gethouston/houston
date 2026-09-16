@@ -12,28 +12,11 @@ every frontend makes its requests through).
 
 ## Route surface (v3)
 
-```
-/v1/health /version /capabilities
-/v1/events                                    WS/SSE — global HoustonEvent firehose
-/v1/workspaces                                CRUD
-/v1/agents                                    CRUD (+ color, rename)
-/v1/agents/:id/conversations                  list
-/v1/agents/:id/conversations/:cid             PATCH rename · DELETE
-/v1/agents/:id/conversations/:cid/messages    GET history · POST send (202)
-/v1/agents/:id/conversations/:cid/events      SSE (WireEvent, id-scoped)
-/v1/agents/:id/conversations/:cid/cancel      POST
-/v1/agents/:id/conversations/:cid/title       POST — LLM title
-/v1/agents/:id/files/*                        list/read/write/rename/delete/download
-/v1/agents/:id/skills                         list/create/save/delete
-/v1/agents/:id/routines                       CRUD + /runs
-/v1/agents/:id/activities                     CRUD
-/v1/agents/:id/config                         GET/PUT
-/v1/providers                                 connect-once: status/login/complete/logout
-/v1/integrations                              Composio + future integration providers
-/v1/preferences /attachments /portable /store
-/sandbox/credential                           runtime-facing (HMAC sandbox token)
-/sandbox/integrations                         runtime-facing integration proxy
-```
+The routes themselves are declared beside their handlers in
+`packages/host/src/routes/registry` and enumerated by `listRoutes()`;
+`packages/host/src/routes/routes.golden.json` is the replayed record of what
+answers what. This package holds the SHAPES those routes carry, not a second
+copy of the table.
 
 Typed-family list GETs (`activities`, `routines`, `routine_runs`, `learnings`,
 and `config`) return an envelope — `{ items, diagnostics }` / `{ config,
@@ -44,16 +27,16 @@ Activity delete is idempotent. `DELETE /v1/agents/:id/activities/:activityId`
 returns `200 { ok: true, deleted: boolean }`; a repeated delete of the same
 activity is `deleted: false`, not a 404.
 
-Store listings are retained only as a cut/empty surface during convergence.
-Rust-CLI-era DTOs (Claude-installer, CLI install sources, worktree/shell) die
-with the Rust engine and are deliberately absent. Composio is not a CLI DTO in
-v3; it is exposed through the host integration routes above.
+A refused file operation carries a `FileOpCode` (`src/domain/file-refusal.ts`):
+`name_taken` when a rename or move would land on an occupied name, `read_only`
+when the workspace itself cannot be written. `ATOMIC_TMP_SUFFIX`
+(`src/scratch.ts`) is the one name every Houston process gives a half-written
+file, so the store sync and the Files listing skip exactly those.
 
 ## Rules
 
-- Shapes that survived from v1 are field-identical to v1 (wire mirrors the
-  on-disk `.houston` schemas; snake_case families stay snake_case), so the
-  client rewrite that landed on v3 is transport-only.
+- The wire mirrors the on-disk `.houston` schemas; snake_case families stay
+  snake_case.
 - UI gates affordances on `GET /v1/capabilities`, never on deployment checks.
 - Internal code gets no backwards compat: protocol changes land everywhere in
   one PR. User DATA compat is a different rule and lives in migrations.

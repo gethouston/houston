@@ -33,17 +33,21 @@ Non-obvious wiring:
 - Composio runs in platform mode behind the `IntegrationProvider` port (`packages/host/src/integrations/`): one project key (`COMPOSIO_API_KEY`, cloud/self-host only), users are plain `user_id`s. No CLI, no per-user Composio account.
 - Agents speak to a NON-technical user: the product prompt (`packages/host/src/houston-prompt.ts`; desktop copy built in `app/src-tauri/src/houston_prompt/`) forbids mentioning files/JSON/configs/CLIs. The engine itself is prompt-agnostic.
 - Capability gating (`/v1/capabilities`) is the server describing the deployment, NOT a feature flag. Keep it.
+- Host routes declare themselves beside their handler in `packages/host/src/routes/registry` (`defineRoute` / `defineRouteFamily` / `defineProxyFamily`; phases public | sandbox | user | agent). `routes/routes.golden.json` replays every routing answer and is re-recorded only with `HOUSTON_ROUTES_GOLDEN=update`.
+- The gateway's route inventory (`cloud/internal/edge/routes.generated.json`) is vendored here as `scripts/sdk-parity/gateway-routes.generated.json` + a stamp naming the cloud commit; cloud's `vendor-route-inventory` workflow opens the refresh PR, and `pnpm vendor:gateway-routes` does it by hand. `check:sdk-parity` rules R1-R5 bind every `sdk`-classified route to exactly one SDK method; `scripts/sdk-parity-exceptions.json` may only shrink.
+- `app/src/lib/os-bridge/invoke.ts` is the ONLY Tauri `invoke` site; `app/src/lib/desktop-native-commands.ts` declares the whole native surface, and `check:desktop-native` holds five assertions over it (declared = invoked, declared = registered in `lib.rs`, shimmed in `packages/web/src/shims/tauri-core.ts`, nothing outside the bridge invokes, every `@tauri-apps/*` specifier aliased in `packages/web`'s vite config AND tsconfig).
+- AI Manager: its catalog is generated from `@assistant` JSDoc on the adapter and SDK (`scripts/assistant-catalog/`, rendered into `docs/assistant/`). The host stamps `HOUSTON_ASSISTANT_UNSERVED` into the coordinator runtime from its OWN route table, so `houston_capabilities` lists only what this deployment serves and anything else refuses with `operation_unavailable_here`; behind the gateway the set is empty. The manager acts as the person through the gateway-signed `x-houston-acting-as` header.
 - Domain vocabulary (Conversation VM, echo, send policy, autocompact, board status…) is defined in `CONTEXT.md`. Use those terms; ADRs live in `docs/adr/`.
 
 ## Dev loop
 
-`pnpm dev` is the ONLY entry point (doctor + mprocs panes; full multiplayer locally, no Kubernetes). Never start vite/host/tauri panes by hand. The dev app points at the externally-run host pane (`VITE_NEW_ENGINE_URL=http://127.0.0.1:4318`) — restart that pane to pick up host changes.
+`pnpm dev` is the ONLY entry point (doctor + mprocs panes; full multiplayer locally, no Kubernetes). Never start vite/host/tauri panes by hand. The dev app points at the externally-run host pane (`VITE_NEW_ENGINE_URL=http://127.0.0.1:4318`) — restart that pane to pick up host changes. Every pane also writes `~/.dev-houston/logs/dev-<pane>.log` (previous boot kept as `.prev`), which is where the host, gateway and control-plane print. Read those, not a dead scrollback (`/debug`).
 
 ## Commands
 
 | Area | Check / test |
 |------|--------------|
-| Any TS/JS/JSON change | `pnpm check:fix` after EVERY change; end state `pnpm check` exits 0 (Biome) |
+| Any TS/JS/JSON change | `pnpm check:fix` after EVERY change; end state `pnpm check` exits 0 (Biome + `check:desktop-native` + `check:assistant-catalog` + `check:assistant-coverage` + `check:sdk-parity`) |
 | ui/ | `pnpm typecheck` |
 | host / runtime / domain | `pnpm --filter @houston/host --filter @houston/runtime --filter @houston/domain test` (vitest) |
 | engine adapter | `pnpm --filter @houston/engine-adapter test` (vitest; the wire specs that drive it live in `packages/web/tests`) |
@@ -112,6 +116,8 @@ Users and agents are equal writers; every `.houston/` surface must react to file
 ### Data compatibility
 - Internal code (types, APIs, functions): change = change, no backwards-compat keeps.
 - User data under `~/.houston/**` is different: shape/layout changes need an idempotent boot migration in `packages/host/src/migrate/`, called from `packages/host/src/local/host.ts` `start()`. Never break existing users. Legacy `~/Documents/Houston/**` is NOT auto-migrated.
+- A rename, move or new folder never overwrites a neighbour: the Vfs refuses a destination that exists and the route answers `409` with `FileOpCode` `name_taken` (`packages/protocol/src/domain/file-refusal.ts`).
+- Every atomic write names its temp file with `ATOMIC_TMP_SUFFIX` (`@houston/protocol`), and the store sync excludes exactly those, so a half-written file is never uploaded or shown.
 
 ### Always
 - Tests mandatory for every feature (tests don't count toward the line limit).

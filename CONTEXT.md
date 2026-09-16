@@ -1,6 +1,6 @@
 # Houston
 
-Houston is one TypeScript engine (the pi runtime behind the host) with one shared client behavior layer (`@houston/sdk`) bound by every surface (desktop, web; mobile next). This glossary is the ubiquitous language for design conversations; it defines what things ARE, never how they are implemented.
+Houston is one TypeScript engine (the pi runtime behind the host) with one shared client behavior layer (`@houston/sdk`) bound by every surface (desktop, web, iOS). This glossary is the ubiquitous language for design conversations; it defines what things ARE, never how they are implemented.
 
 ## Language
 

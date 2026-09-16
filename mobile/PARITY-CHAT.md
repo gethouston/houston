@@ -202,6 +202,12 @@ an `ask_user` / `request_connection` / `plan_ready`; cleared (→ `nil` + `runni
 next turn starts. Steps: up to 3 questions first, then ≤1 sign-in, then connects, then plan_ready
 (`packages/protocol/src/domain/interaction.ts`).
 
+A `hands_on` step is the same card for an errand only the person's own hands can finish. It names a
+`surface` from the closed vocabulary `apiKeys | billing | files | routineWebhook | orgDanger`
+(`packages/protocol/src/domain/interaction-types.ts`). The app opens that screen and the person's
+answer comes back as a normal turn. A surface this build does not know renders as unavailable, never
+as a dead end, so growing the list means teaching the app the screen in the same change.
+
 - **Read seam:** `ChatScreenModel.pendingInteraction` (derived) returns the interaction only when
   `!running` AND it has renderable steps — mirrors desktop `deriveActiveInteraction`; a running turn
   always reads `nil`, so a new turn tears the card down through that same reactivity (no separate
