@@ -122,7 +122,6 @@ export class CustomIntegrationProvider implements IntegrationProvider {
           integration: t.integration,
           name: t.name,
           description: t.description,
-          inputSchema: t.inputSchema,
         })),
       defs.map((d) => ({
         slug: d.slug,
@@ -131,8 +130,8 @@ export class CustomIntegrationProvider implements IntegrationProvider {
       })),
       app,
     );
-    // The listing carries no input schema (tool-params.ts): fetch each
-    // matched action's schema so the model gets real parameters.
+    // The listing never carries an input schema (tool-params.ts): fetch
+    // each matched action's schema so the model gets real parameters.
     return {
       ...result,
       items: await attachToolParams(result.items, (address) =>

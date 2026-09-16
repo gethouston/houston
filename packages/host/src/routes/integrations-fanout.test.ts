@@ -166,6 +166,40 @@ test("a scope naming a custom integration EXACTLY is served by custom alone: no 
   expect(composio.lastApp).toBe("odoo");
 });
 
+test("a failed custom definitions read keeps the other providers' scoped results, and surfaces when nothing else answers", async () => {
+  class BrokenStore extends FakeIntegrationProvider {
+    override async listToolkits(): Promise<never> {
+      throw new Error("custom-integrations.json is corrupt");
+    }
+  }
+  const composio = new FakeIntegrationProvider({
+    id: "composio",
+    actions: [
+      { action: "GMAIL_SEND_EMAIL", toolkit: "gmail", description: "Send" },
+    ],
+  });
+  const kept = await searchIntegrations({
+    registry: new IntegrationRegistry([
+      composio,
+      new BrokenStore({ id: "custom", actions: [] }),
+    ]),
+    userId: "user",
+    query: "send",
+    app: "gmail",
+  });
+  expect(kept.items.map((item) => item.action)).toEqual(["GMAIL_SEND_EMAIL"]);
+  await expect(
+    searchIntegrations({
+      registry: new IntegrationRegistry([
+        new BrokenStore({ id: "custom", actions: [] }),
+      ]),
+      userId: "user",
+      query: "send",
+      app: "gmail",
+    }),
+  ).rejects.toThrow("custom-integrations.json is corrupt");
+});
+
 test("execute routes tools-prefixed actions to custom", async () => {
   const custom = new FakeIntegrationProvider({ id: "custom" });
   const composio = new FakeIntegrationProvider({ id: "composio" });

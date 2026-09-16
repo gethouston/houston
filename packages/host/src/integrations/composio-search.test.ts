@@ -255,6 +255,10 @@ test("actionSlugOf: only an UPPER_SNAKE slug prefixed by the toolkit counts", ()
   expect(actionSlugOf("GMAIL_SEND_EMAIL", "whatsapp")).toBeNull();
   expect(actionSlugOf("send whatsapp message", "whatsapp")).toBeNull();
   expect(actionSlugOf("WHATSAPP", "whatsapp")).toBeNull();
+  expect(actionSlugOf("WHATSAPP_", "whatsapp")).toBeNull();
+  expect(actionSlugOf("GOOGLESHEETS_BATCH_GET", "google-sheets")).toBe(
+    "GOOGLESHEETS_BATCH_GET",
+  );
 });
 
 test("explicit app scope with no action match still returns the app row", async () => {

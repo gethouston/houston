@@ -46,18 +46,28 @@ export interface IntegrationSearchOutput {
  * the other providers resolve scopes by substring too, so "COMFER Odoo 19
  * JSON-2" also matched Composio's `odoo` toolkit and listed a dozen of its
  * (turned-off) actions AHEAD of the user's own integration, which the model
- * then read as "the catalog has no such action" (PRODUCT-1841). A scope no
- * custom integration names exactly fans out as before.
+ * then read as "the catalog has no such action" (PRODUCT-1841). This is
+ * deliberate even when another provider carries the same name exactly: the
+ * user's own integration named that way is the one they mean. A scope no
+ * custom integration names exactly fans out as before. A failed definitions
+ * read is reported as a fan-out failure (surfaced when nothing else answers)
+ * rather than taking every other provider's results down with it.
  */
 async function scopeProviders(
   input: IntegrationSearchInput,
   providerIds: IntegrationProviderId[],
   app: string | undefined,
-): Promise<IntegrationProviderId[]> {
+): Promise<{ ids: IntegrationProviderId[]; failure?: unknown }> {
   if (app === undefined || input.provider || !providerIds.includes("custom"))
-    return providerIds;
-  const own = await input.registry.get("custom").listToolkits();
-  return exactScopeRows(own, app).length > 0 ? ["custom"] : providerIds;
+    return { ids: providerIds };
+  try {
+    const own = await input.registry.get("custom").listToolkits();
+    return {
+      ids: exactScopeRows(own, app).length > 0 ? ["custom"] : providerIds,
+    };
+  } catch (failure) {
+    return { ids: providerIds, failure };
+  }
 }
 
 /** Search selected providers and preserve healthy results across partial failure. */
@@ -77,7 +87,8 @@ export async function searchIntegrations(
   // custom provider keeps the raw scope and ranks its own exact matches
   // first (custom/search.ts).
   const fanOut = async (scope: string | undefined) => {
-    const providerIds = await scopeProviders(input, allProviderIds, scope);
+    const owners = await scopeProviders(input, allProviderIds, scope);
+    const providerIds = owners.ids;
     const settled = await Promise.allSettled(
       providerIds.map((id) =>
         input.registry
@@ -119,6 +130,7 @@ export async function searchIntegrations(
     const failures = settled.flatMap((result) =>
       result.status === "rejected" ? [result.reason] : [],
     );
+    if (owners.failure !== undefined) failures.push(owners.failure);
     const fatal = failures.find((error) => input.fatalFailure?.(error));
     if (fatal) throw fatal;
     return {

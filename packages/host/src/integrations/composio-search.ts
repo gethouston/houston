@@ -64,8 +64,14 @@ export function actionSlugOf(
   toolkitSlug: string,
 ): string | null {
   const slug = query.trim().toUpperCase();
-  const prefix = `${toolkitSlug.toUpperCase()}_`;
-  return /^[A-Z0-9_]+$/.test(slug) && slug.startsWith(prefix) ? slug : null;
+  // Action slugs drop the toolkit slug's separators: google-sheets owns
+  // GOOGLESHEETS_BATCH_GET.
+  const prefix = `${toolkitSlug.toUpperCase().replace(/[^A-Z0-9]/g, "")}_`;
+  return /^[A-Z0-9_]+$/.test(slug) &&
+    slug.startsWith(prefix) &&
+    slug.length > prefix.length
+    ? slug
+    : null;
 }
 
 /** One named-app lookup: the query scoped hard to the toolkit. A slug-shaped

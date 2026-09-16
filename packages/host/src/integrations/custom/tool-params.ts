@@ -2,9 +2,15 @@ import type { ToolMatch } from "../types";
 
 /** The one call that knows an action's input schema: `executor.tools.schema`
  *  (a ToolSchemaView, or null for an address the engine no longer has). */
-export type ToolSchemaLookup = (
-  address: string,
-) => Promise<{ inputSchema?: unknown } | null>;
+export type ToolSchemaLookup = (address: string) => Promise<{
+  inputSchema?: unknown;
+  /** The `#/$defs/<name>` targets the schema references, hoisted out of it
+   *  at compile time and returned beside it. */
+  schemaDefinitions?: Record<string, unknown>;
+} | null>;
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
 
 /**
  * Attach each custom action's input schema to its search match.
@@ -18,6 +24,12 @@ export type ToolSchemaLookup = (
  * action row is hydrated from it before the result leaves the provider.
  * App rows (action "") have no schema; a match that already carries one
  * keeps it; a null view (address gone) leaves the row as it was.
+ *
+ * The executor hoists a spec's shared component schemas into definition
+ * rows and hands them back as `schemaDefinitions`, so a schema whose body is
+ * `$ref: "#/$defs/X"` is only whole with them re-attached as `$defs` — the
+ * model cannot expand a dangling ref. One `tools.schema` call per matched
+ * action row (at most the provider's 20 matches), in parallel.
  */
 export async function attachToolParams(
   items: ToolMatch[],
@@ -28,7 +40,11 @@ export async function attachToolParams(
       if (item.action === "" || item.inputParams !== undefined) return item;
       const view = await schemaOf(item.action);
       if (view?.inputSchema === undefined) return item;
-      return { ...item, inputParams: view.inputSchema };
+      const inputParams =
+        view.schemaDefinitions && isRecord(view.inputSchema)
+          ? { ...view.inputSchema, $defs: view.schemaDefinitions }
+          : view.inputSchema;
+      return { ...item, inputParams };
     }),
   );
 }

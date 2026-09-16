@@ -48,6 +48,20 @@ test("app rows and rows that already carry params are never looked up", async ()
   expect(out).toEqual([appRow, withParams]);
 });
 
+test("hoisted definitions come back onto the schema as $defs so refs resolve", async () => {
+  const body = { $ref: "#/$defs/SaleOrderBody" };
+  const defs = { SaleOrderBody: { type: "object", required: ["domain"] } };
+  const out = await attachToolParams([ORDER], async () => ({
+    inputSchema: { type: "object", properties: { body } },
+    schemaDefinitions: defs,
+  }));
+  expect(out[0]?.inputParams).toEqual({
+    type: "object",
+    properties: { body },
+    $defs: defs,
+  });
+});
+
 test("a null view (address gone) or a schema-less view leaves the row unchanged", async () => {
   const gone = await attachToolParams([ORDER], async () => null);
   expect(gone).toEqual([ORDER]);
