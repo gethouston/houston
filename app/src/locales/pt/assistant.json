@@ -11,5 +11,12 @@
     "title": "O Houston não conseguiu iniciar seu AI Manager",
     "body": "Isso costuma se resolver sozinho. O Houston continua tentando em segundo plano, e você pode tentar de novo agora.",
     "retry": "Tentar de novo"
+  },
+  "link": {
+    "unavailableTitle": "Esta conversa está indisponível",
+    "unavailableDescription": "Confira se você entrou na conta do Houston conectada ao Slack e se ainda tem acesso a este espaço. Depois, tente novamente.",
+    "retry": "Tentar novamente",
+    "invalidTitle": "O link desta conversa está incompleto",
+    "invalidDescription": "Abra o link mais recente do Houston na sua conversa no Slack."
   }
 }

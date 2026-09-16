@@ -50,3 +50,24 @@ export function turnModeOf(body: Buffer): unknown {
     return undefined;
   }
 }
+
+/**
+ * The turn POST's JSON body, parsed ONCE per request and shared by the two
+ * readers of the approval-receipt gate (the durable admission lookup and the
+ * receipt preparation). Re-parsing the same bytes per reader is pure cost on
+ * the hottest host route, and two parses can only ever agree.
+ *
+ * A body that is not a JSON object is not a message that seam can reason
+ * about: it is `null` here and passes through untouched.
+ */
+export function parseTurnBody(body: Buffer): Record<string, unknown> | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body.toString("utf8"));
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed))
+    return null;
+  return parsed as Record<string, unknown>;
+}

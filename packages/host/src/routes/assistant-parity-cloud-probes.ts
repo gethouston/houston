@@ -22,6 +22,8 @@ const TEAMS =
   "teams group agents for teammates, which a single-user host has none of";
 const PER_AGENT_POLICY = "manager-set per-agent policy is a Teams surface";
 const API_KEYS = "personal API keys authenticate against the hosted public API";
+const CHANNELS =
+  "the gateway holds the Slack app's credentials and receives its events, so a messaging connection exists only there";
 
 export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   // The space itself, and who is in it.
@@ -97,6 +99,15 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     "the gateway owns trigger subscriptions",
     AGENT,
   ),
+
+  // Messaging channels: the assistant answering in Slack.
+  cloudOnly("getChannels", CHANNELS),
+  cloudOnly("connectSlack", CHANNELS),
+  cloudOnly("linkSlack", CHANNELS),
+  cloudOnly("completeSlack", CHANNELS, { ticket: "no-such-ticket" }),
+  cloudOnly("disconnectChannel", CHANNELS, {
+    connectionId: "no-such-connection",
+  }),
 
   // The person behind the account, as the identity provider knows them.
   cloudOnly(

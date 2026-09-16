@@ -47,6 +47,7 @@ import {
 import { isApiKeyUserRejection } from "./api-key-connect-error";
 import { isKeyGoneError, isKeyLimitError } from "./api-keys-model";
 import { isAssistantUnavailableError } from "./assistant-availability";
+import { type ChannelCall, silenceChannelCall } from "./channel-silence";
 import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
@@ -2282,4 +2283,37 @@ export const tauriApiKeys = {
       if (isKeyGoneError(err)) return;
       throw err;
     }),
+};
+
+/**
+ * The messaging accounts the personal assistant answers in (Settings >
+ * Channels). Every call names itself for the report and classifies its own
+ * expected states (`lib/channel-silence.ts`): a deployment that serves no
+ * channels, a ticket the gateway refused, and the abort a space switch fires
+ * are states the section renders, never bug reports. The caller keeps the
+ * space scope and the signal (`hooks/channel-workspace-scope.ts`).
+ */
+const channelCall = <T>(label: ChannelCall, fn: () => Promise<T>) =>
+  call<T>(label, fn, undefined, {
+    silence: (err) => silenceChannelCall(label, err),
+  });
+
+export const tauriChannels = {
+  list: (signal?: AbortSignal) =>
+    channelCall("list_channels", () => getEngine().getChannels(signal)),
+  connectSlack: (signal?: AbortSignal) =>
+    channelCall("connect_slack", () => getEngine().connectSlack(signal)),
+  linkSlack: (signal?: AbortSignal) =>
+    channelCall("link_slack", () => getEngine().linkSlack(signal)),
+  completeSlack: (ticket: string, signal?: AbortSignal) =>
+    channelCall("complete_slack", () =>
+      getEngine().completeSlack(ticket, signal),
+    ),
+  disconnect: (id: string, signal?: AbortSignal) =>
+    channelCall<void>("disconnect_channel", () =>
+      getEngine().disconnectChannel(id, signal),
+    ),
+  /** Open the authorization page; a popup blocker's refusal is the answer. */
+  openSlack: (url: string) =>
+    channelCall("open_slack", () => tauriSystem.openUrl(url)),
 };

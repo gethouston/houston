@@ -1,12 +1,15 @@
+import { channelUnavailableReason } from "@houston/engine-adapter";
 import {
   Bug,
   Building2,
   CircleUserRound,
   CloudUpload,
   Keyboard,
+  MessagesSquare,
   UserRound,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useChannels } from "../../hooks/queries/use-channels";
 import { genericErrorDescription } from "../../lib/error-report";
 import type { SettingsSectionId } from "../../lib/settings-sections";
 import { useUIStore } from "../../stores/ui";
@@ -47,6 +50,10 @@ export function SettingsIndex({
   onSelect,
 }: SettingsIndexProps) {
   const { t } = useTranslation("settings");
+  const channels = useChannels();
+  const channelsAvailable =
+    !!channels.data ||
+    channelUnavailableReason(channels.error) === "not-configured";
   const addToast = useUIStore((s) => s.addToast);
 
   async function handleVersionClick() {
@@ -91,6 +98,14 @@ export function SettingsIndex({
             description={t("settings:index.rows.aboutMe")}
             onClick={() => onSelect("aboutMe")}
           />
+          {channelsAvailable && (
+            <SettingsRow
+              icon={MessagesSquare}
+              title={t("settings:channels.title")}
+              description={t("settings:channels.navDescription")}
+              onClick={() => onSelect("channels")}
+            />
+          )}
           <AppearanceSection />
           <LanguageSection />
           <NotificationsSection />

@@ -22,6 +22,7 @@ export const SETTINGS_SECTION_IDS = [
   "aboutMe",
   "workspace",
   "apiKeys",
+  "channels",
   "shortcuts",
   "reportBug",
   "migration",

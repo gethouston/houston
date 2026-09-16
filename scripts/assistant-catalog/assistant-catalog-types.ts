@@ -127,6 +127,7 @@ export const ASSISTANT_GROUPS: readonly string[] = [
   "teams",
   "spaces",
   "billing",
+  "channels",
   "api-keys",
   "store",
   "attachments",

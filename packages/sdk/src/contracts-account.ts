@@ -28,6 +28,21 @@ export {
   BillingHttpError,
   type BillingModule,
 } from "./modules/billing";
+// ===== Channels module contract ========================================
+export {
+  CHANNEL_PROVIDER_IDS,
+  type ChannelConnection,
+  type ChannelLink,
+  type ChannelProvider,
+  type ChannelProviderId,
+  type ChannelStatus,
+  ChannelsCommand,
+  type ChannelsCommandType,
+  ChannelsHttpError,
+  type ChannelsModule,
+  type SlackAuthorization,
+  type SlackCompletion,
+} from "./modules/channels";
 // ===== Org module contract =============================================
 export {
   type AddOrgMemberResult,

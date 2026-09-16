@@ -88,9 +88,19 @@ test("a turn failing before execution publishes the nonce-stamped echo before th
     });
   });
   try {
-    await runTurn("conv-fail-2", "hello", "nonce-123", {
-      provider: "openai-compatible",
-    });
+    await runTurn(
+      "conv-fail-2",
+      "hello",
+      "nonce-123",
+      {
+        provider: "openai-compatible",
+      },
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      "accepted-turn-id",
+    );
   } finally {
     unsub();
   }
@@ -102,7 +112,11 @@ test("a turn failing before execution publishes the nonce-stamped echo before th
   // The echo carries OUR nonce (the sink's adoption key) and the error is
   // stamped with the SAME turnId, in echo-then-error order.
   expect(user?.nonce).toBe("nonce-123");
-  expect(user?.turnId).toBeDefined();
+  expect(user?.turnId).toBe("accepted-turn-id");
+  expect(getHistory("conv-fail-2")?.messages[0]).toMatchObject({
+    nonce: "nonce-123",
+    turnId: "accepted-turn-id",
+  });
   expect(error?.turnId).toBe(user?.turnId);
   expect(frames.indexOf(user as never)).toBeLessThan(
     frames.indexOf(error as never),

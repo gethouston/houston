@@ -8,6 +8,8 @@ import {
   type ConsumeApprovalInput,
   type IssueApprovalInput,
 } from "./approval-record";
+import { authorizesApprovalCall, inApprovalScope } from "./approval-scope";
+import { ApprovalMessageGuard } from "./message-guard";
 import { approvalArgs } from "./summary";
 
 /**
@@ -28,9 +30,9 @@ import { approvalArgs } from "./summary";
  *   from the params SUBMITTED with the call, so changed bytes are a new ask.
  * - REQUEST ID: 128 bits of randomness the model never sees until the host
  *   mints it, so an old reply cannot be replayed into a new grant.
- * - CONVERSATION + AGENT: approving in one chat authorizes nothing in another,
- *   and an unattended turn (a routine, fired straight at the runtime) never
- *   travels the message route at all, so it can never inherit one.
+ * - CONVERSATION + AGENT (`approval-scope.ts`): approving in one chat authorizes
+ *   nothing in another, and an unattended turn (a routine, fired straight at the
+ *   runtime) never travels the message route at all, so it never inherits one.
  * - SINGLE USE: {@link ApprovalStore.consume} removes the record it returns.
  * - SHORT LIVED: an approval the user gave and the model sat on is not an
  *   approval any more.
@@ -52,8 +54,11 @@ export {
 
 export class ApprovalStore {
   private readonly byId = new Map<string, ApprovalRequest>();
+  readonly messages: ApprovalMessageGuard;
 
-  constructor(private readonly now: () => number = Date.now) {}
+  constructor(private readonly now: () => number = Date.now) {
+    this.messages = new ApprovalMessageGuard(now);
+  }
 
   /** Raise one approval card's request. The id is what the card carries back. */
   issue(input: IssueApprovalInput): ApprovalRequest {
@@ -88,9 +93,7 @@ export class ApprovalStore {
     if (
       !request ||
       request.decision !== undefined ||
-      request.agentId !== agentId ||
-      (conversationId !== undefined &&
-        request.conversationId !== conversationId)
+      !inApprovalScope(request, agentId, conversationId)
     )
       return undefined;
     return { ...request };
@@ -113,8 +116,7 @@ export class ApprovalStore {
     if (
       !request ||
       request.decision !== undefined ||
-      request.agentId !== input.agentId ||
-      request.conversationId !== input.conversationId
+      !inApprovalScope(request, input.agentId, input.conversationId)
     )
       return false;
     request.decision = input.decision;
@@ -131,10 +133,8 @@ export class ApprovalStore {
   retireExcept(agentId: string, conversationId: string, keep: string[]): void {
     const kept = new Set(keep);
     for (const [id, request] of this.byId) {
-      if (request.agentId !== agentId) continue;
-      if (request.conversationId !== conversationId) continue;
-      if (kept.has(id)) continue;
-      this.byId.delete(id);
+      if (!kept.has(id) && inApprovalScope(request, agentId, conversationId))
+        this.byId.delete(id);
     }
   }
 
@@ -147,28 +147,18 @@ export class ApprovalStore {
     this.prune();
     const request = this.byId.get(input.requestId);
     if (!request || request.decision === undefined) return "none";
-    if (
-      request.agentId !== input.agentId ||
-      request.conversationId !== input.conversationId ||
-      request.operation !== input.operation ||
-      request.key !== approvalKey(input.operation, input.params)
-    )
-      return "none";
+    if (!authorizesApprovalCall(request, input)) return "none";
     this.byId.delete(input.requestId);
     return request.decision === "approve" ? "approved" : "denied";
   }
 
   /** Forget one conversation's requests (it was deleted), or all of them. */
   clear(agentId?: string, conversationId?: string): void {
+    this.messages.clear(agentId, conversationId);
     if (agentId === undefined) return void this.byId.clear();
     for (const [id, request] of this.byId) {
-      if (request.agentId !== agentId) continue;
-      if (
-        conversationId !== undefined &&
-        request.conversationId !== conversationId
-      )
-        continue;
-      this.byId.delete(id);
+      if (inApprovalScope(request, agentId, conversationId))
+        this.byId.delete(id);
     }
   }
 
@@ -176,11 +166,7 @@ export class ApprovalStore {
   hasPending(agentId: string, conversationId: string): boolean {
     this.prune();
     for (const request of this.byId.values()) {
-      if (
-        request.agentId === agentId &&
-        request.conversationId === conversationId
-      )
-        return true;
+      if (inApprovalScope(request, agentId, conversationId)) return true;
     }
     return false;
   }

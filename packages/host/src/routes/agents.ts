@@ -1,6 +1,11 @@
 import { channelFor, DEFAULT_PATHS, noChannel } from "./agent-authz";
 import { PROXY_MEMBERS } from "./agents-proxy-members";
-import { runTurnSeams, turnConversationOf } from "./agents-turn-seams";
+import {
+  runTurnSeams,
+  type TurnMessageState,
+  turnConversationOf,
+} from "./agents-turn-seams";
+import { json } from "./http";
 import { defineProxyFamily } from "./registry";
 import { turnBody } from "./turn-body";
 
@@ -38,12 +43,14 @@ defineProxyFamily({
     method,
     rest,
     url,
+    userId,
     req,
     res,
   }) {
     const channel = channelFor(deps, authz.workspace);
     if (!channel) return noChannel(res, authz.workspace.runtime);
     const ctx = { workspace: authz.workspace, agent: authz.agent };
+    const message: TurnMessageState = { duplicate: false };
     const seams = {
       ...(deps.vfs ? { vfs: deps.vfs } : {}),
       paths: deps.paths ?? DEFAULT_PATHS,
@@ -54,11 +61,17 @@ defineProxyFamily({
       ...(emit ? { emit } : {}),
       actingAuthor,
       ...(actingAs ? { actingAs } : {}),
+      actor: actingAuthor?.user_id ?? userId,
       turnConversationId: turnConversationOf(method, rest),
       body: turnBody(req),
+      message,
       client: res,
     };
     await runTurnSeams(seams);
+    if (message.refusal) {
+      const { status, code } = message.refusal;
+      return json(res, status, { error: code, code });
+    }
     const body = seams.body.peek();
     await channel.dispatch(
       body ? { ...ctx, body } : ctx,
@@ -68,5 +81,8 @@ defineProxyFamily({
       req,
       seams.client,
     );
+    // A definitive refusal did not accept the message. A thrown proxy failure
+    // is ambiguous, so its guard stays until expiry instead of risking mutation.
+    if (res.statusCode >= 400) message.release?.();
   },
 });

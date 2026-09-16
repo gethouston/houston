@@ -84,6 +84,7 @@ export async function runTurn(
   appendUserMessageAt(conversationsDir, conversationId, text, {
     author,
     turnId,
+    nonce,
     displayText,
     mentions,
   });

@@ -71,6 +71,20 @@ if (!goVersion) {
       `go ${goVersion} < cloud/go.mod's ${want} — Go will auto-fetch the toolchain (GOTOOLCHAIN=auto); update with \`brew upgrade go\` to skip that.`,
     );
 }
+if (local.CLOUDFLARE_TUNNEL) {
+  if (!tryRun("cloudflared --version"))
+    fails.push(
+      "CLOUDFLARE_TUNNEL is set but cloudflared is not installed. brew install cloudflared",
+    );
+  else if (!existsSync(path.join(homedir(), ".cloudflared", "cert.pem")))
+    fails.push(
+      "CLOUDFLARE_TUNNEL is set but cloudflared is not logged in. Run: cloudflared tunnel login",
+    );
+  if (!(local.GW_PUBLIC_BASE_URL || "").startsWith("https://"))
+    fails.push(
+      "CLOUDFLARE_TUNNEL is set but GW_PUBLIC_BASE_URL is not the tunnel's https hostname — set GW_PUBLIC_BASE_URL=https://<host> in .env.local (the host you routed with `cloudflared tunnel route dns`).",
+    );
+}
 if (!tryRun("docker info"))
   fails.push(
     "Docker daemon not reachable (needed ONLY for the dev Postgres container). Start Docker Desktop, then re-run.",
@@ -83,7 +97,15 @@ if (Object.keys(committed).length === 0)
     ".env.development missing or empty — it is committed; restore it (git checkout .env.development).",
   );
 
-const overlap = Object.keys(local).filter((k) => k in committed);
+// Committed keys whose value is inherently per developer. .env.local may
+// override exactly these; every other overlap is a drift and fails below.
+const PER_DEVELOPER = {
+  GW_PUBLIC_BASE_URL:
+    "a public https tunnel to the local gateway, for Slack channel testing",
+};
+const overlap = Object.keys(local).filter(
+  (k) => k in committed && !(k in PER_DEVELOPER),
+);
 for (const key of overlap)
   fails.push(
     `.env.local re-defines ${paint.bold(key)}, which is owned by .env.development — remove it from .env.local (team-wide values change via PR).`,
@@ -147,6 +169,17 @@ const bugReports = env.LINEAR_API_KEY && env.LINEAR_TEAM_ID;
 const desktopLogin =
   env.GOOGLE_DESKTOP_CLIENT_ID && env.GOOGLE_DESKTOP_CLIENT_SECRET;
 const desktopProfile = env.DEV_DESKTOP_PROFILE === "cloud" ? "cloud" : "local";
+const slackCredentials =
+  env.SLACK_APP_ID &&
+  env.SLACK_CLIENT_ID &&
+  env.SLACK_CLIENT_SECRET &&
+  env.SLACK_SIGNING_SECRET;
+const tunnel = Boolean(env.CLOUDFLARE_TUNNEL);
+const slackChannel = slackCredentials && tunnel;
+if (slackCredentials && !tunnel)
+  console.log(
+    `  ${paint.warn("!")} SLACK_* is set but no tunnel — Slack cannot reach the local gateway; set CLOUDFLARE_TUNNEL + GW_PUBLIC_BASE_URL in .env.local`,
+  );
 if (desktopProfile === "cloud" && !desktopLogin)
   console.log(
     `  ${paint.warn("!")} DEV_DESKTOP_PROFILE=cloud needs GOOGLE_DESKTOP_CLIENT_ID(+_SECRET) — the app pane will refuse to start`,
@@ -163,6 +196,8 @@ ${paint.bold("── pnpm dev · feature matrix ──────────�
   ${bugReports ? on : off} bug reports    ${bugReports ? "desktop Report-bug files to Linear" : "desktop Report-bug ERRORS — set LINEAR_API_KEY + LINEAR_TEAM_ID in .env.local"}
   ${off} shared tunnel   local-model tunnel share needs desktop+team+hosted session (relay is prod-only); share endpoints via the web pane's team space instead
   ${integrations ? on : off} integrations   ${integrations ? "Composio configured" : "set COMPOSIO_API_KEY in .env.local to enable connected apps"}
+  ${tunnel ? on : off} public tunnel  ${tunnel ? `cloudflared ${env.CLOUDFLARE_TUNNEL} → ${env.GW_PUBLIC_BASE_URL} → :9080` : "gateway is localhost-only — set CLOUDFLARE_TUNNEL + GW_PUBLIC_BASE_URL in .env.local for a public https hostname"}
+  ${slackChannel ? on : off} slack channel  ${slackChannel ? "Slack app configured — Settings → Channels on the web pane" : "set SLACK_APP_ID + SLACK_CLIENT_ID + SLACK_CLIENT_SECRET + SLACK_SIGNING_SECRET in .env.local plus the tunnel above (see cloud/docs/slack/README.md)"}
   ${env.ANTHROPIC_API_KEY ? on : off} agent turns    ${env.ANTHROPIC_API_KEY ? "engines seeded with ANTHROPIC_API_KEY" : "no ANTHROPIC_API_KEY — connect a provider in-app per agent"}
   ${env.COMPOSIO_API_KEY && env.COMPOSIO_WEBHOOK_SECRET ? on : off} triggers       ${env.COMPOSIO_API_KEY && env.COMPOSIO_WEBHOOK_SECRET ? "Composio key + webhook secret present" : "need COMPOSIO_API_KEY + COMPOSIO_WEBHOOK_SECRET"}
   ${env.GW_ACCOUNT_PURGE_GCIP === "off" ? off : on} account delete ${env.GW_ACCOUNT_PURGE_GCIP === "off" ? "hosted data purged; the GCIP auth user SURVIVES (GW_ACCOUNT_PURGE_GCIP=off — dev shares the prod identity project)" : "full purge including the GCIP auth user"}

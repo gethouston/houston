@@ -11,5 +11,12 @@
     "title": "Houston couldn't start your AI Manager",
     "body": "This usually clears up on its own. Houston keeps trying in the background, and you can try again now.",
     "retry": "Try again"
+  },
+  "link": {
+    "unavailableTitle": "This conversation is unavailable",
+    "unavailableDescription": "Check that you are signed in to the Houston account connected to Slack and still have access to this space, then try again.",
+    "retry": "Try again",
+    "invalidTitle": "This conversation link is incomplete",
+    "invalidDescription": "Open the latest Houston link from your Slack conversation."
   }
 }

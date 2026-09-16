@@ -3,6 +3,15 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v94 - 2026-09-16
+
+Settings includes Channels: Slack OAuth connection, an expiring copyable DM
+command, connected account labels, and confirmed disconnection. Returning from
+Slack redeems a one-time ticket from the signed-in app, with a finishing status
+and authored copy when the link is refused. Phone and desktop share the same
+personal assistant conversation. Public assistant links resolve the authorized
+space; channel handoffs cancel when the user switches it.
+
 ## v93 - 2026-09-15
 
 The flow choice row is a rectangular button: a glyph and a title, in the

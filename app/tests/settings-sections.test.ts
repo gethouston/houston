@@ -16,6 +16,7 @@ describe("SETTINGS_SECTION_IDS", () => {
         "aboutMe",
         "workspace",
         "apiKeys",
+        "channels",
         "shortcuts",
         "reportBug",
         "migration",
@@ -29,6 +30,7 @@ describe("parseSettingsSection", () => {
     strictEqual(parseSettingsSection("profile"), "profile");
     strictEqual(parseSettingsSection("aboutMe"), "aboutMe");
     strictEqual(parseSettingsSection("apiKeys"), "apiKeys");
+    strictEqual(parseSettingsSection("channels"), "channels");
     strictEqual(parseSettingsSection("reportBug"), "reportBug");
   });
 

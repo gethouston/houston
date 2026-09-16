@@ -164,6 +164,7 @@ export function appendUserMessageAt(
     ts: now,
     author: meta.author,
     turnId: meta.turnId,
+    nonce: meta.nonce,
     // Presentation-only: kept out of `content` so the model input is unchanged.
     displayText: meta.displayText,
     // Same posture as `author`: an empty list is omitted entirely (never `[]`),

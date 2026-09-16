@@ -27,6 +27,11 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
 | `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
 | `getBilling` | GET | unconfirmed: read-only HTTP GET | visible | none |
+| `completeSlack` | POST | unconfirmed: withheld from dispatch | redeems a one-time bearer ticket that only the browser returning from Slack holds, and passing one through a chat turn is how it leaks. | ticket: free text |
+| `connectSlack` | POST | unconfirmed: withheld from dispatch | answers with an authorization URL that only the person's own browser may open, and whoever finishes in Slack is who the connection would be offered to. | none |
+| `disconnectChannel` | DELETE | confirmed: host approval required | visible | connectionId: open: A messaging account is not a directory entry, so read its connection id from getChannels. |
+| `getChannels` | GET | unconfirmed: read-only HTTP GET | visible | none |
+| `linkSlack` | POST | unconfirmed: withheld from dispatch | the code IS the credential for the pairing window, so anyone it reaches can bind their own Slack account to this person's assistant. | none |
 | `conversations.delete` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; id: open: A chat lives in the agent's own engine, not in the directory, so read its id from conversations.list. |
 | `conversations.list` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `conversations.rename` | PATCH | unconfirmed: Retitles a chat; everything said in it is untouched, and the title is changed back the same way. | visible | agentId: resolved:agents; id: open: A chat lives in the agent's own engine, not in the directory, so read its id from conversations.list.; title: free text |

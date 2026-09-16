@@ -35,7 +35,17 @@ export function entityRuleFor(
   route: AssistantRoute | null,
 ): EntityRule | undefined {
   const after = route ? segmentBefore(route.path, parameter) : null;
-  const byRoute = after && ENTITY_SOURCES.find((rule) => rule.after === after);
+  // `pathContains` narrows the segment too: two families can mount the same
+  // collection name (`/v1/integrations/connections` and `/v1/channels/
+  // connections`), and sending a model to the wrong listing is worse than
+  // sending it to none.
+  const byRoute =
+    after &&
+    ENTITY_SOURCES.find(
+      (rule) =>
+        rule.after === after &&
+        (!rule.pathContains || (route?.path ?? "").includes(rule.pathContains)),
+    );
   if (byRoute) return byRoute;
   return entityRuleForNames(wireNames(parameter, route), route?.path ?? "");
 }

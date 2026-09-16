@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 93
+version: 94
 
 components:
   - id: custom-integration-details
@@ -1887,3 +1887,24 @@ components:
       One real button per choice, named by its title, at least 44px tall, with
       a visible focus ring and a decorative icon hidden from screen readers.
     since: 89
+  - id: messaging-channels-settings
+    title: Messaging channels settings
+    purpose: Connect messaging identities to the personal assistant in the selected Houston space.
+    anatomy: [section-header, space-label, provider-row, connection-list, connect-action, pairing-command, disconnect-confirmation]
+    states: [loading, empty, connected, connecting, completing, pairing-code, expired-code, link-refused, unavailable]
+    variants: [phone, desktop]
+    behavior: >-
+      OAuth connects Slack; an expiring command pairs an existing Slack installation.
+      Both bind the same personal assistant conversation. Returning from Slack
+      redeems a one-time ticket on the authenticated client, which is what binds
+      the connection: the section reports that it is finishing, refreshes the list
+      when it succeeds, and says the link is invalid or already connected when the
+      ticket is refused. Connections refresh on focus and while pairing; disconnect
+      requires confirmation. The authenticated current-space client owns all
+      channel operations and cancels handoffs on identity or space changes. Public
+      assistant links resolve live membership before selecting the linked
+      conversation's space.
+    a11y: >-
+      Real labeled buttons, a read-only labeled command input, status messages,
+      and a focus-managed disconnect confirmation. All controls remain visible.
+    since: 94

@@ -31,3 +31,8 @@ procs:
   # multiplayer). Test two users with a second browser/incognito window.
   web:
     shell: scripts/dev/web.sh
+  # Cloudflare named tunnel → the gateway on a stable public https hostname
+  # (Slack channel OAuth + events). Idles unless CLOUDFLARE_TUNNEL is set in
+  # .env.local; the doctor matrix states whether it is on.
+  tunnel:
+    shell: scripts/dev/tunnel.sh

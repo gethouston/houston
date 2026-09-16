@@ -302,6 +302,8 @@ export interface TokenUsage {
 }
 
 export interface ChatMessage {
+  /** Sender's durable retry identity on user messages; scoped to this conversation. */
+  nonce?: string;
   role: ChatRole;
   content: string;
   /**

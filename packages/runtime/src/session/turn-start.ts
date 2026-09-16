@@ -67,10 +67,11 @@ export async function runTurn(
   context?: ProvidedContext,
   displayText?: string,
   mentions?: ChatMessage["mentions"],
+  acceptedTurnId?: string,
 ): Promise<void> {
   // Mint the turn's wire identity up front so even a turn that fails before
   // executing (the guards below) terminates under one id.
-  const turnId = crypto.randomUUID();
+  const turnId = acceptedTurnId ?? crypto.randomUUID();
   const failure: TurnStartFailure = {
     id,
     turnId,

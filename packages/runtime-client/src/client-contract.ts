@@ -32,7 +32,7 @@ export interface EventStreamOptions {
 }
 
 export interface SendOptions {
-  /** Echoed back on the `user` event so the sender can dedupe its own message. */
+  /** Durable retry identity (1–256 characters), echoed live and persisted on the user message. */
   nonce?: string;
   /**
    * Per-turn provider pin (engine provider id). The turn runs on THIS provider

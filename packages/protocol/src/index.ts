@@ -21,6 +21,7 @@ export * from "./events";
 export * from "./google-key";
 export * from "./integration-provider";
 export * from "./local-model-bridge";
+export * from "./message-retry";
 export * from "./model-windows";
 export * from "./provider-catalog";
 export * from "./provider-error";

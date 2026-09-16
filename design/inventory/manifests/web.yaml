@@ -291,3 +291,6 @@ components:
   flow-choice-row:
     status: implemented
     ref: "@houston-ai/core FlowChoiceRow + FlowChoiceList (flow-choice-row.tsx)"
+  messaging-channels-settings:
+    status: implemented
+    ref: app/src/components/settings/sections/channels.tsx

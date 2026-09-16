@@ -12,6 +12,7 @@ import { createAccountModule } from "./modules/account";
 import { createActivitiesModule } from "./modules/activities";
 import { createAgentsModule } from "./modules/agents";
 import { createBillingModule } from "./modules/billing";
+import { createChannelsModule } from "./modules/channels";
 import { createConversationsModule } from "./modules/conversations";
 import { createFilesModule } from "./modules/files";
 import { createIntegrationsModule } from "./modules/integrations";
@@ -60,6 +61,8 @@ export interface SdkModules {
   readonly teams: ReturnType<typeof createTeamsModule>;
   /** Billing facade (the team's subscription + the Stripe hand-offs). */
   readonly billing: ReturnType<typeof createBillingModule>;
+  /** Channels facade (the messaging accounts the personal assistant answers in). */
+  readonly channels: ReturnType<typeof createChannelsModule>;
   /** Routines facade (an agent's scheduled work, its runs, its webhook key). */
   readonly routines: ReturnType<typeof createRoutinesModule>;
   /** Skills facade (an agent's own skills and the manifest enabling them). */
@@ -82,6 +85,7 @@ export const moduleFactories = {
   createActivitiesModule,
   createAgentsModule,
   createBillingModule,
+  createChannelsModule,
   createConversationsModule,
   createFilesModule,
   createIntegrationsModule,
