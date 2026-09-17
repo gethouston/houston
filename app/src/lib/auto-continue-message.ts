@@ -14,18 +14,21 @@
  * verbatim (that is how Skill cards survive a reload), so the same filter
  * applies to the optimistic path AND to the message replayed on reload.
  */
-import type { FeedItem } from "@houston-ai/chat";
 
-const AUTO_CONTINUE_MARKER = "<!--houston:auto_continue-->";
+import {
+  encodeAutoContinue,
+  isAutoContinue,
+} from "@houston/protocol/auto-continue";
+import type { FeedItem } from "@houston-ai/chat";
 
 /** Wrap agent-bound text so the transcript can recognize and hide it. */
 export function encodeAutoContinueMessage(text: string): string {
-  return `${AUTO_CONTINUE_MARKER}\n\n${text}`;
+  return encodeAutoContinue(text);
 }
 
 /** True for a message Houston auto-sent to resume a task. */
 export function isAutoContinueMessage(content: string): boolean {
-  return content.startsWith(AUTO_CONTINUE_MARKER);
+  return isAutoContinue(content);
 }
 
 /**

@@ -194,6 +194,7 @@ import {
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { SkillCard } from "./skill-card";
 import { skillIntegrationChips } from "./skill-integration-chips";
+import { SystemNote } from "./system-note";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
 import { type ChatMentionProps, useChatMentions } from "./use-chat-mentions";
 import { useChatSenderAvatars } from "./use-chat-sender-avatars";
@@ -2115,6 +2116,13 @@ export function useAgentChatPanel({
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
+      // The engine's restart lines arrive typed (PRODUCT-1785): the same
+      // centered note, in the user's language, chosen by kind and never by the
+      // English default text.
+      if (msg.notice === "engine_restart")
+        return <SystemNote text={t("chat:engineRestart.sayContinue")} />;
+      if (msg.notice === "engine_resumed")
+        return <SystemNote text={t("chat:engineRestart.resuming")} />;
       return undefined;
     },
     [

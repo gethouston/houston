@@ -4,6 +4,7 @@ import type {
   TokenUsage,
 } from "@houston/runtime-client";
 import type { FeedOutput, TerminalBoardStatus } from "./feed-output";
+import type { EngineNoticeKind } from "./turn-errors";
 import { isNotConnectedError, isStoppedByUser } from "./turn-errors";
 
 /**
@@ -153,7 +154,11 @@ export function finishOk(s: TurnState): void {
  * undelivered prompt with no reply and no affordance (HOU-676). The card
  * carries the refused prompt so "Send again" resends it verbatim.
  */
-export function finishErr(s: TurnState, msg: string): void {
+export function finishErr(
+  s: TurnState,
+  msg: string,
+  notice?: EngineNoticeKind,
+): void {
   if (s.settled) return;
   if (isNotConnectedError(msg)) {
     const card: ProviderError & { failed_prompt?: string } = {
@@ -178,6 +183,7 @@ export function finishErr(s: TurnState, msg: string): void {
   push(s, {
     feed_type: "system_message",
     data: msg,
+    ...(notice ? { notice } : {}),
     ...(failsSend ? { fails_pending: true } : {}),
   });
   if (isStoppedByUser(msg)) {
@@ -188,6 +194,25 @@ export function finishErr(s: TurnState, msg: string): void {
   }
   s.output.sessionStatus(s.agentPath, s.sessionKey, "error", msg);
   s.terminal = "error";
+}
+
+/**
+ * Settle a turn the ENGINE interrupted and is ALREADY running again by itself
+ * (`interrupted.resumed`, PRODUCT-1785). Neither of the other settles fits: the
+ * turn did not succeed, and it did not fail either — a second turn is on its
+ * way with the same work. So: finalize whatever streamed, push the pause line,
+ * stop the progress indicator, and leave `terminal` NULL so the board card
+ * keeps its `running` status. Handing the card back to the user (`needs_you`)
+ * or reddening it (`error`) would both lie about an agent that is still working.
+ */
+export function finishResumed(s: TurnState, msg: string): void {
+  if (s.settled) return;
+  s.settled = true;
+  if (s.thinking) push(s, { feed_type: "thinking", data: s.thinking });
+  if (s.text) push(s, { feed_type: "assistant_text", data: s.text });
+  push(s, { feed_type: "system_message", data: msg, notice: "engine_resumed" });
+  invisibleFinal(s);
+  s.output.sessionStatus(s.agentPath, s.sessionKey, "completed");
 }
 
 /**

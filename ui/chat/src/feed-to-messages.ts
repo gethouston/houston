@@ -11,6 +11,7 @@ import type {
   MessageAuthor,
   MessageMention,
   ProviderError,
+  SystemNoticeKind,
 } from "./types";
 
 export interface ToolEntry {
@@ -73,6 +74,12 @@ export interface ChatMessage {
    * The renderer shows a subtle divider instead of plain system text.
    */
   compaction?: ChatCompactionInfo;
+  /**
+   * Set on `from: "system"` messages the engine authored for a known reason
+   * (a restart, a resume). The renderer picks copy by kind; `content` is the
+   * English default.
+   */
+  notice?: SystemNoticeKind;
   /**
    * The wire id of the turn a `from: "user"` message started (PRODUCT-1217).
    * The edit-and-resend affordance anchors on it; absent on a still-optimistic
@@ -342,6 +349,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           isStreaming: false,
           tools: [],
           fileChanges: [],
+          ...(item.notice ? { notice: item.notice } : {}),
         });
         break;
       }

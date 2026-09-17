@@ -1,9 +1,14 @@
 import { isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
-import { ENGINE_RESTART_MESSAGE, STOPPED_BY_USER } from "./turn-errors";
+import {
+  ENGINE_RESTART_MESSAGE,
+  ENGINE_RESUMED_MESSAGE,
+  STOPPED_BY_USER,
+} from "./turn-errors";
 import {
   finishErr,
   finishOk,
+  finishResumed,
   push,
   settleProviderErrorCard,
   type TurnState,
@@ -110,7 +115,11 @@ function adoptReply(
   // authored restart copy instead of the generic one — the client's own
   // detection never sees this shape, only a reload after the engine is back.
   if (reply.interrupted) {
-    finishErr(s, ENGINE_RESTART_MESSAGE);
+    // …unless the engine is already running the turn again by itself: the
+    // work is not over, so this settles NEUTRALLY (no error status, no
+    // needs_you card) and only accounts for the pause the user saw.
+    if (reply.interrupted.resumed) finishResumed(s, ENGINE_RESUMED_MESSAGE);
+    else finishErr(s, ENGINE_RESTART_MESSAGE, "engine_restart");
     return;
   }
   s.text = reply.content;

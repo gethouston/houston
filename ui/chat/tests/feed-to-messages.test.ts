@@ -341,4 +341,21 @@ describe("context boundaries", () => {
       preTokens: 120,
     });
   });
+
+  it("carries the engine's typed notice onto the system message, and nothing else", () => {
+    // The host renders restart copy by kind (PRODUCT-1785); a plain system
+    // line has no notice at all rather than an empty one.
+    const messages = feedItemsToMessages([
+      {
+        feed_type: "system_message",
+        data: "Your agent had to restart.",
+        notice: "engine_restart",
+        id: "s1",
+      },
+      { feed_type: "system_message", data: "Stopped by user", id: "s2" },
+    ]);
+    strictEqual(messages[0]?.from, "system");
+    strictEqual(messages[0]?.notice, "engine_restart");
+    strictEqual("notice" in (messages[1] ?? {}), false);
+  });
 });

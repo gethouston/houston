@@ -621,3 +621,155 @@ test("a cancel landing mid-sweep wins — reconcile never resurrects the cancell
   expect((items[0] as RoutineRun).status).toBe("cancelled");
   expect((items[0] as RoutineRun).summary).toBe("Stopped by user");
 });
+
+/** Write a run's conversation verbatim — the interrupted replies carry fields
+ *  `seedReply` has no shape for. */
+async function seedMessages(
+  vfs: MemoryVfs,
+  ws: { id: string },
+  agent: { id: string },
+  cid: string,
+  messages: unknown[],
+) {
+  await vfs.writeText(
+    conversationKey(prefixFor(ws as never, agent as never), cid),
+    JSON.stringify({ messages }),
+  );
+}
+
+const interruptedReply = (ts: number, resumed?: true) => ({
+  role: "assistant",
+  content: "",
+  ts,
+  interrupted: { cause: "engine_restart", ...(resumed ? { resumed } : {}) },
+});
+
+test("a resumed interruption keeps the run running and records the restart (PRODUCT-1785)", async () => {
+  const r = routine();
+  const env = await setup(r);
+  await seedMessages(env.vfs, env.ws, env.agent, env.run.session_key, [
+    { role: "user", content: "go", ts: STARTED.getTime() },
+    interruptedReply(STARTED.getTime() + 1000, true),
+  ]);
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  expect((items[0] as RoutineRun).status).toBe("running");
+  expect((items[0] as RoutineRun).resumed).toBe(true);
+  expect((items[0] as RoutineRun).completed_at).toBeUndefined();
+});
+
+test("the resumed flag merges onto the fresh row — a concurrent pause survives it", async () => {
+  const r = routine();
+  const env = await setup(r);
+  await seedMessages(env.vfs, env.ws, env.agent, env.run.session_key, [
+    { role: "user", content: "go", ts: STARTED.getTime() },
+    interruptedReply(STARTED.getTime() + 1000, true),
+  ]);
+
+  // A writer touches the STILL-RUNNING row while this sweep awaits I/O (a
+  // usage-limit pause, an activity id). The resumed flag is a one-field write:
+  // applying the sweep's pre-await snapshot instead would revert both.
+  const root = workspaceRoot(env.ws, env.agent);
+  const convKey = conversationKey(
+    prefixFor(env.ws as never, env.agent as never),
+    env.run.session_key,
+  );
+  const origRead = env.vfs.readText.bind(env.vfs);
+  let paused = false;
+  env.vfs.readText = async (key: string) => {
+    const text = await origRead(key);
+    if (!paused && key === convKey) {
+      paused = true;
+      const { items } = await loadRoutineRuns(env.vfs, root);
+      await saveRoutineRuns(
+        env.vfs,
+        root,
+        items.map((run) =>
+          run.id === env.run.id
+            ? { ...run, paused_until: "in 2 hours", activity_id: "act-7" }
+            : run,
+        ),
+      );
+    }
+    return text;
+  };
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+
+  const { items } = await loadRoutineRuns(env.vfs, root);
+  const run = items[0] as RoutineRun;
+  expect(run.status).toBe("running");
+  expect(run.resumed).toBe(true);
+  expect(run.paused_until).toBe("in 2 hours");
+  expect(run.activity_id).toBe("act-7");
+});
+
+test("the resumed turn's real reply settles the run on a later sweep", async () => {
+  const r = routine();
+  const env = await setup(r);
+  await seedMessages(env.vfs, env.ws, env.agent, env.run.session_key, [
+    { role: "user", content: "go", ts: STARTED.getTime() },
+    interruptedReply(STARTED.getTime() + 1000, true),
+    {
+      role: "assistant",
+      content: "picked up and finished",
+      ts: STARTED.getTime() + 2000,
+    },
+  ]);
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  expect((items[0] as RoutineRun).status).toBe("surfaced");
+  expect((items[0] as RoutineRun).summary).toContain("picked up and finished");
+});
+
+test("a resumed run is timed out from the RESTART, not the original start", async () => {
+  const r = routine();
+  const env = await setup(r);
+  const interruptedAt = STARTED.getTime() + 10 * 60 * 1000;
+  await seedMessages(env.vfs, env.ws, env.agent, env.run.session_key, [
+    { role: "user", content: "go", ts: STARTED.getTime() },
+    interruptedReply(interruptedAt, true),
+  ]);
+
+  // 20 minutes past the original start — past the budget on the old clock, but
+  // only 10 minutes into the resumed turn's own window.
+  const midResume = new Date(STARTED.getTime() + 20 * 60 * 1000);
+  await reconcileAgentRuns(deps(env.vfs, midResume), env.ws, env.agent);
+  let items = (await loadRoutineRuns(env.vfs, workspaceRoot(env.ws, env.agent)))
+    .items;
+  expect((items[0] as RoutineRun).status).toBe("running");
+
+  // 16 minutes past the restart: the resume is gone too, and the run must not
+  // sit on `running` forever.
+  const late = new Date(interruptedAt + 16 * 60 * 1000);
+  await reconcileAgentRuns(deps(env.vfs, late), env.ws, env.agent);
+  items = (await loadRoutineRuns(env.vfs, workspaceRoot(env.ws, env.agent)))
+    .items;
+  expect((items[0] as RoutineRun).status).toBe("error");
+  expect((items[0] as RoutineRun).summary).toContain("timed out");
+});
+
+test("an interruption with NO resume keeps today's behaviour: the empty reply classifies", async () => {
+  const r = routine();
+  const env = await setup(r);
+  await seedMessages(env.vfs, env.ws, env.agent, env.run.session_key, [
+    { role: "user", content: "go", ts: STARTED.getTime() },
+    interruptedReply(STARTED.getTime() + 1000),
+  ]);
+
+  await reconcileAgentRuns(deps(env.vfs, NOW), env.ws, env.agent);
+  const { items } = await loadRoutineRuns(
+    env.vfs,
+    workspaceRoot(env.ws, env.agent),
+  );
+  expect((items[0] as RoutineRun).status).toBe("surfaced");
+  expect((items[0] as RoutineRun).resumed).toBeUndefined();
+});

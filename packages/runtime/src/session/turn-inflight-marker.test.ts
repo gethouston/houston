@@ -1,4 +1,10 @@
-import { existsSync, mkdtempSync, readdirSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -98,5 +104,77 @@ describe("turn in-flight marker", () => {
 
   it("an absent directory lists as empty", () => {
     expect(listInflightMarkers(fresh())).toEqual([]);
+  });
+
+  it("round-trips the resume payload and the resumed-turn id (PRODUCT-1785)", () => {
+    const dataDir = fresh();
+    writeInflightMarker(dataDir, {
+      conversationId: "c",
+      turnId: "t-2",
+      startedAt: 7,
+      fenced: false,
+      resume: {
+        pin: { provider: "anthropic", model: "opus", mode: "plan" },
+        acting: { credentialScopeKey: "u:sub-1" },
+      },
+      resumeOf: "t-1",
+    });
+    expect(readInflightMarker(dataDir, "c")).toEqual({
+      conversationId: "c",
+      turnId: "t-2",
+      startedAt: 7,
+      fenced: false,
+      resume: {
+        pin: { provider: "anthropic", model: "opus", mode: "plan" },
+        acting: { credentialScopeKey: "u:sub-1" },
+      },
+      resumeOf: "t-1",
+    });
+  });
+
+  it("an empty resume payload survives — its PRESENCE is what says the turn can be resumed", () => {
+    const dataDir = fresh();
+    writeInflightMarker(dataDir, {
+      conversationId: "d",
+      turnId: "t",
+      startedAt: 0,
+      fenced: false,
+      resume: {},
+    });
+    expect(readInflightMarker(dataDir, "d")?.resume).toEqual({});
+  });
+
+  it("junk resume fields are dropped and the marker stays valid", () => {
+    const dataDir = fresh();
+    mkdirSync(inflightDir(dataDir), { recursive: true });
+    writeFileSync(
+      join(inflightDir(dataDir), "e.json"),
+      JSON.stringify({
+        conversationId: "e",
+        turnId: "t",
+        startedAt: 0,
+        fenced: false,
+        resume: { pin: { provider: 7, mode: "sideways" }, acting: 5 },
+        resumeOf: 9,
+      }),
+    );
+    expect(readInflightMarker(dataDir, "e")).toEqual({
+      conversationId: "e",
+      turnId: "t",
+      startedAt: 0,
+      fenced: false,
+      resume: {},
+    });
+  });
+
+  it("a marker with no resume payload reads without one (older engine)", () => {
+    const dataDir = fresh();
+    writeInflightMarker(dataDir, {
+      conversationId: "f",
+      turnId: "t",
+      startedAt: 0,
+      fenced: false,
+    });
+    expect(readInflightMarker(dataDir, "f")?.resume).toBeUndefined();
   });
 });
