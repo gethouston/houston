@@ -113,6 +113,20 @@ test("dismissInteraction posts the stop marker with no body", async () => {
   expect(post.headers.get("x-houston-org")).toBe(ORG);
 });
 
+test("dismissInteraction answers a running turn's 409 as a typed refusal, not a throw", async () => {
+  stubRouted((call: Call) =>
+    call.url.endsWith("/dismiss-interaction")
+      ? json(409, { error: "turn running" })
+      : json(200, { ok: true }),
+  );
+
+  await expect(client().dismissInteraction(AGENT, SK)).resolves.toEqual({
+    ok: false,
+    refusal: "turn_running",
+  });
+  expect(onlyCall().method).toBe("POST");
+});
+
 test("truncateConversation posts the turn it cuts at", async () => {
   stubEngine({ ok: true, removed: 2 });
 

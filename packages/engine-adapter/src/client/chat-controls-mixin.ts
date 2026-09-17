@@ -1,3 +1,4 @@
+import type { DismissInteractionOutcome } from "@houston/sdk";
 import { DEFAULT_AGENT_PATH } from "../synthetic";
 import { truncateConversationVm } from "../turn-stream";
 import { setActivityStatus } from "./activity-status";
@@ -60,14 +61,17 @@ export function ChatControlsMixin<TBase extends BaseCtor>(Base: TBase) {
       );
     }
 
-    async dismissInteraction(
+    /**
+     * The stepper X / abandon appends the durable stop marker on the runtime,
+     * retiring the pending interaction. This matches a real Stop — the model
+     * learns nothing from it. The SDK decides what a refusal means: a
+     * `turn_running` outcome is the surface's cue to catch up, not an error.
+     */
+    dismissInteraction(
       agentPath: string,
       conversationId: string,
-    ): Promise<void> {
-      // The stepper X / abandon appends the durable stop marker on the runtime,
-      // retiring the pending interaction. This matches a real Stop — the model
-      // learns nothing from it.
-      await this.ctx.sdk.turns.dismissInteraction(
+    ): Promise<DismissInteractionOutcome> {
+      return this.ctx.sdk.turns.dismissInteraction(
         conversationId,
         runtimeScope(this.ctx, agentPath),
       );

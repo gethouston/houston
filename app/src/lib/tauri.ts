@@ -30,6 +30,7 @@ import type {
   SkillsManifest,
 } from "@houston/engine-adapter";
 import type { IntegrationProviderId } from "@houston/protocol";
+import type { DismissInteractionOutcome } from "@houston/sdk";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
 import {
@@ -659,9 +660,11 @@ export const tauriChat = {
     mode: "execute" | "plan" | "auto",
   ) => getEngine().setLiveTurnMode(agentPath, sessionKey, mode),
   /** Retire a conversation's pending interaction (stepper X / abandon): appends
-   *  a durable stop marker, like a real Stop — the model learns nothing. */
+   *  a durable stop marker, like a real Stop — the model learns nothing. The
+   *  SDK answers a turn racing the dismiss as a typed `turn_running` outcome
+   *  (HOUSTON-APP-5EY), so only a real failure reaches the toast here. */
   dismissInteraction: (agentPath: string, conversationId: string) =>
-    call<void>("dismiss_interaction", () =>
+    call<DismissInteractionOutcome>("dismiss_interaction", () =>
       getEngine().dismissInteraction(agentPath, conversationId),
     ),
   /** Edit-and-resend rewind (PRODUCT-1217): drop the transcript tail from the
