@@ -8,6 +8,7 @@ import {
   type RuntimeSpawner,
   type SpawnSpec,
 } from "./process";
+import type { RuntimeExit } from "./process-types";
 
 /**
  * The local launcher's lifecycle: lazily spawn one runtime per agent, reuse a
@@ -150,6 +151,65 @@ test("sleep kills the process; the next ensureAwake spawns a fresh one", async (
   const woken = await launcher.ensureAwake(a); // port 5001
   expect(woken.baseUrl).toBe("http://127.0.0.1:5001");
   expect(spawns).toHaveLength(2);
+});
+
+test("a healthy runtime that dies on its own is reported with its exit; a drained or shut-down one is not", async () => {
+  // The unrequested death is the one nobody else can see (runtime-death.ts):
+  // the child is gone, its stderr with it, and the replacement's boot report
+  // knows the turn but not the cause.
+  let exitCb: ((exit?: RuntimeExit) => void) | undefined;
+  const spawner: RuntimeSpawner = {
+    spawn() {
+      return {
+        port: 5000,
+        kill: () => {
+          setTimeout(
+            () => exitCb?.({ code: 0, signal: null, stderrTail: [] }),
+            5,
+          );
+        },
+        onExit: (cb) => {
+          exitCb = cb;
+        },
+      };
+    },
+  };
+  const deaths: { agent: string; exit: RuntimeExit }[] = [];
+  const launcher = new ProcessLauncher(
+    opts(spawner, {
+      reportDeath: (a, exit) => deaths.push({ agent: a.id, exit }),
+    }),
+  );
+
+  await launcher.ensureAwake(agent("ram"));
+  exitCb?.({
+    code: null,
+    signal: "SIGKILL",
+    stderrTail: ["Killed"],
+  });
+  expect(await launcher.status("ram")).toBe("asleep");
+  expect(deaths).toEqual([
+    {
+      agent: "ram",
+      exit: { code: null, signal: "SIGKILL", stderrTail: ["Killed"] },
+    },
+  ]);
+
+  // A sleep's drain asked for the exit: nothing to report.
+  await launcher.ensureAwake(agent("ram"));
+  await launcher.sleep("ram");
+  expect(deaths).toHaveLength(1);
+
+  // A stub that fires without an exit has no cause to name.
+  await launcher.ensureAwake(agent("ram"));
+  exitCb?.();
+  expect(deaths).toHaveLength(1);
+
+  // Shutdown clears the live-set first: the exit that follows is requested.
+  await launcher.ensureAwake(agent("ram"));
+  launcher.shutdownAll();
+  exitCb?.({ code: null, signal: "SIGTERM", stderrTail: [] });
+  expect(deaths).toHaveLength(1);
 });
 
 test("sleep resolves only after the child has ACTUALLY exited", async () => {

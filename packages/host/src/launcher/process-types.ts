@@ -7,6 +7,18 @@ import type { AssistantRuntimeRole } from "./assistant-role";
  * it; the real spawner wraps a child process, tests inject a fake pointing at a
  * stub server.
  */
+/**
+ * How a runtime child ended. `code`/`signal` are Node's exit pair (both null
+ * for a child that never spawned); `stderrTail` is the last few stderr lines
+ * the spawner saw — a V8 "Reached heap limit" or the runtime's own fatal
+ * stack lives there and nowhere else once the process is gone.
+ */
+export interface RuntimeExit {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  stderrTail: string[];
+}
+
 export interface RuntimeHandle {
   port: number;
   kill(): void;
@@ -23,9 +35,9 @@ export interface RuntimeHandle {
    * a dead child from its live-set so a phantom "running" entry never hands a
    * dead endpoint to the next turn - and fail a boot fast when the child dies
    * before ever answering /health. A handle whose process cannot crash (a test
-   * stub) may leave this undefined.
+   * stub) may leave this undefined, and a stub that fires may omit the exit.
    */
-  onExit?(cb: () => void): void;
+  onExit?(cb: (exit?: RuntimeExit) => void): void;
 }
 
 export interface SpawnSpec {
@@ -86,6 +98,12 @@ export interface ProcessLauncherOptions {
   waitHealthy?: (port: number, token: string) => Promise<void>;
   /** Run once after each newly spawned runtime becomes healthy. */
   afterSpawn?: (agent: Agent, endpoint: RuntimeEndpoint) => Promise<void>;
+  /**
+   * Told when a healthy runtime dies without the host asking (no sleep, no
+   * shutdown in progress). Default: `reportRuntimeDeath` (runtime-death.ts),
+   * one Sentry-bound error per death. Test seam.
+   */
+  reportDeath?: (agent: Agent, exit: RuntimeExit) => void;
 }
 
 export interface Running {
@@ -99,4 +117,11 @@ export interface Running {
    * same directory (HOU-827's resurrect vector during a rename).
    */
   draining?: Promise<void>;
+  /**
+   * Set the instant a drain sends SIGTERM, BEFORE `draining` is assigned:
+   * the exit reaper (process-boot.ts) reads it to tell a death the host asked
+   * for from one it must report, and a stub child can exit synchronously
+   * inside kill().
+   */
+  stopRequested?: true;
 }
