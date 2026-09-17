@@ -1,9 +1,6 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import {
-  deriveInstalledSkillEditorState,
-  skillMonogram,
-} from "../src/installed-skill-editor-model.ts";
+import { deriveInstalledSkillEditorState } from "../src/installed-skill-editor-model.ts";
 
 describe("deriveInstalledSkillEditorState", () => {
   it("is idle when collapsed regardless of content", () => {
@@ -72,19 +69,5 @@ describe("deriveInstalledSkillEditorState", () => {
       }),
       { status: "ready", content: "" },
     );
-  });
-});
-
-describe("skillMonogram", () => {
-  it("uppercases the first letter", () => {
-    assert.equal(skillMonogram("draft a contract"), "D");
-  });
-
-  it("trims leading whitespace", () => {
-    assert.equal(skillMonogram("  research"), "R");
-  });
-
-  it("falls back to a placeholder on empty input", () => {
-    assert.equal(skillMonogram("   "), "?");
   });
 });

@@ -7,6 +7,9 @@ category: Personal
 featured: no
 image: busts-in-silhouette
 integrations: [googledocs, gmail, notion, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -56,6 +59,7 @@ conectada > archivo > URL > texto pegado) y espero.
 - **Jurisdicción**: Opcional. Por qué la necesito: las respuestas sobre licencias y beneficios varían por estado y país. Si no la tienes, sigo adelante marcándola como pendiente y señalo los vacíos jurisdiccionales en el borrador.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal.** Leo
    `context/people-context.md`. Si falta o está vacío, le digo al

@@ -1,5 +1,9 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
+import {
+  FOLLOW_UP_PLACEHOLDER,
+  NEW_TASK_PLACEHOLDER,
+} from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { openNewMission } from "./support/mission";
 
@@ -24,7 +28,7 @@ import { openNewMission } from "./support/mission";
 async function startMission(page: Page, text: string) {
   await page.goto("/");
   await openNewMission(page);
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await expect(composer).toBeVisible();
   await composer.fill(text);
   await composer.press("Enter");
@@ -166,7 +170,7 @@ test("answering by option resumes the turn and retires the card", async ({
   // The answering turn starts, so the card retires (its option rows are gone —
   // the question TEXT legitimately lives on in the composed transcript message)
   // and the composer returns.
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.getByRole("radio")).toHaveCount(0);

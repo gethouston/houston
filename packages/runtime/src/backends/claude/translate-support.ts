@@ -113,6 +113,16 @@ export function unverifiedToolStart(tb: ToolBlock): WireEvent {
   return { type: "tool_start", data: { name: tb.name, args: {} } };
 }
 
+/**
+ * A tool block still open when the next API response starts: its stream broke
+ * before the stop (the CLI retries such a request itself). Breadcrumb only.
+ */
+export function warnDroppedToolBlock(tb: ToolBlock): void {
+  console.warn(
+    `[claude] tool "${tb.name}" input stream ended before its stop (${tb.json.length} bytes); the CLI retried the request, dropping the partial call`,
+  );
+}
+
 /** A `tool_use` block off an SDK `assistant` message (external `BetaContentBlock`). */
 export interface AssistantContentBlock {
   type?: string;

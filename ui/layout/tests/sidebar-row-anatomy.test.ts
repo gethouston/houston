@@ -39,7 +39,7 @@ function source(file: string): string {
  */
 const ROW_CONSUMERS = [
   "sidebar-nav.tsx", // the top-level destinations
-  "sidebar-band.tsx", // the ONE band: "My accounts", "Workspace", "Your teams"
+  "sidebar-band.tsx", // the ONE band: "Workspace", "Your teams"
   "sidebar-group-header.tsx", // a team block's header
   "sidebar-item-row.tsx", // an agent row
   "sidebar-add-row.tsx", // the "New agent" row that closes the list
@@ -71,12 +71,12 @@ describe("sidebar row anatomy", () => {
   });
 
   it("draws EVERY band through the ONE band component", () => {
-    // The rail names three runs — "My accounts", "Workspace" and "Your teams" —
-    // and all three are `SidebarBand`. Nothing else may compose a band: a
-    // second one would drift in its type step, its triangle placement, its
-    // fold or the gap under it, and the rail would read as three lists that
-    // merely resemble each other. `sidebar-rail-chrome.tsx` renders the two nav
-    // runs, `sidebar.tsx` the teams list.
+    // The rail names two bands — "Workspace" and "Your teams" — and both are
+    // `SidebarBand`. Nothing else may compose a band: a second one would drift
+    // in its type step, its triangle placement, its fold or the gap under it,
+    // and the rail would read as lists that merely resemble each other.
+    // `sidebar-rail-chrome.tsx` renders the nav runs, `sidebar.tsx` the teams
+    // list.
     for (const file of ["sidebar-rail-chrome.tsx", "sidebar.tsx"]) {
       ok(source(file).includes("<SidebarBand"), file);
     }
@@ -99,14 +99,12 @@ describe("sidebar row anatomy", () => {
     ok(src.includes("collapsed ? null : children"));
   });
 
-  it("puts all THREE bands on ONE left edge", () => {
-    // "My accounts" and "Workspace" hung 8px right of "Your teams": the `<nav>`
-    // holding them was padded AND `SidebarBand` padded its own heading, so
-    // those two bands were inset twice while the teams band — rendered from
-    // `sidebar.tsx` inside an unpadded wrapper — was inset once. Every band's
-    // child ROWS sat at 8px either way, so only the labels drifted, and the
-    // rail read as two lists that happen to be stacked. The inset is one export
-    // now, spent once per heading and once per run of rows.
+  it("puts EVERY band on ONE left edge", () => {
+    // A band whose `<nav>` is padded AND whose heading pads itself is inset
+    // twice, hanging its label 8px right of a band inset once — while every
+    // band's child ROWS sit at 8px either way, so only the labels drift and the
+    // rail reads as two lists that happen to be stacked. The inset is one
+    // export, spent once per heading and once per run of rows.
     ok(includes(sidebarBandInset, "px-2"));
 
     // The band component insets its heading with that value and nothing else:

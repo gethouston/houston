@@ -1,6 +1,6 @@
-import type { PortableUploadPreviewResponse } from "@houston/engine-adapter";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { CreateFlowDoor } from "../components/shell/create-agent-steps-model.ts";
 import {
   type PanelOwner,
   setPanelOwner,
@@ -12,12 +12,24 @@ import {
   navigated,
   viewFieldsOf,
 } from "../lib/nav-stack.ts";
+import type { SlackCompletion } from "../lib/settings-landing.ts";
 import type { SettingsSectionId } from "../lib/settings-sections";
 import { TEAM_VIEW_ID, type TeamSectionId } from "../lib/teams-model.ts";
 import {
   AGENTS_HOME_VIEW_ID,
   TEAMS_HOME_VIEW_ID,
 } from "../lib/top-level-views.ts";
+
+/**
+ * A request to open the create sheet: the door the caller pressed, and the
+ * team an AI employee made through it should land in (`null` = the default
+ * team). The sheet resolves the door against what this caller may actually
+ * create (`create-agent-steps-model.ts`).
+ */
+export interface CreateFlowRequest {
+  door: CreateFlowDoor;
+  teamId: string | null;
+}
 
 export interface ToastItem {
   id: string;
@@ -102,11 +114,13 @@ interface UIState {
   /** Provider ID that needs re-auth (e.g. "anthropic", "openai"), or null if OK */
   authRequired: string | null;
   toasts: ToastItem[];
-  createAgentDialogOpen: boolean;
-  /** The "New team" dialog. Shared state rather than the rail's own: the
-   *  phone has no rail, so its Teams home opens the same dialog. */
-  createTeamDialogOpen: boolean;
-  createAgentTeamId: string | null;
+  /**
+   * The ONE create sheet ("Add to your workspace"), or null while it is shut.
+   * Store-owned rather than the rail's own state: the phone has no rail, and
+   * every other entry point (a team's empty board, the Agents home, the Teams
+   * home) opens the same sheet through the same door.
+   */
+  createFlow: CreateFlowRequest | null;
   /** The team whose "Change icon & name" dialog is open, or null for none. */
   editTeamIdentityId: string | null;
   /** "Your agent is still being created" write-blocked notice (HOU-693). */
@@ -175,6 +189,10 @@ interface UIState {
    *  open, or null. The draft itself is derived from that agent's activities;
    *  the page has no per-chat route, so an explicit flag marks the open one. */
   integrationSetupChatAgentId: string | null;
+  /** On a per-agent custom-integration deployment (PRODUCT-1773), the agent
+   *  whose custom list the global Integrations page shows; null = not picked
+   *  yet (the setup chat's agent, else the first agent, stands in). */
+  customIntegrationsAgentId: string | null;
   /** Whether the global command palette (⌘K) is open. */
   paletteOpen: boolean;
   /** Whether the keyboard shortcut cheatsheet (?) is open. */
@@ -207,52 +225,25 @@ interface UIState {
    * the app, and a reload must land the user back in the app rather than into a
    * beat whose world is long gone. */
   activeLessonId: string | null;
-  /** Agent id queued for the "Export a copy" wizard, or null. */
-  shareAgentId: string | null;
   /** Whether the "From a friend" import wizard is open. */
   importFromFriendOpen: boolean;
-  /** A one-shot preview the import wizard adopts on open — set by the Agent
-   * Store's one-click install right before opening the wizard, cleared by the
-   * wizard once applied. Ephemeral, never persisted. */
-  importSeedPreview: PortableUploadPreviewResponse | null;
-  /** A one-shot slug the Agent Store view opens the detail dialog on — set by
-   * "See it in the store" affordances before `setViewMode(STORE_VIEW_ID)`,
-   * cleared by the view once consumed. */
-  storeFocusSlug: string | null;
-  /** A one-shot flag that opens the Agent Store view on its "my agents" tab —
-   * set by "Manage all my agents" affordances before `setViewMode(STORE_VIEW_ID)`,
-   * cleared by the view once consumed. Ephemeral, never persisted. */
-  storeOwnerTab: "my" | null;
-  /** A one-shot slug queued by an `houston://store/install` deep link (desktop)
-   * or a `?install=<slug>` web param: the always-on deep-link hook seeds the
-   * import wizard with the store listing, then clears it. Ephemeral, never
-   * persisted (a reload must not re-trigger the install). */
-  pendingStoreInstallSlug: string | null;
-  /** A one-shot creator @handle the Agent Store view opens the creator pane on
-   * (mirrors `storeFocusSlug`): set by "View profile" affordances and by an
-   * `houston://store/creator?handle=…` deep link / `?creator=<handle>` web param
-   * before `setViewMode(STORE_VIEW_ID)`, cleared by the view once consumed.
-   * Ephemeral, never persisted. */
-  storeCreatorHandle: string | null;
-  /** Whether the creator-profile editor dialog is open. Ephemeral, never
-   * persisted (a dialog flag like `createAgentDialogOpen`). */
-  creatorEditorOpen: boolean;
+  /** The one-time Slack completion a public callback landed with
+   * (`?settings=channels&slack=…`), queued for the Channels section, which
+   * redeems it once and clears it. Ephemeral, never persisted and never logged:
+   * a reload must not retry a ticket, and the ticket is a bearer secret. */
+  pendingSlackCompletion: SlackCompletion | null;
   /** Whether the left rail is collapsed to an icon-only strip. Persisted. */
   sidebarCollapsed: boolean;
   /**
-   * Whether each of the rail's three LABELLED bands is folded away.
+   * Whether "Your teams", the rail's one LABELLED band, is folded away.
    *
-   * All three fold the same way and persist the same way, because they ARE the
-   * same band: a rail whose "My accounts" folded and whose "Your teams" did not
-   * would be teaching two rules for one row shape. Persisted, because a rail
-   * that forgets it was folded on every reload is worse than one that never
-   * folded, and per-MACHINE rather than per-account, like every other layout
-   * pref here. The rows that LEAD the rail (the Assistant, the Agent Store)
-   * wear no band and fold nothing: there is no heading to fold them under.
+   * Persisted, because a rail that forgets it was folded on every reload is
+   * worse than one that never folded, and per-MACHINE rather than per-account,
+   * like every other layout pref here. The rows that LEAD the rail (the
+   * Assistant, AI Models, Integrations) wear no band and fold nothing: there is
+   * no heading to fold them under.
    */
   teamsSectionCollapsed: boolean;
-  myAccountsSectionCollapsed: boolean;
-  workspaceSectionCollapsed: boolean;
   /** File shown by the global preview dialog, or null when closed. */
   filePreview: FilePreviewTarget | null;
   /**
@@ -351,8 +342,10 @@ interface UIState {
   setAuthRequired: (provider: string | null) => void;
   addToast: (toast: Omit<ToastItem, "id">) => void;
   dismissToast: (id: string) => void;
-  setCreateTeamDialogOpen: (open: boolean) => void;
-  setCreateAgentDialogOpen: (open: boolean, teamId?: string | null) => void;
+  /** Open the create sheet on the given door. `teamId` files a new AI employee
+   *  in that team; omit it for the default one. */
+  openCreateFlow: (door: CreateFlowDoor, teamId?: string | null) => void;
+  closeCreateFlow: () => void;
   setEditTeamIdentityId: (teamId: string | null) => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
   setNewMissionSheetOpen: (open: boolean, agentIds?: string[]) => void;
@@ -374,6 +367,7 @@ interface UIState {
   ) => void;
   setPendingSkillChatActivityId: (activityId: string | null) => void;
   setIntegrationSetupChatAgentId: (agentId: string | null) => void;
+  setCustomIntegrationsAgentId: (agentId: string | null) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
   setOnBoardNavigate: (
@@ -385,26 +379,18 @@ interface UIState {
   setInAppOnboardingFirstRun: (firstRun: boolean) => void;
   setTutorialComposerLock: (locked: boolean) => void;
   setActiveLessonId: (lessonId: string | null) => void;
-  setShareAgentId: (agentId: string | null) => void;
   setImportFromFriendOpen: (open: boolean) => void;
-  setImportSeedPreview: (preview: PortableUploadPreviewResponse | null) => void;
-  setStoreFocusSlug: (slug: string | null) => void;
-  setStoreOwnerTab: (v: "my" | null) => void;
-  setPendingStoreInstallSlug: (slug: string | null) => void;
-  setStoreCreatorHandle: (handle: string | null) => void;
-  setCreatorEditorOpen: (open: boolean) => void;
+  setPendingSlackCompletion: (completion: SlackCompletion | null) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebarCollapsed: () => void;
   toggleTeamsSectionCollapsed: () => void;
-  toggleMyAccountsSectionCollapsed: () => void;
-  toggleWorkspaceSectionCollapsed: () => void;
   setFilePreview: (preview: FilePreviewTarget | null) => void;
   /**
    * Reset the ephemeral, identity-scoped view state to its initial values on an
    * identity change (HOU-903) — the outgoing account's open view, panels,
    * dialogs, and searches must not greet the next account. The persisted device
-   * layout prefs (`sidebarCollapsed` and the three band folds)
-   * are kept: they are per-machine, not per-account.
+   * layout prefs (`sidebarCollapsed`, the chat width and the teams band's
+   * fold) are kept: they are per-machine, not per-account.
    */
   reset: () => void;
 }
@@ -419,9 +405,7 @@ const initialUIState = {
   claudeAvailable: null,
   authRequired: null,
   toasts: [],
-  createAgentDialogOpen: false,
-  createTeamDialogOpen: false,
-  createAgentTeamId: null,
+  createFlow: null,
   editTeamIdentityId: null,
   agentWarmingNoticeOpen: false,
   newMissionSheetOpen: false,
@@ -433,6 +417,7 @@ const initialUIState = {
   pendingRoutineChat: null,
   pendingSkillChatActivityId: null,
   integrationSetupChatAgentId: null,
+  customIntegrationsAgentId: null,
   paletteOpen: false,
   cheatsheetOpen: false,
   onBoardNavigate: null,
@@ -442,19 +427,11 @@ const initialUIState = {
   inAppOnboardingFirstRun: false,
   tutorialComposerLock: false,
   activeLessonId: null,
-  shareAgentId: null,
   importFromFriendOpen: false,
-  importSeedPreview: null,
-  storeFocusSlug: null,
-  storeOwnerTab: null,
-  pendingStoreInstallSlug: null,
-  storeCreatorHandle: null,
-  creatorEditorOpen: false,
+  pendingSlackCompletion: null,
   sidebarCollapsed: false,
   chatWide: false,
   teamsSectionCollapsed: false,
-  myAccountsSectionCollapsed: false,
-  workspaceSectionCollapsed: false,
   filePreview: null,
   activeTeamId: null,
   teamSection: null,
@@ -629,13 +606,9 @@ export const useUIStore = create<UIState>()(
           return { toasts: s.toasts.filter((t) => t.id !== id) };
         }),
 
-      setCreateTeamDialogOpen: (createTeamDialogOpen) =>
-        set({ createTeamDialogOpen }),
-      setCreateAgentDialogOpen: (createAgentDialogOpen, teamId = null) =>
-        set({
-          createAgentDialogOpen,
-          createAgentTeamId: createAgentDialogOpen ? teamId : null,
-        }),
+      openCreateFlow: (door, teamId = null) =>
+        set({ createFlow: { door, teamId } }),
+      closeCreateFlow: () => set({ createFlow: null }),
 
       setEditTeamIdentityId: (editTeamIdentityId) =>
         set({ editTeamIdentityId }),
@@ -690,6 +663,8 @@ export const useUIStore = create<UIState>()(
         set({ pendingSkillChatActivityId }),
       setIntegrationSetupChatAgentId: (integrationSetupChatAgentId) =>
         set({ integrationSetupChatAgentId }),
+      setCustomIntegrationsAgentId: (customIntegrationsAgentId) =>
+        set({ customIntegrationsAgentId }),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
@@ -709,17 +684,10 @@ export const useUIStore = create<UIState>()(
       setTutorialComposerLock: (tutorialComposerLock) =>
         set({ tutorialComposerLock }),
       setActiveLessonId: (activeLessonId) => set({ activeLessonId }),
-      setShareAgentId: (shareAgentId) => set({ shareAgentId }),
       setImportFromFriendOpen: (importFromFriendOpen) =>
         set({ importFromFriendOpen }),
-      setImportSeedPreview: (importSeedPreview) => set({ importSeedPreview }),
-      setStoreFocusSlug: (storeFocusSlug) => set({ storeFocusSlug }),
-      setStoreOwnerTab: (storeOwnerTab) => set({ storeOwnerTab }),
-      setPendingStoreInstallSlug: (pendingStoreInstallSlug) =>
-        set({ pendingStoreInstallSlug }),
-      setStoreCreatorHandle: (storeCreatorHandle) =>
-        set({ storeCreatorHandle }),
-      setCreatorEditorOpen: (creatorEditorOpen) => set({ creatorEditorOpen }),
+      setPendingSlackCompletion: (pendingSlackCompletion) =>
+        set({ pendingSlackCompletion }),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       setChatWide: (chatWide) => set({ chatWide }),
       toggleChatWide: () => set((s) => ({ chatWide: !s.chatWide })),
@@ -727,14 +695,6 @@ export const useUIStore = create<UIState>()(
         set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       toggleTeamsSectionCollapsed: () =>
         set((s) => ({ teamsSectionCollapsed: !s.teamsSectionCollapsed })),
-      toggleMyAccountsSectionCollapsed: () =>
-        set((s) => ({
-          myAccountsSectionCollapsed: !s.myAccountsSectionCollapsed,
-        })),
-      toggleWorkspaceSectionCollapsed: () =>
-        set((s) => ({
-          workspaceSectionCollapsed: !s.workspaceSectionCollapsed,
-        })),
       setFilePreview: (filePreview) => set({ filePreview }),
 
       reset: () => {
@@ -748,8 +708,6 @@ export const useUIStore = create<UIState>()(
           sidebarCollapsed: s.sidebarCollapsed,
           chatWide: s.chatWide,
           teamsSectionCollapsed: s.teamsSectionCollapsed,
-          myAccountsSectionCollapsed: s.myAccountsSectionCollapsed,
-          workspaceSectionCollapsed: s.workspaceSectionCollapsed,
         }));
       },
     }),
@@ -762,8 +720,6 @@ export const useUIStore = create<UIState>()(
         sidebarCollapsed: state.sidebarCollapsed,
         chatWide: state.chatWide,
         teamsSectionCollapsed: state.teamsSectionCollapsed,
-        myAccountsSectionCollapsed: state.myAccountsSectionCollapsed,
-        workspaceSectionCollapsed: state.workspaceSectionCollapsed,
       }),
     },
   ),

@@ -6,6 +6,9 @@ version: 1
 category: Contabilidad
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Primero leo tu contexto contable. Por cada campo obligatorio que falte, hago UNA
 - **La proporción de I+D en tu gasto de hosting en la nube**, Opcional. Por qué: las empresas antes de generar ingresos suelen tratar el 100% de la nube como I+D; las empresas con ingresos dividen producción vs. I+D. Si falta, pregunto: "¿Qué proporción de tu gasto en AWS / GCP / Vercel es para desarrollo e investigación versus mantener el producto en vivo? Si no lo sabes, uso 100% I+D por defecto si aún no generan ingresos."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto.** Cargo `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Registro obligatorio: `universal.company`, `domains.payroll`, `domains.tax.rdCreditEligible`. Si `rdCreditEligible == "no"`, advierto pero continúo si el usuario confirma (los créditos estatales / la amortización de la Sección 174 igual usan este desglose).
 

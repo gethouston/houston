@@ -1,7 +1,11 @@
+import { createHash } from "node:crypto";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { loadActivities, saveActivities } from "@houston/domain";
+import { messageRetryContent } from "@houston/protocol";
+import { messageAdmissionFileName } from "@houston/protocol/message-admission-file";
 import { afterEach, expect, test, vi } from "vitest";
+import { assistantApprovals } from "../assistant/approvals";
 import { LocalPaths } from "../paths";
 import type {
   CaptureResult,
@@ -31,6 +35,7 @@ const paths = new LocalPaths();
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  assistantApprovals.clear();
 });
 
 /** The gateway's acting-as stamp for the person driving the pod. */
@@ -41,6 +46,7 @@ const ACTING = `acting-v1.${Buffer.from(
 
 class RecordingChannel implements RuntimeChannel {
   readonly bodies: (string | undefined)[] = [];
+  status = 202;
 
   async dispatch(
     ctx: ChannelCtx,
@@ -51,7 +57,7 @@ class RecordingChannel implements RuntimeChannel {
     res: { writeHead: (s: number) => void; end: (chunk?: string) => void },
   ): Promise<void> {
     this.bodies.push(ctx.body?.toString("utf8"));
-    res.writeHead(202);
+    res.writeHead(this.status);
     res.end("{}");
   }
   async fireTurn(): Promise<void> {}
@@ -74,7 +80,7 @@ class RecordingChannel implements RuntimeChannel {
   async forgetCredential(): Promise<void> {}
 }
 
-async function boot() {
+async function boot(fronted = true) {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const workspace = await store.getOrCreatePersonalWorkspace("alice");
   // The coordinator on a POD: an ordinarily-named single agent, told apart by
@@ -104,7 +110,7 @@ async function boot() {
     channels: { gke: channel },
     vfs,
     paths,
-    gatewayFronted: true,
+    gatewayFronted: fronted,
   };
   const server = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
@@ -175,6 +181,202 @@ test("a fronted coordinator send reaches the runtime whole", async () => {
     expect(items[0]?.mentioned?.map((m) => m.user_id)).toEqual(["bob-sub"]);
     expect(liveTurns.get(fx.agent.id, "conv-1")?.actingAs).toBe(ACTING);
   } finally {
+    liveTurns.forget(fx.agent.id);
+    fx.close();
+  }
+});
+
+async function send(
+  fx: Awaited<ReturnType<typeof boot>>,
+  body: Record<string, unknown>,
+  acting: string | null = ACTING,
+) {
+  return fetch(
+    `${fx.base}/agents/${encodeURIComponent(fx.agent.id)}/conversations/conv-1/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(acting === null ? {} : { "x-houston-acting-as": acting }),
+      },
+      body: JSON.stringify(body),
+    },
+  );
+}
+
+test("a desktop send is read and stripped by the host too, gateway or not", async () => {
+  // Approvals are host-owned wherever the host runs, so the turn body is
+  // drained on EVERY deployment - only the Teams attribution that follows is
+  // gated on a gateway having vouched for the actor.
+  const fx = await boot(false);
+  try {
+    const request = assistantApprovals.issue({
+      agentId: fx.agent.id,
+      conversationId: "conv-1",
+      operation: "deleteAgent",
+      params: {},
+      summary: "Delete target",
+    });
+    expect(
+      (
+        await send(
+          fx,
+          {
+            text: "yes",
+            approvals: [{ requestId: request.requestId, decision: "approve" }],
+          },
+          null,
+        )
+      ).status,
+    ).toBe(202);
+    expect(fx.channel.bodies.at(-1)).toContain("yes");
+    expect(fx.channel.bodies.at(-1)).not.toContain("approvals");
+    expect(
+      assistantApprovals.consume({
+        agentId: fx.agent.id,
+        conversationId: "conv-1",
+        requestId: request.requestId,
+        operation: "deleteAgent",
+        params: {},
+      }),
+    ).toBe("approved");
+  } finally {
+    liveTurns.forget(fx.agent.id);
+    fx.close();
+  }
+});
+
+test("nonce conflicts cannot mutate host receipts or the active turn", async () => {
+  const fx = await boot();
+  try {
+    expect(
+      (await send(fx, { text: "original", nonce: "n", mode: "plan" })).status,
+    ).toBe(202);
+    const request = assistantApprovals.issue({
+      agentId: fx.agent.id,
+      conversationId: "conv-1",
+      operation: "deleteAgent",
+      params: {},
+      summary: "Delete target",
+    });
+    const response = await send(fx, {
+      text: "yes",
+      nonce: "n",
+      mode: "auto",
+      approvals: [{ requestId: request.requestId, decision: "approve" }],
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ code: "nonce_conflict" });
+    expect(fx.channel.bodies).toHaveLength(1);
+    expect(
+      assistantApprovals.pending(request.requestId, fx.agent.id, "conv-1"),
+    ).toBeDefined();
+    expect(liveTurns.get(fx.agent.id, "conv-1")?.mode).toBe("plan");
+    const other = `acting-v1.${Buffer.from(JSON.stringify({ sub: "other-user" })).toString("base64url")}.sig`;
+    expect(
+      (await send(fx, { text: "original", nonce: "n", mode: "plan" }, other))
+        .status,
+    ).toBe(409);
+  } finally {
+    liveTurns.forget(fx.agent.id);
+    fx.close();
+  }
+});
+
+test("retrying a prompt preserves the approval it raised and forwards no receipts", async () => {
+  const fx = await boot();
+  try {
+    const body = { text: "original", nonce: "n" };
+    await send(fx, body);
+    const request = assistantApprovals.issue({
+      agentId: fx.agent.id,
+      conversationId: "conv-1",
+      operation: "deleteAgent",
+      params: {},
+      summary: "Delete target",
+    });
+    expect((await send(fx, body)).status).toBe(202);
+    expect(
+      assistantApprovals.pending(request.requestId, fx.agent.id, "conv-1"),
+    ).toBeDefined();
+    const answer = {
+      text: "yes",
+      nonce: "answer",
+      approvals: [{ requestId: request.requestId, decision: "approve" }],
+    };
+    await send(fx, answer);
+    await send(fx, answer);
+    expect(fx.channel.bodies.at(-1)).not.toContain("approvals");
+    expect(
+      assistantApprovals.consume({
+        agentId: fx.agent.id,
+        conversationId: "conv-1",
+        requestId: request.requestId,
+        operation: "deleteAgent",
+        params: {},
+      }),
+    ).toBe("approved");
+  } finally {
+    liveTurns.forget(fx.agent.id);
+    fx.close();
+  }
+});
+
+test("a definite runtime refusal releases host nonce admission", async () => {
+  const fx = await boot();
+  try {
+    fx.channel.status = 409;
+    expect((await send(fx, { text: "first", nonce: "n" })).status).toBe(409);
+    fx.channel.status = 202;
+    expect((await send(fx, { text: "corrected", nonce: "n" })).status).toBe(
+      202,
+    );
+    expect(fx.channel.bodies).toHaveLength(2);
+  } finally {
+    liveTurns.forget(fx.agent.id);
+    fx.close();
+  }
+});
+
+test.each([
+  "expiry",
+  "restart",
+])("%s of the host memory guard still honors durable admission before touching a new card", async (reset) => {
+  const fx = await boot();
+  try {
+    const body = { text: "original", nonce: "old" };
+    await send(fx, body);
+    const digest = (value: string) =>
+      createHash("sha256").update(value).digest("hex");
+    await fx.vfs.writeText(
+      `${fx.agent.id}/.houston/runtime/${messageAdmissionFileName("conv-1", "old")}`,
+      JSON.stringify({
+        version: 1,
+        fingerprint: "a".repeat(64),
+        turnId: "accepted",
+        hostFingerprint: digest(messageRetryContent(body, "alice-sub")),
+      }),
+    );
+    if (reset === "expiry")
+      vi.spyOn(Date, "now").mockReturnValue(Date.now() + 11 * 60_000);
+    else assistantApprovals.clear();
+    const request = assistantApprovals.issue({
+      agentId: fx.agent.id,
+      conversationId: "conv-1",
+      operation: "deleteAgent",
+      params: {},
+      summary: "New approval",
+    });
+    expect((await send(fx, body)).status).toBe(202);
+    expect(
+      assistantApprovals.pending(request.requestId, fx.agent.id, "conv-1"),
+    ).toBeDefined();
+    expect((await send(fx, { ...body, text: "changed" })).status).toBe(409);
+    expect(
+      assistantApprovals.pending(request.requestId, fx.agent.id, "conv-1"),
+    ).toBeDefined();
+  } finally {
+    vi.restoreAllMocks();
     liveTurns.forget(fx.agent.id);
     fx.close();
   }

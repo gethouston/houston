@@ -56,6 +56,16 @@ describe("agentSettingsSections", () => {
     deepStrictEqual(agentAccessSections(LEGACY_MULTIPLAYER), ["people"]);
     deepStrictEqual(agentAccessSections(null), []);
   });
+
+  it("hides governance sections in a personal space", () => {
+    deepStrictEqual(agentAccessSections(TEAMS, true), []);
+    deepStrictEqual(agentSettingsSections(TEAMS, true), [
+      "manage",
+      "job-description",
+      "skills",
+      "learnings",
+    ]);
+  });
 });
 
 describe("targetToSection", () => {

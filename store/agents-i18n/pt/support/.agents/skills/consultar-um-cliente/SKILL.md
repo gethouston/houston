@@ -7,6 +7,9 @@ category: Suporte
 featured: no
 image: headphone
 integrations: [gmail, hubspot, salesforce, attio, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - `churn-risk`, alerta de risco aberto com sinal (linguagem de cancelamento, fricção recorrente, queda brusca de uso), severidade e ação recomendada. Escreve uma entrada em `churn-flags.json`.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Resolver `{account}` ou `{slug}`.** Você me deu o nome do cliente? Procuro em `customers.json` por nome / e-mail / domínio. Sem correspondência? Peço o identificador do CRM (HubSpot / Attio / Salesforce via Composio) ou o perfil colado.
 2. **Ler `config/context-ledger.json`.** Preencher lacunas.

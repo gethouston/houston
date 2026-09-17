@@ -1,22 +1,35 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { adminRow, openAdminSection } from "./support/settings-nav";
-import { navRow } from "./support/team-nav";
+import {
+  expectAdminSections,
+  openAdmin,
+  openAdminSection,
+  openSkillsLibrary,
+  skillsTab,
+} from "./support/settings-nav";
+import {
+  navRow,
+  openTeamSettings,
+  openTeamSettingsSection,
+  screen,
+} from "./support/team-nav";
 
 /**
  * C8 Spaces gating (HOU-824 / HOU-878): when the host advertises
- * `capabilities.spaces`, Admin exists in personal and team spaces. Personal
- * People offers the shared create-organization face because the space itself
- * is non-invitable. The gate is `canSeeOrganization(caps, activeSpaceIsTeam)`
+ * `capabilities.spaces`, Admin exists in personal and team spaces. A personal
+ * space has nobody in it to administer, so Workspace management drops People,
+ * Billing and Activity there (`orgTabIds`); the way out of being alone is the
+ * TEAM screen's People pane, which wears the shared create-organization face
+ * (`teamPeopleFace` → "invite"). The gate is `canSeeOrganization(caps, activeSpaceIsTeam)`
  * (`app/src/components/organization/org-view-model.ts`), where the active space is
  * a team iff its workspace id is `org:<16-hex>` (`app/src/lib/space-id.ts`).
  *
- * Admin is a TOP-LEVEL screen in the rail's "Workspace" band, so the gate is
- * observed on its rail row. It used to have a twin — the Permissions screen,
- * which shared this gate exactly — but that screen is gone: agent policy is
- * discovered through a team's focused agent screen, whose own gate is per
- * team (`agent-policy.spec.ts`), not per space.
+ * Admin is the Workspace management SECTION of Settings, so the gate is
+ * observed on the face behind that section: the dashboard for whoever passes
+ * it, the plain workspace-name card for everyone else. It is the only screen
+ * this gate draws; agent policy is discovered through a team's focused agent
+ * screen, which carries a gate of its own, per team (`agent-policy.spec.ts`).
  *
  * On a NON-spaces multiplayer host (legacy Teams v2, exactly one org) there is no
  * personal/team split, so the gate falls through to the members-roster rule and
@@ -79,7 +92,7 @@ async function switchToSpace(page: Page, name: string): Promise<void> {
   await expect(switcher.getByText(name, { exact: true })).toBeVisible();
 }
 
-test("spaces host, personal space: Admin shows the create-organization People face", async ({
+test("spaces host, personal space: Workspace management drops People, the team offers the invite", async ({
   page,
   request,
 }) => {
@@ -87,12 +100,22 @@ test("spaces host, personal space: Admin shows the create-organization People fa
   await page.goto("/");
   await railPainted(page);
 
-  await expect(adminRow(page)).toBeVisible();
-  await openAdminSection(page, "People");
+  // Workspace management administers the SPACE, and a personal space has no
+  // people in it to administer: People, Billing and Activity are absent, and
+  // what is left is what one human alone can act on.
+  await openAdmin(page);
+  await expectAdminSections(page, ["Company context", "Org chart", "Usage"]);
+
+  // The way OUT of being alone still exists, on the surface that is about
+  // people: the team's own People pane wears the create-organization face.
+  await openTeamSettings(page);
+  await openTeamSettingsSection(page, "People");
   await expect(
-    page.getByText("To invite other people, create an organization."),
+    screen(page).getByText("To invite other people, create an organization."),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Create organization" }).click();
+  await screen(page)
+    .getByRole("button", { name: "Create organization" })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Create an organization" }),
   ).toBeVisible();
@@ -108,10 +131,10 @@ test("regression: a non-spaces Teams host still shows Admin on the personal work
   // No `caps.spaces`, so the personal/team split doesn't apply: the gate falls
   // through to the members-roster rule and the owner keeps Admin — legacy Teams
   // v2 behavior preserved.
-  await expect(adminRow(page)).toBeVisible();
+  await openAdmin(page);
 });
 
-test("spaces host: switching to a team space turns Admin's People face into the roster", async ({
+test("spaces host: switching to a team space gives Workspace management its People roster", async ({
   page,
   request,
 }) => {
@@ -120,23 +143,18 @@ test("spaces host: switching to a team space turns Admin's People face into the 
   await page.goto("/");
   await railPainted(page);
 
-  // Admin is a standing row in BOTH kinds of space — it is where a personal
-  // space is offered the way out of being alone, so hiding it there would hide
-  // the invitation itself. What the switch changes is the FACE behind it.
-  await expect(adminRow(page)).toBeVisible();
-  await openAdminSection(page, "People");
-  await expect(
-    page.getByText("To invite other people, create an organization."),
-  ).toBeVisible();
+  // Admin stands behind Workspace management in BOTH kinds of space — what the
+  // switch changes is whether the space has PEOPLE in it to administer.
+  await openAdmin(page);
+  await expectAdminSections(page, ["Company context", "Org chart", "Usage"]);
 
   // Switch into the team space through the real switcher UI. The rail rebuilds
   // in place — a space switch lands the user on their agent home, and the gate,
   // not where the switch leaves the view, is what this asserts.
   await switchToSpace(page, TEAM.name);
 
-  // A team space has people, so People is the real roster with its invite
-  // field, and the create-organization face is gone.
-  await expect(adminRow(page)).toBeVisible();
+  // A team space has people, so the People lozenge is back and behind it is
+  // the real roster with its invite field.
   await openAdminSection(page, "People");
   await expect(page.locator("#org-add-email")).toBeVisible();
   await expect(
@@ -153,8 +171,9 @@ test("team space: inviting a fresh email through Admin > People renders a pendin
   await page.goto("/");
   await switchToSpace(page, TEAM.name);
 
-  // Open Admin (the Organization dashboard) from the rail on its People
-  // section — a lozenge in the header cluster — to reach the roster.
+  // Open Admin (the Organization dashboard) through Settings > Workspace
+  // management on its People section — a lozenge in the header cluster — to
+  // reach the roster.
   await openAdminSection(page, "People");
 
   // Invite a fresh email → the fake host mints a pending invite (202
@@ -175,11 +194,11 @@ test("team space: inviting a fresh email through Admin > People renders a pendin
 });
 
 /**
- * The rail's Skills row is the same question asked of a different surface:
- * skills are what every agent in the space can do, so editing them edits
- * everyone's agents at once and that belongs to whoever OWNS the space
- * (`isSpaceOwner`). A personal space has single-player semantics, so its one
- * human owns it whatever their org role reads.
+ * The Integrations header's Skills lozenge is the same question asked of a
+ * different surface: skills are what every agent in the space can do, so
+ * editing them edits everyone's agents at once and that belongs to whoever
+ * OWNS the space (`isSpaceOwner`). A personal space has single-player
+ * semantics, so its one human owns it whatever their org role reads.
  */
 test("Skills belongs to the space owner: a Manager loses it in a team space", async ({
   page,
@@ -189,20 +208,24 @@ test("Skills belongs to the space owner: a Manager loses it in a team space", as
   await armTeamWorkspace(request);
   await page.goto("/");
 
-  // Personal space first: single-player semantics, so the row is theirs.
-  await expect(navRow(page, "skills")).toBeVisible();
+  // Personal space first: single-player semantics, so the tab is theirs.
+  await navRow(page, "integrations").click();
+  await expect(skillsTab(page)).toBeVisible();
 
   await switchToSpace(page, TEAM.name);
 
-  // In the team space an admin runs the place but does not own it, so the row
-  // goes. Settings stays — it is everyone's — which is what makes the absence
-  // a gate rather than an unpainted band.
-  await expect(navRow(page, "skills")).toHaveCount(0);
-  await expect(navRow(page, "settings")).toBeVisible();
+  // In the team space an admin runs the place but does not own it, so the tab
+  // goes. The catalog body stays — it is everyone's — which is what makes the
+  // absence a gate rather than an unpainted screen.
+  await navRow(page, "integrations").click();
+  await expect(skillsTab(page)).toHaveCount(0);
+  await expect(
+    screen(page).locator("[data-integrations-section='catalog']"),
+  ).toBeVisible();
 
   // And it really is about OWNERSHIP, not about being junior: the same caller
-  // keeps the owner/admin row in the same band.
-  await expect(adminRow(page)).toBeVisible();
+  // still reaches the owner/admin dashboard through Settings.
+  await openAdmin(page);
 });
 
 test("the space owner keeps Skills in their team space", async ({
@@ -212,13 +235,18 @@ test("the space owner keeps Skills in their team space", async ({
   await armCapabilities(request, SPACES_OWNER_CAPS);
   await armTeamWorkspace(request);
   await page.goto("/");
-  await expect(navRow(page, "skills")).toBeVisible();
+  await navRow(page, "integrations").click();
+  await expect(skillsTab(page)).toBeVisible();
 
   await switchToSpace(page, TEAM.name);
-  await expect(navRow(page, "skills")).toBeVisible();
+  await openSkillsLibrary(page);
+  // The library itself, under the Integrations tab cluster.
+  await expect(
+    screen(page).getByRole("button", { name: "Create skill" }),
+  ).toBeVisible();
 });
 
-test("switching back to the personal space keeps Admin visible", async ({
+test("switching back to the personal space keeps Admin reachable", async ({
   page,
   request,
 }) => {
@@ -227,10 +255,10 @@ test("switching back to the personal space keeps Admin visible", async ({
   await page.goto("/");
 
   await switchToSpace(page, TEAM.name);
-  await expect(adminRow(page)).toBeVisible();
+  await openAdmin(page);
 
   // Back to personal — the switcher shows the adapter's synthetic personal row,
   // which is always named "Personal" (the seed workspace id never surfaces).
   await switchToSpace(page, "Personal");
-  await expect(adminRow(page)).toBeVisible();
+  await openAdmin(page);
 });

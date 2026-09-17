@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [hubspot, stripe, linkedin, mailchimp, customerio, googleads, metaads]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -53,6 +56,7 @@ Eu leio primeiro o seu contexto de marketing. Para cada campo obrigatório que e
 - **Sua política de retenção** - Obrigatório para `churn-save`. Por que preciso: eu não vou redigir ofertas que você não pode cumprir. Se estiver faltando, eu pergunto: "Qual é a única oferta genuína que você faria a um cliente cancelando, uma pausa, um downgrade, uma ligação consultiva, ou uma janela de reembolso?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o registro + posicionamento.** Coletar os campos obrigatórios que faltarem, conforme a lista acima (UMA pergunta cada, priorizando a melhor modalidade).
 2. **Ramificar pelo tipo.**

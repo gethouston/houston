@@ -15,6 +15,14 @@
       "types": "./src/agent-name.ts",
       "import": "./src/agent-name.ts"
     },
+    "./job-description": {
+      "types": "./src/job-description.ts",
+      "import": "./src/job-description.ts"
+    },
+    "./job-description-yaml": {
+      "types": "./src/job-description-yaml.ts",
+      "import": "./src/job-description-yaml.ts"
+    },
     "./provider-dialect": {
       "types": "./src/provider-dialect.ts",
       "import": "./src/provider-dialect.ts"
@@ -82,7 +90,6 @@
   },
   "dependencies": {
     "@houston-ai/agent-schemas": "workspace:*",
-    "@houston/agentstore-contract": "workspace:*",
     "@houston/protocol": "workspace:*",
     "croner": "10.0.1",
     "fflate": "0.8.3",

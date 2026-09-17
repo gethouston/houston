@@ -32,6 +32,20 @@ describe("humanizeActionGerund", () => {
     );
   });
 
+  it("strips a multi-word toolkit spelled without its separator", () => {
+    // The shared `actionWordsWithoutToolkit` compares on letters and digits,
+    // so `googlemaps` eats `GOOGLE_MAPS_` exactly as `google_maps` does. A
+    // plain string-prefix match left the app's own name in the label here.
+    strictEqual(
+      humanizeActionGerund("GOOGLE_MAPS_SEARCH", "googlemaps"),
+      "Searching",
+    );
+    strictEqual(
+      humanizeActionDone("GOOGLE_MAPS_SEARCH", "googlemaps"),
+      "Searched",
+    );
+  });
+
   it("falls back to a capitalized de-underscored remainder for an unmapped verb", () => {
     strictEqual(
       humanizeActionGerund("GMAIL_SYNC_CONTACTS", "gmail"),

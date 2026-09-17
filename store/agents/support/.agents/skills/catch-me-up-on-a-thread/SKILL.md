@@ -6,6 +6,9 @@ category: Support
 featured: no
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,7 @@ I read your support context first. For every required field that's missing I ask
 - **Audience for the summary**  -  Optional. Why I need it: a 3-bullet for you reads differently than a handoff for a teammate. If you don't have it I keep going with TBD and write it for your eyes.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 1. **Load** `conversations/{id}/thread.json` and index row from `conversations.json`.
 2. **Walk thread chronologically.** Note: customer's original ask, scope changes, every promise made, every answer given.
 3. **Produce exactly three bullets:**

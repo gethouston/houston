@@ -7,6 +7,9 @@ category: Consultoria
 featured: yes
 image: scroll
 integrations: [stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -22,6 +25,7 @@ integrations: [stripe]
 - Qualquer "preciso de X?" ou "X se aplica?" cabe em um memorando curto.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia o contexto compartilhado.** Carregue o `legal-context.md` para saber a entidade, a geografia dos dados dos usuários atuais, os contratos vigentes, a postura de risco do fundador e as regras de escalonamento. Leia também os registros anteriores relevantes em `advice-memos/`, não responda de novo algo que já foi decidido.
 

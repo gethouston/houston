@@ -6,6 +6,9 @@ version: 1
 category: Vendas
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,9 @@ Primeiro leio o seu contexto de vendas. Para cada campo obrigatório que estiver
 - **Para qual cliente é**  -  Obrigatório. Por que preciso: leio o close-plan e a proposta desse negócio para extrair o problema que ele declarou. Se estiver faltando, pergunto: "Para qual cliente é esse onboarding?"
 - **A métrica de sucesso deles, nas palavras deles**  -  Obrigatório. Por que preciso: o plano fica ancorado na métrica que importa para eles, não na nossa. Se estiver faltando, pergunto: "Como o cliente vai saber que funcionou? O que ele disse que seria sucesso?"
 - **Data do kickoff**  -  Opcional. Por que preciso: ancora a linha do tempo de 90 dias. Se você não tiver, sigo com TBD e proponho uma data com base no início do contrato.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Leio o playbook.** `context/sales-context.md`.
 

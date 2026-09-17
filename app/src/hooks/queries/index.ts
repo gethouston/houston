@@ -36,12 +36,15 @@ export {
   useAddCustomIntegration,
   useAgentCustomIntegrations,
   useCustomIntegrationsFor,
-  useCustomTransportAgentId,
   useDetectCustomIntegration,
   useRemoveCustomIntegration,
   useStartCustomOAuth,
   useSubmitCustomCredential,
 } from "./use-custom-integrations";
+export {
+  useCustomIntegrationScope,
+  useCustomTransportAgentId,
+} from "./use-custom-transport";
 export {
   useCreateFolder,
   useDeleteFile,
@@ -94,7 +97,6 @@ export {
 } from "./use-settled-conversations";
 export {
   useCreateSkill,
-  useInstallCommunitySkill,
   useInstallSkillFromRepo,
   useListSkillsFromRepo,
   useSkillDetail,

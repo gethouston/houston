@@ -7,6 +7,9 @@ category: Propriedade intelectual
 featured: no
 image: scroll
 integrations: [firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -22,6 +25,7 @@ Não é um parecer de autorização, é uma checagem eliminatória (knockout). R
 - Antes de registrar um pedido de intenção de uso 1(b).
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia o contexto compartilhado.** Leia `context/legal-context.md`. Se estiver faltando ou vazio, pergunte ao usuário em linguagem simples: "Preciso saber algumas informações básicas sobre a sua empresa primeiro. Quer configurar isso agora?" Depois execute `set-up-my-legal-info` se sim. Pare até que isso esteja feito.
 

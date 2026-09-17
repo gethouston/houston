@@ -10,9 +10,9 @@ import { litRows, navRow, rail, screen, teamTab } from "./support/team-nav";
  *
  * It is also where the rail's shape is pinned. There is no global Mission
  * Control any more: the top-level rows are the ones that belong to nobody
- * (the Assistant, the Agent Store), then the "My accounts" and "Workspace"
- * bands, then "Your teams", with the Academy and Settings in the footer — and
- * boot lands on the FIRST team's Tasks board.
+ * (the Assistant, AI Models, Integrations), then "Your teams" under the rail's
+ * ONE band, with the Academy and Settings in the footer — and boot lands on
+ * the FIRST team's Tasks board.
  */
 test("boots past every gate onto the first team's Tasks board", async ({
   page,
@@ -21,13 +21,10 @@ test("boots past every gate onto the first team's Tasks board", async ({
 
   // Shell chrome: the whole top-level rail, in the order the user reads it.
   const sidebar = page.locator("[data-tour-target='sidebar']");
-  await expect(navRow(page, "agent-store")).toBeVisible();
-  await expect(navRow(page, "agent-store")).toBeVisible();
-  await expect(sidebar.getByText("My accounts")).toBeVisible();
+  await expect(navRow(page, "ai-hub")).toBeVisible();
   await expect(navRow(page, "integrations")).toBeVisible();
-  await expect(sidebar.getByText("Workspace", { exact: true })).toBeVisible();
-  // Single player: the solo user IS the space owner, so Skills is theirs.
-  await expect(navRow(page, "skills")).toBeVisible();
+  // The lead run wears no heading: "Your teams" is the rail's only band.
+  await expect(sidebar.getByText("Workspace", { exact: true })).toHaveCount(0);
   await expect(navRow(page, "settings")).toBeVisible();
   await expect(sidebar.getByText("Your teams")).toBeVisible();
   await expect(newAgentRow(page)).toBeVisible();

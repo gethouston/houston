@@ -391,6 +391,7 @@ export type {
   ProviderError,
   QuotaScope,
   RunStatus,
+  SystemNoticeKind,
   TokenUsage,
 } from "./types";
 // === Utilities ===

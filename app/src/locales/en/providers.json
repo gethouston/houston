@@ -28,7 +28,7 @@
     "cancelFailed": "Couldn't cancel {{provider}} sign-in",
     "catalogLoadFailed": "Couldn't load your available AI models. The list may be incomplete until this succeeds.",
     "orgAdminRequiredTitle": "Ask an admin to connect this",
-    "orgAdminRequiredBody": "Only an owner or admin can connect AI for the organization. Ask one of them to set it up, or to add you to an agent so you can connect your own account."
+    "orgAdminRequiredBody": "Only an owner or admin can connect AI for the organization. Ask one of them to set it up, or to add you to an AI Employee so you can connect your own account."
   },
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
@@ -107,7 +107,7 @@
     "errorHuggingfaceInferenceGated": "Your token is valid, but it isn't allowed to run models. Open the Hugging Face tokens page with the button above and create a token with \"Make calls to Inference Providers\" checked (a \"Read\" token also works), then paste it here.",
     "errorGoogleKeyRestricted": "Google is blocking this key through its own settings. In Google AI Studio or Google Cloud, open the key, remove its application and API restrictions (or allow the Generative Language API), or create a new key without restrictions with the button above, then paste it here.",
     "errorProviderUnavailable": "We couldn't reach {{name}} to check your key, so nothing was saved. Please try again in a moment.",
-    "errorOrgAdminRequired": "Only an owner or admin can connect AI for the organization. Ask one of them to set it up, or to add you to an agent so you can connect your own key."
+    "errorOrgAdminRequired": "Only an owner or admin can connect AI for the organization. Ask one of them to set it up, or to add you to an AI Employee so you can connect your own key."
   },
   "copilot": {
     "title": "Connect GitHub Copilot",
@@ -147,10 +147,10 @@
     "cancel": "Cancel",
     "cloudOnly": {
       "title": "The cloud can't reach that address",
-      "notHttps": "Cloud agents can only reach public https:// addresses. Enter an https:// address, or put your server behind a tunnel like cloudflared or ngrok.",
-      "customPort": "Cloud agents can only reach addresses on the standard https port. Remove the port from the address.",
-      "privateHost": "Cloud agents can't reach your computer or your local network directly. Use a public https:// address, or put your server behind a tunnel like cloudflared, ngrok or Tailscale Funnel.",
-      "unspecified": "Cloud agents can only reach public https:// addresses. Use a public https:// address, or put your server behind a tunnel like cloudflared or ngrok."
+      "notHttps": "AI Employees in the cloud can only reach public https:// addresses. Enter an https:// address, or put your server behind a tunnel like cloudflared or ngrok.",
+      "customPort": "AI Employees in the cloud can only reach addresses on the standard https port. Remove the port from the address.",
+      "privateHost": "AI Employees in the cloud can't reach your computer or your local network directly. Use a public https:// address, or put your server behind a tunnel like cloudflared, ngrok or Tailscale Funnel.",
+      "unspecified": "AI Employees in the cloud can only reach public https:// addresses. Use a public https:// address, or put your server behind a tunnel like cloudflared or ngrok."
     }
   },
   "claudeLogin": {
@@ -200,7 +200,7 @@
     },
     "share": {
       "label": "Share with my team",
-      "help": "Teammates' agents can use this model. Their requests run through your computer while it's online."
+      "help": "Teammates' AI Employees can use this model. Their requests run through your computer while it's online."
     },
     "error": {
       "body": "Something went wrong while connecting. Make sure the app is still open on your computer, then try again.",

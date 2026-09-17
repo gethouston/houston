@@ -99,7 +99,7 @@ function NewTeamButton({ label }: { label: string }) {
       type="button"
       aria-label={label}
       data-testid="teams-home-new-team"
-      onClick={() => useUIStore.getState().setCreateTeamDialogOpen(true)}
+      onClick={() => useUIStore.getState().openCreateFlow("team")}
       className="flex size-10 shrink-0 items-center justify-center rounded-full bg-chip text-ink transition-colors active:scale-[0.96] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ht-hairline"
     >
       <Plus className="size-5" />

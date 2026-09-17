@@ -14,33 +14,30 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
  *
  * **The Academy leads the cluster.** Learning to fly is neither a destination
  * the user reaches for hourly nor a preference, so it closes the rail rather
- * than competing with the Assistant and the Agent Store at the top of it —
+ * than competing with the Assistant at the top of it —
  * and it sits directly above Settings, where the two rows a person opens
  * about their own use of Houston are found together
  * (`sidebar-nav-rows.tsx` builds the row; the phone's More menu draws the
  * same one at the tail of its destinations).
  *
- * **Settings lives here, not in the "Workspace" band.** That band is what the
- * SPACE is made of, and it is owner territory; Settings belongs to the
- * PERSON's chrome, which is why it sits with the account. It also has to be
- * reachable in every deployment mode, including the ones where the Workspace
- * band does not exist at all — a plain member passes none of that band's
- * gates, so the library drops the band and every row in it.
+ * **Settings lives here, not among the destinations.** Those are the places
+ * work happens; Settings belongs to the PERSON's chrome, which is why it sits
+ * with the account. It is also the door to everything that administers the
+ * SPACE — Workspace management and the shared Skills library are sections
+ * behind it — so it has to be reachable in every deployment mode, whatever
+ * gates a caller passes.
  *
  * **The help control sits beside it** (`sidebar-help-menu.tsx`): "Guide me" and
- * "Report a problem", the two things a stuck user reaches for. "Guide me" used
- * to be a permanent row in the rail's lead run, the one entry pointing at no
- * screen and therefore the one that could never light. Asking for help is not a
- * destination, so it wears a help control at the foot of the navigation instead
- * of a slot among the destinations. What it runs is the shared
+ * "Report a problem", the two things a stuck user reaches for. Asking for help
+ * is not a destination, so it wears a help control at the foot of the
+ * navigation rather than a slot among the destinations. What it runs is the
+ * shared
  * {@link useRunGuidedSetup}, the same composition the Academy's setup chapter
  * spends, so the guided setup can never start two different ways.
  *
- * Settings is the rail's LAST row. The avatar menu that used to close the rail
- * is gone: once Settings became a permanent row here, a second control opening
- * "Account settings" was a second door onto the same page. Identity moved INTO
- * that page, where the Settings index now opens on the signed-in person's face,
- * email and Sign out (`settings/identity-header.tsx`).
+ * Settings is the rail's LAST row, and the ONE door onto that page: identity
+ * lives inside it, where the Settings index opens on the signed-in person's
+ * face, email and Sign out (`settings/identity-header.tsx`).
  *
  * The row is drawn with `SidebarNavItem` — the same component `SidebarNavList`
  * renders every other destination through — so it is a rail row rather than a

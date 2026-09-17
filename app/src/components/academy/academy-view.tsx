@@ -25,8 +25,8 @@ import { useAcademyOpened } from "./use-academy-opened";
  * territory, so it is a row of its own and owns the whole window, with no back
  * bar because there is no level above it.
  *
- * It wears the app's page strip, the same fixed 48px band Skills, Integrations,
- * the Agent Store and Admin wear, so the screen's name sits where a user has
+ * It wears the app's page strip, the same fixed 48px band Skills, Integrations
+ * and Admin wear, so the screen's name sits where a user has
  * already learned to read it. The strip owns the h1, which is why nothing below
  * it is a second page title.
  *
@@ -87,7 +87,7 @@ function AcademyLoadFailed(props: { onRetry: () => void }) {
     <Empty className="border border-line">
       <EmptyHeader>
         <EmptyMedia variant="icon">
-          <TriangleAlert className="size-6 text-destructive" />
+          <TriangleAlert className="size-6 text-danger" />
         </EmptyMedia>
         <EmptyTitle>{t("error.title")}</EmptyTitle>
         <EmptyDescription>{t("error.description")}</EmptyDescription>

@@ -6,6 +6,9 @@ version: 1
 category: Operações
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Eu leio o seu contexto operacional primeiro. Para cada campo obrigatório que es
 - **Limites inegociáveis** - Opcional. Por que eu preciso: permite recusar de cara qualquer coisa que os viole. Se você não tiver isso, eu sigo em frente com dado pendente usando os padrões do workspace.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio `context/operations-context.md`.** Prioridades ativas, limites inegociáveis, posições específicas do fundador ancoram toda avaliação de rubrica. Se estiver faltando → `set-up-my-ops-info` primeiro, paro.
 

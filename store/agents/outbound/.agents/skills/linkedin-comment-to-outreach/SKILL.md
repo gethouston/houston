@@ -6,6 +6,9 @@ category: Outbound
 featured: yes
 image: envelope-with-arrow
 integrations: [apify, airtable, apollo, instantly, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -75,6 +78,7 @@ Paused campaign ready for your review
 ```
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Validate inputs.** Check the URL is a LinkedIn post (not a profile, not an article), confirm the four Composio connections, read `config/context-ledger.json`. Mint a `runId` of the form `{YYYY-MM-DD}-{post-slug}` and create `runs/{runId}/notes.md` for the per-run journal.
 

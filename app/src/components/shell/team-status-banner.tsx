@@ -9,7 +9,6 @@ import { isTeamWorkspace, orgSlugFromWorkspaceId } from "../../lib/space-id.ts";
 import { teamStatusView } from "../../lib/team-status-model.ts";
 import { useUIStore } from "../../stores/ui.ts";
 import { useWorkspaceStore } from "../../stores/workspaces.ts";
-import { ORGANIZATION_VIEW_ID } from "../organization/id.ts";
 import { useOrgNav } from "../organization/org-nav-store.ts";
 
 /**
@@ -29,7 +28,7 @@ export function TeamStatusBanner() {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const current = useWorkspaceStore((s) => s.current);
-  const setViewMode = useUIStore((s) => s.setViewMode);
+  const openSettings = useUIStore((s) => s.openSettings);
   const requestTab = useOrgNav((s) => s.requestTab);
 
   const spaces = hasSpaces(capabilities);
@@ -59,7 +58,7 @@ export function TeamStatusBanner() {
   // time or already open behind another view.
   const openBilling = () => {
     requestTab("billing");
-    setViewMode(ORGANIZATION_VIEW_ID);
+    openSettings("workspace");
   };
 
   if (view.kind === "trial") {

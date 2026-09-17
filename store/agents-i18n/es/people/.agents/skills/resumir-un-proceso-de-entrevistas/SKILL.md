@@ -7,6 +7,9 @@ category: Personal
 featured: no
 image: busts-in-silhouette
 integrations: [notion, linear, slack, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -56,6 +59,7 @@ conectada > archivo > URL > texto pegado) y espero.
 - **Marco de niveles**: Obligatorio. Por qué lo necesito: las bandas de contratar o no contratar se ajustan a tu estándar en ese nivel. Si falta, pregunto: "¿Cómo describirías qué significa 'cumplir el estándar' en este nivel?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal** en
    `context/people-context.md`. Si falta o está vacío, le digo al

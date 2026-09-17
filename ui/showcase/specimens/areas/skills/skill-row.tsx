@@ -15,8 +15,8 @@ import { installedSkills } from "./sample";
 const [weeklyReport, inboxTriage, draftContract] = installedSkills;
 
 /**
- * The container `SkillsGrid` gives the row: a gray card with hairline
- * dividers. The row itself is transparent, so it is only ever reviewed on it.
+ * The container a list gives the row: a gray card with hairline dividers. The
+ * row itself is transparent, so it is only ever reviewed on one.
  */
 function RowShell({ children }: { children: ReactNode }) {
   return (

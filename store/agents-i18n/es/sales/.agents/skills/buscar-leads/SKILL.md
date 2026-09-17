@@ -7,6 +7,9 @@ category: Ventas
 featured: yes
 image: handshake
 integrations: [hubspot, salesforce, attio, linkedin, twitter, reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, hago UN
 - **De dónde sacarlos**  -  Obligatorio. Por qué lo necesito: cada fuente usa una herramienta conectada distinta. Si falta, pregunto: "¿Expando parecidos desde tu CRM, traigo a los que comentaron en un post de LinkedIn, reviso un feed de rondas de inversión recientes, hago scraping de una zona en Google Maps, o saco un hilo de un subreddit?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el registro + el playbook.** Reúno los campos obligatorios que falten
    (UNA pregunta cada uno, mejor modalidad primero). Escribo de forma atómica.

@@ -12,11 +12,40 @@ import type {
  * can't act on.
  */
 
-/** Human-facing identity for a member row: their email, else their raw id. */
-export function memberLabel(
-  member: Pick<OrgMember, "email" | "userId">,
+/**
+ * The ONE rule for naming a person on screen, wherever they appear: the name
+ * they set, else the email the gateway exposes to this caller, else whatever
+ * the surface has left to say (a shortened id in a feed, a translated stand-in
+ * in the org chart). Never a raw uuid unless the caller chooses one — an
+ * opaque id names nobody.
+ */
+export function personDisplayName(
+  member: Pick<OrgMember, "displayName" | "email" | "userId">,
+  fallback: string,
 ): string {
-  return member.email ?? member.userId;
+  // A blank or whitespace-only value names nobody, so it counts as ABSENT: the
+  // gateway stores what a person typed, and a name of spaces would otherwise
+  // win over the email and leave the row rendering an empty line.
+  const named = (value: string | null | undefined) => {
+    const trimmed = value?.trim();
+    return trimmed === "" ? undefined : trimmed;
+  };
+  return named(member.displayName) ?? named(member.email) ?? fallback;
+}
+
+/**
+ * How a member ROW names its person, in its visible line and in the labels a
+ * screen reader reads from the controls beside it alike — one name per row, or
+ * the screen says one thing and announces another.
+ *
+ * It is {@link personDisplayName} with the row's own last resort: a row is
+ * keyed by user id, so the id is all that is left when the gateway exposed
+ * neither a name nor an email to this caller.
+ */
+export function rosterPersonName(
+  member: Pick<OrgMember, "displayName" | "email" | "userId">,
+): string {
+  return personDisplayName(member, member.userId);
 }
 
 /**

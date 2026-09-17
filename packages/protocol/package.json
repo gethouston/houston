@@ -11,9 +11,17 @@
       "types": "./src/index.ts",
       "import": "./src/index.ts"
     },
+    "./auto-continue": {
+      "types": "./src/auto-continue.ts",
+      "import": "./src/auto-continue.ts"
+    },
     "./access-digest": {
       "types": "./src/access-digest.ts",
       "import": "./src/access-digest.ts"
+    },
+    "./message-admission-file": {
+      "types": "./src/message-admission-file.ts",
+      "import": "./src/message-admission-file.ts"
     },
     "./google-key": {
       "types": "./src/google-key.ts",

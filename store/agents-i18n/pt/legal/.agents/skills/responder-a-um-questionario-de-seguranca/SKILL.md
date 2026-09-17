@@ -7,6 +7,9 @@ category: Conformidade
 featured: no
 image: scroll
 integrations: [googlesheets, googledocs, googledrive, airtable]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ A: Yes  -  AES-256 at rest via {provider}'s managed encryption on all
 Grupos de temas (personalize se o questionário for diferente): controle de acesso, autenticação, dados em repouso, dados em trânsito, residência de dados, subprocessadores, backups e recuperação de desastres, resposta a incidentes, ciclo de desenvolvimento seguro, gestão de vulnerabilidades, registro e monitoramento, segurança de pessoal (contratação / desligamento / treinamento), segurança física (geralmente "não se aplica, remoto, hospedado em {nuvem}"), certificações de conformidade (SOC 2, ISO, HIPAA, GDPR), IA / treinamento de modelos, acesso da equipe de suporte aos dados de clientes, retenção e exclusão de dados.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia o contexto compartilhado**: `context/legal-context.md`. Se estiver faltando ou vazio, pergunte ao usuário em linguagem simples: "Preciso saber algumas informações básicas sobre a sua empresa antes de responder isso bem. Quer configurar isso agora?" Depois execute `set-up-my-legal-info` se sim. Pare até que isso esteja feito. Extraia o nome da entidade, a geografia dos dados, os contratos vigentes com clientes corporativos que possam limitar as respostas.
 2. **Leia a biblioteca de respostas**: `config/security-answers.md`. Se estiver faltando, é o primeiro questionário, tudo bem, a biblioteca começa a partir das respostas capturadas aqui. Anote na saída quantas respostas anteriores você já tem em mãos.

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
 import type { Agent } from "../../lib/types";
 import type { AgentSettingsSection } from "../agent-settings/agent-settings-nav.ts";
 import { agentSettingsSections } from "../agent-settings/agent-settings-nav.ts";
@@ -45,9 +46,10 @@ export function AgentDetail({
   onSectionShown?: (section: AgentSettingsSection) => void;
 }) {
   const { capabilities } = useCapabilities();
+  const personalSpace = usePersonalSpace();
   const sections = useMemo(
-    () => agentSettingsSections(capabilities),
-    [capabilities],
+    () => agentSettingsSections(capabilities, personalSpace),
+    [capabilities, personalSpace],
   );
   const [selected, setSelected] = useState<AgentSettingsSection>(() =>
     resolveAgentSettingsSection(sections, initialSection),

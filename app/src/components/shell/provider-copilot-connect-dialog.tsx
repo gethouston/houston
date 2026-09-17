@@ -1,15 +1,8 @@
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@houston-ai/core";
-import { useEffect, useState } from "react";
+import { FormDialog } from "@houston-ai/core";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { resolveCopilotDomain } from "../../lib/copilot-domain";
+import { stayOpen } from "../../lib/dialog-stay-open";
 import type { ProviderInfo } from "../../lib/providers";
 
 /**
@@ -44,6 +37,9 @@ export function ProviderCopilotConnectDialog({
   const [plan, setPlan] = useState<Plan>("personal");
   const [domain, setDomain] = useState("");
   const [domainInvalid, setDomainInvalid] = useState(false);
+  // True once a plan has been picked: the close that follows is progress, not
+  // an abandon, and the caller must not hear it as a dismissal.
+  const connected = useRef(false);
 
   // Reset per-open so a stale plan/domain never leaks across opens.
   useEffect(() => {
@@ -51,6 +47,7 @@ export function ProviderCopilotConnectDialog({
       setPlan("personal");
       setDomain("");
       setDomainInvalid(false);
+      connected.current = false;
     }
   }, [provider]);
 
@@ -58,15 +55,17 @@ export function ProviderCopilotConnectDialog({
 
   const canSubmit = plan === "personal" || domain.trim().length > 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Resolving hands the dialog's close to the recipe; an unusable domain
+  // rejects, so the typed value stays on screen with its remedy instead of the
+  // dialog vanishing.
+  const handleSubmit = () => {
     if (plan === "company") {
       const target = resolveCopilotDomain(domain);
       if (target.kind === "invalid") {
         // Unusable input fails HERE with a remedy, not minutes later inside a
         // device-code flow pointed at a non-GitHub host.
         setDomainInvalid(true);
-        return;
+        return stayOpen();
       }
       // github.com typed into the company field IS the github.com path (a
       // Copilot Business seat signs in there); never route it as "enterprise".
@@ -74,88 +73,79 @@ export function ProviderCopilotConnectDialog({
     } else {
       onConnect(undefined);
     }
-    // `onConnect` is what closes this dialog (the caller drops the provider).
-    // Calling `onClose` here too would report a DISMISSAL on the success path,
-    // and a dismissal cancels the connection observation behind the dialog —
-    // killing it at the exact moment the sign-in it just started begins.
+    // `onConnect` is what closes this dialog (the caller drops the provider),
+    // and the recipe closes on a resolved primary too. Either way the close is
+    // PROGRESS: reporting it as a dismissal would cancel the connection
+    // observation behind the dialog — killing it at the exact moment the
+    // sign-in it just started begins.
+    connected.current = true;
   };
 
   return (
-    <Dialog
+    <FormDialog
       open
       onOpenChange={(open) => {
-        if (!open) onClose();
+        if (!open && !connected.current) onClose();
       }}
+      title={t("copilot.title")}
+      description={t("copilot.description")}
+      primary={{
+        label: t("copilot.continue"),
+        onClick: handleSubmit,
+        disabled: !canSubmit,
+      }}
+      labels={{ cancel: t("copilot.cancel") }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t("copilot.title")}</DialogTitle>
-          <DialogDescription>{t("copilot.description")}</DialogDescription>
-        </DialogHeader>
+      <fieldset className="space-y-2">
+        <PlanOption
+          plan="personal"
+          selected={plan === "personal"}
+          onSelect={setPlan}
+          title={t("copilot.personalTitle")}
+          description={t("copilot.personalDesc")}
+        />
+        <PlanOption
+          plan="company"
+          selected={plan === "company"}
+          onSelect={setPlan}
+          title={t("copilot.companyTitle")}
+          description={t("copilot.companyDesc")}
+        />
+      </fieldset>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <fieldset className="space-y-2">
-            <PlanOption
-              plan="personal"
-              selected={plan === "personal"}
-              onSelect={setPlan}
-              title={t("copilot.personalTitle")}
-              description={t("copilot.personalDesc")}
-            />
-            <PlanOption
-              plan="company"
-              selected={plan === "company"}
-              onSelect={setPlan}
-              title={t("copilot.companyTitle")}
-              description={t("copilot.companyDesc")}
-            />
-          </fieldset>
-
-          {plan === "company" && (
-            <div className="space-y-1.5">
-              <label
-                htmlFor="copilot-enterprise-domain"
-                className="text-[13px] font-medium"
-              >
-                {t("copilot.domainLabel")}
-              </label>
-              <input
-                id="copilot-enterprise-domain"
-                type="text"
-                autoComplete="off"
-                autoFocus
-                value={domain}
-                onChange={(e) => {
-                  setDomain(e.target.value);
-                  setDomainInvalid(false);
-                }}
-                placeholder={t("copilot.domainPlaceholder")}
-                aria-invalid={domainInvalid}
-                className="w-full rounded-md border bg-input px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
-              />
-              {domainInvalid ? (
-                <p role="alert" className="text-[12px] text-danger">
-                  {t("copilot.domainInvalid")}
-                </p>
-              ) : (
-                <p className="text-[12px] text-ink-muted">
-                  {t("copilot.domainHint")}
-                </p>
-              )}
-            </div>
+      {plan === "company" && (
+        <div className="space-y-1.5">
+          <label
+            htmlFor="copilot-enterprise-domain"
+            className="text-sm font-medium"
+          >
+            {t("copilot.domainLabel")}
+          </label>
+          <input
+            id="copilot-enterprise-domain"
+            type="text"
+            autoComplete="off"
+            // biome-ignore lint/a11y/noAutofocus: the company plan asks for exactly this one value, and the field appears because the user just chose it; the rule tolerated the same autofocus before only because the <input> sat lexically inside <Dialog>.
+            autoFocus
+            value={domain}
+            onChange={(e) => {
+              setDomain(e.target.value);
+              setDomainInvalid(false);
+            }}
+            placeholder={t("copilot.domainPlaceholder")}
+            aria-invalid={domainInvalid}
+            className="w-full rounded-md border bg-input px-3 py-2 text-base font-mono focus:outline-none focus:ring-2 focus:ring-focus"
+          />
+          {domainInvalid ? (
+            <p role="alert" className="text-xs text-danger">
+              {t("copilot.domainInvalid")}
+            </p>
+          ) : (
+            <p className="text-xs text-ink-muted">{t("copilot.domainHint")}</p>
           )}
-
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              {t("copilot.cancel")}
-            </Button>
-            <Button type="submit" disabled={!canSubmit}>
-              {t("copilot.continue")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        </div>
+      )}
+    </FormDialog>
   );
 }
 
@@ -186,8 +176,8 @@ function PlanOption({
         className="mt-0.5 size-4 shrink-0 hover-text"
       />
       <span className="min-w-0">
-        <span className="block text-[13px] font-medium text-ink">{title}</span>
-        <span className="block text-[12px] text-ink-muted">{description}</span>
+        <span className="block text-sm font-medium text-ink">{title}</span>
+        <span className="block text-xs text-ink-muted">{description}</span>
       </span>
     </label>
   );

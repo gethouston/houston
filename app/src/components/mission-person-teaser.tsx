@@ -13,13 +13,14 @@ import {
   FilterTrigger,
   PersonFace,
 } from "./mission-person-face";
-import { CreateTeamDialog } from "./shell/create-team-dialog";
+import { CreateOrganizationDialog } from "./shell/create-organization-dialog";
 
 /**
  * The personal-space growth teaser for the person filter (C8 §Client UX). The
  * control is visible even though a solo personal space has nobody to filter to:
- * it offers Everyone plus an "invite your team" row that opens the create-team
- * dialog, so people discover that sharing turns the board multiplayer. There is
+ * it offers Everyone plus an "invite your team" row that opens the
+ * create-organization dialog, so people discover that sharing turns the board
+ * multiplayer. There is
  * deliberately NO "My missions" option here (it would filter to zero).
  */
 export function MissionPersonTeaser({
@@ -32,7 +33,7 @@ export function MissionPersonTeaser({
   onEveryone: () => void;
 }) {
   const { t } = useTranslation("dashboard");
-  const [createTeamOpen, setCreateTeamOpen] = useState(false);
+  const [createOrganizationOpen, setCreateOrganizationOpen] = useState(false);
   return (
     <>
       <DropdownMenu>
@@ -50,7 +51,7 @@ export function MissionPersonTeaser({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => setCreateTeamOpen(true)}
+            onClick={() => setCreateOrganizationOpen(true)}
             className="gap-2"
           >
             <span className="relative">
@@ -61,9 +62,9 @@ export function MissionPersonTeaser({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <CreateTeamDialog
-        open={createTeamOpen}
-        onOpenChange={setCreateTeamOpen}
+      <CreateOrganizationDialog
+        open={createOrganizationOpen}
+        onOpenChange={setCreateOrganizationOpen}
       />
     </>
   );

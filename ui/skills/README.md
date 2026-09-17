@@ -1,6 +1,6 @@
 # @houston-ai/skills
 
-Skills management UI backed by Houston skill files. Browse installed skills, view details, search and install from the community marketplace.
+Skills management UI backed by Houston skill files. Browse installed skills, preview one in detail, and add skills from a GitHub repository or from scratch.
 
 ## Install
 
@@ -11,29 +11,31 @@ pnpm add @houston-ai/skills
 ## Usage
 
 ```tsx
-import { SkillsGrid } from "@houston-ai/skills"
+import { SkillRow } from "@houston-ai/skills"
 
-<SkillsGrid
-  skills={installedSkills}
-  loading={false}
-  onSkillClick={(skill) => navigate(`/skills/${skill.id}`)}
-  onListFromRepo={(source) => listRepoSkills(source)}
-  onInstallFromRepo={(source, skills) => installRepoSkills(source, skills)}
-/>
+{installedSkills.map((skill) => (
+  <SkillRow
+    key={skill.id}
+    skill={skill}
+    onClick={() => navigate(`/skills/${skill.id}`)}
+  />
+))}
 ```
 
 ## Exports
 
-- `SkillsGrid` -- main view with installed skill list + optional community section
 - `SkillRow` -- single skill row with name, description, icon
-- `SkillDetailPage` -- full detail view for a selected skill
 - `AddSkillDialog` -- the Add Skill dialog (GitHub / From scratch tabs)
-- `SkillMarketplaceSection` -- inline marketplace section (search + category shelves) for a page
-- `SkillMarketplaceGrid` -- the Skills.sh marketplace card grid (search + popular)
-- `SkillMarketplaceRow` -- compact marketplace row (AppRow idiom) with info + install actions
-- `SkillPreviewModal` -- overlay detail modal for a marketplace skill
-- `LearningRow` -- skill learning/memory display
-- Types: `Skill`, `CommunitySkill`, `LearningCategory`, `SkillLearning`
+- `SkillEditModal` -- the installed skill's editor
+- `SkillPreviewModal` -- overlay detail modal for a skill the user can add
+- `SkillOwnerAvatar` -- the owner mark a preview carries
+- `EditableSkillTitle` -- the rename-in-place heading a skill surface titles itself with
+- `SkillWorkflowSteps` -- a skill's parsed procedure, step by step
+- `SkillInstructionsDisclosure` -- the fold that reveals a skill's raw instructions
+- `humanizeIntegrationAction` -- a workflow step's connected-app action, read as a sentence
+- `deriveInstalledSkillEditorState` -- the collapsed/loading/ready/error state of an inline editor
+- `toSlug` -- the install slug a from-scratch title becomes
+- Types: `Skill`, `PreviewSkill`, `PreviewSkillDetail`, `RepoSkill`, `SkillStepIntegration`, `SkillWorkflowStepItem`
 
 ## Peer Dependencies
 

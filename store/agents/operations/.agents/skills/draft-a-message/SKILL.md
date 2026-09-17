@@ -6,6 +6,9 @@ category: Operations
 featured: no
 image: clipboard
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -46,6 +49,7 @@ I read your operations context first. For every required field that's missing I 
 - `vendor`  -  renewal / cancel / trial / reference-check outreach. Grounded in contract terms from `contracts/` + vendor posture from `context/operations-context.md`. Output: `drafts/vendor-{type}-{vendor-slug}.md`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. Read ledger; fill `universal.voice` + any `domains.vendors.posture` gap with ONE modality-ranked question.
 2. Read `context/operations-context.md`  -  priorities, key contacts, hard nos, voice notes.

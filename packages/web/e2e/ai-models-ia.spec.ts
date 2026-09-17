@@ -1,7 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { adminRow } from "./support/settings-nav";
+import { openSettings, workspaceRow } from "./support/settings-nav";
 import { openAgentSettings } from "./support/team-nav";
 
 /**
@@ -16,8 +16,8 @@ import { openAgentSettings } from "./support/team-nav";
  *    shared AI account at all — every agent runs on the AI account of whoever
  *    messages it — so the hub is visible to EVERYONE and shows each viewer their
  *    own accounts, with no role-gated section inside it. The space-wide spend
- *    roll-up did NOT open up with it: it lives in the Admin screen, behind the
- *    unchanged owner/admin gate.
+ *    roll-up did NOT open up with it: it lives in Settings > Workspace
+ *    management, behind the unchanged owner/admin gate.
  *  - Each member's own model pick lives in the composer, not the hub.
  *  - USAGE (how much of each connected AI account is left) belongs to the
  *    account, so it renders on the hub's Connected row. There is no separate
@@ -124,7 +124,7 @@ test("Teams member: the AI Models nav is there, and no usage screen is", async (
   // and the hub is the only surface that can manage it, so it is never hidden.
   // No usage nav rides in with it: account usage belongs to the account (it
   // renders on the hub's Connected row, HOU-789) and the space-wide roll-up
-  // stays in the Admin screen, one level down.
+  // stays inside Settings > Workspace management.
   await armCapabilities(request, { ...SPACES_CAPS, role: "user" });
   await armTeamWorkspace(request);
   await page.goto("/");
@@ -133,7 +133,7 @@ test("Teams member: the AI Models nav is there, and no usage screen is", async (
   await expect(page.locator('[data-tour-target="nav-ai-hub"]')).toBeVisible();
   await expect(page.locator('[data-tour-target="nav-usage"]')).toHaveCount(0);
   await expect(
-    page.locator('[data-tour-target="nav-agent-store"]'),
+    page.locator('[data-tour-target="nav-integrations"]'),
   ).toBeVisible();
 });
 
@@ -240,7 +240,7 @@ test("a per-agent model ceiling offers the full catalog (no org narrowing)", asy
     page.getByRole("heading", { name: "Allowed AI Models" }),
   ).toBeVisible();
   await expect(
-    page.getByText("Which AI models can this agent use?"),
+    page.getByText("Which AI models can this AI Employee use?"),
   ).toBeVisible();
 
   // Restrict the agent's model ceiling, revealing the "Add models" list, then
@@ -272,17 +272,18 @@ test("account usage renders on the hub's Connected row and nowhere else", async 
     page.getByText("Sign in again to see this account's usage."),
   ).toBeVisible();
 
-  // And no usage screen competes with it anywhere. The rail's "Workspace" band
-  // carries Admin and nothing usage-shaped at all: Time worked is a LENS inside
-  // Admin > Time worked, never a destination of its own, and it rides
-  // `capabilities.computeUsage`, which the fake host does not advertise here.
-  // The owner/admin spend roll-up lives INSIDE Admin, one level down.
-  await expect(adminRow(page)).toBeVisible();
+  // And no usage screen competes with it anywhere. The rail carries nothing
+  // usage-shaped at all: Time worked is a LENS inside Workspace management,
+  // never a destination of its own, and it rides `capabilities.computeUsage`,
+  // which the fake host does not advertise here. The owner/admin spend roll-up
+  // lives in the same place — a Settings section, not a rail row.
   await expect(
     page
       .locator("[data-tour-target='sidebar']")
       .getByRole("button", { name: "Time worked", exact: true }),
   ).toHaveCount(0);
+  await openSettings(page);
+  await expect(workspaceRow(page)).toBeVisible();
 });
 
 // ── 5. A member connects, and their own turns are configured (HOU-976) ─────

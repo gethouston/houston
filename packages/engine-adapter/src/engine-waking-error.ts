@@ -58,6 +58,12 @@
 // `engine unavailable` pair for this state; the raw reason stays matched for
 // pods still on the older host during the roll that ships the change.
 //
+// A fifth is the HOST's rename latch (`launcher/process.ts` hold, HOU-827):
+// while a rename moves the agent's directory the old id is refused for a few
+// seconds, and the app's own reconnect storm arrives with that id. The host
+// answers the same `engine unavailable` pair with the latch as detail
+// (PRODUCT-1804), so nothing here reads the detail.
+//
 // Four client stacks reach the host, minting different error shapes (same
 // split as `agent-name-conflict.ts`, plus the runtime client):
 //

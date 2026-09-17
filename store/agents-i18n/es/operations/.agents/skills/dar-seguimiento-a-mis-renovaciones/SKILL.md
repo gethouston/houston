@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [googledrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Primero leo tu contexto operativo. Por cada campo requerido que falte hago UNA p
 - **Postura de aprobación** - Opcional. Por qué lo necesito: me dice quién puede firmar y con qué agresividad mostrar candidatos a negociación. Si no la tienes, sigo adelante con TBD usando por defecto que solo firma el fundador.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer `context/operations-context.md`** - los límites innegociables + la postura frente a proveedores fijan el umbral de la señal "negociar antes de la renovación automática". Si falta: detenerse y pedir `set-up-my-ops-info`.
 

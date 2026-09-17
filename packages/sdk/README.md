@@ -17,7 +17,7 @@ and `pnpm check:sdk-parity` fails on a gateway route the app calls with no
 method here.
 
 > **Changing client behavior?** Follow procedure a of the three-surface
-> maintenance contract (root `CLAUDE.md` → "Client-surface changes (SDK first)").
+> maintenance contract (root `CLAUDE.md` → "SDK is the single source of truth").
 > A VM-snapshot change is a contract change — additive only, same discipline as
 > protocol v3.
 

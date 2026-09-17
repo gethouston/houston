@@ -24,7 +24,7 @@ import {
  * `PUT /v1/agents/:slug/assignments`, and an Apps ceiling narrow persists via
  * `PUT /v1/agents/:slug/settings` — each verified with a full reload so the
  * write reached the gateway, not just the client cache. A plain member gets no
- * "Agent settings" lozenge at all, so the whole configure surface is out of reach for
+ * "AI Employee settings" lozenge at all, so the whole configure surface is out of reach for
  * them rather than half-shown.
  *
  * The Teams-shaped state single-player can't reach is armed via the fake host's
@@ -116,10 +116,12 @@ test("the team's agent list drills into seven settings lozenges", async ({
     page.locator('[data-agent-section-body="manage"]'),
   ).toBeVisible();
   // The manage card carries the copy door alongside identity, move and delete.
-  await expect(page.getByRole("button", { name: /Copy agent/ })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Copy AI Employee/ }),
+  ).toBeVisible();
 });
 
-test("Copy agent opens pre-named with the first free name and refuses a taken one", async ({
+test("Copy AI Employee opens pre-named with the first free name and refuses a taken one", async ({
   page,
   request,
 }) => {
@@ -127,7 +129,7 @@ test("Copy agent opens pre-named with the first free name and refuses a taken on
   await armOrg(request);
   await page.goto("/");
   await openAgentSettings(page, "Finance Bot", null);
-  await page.getByRole("button", { name: /Copy agent/ }).click();
+  await page.getByRole("button", { name: /Copy AI Employee/ }).click();
 
   // Names are unique per workspace (not per team), so the dialog opens on the
   // first free "<name> copy" instead of a name the create would 409 on.
@@ -139,7 +141,7 @@ test("Copy agent opens pre-named with the first free name and refuses a taken on
   // name taken) names the conflict inline and disables the create.
   await nameField.fill("Finance Bot");
   await expect(
-    page.getByText("An agent named Finance Bot already exists"),
+    page.getByText("An AI Employee named Finance Bot already exists"),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Create copy" }),
@@ -338,7 +340,7 @@ test("Apps section: the app ceiling narrows and persists", async ({
     page.getByRole("heading", { name: "Allowed Integrations" }),
   ).toBeVisible();
   await expect(
-    page.getByText("Which integrations can this agent use?"),
+    page.getByText("Which integrations can this AI Employee use?"),
   ).toBeVisible();
 
   // Starts unrestricted (null): the allow-all option is checked.
@@ -373,7 +375,7 @@ test("AI models section: the model ceiling editor is present", async ({
     page.getByRole("heading", { name: "Allowed AI Models" }),
   ).toBeVisible();
   await expect(
-    page.getByText("Which AI models can this agent use?"),
+    page.getByText("Which AI models can this AI Employee use?"),
   ).toBeVisible();
 });
 

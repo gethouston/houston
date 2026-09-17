@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [linkedin, twitter, reddit, instagram, googleads, metaads, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -45,6 +48,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Your social platforms and topics**  -  Required for `social-feed`. Why I need it: tells me which feed to scan and what counts as relevant. If missing I ask: "Which platforms do you post on, and what topics do you want me to track in your feed?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + positioning.** Extract named competitor list + our differentiators + top 2-3 ideal customer objections. Gather missing required fields (ONE question each).
 2. **Determine mode + target list.**

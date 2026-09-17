@@ -7,6 +7,9 @@ category: Suporte
 featured: no
 image: headphone
 integrations: [github, linear, slack, microsoftteams]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - **Voz de comunicação com clientes**. Opcional. Por que preciso: os modelos de incidente soam mais verdadeiros no seu tom. Se você não tiver, eu sigo em frente com TBD e recomendo rodar a calibração de voz.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/support-context.md`.** Puxo os níveis atuais de tempo de resposta, a lista de VIPs e os contatos de escalonamento. Faltando? Rode `set-up-my-support-info` primeiro.
 

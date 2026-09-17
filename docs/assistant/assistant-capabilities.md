@@ -22,6 +22,11 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `createCheckout`: Starts the checkout that subscribes the team workspace to a paid plan. **Confirmation required.**
 - `getBilling`: Shows the plan, trial, and payment status of the team workspace.
 
+## channels
+
+- `disconnectChannel`: Disconnects a messaging account from the personal assistant. **Confirmation required.**
+- `getChannels`: Shows which messaging accounts are connected to the personal assistant.
+
 ## chat
 
 - `conversations.delete`: Deletes one of an agent's chats, with everything said in it. **Confirmation required.**
@@ -116,19 +121,16 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `deleteSharedSkill`: Deletes a skill shared with the workspace, removing it for everyone. **Confirmation required.**
 - `deleteSkill`: Deletes a skill so the agent no longer has it. **Confirmation required.**
 - `getSkillsManifest`: Reads which of an agent's skills are switched on.
-- `installCommunitySkill`: Installs a skill from the community directory into an agent. **Confirmation required.**
 - `installSkillsFromRepo`: Installs skills from a GitHub repository into an agent. **Confirmation required.**
 - `listSharedSkills`: Lists the skills shared with everyone in a workspace.
 - `listSkills`: Lists the skills an agent can follow.
 - `listSkillsFromRepo`: Lists the skills published in a GitHub repository.
 - `loadSharedSkill`: Reads the instructions of a skill shared with the workspace.
 - `loadSkill`: Reads a skill's instructions.
-- `previewCommunitySkill`: Shows what a community skill does before installing it.
 - `promoteSharedSkill`: Shares an agent's existing skill with everyone in the workspace. **Confirmation required.**
 - `putSkillsManifest`: Chooses which of an agent's skills are switched on. **Confirmation required.**
 - `saveSharedSkill`: Saves changes to a skill shared with the workspace, for everyone who uses it. **Confirmation required.**
 - `saveSkill`: Saves changes to a skill's instructions. **Confirmation required.**
-- `searchCommunitySkills`: Searches the community directory of skills.
 
 ## spaces
 

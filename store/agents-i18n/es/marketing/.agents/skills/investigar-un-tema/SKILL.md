@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Primero leo tu contexto de marketing. Por cada campo requerido que falte, hago U
 - **Profundidad**, Opcional, por defecto estándar. Si falta, pregunto: "¿Qué tan profundo quieres que vaya, un vistazo de quince minutos, una hora de inmersión, o una corrida profunda? Si no tienes preferencia, sigo con la profundidad estándar."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Aclarar el alcance en un intercambio breve (saltar si el mensaje del usuario ya es específico).** Preguntar:
    - Para qué va a servir el informe, entrada de blog, ángulos de anuncios, correo de ciclo de vida, calendario de redes, o solo para tu propia lectura.

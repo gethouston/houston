@@ -53,11 +53,11 @@ export async function runConversationCommand(
   command: ConversationCommand,
   text: string,
   nonce?: string,
+  turnId: string = crypto.randomUUID(),
 ): Promise<void> {
   // Marked before the first await, in the tick the route accepted the command,
   // so no turn can be accepted into the context this is about to rewrite.
   const settle = beginConversationCommand(id);
-  const turnId = crypto.randomUUID();
   // A conversation with no live session has no queue to join and nothing
   // running to wait for — the gate above already established that.
   const conv = conversations.get(id);
@@ -66,7 +66,7 @@ export async function runConversationCommand(
     // (chat.ts): the command is durable and visible the instant it is accepted,
     // even while another conversation holds the lock. The echo is what a client
     // adopts this turn's id from.
-    appendUserMessage(id, text, { turnId });
+    appendUserMessage(id, text, { turnId, nonce });
     publish(id, {
       type: "user",
       data: { content: text, ts: Date.now(), nonce },

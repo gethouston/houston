@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [linkedin, twitter, youtube, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ I read your marketing context first. For every required field that's missing I a
 - **The target format**  -  Required. If missing I ask: "What do you want me to turn it into, five LinkedIn posts, an X thread, a newsletter, a blog draft, or a list of shareable insights?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read positioning doc**: `context/marketing-context.md`. If missing, stop and tell user run `set-up-my-marketing-info` first. Voice and positioning load-bearing for repurposed content.
 2. **Read config**: `config/site.json` and `config/tooling.json`.

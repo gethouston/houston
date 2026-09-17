@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { activatePendingConnection } from "./support/activate-pending-connection";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { startMission } from "./support/mission";
 
@@ -241,7 +242,7 @@ test("walks three questions one at a time and composes a single structured reply
   // "Send a follow-up..." composer is not rendered under it.
   await expect(page.getByRole("radio")).toHaveCount(2);
   await expect(page.getByPlaceholder("Type another option...")).toBeVisible();
-  const composer = page.getByPlaceholder("Send a follow-up...");
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await expect(composer).toHaveCount(0);
 
   // Answer step 1 by option -> advances to 2 of 3 (a free-text-only question).
@@ -283,7 +284,7 @@ test("walks three questions one at a time and composes a single structured reply
   ).toBeVisible();
 
   // The answering turn starts, so the card retires and the composer remains.
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.getByText("1 of 3")).toHaveCount(0);
@@ -396,7 +397,7 @@ test("single question with options sends on option click (fast path)", async ({
   const morning = page.getByRole("radio", { name: "Morning flight" });
   await expect(morning).toBeVisible();
   // Card in the composer's slot: the follow-up input is not on screen.
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 
   // Clicking an option completes immediately as one composed user message...
   await morning.click();
@@ -404,7 +405,7 @@ test("single question with options sends on option click (fast path)", async ({
     page.locator(".is-user").filter({ hasText: "Morning flight" }),
   ).toHaveCount(1);
   // ...the answering turn starts, so the card retires and the composer remains.
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible({
     timeout: 15_000,
   });
   await expect(page.getByRole("radio", { name: "Evening flight" })).toHaveCount(
@@ -520,7 +521,7 @@ test("advances from a question to a connect step in one sequence", async ({
     page.getByText("Who should I send the itinerary to?"),
   ).toHaveCount(0);
   // Mid-sequence: the connect card holds the composer's slot (no follow-up input).
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 });
 
 /**
@@ -596,7 +597,7 @@ test("advances from a question to a signin step in a three-step sequence", async
   // The connect step hasn't been reached, and the signin card holds the
   // composer's slot (no follow-up input while a step is pending).
   await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 });
 
 /**
@@ -632,7 +633,7 @@ test("shows a lone signin step for a signin-only sequence", async ({
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
   await expect(page.getByText(/\d+ of \d+/)).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 });
 
 /**
@@ -668,7 +669,7 @@ test("shows a lone connect step for a connect-only sequence", async ({
   ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("button", { name: "Connect" })).toBeVisible();
   await expect(page.getByText(/\d+ of \d+/)).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 });
 
 /**
@@ -762,7 +763,7 @@ test("skips a lone connect step and tells the agent the user declined", async ({
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Connect" })).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -801,7 +802,7 @@ test("declines a connect step with a typed instruction and resumes visibly", asy
   // The decline row is the ONE text input on screen (the composer is replaced).
   const row = page.getByPlaceholder("Or tell it what to do instead...");
   await expect(row).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 
   await row.fill("just draft it, I'll send it from my phone");
   await row.press("Enter");
@@ -816,7 +817,7 @@ test("declines a connect step with a typed instruction and resumes visibly", asy
   await expect(
     page.getByText("I need access to your Gmail to send the trip itinerary."),
   ).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -995,7 +996,7 @@ test("skips a lone signin step and tells the agent the user declined", async ({
   await expect(
     page.getByText("Sign in to Houston to use your connected apps."),
   ).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -1030,7 +1031,7 @@ test("declines a signin step with a typed instruction and resumes visibly", asyn
 
   const row = page.getByPlaceholder("Or tell it what to do instead...");
   await expect(row).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 
   await row.fill("skip the connected apps, just search the web");
   await row.press("Enter");
@@ -1043,7 +1044,7 @@ test("declines a signin step with a typed instruction and resumes visibly", asyn
   await expect(
     page.getByText("Sign in to Houston to use your connected apps."),
   ).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -1082,14 +1083,14 @@ test("the card replaces the composer and dismiss restores it", async ({
   });
 
   // Exactly ONE text input on screen: the card's own, not the composer.
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
   await expect(page.getByPlaceholder("Type another option...")).toHaveCount(1);
 
   // The header X retires the card and RESTORES the composer.
   await page.getByRole("button", { name: "Dismiss" }).click();
   await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
   await expect(page.getByPlaceholder("Type another option...")).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -1191,7 +1192,7 @@ test("skips a question from the footer's unified Skip", async ({
   await expect(
     page.getByText("Anything special I should know about the trip?"),
   ).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible({
     timeout: 15_000,
   });
 });
@@ -1377,7 +1378,7 @@ test("renders the credential card, saves the key, and resumes the agent", async 
   await expect(
     page.getByText("I need your API key to sync your records."),
   ).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -1414,7 +1415,7 @@ test("skips the credential step and tells the agent the key was declined", async
     page.getByText("I need your API key to sync your records."),
   ).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Save key" })).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -1440,7 +1441,7 @@ test("declines the credential step with a typed instruction and resumes visibly"
 
   const row = page.getByPlaceholder("Or tell it what to do instead...");
   await expect(row).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 
   await row.fill("read the key from the ACME_KEY environment variable");
   await row.press("Enter");
@@ -1455,7 +1456,7 @@ test("declines the credential step with a typed instruction and resumes visibly"
   await expect(
     page.getByText("I need your API key to sync your records."),
   ).toHaveCount(0);
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -1494,7 +1495,7 @@ test("a credential step for an unknown integration shows the honest dead-end ins
   await expect(page.getByText(/Skipped adding the typeform key\./)).toBeVisible(
     { timeout: 15_000 },
   );
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**

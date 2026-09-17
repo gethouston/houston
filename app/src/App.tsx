@@ -47,8 +47,6 @@ import {
   clearUser as clearSentryUser,
   setUser as setSentryUser,
 } from "./lib/sentry";
-import { useStoreGatewaySession } from "./lib/store-gateway-session";
-import { useStoreInstallDeepLink } from "./lib/store-install-deeplink";
 import { tauriSystem } from "./lib/tauri";
 import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
@@ -81,16 +79,10 @@ export default function App() {
   // start and ships measured journeys to the gateway metrics ingest.
   usePerfSpans();
   useIntegrationSessionSync();
-  // Keep the Agent Store adapter pointed at the gateway with the user's session
-  // token in local-sidecar mode (account-based publish; no manage tokens).
-  useStoreGatewaySession();
   // Fetch the host's pi-ai catalog once and hydrate the PROVIDERS cache app-wide,
   // so every provider/model surface renders the real runnable set from load.
   useProviderCatalog();
   useScreenPrefetch();
-  // Turn an `houston://store/install` deep link (desktop) or `?install=<slug>`
-  // web param into a seeded import wizard once the shell is live.
-  useStoreInstallDeepLink();
   // Mirror the ui store's nav stack into browser history (back/forward walk
   // the app). The one history writer besides the deep-link param strip above,
   // which preserves `history.state` — the two cannot fight.

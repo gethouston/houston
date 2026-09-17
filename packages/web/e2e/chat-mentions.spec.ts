@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { AUTH_WEB_URL, E2E_VIEWER, signInAsViewer } from "./support/identity";
 
@@ -87,7 +88,7 @@ const userRows = (page: Page) =>
 const agentRows = (page: Page) =>
   page.locator("[data-conversation-message-key]:not(.is-user)");
 /** The composer of an already-open conversation. */
-const composerOf = (page: Page) => page.getByPlaceholder("Send a follow-up...");
+const composerOf = (page: Page) => page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
 const popover = (page: Page) => page.locator("[data-mention-popover]");
 const option = (page: Page, userId: string) =>
   page.locator(`[data-mention-option="${userId}"]`);

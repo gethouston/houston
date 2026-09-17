@@ -7,6 +7,9 @@ category: Operações
 featured: no
 image: clipboard
 integrations: [gmail, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Leio o seu contexto operacional primeiro. Para cada campo obrigatório que estiv
 - **Sua voz** - Opcional. Por que preciso: o lembrete soa como você, não como um robô. Se você não tiver isso, sigo em frente com TBD usando um tom neutro, o ideal é conectar sua caixa de entrada para eu analisar de 20 a 30 mensagens enviadas.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio `context/operations-context.md`.** Se a seção "Contatos-chave / Equipe" estiver ausente, vazia, ou N≤1 (só o fundador), paro e digo:
 

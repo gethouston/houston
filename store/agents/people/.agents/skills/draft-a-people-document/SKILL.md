@@ -6,6 +6,9 @@ category: People
 featured: yes
 image: busts-in-silhouette
 integrations: [googledocs, notion, loops, gmail, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -75,6 +78,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Employee identity** — Required. If missing I ask: "Which employee, full name, role, and how long they've been here?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc** at `context/people-context.md`. If missing/empty: "I need your people context first  -  run the set-up-my-people-info skill." Stop. Pull leveling framework, comp bands, equity stance, voice notes, hard nos, escalation rules. Load-bearing for every type.
 2. **Read ledger** + fill gaps with ONE targeted question per missing required field per the type's Information section above.

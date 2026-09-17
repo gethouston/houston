@@ -5,6 +5,9 @@ version: 1
 category: Operations
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -53,6 +56,7 @@ I read your operations context first. For every required field that's missing I 
 - **Active priorities**  -  Required for `scope=dashboard`. Why I need it: drives which metrics belong on the top tile. If missing I ask: "What are the 2 to 3 things the company is pushing on this quarter?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 ### Shared steps (both scopes)
 

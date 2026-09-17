@@ -1,91 +1,11 @@
 {
-  "exportMenu": "Exportar uma cópia",
-  "export": {
-    "eyebrow": "Exportando {{name}}",
-    "loading": "Carregando seu agente.",
-    "step1": {
-      "title": "O que vamos exportar?",
-      "body": "Escolha o que vai na cópia. As instruções do agente sempre vão junto.",
-      "instructionsLabel": "Instruções",
-      "instructionsRow": "Descrição do trabalho e regras",
-      "noInstructions": "Este agente ainda não tem instruções.",
-      "skillsLabel": "Habilidades",
-      "routinesLabel": "Rotinas",
-      "learningsLabel": "Aprendizados",
-      "privacyNote": "Só é compartilhado o que você escolhe aqui: a descrição do cargo, as skills, as rotinas e os aprendizados. As conversas, os arquivos e as contas conectadas sempre continuam privados."
-    },
-    "step2": {
-      "title": "Quer anonimizar antes?",
-      "body": "Houston pode remover informações pessoais como nomes, e-mails e caminhos. Você vê o que mudou antes de salvar.",
-      "asIsTitle": "Exportar como está",
-      "asIsBody": "Manter tudo como está.",
-      "anonymizeTitle": "Me ajude a anonimizar",
-      "anonymizeBody": "Remove nomes, e-mails, empresas, chaves de API e outros dados pessoais.",
-      "reviewLabel": "Veja o que mudou",
-      "working": "Houston está revisando seu conteúdo.",
-      "startReview": "Começar a revisão",
-      "checkAgain": "Revisar de novo",
-      "workingProgress": "Houston está revisando seu conteúdo ({{done}} de {{total}} prontos).",
-      "slowNotice": "Isso está demorando mais que o normal. Você pode ficar com o que já está pronto e terminar o resto do jeito rápido.",
-      "stopWait": "Usar o que está pronto",
-      "stopping": "Terminando com o que já está pronto.",
-      "aiToggleTitle": "Deixar minha IA ajudar",
-      "aiToggleHint": "Quando está ligado, sua IA também procura dados pessoais fáceis de passar despercebidos, como nomes ou empresas. Quando está desligado, Houston só remove o óbvio, como e-mails, links e chaves. Nos dois casos, você revisa cada mudança antes de compartilhar.",
-      "aiFallback": "Houston não conseguiu usar IA nesta etapa ({{reason}}). Apenas padrões óbvios como e-mails e caminhos foram removidos, então revise os resultados com cuidado.",
-      "diffInstructions": "Instruções",
-      "before": "Antes",
-      "after": "Depois",
-      "keep": "Manter as mudanças",
-      "skip": "Usar o original",
-      "becameEmpty": "Quase tudo foi redigido. Você pode deixar este de fora.",
-      "routineTitle": "Rotina {{id}}",
-      "learningTitle": "Aprendizado"
-    },
-    "step3": {
-      "skillsLabel": "Habilidades",
-      "routinesLabel": "Rotinas",
-      "learningsLabel": "Aprendizados",
-      "anonymizedLabel": "Anonimizado",
-      "yes": "Sim",
-      "no": "Não"
-    },
-    "review": {
-      "title": "Pronto para compartilhar",
-      "body": "Envie {{name}} como arquivo, ou publique na Agent Store para qualquer pessoa instalar.",
-      "privacyNote": "O compartilhamento cobre os itens acima e nada mais. As conversas continuam privadas, e você pode remover uma publicação quando quiser."
-    },
-    "actions": {
-      "back": "Voltar",
-      "cancel": "Cancelar",
-      "next": "Continuar",
-      "save": "Salvar arquivo",
-      "saving": "Salvando."
-    },
-    "errors": {
-      "previewFailed": "Não consegui ler seu agente.",
-      "anonymizeFailed": "Falha na anonimização.",
-      "saveFailed": "Não consegui salvar o arquivo.",
-      "noPreview": "Sem prévia.",
-      "revealFailed": "Não consegui abrir essa pasta.",
-      "saveLocked": "Esse arquivo está aberto em outro programa. Feche-o lá e salve de novo.",
-      "savePermission": "O Houston não tem permissão para salvar nessa pasta. Escolha outra pasta, como Downloads.",
-      "saveDiskFull": "Não há espaço livre suficiente neste computador para salvar o arquivo.",
-      "revealPermission": "O Houston não tem permissão para abrir essa pasta neste computador. Procure o arquivo onde você o salvou."
-    },
-    "toasts": {
-      "savedTitle": "Arquivo salvo",
-      "savedDescription": "Salvo em {{path}}",
-      "revealAction": "Mostrar na pasta"
-    }
-  },
   "import": {
     "eyebrow": "De um amigo",
     "flagged": "Houston marcou este para você dar uma olhada.",
     "step1": {
-      "title": "Traga um agente que alguém compartilhou",
+      "title": "Traga um funcionário de IA que alguém compartilhou",
       "body": "Abra um arquivo que te enviaram, ou cole um link de compartilhamento. Houston lê e mostra o que tem dentro antes de instalar qualquer coisa.",
       "pickFile": "Escolher arquivo",
-      "or": "ou",
       "uploadedFrom": "Compartilhado por {{name}}",
       "anonymous": "seu amigo",
       "counts": "{{skills}} habilidades, {{routines}} rotinas, {{learnings}} aprendizados",
@@ -100,8 +20,8 @@
       "scanFlagged": "Houston marcou {{count}} item(ns). Revise enquanto continua."
     },
     "step2": {
-      "namePlaceholder": "Dê um nome ao agente",
-      "placeholderName": "Seu agente",
+      "title": "Dê um nome ao funcionário de IA",
+      "placeholderName": "Seu funcionário de IA",
       "tagline": "Pronto para ajudar"
     },
     "step3": {
@@ -114,136 +34,24 @@
     },
     "step5": {
       "title": "Escolha quais aprendizados manter",
-      "body": "Aprendizados são notas que o agente usa como contexto. Você pode deixar pessoais de fora."
-    },
-    "link": {
-      "label": "Instalar por um link",
-      "placeholder": "Cole um link de compartilhamento, como https://agents.gethouston.ai/a/agent",
-      "fetch": "Buscar",
-      "fetching": "Buscando",
-      "hint": "Cole o link que te deram. Houston busca o agente para você revisar antes de instalar.",
-      "errors": {
-        "empty": "Cole um link de compartilhamento primeiro.",
-        "invalid": "Isso não parece um link de agente válido.",
-        "notFound": "Não encontramos um agente publicado nesse link.",
-        "unreadable": "Não foi possível ler esse agente. Peça para quem compartilhou publicar de novo.",
-        "network": "Não conseguimos falar com a Agent Store. Verifique sua conexão e tente de novo.",
-        "generic": "Algo deu errado ao buscar esse agente. Tente de novo."
-      },
-      "browseStore": "Ou explore a Loja de agentes"
+      "body": "Aprendizados são notas que o funcionário de IA usa como contexto. Você pode deixar os itens pessoais de fora."
     },
     "actions": {
       "back": "Voltar",
-      "cancel": "Cancelar",
       "next": "Continuar",
-      "install": "Trazer agente",
+      "install": "Trazer funcionário de IA",
       "installing": "Trazendo.",
       "selectAll": "Selecionar tudo",
       "clearAll": "Limpar"
     },
     "errors": {
       "uploadFailed": "Não consegui ler esse arquivo.",
-      "installFailed": "Não consegui instalar o agente.",
-      "nameRequired": "Dê um nome ao agente."
+      "installFailed": "Não consegui instalar o funcionário de IA.",
+      "nameRequired": "Dê um nome ao funcionário de IA."
     },
     "toasts": {
-      "installedTitle": "Agente pronto",
+      "installedTitle": "Funcionário de IA pronto",
       "installedDescription": "{{name}} está no seu espaço."
-    }
-  },
-  "publish": {
-    "actions": {
-      "publish": "Publicar na Agent Store",
-      "publishNow": "Publicar agora",
-      "publishing": "Publicando.",
-      "saveUpdate": "Salvar alterações",
-      "done": "Pronto",
-      "signInToPublish": "Entre para publicar",
-      "signingIn": "Entrando."
-    },
-    "listing": {
-      "title": "Publique {{name}} na Agent Store",
-      "body": "Conte às pessoas o que este agente faz. Você pode mudar tudo isso depois na página de gestão.",
-      "descriptionLabel": "Descrição",
-      "descriptionPlaceholder": "O que este agente faz e para quem ele é?",
-      "taglineLabel": "Frase curta",
-      "taglinePlaceholder": "Uma linha curta que resuma tudo",
-      "categoryLabel": "Categoria",
-      "categoryPlaceholder": "Escolha uma categoria",
-      "tagsLabel": "Etiquetas",
-      "tagsHint": "Até {{max}}",
-      "tagsPlaceholder": "Digite uma etiqueta e pressione Enter",
-      "tagsFull": "Você já atingiu o máximo de etiquetas",
-      "removeTag": "Remover {{tag}}",
-      "creatorNameLabel": "Seu nome",
-      "creatorNamePlaceholder": "Como você quer aparecer",
-      "creatorUrlLabel": "Link",
-      "creatorUrlPlaceholder": "https://seu-site.com",
-      "requiredMark": "(obrigatório)",
-      "publishingAs": "Publicando como @{{handle}}",
-      "claimHandleCta": "Reserve seu @handle",
-      "editProfile": "Editar perfil"
-    },
-    "categories": {
-      "writing": "Escrita e conteúdo",
-      "productivity": "Produtividade",
-      "research": "Pesquisa e análise",
-      "marketing": "Marketing e redes",
-      "sales": "Vendas e CRM",
-      "coding": "Programação e desenvolvimento",
-      "design": "Design e criatividade",
-      "data": "Dados e planilhas",
-      "education": "Educação e aprendizagem",
-      "finance": "Finanças e dinheiro",
-      "legal": "Jurídico",
-      "customer-support": "Suporte ao cliente",
-      "personal": "Pessoal e estilo de vida",
-      "fun": "Diversão e jogos",
-      "other": "Outros"
-    },
-    "share": {
-      "title": "{{name}} está na Agent Store",
-      "body": "Compartilhe este link para qualquer pessoa instalar seu agente.",
-      "copy": "Copiar",
-      "copied": "Copiado",
-      "viewListing": "Ver publicação",
-      "unlistedNote": "Por enquanto sua publicação não está listada, então só quem tem o link pode encontrá-la. Peça um espaço público quando quiser na página de gestão."
-    },
-    "manage": {
-      "title": "{{name}} está publicado",
-      "body": "Seu agente está no ar na Agent Store. Compartilhe o link, atualize a publicação ou retire-a.",
-      "update": "Atualizar publicação",
-      "updateHint": "Ao atualizar, os mesmos passos de seleção e anonimização se repetem, então você escolhe exatamente o que sai.",
-      "remove": "Remover da loja",
-      "removeConfirmTitle": "Remover da loja?",
-      "removeConfirmBody": "{{name}} não poderá mais ser instalado pelo link. Você pode publicá-lo de novo depois.",
-      "removeConfirm": "Remover",
-      "removeCancel": "Manter",
-      "seeInStore": "Ver na loja",
-      "manageAll": "Gerenciar todos os meus agentes"
-    },
-    "errors": {
-      "generic": "Algo deu errado. Tente de novo.",
-      "statusFailed": "Não consegui verificar a publicação.",
-      "publishFailed": "Não consegui publicar o agente.",
-      "updateFailed": "Não consegui atualizar a publicação.",
-      "unpublishFailed": "Não consegui remover a publicação.",
-      "copyFailed": "Não consegui copiar o link.",
-      "openFailed": "Não consegui abrir a publicação.",
-      "codes": {
-        "cannotPublishArchived": "Esta publicação foi arquivada, então não pode ser publicada de novo. Crie uma publicação nova para compartilhar este agente.",
-        "invalidCreator": "Adicione seu nome antes de publicar para que saibam quem criou este agente.",
-        "conflictingOps": "Outra alteração ainda está sendo salva. Aguarde um momento e tente de novo.",
-        "slugExhausted": "Não encontramos um link disponível para este nome. Tente um nome diferente.",
-        "rateLimited": "Você está fazendo isso rápido demais. Aguarde um momento e tente de novo.",
-        "secretsDetected": "Parece que este agente ainda tem uma senha ou chave. Remova e tente de novo.",
-        "notFound": "Não encontramos esta publicação. Ela pode já ter sido removida."
-      },
-      "signInFailed": "Não foi possível entrar."
-    },
-    "toasts": {
-      "removedTitle": "Removido da loja",
-      "removedBody": "{{name}} não está mais publicado."
     }
   }
 }

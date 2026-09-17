@@ -6,6 +6,9 @@ version: 1
 category: Operaciones
 featured: yes
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ Primero leo tu contexto operativo. Por cada campo requerido que falte hago UNA p
 - **Límites innegociables** - Opcional. Por qué lo necesito: me impide redactar cosas que jamás enviarías. Si no lo tienes, sigo adelante con TBD usando los valores por defecto del espacio de trabajo.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer la configuración.** Cargar `config/company.json`, `config/rhythm.json`, `config/voice.md`. Si falta alguno, ejecutar `onboard-me` primero (o preguntar UNA pieza faltante justo a tiempo con la sugerencia de mejor modalidad: app conectada > archivo > URL > pegar).
 

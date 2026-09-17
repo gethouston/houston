@@ -2,7 +2,6 @@ import { assistantOptions } from "./assistant-family";
 import { personalAssistant } from "./runtime-role";
 import { sandboxCall } from "./sandbox-call";
 import { credentialTools } from "./tools/credential-tools";
-import { makeSkillDirectoryTools } from "./tools/find-skills";
 import { makeIntegrationTools } from "./tools/integrations";
 import { makeMissionTools } from "./tools/missions";
 import { makeReadMissionTool } from "./tools/read-mission";
@@ -11,7 +10,7 @@ import { makeSaveRoutineTool } from "./tools/save-routine";
 
 /**
  * The tools that reach the WORLD through this runtime's own host: integrations,
- * the merge-safe writes, the mission board, the skills directory. Every one of
+ * the merge-safe writes, the mission board. Every one of
  * them rides the same gate — a sandbox token and a host to present it to — and
  * none holds a credential of its own: the host (or its cloud gateway) acts as
  * the user. A runtime with no host in front of it simply does without them.
@@ -63,13 +62,6 @@ export const missionTools = sandboxCall
       ...makeMissionTools({ call: sandboxCall, personalAssistant }),
       makeReadMissionTool({ call: sandboxCall, personalAssistant }),
     ]
-  : [];
-
-// The open-skills-directory tools: proxy to /sandbox/skills/* so the agent can
-// answer "is there a skill for X?" itself and add the one the user picks. Same
-// reachability gate as above — the directory lives behind the host.
-export const skillDirectoryTools = sandboxCall
-  ? makeSkillDirectoryTools({ call: sandboxCall })
   : [];
 
 /** The host-proxy transport the Claude backend's in-process MCP server uses. */

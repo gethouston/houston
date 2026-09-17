@@ -1,16 +1,11 @@
 import {
   AGENT_COLORS,
   agentColorId,
-  Button,
   colorValue,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  FormDialog,
   Input,
 } from "@houston-ai/core";
-import { type FormEvent, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AGENT_NAME_MAX_LENGTH } from "../../lib/agent-name";
 import type { Agent } from "../../lib/types";
@@ -33,19 +28,19 @@ export function AgentIdentityDialog({
   const [name, setName] = useState(agent.name);
   const [colorId, setColorId] = useState(() => agentColorId(agent.color));
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
+  // Saves what MOVED, so an untouched field is never written back over a
+  // change someone else made meanwhile. The recipe closes on the resolve.
+  const save = () => {
     const nextName = name.trim();
     const patch = {
       ...(nextName && nextName !== agent.name ? { name: nextName } : {}),
       ...(colorId !== agentColorId(agent.color) ? { colorId } : {}),
     };
     if (patch.name !== undefined || patch.colorId !== undefined) onSave(patch);
-    onOpenChange(false);
   };
 
   return (
-    <Dialog
+    <FormDialog
       open={open}
       onOpenChange={(next) => {
         if (next) {
@@ -54,52 +49,37 @@ export function AgentIdentityDialog({
         }
         onOpenChange(next);
       }}
+      title={t("teams:agentSettings.manage.identityTitle", {
+        name: agent.name,
+      })}
+      primary={{
+        label: t("common:actions.save"),
+        onClick: save,
+        disabled: !name.trim(),
+      }}
+      labels={{ cancel: t("common:actions.cancel") }}
     >
-      <DialogContent>
-        <form onSubmit={submit}>
-          <DialogHeader>
-            <DialogTitle>
-              {t("teams:agentSettings.manage.identityTitle", {
-                name: agent.name,
-              })}
-            </DialogTitle>
-          </DialogHeader>
-          <Input
-            autoFocus
-            value={name}
-            maxLength={AGENT_NAME_MAX_LENGTH}
-            aria-label={t("teams:agentSettings.manage.identity")}
-            className="mt-4"
-            onChange={(event) => setName(event.target.value)}
+      <Input
+        autoFocus
+        value={name}
+        maxLength={AGENT_NAME_MAX_LENGTH}
+        aria-label={t("teams:agentSettings.manage.identity")}
+        onChange={(event) => setName(event.target.value)}
+      />
+      <fieldset
+        aria-label={t("shell:sidebar.changeColor")}
+        className="flex flex-wrap gap-2"
+      >
+        {AGENT_COLORS.map((entry) => (
+          <ColorSwatch
+            key={entry.id}
+            label={t(AGENT_COLOR_LABEL_KEYS[entry.id])}
+            value={colorValue(entry)}
+            selected={entry.id === colorId}
+            onClick={() => setColorId(entry.id)}
           />
-          <fieldset
-            aria-label={t("shell:sidebar.changeColor")}
-            className="my-4 flex flex-wrap gap-2"
-          >
-            {AGENT_COLORS.map((entry) => (
-              <ColorSwatch
-                key={entry.id}
-                label={t(AGENT_COLOR_LABEL_KEYS[entry.id])}
-                value={colorValue(entry)}
-                selected={entry.id === colorId}
-                onClick={() => setColorId(entry.id)}
-              />
-            ))}
-          </fieldset>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              {t("common:actions.cancel")}
-            </Button>
-            <Button type="submit" disabled={!name.trim()}>
-              {t("common:actions.save")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+        ))}
+      </fieldset>
+    </FormDialog>
   );
 }

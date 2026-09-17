@@ -1,6 +1,6 @@
 {
   "filter": {
-    "allAgents": "Todos los agentes"
+    "allAgents": "Todos los empleados de IA"
   },
   "peopleFilter": {
     "label": "Filtrar por persona",
@@ -28,16 +28,16 @@
   },
   "empty": {
     "boardTitle": "Aún no hay conversaciones",
-    "boardDescription": "Inicia una conversación nueva para delegarle trabajo a un agente.",
+    "boardDescription": "Inicia una conversación nueva para delegarle trabajo a un empleado de IA.",
     "newMission": "Nueva tarea"
   },
   "errors": {
-    "noAgentForMission": "Elige un agente antes de iniciar una tarea.",
+    "noAgentForMission": "Elige un empleado de IA antes de iniciar una tarea.",
     "partialMissionLoad": "Algunas tareas no se pudieron cargar. Lo estamos intentando de nuevo."
   },
   "agentPicker": {
-    "title": "¿Qué agente debería ejecutar esto?",
-    "description": "Elige un agente para abrir una nueva conversación."
+    "title": "¿Qué empleado de IA debería ejecutar esto?",
+    "description": "Elige un empleado de IA para abrir una nueva conversación."
   },
   "skillPicker": {
     "title": "Elige un skill",

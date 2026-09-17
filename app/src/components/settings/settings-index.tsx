@@ -1,11 +1,15 @@
+import { channelUnavailableReason } from "@houston/engine-adapter";
 import {
   Bug,
+  Building2,
   CircleUserRound,
   CloudUpload,
   Keyboard,
+  MessagesSquare,
   UserRound,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useChannels } from "../../hooks/queries/use-channels";
 import { genericErrorDescription } from "../../lib/error-report";
 import type { SettingsSectionId } from "../../lib/settings-sections";
 import { useUIStore } from "../../stores/ui";
@@ -25,19 +29,17 @@ interface SettingsIndexProps {
 }
 
 /**
- * The settings landing page, and ONLY settings: the things every user adjusts
- * about their own app.
+ * The settings landing page: the standing setup a person adjusts, about their
+ * own app and about the space they run.
  *
- * Only preferences live here. The guided tour starts from the Agent Store, and
- * Time worked, Admin and Permissions are screens of their own in the rail's
- * "Workspace" band, because none of them is something a person adjusts about
- * their own app. What the page holds is ONE general group everybody sees
- * (identity, About me, appearance, language, notifications, account, then the
- * help-shaped rows), plus Danger. There is no role gate on this page.
+ * The page holds ONE general group (identity, About me, appearance, language,
+ * notifications, then the standing setup of the space and the help-shaped
+ * rows), plus Danger. One row administers the SPACE rather than the person:
+ * Workspace management. The shared Skills library lives on the Integrations
+ * screen, as its Skills tab.
  *
- * The page OPENS on the signed-in person: the rail's avatar menu was a second
- * door onto this page and is gone, so identity is a header here rather than a
- * row buried in the general group. Everything below it is a preference.
+ * The page OPENS on the signed-in person: identity is the header, and
+ * everything below it is a preference.
  *
  * Simple settings are resolved inline as control rows; the heavier ones
  * (shortcuts, bug report) are navigable rows that drill into their own screen.
@@ -48,6 +50,10 @@ export function SettingsIndex({
   onSelect,
 }: SettingsIndexProps) {
   const { t } = useTranslation("settings");
+  const channels = useChannels();
+  const channelsAvailable =
+    !!channels.data ||
+    channelUnavailableReason(channels.error) === "not-configured";
   const addToast = useUIStore((s) => s.addToast);
 
   async function handleVersionClick() {
@@ -92,9 +98,23 @@ export function SettingsIndex({
             description={t("settings:index.rows.aboutMe")}
             onClick={() => onSelect("aboutMe")}
           />
+          {channelsAvailable && (
+            <SettingsRow
+              icon={MessagesSquare}
+              title={t("settings:channels.title")}
+              description={t("settings:channels.navDescription")}
+              onClick={() => onSelect("channels")}
+            />
+          )}
           <AppearanceSection />
           <LanguageSection />
           <NotificationsSection />
+          <SettingsRow
+            icon={Building2}
+            title={t("settings:nav.workspace")}
+            description={t("settings:index.rows.workspace")}
+            onClick={() => onSelect("workspace")}
+          />
           {/* The API-keys row is HIDDEN for now (HOU-806): the Agents API
               surface lives in the Routines tab. The section, its strings, and
               all plumbing remain — restore by re-adding this row (and the

@@ -72,7 +72,7 @@ test("a kept-alive team board off the glass owns nothing, and takes the keys bac
   // HIDDEN — its board is still mounted, still holding whatever it registered.
   // Counted on the KANBAN copy, off the glass and all: the kept-alive Agents
   // home carries the same title in its preview line, which is not a card.
-  await page.locator("[data-tour-target='nav-agent-store']").click();
+  await page.locator("[data-tour-target='nav-integrations']").click();
   await expect(onScreenMission).toHaveCount(0);
   await expect(
     page.getByTestId("board-columns").getByText("Plan a trip to Tokyo"),

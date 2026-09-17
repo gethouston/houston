@@ -128,12 +128,47 @@ mod tests {
     }
 
     #[test]
+    fn instructions_guidance_teaches_the_job_description_block() {
+        let prompt = system_prompt_pi();
+
+        // The desktop agent rewrites its OWN CLAUDE.md: it has to know the file
+        // opens with the user's industry + role, and that the block stays.
+        assert!(prompt.contains("### Instructions (Self-Editing)"));
+        assert!(prompt.contains("Your own instructions live in `CLAUDE.md`"));
+        assert!(prompt.contains("`industry` and `role`"));
+        assert!(prompt.contains("industry: Healthcare\nrole: Medical coder"));
+        assert!(prompt.contains("keep it intact and at the top every time you write the file"));
+        assert!(prompt.contains(
+            "When the user tells you their industry or their role changed, update those two lines to match."
+        ));
+    }
+
+    #[test]
     fn skill_guidance_omits_legacy_fields() {
         let prompt = system_prompt_pi();
 
+        assert!(prompt.contains("## Workflow"));
+        assert!(prompt.contains("<!-- houston-workflow:v1 -->"));
+        assert!(prompt.contains("created_by: houston"));
+        assert!(!prompt.contains("find_skills"));
         assert!(!prompt.contains("tags:"));
         assert!(!prompt.contains("inputs"));
         assert!(!prompt.contains("prompt_template"));
+    }
+
+    #[test]
+    fn workflow_steps_tag_the_connected_app_they_use() {
+        let prompt = system_prompt_pi();
+
+        // The example step carries a tag, and the rule says where it goes…
+        assert!(prompt.contains("**Share the result** [gmail:GMAIL_SEND_EMAIL]"));
+        assert!(prompt.contains("tag it with that app's toolkit slug right after the bold title"));
+        assert!(prompt.contains("**Send the digest** [gmail]"));
+        assert!(prompt.contains("[toolkit:ACTION_SLUG]"));
+        // …and why it matters: the action runs without a search first.
+        assert!(prompt.contains(
+            "calling `integration_execute` with that action straight away, with no `integration_search` first"
+        ));
     }
 
     #[test]

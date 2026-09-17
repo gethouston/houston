@@ -6,6 +6,9 @@ category: Sales
 featured: yes
 image: handshake
 integrations: [googlecalendar, gmail, outlook, hubspot, salesforce, attio, pipedrive, gong, fireflies, stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -53,6 +56,7 @@ I read your sales context first. For every required field that's missing I ask O
 - **Connected billing**  -  Optional, helpful for `churn-save`. Why I need it: I anchor the save in the actual downgrade or cancel signal. If you don't have it I keep going with TBD and ask you to describe the signal.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + playbook.** Gather missing required fields per above (ONE question each, best-modality first). Write atomically.
 

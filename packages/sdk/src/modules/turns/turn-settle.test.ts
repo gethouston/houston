@@ -2,7 +2,7 @@ import type { ChatMessage } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 import type { FeedOutput, PendingInteraction } from "./feed-output";
 import { settleFromHistory, TURN_DIED_MESSAGE } from "./settle-from-history";
-import { ENGINE_RESTART_MESSAGE } from "./turn-errors";
+import { ENGINE_RESTART_MESSAGE, ENGINE_RESUMED_MESSAGE } from "./turn-errors";
 import {
   finishErr,
   finishOk,
@@ -350,11 +350,41 @@ test("an `interrupted` reply for our turnId settles as the ENGINE RESTART error,
   expect(items).toContainEqual({
     feed_type: "system_message",
     data: ENGINE_RESTART_MESSAGE,
+    notice: "engine_restart",
     turnId: "t-1",
   });
   expect(items.some((i) => i.feed_type === "final_result")).toBe(false);
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
   expect(statuses).toEqual([["error", ENGINE_RESTART_MESSAGE]]);
+});
+
+test("a RESUMED interruption settles neutrally: the pause line, no error, no terminal card", () => {
+  const { s, items, statuses } = run(
+    [
+      { role: "user", content: "export it", ts: 1, turnId: "t-1" },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        turnId: "t-1",
+        interrupted: { cause: "engine_restart", tool: "bash", resumed: true },
+      },
+    ],
+    "t-1",
+    { streamed: "half a repl" },
+  );
+  expect(s.settled).toBe(true);
+  // No board persist at all: the engine is already running the turn again, so
+  // the card keeps its `running` status (PRODUCT-1785).
+  expect(s.terminal).toBeNull();
+  expect(items).toContainEqual({
+    feed_type: "system_message",
+    data: ENGINE_RESUMED_MESSAGE,
+    notice: "engine_resumed",
+    turnId: "t-1",
+  });
+  expect(items.some((i) => i.feed_type === "provider_error")).toBe(false);
+  expect(statuses).toEqual([["completed", undefined]]);
 });
 
 test("our user message with NO assistant reply for our turnId settles as the dead-turn ERROR", () => {

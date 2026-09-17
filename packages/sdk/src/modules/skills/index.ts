@@ -6,7 +6,7 @@
  * `sdk.skills.agent` is one agent's OWN skills (its `.agents/skills/` plus the
  * manifest saying which of them are switched on), `sdk.skills.shared` the
  * workspace-wide library every agent in a space can draw from, and
- * `sdk.skills.marketplace` installing someone else's.
+ * `sdk.skills.repo` installing a GitHub repository's.
  *
  * These are pure commands: a skills screen opens them, reads once, and writes
  * from a form. No host event invalidates them and no surface renders them
@@ -32,8 +32,8 @@ import {
   putSkillsManifest,
   saveSkill,
 } from "./agent-skills";
-import { createMarketplace } from "./marketplace";
 import { createSharedSkills } from "./shared-skills";
+import { createSkillsRepo } from "./skills-repo";
 import {
   AgentSkillsCommand,
   AgentSkillsHttpError,
@@ -44,8 +44,8 @@ import {
   type SkillSummary,
   type SkillsManifest,
 } from "./types-agent";
-import type { SkillsMarketplace } from "./types-marketplace";
 import type { SharedSkillsModule } from "./types-shared";
+import type { SkillsRepo } from "./types-skills-repo";
 
 export type {
   HostSkillSummary,
@@ -88,8 +88,8 @@ export interface SkillsModule {
   agent: AgentSkillsFacade;
   /** The workspace-wide library every agent in a space can draw from. */
   shared: SharedSkillsModule;
-  /** Community and repository skills, and installing one onto an agent. */
-  marketplace: SkillsMarketplace;
+  /** A GitHub repository's skills, and installing one onto an agent. */
+  repo: SkillsRepo;
 }
 
 export function createSkillsModule(ctx: ModuleContext): SkillsModule {
@@ -139,6 +139,6 @@ export function createSkillsModule(ctx: ModuleContext): SkillsModule {
   return {
     agent,
     shared: createSharedSkills(ctx),
-    marketplace: createMarketplace(ctx),
+    repo: createSkillsRepo(ctx),
   };
 }

@@ -39,12 +39,10 @@ export const DESKTOP_NATIVE_COMMANDS = [
   ["reveal_agent", "os", "shows an agent folder in Finder/Explorer"],
   ["reveal_path", "os", "shows any absolute path in Finder/Explorer"],
   ["save_download", "os", "native Save as; the webview ignores downloads"],
-  ["save_portable_agent", "os", "native Save as for an exported agent"],
   ["open_portable_agent", "os", "native Open for an agent file on disk"],
   ["focus_main_window", "os", "pulls the window to the front"],
   ["show_session_notification", "os", "an OS notification with a click target"],
   ["open_notification_settings", "os", "the OS notification-permission pane"],
-  ["take_pending_store_deep_link", "os", "drains a cold-start houston:// link"],
   [
     "get_engine_handshake",
     "os",

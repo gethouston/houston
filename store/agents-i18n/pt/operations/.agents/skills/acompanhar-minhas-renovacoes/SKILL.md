@@ -7,6 +7,9 @@ category: Operações
 featured: no
 image: clipboard
 integrations: [googledrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Eu leio primeiro o seu contexto operacional. Para cada campo obrigatório que es
 - **Postura de aprovação**  -  Opcional. Por que preciso: me deixa saber quem pode assinar e o quão agressivamente mostrar candidatos a negociação. Se você não tiver isso eu sigo com A DEFINIR usando padrões de somente o fundador.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/operations-context.md`**  -  vetos + postura com fornecedores definem o limite da sinalização "negociar antes de renovar automaticamente". Faltando: parar, pedir para rodar `set-up-my-ops-info`.
 

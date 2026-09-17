@@ -37,7 +37,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 85
+version: 94
 
 components:
   - id: custom-integration-details
@@ -1007,6 +1007,33 @@ components:
     a11y: rows are single labeled buttons beside a labeled install button, never nested; install state conveyed as text.
     since: 1
 
+  - id: skill-workflow-steps
+    title: Skill workflow steps
+    purpose: >-
+      A skill Houston wrote, shown as the numbered procedure it is rather than
+      as SKILL.md markdown -- in the skill's manage dialog and in the preview a
+      row opens.
+    anatomy: [heading, step-index, step-title, step-app-chip, step-detail]
+    states: [steps, titles-only, app-tagged, absent]
+    variants: [manage-dialog, preview-modal]
+    behavior: >-
+      The steps are parsed from the skill's own SKILL.md by the domain
+      (Houston-authored skills carry a workflow marker; imported ones do not),
+      so the panel is present exactly when a parsed procedure exists. When it
+      is, the raw instructions move behind a secondary disclosure that is
+      always visible, never hover-gated -- editing keeps working there and
+      through "Edit in chat". An imported skill renders no panel and keeps its
+      instructions as the body. A step that acts on a connected app carries
+      that app on its title row, as the app's name and mark plus the action it
+      runs ("Gmail · Send email"); resolving the toolkit slug to a name and
+      logo is the surface's job, and unresolved it reads as the slug and the
+      humanized action. The chip wraps under the title rather than widening
+      the step.
+    a11y: >-
+      an ordered list under a real heading; the index chip is presentational
+      and the step's meaning lives in its title, app chip and detail text.
+    since: 85
+
   - id: empty-state
     title: Empty state
     purpose: The shared "nothing here yet" surface -- title, description, optional action.
@@ -1171,106 +1198,6 @@ components:
       (dot-with-label) or an sr-only label (dot-only rows), never color alone.
     since: 33
 
-  - id: agent-store-navigation
-    title: Agent Store navigation
-    purpose: Brand and destination navigation shared by every Agent Store pane.
-    anatomy: [brand-link, contextual-actions, publish-action]
-    states: [default]
-    variants: [website, in-app]
-    behavior: The surface supplies links or callback-backed navigation and its own contextual actions.
-    a11y: Navigation landmark with visible, keyboard-focusable destination labels.
-    since: 52
-
-  - id: agent-store-controls
-    title: Agent Store catalog controls
-    purpose: Instant search, category, result-kind, and sort controls for the public directory.
-    anatomy: [search-field, category-menu, view-menu, sort-menu]
-    states: [default, filtered]
-    variants: [agents, creators]
-    behavior: Controlled values update the visible in-memory catalog without submitting a page form.
-    a11y: Search has an accessible label; menus expose the selected option and keyboard focus.
-    since: 52
-
-  - id: agent-store-agent-card
-    title: Agent Store agent card
-    purpose: Public listing summary used in browse, detail recommendations, and creator pages.
-    anatomy: [agent-tile, name, skill-and-integration-summary, description, creator, install-count]
-    states: [new, installed-count]
-    variants: [grid]
-    behavior: Activating the card opens its full detail pane through the surface navigation seam.
-    a11y: One focusable link with a visible focus ring and descriptive text.
-    since: 52
-
-  - id: agent-store-creator-card
-    title: Agent Store creator card
-    purpose: Creator directory summary used in browse search and creator discovery.
-    anatomy: [creator-face, identity, verification, bio, agent-count, install-count]
-    states: [with-bio, fallback-bio]
-    variants: [grid]
-    behavior: Activating the card opens the creator profile through the surface navigation seam.
-    a11y: One focusable link; verification has a text alternative.
-    since: 52
-
-  - id: agent-store-detail
-    title: Agent Store detail layout
-    purpose: Full-pane presentation of one agent before installation.
-    anatomy: [header, creator, primary-action, bio, skills, integrations, learnings, recommendations]
-    states: [summary, enriched, installing]
-    variants: [website, in-app]
-    behavior: Detail enrichment is read-only; the surface owns install and navigation actions.
-    a11y: Semantic headings preserve section order and the primary action remains keyboard reachable.
-    since: 52
-
-  - id: agent-store-skill-list
-    title: Agent Store skill list
-    purpose: Two-column preview of the procedures included with an agent.
-    anatomy: [skill-grid, skill-row, more-action, detail-dialog]
-    states: [collapsed, expanded, dialog-open]
-    variants: [detail-pane]
-    behavior: The surface supplies the safe rich-content renderer used inside the skill dialog.
-    a11y: Skill rows are buttons; the modal traps focus and has the selected skill title.
-    since: 52
-
-  - id: agent-store-creator-block
-    title: Agent Store creator block
-    purpose: Reusable creator identity shown in agent detail headers and public profiles.
-    anatomy: [creator-face, display-name, verification]
-    states: [verified, unverified]
-    variants: [compact, profile]
-    behavior: Optionally navigates to the creator profile through the surface link seam.
-    a11y: Linked variants have visible focus; verification has a text alternative.
-    since: 52
-
-  - id: agent-store-home-screen
-    title: Agent Store home screen
-    purpose: Canonical marketplace hero, controls, filtering, result grids, and loading, empty, and error states.
-    anatomy: [hero, catalog-controls, agent-grid, creator-grid, pagination]
-    states: [loading, ready, filtered-empty, empty, error]
-    variants: [website, in-app]
-    behavior: Owns in-memory filtering and state notifications while surfaces supply navigation and URL synchronization.
-    a11y: One centered h1, labeled controls, focusable results, and a visible retry action.
-    since: 53
-
-  - id: agent-store-agent-detail-screen
-    title: Agent Store agent detail screen
-    purpose: Canonical full agent detail composition across public and in-app surfaces.
-    anatomy: [header, creator, actions, bio, skills, integrations, learnings, recommendations, footer]
-    states: [loading, ready, error]
-    variants: [website, in-app]
-    behavior: Surfaces inject actions and safe content renderers without recomposing the screen.
-    a11y: Semantic headings preserve reading order and failures expose a keyboard-accessible retry.
-    since: 53
-
-  - id: agent-store-creator-profile-screen
-    title: Agent Store creator profile screen
-    purpose: Canonical creator identity header and public agent grid.
-    anatomy: [avatar, identity, verification, bio, socials, agent-grid, pagination]
-    states: [loading, ready, empty, error]
-    variants: [website, in-app]
-    behavior: Surfaces supply navigation, social actions, and pagination without owning profile composition.
-    a11y: Identity uses semantic headings, links have visible focus, and failures expose a retry.
-    since: 53
-
   - id: sidebar-team-block
     title: Sidebar team block
     purpose: >-
@@ -1401,8 +1328,8 @@ components:
     purpose: >-
       The furniture wrapping the rail's team blocks: the band that names the
       list and folds all of it, the one menu that creates teams and agents, and
-      the New agent row that closes the list. The BAND itself is shared with the
-      two nav runs above it (see sidebar-nav-band).
+      the New agent row that closes the list. It is the rail's ONE heading --
+      the destinations above it (see sidebar-nav-band) wear none.
     anatomy: [band-label-toggle, band-caret, add-menu-trigger, add-menu, add-agent-row]
     states: [resting, collapsed, menu-open]
     variants: [personal, shared-space]
@@ -1444,55 +1371,41 @@ components:
   - id: sidebar-nav-band
     title: Sidebar nav band
     purpose: >-
-      The rail's top-level destinations above the team list, and the two bands
-      that name them: My accounts and Workspace.
-    anatomy: [nav-row, nav-glyph, nav-label, nav-count-badge, band-label-toggle, band-caret, footer-row]
-    states: [resting, hover, active, collapsed, with-count, icon-rail]
-    variants: [unlabelled-run, labelled-run]
+      The rail's top-level destinations above the team list: one unlabelled run
+      of rows, with no heading of its own.
+    anatomy: [nav-row, nav-glyph, nav-label, footer-row]
+    states: [resting, hover, active, icon-rail]
+    variants: []
     behavior: >-
-      Two destinations LEAD the rail with no band over them, because they are
-      the two a user heads for without being asked: where work arrives, and
-      where agents come from. Everything else is filed under a band that says
-      whose it is. The leading run also carries the offer to be WALKED through
-      the app, beside the store a new user opens first: the guided tour is a
-      destination people go looking for, not a control hiding on one screen's
-      chrome. My accounts holds the connections that belong to the PERSON, the
-      apps they have authorised and the AI accounts their turns run on: nobody
-      else in the space is affected by either. Workspace holds what the whole
-      SPACE is made of and belongs to the people who run it: who is in it, who
-      may use which agent, its skills, and how long its agents have worked. A
-      plain member is not shown any of that, so for them the band does not
-      exist at all.
-      Settings is not in any of those runs. It belongs to the person rather
-      than to the space, and it has to be reachable in every deployment,
-      including the ones where the Workspace band is absent entirely, so it is
-      a permanent row in the rail's FOOTER beside the account menu.
-      A band whose rows are all hidden by a gate is DROPPED with its rows: a
-      heading may never outlive the list it names.
-      The bands are the SAME band as the team list's below them, down to the
-      type step, the caret placement, the fold, the gap under the heading and
-      the LEFT EDGE all three sit on. Three headings in one rail that folded,
-      sat or aligned differently would be three rules for one row shape, so
-      there is one of them wearing three labels and the inset is spent exactly
-      once per heading. Each remembers its own fold, per machine.
-      There is no general mission board among these rows. Every board belongs to
-      a team, so the app opens on the first team's board and the only
-      destination here that needs no team is the inbox, which is where the app
+      The run leads the rail with no band over it, because these are the
+      destinations a user heads for without being asked: the assistant that
+      answers a question they have not worked out how to ask yet, the AI
+      accounts their turns run on, and the apps they have connected. A heading
+      would only name what the glyphs already say, and the rows would still be
+      the first thing read.
+      What the SPACE is made of is not here. Administering it -- who is in it,
+      what it is called, how long its agents have worked -- is STANDING SETUP
+      rather than a place work happens, so it is a section of Settings, reached
+      through the rail's footer. The shared skills every agent can use hang off
+      the connected-apps row instead, as its second tab: both answer what a
+      person's agents can reach outside themselves. Settings itself is a
+      permanent footer row beside the account controls: it belongs to the
+      person rather than to the space, and it has to be reachable in every
+      deployment.
+      A run whose rows are all hidden by a gate is DROPPED with its rows: a
+      heading may never outlive the list it names, which is the rule the team
+      list's band below still lives by.
+      There is no general mission board among these rows. Every board belongs
+      to a team, so the app opens on the first team's board and the only
+      destination that needs no team is the agents home, which is where the app
       waits while the teams are still arriving.
-      The inbox row carries a count when someone has typed your name, and
-      nothing at all when they have not: a permanent zero is a number the eye
-      learns to skip, leaving the row no way to say something arrived. It is the
-      same count, from the same list, as the notifications control on a board.
-      The icon rail drops the bands and every fold with them: a heading has
-      nowhere to go at that width, the labels it would carry are already in each
-      glyph's tooltip, and a run left folded there would strand a destination
-      with nothing on screen to bring it back.
+      The icon rail keeps the rows and drops their labels: each glyph carries
+      its name in a tooltip, so a destination is never left with nothing on
+      screen to name it.
     a11y: >-
-      Each band label is a real button carrying aria-expanded and an
-      aria-controls pointing at the run it folds; its caret is decorative. A
-      destination row announces its own name plus its count when it has one, so
-      the number is never carried by colour or position alone. In the icon rail
-      every row keeps an accessible name through its tooltip trigger.
+      A destination row announces its own name, never carried by colour or
+      position alone. In the icon rail every row keeps an accessible name
+      through its tooltip trigger.
     since: 59
 
   - id: team-identity-picker
@@ -1670,18 +1583,18 @@ components:
       A floating rounded card anchored just above the nav bar, dismissed by
       scrim tap or swipe, never a full-height sheet. Its header is the
       workspace switcher beside a Settings control; below it the desktop
-      rail's destinations in the rail's own order and bands, one row each,
-      hairlines between bands: the unlabelled lead run (Inbox with its
-      unread-mention badge, About me, Academy, Agent Store), "My accounts"
-      (Integrations, AI Models where the caller may see it) and "Workspace"
-      (Admin, Skills, each behind the same gate the rail applies), then the
-      help pair (Guide me, Report a problem). One list, the rail's own, so a
-      destination cannot exist on the desktop and be unreachable on the
-      phone. Picking a destination closes the card and RESETS the navigation
-      trail to that screen, with the bar's More item lit; opening the card
-      itself is not a navigation and leaves no history entry. The guided
-      setup rings the More item first and then the row inside the open card,
-      exactly as it once rang the hamburger and the drawer row.
+      rail's destinations in the rail's own order, one row each: the
+      unlabelled run (the assistant, AI Models where the caller may see it,
+      Integrations, each behind the same gate the rail applies), closed by the
+      Academy, then the help pair (Guide me, Report a problem). Administering
+      the space is reached through the Settings control, and the shared skills
+      library through the Integrations row, which carries it as a tab. One
+      list, the rail's own, so a destination cannot exist on the desktop and
+      be unreachable on the phone. Picking a destination closes the card and
+      RESETS the navigation trail to that screen, with the bar's More item
+      lit; opening the card itself is not a navigation and leaves no history
+      entry. The guided setup rings the More item first and then the row
+      inside the open card.
     a11y: >-
       A modal dialog named "More"; every row is a real button at least 44px
       tall named by its destination, the mention badge announces its count,
@@ -1905,3 +1818,93 @@ components:
       one real button named by the agent, at least 44px tall; dismissal is
       reachable by the sheet's own close affordance, never scrim-only.
     since: 72
+  - id: form-dialog
+    title: Form dialog
+    purpose: >-
+      The one frame for a modal that asks for input: title, optional
+      consequence, the fields, and two buttons.
+    anatomy: [title, description, fields, primary-action, secondary-action, close]
+    states: [open, closed, invalid, submitting, submit-failed]
+    variants: [sm, md, destructive-primary]
+    behavior: >-
+      Controlled by the caller; the surface renders no trigger of its own. A
+      primary whose handler returns a promise holds the dialog open in a
+      pending state, refuses a second press, and dismisses once the work
+      resolves. A rejection keeps the dialog and the typed input on screen so
+      the person can fix and retry, and every dismissal route -- escape, the
+      scrim, the close control -- is refused while the work is in flight. Two
+      widths only; anything wider is a multi-step flow.
+    a11y: >-
+      A modal dialog named by its title and described by its description when
+      it has one; focus moves into the dialog and returns to the opener on
+      dismissal; the close control carries a localized name; the pending
+      primary announces its own pending label rather than only spinning.
+    since: 89
+  - id: flow-sheet
+    title: Flow sheet
+    purpose: >-
+      The single multi-step surface: one frame, in the two sizes a step may
+      need, holding still while only the step inside it changes.
+    anatomy: [header, title, back-control, progress-slot, header-aside, close, body, footer-bar]
+    states: [first-step, middle-step, last-step, scrolled, working]
+    variants: [compact, wide, with-progress, without-progress, without-footer]
+    behavior: >-
+      Each STEP declares the size it needs: compact is the confirm dialog's
+      hand-sized frame, titled with the question it asks and sized by its own
+      content, for a step with a short answer; wide is the tall surface for a
+      catalog to scan. The size may change between steps and nothing about the
+      box animates when it does -- the step inside crossfades. The wide header
+      keeps three slots at all times, so progress never moves between steps and
+      the back control appears without re-centring anything; the compact frame
+      puts the way back inline before the title and progress under it. In the
+      wide frame only the body scrolls, under a header that stays put; the
+      compact frame has no scrolling box at all -- past its cap the whole
+      dialog scrolls as one surface. The wide footer bar stays reachable at
+      both widths and clears the phone's home indicator, while the compact one
+      sits inline.
+      Step state, validation and navigation belong to the flow the caller
+      drives -- the sheet owns the frame, never the steps.
+    a11y: >-
+      A modal dialog whose accessible name is the step's title: drawn as the
+      dialog title in a compact frame, and in a wide one screen-reader-only
+      unless the caller asks for it; back and close are real, separately named
+      controls; the entrance collapses under reduced motion.
+    since: 89
+  - id: flow-choice-row
+    title: Flow choice row
+    purpose: >-
+      The rectangular button that answers "what am I making?" at the opening
+      step of a flow.
+    anatomy: [icon, title, list]
+    states: [resting, hover, pressed, focused, disabled]
+    variants: [default]
+    behavior: >-
+      The button itself is the control -- pressing it commits the choice, with
+      no separate radio or confirm. It carries the chip's soft fill and the
+      input's radius, its glyph and its title and nothing else; the list stacks
+      the buttons in one column at every width with a small gap.
+    a11y: >-
+      One real button per choice, named by its title, at least 44px tall, with
+      a visible focus ring and a decorative icon hidden from screen readers.
+    since: 89
+  - id: messaging-channels-settings
+    title: Messaging channels settings
+    purpose: Connect messaging identities to the personal assistant in the selected Houston space.
+    anatomy: [section-header, space-label, provider-row, connection-list, connect-action, pairing-command, disconnect-confirmation]
+    states: [loading, empty, connected, connecting, completing, pairing-code, expired-code, link-refused, unavailable]
+    variants: [phone, desktop]
+    behavior: >-
+      OAuth connects Slack; an expiring command pairs an existing Slack installation.
+      Both bind the same personal assistant conversation. Returning from Slack
+      redeems a one-time ticket on the authenticated client, which is what binds
+      the connection: the section reports that it is finishing, refreshes the list
+      when it succeeds, and says the link is invalid or already connected when the
+      ticket is refused. Connections refresh on focus and while pairing; disconnect
+      requires confirmation. The authenticated current-space client owns all
+      channel operations and cancels handoffs on identity or space changes. Public
+      assistant links resolve live membership before selecting the linked
+      conversation's space.
+    a11y: >-
+      Real labeled buttons, a read-only labeled command input, status messages,
+      and a focus-managed disconnect confirmation. All controls remain visible.
+    since: 94

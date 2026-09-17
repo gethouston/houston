@@ -5,17 +5,11 @@ import {
   createRoutineChecked,
   updateRoutineChecked,
 } from "@houston/host/src/routes/routine-write";
-import {
-  communityDirectory,
-  previewDirectory,
-} from "@houston/host/src/routes/skills-directory";
-import { searchCommunitySkills } from "@houston/host/src/routes/skills-search";
-import { installCommunitySkill } from "@houston/host/src/skills/install";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { mutateTurnDocument } from "./turn-doc-cas";
 import type { TurnFilesystem } from "./turn-filesystem";
 
-/** Turn-local storage, identity, and network seams for agent-owned writes. */
+/** Turn-local storage and identity seams for agent-owned writes. */
 export interface TurnWriteRoutesDeps {
   store: ObjectStore;
   prefix: string;
@@ -23,8 +17,6 @@ export interface TurnWriteRoutesDeps {
   workspaceId: string;
   conversationId: string;
   actingAs?: { userId: string; name?: string };
-  fetchImpl: typeof fetch;
-  signal?: AbortSignal | null;
 }
 
 const json = (status: number, body: unknown): Response =>
@@ -109,7 +101,7 @@ async function saveLearning(
     : json(201, result.learning);
 }
 
-/** Handle a routine, learning, or skill route, or return null when unmatched. */
+/** Handle a routine or learning route, or return null when unmatched. */
 export async function handleTurnWriteRoute(
   path: string,
   body: Record<string, unknown>,
@@ -117,40 +109,5 @@ export async function handleTurnWriteRoute(
 ): Promise<Response | null> {
   if (path === "/sandbox/routines/save") return saveRoutine(deps, body);
   if (path === "/sandbox/learnings/save") return saveLearning(deps, body);
-  if (path === "/sandbox/skills/search") {
-    const queries = Array.isArray(body.queries)
-      ? body.queries
-          .filter((query): query is string => typeof query === "string")
-          .map((query) => query.trim())
-          .filter((query) => query.length > 0)
-          .slice(0, 3)
-      : [];
-    if (queries.length === 0) return json(400, { error: "missing 'queries'" });
-    return json(
-      200,
-      await searchCommunitySkills(
-        {
-          directory: communityDirectory,
-          previews: previewDirectory,
-          fetchImpl: deps.fetchImpl,
-          ...(deps.signal ? { signal: deps.signal } : {}),
-        },
-        queries,
-      ),
-    );
-  }
-  if (path === "/sandbox/skills/install") {
-    if (typeof body.source !== "string" || typeof body.skillId !== "string") {
-      return json(400, { error: "missing 'source' or 'skillId'" });
-    }
-    const slug = await installCommunitySkill(
-      deps.fetchImpl,
-      deps.filesystem.vfs,
-      deps.filesystem.workspaceRel,
-      body.source,
-      body.skillId,
-    );
-    return json(201, { slug, path: `.agents/skills/${slug}/SKILL.md` });
-  }
   return null;
 }

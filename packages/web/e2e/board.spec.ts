@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import {
   missionCard,
@@ -272,9 +273,9 @@ test("opens a mission's chat when its card is clicked", async ({ page }) => {
   await missionCard(page, "Plan a trip to Tokyo").click();
 
   // The mission's conversation opens (an existing mission uses the follow-up
-  // composer; a brand-new conversation uses "What should the agent work on?").
+  // composer; a brand-new conversation uses "What should the AI Employee work on?").
   await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /**
@@ -288,11 +289,11 @@ test("keeps the open chat when clicking app chrome outside the panel", async ({
 }) => {
   await page.goto("/");
   await missionCard(page, "Plan a trip to Tokyo").click();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
 
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
 });
 
 /** The "Search tasks" box filters the board client-side. */
@@ -382,7 +383,7 @@ test("renames a mission to a multi-word title without the space closing the edit
   // The editor survived the space with the whole string intact, and the
   // mission's chat never opened behind it.
   await expect(input).toHaveValue("Two words");
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
 
   await input.press("Enter");
   await expect(card.getByText("Two words")).toBeVisible();

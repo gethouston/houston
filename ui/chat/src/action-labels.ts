@@ -2,6 +2,15 @@
 // suite can import it; both the process-block header (present tense) and the
 // turn-end "Updates made" summary (past tense, PRODUCT-1196) resolve their
 // labels here, from one verb table family.
+//
+// Which words the TOOLKIT owns is not decided here: it is the shared
+// `actionWordsWithoutToolkit` (`@houston-ai/core`), the same reading the
+// workflow-step chip uses (`@houston-ai/skills`, `humanizeIntegrationAction`),
+// so a multi-word toolkit spelled `googlemaps` against `GOOGLE_MAPS_SEARCH`
+// cannot be stripped on one surface and left standing on the other. Imported
+// by deep path because the core barrel is the React component library and this
+// module has to stay loadable under `node --test`.
+import { actionWordsWithoutToolkit } from "@houston-ai/core/src/integration-action-words.ts";
 
 // Present-progressive forms for the common Composio action verbs. English only,
 // by the same rule as `tool-labels.ts`: `ui/` stays i18n-agnostic and the app
@@ -69,24 +78,12 @@ function capitalizeWord(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
-/** The action slug's words with the toolkit prefix stripped (case-insensitive,
- *  incl. multi-word toolkits like `google_maps`); empty when the slug is
- *  nothing but the prefix. */
-function actionWords(action: string, toolkit: string): string[] {
-  const prefix = `${toolkit.toLowerCase()}_`;
-  const rest =
-    toolkit.length > 0 && action.toLowerCase().startsWith(prefix)
-      ? action.slice(prefix.length)
-      : action;
-  return rest.split("_").filter((w) => w.length > 0);
-}
-
 function humanizeAction(
   action: string,
   toolkit: string,
   verbs: Record<string, string>,
 ): string {
-  const words = actionWords(action, toolkit);
+  const words = actionWordsWithoutToolkit(action, toolkit);
   if (words.length === 0) {
     // The action is nothing but the toolkit prefix ("GMAIL_"): no verb to
     // conjugate, so fall back to the capitalized whole slug.

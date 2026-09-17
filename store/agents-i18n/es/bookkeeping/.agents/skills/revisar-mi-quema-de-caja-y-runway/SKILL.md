@@ -7,6 +7,9 @@ category: Contabilidad
 featured: yes
 image: ledger
 integrations: [quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Leo primero tu contexto contable. Por cada campo requerido que falte, hago UNA p
 - **Un plan de cuentas con marcas de efectivo y de único uso** - Requerido. Por qué: me dice qué cuentas tratar como efectivo y qué gastos son únicos frente a continuos. Si falta, pregunto: "¿Tenemos un plan de cuentas configurado? Si no, redactemos uno primero, solo toma unos minutos."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el contexto.** Cargar `context/bookkeeping-context.md`, `config/context-ledger.json` (necesito `domains.banks.accounts[]` para saber qué cuentas de efectivo existen), `config/chart-of-accounts.json` (identificar qué cuentas son efectivo / equivalentes de efectivo). Anotar la fecha de hoy, define el nombre del archivo.
 

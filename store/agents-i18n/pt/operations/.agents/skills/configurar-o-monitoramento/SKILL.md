@@ -6,6 +6,9 @@ version: 1
 category: Operações
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -54,6 +57,7 @@ Eu leio primeiro o seu contexto operacional. Para cada campo obrigatório que es
 - **Prioridades ativas**  -  Obrigatório para `scope=dashboard`. Por que preciso: define quais métricas vão no bloco principal. Se faltando eu pergunto: "Quais são as 2 a 3 coisas que a empresa está priorizando neste trimestre?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 ### Passos compartilhados (ambos os scopes)
 

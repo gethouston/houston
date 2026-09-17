@@ -155,12 +155,6 @@ export interface ControlPlaneDeps {
    * edge and this host never sets on itself.
    */
   triggersEnabled?: boolean;
-  /**
-   * Agent Store gateway API base ("install from a link" fetches a shared
-   * agent's IR from it). Absent → the route falls back to the
-   * `HOUSTON_AGENTSTORE_API_URL` config default.
-   */
-  agentStoreApiUrl?: string;
   corsOrigin?: string;
   /**
    * Prometheus exposition for GET /metrics (HOU-1011): the boot-span ledger,

@@ -6,6 +6,9 @@ category: People
 featured: yes
 image: busts-in-silhouette
 integrations: [googlesheets, googledocs, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -50,6 +53,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Hard nos** — Optional. Why I need it: shapes counter-offer rules and other downstream drafts. If you don't have it I keep going with TBD.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `config/context-ledger.json`.** Fill gaps with single targeted
    question.

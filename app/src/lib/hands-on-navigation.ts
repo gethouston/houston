@@ -1,5 +1,4 @@
 import type { HandsOnSurface } from "@houston/protocol";
-import { ORGANIZATION_VIEW_ID } from "../components/organization/id.ts";
 import { useOrgNav } from "../components/organization/org-nav-store.ts";
 import { useUIStore } from "../stores/ui.ts";
 import { DEFAULT_TEAM_ID } from "./teams-model.ts";
@@ -29,9 +28,10 @@ export function openHandsOnSurface(surface: HandsOnSurface): void {
     return;
   }
   if (surface === "billing") {
-    // Admin owns its own tab state, so the tab is pinned before navigating.
+    // The dashboard owns its own tab state, so the tab is pinned before
+    // navigating; it renders inside Settings' Workspace management section.
     useOrgNav.getState().requestTab("billing");
-    ui.setViewMode(ORGANIZATION_VIEW_ID);
+    ui.openSettings("workspace");
     return;
   }
   ui.openTeamView(

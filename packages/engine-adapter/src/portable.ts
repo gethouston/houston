@@ -17,8 +17,6 @@ import {
   unpackAgent,
 } from "@houston/domain";
 import type {
-  PortableAnonymizeRequest,
-  PortableAnonymizeResponse,
   PortableExportRequest,
   PortableInventoryPreview,
   PortableScanResponse,
@@ -93,26 +91,11 @@ export async function exportPackage(
       method: "POST",
       body: JSON.stringify({
         selection: toWireSelection(req.selection),
-        overrides: req.overrides,
         meta: { anonymized: req.meta.anonymized },
       }),
     },
   );
   return await res.arrayBuffer();
-}
-
-/** Run the host's heuristic redactor over the selected agent content. */
-export async function anonymize(
-  cfg: ControlPlaneConfig,
-  agentId: string,
-  req: PortableAnonymizeRequest,
-): Promise<PortableAnonymizeResponse> {
-  const res = await hostFetch(
-    cfg,
-    `/agents/${encodeURIComponent(agentId)}/portable/anonymize`,
-    { method: "POST", body: JSON.stringify(req) },
-  );
-  return (await res.json()) as PortableAnonymizeResponse;
 }
 
 /**

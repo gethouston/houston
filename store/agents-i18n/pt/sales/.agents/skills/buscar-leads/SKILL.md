@@ -7,6 +7,9 @@ category: Vendas
 featured: yes
 image: handshake
 integrations: [hubspot, salesforce, attio, linkedin, twitter, reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ Eu leio seu contexto de vendas primeiro. Para cada campo obrigatório que estive
 - **De onde buscar** - Obrigatório. Por que eu preciso: cada fonte usa uma ferramenta conectada diferente. Se estiver faltando eu pergunto: "Devo expandir parecidos a partir do seu CRM, puxar comentaristas de um post do LinkedIn, escanear um feed de rodadas de investimento recentes, raspar uma área no Google Maps, ou trazer uma thread de um subreddit?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o registro + o playbook.** Reúno os campos obrigatórios que
    faltam (UMA pergunta cada, começando pelo melhor formato). Escrevo atomicamente.

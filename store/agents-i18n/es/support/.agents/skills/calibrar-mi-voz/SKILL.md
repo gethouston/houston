@@ -7,6 +7,9 @@ category: Soporte
 featured: no
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **Frases prohibidas**: Opcional. Por qué la necesito: las frases que suenan mal viniendo de ti van a una lista de nunca usar. Si no la tienes, sigo con TBD e infiero a partir de las muestras.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer `context/support-context.md`.** Si falta, ejecuta primero `set-up-my-support-info` (o detente y dímelo).
 

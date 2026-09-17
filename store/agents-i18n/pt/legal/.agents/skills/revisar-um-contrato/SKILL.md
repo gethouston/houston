@@ -7,6 +7,9 @@ category: Contratos
 featured: yes
 image: scroll
 integrations: [googledocs, googledrive, notion, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Lê `config/context-ledger.json` primeiro.
 Campo obrigatório faltando → faça UMA pergunta pontual com dica de modalidade (conectar Google Drive / colar o texto do contrato / URL para PDF público), grave, continue.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia o registro e o contexto jurídico.** Reúna os campos obrigatórios que faltam conforme acima. Grave de forma atômica.
 2. **Obtenha o contrato.** Prioridade: armazenamento de documentos conectado (Google Drive) > URL + raspagem via Firecrawl > arquivo enviado > texto colado. Se só um PDF foi fornecido e nenhuma ferramenta de extração de texto estiver conectada → diga isso, peça uma versão com texto extraível.

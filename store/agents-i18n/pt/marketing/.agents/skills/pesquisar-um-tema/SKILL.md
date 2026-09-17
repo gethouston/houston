@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Eu leio primeiro o seu contexto de marketing. Para cada campo obrigatório que e
 - **Profundidade** - Opcional, padrão standard. Se estiver faltando, eu pergunto: "Quão fundo devo ir, uma varredura de quinze minutos, um mergulho de uma hora, ou uma execução profunda? Se você não tiver preferência, eu sigo com a profundidade padrão."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Esclarecer o escopo em uma troca curta (pular se o pedido do usuário já for específico).** Perguntar:
    - Para que o briefing vai alimentar, post de blog, ângulos de anúncio, e-mail de lifecycle, calendário social, ou só para sua própria leitura?

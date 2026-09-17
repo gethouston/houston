@@ -1,4 +1,5 @@
 import type { ProviderError } from "@houston/runtime-client";
+import { isCodexTerseRefusal } from "./codex-terse-refusal";
 
 /**
  * Kinds that are expected operational states of an EXTERNAL provider (or of
@@ -72,25 +73,45 @@ export function logProviderError(
     `[provider_error] provider=${error.provider} model=${ctx.model ?? "?"} ` +
     `status=${ctx.status ?? "?"}${ctx.sdkError ? ` error=${ctx.sdkError}` : ""} ` +
     `kind=${error.kind}${cause} :: ${verbatim}`;
-  // Two auth causes are expected USER states, not broken custody.
-  // `no_credentials`: the provider was simply never connected (or the user
-  // logged out with it still selected) — loggable since the pre-session
-  // guards started reporting (HOU-1156); keep it a warning or every fresh
-  // install fires Sentry errors. `org_policy_blocked`: the provider
-  // authenticated the token and then its org policy rejected subscription
-  // access for this environment (Anthropic's `oauth_org_not_allowed`) — the
-  // card already tells the user to switch to an API key, only their org admin
-  // can lift the block, and every retried turn re-fires it.
-  const expected =
+  if (isExpectedProviderState(error)) console.warn(line);
+  else console.error(line);
+}
+
+/**
+ * Whether a classified provider failure is an expected state of the provider
+ * or of the user's account — one the chat already renders as its own card and
+ * that no Houston change can prevent — rather than a fault to page on. The one
+ * severity judgement for every model call: the chat turn (`logProviderError`)
+ * and the autocompact summarizer (session/autocompact-guard.ts) share it, so
+ * the same 429 is never a warning on the turn and an error on the compaction
+ * that preceded it.
+ *
+ * Two auth causes are expected USER states, not broken custody.
+ * `no_credentials`: the provider was simply never connected (or the user
+ * logged out with it still selected) — loggable since the pre-session guards
+ * started reporting (HOU-1156); keep it a warning or every fresh install
+ * fires Sentry errors. `org_policy_blocked`: the provider authenticated the
+ * token and then its org policy rejected subscription access for this
+ * environment (Anthropic's `oauth_org_not_allowed`) — the card already tells
+ * the user to switch to an API key, only their org admin can lift the block,
+ * and every retried turn re-fires it.
+ */
+export function isExpectedProviderState(error: ProviderError): boolean {
+  const verbatim =
+    (error.kind === "unknown" ? error.raw_excerpt : error.message) ?? "";
+  return (
     EXPECTED_KINDS.has(error.kind) ||
     (error.kind === "unauthenticated" &&
       (error.cause === "no_credentials" ||
         error.cause === "org_policy_blocked")) ||
-    (error.kind === "unauthenticated" &&
-      EXPECTED_AUTH_DETAIL.test(verbatim ?? "")) ||
-    (error.kind === "unknown" && EXPECTED_UNKNOWN_DETAIL.test(verbatim ?? ""));
-  if (expected) console.warn(line);
-  else console.error(line);
+    (error.kind === "unauthenticated" && EXPECTED_AUTH_DETAIL.test(verbatim)) ||
+    (error.kind === "unknown" && EXPECTED_UNKNOWN_DETAIL.test(verbatim)) ||
+    // ChatGPT's reason-less refusal that nothing recent could explain
+    // (ai/codex-terse-refusal.ts): a known gateway behaviour, not a new
+    // failure. The card stays `unknown`; the Sentry error would only re-count
+    // HOUSTON-APP-56R.
+    (error.kind === "unknown" && isCodexTerseRefusal(error.provider, verbatim))
+  );
 }
 
 /**

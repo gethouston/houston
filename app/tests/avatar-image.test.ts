@@ -7,8 +7,8 @@ import {
   isAvatarImageFile,
 } from "../src/lib/avatar-image.ts";
 
-// The crop geometry is `centerSquareCrop` from `lib/image-crop.ts`, shared with
-// the Agent Store avatar upload and covered by `image-crop.test.ts`.
+// The crop geometry is `centerSquareCrop` from `lib/image-crop.ts`, covered by
+// `image-crop.test.ts`.
 
 /** A real 1x1 fully transparent PNG: 96 base64 chars, 2 of them padding. */
 const TINY_PNG_DATA_URL =

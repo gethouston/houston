@@ -9,8 +9,8 @@ import { useSkillSurface } from "../use-skill-surface";
 
 /**
  * Skills section: the catalog-grammar Skills surface (installed-tile strip +
- * Store / Custom skills tabs), reusing {@link useSkillSurface} for
- * install/search. On shared-store deployments (ADR 0003) the
+ * Custom skills tab), reusing {@link useSkillSurface} for creation and GitHub
+ * imports. On shared-store deployments (ADR 0003) the
  * strip also shows the workspace skills this agent's manifest enables — the
  * agent HAS them at runtime, so hiding them here made every enable look like
  * a no-op. Every strip row opens the per-agent manage dialog, which resolves
@@ -50,9 +50,6 @@ export function AgentAdminSkills({ agent }: AgentSectionProps) {
         agent={agent}
         skills={merged.skills}
         loading={surface.skillsLoading}
-        onSearch={surface.handleSearch}
-        onInstallCommunity={surface.handleInstallCommunity}
-        onPreviewCommunity={surface.handlePreview}
         onListFromRepo={surface.handleListFromRepo}
         onInstallFromRepo={surface.handleInstallFromRepo}
         onCreateFromScratch={surface.handleCreateFromScratch}

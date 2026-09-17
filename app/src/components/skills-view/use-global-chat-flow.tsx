@@ -6,23 +6,29 @@ import { ChooseChatAgentDialog } from "./choose-chat-agent-dialog";
 import { GlobalSkillChat } from "./global-skill-chat";
 
 /**
- * The global page's create-with-AI entry (HOU-792): "New skill" picks the
- * agent that hosts the guided chat (skipped straight to the chat when the
- * workspace has exactly one), then mounts {@link GlobalSkillChat} keyed per
- * open so every click starts a FRESH draft — the chat renders in the shell's
- * right panel while the page stays on the left.
+ * The global page's chat host: "New skill" picks the agent that runs the
+ * guided create chat (skipped straight to the chat when the workspace has
+ * exactly one), and opening a skill's editor runs that skill's own chat the
+ * same way. {@link GlobalSkillChat} is keyed per open, so every click starts
+ * a FRESH draft and every skill lands on its own conversation — the chat
+ * renders in the shell's right panel while the page stays on the left.
  */
 export function useGlobalChatFlow(opts: {
   agents: Agent[];
   listsByPath: Map<string, SkillSummary[] | undefined>;
-  /** The chat's "Edit manually" — opens the global manage dialog. */
+  /** The chat's "Edit manually" — shows the skill's markdown on the left. */
   onEditSkill: (slug: string) => void;
 }): {
   node: ReactNode;
   startCreate: () => void;
-  /** The manage dialog's "Edit in chat": the skill's own chat, hosted on its
-   *  first holder (the canonical copy's agent). */
+  /** The editor's chat: the skill's own conversation, hosted on its first
+   *  holder (the canonical copy's agent). A row with no holder has no agent
+   *  to run it on, so nothing opens. */
   openForSkill: (row: WorkspaceSkillRow) => void;
+  /** Unmount the chat — the shell panel closes with it. */
+  close: () => void;
+  /** Whether a chat is mounted right now (the panel is up). */
+  open: boolean;
 } {
   const { agents, listsByPath, onEditSkill } = opts;
   const [chat, setChat] = useState<{
@@ -83,5 +89,5 @@ export function useGlobalChatFlow(opts: {
     </>
   );
 
-  return { node, startCreate, openForSkill };
+  return { node, startCreate, openForSkill, close, open: chat !== null };
 }

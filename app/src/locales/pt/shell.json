@@ -1,8 +1,7 @@
 {
   "sidebar": {
     "academy": "Academia",
-    "addAgent": "Novo agente",
-    "agentStore": "Loja de agentes",
+    "addAgent": "Novo funcionário de IA",
     "aiModels": "Modelos de IA",
     "assistant": "AI Manager",
     "changeColor": "Alterar cor",
@@ -26,7 +25,6 @@
     "guideMe": "Me guie",
     "help": "Ajuda",
     "integrations": "Integrações",
-    "myAccounts": "Minhas contas",
     "needsYouCount_one": "{{count}} assunto precisa de você",
     "needsYouCount_other": "{{count}} assuntos precisam de você",
     "newMission": "Nova tarefa",
@@ -36,7 +34,6 @@
     "runningCount_other": "{{count}} assuntos em execução",
     "selectWorkspace": "Escolha um espaço de trabalho",
     "settings": "Configurações",
-    "skills": "Skills",
     "teams": {
       "identity": "Alterar ícone e nome",
       "identityIcons": "Ícones",
@@ -382,19 +379,18 @@
       "work": "trabalho",
       "writing": "escrita redação"
     },
-    "workspace": "Espaço de trabalho",
     "yourTeams": "Suas equipes"
   },
   "missionChat": {
     "back": "Voltar"
   },
   "agentsHome": {
-    "title": "Agentes",
+    "title": "Funcionários de IA",
     "taskCount_one": "{{count}} tarefa",
     "taskCount_other": "{{count}} tarefas",
     "empty": {
-      "title": "Ainda não há agentes",
-      "description": "Crie um agente para começar. Tudo em que eles trabalharem aparecerá aqui."
+      "title": "Ainda não há funcionários de IA",
+      "description": "Crie um funcionário de IA para começar. Tudo em que eles trabalharem aparecerá aqui."
     },
     "allTeams": "Todas as equipes",
     "noTasks": "Ainda não há tarefas",
@@ -426,7 +422,7 @@
     "newTeam": "Nova equipe"
   },
   "tabBar": {
-    "agents": "Agentes",
+    "agents": "Funcionários de IA",
     "label": "Navegação principal",
     "more": "Mais",
     "teams": "Equipes"
@@ -439,12 +435,12 @@
     "genericDescription": "Algo inesperado deu errado. Tente novamente.",
     "offlineTitle": "Houston, sem conexão",
     "offlineDescription": "Não conseguimos conectar ao Houston agora. Verifique sua conexão com a internet e tente novamente.",
-    "engineWakingTitle": "Houston, seu agente está acordando",
+    "engineWakingTitle": "Houston, seu funcionário de IA está acordando",
     "engineWakingDescription": "Costuma levar cerca de 20 segundos. Você não precisa enviar sua mensagem de novo.",
     "updateStuckTitle": "Houston, as atualizações não estão chegando",
     "updateStuckDescription": "Não conseguimos verificar atualizações. Sua rede pode estar bloqueando. Você sempre pode baixar a versão mais recente em gethouston.ai.",
-    "noAgentTitle": "Houston, você precisa de um agente primeiro",
-    "noAgentDescription": "Crie um agente e depois conecte pelas configurações dele. Esta conexão fica em um agente."
+    "noAgentTitle": "Houston, você precisa de um funcionário de IA primeiro",
+    "noAgentDescription": "Crie um funcionário de IA e depois conecte pelas configurações dele. Esta conexão fica em um funcionário de IA."
   },
   "openUrl": {
     "noBrowserTitle": "Houston, não encontramos um navegador web",
@@ -452,15 +448,15 @@
     "failedTitle": "Houston, esse link não abriu"
   },
   "agentDelete": {
-    "title": "Excluir o agente?",
-    "description": "Isso apaga o agente e todos os seus dados de forma permanente. Não dá para desfazer."
+    "title": "Excluir o funcionário de IA?",
+    "description": "Isso apaga o funcionário de IA e todos os seus dados de forma permanente. Não dá para desfazer."
   },
   "workspaceDialog": {
     "title": "Novo espaço de trabalho",
     "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente."
   },
   "agentUpdate": {
-    "title": "Atualização do agente disponível",
+    "title": "Atualização do funcionário de IA disponível",
     "descriptionOne": "{{name}} tem uma nova versão disponível.",
     "descriptionMany": "{{names}} têm novas versões disponíveis.",
     "descriptionSuffix": "A atualização já foi baixada. Recarregue para aplicar.",
@@ -468,7 +464,7 @@
   },
   "authReconnect": {
     "heading": "Houston, temos um problema",
-    "body": "Sua sessão no {{provider}} expirou. Entre de novo para manter seus agentes funcionando.",
+    "body": "Sua sessão no {{provider}} expirou. Entre de novo para manter seus funcionários de IA funcionando.",
     "waiting": "Aguardando o login no navegador...",
     "signInWith": "Entrar com {{provider}}"
   },
@@ -480,11 +476,11 @@
     "launchError": "Não foi possível abrir o login. Tente de novo."
   },
   "agentProvisioning": {
-    "title": "Estamos criando seu agente",
-    "stillStarting": "Seu agente está demorando mais que o normal para iniciar. Ainda estamos tentando, aguarde um momento.",
-    "blockedBody": "Está quase pronto. Essa ação estará disponível em instantes, assim que seu agente terminar de se configurar.",
+    "title": "Estamos criando seu funcionário de IA",
+    "stillStarting": "Seu funcionário de IA está demorando mais que o normal para iniciar. Ainda estamos tentando, aguarde um momento.",
+    "blockedBody": "Está quase pronto. Essa ação estará disponível em instantes, assim que seu funcionário de IA terminar de se configurar.",
     "stalledTitle": "Ainda estamos nessa",
-    "stalledBody": "Isso está demorando mais que o normal. Não desistimos, seu chat e suas mensagens estão seguros e vão continuar assim que seu agente responder."
+    "stalledBody": "Isso está demorando mais que o normal. Não desistimos, seu chat e suas mensagens estão seguros e vão continuar assim que seu funcionário de IA responder."
   },
   "reportBug": {
     "reportSuccessTitle": "Relatório enviado",
@@ -509,21 +505,19 @@
     "restarting": "Reiniciando..."
   },
   "naming": {
-    "dialogTitle": "Dê um nome ao seu agente",
-    "newAgentFallback": "Novo agente",
-    "tagline": "Escolha uma cor e dê um nome ao seu agente",
+    "dialogTitle": "Dê um nome ao seu funcionário de IA",
+    "tagline": "Dê um nome ao seu funcionário de IA e diga qual é o trabalho dele",
     "namePlaceholder": "ex. Gerente de produto, Vendas, Jerry",
     "linkExistingProject": "Vincular projeto existente",
-    "createAgent": "Criar agente"
+    "createAgent": "Criar funcionário de IA"
   },
   "newAgent": {
-    "dialogTitle": "Novo agente",
-    "storeCard": "Da loja",
-    "createCard": "Criar novo",
-    "copyCard": "Copiar um agente"
+    "chooseHeadline": "Como você quer começar?",
+    "hireTitle": "Contratar um novo funcionário de IA",
+    "copyTitle": "Copiar um funcionário de IA existente"
   },
   "engineGate": {
-    "starting": "Carregando seus agentes…",
+    "starting": "Carregando seus funcionários de IA…",
     "reconnected": "Houston reconectou",
     "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente.",
     "authRequiredTitle": "Login necessário",
@@ -626,7 +620,7 @@
     }
   },
   "agentReads": {
-    "failed": "Não foi possível carregar {{failed}} de {{total}} agentes",
+    "failed": "Não foi possível carregar {{failed}} de {{total}} funcionários de IA",
     "failedOne": "Não foi possível carregar {{name}}",
     "retry": "Tentar de novo",
     "report": "Relatar problema"
@@ -634,11 +628,11 @@
   "palette": {
     "title": "Paleta de comandos",
     "description": "Vá para qualquer lugar do Houston",
-    "placeholder": "Buscar agentes, tarefas, ações...",
+    "placeholder": "Buscar funcionários de IA, tarefas, ações...",
     "empty": "Nada encontrado. Tente outra palavra.",
     "groups": {
       "actions": "Ações",
-      "agents": "Agentes",
+      "agents": "Funcionários de IA",
       "recentMissions": "Tarefas recentes",
       "teams": "Equipes"
     },
@@ -660,8 +654,8 @@
     "rows": {
       "palette": "Abrir paleta de comandos",
       "newMission": "Iniciar nova tarefa",
-      "prevAgent": "Agente anterior",
-      "nextAgent": "Próximo agente",
+      "prevAgent": "Funcionário de IA anterior",
+      "nextAgent": "Próximo funcionário de IA",
       "boardNavigate": "Mover entre tarefas",
       "boardOpen": "Abrir a tarefa destacada",
       "panelEscape": "Sair do chat e depois fechar",
@@ -671,5 +665,11 @@
   "moreMenu": {
     "help": "Ajuda",
     "title": "Mais"
+  },
+  "addToWorkspace": {
+    "title": "Adicionar ao seu espaço de trabalho",
+    "headline": "O que você quer adicionar?",
+    "agentTitle": "Funcionário de IA",
+    "teamTitle": "Equipe"
   }
 }

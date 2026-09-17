@@ -6,6 +6,9 @@ category: Operations
 featured: no
 image: clipboard
 integrations: [gmail, slack]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your operations context first. For every required field that's missing I 
 - **Your voice**  -  Optional. Why I need it: the reminder sounds like you, not a bot. If you don't have it I keep going with TBD using a neutral tone  -  best is to connect your inbox so I can sample 20 to 30 sent messages.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`.** If "Key contacts / Team" section absent, empty, or N≤1 (founder only), stop and say:
 

@@ -7,6 +7,9 @@ category: Operaciones
 featured: yes
 image: clipboard
 integrations: [linkedin, firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -41,6 +44,7 @@ Primero leo tu contexto de operaciones. Por cada campo obligatorio que falte hag
 - **Ventana de tiempo**  -  Opcional. Por qué la necesito: los informes semanales usan 7 días por defecto, la investigación profunda 30. Si no la tienes, sigo adelante con TBD usando esos valores por defecto.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** La relevancia se ancla en las prioridades activas del fundador. Si falta: primero `set-up-my-ops-info`, me detengo.
 

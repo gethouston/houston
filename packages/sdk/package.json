@@ -19,6 +19,10 @@
       "types": "./src/agent-name.ts",
       "import": "./src/agent-name.ts"
     },
+    "./job-description": {
+      "types": "./src/job-description.ts",
+      "import": "./src/job-description.ts"
+    },
     "./provider-catalog": {
       "types": "./src/provider-catalog.ts",
       "import": "./src/provider-catalog.ts"
@@ -27,9 +31,25 @@
       "types": "./src/local-model-bridge/unsupported.ts",
       "import": "./src/local-model-bridge/unsupported.ts"
     },
+    "./quiet-error-class": {
+      "types": "./src/quiet-error-class.ts",
+      "import": "./src/quiet-error-class.ts"
+    },
     "./provider-connection-observer": {
       "types": "./src/provider-connection-observer.ts",
       "import": "./src/provider-connection-observer.ts"
+    },
+    "./local-model-bridge/quiet": {
+      "types": "./src/local-model-bridge/quiet.ts",
+      "import": "./src/local-model-bridge/quiet.ts"
+    },
+    "./no-agent-provider-write-error": {
+      "types": "./src/no-agent-provider-write-error.ts",
+      "import": "./src/no-agent-provider-write-error.ts"
+    },
+    "./local-model-bridge/errors": {
+      "types": "./src/local-model-bridge/errors.ts",
+      "import": "./src/local-model-bridge/errors.ts"
     }
   },
   "files": [

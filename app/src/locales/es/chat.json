@@ -1,6 +1,6 @@
 {
   "welcome": {
-    "greeting": "¡Hola! Soy {{name}}, tu nuevo agente. Cuéntame en qué te gustaría que te ayude: puedes describir una tarea con tus propias palabras, compartir algunos detalles sobre cómo te gusta que se hagan las cosas o adjuntar archivos que me den contexto. Cuanto más me cuentes, mejor se ajustará mi trabajo a lo que necesitas. ¿Con qué te gustaría empezar?"
+    "greeting": "¡Hola! Soy {{name}}, tu nuevo empleado de IA. Cuéntame en qué te gustaría que te ayude: puedes describir una tarea con tus propias palabras, compartir algunos detalles sobre cómo te gusta que se hagan las cosas o adjuntar archivos que me den contexto. Cuanto más me cuentes, mejor se ajustará mi trabajo a lo que necesitas. ¿Con qué te gustaría empezar?"
   },
   "setupGreeting": {
     "text": "¡Hola! Soy {{name}}. Estoy preparando todo de mi lado, dame un momento y me presento como corresponde."
@@ -93,10 +93,10 @@
     "signinRedirectLine": "No inicié sesión. En vez de eso, haz esto: {{text}}",
     "signinAppName": "Houston",
     "signinTitle": "Inicia sesión en Houston",
-    "signinDescription": "Tus cuentas siguen siendo tuyas; el agente actúa en tu nombre.",
+    "signinDescription": "Tus cuentas siguen siendo tuyas; el empleado de IA actúa en tu nombre.",
     "signin": "Iniciar sesión",
     "connectTitle": "Conectar {{app}}",
-    "connectReasonFallback": "El agente necesita {{app}} para continuar.",
+    "connectReasonFallback": "El empleado de IA necesita {{app}} para continuar.",
     "declinePlaceholder": "O dile qué hacer en vez de eso...",
     "recommended": "Recomendado",
     "skip": "Omitir",
@@ -140,10 +140,12 @@
     "staleAttachmentBody": "Un archivo que adjuntaste cambió o se eliminó de tu dispositivo después de agregarlo. Quítalo del mensaje y adjúntalo de nuevo.",
     "stopSession": "No se pudo detener la tarea. Inténtalo de nuevo.",
     "modelPersistFailed": "No se pudo guardar la preferencia de modelo",
-    "modelNotAllowed": "Este modelo no está permitido para este agente",
-    "modelNotAllowedBody": "Los modelos permitidos de este agente cambiaron. Elige otro de la lista.",
+    "modelNotAllowed": "Este modelo no está permitido para este empleado de IA",
+    "modelNotAllowedBody": "Los modelos permitidos de este empleado de IA cambiaron. Elige otro de la lista.",
     "missionRowFailed": "No pudimos guardar esta tarea en tu tablero. Tu mensaje sí fue enviado.",
-    "interactionDismissFailed": "No pudimos descartar la solicitud."
+    "interactionDismissFailed": "No pudimos descartar la solicitud.",
+    "interactionBusyTitle": "Houston ya está trabajando en esto",
+    "interactionBusyBody": "La solicitud fue reemplazada por una respuesta nueva. Espera a que termine o presiona Detener para abandonarla."
   },
   "providerError": {
     "retryPrompt": "Intenta de nuevo.",
@@ -224,8 +226,8 @@
           "hint": "Houston responde usando una IA como Claude o ChatGPT. Conecta una para comenzar."
         },
         "team": {
-          "title": "Conecta tu IA para chatear con los agentes de este equipo",
-          "hint": "Los agentes del equipo responden usando tu propia cuenta de IA. Conecta la tuya para comenzar."
+          "title": "Conecta tu IA para chatear con los empleados de IA de este equipo",
+          "hint": "Los empleados de IA del equipo responden usando tu propia cuenta de IA. Conecta la tuya para comenzar."
         }
       },
       "account": {
@@ -281,6 +283,10 @@
   "contextCompacted": "Resumimos la conversación anterior para que el chat pueda continuar",
   "contextCompactedManual": "Compactamos la conversación para liberar espacio",
   "contextCleared": "Contexto borrado. Empiezo de cero y conservo lo que aprendí sobre ti.",
+  "engineRestart": {
+    "sayContinue": "Tu agente tuvo que reiniciarse. Dile que continúe y retomará donde se quedó.",
+    "resuming": "Tu agente se interrumpió por un reinicio y está retomando donde se quedó."
+  },
   "contextCommands": {
     "compact": "Compactar contexto",
     "clear": "Borrar contexto"
@@ -298,7 +304,7 @@
     "messagePosition": "Mensaje {{position}}",
     "types": {
       "user": "Tú",
-      "assistant": "Respuesta del agente",
+      "assistant": "Respuesta del empleado de IA",
       "artifact": "Archivos actualizados",
       "error": "Algo necesita atención"
     }

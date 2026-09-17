@@ -32,12 +32,11 @@ export interface SidebarBandProps {
  * resolved DATA of one team block in this package. Band is the word the rail, the design
  * inventory and the knowledge base already use for this object.
  *
- * The rail has three: "My accounts" and "Workspace" over the top-level
- * destinations, and "Your teams" over the team blocks. They are one component
- * wearing different props, not three lookalikes: a rail whose bands differed in
- * type step, triangle placement, fold behaviour or the gap under the heading
- * would be teaching three rules for one row shape, and that is exactly how the
- * three drifted apart before this existed.
+ * The rail has two: "Workspace" over the top-level destinations, and "Your
+ * teams" over the team blocks. They are one component wearing different props,
+ * not two lookalikes: a rail whose bands differed in type step, triangle
+ * placement, fold behaviour or the gap under the heading would be teaching two
+ * rules for one row shape.
  *
  * What it owns, end to end:
  *

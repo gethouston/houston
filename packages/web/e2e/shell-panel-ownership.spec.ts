@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import { openSkillsLibrary } from "./support/settings-nav";
 import { openTeamSection, screen } from "./support/team-nav";
 
 /**
@@ -75,7 +76,7 @@ test("leaving a board with the new-mission composer open still lets it reopen", 
   // Off to another top-level view: the team screen is only HIDDEN, never
   // unmounted, so the board goes off screen still holding its own state and
   // has to let go of the panel itself.
-  await page.locator('[data-tour-target="nav-skills"]').click();
+  await openSkillsLibrary(page);
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 
   // Back on the board, a mission card must be able to open the panel AGAIN.
@@ -84,6 +85,27 @@ test("leaving a board with the new-mission composer open still lets it reopen", 
   await openTeamSection(page, "Tasks");
   await screen(page).getByText("Plan a trip to Tokyo").first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
+});
+
+test("the Skills library's create chat claims the panel from its tab", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  // The library is a TAB of the Integrations screen, so its chat claims the
+  // shared panel from inside that screen — the claim is the surface rendering
+  // the panel, never the view mode it happens to sit under.
+  await openSkillsLibrary(page);
+  await expect(page.getByTestId("mission-panel")).toBeHidden();
+  await screen(page).getByRole("button", { name: "Create skill" }).click();
+  // One agent in the workspace, so there is nobody to pick and the guided
+  // chat opens straight away, beside the library rather than over it.
+  await expect(page.getByTestId("mission-panel")).toBeVisible();
+
+  // Off to a team's board: Integrations is kept alive with the chat still
+  // mounted, so the chat has to release the panel itself.
+  await openTeamSection(page, "Tasks");
+  await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
 test("a team's routine chat lets go of the shared panel when the team leaves the glass", async ({
@@ -116,7 +138,7 @@ test("a team's routine chat lets go of the shared panel when the team leaves the
   // whole team screen is hidden rather than unmounted, so its chat is still
   // mounted and has to release the panel itself; otherwise it stays painted
   // over whatever the user went to look at.
-  await page.locator('[data-tour-target="nav-agent-store"]').click();
+  await page.locator('[data-tour-target="nav-integrations"]').click();
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 
   // And back: the section returns as the LIST, with the panel released and

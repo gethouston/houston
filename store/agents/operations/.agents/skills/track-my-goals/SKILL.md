@@ -6,6 +6,9 @@ category: Operations
 featured: no
 image: clipboard
 integrations: [googlesheets, notion, airtable, linear, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ I read your operations context first. For every required field that's missing I 
 - **Attainment curve**  -  Optional. Why I need it: front-loaded versus back-loaded goal metrics classify differently mid-quarter. If you don't have it I keep going with TBD using a linear default.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`.** If
    missing or empty, stop and ask you run

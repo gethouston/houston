@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [googlecalendar, gmail]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ Primero leo tu contexto de operaciones. Por cada campo requerido que falte, hago
 - **Tu zona horaria** - Opcional. Por qué la necesito: detecta conflictos de agenda durante la ventana del viaje. Si no la tienes, sigo adelante con TBD usando el valor predeterminado de tu contexto operativo.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** Si falta o está vacío, me detengo. Le pido al usuario ejecutar primero `set-up-my-ops-info`. Los contactos clave + las prioridades anclan la sección de "¿qué reuniones tengo mientras estoy allá?".
 

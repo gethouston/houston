@@ -7,6 +7,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [googledocs, linkedin, twitter, reddit, mailchimp, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -59,6 +62,7 @@ Leio seu contexto de marketing primeiro. Para cada campo obrigatório que estive
 - **Sua plataforma de e-mail**  -  Obrigatório para `newsletter` (para eu nomear a ferramenta em que você vai colar). Se faltar, pergunto: "Qual ferramenta de e-mail você usa para enviar sua newsletter?"
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o ledger + posicionamento.** Carrego `config/context-ledger.json`
    e `context/marketing-context.md`. Coleto os campos obrigatórios faltantes

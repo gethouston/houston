@@ -6,6 +6,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -50,6 +53,7 @@ I read your marketing context first. For every required field that's missing I a
 - **The page URL or screenshot**  -  Required. If missing I ask: "Paste the URL of the page you want rewritten. If it's an in-product surface, drop a screenshot or paste the current copy."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + positioning.** Gather missing required fields per above (ONE question each, best-modality first). Write atomically.
 2. **Fetch current state.** URL-reachable surfaces: run `composio search web-scrape` and execute by slug (Firecrawl / ScrapingBee / equivalent) to pull rendered HTML + visible text + primary image URLs + current CTA. In-product surfaces (onboarding / some paywalls / popups): accept screenshots, Loom, or pasted copy. Nothing usable → ask for paste, stop.

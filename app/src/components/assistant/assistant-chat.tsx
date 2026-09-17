@@ -53,7 +53,7 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
 
   const openHref = useOpenAgentHref(path);
   const queuedLabels = useQueuedMessageLabels();
-  const { cardLabels, composerLabels } = useBoardLabels();
+  const { labels, cardLabels, composerLabels } = useBoardLabels("assistant");
   const { drafts, onDraftChange } = useBoardDrafts();
   const addToast = useUIStore((s) => s.addToast);
 
@@ -152,6 +152,8 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
         onDraftChange={onDraftChange}
         onOpenLink={openHref}
         onNotice={(message) => addToast({ title: message })}
+        labels={labels}
+        composerAsksOpeningWhenEmpty
         cardLabels={cardLabels}
         composerLabels={composerLabels}
         hidePanelHeader

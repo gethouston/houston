@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **Confirmation on which closing balances to use as opening** — Optional. Why: if your import covers multiple periods I need to know which period-end becomes our opening trial balance. If you don't have a specific cut-off in mind I default to your fiscal year end and confirm before writing.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read config.** Load `config/context-ledger.json`  -  required: `universal.company.fiscalYearEnd` (determines import period boundary), `universal.accountingMethod` (cash vs. accrual affects opening balance interpretation). If missing, ask ONE targeted question (modality hint: connected app > file > URL > paste) and continue.
 

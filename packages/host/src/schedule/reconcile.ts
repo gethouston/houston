@@ -68,6 +68,14 @@ export interface ReconcileDeps {
 /** One sweep's decision for a run, applied only if the row is still `running`. */
 interface RunUpdate {
   run: RoutineRun;
+  /**
+   * A NON-terminal field write. `run` is a snapshot taken before this sweep's
+   * awaits, so writing it back would revert whatever else changed on a row
+   * that stays `running` (a pause, an activity id). A patch is merged onto the
+   * FRESH row instead. Terminal updates keep replacing the row wholesale:
+   * there, the snapshot IS the decision and nothing may survive it.
+   */
+  patch?: Partial<RoutineRun>;
   /** Set when the update surfaces content — drives the board Activity. */
   surfacedRoutine?: Routine;
 }
@@ -130,9 +138,26 @@ export async function reconcileAgentRuns(
   for (const [index, { run, routine }] of candidates.entries()) {
     const reply = replies[index] ?? null;
 
+    // An `interrupted.resumed` reply is the engine saying "I died mid-run and
+    // am running this turn again myself" (PRODUCT-1785) — a pause, not the
+    // run's answer. Its 15-minute budget restarts from that interruption: the
+    // work began again there, and timing it out against the ORIGINAL start
+    // would kill a resume that only had seconds of the first window left.
+    const resumedReply = reply?.interrupted?.resumed === true ? reply : null;
+    const clockStartMs = resumedReply
+      ? resumedReply.ts
+      : Date.parse(run.started_at);
     const timedOut =
-      !reply && nowMs - Date.parse(run.started_at) > RUN_TIMEOUT_MS;
+      (!reply || resumedReply !== null) &&
+      nowMs - clockStartMs > RUN_TIMEOUT_MS;
     if (!reply && !timedOut) continue; // turn still in flight
+    if (resumedReply && !timedOut) {
+      // Stays `running`, and deliberately takes NO completion lock: the
+      // resumed turn's real reply still has to win that lock on a later sweep.
+      // Writing the same flag from two replicas is idempotent.
+      if (!run.resumed) updates.push({ run, patch: { resumed: true } });
+      continue;
+    }
 
     // One replica owns this run's completion.
     if (!(await deps.lock.setNx(`routine:reconcile:${run.id}`, "1", 120)))
@@ -226,7 +251,10 @@ export async function reconcileAgentRuns(
     for (const u of updates) {
       const current = fresh.items.find((r) => r.id === u.run.id);
       if (current?.status !== "running") continue;
-      nextRuns = upsertById(nextRuns, u.run);
+      nextRuns = upsertById(
+        nextRuns,
+        u.patch ? { ...current, ...u.patch } : u.run,
+      );
       count++;
     }
     if (count > 0) await saveRoutineRuns(deps.vfs, root, nextRuns);

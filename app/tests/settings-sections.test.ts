@@ -6,13 +6,21 @@ import {
 } from "../src/lib/settings-sections.ts";
 
 describe("SETTINGS_SECTION_IDS", () => {
-  it("is the exact section set: the user's own app, nothing else", () => {
-    // Admin and Permissions left for the rail's "Workspace" band, which is what
-    // removed the last GATED section — with the set below there is no section
-    // gate, no tri-state loading rule and no workspace opt-out to keep.
+  it("is the exact section set: the standing setup, nothing else", () => {
+    // Everything a person adjusts rather than works in, Workspace management
+    // (which administers the SPACE) included.
     deepStrictEqual(
       [...SETTINGS_SECTION_IDS],
-      ["profile", "aboutMe", "apiKeys", "shortcuts", "reportBug", "migration"],
+      [
+        "profile",
+        "aboutMe",
+        "workspace",
+        "apiKeys",
+        "channels",
+        "shortcuts",
+        "reportBug",
+        "migration",
+      ],
     );
   });
 });
@@ -22,6 +30,7 @@ describe("parseSettingsSection", () => {
     strictEqual(parseSettingsSection("profile"), "profile");
     strictEqual(parseSettingsSection("aboutMe"), "aboutMe");
     strictEqual(parseSettingsSection("apiKeys"), "apiKeys");
+    strictEqual(parseSettingsSection("channels"), "channels");
     strictEqual(parseSettingsSection("reportBug"), "reportBug");
   });
 
@@ -36,13 +45,21 @@ describe("parseSettingsSection", () => {
     // "members" was removed with the Settings > Members surface (the Admin
     // People tab is now the canonical home); a stale deep-link must not land.
     strictEqual(parseSettingsSection("members"), null);
-    // Time worked, Admin and Permissions are TOP-LEVEL views, and the company
-    // half of the standing context is an Admin section: all of them are
-    // reached without Settings, so a stale pin must fall back rather than
-    // land. The `about-me` VIEW id an older install may have pinned is not a
-    // section id either: the section is `aboutMe`.
+    // Time worked, Admin and Permissions are reached without a section id of
+    // their own (Admin is the `workspace` section, Time worked a lens inside
+    // it, and agent policy a team's focused agent screen), and the company
+    // half of the standing context is an Admin section: a stale pin on any of
+    // them must fall back rather than land. The `about-me` VIEW id an older
+    // install may have pinned is not a section id either: the section is
+    // `aboutMe`.
     strictEqual(parseSettingsSection("timeWorked"), null);
     strictEqual(parseSettingsSection("organization"), null);
+    strictEqual(parseSettingsSection("workspace"), "workspace");
+    // The shared Skills library is a TAB of the Integrations screen, not a
+    // section: neither the old section id nor the older top-level view id may
+    // land a stale pin on a screen that no longer exists.
+    strictEqual(parseSettingsSection("skills"), null);
+    strictEqual(parseSettingsSection("skills-home"), null);
     strictEqual(parseSettingsSection("permissions"), null);
     strictEqual(parseSettingsSection("workspaceContext"), null);
     strictEqual(parseSettingsSection("userContext"), null);

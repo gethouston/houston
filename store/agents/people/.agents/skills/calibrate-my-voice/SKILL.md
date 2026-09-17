@@ -6,6 +6,9 @@ category: People
 featured: no
 image: busts-in-silhouette
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Hard-news samples** — Optional. Why I need it: rejections and PIP intros register differently from celebratory notes. If you don't have it I keep going with TBD on the hard-news fingerprint.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc** (own file): `context/people-context.md`. Read existing voice-notes section so run = append/merge, not overwrite. If doc missing, run `set-up-my-people-info` first.
 

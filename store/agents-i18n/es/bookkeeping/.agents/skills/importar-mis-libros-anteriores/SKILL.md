@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primero leo tu contexto de contabilidad. Por cada campo requerido que falte, hag
 - **Confirmación de qué saldos de cierre usar como apertura**, opcional. Por qué: si tu importación cubre varios períodos necesito saber qué fin de período se convierte en nuestro balance de comprobación de apertura. Si no tienes un corte específico en mente, uso por defecto el fin de tu año fiscal y confirmo antes de escribir.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer la configuración.** Cargar `config/context-ledger.json`, requerido: `universal.company.fiscalYearEnd` (determina el límite del período de importación), `universal.accountingMethod` (efectivo vs. devengo afecta la interpretación del saldo de apertura). Si falta, hacer UNA pregunta puntual (sugerencia de modalidad: app conectada > archivo > URL > pegar) y continuar.
 

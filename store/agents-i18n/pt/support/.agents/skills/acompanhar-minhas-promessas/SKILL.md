@@ -6,6 +6,9 @@ version: 1
 category: Suporte
 featured: no
 image: headphone
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Eu leio o seu contexto de suporte primeiro. Para cada campo obrigatório que est
 - **Link da conversa ou do cliente**. Opcional. Por que preciso: me permite registrar o acompanhamento na conversa certa. Se você não tiver, eu sigo em frente com TBD e peço para você me indicar a conversa depois.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 1. **Extrair o texto da promessa** literalmente da mensagem ou do rascunho (mantenho a formulação original, você pode querer ver o que foi dito).
 2. **Interpretar a data limite.**
    - Data explícita ("sexta", "3 de março") → próxima ocorrência no fuso horário local → ISO-8601 UTC.

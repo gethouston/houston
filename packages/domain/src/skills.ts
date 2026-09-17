@@ -1,6 +1,15 @@
-import type { SkillDetail, SkillSummary } from "@houston/protocol";
+import type {
+  SkillDetail,
+  SkillSummary,
+  SkillWorkflow,
+} from "@houston/protocol";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { skillsDirKey } from "./layout";
+import {
+  HOUSTON_SKILL_SCHEMA_VERSION,
+  isHoustonSkillFrontmatter,
+  parseHoustonSkillWorkflow,
+} from "./skill-workflow";
 import type { DocDiagnostic, FileStore } from "./store";
 
 /**
@@ -42,7 +51,9 @@ const str = (v: unknown): string | null => {
 export function parseSkillMd(
   slug: string,
   content: string,
-): { summary: SkillSummary; body: string } | { error: string } {
+):
+  | { summary: SkillSummary; body: string; workflow: SkillWorkflow | null }
+  | { error: string } {
   const m = content.match(FM);
   if (!m) return { error: `SKILL.md for '${slug}' has no YAML frontmatter` };
   let fm: Record<string, unknown>;
@@ -83,7 +94,14 @@ export function parseSkillMd(
     // the durable reverse link is the activity's `skill_slug`.
     setupActivityId: str(fm.setup_activity_id),
   };
-  return { summary, body: m[2] ?? "" };
+  const body = m[2] ?? "";
+  return {
+    summary,
+    body,
+    workflow: isHoustonSkillFrontmatter(fm)
+      ? parseHoustonSkillWorkflow(body)
+      : null,
+  };
 }
 
 /** List skills in an explicit dir (agent or shared). Unparseable SKILL.md files surface as diagnostics. */
@@ -127,7 +145,14 @@ export async function loadSkillDetailFromDir(
   if (content === null) return null;
   const parsed = parseSkillMd(slug, content);
   if ("error" in parsed) {
-    return { name: slug, title: null, description: "", version: 1, content };
+    return {
+      name: slug,
+      title: null,
+      description: "",
+      version: 1,
+      content,
+      workflow: null,
+    };
   }
   return {
     name: parsed.summary.name,
@@ -135,6 +160,7 @@ export async function loadSkillDetailFromDir(
     description: parsed.summary.description,
     version: parsed.summary.version,
     content,
+    workflow: parsed.workflow,
   };
 }
 
@@ -153,6 +179,10 @@ export function composeSkillMd(input: {
     description: input.description,
     version: 1,
     created: input.createdIsoDate,
+    x_houston: {
+      created_by: "houston",
+      skill_schema: HOUSTON_SKILL_SCHEMA_VERSION,
+    },
   }).trimEnd();
   const body = input.content.trim();
   return `---\n${fm}\n---\n\n${body}\n`;

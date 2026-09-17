@@ -6,8 +6,8 @@ export interface CatalogCopy {
 }
 
 /**
- * The minimal shape both an `AgentConfig` (builtin / installed agents) and a
- * `StoreListing` (remote store catalog) satisfy — enough to localize a card.
+ * The minimal shape every catalog entry (builtin / installed agents) satisfies
+ * — enough to localize a card.
  */
 interface CatalogEntry {
   id: string;
@@ -17,12 +17,12 @@ interface CatalogEntry {
 }
 
 /**
- * Localized display name + description for a new-agent store card.
+ * Localized display name + description for a new-agent catalog card.
  *
  * Houston's own first-party agents (`author === "Houston"`) — whether the
- * builtin `personal-assistant` / `blank` or a bundled store listing
+ * builtin `personal-assistant` / `blank` or a bundled template
  * (bookkeeping, legal, sales, …) — ship translations under
- * `agents:catalog.<id>`, so the store renders them in the user's language.
+ * `agents:catalog.<id>`, so the catalog renders them in the user's language.
  *
  * Third-party / community agents keep their author's language (the App Store
  * model), so anything not authored by Houston falls back to the raw strings.

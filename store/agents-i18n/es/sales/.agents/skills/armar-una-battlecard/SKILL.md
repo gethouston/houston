@@ -7,6 +7,9 @@ category: Ventas
 featured: no
 image: handshake
 integrations: [notion, reddit, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,9 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, hago UN
 - **Nombre del prospecto y nombre del competidor**  -  Obligatorio. Por qué lo necesito: la tarjeta se ancla en un negocio específico frente a un competidor específico, no es una hoja genérica. Si falta, pregunto: "¿Para qué negocio es esto, y con qué competidor nos están comparando?"
 - **Tu diferenciador principal y tu mayor debilidad frente a este competidor**  -  Obligatorio. Por qué lo necesito: la tarjeta solo es honesta si sé cómo realmente ganas y pierdes. Si falta, pregunto: "¿Cuál es, con honestidad, tu principal diferenciador frente a este competidor, y tu mayor debilidad?"
 - **Clientes ancla ganados que se parezcan al prospecto**  -  Opcional. Por qué lo necesito: los puntos de prueba pegan más fuerte cuando calzan con el perfil del prospecto. Si no lo tienes, sigo con TBD.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Identificar prospecto + competidor.** Cargo la fila del lead en `leads.json` y `calls/{slug}/notes-*.md` si existe la llamada, los criterios de evaluación específicos del prospecto y los dolores declarados son el ancla.
 2. **Leer nuestro producto + posicionamiento.** `context/sales-context.md` para lo que afirmamos, especialmente las secciones "Top 3 competidores" y "Categoría y diferenciadores". Si está flojo, pregunto una vez: "¿Cuál es, con honestidad, tu top 3 de diferenciadores frente a {competidor}? ¿Y tu mayor debilidad? (Lo integro al playbook, pégalo, o dime la URL de Notion / Google Doc.)"

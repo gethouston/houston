@@ -7,7 +7,8 @@ import {
   grantsOwner,
   initialsFor,
   inviterLabel,
-  memberLabel,
+  personDisplayName,
+  rosterPersonName,
 } from "../src/components/organization/people-tab-model.ts";
 
 const member = (over: Partial<OrgMember> & { userId: string }): OrgMember => ({
@@ -15,15 +16,34 @@ const member = (over: Partial<OrgMember> & { userId: string }): OrgMember => ({
   ...over,
 });
 
-describe("people tab model — memberLabel", () => {
-  it("prefers email", () => {
+describe("people tab model — rosterPersonName", () => {
+  // A row's aria-labels ("Change role for X", "Remove X") are built from this
+  // same helper as its visible line, so the two can never name one person two
+  // different ways — the roster showing "Ada Lovelace" while a screen reader
+  // announces "ada@x.io" is two people as far as the listener can tell.
+  const row = member({
+    userId: "u1",
+    email: "ada@x.io",
+    displayName: "Ada Lovelace",
+  });
+
+  it("is the shared display rule, with the row's id as its last resort", () => {
+    for (const person of [
+      row,
+      member({ userId: "u1", email: "ada@x.io" }),
+      member({ userId: "u1" }),
+    ]) {
+      strictEqual(rosterPersonName(person), personDisplayName(person, "u1"));
+    }
+  });
+
+  it("names a person by the name they set, not their email", () => {
+    strictEqual(rosterPersonName(row), "Ada Lovelace");
     strictEqual(
-      memberLabel(member({ userId: "u1", email: "ada@x.io" })),
+      rosterPersonName(member({ userId: "u1", email: "ada@x.io" })),
       "ada@x.io",
     );
-  });
-  it("falls back to the raw id when no email", () => {
-    strictEqual(memberLabel(member({ userId: "u1" })), "u1");
+    strictEqual(rosterPersonName(member({ userId: "u1" })), "u1");
   });
 });
 

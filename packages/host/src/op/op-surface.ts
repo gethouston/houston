@@ -21,8 +21,6 @@ export const OP_EXCLUSIONS = {
     "starting or moving a mission runs the agent's first turn, which a file-only worker cannot do",
   "trigger-status":
     "gateway-native while the agent sleeps: the trigger registry is the control plane's, not the agent's tree",
-  "portable-anonymize":
-    "the model pass rides its own op kind (the titles pattern), never the route chain",
   "agent-proxy":
     "the forward to the agent's own engine is what an op REPLACES; a worker that proxied would wake the pod it exists to spare",
 } as const satisfies Partial<Record<GroupsIn<"agent">, string>>;

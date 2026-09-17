@@ -6,6 +6,9 @@ version: 1
 category: Ventas
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,9 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, te hago
 - **Para qué negocio es este plan**. Obligatorio. Por qué lo necesito: leo el historial de llamadas de ese negocio específico. Si falta, pregunto: "¿Para qué prospecto o negocio debería armar este plan de cierre?"
 - **Fecha objetivo de cierre**. Opcional. Por qué lo necesito: ancla la línea de tiempo. Si no la tienes, propongo una según tu ciclo de cierre típico y la marco como TBD.
 - **Nombres del campeón, el comprador económico, y el bloqueador**. Opcional. Por qué lo necesito: se convierten en las filas del plan. Si no los tienes, escribo UNKNOWN y marco cada uno como algo por averiguar en la próxima llamada.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Leo el playbook.** Cargo `context/sales-context.md`. Necesito las etapas de negocio y la calificación para saber qué sigue abierto.
 

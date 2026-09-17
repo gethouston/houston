@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [hubspot, stripe, linkedin, mailchimp, customerio, googleads, metaads]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -52,6 +55,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Your save policy**  -  Required for `churn-save`. Why I need it: I won't draft offers you can't honor. If missing I ask: "What's the one genuine offer you'll make to a churning customer, a pause, a downgrade, a concierge call, or a refund window?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + positioning.** Gather missing required fields per list above (ONE question each, best-modality first).
 2. **Branch on type.**

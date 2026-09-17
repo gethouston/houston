@@ -1,4 +1,5 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
+import { ASSISTANT_COMPOSER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { startMission } from "./support/mission";
 import { openAssistant } from "./support/settings-nav";
@@ -34,7 +35,7 @@ for (const surface of ["manager", "mission"] as const) {
     if (surface === "manager") {
       await page.goto("/");
       await openAssistant(page);
-      const composer = page.getByPlaceholder("Send a follow-up...");
+      const composer = page.getByPlaceholder(ASSISTANT_COMPOSER);
       await composer.fill("Connect OpenRouter for my agents");
       await composer.press("Enter");
     } else {
@@ -43,7 +44,7 @@ for (const surface of ["manager", "mission"] as const) {
     await expect(
       page.getByText("Connect OpenRouter for this task.", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+    await expect(page.getByPlaceholder(ASSISTANT_COMPOSER)).toHaveCount(0);
 
     await page.getByRole("button", { name: "Connect", exact: true }).click();
     const field = page.locator("#provider-api-key");
@@ -54,7 +55,7 @@ for (const surface of ["manager", "mission"] as const) {
       .getByRole("dialog")
       .getByRole("button", { name: "Connect", exact: true })
       .click();
-    await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
+    await expect(page.getByPlaceholder(ASSISTANT_COMPOSER)).toBeVisible({
       timeout: 15_000,
     });
     await expect(
@@ -99,7 +100,7 @@ test("canceling provider key entry leaves the connection request actionable", as
   await expect(
     page.getByRole("button", { name: "Connect", exact: true }),
   ).toBeEnabled();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(ASSISTANT_COMPOSER)).toHaveCount(0);
 });
 
 /**
@@ -155,7 +156,7 @@ test("picking a Copilot plan starts the sign-in from the connect step", async ({
     name: "Finish signing in to GitHub Copilot",
   });
   await expect(signIn).toBeVisible();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(ASSISTANT_COMPOSER)).toHaveCount(0);
 
   // Finish the device-code sign-in on the agent's runtime, as the provider's
   // own page would. Only an observation that SURVIVED the plan pick can see
@@ -167,7 +168,7 @@ test("picking a Copilot plan starts the sign-in from the connect step", async ({
   expect(completed.status()).toBe(200);
 
   await expect(signIn).toHaveCount(0, { timeout: 20_000 });
-  await expect(page.getByPlaceholder("Send a follow-up...")).toBeVisible({
+  await expect(page.getByPlaceholder(ASSISTANT_COMPOSER)).toBeVisible({
     timeout: 20_000,
   });
   await expect(
@@ -204,5 +205,5 @@ test("dismissing the Copilot plan dialog leaves the connection request actionabl
   await expect(
     page.getByRole("button", { name: "Connect", exact: true }),
   ).toBeEnabled();
-  await expect(page.getByPlaceholder("Send a follow-up...")).toHaveCount(0);
+  await expect(page.getByPlaceholder(ASSISTANT_COMPOSER)).toHaveCount(0);
 });

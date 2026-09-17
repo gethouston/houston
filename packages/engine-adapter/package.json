@@ -26,7 +26,6 @@
   },
   "dependencies": {
     "@houston-ai/core": "workspace:*",
-    "@houston/agentstore-client": "workspace:*",
     "@houston/agentstore-contract": "workspace:*",
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",

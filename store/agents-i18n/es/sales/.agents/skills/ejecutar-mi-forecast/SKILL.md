@@ -7,6 +7,9 @@ category: Ventas
 featured: no
 image: handshake
 integrations: [hubspot, salesforce, attio, pipedrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -33,6 +36,9 @@ Primero leo tu contexto de ventas. Por cada campo obligatorio que falte, hago UN
 - **Tu playbook de ventas**: obligatorio. Por qué lo necesito: las etapas de negocio y los criterios de salida definen el puntaje de confianza de cada negocio, no solo el nombre de la etapa. Si falta, pregunto: "Todavía no tengo tu playbook. ¿Quieres que lo redacte ahora?"
 - **CRM conectado**: obligatorio. Por qué lo necesito: cada fila debe citar un negocio abierto real. Si falta, pregunto: "Conecta tu CRM (HubSpot, Salesforce, Attio, Pipedrive o Close) para que pueda traer los negocios abiertos."
 - **Ventana del forecast**: opcional. Por qué lo necesito: define qué cuenta como Commit frente a Best. Si no la especificas, sigo adelante con el trimestre calendario actual.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Leo el playbook.** `context/sales-context.md`. Las etapas de negocio y los criterios de salida definen la confianza.
 

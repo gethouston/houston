@@ -5,6 +5,9 @@ version: 1
 category: Operations
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ I read your operations context first. For every required field that's missing I 
 - **Hard nos**  -  Optional. Why I need it: lets me decline anything that violates them on sight. If you don't have it I keep going with TBD using workspace defaults.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`.** Active priorities, hard nos, founder-specific positions anchor every rubric eval. Missing → `set-up-my-ops-info` first, stop.
 

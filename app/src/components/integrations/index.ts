@@ -77,6 +77,7 @@ export {
   pollConnectionUntilActive,
 } from "./model";
 export { SectionHeader } from "./section-header";
+export { SkillStepIntegrationChip } from "./skill-step-integration-chip";
 export {
   LoadingState,
   ReconnectBanner,
@@ -98,6 +99,7 @@ export { useConnectionSelection } from "./use-connection-selection";
 export {
   AddCustomButton,
   type CustomIntegrationsSurface,
+  CustomScopeControl,
   CustomSurfaceSupport,
   useCustomIntegrationsSurface,
 } from "./use-custom-integrations-surface";

@@ -6,6 +6,9 @@ category: Support
 featured: no
 image: headphone
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ I read your support context first. For every required field that's missing I ask
 - `stale-threads`  -  conversations quiet > 48h with me as last responder, grouped by "customer replied and I missed it" vs "I owe them something." Writes to `stale-rescues/{YYYY-MM-DD}.md`.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/support-context.md`.** If missing, stop. Tell me to run `set-up-my-support-info` first.
 2. **Read ledger.** Fill gaps.

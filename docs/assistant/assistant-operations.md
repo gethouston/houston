@@ -27,6 +27,11 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
 | `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
 | `getBilling` | GET | unconfirmed: read-only HTTP GET | visible | none |
+| `completeSlack` | POST | unconfirmed: withheld from dispatch | redeems a one-time bearer ticket that only the browser returning from Slack holds, and passing one through a chat turn is how it leaks. | ticket: free text |
+| `connectSlack` | POST | unconfirmed: withheld from dispatch | answers with an authorization URL that only the person's own browser may open, and whoever finishes in Slack is who the connection would be offered to. | none |
+| `disconnectChannel` | DELETE | confirmed: host approval required | visible | connectionId: open: A messaging account is not a directory entry, so read its connection id from getChannels. |
+| `getChannels` | GET | unconfirmed: read-only HTTP GET | visible | none |
+| `linkSlack` | POST | unconfirmed: withheld from dispatch | the code IS the credential for the pairing window, so anyone it reaches can bind their own Slack account to this person's assistant. | none |
 | `conversations.delete` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; id: open: A chat lives in the agent's own engine, not in the directory, so read its id from conversations.list. |
 | `conversations.list` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `conversations.rename` | PATCH | unconfirmed: Retitles a chat; everything said in it is untouched, and the title is changed back the same way. | visible | agentId: resolved:agents; id: open: A chat lives in the agent's own engine, not in the directory, so read its id from conversations.list.; title: free text |
@@ -139,19 +144,16 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `deleteSharedSkill` | DELETE | confirmed: host approval required | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills |
 | `deleteSkill` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; slug: resolved:skills |
 | `getSkillsManifest` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
-| `installCommunitySkill` | POST | confirmed: host approval required | visible | agentId: resolved:agents; body: free text |
 | `installSkillsFromRepo` | POST | confirmed: host approval required | visible | agentId: resolved:agents; body: free text |
 | `listSharedSkills` | GET | unconfirmed: read-only HTTP GET | visible | workspaceId: resolved:workspaces |
 | `listSkills` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `listSkillsFromRepo` | POST | unconfirmed: Read-only repository listing; POST carries the source address. | visible | agentId: resolved:agents; source: free text |
 | `loadSharedSkill` | GET | unconfirmed: read-only HTTP GET | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills |
 | `loadSkill` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents; slug: resolved:skills |
-| `previewCommunitySkill` | POST | unconfirmed: Read-only preview; POST carries the catalog source and skill id. | visible | agentId: resolved:agents; source: open: The community catalogue is outside Houston, so read both values from searchCommunitySkills.; skillId: open: The community catalogue is outside Houston, so read both values from searchCommunitySkills. |
 | `promoteSharedSkill` | POST | confirmed: host approval required | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills; content: free text |
 | `putSkillsManifest` | PUT | confirmed: host approval required | visible | agentId: resolved:agents; manifest: free text |
 | `saveSharedSkill` | PUT | confirmed: host approval required | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills; content: free text |
 | `saveSkill` | PUT | confirmed: host approval required | visible | agentId: resolved:agents; slug: resolved:skills; content: free text |
-| `searchCommunitySkills` | POST | unconfirmed: Read-only search; POST carries the search terms. | visible | agentId: resolved:agents; query: free text |
 | `acceptOrgInvite` | POST | confirmed: host approval required | visible | inviteId: resolved:invites |
 | `createOrg` | POST | confirmed: host approval required | visible | name: free text |
 | `declineOrgInvite` | DELETE | confirmed: host approval required | visible | inviteId: resolved:invites |

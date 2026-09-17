@@ -81,6 +81,8 @@ import {
 } from "./turn-inflight-marker";
 import { runWithTurnMode, type TurnModeRef } from "./turn-mode-context";
 import { runWithTurnModel } from "./turn-model-context";
+import { buildTurnResumeInfo } from "./turn-resume-info";
+import type { ProvidedContext } from "./workspace-context";
 
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
@@ -130,6 +132,7 @@ export function recordUserTurn(
   acting?: ActingContext,
   displayText?: string,
   mentions?: ChatMessage["mentions"],
+  resume?: { pin?: TurnPin; resumeOf?: string; context?: ProvidedContext },
 ): RecordedUserTurn {
   // Stamp the executing turn's id up front so a cancel/stop settles this turn.
   conv.turnId = turnId;
@@ -153,16 +156,22 @@ export function recordUserTurn(
   // `mentions` is the @mention sidecar (HOU-944): the model already sees the
   // names as plain text inside `text`, so this only travels so a reader can map
   // "@Name" back to a person. Persisted AND published, exactly like `author`.
-  appendUserMessage(id, text, { author, turnId, displayText, mentions });
+  appendUserMessage(id, text, { author, turnId, nonce, displayText, mentions });
   // The turn is now in flight on disk (turn-inflight-marker.ts): cleared by
   // execTurn's finally on every in-process end, so a marker found at the next
   // boot is a turn this process died on — the boot settle answers it. Written
   // right after the user message so the store sync ships the two together.
+  const resumeInfo = buildTurnResumeInfo(resume?.pin, acting, resume?.context);
   writeInflightMarker(config.dataDir, {
     conversationId: id,
     turnId,
     startedAt: Date.now(),
     fenced: resolveChildMemoryCap() !== null,
+    // What a boot after this process dies needs to run the turn again itself
+    // (turn-resume-info.ts), and — when this turn IS that resume — the turn it
+    // already stands in for, so the next boot never resumes a resume.
+    ...(resumeInfo ? { resume: resumeInfo } : {}),
+    ...(resume?.resumeOf !== undefined ? { resumeOf: resume.resumeOf } : {}),
   });
   publish(id, {
     type: "user",
@@ -536,7 +545,12 @@ export async function execTurn(
         // would die at this same step — a wedged chat. `runAutocompact` reports
         // the refusal once and holds the retry off, and the turn runs on
         // uncompacted (session/autocompact-guard.ts).
-        if (await runAutocompact(conv.session, id)) {
+        if (
+          await runAutocompact(conv.session, id, {
+            provider: model.provider,
+            id: model.id,
+          })
+        ) {
           compaction = { trigger: "proactive", pre_tokens: fill };
           // Stream the boundary so the chat draws the divider + resets its
           // window estimate; persisted on the assistant message below so the

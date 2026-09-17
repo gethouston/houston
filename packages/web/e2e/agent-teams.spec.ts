@@ -6,9 +6,11 @@ import {
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
 import {
+  createSheet,
   createTeam,
   openCreateDialog,
   startNewTeam,
+  teamNameField,
 } from "./support/sidebar-create";
 import {
   readSidebarLayout,
@@ -16,6 +18,7 @@ import {
 } from "./support/sidebar-layout";
 import {
   agentSectionTab,
+  expectAgentSettingsSections,
   expectTeamSections,
   openAgentSettings,
   openTeamSettings,
@@ -398,17 +401,13 @@ test("creating a team sends the typed name, and it lands in Your teams", async (
 
   // Closing the modal creates nothing.
   await startNewTeam(page);
-  const draft = page.getByRole("textbox", { name: "Team name" });
-  await draft.waitFor({ state: "visible" });
   await page.keyboard.press("Escape");
   await expect(headers).toHaveCount(0);
   expect(created()).toHaveLength(0);
 
   await startNewTeam(page);
-  const input = page.getByRole("textbox", { name: "Team name" });
-  await input.waitFor({ state: "visible" });
-  await input.pressSequentially("Field Ops");
-  await page.getByRole("button", { name: "Create team" }).click();
+  await teamNameField(page).pressSequentially("Field Ops");
+  await createSheet(page).getByRole("button", { name: "Create team" }).click();
 
   // Exactly ONE create, carrying the typed name...
   await expect.poll(() => created().length).toBe(1);
@@ -454,9 +453,9 @@ test("Move to team re-homes the agent on the server, and a refusal puts it back"
   await page.getByRole("button", { name: "Operations" }).click();
   const confirm = page.getByRole("alertdialog");
   await expect(confirm).toContainText(
-    `${SEED_AGENT_NAME} moves to Operations. People who can see that team will see this agent in it.`,
+    `${SEED_AGENT_NAME} moves to Operations. People who can see that team will see this AI Employee in it.`,
   );
-  await confirm.getByRole("button", { name: "Move agent" }).click();
+  await confirm.getByRole("button", { name: "Move AI Employee" }).click();
 
   // It is a WRITE on this backend: the client asks the server to re-home the
   // agent, it does not merely re-draw its own layout.
@@ -491,7 +490,7 @@ test("Move to team re-homes the agent on the server, and a refusal puts it back"
   await page.getByRole("button", { name: "Operations" }).click();
   await page
     .getByRole("alertdialog")
-    .getByRole("button", { name: "Move agent" })
+    .getByRole("button", { name: "Move AI Employee" })
     .click();
 
   // The optimistic move is UNDONE, visibly: the agent is back in the block it
@@ -554,7 +553,7 @@ test("agent Settings hides Move when there is no other team", async ({
     page.getByRole("button", { name: "Change color & name" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Delete agent" }),
+    page.getByRole("button", { name: "Delete AI Employee" }),
   ).toBeVisible();
   // One team in the workspace, so there is nowhere to move to and the entry
   // is absent rather than opening on "no other teams".
@@ -596,9 +595,10 @@ test("Members names the team's people, and its owner toggle writes", async ({
   await expectTeamSettingsOf(page, "Operations");
 
   // The card names PEOPLE, resolved through the org roster, not raw ids. The
-  // heading carries the team's size, hence the prefix match.
+  // heading carries the team's size, hence the prefix match — and the level,
+  // since the drilled page header above it is titled "People" too.
   await expect(
-    screen(page).getByRole("heading", { name: /^People/ }),
+    screen(page).getByRole("heading", { level: 2, name: /^People/ }),
   ).toBeVisible();
   await expect(screen(page).getByText(ADA.email)).toBeVisible();
   await expect(screen(page).getByText(BOB.email)).toBeVisible();
@@ -656,7 +656,7 @@ test("the default team's member list is read-only and says why", async ({
   await openTeamSettingsSection(page, "People");
   await expectTeamSettingsOf(page, "Acme");
   await expect(
-    screen(page).getByRole("heading", { name: /^People/ }),
+    screen(page).getByRole("heading", { level: 2, name: /^People/ }),
   ).toBeVisible();
 
   // It explains itself INSTEAD of listing anyone. Everyone in the space is
@@ -713,7 +713,7 @@ test("a team's shared context tab saves", async ({ page }) => {
   const card = screen(page).getByRole("heading", { name: "Team context" });
   await expect(card).toBeVisible();
   await expect(
-    screen(page).getByText("Every agent in this team knows this."),
+    screen(page).getByText("Every AI Employee in this team knows this."),
   ).toBeVisible();
 
   const box = screen(page).getByTestId("team-context-input");
@@ -893,15 +893,11 @@ test("a personal space groups its agents into teams, and offers nothing about pe
     .poll(() => callsTo(calls, "POST", "/v1/org/teams").length)
     .toBe(1);
 
-  // The create dialog offers what a solo user can act on, and only that.
+  // The create sheet offers what a solo user can act on, and only that.
   await openCreateDialog(page);
-  const chooser = page.getByRole("dialog", { name: "Create", exact: true });
-  await expect(
-    chooser.getByRole("button", { name: "New agent", exact: true }),
-  ).toBeVisible();
-  await expect(
-    chooser.getByRole("button", { name: "New team", exact: true }),
-  ).toBeVisible();
+  const chooser = createSheet(page);
+  await expect(chooser.locator('[data-create-choice="agent"]')).toBeVisible();
+  await expect(chooser.locator('[data-create-choice="team"]')).toBeVisible();
   await page.keyboard.press("Escape");
 
   // The team keeps its identity title. Personal spaces expose an invitation
@@ -932,16 +928,17 @@ test("a personal space groups its agents into teams, and offers nothing about pe
   // The card never mounts, so its read is never fired either.
   expect(calls.filter((c) => c.path.endsWith("/members"))).toHaveLength(0);
 
-  // The agent's People section uses the same honest personal-space face. It
-  // offers one create-organization CTA and no duplicate Share door or access
-  // control that the gateway would refuse.
-  await openAgentSettings(page, "Ops Bot", "People");
-  await expect(
-    screen(page).getByText("Create an organization to invite people"),
-  ).toBeVisible();
-  await expect(
-    screen(page).getByRole("button", { name: "Create organization" }),
-  ).toBeVisible();
+  // The AGENT's settings page says nothing about people either: a personal
+  // space drops its three access sections (`agentAccessSections` → `[]`), so
+  // the page is what the agent IS and can DO, and there is no People pane to
+  // offer a duplicate Share door or an access control the gateway refuses.
+  await openAgentSettings(page, "Ops Bot", null);
+  await expectAgentSettingsSections(page, [
+    "Settings",
+    "Job description",
+    "Skills",
+    "Learnings",
+  ]);
   await expect(
     screen(page).getByRole("radio", { name: "Everyone on your team" }),
   ).toHaveCount(0);

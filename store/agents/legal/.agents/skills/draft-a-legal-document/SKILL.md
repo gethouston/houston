@@ -6,6 +6,9 @@ category: Drafting
 featured: yes
 image: scroll
 integrations: [googledocs, googledrive, notion, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -59,6 +62,7 @@ Reads `config/context-ledger.json` first.
 - `universal.posture.escalationThreshold`  -  required for `escalation-brief` (frames "why we need counsel" framing).
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read ledger + legal context.** Gather missing required fields per above. Write atomically.
 2. **Discover tools via Composio** only when type needs one: `googledocs` / `notion` for mirror-copy (optional), `googledrive` for reading template library, `firecrawl` for landing-page scrape (privacy-policy, tos).

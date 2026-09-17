@@ -6,6 +6,9 @@ category: People
 featured: no
 image: busts-in-silhouette
 integrations: [notion, linkedin, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Leveling framework** — Required. Why I need it: scoring rubric is tied to the bar at this level. If missing I ask: "What level are we hiring for, and how would you describe what 'meeting the bar' looks like at that level?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc** at `context/people-context.md`. Missing/empty? Tell user: "I need your people context first  -  run the set-up-my-people-info skill." Stop. Pull leveling framework, values, escalation rules.
 2. **Read req.** Open `reqs/{role-slug}.md` for criteria rubric. Missing? Ask ONE targeted question, write it.

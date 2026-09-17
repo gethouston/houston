@@ -6,6 +6,9 @@ category: Operations
 featured: no
 image: clipboard
 integrations: [googledrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your operations context first. For every required field that's missing I 
 - **Approval posture**  -  Optional. Why I need it: lets me know who can sign and how aggressively to surface negotiation candidates. If you don't have it I keep going with TBD using founder-only defaults.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read `context/operations-context.md`**  -  hard nos + vendor posture set "negotiate before auto-renew" flag threshold. Missing: stop, ask for `set-up-my-ops-info`.
 

@@ -6,6 +6,7 @@ import type {
 
 /** Optional fields of a persisted user message. */
 export interface UserMessageMeta {
+  nonce?: string;
   author?: ChatMessage["author"];
   /**
    * The teammates the message @mentions (HOU-944). Structure only: the model

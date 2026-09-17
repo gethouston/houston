@@ -4,12 +4,19 @@
   "back": "Atrás",
   "empty": {
     "heading": "Hola, soy tu AI Manager",
-    "capabilities": "Puedo hacer todo lo que tú puedes hacer en Houston: crear agentes, configurar automatizaciones, conectar tus apps y encontrar lo que necesitas.",
+    "capabilities": "Puedo hacer todo lo que tú puedes hacer en Houston: crear empleados de IA, configurar automatizaciones, conectar tus apps y encontrar lo que necesitas.",
     "safety": "Siempre te voy a preguntar antes de hacer algo riesgoso."
   },
   "failure": {
     "title": "Houston no pudo iniciar tu AI Manager",
     "body": "Normalmente se soluciona solo. Houston lo sigue intentando en segundo plano, y puedes volver a intentarlo ahora.",
     "retry": "Reintentar"
+  },
+  "link": {
+    "unavailableTitle": "Esta conversación no está disponible",
+    "unavailableDescription": "Verifica que hayas iniciado sesión en la cuenta de Houston conectada a Slack y que aún tengas acceso a este espacio. Luego, inténtalo de nuevo.",
+    "retry": "Intentar de nuevo",
+    "invalidTitle": "El enlace de esta conversación está incompleto",
+    "invalidDescription": "Abre el enlace más reciente de Houston desde tu conversación en Slack."
   }
 }

@@ -1,6 +1,7 @@
 import type { CustomIntegrationView } from "@houston/engine-adapter";
 import { ConfirmDialog } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
+import { useCustomIntegrationScope } from "../../hooks/queries";
 
 /**
  * The remove confirm for a custom integration: destructive, named after the
@@ -17,6 +18,8 @@ export function CustomDeleteDialog({
   onConfirm: (integration: CustomIntegrationView) => void;
 }) {
   const { t } = useTranslation("integrations");
+  // One pod per agent (PRODUCT-1773): only this agent loses the actions.
+  const scope = useCustomIntegrationScope();
   return (
     <ConfirmDialog
       open={integration !== null}
@@ -24,9 +27,12 @@ export function CustomDeleteDialog({
         if (!open) onClose();
       }}
       title={t("custom.delete.title", { name: integration?.name ?? "" })}
-      description={t("custom.delete.description", {
-        name: integration?.name ?? "",
-      })}
+      description={t(
+        scope === "agent"
+          ? "custom.delete.descriptionAgent"
+          : "custom.delete.description",
+        { name: integration?.name ?? "" },
+      )}
       confirmLabel={t("custom.delete.confirm")}
       cancelLabel={t("custom.delete.cancel")}
       variant="destructive"

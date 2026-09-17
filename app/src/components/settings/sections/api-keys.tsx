@@ -15,7 +15,7 @@ export function ApiKeysSection() {
   return (
     <section>
       <h2 className="mb-1 text-lg font-semibold">{t("apiKeys.title")}</h2>
-      <p className="mb-4 text-sm text-muted-foreground">
+      <p className="mb-4 text-sm text-ink-muted">
         <Trans
           t={t}
           i18nKey="apiKeys.intro"
@@ -26,7 +26,7 @@ export function ApiKeysSection() {
                 onClick={() =>
                   void tauriSystem.openUrl(DEVELOPER_DOCS.overview)
                 }
-                className="cursor-pointer font-medium text-primary underline underline-offset-2 transition-colors hover:text-primary/80"
+                className="cursor-pointer font-medium text-link underline underline-offset-2 transition-colors hover:text-link/80"
               />
             ),
           }}

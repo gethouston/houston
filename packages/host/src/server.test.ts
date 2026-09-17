@@ -7,11 +7,12 @@ import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
 import { MemoryCredentialStore } from "./credentials/store";
 import type { Agent } from "./domain/types";
 import { CloudPaths } from "./paths";
-import type {
-  CredentialVault,
-  RuntimeEndpoint,
-  RuntimeLauncher,
-  TokenVerifier,
+import {
+  AgentRenamingError,
+  type CredentialVault,
+  type RuntimeEndpoint,
+  type RuntimeLauncher,
+  type TokenVerifier,
 } from "./ports";
 import { CredentialServeHealer } from "./routes/credential-healer";
 import {
@@ -745,6 +746,30 @@ test("the credential endpoint rejects a bad sandbox token (401) and an unconnect
       })
     ).status,
   ).toBe(404);
+});
+
+test("a serve miss while the agent is renamed answers 503 + Retry-After, never a marked 404 (PRODUCT-1804)", async () => {
+  // The slept runtime's serve sync arrives with the old id during the rename
+  // latch: same waking shape as a drain, so the runtime keeps its copy and
+  // re-syncs under the new id.
+  const credentialHealer = new CredentialServeHealer(async ({ agentId }) => {
+    throw new AgentRenamingError(agentId);
+  });
+  const { base: b, close } = await startServer({
+    ...baseDeps(),
+    credentialHealer,
+  });
+  try {
+    const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
+    const r = await fetch(`${b}/sandbox/credential?provider=xai`, {
+      headers: { Authorization: `Bearer sbx:${aliceWs.id}` },
+    });
+    expect(r.status).toBe(503);
+    expect(r.headers.get("retry-after")).toBe("2");
+    expect(r.headers.get("x-houston-not-connected")).toBeNull();
+  } finally {
+    await close();
+  }
 });
 
 test("a serve miss while the host drains answers 503 + Retry-After, never a marked 404 (PRODUCT-1672)", async () => {

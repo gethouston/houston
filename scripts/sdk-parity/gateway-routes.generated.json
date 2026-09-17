@@ -144,6 +144,13 @@
     "reason": "mounted only to answer a named 501: the portable-workspace surface is a desktop-host feature the hosted gateway has no disk for"
   },
   {
+    "pattern": "/v1/channels/connections/{id}",
+    "methods": [
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
     "pattern": "/v1/keys/{id}",
     "methods": [
       "DELETE"
@@ -429,6 +436,21 @@
     ],
     "classification": "infra",
     "reason": "public participation-certificate pages served to event attendees, who are not Houston accounts and run no SDK client"
+  },
+  {
+    "pattern": "/v1/channels",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/channels/slack/callback",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "the browser's OAuth return leg of a Slack install; it hands the browser a one-shot ticket the signed-in user redeems over /v1/channels/slack/complete, which is the SDK's route"
   },
   {
     "pattern": "/v1/events",
@@ -937,6 +959,35 @@
     ],
     "classification": "infra",
     "reason": "public participation-certificate pages served to event attendees, who are not Houston accounts and run no SDK client"
+  },
+  {
+    "pattern": "/v1/channels/slack/complete",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/channels/slack/connect",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/channels/slack/events",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "Slack's Events API webhook, authenticated by its signing-secret HMAC over the raw body; no Houston client calls it"
+  },
+  {
+    "pattern": "/v1/channels/slack/link",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
   },
   {
     "pattern": "/v1/client-metrics",

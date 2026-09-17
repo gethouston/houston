@@ -11,10 +11,10 @@ import { createTurnServer } from "./server";
 import type { TurnRunner } from "./turn-session";
 
 /**
- * Tranche-2 pool ops (PRODUCT-1469): portable export/preview/store, the
- * desktop→cloud migration, custom integrations, the openai-compatible
- * endpoint connect, and the anonymize fallback — every remaining route a
- * sleeping agent's pod used to wake for.
+ * Tranche-2 pool ops (PRODUCT-1469): portable export/preview, the
+ * desktop→cloud migration, custom integrations and the openai-compatible
+ * endpoint connect — every remaining route a sleeping agent's pod used to
+ * wake for.
  */
 
 const servers: Server[] = [];
@@ -144,47 +144,6 @@ test("portable/export answers the zip base64 with its download header", async ()
   ).toContain(".houstonagent");
 });
 
-test("portable/store-publication round-trips through the op path and syncs the pointer", async () => {
-  const { storeRoot, prefix } = await seedAgent();
-  const store = new LocalDirStore(storeRoot);
-  const base = await listen(
-    createTurnServer({ store, token: "", runTurn: noopTurn }),
-  );
-  const hb = await heartbeatOK();
-  let { json } = await postOp(
-    base,
-    opBody(hb, {
-      kind: "route",
-      method: "POST",
-      rest: "portable/store-publication",
-      contentType: "application/json",
-      body: JSON.stringify({
-        storeAgentId: "sa-1",
-        slug: "bob",
-        shareUrl: "https://agents.example/bob",
-      }),
-    }),
-  );
-  expect(json.status, JSON.stringify(json)).toBe(200);
-  const synced = await store.list(prefix);
-  expect(
-    synced.some((k) => k.endsWith("/store-publication.json")),
-    synced.join("\n"),
-  ).toBe(true);
-  ({ json } = await postOp(
-    base,
-    opBody(hb, {
-      kind: "route",
-      method: "GET",
-      rest: "portable/store-publication",
-    }),
-  ));
-  const read = JSON.parse(json.body as string) as {
-    pointer: { slug: string } | null;
-  };
-  expect(read.pointer?.slug).toBe("bob");
-});
-
 test("migration status/complete run as ops; the marker syncs and reads back", async () => {
   const { storeRoot, prefix } = await seedAgent();
   const store = new LocalDirStore(storeRoot);
@@ -277,57 +236,6 @@ test("a migration import carrying runtime transcripts declines to the pod", asyn
   );
   expect(json.ok).toBe(true);
   expect(json.decline).toBe(true);
-});
-
-test("anonymize with no credential ships the regex-only result with the reason, never a decline", async () => {
-  const { storeRoot } = await seedAgent();
-  const base = await listen(
-    createTurnServer({
-      store: new LocalDirStore(storeRoot),
-      token: "",
-      runTurn: noopTurn,
-    }),
-  );
-  const { json } = await postOp(
-    base,
-    opBody(await heartbeatOK(), {
-      kind: "anonymize",
-      input: { claudeMd: true },
-    }),
-  );
-  expect(json.status, JSON.stringify(json)).toBe(200);
-  expect(json.decline).toBeUndefined();
-  const body = JSON.parse(json.body as string) as {
-    mode: string;
-    aiError?: string;
-  };
-  expect(body.mode).toBe("patterns");
-  expect(body.aiError).toContain("AI anonymization is not available");
-});
-
-test("anonymize with useAi:false is a clean patterns run (no aiError)", async () => {
-  const { storeRoot } = await seedAgent();
-  const base = await listen(
-    createTurnServer({
-      store: new LocalDirStore(storeRoot),
-      token: "",
-      runTurn: noopTurn,
-    }),
-  );
-  const { json } = await postOp(
-    base,
-    opBody(await heartbeatOK(), {
-      kind: "anonymize",
-      input: { claudeMd: true, useAi: false },
-    }),
-  );
-  expect(json.status).toBe(200);
-  const body = JSON.parse(json.body as string) as {
-    mode: string;
-    aiError?: string;
-  };
-  expect(body.mode).toBe("patterns");
-  expect(body.aiError).toBeUndefined();
 });
 
 /** The gateway double: heartbeat + credential PUT + shared-endpoint PUT/DELETE. */

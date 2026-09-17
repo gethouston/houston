@@ -1,6 +1,15 @@
 import type { Agent, AgentId } from "../domain/types";
-import { LauncherClosedError, type RuntimeEndpoint } from "../ports";
-import type { ProcessLauncherOptions, Running } from "./process-types";
+import {
+  AgentRenamingError,
+  LauncherClosedError,
+  type RuntimeEndpoint,
+} from "../ports";
+import type {
+  ProcessLauncherOptions,
+  Running,
+  RuntimeExit,
+} from "./process-types";
+import { describeExit, reportRuntimeDeath } from "./runtime-death";
 
 export interface ProcessBootState {
   opts: ProcessLauncherOptions;
@@ -22,10 +31,7 @@ export async function spawnUntilHealthy(
   // exists (set synchronously below), so this port-allocation gap was the
   // one window where a rename's quiesce could miss a runtime entirely and
   // let it come up bound to the old directory mid-move.
-  if (state.held(agent.id))
-    throw new Error(
-      `agent '${agent.id}' is being renamed - retry with its new id`,
-    );
+  if (state.held(agent.id)) throw new AgentRenamingError(agent.id);
   // Same gap for shutdown: a boot that entered before shutdownAll* ran is
   // not in the live-set yet, so its child would be spawned AFTER the sweep
   // that kills everything - an orphan by construction.
@@ -57,10 +63,27 @@ export async function spawnUntilHealthy(
   // The SAME (single) registration also aborts a boot in flight: a child that
   // dies mid-boot fails the caller NOW instead of polling a dead port until
   // the health budget runs out.
+  // A death nobody asked for — the entry is still THE live one, no sleep is
+  // draining it, the launcher is not shutting down — is reported with the
+  // exit shape the host alone can see (runtime-death.ts). A stub that fires
+  // without an exit reports nothing: it has no cause to name.
   let abortBoot: ((err: Error) => void) | undefined;
-  handle.onExit?.(() => {
-    if (state.running.get(agent.id) === entry) state.running.delete(agent.id);
-    abortBoot?.(new Error("runtime exited before becoming healthy"));
+  handle.onExit?.((exit?: RuntimeExit) => {
+    // A handle wired straight to Node's 'exit' hands the code, not an exit.
+    if (!isRuntimeExit(exit)) exit = undefined;
+    const live = state.running.get(agent.id) === entry;
+    const requested = entry.stopRequested === true || state.closed();
+    if (live) state.running.delete(agent.id);
+    if (abortBoot) {
+      abortBoot(
+        new Error(
+          `runtime exited before becoming healthy${exit ? `: ${describeExit(exit)}` : ""}`,
+        ),
+      );
+      return;
+    }
+    if (live && !requested && exit)
+      (state.opts.reportDeath ?? reportRuntimeDeath)(agent, exit);
   });
   try {
     // The raced rejection is always observed - race() subscribes to both
@@ -93,4 +116,12 @@ export async function spawnUntilHealthy(
     throw error;
   }
   return endpoint;
+}
+
+function isRuntimeExit(value: unknown): value is RuntimeExit {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    Array.isArray((value as RuntimeExit).stderrTail)
+  );
 }

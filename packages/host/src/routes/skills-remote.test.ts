@@ -5,12 +5,13 @@ import type { Agent, Workspace } from "../domain/types";
 import { CloudPaths } from "../paths";
 import { MemoryVfs } from "../vfs";
 import { handleSkillsRemote } from "./skills-remote";
+import { handleSkillsRepoList } from "./skills-repo-list";
 
 /**
- * The marketplace routes: skills.sh search/install + GitHub repo list/install
- * land under the same per-agent skills surface, write real SKILL.md files,
- * emit SkillsChanged, and answer typed `{error: {details: {kind}}}` bodies so
- * the Add Skills dialog renders plain-English error states.
+ * The GitHub-repo routes: list/install land under the per-agent skills
+ * surface, write real SKILL.md files, emit SkillsChanged, and answer typed
+ * `{error: {details: {kind}}}` bodies so the Add Skills dialog renders
+ * plain-English error states.
  */
 
 const ws = { id: "w1", ownerUserId: "alice" } as Workspace;
@@ -24,20 +25,6 @@ const RESEARCH_MD =
 
 const outbound: typeof fetch = async (input) => {
   const url = String(input);
-  if (url.startsWith("https://skills.sh/api/search"))
-    return new Response(
-      JSON.stringify({
-        skills: [
-          {
-            id: "owner/repo/research",
-            skillId: "research",
-            name: "research",
-            installs: 42,
-            source: "owner/repo",
-          },
-        ],
-      }),
-    );
   if (url === "https://api.github.com/repos/owner/repo")
     return new Response("{}");
   if (url.includes("api.github.com/repos/owner/repo/git/trees/HEAD"))
@@ -59,23 +46,32 @@ let base = "";
 
 beforeAll(async () => {
   server = createServer((req, res) => {
-    const rest = (req.url ?? "").replace(/^\//, "");
-    void handleSkillsRemote(
-      vfs,
-      paths,
-      { workspace: ws, agent },
-      req.method ?? "GET",
-      rest,
-      req,
-      res,
-      (e) => events.push(e),
-      { fetchImpl: outbound },
-    ).then((handled) => {
-      if (!handled) {
-        res.writeHead(404);
-        res.end();
-      }
-    });
+    const path = req.url ?? "";
+    const rest = path.replace(/^\//, "");
+    void handleSkillsRepoList(req.method ?? "GET", path, req, res, {
+      fetchImpl: outbound,
+    })
+      .then((topLevel) =>
+        topLevel
+          ? true
+          : handleSkillsRemote(
+              vfs,
+              paths,
+              { workspace: ws, agent },
+              req.method ?? "GET",
+              rest,
+              req,
+              res,
+              (e) => events.push(e),
+              { fetchImpl: outbound },
+            ),
+      )
+      .then((handled) => {
+        if (!handled) {
+          res.writeHead(404);
+          res.end();
+        }
+      });
   });
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
   const addr = server.address();
@@ -92,16 +88,6 @@ const post = (path: string, body?: unknown) =>
     headers: { "Content-Type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
-
-test("community search + popular answer skills.sh results", async () => {
-  const search = await post("/skills/community/search", { query: "research" });
-  expect(search.status).toBe(200);
-  const hits = (await search.json()) as Array<{ skillId: string }>;
-  expect(hits[0]?.skillId).toBe("research");
-
-  const popular = await post("/skills/community/popular");
-  expect(popular.status).toBe(200);
-});
 
 test("repo list + install write the skill and emit SkillsChanged", async () => {
   const list = await post("/skills/repo/list", {
@@ -124,25 +110,6 @@ test("repo list + install write the skill and emit SkillsChanged", async () => {
   expect(events.some((e) => e.type === "SkillsChanged")).toBe(true);
 });
 
-test("community install resolves the skill and returns its slug", async () => {
-  const res = await post("/skills/community/install", {
-    source: "owner/repo",
-    skillId: "research",
-  });
-  expect(res.status).toBe(200);
-  expect(await res.json()).toBe("research");
-});
-
-test("community preview serves read-only detail agent-scoped", async () => {
-  const res = await post("/skills/community/preview", {
-    source: "owner/repo",
-    skillId: "research",
-  });
-  expect(res.status).toBe(200);
-  const preview = (await res.json()) as { description: string };
-  expect(preview.description).toBe("Deep research");
-});
-
 test("garbage repo input answers a typed invalid_repo_source", async () => {
   const res = await post("/skills/repo/list", { source: "reconciliation" });
   expect(res.status).toBe(400);
@@ -155,6 +122,16 @@ test("garbage repo input answers a typed invalid_repo_source", async () => {
 test("unhandled paths fall through; bad methods answer 405", async () => {
   const get = await fetch(`${base}/skills/repo/list`);
   expect(get.status).toBe(405);
-  const misc = await post("/skills/community/unknown");
+  const misc = await post("/skills/repo/unknown");
   expect(misc.status).toBe(404);
+});
+
+test("the top-level repo listing answers direct host API callers", async () => {
+  const res = await post("/v1/skills/repo/list", { source: "owner/repo" });
+  expect(res.status).toBe(200);
+  const skills = (await res.json()) as Array<{ id: string }>;
+  expect(skills[0]?.id).toBe("research");
+
+  const get = await fetch(`${base}/v1/skills/repo/list`);
+  expect(get.status).toBe(405);
 });

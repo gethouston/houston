@@ -5,6 +5,9 @@ version: 1
 category: Bookkeeping
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **A current journal-entry history** — Required. Why: I recompute every accrual's balance from journal entries hitting its account code. If missing I ask: "Have we processed any periods yet? If not, let's run a close first so there are journal entries to compute against."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read context.** Load `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Chart of accounts missing → stop, ask user run `build-chart-of-accounts` first. Note today's date + current accounting period (`YYYY-MM`).
 

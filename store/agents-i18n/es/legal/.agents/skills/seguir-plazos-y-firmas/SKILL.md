@@ -7,6 +7,9 @@ category: Seguimiento
 featured: no
 image: scroll
 integrations: [googledrive, gmail, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 # Seguir plazos y firmas
@@ -43,6 +46,7 @@ Lee primero `config/context-ledger.json`.
 Si falta algún campo requerido, haz UNA pregunta puntual con la pista de modalidad correcta, escríbelo, continúa.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el registro y los archivos de estado.** Reúne los campos requeridos que falten según lo anterior. Escribe de forma atómica.
 2. **Descubre herramientas vía Composio.** `composio search signing-platform` (signatures), `composio search document-storage` (signatures + counterparties). No hace falta descubrimiento para `deadlines` ni `weekly-review` (son solo operaciones de archivo).

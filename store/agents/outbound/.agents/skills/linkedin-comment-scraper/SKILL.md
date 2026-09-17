@@ -6,6 +6,9 @@ category: Outbound
 featured: no
 image: chains
 integrations: [apify, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ If Apify isn't connected I stop and ask you to connect it from the Integrations 
 - **A target item count** - Optional. Defaults to `defaultMaxItems` from your outbound context (500). Override per call if you only want a quick test pull.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Validate URL.** Confirm the URL is a LinkedIn post (`linkedin.com/posts/...` or `linkedin.com/feed/update/...`). Reject profile URLs, article URLs, company URLs. If the input is a short link or a redirect, follow it once to resolve the canonical post URL before scraping.
 

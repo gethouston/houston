@@ -7,6 +7,9 @@ category: Vendas
 featured: no
 image: handshake
 integrations: [gmail, hubspot, salesforce, attio, linkedin, firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -50,6 +53,7 @@ Primeiro leio o seu contexto de vendas. Para cada campo obrigatório que estiver
 - **CRM conectado**  -  Obrigatório para `warm-paths`. Por que preciso: cruzo os seus contatos anteriores e clientes em comum. Se estiver faltando, pergunto: "Conecte o seu CRM (HubSpot, Salesforce, Attio, Pipedrive ou Close) para eu encontrar caminhos próximos."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio o ledger e o playbook.** Coleto os campos obrigatórios que faltam (uma pergunta por vez, começando pela melhor modalidade). Escrevo de forma atômica.
 

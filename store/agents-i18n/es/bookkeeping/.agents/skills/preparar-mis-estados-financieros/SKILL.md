@@ -6,6 +6,9 @@ version: 1
 category: Contabilidad
 featured: yes
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primero leo tu contexto contable. Por cada campo obligatorio que falte, hago UNA
 - **El período o la fecha de corte** - Obligatorio. Por qué: me indica qué asientos contables incluir. Si falta, pregunto: "¿Qué período quieres, por ejemplo marzo de 2025 para un estado de resultados, o al 31 de marzo de 2025 para un balance general?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el contexto.** Cargo `context/bookkeeping-context.md`, `config/context-ledger.json` (para `universal.accountingMethod` + `universal.openingBalances`), `config/chart-of-accounts.json` (BLOQUEADO, los estados se organizan según `statementSection`), y `config/opening-trial-balance.json`. Interpreto los argumentos: `statement` (uno de los cuatro) + `period` (`YYYY-MM` para estado de resultados / flujo de efectivo / variación; fecha de corte para balance general / balance de comprobación).
 

@@ -7,6 +7,9 @@ category: Cumplimiento
 featured: yes
 image: scroll
 integrations: [googledocs, googledrive, stripe, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ Primero leo `config/context-ledger.json`.
 Si falta un campo requerido → haz UNA pregunta puntual con pista de modalidad (conectar Google Drive / pegar la URL de la landing page / conectar Firecrawl), escribe la respuesta, continúa.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Lee el registro y el contexto legal.** Reúne los campos requeridos que falten. Escribe de forma atómica.
 2. **Descubre las herramientas vía Composio.** Ejecuta `composio search web-scrape` (privacy-posture, subprocessors) o `composio search document-storage` (template-library) según el scope. Si no hay herramienta conectada, nombra la categoría a conectar y detente.

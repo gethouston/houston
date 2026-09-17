@@ -163,7 +163,8 @@ export function showErrorToast(
   // never passes through `call()`) used to capture an offline device as a
   // per-user bug. Each class keeps its own informational surface and its ONE
   // fingerprinted warning; the bridge class has an inline surface already.
-  switch (classifyQuietError(originalError)) {
+  const quiet = classifyQuietError(originalError);
+  switch (quiet) {
     case "offline":
       showConnectivityErrorToast(command, message, originalError);
       return;
@@ -171,8 +172,10 @@ export function showErrorToast(
       showEngineWakingToast(command, message, originalError);
       return;
     case "bridge_unsupported":
+    case "bridge_no_agent":
+    case "bridge_state":
       console.error(`[toast:${command}] ${message}`);
-      reportQuietError("bridge_unsupported", command, message, originalError);
+      reportQuietError(quiet, command, message, originalError);
       return;
     case "no_url_handler":
       // Same remedy copy `openExternalUrl` shows; a rejection that reached

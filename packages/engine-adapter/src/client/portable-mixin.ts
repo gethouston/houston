@@ -4,8 +4,6 @@ import type {
   MigrationImportResult,
   MigrationMarker,
   MigrationSource,
-  PortableAnonymizeRequest,
-  PortableAnonymizeResponse,
   PortableExportRequest,
   PortableInstalledAgent,
   PortableInstallRequest,
@@ -15,7 +13,6 @@ import type {
 } from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
 import * as portable from "../portable";
-import { importFromStoreLink } from "../portable-from-store";
 import { install } from "../portable-install";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
@@ -23,8 +20,8 @@ import { viaSdk } from "./sdk-error";
 export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
   class Portable extends Base {
     // ---- portable agents (share with / from a friend) — host only ----
-    // The wizards' backend. Preview/export/anonymize/install talk to the
-    // host's v3 portable routes; the uploaded archive is unpacked in the
+    // The wizards' backend. Preview/export/install talk to the host's v3
+    // portable routes; the uploaded archive is unpacked in the
     // browser, parked in memory until install, and the threat scan runs on it
     // right there — the scan is the same pure `@houston/domain` heuristic the
     // host uses (see ./portable.ts).
@@ -43,14 +40,6 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Sharing an agent needs a connected host.");
       return portable.exportPackage(this.ctx.cp, agentPath, req);
     }
-    async portableAnonymize(
-      agentPath: string,
-      req: PortableAnonymizeRequest,
-    ): Promise<PortableAnonymizeResponse> {
-      if (!this.ctx.cp)
-        throw new Error("Sharing an agent needs a connected host.");
-      return portable.anonymize(this.ctx.cp, agentPath, req);
-    }
     async importPreview(
       bytes: ArrayBuffer | Uint8Array,
     ): Promise<PortableUploadPreviewResponse> {
@@ -58,13 +47,6 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
     }
     async importScan(packageId: string): Promise<PortableScanResponse> {
       return portable.scanUpload(packageId);
-    }
-    async importFromStoreLink(
-      url: string,
-    ): Promise<PortableUploadPreviewResponse> {
-      if (!this.ctx.cp)
-        throw new Error("Installing from a link needs a connected host.");
-      return importFromStoreLink(this.ctx.cp, url);
     }
     async importInstall(
       req: PortableInstallRequest,

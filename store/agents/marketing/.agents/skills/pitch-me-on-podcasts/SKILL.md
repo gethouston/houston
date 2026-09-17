@@ -6,6 +6,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [twitter]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,7 @@ I read your marketing context first. For every required field that's missing I a
 - **Shows to exclude**  -  Optional. If missing I ask: "Any shows you've already pitched or want to skip? If you don't have a list I keep going with no exclusions."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read positioning doc**: `context/marketing-context.md`. Missing or empty → stop, tell user run `set-up-my-marketing-info` first.
 

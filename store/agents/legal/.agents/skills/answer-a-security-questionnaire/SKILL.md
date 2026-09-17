@@ -6,6 +6,9 @@ category: Compliance
 featured: no
 image: scroll
 integrations: [googlesheets, googledocs, googledrive, airtable]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -43,6 +46,7 @@ A: Yes  -  AES-256 at rest via {provider}'s managed encryption on all
 Topic buckets (customize if questionnaire deviates): access control, authentication, data at rest, data in transit, data residency, subprocessors, backups + DR, incident response, secure SDLC, vulnerability management, logging + monitoring, employee security (hiring / offboarding / training), physical security (usually "N/A  -  remote, hosted on {cloud}"), compliance certifications (SOC 2, ISO, HIPAA, GDPR), AI / model training, customer support data access, data retention + deletion.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read shared context**: `context/legal-context.md`. If missing/empty, ask user in plain language: "I need a few basics about your company first to answer this well. Want to set those up now?" Then run `set-up-my-legal-info` if yes. Stop until that's done. Extract entity name, data geography, standing enterprise customer agreements that might constrain answers.
 2. **Read answers library**: `config/security-answers.md`. If missing, first questionnaire  -  fine, library seeds from answers captured here. Note in output how many prior answers on hand.

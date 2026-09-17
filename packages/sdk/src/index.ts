@@ -11,13 +11,18 @@
  * (the kernel composes them); a host uses `new HoustonSdk(...)`, not a factory.
  */
 
-// The agent-name rule lives once in @houston/domain; surfaces import it from
-// here so they can validate BEFORE submitting instead of rendering the
-// server's rejection (HOU-1166).
+// Rules that live once in @houston/domain and are re-exported for surfaces:
+// the agent-name rule, so a surface validates BEFORE submitting instead of
+// rendering the server's rejection (HOU-1166), and the job-description grammar
+// (`CLAUDE.md`), which the app edits and the runtime renders into the prompt.
 export {
   AGENT_NAME_MAX_LENGTH,
   type AgentNameValidation,
+  composeJobDescription,
   type InvalidAgentNameReason,
+  type JobDescriptionFields,
+  type ParsedJobDescription,
+  parseJobDescription,
   validateAgentName,
 } from "@houston/domain";
 // ===== Kernel =========================================================

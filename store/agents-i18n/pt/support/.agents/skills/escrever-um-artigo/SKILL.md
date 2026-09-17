@@ -7,6 +7,9 @@ category: Suporte
 featured: no
 image: headphone
 integrations: [googledocs, notion, github, linear]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -63,6 +66,7 @@ Eu leio o seu contexto de suporte primeiro. Para cada campo obrigatório que est
   `outputs.json`, redijo a atualização.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler `context/support-context.md`.** Não existe? Paro.
 2. **Ler o registro de contexto.** Preencho as lacunas.

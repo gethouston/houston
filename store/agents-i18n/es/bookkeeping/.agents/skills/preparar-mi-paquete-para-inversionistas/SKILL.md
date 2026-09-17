@@ -7,6 +7,9 @@ category: Contabilidad
 featured: no
 image: ledger
 integrations: [googledocs]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Primero leo tu contexto contable. Por cada campo obligatorio que falte, hago UNA
 - **Datos de contratos que abarquen al menos 13 meses** - Opcional. Por qué: se necesita para el NRR de los últimos doce meses y la retención por cohortes. Si no lo tienes, me salto esas secciones y anoto que aparecerán una vez tengas suficiente historial.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el contexto.** Cargo `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Campos obligatorios del libro de contexto: `universal.company`, `universal.accountingMethod`, `domains.revenue.model`, `domains.investors.anchorKpis`. Si falta un campo, hago una pregunta puntual con pista de modalidad (app conectada > archivo > URL > texto pegado), la guardo de forma atómica antes de continuar.
 

@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [hubspot, salesforce, attio]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -40,6 +43,7 @@ Primero leo tu contexto de marketing. Por cada campo requerido que falte, hago U
 - **Cuentas principales de las que aprender**, Necesario. Por qué lo necesito: no voy a inventar datos demográficos. Si falta, pregunto: "Conecta tu CRM para que pueda traer tu lista de cuentas ganadas, o pégame cinco cuentas (ganadas u objetivo) de las que quieras que aprenda."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de posicionamiento** (archivo propio, ya que esto es HoM): `context/marketing-context.md`. Si falta, correr `set-up-my-marketing-info` primero, el trabajo de perfil se desperdicia sin un ancla de posicionamiento.
 

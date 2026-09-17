@@ -4,6 +4,7 @@ import {
   applyTeamContext,
   applyTeamIdentity,
   moveAgentInTeams,
+  seedCreatedTeam,
 } from "../../lib/agent-team-patches";
 import { queryClient } from "../../lib/query-client";
 import { queryKeys } from "../../lib/query-keys";
@@ -33,17 +34,20 @@ export function agentTeamsQueryOptions() {
 
 /** The space's teams as the CALLER sees them. `teams` stays `undefined` until
  *  the first read lands, which the seam reads as "no teams yet" rather than as
- *  a local grouping the host does not have. */
+ *  a local grouping the host does not have. `refetch` is for the surfaces that
+ *  REPORT a failed read (the org chart) instead of silently showing none. */
 export function useAgentTeams(enabled: boolean): {
   teams: AgentTeam[] | undefined;
   isLoading: boolean;
   isError: boolean;
+  refetch: () => Promise<unknown>;
 } {
   const query = useQuery({ ...agentTeamsQueryOptions(), enabled });
   return {
     teams: query.data,
     isLoading: enabled && query.isLoading,
     isError: enabled && query.isError,
+    refetch: query.refetch,
   };
 }
 
@@ -65,10 +69,15 @@ export function useAgentTeamMembers(teamId: string | null, enabled: boolean) {
   });
 }
 
+/** Create a team, and SEED it into the cached list in the same tick: the
+ *  create-team form lands the user in the new team the moment this resolves,
+ *  and the shell's view guard sends them home for a team the cache has yet to
+ *  hear about (`lib/agent-team-patches.ts`). */
 export function useCreateAgentTeam() {
   return useAgentTeamWrite(
     (input: { name: string; icon?: string; color?: string }) =>
       tauriAgentTeams.create(input, SILENCE_EXPECTED),
+    { seed: seedCreatedTeam },
   );
 }
 
@@ -85,11 +94,15 @@ export function useDeleteAgentTeam() {
   );
 }
 
-export function useSetAgentTeamMemberOwner() {
+/** `surfaceExpected: false` belongs to ONE caller, the create-team form: it
+ *  adds each picked person on their own and names every refusal together in a
+ *  single summary toast, so the shared per-refusal toast would say the same
+ *  thing again, once per person. Every other caller keeps it. */
+export function useSetAgentTeamMemberOwner({ surfaceExpected = true } = {}) {
   return useAgentTeamWrite(
     ({ teamId, userId, owner }: TeamMemberVars & { owner: boolean }) =>
       tauriAgentTeams.setMemberOwner(teamId, userId, owner, SILENCE_EXPECTED),
-    ({ teamId }) => teamId,
+    { membersOf: ({ teamId }) => teamId, surfaceExpected },
   );
 }
 
@@ -101,7 +114,7 @@ function useAgentTeamMemberRemoval() {
   return useAgentTeamWrite(
     ({ teamId, userId }: TeamMemberVars) =>
       tauriAgentTeams.removeMember(teamId, userId, SILENCE_EXPECTED),
-    ({ teamId }) => teamId,
+    { membersOf: ({ teamId }) => teamId },
   );
 }
 export const useLeaveAgentTeam = useAgentTeamMemberRemoval;

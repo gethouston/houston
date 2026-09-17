@@ -31,6 +31,7 @@ const errMessage = (err: unknown) =>
 function recordRefusedUserTurn(turn: TurnStartFailure): void {
   appendUserMessage(turn.id, turn.text, {
     turnId: turn.turnId,
+    nonce: turn.nonce,
     displayText: turn.displayText,
     mentions: turn.mentions,
   });

@@ -14,10 +14,11 @@ const read = (rel: string) =>
 describe("settings-view source", () => {
   const src = read("../src/components/settings/settings-view.tsx");
 
-  it("carries no section gate: every remaining section is ungated", () => {
-    // Admin and Permissions are top-level views again, which took the last
-    // gated section with them. Inert plumbing left behind would be a second
-    // rule nobody reads.
+  it("carries no section gate: the view mounts whatever is pinned", () => {
+    // A gate hides a section's INDEX ROW (`settings-index.tsx` reads
+    // `useSurfaceGates`); nothing bounces a caller out of an open screen, so
+    // the view needs no tri-state loading rule and no pin to clear. Inert
+    // plumbing left behind would be a second rule nobody reads.
     ok(!src.includes("settingsSectionGate"), "no tri-state gate");
     ok(!src.includes("blockedSettingsSection"), "no raw gate");
     ok(!src.includes("clearSettingsSectionPin"), "no one-shot pin to clear");
@@ -101,31 +102,51 @@ describe("the About me section", () => {
 });
 
 /**
- * The promoted screens own the whole window, so neither may wrap itself in a
- * back bar at its top level — and Admin has no drill-in left at all: its
- * sections are sibling lozenges in one header cluster (the shared grammar
- * with Integrations and the team screen), so no bar exists anywhere on it.
+ * Workspace management is a Settings section. The Admin face frames itself, so
+ * the way back rides IN its header strip; the plain workspace-name card has no
+ * strip, so it keeps the shared back bar.
  */
-describe("the promoted top-level screens", () => {
-  it("Admin takes no back-bar props and frames its body itself", () => {
-    const src = read("../src/components/organization/organization-view.tsx");
-    ok(src.includes("export function OrganizationView() {"), "no props");
-    ok(!src.includes("backLabel={backLabel}"), "no caller-owned back bar");
+describe("the Workspace settings section", () => {
+  it("mounts Admin inside Settings, with a local fallback", () => {
+    const body = read("../src/components/settings/settings-section-body.tsx");
+    const section = read(
+      "../src/components/settings/sections/workspace-management.tsx",
+    );
+    ok(body.includes('active === "workspace"'), "workspace section branch");
+    ok(section.includes("<OrganizationView back={back} />"), "org is nested");
     ok(
-      src.includes("[scrollbar-gutter:stable]"),
-      "its section scroller reserves the gutter",
+      section.includes("<WorkspaceSection />"),
+      "local workspace settings remain reachable",
     );
   });
 
-  it("leaves Admin without any back bar — sections are header siblings", () => {
-    // The index/detail split is gone: every section sits behind a lozenge in
-    // `AdminHeader`, so a BackBarScreen anywhere in the view would resurrect
-    // a level that no longer exists.
+  it("hands Admin the way back instead of stacking a bar over it", () => {
+    const body = read("../src/components/settings/settings-section-body.tsx");
     ok(
-      !read("../src/components/organization/organization-view.tsx").includes(
-        "BackBarScreen",
+      /if \(active === "workspace"\) \{\s*return <WorkspaceManagementSection back=\{back\} \/>;/.test(
+        body,
       ),
-      "no drill-in bar left on the Admin screen",
+      "the workspace branch mounts the section bare",
+    );
+    // The card face has no header strip of its own, so it is the ONE face that
+    // still wears the bar — and it owns that wrapper itself.
+    const section = read(
+      "../src/components/settings/sections/workspace-management.tsx",
+    );
+    ok(
+      section.includes("<BackBarScreen backLabel={back.label}"),
+      "the plain card keeps the back bar",
+    );
+    const header = read("../src/components/organization/admin-header.tsx");
+    ok(header.includes("<PageHeader back={back}>"), "Admin's strip leads back");
+  });
+
+  it("leaves no top-level Admin route", () => {
+    ok(
+      !read("../src/components/shell/top-level-screen-views.tsx").includes(
+        "ORGANIZATION_VIEW_ID",
+      ),
+      "nothing mounts Admin as a top-level view",
     );
   });
 
@@ -145,6 +166,22 @@ describe("the promoted top-level screens", () => {
   });
 });
 
+/**
+ * Settings holds no Skills section: the shared library is the Integrations
+ * screen's Skills tab (`integrations-tabs.test.ts` guards it there).
+ */
+describe("Settings after the Skills library left", () => {
+  it("draws no Skills row and mounts no library", () => {
+    const index = read("../src/components/settings/settings-index.tsx");
+    ok(!index.includes("showSkills"), "no gate to read");
+    ok(!index.includes('onSelect("skills")'), "no row to open it");
+    ok(!index.includes("settings:nav.skills"), "no name for it");
+    const body = read("../src/components/settings/settings-section-body.tsx");
+    ok(!body.includes('active === "skills"'), "no section branch");
+    ok(!body.includes("skills-view"), "and nothing imported from the library");
+  });
+});
+
 describe("workspace-shell analytics", () => {
   const src = read("../src/components/shell/use-workspace-view-guards.ts");
 
@@ -155,12 +192,10 @@ describe("workspace-shell analytics", () => {
     );
   });
 
-  it("owns the ONE top-level event for Admin", () => {
-    // Admin tracks only its DRILL-IN (`org:<section>`), so the generic effect
-    // must NOT skip it or landing on the screen would record nothing at all.
+  it("treats a stale top-level Admin id like any other dead view", () => {
     ok(
       !src.includes('viewMode === "organization"'),
-      "organization not skipped",
+      "organization has no top-level analytics branch",
     );
   });
 });

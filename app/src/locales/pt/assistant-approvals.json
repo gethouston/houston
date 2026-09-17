@@ -1,66 +1,66 @@
 {
   "operations": {
     "acceptOrgInvite": "Aceitar este convite para entrar em um espaço compartilhado.",
-    "addAgentCustomIntegration": "Adicionar um app externo seu a este agente, a partir de um link.",
+    "addAgentCustomIntegration": "Adicionar um app externo seu a este funcionário de IA, a partir de um link.",
     "addCustomIntegration": "Adicionar um app externo seu a partir de um link.",
     "addOrgMember": "Convidar alguém para este espaço com a função que você escolheu.",
     "cancelRoutineRun": "Parar esta execução da rotina enquanto ela está em andamento.",
     "conversations.delete": "Excluir este chat e tudo o que foi dito nele. Isso não pode ser desfeito.",
-    "createAgent": "Criar um novo agente.",
+    "createAgent": "Criar um novo funcionário de IA.",
     "createApiKey": "Criar uma nova chave de API.",
     "createCheckout": "Iniciar o pagamento que assina um plano pago para este espaço de trabalho.",
     "createOrg": "Criar um espaço compartilhado para convidar seu time.",
-    "createRoutine": "Criar uma rotina para o agente repetir um trabalho em um horário.",
-    "createSkill": "Criar uma habilidade que o agente pode seguir.",
+    "createRoutine": "Criar uma rotina para o funcionário de IA repetir um trabalho em um horário.",
+    "createSkill": "Criar uma habilidade que o funcionário de IA pode seguir.",
     "declineOrgInvite": "Recusar este convite para entrar em um espaço compartilhado.",
-    "deleteActivity": "Excluir esta missão do quadro do agente.",
-    "deleteAgent": "Excluir este agente e tudo o que está nele. Isso não pode ser desfeito.",
+    "deleteActivity": "Excluir esta missão do quadro do funcionário de IA.",
+    "deleteAgent": "Excluir este funcionário de IA e tudo o que está nele. Isso não pode ser desfeito.",
     "deleteAgentTeam": "Excluir este time.",
-    "deleteFile": "Excluir este arquivo do espaço do agente para sempre.",
+    "deleteFile": "Excluir este arquivo do espaço do funcionário de IA para sempre.",
     "deleteOrg": "Excluir este espaço compartilhado e tudo o que está nele. Isso não pode ser desfeito.",
     "deleteOrgInvite": "Cancelar este convite pendente para o espaço.",
     "deleteRoutine": "Excluir esta rotina para que ela pare de rodar no horário dela.",
     "deleteSharedSkill": "Excluir uma habilidade compartilhada com o espaço de trabalho, tirando-a de todo mundo.",
-    "deleteSkill": "Excluir esta habilidade para que o agente não a tenha mais.",
-    "detectAgentCustomIntegration": "Verificar para que tipo de serviço este link aponta, usando este agente.",
+    "deleteSkill": "Excluir esta habilidade para que o funcionário de IA não a tenha mais.",
+    "detectAgentCustomIntegration": "Verificar para que tipo de serviço este link aponta, usando este funcionário de IA.",
     "detectCustomIntegration": "Verificar para que tipo de serviço este link aponta.",
+    "disconnectChannel": "Desconectar esta conta do Slack do seu assistente. Ele vai parar de ler e responder por lá.",
     "forgetCredential": "Desconectar este espaço de trabalho da conta de IA.",
-    "installAgentFromGithub": "Instalar um agente a partir de um repositório do GitHub.",
-    "installCommunitySkill": "Instalar no agente uma habilidade do diretório da comunidade.",
-    "installSkillsFromRepo": "Instalar no agente habilidades de um repositório do GitHub.",
+    "installAgentFromGithub": "Instalar um funcionário de IA a partir de um repositório do GitHub.",
+    "installSkillsFromRepo": "Instalar no funcionário de IA habilidades de um repositório do GitHub.",
     "integrations.disconnect": "Desconectar um app externo da sua conta.",
     "mintRoutineWebhookKey": "Criar uma chave nova para que um serviço externo possa iniciar esta rotina. Qualquer chave anterior para de funcionar.",
-    "moveAgent": "Mover este agente para um espaço compartilhado para que seu time possa trabalhar com ele.",
-    "promoteSharedSkill": "Compartilhar a habilidade do agente com todo o espaço de trabalho.",
-    "pushClaudeOAuthCredential": "Enviar o login do Claude deste computador para um agente na nuvem.",
-    "putSkillsManifest": "Escolher quais habilidades do agente ficam ativas.",
-    "removeAgentCustomIntegration": "Remover um app externo deste agente.",
+    "moveAgent": "Mover este funcionário de IA para um espaço compartilhado para que seu time possa trabalhar com ele.",
+    "promoteSharedSkill": "Compartilhar a habilidade do funcionário de IA com todo o espaço de trabalho.",
+    "pushClaudeOAuthCredential": "Enviar o login do Claude deste computador para um funcionário de IA na nuvem.",
+    "putSkillsManifest": "Escolher quais habilidades do funcionário de IA ficam ativas.",
+    "removeAgentCustomIntegration": "Remover um app externo deste funcionário de IA.",
     "removeAgentTeamMember": "Remover esta pessoa do time.",
     "removeCustomIntegration": "Remover um app externo que você mesmo adicionou.",
     "removeOrgMember": "Remover esta pessoa do espaço.",
-    "renameAgent": "Renomear este agente.",
+    "renameAgent": "Renomear este funcionário de IA.",
     "revokeApiKey": "Revogar esta chave de API para sempre. Tudo o que ainda a usa para de funcionar.",
     "runRoutineNow": "Rodar esta rotina agora mesmo em vez de esperar o próximo horário dela.",
     "saveSharedSkill": "Salvar mudanças em uma habilidade compartilhada com o espaço de trabalho, para todo mundo que a usa.",
     "saveSkill": "Salvar mudanças nas instruções desta habilidade.",
-    "setAgentAssignments": "Escolher quem pode usar este agente, e com qual nível de acesso.",
-    "setAgentModelChoice": "Mudar qual modelo de IA este agente usa.",
-    "setAgentSettings": "Escolher quais apps e modelos de IA este agente pode usar.",
-    "setAgentTeam": "Mover este agente para outro time deste espaço.",
+    "setAgentAssignments": "Escolher quem pode usar este funcionário de IA, e com qual nível de acesso.",
+    "setAgentModelChoice": "Mudar qual modelo de IA este funcionário de IA usa.",
+    "setAgentSettings": "Escolher quais apps e modelos de IA este funcionário de IA pode usar.",
+    "setAgentTeam": "Mover este funcionário de IA para outro time deste espaço.",
     "setAgentTeamMemberOwner": "Dar a alguém a propriedade deste time, ou tirá-la.",
-    "setContext": "Substituir as notas de contexto que o Houston dá ao agente em toda conversa.",
+    "setContext": "Substituir as notas de contexto que o Houston dá ao funcionário de IA em toda conversa.",
     "setOrgMemberRole": "Mudar o que esta pessoa pode fazer neste espaço.",
-    "submitAgentCustomIntegrationCredential": "Salvar o segredo que termina de configurar este app para este agente.",
+    "submitAgentCustomIntegrationCredential": "Salvar o segredo que termina de configurar este app para este funcionário de IA.",
     "submitCustomIntegrationCredential": "Salvar o segredo que termina de configurar este app.",
     "updateActivity": "Atualizar os detalhes ou o status desta missão.",
     "updateAgentTeam": "Renomear este time, reordená-lo, mudar o estilo dele ou atualizar as notas que ele compartilha.",
     "updateRoutine": "Atualizar o horário ou as instruções desta rotina.",
-    "writeAgentFile": "Substituir o conteúdo de um dos arquivos salvos do agente."
+    "writeAgentFile": "Substituir o conteúdo de um dos arquivos salvos do funcionário de IA."
   },
   "arguments": {
-    "agentId": "agente",
-    "agentPath": "agente",
-    "agentSlugOrId": "agente",
+    "agentId": "funcionário de IA",
+    "agentPath": "funcionário de IA",
+    "agentSlugOrId": "funcionário de IA",
     "assignments": "acesso",
     "body": "detalhes",
     "choice": "modelo",
@@ -104,7 +104,7 @@
       "id": "missão"
     },
     "deleteAgent": {
-      "id": "agente"
+      "id": "funcionário de IA"
     },
     "deleteOrg": {
       "slug": "espaço"
@@ -117,6 +117,9 @@
     },
     "deleteSkill": {
       "slug": "habilidade"
+    },
+    "disconnectChannel": {
+      "connectionId": "conta do Slack"
     },
     "integrations.disconnect": {
       "toolkit": "app"
@@ -131,7 +134,7 @@
       "slug": "app"
     },
     "renameAgent": {
-      "id": "agente"
+      "id": "funcionário de IA"
     },
     "revokeApiKey": {
       "id": "chave"

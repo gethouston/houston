@@ -1,5 +1,8 @@
 {
   "title": "Settings",
+  "workspace": {
+    "title": "Workspace name"
+  },
   "nav": {
     "profile": "Profile",
     "aboutMe": "About me",
@@ -8,7 +11,7 @@
     "shortcuts": "Keyboard shortcuts",
     "reportBug": "Report bug",
     "danger": "Delete workspace",
-    "organization": "Admin"
+    "workspace": "Workspace management"
   },
   "workspaceGate": {
     "failedTitle": "We couldn't load your settings",
@@ -69,10 +72,10 @@
   },
   "dangerZone": {
     "title": "Danger zone",
-    "description": "Permanently delete this workspace and all its agents.",
+    "description": "Permanently delete this workspace and all its AI Employees.",
     "deleteButton": "Delete workspace",
     "confirmTitle": "Delete \"{{name}}\"?",
-    "confirmDescription": "This will permanently delete this workspace and all its agents. This cannot be undone.",
+    "confirmDescription": "This will permanently delete this workspace and all its AI Employees. This cannot be undone.",
     "confirmLabel": "Delete",
     "deleting": "Deleting…",
     "deleted": "\"{{name}}\" was deleted.",
@@ -93,10 +96,10 @@
   },
   "deleteAccount": {
     "title": "Delete account",
-    "description": "Permanently delete your account, your agents, and everything stored in Houston.",
+    "description": "Permanently delete your account, your AI Employees, and everything stored in Houston.",
     "button": "Delete account",
     "confirmTitle": "Delete your account forever?",
-    "confirmBody": "This permanently deletes your account, your agents, and all your data stored in Houston, and signs you out on every device. There is no way to get any of it back. Files saved on your computer stay where they are.",
+    "confirmBody": "This permanently deletes your account, your AI Employees, and all your data stored in Houston, and signs you out on every device. There is no way to get any of it back. Files saved on your computer stay where they are.",
     "typeToConfirm": "Type {{word}} to confirm.",
     "confirmWord": "DELETE",
     "cancel": "Cancel",
@@ -146,8 +149,9 @@
     },
     "rows": {
       "profile": "Your name and picture",
-      "aboutMe": "What your agents know about you before they start",
-      "apiKeys": "Let other apps and AI assistants start tasks with your agents",
+      "aboutMe": "What your AI Employees know about you before they start",
+      "apiKeys": "Let other apps and AI assistants start tasks with your AI Employees",
+      "workspace": "People, billing, activity, usage, and shared context",
       "shortcuts": "Run Houston without the mouse",
       "reportBug": "Something broke, or you have an idea? Tell us",
       "migration": "Pick up your move to the cloud"
@@ -155,12 +159,12 @@
   },
   "apiKeys": {
     "title": "API keys",
-    "intro": "Other apps, AI assistants, and automation tools can start tasks with your agents. Each connection needs a key you create here. <docs>Read the developer docs</docs>.",
+    "intro": "Other apps, AI assistants, and automation tools can start tasks with your AI Employees. Each connection needs a key you create here. <docs>Read the developer docs</docs>.",
     "dialogClose": "Close",
     "createButton": "Create key",
     "empty": {
       "title": "No API keys yet",
-      "description": "A key lets an app you trust start tasks with your agents. Create one to connect your first app."
+      "description": "A key lets an app you trust start tasks with your AI Employees. Create one to connect your first app."
     },
     "error": {
       "title": "Couldn't load your keys",
@@ -195,5 +199,36 @@
       "confirm": "Revoke",
       "cancel": "Cancel"
     }
+  },
+  "channels": {
+    "title": "Channels",
+    "navDescription": "Talk to your assistant from Slack",
+    "intro": "Your personal assistant, wherever you talk. Continue the same conversation in Houston and Slack.",
+    "space": "Houston space: {{name}}",
+    "empty": "Connect Slack to message your assistant directly.",
+    "connected": "Connected",
+    "connect": "Connect Slack",
+    "connecting": "Opening Slack…",
+    "finishInSlack": "Finish connecting in Slack, then return here.",
+    "blocked": "Your browser did not open Slack. Open it to finish connecting.",
+    "openSlack": "Open Slack",
+    "completing": "Finishing your Slack connection…",
+    "completeInvalid": "That Slack connection link is invalid or expired. Connect again.",
+    "completeAlready": "That Slack account is already connected to another Houston account. Disconnect it there first, then connect again.",
+    "alreadyAdded": "Already added Houston to Slack?",
+    "newCode": "Get a new connection code",
+    "linkInstructions": "Open your direct message with Houston in Slack and send this command.",
+    "commandLabel": "Slack connection command",
+    "copy": "Copy command",
+    "copied": "Copied",
+    "linkExpires": "Use this code before {{time}}.",
+    "linkExpired": "This code has expired. Get a new code to connect.",
+    "disconnect": "Disconnect",
+    "disconnectTitle": "Disconnect Slack?",
+    "disconnectDescription": "{{name}} will stop receiving assistant replies in Slack. Your conversation stays in Houston.",
+    "cancel": "Cancel",
+    "refresh": "Refresh connections",
+    "notConfigured": "Slack connections are not ready for this Houston space. Ask your Houston administrator to finish setting up Slack, then refresh.",
+    "unsupported": "Channels are unavailable on this Houston installation."
   }
 }

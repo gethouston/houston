@@ -7,6 +7,9 @@ category: Operaciones
 featured: no
 image: clipboard
 integrations: [googlecalendar, gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Primero leo tu contexto de operaciones. Por cada campo requerido que falte hago 
 - **VIPs** - Opcional. Por qué lo necesito: los VIPs reciben horarios de mañana y márgenes más amplios. Si no lo tienes, sigo adelante con TBD y trato a todos por igual.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/operations-context.md`.** Si falta o está vacío, me detengo. Te pido correr `set-up-my-ops-info` primero. El tono, las prioridades y los contactos clave dan forma al borrador.
 

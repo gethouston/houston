@@ -7,6 +7,9 @@ category: Vendas
 featured: no
 image: handshake
 integrations: [linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,9 @@ Eu leio seu contexto de vendas primeiro. Para cada campo obrigatório que estive
 - **Cobrança conectada** - Obrigatório. Por que eu preciso: os dados de assentos e uso fundamentam todo candidato a expansão. Se estiver faltando eu pergunto: "Conecte o Stripe para eu ler quantidade de assentos, planos e uso."
 - **CRM conectado** - Obrigatório. Por que eu preciso: leio quais clientes estão VERDE e puxo os padrões recentes de pedidos de funcionalidades. Se estiver faltando eu pergunto: "Conecte seu CRM (HubSpot, Salesforce, Attio, Pipedrive ou Close) para eu ler sua carteira de clientes."
 - **Fonte de dados de uso do produto** - Opcional. Por que eu preciso: picos de uso são o sinal de expansão mais forte. Se você não tiver, eu sigo em frente com PENDENTE nesse sinal e me apoio nos sinais de assentos e crescimento de time.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Ler o playbook.** `context/sales-context.md` para postura de preços + lista de produtos.
 

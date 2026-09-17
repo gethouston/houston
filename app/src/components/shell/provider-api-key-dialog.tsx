@@ -1,12 +1,4 @@
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@houston-ai/core";
+import { Button, FormDialog } from "@houston-ai/core";
 import { ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +8,7 @@ import {
   isApiKeyUserRejection,
 } from "../../lib/api-key-connect-error";
 import { apiKeyReasonCopyKey } from "../../lib/api-key-reason-copy";
+import { stayOpen } from "../../lib/dialog-stay-open";
 import { isOrgAdminRequiredError } from "../../lib/org-admin-required-error";
 import { API_KEY_ENDPOINT_PROVIDERS } from "../../lib/provider-overrides";
 import type { ProviderInfo } from "../../lib/providers";
@@ -58,7 +51,6 @@ export function ProviderApiKeyDialog({
   const { t } = useTranslation("providers");
   const [key, setKey] = useState("");
   const [endpoint, setEndpoint] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Reset per-open state so a stale key or error never leaks across opens. The
@@ -70,7 +62,6 @@ export function ProviderApiKeyDialog({
       setKey("");
       setEndpoint("");
       setError(null);
-      setSubmitting(false);
     }
   }, [provider]);
 
@@ -80,19 +71,21 @@ export function ProviderApiKeyDialog({
   // URL, so the dialog collects the endpoint alongside the key.
   const needsEndpoint = API_KEY_ENDPOINT_PROVIDERS.has(provider.id);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Resolving is what closes the dialog: the parent's ProviderLoginComplete
+  // handler then flips the card and toasts. Every failure below is a state the
+  // user reads under the field, so it ends in `stayOpen()` — the key survives
+  // for a correction, and nothing is filed as a bug.
+  const handleSubmit = async () => {
     const trimmed = key.trim();
     if (!trimmed) {
       setError(t("apiKey.required"));
-      return;
+      return stayOpen();
     }
     const trimmedEndpoint = endpoint.trim();
     if (needsEndpoint && !trimmedEndpoint.startsWith("https://")) {
       setError(t("apiKey.endpointRequired"));
-      return;
+      return stayOpen();
     }
-    setSubmitting(true);
     setError(null);
     try {
       await tauriProvider.setApiKey(
@@ -101,9 +94,10 @@ export function ProviderApiKeyDialog({
         needsEndpoint ? trimmedEndpoint : undefined,
       );
       // Success: the parent's ProviderLoginComplete handler flips the card and
-      // toasts. Close here so the dialog doesn't linger over the connected state.
+      // toasts. The recipe closes on a resolved primary, so this only marks the
+      // close as a COMPLETION — a dismissal would cancel the observation the
+      // connected card is waiting on.
       onConnected?.();
-      onClose();
     } catch (err) {
       // The engine sends a typed verdict with the failure (bad key, key
       // blocked by its own settings, provider unreachable) — show the matching
@@ -134,98 +128,73 @@ export function ProviderApiKeyDialog({
         console.error(`[provider_api_key_submit] ${detail}`);
         setError(t("apiKey.verifyFailed", { detail }));
       }
-      setSubmitting(false);
+      return stayOpen();
     }
   };
 
   return (
-    <Dialog
+    <FormDialog
       open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
+      title={t("apiKey.title", { name: provider.name })}
+      description={t("apiKey.description", { name: provider.name })}
+      primary={{
+        label: t("apiKey.save"),
+        pendingLabel: t("apiKey.saving"),
+        onClick: handleSubmit,
+        disabled: !key.trim() || (needsEndpoint && !endpoint.trim()),
+      }}
+      labels={{ cancel: t("apiKey.cancel") }}
     >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {t("apiKey.title", { name: provider.name })}
-          </DialogTitle>
-          <DialogDescription>
-            {t("apiKey.description", { name: provider.name })}
-          </DialogDescription>
-        </DialogHeader>
+      {url && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5 self-start"
+          onClick={() => void tauriSystem.openUrl(url)}
+        >
+          <ExternalLink className="size-3.5" />
+          {t("apiKey.getKey")}
+        </Button>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {url && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => void tauriSystem.openUrl(url)}
-            >
-              <ExternalLink className="size-3.5" />
-              {t("apiKey.getKey")}
-            </Button>
-          )}
+      <ProviderApiKeyGuide providerId={provider.id} />
 
-          <ProviderApiKeyGuide providerId={provider.id} />
-
-          {needsEndpoint && (
-            <div className="space-y-1.5">
-              <label
-                htmlFor="provider-endpoint"
-                className="text-[13px] font-medium"
-              >
-                {t("apiKey.endpointLabel")}
-              </label>
-              <input
-                id="provider-endpoint"
-                type="url"
-                autoComplete="off"
-                value={endpoint}
-                onChange={(e) => setEndpoint(e.target.value)}
-                placeholder={t("apiKey.endpointPlaceholder")}
-                className="w-full rounded-md border bg-input px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-focus"
-                disabled={submitting}
-              />
-              <p className="text-[12px] text-ink-muted">
-                {t("apiKey.endpointHelp")}
-              </p>
-            </div>
-          )}
-
-          <ProviderApiKeyField
-            label={t("apiKey.label")}
-            placeholder={t("apiKey.placeholder")}
-            showLabel={t("apiKey.show")}
-            hideLabel={t("apiKey.hide")}
-            value={key}
-            disabled={submitting}
-            onChange={setKey}
+      {needsEndpoint && (
+        <div className="space-y-1.5">
+          <label htmlFor="provider-endpoint" className="text-sm font-medium">
+            {t("apiKey.endpointLabel")}
+          </label>
+          <input
+            id="provider-endpoint"
+            type="url"
+            autoComplete="off"
+            value={endpoint}
+            onChange={(e) => setEndpoint(e.target.value)}
+            placeholder={t("apiKey.endpointPlaceholder")}
+            className="w-full rounded-md border bg-input px-3 py-2 text-base font-mono focus:outline-none focus:ring-2 focus:ring-focus"
           />
+          <p className="text-xs text-ink-muted">{t("apiKey.endpointHelp")}</p>
+        </div>
+      )}
 
-          {error && (
-            <p className="text-[12px] text-danger" role="alert">
-              {error}
-            </p>
-          )}
+      <ProviderApiKeyField
+        label={t("apiKey.label")}
+        placeholder={t("apiKey.placeholder")}
+        showLabel={t("apiKey.show")}
+        hideLabel={t("apiKey.hide")}
+        value={key}
+        onChange={setKey}
+      />
 
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              {t("apiKey.cancel")}
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                submitting || !key.trim() || (needsEndpoint && !endpoint.trim())
-              }
-            >
-              {submitting ? t("apiKey.saving") : t("apiKey.save")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
+      {error && (
+        <p className="text-xs text-danger" role="alert">
+          {error}
+        </p>
+      )}
+    </FormDialog>
   );
 }

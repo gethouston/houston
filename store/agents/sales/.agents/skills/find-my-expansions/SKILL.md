@@ -6,6 +6,9 @@ category: Sales
 featured: no
 image: handshake
 integrations: [linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **Connected billing**  -  Required. Why I need it: seat and usage data ground every expansion candidate. If missing I ask: "Connect Stripe so I can read seat counts, tiers, and usage."
 - **Connected CRM**  -  Required. Why I need it: I read which customers are GREEN and pull recent feature-request patterns. If missing I ask: "Connect your CRM (HubSpot, Salesforce, Attio, Pipedrive, or Close) so I can read your customer book."
 - **Product usage source**  -  Optional. Why I need it: usage spikes are the strongest expansion signal. If you don't have it I keep going with TBD on that signal and lean on seat and team-growth signals instead.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read playbook.** `context/sales-context.md` for pricing stance + SKU list.
 

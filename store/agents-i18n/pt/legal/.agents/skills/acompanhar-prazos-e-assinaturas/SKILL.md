@@ -7,6 +7,9 @@ category: Acompanhamento
 featured: no
 image: scroll
 integrations: [googledrive, gmail, notion]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ Leia `config/context-ledger.json` primeiro.
 Se algum campo obrigatório estiver faltando, faça UMA pergunta direcionada com a dica certa de modalidade, escreva e continue.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia o registro e os arquivos de estado.** Reúna os campos obrigatórios que estiverem faltando, conforme acima. Escreva de forma atômica.
 2. **Descubra as ferramentas via Composio.** `composio search signing-platform` (assinaturas), `composio search document-storage` (assinaturas e contrapartes). Não é preciso descoberta para `deadlines` ou `weekly-review` (operações puramente de arquivo).

@@ -48,11 +48,6 @@ export const sidebarProps: SpecimenProp[] = [
     note: "Render as your own element — a router Link, most often.",
   },
   {
-    name: "SidebarMenuAction.showOnHover",
-    type: "boolean",
-    note: "Hides the row action until the row is hovered or focused.",
-  },
-  {
     name: "SidebarMenuSubButton.size",
     type: '"sm" | "md"',
     note: 'Defaults to "md".',
@@ -77,7 +72,9 @@ export const sidebarTokens = [
   "text-sidebar-hover-text",
   "border-sidebar-line",
   "bg-sidebar-line",
-  "ring-sidebar-ring",
+  "ring-sidebar-line",
+  "ring-sidebar-active",
+  "ring-focus",
   "text-sidebar-text/70",
   "bg-input",
 ];

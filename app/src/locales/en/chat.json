@@ -1,6 +1,6 @@
 {
   "welcome": {
-    "greeting": "Hi! I'm {{name}}, your new agent. Tell me about what you'd like help with: you can describe a task in your own words, share a few details about how you like things done, or attach files that give me context. The more you tell me, the better my work will fit what you need. What would you like to start with?"
+    "greeting": "Hi! I'm {{name}}, your new AI Employee. Tell me about what you'd like help with: you can describe a task in your own words, share a few details about how you like things done, or attach files that give me context. The more you tell me, the better my work will fit what you need. What would you like to start with?"
   },
   "setupGreeting": {
     "text": "Hi! I'm {{name}}. I'm getting everything ready on my end, give me a moment and I'll introduce myself properly."
@@ -93,10 +93,10 @@
     "signinRedirectLine": "I didn't sign in. Instead, do this: {{text}}",
     "signinAppName": "Houston",
     "signinTitle": "Sign in to Houston",
-    "signinDescription": "Your accounts stay yours; the agent acts on your behalf.",
+    "signinDescription": "Your accounts stay yours; the AI Employee acts on your behalf.",
     "signin": "Sign in",
     "connectTitle": "Connect {{app}}",
-    "connectReasonFallback": "The agent needs {{app}} to continue.",
+    "connectReasonFallback": "The AI Employee needs {{app}} to continue.",
     "declinePlaceholder": "Or tell it what to do instead...",
     "recommended": "Recommended",
     "skip": "Skip",
@@ -140,10 +140,12 @@
     "staleAttachmentBody": "A file you attached changed or was deleted on your device after you added it. Remove it from your message and attach it again.",
     "stopSession": "Couldn't stop the task. Please try again.",
     "modelPersistFailed": "Failed to save model preference",
-    "modelNotAllowed": "This model isn't allowed for this agent",
-    "modelNotAllowedBody": "This agent's allowed models changed. Pick another one from the list.",
+    "modelNotAllowed": "This model isn't allowed for this AI Employee",
+    "modelNotAllowedBody": "This AI Employee's allowed models changed. Pick another one from the list.",
     "missionRowFailed": "We could not save this task to your board. Your message was still sent.",
-    "interactionDismissFailed": "Couldn't dismiss the request."
+    "interactionDismissFailed": "Couldn't dismiss the request.",
+    "interactionBusyTitle": "Houston is already working on this",
+    "interactionBusyBody": "The request was replaced by a new reply. Wait for it to finish, or press Stop to abandon it."
   },
   "providerError": {
     "retryPrompt": "Try again.",
@@ -224,8 +226,8 @@
           "hint": "Houston answers using an AI like Claude or ChatGPT. Connect one to get started."
         },
         "team": {
-          "title": "Connect your AI to chat with this team's agents",
-          "hint": "Team agents answer using your own AI account. Connect yours to get started."
+          "title": "Connect your AI to chat with this team's AI Employees",
+          "hint": "The team's AI Employees answer using your own AI account. Connect yours to get started."
         }
       },
       "account": {
@@ -281,6 +283,10 @@
   "contextCompacted": "Earlier conversation summarized so the chat can keep going",
   "contextCompactedManual": "Conversation compacted to free up space",
   "contextCleared": "Context cleared. I'll start fresh, and I keep what I've learned about you.",
+  "engineRestart": {
+    "sayContinue": "Your agent had to restart. Say continue and it will pick up where it left off.",
+    "resuming": "Your agent was interrupted by a restart and is picking up where it left off."
+  },
   "contextCommands": {
     "compact": "Compact context",
     "clear": "Clear context"
@@ -298,7 +304,7 @@
     "messagePosition": "Message {{position}}",
     "types": {
       "user": "You",
-      "assistant": "Agent response",
+      "assistant": "AI Employee response",
       "artifact": "Files updated",
       "error": "Something needs attention"
     }

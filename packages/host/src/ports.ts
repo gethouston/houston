@@ -82,6 +82,21 @@ export class LauncherClosedError extends Error {
   }
 }
 
+/**
+ * The launcher holds this agent id against respawn while a rename moves its
+ * directory (`RuntimeLauncher.hold`, HOU-827). The runtime was just slept for
+ * that move, so everything that arrives with the OLD id during the window
+ * (the app's reconnect storm, the dying runtime's own serve sync) is expected
+ * traffic, not a fault: routes answer the same 503 + Retry-After as a drain
+ * and the caller re-sends once the rename has landed.
+ */
+export class AgentRenamingError extends Error {
+  constructor(readonly agentId: AgentId) {
+    super(`agent '${agentId}' is being renamed - retry with its new id`);
+    this.name = "AgentRenamingError";
+  }
+}
+
 /** Persistence for workspaces + agents. Impls: MemoryWorkspaceStore, PgWorkspaceStore. */
 export interface WorkspaceStore {
   /** The user's personal workspace, creating it on first access (lazy provisioning). */
@@ -266,17 +281,6 @@ export interface RuntimeChannel {
   busy(ctx: ChannelCtx): Promise<boolean>;
   /** Cheap runtime/channel state for diagnostics and idle-sleep callers. */
   runtimeStatus?(ctx: ChannelCtx): Promise<RuntimeState | "unknown">;
-  /**
-   * AI-redact the given texts in the agent's runtime — the export wizard's
-   * anonymize pass runs the LLM where the provider credentials live. Optional:
-   * channels with no standing runtime omit it and the caller falls back to
-   * the regex redactor (visibly — the response says why). Throws with the
-   * runtime's real reason (no provider connected, unparseable model reply).
-   */
-  anonymizeTexts?(
-    ctx: ChannelCtx,
-    items: { id: string; text: string }[],
-  ): Promise<{ id: string; text: string; summary: string }[]>;
   /**
    * Run `fn` with the agent's STANDING runtime stopped (kill / scale to zero,
    * persisting its state — destroying nothing; the runtime respawns on the

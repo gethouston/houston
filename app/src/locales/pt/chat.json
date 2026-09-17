@@ -1,6 +1,6 @@
 {
   "welcome": {
-    "greeting": "Olá! Eu sou {{name}}, seu novo agente. Me conte com o que você gostaria de ajuda: você pode descrever uma tarefa com as suas palavras, compartilhar alguns detalhes sobre como gosta que as coisas sejam feitas ou anexar arquivos que me deem contexto. Quanto mais você me contar, melhor o meu trabalho vai se encaixar no que você precisa. Com o que você gostaria de começar?"
+    "greeting": "Olá! Eu sou {{name}}, seu novo funcionário de IA. Me conte com o que você gostaria de ajuda: você pode descrever uma tarefa com as suas palavras, compartilhar alguns detalhes sobre como gosta que as coisas sejam feitas ou anexar arquivos que me deem contexto. Quanto mais você me contar, melhor o meu trabalho vai se encaixar no que você precisa. Com o que você gostaria de começar?"
   },
   "setupGreeting": {
     "text": "Oi! Eu sou {{name}}. Estou preparando tudo por aqui, me dê um instante e já me apresento direitinho."
@@ -93,10 +93,10 @@
     "signinRedirectLine": "Não fiz login. Em vez disso, faça o seguinte: {{text}}",
     "signinAppName": "Houston",
     "signinTitle": "Entre no Houston",
-    "signinDescription": "Suas contas continuam sendo suas; o agente age em seu nome.",
+    "signinDescription": "Suas contas continuam sendo suas; o funcionário de IA age em seu nome.",
     "signin": "Entrar",
     "connectTitle": "Conectar o {{app}}",
-    "connectReasonFallback": "O agente precisa do {{app}} para continuar.",
+    "connectReasonFallback": "O funcionário de IA precisa do {{app}} para continuar.",
     "declinePlaceholder": "Ou diga o que fazer em vez disso...",
     "recommended": "Recomendado",
     "skip": "Pular",
@@ -140,10 +140,12 @@
     "staleAttachmentBody": "Um arquivo que você anexou foi alterado ou excluído do seu dispositivo depois de adicionado. Remova-o da mensagem e anexe-o novamente.",
     "stopSession": "Não foi possível parar a tarefa. Tente novamente.",
     "modelPersistFailed": "Não foi possível salvar a preferência de modelo",
-    "modelNotAllowed": "Este modelo não é permitido para este agente",
-    "modelNotAllowedBody": "Os modelos permitidos deste agente mudaram. Escolha outro da lista.",
+    "modelNotAllowed": "Este modelo não é permitido para este funcionário de IA",
+    "modelNotAllowedBody": "Os modelos permitidos deste funcionário de IA mudaram. Escolha outro da lista.",
     "missionRowFailed": "Não conseguimos salvar esta tarefa no seu quadro. Sua mensagem foi enviada.",
-    "interactionDismissFailed": "Não foi possível descartar a solicitação."
+    "interactionDismissFailed": "Não foi possível descartar a solicitação.",
+    "interactionBusyTitle": "Houston já está trabalhando nisso",
+    "interactionBusyBody": "A solicitação foi substituída por uma nova resposta. Aguarde terminar ou pressione Parar para abandoná-la."
   },
   "providerError": {
     "retryPrompt": "Tente de novo.",
@@ -224,8 +226,8 @@
           "hint": "O Houston responde usando uma IA como Claude ou ChatGPT. Conecte uma para começar."
         },
         "team": {
-          "title": "Conecte sua IA para conversar com os agentes desta equipe",
-          "hint": "Os agentes da equipe respondem usando sua própria conta de IA. Conecte a sua para começar."
+          "title": "Conecte sua IA para conversar com os funcionários de IA desta equipe",
+          "hint": "Os funcionários de IA da equipe respondem usando sua própria conta de IA. Conecte a sua para começar."
         }
       },
       "account": {
@@ -281,6 +283,10 @@
   "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar",
   "contextCompactedManual": "Compactamos a conversa para liberar espaço",
   "contextCleared": "Contexto limpo. Começo do zero e mantenho o que aprendi sobre você.",
+  "engineRestart": {
+    "sayContinue": "Seu agente precisou reiniciar. Diga para continuar e ele retomará de onde parou.",
+    "resuming": "Seu agente foi interrompido por uma reinicialização e está retomando de onde parou."
+  },
   "contextCommands": {
     "compact": "Compactar contexto",
     "clear": "Limpar contexto"
@@ -298,7 +304,7 @@
     "messagePosition": "Mensagem {{position}}",
     "types": {
       "user": "Você",
-      "assistant": "Resposta do agente",
+      "assistant": "Resposta do funcionário de IA",
       "artifact": "Arquivos atualizados",
       "error": "Algo precisa de atenção"
     }

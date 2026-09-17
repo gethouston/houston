@@ -7,6 +7,9 @@ category: Soporte
 featured: yes
 image: headphone
 integrations: [gmail]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Primero leo tu contexto de soporte. Por cada campo obligatorio que falte, te hag
 - **Filtro de segmento**  -  Opcional. Por qué lo necesito: me permite agrupar por tipo de cliente en vez de mezclar todo. Si no lo tienes, sigo con TBD y muestro grupos mixtos.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo `context/support-context.md`.** Para el posicionamiento actual + la lista VIP. Si no existe, corro primero `set-up-my-support-info`.
 

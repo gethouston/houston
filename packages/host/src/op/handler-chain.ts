@@ -9,7 +9,6 @@ import { handleCustomIntegrationsDispatch } from "../routes/custom-integrations-
 import { handleMigration } from "../routes/migration";
 import { handlePortableExport } from "../routes/portable-export";
 import { handlePortablePreview } from "../routes/portable-preview";
-import { handlePortableStore } from "../routes/portable-store";
 import type { Answer } from "../routes/registry/types";
 import { handleSkills } from "../routes/skills";
 import { handleSkillsManifest } from "../routes/skills-manifest";
@@ -148,15 +147,6 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
   // dispatch (turn/op-route.ts), so there is never a session to synthesize here.
   migration: (deps, method, rest, req, res) =>
     handleMigration(deps, deps.ctx, method, rest, req, res, deps.emit),
-  "portable-store": (deps, method, rest, req, res) =>
-    handlePortableStore(
-      deps,
-      { ...deps.ctx, userId: deps.ctx.workspace.ownerUserId },
-      method,
-      rest,
-      req,
-      res,
-    ),
 };
 
 /**

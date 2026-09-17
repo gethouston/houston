@@ -176,7 +176,7 @@ components:
 
   routine-details:
     status: partial
-    ref: "app/src/components/tabs/routine-screen.tsx + routine-runs-dialog.tsx + routine-model-selector.tsx over @houston-ai/routines RoutineRunList / RoutineRowScheduleEdit"
+    ref: "app/src/components/agent/routine-screen.tsx + routine-runs-dialog.tsx + routine-model-selector.tsx over @houston-ai/routines RoutineRunList / RoutineRowScheduleEdit"
     notes: >-
       The run list + schedule editor are shared ui/; the screen composition
       (editable prompt, Runs modal, Back/Open-chat chrome) and the model row
@@ -185,11 +185,15 @@ components:
 
   skill-row:
     status: partial
-    ref: "ui/skills skill-marketplace-row.tsx + app/src/components/skills/skill-catalog-rows.tsx + app/src/components/agent/installed-skills-strip.tsx"
+    ref: "ui/skills skill-row.tsx + app/src/components/skills/skill-catalog-rows.tsx + app/src/components/agent/installed-skills-strip.tsx"
     notes: >-
       Rides the shared ui/ catalog family (CatalogRow / CatalogAddButton /
       CatalogShowMore / CatalogShell); the skills composition itself is split
       between ui/skills and app/. Extract the surface before mobile.
+
+  skill-workflow-steps:
+    status: implemented
+    ref: "ui/skills skill-workflow-steps.tsx + skill-instructions-disclosure.tsx, over packages/domain skill-workflow.ts"
 
   empty-state:
     status: implemented
@@ -239,36 +243,6 @@ components:
     status: implemented
     ref: "ui/core/src/components/status-badge.tsx (@houston-ai/core StatusBadge / StatusDot)"
 
-  agent-store-navigation:
-    status: implemented
-    ref: "@houston-ai/store StoreNav"
-  agent-store-controls:
-    status: implemented
-    ref: "@houston-ai/store CatalogControls"
-  agent-store-agent-card:
-    status: implemented
-    ref: "@houston-ai/store AgentCard / AgentGrid"
-  agent-store-creator-card:
-    status: implemented
-    ref: "@houston-ai/store CreatorCard / CreatorGrid"
-  agent-store-detail:
-    status: implemented
-    ref: "@houston-ai/store AgentDetailLayout"
-  agent-store-skill-list:
-    status: implemented
-    ref: "@houston-ai/store SkillList"
-  agent-store-creator-block:
-    status: implemented
-    ref: "@houston-ai/store CreatorBlock"
-  agent-store-home-screen:
-    status: implemented
-    ref: "@houston-ai/store StoreHomeScreen"
-  agent-store-agent-detail-screen:
-    status: implemented
-    ref: "@houston-ai/store AgentDetailScreen"
-  agent-store-creator-profile-screen:
-    status: implemented
-    ref: "@houston-ai/store CreatorProfileScreen"
   sidebar-team-block:
     status: implemented
     ref: "@houston-ai/layout AppSidebar (SidebarGroupSection over SidebarGroupHeader + SidebarBlockContent; every rail row drawn through SidebarRowButton on the one anatomy in sidebar-classes.ts -- SidebarNavItem, SidebarBand, SidebarGroupHeader, SidebarItemRow, SidebarAddRow), composed in app/src/components/shell/team-sidebar-lists.tsx"
@@ -277,10 +251,10 @@ components:
     ref: "@houston-ai/layout AppSidebar -> SidebarNavList (SidebarBand per labelled run, SidebarNavItem per row, one sidebarBandInset), built by app/src/components/shell/sidebar-nav-sections.tsx with the Workspace gates from useSurfaceGates() and the inbox count from useMentionInbox; the footer Settings row is app/src/components/shell/sidebar-footer.tsx"
   team-identity-picker:
     status: implemented
-    ref: "app/src/components/shell/team-identity-popover.tsx (swatch row + icon search + glyph grid over @houston-ai/layout SidebarGroupGlyph) inside the shared team-identity-name-row.tsx, rendered by create-agent-team-dialog.tsx and edit-team-identity-dialog.tsx (the rail menu's one Change icon & name door), composed in app/src/components/shell/team-identity.ts from AGENT_COLORS and rendered by app/src/components/shell/team-glyph.tsx; the write is useSetAgentTeamIdentity (optimistic) or sidebar.setGroupIdentity off-capability"
+    ref: "app/src/components/shell/team-identity-popover.tsx (swatch row + icon search + glyph grid over @houston-ai/layout SidebarGroupGlyph) inside the shared team-identity-name-row.tsx, rendered by the create sheet's team step (app/src/components/shell/create-team-step.tsx, inside app/src/components/shell/add-to-workspace-sheet.tsx) and by app/src/components/shell/edit-team-identity-dialog.tsx (the rail menu's one Change icon & name door), composed in app/src/components/shell/team-identity.ts from AGENT_COLORS and rendered by app/src/components/shell/team-glyph.tsx; the write is useSetAgentTeamIdentity (optimistic) or sidebar.setGroupIdentity off-capability"
   sidebar-teams-band:
     status: implemented
-    ref: "@houston-ai/layout AppSidebar (SidebarBand + SidebarAddRow, both over SidebarRowButton), with app/src/components/shell/sidebar-create-dialog.tsx wearing sidebarRowAffordanceClasses and passed as sectionAction from app/src/components/shell/sidebar-rail.tsx (a modal of create-choice-tile.tsx squares)"
+    ref: "@houston-ai/layout AppSidebar (SidebarBand + SidebarAddRow, both over SidebarRowButton), with app/src/components/shell/sidebar-create-button.tsx wearing sidebarRowAffordanceClasses and passed as sectionAction from app/src/components/shell/sidebar-rail.tsx (the band's ONE plus control, opening the create sheet app/src/components/shell/add-to-workspace-sheet.tsx)"
   team-screen:
     status: implemented
     ref: "app/src/components/team-view/ (TeamView switching TeamMissionControl over @houston-ai/board MissionBoard, TeamRoutines over @houston-ai/routines RoutinesGrid, TeamFiles over the shared AgentFilesSurface, TeamSettings), with AgentReadsFailed naming any agent whose read failed; the phone Tasks list is board/team-task-list.tsx + team-task-row.tsx over the pure board/task-list-model.ts, its header menu team-view/team-tasks-menu.tsx, the two halves sharing board/task-list-chrome.tsx"
@@ -308,3 +282,15 @@ components:
   new-mission-sheet:
     status: implemented
     ref: "app/src/components/mobile-new-mission-sheet.tsx (@houston-ai/core Sheet side=bottom over the agent roster), opened by lib/new-mission.ts startNewMission's phone fork (ui store newMissionSheetOpen), picking pushes the draft chat via lib/mission-chat.ts"
+  form-dialog:
+    status: implemented
+    ref: "@houston-ai/core FormDialog (form-dialog.tsx over form-dialog-parts.ts: the size map, the secondary's default and the promise state machine)"
+  flow-sheet:
+    status: implemented
+    ref: "@houston-ai/core FlowSheet (flow-sheet.tsx over flow-sheet-parts.tsx: the per-size frame classes + the three-slot FlowSheetHeader, and flow-sheet-compact-header.tsx)"
+  flow-choice-row:
+    status: implemented
+    ref: "@houston-ai/core FlowChoiceRow + FlowChoiceList (flow-choice-row.tsx)"
+  messaging-channels-settings:
+    status: implemented
+    ref: app/src/components/settings/sections/channels.tsx

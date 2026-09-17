@@ -1,5 +1,8 @@
 {
   "title": "Configuración",
+  "workspace": {
+    "title": "Nombre del espacio de trabajo"
+  },
   "nav": {
     "profile": "Perfil",
     "aboutMe": "Sobre mí",
@@ -7,8 +10,8 @@
     "language": "Idioma",
     "shortcuts": "Atajos de teclado",
     "reportBug": "Reportar bug",
-    "danger": "Eliminar espacio",
-    "organization": "Administración"
+    "danger": "Eliminar espacio de trabajo",
+    "workspace": "Gestión del espacio de trabajo"
   },
   "workspaceGate": {
     "failedTitle": "No pudimos cargar tu configuración",
@@ -69,10 +72,10 @@
   },
   "dangerZone": {
     "title": "Zona de peligro",
-    "description": "Elimina este espacio de trabajo y todos sus agentes de forma permanente.",
+    "description": "Elimina este espacio de trabajo y todos sus empleados de IA de forma permanente.",
     "deleteButton": "Eliminar espacio de trabajo",
     "confirmTitle": "¿Eliminar \"{{name}}\"?",
-    "confirmDescription": "Esto eliminará de forma permanente este espacio de trabajo y todos sus agentes. No se puede deshacer.",
+    "confirmDescription": "Esto eliminará de forma permanente este espacio de trabajo y todos sus empleados de IA. No se puede deshacer.",
     "confirmLabel": "Eliminar",
     "deleting": "Eliminando…",
     "deleted": "Se eliminó \"{{name}}\".",
@@ -93,10 +96,10 @@
   },
   "deleteAccount": {
     "title": "Eliminar cuenta",
-    "description": "Elimina de forma permanente tu cuenta, tus agentes y todo lo guardado en Houston.",
+    "description": "Elimina de forma permanente tu cuenta, tus empleados de IA y todo lo guardado en Houston.",
     "button": "Eliminar cuenta",
     "confirmTitle": "¿Eliminar tu cuenta para siempre?",
-    "confirmBody": "Esto elimina de forma permanente tu cuenta, tus agentes y todos tus datos guardados en Houston, y cierra tu sesión en todos tus dispositivos. No hay forma de recuperar nada. Los archivos guardados en tu computador se quedan donde están.",
+    "confirmBody": "Esto elimina de forma permanente tu cuenta, tus empleados de IA y todos tus datos guardados en Houston, y cierra tu sesión en todos tus dispositivos. No hay forma de recuperar nada. Los archivos guardados en tu computador se quedan donde están.",
     "typeToConfirm": "Escribe {{word}} para confirmar.",
     "confirmWord": "ELIMINAR",
     "cancel": "Cancelar",
@@ -146,21 +149,22 @@
     },
     "rows": {
       "profile": "Tu nombre y tu foto",
-      "aboutMe": "Lo que tus agentes saben de ti antes de empezar",
-      "apiKeys": "Permite que otras apps y asistentes de IA inicien tareas con tus agentes",
+      "aboutMe": "Lo que tus empleados de IA saben de ti antes de empezar",
+      "apiKeys": "Permite que otras apps y asistentes de IA inicien tareas con tus empleados de IA",
       "shortcuts": "Usa Houston sin el mouse",
       "reportBug": "¿Algo falló o tienes una idea? Cuéntanos",
-      "migration": "Retoma tu mudanza a la nube"
+      "migration": "Retoma tu mudanza a la nube",
+      "workspace": "Personas, facturación, actividad, uso y contexto compartido"
     }
   },
   "apiKeys": {
     "title": "Claves de API",
-    "intro": "Otras apps, asistentes de IA y herramientas de automatización pueden iniciar tareas con tus agentes. Cada conexión necesita una clave que creas aquí. <docs>Lee la documentación para desarrolladores</docs>.",
+    "intro": "Otras apps, asistentes de IA y herramientas de automatización pueden iniciar tareas con tus empleados de IA. Cada conexión necesita una clave que creas aquí. <docs>Lee la documentación para desarrolladores</docs>.",
     "dialogClose": "Cerrar",
     "createButton": "Crear clave",
     "empty": {
       "title": "Aún no tienes claves de API",
-      "description": "Una clave permite que una app de tu confianza inicie tareas con tus agentes. Crea una para conectar tu primera app."
+      "description": "Una clave permite que una app de tu confianza inicie tareas con tus empleados de IA. Crea una para conectar tu primera app."
     },
     "error": {
       "title": "No se pudieron cargar tus claves",
@@ -195,5 +199,36 @@
       "confirm": "Revocar",
       "cancel": "Cancelar"
     }
+  },
+  "channels": {
+    "title": "Canales",
+    "navDescription": "Habla con tu asistente desde Slack",
+    "intro": "Tu asistente personal, donde prefieras hablar. Continúa la misma conversación en Houston y Slack.",
+    "space": "Espacio de Houston: {{name}}",
+    "empty": "Conecta Slack para enviar mensajes directos a tu asistente.",
+    "connected": "Conectado",
+    "connect": "Conectar Slack",
+    "connecting": "Abriendo Slack…",
+    "finishInSlack": "Termina de conectar en Slack y vuelve aquí.",
+    "blocked": "Tu navegador no abrió Slack. Ábrelo para terminar de conectar.",
+    "openSlack": "Abrir Slack",
+    "completing": "Terminando tu conexión con Slack…",
+    "completeInvalid": "Ese enlace de conexión con Slack no es válido o venció. Conéctate de nuevo.",
+    "completeAlready": "Esa cuenta de Slack ya está conectada a otra cuenta de Houston. Desconéctala allí y vuelve a conectarte.",
+    "alreadyAdded": "¿Ya agregaste Houston a Slack?",
+    "newCode": "Obtener un nuevo código de conexión",
+    "linkInstructions": "Abre tu mensaje directo con Houston en Slack y envía este comando.",
+    "commandLabel": "Comando de conexión de Slack",
+    "copy": "Copiar comando",
+    "copied": "Copiado",
+    "linkExpires": "Usa este código antes de las {{time}}.",
+    "linkExpired": "Este código venció. Obtén uno nuevo para conectar.",
+    "disconnect": "Desconectar",
+    "disconnectTitle": "¿Desconectar Slack?",
+    "disconnectDescription": "{{name}} dejará de recibir respuestas del asistente en Slack. Tu conversación se conserva en Houston.",
+    "cancel": "Cancelar",
+    "refresh": "Actualizar conexiones",
+    "notConfigured": "Las conexiones de Slack aún no están listas para este espacio de Houston. Pídele a tu administrador de Houston que termine de configurar Slack y actualiza.",
+    "unsupported": "Los canales no están disponibles en esta instalación de Houston."
   }
 }

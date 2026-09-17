@@ -5,6 +5,9 @@ version: 1
 category: Sales
 featured: no
 image: handshake
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **Which deal this proposal is for**  -  Required. Why I need it: I lift the verbatim problem statement and success metric from that deal's call history. If missing I ask: "Which prospect or deal is this proposal for?"
 - **Their verbatim problem statement and success metric**  -  Required. Why I need it: a one-pager only lands when the problem is in their words. If missing from call notes I ask: "How did the prospect describe the problem in their words, and what metric will tell them it worked?"
 - **Pricing assumptions (user count, term, volume)**  -  Required. Why I need it: I need to show the math, not invent it. If missing I ask: "What are we proposing  -  how many seats or what volume, what term length?"
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read the playbook.** Load `context/sales-context.md`. Required. Without it, stop.
 

@@ -1,6 +1,8 @@
 import { cn, type Toast, ToastContainer, useIsMobile } from "@houston-ai/core";
 import { useState } from "react";
+import { useAssistantLanding } from "../../hooks/use-assistant-landing";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
+import { useSettingsLanding } from "../../hooks/use-settings-landing";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { phoneChromeHidden } from "../../lib/mobile-tabs";
 import { osIsTauri } from "../../lib/os-bridge";
@@ -12,11 +14,10 @@ import { CommandPalette } from "../command-palette";
 import { MissionChatScreen } from "../mission-chat/mission-chat-screen";
 import { MobileNewMissionSheet } from "../mobile-new-mission-sheet";
 import { InAppOnboarding } from "../onboarding/in-app-onboarding";
-import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
+import { AddToWorkspaceSheet } from "./add-to-workspace-sheet";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
-import { CreateAgentDialog } from "./create-workspace-dialog";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { KeepAliveViews } from "./keep-alive-views";
 import { MobileMoreMenu } from "./mobile-more-menu";
@@ -51,6 +52,8 @@ export function WorkspaceShell({
   toasts,
   onDismissToast,
 }: WorkspaceShellProps) {
+  useSettingsLanding();
+  useAssistantLanding();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
   const inAppOnboardingActive = useUIStore((s) => s.inAppOnboardingActive);
@@ -60,19 +63,17 @@ export function WorkspaceShell({
   );
   // The gated top-level screens. `showAiModels` keeps a stale `viewMode` from
   // showing the AI Models hub to a plain member (it is owner/admin only in a
-  // Teams workspace: org-level providers + admin model policy);
-  // `showOrganization` does the same for Admin (multiplayer owner/admin, and a
-  // TEAM active space on a Spaces host). `ready` says whether the gates mean
-  // anything yet, so the guard waits instead of bouncing a user mid-load.
-  const { showAiModels, showOrganization, showAssistant, ready } =
-    useSurfaceGates();
+  // Teams workspace: org-level providers + admin model policy), and
+  // `showAssistant` does the same where discovery serves no assistant. `ready`
+  // says whether the gates mean anything yet, so the guard waits instead of
+  // bouncing a user mid-load.
+  const { showAiModels, showAssistant, ready } = useSurfaceGates();
   // Keying the kept-alive set by workspace drops every cached screen when the
   // user switches workspace/space: their contents are workspace-scoped.
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
   useWorkspaceViewGuards({
     showAiModels,
-    showOrganization,
     showAssistant,
     ready,
   });
@@ -133,7 +134,6 @@ export function WorkspaceShell({
                     activeId={viewMode}
                     views={topLevelScreenViews({
                       showAiModels,
-                      showOrganization,
                       showAssistant,
                     })}
                   />
@@ -161,9 +161,8 @@ export function WorkspaceShell({
         {!mobileBarsHidden && <MobileNavBar />}
         <MobileMoreMenu />
         <MobileNewMissionSheet />
-        <CreateAgentDialog />
+        <AddToWorkspaceSheet />
         <AgentWarmingDialog />
-        <ExportAgentWizard />
         <ImportAgentWizard />
         <CommandPalette />
         <ShortcutCheatsheet />

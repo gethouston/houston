@@ -57,8 +57,6 @@ test.each([
     names: [
       "save_routine",
       "save_learning",
-      "find_skills",
-      "install_skill",
       "request_provider_connection",
       "request_hands_on",
     ],

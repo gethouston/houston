@@ -45,7 +45,7 @@ export interface AssistantAccess extends AssistantDiscovery {
  * `call()` would have used. Same discipline as the cross-agent sweep
  * (`hooks/queries/all-conversations-sweep.ts`).
  */
-async function discoverAssistant(): Promise<AssistantHandle> {
+export async function discoverAssistant(): Promise<AssistantHandle> {
   for (let failures = 0; ; failures += 1) {
     try {
       return await tauriAssistant.discover({ surface: false });

@@ -138,19 +138,22 @@ export const ENTITY_SOURCES: readonly EntityRule[] = [
     unlisted:
       "The directory lists Houston's own things, so read a self-added app's slug from customIntegrations.",
   },
+  // A messaging connection (`/v1/channels/connections/{id}`) shares the segment
+  // with an app connection, so it is claimed first, by the path it sits under.
+  {
+    after: "connections",
+    names: ["connectionId"],
+    pathContains: "/channels",
+    discovery: "getChannels",
+    unlisted:
+      "A messaging account is not a directory entry, so read its connection id from getChannels.",
+  },
   {
     after: "connections",
     names: ["connectionId"],
     discovery: "integrationConnections",
     unlisted:
       "A connection lives with the integration provider, so read its id from integrationConnections.",
-  },
-  {
-    names: ["source", "skillId"],
-    pathContains: "/skills/community",
-    discovery: "searchCommunitySkills",
-    unlisted:
-      "The community catalogue is outside Houston, so read both values from searchCommunitySkills.",
   },
   // A chat: it lives in the agent's own engine, which no directory collection
   // covers, so the id comes from the `conversations.list` read. `after` claims

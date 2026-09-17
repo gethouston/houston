@@ -1,4 +1,5 @@
 import type { OrgMember } from "@houston/engine-adapter";
+import { personDisplayName } from "./people-tab-model.ts";
 
 /**
  * Pure, DOM-free display helpers for the Organization dashboard (Teams v2).
@@ -23,16 +24,18 @@ export function shortenId(id: string): string {
 }
 
 /**
- * A member's display name: their email when the host exposed it, else a
- * shortened id. Never throws — a stranger id (a since-removed member still
- * named in an old audit row) degrades to the short id.
+ * A member's display name, resolved from the raw id an audit or usage row
+ * carries. The name itself is the shared {@link personDisplayName}; a stranger
+ * id (a since-removed member still named in an old row) degrades to the short
+ * id rather than throwing.
  */
 export function memberLabel(
   userId: string,
   members: readonly OrgMember[] | undefined,
 ): string {
   const found = members?.find((m) => m.userId === userId);
-  return found?.email ?? shortenId(userId);
+  const fallback = shortenId(userId);
+  return found ? personDisplayName(found, fallback) : fallback;
 }
 
 /**

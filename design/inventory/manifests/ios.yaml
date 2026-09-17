@@ -214,6 +214,9 @@ components:
   skill-row:
     status: not-started
     notes: Skills catalog not in mobile v1.
+  skill-workflow-steps:
+    status: not-started
+    notes: Skills catalog not in mobile v1.
   empty-state:
     status: implemented
     ref: mobile/ios/Houston/DesignSystem/Primitives/EmptyStateView.swift
@@ -300,26 +303,6 @@ components:
   status-badge:
     status: not-started
     notes: Connected/live-status dot+label; the catalog hub surfaces are not in mobile v1.
-  agent-store-navigation:
-    status: not-started
-  agent-store-controls:
-    status: not-started
-  agent-store-agent-card:
-    status: not-started
-  agent-store-creator-card:
-    status: not-started
-  agent-store-detail:
-    status: not-started
-  agent-store-skill-list:
-    status: not-started
-  agent-store-creator-block:
-    status: not-started
-  agent-store-home-screen:
-    status: not-started
-  agent-store-agent-detail-screen:
-    status: not-started
-  agent-store-creator-profile-screen:
-    status: not-started
   sidebar-team-block:
     status: not-started
   sidebar-nav-band:
@@ -345,4 +328,12 @@ components:
   mission-chat-screen:
     status: not-started
   new-mission-sheet:
+    status: not-started
+  form-dialog:
+    status: not-started
+  flow-sheet:
+    status: not-started
+  flow-choice-row:
+    status: not-started
+  messaging-channels-settings:
     status: not-started

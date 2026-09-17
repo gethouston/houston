@@ -1,91 +1,11 @@
 {
-  "exportMenu": "Export a copy",
-  "export": {
-    "eyebrow": "Exporting {{name}}",
-    "loading": "Loading your agent.",
-    "step1": {
-      "title": "What should we export?",
-      "body": "Pick what goes into the copy. The agent's instructions always come along.",
-      "instructionsLabel": "Instructions",
-      "instructionsRow": "Job description and rules",
-      "noInstructions": "This agent has no instructions yet.",
-      "skillsLabel": "Skills",
-      "routinesLabel": "Routines",
-      "learningsLabel": "Learnings",
-      "privacyNote": "Only what you pick here is shared: the job description, skills, routines and learnings. Conversations, files and connected accounts always stay private."
-    },
-    "step2": {
-      "title": "Want to anonymize first?",
-      "body": "Houston can remove personal info like names, emails and paths. You'll see exactly what changed before saving.",
-      "asIsTitle": "Export as is",
-      "asIsBody": "Keep everything exactly the way it is.",
-      "anonymizeTitle": "Help me anonymize",
-      "anonymizeBody": "Remove names, emails, companies, API keys and other personal details.",
-      "reviewLabel": "Review what changed",
-      "working": "Houston is reviewing your content.",
-      "startReview": "Start the review",
-      "checkAgain": "Check again",
-      "workingProgress": "Houston is reviewing your content ({{done}} of {{total}} done).",
-      "slowNotice": "This is taking longer than usual. You can keep what's ready and finish the rest the quick way.",
-      "stopWait": "Use what's ready",
-      "stopping": "Finishing up with what's ready.",
-      "aiToggleTitle": "Let my AI help",
-      "aiToggleHint": "When this is on, your AI also looks for personal details that are easy to miss, like names or company names. When it's off, Houston only removes obvious things like emails, links, and keys. Either way, you review every change before sharing.",
-      "aiFallback": "Houston couldn't use AI for this pass ({{reason}}). Only obvious patterns like emails and paths were removed, so review the results carefully.",
-      "diffInstructions": "Instructions",
-      "before": "Before",
-      "after": "After",
-      "keep": "Keep the changes",
-      "skip": "Use the original",
-      "becameEmpty": "Almost everything got redacted. You can leave this out instead.",
-      "routineTitle": "Routine {{id}}",
-      "learningTitle": "Learning"
-    },
-    "step3": {
-      "skillsLabel": "Skills",
-      "routinesLabel": "Routines",
-      "learningsLabel": "Learnings",
-      "anonymizedLabel": "Anonymized",
-      "yes": "Yes",
-      "no": "No"
-    },
-    "review": {
-      "title": "Ready to share",
-      "body": "Send {{name}} as a file, or publish it to the Agent Store for anyone to install.",
-      "privacyNote": "Sharing covers the items above and nothing else. Conversations stay private, and you can remove a published listing anytime."
-    },
-    "actions": {
-      "back": "Back",
-      "cancel": "Cancel",
-      "next": "Continue",
-      "save": "Save file",
-      "saving": "Saving."
-    },
-    "errors": {
-      "previewFailed": "Could not read your agent.",
-      "anonymizeFailed": "Anonymize step failed.",
-      "saveFailed": "Could not save the file.",
-      "noPreview": "No preview available.",
-      "revealFailed": "Could not open that folder.",
-      "saveLocked": "That file is open in another program. Close it there and save again.",
-      "savePermission": "Houston isn't allowed to save into that folder. Choose another folder, like Downloads.",
-      "saveDiskFull": "There isn't enough free space on this computer to save the file.",
-      "revealPermission": "Houston isn't allowed to open that folder on this computer. Look for the file where you saved it."
-    },
-    "toasts": {
-      "savedTitle": "File saved",
-      "savedDescription": "Saved to {{path}}",
-      "revealAction": "Show in folder"
-    }
-  },
   "import": {
     "eyebrow": "From a friend",
     "flagged": "Houston flagged this one for a closer look.",
     "step1": {
-      "title": "Bring in an agent someone shared",
+      "title": "Bring in an AI Employee someone shared",
       "body": "Open a file they sent, or paste a share link. Houston reads it and shows you what is inside before anything is installed.",
       "pickFile": "Choose a file",
-      "or": "or",
       "uploadedFrom": "Shared by {{name}}",
       "anonymous": "your friend",
       "counts": "{{skills}} skills, {{routines}} routines, {{learnings}} learnings",
@@ -100,8 +20,8 @@
       "scanFlagged": "Houston flagged {{count}} item(s). Review them as you continue."
     },
     "step2": {
-      "namePlaceholder": "Name your agent",
-      "placeholderName": "Your agent",
+      "title": "Name your AI Employee",
+      "placeholderName": "Your AI Employee",
       "tagline": "Ready to help"
     },
     "step3": {
@@ -114,136 +34,24 @@
     },
     "step5": {
       "title": "Pick which learnings to keep",
-      "body": "Learnings are notes the agent uses as background context. Personal items can be left out."
-    },
-    "link": {
-      "label": "Install from a link",
-      "placeholder": "Paste a share link, like https://agents.gethouston.ai/a/agent",
-      "fetch": "Fetch",
-      "fetching": "Fetching",
-      "hint": "Paste the link someone gave you. Houston fetches the agent so you can review it before installing.",
-      "errors": {
-        "empty": "Paste a share link first.",
-        "invalid": "That does not look like a valid agent link.",
-        "notFound": "We could not find a published agent at that link.",
-        "unreadable": "That agent could not be read. Ask the person who shared it to publish it again.",
-        "network": "We could not reach the Agent Store. Check your connection and try again.",
-        "generic": "Something went wrong fetching that agent. Please try again."
-      },
-      "browseStore": "Or browse the Agent Store"
+      "body": "Learnings are notes the AI Employee uses as background context. Personal items can be left out."
     },
     "actions": {
       "back": "Back",
-      "cancel": "Cancel",
       "next": "Continue",
-      "install": "Bring agent in",
+      "install": "Bring in AI Employee",
       "installing": "Bringing it in.",
       "selectAll": "Select all",
       "clearAll": "Clear"
     },
     "errors": {
       "uploadFailed": "Could not read that file.",
-      "installFailed": "Could not install the agent.",
-      "nameRequired": "Give the agent a name."
+      "installFailed": "Could not install the AI Employee.",
+      "nameRequired": "Give the AI Employee a name."
     },
     "toasts": {
-      "installedTitle": "Agent ready",
+      "installedTitle": "AI Employee ready",
       "installedDescription": "{{name}} is in your workspace."
-    }
-  },
-  "publish": {
-    "actions": {
-      "publish": "Publish to the Agent Store",
-      "publishNow": "Publish now",
-      "publishing": "Publishing.",
-      "saveUpdate": "Save changes",
-      "done": "Done",
-      "signInToPublish": "Sign in to publish",
-      "signingIn": "Signing in."
-    },
-    "listing": {
-      "title": "List {{name}} on the Agent Store",
-      "body": "Tell people what this agent does. You can change any of this later from the manage page.",
-      "descriptionLabel": "Description",
-      "descriptionPlaceholder": "What does this agent do, and who is it for?",
-      "taglineLabel": "Tagline",
-      "taglinePlaceholder": "One short line that sums it up",
-      "categoryLabel": "Category",
-      "categoryPlaceholder": "Pick a category",
-      "tagsLabel": "Tags",
-      "tagsHint": "Up to {{max}}",
-      "tagsPlaceholder": "Add a tag and press Enter",
-      "tagsFull": "That's the most tags you can add",
-      "removeTag": "Remove {{tag}}",
-      "creatorNameLabel": "Your name",
-      "creatorNamePlaceholder": "How you want to be credited",
-      "creatorUrlLabel": "Link",
-      "creatorUrlPlaceholder": "https://your-site.com",
-      "requiredMark": "(required)",
-      "publishingAs": "Publishing as @{{handle}}",
-      "claimHandleCta": "Claim your @handle",
-      "editProfile": "Edit profile"
-    },
-    "categories": {
-      "writing": "Writing & Content",
-      "productivity": "Productivity",
-      "research": "Research & Analysis",
-      "marketing": "Marketing & Social",
-      "sales": "Sales & CRM",
-      "coding": "Coding & Dev",
-      "design": "Design & Creative",
-      "data": "Data & Spreadsheets",
-      "education": "Education & Learning",
-      "finance": "Finance & Money",
-      "legal": "Legal",
-      "customer-support": "Customer Support",
-      "personal": "Personal & Lifestyle",
-      "fun": "Fun & Games",
-      "other": "Other"
-    },
-    "share": {
-      "title": "{{name}} is on the Agent Store",
-      "body": "Share this link so anyone can install your agent.",
-      "copy": "Copy",
-      "copied": "Copied",
-      "viewListing": "View listing",
-      "unlistedNote": "Your listing is unlisted for now, so only people with the link can find it. Ask for a public spot anytime from the manage page."
-    },
-    "manage": {
-      "title": "{{name}} is published",
-      "body": "Your agent is live on the Agent Store. Share the link, update the listing, or take it down.",
-      "update": "Update listing",
-      "updateHint": "Updating re-runs the same pick and anonymize steps, so you choose exactly what goes out.",
-      "remove": "Remove from store",
-      "removeConfirmTitle": "Remove from the store?",
-      "removeConfirmBody": "{{name}} will no longer be installable from its link. You can publish it again later.",
-      "removeConfirm": "Remove",
-      "removeCancel": "Keep it up",
-      "seeInStore": "See it in the store",
-      "manageAll": "Manage all my agents"
-    },
-    "errors": {
-      "generic": "Something went wrong. Please try again.",
-      "statusFailed": "Could not check the listing.",
-      "publishFailed": "Could not publish the agent.",
-      "updateFailed": "Could not update the listing.",
-      "unpublishFailed": "Could not remove the listing.",
-      "copyFailed": "Could not copy the link.",
-      "openFailed": "Could not open the listing.",
-      "codes": {
-        "cannotPublishArchived": "This listing was archived, so it can't be published again. Create a new listing to share this agent.",
-        "invalidCreator": "Add your name before publishing so people know who made this agent.",
-        "conflictingOps": "Another change is still saving. Wait a moment, then try again.",
-        "slugExhausted": "We couldn't find an available link for this name. Try a different name.",
-        "rateLimited": "You're doing that a little too fast. Wait a moment, then try again.",
-        "secretsDetected": "This agent looks like it still has a password or key inside. Remove it, then try again.",
-        "notFound": "This listing couldn't be found. It may have already been removed."
-      },
-      "signInFailed": "Could not sign in."
-    },
-    "toasts": {
-      "removedTitle": "Removed from the store",
-      "removedBody": "{{name}} is no longer listed."
     }
   }
 }

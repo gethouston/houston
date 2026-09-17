@@ -22,9 +22,9 @@ describe("missionCardTags", () => {
       missionCardTags({
         routineLabel: "Routine",
         originSessionKey: "conv-parent",
-        agentStartedLabel: "Started by agent",
+        agentStartedLabel: "Started by AI Employee",
       }),
-      ["Started by agent"],
+      ["Started by AI Employee"],
     );
   });
 
@@ -34,7 +34,7 @@ describe("missionCardTags", () => {
         routineId: "routine-id",
         routineLabel: "Routine",
         originSessionKey: "conv-parent",
-        agentStartedLabel: "Started by agent",
+        agentStartedLabel: "Started by AI Employee",
       }),
       ["Routine"],
     );

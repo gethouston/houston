@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: yes
 image: ledger
 integrations: [stripe]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **An opening trial balance, in `mode=opening-balances`** — Required for that mode. Why: anchors every balance sheet number going forward. If missing I ask: "Do you have a closing trial balance from your prior books or accountant? Drop it as a spreadsheet or CSV with account code, name, debit, and credit."
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read existing state.** Load `config/context-ledger.json` (create empty scaffold `{"universal":{},"domains":{}}` if absent) and `context/bookkeeping-context.md` if exists  -  this run is update, not rewrite. Preserve anything founder sharpened; touch only stale or new.
 

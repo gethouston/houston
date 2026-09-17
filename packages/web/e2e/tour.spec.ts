@@ -1,4 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
+import { NEW_TASK_PLACEHOLDER } from "./support/composer";
+import { fillAgentBrief } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
 import { startInAppOnboarding } from "./support/tour-nav";
 
@@ -66,12 +68,14 @@ test("an already-connected user still walks every step and gets acknowledged", a
   // No integrations on the default deployment → straight to the agent
   // sequence. The seeded agent triggers the addendum skip here too.
   await expect(
-    page.getByRole("dialog", { name: "Create your first agent" }),
+    page.getByRole("dialog", { name: "Create your first AI Employee" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Show me" }).click();
-  const agentChip = page.getByRole("dialog", { name: "Click New agent" });
+  const agentChip = page.getByRole("dialog", { name: "Click New AI Employee" });
   await expect(agentChip).toBeVisible();
-  await expect(agentChip.getByText("You already have an agent.")).toBeVisible();
+  await expect(
+    agentChip.getByText("You already have an AI Employee."),
+  ).toBeVisible();
   await agentChip.getByRole("button", { name: "Skip step" }).click();
 
   // The first-task sequence: the REAL New task button, then the REAL
@@ -89,10 +93,8 @@ test("an already-connected user still walks every step and gets acknowledged", a
   await expect(
     page.getByRole("dialog", { name: "Tell it what you need." }),
   ).toBeVisible();
-  await page
-    .getByPlaceholder("What should the agent work on?")
-    .fill("Plan my week");
-  await page.getByPlaceholder("What should the agent work on?").press("Enter");
+  await page.getByPlaceholder(NEW_TASK_PLACEHOLDER).fill("Plan my week");
+  await page.getByPlaceholder(NEW_TASK_PLACEHOLDER).press("Enter");
 
   // The send is the goal — the finale celebrates, then hands off to the
   // Academy reveal that closes every path of the run.
@@ -160,7 +162,7 @@ test("with integrations served, the flow continues into the apps sequence", asyn
   ).toBeVisible();
   await chip.getByRole("button", { name: "Skip step" }).click();
   await expect(
-    page.getByRole("dialog", { name: "Create your first agent" }),
+    page.getByRole("dialog", { name: "Create your first AI Employee" }),
   ).toBeVisible();
 });
 
@@ -191,27 +193,29 @@ test("creating an agent in the tutorial: coached dialog, locked email task, inbo
     .click();
 
   // The agent sequence — this time creating for REAL through the dialog,
-  // coached inside it: pick "Create new", then name it.
+  // coached inside it: answer the brief, then name it.
   await page.getByRole("button", { name: "Show me" }).click();
   await expect(
-    page.getByRole("dialog", { name: "Click New agent" }),
+    page.getByRole("dialog", { name: "Click New AI Employee" }),
   ).toBeVisible();
   await page.locator("[data-tour-target='newAgent']").first().click();
-  // In-dialog chips live outside the modal's a11y subtree (Radix marks the
-  // rest of the page aria-hidden), so address them by text, not role.
-  await expect(page.getByText("Click Create new")).toBeVisible();
-  await page.getByRole("button", { name: "Create new", exact: true }).click();
+  // The ring follows the dialog's own screens: the guided brief it opens on,
+  // then the name and color. In-dialog coaching lives outside the modal's
+  // a11y subtree (Radix marks the rest of the page aria-hidden), so address
+  // it by text, not role.
+  await expect(page.getByText("Tell it what it will do.")).toBeVisible();
+  await fillAgentBrief(page);
   await expect(
     page.getByText("Pick a color and give it a name."),
   ).toBeVisible();
   await page
     .getByPlaceholder("e.g. Product manager, Sales, Jerry")
     .fill("Mailer");
-  await page.getByRole("button", { name: "Create Agent" }).click();
+  await page.getByRole("button", { name: "Create AI Employee" }).click();
 
   // Created → celebration. The tutorial suppressed the auto setup mission,
   // so no chat panel opened on its own.
-  const created = page.getByRole("dialog", { name: "Agent created!" });
+  const created = page.getByRole("dialog", { name: "AI Employee created!" });
   await expect(created).toBeVisible();
   await created.getByRole("button", { name: "Continue" }).click();
 
@@ -234,7 +238,7 @@ test("creating an agent in the tutorial: coached dialog, locked email task, inbo
   ).toBeVisible();
   // The composer is prewritten and locked; the hole narrows to the send
   // button alone — the click goes through it.
-  const composer = page.getByPlaceholder("What should the agent work on?");
+  const composer = page.getByPlaceholder(NEW_TASK_PLACEHOLDER);
   await expect(composer).toHaveValue("Send me a hello email");
   await page
     .locator('[data-testid="mission-panel"] button[type="submit"]')

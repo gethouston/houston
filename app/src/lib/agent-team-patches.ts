@@ -1,13 +1,15 @@
 import type { AgentTeam } from "@houston/engine-adapter";
+import type { QueryClient } from "@tanstack/react-query";
+import { queryKeys } from "./query-keys.ts";
 
 /**
- * The pure patches an OPTIMISTIC agent-teams write applies before its round
- * trip (C13).
- *
- * Everything here is total and mutation-free: the value a function is handed is
- * still intact afterwards, which is what lets a caller keep it as the snapshot
- * a refusal puts back byte-for-byte. Unit-tested in
- * `app/tests/agent-team-patches.test.ts`.
+ * The patches an agent-teams write applies to the cached team list (C13): the
+ * optimistic ones before its round trip, and the seed a create applies the
+ * moment the gateway answers. They are total and mutation-free — the value a
+ * function is handed is still intact afterwards, which lets a caller keep it as
+ * the snapshot a refusal puts back byte-for-byte. {@link seedCreatedTeam} is
+ * the one function here that WRITES, and it writes one of these patches.
+ * Unit-tested in `app/tests/agent-team-patches.test.ts`.
  */
 
 /**
@@ -160,5 +162,37 @@ export function applyTeamContext(
 ): AgentTeam[] {
   return teams.map((team) =>
     team.id === teamId ? { ...team, context } : team,
+  );
+}
+
+/**
+ * The cached teams with a just-CREATED team among them. Appended rather than
+ * placed by `sortOrder`: the create's own invalidation re-reads the gateway's
+ * order a moment later, and all the caller needs from this tick is that the
+ * team EXISTS. Nothing cached stays nothing — the first read brings the team
+ * with it — and a team the list already holds comes back untouched, by
+ * identity, since the refetch can land first and a second copy would draw the
+ * team twice in the rail.
+ */
+export function appendCreatedTeam(
+  teams: AgentTeam[] | undefined,
+  created: AgentTeam,
+): AgentTeam[] | undefined {
+  if (teams === undefined) return undefined;
+  return teams.some((team) => team.id === created.id)
+    ? teams
+    : [...teams, created];
+}
+
+/**
+ * Put a just-created team into the teams cache, SYNCHRONOUSLY: the create-team
+ * form lands the user in the team the instant the write resolves, and the
+ * shell's view guard (`view-guard-rules.ts`) sends them home again for a
+ * `viewMode` naming a team the cached list does not hold. The invalidation that
+ * follows reconciles the seeded list with server truth.
+ */
+export function seedCreatedTeam(qc: QueryClient, created: AgentTeam): void {
+  qc.setQueryData<AgentTeam[]>(queryKeys.agentTeams(), (cached) =>
+    appendCreatedTeam(cached, created),
   );
 }

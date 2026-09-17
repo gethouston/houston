@@ -7,6 +7,9 @@ category: Entidade
 featured: no
 image: scroll
 integrations: [googledocs]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -22,6 +25,7 @@ Toda C-corp de Delaware deve o imposto de franquia e o relatório anual até **1
 - O fundador recebeu uma fatura assustadora de Delaware e quer recalcular.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia o contexto compartilhado.** Leia `context/legal-context.md`.
    Se estiver faltando ou vazio, pergunte ao usuário em linguagem simples: "Preciso saber algumas informações básicas sobre a sua empresa primeiro (estado de constituição, ações autorizadas, diretores). Quer configurar isso agora?" Depois execute `set-up-my-legal-info` se disser sim. Pare até que isso esteja feito.

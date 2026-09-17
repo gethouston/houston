@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [notion, airtable]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Primero leo tu contexto de marketing. Por cada campo obligatorio que falte, te h
 - **Números reales de antes/después**: Obligatorios para un buen caso de éxito. Si falta, pregunto: "¿Qué cambio medible tuvo este cliente, y en qué periodo de tiempo? Si no lo tienes, sigo con TBD."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el documento de posicionamiento**: `context/marketing-context.md`. Si falta, me detengo. Le digo al usuario que corra primero `set-up-my-marketing-info`. Los casos de éxito tienen que reforzar el posicionamiento, sin desviarse.
 2. **Leo la configuración**: `config/site.json` (voz / CTAs de marca).

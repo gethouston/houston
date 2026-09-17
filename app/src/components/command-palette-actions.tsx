@@ -9,11 +9,10 @@
  */
 
 import { CommandGroup, CommandItem, CommandShortcut } from "@houston-ai/core";
-import { Keyboard, Plus, Settings, Store } from "lucide-react";
+import { Keyboard, Plus, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { shortcutLabel } from "../lib/shortcuts";
 import { useUIStore } from "../stores/ui";
-import { STORE_VIEW_ID } from "./store-view";
 
 export function PaletteActions({
   onNewMission,
@@ -23,7 +22,6 @@ export function PaletteActions({
   onClose: () => void;
 }) {
   const { t } = useTranslation("shell");
-  const setViewMode = useUIStore((s) => s.setViewMode);
   const openSettings = useUIStore((s) => s.openSettings);
   const setCheatsheetOpen = useUIStore((s) => s.setCheatsheetOpen);
 
@@ -33,16 +31,6 @@ export function PaletteActions({
         <Plus />
         <span>{t("palette.actions.newMission")}</span>
         <CommandShortcut>{shortcutLabel("newMission")}</CommandShortcut>
-      </CommandItem>
-      <CommandItem
-        onSelect={() => {
-          setViewMode(STORE_VIEW_ID);
-          onClose();
-        }}
-        value="action agent-store"
-      >
-        <Store />
-        <span>{t("sidebar.agentStore")}</span>
       </CommandItem>
       <CommandItem
         onSelect={() => {

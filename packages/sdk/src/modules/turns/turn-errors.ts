@@ -68,13 +68,27 @@ export function engineVerdictMessage(e: unknown): string | undefined {
  */
 /**
  * The engine answered the send with "not here, not now": the agent's pod is
- * waking, restarting (a release roll, a drain), or its runtime is still
- * booting, and the SAME send succeeds once it is back. Keyed on the exact
+ * waking, restarting (a release roll, a drain), its runtime is still booting,
+ * or its id is latched for the seconds a rename moves its directory
+ * (PRODUCT-1804), and the SAME send succeeds once it is back. Keyed on the exact
  * (status, reason) pairs the gateway and host mint for that state, never on a
  * bare 502/503 (a provider quota page on the same status is a real failure).
  * The web adapter's `isEngineWakingError` reads the same pairs across every
  * client error shape; this is the one shape the turn stream sees.
  */
+/**
+ * The runtime refused a control because a turn is accepted, queued or running
+ * on the conversation (`409 turn running`, its one 409). For a dismiss this
+ * means the card the surface showed was stale: a turn started elsewhere (a
+ * member's send, another device, a routine, a webhook) had already retired
+ * that interaction, so nothing broke and the running turn is the truth the
+ * surface must catch up to. Read by `dismissInteraction`, which turns it into
+ * a typed outcome instead of a throw (HOUSTON-APP-5EY / PRODUCT-1827).
+ */
+export function isTurnRunningRejection(e: unknown): boolean {
+  return e instanceof EngineError && e.status === 409;
+}
+
 export function isEngineWakingRejection(e: unknown): boolean {
   if (!(e instanceof EngineError)) return false;
   const reason = engineVerdictMessage(e);
@@ -127,6 +141,26 @@ export const STOPPED_BY_USER = "Stopped by user";
  */
 export const ENGINE_RESTART_MESSAGE =
   "Your agent had to restart. Say continue and it will pick up where it left off.";
+
+/**
+ * The line for a turn the engine died on and is ALREADY running again by
+ * itself (`interrupted.resumed`, PRODUCT-1785). Same shape as
+ * {@link ENGINE_RESTART_MESSAGE} and the same product voice, minus the ask:
+ * there is nothing for the user to do, so the copy only accounts for the pause
+ * they saw. A turn that renders this must not settle as an error — the work is
+ * still going (see `finishResumed`).
+ */
+export const ENGINE_RESUMED_MESSAGE =
+  "Your agent was interrupted by a restart and is picking up where it left off.";
+
+/**
+ * WHY the engine authored a system line, carried on the `system_message`
+ * feed item beside its English default. A surface renders its own copy by
+ * kind and never by matching the English text: the wording above is a
+ * default for surfaces without a dictionary, not a contract to compare
+ * against.
+ */
+export type EngineNoticeKind = "engine_restart" | "engine_resumed";
 
 /**
  * Whether a turn's terminal error is the user pressing Stop — the verbatim

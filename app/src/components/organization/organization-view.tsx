@@ -2,11 +2,13 @@ import type { OrgInfo, OrgRole } from "@houston/engine-adapter";
 import { useCallback, useEffect, useState } from "react";
 import { useOrg } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useWorkspaceSectionActive } from "../../hooks/use-workspace-section-active";
 import { analytics } from "../../lib/analytics";
 import { canSeeBillingTab } from "../../lib/billing-gates";
 import { isPersonalSpace } from "../../lib/org-roles";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import type { BackTarget } from "../shell/back-control";
 import { PageHeaderToolsProvider } from "../shell/page-header/page-header-tools";
 import { ADMIN_HEADER_THRESHOLDS, AdminHeader } from "./admin-header";
 import { AdminSectionBody } from "./admin-section-body";
@@ -44,21 +46,24 @@ export interface OrgTabProps {
  * `OrgViewContext`, and swaps sections under the shared header grammar
  * (`AdminHeader` — the same lozenge cluster Integrations and the team screen
  * wear), landing on Company context, whose surface the identity lozenge IS.
+ * It is a Settings section, so the way back to the Settings index leads that
+ * same strip — one top row, not a back bar stacked over the header.
  *
  * Permission surfaces (who can use which agent, per-agent ceilings) are NOT
  * here: per-agent policy is discovered through each team's focused agent screen,
- * in the team view's settings section. Mounted ONLY when `canSeeOrganization`
+ * in the team view's settings section. Drawn ONLY when `canSeeOrganization`
  * (multiplayer owner/admin, and on a Spaces host a TEAM active space — never the
- * personal one): the rail hides the row, the kept-alive screen is not even
- * mounted, and `blockedTopLevelView` sends a stale `viewMode` home the moment
- * the gates resolve against it.
+ * personal one); everyone else gets the plain workspace-name card in the same
+ * Settings section.
  *
- * Kept alive like every top-level screen, so it comes back on the section it was
- * left on — and so the Billing deep link below has to land while the view is
- * ALREADY open, not on a mount that never happens again.
+ * Settings is kept alive, so this comes back on the section it was left on — and
+ * so the Billing deep link below has to land while the view is ALREADY open, not
+ * on a mount that never happens again.
  */
-export function OrganizationView() {
-  const { data: org, isLoading } = useOrg(true);
+export function OrganizationView({ back }: { back: BackTarget }) {
+  // Settings is kept alive, so this view stays mounted behind whatever the
+  // user opens next; the read belongs to the screen, not to the mount.
+  const { data: org, isLoading } = useOrg(useWorkspaceSectionActive());
   const { capabilities } = useCapabilities();
   const current = useWorkspaceStore((s) => s.current);
   const requestedTab = useOrgNav((s) => s.requestedTab);
@@ -74,6 +79,7 @@ export function OrganizationView() {
   const visibleIds = orgTabIds({
     billing: showBilling,
     timeWorked: canSeeTimeWorked(capabilities),
+    personal: isPersonalSpace(capabilities, activeSpaceIsTeam),
   });
 
   const [active, setActive] = useState<OrgTabId>(DEFAULT_ORG_TAB);
@@ -93,10 +99,9 @@ export function OrganizationView() {
   );
 
   // Honor a pinned section request — the C8 team-status banner deep-links to
-  // Billing, and the rail's Admin row pins the landing section on every click
-  // — then clear it. This is an effect on the STORE field, not mount-time
-  // state, precisely because the screen is kept alive: it fires on the first
-  // mount AND while already open, the same way agent settings consumes
+  // Billing — then clear it. This is an effect on the STORE field, not
+  // mount-time state, precisely because the screen is kept alive: it fires on
+  // the first mount AND while already open, the same way agent settings consumes
   // its own one-shot pin.
   useEffect(() => {
     if (requestedTab === null) return;
@@ -122,8 +127,9 @@ export function OrganizationView() {
 
   return (
     <PageHeaderToolsProvider thresholds={ADMIN_HEADER_THRESHOLDS}>
-      <div className="flex h-full flex-col">
+      <div className="flex h-full min-h-0 flex-col">
         <AdminHeader
+          back={back}
           active={active}
           visibleIds={visibleIds}
           onSelect={openSection}

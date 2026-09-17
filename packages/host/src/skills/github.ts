@@ -42,16 +42,16 @@ export async function fetchSkillMdAtPath(
 }
 
 /**
- * The non-throwing read the tree scans use, keeping the two misses apart: a
- * `missing` path (404: the directory simply holds no SKILL.md) is evidence of
- * absence, a `failed` one (transport, 5xx) is not.
+ * The non-throwing read behind {@link fetchSkillMdAtPath}, keeping the two
+ * misses apart: a `missing` path (404: the directory simply holds no SKILL.md)
+ * is evidence of absence, a `failed` one (transport, 5xx) is not.
  */
-export type SkillMdRead =
+type SkillMdRead =
   | { kind: "ok"; rawMd: string }
   | { kind: "missing" }
   | { kind: "failed" };
 
-export async function readSkillMdAtPath(
+async function readSkillMdAtPath(
   fetchImpl: typeof fetch,
   source: string,
   path: string,

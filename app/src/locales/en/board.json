@@ -14,7 +14,7 @@
   },
   "tags": {
     "routine": "Routine",
-    "agentStarted": "Started by agent"
+    "agentStarted": "Started by AI Employee"
   },
   "panel": {
     "taskLabel": "Task: {{title}}",
@@ -53,6 +53,11 @@
     "subheading": "Tap a skill to get started, or just type what you need below.",
     "seeMore_one": "See {{count}} more skill",
     "seeMore_other": "See {{count}} more skills"
+  },
+  "composer": {
+    "placeholder": "What should the AI Employee work on?",
+    "followUp": "Send a follow-up...",
+    "assistantPlaceholder": "What should Houston work on?"
   },
   "composerSkill": {
     "browse": "Skills"

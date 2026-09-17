@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { Locator, Page } from "@playwright/test";
+import { ASSISTANT_COMPOSER, ASSISTANT_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { assistantRow, openAssistant } from "./support/settings-nav";
 import { openTeamSection, screen } from "./support/team-nav";
@@ -72,6 +73,12 @@ test("opens from the rail onto a welcoming empty chat", async ({ page }) => {
   await expect(
     screen(page).getByText(/ask before anything risky/),
   ).toBeVisible();
+
+  // A chat with nothing in it asks its opening question. The follow-up wording
+  // belongs to a thread that has already had a turn, and this one has not.
+  await expect(
+    screen(page).getByPlaceholder(ASSISTANT_PLACEHOLDER),
+  ).toBeVisible();
 });
 
 test("holds a conversation that never becomes a board card", async ({
@@ -81,7 +88,7 @@ test("holds a conversation that never becomes a board card", async ({
   const before = await activityTitles();
 
   await openAssistant(page);
-  const composer = screen(page).getByPlaceholder("Send a follow-up...");
+  const composer = screen(page).getByPlaceholder(ASSISTANT_COMPOSER);
   await composer.fill("what can you do");
   await composer.press("Enter");
 
@@ -113,7 +120,7 @@ test("the composer menu offers the conversation commands once there is a chat", 
   ).toBeDisabled();
   await page.keyboard.press("Escape");
 
-  const composer = screen(page).getByPlaceholder("Send a follow-up...");
+  const composer = screen(page).getByPlaceholder(ASSISTANT_COMPOSER);
   await composer.fill("hello");
   await composer.press("Enter");
   await expect(screen(page).getByText(/Roger that\. You said:/)).toBeVisible({
@@ -146,11 +153,11 @@ test("the row is absent where the deployment serves no assistant", async ({
   await page.goto("/");
 
   // A positive signal first, so the absence below cannot pass on an unpainted
-  // rail: the Agent Store row is unconditional in every deployment. The row is
+  // rail: the Integrations row is unconditional in every deployment. The row is
   // up from the first paint and comes down when discovery settles absence, so
   // the count is asserted on the settled rail, not the first one.
   await expect(
-    page.locator("[data-tour-target='nav-agent-store']"),
+    page.locator("[data-tour-target='nav-integrations']"),
   ).toBeVisible();
   await expect(assistantRow(page)).toHaveCount(0);
 });

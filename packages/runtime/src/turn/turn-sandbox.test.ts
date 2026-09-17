@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FsVfs } from "@houston/host/src/vfs";
@@ -65,8 +65,6 @@ test.each([
   ["/sandbox/integrations/custom/status", {}],
   ["/sandbox/routines/save", {}],
   ["/sandbox/learnings/save", {}],
-  ["/sandbox/skills/search", {}],
-  ["/sandbox/skills/install", {}],
 ])("routes %s through the turn facade", async (path, body) => {
   const sandbox = await fixture();
   const response = await post(sandbox.call, path, body);
@@ -126,27 +124,6 @@ test("aborting a tool call aborts its pending gateway request", async () => {
   await sandbox.dispose();
 });
 
-test("aborting a skill search aborts its pending directory request", async () => {
-  const sandbox = await fixture(
-    (_input, init) =>
-      new Promise<Response>((_resolve, reject) => {
-        const signal = init?.signal;
-        if (signal?.aborted) reject(signal.reason);
-        else signal?.addEventListener("abort", () => reject(signal.reason));
-      }),
-  );
-  const controller = new AbortController();
-  const pending = sandbox.call("/sandbox/skills/search", {
-    method: "POST",
-    body: JSON.stringify({ queries: ["abort-signal-test"] }),
-    signal: controller.signal,
-  });
-  controller.abort(new Error("skill search cancelled"));
-
-  await expect(pending).rejects.toThrow("skill search cancelled");
-  await sandbox.dispose();
-});
-
 test("a gateway 403 body relays verbatim", async () => {
   const sandbox = await fixture(async () =>
     Response.json(
@@ -189,22 +166,6 @@ test("OAuth start is not exposed by the pooled facade", async () => {
   await sandbox.dispose();
 });
 
-test("skill installs capture the updated asleep-read view", async () => {
-  const sandbox = await fixture(
-    async () =>
-      new Response("---\nname: example\ndescription: test\n---\nbody\n"),
-  );
-  const response = await post(sandbox.call, "/sandbox/skills/install", {
-    source: "owner/repo",
-    skillId: "example",
-  });
-  expect(response.status).toBe(201);
-  expect(sandbox.views().skills).toMatchObject({
-    items: [{ name: "example", description: "test" }],
-  });
-  await sandbox.dispose();
-});
-
 test("custom definition writes capture the updated asleep-read view", async () => {
   const sandbox = await fixture();
   await writeFile(
@@ -230,41 +191,5 @@ test("custom definition writes capture the updated asleep-read view", async () =
   );
   expect(response.status).toBe(200);
   expect(sandbox.views().customDefinitions).toEqual({ items: [] });
-  await sandbox.dispose();
-});
-
-test("skill failures preserve the host route error taxonomy", async () => {
-  const sandbox = await fixture();
-  const response = await post(sandbox.call, "/sandbox/skills/install", {
-    source: "not a repo",
-    skillId: "example",
-  });
-  expect(response.status).toBe(400);
-  expect(await response.json()).toEqual({
-    error: {
-      code: "BAD_REQUEST",
-      message: "not a repo",
-      kind: "invalid_repo_source",
-      details: { kind: "invalid_repo_source" },
-    },
-  });
-  await sandbox.dispose();
-});
-
-test("unknown skill failures relay their message with a 502", async () => {
-  const sandbox = await fixture(
-    async () =>
-      new Response("---\nname: example\ndescription: test\n---\nbody\n"),
-  );
-  await rm(sandbox.root, { recursive: true });
-  await writeFile(sandbox.root, "not a directory");
-  const response = await post(sandbox.call, "/sandbox/skills/install", {
-    source: "owner/repo",
-    skillId: "example",
-  });
-  expect(response.status).toBe(502);
-  expect(await response.json()).toMatchObject({
-    error: expect.stringContaining("ENOTDIR"),
-  });
   await sandbox.dispose();
 });

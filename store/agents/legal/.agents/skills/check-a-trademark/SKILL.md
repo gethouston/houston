@@ -6,6 +6,9 @@ category: IP
 featured: no
 image: scroll
 integrations: [firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -21,6 +24,7 @@ Not clearance opinion  -  knockout. Knockout answer "obvious blocker?" Not "safe
 - Before filing 1(b) intent-to-use application.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read shared context.** Read `context/legal-context.md`. If missing or empty, ask the user in plain language: "I need to know a few basics about your company first. Want to set those up now?" Then run `set-up-my-legal-info` if yes. Stop until that's done.
 

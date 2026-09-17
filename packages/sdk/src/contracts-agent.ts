@@ -1,7 +1,7 @@
 /**
  * One agent's contract: its list entry and library, its mission board, its
  * files and routines, its skills (its own, the workspace library, the
- * marketplace), and the AI providers and outside apps it reaches.
+ * repositories), and the AI providers and outside apps it reaches.
  *
  * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
  */
@@ -60,6 +60,11 @@ export {
   type IntegrationsWrites,
   type IntegrationToolkit,
 } from "./modules/integrations";
+export {
+  type CustomTransportChoice,
+  customIntegrationScope,
+  resolveCustomTransportAgent,
+} from "./modules/integrations/custom-scope";
 export type {
   AddCustomIntegrationInput,
   CustomAuthField,
@@ -126,16 +131,6 @@ export {
   type SkillsManifest,
   type SkillsModule,
 } from "./modules/skills";
-// ===== Skills marketplace contract =====================================
-export {
-  type CommunitySkill,
-  type CommunitySkillPreview,
-  MarketplaceCommand,
-  type MarketplaceCommandType,
-  MarketplaceHttpError,
-  type RepoSkill,
-  type SkillsMarketplace,
-} from "./modules/skills/types-marketplace";
 // ===== Shared skills contract ==========================================
 export {
   type NewSharedSkill,
@@ -147,3 +142,11 @@ export {
   type SharedSkillsList,
   type SharedSkillsModule,
 } from "./modules/skills/types-shared";
+// ===== Skills repository contract =====================================
+export {
+  type RepoSkill,
+  type SkillsRepo,
+  SkillsRepoCommand,
+  type SkillsRepoCommandType,
+  SkillsRepoHttpError,
+} from "./modules/skills/types-skills-repo";

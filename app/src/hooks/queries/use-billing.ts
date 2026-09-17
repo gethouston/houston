@@ -33,6 +33,11 @@ import { useCapabilities } from "../use-capabilities";
  * The active team's billing summary, or `null` when off-entitlement (the wire
  * swallows the not-entitled 404/403 and the billing-off 503 → null). Enabled
  * only for an owner/admin on a team space of a Spaces-capable host.
+ *
+ * There is no on-screen gate: the shell's team-status strip renders over EVERY
+ * screen of a team space and holds this query hot for as long as the space is
+ * open, so a second caller gating itself would only read the same cached
+ * summary a moment later — a gate that buys nothing and reads as if it did.
  */
 export function useBilling() {
   const { capabilities } = useCapabilities();

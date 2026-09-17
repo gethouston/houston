@@ -7,6 +7,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [gong, fireflies, fathom]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Primero leo tu contexto de marketing. Por cada campo obligatorio que falte, te h
 - **Transcripciones pegadas**: Obligatorio solo si no tienes conectada una app de notas de reuniones. Si falta, pregunto: "Sube de una a tres grabaciones de llamadas o pega las transcripciones que quieres que lea."
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leo el documento de posicionamiento** (archivo propio): `context/marketing-context.md`. Ancoro el análisis: busco citas que respalden, actualicen o contradigan las afirmaciones actuales.
 

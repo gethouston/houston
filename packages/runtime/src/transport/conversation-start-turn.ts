@@ -10,6 +10,12 @@ import {
 import { runConversationCommand } from "../session/conversation-command-run";
 import { isDraining } from "../session/drain";
 import { json, type RouteContext, readJson } from "./http-helpers";
+import {
+  acceptAdmission,
+  admissionInput,
+  replyExistingAdmission,
+  trackAdmission,
+} from "./message-admission";
 
 /**
  * `POST /conversations/:id/messages` — the ONE door every channel's message
@@ -46,6 +52,7 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
     engineUnavailable(ctx, "the agent is restarting", 2);
     return;
   }
+  const body = await readJson(ctx.req);
   const {
     text,
     nonce,
@@ -57,11 +64,13 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
     userContext,
     displayText,
     mentions,
-  } = await readJson(ctx.req);
+  } = body;
   if (!text || typeof text !== "string") {
     json(ctx.res, 400, { error: "missing 'text'" });
     return;
   }
+  const admission = admissionInput(ctx, body);
+  if (admission === false || replyExistingAdmission(ctx, id, admission)) return;
   // CONVERSATION COMMANDS (`/clear`, `/compact`): an instruction to the
   // conversation, not a prompt for the agent. Intercepted HERE — ahead of the
   // provider gate below — so a `/clear` still works for someone whose provider
@@ -81,13 +90,23 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
     // model call's worth of seconds) arrives on the conversation's event
     // stream, never on this request. The command marks the conversation held
     // synchronously, so the refusal below is already true for the next send.
-    void runConversationCommand(
+    const turnId = acceptAdmission(ctx, id, admission);
+    if (turnId === false) return;
+    holdConversationTurn(
       id,
-      command,
-      text,
-      typeof nonce === "string" ? nonce : undefined,
+      trackAdmission(
+        id,
+        admission,
+        runConversationCommand(
+          id,
+          command,
+          text,
+          typeof nonce === "string" ? nonce : undefined,
+          turnId,
+        ),
+      ),
     );
-    json(ctx.res, 202, { ok: true, id });
+    json(ctx.res, 202, { ok: true, id, ...(turnId ? { turnId } : {}) });
     return;
   }
   // Never trust the wire: only the known mode literals ("plan", "auto") pass;
@@ -145,29 +164,36 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
   // token, or (routine turns) the creator's sub. Captured here and held for the
   // turn so the integration tools act as that user. Both absent → act as owner.
   const acting = actingFromHeaders(ctx.req.headers);
+  const turnId = acceptAdmission(ctx, id, admission);
+  if (turnId === false) return;
   // Held for the turn's whole life, so a command arriving mid-turn is refused
   // instead of tearing this turn's session down (conversation-command-gate.ts).
   holdConversationTurn(
     id,
-    runTurn(
+    trackAdmission(
       id,
-      text,
-      typeof nonce === "string" ? nonce : undefined,
-      {
-        provider: pinnedProvider,
-        model: pinnedModel,
-        effort: typeof effort === "string" ? effort : undefined,
-        mode: turnMode,
-      },
-      acting,
-      context,
-      // Presentation-only bubble text (never trusted into the model input): the
-      // model runs on `text`; this only changes what a history reload renders.
-      typeof displayText === "string" ? displayText : undefined,
-      // The @mention sidecar (HOU-944), sanitized before it is persisted or
-      // published: junk entries are dropped and an empty list becomes nothing.
-      parseMentions(mentions),
+      admission,
+      runTurn(
+        id,
+        text,
+        typeof nonce === "string" ? nonce : undefined,
+        {
+          provider: pinnedProvider,
+          model: pinnedModel,
+          effort: typeof effort === "string" ? effort : undefined,
+          mode: turnMode,
+        },
+        acting,
+        context,
+        // Presentation-only bubble text (never trusted into the model input): the
+        // model runs on `text`; this only changes what a history reload renders.
+        typeof displayText === "string" ? displayText : undefined,
+        // The @mention sidecar (HOU-944), sanitized before it is persisted or
+        // published: junk entries are dropped and an empty list becomes nothing.
+        parseMentions(mentions),
+        turnId,
+      ),
     ),
   );
-  json(ctx.res, 202, { ok: true, id });
+  json(ctx.res, 202, { ok: true, id, ...(turnId ? { turnId } : {}) });
 }

@@ -4,9 +4,6 @@ import { ACADEMY_VIEW_ID } from "../src/components/academy/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../src/components/agents-home/id.ts";
 import { ASSISTANT_VIEW_ID } from "../src/components/assistant/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
-import { ORGANIZATION_VIEW_ID } from "../src/components/organization/id.ts";
-import { SKILLS_VIEW_ID } from "../src/components/skills-view/id.ts";
-import { STORE_VIEW_ID } from "../src/components/store-view/id.ts";
 import { TEAMS_HOME_VIEW_ID } from "../src/components/teams-home/id.ts";
 import { SETTINGS_SECTION_IDS } from "../src/lib/settings-sections.ts";
 import type { TeamSectionId, TeamView } from "../src/lib/teams-model.ts";
@@ -39,9 +36,6 @@ describe("isTopLevelView", () => {
       SETTINGS_VIEW_ID,
       AI_HUB_VIEW_ID,
       INTEGRATIONS_VIEW_ID,
-      ORGANIZATION_VIEW_ID,
-      SKILLS_VIEW_ID,
-      STORE_VIEW_ID,
       // One screen for every team: which team is open is store state, not an id.
       TEAM_VIEW_ID,
     ]) {
@@ -49,27 +43,30 @@ describe("isTopLevelView", () => {
     }
   });
 
-  it("is exactly those eleven, and no settings section doubles as one", () => {
+  it("is exactly those eight, and no settings section doubles as one", () => {
     // A Settings section is reached THROUGH `settings`, so no section id may
     // also resolve as a top-level view. Checking the live section list (rather
     // than retired string literals) keeps this failing if a future section is
     // wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 11);
+    strictEqual(TOP_LEVEL_VIEWS.size, 8);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }
     // Retired `viewMode` values an older install may still have pinned: the
     // global usage page, the Permissions screen (agent policy is a team's
     // focused agent screen), the standalone Time worked screen (a lens inside
-    // Admin), the Inbox, and About me (a Settings section, which the loop
-    // above already proves is no top-level view).
+    // Admin), the Inbox, the global Skills page (`skills-home`, now the Skills
+    // TAB of the Integrations screen), and About me (a Settings section).
     for (const retired of [
       "usage",
       "permissions",
       "time-worked",
       "inbox",
       "about-me",
+      "agent-store",
+      "organization",
+      "skills-home",
     ]) {
       strictEqual(isTopLevelView(retired), false, retired);
     }
@@ -78,7 +75,8 @@ describe("isTopLevelView", () => {
   it("treats everything else as an agent tab", () => {
     strictEqual(isTopLevelView("chat"), false);
     strictEqual(isTopLevelView("integrations"), false);
-    // "skills" is the per-agent Agent Settings screen id, not the global page.
+    // "skills" is the per-agent Agent Settings screen id AND the Integrations
+    // screen's library TAB id; neither is a top-level view.
     strictEqual(isTopLevelView("skills"), false);
   });
 });
@@ -98,14 +96,7 @@ describe("isMissionBoardView", () => {
   });
 
   it("covers nothing else", () => {
-    for (const id of [
-      SETTINGS_VIEW_ID,
-      AI_HUB_VIEW_ID,
-      STORE_VIEW_ID,
-      SKILLS_VIEW_ID,
-      "activity",
-      "chat",
-    ]) {
+    for (const id of [SETTINGS_VIEW_ID, AI_HUB_VIEW_ID, "activity", "chat"]) {
       strictEqual(isMissionBoardView(id), false, id);
     }
   });
@@ -194,8 +185,6 @@ describe("isMissionBoardSurface", () => {
     for (const viewMode of [
       SETTINGS_VIEW_ID,
       AI_HUB_VIEW_ID,
-      STORE_VIEW_ID,
-      SKILLS_VIEW_ID,
       INTEGRATIONS_VIEW_ID,
       "activity",
       "chat",
@@ -220,31 +209,16 @@ describe("isActiveTopLevelView", () => {
     );
   });
 
-  it("keeps each promoted screen's read on its OWN screen", () => {
-    // Time worked, Admin and Permissions are screens again, so a read one of
-    // them owns is active while ITS id is on the glass, never while Settings is.
+  it("keeps AI Models' read on its own screen", () => {
     strictEqual(isActiveTopLevelView(SETTINGS_VIEW_ID, AI_HUB_VIEW_ID), false);
-    strictEqual(
-      isActiveTopLevelView(SETTINGS_VIEW_ID, ORGANIZATION_VIEW_ID),
-      false,
-    );
-    strictEqual(
-      isActiveTopLevelView(ORGANIZATION_VIEW_ID, ORGANIZATION_VIEW_ID),
-      true,
-    );
   });
 });
 
 describe("blockedTopLevelView", () => {
   const gates = (
-    over: {
-      showAiModels?: boolean;
-      showOrganization?: boolean;
-      showAssistant?: boolean;
-    } = {},
+    over: { showAiModels?: boolean; showAssistant?: boolean } = {},
   ) => ({
     showAiModels: over.showAiModels ?? false,
-    showOrganization: over.showOrganization ?? false,
     showAssistant: over.showAssistant ?? false,
   });
 
@@ -254,31 +228,12 @@ describe("blockedTopLevelView", () => {
     strictEqual(blockedTopLevelView(INTEGRATIONS_VIEW_ID, gates()), false);
   });
 
-  it("never blocks the global Skills page", () => {
-    // Skills is ungated like Integrations: it operates on the caller's own
-    // agents through per-agent routes, so every role keeps it.
-    strictEqual(blockedTopLevelView(SKILLS_VIEW_ID, gates()), false);
-  });
-
   it("blocks a stale AI Models hub when its gate is off", () => {
     // A Teams member (role flipped) with a stale `ai-hub` viewMode must be
     // reported blocked and sent home.
     strictEqual(blockedTopLevelView(AI_HUB_VIEW_ID, gates()), true);
     strictEqual(
       blockedTopLevelView(AI_HUB_VIEW_ID, gates({ showAiModels: true })),
-      false,
-    );
-  });
-
-  it("blocks a stale Admin screen when the org gate is off", () => {
-    // A role demotion on a non-spaces host hides it, and the
-    // `viewMode` the user left open must not survive that.
-    strictEqual(blockedTopLevelView(ORGANIZATION_VIEW_ID, gates()), true);
-    strictEqual(
-      blockedTopLevelView(
-        ORGANIZATION_VIEW_ID,
-        gates({ showOrganization: true }),
-      ),
       false,
     );
   });
@@ -308,7 +263,6 @@ describe("blockedTopLevelView", () => {
       // would strand them off the app.
       AGENTS_HOME_VIEW_ID,
       SETTINGS_VIEW_ID,
-      STORE_VIEW_ID,
       TEAM_VIEW_ID,
       "chat",
     ]) {

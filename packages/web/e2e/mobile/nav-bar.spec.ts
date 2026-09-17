@@ -1,3 +1,4 @@
+import { NEW_TASK_PLACEHOLDER } from "../support/composer";
 import { expect, test } from "../support/fixtures";
 import {
   moreMenu,
@@ -118,7 +119,5 @@ test("the New task button pushes an empty draft chat", async ({ page }) => {
   // chat, composer ready for the first message.
   const chat = page.getByTestId("mission-chat-screen");
   await expect(chat).toBeVisible();
-  await expect(
-    chat.getByPlaceholder("What should the agent work on?"),
-  ).toBeVisible();
+  await expect(chat.getByPlaceholder(NEW_TASK_PLACEHOLDER)).toBeVisible();
 });

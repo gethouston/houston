@@ -7,6 +7,9 @@ category: Contabilidade
 featured: no
 image: ledger
 integrations: [googledrive, gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Eu leio o seu contexto contábil primeiro. Para todo campo obrigatório que esti
 - **Fechamentos mensais limpos até o fim do ano**, obrigatório. Motivo: a entrega é bloqueada até os livros estarem limpos; quebras de conciliação e itens sem categorizar abertos precisam fechar primeiro. Se faltar, pergunto: "Já fechamos todos os meses do ano fiscal? Se não, vamos terminar isso primeiro, senão a entrega vai ter itens em aberto demais."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json`, `config/chart-of-accounts.json`. Registro obrigatório: `universal.company` (razão social, EIN, tipo de entidade, ano fiscal), `universal.accountingMethod`, `domains.tax.preparerName`, `domains.tax.preparerEmail`, `domains.tax.rdCreditEligible`. Perguntar pelo contato do contador se estiver faltando (arquivo > colar) e guardar em cache.
 

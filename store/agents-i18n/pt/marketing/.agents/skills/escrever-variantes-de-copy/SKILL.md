@@ -7,6 +7,9 @@ category: Marketing
 featured: no
 image: megaphone
 integrations: [reddit, firecrawl, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -80,6 +83,7 @@ Leio seu contexto de marketing primeiro. Para cada campo obrigatório que estive
 - **O copy a editar**  -  Obrigatório para `edit`. Se faltar, pergunto: "Cole o copy que você quer editar, ou me dê a URL da página."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 ### Passos compartilhados (todas as tarefas)
 

@@ -12,8 +12,14 @@
  * passes a `mapProvider`.
  */
 
+import { isAutoContinue } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
-import { ENGINE_RESTART_MESSAGE, STOPPED_BY_USER } from "./turn-errors";
+import {
+  ENGINE_RESTART_MESSAGE,
+  ENGINE_RESUMED_MESSAGE,
+  type EngineNoticeKind,
+  STOPPED_BY_USER,
+} from "./turn-errors";
 import type { FeedAuthor, FeedMention } from "./vm-output";
 
 /**
@@ -34,6 +40,12 @@ export interface FeedFrame {
    *  conversation chips the same names the sent bubble did. Absent when the
    *  message mentioned nobody. */
   mentions?: FeedMention[];
+  /**
+   * Why the engine authored a `system_message`, when it did (a restart, a
+   * resume). `data` stays the English default; a surface renders its own copy
+   * by kind. Optional/additive; plain JSON across the bridge.
+   */
+  notice?: EngineNoticeKind;
   /**
    * Epoch-ms timestamp of the source `ChatMessage` this frame was folded from
    * (`ChatMessage.ts`). Carried on every frame attributable to a message so a
@@ -83,6 +95,12 @@ export function historyToFeed(
     const ts = m.ts;
     const turn = m.turnId !== undefined ? { turnId: m.turnId } : {};
     if (m.role === "user") {
+      // A hidden auto-continue prompt is a message the USER never wrote — the
+      // engine minted it (a boot resume, a continue directive). It is model
+      // input only, so it never becomes a bubble on any surface. Folded away
+      // HERE, in the shared behaviour layer, because iOS and every other SDK
+      // binder would otherwise render the raw marker text.
+      if (isAutoContinue(m.content)) continue;
       out.push({
         feed_type: "user_message",
         // Render displayText when the stored prompt carried text the user should
@@ -196,7 +214,10 @@ export function historyToFeed(
     if (m.interrupted) {
       out.push({
         feed_type: "system_message",
-        data: ENGINE_RESTART_MESSAGE,
+        data: m.interrupted.resumed
+          ? ENGINE_RESUMED_MESSAGE
+          : ENGINE_RESTART_MESSAGE,
+        notice: m.interrupted.resumed ? "engine_resumed" : "engine_restart",
         ts,
         ...turn,
       });

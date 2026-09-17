@@ -9,7 +9,10 @@ import { ASSISTANT_AGENT_NAME } from "../routes/assistant";
 import { assistantRuntimeRole } from "./assistant-role";
 import { ProcessLauncher } from "./process";
 import { runtimeSpawnEnv } from "./runtime-env";
-import { RuntimeProcessSpawner } from "./runtime-spawner";
+import {
+  RuntimeProcessSpawner,
+  STDERR_CLOSE_GRACE_MS,
+} from "./runtime-spawner";
 
 /** A stand-in ChildProcess: an emitter with the bits the spawner touches. */
 function fakeChild() {
@@ -134,6 +137,63 @@ test("a child that fails to spawn ('error', never 'exit') still fires the exit c
   expect(exits).toBe(1);
 });
 
+test("the exit callback carries the code, the signal and the last stderr lines", () => {
+  // The host is the only process that ever sees how a runtime died: a V8
+  // heap-limit abort or a cgroup SIGKILL leaves nothing in Sentry from the
+  // child itself (HOUSTON-APP-5DX ran 348 blind restarts on that gap).
+  const stderr = new EventEmitter();
+  const child = Object.assign(new EventEmitter(), {
+    stdout: null,
+    stderr,
+    kill: vi.fn(),
+  });
+  spawnMock.mockReturnValue(child);
+  const handle = new RuntimeProcessSpawner({ command: ["runtime"] }).spawn({
+    workspaceDir: "/data/agent",
+    dataDir: "/data/agent/data",
+    token: "secret",
+    port: 4317,
+  });
+  const exits: unknown[] = [];
+  handle.onExit?.((exit) => exits.push(exit));
+  for (let i = 0; i < 30; i++) stderr.emit("data", Buffer.from(`line ${i}\n`));
+  stderr.emit("data", Buffer.from("FATAL ERROR: Reached heap limit"));
+  child.emit("exit", null, "SIGABRT");
+  child.emit("close", null, "SIGABRT");
+
+  expect(exits).toHaveLength(1);
+  const exit = exits[0] as {
+    code: number | null;
+    signal: string | null;
+    stderrTail: string[];
+  };
+  expect(exit.code).toBeNull();
+  expect(exit.signal).toBe("SIGABRT");
+  expect(exit.stderrTail).toHaveLength(24);
+  expect(exit.stderrTail[0]).toBe("line 7");
+  expect(exit.stderrTail.at(-1)).toBe("FATAL ERROR: Reached heap limit");
+});
+
+test("an 'exit' with no 'close' still fires after the stderr grace, once", () => {
+  vi.useFakeTimers();
+  const child = fakeChild();
+  spawnMock.mockReturnValue(child);
+  const handle = new RuntimeProcessSpawner({ command: ["runtime"] }).spawn({
+    workspaceDir: "/data/agent",
+    dataDir: "/data/agent/data",
+    token: "secret",
+    port: 4317,
+  });
+  const exits: unknown[] = [];
+  handle.onExit?.((exit) => exits.push(exit));
+  child.emit("exit", 137, null);
+  expect(exits).toHaveLength(0); // waiting for the pipes to drain
+  vi.advanceTimersByTime(STDERR_CLOSE_GRACE_MS);
+  expect(exits).toEqual([{ code: 137, signal: null, stderrTail: [] }]);
+  child.emit("close", 137, null);
+  expect(exits).toHaveLength(1);
+});
+
 test("each onExit registration gets its own one-shot callback", () => {
   // The launcher registers separately for the boot abort and for sleep's
   // "wait until the child is actually gone" — both must be told.
@@ -191,7 +251,8 @@ test("a runtime that fails to spawn aborts the boot instead of burning the healt
     await vi.advanceTimersByTimeAsync(0);
     await boot;
 
-    expect(failure).toBe("runtime exited before becoming healthy");
+    expect(failure).toContain("runtime exited before becoming healthy");
+    expect(failure).toContain("never spawned");
     expect(Date.now() - started).toBeLessThan(1_000); // not the 60s budget
     expect(await launcher.status("sales")).toBe("asleep");
   })();

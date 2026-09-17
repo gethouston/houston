@@ -6,6 +6,9 @@ category: Sales
 featured: no
 image: handshake
 integrations: [googlecalendar]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -36,6 +39,9 @@ I read your sales context first. For every required field that's missing I ask O
 
 - **Your sales playbook**  -  Optional. Why I need it: lets me flag meetings that need prep against your qualification framework. If you don't have it I keep going with TBD and skip the prep flag.
 - **Today's calendar**  -  Required. Why I need it: the brief is grounded in your actual day. If missing I ask: "Connect Google Calendar or Outlook so I can pull today's meetings, or paste your day."
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read playbook.** Load `context/sales-context.md`. If missing, warn user but continue  -  brief still useful without.
 

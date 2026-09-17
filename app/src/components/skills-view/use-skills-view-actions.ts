@@ -1,12 +1,9 @@
-import { type CommunitySkill, classifySkillError } from "@houston-ai/skills";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { queryKeys } from "../../lib/query-keys";
-import { isUnavailableSkillError } from "../../lib/skill-install-expected-state";
 import { tauriAgent, tauriSkills } from "../../lib/tauri";
-import type { Agent } from "../../lib/types";
 import type { WorkspaceSkillRow } from "../../lib/workspace-skills";
 import { useUIStore } from "../../stores/ui";
 
@@ -17,9 +14,7 @@ const skillMdPath = (slug: string) => `.agents/skills/${slug}/SKILL.md`;
  * calls to the existing per-agent routes (skills are stored ON each agent —
  * there is no shared store, and the hosted gateway only proxies agent-scoped
  * routes). Failures surface per the no-silent-failures rule: the `call`
- * wrapper already toasts write/delete failures with the real reason; community
- * installs ride `toast: false`, so this hook toasts those itself, naming the
- * agents that failed.
+ * wrapper toasts write/delete failures with the real reason.
  */
 export function useSkillsViewActions() {
   const { t } = useTranslation("skills");
@@ -34,108 +29,6 @@ export function useSkillsViewActions() {
       }
     },
     [qc],
-  );
-
-  /** skills.sh install, fanned out to the picked agents. Resolves the slug for
-   *  the marketplace card's installed check; rejects if nothing installed. */
-  const installToAgents = useCallback(
-    async (skill: CommunitySkill, targets: Agent[]): Promise<string> => {
-      const settled = await Promise.allSettled(
-        targets.map((agent) =>
-          tauriSkills.installCommunity(
-            agent.folderPath,
-            skill.source,
-            skill.skillId,
-          ),
-        ),
-      );
-      invalidateSkills(targets.map((a) => a.folderPath));
-      const failures = settled
-        .map((r, i) => ({ r, agent: targets[i] }))
-        .filter(({ r }) => r.status === "rejected");
-      const okCount = settled.length - failures.length;
-      if (okCount > 0) {
-        analytics.track("skill_installed", {
-          skill_slug: skill.skillId,
-          source: "community",
-        });
-        addToast({
-          title: t("global.installedTo", { count: okCount }),
-          variant: "success",
-        });
-      }
-      if (failures.length > 0) {
-        const allAlready = failures.every(
-          ({ r }) =>
-            r.status === "rejected" &&
-            classifySkillError(r.reason) === "already_installed",
-        );
-        // The skill is gone upstream for EVERY agent alike (PRODUCT-1729):
-        // one expected-state line, not a red toast naming each agent.
-        const allUnavailable = failures.every(({ r }) =>
-          isUnavailableSkillError(r.status === "rejected" ? r.reason : null),
-        );
-        if (allAlready && okCount === 0) {
-          addToast({ title: t("store.installFailedAlready"), variant: "info" });
-        } else if (allUnavailable) {
-          addToast({ title: t("store.installUnavailable"), variant: "info" });
-        } else if (!allAlready) {
-          addToast({
-            title: t("global.installFailedFor", {
-              names: failures.map(({ agent }) => agent.name).join(", "),
-            }),
-            variant: "error",
-          });
-        }
-      }
-      // Rethrow the FIRST real rejection so its typed `kind` survives: the
-      // marketplace card keys its next state on it (an unavailable skill is
-      // dropped, anything else re-enables the button).
-      if (okCount === 0) {
-        const first = failures[0]?.r;
-        throw first?.status === "rejected"
-          ? first.reason
-          : new Error("install failed for every agent");
-      }
-      const first = settled.find((r) => r.status === "fulfilled");
-      return first?.status === "fulfilled" ? first.value : skill.skillId;
-    },
-    [addToast, invalidateSkills, t],
-  );
-
-  /** From-scratch create, fanned out. Targets already holding the slug are the
-   *  dialog's concern (it filters them); a real failure keeps the dialog open. */
-  const createForAgents = useCallback(
-    async (
-      input: { name: string; description: string; content: string },
-      targets: Agent[],
-    ): Promise<void> => {
-      const settled = await Promise.allSettled(
-        targets.map((agent) =>
-          tauriSkills.create(
-            agent.folderPath,
-            input.name,
-            input.description,
-            input.content,
-          ),
-        ),
-      );
-      invalidateSkills(targets.map((a) => a.folderPath));
-      const okCount = settled.filter((r) => r.status === "fulfilled").length;
-      if (okCount > 0) {
-        analytics.track("skill_installed", {
-          skill_slug: input.name,
-          source: "scratch",
-        });
-        addToast({
-          title: t("global.createdFor", { count: okCount }),
-          variant: "success",
-        });
-      }
-      // Failures already toasted with their real reason by the `call` wrapper.
-      if (okCount === 0) throw new Error("create failed for every agent");
-    },
-    [addToast, invalidateSkills, t],
   );
 
   /** One global save: write the canonical content to `writes`, remove the copy
@@ -180,8 +73,6 @@ export function useSkillsViewActions() {
   );
 
   return {
-    installToAgents,
-    createForAgents,
     applySkillChanges,
     deleteSkillEverywhere,
   };

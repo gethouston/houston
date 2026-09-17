@@ -9,10 +9,7 @@ import { AgentsHomeView } from "../agents-home/agents-home-view";
 import { AiHubView } from "../ai-hub/ai-hub-view";
 import { ASSISTANT_VIEW_ID, AssistantView } from "../assistant";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
-import { ORGANIZATION_VIEW_ID, OrganizationView } from "../organization";
 import { SettingsView } from "../settings/settings-view";
-import { SKILLS_VIEW_ID, SkillsView } from "../skills-view";
-import { STORE_VIEW_ID, StoreView } from "../store-view";
 import { TeamView } from "../team-view/team-view";
 import { TEAMS_HOME_VIEW_ID } from "../teams-home/id";
 import { TeamsHomeView } from "../teams-home/teams-home-view";
@@ -21,24 +18,20 @@ import type { KeepAliveView } from "./keep-alive-views";
 /**
  * The cached top-level screens, separated from the shell's agent-tab chrome.
  *
- * Admin is a screen of its own here, gated so it is never even mounted where it
- * would have nothing to show (`showOrganization`: multiplayer owner/admin, and
- * a TEAM active space on a Spaces host). The Academy is ungated: learning the
- * product exists in every deployment. Settings carries its own sections, About
- * me among them (`lib/settings-sections.ts`).
+ * The Academy is ungated: learning the product exists in every deployment.
+ * Settings carries its own sections — About me, Workspace management (which
+ * holds everything that administers the space) and the shared Skills library
+ * (`lib/settings-sections.ts`).
  *
- * Two screens that used to be here are gone. Permissions listed the space's
- * agents to reach one's settings page, which every team's "focused agent screen"
- * section already does per team, in every deployment. Time worked is a lens
- * inside Admin.
+ * Agent policy is reached through each team's focused agent screen, and the
+ * space's own administration through Settings, so neither owns a screen here.
  *
- * Every team shares the ONE `team` screen for the same reason: it reads the
+ * Every team shares the ONE `team` screen: it reads the
  * open team and section from the UI store, so the cache survives switching
  * between teams and no view id is ever orphaned by a deleted team.
  */
 export function topLevelScreenViews(gates: {
   showAiModels: boolean;
-  showOrganization: boolean;
   showAssistant: boolean;
 }): KeepAliveView[] {
   return [
@@ -63,13 +56,6 @@ export function topLevelScreenViews(gates: {
       enabled: true,
       content: <IntegrationsView />,
     },
-    {
-      id: ORGANIZATION_VIEW_ID,
-      enabled: gates.showOrganization,
-      content: <OrganizationView />,
-    },
-    { id: SKILLS_VIEW_ID, enabled: true, content: <SkillsView /> },
-    { id: STORE_VIEW_ID, enabled: true, content: <StoreView /> },
     { id: TEAM_VIEW_ID, enabled: true, content: <TeamView /> },
   ];
 }

@@ -6,7 +6,7 @@
     "scheduleOptionTitle": "On a schedule",
     "eventOptionTitle": "When something happens in an app",
     "triggerDescription": "Pick the app to watch. You'll say what should happen in it in the chat.",
-    "build": "Create it with your agent",
+    "build": "Create it with your AI Employee",
     "webhookOptionTitle": "From an external app",
     "webhookTitle": "Wake it from a web address",
     "webhookDescription": "You'll get a unique web address that wakes this routine whenever anything calls it."
@@ -121,8 +121,8 @@
       "cancelled": "Stopped"
     },
     "model": {
-      "followsAgent": "Follows the agent's model",
-      "reset": "Use the agent's model"
+      "followsAgent": "Follows the AI Employee's model",
+      "reset": "Use the AI Employee's model"
     },
     "health": {
       "connected": "Connected",
@@ -241,7 +241,7 @@
     "waitingFirstEvent": "Active. Waiting for the first event.",
     "reconnect": "Reconnect",
     "statusDisconnectedHint": "The connected account was disconnected.",
-    "statusRevokedHint": "This app was turned off for this agent.",
+    "statusRevokedHint": "This app was turned off for this AI Employee.",
     "rowSummary": "Wakes on an event in {{app}}",
     "loadFailed": "Couldn't load event triggers",
     "webhookRowSummary": "When its webhook address is called"

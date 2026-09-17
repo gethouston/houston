@@ -7,6 +7,9 @@ category: Marketing
 featured: yes
 image: megaphone
 integrations: [linkedin, twitter, reddit, youtube]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Leio seu contexto de marketing primeiro. Para cada campo obrigatório que estive
 - **Cadência de publicação**: opcional, padrão LinkedIn 3 / X 5 / Reddit 2 por semana. Se faltar, pergunto: "Quantas publicações por semana por plataforma você quer mirar? Se você não tiver um número, sigo com o padrão."
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o doc de posicionamento**:
    `context/marketing-context.md`. Se estiver faltando ou

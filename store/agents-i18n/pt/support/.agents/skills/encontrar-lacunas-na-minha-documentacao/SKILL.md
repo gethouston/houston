@@ -6,6 +6,9 @@ version: 1
 category: Suporte
 featured: no
 image: headphone
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -34,6 +37,7 @@ Eu leio seu contexto de suporte primeiro. Para cada campo obrigatório que estiv
 - **Níveis de plano**. Opcional. Por que preciso: lacunas que atingem clientes pagantes rankeiam mais alto que as que atingem o plano gratuito. Se você não tiver, eu sigo em frente com peso igual por ticket.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. Leio `patterns.json` (grupos de perguntas repetidas) e `articles/` (a KB existente). Filtro os padrões sem artigo correspondente.
 2. Lista vazia → rodo `flag-a-signal signal=repeat-question` primeiro (ou te aviso que acabou de rodar e ainda não há nada).

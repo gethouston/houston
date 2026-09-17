@@ -41,10 +41,10 @@ export function ApiKeysBody() {
           ))}
         </div>
       ) : isError ? (
-        <Empty className="border border-border">
+        <Empty className="border border-line">
           <EmptyHeader>
             <EmptyMedia variant="icon">
-              <TriangleAlert className="size-6 text-destructive" />
+              <TriangleAlert className="size-6 text-danger" />
             </EmptyMedia>
             <EmptyTitle>{t("apiKeys.error.title")}</EmptyTitle>
             <EmptyDescription>
@@ -59,7 +59,7 @@ export function ApiKeysBody() {
         </Empty>
       ) : hasKeys ? (
         <>
-          <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+          <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-card">
             {keys?.map((key) => (
               <ApiKeyRow
                 key={key.id}
@@ -79,7 +79,7 @@ export function ApiKeysBody() {
           </Button>
         </>
       ) : (
-        <Empty className="border border-border">
+        <Empty className="border border-line">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <KeyRound className="size-6" />
@@ -138,14 +138,14 @@ function ApiKeyRow({ apiKey, locale, onRevoke }: ApiKeyRowProps) {
     <div className="flex items-center gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="truncate text-sm font-medium text-foreground">
+          <span className="truncate text-sm font-medium text-ink">
             {apiKey.name}
           </span>
-          <code className="shrink-0 font-mono text-xs text-muted-foreground">
+          <code className="shrink-0 font-mono text-xs text-ink-muted">
             {apiKey.prefix}
           </code>
         </div>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="mt-0.5 flex items-center gap-2 text-xs text-ink-muted">
           <span>{t("apiKeys.row.created", { date: created })}</span>
           {used.kind === "never" ? (
             <Badge variant="secondary">{t("apiKeys.row.neverUsed")}</Badge>
@@ -161,7 +161,7 @@ function ApiKeyRow({ apiKey, locale, onRevoke }: ApiKeyRowProps) {
       <Button
         variant="ghost"
         size="sm"
-        className="shrink-0 text-destructive hover:text-destructive"
+        className="shrink-0 text-danger hover:text-danger"
         onClick={onRevoke}
       >
         {t("apiKeys.row.revoke")}

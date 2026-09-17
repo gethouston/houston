@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: yes
 image: ledger
 integrations: [quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **A current budget** — Optional. Why: variance analysis runs against budget if available, otherwise against prior period. If you don't have one I keep going and run prior-period variance only.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Parse inputs & read context.**
    - Required: `period` (`YYYY-MM`). Parse to `{periodStart, periodEnd}`.

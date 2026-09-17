@@ -5,11 +5,7 @@
  * and the browser's back/forward come back in through `popstate`.
  *
  * The URL never changes (there is no router): every history entry shares the
- * page's URL and carries only a stack index in its state. That is what keeps
- * this layer compatible with the one pre-existing history call —
- * `store-deeplink-ingress.ts` strips `?install=`/`?creator=` with a
- * `replaceState` that passes `window.history.state` through, so the index
- * survives in either order.
+ * page's URL and carries only a stack index in its state.
  *
  * Refresh: the in-memory stack re-boots to a single entry while the browser
  * keeps the old session's entries below the current one. Their indices no

@@ -40,20 +40,17 @@ test("the More menu carries the rail's destinations and closes on navigation", a
   await expect(menu).toBeVisible();
   // The rail's own rows, by the rail's own anchors — one destination list for
   // both breakpoints.
-  for (const anchor of [
-    "nav-agent-store",
-    "nav-integrations",
-    "nav-ai-hub",
-    "nav-skills",
-    "nav-settings",
-  ]) {
+  for (const anchor of ["nav-integrations", "nav-ai-hub", "nav-settings"]) {
     await expect(moreRow(page, anchor)).toHaveCount(1);
   }
 
   // Navigating from the menu closes it so the content is visible again.
-  await moreRow(page, "nav-agent-store").click();
+  await moreRow(page, "nav-integrations").click();
   await expect(menu).toBeHidden();
-  await expect(screen(page)).toHaveAttribute("data-screen", "agent-store");
+  await expect(screen(page)).toHaveAttribute(
+    "data-screen",
+    "integrations-home",
+  );
 });
 
 test("keeps the document free of horizontal overflow", async ({ page }) => {

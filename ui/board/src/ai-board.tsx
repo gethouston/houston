@@ -17,6 +17,12 @@ import { SplitView } from "@houston-ai/layout";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { AIBoardLabels } from "./board-labels";
+import {
+  composerHasHistory,
+  composerPlaceholder,
+  DEFAULT_AI_BOARD_LABELS,
+} from "./board-labels";
 import type { BulkActionBarLabels, BulkMoveTarget } from "./bulk-action-bar";
 import { BulkActionBar } from "./bulk-action-bar";
 import { KanbanBoard } from "./kanban-board";
@@ -255,6 +261,14 @@ export interface AIBoardProps {
   onDraftChange?: (sessionKey: string, text: string) => void;
   /** Translated label overrides for per-card copy (the card's action tooltips + delete confirm). */
   cardLabels?: KanbanCardLabels;
+  /** Translated overrides for the copy the board renders itself (composer
+   *  placeholders, the uncreated conversation's panel title). */
+  labels?: AIBoardLabels;
+  /** Read the composer's "follow-up" wording off the loaded feed instead of
+   *  the open conversation: for a permanent conversation (the assistant) an
+   *  empty chat asks its opening question. Off by default: a mission opened
+   *  from its card is history whether or not the feed has loaded. */
+  composerAsksOpeningWhenEmpty?: boolean;
   /**
    * When set, replaces the chat composer with this node. Forwarded to
    * ChatPanel. Apps use it to take over the composer space with a
@@ -421,6 +435,8 @@ export function AIBoard({
   canSendEmpty,
   onComposerSubmit,
   cardLabels,
+  labels,
+  composerAsksOpeningWhenEmpty,
   composerOverride,
   composerOverrideMode,
   composerLabels,
@@ -678,7 +694,12 @@ export function AIBoard({
   });
   // Blank while a selected chat's card hasn't resolved yet — never the
   // new-conversation label on an existing chat.
-  const panelTitle = panelItem?.title ?? (selectedId ? "" : "New conversation");
+  const panelTitle =
+    panelItem?.title ??
+    (selectedId
+      ? ""
+      : (labels?.newConversationTitle ??
+        DEFAULT_AI_BOARD_LABELS.newConversationTitle));
   // The chat's overflow menu lives in the detail-panel HEADER (left of the
   // people stack), not inside the chat body: the trigger is board-rendered
   // chrome while the search popover it opens stays inside ChatMessages. The
@@ -861,11 +882,14 @@ export function AIBoard({
               : undefined
           }
           queuedLabels={queuedLabels}
-          placeholder={
-            activeSessionKey
-              ? "Send a follow-up..."
-              : "What should the agent work on?"
-          }
+          placeholder={composerPlaceholder({
+            activeSessionKey,
+            hasHistory: composerHasHistory({
+              asksOpeningWhenEmpty: composerAsksOpeningWhenEmpty === true,
+              feedLength: activeFeed.length,
+            }),
+            labels,
+          })}
           emptyState={activeFeed.length === 0 ? chatEmptyState : undefined}
           onLoadOlder={activeSessionKey ? onLoadOlderMessages : undefined}
           hasOlderMessages={hasOlderMessages}

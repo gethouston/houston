@@ -7,6 +7,9 @@ category: Operaciones
 featured: yes
 image: clipboard
 integrations: [googlecalendar, gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -44,6 +47,7 @@ Primero leo tu contexto operativo. Por cada campo requerido que falte hago UNA p
 - `calendar` - escanear los próximos 7 días en busca de sobrecupos, márgenes faltantes, choques con bloques de concentración, espacios VIP sin proteger y reuniones sin preparación. Escribe `calendar-scans/{YYYY-MM-DD}.md` + actualiza o inserta en `calendar-conflicts.json`.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. Leer `config/context-ledger.json`. Llenar los vacíos con UNA pregunta dirigida.
 2. Leer `context/operations-context.md`. Si falta: detenerse y pedir que ejecutes `set-up-my-ops-info` primero, sin inventar prioridades.

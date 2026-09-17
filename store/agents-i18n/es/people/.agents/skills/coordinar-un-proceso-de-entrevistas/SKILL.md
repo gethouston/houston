@@ -7,6 +7,9 @@ category: Personal
 featured: no
 image: busts-in-silhouette
 integrations: [googlecalendar, outlook, loops]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -49,6 +52,7 @@ conectada > archivo > URL > texto pegado) y espero.
 - **Zona horaria**: Obligatoria cuando el panel abarca varias regiones. Por qué la necesito: evita sorpresas a las 6 de la mañana. Si falta, pregunto: "¿Qué zona horaria debo usar como referencia para el proceso?"
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Leer el documento de contexto de personal** en
    `context/people-context.md`. Si falta o está vacío, le digo al

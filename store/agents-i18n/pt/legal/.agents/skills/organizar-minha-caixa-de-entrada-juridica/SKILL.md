@@ -7,6 +7,9 @@ category: Caixa de entrada
 featured: no
 image: scroll
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -19,6 +22,7 @@ integrations: [gmail, outlook]
 - Segura sob demanda, diária ou algumas vezes por semana para um fundador solo. Janela padrão: últimos 7 dias, se não especificado.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leia o contexto compartilhado**: `context/legal-context.md`. Se estiver faltando ou vazio, pergunte ao usuário em linguagem simples: "Eu preciso de algumas informações básicas sobre a sua empresa primeiro. Quer configurar isso agora?" Depois rode `set-up-my-legal-info` se sim. Pare até que isso esteja feito.
 2. **Leia a configuração**: `config/counterparty-stack.json`. Se a caixa de entrada não estiver conectada, pergunte ao usuário em linguagem simples: "Eu preciso conectar sua caixa de entrada para olhar o que chegou. Quer conectar o Gmail ou o Outlook agora?" Pare até que esteja conectada.

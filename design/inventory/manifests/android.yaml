@@ -64,6 +64,8 @@ components:
     status: not-started
   skill-row:
     status: not-started
+  skill-workflow-steps:
+    status: not-started
   empty-state:
     status: not-started
   toast:
@@ -100,26 +102,6 @@ components:
     status: not-started
   status-badge:
     status: not-started
-  agent-store-navigation:
-    status: not-started
-  agent-store-controls:
-    status: not-started
-  agent-store-agent-card:
-    status: not-started
-  agent-store-creator-card:
-    status: not-started
-  agent-store-detail:
-    status: not-started
-  agent-store-skill-list:
-    status: not-started
-  agent-store-creator-block:
-    status: not-started
-  agent-store-home-screen:
-    status: not-started
-  agent-store-agent-detail-screen:
-    status: not-started
-  agent-store-creator-profile-screen:
-    status: not-started
   sidebar-team-block:
     status: not-started
   sidebar-nav-band:
@@ -145,4 +127,12 @@ components:
   mission-chat-screen:
     status: not-started
   new-mission-sheet:
+    status: not-started
+  form-dialog:
+    status: not-started
+  flow-sheet:
+    status: not-started
+  flow-choice-row:
+    status: not-started
+  messaging-channels-settings:
     status: not-started

@@ -6,6 +6,9 @@ version: 1
 category: Operações
 featured: no
 image: clipboard
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -35,6 +38,7 @@ Leio o seu contexto operacional primeiro. Para cada campo obrigatório que estiv
 - **Decisões, revisões ou registros de metas recentes** - Opcional. Por que preciso: mais trabalho salvo significa evidência mais forte. Se você não tiver isso, sigo em frente com TBD e me apoio no que existir.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Leio `context/operations-context.md`.** Se faltar ou estiver vazio, paro e peço para o usuário rodar `set-up-my-ops-info` primeiro. Prioridades e contatos-chave ancoram a lógica de "responsável proposto para destravar".
 

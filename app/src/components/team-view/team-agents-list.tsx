@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
 import { agentSettingsQueryOptions } from "../../hooks/queries/use-agent-settings";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { isMultiplayer } from "../../lib/org-roles";
 import type { TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
@@ -36,34 +37,37 @@ import {
 } from "../settings/settings-row";
 import { agentPolicyChips } from "./agent-policy-chips-model";
 import { ceilingPolicyValue, peoplePolicyValue } from "./agent-policy-values";
+import { readsAgentPolicy, visibleAgentRows } from "./agent-rows-model";
 import { useAgentSettingsNav } from "./agent-settings-nav-store";
 import { teamFanOut } from "./team-fan-out";
 
-const ROWS: readonly [AgentSettingsSection, typeof Palette][] = [
-  ["manage", Palette],
-  ["job-description", BookOpenText],
-  ["skills", Wrench],
-  ["learnings", Brain],
-  ["people", Users],
-  // The same glyphs the rail's own Integrations and AI Models rows wear, so
-  // one concept never carries two marks.
-  ["integrations", Blocks],
-  ["models", Boxes],
-];
+/** Each section's mark. Integrations and AI Models wear the same glyphs the
+ *  rail's own rows do, so one concept never carries two marks. */
+const ROW_ICONS: Record<AgentSettingsSection, typeof Palette> = {
+  manage: Palette,
+  "job-description": BookOpenText,
+  skills: Wrench,
+  learnings: Brain,
+  people: Users,
+  integrations: Blocks,
+  models: Boxes,
+};
 
 export function TeamAgentsList({ team }: { team: TeamView }) {
   const { t } = useTranslation(["teams", "agents"]);
   const openTeamView = useUIStore((s) => s.openTeamView);
   const request = useAgentSettingsNav((s) => s.requestAgentDetail);
   const { capabilities } = useCapabilities();
+  const personalSpace = usePersonalSpace();
   // Gateway-cheap policy values only (roster + ceilings): reading pod-owned
   // facts roster-wide would wake every cold pod, so those rows carry none.
-  const showPolicy = capabilities?.teams === true;
+  const rows = visibleAgentRows(capabilities, personalSpace);
+  const showCeilings = readsAgentPolicy(capabilities, personalSpace);
   const { data: org } = useOrg(isMultiplayer(capabilities));
   const members = org?.members ?? [];
   const settings = useQueries({
     queries: team.agents.map((agent) =>
-      agentSettingsQueryOptions(agent.id, showPolicy, true),
+      agentSettingsQueryOptions(agent.id, showCeilings, true),
     ),
     combine: teamFanOut,
   });
@@ -91,19 +95,23 @@ export function TeamAgentsList({ team }: { team: TeamView }) {
           data: settings.data[index],
           error: settings.errors[index],
         });
+        // People reads the roster the screen already holds; the two ceilings
+        // read the settings fan-out, so they carry a value only where it ran.
         const values: Partial<
           Record<AgentSettingsSection, string | undefined>
-        > = showPolicy
-          ? {
-              people: peoplePolicyValue(t, chips.people),
-              integrations: ceilingPolicyValue(
-                t,
-                chips.integrations,
-                "integrations",
-              ),
-              models: ceilingPolicyValue(t, chips.models, "models"),
-            }
-          : {};
+        > = {
+          people: peoplePolicyValue(t, chips.people),
+          ...(showCeilings
+            ? {
+                integrations: ceilingPolicyValue(
+                  t,
+                  chips.integrations,
+                  "integrations",
+                ),
+                models: ceilingPolicyValue(t, chips.models, "models"),
+              }
+            : {}),
+        };
         return (
           <AccordionItem key={agent.id} value={agent.id} className="border-0">
             <SettingsGroupTitle className="!mb-0">
@@ -127,10 +135,10 @@ export function TeamAgentsList({ team }: { team: TeamView }) {
             </SettingsGroupTitle>
             <AccordionContent className="pt-3 pb-0">
               <SettingsCard>
-                {ROWS.map(([section, icon]) => (
+                {rows.map((section) => (
                   <SettingsRow
                     key={section}
-                    icon={icon}
+                    icon={ROW_ICONS[section]}
                     title={
                       section === "manage"
                         ? t("teams:agentSettings.manage.identity")

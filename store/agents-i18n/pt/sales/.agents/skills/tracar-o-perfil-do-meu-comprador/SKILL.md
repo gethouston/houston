@@ -7,6 +7,9 @@ category: Vendas
 featured: no
 image: handshake
 integrations: [hubspot, salesforce, attio, pipedrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,9 @@ Primeiro leio o seu contexto de vendas. Para cada campo obrigatório que estiver
 - **O segmento a traçar o perfil**  -  Obrigatório. Por que preciso: a persona é específica de um segmento, não genérica. Se estiver faltando, pergunto: "De qual segmento eu devo traçar o perfil? Setor, tamanho da empresa, geografia?"
 - **Fonte das contas**  -  Obrigatório. Por que preciso: ou busco no seu CRM, ou trabalho com exemplos que você me der. Se estiver faltando, pergunto: "Devo buscar negócios fechados com sucesso nesse segmento no seu CRM conectado, ou você prefere me apresentar 2 ou 3 contas reais?"
 - **Quem assinou e quem bloqueou em negócios anteriores**  -  Opcional. Por que preciso: refina os padrões do comprador econômico e do bloqueador. Se você não tiver essa informação, sigo com TBD na seção do bloqueador.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Leio o playbook.** Carrego `context/sales-context.md`. Se estiver faltando, rodo `set-up-my-sales-info` primeiro.
 

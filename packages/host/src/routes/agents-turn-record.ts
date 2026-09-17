@@ -24,6 +24,10 @@ import { turnModeOf, turnPinOf } from "./turn-body";
  * one agent whose operations the host itself performs — every other agent's
  * send reaches the channel with its body untouched.
  *
+ * A RETRY of a message the runtime already took records nothing: the turn it
+ * started is the live one, and restarting it here would move the mode and the
+ * depth guard onto a turn nobody sent.
+ *
  * WHO the turn acts as is recorded with it: the gateway-minted token this
  * request arrived with (undefined off the gateway, where an inbound acting
  * header is untrusted client input). The `/sandbox/*` routes this turn calls
@@ -36,7 +40,7 @@ import { turnModeOf, turnPinOf } from "./turn-body";
  * the engine still receives the same bytes.
  */
 export const recordLiveTurn: TurnSeam = async (ctx) => {
-  if (ctx.turnConversationId === undefined) return;
+  if (ctx.turnConversationId === undefined || ctx.message.duplicate) return;
   const body = await ctx.body.read();
   let mode: TurnMode = "execute";
   if (assistantRuntimeRole({ agentId: ctx.agent.id }))
@@ -79,6 +83,7 @@ export const applyModeSwitch: TurnSeam = async (ctx) => {
 export const stampAttribution: TurnSeam = async (ctx) => {
   if (!ctx.actingAuthor || !ctx.vfs || ctx.turnConversationId === undefined)
     return;
+  if (ctx.message.duplicate) return;
   let mentionedIds: string[] = [];
   try {
     const parsed = JSON.parse(

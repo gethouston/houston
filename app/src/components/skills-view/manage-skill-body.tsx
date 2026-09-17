@@ -1,19 +1,22 @@
-import { AsyncButton, Button, DialogFooter, Textarea } from "@houston-ai/core";
+import { AsyncButton, Button, DialogFooter } from "@houston-ai/core";
 import { MessageCircle, Users } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Agent } from "../../lib/types";
+import type { Agent, SkillWorkflow } from "../../lib/types";
 import { SkillAssignmentSection } from "./skill-assignment-section";
+import { SkillBodyEditor } from "./skill-body-editor";
 
 /**
- * The ready-state body of the global skill dialog: the full SKILL.md in a
- * monospace editor (the same treatment as the per-agent edit modal) over the
- * agent assignment list. Owns the draft state; mounted with a `key` per skill
- * so switching rows reseeds it. Save hands the parent the draft + whether the
+ * The ready-state body of the global skill dialog: the skill itself (its
+ * workflow steps for a Houston-written skill, the SKILL.md editor for an
+ * imported one — see {@link SkillBodyEditor}) over the agent assignment list.
+ * Owns the draft state; mounted with a `key` per skill so switching rows
+ * reseeds it. Save hands the parent the draft + whether the
  * content changed — the parent turns that into the write/delete fan-out.
  */
 export function ManageSkillBody({
   initialContent,
+  workflow,
   agents,
   assignedIds,
   allowEmptySelection = false,
@@ -30,6 +33,7 @@ export function ManageSkillBody({
 }: {
   /** The canonical copy's full SKILL.md (frontmatter + body). */
   initialContent: string;
+  workflow?: SkillWorkflow | null;
   agents: Agent[];
   /** Ids of the agents currently holding a copy. */
   assignedIds: ReadonlySet<string>;
@@ -89,12 +93,11 @@ export function ManageSkillBody({
   return (
     <>
       <div className="flex min-w-0 flex-col gap-4">
-        <Textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          aria-label={t("skills:addDialog.scratch.bodyLabel")}
-          placeholder={t("skills:detail.instructionsPlaceholder")}
-          className="h-64 resize-none overflow-y-auto font-mono text-sm"
+        <SkillBodyEditor
+          variant="dialog"
+          content={content}
+          workflow={workflow}
+          onChange={setContent}
         />
         {assignment !== "hidden" && (
           <SkillAssignmentSection

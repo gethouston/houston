@@ -9,7 +9,7 @@ import {
 import { Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ShareAction } from "../agent/agent-access-model.ts";
-import { memberLabel } from "../organization/people-tab-model.ts";
+import { rosterPersonName } from "../organization/people-tab-model.ts";
 import {
   PersonRow,
   personRowTriggerClass,
@@ -56,7 +56,7 @@ export function AgentPersonRow({
   onAction: (action: ShareAction) => void;
 }) {
   const { t } = useTranslation("teams");
-  const name = memberLabel(row.member);
+  const name = rosterPersonName(row.member);
   const label = levelLabel(row.level, t);
 
   return (

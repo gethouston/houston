@@ -6,6 +6,9 @@ category: Sales
 featured: no
 image: handshake
 integrations: [hubspot, salesforce, attio, pipedrive]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -32,6 +35,9 @@ I read your sales context first. For every required field that's missing I ask O
 - **Your sales playbook**  -  Required. Why I need it: deal stages and exit criteria drive the per-deal confidence score, not stage names alone. If missing I ask: "I don't have your playbook yet  -  want me to draft it now?"
 - **Connected CRM**  -  Required. Why I need it: every row must cite a real open deal. If missing I ask: "Connect your CRM (HubSpot, Salesforce, Attio, Pipedrive, or Close) so I can pull open deals."
 - **Forecast window**  -  Optional. Why I need it: anchors what counts as Commit vs Best. If you don't specify I keep going with the current calendar quarter.
+
+## Workflow
+<!-- houston-workflow:v1 -->
 
 1. **Read playbook.** `context/sales-context.md`. Deal stages + exit criteria drive confidence.
 

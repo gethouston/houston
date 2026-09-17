@@ -23,9 +23,6 @@ export {
 // keys the app's list-query persistence to the same gateway+user identity.
 export { clearConversationCache } from "./conversation-cache";
 export { conversationCacheScope } from "./conversation-cache-identity";
-// The public Agent Store catalog reads (anonymous, CORS-open): the one request
-// on this surface that needs neither a host nor a session.
-export * from "./store-catalog";
 // Warming-engine send queue (HOU-693): show the message as sent while the
 // engine boots; the deferred real send suppresses its own bubble.
 export { pushPendingUserMessage } from "./turn-stream";

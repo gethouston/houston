@@ -1,22 +1,11 @@
-import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import {
   clipToolResult,
   type TokenUsage,
   type WireEvent,
 } from "@houston/runtime-client";
-import { classifyProviderError } from "../../ai/provider-error";
-import {
-  logProviderError,
-  logProviderRetry,
-} from "../../ai/provider-error-log";
-import { canonicalPinProvider } from "../../ai/providers";
-import {
-  noteAuthFailure,
-  noteQuotaExhausted,
-} from "../../auth/credential-health";
-import { reportRevokedServedToken } from "../../auth/report-revoked";
-import { currentUsedTokenDigest } from "../../auth/used-token";
+import { logProviderRetry } from "../../ai/provider-error-log";
+import { classifyTurnFailure, type TurnHints } from "./turn-failure";
 
 /**
  * Normalize pi's per-message `Usage` into our provider-agnostic `TokenUsage`.
@@ -110,9 +99,14 @@ export function createWireTranslator(): (
   let sepText = false;
   let sepThinking = false;
   let heldError: Extract<WireEvent, { type: "provider_error" }> | null = null;
+  // The failure text of pi's most recent auto-retry attempt in this prompt.
+  // A terse Codex refusal on the final attempt borrows its reading from it
+  // (ai/codex-terse-refusal.ts), so it must survive until the turn ends.
+  let retryErrorMessage: string | null = null;
   return (e) => {
     if (e.type === "agent_start") {
       sawText = sawThinking = sepText = sepThinking = false;
+      retryErrorMessage = null;
     } else if (e.type === "message_update") {
       const t = e.assistantMessageEvent.type;
       if (t === "text_start" && sawText) sepText = true;
@@ -124,8 +118,10 @@ export function createWireTranslator(): (
       heldError = null;
       return out;
     }
-    const wire = toWire(e);
+    const wire = toWire(e, { retryErrorMessage });
+    if (e.type === "auto_retry_start") retryErrorMessage = e.errorMessage;
     if (e.type === "turn_end") {
+      retryErrorMessage = null;
       if (wire?.type === "provider_error") {
         // Newest failure wins: a retry that fails again replaces the held
         // classification, so the flushed card names the final reason.
@@ -169,7 +165,10 @@ export function createWireTranslator(): (
  * through {@link createWireTranslator}, which wraps this pure mapping with the
  * per-turn block-boundary state.
  */
-export function toWire(e: AgentSessionEvent): WireEvent | null {
+export function toWire(
+  e: AgentSessionEvent,
+  hints: TurnHints = {},
+): WireEvent | null {
   switch (e.type) {
     case "message_update": {
       const a = e.assistantMessageEvent;
@@ -219,47 +218,10 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         msg.stopReason === "error" &&
         msg.errorMessage
       ) {
-        // Log the provider's VERBATIM failure text once it's reduced to a typed
-        // card (severity follows the classified kind — an expected 429/503 is a
-        // warning breadcrumb, not a Sentry error). The classifier collapses it
-        // into "unauthenticated" / "rate_limited" / etc., but the raw reason (an
-        // opencode.ai 401 body, an entitlement 403, a misclassified non-auth
-        // error) is otherwise never recorded — leaving production provider
-        // failures undiagnosable from the engine logs.
-        const status = diagnosticStatus(msg.diagnostics);
-        const classified = classifyProviderError({
-          provider: msg.provider,
-          model: msg.model ?? null,
-          message: msg.errorMessage,
-          status,
-        });
-        logProviderError(classified, { model: msg.model ?? null, status });
-        // Feed an auth failure into the status surface: the credential the
-        // turn just ran on cannot authenticate, so "Connected" would be a lie
-        // until it changes (auth/credential-health.ts).
-        if (classified.kind === "unauthenticated") {
-          noteAuthFailure(canonicalPinProvider(classified.provider));
-          // A REVOKED served token is invisible to the control plane (HOU-952).
-          // Named by the digest of the token the failed request actually ran
-          // on — recorded at pi's request-time credential read, inside this
-          // same turn subtree (auth/used-token.ts, PRODUCT-1319). Keyed by
-          // `classified.provider` (= pi's `msg.provider`), the same id pi read
-          // the credential under.
-          reportRevokedServedToken(
-            classified,
-            currentUsedTokenDigest(classified.provider),
-          );
-        }
-        // The same status-surface feed for an exhausted account: the
-        // credential authenticates fine, so this is "out of credits", never a
-        // reconnect (auth/credential-health.ts).
-        if (classified.kind === "quota_exhausted") {
-          noteQuotaExhausted(
-            canonicalPinProvider(classified.provider),
-            classified.resets_at,
-          );
-        }
-        return { type: "provider_error", data: classified };
+        return {
+          type: "provider_error",
+          data: classifyTurnFailure(msg, msg.errorMessage, hints),
+        };
       }
       // Otherwise its usage carries the latest request's context size = the
       // current context fill. Only an assistant message carries `usage`; other
@@ -294,29 +256,4 @@ function toolResultText(result: unknown): string {
     )
     .map((b) => b.text)
     .join("\n");
-}
-
-/**
- * Read an HTTP status off pi's structured diagnostics when it attached one
- * (`error.code` or `details.status`). pi often only sets a string `errorMessage`
- * with no diagnostic, so this is a best-effort hint; the classifier still parses
- * the message text when this returns null.
- */
-function diagnosticStatus(
-  diagnostics: AssistantMessage["diagnostics"],
-): number | null {
-  if (!diagnostics) return null;
-  for (const d of diagnostics) {
-    const code = d.error?.code;
-    if (typeof code === "number" && code >= 100 && code <= 599) return code;
-    if (typeof code === "string") {
-      const n = Number(code);
-      if (Number.isFinite(n) && n >= 100 && n <= 599) return n;
-    }
-    const status = d.details?.status ?? d.details?.httpStatus;
-    if (typeof status === "number" && status >= 100 && status <= 599) {
-      return status;
-    }
-  }
-  return null;
 }

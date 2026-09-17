@@ -7,6 +7,9 @@ category: Pessoas
 featured: no
 image: busts-in-silhouette
 integrations: [gmail, outlook]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -37,6 +40,7 @@ Leio primeiro o seu contexto de pessoas. Para cada campo obrigatório que estive
 - **Exemplos de notícias difíceis** - Opcional. Por que preciso: recusas e introduções de PIP soam diferente de mensagens comemorativas. Se você não tiver essa informação, eu sigo com A DEFINIR na impressão digital de notícias difíceis.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o documento de contexto de pessoas** (arquivo próprio): `context/people-context.md`. Leio a seção de notas de voz existente para que a execução seja um complemento/mesclagem, não uma substituição. Se o documento não existir, rodo `set-up-my-people-info` primeiro.
 

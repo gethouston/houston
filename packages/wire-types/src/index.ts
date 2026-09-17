@@ -7,6 +7,8 @@
  * re-exports them so `app/src` sees one surface.
  */
 
+export * from "./channels.ts";
+export * from "./channels-refusals.ts";
 export * from "./local-model-bridge.ts";
 export * from "./retry-after.ts";
 export * from "./types.ts";

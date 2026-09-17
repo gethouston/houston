@@ -9,13 +9,13 @@ import { showComputeSection } from "../time-worked/compute-usage-model.ts";
  */
 
 /**
- * The sections of the Admin dashboard. Company context is the workspace half
- * of the standing context every agent
- * starts a turn with. Per-agent policy is NOT here: it is reached through each
- * team's focused agent screen.
+ * The sections of Workspace management. Company context is the workspace half
+ * of the standing context every agent starts a turn with. Per-agent policy
+ * lives in each team's focused agent screen.
  */
 export type OrgTabId =
   | "companyContext"
+  | "orgChart"
   | "people"
   | "billing"
   | "activity"
@@ -23,10 +23,9 @@ export type OrgTabId =
   | "timeWorked";
 
 /**
- * The section the dashboard lands on: what the header's Admin identity
- * lozenge stands for, the same way a team's lozenge IS its board. The section
- * titles itself in its body (the lozenge says "Admin", not "Company
- * context"), and the rail's Admin row always returns here.
+ * The section the dashboard lands on: what the header's identity lozenge
+ * stands for, the same way a team's lozenge IS its board. The section titles
+ * itself in its body (the lozenge says "Workspace", not "Company context").
  */
 export const DEFAULT_ORG_TAB: OrgTabId = "companyContext";
 
@@ -37,20 +36,21 @@ export const DEFAULT_ORG_TAB: OrgTabId = "companyContext";
  */
 export const ORG_TAB_IDS: readonly OrgTabId[] = [
   "companyContext",
+  "orgChart",
   "people",
   "activity",
   "usage",
 ] as const;
 
 /**
- * The dashboard's tab ids in display order, written out literally so the order
- * reads off the source: Company context (the identity lozenge and landing
- * section), then People, then Billing when `canSeeBillingTab` (in
- * `lib/billing-gates`) holds, then Activity, Usage, and gated Time worked. Pure so the tab set is
+ * The tab ids in display order, written out literally so the order reads off
+ * the source: Company context (the identity lozenge and landing section), then
+ * Org chart, People, Billing when `canSeeBillingTab` (in `lib/billing-gates`)
+ * holds, then Activity, Usage, and gated Time worked. Pure so the tab set is
  * unit-tested without React; the view maps each id to its component + `t()`
  * label.
  *
- * Company context takes no gate of its own on purpose: the whole Admin view is
+ * Company context takes no gate of its own on purpose: the whole dashboard is
  * mounted only behind {@link canSeeOrganization}, which is false on a personal
  * space (`isPersonalSpace`), so "org spaces only" is already enforced one level
  * up and a second branch here would be dead code.
@@ -58,28 +58,30 @@ export const ORG_TAB_IDS: readonly OrgTabId[] = [
 export function orgTabIds(gates: {
   billing: boolean;
   timeWorked: boolean;
+  personal: boolean;
 }): readonly OrgTabId[] {
   return [
     "companyContext",
-    "people",
-    ...(gates.billing ? (["billing"] as const) : []),
-    "activity",
+    "orgChart",
+    ...(!gates.personal ? (["people"] as const) : []),
+    ...(gates.billing && !gates.personal ? (["billing"] as const) : []),
+    ...(!gates.personal ? (["activity"] as const) : []),
     "usage",
     ...(gates.timeWorked ? (["timeWorked"] as const) : []),
   ];
 }
 
 /**
- * Whether the Organization view — and its sidebar nav entry — should render at
- * all, plus the Permissions view, which shares this gate exactly.
+ * Whether the Organization dashboard renders as the face of Settings >
+ * Workspace management.
  *
  * On a C8 Spaces host the personal space is single-player semantics
  * (non-invitable, no roster, no policy — the gateway 403s a member-add with
- * `personal_space`), so the org dashboard and Permissions are TEAM-space
- * surfaces: they hide whenever the active space is personal, whatever the role.
- * On a non-spaces multiplayer host (legacy Teams v2, exactly one org) there is
- * no personal/team split, so `activeSpaceIsTeam` is irrelevant and behavior is
- * unchanged — the gate falls through to the members-roster rule.
+ * `personal_space`), so the dashboard is a TEAM-space surface: it hides
+ * whenever the active space is personal, whatever the role. On a non-spaces
+ * multiplayer host (exactly one org) there is no personal/team split, so
+ * `activeSpaceIsTeam` is irrelevant and the gate falls through to the
+ * members-roster rule.
  *
  * That base rule is exactly the members-roster gate (`canSeeMembers` is already
  * "multiplayer AND owner|admin": `orgRole` returns null off-multiplayer and the

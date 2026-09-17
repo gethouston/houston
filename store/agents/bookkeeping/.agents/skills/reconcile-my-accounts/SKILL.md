@@ -6,6 +6,9 @@ category: Bookkeeping
 featured: no
 image: ledger
 integrations: [stripe, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -47,6 +50,7 @@ I read your bookkeeping context first. For every required field that's missing I
 - **The bank or processor side for the period** — Required. Why: I need both sides for the three-way proof. If missing I ask: "Can you connect the bank feed or QuickBooks, or drop the statement PDF or CSV for this period?"
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Parse inputs.** Required: `account_last4` (or `all` for
    `mode=transfer-detect`) and `period` (`YYYY-MM` or `YYYY-QN`).

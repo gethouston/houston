@@ -1,10 +1,4 @@
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@houston-ai/core";
+import { FormDialog } from "@houston-ai/core";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -89,8 +83,9 @@ export function EditTeamIdentityDialog({
   const tooLong = teamNameTooLong(name);
   const close = () => setTeamId(null);
 
+  // The save closes the dialog by RESOLVING: the recipe owns the close, so a
+  // name that is still empty or too long is refused by `disabled` alone.
   const save = () => {
-    if (!trimmed || tooLong) return;
     // The diff rules (what renames, what patches, how a deselect becomes an
     // explicit null clear) are `teamIdentitySaveWrites`'s, unit-tested there.
     const writes = teamIdentitySaveWrites(seeded, {
@@ -100,33 +95,29 @@ export function EditTeamIdentityDialog({
     });
     if (writes.rename) renameGroup(team.id, writes.rename);
     if (writes.patch) setIdentity(team.id, writes.patch);
-    close();
   };
 
   return (
-    <Dialog open onOpenChange={(open) => (open ? undefined : close())}>
-      <DialogContent className="sm:max-w-[560px]">
-        <DialogHeader>
-          <DialogTitle>{t("shell:sidebar.teams.identity")}</DialogTitle>
-        </DialogHeader>
-        <TeamIdentityNameRow
-          icon={icon}
-          colorId={color}
-          name={name}
-          choices={choices}
-          onIconChange={setIcon}
-          onColorChange={setColor}
-          onNameChange={setName}
-        />
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={close}>
-            {t("common:actions.cancel")}
-          </Button>
-          <Button onClick={save} disabled={!trimmed || tooLong}>
-            {t("common:actions.save")}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open
+      onOpenChange={(open) => (open ? undefined : close())}
+      title={t("shell:sidebar.teams.identity")}
+      primary={{
+        label: t("common:actions.save"),
+        onClick: save,
+        disabled: !trimmed || tooLong,
+      }}
+      labels={{ cancel: t("common:actions.cancel") }}
+    >
+      <TeamIdentityNameRow
+        icon={icon}
+        colorId={color}
+        name={name}
+        choices={choices}
+        onIconChange={setIcon}
+        onColorChange={setColor}
+        onNameChange={setName}
+      />
+    </FormDialog>
   );
 }

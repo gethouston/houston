@@ -53,34 +53,6 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     [],
   );
 
-  /** From-scratch create lands in the store, then enables the picked agents. */
-  const createShared = useCallback(
-    async (
-      input: { name: string; description: string; content: string },
-      targets: Agent[],
-    ): Promise<void> => {
-      if (workspaceId === null) throw new Error("no workspace");
-      const detail = await tauriSharedSkills.create(workspaceId, input);
-      const settled = await Promise.allSettled(
-        targets.map((agent) =>
-          setManifestEntry(agent.folderPath, detail.name, true),
-        ),
-      );
-      invalidate(targets.map((a) => a.folderPath));
-      analytics.track("skill_installed", {
-        skill_slug: detail.name,
-        source: "scratch",
-      });
-      addToast({
-        title: t("global.createdShared"),
-        variant: "success",
-      });
-      if (settled.some((r) => r.status === "rejected"))
-        throw new Error("enable failed for some agents");
-    },
-    [addToast, invalidate, setManifestEntry, t, workspaceId],
-  );
-
   /** One save: content (when edited) is a single store write; assignment is
    *  manifest toggles. Nothing here can clobber an agent's override. */
   const applyShared = useCallback(
@@ -186,7 +158,6 @@ export function useSharedSkillsActions(workspaceId: string | null) {
   );
 
   return {
-    createShared,
     applyShared,
     enableForAll,
     deleteShared,

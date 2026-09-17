@@ -14,7 +14,10 @@ import {
  */
 
 test("the selector is the attribute selector the DOM renders", () => {
-  assert.equal(tourSelector("nav-inbox"), "[data-tour-target='nav-inbox']");
+  assert.equal(
+    tourSelector("nav-integrations"),
+    "[data-tour-target='nav-integrations']",
+  );
 });
 
 test("an anchor renders exactly what its selector looks for", () => {

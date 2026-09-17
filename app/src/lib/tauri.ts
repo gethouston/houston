@@ -18,7 +18,6 @@
 import type {
   AddCustomIntegrationInput,
   AgentAssignment,
-  CommunitySkillPreview,
   CredentialScope,
   CustomEndpoint,
   EditableProfileUpdate,
@@ -31,6 +30,7 @@ import type {
   SkillsManifest,
 } from "@houston/engine-adapter";
 import type { IntegrationProviderId } from "@houston/protocol";
+import type { DismissInteractionOutcome } from "@houston/sdk";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
 import {
@@ -48,6 +48,7 @@ import {
 import { isApiKeyUserRejection } from "./api-key-connect-error";
 import { isKeyGoneError, isKeyLimitError } from "./api-keys-model";
 import { isAssistantUnavailableError } from "./assistant-availability";
+import { type ChannelCall, silenceChannelCall } from "./channel-silence";
 import {
   beginClaudeBrowserLogin,
   cancelClaudeBrowserLogin,
@@ -83,11 +84,6 @@ import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
 import { healStaleRosterFromError } from "./roster-heal";
 import { isSharedSkillsUnconfiguredError } from "./shared-skills-availability";
-import {
-  isExpectedSkillPreviewError,
-  isUnavailableSkillError,
-} from "./skill-install-expected-state";
-import { isExpectedSkillSearchError } from "./skill-search-expected-state";
 import { isStaleAttachmentError } from "./stale-attachment";
 import {
   isLastOwnerError,
@@ -100,7 +96,6 @@ import {
 } from "./toolkit-connect-refusals";
 import type {
   Agent,
-  CommunitySkillResult,
   FileEntry,
   RepoSkill,
   SkillDetail,
@@ -665,9 +660,11 @@ export const tauriChat = {
     mode: "execute" | "plan" | "auto",
   ) => getEngine().setLiveTurnMode(agentPath, sessionKey, mode),
   /** Retire a conversation's pending interaction (stepper X / abandon): appends
-   *  a durable stop marker, like a real Stop — the model learns nothing. */
+   *  a durable stop marker, like a real Stop — the model learns nothing. The
+   *  SDK answers a turn racing the dismiss as a typed `turn_running` outcome
+   *  (HOUSTON-APP-5EY), so only a real failure reaches the toast here. */
   dismissInteraction: (agentPath: string, conversationId: string) =>
-    call<void>("dismiss_interaction", () =>
+    call<DismissInteractionOutcome>("dismiss_interaction", () =>
       getEngine().dismissInteraction(agentPath, conversationId),
     ),
   /** Edit-and-resend rewind (PRODUCT-1217): drop the transcript tail from the
@@ -847,73 +844,6 @@ export const tauriSkills = {
       { toast: false },
     );
   },
-  searchCommunity: (agentPath: string, query: string, signal?: AbortSignal) =>
-    call<CommunitySkillResult[]>(
-      "search_community_skills",
-      async () =>
-        (await getEngine().searchCommunitySkills(agentPath, query, signal)).map(
-          (s) => ({
-            id: s.id,
-            skillId: s.skillId,
-            name: s.name,
-            installs: s.installs,
-            source: s.source,
-          }),
-        ),
-      undefined,
-      // skills.sh slow / unreachable / rate limiting is upstream weather the
-      // grid renders inline (PRODUCT-1728); a real upstream error stays loud.
-      { toast: false, silence: isExpectedSkillSearchError },
-    ),
-  previewCommunity: (
-    agentPath: string,
-    source: string,
-    skillId: string,
-    signal?: AbortSignal,
-  ) =>
-    call<CommunitySkillPreview>(
-      "preview_community_skill",
-      () =>
-        getEngine().previewCommunitySkill(agentPath, source, skillId, signal),
-      undefined,
-      // A missing skill (`skill_not_in_repo`), a deleted repo
-      // (`repo_not_found`), or GitHub not listable right now on a preview is
-      // an expected upstream state, not a Houston bug: the skills.sh index
-      // keeps listing skills whose GitHub repo was deleted, and preview
-      // deliberately skips the recursive scan that install runs
-      // (github-lookup.ts), so deeply nested skills miss here yet install
-      // fine. The detail modal already shows its visible error state
-      // (use-skill-preview.ts), so no Sentry capture — that second surface is
-      // what kept HOUSTON-APP-4XZ alive after PRODUCT-1382 fixed every
-      // findable layout. Every other failure stays captured.
-      { toast: false, silence: isExpectedSkillPreviewError },
-    ),
-  installCommunity: (
-    agentPath: string,
-    source: string,
-    skillId: string,
-    signal?: AbortSignal,
-  ) => {
-    blockWriteWhileWarming(agentPath);
-    return call<string>(
-      "install_community_skill",
-      () =>
-        getEngine().installCommunitySkill(
-          {
-            workspacePath: agentPath,
-            source,
-            skillId,
-          },
-          signal,
-        ),
-      undefined,
-      // The same expected upstream states as preview (PRODUCT-1729): the host
-      // proved the skill or its repo is gone, the handler shows the authored
-      // "no longer available" state and drops the card. Every other install
-      // failure (rate limit, offline, malformed) stays captured.
-      { toast: false, silence: isUnavailableSkillError },
-    );
-  },
 };
 
 export const tauriSharedSkills = {
@@ -978,16 +908,6 @@ export const tauriSharedSkills = {
   load: (workspaceId: string, slug: string) =>
     call<SkillDetail>("load_shared_skill", () =>
       getEngine().loadSharedSkill(workspaceId, slug),
-    ),
-  create: (
-    workspaceId: string,
-    input: { name: string; description: string; content: string },
-  ) =>
-    call<SkillDetail>("create_shared_skill", () =>
-      getEngine().createSharedSkill(workspaceId, {
-        workspacePath: workspaceId,
-        ...input,
-      }),
     ),
   save: (workspaceId: string, slug: string, content: string) =>
     call<void>("save_shared_skill", () =>
@@ -2366,4 +2286,37 @@ export const tauriApiKeys = {
       if (isKeyGoneError(err)) return;
       throw err;
     }),
+};
+
+/**
+ * The messaging accounts the personal assistant answers in (Settings >
+ * Channels). Every call names itself for the report and classifies its own
+ * expected states (`lib/channel-silence.ts`): a deployment that serves no
+ * channels, a ticket the gateway refused, and the abort a space switch fires
+ * are states the section renders, never bug reports. The caller keeps the
+ * space scope and the signal (`hooks/channel-workspace-scope.ts`).
+ */
+const channelCall = <T>(label: ChannelCall, fn: () => Promise<T>) =>
+  call<T>(label, fn, undefined, {
+    silence: (err) => silenceChannelCall(label, err),
+  });
+
+export const tauriChannels = {
+  list: (signal?: AbortSignal) =>
+    channelCall("list_channels", () => getEngine().getChannels(signal)),
+  connectSlack: (signal?: AbortSignal) =>
+    channelCall("connect_slack", () => getEngine().connectSlack(signal)),
+  linkSlack: (signal?: AbortSignal) =>
+    channelCall("link_slack", () => getEngine().linkSlack(signal)),
+  completeSlack: (ticket: string, signal?: AbortSignal) =>
+    channelCall("complete_slack", () =>
+      getEngine().completeSlack(ticket, signal),
+    ),
+  disconnect: (id: string, signal?: AbortSignal) =>
+    channelCall<void>("disconnect_channel", () =>
+      getEngine().disconnectChannel(id, signal),
+    ),
+  /** Open the authorization page; a popup blocker's refusal is the answer. */
+  openSlack: (url: string) =>
+    channelCall("open_slack", () => tauriSystem.openUrl(url)),
 };

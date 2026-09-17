@@ -155,11 +155,6 @@ export const OPERATION_CASES: readonly DiscoverabilityCase[] = [
     operations: ["putSkillsManifest"],
   },
   {
-    id: "find-community-skill",
-    request: "Is there something ready-made for reading PDFs?",
-    operations: ["searchCommunitySkills"],
-  },
-  {
     id: "change-profile",
     request: "My name is spelled wrong, it should be Julián.",
     operations: ["setMyProfile"],

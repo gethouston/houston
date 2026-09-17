@@ -50,6 +50,9 @@ export interface MentionPerson {
  */
 type FeedItemIdentity = { id?: string };
 
+/** The engine-authored system lines a host may localize by kind. */
+export type SystemNoticeKind = "engine_restart" | "engine_resumed";
+
 export type FeedItem = FeedItemVariant & FeedItemIdentity;
 
 type FeedItemVariant =
@@ -82,7 +85,16 @@ type FeedItemVariant =
   | { feed_type: "provider_error"; data: ProviderError }
   | { feed_type: "tool_call"; data: { name: string; input: unknown } }
   | { feed_type: "tool_result"; data: { content: string; is_error: boolean } }
-  | { feed_type: "system_message"; data: string }
+  | {
+      feed_type: "system_message";
+      data: string;
+      /**
+       * Why the engine authored this line, when it did. `data` is the English
+       * default; a host renders its own copy by kind through
+       * `renderSystemMessage` instead of matching the text.
+       */
+      notice?: SystemNoticeKind;
+    }
   | {
       /**
        * A context-compaction boundary. Earlier turns were summarized to free

@@ -7,6 +7,9 @@ category: Prospección
 featured: no
 image: link
 integrations: [apify, linkedin]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Si Apify no está conectado, me detengo y te pido que la conectes desde la pesta
 - **Una cantidad objetivo de elementos** - Opcional. Por defecto usa `defaultMaxItems` de tu contexto de prospección (500). Las extracciones de reacciones suelen llegar a 500+ en una publicación popular; súbelo si quieres cobertura completa de una publicación viral.
 
 ## Pasos
+<!-- houston-workflow:v1 -->
 
 1. **Validar la URL.** Mismas reglas que en la extracción de comentarios: debe ser una URL de una publicación de LinkedIn. Rechazo URLs de perfil, artículo o empresa. Resuelvo enlaces cortos una sola vez.
 

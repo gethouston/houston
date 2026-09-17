@@ -157,7 +157,7 @@ function DialogSpecimen() {
       <SpecimenTokens
         classes={[
           "bg-dialog",
-          "border-line/50",
+          "border-line",
           "bg-black/25",
           "text-ink-muted",
           "hover:bg-hover",

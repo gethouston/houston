@@ -82,8 +82,26 @@ A packaged build (or `pnpm tauri dev` with no host URL) spawns the staged sideca
 - Generic reusable → `ui/`. App-specific → `app/`. Unsure → start in `app/`, extract later.
 - Props over stores, always: no Zustand/Redux imports, no `app/` types, no `@/` aliases, no `react-i18next` in `ui/`. Use generic types (`BoardItem`, `FeedItem`, `ChatMessage`).
 
-### Client-surface changes (SDK first)
-- Behavior (turn lifecycle, state, reconnection, VM fields) → change `@houston/sdk` FIRST, surfaces bind. Never re-implement behavior in surface code. VM-snapshot changes are additive only.
+### SDK is the single source of truth (every change is SDK-shaped)
+Houston ships three surfaces (desktop, web, iOS) over ONE client, `@houston/sdk`, and the AI Manager drives the same client through its generated catalog. A capability exists exactly once, in the SDK, and every surface binds it. This is the shape of EVERY client-facing change, not a refactor target: PRs #1584 to #1605 moved the last families in, and `pnpm check:sdk-parity` (rules R1 to R5) turns red on anything that lands elsewhere.
+
+The layers of a change, top to bottom. Start at the top; a layer may be empty, never skipped:
+1. **Wire shape** → `@houston/wire-types` (`packages/wire-types`): types, zod parsers, refusal codes. No I/O. Protocol v3 additions are additive only.
+2. **Route** → declared in the host registry (`packages/host/src/routes/registry`) or the gateway's `Describe()` (cloud repo). A route the app calls for a signed-in user is classified `sdk`; every other classification carries a written reason. A gateway route change also vendors the inventory (`pnpm vendor:gateway-routes`) in the same sitting.
+3. **Capability** → a module in `packages/sdk/src/modules/<family>/`: typed facade method + command handler + `@assistant` JSDoc, exactly one method per `sdk` route. ALL client behavior lives here and only here: turn lifecycle, state, reconnection, VM fields, retries, error classification, what-to-do-when rules. VM snapshots are additive only.
+4. **Binding** → `@houston/engine-adapter` binds the SDK method through its `viaSdk` seam (desktop and web are the same code); iOS reaches the same method over the native bridge (`packages/sdk/BRIDGE.md`) with nothing re-implemented in Swift. Adapters and shells translate transport, they never decide.
+5. **Surface** → `app/src` and `mobile/ios` call the bound method and render. A surface supplies genuine inputs and shows the result. If it needs its own fetch, cache, retry, state machine or rule, that logic is missing from the SDK: add it there first, then bind.
+6. **Proof** → `packages/web/tests/wire-<family>.test.ts` pins URL, method, headers and body byte-for-byte; the module's own tests cover the behavior; `pnpm gen:assistant-catalog` regenerates the manager's catalog; `pnpm check` is green.
+
+Banned:
+- A `fetch`, SSE stream or socket outside `@houston/engine-adapter` (R5), or an adapter mixin that reaches the wire with no SDK method behind it.
+- Client behavior re-implemented in `app/src`, `packages/web`, `mobile/ios` or `ui/`: no second turn state, no per-surface cache of `.houston/` data, no duplicated error classification, no surface-local "if the host says X then Y".
+- A surface-only capability. Something desktop can do that iOS and the AI Manager cannot reach by calling the SDK is an incomplete PR.
+- Growing `scripts/sdk-parity-exceptions.json`. It only shrinks. A route with no SDK method states its reason in its classification, never as a new excuse in that file.
+
+Litmus test before opening the PR: could the iOS app and the AI Manager do this tomorrow with zero new client code, just by calling the SDK? If not, the change is not done.
+
+Other cross-surface rules:
 - Visual values → edit `packages/design-tokens`, never a hardcoded hex/spacing literal.
 - Cross-surface structure (component added/changed) → bump `design/inventory/inventory.yaml` + CHANGELOG + manifests in the SAME PR (`pnpm check:parity`; procedures in `design/inventory/README.md`).
 - Visual-value changes to key screens → re-record Playwright visual baselines (`test:visual:update`, both `darwin` + `linux` sets) in the SAME PR.

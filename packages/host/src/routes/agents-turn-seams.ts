@@ -4,10 +4,10 @@ import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
 import {
-  applyApprovalReceipts,
   clearDeletedApprovals,
   substituteApprovals,
 } from "./agents-turn-approvals";
+import { admitTurnMessage } from "./agents-turn-message";
 import {
   applyModeSwitch,
   recordLiveTurn,
@@ -38,14 +38,32 @@ export interface TurnSeamCtx {
   readonly actingAuthor: ActivityContributor | null;
   /** That same identity as the gateway-minted token, for what it starts. */
   readonly actingAs?: string;
+  /** WHO the message is from, for the retry identity it is fingerprinted under. */
+  readonly actor: string;
   /** The conversation of the USER TURN this request is, when it is one. */
   readonly turnConversationId: string | undefined;
   readonly body: TurnBody;
+  /** What the admission seam decided about this message. */
+  readonly message: TurnMessageState;
   /**
    * What the engine's answer is written to. The approval seam REPLACES it with
    * a substituting stream, which is why it is the one mutable field here.
    */
   client: ServerResponse;
+}
+
+/**
+ * WHETHER THIS MESSAGE TRAVELS AT ALL, decided by the admission seam
+ * (agents-turn-message.ts) before any other seam records anything about it.
+ * Mutated in place, because a seam reads what the ones before it decided.
+ */
+export interface TurnMessageState {
+  /** A definitive refusal: the route answers it, and nothing is forwarded. */
+  refusal?: { status: 400 | 409 | 503; code: string };
+  /** The runtime already accepted this exact message: record it a second time. */
+  duplicate: boolean;
+  /** Frees this request's own retry reservation when the turn was not accepted. */
+  release?: () => void;
 }
 
 export type TurnSeam = (ctx: TurnSeamCtx) => Promise<void> | void;
@@ -61,14 +79,19 @@ export function turnConversationOf(
 }
 
 const SEAMS: TurnSeam[] = [
+  admitTurnMessage,
   recordLiveTurn,
   applyModeSwitch,
   stampAttribution,
   clearDeletedApprovals,
-  applyApprovalReceipts,
   substituteApprovals,
 ];
 
 export async function runTurnSeams(ctx: TurnSeamCtx): Promise<void> {
-  for (const seam of SEAMS) await seam(ctx);
+  // A refused message is not forwarded, so every seam after the refusal would
+  // be recording a turn that never happens.
+  for (const seam of SEAMS) {
+    if (ctx.message.refusal) return;
+    await seam(ctx);
+  }
 }

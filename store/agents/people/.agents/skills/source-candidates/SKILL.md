@@ -6,6 +6,9 @@ category: People
 featured: yes
 image: busts-in-silhouette
 integrations: [github, linkedin, firecrawl]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -38,6 +41,7 @@ I read your people context first. For every required field that's missing I ask 
 - **Companies to exclude** — Optional. Why I need it: keeps people you've already passed on out of the list. If you don't have it I keep going with TBD.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 1. **Read people-context doc** at `context/people-context.md`. If missing or empty, tell user: "I need your people context first  -  run the set-up-my-people-info skill." Stop. Extract leveling framework and existing team-shape notes for target role.
 2. **Read req.** Look for `reqs/{role-slug}.md`. If missing, ask ONE targeted question ("What's the level target and the top 3 must-haves for {role}? I'll save a short rubric to `reqs/{role-slug}.md` and continue."). Write it, continue.

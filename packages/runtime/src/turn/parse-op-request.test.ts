@@ -46,10 +46,6 @@ test("tranche-2 route allowlist: portable/migration/custom in, OAuth start out",
   for (const [rest, method] of [
     ["portable/preview", "GET"],
     ["portable/export", "POST"],
-    ["portable/store-ir", "POST"],
-    ["portable/store-publication", "GET"],
-    ["portable/store-publication", "POST"],
-    ["portable/store-publication", "DELETE"],
     ["migration/export", "POST"],
     ["migration/complete", "POST"],
     ["migration/status", "GET"],
@@ -69,10 +65,6 @@ test("tranche-2 route allowlist: portable/migration/custom in, OAuth start out",
       routeOp("integrations/custom/definitions/acme/oauth/start", "POST"),
     ),
   ).toThrow(/not an op route/);
-  // portable/anonymize is its own op kind, never a route.
-  expect(() => parseOpRequest(routeOp("portable/anonymize", "POST"))).toThrow(
-    /not an op route/,
-  );
   // Binary bodies ride bodyBase64 for the migration import ONLY.
   expect(() =>
     parseOpRequest(routeOp("migration/import", "POST", { bodyBase64: "AAAA" })),
@@ -90,7 +82,7 @@ test("tranche-2 route allowlist: portable/migration/custom in, OAuth start out",
   ).not.toThrow();
 });
 
-test("the endpoint and anonymize kinds parse; azure's endpoint rides the credential op", () => {
+test("the endpoint kind parses; azure's endpoint rides the credential op", () => {
   const base = {
     workspaceId: "w1",
     agentId: "a1",
@@ -110,14 +102,6 @@ test("the endpoint and anonymize kinds parse; azure's endpoint rides the credent
     kind: "settings",
     action: "endpoint",
     input: { baseUrl: "https://m.example.com", model: "m1", shared: true },
-  });
-  const anonymize = parseOpRequest({
-    ...base,
-    op: { kind: "anonymize", input: { claudeMd: true, useAi: false } },
-  });
-  expect(anonymize.op).toMatchObject({
-    kind: "anonymize",
-    input: { claudeMd: true, useAi: false, skillSlugs: [] },
   });
   const azure = parseOpRequest({
     ...base,

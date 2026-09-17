@@ -7,7 +7,6 @@ import {
   deleteConversationAt,
   renameConversationMutationAt,
 } from "../store/conversation-file";
-import { applyAnonymizeOp } from "./op-anonymize";
 import { applyApiKeyConnect, credentialOpFiles } from "./op-credential";
 import { applyEndpointConnect } from "./op-endpoint";
 import { assertWorkerOpProvider } from "./op-provider-guard";
@@ -144,22 +143,6 @@ export async function applyOp(
         answer,
         answer.status === 200 ? credentialOpFiles(filesystem.dataRel) : [],
       );
-    }
-    case "anonymize": {
-      const answer = await applyAnonymizeOp(
-        op as OpRequest & {
-          op: Extract<OpRequest["op"], { kind: "anonymize" }>;
-        },
-        agentId,
-        filesystem,
-      );
-      if ("agentMissing" in answer) {
-        return {
-          ...answered({ status: 404, body: { error: "agent not found" } }),
-          agentMissing: true,
-        };
-      }
-      return answered(answer);
     }
     case "title": {
       if (!op.credential) {

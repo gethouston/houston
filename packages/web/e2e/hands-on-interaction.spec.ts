@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
+import { ASSISTANT_COMPOSER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { startMission } from "./support/mission";
 import { openAssistant } from "./support/settings-nav";
@@ -11,7 +12,9 @@ import { missionCard } from "./support/team-nav";
  * the agent moving again, exactly once.
  */
 
-const composer = (page: Page) => page.getByPlaceholder("Send a follow-up...");
+/** The chat's composer on either surface: the manager's question changes with
+ *  its history, the mission's is always the follow-up. */
+const composer = (page: Page) => page.getByPlaceholder(ASSISTANT_COMPOSER);
 const ASK = "Connect my accounting app to Houston";
 
 const queueErrand = (request: APIRequestContext, reason: string) =>

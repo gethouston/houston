@@ -42,13 +42,13 @@
   "notifications": {
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
-      "body": "Seu agente terminou de trabalhar.",
-      "question_one": "Seu agente tem uma pergunta para você.",
-      "question_other": "Seu agente tem perguntas para você.",
-      "signin": "Seu agente precisa que você entre.",
-      "connect": "Seu agente precisa que você conecte um aplicativo.",
-      "credential": "Seu agente precisa de uma chave de API para terminar.",
-      "handsOn": "Seu agente precisa que você termine algo no Houston."
+      "body": "Seu funcionário de IA terminou de trabalhar.",
+      "question_one": "Seu funcionário de IA tem uma pergunta para você.",
+      "question_other": "Seu funcionário de IA tem perguntas para você.",
+      "signin": "Seu funcionário de IA precisa que você entre.",
+      "connect": "Seu funcionário de IA precisa que você conecte um aplicativo.",
+      "credential": "Seu funcionário de IA precisa de uma chave de API para terminar.",
+      "handsOn": "Seu funcionário de IA precisa que você termine algo no Houston."
     },
     "mentioned": {
       "title": "{{name}} mencionou você",
@@ -56,7 +56,7 @@
       "body": "Em {{mission}}"
     },
     "preprompt": {
-      "title": "Quer um aviso quando seu agente terminar?",
+      "title": "Quer um aviso quando seu funcionário de IA terminar?",
       "body": "Ative as notificações e o Houston avisa você assim que uma tarefa terminar ou precisar de você.",
       "cta": "Ativar notificações"
     },

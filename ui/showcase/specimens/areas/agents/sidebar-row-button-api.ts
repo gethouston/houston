@@ -14,7 +14,7 @@ export const SIDEBAR_ROW_CONSUMERS: readonly {
 }[] = [
   {
     who: "SidebarNavItem",
-    what: "The top-level destinations: Mission Control, Integrations, Skills, AI Models, Agent Store, Settings. Block depth, no disclosure. (The collapsed icon rail is its own anatomy and does not come through here.)",
+    what: "The top-level destinations: Houston, AI Models and Integrations above the teams, plus the footer's Academy and Settings. Block depth, no disclosure. (The collapsed icon rail is its own anatomy and does not come through here.)",
   },
   {
     who: "SidebarBand",

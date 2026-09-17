@@ -1,9 +1,6 @@
 import { expect, test } from "vitest";
 import { ApprovalStore } from "./approvals";
-import {
-  applyApprovalReceipts,
-  applyApprovalReceiptsToTurnBody,
-} from "./receipts";
+import { applyApprovalReceipts } from "./receipts";
 
 /**
  * A4 / A5 — where a person's yes becomes a receipt, and everything that must
@@ -145,80 +142,6 @@ test("answering one card retires the others raised beside it", () => {
       conversationId: CONV,
     }),
   ).toBe("approved");
-});
-
-test("a turn body with no live card is left entirely alone", () => {
-  const store = new ApprovalStore();
-  const body = Buffer.from(JSON.stringify({ text: "hello" }));
-  expect(
-    applyApprovalReceiptsToTurnBody({
-      approvals: store,
-      agentId: AGENT,
-      conversationId: CONV,
-      body,
-    }),
-  ).toBeNull();
-});
-
-test("a turn body carrying an answer is forwarded without the receipts, keeping its other fields", () => {
-  const store = new ApprovalStore();
-  const request = issued(store);
-  const body = Buffer.from(
-    JSON.stringify({
-      text: "Delete it?: Yes, go ahead",
-      approvals: [{ requestId: request.requestId, decision: "approve" }],
-      nonce: "n1",
-      mentions: [],
-    }),
-  );
-  const out = applyApprovalReceiptsToTurnBody({
-    approvals: store,
-    agentId: AGENT,
-    conversationId: CONV,
-    body,
-  });
-  expect(out).not.toBeNull();
-  expect(JSON.parse(String(out))).toEqual({
-    text: "Delete it?: Yes, go ahead",
-    nonce: "n1",
-    mentions: [],
-  });
-});
-
-test("a body that is not this route's JSON is forwarded untouched", () => {
-  const store = new ApprovalStore();
-  issued(store);
-  expect(
-    applyApprovalReceiptsToTurnBody({
-      approvals: store,
-      agentId: AGENT,
-      conversationId: CONV,
-      body: Buffer.from("not json at all"),
-    }),
-  ).toBeNull();
-});
-
-/**
- * The runtime must never be able to read a receipt — it is the least-trusted
- * part of the system, and a model that could see a request id could present it
- * back as if a person had clicked.
- */
-test("the receipts never travel past this seam", () => {
-  const store = new ApprovalStore();
-  const request = issued(store);
-  const out = applyApprovalReceiptsToTurnBody({
-    approvals: store,
-    agentId: AGENT,
-    conversationId: CONV,
-    body: Buffer.from(
-      JSON.stringify({
-        text: "yes",
-        approvals: [{ requestId: request.requestId, decision: "approve" }],
-      }),
-    ),
-  });
-  expect(String(out)).not.toContain(request.requestId);
-  expect(String(out)).not.toContain("approvals");
 });
 
 test("a receipt the model tried to author decides nothing: the id is unguessable", () => {

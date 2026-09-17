@@ -6,6 +6,9 @@ category: Operations
 featured: no
 image: clipboard
 integrations: [linkedin, firecrawl, perplexityai]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -56,6 +59,7 @@ I read your operations context first. For every required field that's missing I 
 - **Hard nos**  -  Optional for `compliance`. Why I need it: lets me weight specific frameworks (HIPAA, PCI, SOC2) higher when they matter to you. If you don't have it I keep going with TBD and surface every gap I find.
 
 ## Steps
+<!-- houston-workflow:v1 -->
 
 ### Shared steps (both aspects)
 

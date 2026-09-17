@@ -76,7 +76,7 @@ export function ChatMessageItem({
     className: cn(
       OFFSCREEN_RENDER_SKIP,
       highlighted &&
-        "rounded-xl bg-accent/70 px-2 py-1 outline outline-2 outline-ring",
+        "rounded-xl bg-highlight/70 px-2 py-1 outline outline-2 outline-focus",
     ),
     "data-conversation-message-key": message.key,
     tabIndex: -1,

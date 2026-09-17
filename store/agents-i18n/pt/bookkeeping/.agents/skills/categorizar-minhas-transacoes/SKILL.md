@@ -7,6 +7,9 @@ category: Contabilidade
 featured: yes
 image: ledger
 integrations: [stripe, quickbooks, xero]
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -42,6 +45,7 @@ Eu leio primeiro o seu contexto contábil. Para cada campo obrigatório que esti
 - **Regras de fornecedor de um período anterior** - Opcional. Por quê: me permite associar novas cobranças a fornecedores conhecidos e evita perguntar a mesma coisa duas vezes. Se você não tiver, eu continuo e aprendo com esta execução.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto e travar o plano de contas.** Carregar:
    - `context/bookkeeping-context.md`, se estiver faltando, parar, pedir para o usuário rodar `set-up-my-books` primeiro.

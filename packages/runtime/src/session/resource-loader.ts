@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, sep } from "node:path";
 import { DefaultResourceLoader } from "@earendil-works/pi-coding-agent";
+import { renderJobDescriptionForPrompt } from "@houston/domain";
 import type { TurnMode } from "@houston/protocol";
 import { config } from "../config";
 import { buildAssistantRulesSection } from "./assistant-rules-context";
@@ -39,7 +40,10 @@ function loadWorkspaceContextFile(
   for (const name of CONTEXT_CANDIDATES) {
     const path = join(cwd, name);
     if (!existsSync(path)) continue;
-    return [{ path, content: readFileSync(path, "utf8") }];
+    // The job description is structured (`industry`/`role` frontmatter + the
+    // free description): the model reads those two as plain lines, never YAML.
+    const content = renderJobDescriptionForPrompt(readFileSync(path, "utf8"));
+    return [{ path, content }];
   }
   return [];
 }

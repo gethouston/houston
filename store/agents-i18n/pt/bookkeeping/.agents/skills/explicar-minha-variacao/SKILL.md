@@ -6,6 +6,9 @@ version: 1
 category: Contabilidade
 featured: no
 image: ledger
+x_houston:
+  created_by: houston
+  skill_schema: 1
 ---
 
 
@@ -39,6 +42,7 @@ Eu leio o seu contexto contábil primeiro. Para todo campo obrigatório que esti
 - **Pelo menos uma DRE anterior (mês passado ou mesmo mês do ano passado)**, opcional mas fortemente preferível. Motivo: me dá uma base de comparação. Se você não tiver uma, eu reporto apenas o realizado e sinalizo que ainda não há nada para comparar.
 
 ## Passos
+<!-- houston-workflow:v1 -->
 
 1. **Ler o contexto.** Carregar `context/bookkeeping-context.md`, `config/context-ledger.json` (para `domains.budget`, cadência mais caminho), `config/chart-of-accounts.json`. Ler `config/budget.json` se existir (`[{period, glCode, amount, note?}]`).
 

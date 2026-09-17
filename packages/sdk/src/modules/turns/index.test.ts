@@ -1,4 +1,8 @@
-import type { HoustonEngineClient, WireFrame } from "@houston/runtime-client";
+import {
+  EngineError,
+  type HoustonEngineClient,
+  type WireFrame,
+} from "@houston/runtime-client";
 import { expect, test } from "vitest";
 import { createAuthExpiryNotifier } from "../../auth-expiry";
 import type { CommandHandler } from "../../commands";
@@ -39,6 +43,8 @@ function harness(frames: WireFrame[] = doneTurn) {
     cancels: [] as string[],
     modes: [] as Array<{ id: string; mode: string }>,
     dismissed: [] as string[],
+    /** Set to make the runtime refuse the next dismiss with this error. */
+    dismissRefusal: null as Error | null,
     truncated: [] as Array<{ id: string; turnId: string }>,
     settings: [] as unknown[],
     providersListed: 0,
@@ -65,6 +71,7 @@ function harness(frames: WireFrame[] = doneTurn) {
     },
     async dismissInteraction(id: string) {
       calls.dismissed.push(id);
+      if (calls.dismissRefusal) throw calls.dismissRefusal;
       return { ok: true };
     },
     async truncateConversation(id: string, turnId: string) {
@@ -373,6 +380,28 @@ test("the conversation controls each issue their one runtime call", async () => 
   expect(calls.modes).toEqual([{ id: "c1", mode: "plan" }]);
   expect(calls.dismissed).toEqual(["c1"]);
   expect(calls.truncated).toEqual([{ id: "c1", turnId: "t-9" }]);
+});
+
+test("a dismiss refused by a running turn is a typed outcome, never a throw (PRODUCT-1827)", async () => {
+  const { mod, calls } = harness();
+  calls.dismissRefusal = new EngineError(409, '{"error":"turn running"}');
+  await expect(mod.dismissInteraction("c1", "a1")).resolves.toEqual({
+    ok: false,
+    refusal: "turn_running",
+  });
+  expect(calls.dismissed).toEqual(["c1"]);
+});
+
+test("every other dismiss failure still throws to the caller", async () => {
+  const { mod, calls } = harness();
+  calls.dismissRefusal = new EngineError(500, '{"error":"boom"}');
+  await expect(mod.dismissInteraction("c1", "a1")).rejects.toBeInstanceOf(
+    EngineError,
+  );
+  calls.dismissRefusal = new TypeError("Load failed");
+  await expect(mod.dismissInteraction("c1", "a1")).rejects.toThrow(
+    "Load failed",
+  );
 });
 
 test("the control commands drive the same path as the typed facade", async () => {
