@@ -14,6 +14,11 @@
 // - A subárvore `js` é serializada na página como window.HOUSTON_I18N pelo
 //   _includes/landing/i18n-data.njk. Só entram ali textos de runtime.
 
+// A falha genérica do portão de download. Ela é renderizada na marcação como a
+// linha de erro do formulário e o download-gate-form.js aplica ela de novo em
+// runtime, então mora em um lugar só e é usada nos dois.
+const GATE_FORM_ERROR = "Algo deu errado. Tente de novo.";
+
 export default {
   meta: {
     title: "Houston: agentes de IA que fazem o trabalho de verdade",
@@ -597,7 +602,7 @@ export default {
       menuLabel: "Lista de países",
     },
     submit: "Continuar para o download",
-    formError: "Algo deu errado. Tente de novo.",
+    formError: GATE_FORM_ERROR,
     fineprintHtml:
       'Ao continuar você aceita receber novidades do produto Houston. Cancele quando quiser. Veja nossa <a href="/privacy/">Política de Privacidade</a>.',
     done: {
@@ -776,6 +781,8 @@ export default {
     gate: {
       preparing: "Preparando seu download…",
       submit: "Continuar para o download",
+      formError: GATE_FORM_ERROR,
+      formErrorBusy: "Muitas tentativas. Espere um momento e tente de novo.",
       needOther: "Precisa para outro sistema?",
       countrySearch: "Buscar países",
       countryEmpty: "Nada encontrado",
