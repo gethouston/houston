@@ -7,7 +7,7 @@ import { assistantRuntimeRole } from "../launcher/assistant-role";
 import { stampTurnAttribution } from "./activity-attribution";
 import type { TurnSeam } from "./agents-turn-seams";
 import { liveTurns } from "./live-turn";
-import { turnModeOf } from "./turn-body";
+import { turnModeOf, turnPinOf } from "./turn-body";
 
 /**
  * WHAT THE HOST RECORDS ABOUT A TURN it is about to forward: which conversation
@@ -33,15 +33,25 @@ import { turnModeOf } from "./turn-body";
  * header is untrusted client input). The `/sandbox/*` routes this turn calls
  * back into read it from here rather than from their own request, which the
  * runtime writes and could name anyone in.
+ *
+ * The provider pair the send asked for is recorded too: a routine the agent
+ * saves during this turn inherits it (routines-sandbox.ts). The body is the
+ * shared memo (turn-body.ts), so reading it here costs nothing downstream and
+ * the engine still receives the same bytes.
  */
 export const recordLiveTurn: TurnSeam = async (ctx) => {
   if (ctx.turnConversationId === undefined || ctx.message.duplicate) return;
+  const body = await ctx.body.read();
   let mode: TurnMode = "execute";
   if (assistantRuntimeRole({ agentId: ctx.agent.id }))
-    mode = normalizeTurnMode(turnModeOf(await ctx.body.read()));
-  liveTurns.start(ctx.agent.id, ctx.turnConversationId, mode, {
-    actingAs: ctx.actingAs,
-  });
+    mode = normalizeTurnMode(turnModeOf(body));
+  liveTurns.start(
+    ctx.agent.id,
+    ctx.turnConversationId,
+    mode,
+    { actingAs: ctx.actingAs },
+    turnPinOf(body),
+  );
 };
 
 /**

@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { canonicalProviderId } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import { actingSubFromHeader } from "../auth/acting";
 import type { EventHub } from "../events/hub";
@@ -41,7 +42,7 @@ defineRoute({
     handleSandboxRoutines(deps, method, path, url, req, res),
 });
 
-async function handleSandboxRoutines(
+export async function handleSandboxRoutines(
   deps: {
     vault: CredentialVault;
     store: WorkspaceStore;
@@ -122,18 +123,33 @@ async function handleSandboxRoutines(
   const body = await readJson(req);
   // `id` selects update-in-place; it is never a routine field itself.
   const { id, ...fields } = body;
-  const result =
-    typeof id === "string" && id !== ""
-      ? await updateRoutineChecked(deps.vfs, root, ws.id, id, fields, {
-          triggersEnabled,
-          nowIso,
-          actorSub: createdBy,
-        })
-      : await createRoutineChecked(deps.vfs, root, ws.id, fields, {
-          triggersEnabled,
-          nowIso,
-          createdBy,
-        });
+  const creating = typeof id !== "string" || id === "";
+  // A NEW routine the agent saves without naming a provider runs on the pair
+  // the authoring chat runs on (the send's pin, recorded on the live turn).
+  // Left unpinned it would fire on the runtime's last-used provider, which
+  // may be one the user never connected (a local model picked once and
+  // disconnected since, PRODUCT-1849); the chat's provider demonstrably
+  // answers. An update never re-pins: an existing pin, or a deliberate
+  // "follows the agent", is the user's choice.
+  if (creating && !fields.provider && turn?.pin) {
+    // Stored in pi's canonical dialect, the one the fire path resolves; the
+    // composer may have sent a display id ("openai" for Codex).
+    fields.provider =
+      canonicalProviderId(turn.pin.provider) ?? turn.pin.provider;
+    if (!fields.model && turn.pin.model) fields.model = turn.pin.model;
+    if (!fields.effort && turn.pin.effort) fields.effort = turn.pin.effort;
+  }
+  const result = !creating
+    ? await updateRoutineChecked(deps.vfs, root, ws.id, id, fields, {
+        triggersEnabled,
+        nowIso,
+        actorSub: createdBy,
+      })
+    : await createRoutineChecked(deps.vfs, root, ws.id, fields, {
+        triggersEnabled,
+        nowIso,
+        createdBy,
+      });
 
   if ("notFound" in result) {
     json(res, 404, { error: `no routine with id '${String(id)}'` });
@@ -144,6 +160,6 @@ async function handleSandboxRoutines(
     return true;
   }
   emit({ type: "RoutinesChanged", agentPath: agent.id });
-  json(res, typeof id === "string" && id !== "" ? 200 : 201, result.routine);
+  json(res, creating ? 201 : 200, result.routine);
   return true;
 }

@@ -54,6 +54,39 @@ export interface LiveTurn {
    * the turn (`channel/proxy.ts`), never taken from the runtime.
    */
   readonly actingUser?: string;
+  /**
+   * The provider/model/effort the send that started this turn asked for, as the
+   * host read them off the request. A routine the agent saves DURING this turn
+   * without naming a provider is pinned to this pair (routines-sandbox.ts): the
+   * chat that authored it demonstrably runs on it, whereas an unpinned routine
+   * fires on the runtime's last-used provider, which may be one the user never
+   * connected (PRODUCT-1849). Absent when the send named nothing.
+   */
+  readonly pin?: LiveTurnPin;
+}
+
+/** The provider pair a turn was started with, exactly as the send named it. */
+export interface LiveTurnPin {
+  provider: string;
+  model?: string;
+  effort?: string;
+}
+
+/**
+ * A programmatic fire's TurnPin (ports.ts) as the live-turn record keeps it:
+ * `null`/empty fields are absent, a pin with no provider is no pin at all.
+ */
+export function liveTurnPin(pin?: {
+  provider?: string | null;
+  model?: string | null;
+  effort?: string | null;
+}): LiveTurnPin | undefined {
+  if (!pin?.provider) return undefined;
+  return {
+    provider: pin.provider,
+    ...(pin.model ? { model: pin.model } : {}),
+    ...(pin.effort ? { effort: pin.effort } : {}),
+  };
 }
 
 /** The identity a turn acts as, as its starter knew it. */
@@ -92,6 +125,7 @@ class LiveTurnRegistry {
     conversationId: string,
     mode: TurnMode,
     identity: LiveTurnIdentity = {},
+    pin?: LiveTurnPin,
   ): void {
     let byConversation = this.turns.get(agentId);
     if (!byConversation) {
@@ -108,6 +142,7 @@ class LiveTurnRegistry {
         mode,
         ...(identity.actingAs ? { actingAs: identity.actingAs } : {}),
         ...(identity.actingUser ? { actingUser: identity.actingUser } : {}),
+        ...(pin ? { pin } : {}),
       },
     });
     while (byConversation.size > MAX_TURNS_PER_AGENT) {

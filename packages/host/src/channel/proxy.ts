@@ -18,7 +18,7 @@ import {
   type TurnPin,
 } from "../ports";
 import { LOCAL_PLACEHOLDER_KEY, OPENAI_COMPATIBLE } from "../providers";
-import { liveTurns } from "../routes/live-turn";
+import { liveTurnPin, liveTurns } from "../routes/live-turn";
 import { MAX_JSON_BYTES, readBody } from "../routes/read-body";
 import { captureRuntimeCredential } from "./capture-credential";
 import { errorCodeFrom, TurnFireError } from "./fire-error";
@@ -272,6 +272,7 @@ export class ProxyChannel implements RuntimeChannel {
         actingAs,
         actingUser,
       },
+      liveTurnPin(pin),
     );
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
