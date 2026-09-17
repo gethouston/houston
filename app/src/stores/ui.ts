@@ -189,6 +189,10 @@ interface UIState {
    *  open, or null. The draft itself is derived from that agent's activities;
    *  the page has no per-chat route, so an explicit flag marks the open one. */
   integrationSetupChatAgentId: string | null;
+  /** On a per-agent custom-integration deployment (PRODUCT-1773), the agent
+   *  whose custom list the global Integrations page shows; null = not picked
+   *  yet (the setup chat's agent, else the first agent, stands in). */
+  customIntegrationsAgentId: string | null;
   /** Whether the global command palette (⌘K) is open. */
   paletteOpen: boolean;
   /** Whether the keyboard shortcut cheatsheet (?) is open. */
@@ -363,6 +367,7 @@ interface UIState {
   ) => void;
   setPendingSkillChatActivityId: (activityId: string | null) => void;
   setIntegrationSetupChatAgentId: (agentId: string | null) => void;
+  setCustomIntegrationsAgentId: (agentId: string | null) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
   setOnBoardNavigate: (
@@ -412,6 +417,7 @@ const initialUIState = {
   pendingRoutineChat: null,
   pendingSkillChatActivityId: null,
   integrationSetupChatAgentId: null,
+  customIntegrationsAgentId: null,
   paletteOpen: false,
   cheatsheetOpen: false,
   onBoardNavigate: null,
@@ -657,6 +663,8 @@ export const useUIStore = create<UIState>()(
         set({ pendingSkillChatActivityId }),
       setIntegrationSetupChatAgentId: (integrationSetupChatAgentId) =>
         set({ integrationSetupChatAgentId }),
+      setCustomIntegrationsAgentId: (customIntegrationsAgentId) =>
+        set({ customIntegrationsAgentId }),
       setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
       setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
       setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),

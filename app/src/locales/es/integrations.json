@@ -123,7 +123,12 @@
     },
     "description": "Conecta una API o un servidor MCP que no esté en el catálogo de aplicaciones.",
     "empty": "Aún no tienes integraciones personalizadas. Agrega una para conectar una herramienta que no esté en el catálogo.",
+    "emptyForAgent": "{{agent}} aún no tiene integraciones personalizadas. Agrega una para conectar una herramienta que no esté en el catálogo.",
     "noResults": "Ninguna integración personalizada coincide con tu búsqueda.",
+    "scope": {
+      "title": "Las integraciones personalizadas se configuran por empleado de IA. Elige cuáles mostrar.",
+      "label": "De {{agent}}"
+    },
     "catalogUnavailable": "El catálogo de aplicaciones no está disponible en esta configuración, pero aún puedes agregar integraciones personalizadas.",
     "addButton": "Agregar integración personalizada",
     "loadError": "No pudimos cargar tus integraciones personalizadas.",
@@ -168,6 +173,7 @@
       "added": "Agregada",
       "actions": "Acciones",
       "activeBody": "Conectada y funcionando. Tus empleados de IA pueden usar sus acciones en cualquier chat.",
+      "activeBodyAgent": "Conectada y funcionando. Este empleado de IA puede usar sus acciones en cualquier chat.",
       "pendingBody": "Esperando una clave de API. Ingresa la clave para activarla.",
       "errorBody": "No está funcionando en este momento: {{message}}",
       "updateKey": "Actualizar clave",
@@ -196,6 +202,7 @@
     "delete": {
       "title": "¿Quitar {{name}}?",
       "description": "Tus empleados de IA perderán acceso a sus acciones. Esto no se puede deshacer.",
+      "descriptionAgent": "Este empleado de IA perderá el acceso a sus acciones. Esto no se puede deshacer.",
       "confirm": "Quitar",
       "cancel": "Cancelar"
     },

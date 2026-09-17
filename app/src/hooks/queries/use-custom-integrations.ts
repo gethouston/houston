@@ -16,7 +16,6 @@ import {
   tauriIntegrations,
   tauriSystem,
 } from "../../lib/tauri";
-import { useAgentStore } from "../../stores/agents";
 import { useCapabilities } from "../use-capabilities";
 
 /**
@@ -38,19 +37,6 @@ import { useCapabilities } from "../use-capabilities";
  * credential card, the automation intake's inline connect): the gateway proxies
  * ONLY per-agent routes to the pod, so the top-level form 404s there.
  */
-
-/**
- * The transport agent for user-global custom-integration calls from surfaces
- * WITHOUT an ambient agent (the global Integrations page, chat brand
- * resolution). The hosted gateway proxies ONLY the per-agent custom routes
- * (HOU-823) — the top-level form 404s there and the surface would silently
- * hide — and the data is user-global, so any agent's form returns the same
- * list: ride the first agent's. The top-level fallback covers a direct host
- * with no agents yet.
- */
-export function useCustomTransportAgentId() {
-  return useAgentStore((s) => s.agents[0]?.id);
-}
 
 /** The SAME list through the per-agent surface (HOU-823). Same `staleTime`
  *  as the other observers of this key — mixed options on one cache entry

@@ -99,6 +99,7 @@ export { useConnectionSelection } from "./use-connection-selection";
 export {
   AddCustomButton,
   type CustomIntegrationsSurface,
+  CustomScopeControl,
   CustomSurfaceSupport,
   useCustomIntegrationsSurface,
 } from "./use-custom-integrations-surface";
