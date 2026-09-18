@@ -66,8 +66,11 @@ function registerServerBackends(): void {
  * path computed (so Bash gating / run-code stay identical) and Houston's product
  * system prompt (full-replace, never the SDK's claude_code preset).
  *
- * Server-mode only: the per-request cloud runtime (turn/) builds its own pi
- * backend per turn and never imports this module, so cloud anthropic stays OFF.
+ * Server-mode registration only. The per-turn runtime (turn/) never imports
+ * this module; it applies the same gate itself in `createTurnBackend`
+ * (turn/turn-backend.ts), routing `anthropic` to `createClaudeBackend` inside
+ * the single-use worker and every other provider to a per-turn pi backend
+ * (pinned by turn/turn-anthropic-compliance.test.ts).
  */
 function registerAnthropicBackend(): void {
   registerBackend(
