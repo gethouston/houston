@@ -163,7 +163,11 @@ are asserted to be the ONLY differences by `src/dual-profile.test.ts`):
   cloud = post-turn sync emitting synthetic `FilesChanged`. Same `HoustonEvent`
   vocabulary, different detector.
 - **bash confinement**: local bash runs with the user's own authority (same as
-  the desktop has always been); cloud uses the egress-locked sandbox.
+  the desktop has always been); cloud uses the egress-locked sandbox. On a
+  POOLED turn worker there is no bash at all unless the pod is single-use: the
+  agent gets `run_code` against the Cloud Run sandbox, reached through the
+  turn grant's `code-run` scope (the worker holds no sandbox credential), and
+  no scope means no code execution for that turn.
 
 ## The rollback invariant (why the gate can fail safe)
 

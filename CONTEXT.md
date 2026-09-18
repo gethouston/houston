@@ -41,3 +41,17 @@ _Avoid_: message buffer
 **Board status**:
 The handled-versus-error signal on an activity card, read alongside session status: needs_you means handled or needs attention (a user Stop lands here); error means a genuine failure.
 _Avoid_: card state
+
+### Code execution
+
+**Code sandbox**:
+The disposable, egress-locked box where an agent's untrusted code runs — one request, one fresh working directory, wiped when the request returns. Never part of the agent's own process or pod.
+_Avoid_: executor, code runner, REPL
+
+**run_code**:
+The agent's single way to compute or produce a file when it has no shell: it ships a program plus input files to the code sandbox and gets stdout, stderr and artifacts back. An artifact may only overwrite a file the agent declared as an input.
+_Avoid_: execute tool, bash-over-HTTP
+
+**code-run scope**:
+The per-turn authority that lets a stateless worker reach the code sandbox — the gateway relays the run under the turn grant, so the worker itself holds no sandbox address or credential. A turn granted no such scope simply has no code execution, tool and system prompt alike.
+_Avoid_: sandbox permission, code flag

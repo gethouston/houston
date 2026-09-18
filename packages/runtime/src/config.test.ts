@@ -37,6 +37,10 @@ const OWNED = [
   "HOUSTON_WORKSPACE_DIR",
   "HOUSTON_DATA_DIR",
   "HOUSTON_TURN_STALL_TIMEOUT_MS",
+  "HOUSTON_MODE",
+  "HOUSTON_CODE_EXECUTION",
+  "HOUSTON_CODE_SANDBOX_URL",
+  "HOUSTON_POOL_SINGLE_USE",
 ] as const;
 
 const prior = new Map(OWNED.map((key) => [key, process.env[key]]));
@@ -151,4 +155,48 @@ test("the table carries a default for every provider the runtime names", () => {
   for (const provider of Object.keys(DEFAULTS_BY_PROVIDER)) {
     expect(DEFAULT_MODEL[provider], provider).toBeTypeOf("string");
   }
+});
+
+/**
+ * Where the code sandbox's ADDRESS lives, which is the whole point of the
+ * relay: server mode holds it, a turn worker must not — the gateway serves the
+ * run route under the turn grant instead.
+ */
+test("server mode still refuses remote code execution with nowhere to send it", async () => {
+  await expect(
+    loadConfig({ HOUSTON_CODE_EXECUTION: "remote" }),
+  ).rejects.toThrow(
+    "HOUSTON_CODE_EXECUTION=remote requires HOUSTON_CODE_SANDBOX_URL",
+  );
+  const configured = await loadConfig({
+    HOUSTON_CODE_EXECUTION: "remote",
+    HOUSTON_CODE_SANDBOX_URL: "https://sandbox.test",
+  });
+  expect(configured.codeExecution).toBe("remote");
+});
+
+test("turn mode takes remote with no sandbox URL at all", async () => {
+  const config = await loadConfig({
+    HOUSTON_MODE: "turn",
+    HOUSTON_CODE_EXECUTION: "remote",
+  });
+  expect(config.mode).toBe("turn");
+  expect(config.codeExecution).toBe("remote");
+  expect(config.codeSandboxUrl).toBe("");
+});
+
+test("a single-use pool worker boots with remote code execution", async () => {
+  const config = await loadConfig({
+    HOUSTON_MODE: "turn",
+    HOUSTON_CODE_EXECUTION: "remote",
+    HOUSTON_POOL_SINGLE_USE: "1",
+  });
+  expect(config.codeExecution).toBe("remote");
+  expect(config.poolSingleUse).toBe(true);
+});
+
+test("an unknown code-execution mode still fails loudly", async () => {
+  await expect(
+    loadConfig({ HOUSTON_MODE: "turn", HOUSTON_CODE_EXECUTION: "sandbox" }),
+  ).rejects.toThrow("must be local, remote, or disabled");
 });

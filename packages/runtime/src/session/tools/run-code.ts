@@ -1,18 +1,16 @@
-import { existsSync } from "node:fs";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import {
-  basename,
-  dirname,
-  extname,
-  join,
-  relative,
-  resolve,
-  sep,
-} from "node:path";
+import { readFile } from "node:fs/promises";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { assertNotPlanMode } from "../live-mode-gate";
-import { RunCodeLimiter, type RunCodeLimits } from "./run-code-limiter";
+import {
+  type SandboxArtifact,
+  type SandboxResult,
+  safeJoin,
+  saveArtifacts,
+  summarizeRun,
+} from "./run-code-artifacts";
+import type { RunCodeLimiter } from "./run-code-limiter";
+import type { RunCodeTransport } from "./run-code-transport";
 
 /**
  * The `run_code` tool — the load-bearing piece of the cheap-agent /
@@ -20,15 +18,11 @@ import { RunCodeLimiter, type RunCodeLimits } from "./run-code-limiter";
  * force the whole agent process into an always-on sandbox), the agent ships
  * code to a disposable Cloud Run box and gets output + files back.
  *
- * Two auth layers ride two headers: `Authorization` carries a Google-signed ID
- * token for Cloud Run IAM (--no-allow-unauthenticated), `X-Sandbox-Token`
- * carries the app-layer shared secret. They MUST be separate headers — IAM
- * consumes Authorization, so an app token there would break under IAM.
- *
- * Artifact write-back is collision-safe: an artifact may only OVERWRITE a
- * workspace file the model explicitly declared via input_files (it asked to
- * transform that file); any other collision is saved under a new name and
- * reported. Untrusted sandbox code must never silently destroy user files.
+ * HOW it reaches that box is the transport's business (`run-code-transport.ts`):
+ * a long-lived server-mode runtime calls the sandbox directly with its own
+ * credentials; a pooled turn worker relays through the gateway under the turn
+ * grant and holds no sandbox identity at all. Everything below — the budget,
+ * the input-file gathering, the artifact write-back — is identical on both.
  */
 
 // Keep this language set in sync with the sandbox's authoritative list in
@@ -49,57 +43,74 @@ const Params = Type.Object({
         "Also grants permission to overwrite those same files with returned artifacts.",
     }),
   ),
+  timeout_ms: Type.Optional(
+    Type.Number({
+      description:
+        "How long the program may run, in milliseconds (1 to 120000). Omit for the sandbox default (60000).",
+    }),
+  ),
 });
 
 type RunCodeParams = Static<typeof Params>;
 
-interface SandboxArtifact {
-  path: string;
-  contentBase64: string;
-}
-interface SandboxResult {
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-  timedOut: boolean;
-  truncated: boolean;
-  artifacts: SandboxArtifact[];
-  droppedArtifacts?: string[];
+/** The sandbox's own ceiling (code-sandbox DEFAULT_LIMITS.maxTimeoutMs). */
+const MAX_TIMEOUT_MS = 120_000;
+
+/** Clamp rather than reject: an out-of-range ask still runs, at the ceiling. */
+function clampTimeout(raw: number | undefined): number | undefined {
+  if (raw === undefined || !Number.isFinite(raw)) return undefined;
+  return Math.min(MAX_TIMEOUT_MS, Math.max(1, Math.round(raw)));
 }
 
-/** Resolve a workspace-relative path strictly inside the workspace; reject escapes. */
-function safeJoin(root: string, rel: string): string {
-  const abs = resolve(root, rel);
-  if (abs !== root && !abs.startsWith(root + sep)) {
-    throw new Error(`path escapes the workspace: ${rel}`);
+/** The named failure behind a non-2xx, so nothing surfaces as a bare status. */
+function transportError(status: number, body: string): Error {
+  let code = "";
+  try {
+    const parsed = JSON.parse(body) as { code?: unknown };
+    if (typeof parsed.code === "string") code = parsed.code;
+  } catch {
+    // Not JSON (a proxy's HTML error page); fall through to the status map.
   }
-  return abs;
-}
-
-/** First "name (2).ext"-style path that does not exist yet. */
-function nonColliding(abs: string): string {
-  const dir = dirname(abs);
-  const ext = extname(abs);
-  const stem = basename(abs, ext);
-  for (let i = 2; i < 1000; i++) {
-    const candidate = join(dir, `${stem} (${i})${ext}`);
-    if (!existsSync(candidate)) return candidate;
+  if (status === 401) {
+    // Two different 401s share the status: the direct transport's app token is
+    // wrong, or this turn's grant is no longer accepted by the gateway.
+    return new Error(
+      code === "grant_expired" || code === "unauthenticated"
+        ? "code execution rejected this turn's authority (401): the turn grant is no longer valid"
+        : "code sandbox rejected the request (401): HOUSTON_CODE_SANDBOX_TOKEN does not match the sandbox's token",
+    );
   }
-  throw new Error(`too many name collisions for ${abs}`);
+  if (status === 403) {
+    return new Error(
+      "code sandbox rejected the request (403): this runtime's service account lacks run.invoker on the sandbox (Cloud Run IAM)",
+    );
+  }
+  if (status === 503) {
+    return new Error("code execution is not configured on this deployment");
+  }
+  if (status === 502) {
+    return new Error(
+      "the code sandbox is unavailable right now (502); try again in a moment",
+    );
+  }
+  return new Error(`code sandbox returned ${status}: ${body}`);
 }
 
 export interface RunCodeOptions {
-  baseUrl: string;
-  token: string;
+  /** How this deployment reaches the sandbox (direct HTTP, or the turn grant). */
+  transport: RunCodeTransport;
   workspaceDir: string;
-  /** Per-workspace budget (Gate #5). */
-  limits: RunCodeLimits;
-  /** Google-signed ID token for Cloud Run IAM; null on dev machines. */
-  idToken?: () => Promise<string | null>;
+  /**
+   * The run budget (Gate #5). Injected, not built here, because WHAT it bounds
+   * differs: a long-lived runtime builds one per process (= per workspace),
+   * while turn mode shares one across every turn the worker serves (= per
+   * worker) — one tool instance is built per turn there, so a limiter created
+   * in here would be a per-turn budget and bound nothing.
+   */
+  limiter: RunCodeLimiter;
 }
 
 export function makeRunCodeTool(opts: RunCodeOptions) {
-  const limiter = new RunCodeLimiter(opts.limits);
   return defineTool({
     name: "run_code",
     label: "Run code",
@@ -132,118 +143,44 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
         declared.add(abs);
       }
 
-      // 2. Run it in the remote sandbox, inside this workspace's run budget.
-      //    `baseUrl` may carry a trailing slash from config; strip it to avoid
-      //    `//run`. The signal aborts the HTTP call on a cancelled turn; the
-      //    sandbox reaps its own process by timeout server-side.
-      const release = limiter.acquire();
+      // 2. Run it in the remote sandbox, inside this runtime's run budget. The
+      //    signal aborts the call on a cancelled turn; the sandbox reaps its own
+      //    process by timeout server-side.
+      const timeoutMs = clampTimeout(params.timeout_ms);
+      const release = opts.limiter.acquire();
       let res: Response;
       try {
-        const idToken = opts.idToken ? await opts.idToken() : null;
-        res = await fetch(`${opts.baseUrl.replace(/\/$/, "")}/run`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            ...(opts.token ? { "x-sandbox-token": opts.token } : {}),
-            ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
-          },
-          body: JSON.stringify({
+        res = await opts.transport(
+          {
             language: params.language,
             code: params.code,
             files,
-          }),
+            ...(timeoutMs === undefined ? {} : { timeoutMs }),
+          },
           signal,
-        });
+        );
       } finally {
         release();
       }
       // pi convention + Houston no-silent-failure: throw on a non-2xx.
       if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        if (res.status === 401) {
-          throw new Error(
-            "code sandbox rejected the request (401): HOUSTON_CODE_SANDBOX_TOKEN does not match the sandbox's token",
-          );
-        }
-        if (res.status === 403) {
-          throw new Error(
-            "code sandbox rejected the request (403): this runtime's service account lacks run.invoker on the sandbox (Cloud Run IAM)",
-          );
-        }
-        throw new Error(`code sandbox returned ${res.status}: ${body}`);
+        throw transportError(res.status, await res.text().catch(() => ""));
       }
       const result = (await res.json()) as SandboxResult;
 
-      // 3. Persist artifacts. One bad path must not discard the others; a
-      //    collision with an UNDECLARED workspace file is renamed, not
-      //    overwritten. Everything is reported to the model — nothing silent.
-      const saved: string[] = [];
-      const updated: string[] = [];
-      const renamed: { requested: string; savedAs: string }[] = [];
-      const skipped: string[] = [];
-      for (const a of result.artifacts ?? []) {
-        try {
-          let abs = safeJoin(opts.workspaceDir, a.path);
-          const collided = existsSync(abs) && !declared.has(abs);
-          if (collided) abs = nonColliding(abs);
-          await mkdir(dirname(abs), { recursive: true });
-          await writeFile(abs, Buffer.from(a.contentBase64, "base64"));
-          const rel = relative(opts.workspaceDir, abs);
-          if (collided) renamed.push({ requested: a.path, savedAs: rel });
-          else if (declared.has(abs)) updated.push(rel);
-          else saved.push(rel);
-        } catch {
-          skipped.push(a.path);
-        }
-      }
-
-      // 4. Summarize for the model.
-      const parts: string[] = [];
-      if (result.stdout?.trim()) parts.push(result.stdout.trimEnd());
-      if (result.stderr?.trim()) {
-        // A clean exit that still wrote to stderr is warnings, not errors.
-        parts.push(
-          `${result.exitCode === 0 ? "[warnings]" : "[errors]"}\n${result.stderr.trimEnd()}`,
-        );
-      }
-      if (result.truncated)
-        parts.push("[output was truncated to the size limit]");
-      if (result.timedOut)
-        parts.push("[the program hit the time limit and was stopped]");
-      if (saved.length) parts.push(`[saved files: ${saved.join(", ")}]`);
-      if (updated.length)
-        parts.push(`[updated input files: ${updated.join(", ")}]`);
-      for (const r of renamed) {
-        parts.push(
-          `[${r.requested} already existed and was not an input file; saved as: ${r.savedAs}]`,
-        );
-      }
-      if (skipped.length)
-        parts.push(`[could not save (invalid path): ${skipped.join(", ")}]`);
-      if (result.droppedArtifacts?.length) {
-        parts.push(
-          `[these files were produced but too large to return: ${result.droppedArtifacts.join(", ")}]`,
-        );
-      }
-      if (
-        typeof result.exitCode === "number" &&
-        result.exitCode !== 0 &&
-        !result.timedOut
-      ) {
-        parts.push(`[exit code ${result.exitCode}]`);
-      }
-      const text = parts.join("\n\n") || "(the program produced no output)";
-
+      // 3. Persist artifacts, then summarize for the model.
+      const saved = await saveArtifacts(
+        opts.workspaceDir,
+        result.artifacts ?? [],
+        declared,
+      );
       return {
-        content: [{ type: "text" as const, text }],
+        content: [{ type: "text" as const, text: summarizeRun(result, saved) }],
         details: {
           exitCode: result.exitCode,
           timedOut: !!result.timedOut,
           truncated: !!result.truncated,
-          saved,
-          updated,
-          renamed,
-          skipped,
+          ...saved,
         },
       };
     },

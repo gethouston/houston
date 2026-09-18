@@ -49,9 +49,23 @@ export function checkSandboxToken(
   return got.length === expected.length && timingSafeEqual(got, expected);
 }
 
+/**
+ * The app-layer gate. An EMPTY token is not "open": this service now sits
+ * behind the gateway's `/v1/code/run` relay, where anything that reaches it has
+ * already been told it may run code, so a deploy that forgot SANDBOX_TOKEN must
+ * refuse rather than execute for whoever arrives. Local dev opts out explicitly
+ * with SANDBOX_ALLOW_UNAUTHENTICATED=1.
+ */
+export function sandboxRequestAuthorized(
+  header: string | string[] | undefined,
+  gate: { token: string; allowUnauthenticated: boolean },
+): boolean {
+  if (!gate.token) return gate.allowUnauthenticated;
+  return checkSandboxToken(header, gate.token);
+}
+
 function authorized(req: IncomingMessage): boolean {
-  if (!config.token) return true; // open: local dev only
-  return checkSandboxToken(req.headers["x-sandbox-token"], config.token);
+  return sandboxRequestAuthorized(req.headers["x-sandbox-token"], config);
 }
 
 export async function handle(req: IncomingMessage, res: ServerResponse) {
@@ -111,7 +125,13 @@ export function startServer() {
       `houston-code-sandbox listening on http://${config.host}:${config.port}`,
     );
     console.log(
-      `  auth: ${config.token ? "bearer token required" : "open (local dev)"}`,
+      `  auth: ${
+        config.token
+          ? "X-Sandbox-Token required"
+          : config.allowUnauthenticated
+            ? "OPEN (SANDBOX_ALLOW_UNAUTHENTICATED=1, local dev)"
+            : "REFUSING /run: no SANDBOX_TOKEN set"
+      }`,
     );
   });
   return server;
