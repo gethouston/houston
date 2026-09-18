@@ -1,7 +1,10 @@
 import type { Server } from "node:http";
 import { initEngineSentry } from "@houston/runtime-client/sentry";
 import { config } from "./config";
-import { installRuntimeLogging } from "./observability/logging";
+import {
+  installRuntimeLogging,
+  loggerOptionsForMode,
+} from "./observability/logging";
 import { anyTurnRunning } from "./session/bus";
 import { beginDrain } from "./session/drain";
 import { drainTurnsThenExit } from "./session/graceful-shutdown";
@@ -16,7 +19,10 @@ import {
 // already owns console, so this sees every logged error exactly once.
 const sentry = initEngineSentry("runtime");
 const { logger } = installRuntimeLogging({
-  dataDir: config.dataDir,
+  // A pool worker logs to stderr only: its emptyDir is shared across the
+  // tenants it serves, so no per-tenant log line may land there
+  // (loggerOptionsForMode).
+  ...loggerOptionsForMode(config.mode, config.dataDir),
   // The method reference, NOT a local arrow: a wrapper defined here would put
   // a main.ts frame at the top of every synthetic stack, where the reporter's
   // frame-trimming (which keys on the sentry/logging filenames) can't reach it.

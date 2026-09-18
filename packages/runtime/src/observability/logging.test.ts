@@ -6,6 +6,7 @@ import {
   createRuntimeLogger,
   formatLogEntry,
   installRuntimeLogging,
+  loggerOptionsForMode,
   minimumLogLevel,
   runtimeLogFile,
   shouldLog,
@@ -166,4 +167,39 @@ test("installRuntimeLogging bridges console methods", async () => {
   expect(lines[3]).toContain("level=ERROR");
   expect(lines[3]).toContain("message=boom");
   expect(lines[3]).toContain("failed");
+});
+
+test("a turn-mode worker never opens a log file on its data dir", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "houston-turn-log-"));
+  try {
+    const turn = loggerOptionsForMode("turn", dir);
+    expect(turn).toEqual({ printLogs: true });
+    const server = loggerOptionsForMode("server", dir);
+    expect(server).toEqual({ dataDir: dir });
+    expect(runtimeLogFile(dir)).toBe(join(dir, "runtime.log"));
+
+    // Bound end to end: with the turn options installed, a logged line reaches
+    // stderr and nothing is created under the data dir.
+    const written: string[] = [];
+    const stderr = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      written.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      const logger = createRuntimeLogger({
+        ...turn,
+        level: "INFO",
+        now: () => ts,
+      });
+      logger.info("op served", { agent: "0123456789abcdef" });
+      await logger.close();
+    } finally {
+      process.stderr.write = stderr;
+    }
+    expect(written.join("")).toContain("op served");
+    await expect(readFile(join(dir, "runtime.log"), "utf8")).rejects.toThrow();
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
