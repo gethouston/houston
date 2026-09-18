@@ -4,9 +4,16 @@ The per-task **code-execution sandbox** — the disposable box where a Houston
 agent's *untrusted* code runs. A stateless HTTP service deployed to **Cloud Run
 (gen2, `--concurrency=1`)**; it scales to zero, so it costs ~$0 when idle.
 
-This is the "rented sandbox" half of the cheap-agent architecture. See
-[`cloud/code-execution.md`](../../cloud/code-execution.md) for the full design,
-isolation posture, and pricing.
+This is the "rented sandbox" half of the cheap-agent architecture: the
+runtime's `run_code` tool (`packages/runtime/src/session/tools/run-code.ts`)
+ships code and input files here and gets stdout, stderr and artifacts back,
+so an agent needs no in-container shell. The runtime selects it with
+`HOUSTON_CODE_EXECUTION=remote` + `HOUSTON_CODE_SANDBOX_URL`
+(`packages/runtime/src/config.ts`).
+
+**Deployment status:** not deployed. No committed manifest in this repo or in
+the cloud repo sets `HOUSTON_CODE_SANDBOX_URL`, so every runtime today runs
+with `local` (in-container bash) or `disabled`.
 
 ## API
 
@@ -43,5 +50,9 @@ pnpm test            # real python/bash/node execution + HTTP routing
 
 ## Deploy
 
-`./cloud/scripts/05-code-sandbox.sh` (build via Cloud Build → deploy to Cloud Run
-with the untrusted-code isolation flags). Build context is the **monorepo root**.
+There is no deploy script in this repo (the one this README used to point at
+lived in a retired repository). To deploy: build `packages/code-sandbox/Dockerfile`
+with the **monorepo root** as build context, push it, and create a Cloud Run
+gen2 service with `--concurrency=1`, `--no-allow-unauthenticated`, and
+`SANDBOX_TOKEN` set; then point the runtime at it with
+`HOUSTON_CODE_SANDBOX_URL` and `HOUSTON_CODE_EXECUTION=remote`.
