@@ -32,13 +32,16 @@ test("the worker probe rejects a non-file path", () => {
   ).toThrow("Claude Agent SDK binary is not a file");
 });
 
-test("boot probes and warms exactly once for a live single-use worker", async () => {
+test.each([
+  "single-use",
+  "multi-turn",
+] as const)("%s boot probes and warms exactly once", async (profile) => {
   const probe = vi.fn(() => "/app/sdk/claude");
   const warm = vi.fn(async () => undefined);
   const report = vi.fn();
 
   startClaudeWorkerBoot({
-    profile: "single-use",
+    profile,
     root: "/data",
     probe,
     warm,
@@ -52,7 +55,6 @@ test("boot probes and warms exactly once for a live single-use worker", async ()
 });
 
 test.each([
-  "multi-turn",
   "server",
 ] as const)("%s boot never probes or warms Claude", async (profile) => {
   const probe = vi.fn(() => "/app/sdk/claude");

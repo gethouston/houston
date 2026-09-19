@@ -39,9 +39,16 @@ export function probeClaudeWorkerBinary(
   return binary;
 }
 
-/** Start the single-use worker's Claude probe and warmup without blocking boot. */
+/**
+ * Start a pool worker's Claude probe and warmup without blocking boot. Both
+ * pooled profiles warm: a single-use worker pays the binary page-in before its
+ * one turn, and a multi-turn worker pays it once for every turn it will ever
+ * serve — the first Anthropic turn on a fresh worker otherwise carries ~1-2 s
+ * of cold binary load. The server profile is the per-agent pod, whose host
+ * owns its own runtime lifecycle and never boots through this path.
+ */
 export function startClaudeWorkerBoot(deps: ClaudeWorkerBootDeps): void {
-  if (deps.profile !== "single-use") return;
+  if (deps.profile === "server") return;
   const probe = deps.probe ?? probeClaudeWorkerBinary;
   let binary: string;
   try {
