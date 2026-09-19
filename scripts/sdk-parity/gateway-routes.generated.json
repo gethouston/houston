@@ -997,6 +997,14 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/v1/code/run",
+    "methods": [
+      "POST"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "a pooled turn worker calls it with the turn's grant token so the agent's run_code tool reaches the Cloud Run sandbox without the worker holding GCP IAM; never a user client"
+  },
+  {
     "pattern": "/v1/hooks/{routineId}/{secret}",
     "methods": [
       "POST"
@@ -1120,6 +1128,14 @@
     ],
     "classification": "infra",
     "reason": "the marketing website's anonymous browser beacon, posted before any Houston account exists; there is no signed-in user for an SDK call to authenticate as"
+  },
+  {
+    "pattern": "/v1/web/leads",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "the marketing website's download form, posted by an anonymous browser before any Houston account exists; there is no signed-in user for an SDK call to authenticate as"
   },
   {
     "pattern": "/v1/agents/{slug}/assignments",
