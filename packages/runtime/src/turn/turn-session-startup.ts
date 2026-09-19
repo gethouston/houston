@@ -3,14 +3,16 @@ import { preloadClaudeSdk } from "../backends/claude/sdk-loader";
 import type { HarnessBackend } from "../backends/types";
 import { config } from "../config";
 import { fileToolGuardOptions } from "../session/coordinator-policy";
-import { SYSTEM_PROMPT } from "../session/resource-loader";
+import { systemPromptFor } from "../session/resource-loader";
 import { turnCodeExecutionMode } from "../session/tool-selection";
-import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makeRunCodeTool } from "../session/tools/run-code";
+import { sandboxFetchRunCodeTransport } from "../session/tools/run-code-transport";
 import { createTurnBackend, type TurnBackendDeps } from "./turn-backend";
+import { turnRunCodeLimiter } from "./turn-run-code-limiter";
 import { createTurnModelRuntime } from "./turn-runtime";
+import { TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
 import type { TurnDirectories, TurnSessionRequest } from "./turn-session";
-import { buildTurnToolSelection } from "./turn-toolset";
+import { buildTurnToolSelection, turnCodeExecution } from "./turn-toolset";
 
 export interface RunTurnDeps {
   claudeSdk?: ClaudeBackendDeps["sdk"];
@@ -59,29 +61,34 @@ async function prepareTurnSession(
     turn.timings,
   );
   if (sdkLoad) await sdkLoad;
-  const toolSelection = buildTurnToolSelection(
+  // ONE answer for the allowlist, the tool and the prompt: whatever the grant
+  // withheld must be missing from all three, or the model is told it can run
+  // code it has no tool for.
+  const codeExecution = turnCodeExecution(
     turn,
     turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
   );
-  const codeSandbox = toolSelection.includeRunCode
-    ? makeRunCodeTool({
-        baseUrl: config.codeSandboxUrl,
-        token: config.codeSandboxToken,
-        workspaceDir: directories.workspaceDir,
-        limits: {
-          maxConcurrent: config.runCodeMaxConcurrent,
-          maxPerMinute: config.runCodePerMinute,
-        },
-        idToken: makeIdTokenProvider(config.codeSandboxUrl),
-      })
-    : null;
+  const toolSelection = buildTurnToolSelection(turn, codeExecution);
+  // The worker holds no sandbox URL, app token or GCP identity: the call rides
+  // this turn's grant through the sandbox facade, exactly like integrations.
+  const codeSandbox =
+    toolSelection.includeRunCode && turn.sandbox
+      ? makeRunCodeTool({
+          transport: sandboxFetchRunCodeTransport({
+            call: turn.sandbox.call,
+            path: TURN_CODE_RUN_PATH,
+          }),
+          workspaceDir: directories.workspaceDir,
+          limiter: turnRunCodeLimiter,
+        })
+      : null;
   const backend = (deps.createBackend ?? createTurnBackend)(turn.provider, {
     directories,
     turn,
     modelRuntime,
     toolSelection,
     codeSandbox,
-    systemPrompt: config.systemPrompt || SYSTEM_PROMPT,
+    systemPrompt: config.systemPrompt || systemPromptFor(codeExecution),
     // The ROLE's file wall, the same policy the long-lived runtime builds
     // (session-tools.ts): a coordinator turn is held to its memory document,
     // so the shared skills mirror it must never rewrite is not a writable root

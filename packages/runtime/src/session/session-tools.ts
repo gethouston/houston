@@ -19,6 +19,8 @@ import { makePlanReadyTool } from "./tools/plan-ready";
 import { makeRequestHandsOnTool } from "./tools/request-hands-on";
 import { makeRequestProviderConnectionTool } from "./tools/request-provider-connection";
 import { makeRunCodeTool } from "./tools/run-code";
+import { RunCodeLimiter } from "./tools/run-code-limiter";
+import { directRunCodeTransport } from "./tools/run-code-transport";
 import { makeScrubbedBashTool } from "./tools/scrubbed-bash";
 import { makeSuggestActionsTool } from "./tools/suggest-actions";
 import { makeSuggestReusableTool } from "./tools/suggest-reusable";
@@ -103,16 +105,20 @@ export const toolSelection = buildToolSelection({
 const bashTool = toolSelection.toolNames.includes("bash")
   ? makeScrubbedBashTool(config.workspaceDir)
   : null;
+// One runtime serves one workspace, so a limiter built once here IS the
+// per-workspace budget (turn mode builds the tool per turn and shares its own).
 const runCodeTool = toolSelection.includeRunCode
   ? makeRunCodeTool({
-      baseUrl: config.codeSandboxUrl,
-      token: config.codeSandboxToken,
+      transport: directRunCodeTransport({
+        baseUrl: config.codeSandboxUrl,
+        token: config.codeSandboxToken,
+        idToken: makeIdTokenProvider(config.codeSandboxUrl),
+      }),
       workspaceDir: config.workspaceDir,
-      limits: {
+      limiter: new RunCodeLimiter({
         maxConcurrent: config.runCodeMaxConcurrent,
         maxPerMinute: config.runCodePerMinute,
-      },
-      idToken: makeIdTokenProvider(config.codeSandboxUrl),
+      }),
     })
   : null;
 

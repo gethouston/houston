@@ -100,7 +100,19 @@ spawns one pi runtime per agent over loopback, with `/data` as `HOUSTON_HOME`,
 `HOUSTON_MANAGED_CLOUD=1`, and `HOUSTON_CODE_EXECUTION=local` (HOU-669: the
 agent's bash runs in-container — the pod is single-tenant and network-policied,
 so the container is the sandbox, same as self-host; the image ships
-curl/wget/git/python3 for it). Capabilities
+curl/wget/git/python3 for it).
+
+Pooled **stateless turn workers** are the exception, because a shared worker is
+not single-tenant: they run `HOUSTON_CODE_EXECUTION=remote` and get `run_code`
+against the Cloud Run sandbox (`packages/code-sandbox`) instead of bash. The
+worker is given no sandbox URL, token or GCP identity — the gateway serves
+`POST /v1/code/run` for a turn whose grant carries the `code-run` scope and
+relays the call, exactly as it does for integrations. A turn whose grant omits
+that scope runs with code execution disabled (no tool, and a system prompt that
+says so). A SINGLE-USE worker may still run `local` bash: it serves one claimed
+turn and is recycled, so the pod is single-tenant for its whole life.
+
+Capabilities
 advertise cloud profile, no OS reveal/terminal, `local-bash` code execution,
 the full desktop provider set — including the OpenAI-compatible BYO endpoint
 (`openaiCompatible`), now cloud-enabled: a pod accepts a **public HTTPS endpoint**

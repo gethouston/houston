@@ -30,6 +30,8 @@ function defaultModel(provider: string): string {
   return model;
 }
 
+const turnMode = env.HOUSTON_MODE === "turn";
+
 function codeExecutionMode(): "local" | "remote" | "disabled" {
   const raw = env.HOUSTON_CODE_EXECUTION?.trim().toLowerCase();
   if (raw) {
@@ -38,7 +40,13 @@ function codeExecutionMode(): "local" | "remote" | "disabled" {
         "HOUSTON_CODE_EXECUTION must be local, remote, or disabled",
       );
     }
-    if (raw === "remote" && !env.HOUSTON_CODE_SANDBOX_URL) {
+    // A turn worker needs no sandbox URL and must never be given one: the
+    // gateway serves the run route under the turn grant, so the address (and
+    // the credentials for it) stay outside a process that serves another org's
+    // turn next. Server mode holds the URL itself, so there it is still
+    // required — a `remote` runtime with nowhere to send code is a silent
+    // no-op tool.
+    if (raw === "remote" && !turnMode && !env.HOUSTON_CODE_SANDBOX_URL) {
       throw new Error(
         "HOUSTON_CODE_EXECUTION=remote requires HOUSTON_CODE_SANDBOX_URL",
       );
@@ -139,7 +147,7 @@ export const config = {
    * "turn" = the stateless per-turn cloud runtime: POST /turn hydrates the
    * agent's object-storage prefix, runs one pi turn, syncs back, wipes.
    */
-  mode: env.HOUSTON_MODE === "turn" ? ("turn" as const) : ("server" as const),
+  mode: turnMode ? ("turn" as const) : ("server" as const),
   /** App-layer token the control plane presents in X-Internal-Token (turn mode). */
   turnToken: env.HOUSTON_TURN_TOKEN || "",
   /** GCS bucket holding workspaces (turn mode, production). */
@@ -215,13 +223,21 @@ export const config = {
    */
   podUid: env.HOUSTON_POD_UID ?? "",
   /**
-   * Remote code-execution sandbox (Cloud Run). Used only when codeExecution is
-   * "remote"; managed hosted pods run bash in-container (HOUSTON_CODE_EXECUTION=local).
+   * Remote code-execution sandbox (Cloud Run), for a runtime that calls it
+   * DIRECTLY: server mode and self-host. Empty in turn mode, where the gateway
+   * relays `/v1/code/run` under the turn grant and the worker is deliberately
+   * given no sandbox address, app token or GCP identity.
    */
   codeSandboxUrl: env.HOUSTON_CODE_SANDBOX_URL || "",
   /** App-layer token presented to the code sandbox via X-Sandbox-Token. */
   codeSandboxToken: env.HOUSTON_CODE_SANDBOX_TOKEN || "",
-  /** Per-workspace run_code budget (Gate #5: one tenant must not saturate the fleet). */
+  /**
+   * The run_code budget, and WHOSE it is: one long-lived runtime serves one
+   * workspace, so it is per workspace there. In turn mode the budget belongs to
+   * the WORKER (turn/turn-run-code-limiter.ts holds one limiter for every turn
+   * the process serves) — a per-turn budget would cap nothing on a worker that
+   * serves turns back to back. Gate #5: one tenant must not saturate the fleet.
+   */
   runCodeMaxConcurrent: Number(env.HOUSTON_RUN_CODE_MAX_CONCURRENT || 2),
   runCodePerMinute: Number(env.HOUSTON_RUN_CODE_PER_MINUTE || 10),
 

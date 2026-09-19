@@ -5,6 +5,12 @@ import { join } from "node:path";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { makeRunCodeTool } from "./run-code";
+import { RunCodeLimiter } from "./run-code-limiter";
+import {
+  directRunCodeTransport,
+  sandboxFetchRunCodeTransport,
+} from "./run-code-transport";
+import type { SandboxFetch } from "./sandbox-fetch";
 
 interface SandboxArtifact {
   path: string;
@@ -26,6 +32,7 @@ interface SandboxRequestBody {
   language: string;
   code: string;
   files?: SandboxArtifact[];
+  timeoutMs?: number;
 }
 
 interface RunCodeDetails {
@@ -81,7 +88,23 @@ afterAll(() => server.close());
 
 const LIMITS = { maxConcurrent: 2, maxPerMinute: 100 };
 const tool = (workspaceDir: string) =>
-  makeRunCodeTool({ baseUrl: base, token: "", workspaceDir, limits: LIMITS });
+  makeRunCodeTool({
+    transport: directRunCodeTransport({ baseUrl: base, token: "" }),
+    workspaceDir,
+    limiter: new RunCodeLimiter(LIMITS),
+  });
+const run = (
+  built: ReturnType<typeof makeRunCodeTool>,
+  id: string,
+  params: Parameters<ReturnType<typeof makeRunCodeTool>["execute"]>[1],
+) =>
+  built.execute(
+    id,
+    params,
+    undefined,
+    undefined,
+    {} as unknown as ExtensionContext,
+  );
 
 describe("run_code tool", () => {
   test("posts language+code, returns stdout to the model", async () => {
@@ -267,11 +290,13 @@ describe("run_code tool", () => {
     };
     const ws = await mkdtemp(join(tmpdir(), "ws-"));
     const t = makeRunCodeTool({
-      baseUrl: base,
-      token: "app-secret",
+      transport: directRunCodeTransport({
+        baseUrl: base,
+        token: "app-secret",
+        idToken: async () => "google-id-token",
+      }),
       workspaceDir: ws,
-      limits: LIMITS,
-      idToken: async () => "google-id-token",
+      limiter: new RunCodeLimiter(LIMITS),
     });
     await t.execute(
       "t9",
@@ -352,10 +377,9 @@ describe("run_code tool", () => {
     };
     const ws = await mkdtemp(join(tmpdir(), "ws-"));
     const t = makeRunCodeTool({
-      baseUrl: base,
-      token: "",
+      transport: directRunCodeTransport({ baseUrl: base, token: "" }),
       workspaceDir: ws,
-      limits: { maxConcurrent: 1, maxPerMinute: 100 },
+      limiter: new RunCodeLimiter({ maxConcurrent: 1, maxPerMinute: 100 }),
     });
     const first = t.execute(
       "t12",
@@ -391,5 +415,190 @@ describe("run_code tool", () => {
       ),
     ).rejects.toThrow(/run\.invoker/);
     nextStatus = 200;
+  });
+});
+
+// --- Turn mode: the same tool over the turn's sandbox facade ------------------
+
+describe("run_code over the sandbox-fetch transport (turn mode)", () => {
+  /** A facade stand-in: records what the tool asked for, answers as the relay would. */
+  function facade(reply: () => Response) {
+    const seen: { path: string; body: SandboxRequestBody }[] = [];
+    const call = async (path: string, init?: RequestInit) => {
+      seen.push({
+        path,
+        body: JSON.parse(typeof init?.body === "string" ? init.body : "{}"),
+      });
+      return reply();
+    };
+    return { seen, call };
+  }
+
+  const turnTool = (
+    workspaceDir: string,
+    call: SandboxFetch,
+    limiter = new RunCodeLimiter(LIMITS),
+  ) =>
+    makeRunCodeTool({
+      transport: sandboxFetchRunCodeTransport({
+        call,
+        path: "/sandbox/code/run",
+      }),
+      workspaceDir,
+      limiter,
+    });
+
+  test("posts the RunRequest to /sandbox/code/run and returns the result", async () => {
+    const relay = facade(() =>
+      Response.json({
+        exitCode: 0,
+        stdout: "7\n",
+        stderr: "",
+        timedOut: false,
+        truncated: false,
+        artifacts: [{ path: "out.txt", contentBase64: b64("hi") }],
+      }),
+    );
+    const ws = await mkdtemp(join(tmpdir(), "ws-"));
+    const r = await run(turnTool(ws, relay.call), "u1", {
+      language: "python",
+      code: "print(3+4)",
+    });
+    expect(relay.seen[0]?.path).toBe("/sandbox/code/run");
+    expect(relay.seen[0]?.body).toEqual({
+      language: "python",
+      code: "print(3+4)",
+      files: [],
+    });
+    expect(r.content[0]).toEqual({
+      type: "text",
+      text: "7\n\n[saved files: out.txt]",
+    });
+    expect(await readFile(join(ws, "out.txt"), "utf8")).toBe("hi");
+  });
+
+  test("a relayed 401 names the expired grant, not the sandbox token", async () => {
+    const relay = facade(() =>
+      Response.json(
+        { error: "turn grant expired", code: "grant_expired" },
+        { status: 401 },
+      ),
+    );
+    const ws = await mkdtemp(join(tmpdir(), "ws-"));
+    await expect(
+      run(turnTool(ws, relay.call), "u2", { language: "bash", code: "x" }),
+    ).rejects.toThrow(/turn grant is no longer valid/);
+  });
+
+  test("503 not_configured and 502 sandbox_unavailable each get their own message", async () => {
+    const ws = await mkdtemp(join(tmpdir(), "ws-"));
+    const unconfigured = facade(() =>
+      Response.json(
+        { error: "no sandbox", code: "not_configured" },
+        {
+          status: 503,
+        },
+      ),
+    );
+    await expect(
+      run(turnTool(ws, unconfigured.call), "u3", {
+        language: "bash",
+        code: "x",
+      }),
+    ).rejects.toThrow(/code execution is not configured on this deployment/);
+    const down = facade(() =>
+      Response.json(
+        { error: "upstream", code: "sandbox_unavailable" },
+        {
+          status: 502,
+        },
+      ),
+    );
+    await expect(
+      run(turnTool(ws, down.call), "u4", { language: "bash", code: "x" }),
+    ).rejects.toThrow(/sandbox is unavailable right now/);
+  });
+
+  test("a sandbox-level 4xx passes through with its own body", async () => {
+    const relay = facade(() =>
+      Response.json({ error: "unsupported language: cobol" }, { status: 400 }),
+    );
+    const ws = await mkdtemp(join(tmpdir(), "ws-"));
+    await expect(
+      run(turnTool(ws, relay.call), "u5", { language: "bash", code: "x" }),
+    ).rejects.toThrow(/unsupported language: cobol/);
+  });
+
+  test("one shared limiter is one budget across turns (the worker's, not the turn's)", async () => {
+    const ws = await mkdtemp(join(tmpdir(), "ws-"));
+    const shared = new RunCodeLimiter({ maxConcurrent: 1, maxPerMinute: 100 });
+    const ok = () =>
+      Response.json({
+        exitCode: 0,
+        stdout: "",
+        stderr: "",
+        timedOut: false,
+        truncated: false,
+        artifacts: [],
+      });
+    // The first turn's call is still in flight; the SECOND tool (the next turn
+    // on this worker) must see the budget the first one is already spending.
+    const held: { release: (() => void) | null } = { release: null };
+    const first = makeRunCodeTool({
+      transport: () =>
+        new Promise<Response>((resolve) => {
+          held.release = () => resolve(ok());
+        }),
+      workspaceDir: ws,
+      limiter: shared,
+    });
+    const second = turnTool(ws, facade(ok).call, shared);
+    const inFlight = run(first, "u6", { language: "bash", code: "x" });
+    await new Promise((r) => setTimeout(r, 10));
+    await expect(
+      run(second, "u7", { language: "bash", code: "x" }),
+    ).rejects.toThrow(/code-execution budget/);
+    held.release?.();
+    await inFlight;
+  });
+});
+
+// --- timeout_ms ---------------------------------------------------------------
+
+describe("run_code timeout_ms", () => {
+  const withTimeout = async (timeout_ms: number | undefined) => {
+    nextStatus = 200;
+    nextResult = {
+      exitCode: 0,
+      stdout: "",
+      stderr: "",
+      timedOut: false,
+      artifacts: [],
+    };
+    const ws = await mkdtemp(join(tmpdir(), "ws-"));
+    await run(tool(ws), "tm", {
+      language: "python",
+      code: "x",
+      ...(timeout_ms === undefined ? {} : { timeout_ms }),
+    });
+    if (!lastBody) throw new Error("request body not captured");
+    return lastBody.timeoutMs;
+  };
+
+  test("is forwarded to the sandbox instead of being dropped", async () => {
+    expect(await withTimeout(5_000)).toBe(5_000);
+  });
+
+  test("is omitted when the model does not ask (the sandbox default stands)", async () => {
+    expect(await withTimeout(undefined)).toBeUndefined();
+  });
+
+  test.each([
+    [0, 1],
+    [-30, 1],
+    [900_000, 120_000],
+    [1_500.4, 1_500],
+  ])("clamps %s to the sandbox's own range (%s)", async (asked, sent) => {
+    expect(await withTimeout(asked)).toBe(sent);
   });
 });

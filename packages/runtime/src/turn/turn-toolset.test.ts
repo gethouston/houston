@@ -8,7 +8,11 @@ import {
 import { makeIntegrationTools } from "../session/tools/integrations";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { TurnSessionRequest } from "./turn-session";
-import { buildTurnHostTools, buildTurnToolSelection } from "./turn-toolset";
+import {
+  buildTurnHostTools,
+  buildTurnToolSelection,
+  turnCodeExecution,
+} from "./turn-toolset";
 
 /** The turn's own transport: every host-proxying tool must ride THIS one. */
 const call: SandboxFetch = async () => Response.json({});
@@ -160,4 +164,46 @@ test("the turn rebinds the credential surface to its own transport", async () =>
   expect(seen[0]?.integrations?.call).toBe(call);
   expect(seen[0]?.assistant?.call).toBe(call);
   expect(seen[0]?.assistant?.catalog).toBe(catalog);
+});
+
+// --- run_code rides the code-run scope ---------------------------------------
+
+test("remote + the code-run scope puts run_code on the list", () => {
+  const turn = base({ scopes: ["code-run"] });
+  const selection = buildTurnToolSelection(turn, "remote");
+  expect(selection.includeRunCode).toBe(true);
+  expect(selection.toolNames).toContain("run_code");
+  expect(turnCodeExecution(turn, "remote")).toBe("remote");
+});
+
+test("remote WITHOUT the scope runs the turn with code execution disabled", () => {
+  // The worker may be configured for remote, but only the gateway can relay
+  // the run route: a tool that 404s on every call is worse than no tool, and
+  // the system prompt is built from the same answer (turn-session-startup.ts).
+  const turn = base({ scopes: ["integrations"] });
+  const selection = buildTurnToolSelection(turn, "remote");
+  expect(selection.includeRunCode).toBe(false);
+  expect(selection.toolNames).not.toContain("run_code");
+  expect(turnCodeExecution(turn, "remote")).toBe("disabled");
+});
+
+test("a code-run scope on a turn with no sandbox grants nothing", () => {
+  // No facade = no transport; the scope alone can never admit the tool.
+  const turn: TurnSessionRequest = {
+    ...base(),
+    grant: { scopes: ["code-run"] },
+  };
+  expect(buildTurnToolSelection(turn, "remote").includeRunCode).toBe(false);
+  expect(turnCodeExecution(turn, "remote")).toBe("disabled");
+});
+
+test.each([
+  "local",
+  "disabled",
+] as const)("%s is the worker's own answer — the scope does not change it", (mode) => {
+  const turn = base({ scopes: ["code-run"] });
+  expect(turnCodeExecution(turn, mode)).toBe(mode);
+  expect(turnCodeExecution(base({ scopes: ["integrations"] }), mode)).toBe(
+    mode,
+  );
 });

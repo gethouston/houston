@@ -9,22 +9,33 @@ import { makeCompactionGuard } from "./compaction-guard";
 import { buildLearningsSection } from "./learnings-context";
 import { withModeOverlay } from "./mode-overlays";
 import { loadSkillsManifest } from "./skills-manifest";
+import type { CodeExecutionMode } from "./tool-selection-types";
 import {
   buildGroupContextSection,
   buildWorkspaceContextSection,
   type ProvidedContext,
 } from "./workspace-context";
 
-export const SYSTEM_PROMPT = [
-  "You are Houston, a friendly AI assistant for a non-technical user.",
-  // The capability sentence must match the tool allowlist: a runtime with
-  // codeExecution=disabled has no bash and no run_code, and a prompt that
-  // promises "run commands" makes the model claim abilities it lacks.
-  config.codeExecution === "disabled"
-    ? "You can read and edit files in the user's working directory to help them. You cannot run shell commands or execute code; never claim that you can."
-    : "You can read and edit files and run commands in the user's working directory to help them.",
-  "Be clear and concise. Avoid jargon. Never mention file paths, JSON, or configs unless asked.",
-].join("\n");
+/**
+ * The base prompt for a runtime that may execute code the given way. The
+ * capability sentence must match the tool allowlist: a session with no bash and
+ * no run_code must not be told it can "run commands", or the model claims an
+ * ability it lacks. It is a PARAMETER rather than a read of `config` because a
+ * pooled turn decides per turn — a worker configured for `remote` runs with
+ * code execution disabled on a turn whose grant withheld the `code-run` scope.
+ */
+export function systemPromptFor(codeExecution: CodeExecutionMode): string {
+  return [
+    "You are Houston, a friendly AI assistant for a non-technical user.",
+    codeExecution === "disabled"
+      ? "You can read and edit files in the user's working directory to help them. You cannot run shell commands or execute code; never claim that you can."
+      : "You can read and edit files and run commands in the user's working directory to help them.",
+    "Be clear and concise. Avoid jargon. Never mention file paths, JSON, or configs unless asked.",
+  ].join("\n");
+}
+
+/** This process's own base prompt (the long-lived runtime's one answer). */
+export const SYSTEM_PROMPT = systemPromptFor(config.codeExecution);
 
 /**
  * Workspace-root context file (the agent's role/instructions). Same candidate
@@ -130,6 +141,14 @@ export function makeAgentLoader(
   cwd: string,
   mode?: TurnMode,
   provided?: ProvidedContext,
+  /**
+   * The base prompt to compose onto. Absent = this PROCESS's answer, which is
+   * right for a long-lived runtime. A pooled turn passes its own, because its
+   * code-execution capability is decided per turn (the grant's `code-run`
+   * scope), and the sentence about running commands must match the tools the
+   * turn actually got.
+   */
+  basePrompt?: string,
 ) {
   // Overlays compose onto Houston's base prompt, in the SAME order as the claude
   // backend (system-prompt.ts): first the workspace + user CONTEXT section
@@ -141,7 +160,7 @@ export function makeAgentLoader(
   // overlay LAST so the plan/auto mandate is the final word. CLAUDE.md/AGENTS.md still load via
   // agentsFilesOverride below.
   const section = buildWorkspaceContextSection(cwd, provided);
-  const base = config.systemPrompt || SYSTEM_PROMPT;
+  const base = basePrompt || config.systemPrompt || SYSTEM_PROMPT;
   const withContext = section ? `${base}\n\n${section}` : base;
   const group = buildGroupContextSection(cwd);
   const withGroup = group ? `${withContext}\n\n${group}` : withContext;

@@ -188,14 +188,14 @@ test("parseTurnRequest accepts and normalizes a claimed turn grant", () => {
         url: "https://gateway.test:8443/",
         token: "acting-v1.secret",
         expires: 1_900_000_000,
-        scopes: ["integrations", "future-scope", "agent-writes"],
+        scopes: ["integrations", "future-scope", "agent-writes", "code-run"],
       },
     }).grant,
   ).toEqual({
     url: "https://gateway.test:8443",
     token: "acting-v1.secret",
     expires: 1_900_000_000,
-    scopes: ["integrations", "agent-writes"],
+    scopes: ["integrations", "agent-writes", "code-run"],
   });
 });
 

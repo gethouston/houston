@@ -161,6 +161,9 @@ export function createTurnBackend(
     workspaceDir,
     dataDir,
     modelRuntime: deps.modelRuntime,
+    // The SAME prompt the Claude branch gets: the capability sentence follows
+    // the turn's granted tools, not the provider it landed on.
+    systemPrompt: deps.systemPrompt,
     tools: deps.toolSelection.toolNames,
     customTools: [
       ...makeClampedFileTools(workspaceDir, deps.fileGuard ?? {}),

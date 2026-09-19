@@ -1,8 +1,13 @@
 import type { ChatMessage, TurnMode } from "@houston/protocol";
 import type { ServedCredential } from "../auth/auth-file";
 
-/** Independently deployable authority carried by a per-turn grant. */
-export type TurnGrantScope = "integrations" | "agent-writes";
+/**
+ * Independently deployable authority carried by a per-turn grant. `code-run`
+ * means the gateway serves `POST {grant.url}/v1/code/run` for this turn: the
+ * worker reaches the code sandbox through the grant and never holds a sandbox
+ * URL, app token or GCP identity of its own.
+ */
+export type TurnGrantScope = "integrations" | "agent-writes" | "code-run";
 
 /** Parsed short-lived authority for host-proxying tools. */
 export interface TurnGrant {

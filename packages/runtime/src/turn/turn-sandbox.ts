@@ -8,6 +8,7 @@ import {
 } from "./turn-custom-context";
 import { TurnDocConflictError } from "./turn-doc-cas";
 import type { TurnFilesystem } from "./turn-filesystem";
+import { makeTurnCodeRoute, TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
 import { makeTurnCustomRoutes } from "./turn-sandbox-custom";
 import {
   makeTurnIntegrationRoutes,
@@ -39,6 +40,20 @@ export interface TurnSandboxViews {
 
 const json = (status: number, body: unknown): Response =>
   Response.json(body, { status });
+
+/** The JSON object a facade route expects, or null when the body is not one. */
+function parseBody(
+  raw: BodyInit | null | undefined,
+): Record<string, unknown> | null {
+  try {
+    const parsed = JSON.parse(typeof raw === "string" ? raw : "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+      return null;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 function customStatus(error: CustomIntegrationError): number {
   return error.code === "not_found"
@@ -75,6 +90,11 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
     await Promise.all(contexts.map((context) => context.dispose()));
   };
   const integrations = makeTurnIntegrationRoutes(deps, fetchImpl, getCustom);
+  // Scope-gated at BUILD time: without `code-run` the path is simply not a
+  // route this turn has, so it 404s like any other unknown one.
+  const codeRun = deps.grant.scopes.includes("code-run")
+    ? makeTurnCodeRoute(deps, fetchImpl)
+    : null;
   const customRoute = makeTurnCustomRoutes(
     deps,
     getCustom,
@@ -87,18 +107,18 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   const call: SandboxFetch = async (path, init) => {
     if ((init?.method ?? "GET") !== "POST")
       return json(405, { error: "method not allowed" });
-    let body: Record<string, unknown>;
     try {
-      const parsed = JSON.parse(
-        typeof init?.body === "string" ? init.body : "{}",
-      );
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
-        throw new Error();
-      body = parsed as Record<string, unknown>;
-    } catch {
-      return json(400, { error: "invalid JSON body" });
-    }
-    try {
+      // The code relay forwards the RAW body: a run request carries base64
+      // input files up to the gateway's 32 MiB cap, and parsing then
+      // re-serializing it here would copy the whole payload for nothing.
+      if (codeRun && path === TURN_CODE_RUN_PATH) {
+        return await codeRun(
+          typeof init?.body === "string" ? init.body : "{}",
+          init?.signal,
+        );
+      }
+      const body = parseBody(init?.body);
+      if (!body) return json(400, { error: "invalid JSON body" });
       if (/^\/sandbox\/integrations\/(search|execute)$/.test(path))
         return await integrations(path, body, init?.signal);
       if (

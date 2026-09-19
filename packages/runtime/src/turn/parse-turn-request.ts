@@ -32,6 +32,7 @@ function nonEmpty(value: unknown): value is string {
 const GRANT_SCOPES: readonly TurnGrantScope[] = [
   "integrations",
   "agent-writes",
+  "code-run",
 ];
 
 function parseGrant(value: unknown): TurnGrant {

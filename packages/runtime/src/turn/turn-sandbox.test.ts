@@ -6,8 +6,12 @@ import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import { expect, test, vi } from "vitest";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { makeTurnSandboxFetch } from "./turn-sandbox";
+import type { TurnGrantScope } from "./types";
 
-async function fixture(fetchImpl: typeof fetch = fetch) {
+async function fixture(
+  fetchImpl: typeof fetch = fetch,
+  scopes: TurnGrantScope[] = ["integrations", "agent-writes"],
+) {
   const root = await mkdtemp(join(tmpdir(), "turn-sandbox-"));
   const store: ObjectStore = {
     list: async () => [],
@@ -35,7 +39,7 @@ async function fixture(fetchImpl: typeof fetch = fetch) {
       url: "https://gateway.test",
       token: "grant-secret",
       expires: 2_000_000_000,
-      scopes: ["integrations", "agent-writes"],
+      scopes,
     },
     hostToken: "host-secret",
     store,
@@ -191,5 +195,114 @@ test("custom definition writes capture the updated asleep-read view", async () =
   );
   expect(response.status).toBe(200);
   expect(sandbox.views().customDefinitions).toEqual({ items: [] });
+  await sandbox.dispose();
+});
+
+// --- The code-run relay -------------------------------------------------------
+
+const CODE_RUN = "/sandbox/code/run";
+const RUN_REQUEST = { language: "python", code: "print(1)", files: [] };
+
+test("without the code-run scope the relay is simply not a route", async () => {
+  const gateway = vi.fn<typeof fetch>();
+  const sandbox = await fixture(gateway, ["integrations"]);
+  const response = await post(sandbox.call, CODE_RUN, RUN_REQUEST);
+  expect(response.status).toBe(404);
+  expect(await response.json()).toEqual({ error: "unknown sandbox route" });
+  expect(gateway).not.toHaveBeenCalled();
+  await sandbox.dispose();
+});
+
+test("code-run forwards the body verbatim under the grant and relays the result", async () => {
+  const calls: { url: string; authorization: string | null; body: string }[] =
+    [];
+  const result = {
+    exitCode: 0,
+    stdout: "1\n",
+    stderr: "",
+    timedOut: false,
+    truncated: false,
+    artifacts: [],
+    droppedArtifacts: [],
+    durationMs: 3,
+  };
+  const sandbox = await fixture(
+    async (input, init) => {
+      calls.push({
+        url: String(input),
+        authorization: new Headers(init?.headers).get("authorization"),
+        body: String(init?.body),
+      });
+      return Response.json(result);
+    },
+    ["code-run"],
+  );
+  const response = await post(sandbox.call, CODE_RUN, RUN_REQUEST);
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual(result);
+  expect(calls).toEqual([
+    {
+      url: "https://gateway.test/v1/code/run",
+      authorization: "Bearer grant-secret",
+      body: JSON.stringify(RUN_REQUEST),
+    },
+  ]);
+  await sandbox.dispose();
+});
+
+test.each([
+  [503, { error: "no sandbox", code: "not_configured" }],
+  [413, { error: "too big", code: "body_too_large" }],
+  [502, { error: "upstream", code: "sandbox_unavailable" }],
+  [400, { error: "unsupported language: cobol" }],
+])("a %s from the gateway relays status and body as-is", async (status, body) => {
+  const sandbox = await fixture(
+    async () => Response.json(body, { status }),
+    ["code-run"],
+  );
+  const response = await post(sandbox.call, CODE_RUN, RUN_REQUEST);
+  expect(response.status).toBe(status);
+  expect(await response.json()).toEqual(body);
+  await sandbox.dispose();
+});
+
+test("a 401 on the relay becomes grant_expired, like the integration routes", async () => {
+  const warning = vi.spyOn(console, "error").mockImplementation(() => {});
+  const sandbox = await fixture(
+    async () =>
+      Response.json(
+        { error: "nope", code: "unauthenticated" },
+        { status: 401 },
+      ),
+    ["code-run"],
+  );
+  const response = await post(sandbox.call, CODE_RUN, RUN_REQUEST);
+  expect(response.status).toBe(401);
+  expect(await response.json()).toEqual({
+    error: "turn grant expired",
+    code: "grant_expired",
+  });
+  warning.mockRestore();
+  await sandbox.dispose();
+});
+
+test("a cancelled tool call aborts the pending code run", async () => {
+  const sandbox = await fixture(
+    (_input, init) =>
+      new Promise<Response>((_resolve, reject) => {
+        const signal = init?.signal;
+        if (signal?.aborted) reject(signal.reason);
+        else signal?.addEventListener("abort", () => reject(signal.reason));
+      }),
+    ["code-run"],
+  );
+  const controller = new AbortController();
+  const pending = sandbox.call(CODE_RUN, {
+    method: "POST",
+    body: JSON.stringify(RUN_REQUEST),
+    signal: controller.signal,
+  });
+  controller.abort(new Error("tool call cancelled"));
+  await expect(pending).rejects.toThrow("tool call cancelled");
   await sandbox.dispose();
 });

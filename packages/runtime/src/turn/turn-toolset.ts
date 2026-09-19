@@ -22,7 +22,24 @@ function capabilities(turn: TurnSessionRequest) {
       callable && (scopes.has("integrations") || scopes.has("agent-writes")),
     integrations: callable && scopes.has("integrations"),
     agentWrites: callable && scopes.has("agent-writes"),
+    codeRun: callable && scopes.has("code-run"),
   };
+}
+
+/**
+ * What this turn may actually run, after the grant has its say. A worker
+ * configured for `remote` still has no way to reach the sandbox without the
+ * `code-run` scope — the gateway relays that route and nothing else does — so
+ * the turn runs with code execution DISABLED rather than with a tool that
+ * would 404 on every call. The caller also builds the system prompt from this
+ * answer, so the prompt never promises an ability the allowlist withheld.
+ */
+export function turnCodeExecution(
+  turn: TurnSessionRequest,
+  codeExecution: CodeExecutionMode,
+): CodeExecutionMode {
+  if (codeExecution !== "remote") return codeExecution;
+  return capabilities(turn).codeRun ? "remote" : "disabled";
 }
 
 /** Build the turn's name allowlist from non-secret grant scopes. */
@@ -32,7 +49,7 @@ export function buildTurnToolSelection(
 ): ToolSelection {
   const enabled = capabilities(turn);
   return buildToolSelection({
-    codeExecution,
+    codeExecution: turnCodeExecution(turn, codeExecution),
     integrations: enabled.integrations,
     providerConnections: enabled.providerConnections,
     saveRoutine: enabled.agentWrites,

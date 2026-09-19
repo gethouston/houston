@@ -31,6 +31,12 @@ export interface PiBackendDeps {
   tools: NonNullable<CreateAgentSessionOptions["tools"]>;
   /** SDK custom tools (clamped fs, run-code, integrations). */
   customTools: NonNullable<CreateAgentSessionOptions["customTools"]>;
+  /**
+   * Base prompt for this session. Absent = the process's own
+   * (`resource-loader.ts`). A pooled turn supplies its own so BOTH backends
+   * describe the same capabilities — the Claude branch already takes one.
+   */
+  systemPrompt?: string;
 }
 
 /**
@@ -144,6 +150,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         deps.workspaceDir,
         opts.mode,
         opts.context,
+        deps.systemPrompt,
       );
       await loader.reload();
       const { session } = await createAgentSession({
