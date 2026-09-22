@@ -22,7 +22,11 @@ const REQUEST_TIMEOUT_MS = 5_000;
 const terminal = (frame: WireFrame) =>
   frame.type === "done" || frame.type === "error";
 
-/** One turn's ordered, failure-isolated turnlog batcher. */
+/**
+ * Posts an idle turn's first frame immediately, then coalesces frames behind an
+ * active POST until it settles or the batch timer expires. These POSTs feed the
+ * gateway's SSE tail, so initial batching delay is user-visible.
+ */
 export class TurnLog {
   private readonly fetchImpl: typeof fetch;
   private readonly batchMs: number;
@@ -30,27 +34,32 @@ export class TurnLog {
   private readonly frames: SequencedFrame[] = [];
   private seq: number;
   private disabled = false;
+  private pendingBatches = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private tail = Promise.resolve();
 
   constructor(private readonly opts: TurnLogOptions) {
     this.fetchImpl = opts.fetchImpl ?? fetch;
-    this.batchMs = opts.batchMs ?? 250;
+    this.batchMs = opts.batchMs ?? 50;
     this.batchSize = opts.batchSize ?? 32;
     this.seq = (opts.seqStart ?? 1) - 1;
   }
 
-  /** Sequence and enqueue one frame, flushing terminal frames immediately. */
+  /** Sequence and enqueue one frame, posting immediately when the sender is idle. */
   record(frame: WireFrame): SequencedFrame {
     // SAFETY: spreading a WireFrame preserves its discriminated shape while
     // adding the sole field required by SequencedFrame.
     const sequenced = { ...frame, seq: ++this.seq } as SequencedFrame;
     if (this.disabled) return sequenced;
+    if (this.pendingBatches === 0 && this.frames.length === 0) {
+      this.enqueue([sequenced]);
+      return sequenced;
+    }
     this.frames.push(sequenced);
     if (terminal(frame) || this.frames.length >= this.batchSize) {
-      void this.flush();
+      this.enqueueQueued();
     } else if (!this.timer) {
-      this.timer = setTimeout(() => void this.flush(), this.batchMs);
+      this.timer = setTimeout(() => this.enqueueQueued(), this.batchMs);
       this.timer.unref?.();
     }
     return sequenced;
@@ -58,13 +67,36 @@ export class TurnLog {
 
   /** Flush queued frames after earlier batches, swallowing logged failures. */
   async flush(): Promise<void> {
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = undefined;
+    this.enqueueQueued();
+    await this.tail;
+  }
+
+  private enqueueQueued(): void {
+    this.clearTimer();
     const frames = this.frames.splice(0);
     if (frames.length > 0 && !this.disabled) {
-      this.tail = this.tail.then(() => this.send(frames));
+      this.enqueue(frames);
     }
-    await this.tail;
+  }
+
+  private enqueue(frames: SequencedFrame[]): void {
+    this.pendingBatches += 1;
+    this.tail = this.tail
+      .then(() => this.send(frames))
+      .then(() => {
+        this.pendingBatches -= 1;
+        if (this.disabled) {
+          this.frames.length = 0;
+          this.clearTimer();
+        } else if (this.frames.length > 0) {
+          this.enqueueQueued();
+        }
+      });
+  }
+
+  private clearTimer(): void {
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = undefined;
   }
 
   private async send(frames: SequencedFrame[]): Promise<void> {
