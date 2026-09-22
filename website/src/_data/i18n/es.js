@@ -24,15 +24,15 @@ export default {
   meta: {
     title: "Houston: agentes de IA que sí hacen el trabajo",
     description:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis hasta para tres personas.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
     ogTitle: "Houston: agentes de IA que sí hacen el trabajo",
     ogDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis hasta para tres personas.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
     twTitle: "Houston: agentes de IA que sí hacen el trabajo",
     twDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis hasta para tres personas.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
     jsonLdDescription:
-      "App de escritorio gratuita que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.000 integraciones.",
+      "App de escritorio gratuita que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
     ogImageAlt: "Houston: agentes de IA que sí hacen el trabajo.",
   },
 
@@ -350,9 +350,9 @@ export default {
     title: "Se conecta con todo lo que ya usas.",
     tiles: [
       {
-        n: "1.000+",
+        n: "1.500+",
         l: "integraciones, las herramientas en las que tu equipo ya trabaja",
-        more: "+990 más",
+        more: "+1.490 más",
       },
       {
         n: "400+",
@@ -374,16 +374,14 @@ export default {
 
   pricing: {
     title: "¿Listo para multiplicar por 10 a tu equipo de un día para otro?",
-    lead: "Gratis para las primeras tres personas. Pasa al plan de equipo cuando todos quieran entrar.",
+    lead: "Empieza gratis, por tu cuenta. Pasa al plan de equipo cuando todos quieran entrar.",
     free: {
       name: "Gratis",
-      note: "para ti, o para un equipo de hasta tres",
+      note: "para ti",
       items: [
-        "Tu espacio de trabajo personal, gratis para siempre",
-        "Hasta tres personas cuando estés listo",
-        "Las más de 1.000 integraciones",
+        "Tu espacio de trabajo personal, gratis y con margen de sobra para explorar",
+        "Las más de 1.500 integraciones",
         "Funciona con tu suscripción de IA",
-        "Agentes de la comunidad, desde la tienda",
       ],
       cta: "Descargar la app",
     },
@@ -473,7 +471,7 @@ export default {
           {
             q: "¿Con qué se pueden conectar los agentes?",
             aHtml:
-              "Con más de 1.000 herramientas que ya usas, como Gmail, Slack, QuickBooks, HubSpot y Google Drive.",
+              "Con más de 1.500 herramientas que ya usas, como Gmail, Slack, QuickBooks, HubSpot y Google Drive.",
           },
           {
             q: "¿Puedo usar mi propio plan de ChatGPT o Claude?",
