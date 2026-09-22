@@ -23,15 +23,15 @@ export default {
   meta: {
     title: "Houston: agentes de IA que fazem o trabalho de verdade",
     description:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para até três pessoas.",
     ogTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     ogDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para até três pessoas.",
     twTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     twDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para até três pessoas.",
     jsonLdDescription:
-      "App de computador gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
+      "App de computador gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.000 integrações.",
     ogImageAlt: "Houston: agentes de IA que fazem o trabalho de verdade.",
   },
 
@@ -349,9 +349,9 @@ export default {
     title: "Conecta com tudo o que você já usa.",
     tiles: [
       {
-        n: "1.500+",
+        n: "1.000+",
         l: "integrações, as ferramentas onde seu time já trabalha",
-        more: "mais 1.490",
+        more: "mais 990",
       },
       {
         n: "400+",
@@ -373,14 +373,16 @@ export default {
 
   pricing: {
     title: "Pronto para multiplicar seu time por 10 da noite para o dia?",
-    lead: "Comece grátis, por conta própria. Suba de plano quando o time quiser entrar.",
+    lead: "Grátis para as três primeiras pessoas. Suba de plano quando o time inteiro quiser entrar.",
     free: {
       name: "Grátis",
-      note: "para você",
+      note: "para você, ou para um time de até três",
       items: [
-        "Seu espaço de trabalho pessoal, grátis e com folga de sobra para explorar",
-        "Todas as mais de 1.500 integrações",
+        "Seu espaço de trabalho pessoal, grátis para sempre",
+        "Até três pessoas quando você quiser",
+        "Todas as mais de 1.000 integrações",
         "Funciona com sua assinatura de IA",
+        "Agentes da comunidade, direto da loja",
       ],
       cta: "Baixar o app",
     },
@@ -466,7 +468,7 @@ export default {
           {
             q: "Com o que os agentes conseguem se conectar?",
             aHtml:
-              "Com mais de 1.500 ferramentas que você já usa, como Gmail, Slack, QuickBooks, HubSpot e Google Drive.",
+              "Com mais de 1.000 ferramentas que você já usa, como Gmail, Slack, QuickBooks, HubSpot e Google Drive.",
           },
           {
             q: "Posso usar meu próprio plano do ChatGPT ou do Claude?",
@@ -722,4 +724,70 @@ export default {
         hiring: {
           label: "Contratação",
           agent: "Gerente de Talentos",
-          mission: "Contratar um designer sênior),
+          mission: "Contratar um designer sênior",
+          turns: [
+            "Abra a vaga de designer sênior. Publique e depois filtre todo mundo que se candidatar contra o briefing.",
+            "Publicada no LinkedIn e na página de vagas. 41 pessoas até agora, cada uma avaliada contra o briefing. Estou priorizando design de produto e experiência B2B.",
+            "Suba para o topo quem tem experiência em fintech. @Julian você vai querer ver os dois primeiros.",
+            "Reordenado. Os 9 melhores agora, 4 com passagem por fintech. Anexei notas e portfólio de cada um.",
+            "Marque conversas com os 3 melhores.",
+            "Marcadas. Três conversas de apresentação na sua agenda esta semana. @Felipe quer que eu inclua você nos convites do painel?",
+          ],
+        },
+        support: {
+          label: "Suporte",
+          agent: "Analista de Suporte",
+          mission: "Zerar a fila de suporte",
+          turns: [
+            "A fila de suporte está acumulada, 34 chamados abertos em dois dias. Faça a triagem e resolva o que der.",
+            "Passando pelos 34. 19 são a mesma dúvida de cobrança depois da mudança de preço, 8 são troca de senha e 7 precisam de uma pessoa.",
+            "Mande para os 19 de cobrança as novas perguntas frequentes de preço, e troque as 8 senhas.",
+            "Pronto. 27 chamados respondidos e fechados pela caixa compartilhada. Os 7 que pedem julgamento ficaram etiquetados e esperando.",
+            "Os 7 são sobre o quê?",
+            "Cinco dúvidas sobre funcionalidades com respostas escritas, e dois reembolsos acima do nosso limite. @Felipe aprove esses e tudo sai hoje.",
+          ],
+        },
+      },
+    },
+    compound: {
+      justNow: "agora mesmo",
+      pool: [
+        {
+          note: "Cotar o preço anual na moeda do cliente",
+          who: "Felipe",
+        },
+        {
+          note: "Chamar o suporte quando um negócio menciona erros",
+          who: "Julian",
+        },
+        {
+          note: "Nunca prometer uma data sem olhar o roadmap",
+          who: "Maya",
+        },
+        {
+          note: "Resumir cada demo nas notas do negócio",
+          who: "Julian",
+        },
+        {
+          note: "Sinalizar concorrentes citados em qualquer conversa",
+          who: "Felipe",
+        },
+        {
+          note: "Enviar os e-mails de resumo antes do meio-dia, no fuso do cliente",
+          who: "Ana",
+        },
+      ],
+    },
+    gate: {
+      preparing: "Preparando seu download…",
+      submit: "Continuar para o download",
+      formError: GATE_FORM_ERROR,
+      formErrorBusy: "Muitas tentativas. Espere um momento e tente de novo.",
+      needOther: "Precisa para outro sistema?",
+      countrySearch: "Buscar países",
+      countryEmpty: "Nada encontrado",
+      ccLabel: "Código do país",
+      ccSearch: "Buscar códigos de país",
+    },
+  },
+};
