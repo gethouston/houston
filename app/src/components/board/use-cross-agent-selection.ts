@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { allCachedConversationRows } from "../../lib/cached-conversation-rows";
+import { forgetDeletedConversationDrafts } from "../../lib/conversation-drafts";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity } from "../../lib/tauri";
-import { useDraftStore } from "../../stores/drafts";
 import type { BoardSelectionModel } from "./board-source";
 import { groupIdsByAgent } from "./group-ids-by-agent";
 import { useSelectionSet } from "./use-selection-set";
@@ -56,6 +57,12 @@ export function useCrossAgentSelection({
   const dispatchDelete = useCallback(
     async (ids: string[]) => {
       const groups = groupIdsByAgent(ids, agentPathForId);
+      // Read BEFORE the delete: a mission's unsent work is parked under the
+      // conversation key its row names, and this board's own rows are the only
+      // place that key survives the delete and the invalidation below. Every
+      // roster variant of the aggregate at once, so a key drift cannot mask a
+      // mission — the same union the per-agent delete seams read.
+      const rows = allCachedConversationRows(qc, paths);
       await Promise.all(
         Object.entries(groups).map(([agentPath, groupIds]) =>
           tauriActivity.bulkDelete(agentPath, groupIds),
@@ -63,12 +70,10 @@ export function useCrossAgentSelection({
       );
       // Attached files stay in each workspace's uploads/ folder (HOU-706);
       // only the unsent drafts need clearing. Mirrors useBulkDeleteActivity.
-      for (const id of ids) {
-        useDraftStore.getState().clearDraft(`activity-${id}`);
-      }
+      forgetDeletedConversationDrafts(ids, rows);
       invalidate(Object.keys(groups));
     },
-    [agentPathForId, invalidate],
+    [agentPathForId, invalidate, paths, qc],
   );
 
   const move = useCallback(

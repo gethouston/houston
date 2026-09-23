@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 95
+version: 96
 
 components:
   - id: custom-integration-details
@@ -521,7 +521,15 @@ components:
       states which happened ("Opened {screen} and finished there." / "Skipped
       opening {screen}.") so the agent is never left guessing, and the errand's
       free-text decline relays the person's "do this instead" like every other
-      step's.
+      step's. The card's in-progress state (the step it stands on, the answers
+      already given, what each connect / sign-in / key / errand step ended up
+      as, and the free-text typed into any step's row but not sent) is parked
+      per conversation like a composer draft, so switching missions and
+      returning restores it; an approval step is always re-confirmed after a
+      return rather than replayed, and the parked card is forgotten once a turn
+      actually runs on that conversation, whoever started it (this person, a
+      routine, a teammate or another device), or the card is dismissed. A send
+      the server refuses keeps it.
     a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment, no embedded control) is always present on question steps and follows the fixed footer on signin/connect/credential steps; the pager's Back/Forward chevrons, collapse chevron, and dismiss X are labeled icon buttons; collapsed cards retain one muted, truncated context line; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines); a hands-on step adds TWO labeled footer buttons beside that decline, an outline "Done" confirm and a filled "Open" CTA carrying the return-key glyph (Enter opens the screen the card's title names), both absent when the screen is unrecognised or not this person's to open, so the decline is the only way on. While collapsed, step shortcuts are inert; while a turn runs, every action except the collapse chevron is disabled. The "N of M" pager copy is visible text.
     since: 4
 

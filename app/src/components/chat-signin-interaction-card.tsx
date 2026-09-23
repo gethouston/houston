@@ -3,11 +3,14 @@ import { Button } from "@houston-ai/core";
 import { CornerDownLeft, Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatConnectStepShell } from "./chat-connect-step-shell";
+import {
+  ChatConnectStepShell,
+  type StepDraftApi,
+} from "./chat-connect-step-shell";
 import { useIntegrationsGate } from "./integrations/use-integrations-gate";
 import { HoustonLogo } from "./shell/agent-avatar";
 
-interface ChatSigninInteractionCardProps extends StepChrome {
+interface ChatSigninInteractionCardProps extends StepChrome, StepDraftApi {
   /** The signin step's stable id — fades the modal body on a step swap. */
   stepId: string;
   /** The reason the agent gave for needing sign-in, rendered as the body's

@@ -161,6 +161,7 @@ import { DEFAULT_TURN_MODE, type TurnMode } from "../lib/turn-mode";
 import type { Agent, SkillSummary } from "../lib/types";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
+import { useInteractionDraftStore } from "../stores/interaction-drafts";
 import { useUIStore } from "../stores/ui";
 import {
   filterProviderAuthFeedItems,
@@ -169,7 +170,7 @@ import {
 } from "./agent/provider-auth-feed";
 import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
-import { chatInteractionStepsNode } from "./chat-interaction-steps";
+import { chatInteractionStepsNode } from "./chat-interaction-stepper";
 import { ChatModeSelector } from "./chat-mode-selector";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
@@ -1681,7 +1682,11 @@ export function useAgentChatPanel({
         );
         return;
       }
-      await clearPersistedInteraction();
+      // Only a CONFIRMED clear is definitive: the refusal branch above returns
+      // instead (its resync brings the very same card back), and a failed
+      // activity write toasts and resolves, leaving the card persisted.
+      if (await clearPersistedInteraction())
+        useInteractionDraftStore.getState().clear(selectedSessionKey);
     })();
   }, [
     path,
@@ -1782,11 +1787,10 @@ export function useAgentChatPanel({
   );
 
   // The mission is waiting on a sequence of steps (questions then connections):
-  // `chatInteractionStepsNode` builds the stepper that walks them, and its
-  // per-sequence outcome log must live exactly as long as THIS memo entry —
-  // `deriveActiveInteraction` returns a STABLE reference for a given pending
-  // interaction, so the memo does not recompute, and the outcomes do not reset,
-  // while the user walks the steps.
+  // `chatInteractionStepsNode` builds the stepper that walks them. Everything
+  // that must survive the walk — the per-sequence outcome log, the position, the
+  // answers — lives inside that keyed component, NOT in this memo entry, which
+  // re-runs whenever any of its many inputs moves.
   //
   // The stepper and plan_ready REPLACE the composer: each owns the one text
   // input on screen. The suggestion offers stay above the composer because they

@@ -338,6 +338,9 @@ export type {
   StepFooterApi,
 } from "./interaction-card";
 export { ChatInteractionCard } from "./interaction-card";
+// The stepper state the card can be driven with (`state` / `onStateChange`),
+// so a caller can park it per conversation and hand it back after a remount.
+export type { StepperState } from "./interaction-card-logic";
 export { prettifyToolkit } from "./interaction-card-model";
 // The always-visible single-line free-text row every non-question step carries
 // (connect / sign-in / credential decline-with-instruction).

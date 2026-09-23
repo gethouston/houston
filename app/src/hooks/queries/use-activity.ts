@@ -5,9 +5,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { latestCachedAgentActivities } from "../../lib/all-conversations-cache";
+import { allCachedActivityRows } from "../../lib/cached-conversation-rows";
+import { forgetDeletedConversationDrafts } from "../../lib/conversation-drafts";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity } from "../../lib/tauri";
-import { useDraftStore } from "../../stores/drafts";
 
 /**
  * ONE agent's activity list, as options. `useActivity` below and any
@@ -111,11 +112,14 @@ export function useBulkDeleteActivity(agentPath: string | undefined) {
   return useMutation({
     mutationFn: async (ids: string[]) => {
       if (!agentPath) throw new Error("agentPath required");
+      // Read BEFORE the delete: a mission's unsent work is parked under the
+      // conversation key the row names, and these rows are the only place that
+      // key survives the delete. Both caches, so a stale empty per-agent sweep
+      // cannot mask a mission the aggregate still names.
+      const rows = allCachedActivityRows(qc, agentPath);
       await tauriActivity.bulkDelete(agentPath, ids);
       // Attached files stay in the workspace's uploads/ folder (HOU-706).
-      for (const id of ids) {
-        useDraftStore.getState().clearDraft(`activity-${id}`);
-      }
+      forgetDeletedConversationDrafts(ids, rows);
     },
     onSuccess: () => {
       if (agentPath)

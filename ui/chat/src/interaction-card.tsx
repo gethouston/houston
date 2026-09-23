@@ -1,38 +1,28 @@
 "use client";
 
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  advanceConnect,
-  advanceCredential,
-  advanceCustom,
-  advanceSignin,
-  answerWithOption,
-  answerWithText,
-  type ChatInteractionAnswer,
-  type ChatInteractionStep,
   canGoForward,
   defaultProgress,
   draftFor,
   goBack,
   goForward,
-  hasSelectableOptions,
-  initialStepperState,
   selectedOptionId,
   setDraft,
-  skipStep,
-  type Transition,
 } from "./interaction-card-logic";
+import type {
+  ChatInteractionCardProps,
+  StepChrome,
+  StepFooterApi,
+} from "./interaction-card-props";
+import type { InteractionModalPager } from "./interaction-modal";
 import {
-  BrandLogo,
-  QuestionAnswerRow,
-  QuestionStepBody,
-} from "./interaction-card-parts";
-import { InteractionDetail } from "./interaction-detail";
-import {
-  InteractionModal,
-  type InteractionModalPager,
-  InteractionModalTitle,
-} from "./interaction-modal";
+  InteractionQuestionStep,
+  type QuestionStepCopy,
+} from "./interaction-question-step";
+import { useInteractionShortcuts } from "./use-interaction-shortcuts";
+import { useStepperState } from "./use-stepper-state";
+import { useStepperTransitions } from "./use-stepper-transitions";
 
 export type {
   ChatInteractionAnswer,
@@ -40,150 +30,33 @@ export type {
   ChatInteractionOption,
   ChatInteractionStep,
 } from "./interaction-card-logic";
-
-type ConnectStep = Extract<ChatInteractionStep, { kind: "connect" }>;
-type SigninStep = Extract<ChatInteractionStep, { kind: "signin" }>;
-type CredentialStep = Extract<ChatInteractionStep, { kind: "credential" }>;
-type CustomStep = Extract<ChatInteractionStep, { kind: "custom" }>;
-
-/** The chrome the shared {@link InteractionModal} needs, handed to a
- *  signin/connect body so it renders the SAME modal shell as a question step:
- *  the header pager (Back/Forward + progress) and the dismiss X. The body owns
- *  its own title (its `(icon) action` lockup), reason, footer CTA, and the
- *  trailing free-text escape row below the footer. */
-export interface StepChrome {
-  pager: InteractionModalPager | null;
-  onDismiss?: () => void;
-  dismissLabel: string;
-  collapseLabel: string;
-  expandLabel: string;
-  disabled: boolean;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-export interface ChatInteractionCardProps {
-  /** The ordered interaction steps (>=1 total). Any mix of step kinds in any
-   *  order — the stepper walks them front to back exactly as given; no kind is
-   *  required to precede another. */
-  steps: ChatInteractionStep[];
-  /** Receives every question answer, in step order, once the last step is done. */
-  onComplete: (answers: ChatInteractionAnswer[]) => void;
-  /** Renders a connect step as its OWN {@link InteractionModal} — the `(icon)
-   *  Connect <App>` header title, the reason body, the footer's unified
-   *  decline + Connect CTA, and the trailing free-text row — wiring the supplied {@link
-   *  StepChrome} (pager + dismiss) into the shell so it matches every other
-   *  step. Call `api.onConnected` once the connection lands. ui/chat stays
-   *  Composio-unaware, so the app supplies the reactive content and identity. */
-  renderConnect: (
-    step: ConnectStep,
-    api: StepFooterApi & StepChrome & { onConnected: () => void },
-  ) => ReactNode;
-  /** Renders a signin step as its OWN {@link InteractionModal} (see
-   *  {@link renderConnect}); call `api.onSignedIn` to advance. ui/chat stays
-   *  auth-unaware, so the app supplies the reactive sign-in content. */
-  renderSignin: (
-    step: SigninStep,
-    api: StepFooterApi & StepChrome & { onSignedIn: () => void },
-  ) => ReactNode;
-  /** Renders a credential step as its OWN {@link InteractionModal} (see
-   *  {@link renderConnect}): the integration's `(icon) name` header, the reason
-   *  line + a secure key field body, the footer's unified decline + Save
-   *  CTA, and the trailing free-text row. Call `api.onSaved` once the secret is stored to advance; `api.onSkip`
-   *  declines the key like any sibling. ui/chat stays integration-unaware, so
-   *  the app supplies the reactive, secure key-entry card. */
-  renderCredential: (
-    step: CredentialStep,
-    api: StepFooterApi & StepChrome & { onSaved: () => void },
-  ) => ReactNode;
-  /** Renders a custom step as its OWN {@link InteractionModal} (see
-   *  {@link renderConnect}): a fully app-supplied body wired with the {@link
-   *  StepChrome} this stepper hands it. ui/chat owns none of the content — the
-   *  renderer owns the modal's title, body, and footer. Call `api.onDone` to
-   *  advance past the step. Optional; when a custom step is present but no
-   *  `renderCustom` is supplied, the card renders defensively nothing. */
-  renderCustom?: (
-    step: CustomStep,
-    api: StepFooterApi & StepChrome & { onDone: () => void },
-  ) => ReactNode;
-  /** Dismisses the WHOLE interaction sequence. When omitted, the header shows no
-   *  dismiss (X) button. */
-  onDismiss?: () => void;
-  disabled?: boolean;
-  labels?: {
-    /** Free-text answer field on a free-text-only question (no options). */
-    placeholder?: string;
-    /** Free-text ESCAPE row placeholder, shown when the question also offers
-     *  options ("Type another option..."). Falls back to `placeholder`. */
-    escapePlaceholder?: string;
-    /** The unified card-wide decline word, one label for declining a question
-     *  AND declining a signin/connect ("Skip"). */
-    skip?: string;
-    /** aria-label of the free-text field's arrow-up send button ("Send"). */
-    send?: string;
-    /** The keycap hint beside the decline ("Esc"). */
-    esc?: string;
-    /** aria-label of the pager's back chevron. */
-    back?: string;
-    /** aria-label of the pager's forward chevron. */
-    forward?: string;
-    dismiss?: string;
-    collapse?: string;
-    expand?: string;
-    /** The soft "Recommended" chip beside a marked option's label. */
-    recommended?: string;
-    /** Pager progress copy, e.g. "1 of 3" (shown for a multi-step sequence). */
-    progress?: (current: number, total: number) => string;
-  };
-}
-
-/** The step-scoped api the card hands a signin/connect body. Navigation is NOT
- *  here — the header pager owns Back/Forward for every step kind. The body only
- *  needs:
- *  - `revisited`: true when the user walked BACK onto this already-reached step
- *    (via the pager). A revisited step that is already COMPLETED drops its CTA
- *    (the pager's forward chevron is the way onward) and stops auto-reporting
- *    its own completion; a revisited SKIPPED step keeps its CTA — and its paired
- *    decline — so the user can reconsider and complete it, or decline again.
- *  - `onSkip`: decline this step WITHOUT completing it, recording the skip so
- *    the composed reply tells the agent the user declined. Offered wherever the
- *    CTA is (frontier AND a reconsidered/revisited skip), so the decline
- *    affordance always travels with the CTA. */
-export interface StepFooterApi {
-  revisited: boolean;
-  onSkip: () => void;
-}
+export type {
+  ChatInteractionCardProps,
+  StepChrome,
+  StepFooterApi,
+} from "./interaction-card-props";
 
 /**
  * The in-chat surface shown when the agent pauses to gather what it needs before
  * continuing: a stepper that walks the user through ONE step at a time, front to
  * back in the order the steps are given (any mix of kinds), each rendered in the
- * shared {@link InteractionModal} shell. The shell owns the chrome (surface,
- * header row, footer row); the stepper decides what fills the title / body /
- * footer for the current step.
+ * shared `InteractionModal` shell. The shell owns the chrome (surface, header
+ * row, footer row); the stepper decides what fills the title / body / footer for
+ * the current step, and owns the state every step reads and writes — position,
+ * committed answers, and the free-text draft typed on each step (see
+ * `useStepperState` for how a caller parks and restores it).
  *
- * A plain question step routes its text into the modal TITLE, renders its option
- * rows (LEFT number badge = keyboard shortcut, regular-weight label, optional
- * Recommended chip) plus the free-text ESCAPE field as the body, and puts the
- * card-wide decline ("Skip" + Esc) ALONE in the footer — questions have no
- * primary CTA because clicking an option answers and advances. Typing + Enter in
- * the escape field submits; "Skip" (or Esc) skips the step. A question carrying a
- * `brand` (it concerns an integration) instead puts the app's logo + NAME in the
- * title (like the connect card) and moves the question text into the body above
- * the options — one asking system, branded when the app resolved an identity.
- *
- * A signin/connect step's reactive body — its `(icon) name` header
- * title, the reason body, and the footer's decline + filled CTA — is
- * app-supplied via `renderSignin` / `renderConnect`, which
- * render their OWN {@link InteractionModal} wired with the {@link StepChrome}
- * this stepper hands them, so the card stays Composio/auth-unaware while every
- * step shares one shell. Every non-question step also carries an always-visible
- * free-text row (the app supplies it, trailing below the footer actions):
- * typing an instruction there and sending
- * declines the step WITH that message, which the caller relays to the agent.
- * The caller seats this card in the composer's slot (replacing it), so its
- * per-step free-text row is the one text input on screen; the card's dismiss X
- * restores the composer.
+ * A signin/connect/credential/custom step's reactive body — its `(icon) name`
+ * header title, the reason body, and the footer's decline + filled CTA — is
+ * app-supplied via `renderSignin` / `renderConnect` / `renderCredential` /
+ * `renderCustom`, which render their OWN `InteractionModal` wired with the
+ * {@link StepChrome} this stepper hands them, so the card stays Composio/auth-
+ * unaware while every step shares one shell. Every non-question step also
+ * carries an always-visible free-text row (the app supplies it, trailing below
+ * the footer actions): typing an instruction there and sending declines the step
+ * WITH that message, which the caller relays to the agent. The caller seats this
+ * card in the composer's slot (replacing it), so its per-step free-text row is
+ * the one text input on screen; the card's dismiss X restores the composer.
  */
 export function ChatInteractionCard({
   steps,
@@ -193,35 +66,27 @@ export function ChatInteractionCard({
   renderCredential,
   renderCustom,
   onDismiss,
+  state: controlled,
+  onStateChange,
   disabled = false,
   labels,
 }: ChatInteractionCardProps) {
-  const [state, setState] = useState(initialStepperState);
+  const [state, update] = useStepperState(controlled, onStateChange);
 
   const total = steps.length;
   const current = Math.min(state.current, total - 1);
   const step = steps[current];
-  const neutralPlaceholder = labels?.placeholder ?? "Type your answer...";
-  const escapePlaceholder =
-    labels?.escapePlaceholder ?? "Type another option...";
-  const backLabel = labels?.back ?? "Back";
-  const forwardLabel = labels?.forward ?? "Forward";
-  const skipLabel = labels?.skip ?? "Skip";
-  const sendLabel = labels?.send ?? "Send";
-  const escLabel = labels?.esc ?? "Esc";
-  const dismissLabel = labels?.dismiss ?? "Dismiss";
-  const collapseLabel = labels?.collapse ?? "Collapse interaction";
-  const expandLabel = labels?.expand ?? "Expand interaction";
-  const recommendedLabel = labels?.recommended ?? "Recommended";
+  const copy: QuestionStepCopy = {
+    placeholder: labels?.placeholder ?? "Type your answer...",
+    escapePlaceholder: labels?.escapePlaceholder ?? "Type another option...",
+    skip: labels?.skip ?? "Skip",
+    send: labels?.send ?? "Send",
+    esc: labels?.esc ?? "Esc",
+    recommended: labels?.recommended ?? "Recommended",
+  };
   const progress = labels?.progress ?? defaultProgress;
-
-  const apply = useCallback(
-    (t: Transition) => {
-      setState(t.state);
-      if (t.completed) onComplete(t.completed);
-    },
-    [onComplete],
-  );
+  const { onOption, onSend, onSkip, onConnected, onSignedIn, onSaved, onDone } =
+    useStepperTransitions({ current, disabled, onComplete, steps, update });
 
   const stepId = step?.id ?? "";
   const [open, setOpen] = useState(true);
@@ -231,73 +96,17 @@ export function ChatInteractionCard({
   const draft = draftFor(state, stepId);
   const selectedId =
     step?.kind === "question" ? selectedOptionId(state, stepId) : null;
-
-  const onOption = useCallback(
-    (optionId: string) => {
-      if (disabled) return;
-      apply(answerWithOption(state, steps, optionId));
-    },
-    [apply, disabled, state, steps],
+  const onDraftChange = useCallback(
+    (text: string) => update((s) => setDraft(s, stepId, text)),
+    [stepId, update],
   );
 
-  const onSend = useCallback(() => {
-    if (disabled) return;
-    apply(answerWithText(state, steps));
-  }, [apply, disabled, state, steps]);
-
-  const onSkip = useCallback(() => {
-    if (disabled) return;
-    apply(skipStep(state, steps));
-  }, [apply, disabled, state, steps]);
-
-  const isQuestion = step?.kind === "question";
-
-  // Number-key shortcuts (1, 2, 3...) select the matching option row, and Esc
-  // declines the question (mirroring the footer's Esc hint) — both only on a
-  // question step and while focus is NOT in a text field, so typing into the
-  // free-text answer or the real composer is unaffected. Esc runs in the CAPTURE
-  // phase and stops the event dead so it decides "not now" here instead of
-  // falling through to the global Escape-closes-the-panel shortcut.
-  useEffect(() => {
-    if (disabled || !open || !isQuestion) return;
-    const options = (step?.kind === "question" && step.options) || [];
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement | null;
-      const isEditable =
-        target?.tagName === "TEXTAREA" ||
-        target?.tagName === "INPUT" ||
-        target?.isContentEditable;
-      if (isEditable) return;
-      if (e.key === "Escape") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        onSkip();
-        return;
-      }
-      const option = options[Number(e.key) - 1];
-      if (!option) return;
-      e.preventDefault();
-      onOption(option.id);
-    };
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [disabled, open, isQuestion, step, onOption, onSkip]);
-
-  const onConnected = useCallback(() => {
-    apply(advanceConnect(state, steps));
-  }, [apply, state, steps]);
-
-  const onSignedIn = useCallback(() => {
-    apply(advanceSignin(state, steps));
-  }, [apply, state, steps]);
-
-  const onSaved = useCallback(() => {
-    apply(advanceCredential(state, steps));
-  }, [apply, state, steps]);
-
-  const onDone = useCallback(() => {
-    apply(advanceCustom(state, steps));
-  }, [apply, state, steps]);
+  useInteractionShortcuts({
+    active: !disabled && open,
+    onOption,
+    onSkip,
+    step,
+  });
 
   if (!step) return null;
 
@@ -305,34 +114,36 @@ export function ChatInteractionCard({
   // previous already-reached step, forward re-advances toward the frontier past
   // an already-reached step (the only way onward from a revisited completed
   // signin/connect step, whose card can't re-fire its own completion).
-  const onBack = !disabled && current > 0 ? () => setState(goBack) : null;
-  const onForward =
-    !disabled && canGoForward(state) ? () => setState(goForward) : null;
-
   const pager: InteractionModalPager | null =
     total > 1
       ? {
           current: current + 1,
           total,
           label: progress(current + 1, total),
-          onBack,
-          onForward,
-          backLabel,
-          forwardLabel,
+          onBack: !disabled && current > 0 ? () => update(goBack) : null,
+          onForward:
+            !disabled && canGoForward(state) ? () => update(goForward) : null,
+          backLabel: labels?.back ?? "Back",
+          forwardLabel: labels?.forward ?? "Forward",
         }
       : null;
 
   const chrome: StepChrome = {
     pager,
     onDismiss,
-    dismissLabel,
-    collapseLabel,
-    expandLabel,
+    dismissLabel: labels?.dismiss ?? "Dismiss",
+    collapseLabel: labels?.collapse ?? "Collapse interaction",
+    expandLabel: labels?.expand ?? "Expand interaction",
     disabled,
     open,
     onOpenChange: setOpen,
   };
-  const footerApi: StepFooterApi = { revisited: canGoForward(state), onSkip };
+  const footerApi: StepFooterApi = {
+    revisited: canGoForward(state),
+    onSkip,
+    draft,
+    onDraftChange,
+  };
 
   if (step.kind === "signin") {
     return renderSignin(step, { ...footerApi, ...chrome, onSignedIn });
@@ -352,85 +163,17 @@ export function ChatInteractionCard({
       : null;
   }
 
-  const optionsPresent = hasSelectableOptions(step.options);
-  // A branded question wears the app's identity in the title (logo + name, like
-  // the connect card) and moves the question text into the body; a plain one
-  // keeps the question in the title with no body lead. The options are the
-  // scrollable body; the answer row (free-text escape + skip) stays FIXED in
-  // the modal's trailing slot so a long option list never scrolls it away.
-  const brand = step.brand;
-  // The detail block sits ABOVE the options: it is what the question is about,
-  // so it must be read before the answer is picked.
-  const questionBody = (
-    <div className="flex flex-col gap-2.5">
-      {step.detail ? <InteractionDetail detail={step.detail} /> : null}
-      <QuestionStepBody
-        disabled={disabled}
-        onOption={onOption}
-        options={step.options}
-        recommendedLabel={recommendedLabel}
-        selectedId={selectedId}
-      />
-    </div>
-  );
-  const questionAnswerRow = (
-    <QuestionAnswerRow
-      disabled={disabled}
-      draft={draft}
-      hideFreeText={optionsPresent && step.hideFreeText === true}
-      onDraftChange={(value) => setState((s) => setDraft(s, stepId, value))}
-      onSubmit={onSend}
-      placeholder={optionsPresent ? escapePlaceholder : neutralPlaceholder}
-      sendLabel={sendLabel}
-      skip={{ label: skipLabel, escLabel, onSkip, disabled }}
-    />
-  );
-
   return (
-    <InteractionModal
-      contentKey={step.id}
-      collapseLabel={collapseLabel}
-      disabled={disabled}
-      dismissLabel={dismissLabel}
-      expandLabel={expandLabel}
-      onDismiss={onDismiss}
-      onOpenChange={setOpen}
-      open={open}
-      pager={pager}
-      // A plain question's title IS the question, so only a branded question
-      // (app name in the title, question in the body) needs the collapsed hint.
-      collapsedHint={brand ? step.question : undefined}
-      title={
-        brand ? (
-          <InteractionModalTitle
-            className="flex-1 truncate"
-            icon={
-              brand.logoUrl ? (
-                <BrandLogo name={brand.name} url={brand.logoUrl} />
-              ) : undefined
-            }
-          >
-            {brand.name}
-          </InteractionModalTitle>
-        ) : (
-          <InteractionModalTitle className="text-balance">
-            {step.question}
-          </InteractionModalTitle>
-        )
-      }
-      body={
-        brand ? (
-          <div className="flex flex-col gap-2.5">
-            <p className="text-balance text-ink text-sm leading-snug">
-              {step.question}
-            </p>
-            {questionBody}
-          </div>
-        ) : (
-          questionBody
-        )
-      }
-      trailing={questionAnswerRow}
+    <InteractionQuestionStep
+      chrome={chrome}
+      copy={copy}
+      draft={draft}
+      onDraftChange={onDraftChange}
+      onOption={onOption}
+      onSend={onSend}
+      onSkip={onSkip}
+      selectedId={selectedId}
+      step={step}
     />
   );
 }

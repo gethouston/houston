@@ -1,7 +1,10 @@
 import type { StepChrome } from "@houston-ai/chat";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatConnectStepShell } from "./chat-connect-step-shell";
+import {
+  ChatConnectStepShell,
+  type StepDraftApi,
+} from "./chat-connect-step-shell";
 import { CredentialStepCta } from "./chat-credential-step-cta";
 import {
   CredentialStepFields,
@@ -9,7 +12,7 @@ import {
 } from "./chat-credential-step-fields";
 import { useChatCredentialStep } from "./use-chat-credential-step";
 
-interface ChatCredentialInteractionCardProps extends StepChrome {
+interface ChatCredentialInteractionCardProps extends StepChrome, StepDraftApi {
   /** The credential step's stable id — fades the modal body on a step swap and
    *  scopes the form id so parallel credential steps never collide. */
   stepId: string;

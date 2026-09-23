@@ -201,18 +201,24 @@ export function answerWithText(
 }
 
 /** Advance past the current step WITHOUT completing it — the Skip transition,
- *  offered on EVERY step kind. Mirrors `advance`'s frontier-advancing mechanics
- *  but commits nothing: a skipped question is simply omitted from
- *  `toCompletedAnswers` (its `if (committed)` guard), and a skipped signin or
- *  connect step is the APP's to report (it records the skip so the composed
- *  reply can tell the agent the user declined). When the skipped step is the
- *  last one, completion still fires exactly like every other terminal
- *  transition, with whatever was committed before it. */
+ *  offered on EVERY step kind. Commits nothing and DROPS any answer an earlier
+ *  visit committed here: a skip means "no answer", so a re-walked question (a
+ *  restored card rewinds behind its answers) the user now declines stops being
+ *  reported. A skipped signin or connect step is the APP's to report (it
+ *  records the skip so the composed reply can tell the agent the user
+ *  declined), and a skipped LAST step still completes exactly like every other
+ *  terminal transition, with whatever was committed before it. */
 export function skipStep(
   state: StepperState,
   steps: ChatInteractionStep[],
 ): Transition {
-  return advance(state, steps);
+  const stepId = steps[state.current]?.id;
+  if (stepId === undefined || !(stepId in state.answers)) {
+    return advance(state, steps);
+  }
+  const answers = { ...state.answers };
+  delete answers[stepId];
+  return advance({ ...state, answers }, steps);
 }
 
 /** Advance past a connect step once the app reports it connected. */
