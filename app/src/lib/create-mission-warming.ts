@@ -27,6 +27,7 @@ import type {
   CreateMissionResult,
 } from "./create-mission";
 import { startMissionNow } from "./create-mission-now";
+import { warmingPromptInputs } from "./mission-prompt";
 import { missionRowInput } from "./mission-row";
 import { fallbackMissionTitle } from "./mission-title";
 
@@ -54,9 +55,15 @@ export function createMissionWhileWarming(
       agentPath: agent.folderPath,
       sessionKey,
       text,
-      buildPrompt: opts.buildPrompt
-        ? () => opts.buildPrompt?.(conversationId) ?? text
-        : undefined,
+      // A setup chat's kickoff is resolved NOW and rides the persisted send:
+      // the activity id is already decided here and the builder touches
+      // nothing but the app's own state, while these missions carry no `text`
+      // of their own — so a relaunch mid-warm-up that lost the closure would
+      // leave the flush with an empty turn and the mission would never run.
+      // An attachment prompt can't be resolved here: building it writes the
+      // files through the pod that is still coming up, which is the held
+      // request this whole queue exists to avoid. It stays a closure.
+      ...warmingPromptInputs(opts, conversationId),
       row: missionRowInput({ conversationId, title, description }, opts),
       provider: opts.providerOverride,
       model: opts.modelOverride,

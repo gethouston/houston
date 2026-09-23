@@ -2,9 +2,9 @@
  * The app's one `SetupGreetingRegistry` plus the hook the chat panel reads.
  *
  * `lib/agent-setup-mission.ts` records a self-setup mission here the instant it
- * starts one, and `components/use-agent-chat-panel.tsx` renders that mission's
- * hello from the record while it lasts (see `lib/setup-mission-greeting.ts` for
- * why the record exists and what takes over afterwards).
+ * starts one, and `hooks/use-setup-hello.ts` reads the record back while it
+ * lasts (see `lib/setup-mission-greeting.ts` for why the record exists and what
+ * takes over afterwards).
  *
  * The localStorage mirror is what carries the record through a reload during
  * the agent's pod cold start. Losing it only costs the record — the hello still

@@ -105,7 +105,7 @@ export function useRoutineChatSetup(
           // Setup chats always run as Ask first: the interview needs ask_user
           // (auto strips it) and must never open read-only in Planner.
           modeOverride: "execute",
-          buildPrompt: (activityId) =>
+          kickoffPrompt: (activityId) =>
             compose
               ? compose(activityId)
               : encodeRoutineSetupMessage(

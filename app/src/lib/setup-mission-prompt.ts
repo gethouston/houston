@@ -34,9 +34,9 @@ function languageNote(languageName: string): string {
 const NEVER_FROM_NAME =
   "Do not use your name to infer your role, industry, responsibilities, tools, or goals.";
 
-/** The brief the user filled in at creation, when there is one: the whole
- *  point of asking for it is that the agent starts specific instead of
- *  guessing. */
+/** The brief the agent was hired with, when there is one — typed at creation,
+ *  or read off an imported agent's own job description. The whole point of
+ *  holding it is that the agent starts specific instead of guessing. */
 function jobNote(roleContext: AgentRoleContext | undefined): string {
   if (!roleContext) return NEVER_FROM_NAME;
   return `The user already told you the job they hired you for:

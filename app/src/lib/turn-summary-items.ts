@@ -1,5 +1,10 @@
 import type { FileChangeEntry, ToolEntry } from "@houston-ai/chat";
 import { fileNameOf, toWorkspaceRelative } from "./agent-file-paths.ts";
+import {
+  isFileCreateTool,
+  isFileWriteTool,
+  toolShortName,
+} from "./file-write-tools.ts";
 import { skillFolderPathOf } from "./skill-folder-path.ts";
 import {
   integrationUpdatesOf,
@@ -23,21 +28,6 @@ export type TurnSummaryItem =
 export interface TurnSummaryGroups {
   updates: TurnSummaryItem[];
   files: Extract<TurnSummaryItem, { kind: "file" }>[];
-}
-
-/**
- * The file-writing tools of BOTH dialects, matched on the lowercased short
- * name: Claude's PascalCase names and the pi runtime's lowercase ones
- * (`packages/runtime/src/session/tools/clamped-fs.ts`). Matching one dialect
- * only left every pi turn with no summary rows at all — a saved skill showed
- * up as nothing but a collapsed "Wrote file" line in the task log.
- */
-const FILE_TOOLS = new Set(["write", "edit", "multiedit", "multi_edit"]);
-/** The tools that CREATE the file they name; the rest modify one in place. */
-const CREATE_TOOLS = new Set(["write"]);
-
-function shortName(name: string): string {
-  return name.includes("__") ? (name.split("__").pop() ?? name) : name;
 }
 
 /** A semantic update, carrying the skill identity when the path names one. */
@@ -116,14 +106,13 @@ export function buildTurnSummaryItems(
 
   for (const tool of tools) {
     if (!tool.result || tool.result.is_error) continue;
-    const sn = shortName(tool.name).toLowerCase();
 
-    if (FILE_TOOLS.has(sn)) {
+    if (isFileWriteTool(tool.name)) {
       const inp = tool.input as Record<string, unknown> | null | undefined;
       // Claude tools carry `file_path`; pi tools carry `path`.
       const fp = (inp?.file_path ?? inp?.path) as string | undefined;
-      if (fp) addPath(fp, CREATE_TOOLS.has(sn) ? "created" : "modified");
-    } else if (sn === "bash") {
+      if (fp) addPath(fp, isFileCreateTool(tool.name) ? "created" : "modified");
+    } else if (toolShortName(tool.name).toLowerCase() === "bash") {
       for (const fp of extractPathsFromBashOutput(tool.result.content)) {
         addPath(fp, "created");
       }

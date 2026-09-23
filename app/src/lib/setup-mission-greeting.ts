@@ -2,8 +2,10 @@
  * The self-setup mission's permanent hello: the record the app writes the
  * moment it starts that mission, and the role the sentence names.
  *
- * `lib/agent-setup-mission.ts` starts the mission;
- * `components/use-agent-chat-panel.tsx` renders the hello as its first item.
+ * `lib/agent-setup-mission.ts` starts the mission; `lib/setup-hello.ts`
+ * decides which source the hello's two facts come from, and the chat panel
+ * renders it as that mission's first item.
+ *
  * The app already holds the agent's name and the job it was hired for when it
  * creates them, so it records both here instead of reading them back: on the
  * hosted profile the agent's pod is still cold-starting at that point, its
@@ -30,9 +32,7 @@ export interface SetupGreetingEntry {
   agentPath: string;
   sessionKey: string;
   agentName: string;
-  /** The job the agent was hired for, or null when the flow that started the
-   *  mission held none (an imported agent arrives with its own description
-   *  rather than with answers). */
+  /** The job the agent was hired for, or null when its brief names none. */
   role: string | null;
   registeredAt: number;
 }
@@ -148,9 +148,9 @@ export class SetupGreetingRegistry {
 
 /**
  * The job the agent was hired for as its job description names it, or null when
- * the description names none. An unread description answers null too: the panel
- * holds the hello back until that read lands, so the sentence is never shown in
- * its no-role shape and then rewritten.
+ * the description names none. An unread description answers null too, and
+ * `setup-hello.ts` holds the hello back until that read lands, so the sentence
+ * is never shown in its no-role shape and then rewritten.
  */
 export function setupGreetingRole(
   instructions: string | undefined,

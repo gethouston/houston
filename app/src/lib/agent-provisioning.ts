@@ -88,6 +88,15 @@ export interface PendingWarmingSend {
   /** What the user typed — the bubble, and the fallback wire prompt. */
   text: string;
   /**
+   * The wire prompt when it is NOT what the user typed and was already
+   * knowable at queue time (a setup kickoff: the self-setup mission, the
+   * routine / skill / integration setup chats). Stored because those sends
+   * carry an empty `text` — without it a relaunch mid-warm-up leaves the
+   * flush nothing to send. Which builders qualify, and why an attachment
+   * prompt never does, is `lib/warming-send-prompt.ts`.
+   */
+  prompt?: string;
+  /**
    * Board row to (up)create right before this send — carried by the FIRST
    * message of a new conversation. Writing it at flush time (engine awake,
    * id-upsert idempotent) is the only way it survives: a write fired during
@@ -247,7 +256,12 @@ export function parsePersistedProvisioning(
                 typeof s === "object" &&
                 typeof (s as PendingWarmingSend).id === "string" &&
                 typeof (s as PendingWarmingSend).sessionKey === "string" &&
-                typeof (s as PendingWarmingSend).text === "string",
+                typeof (s as PendingWarmingSend).text === "string" &&
+                // A non-string prompt would reach the wire as one: a send is
+                // only kept when BOTH of its candidate prompts are sound.
+                ["string", "undefined"].includes(
+                  typeof (s as PendingWarmingSend).prompt,
+                ),
             ),
           }
         : e,

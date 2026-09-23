@@ -20,3 +20,18 @@ export function skillDisplayTitle(skill: {
 }): string {
   return skill.title?.trim() || humanizeSkillName(skill.name);
 }
+
+/**
+ * The title for a skill a surface knows only by its directory slug (the
+ * turn-end summary names the skill a turn saved that way). Resolved against the
+ * agent's loaded skills so the row reads like every other skill surface;
+ * the humanized slug stands in while that list is still being read, rather
+ * than holding the row back.
+ */
+export function skillTitleOfSlug(
+  slug: string,
+  skills: readonly { name: string; title?: string | null }[] | undefined,
+): string {
+  const skill = skills?.find((candidate) => candidate.name === slug);
+  return skill ? skillDisplayTitle(skill) : humanizeSkillName(slug);
+}

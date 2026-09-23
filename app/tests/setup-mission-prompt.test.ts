@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildSetupMissionPrompt } from "../src/lib/setup-mission-prompt.ts";
+import en from "../src/locales/en/chat.json" with { type: "json" };
 
 const BRIEF = { context: "Healthcare", role: "Operations coordinator" };
 
@@ -35,6 +36,29 @@ test("the hello the user already read is quoted back, and never repeated", () =>
     assert.match(prompt, /Your first reply continues straight on from it/);
     assert.doesNotMatch(prompt, /Open with EXACTLY this sentence/);
   }
+});
+
+/**
+ * The prompt quotes the hello back to the model so it can see there is nothing
+ * left to introduce, and that quote has to be the sentence the chat ACTUALLY
+ * rendered — `chat:setupGreeting.*`. The prompt lib stays i18n-free (the
+ * node:test suite loads it directly), so the two are pinned here instead: the
+ * English source with its placeholders filled in, word for word.
+ */
+test("the quoted hello is the en chat:setupGreeting copy, word for word", () => {
+  const rendered = en.setupGreeting.textWithRole
+    .replace("{{name}}", "Jerry")
+    .replace("{{role}}", BRIEF.role);
+  assert.ok(
+    buildSetupMissionPrompt("Jerry", "en", BRIEF).includes(`"${rendered}"`),
+    "the roled prompt no longer quotes chat:setupGreeting.textWithRole",
+  );
+
+  const renderedNoRole = en.setupGreeting.text.replace("{{name}}", "Jerry");
+  assert.ok(
+    buildSetupMissionPrompt("Jerry", "en").includes(`"${renderedNoRole}"`),
+    "the roleless prompt no longer quotes chat:setupGreeting.text",
+  );
 });
 
 test("the first reply IS the ask_user card, never a text-only line", () => {

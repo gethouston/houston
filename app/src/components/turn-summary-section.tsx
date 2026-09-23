@@ -9,7 +9,6 @@ import {
   ScrollText,
 } from "lucide-react";
 import { fileNameOf } from "../lib/agent-file-paths";
-import { humanizeSkillName } from "../lib/humanize-skill-name";
 import type {
   SemanticUpdateKind,
   TurnSummaryItem,
@@ -37,6 +36,7 @@ export function TurnSummarySection({
   onOpenSemantic,
   onOpenUrl,
   resolveBrand,
+  resolveSkillTitle,
   t,
 }: {
   title: string;
@@ -48,6 +48,8 @@ export function TurnSummarySection({
   onOpenSemantic?: (kind: SemanticUpdateKind) => void;
   onOpenUrl: (url: string) => void;
   resolveBrand: (action: string) => ChatActionBrand | undefined;
+  /** The title a saved skill's slug reads as (`lib/humanize-skill-name.ts`). */
+  resolveSkillTitle: (slug: string) => string;
   t: TFunction<"chat">;
 }) {
   return (
@@ -84,7 +86,9 @@ export function TurnSummarySection({
             const content = (
               <>
                 <ItemIcon item={item} />
-                <span className="truncate">{itemLabel(item, t)}</span>
+                <span className="truncate">
+                  {itemLabel(item, t, resolveSkillTitle)}
+                </span>
               </>
             );
             // A settings target the user cannot reach is stated, not offered.
@@ -154,9 +158,13 @@ function ItemIcon({ item }: { item: SummaryRowItem }) {
   return <Icon className="h-4 w-4 text-ink-muted shrink-0" />;
 }
 
-function itemLabel(item: SummaryRowItem, t: TFunction<"chat">): string {
+function itemLabel(
+  item: SummaryRowItem,
+  t: TFunction<"chat">,
+  resolveSkillTitle: (slug: string) => string,
+): string {
   if (item.kind === "skill")
-    return t("summary.skillSaved", { name: humanizeSkillName(item.slug) });
+    return t("summary.skillSaved", { name: resolveSkillTitle(item.slug) });
   if (item.kind === "semantic") {
     if (item.update === "instructions") return t("summary.instructionsUpdated");
     if (item.update === "skills") return t("summary.skillsUpdated");

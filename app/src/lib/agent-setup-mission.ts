@@ -54,7 +54,7 @@ export async function startAgentSetupMission(
     const result = await createMission(agent, "", {
       title: i18n.t("agentOnboarding:setupMission.title"),
       agentMode: AGENT_SETUP_AGENT_MODE,
-      buildPrompt: () =>
+      kickoffPrompt: () =>
         encodeAutoContinueMessage(
           buildSetupMissionPrompt(agent.name, i18n.language, roleContext),
         ),
@@ -67,10 +67,9 @@ export async function startAgentSetupMission(
     analytics.track("agent_onboarding_started", { source });
     // The hello's two facts, recorded while they are still in hand. Reading
     // them back off a hosted agent that is only now being provisioned answers
-    // nothing, and the hello is the very first thing the user reads.
-    // An import brings the source agent's own job description instead of
-    // answers (`components/portable/import-install.ts` has no role to pass),
-    // so it records none and that mission's hello names the name alone.
+    // nothing, and the hello is the very first thing the user reads. An import
+    // holds them too: it reads the brief off the agent's own job description
+    // before calling here (`components/portable/import-install.ts`).
     registerSetupGreeting({
       agentPath: agent.folderPath,
       sessionKey: result.sessionKey,

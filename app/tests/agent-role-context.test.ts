@@ -6,6 +6,7 @@ import {
   buildAgentRoleJobDescription,
   capRolePart,
   createAgentRoleContext,
+  jobDescriptionRoleContext,
 } from "../src/lib/agent-role-context.ts";
 
 test("a typed answer is capped as it is written, not only on the way out", () => {
@@ -115,4 +116,39 @@ test("an answer carrying a colon is written so it reads back whole", () => {
     '---\nindustry: "Retail: online"\nrole: Dispatcher\n---\n',
   );
   assert.equal(parseJobDescription(file).fields.industry, "Retail: online");
+});
+
+test("an imported agent's brief is read back off its job description", () => {
+  // The import brings the source agent's own description rather than answers,
+  // so this read is what lets the record, the hidden prompt and the post-TTL
+  // derivation name the SAME job.
+  assert.deepEqual(
+    jobDescriptionRoleContext(
+      "---\nindustry: Finance\nrole: Financial analyst\n---\nI close the books.\n",
+    ),
+    { context: "Finance", role: "Financial analyst" },
+  );
+});
+
+test("half a brief is no brief: the hello names the agent alone", () => {
+  assert.equal(
+    jobDescriptionRoleContext("---\nindustry: Finance\n---\n"),
+    undefined,
+  );
+  assert.equal(
+    jobDescriptionRoleContext("---\nrole: Financial analyst\n---\n"),
+    undefined,
+  );
+  assert.equal(jobDescriptionRoleContext("Just prose.\n"), undefined);
+  assert.equal(jobDescriptionRoleContext(""), undefined);
+  assert.equal(jobDescriptionRoleContext(undefined), undefined);
+});
+
+test("a brief read back is normalized exactly like a typed one", () => {
+  assert.deepEqual(
+    jobDescriptionRoleContext(
+      `---\nindustry: "  Retail   online  "\nrole: "  Dispatcher  "\n---\n`,
+    ),
+    { context: "Retail online", role: "Dispatcher" },
+  );
 });

@@ -89,10 +89,13 @@ test("the welcome chat is live before the board sweep returns its row", async ({
 
   await createFromScratch(page, "Solstice");
 
-  // A live conversation, not an empty shell: the panel renders this
-  // conversation's own transcript, which it can only reach with the session key
-  // and agent path the create published.
+  // The hello is derived rather than fetched, but deriving it takes the agent
+  // path and session key of a mission the sweep has not returned — so its
+  // presence here proves the panel got both from the created-mission handoff.
   await expect(agentMessages(page).first()).toBeVisible({ timeout: 4_000 });
+  // And the transcript under it is live on that same session key: the fake
+  // host's own reply lands as a second agent message.
+  await expect(agentMessages(page).nth(1)).toBeVisible({ timeout: 10_000 });
 });
 
 test("the setup mission opens on its hello, with no user bubble at all", async ({

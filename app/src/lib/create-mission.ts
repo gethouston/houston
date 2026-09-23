@@ -12,6 +12,11 @@ import { createMissionNow } from "./create-mission-now";
 import { createMissionWhileWarming } from "./create-mission-warming";
 import { hiddenPromptDisplayText } from "./hidden-prompt-display-text";
 import { logger } from "./logger";
+import {
+  hasHiddenPrompt,
+  type MissionPromptOptions,
+  missionPrompt,
+} from "./mission-prompt";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
 import { tauriActivity, tauriChat } from "./tauri";
 
@@ -56,17 +61,9 @@ export interface CreateMissionAgent {
   folderPath: string;
 }
 
-export interface CreateMissionOptions {
+export interface CreateMissionOptions extends MissionPromptOptions {
   /** Sub-agent mode id to store with the activity row. */
   agentMode?: string;
-  /**
-   * Builds the prompt actually sent to Claude, given the freshly-created
-   * activity id. Defaults to returning the user's raw `text`. The board-tab
-   * uses this to save attachments under `activity-{id}` and then append
-   * their absolute paths to the prompt — all without changing the
-   * user-visible description stored on the activity row.
-   */
-  buildPrompt?: (activityId: string) => Promise<string> | string;
   /** Provider override forwarded to tauriChat.send. */
   providerOverride?: string;
   /** Model override forwarded to tauriChat.send. */
@@ -142,9 +139,7 @@ export async function createMission(
   const sessionKey = sessionKeyForActivity(conversationId);
 
   try {
-    const prompt = opts.buildPrompt
-      ? await opts.buildPrompt(conversationId)
-      : text;
+    const prompt = await missionPrompt(opts, conversationId, text);
 
     await tauriChat.send(agent.folderPath, prompt, sessionKey, {
       // Empty pins dropped: a turn naming a provider and an empty model is a
@@ -152,7 +147,7 @@ export async function createMission(
       ...definedPins(opts),
       modeOverride: opts.modeOverride,
       mentions: opts.mentions,
-      displayText: hiddenPromptDisplayText(text, !!opts.buildPrompt),
+      displayText: hiddenPromptDisplayText(text, hasHiddenPrompt(opts)),
     });
 
     analytics.track("mission_created", {

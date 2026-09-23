@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useSkills } from "../hooks/queries";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useOpenAgentFile } from "../hooks/use-open-agent-file";
 import { canOpenAgentSettings } from "../lib/agent-nav";
+import { skillTitleOfSlug } from "../lib/humanize-skill-name";
 import { openAgentSettings } from "../lib/open-agent";
 import { tauriSystem } from "../lib/tauri";
 import {
@@ -31,6 +33,13 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
     s.agents.find((candidate) => candidate.folderPath === agentPath),
   );
   const resolveBrand = useActionBrandResolver(agent?.id);
+  // The saved-skill row names the skill the way every other skill surface
+  // does: its own title. The list is the panel's own query, already in cache.
+  const { data: skills } = useSkills(agentPath);
+  const resolveSkillTitle = useCallback(
+    (slug: string) => skillTitleOfSlug(slug, skills),
+    [skills],
+  );
   const semanticIsLink = !!agent && canOpenAgentSettings(capabilities, agent);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
 
@@ -74,6 +83,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
           onOpenSemantic={semanticHandler}
           onOpenUrl={openUrl}
           resolveBrand={resolveBrand}
+          resolveSkillTitle={resolveSkillTitle}
           t={t}
         />
       )}
@@ -87,6 +97,7 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
           onOpenSemantic={semanticHandler}
           onOpenUrl={openUrl}
           resolveBrand={resolveBrand}
+          resolveSkillTitle={resolveSkillTitle}
           t={t}
         />
       )}

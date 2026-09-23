@@ -59,7 +59,6 @@ import {
   useAgentConfig,
   useAgentModelChoice,
   useChatHistory,
-  useInstructions,
   useSetAgentModelChoice,
   useSkills,
 } from "../hooks/queries";
@@ -75,11 +74,10 @@ import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSendPin } from "../hooks/use-send-pin";
 import { useSession } from "../hooks/use-session";
-import { useSetupGreeting } from "../hooks/use-setup-greeting";
+import { useSetupHello } from "../hooks/use-setup-hello";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
 import { useWelcomeGreetingRevealed } from "../hooks/use-welcome-greeting";
 import { deriveActiveInteraction } from "../lib/active-interaction";
-import { isAgentSetupMode } from "../lib/agent-setup-mode";
 import { isWelcomeSessionKey } from "../lib/agent-welcome";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
@@ -140,7 +138,6 @@ import { queryKeys } from "../lib/query-keys";
 import { reportRejection } from "../lib/report-rejection";
 import { showSendFailedToast } from "../lib/send-error-toast";
 import { sendPinSettled } from "../lib/send-pin-gate";
-import { setupGreetingRole } from "../lib/setup-mission-greeting";
 import {
   buildSkillClaudePrompt,
   decodeSkillMessage,
@@ -2145,38 +2142,14 @@ export function useAgentChatPanel({
   const welcomeGreetingRevealed =
     useWelcomeGreetingRevealed(selectedSessionKey);
   const agentName = agent?.name;
-  // The self-setup mission's hello: the FIRST item of that mission's feed,
-  // naming the agent and the job it was hired for, and permanent — the agent's
-  // own words land under it, never in place of it. The hidden prompt tells the
-  // model the user has already read it, so the agent never introduces itself a
-  // second time.
-  //
-  // ONE rule decides where those two facts come from. The record the create
-  // wrote (`lib/setup-mission-greeting.ts`) is the source while it exists: it
-  // is complete from the first paint, before the engine has answered anything.
-  // Once it is gone — its TTL, another device, a later reload — the persisted
-  // truth takes over: the activity's own setup marker plus the role in the
-  // agent's job description. The create wrote that description from the same
-  // answers it recorded, so the handover never changes the sentence.
-  const setupEntry = useSetupGreeting(path, selectedSessionKey);
-  const isSetupMission =
-    !!setupEntry || isAgentSetupMode(selectedActivity?.agent);
-  // Read only when the record is gone and this really is the setup mission:
-  // every other chat would be paying an engine round trip for a sentence it
-  // never shows, and a warming agent answers that read empty.
-  const setupInstructions = useInstructions(
-    !setupEntry && isAgentSetupMode(selectedActivity?.agent)
-      ? (path ?? undefined)
-      : undefined,
-  );
-  const setupHelloName = setupEntry?.agentName ?? agentName;
-  const setupHelloRole = setupEntry
-    ? setupEntry.role
-    : setupGreetingRole(setupInstructions.data);
-  // Without the record the hello waits for the job description to be read, so
-  // the sentence is never shown without the role and then rewritten with it.
-  const setupHelloReady =
-    !!setupEntry || (isSetupMission && setupInstructions.isFetched);
+  // The self-setup mission's hello, and whether this chat is that mission at
+  // all (`hooks/use-setup-hello.ts`).
+  const { isSetupMission, hello: setupHello } = useSetupHello({
+    agentPath: path,
+    sessionKey: selectedSessionKey,
+    activityAgentMode: selectedActivity?.agent,
+    agentName,
+  });
   const mapFeedItems = useCallback(
     ({ sessionKey, items }: { sessionKey: string; items: FeedItem[] }) => {
       const mapped = filterAutoContinueFeedItems(
@@ -2189,29 +2162,21 @@ export function useAgentChatPanel({
         };
         return [greeting, ...mapped];
       }
-      if (setupHelloReady && sessionKey === selectedSessionKey) {
+      if (setupHello && sessionKey === selectedSessionKey) {
         const hello: FeedItem = {
           feed_type: "assistant_text",
-          data: setupHelloRole
+          data: setupHello.role
             ? t("chat:setupGreeting.textWithRole", {
-                name: setupHelloName,
-                role: setupHelloRole,
+                name: setupHello.name,
+                role: setupHello.role,
               })
-            : t("chat:setupGreeting.text", { name: setupHelloName }),
+            : t("chat:setupGreeting.text", { name: setupHello.name }),
         };
         return [hello, ...mapped];
       }
       return mapped;
     },
-    [
-      welcomeGreetingRevealed,
-      agentName,
-      setupHelloName,
-      setupHelloReady,
-      setupHelloRole,
-      selectedSessionKey,
-      t,
-    ],
+    [welcomeGreetingRevealed, agentName, setupHello, selectedSessionKey, t],
   );
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {

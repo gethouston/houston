@@ -3,15 +3,9 @@ import { ToolBlock } from "@houston-ai/chat";
 import { useCallback, useMemo } from "react";
 import { FileCard } from "../components/file-card";
 import { TurnFileSummary } from "../components/turn-file-summary";
+import { isFileWriteTool } from "../lib/file-write-tools";
 import { buildTurnSummaryItems } from "../lib/turn-summary-items";
 import { isUserVisibleFilePath } from "../lib/user-visible-files";
-
-/** Tool short names that produce files the user might want to open. */
-const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit"]);
-
-function shortName(name: string): string {
-  return name.includes("__") ? (name.split("__").pop() ?? name) : name;
-}
 
 /**
  * Returns `isSpecialTool`, `renderToolResult`, and `renderTurnSummary`
@@ -20,7 +14,7 @@ function shortName(name: string): string {
  */
 export function useFileToolRenderer(agentPath: string) {
   const isSpecialTool = useCallback(
-    (toolName: string) => FILE_TOOLS.has(shortName(toolName)),
+    (toolName: string) => isFileWriteTool(toolName),
     [],
   );
 
