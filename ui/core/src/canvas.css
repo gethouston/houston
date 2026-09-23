@@ -274,12 +274,15 @@ body {
 
 /* ── 7. Kanban card resting fill ────────────────────────────────
    The resting (non-selected) card uses a palette token, --ht-card-solid:
-   #2C2C2B in dark (sampled from the running card), white in light.
-   Solid, not translucent. Running cards use the SAME fill for their
-   center (--glow-bg) so every non-selected card reads uniformly — only
-   the running card's animated border marks it. Selected/highlighted
-   cards use bg-hover (and selected-running keeps its inline accent
-   tint), so they're untouched.
+   white in light, a cool neutral one step above the frosted screen in
+   dark (the gutter's hue family, so cards, columns and gutter share one
+   temperature under the aurora). Solid, not translucent: glass on the
+   already-frosted screen goes muddy and a board of blurred cards is a
+   GPU cost. Running cards use the SAME fill for their center (--glow-bg)
+   so every non-selected card reads uniformly — only the running card's
+   animated border marks it. Selected/highlighted cards use bg-hover (and
+   selected-running keeps its inline accent tint), so they're untouched.
+   The column's "+" bar wears the same token (`bg-card-solid`).
    Knob: the --ht-card-solid values in the palette (section 2). */
 .kanban-card.bg-input:not(.card-running-glow) {
   background-color: var(--ht-card-solid);

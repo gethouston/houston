@@ -65,6 +65,9 @@
       "gutter-dark": {
         "$value": "#141416"
       },
+      "card-dark": {
+        "$value": "#2a2a2e"
+      },
       "surface": {
         "$value": "#f4f6fc"
       }

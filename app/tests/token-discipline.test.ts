@@ -102,7 +102,6 @@ const UNTOKENIZED = [
   "packages/web/src/admin/sign-in.tsx",
   "packages/web/src/admin/styles.ts",
   "packages/web/src/app-tree.tsx",
-  "ui/board/src/kanban-column-parts.tsx",
   "ui/chat/src/channel-brand-colors.ts",
   "ui/chat/src/dictation-waveform-envelope.ts",
   "ui/chat/src/dictation-waveform.tsx",

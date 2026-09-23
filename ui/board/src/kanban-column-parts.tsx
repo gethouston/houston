@@ -49,7 +49,9 @@ export function KanbanColumnAdd({
       aria-label={label}
       title={label}
       onClick={onClick}
-      className="flex h-10 w-full items-center justify-center rounded-2xl border border-black/[0.06] bg-white/80 text-ink-muted/80 transition-colors hover:border-black/[0.12] hover:bg-white hover:text-ink [[data-theme=dark]_&]:border-black/70 [[data-theme=dark]_&]:bg-[#0d0d0d] [[data-theme=dark]_&]:text-ink-muted [[data-theme=dark]_&]:hover:border-black [[data-theme=dark]_&]:hover:bg-[#141414] [[data-theme=dark]_&]:hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+      // The same surface as a resting card (`card-solid`, section 7 of
+      // canvas.css) so the bar reads as the column's next slot, both themes.
+      className="flex h-10 w-full items-center justify-center rounded-xl border border-line/20 bg-card-solid text-ink-muted transition-colors hover:border-line/40 hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
     >
       <Plus className="h-4 w-4" />
     </button>
