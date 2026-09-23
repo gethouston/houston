@@ -247,7 +247,7 @@ export function KanbanCard({
           // border is always 1px (transparent when active, gray
           // otherwise) so toggling state doesn't shift layout.
           isRunning
-            ? "card-running-glow shadow-[0_2px_12px_rgba(59,130,246,0.12)]"
+            ? "card-running-glow shadow-[0_2px_12px_var(--ht-glow-blue-shadow)]"
             : isError
               ? "border border-danger/60"
               : selected || highlighted

@@ -102,6 +102,28 @@
         "$value": "#fde68a"
       }
     },
+    "glow": {
+      "$type": "color",
+      "$description": "The brand comet the running-card glow, avatar ring and progress line sweep with. Four fixed hues, deliberately identical in both themes.",
+      "blue": {
+        "$value": "#3b82f6"
+      },
+      "indigo": {
+        "$value": "#818cf8"
+      },
+      "orange": {
+        "$value": "#f97316"
+      },
+      "amber": {
+        "$value": "#fbbf24"
+      },
+      "blue-a15": {
+        "$value": "rgba(59, 130, 246, 0.15)"
+      },
+      "blue-a12": {
+        "$value": "rgba(59, 130, 246, 0.12)"
+      }
+    },
     "agent": {
       "$type": "color",
       "charcoal": {

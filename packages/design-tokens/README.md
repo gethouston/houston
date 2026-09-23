@@ -111,10 +111,9 @@ the fix it prints is step 2, rebuild.
 
 ## Not tokenized (yet, on purpose)
 
-- **Brand glow palette** (blue/indigo/orange/amber of `card-running-glow` and the
-  aurora) lives in component CSS (`ui/core/src/globals.css`,
-  `app/src/styles/futuristic.css`). It drives animated *chrome*, not the
-  `--ht-*` surface set; a future pass can promote it to primitives.
+- **The aurora** (the dark-mode radial glow in `ui/core/src/canvas.css`) keeps
+  its authored rgba layers: it is an effect, not a surface role. The running
+  comet it shares hues with IS tokenized (`ht.glow.*`, theme-invariant).
 - **z-index** — the app uses a single systematic value (`-1` for the aurora); not
   a scale, so not tokenized.
 - **Hardcoded literals** sprinkled in individual component CSS are out of scope —

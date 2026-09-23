@@ -130,6 +130,26 @@
     "sidebar-active": {
       "$value": "{color.alpha.black-a10}"
     },
+    "glow": {
+      "blue": {
+        "$value": "{color.glow.blue}"
+      },
+      "indigo": {
+        "$value": "{color.glow.indigo}"
+      },
+      "orange": {
+        "$value": "{color.glow.orange}"
+      },
+      "amber": {
+        "$value": "{color.glow.amber}"
+      },
+      "blue-wash": {
+        "$value": "{color.glow.blue-a15}"
+      },
+      "blue-shadow": {
+        "$value": "{color.glow.blue-a12}"
+      }
+    },
     "agent": {
       "charcoal": {
         "$value": "{color.agent.charcoal}"

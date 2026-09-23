@@ -298,18 +298,18 @@ body {
 
 .card-running-glow {
   --glow-angle: 0deg;
-  --glow-bg: var(--ht-input, #ffffff);
+  --glow-bg: var(--ht-input);
   position: relative;
   background:
     linear-gradient(var(--glow-bg), var(--glow-bg)) padding-box,
     conic-gradient(
       from var(--glow-angle),
       transparent 60%,
-      rgba(59, 130, 246, 0.15) 68%,
-      #3b82f6 74%,
-      #818cf8 78%,
-      #f97316 82%,
-      #fbbf24 84%,
+      var(--ht-glow-blue-wash) 68%,
+      var(--ht-glow-blue) 74%,
+      var(--ht-glow-indigo) 78%,
+      var(--ht-glow-orange) 82%,
+      var(--ht-glow-amber) 84%,
       transparent 88%
     ) border-box;
   border: 1.5px solid transparent;
@@ -335,20 +335,22 @@ body {
   background: conic-gradient(
     from var(--glow-angle),
     transparent 60%,
-    rgba(59, 130, 246, 0.15) 68%,
-    #3b82f6 74%,
-    #818cf8 78%,
-    #f97316 82%,
-    #fbbf24 84%,
+    var(--ht-glow-blue-wash) 68%,
+    var(--ht-glow-blue) 74%,
+    var(--ht-glow-indigo) 78%,
+    var(--ht-glow-orange) 82%,
+    var(--ht-glow-amber) 84%,
     transparent 88%
   );
+  /* A mask reads only the ALPHA channel, so the colour is irrelevant:
+     currentColor is inherited opaque and every pixel masks at alpha 1. */
   -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
+    linear-gradient(currentColor 0 0) content-box,
+    linear-gradient(currentColor 0 0);
   -webkit-mask-composite: xor;
   mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
+    linear-gradient(currentColor 0 0) content-box,
+    linear-gradient(currentColor 0 0);
   mask-composite: exclude;
   animation: glow-spin 2.5s linear infinite;
   pointer-events: none;
@@ -386,11 +388,11 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(59, 130, 246, 0.15),
-    #3b82f6,
-    #818cf8,
-    #f97316,
-    #fbbf24,
+    var(--ht-glow-blue-wash),
+    var(--ht-glow-blue),
+    var(--ht-glow-indigo),
+    var(--ht-glow-orange),
+    var(--ht-glow-amber),
     transparent
   );
   animation: glow-line-sweep 2.5s linear infinite;

@@ -75,7 +75,13 @@
     "ht-person-overflow": "#e6e8ec",
     "ht-person-overflow-text": "#555b66",
     "ht-tab-track": "rgba(13, 13, 13, 0.06)",
-    "ht-tab-active": "#ffffff"
+    "ht-tab-active": "#ffffff",
+    "ht-glow-blue": "#3b82f6",
+    "ht-glow-indigo": "#818cf8",
+    "ht-glow-orange": "#f97316",
+    "ht-glow-amber": "#fbbf24",
+    "ht-glow-blue-wash": "rgba(59, 130, 246, 0.15)",
+    "ht-glow-blue-shadow": "rgba(59, 130, 246, 0.12)"
   },
   "dark": {
     "ht-base": "#141416",
@@ -153,6 +159,12 @@
     "ht-person-overflow": "#4c4c52",
     "ht-person-overflow-text": "#d4d4d4",
     "ht-tab-track": "rgba(255, 255, 255, 0.06)",
-    "ht-tab-active": "#383838"
+    "ht-tab-active": "#383838",
+    "ht-glow-blue": "#3b82f6",
+    "ht-glow-indigo": "#818cf8",
+    "ht-glow-orange": "#f97316",
+    "ht-glow-amber": "#fbbf24",
+    "ht-glow-blue-wash": "rgba(59, 130, 246, 0.15)",
+    "ht-glow-blue-shadow": "rgba(59, 130, 246, 0.12)"
   }
 }
