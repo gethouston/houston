@@ -1,15 +1,15 @@
 /**
- * Turn → board-status contract (the SDK-only / iOS path).
+ * Turn → board-status contract (the SDK-only path).
  *
  * On web/desktop the engine-adapter attaches a bus FeedOutput that PATCHes the
  * persisted activity when a turn settles. The SDK turns module ships its OWN
- * default output that must do the same, so a native shell (iOS) that never calls
+ * default output that must do the same, so a binder that never calls
  * `addOutput` still sees a mission leave "running" when its turn finishes.
  *
  * These drive `sdk.turns.send` against an activity-keyed conversation and assert
  * the persisted `Activity` record (read straight off the host) transitions
- * running → needs_you — the write the SDK path historically dropped, leaving
- * mission lists stuck on "running" forever.
+ * running → needs_you — the write that keeps mission lists from sticking on
+ * "running" forever.
  *
  * The terminal status is ALWAYS `needs_you` for a clean turn: the engine never
  * writes `done`. Each test therefore parks the card on `done` first (the user's

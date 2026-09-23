@@ -141,7 +141,8 @@ export interface IntegrationsModule {
   /** Dismiss the one-time "reconnect your integrations" notice (idempotent). */
   dismissReconnectNotice(): Promise<void>;
   /** No-refetch write variants for a host that owns its own reads (web under
-   *  `reactivity:false`). The refetching methods above are untouched (iOS-safe). */
+   *  `reactivity:false`). The refetching methods above stay the default for a
+   *  host with no read model of its own. */
   writes: IntegrationsWrites;
   /** The provider-scoped gateway reads (`/v1/integrations/{provider}/…`). */
   reads: ReturnType<typeof createIntegrationsReads>;

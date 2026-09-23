@@ -1,6 +1,6 @@
 /**
- * Untrusted command-payload parsers for the activities module. The bridge
- * (`dispatch`) hands these raw JSON; each parser throws on a bad shape
+ * Untrusted command-payload parsers for the activities module. The dispatch
+ * path hands these raw JSON; each parser throws on a bad shape
  * (`CommandRegistry.dispatch` turns the throw into an `ok: false` result).
  */
 

@@ -129,7 +129,7 @@ describe("what the module refuses to soften", () => {
   });
 });
 
-describe("the bridge path", () => {
+describe("the dispatch path", () => {
   it("dispatches a checkout through the same handler the facade uses", async () => {
     const { sdk, calls } = ok({ url: "https://checkout.stripe.test/c/1" });
     const result = await sdk.dispatch({

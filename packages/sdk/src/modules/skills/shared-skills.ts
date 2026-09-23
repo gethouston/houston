@@ -10,8 +10,8 @@
  * personal id the web UI holds is translated before it reaches here.
  *
  * Degradations are the CALLER's: every request throws on a non-2xx, 404
- * included, so a surface that wants "no library yet" says so itself and iOS is
- * never handed a silent empty answer it did not ask for.
+ * included, so a surface that wants "no library yet" says so itself and no
+ * surface is handed a silent empty answer it did not ask for.
  */
 
 import type { ModuleContext } from "../../module-context";
@@ -157,7 +157,7 @@ export async function deleteSharedSkill(
   );
 }
 
-/** Bind the requests above to one scope and the bridge's command registry. */
+/** Bind the requests above to one scope and the `dispatch` command registry. */
 export function createSharedSkills(ctx: ModuleContext): SharedSkillsModule {
   const scope = moduleScope(ctx, "shared-skills", SharedSkillsHttpError);
 

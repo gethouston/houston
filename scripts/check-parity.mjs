@@ -21,9 +21,6 @@
  *   - a manifest may not claim an inventoryVersion beyond the inventory's;
  *   - a `version` bump must be accompanied by a matching CHANGELOG.md entry.
  *
- * REPORT (never fails): the lag of the UNENFORCED surfaces (native apps) so
- * their progress is visible in every CI run.
- *
  * The validation logic is factored into scripts/parity/* and exported here as
  * `checkParity(dir)` so it is unit-testable against fixtures
  * (scripts/check-parity.test.mjs) without shelling out.
@@ -32,12 +29,11 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadChangelog, loadInventory, loadManifests } from "./parity/load.mjs";
 import { validateManifest } from "./parity/manifest.mjs";
-import { buildReport } from "./parity/report.mjs";
 import { validateChangelog, validateInventory } from "./parity/validate.mjs";
 
 /**
  * Run every check against an inventory directory (containing inventory.yaml,
- * CHANGELOG.md and manifests/). Returns { violations, report } and never throws
+ * CHANGELOG.md and manifests/). Returns { violations } and never throws
  * on bad content -- malformed files become violations.
  */
 export function checkParity(dir) {
@@ -65,19 +61,13 @@ export function checkParity(dir) {
     else violations.push(...validateManifest(m, sinceById, version));
   }
 
-  const parsed = manifests.filter(
-    (m) => m.value && typeof m.value === "object",
-  );
-  const report = buildReport(parsed, sinceById, version);
-  return { violations, report };
+  return { violations };
 }
 
 function main() {
   const root = join(dirname(fileURLToPath(import.meta.url)), "..");
   const dir = join(root, "design", "inventory");
-  const { violations, report } = checkParity(dir);
-
-  if (report) console.log(`${report}\n`);
+  const { violations } = checkParity(dir);
 
   if (violations.length > 0) {
     console.error(

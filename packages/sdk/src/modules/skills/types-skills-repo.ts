@@ -1,7 +1,7 @@
 /**
  * Wire types for the GitHub REPOSITORY skills — the repositories an agent's
- * skills can be read out of — plus the command vocabulary the bridge
- * dispatches them by.
+ * skills can be read out of — plus the command vocabulary `dispatch` routes
+ * them by.
  *
  * Kept beside the agent's own skills rather than in their `types.ts`: a
  * repository shape describes a SKILL.md that lives OUTSIDE Houston and has no
@@ -29,8 +29,8 @@ export interface RepoSkill {
 
 /**
  * The repository vocabulary — the same constants back the facade and the
- * bridge. `skills.repo` is the family half of `<family>/<verb>`, which is what
- * keeps these apart from an agent's own `skills/*`.
+ * dispatch path. `skills.repo` is the family half of `<family>/<verb>`, which
+ * is what keeps these apart from an agent's own `skills/*`.
  */
 export const SkillsRepoCommand = {
   ListFromRepo: "skills.repo/listFromRepo",

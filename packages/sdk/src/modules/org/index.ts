@@ -5,7 +5,7 @@
  * These are pure commands: an admin screen opens them, reads once, and writes
  * from a form; no host event invalidates them and no surface renders them
  * continuously, so there is no reactive scope to publish. The same handlers back
- * both the typed facade and the bridge `dispatch` path.
+ * both the typed facade and the `dispatch` path.
  *
  * SEAM — space-scoped, NOT per-agent. The gateway resolves the space from the
  * caller's session plus the active-space header its `fetch` stamps, so nothing
@@ -15,7 +15,7 @@
  *
  * Degradations are the CALLER's: every request here throws on a non-2xx, 404
  * included, so a surface that wants "no roster yet" instead of an error says so
- * itself and iOS is never handed a silent empty answer it did not ask for.
+ * itself and no surface is handed a silent empty answer it did not ask for.
  */
 
 import type { ModuleContext } from "../../module-context";

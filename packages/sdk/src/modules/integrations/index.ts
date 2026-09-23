@@ -4,7 +4,7 @@
  * Reads: publishes the {@link INTEGRATIONS_SCOPE} view-model — readiness plus
  * the toolkit catalog and the user's connections — republished whole on every
  * refresh. Writes: connect / disconnect / poll flow as commands; the same
- * handlers back both the typed facade and the bridge `dispatch` path.
+ * handlers back both the typed facade and the `dispatch` path.
  *
  * SEAM — user-scoped, NOT per-agent. Integrations are gateway-owned and keyed by
  * the caller's session `sub`, so this module talks to the flat

@@ -327,7 +327,7 @@ describe("conversations module — scope isolation", () => {
   });
 });
 
-describe("conversations module — bridge/command path", () => {
+describe("conversations module — the dispatch path", () => {
   it("registers exactly the three command types", () => {
     const { fetchImpl } = makeEngine({});
     const { ctx, registry } = makeCtx(fetchImpl);
@@ -422,7 +422,7 @@ describe("conversations module — facade surface", () => {
       },
     ]);
 
-    // The bridge path lands on the same function, so nothing exists twice.
+    // The dispatch path lands on the same function, so nothing exists twice.
     const dispatched = await registry.dispatch({
       id: "1",
       type: "conversations/suggestTitle",

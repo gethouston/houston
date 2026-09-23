@@ -16,7 +16,7 @@ import { TeamsCommand, TeamsHttpError } from "./index";
  *
  * Nothing here degrades. The `404` cases assert the throw, because the surfaces
  * that soften one (model choice, trigger status) do it themselves — the SDK
- * stays honest so iOS reads the same statuses the web adapter does.
+ * stays honest so every surface reads the same statuses.
  */
 
 const BASE = "http://127.0.0.1:4317";
@@ -292,7 +292,7 @@ describe("what the module refuses to soften", () => {
   });
 });
 
-describe("the bridge path", () => {
+describe("the dispatch path", () => {
   it("dispatches a rename through the same handler the facade uses", async () => {
     const { sdk, calls } = ok(TEAM);
     const result = await sdk.dispatch({

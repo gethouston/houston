@@ -1,9 +1,8 @@
 # Cross-surface component inventory
 
-Houston runs on three surfaces: **web/desktop** (React, shipping today), and the
-coming native **iOS** (SwiftUI) and **Android** (Kotlin Compose) apps. A UI/UX
-change made on one surface must not silently skip the others. Three layers keep
-them in step:
+Houston's product UI is one React tree, shipping on **desktop** (Tauri) and
+**web**. Which components exist, and what each one is made of, is a contract
+rather than something remembered. Three layers keep it in step:
 
 | Layer | Owns | Source of truth |
 | --- | --- | --- |
@@ -12,23 +11,20 @@ them in step:
 | **Structure** | which components exist, their anatomy/states/semantics, and who implements which | **this directory** |
 
 This directory is the **structural** layer. It answers: *does this component
-exist on each surface, with the same parts, states, and semantics?* It is a
+exist, with the parts, states, and semantics it is specified to have?* It is a
 versioned engineering contract, CI-checked, not remembered.
 
-A structural change here is procedure c of the three-surface maintenance
-contract — how it flows relative to behavior (SDK) and look (tokens) changes is
-in the root `CLAUDE.md` → "Client-surface changes (SDK first)".
+How a structural change flows relative to behavior (SDK) and look (tokens)
+changes is in the root `CLAUDE.md` → "SDK is the single source of truth".
 
 ## Files
 
 ```
 design/inventory/
-  inventory.yaml        the versioned cross-surface component spec (source of truth)
+  inventory.yaml        the versioned component spec (source of truth)
   CHANGELOG.md          one entry per version bump
   manifests/
-    web.yaml            web/desktop  — enforced
-    ios.yaml            iOS          — unenforced (not built yet)
-    android.yaml        Android      — unenforced (not built yet)
+    web.yaml            desktop + web — enforced
   README.md             this file
 ```
 
@@ -54,7 +50,7 @@ into `scripts/parity/*` with tests at `scripts/check-parity.test.mjs`.
   | `a11y` | roles / labels / focus expectations |
   | `since` | inventory version the component first appeared in (`1 <= since <= version`) |
 
-Only genuinely cross-surface components belong here (see *Scope* below).
+Only genuinely shared product components belong here (see *Scope* below).
 
 ### `manifests/<surface>.yaml`
 
@@ -69,34 +65,31 @@ Only genuinely cross-surface components belong here (see *Scope* below).
 
 `partial` is honest shorthand for "ships but has a real structural gap" — most
 often the reusable, view-model-driven piece is still app/-locked rather than in a
-shared `ui/` package, so a native surface can't yet reuse its structure.
+shared `ui/` package.
 
 ## Scope — what is and isn't inventoried
 
-**In:** components that will exist on native mobile — the conversation feed and
-its item types (assistant text, streaming, thinking, tool chip, provider-error
+**In:** the product components that carry real structure — the conversation feed
+and its item types (assistant text, streaming, thinking, tool chip, provider-error
 card, system message), the composer, turn status, the board and its mission
 cards/status chips, the approval/needs-you surface, agent list items and avatars,
 progress, deliverables, routines and skills rows, empty states and toasts.
 
-**Out (deliberately):** desktop-only chrome and power-user surfaces that mobile
-won't ship — menu bars, resizable split panes, the file-tree browser, the
-schedule/cron editor, skill-authoring dialogs, drag-and-drop machinery, and the
+**Out (deliberately):** desktop-only chrome and power-user surfaces — menu bars,
+resizable split panes, the file-tree browser, the schedule/cron editor,
+skill-authoring dialogs, drag-and-drop machinery, and the
 design-system *primitives* (buttons, dialogs, popovers, menus) that are owned by
 the token/primitive layer rather than tracked as product structure.
 
 ## How a change flows
 
-1. **Add or modify a cross-surface component** → edit `inventory.yaml`.
+1. **Add or modify an inventoried component** → edit `inventory.yaml`.
 2. **Bump `version`.**
 3. **Add a matching `## vN` entry to `CHANGELOG.md`.**
 4. **Update every *enforced* surface manifest in the SAME PR** — an enforced
    surface may not leave a component with `since <= inventoryVersion`
    `not-started`. Use `partial` (with a `notes`) if it only half-lands.
-5. **Unenforced surfaces (iOS/Android) update later.** As a native app
-   implements components, flip their statuses and raise its manifest's
-   `inventoryVersion` as it fully catches up.
-6. **Flip `enforced: true`** for a surface only when its app *ships* at that
+5. **Flip `enforced: true`** for a surface only when its app *ships* at that
    inventory version.
 
 ## What `pnpm check:parity` does
@@ -111,6 +104,3 @@ Runs in CI alongside `pnpm check:boundaries`. It **fails the build** when:
   `since <= N` `not-started` (or missing);
 - a manifest claims an `inventoryVersion` beyond the inventory's `version`;
 - `version` was bumped without a matching `CHANGELOG.md` entry.
-
-It **never fails** on the unenforced surfaces; instead it prints a lag table so
-iOS/Android progress is visible in every CI run.

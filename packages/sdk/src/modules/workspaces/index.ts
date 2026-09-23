@@ -6,7 +6,7 @@
  * These are pure commands: each is read on demand by the surface that shows it
  * and written by the surface that edits it, so there is no reactive scope to
  * publish (the `preferences` shape). The same handlers back both the typed
- * facade and the bridge `dispatch` path.
+ * facade and the `dispatch` path.
  *
  * SEAM — these routes are host/gateway-scoped, NOT per-conversation, so the
  * module runs them on its own {@link moduleScope} rooted at the base URL,

@@ -7,7 +7,7 @@
  * from a form, while the host announces every change on its own
  * `RoutinesChanged` / `RoutineRunsChanged` invalidation — so there is no
  * reactive scope to publish here and no write refetches. The same handlers back
- * both the typed facade and the bridge `dispatch` path.
+ * both the typed facade and the `dispatch` path.
  *
  * SEAM — agent-scoped, but NOT through `clientFor(agentId)`: the routine routes
  * are the gateway's agent-proxy paths and the webhook mint is a gateway control
@@ -17,7 +17,7 @@
  *
  * Degradations are the CALLER's: every request throws on a non-2xx, 404
  * included, so a surface that wants "webhook keys unsupported here" instead of
- * an error says so itself and iOS is never handed a silent `null` it did not
+ * an error says so itself and no surface is handed a silent `null` it did not
  * ask for.
  */
 

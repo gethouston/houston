@@ -69,7 +69,7 @@ Words are design material (design-system.md → Non-technical labels; `houston/C
 
 ## When you touch shared surface
 
-- New/changed cross-surface component → bump `design/inventory/inventory.yaml` + CHANGELOG in the SAME change and run `pnpm check:parity` (`houston/CLAUDE.md` → Client-surface changes).
+- New/changed cross-surface component → bump `design/inventory/inventory.yaml` + CHANGELOG in the SAME change and run `pnpm check:parity` (`houston/CLAUDE.md` → "SDK is the single source of truth").
 - Generic reusable → `ui/`. App-specific → `app/`. Props over stores; no `@/` aliases and no app types in `ui/`.
 
 ## Gate

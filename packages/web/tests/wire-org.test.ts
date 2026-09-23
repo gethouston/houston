@@ -19,7 +19,7 @@ import {
  * the suite would notice.
  *
  * The two degradations this family has stay in the MIXIN: the SDK throws on a
- * 404 (so iOS is never handed an empty roster it cannot tell from a real one)
+ * 404 (so no surface is handed an empty roster it cannot tell from a real one)
  * and `getOrgProfiles`/`getOrgPeople` translate that status into the same empty
  * answers the cp copy returned.
  */

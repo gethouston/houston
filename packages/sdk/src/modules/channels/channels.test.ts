@@ -152,7 +152,7 @@ describe("what the module refuses to soften", () => {
   });
 });
 
-describe("the bridge path", () => {
+describe("the dispatch path", () => {
   it("dispatches a disconnect through the same handler the facade uses", async () => {
     const { sdk, calls } = makeSdk(() => new Response(null, { status: 204 }));
     const result = await sdk.dispatch({

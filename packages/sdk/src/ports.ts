@@ -4,16 +4,17 @@
  * The SDK is deployment-agnostic: it never reaches for a global (`fetch`,
  * `localStorage`, `Date.now`, `console`) directly. Every side-effecting
  * capability arrives through {@link SdkPorts}, so the SAME kernel runs
- * unchanged in a browser, a React Native bridge, an SSR worker, or a test —
- * the host wires the concrete implementations.
+ * unchanged in a browser, a desktop webview, an SSR worker, or a test — the
+ * host wires the concrete implementations.
  *
  * Nothing here imports `node:*`; the SDK is browser-safe.
  */
 
 /**
- * A minimal string-keyed persistent store (e.g. `localStorage`, SecureStore,
- * an in-memory map in tests). Async so native/keychain-backed implementations
- * fit without adaptation. Values are opaque strings — callers serialize.
+ * A minimal string-keyed persistent store (e.g. `localStorage`, the desktop
+ * keychain, an in-memory map in tests). Async so keychain-backed
+ * implementations fit without adaptation. Values are opaque strings — callers
+ * serialize.
  */
 export interface KeyValueStore {
   /** Resolve the stored value for `key`, or `null` when absent. */
@@ -26,8 +27,8 @@ export interface KeyValueStore {
 
 /**
  * The SDK's sense of time and scheduling. Abstracted so tests can drive timers
- * deterministically and native hosts can supply their own timer primitives.
- * Timer ids are plain numbers to stay portable across DOM/native runtimes.
+ * deterministically and a host can supply its own timer primitives. Timer ids
+ * are plain numbers to stay portable across runtimes.
  */
 export interface Clock {
   /** Current wall-clock time in milliseconds since the Unix epoch. */
@@ -43,8 +44,8 @@ export type LogFields = Record<string, unknown>;
 
 /**
  * Leveled structured logger. The SDK emits diagnostics through this port
- * instead of `console` so hosts can route logs (Sentry, native log, silence
- * in tests) without the kernel knowing.
+ * instead of `console` so hosts can route logs (Sentry, a log file, silence in
+ * tests) without the kernel knowing.
  */
 export interface SdkLogger {
   debug(msg: string, fields?: LogFields): void;
@@ -90,13 +91,13 @@ export interface SdkConfig {
    * Whether the reactive modules (agents, activities) open their own long-lived
    * `GET /v1/events` streams at construction to keep their scope snapshots live.
    *
-   * Default `true` — the native/desktop path, where the SDK is the single
-   * source of truth for reads. A host that owns its OWN read model and cache
-   * invalidation — the web engine-adapter keeps TanStack Query plus its existing
-   * `/v1/events` bus — sets this `false` to get a WRITE-ONLY SDK: the same
-   * command/mutation handlers, but no module-started streams, so no duplicate
-   * subscriptions or refetches. With reactivity off, `getSnapshot`/`subscribe`
-   * for those scopes stay empty (the host reads its own model instead).
+   * Default `true` — the path where the SDK is the single source of truth for
+   * reads. A host that owns its OWN read model and cache invalidation — the web
+   * engine-adapter keeps TanStack Query plus its existing `/v1/events` bus —
+   * sets this `false` to get a WRITE-ONLY SDK: the same command/mutation
+   * handlers, but no module-started streams, so no duplicate subscriptions or
+   * refetches. With reactivity off, `getSnapshot`/`subscribe` for those scopes
+   * stay empty (the host reads its own model instead).
    */
   reactivity?: boolean;
 }

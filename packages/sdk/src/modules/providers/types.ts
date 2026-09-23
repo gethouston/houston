@@ -1,8 +1,8 @@
 /**
  * Wire + view-model types for the providers module — the per-agent AI-provider
- * connect/status surface (PARITY-SETTINGS §2, §6). Provider credentials are
- * per-agent-pod in hosted mode, so every scope, command, and call is keyed by
- * `agentId` and routed through `ctx.clientFor(agentId)` (`/agents/<id>/…`).
+ * connect/status surface. Provider credentials are per-agent-pod in hosted
+ * mode, so every scope, command, and call is keyed by `agentId` and routed
+ * through `ctx.clientFor(agentId)` (`/agents/<id>/…`).
  *
  * The `providers/<agentId>` snapshot merges the runtime's two provider reads
  * coherently: `GET /providers` (the rich list — models + active model +
@@ -110,8 +110,8 @@ export interface SetModelOptions {
  * `setCustomEndpoint` (`POST /providers/openai-compatible`) has no refetching
  * facade sibling and is exposed here only. The login flow's imperative state
  * (login/cancelLogin/completeLogin) is deliberately NOT here — the surface owns
- * that poller (see `index.ts`). The refetching facade methods are untouched — iOS
- * keeps using those verbatim.
+ * that poller (see `index.ts`). The refetching facade methods stay the default
+ * for a host with no read model of its own.
  */
 export interface ProvidersWrites {
   /** `GET /auth/status` for the agent's pod; returns it raw, publishes nothing. */
@@ -169,7 +169,7 @@ export interface ProvidersModule {
   /**
    * No-refetch write variants for a host that owns its own reads (web under
    * `reactivity:false`): same runtime calls, no post-write snapshot refresh,
-   * plus `setCustomEndpoint`. iOS keeps using the refetching methods above.
+   * plus `setCustomEndpoint`.
    */
   writes: ProvidersWrites;
   /**

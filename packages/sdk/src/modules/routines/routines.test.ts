@@ -20,8 +20,8 @@ interface Recorded {
  * mint at a pod that never serves it.
  *
  * Nothing degrades: the one 404 tolerance this family has (webhook keys
- * unsupported) belongs to the CALLER, or iOS would be handed a `null` it cannot
- * tell from a gateway that simply failed.
+ * unsupported) belongs to the CALLER, or a surface would be handed a `null` it
+ * cannot tell from a gateway that simply failed.
  */
 function makeSdk(respond: (url: string) => Response) {
   const calls: Recorded[] = [];
@@ -194,7 +194,7 @@ describe("routines module — an agent's scheduled work", () => {
     ).rejects.toMatchObject({ status: 404 });
   });
 
-  it("dispatches every routine command through the bridge path", async () => {
+  it("dispatches every routine command through the dispatch path", async () => {
     const { sdk, calls } = makeSdk((url) =>
       url.endsWith("/routines") ? json({ items: [ROUTINE] }) : json(ROUTINE),
     );

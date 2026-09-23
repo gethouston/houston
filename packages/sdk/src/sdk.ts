@@ -1,6 +1,6 @@
 /**
  * The SDK kernel — the single Houston client implementation under every
- * surface: web, desktop, and (via the bridge path) native.
+ * surface: desktop and web.
  *
  * It owns exactly one of each collaborator and threads them to its modules: a
  * `ScopeStore` (the reactive read side), a per-agent engine-client cache (the
@@ -13,9 +13,10 @@
  * does not constrain that facade's type, so a module owns its own shape.
  *
  * TWO WAYS TO CALL THE SAME CODE: a facade method is the in-process path,
- * `dispatch` is the bridge path a native shell serializes into — both land on
- * the same registered handler, so no write logic exists twice. Everything
- * crossing `getSnapshot`/`subscribe`/`dispatch`/`on` is plain JSON.
+ * `dispatch` takes the same call as a JSON envelope across a serialization
+ * boundary — both land on the same registered handler, so no write logic exists
+ * twice. Everything crossing `getSnapshot`/`subscribe`/`dispatch`/`on` is plain
+ * JSON.
  */
 
 import type { HoustonEngineClient } from "@houston/runtime-client";
@@ -144,7 +145,7 @@ export class HoustonSdk implements SdkModules {
   }
 
   /**
-   * The bridge path. Validate an untrusted envelope and route it to the same
+   * The dispatch path. Validate an untrusted envelope and route it to the same
    * handler the typed facade uses. Never throws: a malformed envelope or an
    * unknown/failing command resolves to an `ok: false` {@link CommandResult}.
    */

@@ -89,7 +89,7 @@ The web app installs to a phone or desktop home screen with the Houston icon:
 `public/manifest.webmanifest` (name, standalone display, 192/512 `any` +
 `maskable` icons) plus the `apple-touch-icon` / `apple-mobile-web-app-*` head
 tags in `index.html`, which are what iOS Safari's "Add to Home Screen" reads.
-The icons are renders of the opaque iOS app icon
+The icons are renders of the opaque app icon in the Tauri icon set
 (`app/src-tauri/icons/ios/AppIcon-512@2x.png`); regenerate them from that file
 if the brand mark changes. There is deliberately no service worker: the bundle
 is served `no-cache` so every launch runs the current release, and an offline
@@ -107,4 +107,3 @@ the native boundary too (see `app/src/lib/desktop-native-commands.ts`).
 
 - `app/` — Tauri desktop app, same React tree plus native shell.
 - `packages/web` — same UI in a browser tab, backed by the host.
-- `mobile/ios` — the native SwiftUI app over `@houston/sdk`, not this tree.

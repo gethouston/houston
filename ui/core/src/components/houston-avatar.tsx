@@ -3,10 +3,9 @@
  * the "avatar-running-ring" comet halo when an agent is actively working.
  *
  * This is the single source of truth for rendering an agent's avatar
- * across every Houston surface (desktop, mobile, any third-party
- * frontend built on `houston-engine`). Old local copies in `app/` and
- * `mobile/` duplicated the SVG path data + the running-glow wrapper;
- * every tweak had to be done twice. Not anymore.
+ * across every Houston surface (desktop, web, any third-party frontend
+ * built on `houston-engine`). The SVG path data and the running-glow
+ * wrapper live here only — never copy them into an app.
  *
  * Pair `running` with the `.avatar-running-ring` rule shipped from
  * `globals.css` so the halo animation stays in lockstep with the

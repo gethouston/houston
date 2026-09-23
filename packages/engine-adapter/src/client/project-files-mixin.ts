@@ -16,7 +16,7 @@ import { viaSdk } from "./sdk-error";
  * Uploads are split at the DOM line: the batching and base64 framing of browser
  * `File`s stay here (`./attachment-batches`), while the requests they produce
  * ride `sdk.files`. The two BINARY reads keep their own transport — they answer
- * a `Blob`, which no JSON bridge can carry, so there is no SDK twin to call.
+ * a `Blob`, which a JSON envelope cannot carry, so there is no SDK twin.
  */
 export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProjectFiles extends Base {

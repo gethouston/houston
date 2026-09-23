@@ -3,9 +3,9 @@ import { buildAttachmentText, decodeAttachmentText } from "./attachment-text";
 
 /**
  * The attachment marker is a CROSS-SURFACE wire format: desktop writes it, and
- * every surface (incl. iOS/Android) must read the SAME bytes. This pins it
- * byte-for-byte against the desktop encoder (`app/src/lib/attachment-message.ts`
- * — the `buildAttachmentPrompt` shape) so the two copies cannot drift while the
+ * every surface must read the SAME bytes. This pins it byte-for-byte against
+ * the desktop encoder (`app/src/lib/attachment-message.ts` — the
+ * `buildAttachmentPrompt` shape) so the two copies cannot drift while the
  * duplication awaits consolidation.
  */
 

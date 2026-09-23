@@ -3,7 +3,7 @@
  * caller belongs to, the invitations addressed to them, and the receipt of an
  * agent move between spaces.
  *
- * Everything here is plain JSON, so it crosses the bridge's `dispatch` boundary
+ * Everything here is plain JSON, so it crosses the `dispatch` boundary
  * unchanged. There is no reactive scope: a space list is read when the switcher
  * opens and every write is a form's one-shot, so the module is plain-async and
  * publishes nothing (the SDK's preferences shape).
@@ -11,7 +11,7 @@
 
 import type { OrgRole } from "@houston/protocol";
 
-/** The write vocabulary — the same handlers back the facade and the bridge. */
+/** The write vocabulary — the same handlers back the facade and `dispatch`. */
 export const SpacesCommand = {
   List: "spaces/list",
   Create: "spaces/create",

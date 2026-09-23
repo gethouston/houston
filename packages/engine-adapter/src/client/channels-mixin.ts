@@ -19,8 +19,8 @@ import { viaSdk } from "./sdk-error";
  * Every answer is parsed before it leaves this seam (`@houston/wire-types`):
  * an absent or mistyped field is a refusal rather than a silent default, and
  * the only URL this app ever hands a browser is Slack's own authorization
- * endpoint. The SDK stays honest about the wire for iOS; the guard lives here,
- * where the value actually reaches a screen and a browser.
+ * endpoint. The SDK stays honest about the wire; the guard lives here, where
+ * the value actually reaches a screen and a browser.
  *
  * Off the gateway (`this.ctx.cp === null`) there is no channels concept at
  * all, and the section reads a 501 as "this deployment has no channels" —

@@ -6,7 +6,7 @@
  * These are pure commands over hosted-gateway routes: the summary is read when
  * a billing screen opens and each hand-off is a button's one-shot, so there is
  * no reactive scope to publish and nothing here subscribes to an event. The
- * same handlers back both the typed facade and the bridge `dispatch` path.
+ * same handlers back both the typed facade and the `dispatch` path.
  *
  * SEAM — space-scoped, NOT per-agent. The gateway resolves the team from the
  * caller's session plus the active-space header its `fetch` stamps, so nothing

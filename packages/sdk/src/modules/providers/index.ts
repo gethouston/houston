@@ -1,21 +1,21 @@
 /**
  * The providers module — the SDK-canonical per-agent AI-provider connect/status
- * surface (PARITY-SETTINGS §2, §6). One reactive scope per agent
- * (`providers/<agentId>`) holding a {@link ProvidersViewModel} that merges the
- * runtime's `GET /providers` + `GET /auth/status` reads (see `merge.ts`). The
- * read/mutation functions live in `operations.ts`; this factory wires them to
- * the command registry and returns the typed facade — one implementation backs
- * both the facade and the bridge `dispatch` path.
+ * surface. One reactive scope per agent (`providers/<agentId>`) holding a
+ * {@link ProvidersViewModel} that merges the runtime's `GET /providers` +
+ * `GET /auth/status` reads (see `merge.ts`). The read/mutation functions live
+ * in `operations.ts`; this factory wires them to the command registry and
+ * returns the typed facade — one implementation backs both the facade and the
+ * `dispatch` path.
  *
  * A runtime's credentials are per-agent-pod in hosted mode, so every read and
  * login call is routed through `ctx.clientFor(agentId)` (`/agents/<id>/…`). The
  * separate `credentials` facade (`./credential-store`) writes the WORKSPACE's
  * central store over the gateway's own control routes instead — that header
- * says which surface serves whom. 401s need no handling
- * here: `ctx.config.ports.fetch` is the shared auth-fetch, which classifies a
- * 401 and reports it to the `session/tokenExpired` notifier for EVERY request it
- * stamps — the engine client the module calls runs on that same fetch, so a
- * lapsed token surfaces automatically (verified, not reimplemented).
+ * says which surface serves whom. 401s need no handling here:
+ * `ctx.config.ports.fetch` is the shared auth-fetch, which classifies a 401 and
+ * reports it to the `session/tokenExpired` notifier for EVERY request it stamps
+ * — the engine client the module calls runs on that same fetch, so a lapsed
+ * token surfaces automatically (verified, not reimplemented).
  *
  * **Login polling contract.** `login` STARTS an OAuth session and returns the
  * {@link LoginInfo} verbatim; for a `device_code`/`auth_code` login the

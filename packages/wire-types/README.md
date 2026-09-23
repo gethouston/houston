@@ -33,4 +33,4 @@ schemas; this is the wider TypeScript view of the same contract.
 - Wire types + zod: `packages/protocol/src/wire.ts` (protocol v3).
 - The host that serves the contract: `packages/host` (`@houston/host`).
 - The maintenance contract across surfaces (SDK / tokens / inventory / parity):
-  root `CLAUDE.md` → "Client-surface changes (SDK first)".
+  root `CLAUDE.md` → "SDK is the single source of truth".

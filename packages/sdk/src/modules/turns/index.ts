@@ -25,8 +25,8 @@ import { ConversationVmOutput } from "./vm-output";
  * {@link MultiplexFeedOutput}) with no double-processing.
  *
  * `send`/`cancel`/`observe` are the typed facade; the SAME functions back the
- * `turns/send`, `turns/cancel` and `turns/observe` commands, so the bridge path
- * and the in-process path never drift. Payload shapes + validators live in
+ * `turns/send`, `turns/cancel` and `turns/observe` commands, so the dispatch
+ * path and the in-process path never drift. Payload shapes + validators live in
  * `turn-inputs.ts`.
  */
 
@@ -39,8 +39,8 @@ export function createTurnsModule(
   });
   // The always-on outputs every turn drives: the conversation VM, plus a board-
   // card persister (the SDK-path counterpart to the web adapter's bus output) so
-  // a native shell that never calls `addOutput` still leaves a settled mission
-  // out of "running".
+  // a binder that never calls `addOutput` still leaves a settled mission out of
+  // "running".
   const activityStatus = new ActivityStatusOutput(
     persistBoardStatus,
     ctx.config.ports.logger,

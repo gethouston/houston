@@ -2,7 +2,7 @@
  * Preferences contract: key/value preferences round-trip (null clears), and the
  * workspace-locale override persists as the `locale` preference (the gateway
  * stores locale in the same per-user store) — over both the typed facade and the
- * bridge `dispatch` path.
+ * `dispatch` path.
  */
 
 import { type FakeHost, SEED_WORKSPACE_ID } from "@houston/fake-host";
@@ -50,7 +50,7 @@ describe("preferences", () => {
     expect(await h.sdk.preferences.get("locale")).toBeNull();
   });
 
-  it("round-trips over the bridge dispatch path", async () => {
+  it("round-trips over the dispatch path", async () => {
     const setRes = await h.sdk.dispatch({
       id: "p1",
       type: PreferencesCommand.Set,

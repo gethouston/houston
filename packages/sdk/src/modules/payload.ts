@@ -1,10 +1,10 @@
 /**
  * Reading an untrusted command payload.
  *
- * A bridge envelope arrives as plain JSON from a native shell, so every module
- * that registers a command has to narrow the same shapes off it. They do it
- * through here so a refusal reads the same wherever it comes from: one message
- * shape, which is what a native caller matches on.
+ * A command envelope arrives as untrusted plain JSON, so every module that
+ * registers a command has to narrow the same shapes off it. They do it through
+ * here so a refusal reads the same wherever it comes from: one message shape,
+ * which is what a caller matches on.
  *
  * These THROW rather than returning a default — `CommandRegistry.dispatch`
  * turns the throw into `ok: false` with the message, and a coerced default

@@ -1,8 +1,8 @@
 /**
  * Transcript hydration contract: `turns/history` folds a conversation's
  * persisted messages into feed frames, and `turns/observe` SEEDS the
- * conversation VM's feed from that history FIRST — so a mobile client opening a
- * chat sees the full transcript immediately, with no double-render.
+ * conversation VM's feed from that history FIRST — so a client opening a chat
+ * sees the full transcript immediately, with no double-render.
  */
 
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
@@ -95,8 +95,8 @@ describe("turns/observe — seed the VM feed from history", () => {
     // One client sends + settles the turn (persists the transcript).
     await seedOneTurn(cid, "Ping");
 
-    // A SECOND, fresh client (a mobile app opening the chat) has never streamed
-    // this conversation. Observing must show the full transcript from history.
+    // A SECOND, fresh client (another surface) has never streamed this
+    // conversation. Observing must show the full transcript from history.
     const h2 = makeSdk(host.url);
     try {
       await h2.sdk.turns.observe(cid, SEED_AGENT_ID);

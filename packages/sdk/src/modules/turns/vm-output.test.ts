@@ -109,8 +109,8 @@ test("persistBoardStatus folds boardStatus into the VM (handled-vs-error signal)
 
 test("a user Stop settles boardStatus needs_you while sessionStatus is error", async () => {
   // The turn machinery's handled-error settle: an `error` sessionStatus (clears
-  // the loading flag) paired with a `needs_you` board persist. A native shell
-  // must read boardStatus to avoid rendering a normal Stop red.
+  // the loading flag) paired with a `needs_you` board persist. A surface must
+  // read boardStatus to avoid rendering a normal Stop red.
   const { snap, vm } = harness();
   vm.pushFeedItem("a", "c1", {
     feed_type: "system_message",

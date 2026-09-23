@@ -21,7 +21,7 @@ Closes #
 ## Surface impact
 
 <!-- A UI/UX change must not silently skip a surface. Tick what this PR touches.
-     Procedure: CLAUDE.md → "Client-surface changes (SDK first)" -->
+     Procedure: CLAUDE.md → "SDK is the single source of truth" -->
 
 Change type:
 
@@ -29,12 +29,6 @@ Change type:
 - [ ] Look (design tokens — `packages/design-tokens`)
 - [ ] Structure (a component added/changed → bump `design/inventory/inventory.yaml` + CHANGELOG + update enforced manifests)
 - [ ] n-a (no user-facing surface change)
-
-Surfaces updated:
-
-- [ ] Web / desktop
-- [ ] iOS
-- [ ] Android
 
 <!-- Structural change? `pnpm check:parity` must pass. See design/inventory/README.md. -->
 

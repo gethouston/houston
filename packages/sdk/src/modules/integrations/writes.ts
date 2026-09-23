@@ -10,7 +10,7 @@
  * surfaces as the SDK's `session/tokenExpired` signal.
  *
  * Kept out of `index.ts` so the module factory there stays within the file-size
- * budget; the refetching facade methods there are untouched (iOS-safe).
+ * budget.
  */
 
 import type { IntegrationProviderId } from "@houston/protocol";

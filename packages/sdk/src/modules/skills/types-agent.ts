@@ -1,7 +1,7 @@
 /**
  * Wire types for an agent's OWN skills — the procedures that live in one
  * agent's `.agents/skills/` — plus that agent's skills manifest, and the
- * command vocabulary the bridge dispatches them by.
+ * command vocabulary `dispatch` routes them by.
  *
  * Everything here is agent-scoped: every operation names an agent id. The
  * workspace-wide shared library and the GitHub repositories are separate
@@ -12,7 +12,7 @@ import { SdkHttpError } from "../http";
 import { requireString } from "../payload";
 
 /**
- * The write vocabulary — the same constants back the facade and the bridge.
+ * The write vocabulary — the same constants back the facade and `dispatch`.
  *
  * Every command in the SDK is `<family>/<verb>`, so an agent's own skills are
  * plain `skills/*`. The two sibling families name themselves apart in the

@@ -17,8 +17,8 @@ interface Recorded {
  * gateway-only, so every assertion here is about the exact URL, method and body
  * bytes that reach the wire — and about the fact that nothing is swallowed: the
  * two 404 degradations this family has belong to the CALLER (the web adapter's
- * mixin), never to the SDK, or iOS would be handed an empty roster it cannot
- * tell from a real one.
+ * mixin), never to the SDK, or a surface would be handed an empty roster it
+ * cannot tell from a real one.
  */
 function makeSdk(respond: (url: string) => Response) {
   const calls: Recorded[] = [];
@@ -184,7 +184,7 @@ describe("org module — activity and usage", () => {
   });
 });
 
-describe("org module — the bridge path", () => {
+describe("org module — the dispatch path", () => {
   it("dispatches the same handlers the facade calls", async () => {
     const { sdk, calls } = makeSdk(() => json({}));
 
@@ -215,7 +215,7 @@ describe("org module — the bridge path", () => {
     expect(calls).toEqual([]);
   });
 
-  it("keeps an omitted audit bound omitted across the bridge", async () => {
+  it("keeps an omitted audit bound omitted across the dispatch path", async () => {
     const { sdk, calls } = makeSdk(() => json({ entries: [] }));
 
     await sdk.dispatch({

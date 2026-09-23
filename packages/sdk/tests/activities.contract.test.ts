@@ -4,8 +4,8 @@
  * snapshot always reflects the server, and a change made by ANOTHER client (an
  * out-of-band `ActivityChanged` on `/v1/events`) live-updates the snapshot.
  *
- * The `ActivitiesViewModel` is a cross-platform snapshot (the board/missions the
- * iOS app renders), so its seed shape is pinned here as API.
+ * The `ActivitiesViewModel` is the snapshot every subscriber reads (the
+ * dispatch path, the adapter, a test), so its seed shape is pinned here as API.
  */
 
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
@@ -93,7 +93,7 @@ describe("activities VM", () => {
     expect(item).toMatchObject({
       title: "Book the venue",
       description: "for the launch party",
-      // New missions are created running (PARITY §1).
+      // New missions are created running.
       status: "running",
       sessionKey: created.sessionKey,
     });
@@ -121,7 +121,7 @@ describe("activities VM", () => {
     expect(vm()?.items.map((a) => a.id)).toEqual(["act-1"]);
   });
 
-  it("archives and reactivates via status (PARITY §2 — no separate flag)", async () => {
+  it("archives and reactivates via status (no separate flag)", async () => {
     await h.sdk.activities.setStatus(SEED_AGENT_ID, "act-2", "archived");
     await until(
       () => vm()?.items.find((a) => a.id === "act-2")?.status === "archived",

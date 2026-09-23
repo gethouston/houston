@@ -7,13 +7,13 @@
  * health) are the other half of this family and live in `./policy-types`, so
  * neither file grows past reading.
  *
- * Everything here is plain JSON, so it crosses the bridge's `dispatch`
- * boundary unchanged. There is no reactive scope: a team directory is read
- * when the rail opens and every write is a form's one-shot, so the module is
- * plain-async and publishes nothing (the SDK's preferences shape).
+ * Everything here is plain JSON, so it crosses the `dispatch` boundary
+ * unchanged. There is no reactive scope: a team directory is read when the rail
+ * opens and every write is a form's one-shot, so the module is plain-async and
+ * publishes nothing (the SDK's preferences shape).
  */
 
-/** The write vocabulary — the same handlers back the facade and the bridge. */
+/** The write vocabulary — the same handlers back the facade and `dispatch`. */
 export const TeamsCommand = {
   List: "teams/list",
   Create: "teams/create",

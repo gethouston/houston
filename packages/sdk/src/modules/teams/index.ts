@@ -7,7 +7,7 @@
  * These are pure commands over hosted-gateway routes: a directory is read when
  * the rail opens and every write is a form's one-shot, so there is no reactive
  * scope to publish and nothing here subscribes to an event. The same handlers
- * back both the typed facade and the bridge `dispatch` path (`./commands`).
+ * back both the typed facade and the `dispatch` path (`./commands`).
  *
  * SEAM — space-scoped, never a sandbox call. Even the per-agent routes are
  * gateway control routes ABOUT an agent rather than calls into it, so they run

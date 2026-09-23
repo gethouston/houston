@@ -5,8 +5,8 @@
  * TWO PROVIDER WRITE SURFACES EXIST, and both are real. `./writes.ts` reaches
  * the agent's own RUNTIME through `clientFor(agentId)`
  * (`/agents/:id/auth/:provider/api-key`, `/agents/:id/providers/openai-compatible`):
- * those calls land on the pod's local `auth.json`, which is the surface a native
- * shell drives over the bridge, and the only one a LOCAL engine with no gateway
+ * those calls land on the pod's local `auth.json`, which is the surface the
+ * dispatch-path caller drives, and the only one a LOCAL engine with no gateway
  * in front of it serves. The routes HERE are the gateway/host's connect-once
  * surface: the host stores the credential in the WORKSPACE's central store —
  * which every agent, existing and future, serves from — and pushes it into the

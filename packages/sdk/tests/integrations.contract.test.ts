@@ -1,12 +1,12 @@
 /**
  * Integrations contract: the `integrations` view-model reflects the gateway's
  * Composio readiness + catalog + connections, degrades to explicit not-ready
- * states (503 → `unavailable`, provider → `signin`) WITHOUT crashing, drives the
- * connect → poll → active flow (both the typed facade and the bridge `dispatch`
+ * states (503 → `unavailable`, provider → `signin`) WITHOUT crashing, drives
+ * the connect → poll → active flow (both the typed facade and the `dispatch`
  * path).
  *
- * The `IntegrationsViewModel` is a cross-platform snapshot, so its shape is
- * pinned here as API.
+ * The `IntegrationsViewModel` is the snapshot every subscriber reads (the
+ * dispatch path, the adapter, a test), so its shape is pinned here as API.
  */
 
 import type { FakeHost } from "@houston/fake-host";

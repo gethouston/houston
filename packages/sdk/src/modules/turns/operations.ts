@@ -103,13 +103,13 @@ export function createTurnOperations(
    *
    * Passively attach to a conversation with a turn started elsewhere (another
    * client) or before a reload — observer mode. Loads history, folds it, and
-   * SEEDS the conversation VM's feed FIRST so a mobile client opening the chat
-   * sees the full transcript immediately — THEN attaches {@link
-   * observeConversation} into the SAME VM the `send` path uses, so an in-flight
-   * turn keeps rendering live. History also seeds the legacy settle guard
-   * (`messages.length`). An idle conversation self-closes; a no-op if the
-   * conversation is already streamed here — in which case we DON'T re-seed
-   * (that live feed already owns the VM), which is the double-render guard.
+   * SEEDS the conversation VM's feed FIRST so a client opening the chat sees
+   * the full transcript immediately — THEN attaches {@link observeConversation}
+   * into the SAME VM the `send` path uses, so an in-flight turn keeps rendering
+   * live. History also seeds the legacy settle guard (`messages.length`). An
+   * idle conversation self-closes; a no-op if the conversation is already
+   * streamed here — in which case we DON'T re-seed (that live feed already owns
+   * the VM), which is the double-render guard.
    * @assistant group:chat
    * @assistant hidden: it attaches a live stream into the caller's own view of the chat; dispatched on its own it would stream into nothing.
    */
@@ -139,7 +139,7 @@ export function createTurnOperations(
    *
    * Read-only: fold a conversation's persisted transcript into feed frames (the
    * same fold `observe` seeds the VM with). The `turns/history` command surfaces
-   * it to a native shell that wants the transcript without attaching a stream.
+   * it to a caller that wants the transcript without attaching a stream.
    * @param conversationId The chat to read.
    * @param agentId The agent this acts on, by the id listAgents returns. An
    *   agent's name is not its id, so read the id from listAgents first.

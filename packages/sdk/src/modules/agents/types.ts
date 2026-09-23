@@ -76,8 +76,8 @@ export interface AgentListItem {
  * relative-path → contents map the host writes into the new agent).
  * `JSON.stringify` drops the undefined optionals, so a `{ name }` create posts
  * exactly `{ name }` on the wire (the shape the existing
- * {@link AgentsModule.create} facade and the bridge command send). Used by the
- * no-refetch {@link AgentsWrites.create}.
+ * {@link AgentsModule.create} facade and the `agents/create` command send).
+ * Used by the no-refetch {@link AgentsWrites.create}.
  *
  * A surface that keeps colour in its own client overlay (the web agent picker)
  * leaves `color` out and paints from the overlay; one that has no overlay (a
@@ -96,7 +96,7 @@ export interface AgentCreateInput {
  * `PATCH`/`DELETE` as its {@link AgentsModule} sibling but does NOT call
  * `refresh()` afterward, and RETURNS the wire entity (`create`/`rename`) so the
  * host can update its cache without an extra `GET /agents`. The refetching
- * facade methods are untouched — iOS keeps using those verbatim.
+ * facade methods stay the default for a host with no read model of its own.
  */
 export interface AgentsWrites {
   /** `POST /agents` with the full body; returns the created agent (with id). */

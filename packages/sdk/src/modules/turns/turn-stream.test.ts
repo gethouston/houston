@@ -425,7 +425,7 @@ test("the optimistic user bubble is pushed pending (unconfirmed until server evi
     { tuning: fast },
   );
 
-  // The ONE optimistic bubble enters pending — a native surface renders a clock.
+  // The ONE optimistic bubble enters pending — a surface renders a clock.
   const bubble = items.find((i) => i.feed_type === "user_message");
   expect(bubble?.pending).toBe(true);
 });

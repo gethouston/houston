@@ -249,16 +249,16 @@ describe("agents module — mutations refetch", () => {
     expect(snapshot(h.sdk)?.items.map((i) => i.id)).toEqual(["a2"]);
   });
 
-  it("runs the same handler through the bridge dispatch path", async () => {
+  it("runs the same handler through the dispatch path", async () => {
     const h = makeHarness({ agents: [] });
     disposeCurrent = h.sdk.agents.dispose;
     const ok = await h.sdk.dispatch({
       id: "c1",
       type: AgentsCommand.Create,
-      payload: { name: "Bridged" },
+      payload: { name: "Dispatched" },
     });
     expect(ok).toEqual({ id: "c1", ok: true, value: undefined });
-    expect(snapshot(h.sdk)?.items.map((i) => i.name)).toEqual(["Bridged"]);
+    expect(snapshot(h.sdk)?.items.map((i) => i.name)).toEqual(["Dispatched"]);
   });
 
   it("rejects a create with a missing name as ok:false", async () => {
@@ -356,7 +356,7 @@ describe("agents module — no-refetch writes", () => {
     expect(snapshot(h.sdk)?.items ?? []).toEqual([]);
   });
 
-  it("writes.create with only a name posts exactly {name} (iOS-identical body)", async () => {
+  it("writes.create with only a name posts exactly {name} (exact body)", async () => {
     const h = makeHarness({ agents: [], reactivity: false });
     disposeCurrent = h.sdk.agents.dispose;
     await h.sdk.agents.writes.create({ name: "Solo" });

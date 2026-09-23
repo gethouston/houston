@@ -2,9 +2,10 @@ import { expect, test } from "vitest";
 import { asSendInput } from "./turn-inputs";
 
 /**
- * The `turns/send` envelope guard: the bridge path hands `asSendInput` raw JSON,
- * so it must pass exactly the known per-turn mode literals and drop anything else
- * to undefined (leaving the turn on the runtime's "execute" default).
+ * The `turns/send` envelope guard: the dispatch path hands `asSendInput` raw
+ * JSON, so it must pass exactly the known per-turn mode literals and drop
+ * anything else to undefined (leaving the turn on the runtime's "execute"
+ * default).
  */
 
 const BASE = { conversationId: "c1", text: "hi" };

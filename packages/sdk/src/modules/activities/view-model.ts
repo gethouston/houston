@@ -16,7 +16,7 @@ import type { ActivityItem } from "./types";
 /**
  * The board's session address for an activity: the explicit `session_key`, or
  * the `activity-<id>` convention the board uses for missions with no explicit
- * key (PARITY §6). A routine chat carries its own `session_key`.
+ * key. A routine chat carries its own `session_key`.
  */
 export function sessionKeyOf(a: Activity): string {
   return missionConversationKey(a);

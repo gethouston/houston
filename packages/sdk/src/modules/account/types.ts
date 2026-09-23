@@ -1,11 +1,11 @@
 /**
  * Wire types for the caller's OWN account — the editable display profile and
- * the personal API keys — plus the command vocabulary the bridge dispatches
- * them by. Both surfaces are user-scoped (keyed by the session's subject), so
+ * the personal API keys — plus the command vocabulary `dispatch` routes them
+ * by. Both surfaces are user-scoped (keyed by the session's subject), so
  * nothing here names an agent or a workspace.
  */
 
-/** The write vocabulary — the same constants back the facade and the bridge. */
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const AccountCommand = {
   GetProfile: "account/getProfile",
   SetProfile: "account/setProfile",

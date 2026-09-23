@@ -373,7 +373,7 @@ describe("auth-fetch 401 classification (token identity threading)", () => {
   });
 });
 
-describe("session via HoustonSdk (bridge + event wiring)", () => {
+describe("session via HoustonSdk (dispatch + event wiring)", () => {
   function makeSdk(): HoustonSdk {
     return new HoustonSdk({
       baseUrl: "http://127.0.0.1:4317",
@@ -388,7 +388,7 @@ describe("session via HoustonSdk (bridge + event wiring)", () => {
     const result = await sdk.dispatch({
       id: "c1",
       type: SET_TOKEN_COMMAND,
-      payload: { token: "bridge-token" },
+      payload: { token: "dispatch-token" },
     });
 
     expect(result).toEqual({ id: "c1", ok: true, value: undefined });

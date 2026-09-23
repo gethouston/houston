@@ -12,12 +12,7 @@ import { afterAll, describe, expect, it } from "vitest";
  */
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-const outputs = [
-  "css/tokens.css",
-  "ts/tokens.ts",
-  "swift/HoustonTokens.swift",
-  "kotlin/HoustonTokens.kt",
-];
+const outputs = ["css/tokens.css", "ts/tokens.ts"];
 
 const fresh = mkdtempSync(join(tmpdir(), "houston-tokens-sync-"));
 

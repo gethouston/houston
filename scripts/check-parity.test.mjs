@@ -15,11 +15,9 @@ describe("check-parity", () => {
     expect(violations).toEqual([]);
   });
 
-  it("passes a well-formed fixture (implemented + partial + not-started)", () => {
-    const { violations, report } = run("valid");
+  it("passes a well-formed fixture (implemented + partial)", () => {
+    const { violations } = run("valid");
     expect(violations).toEqual([]);
-    // Unenforced ios surface still shows up in the non-blocking lag report.
-    expect(report).toMatch(/ios/);
   });
 
   it("FAILS when a manifest references a component absent from the inventory", () => {

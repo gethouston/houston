@@ -1,7 +1,7 @@
 # @houston/sdk
 
 The **single headless Houston client** — one client implementation that sits
-under every surface: web, desktop (Tauri), and native (iOS/Android via a bridge).
+under the desktop and web app, bound through `@houston/engine-adapter`.
 No UI, no framework. Reactive state in, commands out. React bindings live behind
 the `./react` subpath; everything else here is framework-agnostic.
 
@@ -16,16 +16,14 @@ each family puts on the network is pinned by `packages/web/tests/wire-*.test.ts`
 and `pnpm check:sdk-parity` fails on a gateway route the app calls with no
 method here.
 
-> **Changing client behavior?** Follow procedure a of the three-surface
-> maintenance contract (root `CLAUDE.md` → "SDK is the single source of truth").
-> A VM-snapshot change is a contract change — additive only, same discipline as
-> protocol v3.
+> **Changing client behavior?** Follow the layers of the SDK contract (root
+> `CLAUDE.md` → "SDK is the single source of truth"). A VM-snapshot change is a
+> contract change — additive only, same discipline as protocol v3.
 
 ## Ports (injected capabilities)
 
 The kernel never touches a global directly. Every side effect arrives through
-`SdkPorts`, so the same code runs in a browser, a native bridge, an SSR worker,
-or a test:
+`SdkPorts`, so the same code runs in a browser, an SSR worker, or a test:
 
 | Port | Shape | Purpose |
 | --- | --- | --- |
@@ -68,13 +66,13 @@ once into a shared registry (duplicate `type` throws — a wiring bug, not
 last-writer-wins).
 
 **Two callers, one implementation.** Ergonomic typed facade methods
-(`sdk.agents.…`) and the serialized bridge path (`sdk.dispatch(envelope)`) hit
-the *same* registered handler. Native shells serialize an envelope; in-process
-callers use the facade; neither duplicates write logic.
+(`sdk.agents.…`) and command dispatch (`sdk.dispatch(envelope)`) hit
+the *same* registered handler. The desktop and web app call the SDK through
+`@houston/engine-adapter`.
 
 Everything crossing `getSnapshot` / `subscribe` / `dispatch` / `on` is plain
-JSON — no functions, no class instances — so it survives a structured-clone or
-native-bridge boundary unchanged.
+JSON — no functions, no class instances — so it survives a structured-clone
+boundary unchanged.
 
 ### Why snapshots, not patches
 
@@ -100,7 +98,6 @@ src/
   index.ts           # public entry (kernel + each module's contract)
   modules/           # one per gateway family (session, agents, turns, files, billing, …)
   react/             # React bindings (exported as @houston/sdk/react)
-  bridge/            # native-bridge dispatcher + embeddable bundle (see below)
 ```
 
 Modules are internal: `HoustonSdk`'s constructor composes each
@@ -111,54 +108,9 @@ client resolver (`clientFor(agentId)` — the host nests routes under
 `/agents/<id>`), and the shared auth-expiry notifier, so every module speaks the
 same transport and emits one canonical `session/tokenExpired` signal. Tear the
 SDK down with `sdk.dispose()` (stops the agents, activities, and conversation
-reactivity streams plus every in-flight turn stream). Native clients receive
+reactivity streams plus every in-flight turn stream). Clients receive
 `ConversationsChanged` through the turns module: subscribed conversation VMs
 reload their persisted history, including after an idle observer has closed.
-
-## Native bridge — embedding the SDK in a mobile host
-
-`bridge/` is the JS side of the native bridge: it lets an iOS (JavaScriptCore)
-or Android (Hermes) shell run this exact SDK behind a string message pipe. The
-full wire contract — every message shape, ordering guarantee, error surface, and
-the normative host-polyfill list — is **`BRIDGE.md`**; this is the how-to.
-
-**In-process (tests, web tooling):** import the dispatcher directly.
-
-```ts
-import { createBridge } from "@houston/sdk";
-import { HoustonSdk } from "@houston/sdk";
-
-const bridge = createBridge((config) => new HoustonSdk(config), (msg) => sendToNative(msg));
-bridge.receive(inboundJsonString); // deliver one host→SDK message; never throws
-// … later …
-bridge.dispose();
-```
-
-**Embedded (the real mobile host):** build the self-contained IIFE and load it
-into the JS engine.
-
-```bash
-pnpm --filter @houston/sdk build:bridge   # → dist/houston-sdk.bridge.js (gitignored)
-```
-
-```js
-// inside the engine, after loading the bundle:
-const bridge = HoustonSdkBridge.create({ send: (msg) => postToNative(msg) });
-// first inbound message is always `configure`; the bridge replies `ready`:
-bridge.receive(JSON.stringify({ kind: "configure", baseUrl: "http://127.0.0.1:4317" }));
-// then attach the session token, subscribe to scopes, dispatch commands (BRIDGE.md §6).
-```
-
-The host implements two primitives: `send(msg: string)` (marshal outbound to
-native and return — never call `receive` re-entrantly, BRIDGE.md §8) and calls
-`receive(msg: string)` for each inbound message on one thread. The host also
-services the native ports the SDK needs over the same pipe — `fetch/*` (it does
-the HTTP, streaming the body back as base64 chunks) and `storage/*` (Keychain /
-SecureStore) — see BRIDGE.md §9. The bundle self-shims `Headers`, `Request`,
-`AbortController`, and `TextEncoder`/`TextDecoder`; the host need only provide
-`setTimeout`/`clearTimeout`/`setInterval`/`clearInterval` (BRIDGE.md §10). The
-built bundle is ~33 KiB minified and NOT committed — the iOS/Android build runs
-`build:bridge`.
 
 ## Out of scope for v1
 
@@ -168,6 +120,3 @@ Deliberately not built yet (add when a real surface needs them):
   SSE via the injected `fetch` plus snapshot publishes.
 - **Offline writes** — no command queue/outbox; commands assume connectivity and
   fail with `ok: false` when the engine is unreachable.
-- **Native host app** — the JS-side bridge dispatcher + embeddable bundle now
-  ship here (`bridge/`, see above), but the actual iOS/Android shell that loads
-  the bundle and backs the native ports lives in its own app, not this package.

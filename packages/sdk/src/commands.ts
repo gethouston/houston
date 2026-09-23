@@ -7,8 +7,8 @@
  *
  * Two callers share ONE registry of handlers:
  *  - the typed facade methods on `HoustonSdk` (in-process, ergonomic), and
- *  - `HoustonSdk.dispatch(envelope)` — the *bridge path* a native shell uses to
- *    invoke the exact same handler over a serialization boundary.
+ *  - `HoustonSdk.dispatch(envelope)` — the *serialized path*, which invokes the
+ *    exact same handler over a serialization boundary.
  *
  * Because both paths hit the same handler, there is one implementation of each
  * write, never a drifting duplicate.
@@ -41,7 +41,7 @@ export type CommandResult =
 export type CommandHandler = (payload: unknown) => Promise<unknown> | unknown;
 
 /**
- * Type guard for an untrusted value arriving on the bridge path. Verifies the
+ * Type guard for an untrusted value arriving on the dispatch path. Verifies the
  * minimal envelope shape (string `id`, string `type`); `payload` is unchecked
  * because it is handler-specific.
  */

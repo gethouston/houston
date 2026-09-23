@@ -1,5 +1,5 @@
 /**
- * The bridge vocabulary of the teams module: the untrusted-payload readers and
+ * The command vocabulary of the teams module: the untrusted-payload readers and
  * the registration of every {@link TeamsCommand} against the same facade the
  * typed path calls.
  *
@@ -32,9 +32,10 @@ function requireBoolean(payload: unknown, key: string): boolean {
 /**
  * A required object off an untrusted command payload, as `T`.
  *
- * The bridge's peer is the app's own shell and the gateway validates the shape
- * below the top level, so this guards only that something object-shaped
- * arrived — which is what tells a malformed envelope from an empty patch.
+ * A dispatched envelope arrives serialized, so the handler validates its
+ * payload itself; the gateway validates the shape below the top level. This
+ * guards only that something object-shaped arrived — what tells a malformed
+ * envelope from an empty patch.
  */
 function requireObject<T>(payload: unknown, key: string): T {
   const value = field(payload, key);

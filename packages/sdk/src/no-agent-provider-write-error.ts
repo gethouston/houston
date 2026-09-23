@@ -12,10 +12,10 @@
  * for this write, surfaced as actionable copy ("create an agent first"), never
  * the red bug toast + Sentry pair.
  *
- * Lives in the SDK (PRODUCT-1833): the adapter raises it, the app copy and
- * the bridge quiet class read it, and the refusal is one rule every surface
- * binds. Erasable syntax only: the app's node:test runner loads it through
- * the `@houston/sdk/no-agent-provider-write-error` subpath.
+ * Lives in the SDK (PRODUCT-1833): the adapter raises it, the app copy and the
+ * quiet class read it, and the refusal is one rule every surface binds.
+ * Erasable syntax only: the app's node:test runner loads it through the
+ * `@houston/sdk/no-agent-provider-write-error` subpath.
  */
 export class NoAgentForProviderWriteError extends Error {
   constructor() {

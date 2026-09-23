@@ -1,6 +1,6 @@
 /**
  * Composer-attachments contract: `sdk.turns.saveAttachments` (and the
- * `turns/attachments/save` bridge command) drive the REAL fake host's
+ * `turns/attachments/save` dispatch command) drive the REAL fake host's
  * `attachments` route over real HTTP — the files land in the agent's visible
  * `uploads/` folder, colliding names are disambiguated, and the returned
  * relative paths are exactly what the agent's Read tool opens.
@@ -65,7 +65,7 @@ describe("turns/attachments/save against the fake host", () => {
     expect(second).toEqual({ paths: ["uploads/report (1).csv"] });
   });
 
-  it("drives the same route through the bridge command path", async () => {
+  it("drives the same route through the dispatch command path", async () => {
     const result = (await h.sdk.dispatch({
       id: "c-att",
       type: "turns/attachments/save",
