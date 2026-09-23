@@ -4,20 +4,12 @@
  *  - ComposerTrailing: dictate / voice / submit button row
  */
 
-import {
-  FileSpreadsheetIcon,
-  FileTextIcon,
-  FolderIcon,
-  ImageIcon,
-  FileIcon as LucideFileIcon,
-  MicIcon,
-  XIcon,
-} from "lucide-react";
+import { FileTypeGlyphInline, FolderGlyph } from "@houston-ai/core";
+import { MicIcon, XIcon } from "lucide-react";
 import { PromptInputSubmit } from "./ai-elements/prompt-input";
 import { DictationActions, DictationTranscribing } from "./dictation-controls";
 import type { DictationControl } from "./dictation-types";
 import { isDictationActive, resolveDictationView } from "./dictation-types";
-import { FILE_TYPE_ACCENT } from "./file-type-colors";
 
 export function getExt(name: string): string {
   const dot = name.lastIndexOf(".");
@@ -46,72 +38,26 @@ export function getTypeLabel(ext: string): string {
   return map[ext] ?? (ext ? ext.toUpperCase() : "File");
 }
 
-/** File type icon matching @houston-ai/agent's FileRow icons. */
+/**
+ * The chip's icon column. Fixed at 32px whatever mark lands in it, so the name
+ * and type lines beside it sit at the same x in every chip of a row.
+ */
+const ICON_SLOT = "flex size-8 shrink-0 items-center justify-center";
+
+/** 20px in a 32px slot: the Files list's glyph-to-slot proportion. */
+const GLYPH = "size-5";
+
+/**
+ * File identity drawn the way the Files list and chat's file chips draw it: the
+ * bare Lucide glyph tinted with its `filetype` token (DESIGN.md §4), with the
+ * extension classified by `@houston-ai/core` so a chip and a list row never
+ * disagree about what a file is.
+ */
 export function AttachmentIcon({ ext }: { ext: string }) {
-  if (ext === "pdf") {
-    return (
-      <div
-        className="size-8 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: FILE_TYPE_ACCENT.pdf }}
-      >
-        <svg
-          className="size-4"
-          viewBox="0 0 16 16"
-          fill="none"
-          role="img"
-          aria-label="PDF"
-        >
-          <text
-            x="8"
-            y="11.5"
-            textAnchor="middle"
-            fill="white"
-            fontSize="8"
-            fontWeight="700"
-            fontFamily="system-ui, sans-serif"
-          >
-            PDF
-          </text>
-        </svg>
-      </div>
-    );
-  }
-  if (["xlsx", "xls", "csv"].includes(ext)) {
-    return (
-      <div
-        className="size-8 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: FILE_TYPE_ACCENT.sheet }}
-      >
-        <FileSpreadsheetIcon className="size-4 text-white" strokeWidth={2} />
-      </div>
-    );
-  }
-  if (["doc", "docx", "txt", "rtf"].includes(ext)) {
-    return (
-      <div
-        className="size-8 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: FILE_TYPE_ACCENT.doc }}
-      >
-        <FileTextIcon className="size-4 text-white" strokeWidth={2} />
-      </div>
-    );
-  }
-  if (
-    ["png", "jpg", "jpeg", "gif", "svg", "webp", "tif", "tiff"].includes(ext)
-  ) {
-    return (
-      <div
-        className="size-8 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: FILE_TYPE_ACCENT.image }}
-      >
-        <ImageIcon className="size-4 text-white" strokeWidth={2} />
-      </div>
-    );
-  }
   return (
-    <div className="size-8 rounded-md bg-stone-400 flex items-center justify-center shrink-0">
-      <LucideFileIcon className="size-4 text-white" strokeWidth={2} />
-    </div>
+    <span className={ICON_SLOT}>
+      <FileTypeGlyphInline extension={ext} className={GLYPH} />
+    </span>
   );
 }
 
@@ -161,16 +107,10 @@ export function FolderAttachmentChip({
 }: FolderAttachmentChipProps) {
   return (
     <div className="relative flex items-center gap-2.5 rounded-xl border border-ink/[0.08] bg-input pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
-      <div
-        className="size-8 rounded-md flex items-center justify-center shrink-0"
-        style={{ backgroundColor: FILE_TYPE_ACCENT.folder }}
-      >
-        <FolderIcon
-          className="size-4 text-white"
-          strokeWidth={2}
-          fill="currentColor"
-        />
-      </div>
+      <span className={ICON_SLOT}>
+        {/* A folder is not a file type, so it keeps the monochrome glyph. */}
+        <FolderGlyph small className={GLYPH} />
+      </span>
       <div className="min-w-0">
         <p className="text-xs font-medium text-ink truncate leading-tight">
           {name}

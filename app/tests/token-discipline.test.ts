@@ -78,16 +78,16 @@ const DEAD_CLASS = new RegExp(
 );
 
 /**
- * Files still holding a raw colour, each blocked on a decision rather than on
- * the work: the file-type chip accents await a design call (the muted
- * `filetype` tokens, or a sanctioned brand-like map).
+ * The inventory of files still holding a raw colour. It is EMPTY: every surface
+ * Houston renders draws its visual values from the token set.
  *
- * Not an exemption and not a TODO: the list may only SHRINK. A new offender
- * fails the guard, and a file cleaned without being struck from this list
- * fails it too — so the inventory cannot rot into a permanent allowlist the
- * way a plain ignore file does.
+ * It stays here because an empty list is the only honest way to take a future
+ * offender: the list may only SHRINK, a new offender fails the guard, and a
+ * file cleaned without being struck from the list fails it too. So a raw colour
+ * that has to land is inventoried deliberately, with the decision it waits on
+ * named, and can never be exempted the way a plain ignore file exempts things.
  */
-const UNTOKENIZED = ["ui/chat/src/file-type-colors.ts"];
+const UNTOKENIZED: string[] = [];
 
 describe("no dead theme tokens in the app or the ui packages", () => {
   it("every guarded name really is undefined in the token set", () => {
