@@ -1,5 +1,10 @@
 import { expect, test } from "vitest";
-import { DEFAULT_PROVIDER, migrateProviderModel } from "./provider-model";
+import {
+  canonicalModelId,
+  canonicalProviderId,
+  DEFAULT_PROVIDER,
+  migrateProviderModel,
+} from "./provider-model";
 import { DEFAULT_MODEL, VALID_MODELS } from "./provider-model-catalog";
 
 const VALID_PROVIDERS = [
@@ -47,17 +52,17 @@ const PI_MODELS: Record<string, Set<string>> = {
     "claude-sonnet-4-6",
     "claude-sonnet-5",
   ]),
-  // pi's Codex catalog MINUS the rows OpenAI stopped serving a ChatGPT
-  // subscription (gpt-5.4, gpt-5.5 — probed live, see the runtime's
-  // ai/codex-offered.ts): a migration that lands on one produces a first turn
-  // that can only fail `model_not_found`.
+  // pi's Codex catalog MINUS the rows OpenAI refuses a ChatGPT subscription
+  // (gpt-5.3-codex-spark — probed live, see the runtime's ai/codex-offered.ts):
+  // a migration that lands on one produces a first turn that can only fail.
   "openai-codex": new Set([
-    "gpt-5.3-codex-spark",
-    "gpt-5.4-mini",
+    "gpt-5.5",
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-6-astra",
+    "gpt-6-luna",
+    "gpt-6-sol",
   ]),
   minimax: new Set([
     "MiniMax-M3[1m]",
@@ -65,7 +70,7 @@ const PI_MODELS: Record<string, Set<string>> = {
     "MiniMax-M2.7-highspeed",
     "MiniMax-M3",
   ]),
-  deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
+  deepseek: new Set(["deepseek-flash", "deepseek-v4-pro"]),
 };
 
 /** Every migration result must name a real provider, and (for the OAuth
@@ -79,11 +84,11 @@ function assertValid(r: ReturnType<typeof migrateProviderModel>, msg: string) {
 
 test("the real legacy desktop inputs map to valid pi ids with no diagnostic", () => {
   // From the user's actual ~/.houston data: {"provider":"openai","model":"gpt-5.5"}.
-  // gpt-5.5 has since been retired from the ChatGPT subscription, so it is a
-  // legacy id like any other and migrates to Codex's current full tier.
+  // The ChatGPT subscription serves gpt-5.5, so only the provider dialect
+  // changes: the model the user chose is kept verbatim.
   const codex = migrateProviderModel("openai", "gpt-5.5");
   expect(codex.provider).toBe("openai-codex");
-  expect(codex.model).toBe("gpt-6-astra");
+  expect(codex.model).toBe("gpt-5.5");
   expect(codex.diagnostics).toEqual([]);
   assertValid(codex, "openai/gpt-5.5");
 
@@ -138,7 +143,7 @@ test("CLI-era codex model ids map to the closest current tier", () => {
 
   const mini = migrateProviderModel("codex", "gpt-5-mini");
   expect(mini.provider).toBe("openai-codex");
-  expect(mini.model).toBe("gpt-5.4-mini");
+  expect(mini.model).toBe("gpt-6-luna");
   expect(mini.diagnostics).toEqual([]);
   assertValid(mini, "codex/gpt-5-mini");
 });
@@ -179,6 +184,24 @@ test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)
   expect(mistral.diagnostics).toEqual([]);
 });
 
+test("a stored id naming an Object prototype member is a table MISS, not an entry", () => {
+  // Every table here is an object literal, so a plain `table[stored]` reads its
+  // prototype: a stored provider of "constructor" answered the Object
+  // CONSTRUCTOR where an id belongs, and a stored model of "toString" answered
+  // a function the same way. Both then travel as the migrated value.
+  expect(canonicalProviderId("constructor")).toBe("constructor");
+  expect(canonicalProviderId("toString")).toBe("toString");
+  expect(canonicalModelId("opencode", "constructor")).toBe("constructor");
+  expect(canonicalModelId("anthropic", "toString")).toBe(null);
+  // The whole migration answers strings, and never throws on the way (a
+  // prototype read landed a function where `VALID_MODELS[provider]` is checked
+  // for a `.has`).
+  const r = migrateProviderModel("constructor", "toString");
+  expect(r).toMatchObject({ provider: "constructor", model: "toString" });
+  expect(typeof r.provider).toBe("string");
+  expect(migrateProviderModel("toString", undefined).model).toBe("");
+});
+
 test("missing provider/model fall soft to the defaults with provider diagnostic", () => {
   const r = migrateProviderModel(undefined, undefined);
   expect(r.provider).toBe(DEFAULT_PROVIDER);
@@ -199,6 +222,38 @@ test("api-key gateway models pass through (open catalog, no throw on getModel)",
     model: "deepseek-v4-pro",
   });
   expect(r.diagnostics).toEqual([]);
+});
+
+test("an open-catalog gateway's curated rename is applied, with no diagnostic", () => {
+  // A gateway has no VALID_MODELS set, so every stored id passes through — but
+  // a row pi RENAMED has no model object left to build a turn on, and the only
+  // thing standing between the stored id and a dead pin is this table. opencode
+  // 0.85.1's `mimo-v2.5-free` is 0.87.1's `mimo-v2.6-flash-free`: same free
+  // tier (zero cost, text+image, 200k window), so the swap is not an upgrade.
+  const r = migrateProviderModel("opencode", "mimo-v2.5-free");
+  expect(r).toMatchObject({
+    provider: "opencode",
+    model: "mimo-v2.6-flash-free",
+  });
+  expect(r.diagnostics).toEqual([]);
+});
+
+test("a deepseek id the catalog renamed maps at the same tier", () => {
+  // pi 0.87.1 renamed `deepseek-v4-flash` to `deepseek-flash` (DeepSeek V4.1
+  // Flash) and folded the separate vision row into it. Without a row here the
+  // stored ids read as unknown: the migration rewrites them to the provider
+  // default and a routine pin on one is dropped entirely.
+  for (const stale of ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp"]) {
+    const r = migrateProviderModel("deepseek", stale);
+    expect(r.provider, stale).toBe("deepseek");
+    expect(r.model, stale).toBe("deepseek-flash");
+    expect(r.diagnostics, stale).toEqual([]);
+    assertValid(r, `deepseek/${stale}`);
+  }
+  // The Pro tier stays Pro — a rename never moves a pin across tiers.
+  expect(migrateProviderModel("deepseek", "deepseek-v4-pro").model).toBe(
+    "deepseek-v4-pro",
+  );
 });
 
 test("MiniMax global provider uses the pi-ai catalog, not minimax-cn", () => {
@@ -236,7 +291,7 @@ test("deepseek provider models migrate against its finite pi catalog", () => {
   const stale = migrateProviderModel("deepseek", "deepseek-coder-old");
   expect(stale).toMatchObject({
     provider: "deepseek",
-    model: "deepseek-v4-flash",
+    model: "deepseek-flash",
   });
   expect(stale.diagnostics[0]?.message).toContain("deepseek-coder-old");
   assertValid(stale, "deepseek stale model");
@@ -256,18 +311,24 @@ test("the diagnostic key defaults to the config doc path and is overridable", ()
 
 test("a stored Codex model the subscription no longer serves migrates to one it does", () => {
   // The retired full-tier rows. A migration that kept them verbatim handed the
-  // runtime an id whose only outcome is `model_not_found` on the first turn.
-  for (const stale of ["gpt-5.5", "gpt-5.4", "gpt-5.5-codex"]) {
+  // runtime an id whose only outcome is a refusal on the first turn.
+  for (const stale of ["gpt-5.4", "gpt-5.5-codex"]) {
     const r = migrateProviderModel("openai-codex", stale);
     expect(r.model, stale).toBe("gpt-6-astra");
     expect(r.diagnostics, stale).toEqual([]);
     assertValid(r, `openai-codex/${stale}`);
   }
+  // Spark was a small/fast row, so it lands on the small/fast tier, not the
+  // full one — a migration never upgrades what the user chose.
+  const spark = migrateProviderModel("openai-codex", "gpt-5.3-codex-spark");
+  expect(spark.model).toBe("gpt-6-luna");
+  expect(spark.diagnostics).toEqual([]);
+  assertValid(spark, "openai-codex/gpt-5.3-codex-spark");
   // The provider's own default is a model it serves — this is what a pin
   // naming a provider and NO model lands on.
-  expect(DEFAULT_MODEL["openai-codex"]).toBe("gpt-6-astra");
-  expect(VALID_MODELS["openai-codex"]?.has("gpt-6-astra")).toBe(true);
-  for (const gone of ["gpt-5.5", "gpt-5.4"])
+  expect(DEFAULT_MODEL["openai-codex"]).toBe("gpt-6-luna");
+  expect(VALID_MODELS["openai-codex"]?.has("gpt-6-luna")).toBe(true);
+  for (const gone of ["gpt-5.3-codex-spark", "gpt-5.4"])
     expect(VALID_MODELS["openai-codex"]?.has(gone), gone).toBe(false);
 });
 

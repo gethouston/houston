@@ -280,6 +280,6 @@ test("the inbound start echoes resolved provider and model", async () => {
   });
   expect(result.body).toMatchObject({
     provider: "openai-codex",
-    model: "gpt-5.6-luna",
+    model: "gpt-6-luna",
   });
 });

@@ -47,12 +47,13 @@ export const MODEL_DISPLAY: Partial<
     "claude-haiku-4-5": "Haiku 4.5",
   },
   "openai-codex": {
+    "gpt-6-luna": "GPT-6 Luna",
+    "gpt-6-sol": "GPT-6 Sol",
     "gpt-6-astra": "GPT-6 Astra",
     "gpt-5.6-sol": "GPT-5.6 Sol",
     "gpt-5.6-terra": "GPT-5.6 Terra",
     "gpt-5.6-luna": "GPT-5.6 Luna",
-    "gpt-5.3-codex-spark": "GPT-5.3 Codex Spark",
-    "gpt-5.4-mini": "GPT-5.4 mini",
+    "gpt-5.5": "GPT-5.5",
   },
   // Copilot serves several labs through one plan, so its rows name the lab
   // too — "Sonnet 5" alone would not say whose model it is on that card.
@@ -69,7 +70,7 @@ export const MODEL_DISPLAY: Partial<
     "claude-opus-4-8": "Opus 4.8",
     "gpt-5.5": "GPT-5.5",
     "gemini-3.5-flash": "Gemini 3.5 Flash",
-    "mimo-v2.5-free": "MiMo V2.5 (Free)",
+    "mimo-v2.6-flash-free": "MiMo V2.6 Flash (Free)",
     "nemotron-3-ultra-free": "Nemotron 3 Ultra (Free)",
   },
   "opencode-go": {
@@ -87,7 +88,7 @@ export const MODEL_DISPLAY: Partial<
     "deepseek/deepseek-v4-pro": "DeepSeek V4 Pro",
   },
   deepseek: {
-    "deepseek-v4-flash": "DeepSeek V4 Flash",
+    "deepseek-flash": "DeepSeek V4.1 Flash",
     "deepseek-v4-pro": "DeepSeek V4 Pro",
   },
   google: {

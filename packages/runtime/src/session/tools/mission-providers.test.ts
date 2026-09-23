@@ -84,7 +84,7 @@ test("only the assistant, which can call it, is pointed at the listing op", () =
 
 test("the description carries the per-provider model ids the registry knows", () => {
   const text = missionModelDescription(OPTIONS);
-  expect(text).toContain("openai-codex: gpt-5.5, gpt-5.5-codex");
+  expect(text).toContain("openai-codex: gpt-5.5 = GPT-5.5, gpt-5.5-codex");
   // An open-catalog provider has no list to state.
   expect(text).not.toContain("openrouter:");
 });

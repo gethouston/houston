@@ -85,7 +85,7 @@ describe("override-only seed (before the pi catalog loads)", () => {
     strictEqual(getDefaultModel("groq"), "");
     strictEqual(getDefaultModel("openai-compatible"), "");
     // A curated default is still answered, in either dialect.
-    strictEqual(getDefaultModel("openai-codex"), "gpt-6-astra");
+    strictEqual(getDefaultModel("openai-codex"), "gpt-6-luna");
   });
 
   it("does not throw from any read helper while models are empty", () => {

@@ -39,8 +39,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "gpt-5.5",
       "gemini-3.5-flash",
       // Free trial models — test the provider without spending credits.
-      "deepseek-v4-flash-free",
-      "mimo-v2.5-free",
+      "mimo-v2.6-flash-free",
       "nemotron-3-ultra-free",
     ],
     defaultModel: DEFAULT_MODEL.opencode,
@@ -81,7 +80,7 @@ export const PROVIDERS: readonly HostProvider[] = [
     // `cloud: false` = off the legacy cloudrun per-turn listing only; served
     // everywhere else (desktop AND the managed pod, via the full pi-ai catalog).
     cloud: false,
-    models: ["deepseek-v4-flash", "deepseek-v4-pro"],
+    models: ["deepseek-flash", "deepseek-v4-pro"],
     defaultModel: DEFAULT_MODEL.deepseek,
   },
   {

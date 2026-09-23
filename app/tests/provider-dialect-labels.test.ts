@@ -113,7 +113,7 @@ describe("the label path aliases the provider dialect, like the icon path", () =
 describe("getDefaultModel never crosses providers", () => {
   it("answers the Codex default for the canonical Codex id", () => {
     strictEqual(getDefaultModel("openai-codex"), getDefaultModel("openai"));
-    strictEqual(getDefaultModel("openai-codex"), "gpt-6-astra");
+    strictEqual(getDefaultModel("openai-codex"), "gpt-6-luna");
   });
 
   it("answers nothing for a provider it does not know", () => {

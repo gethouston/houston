@@ -147,7 +147,7 @@ test("the name a user says for a model resolves to the id, per provider", () => 
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     connected: true,
-    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.4-mini"],
+    models: ["gpt-6-astra", "gpt-6-luna", "gpt-5.6-luna"],
   };
   const anthropic: ProviderOption = {
     id: "anthropic",
@@ -157,11 +157,11 @@ test("the name a user says for a model resolves to the id, per provider", () => 
   };
   expect(resolveModelChoice("Luna", codex, OP)).toEqual({
     ok: true,
-    id: "gpt-5.6-luna",
+    id: "gpt-6-luna",
   });
-  expect(resolveModelChoice("5.4 mini", codex, OP)).toEqual({
+  expect(resolveModelChoice("GPT-5.6 Luna", codex, OP)).toEqual({
     ok: true,
-    id: "gpt-5.4-mini",
+    id: "gpt-5.6-luna",
   });
   expect(resolveModelChoice("Opus 4.6", anthropic, OP)).toEqual({
     ok: true,

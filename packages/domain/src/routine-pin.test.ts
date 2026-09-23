@@ -62,3 +62,22 @@ test("an open-catalog gateway keeps whatever model was stored", () => {
       .model,
   ).toBe("some-new-model");
 });
+
+test("an open-catalog gateway's renamed row is pinned to its successor", () => {
+  // The stored id (`mimo-v2.5-free`, curated while pi 0.85.1 shipped it) has no
+  // model object left in pi 0.87.1, so passing it through verbatim fails the
+  // run on every fire; the same-tier successor keeps the routine alive.
+  expect(
+    routinePin(routine({ provider: "opencode", model: "mimo-v2.5-free" }))
+      .model,
+  ).toBe("mimo-v2.6-flash-free");
+});
+
+test("a renamed deepseek row keeps its pin instead of dropping it", () => {
+  // An unmappable model drops to null (the agent's own model runs instead). A
+  // RENAME is mappable, so the model the user pinned must survive.
+  expect(
+    routinePin(routine({ provider: "deepseek", model: "deepseek-v4-flash" }))
+      .model,
+  ).toBe("deepseek-flash");
+});

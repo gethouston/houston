@@ -238,8 +238,10 @@
       "hiddenByWorkspace_other": "{{count}} modelos a mais estão desativados no seu espaço de trabalho"
     },
     "modelDescriptions": {
-      "gpt-6-astra": "O mais novo e mais capaz. Consome sua cota 2,5 vezes mais rápido que o Sol.",
-      "gpt-5_5": "O modelo mais avançado da OpenAI.",
+      "gpt-6-luna": "O padrão da Houston. O GPT-6 mais leve para a sua cota.",
+      "gpt-6-sol": "Nível médio do GPT-6. Mais profundidade que o Luna para trabalhos difíceis.",
+      "gpt-6-astra": "O GPT-6 mais capaz. Consome sua cota 5 vezes mais rápido que o Sol.",
+      "gpt-5_5": "Nível completo da geração anterior, de antes do GPT-5.6.",
       "gpt-5_6-sol": "Modelo de fronteira anterior. Forte em trabalho complexo.",
       "gpt-5_6-terra": "Modelo intermediário equilibrado.",
       "gpt-5_6-luna": "Rápido e econômico para tarefas mais simples.",

@@ -39,6 +39,20 @@ export type { ProviderId } from "./provider-model-catalog";
 export { DEFAULT_PROVIDER } from "./provider-model-catalog";
 
 /**
+ * A table read keyed by STORED user data. Every table here is an object
+ * literal, so a plain `table[key]` also answers `Object.prototype`'s members: a
+ * stored id of `constructor` or `toString` reads a function where a provider or
+ * model id belongs, and that function then travels on as the migrated value (or
+ * lands where a `ReadonlySet`'s `.has` is called). Only an OWN key is an entry.
+ */
+function ownEntry<T>(
+  table: Readonly<Record<string, T | undefined>>,
+  key: string,
+): T | undefined {
+  return Object.hasOwn(table, key) ? table[key] : undefined;
+}
+
+/**
  * Resolve a stored provider string to a pi ProviderId: a known id passes
  * through, a known legacy alias maps ("openai" → "openai-codex"), and any other
  * NON-EMPTY id passes through UNCHANGED — the pi-ai catalog is open (~35
@@ -51,25 +65,33 @@ export { DEFAULT_PROVIDER } from "./provider-model-catalog";
 export function canonicalProviderId(raw: string): ProviderId | null {
   if (!raw) return null;
   if (isProviderId(raw)) return raw;
-  return PROVIDER_ALIASES[raw] ?? raw;
+  return ownEntry(PROVIDER_ALIASES, raw) ?? raw;
 }
 
 /**
- * Resolve a stored model id for `provider`: an open-catalog gateway keeps the
- * stored id verbatim, a valid id passes through, a known legacy alias maps at
- * the same tier, anything else is null. Same single-ladder contract as
- * `canonicalProviderId` — callers pick their own fallback.
+ * Resolve a stored model id for `provider`: a valid id passes through, a known
+ * legacy alias maps at the same tier, an open-catalog gateway keeps anything
+ * else verbatim, and a finite-catalog provider answers null for anything else.
+ * Same single-ladder contract as `canonicalProviderId` — callers pick their own
+ * fallback.
+ *
+ * The alias table is consulted for an open-catalog gateway TOO. Pass-through is
+ * what lets a gateway route a model pi never baked, but a row pi RENAMED
+ * (opencode's `mimo-v2.5-free` → `mimo-v2.6-flash-free`) has no model object
+ * left to build a turn on, so passing it through is a pin that fails on every
+ * fire. There is no valid-set to check the alias against — the gateway's live
+ * catalog is the only authority — so the mapped id stands on the table's own
+ * same-tier rule.
  */
 export function canonicalModelId(
   provider: ProviderId,
   raw: string,
 ): string | null {
-  const valid = VALID_MODELS[provider];
-  // Open-catalog gateways: pi forwards any id to the gateway, so keep whatever
-  // was stored (the runtime's safeGetModel is the backstop for stale ids).
-  if (!valid) return raw;
+  const valid = ownEntry(VALID_MODELS, provider);
+  const aliases = ownEntry(MODEL_ALIASES, provider);
+  const alias = aliases ? ownEntry(aliases, raw) : undefined;
+  if (!valid) return alias ?? raw;
   if (valid.has(raw)) return raw;
-  const alias = MODEL_ALIASES[provider]?.[raw];
   return alias && valid.has(alias) ? alias : null;
 }
 
@@ -101,7 +123,7 @@ function mapProvider(
  * every settings writer skips a falsy model rather than storing one.
  */
 function defaultModelFor(provider: ProviderId): string {
-  return DEFAULT_MODEL[provider] ?? "";
+  return ownEntry(DEFAULT_MODEL, provider) ?? "";
 }
 
 /** Map a stored model to a valid pi model for `provider`, recording a

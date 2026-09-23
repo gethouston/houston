@@ -10,10 +10,10 @@ import {
 /**
  * Codex (pi `openai-codex`, Houston `openai`) may offer ONLY what OpenAI's
  * Codex backend serves a ChatGPT subscription. pi-ai's baked catalog is a
- * SUPERSET of that: it still lists gpt-5.5 (`404 model_not_found`) and gpt-5.4
- * (`400 not supported when using Codex with a ChatGPT account`), so picking
- * either can only produce a dead turn — and gpt-5.5 was the app's Codex default
- * until this guard, i.e. the model every fresh Codex chat started on.
+ * SUPERSET of that: it lists gpt-5.3-codex-spark, which the backend answers
+ * `400 not supported when using Codex with a ChatGPT account`, so picking it
+ * can only produce a dead turn — and an unserved id has held the app's Codex
+ * default before, i.e. the model every fresh Codex chat started on.
  *
  * `packages/runtime/src/ai/codex-offered.ts` is the documented source (it holds
  * the live probe, the verdicts and the re-verify recipe). This pins BOTH app
@@ -45,8 +45,12 @@ const served = codex
   .codexOfferedModelIds(pi.getModels("openai-codex").map((m) => m.id))
   .sort();
 
-/** Probed refusals — neither may ever reach a Codex picker or default again. */
-const REFUSED = ["gpt-5.4", "gpt-5.5"];
+/**
+ * The probed refusals pi-ai still ships (gpt-5.4 and gpt-5.4-mini were refused
+ * too, and pi 0.87.1 dropped both from the Codex catalog). None may ever reach
+ * a Codex picker or default.
+ */
+const REFUSED = ["gpt-5.3-codex-spark"];
 
 describe("Codex model curation matches what the subscription serves", () => {
   it("offers exactly the served ids, no more and no fewer", () => {
@@ -83,12 +87,12 @@ describe("the Codex default is the runtime's default", () => {
 });
 
 describe("Azure OpenAI keeps the rows Codex refuses", () => {
-  it("still offers gpt-5.5 and gpt-5.4", () => {
+  it("still offers gpt-5.3-codex-spark, gpt-5.4 and gpt-5.4-mini", () => {
     // The refusals are a property of the CHATGPT SUBSCRIPTION, not of the
     // models: an Azure request hits the user's own resource and runs whatever
     // they deployed there. Pinned so the Codex curation is never mirrored onto
     // Azure by a future sweep.
-    for (const modelId of REFUSED)
+    for (const modelId of [...REFUSED, "gpt-5.4", "gpt-5.4-mini"])
       ok(VISIBLE_MODELS["azure-openai-responses"].has(modelId));
   });
 });

@@ -1,0 +1,36 @@
+diff --git a/dist/api/google-shared.js b/dist/api/google-shared.js
+index 478c2c3..5c3c652 100644
+--- a/dist/api/google-shared.js
++++ b/dist/api/google-shared.js
+@@ -404,8 +404,10 @@ export function mapStopReason(reason) {
+         case FinishReason.NO_IMAGE:
+             return "error";
+         default: {
+-            const _exhaustive = reason;
+-            throw new Error(`Unhandled stop reason: ${_exhaustive}`);
++            // Gemini adds FinishReason values faster than the SDK enum ships
++            // (MALFORMED_RESPONSE, observed 2026-08): an unknown reason is an
++            // error stop, never a crash of the whole turn pipeline.
++            return "error";
+         }
+     }
+ }
+diff --git a/dist/utils/retry.js b/dist/utils/retry.js
+index 6538c63..a800b8a 100644
+--- a/dist/utils/retry.js
++++ b/dist/utils/retry.js
+@@ -76,6 +76,14 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
+     "please retry your request",
+     // gRPC based providers (e.g. NVIDIA NIM)
+     "ResourceExhausted",
++    // Gemini finish reasons for a generation the MODEL itself broke (an
++    // unparseable tool call, a garbled response). Surfaced as `Provider stopped
++    // with: <REASON>` with no HTTP status; transient and server-side, Google's
++    // own guidance is to retry the same request. Matched on the reason tokens
++    // only: policy stops (SAFETY, RECITATION, BLOCKLIST) share the prefix and
++    // are refusals a retry cannot fix.
++    "MALFORMED_FUNCTION_CALL",
++    "MALFORMED_RESPONSE",
+ ]);
+ export const DEFAULT_MAX_AGENT_RETRY_DELAY_MS = 60_000;
+ export function retryDelayMs(policy, attempt) {

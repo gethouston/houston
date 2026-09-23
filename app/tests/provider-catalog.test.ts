@@ -214,20 +214,20 @@ describe("helpers read the hydrated cache", () => {
   });
 
   /**
-   * The reproduction: a Codex pin stored as `gpt-5.5` was read against the
+   * The reproduction: a Codex pin stored as a retired id was read against the
    * ANTHROPIC alias row, which has no such id, so it survived as a hard pin on
    * a model the picker never shows and the send answered "model not available".
    */
   it("reads each provider's OWN aliases, in either id dialect", () => {
-    strictEqual(normalizeLegacyModel("gpt-5.5", "openai"), "gpt-6-astra");
-    strictEqual(normalizeLegacyModel("gpt-5.5", "openai-codex"), "gpt-6-astra");
+    strictEqual(normalizeLegacyModel("gpt-5.4", "openai"), "gpt-6-astra");
+    strictEqual(normalizeLegacyModel("gpt-5.4", "openai-codex"), "gpt-6-astra");
     // The picker shows what the send would run, so both resolve the same way.
     strictEqual(
-      validModelOrNull("openai", normalizeLegacyModel("gpt-5.5", "openai")),
+      validModelOrNull("openai", normalizeLegacyModel("gpt-5.4", "openai")),
       "gpt-6-astra",
     );
     // A Codex alias is not an Anthropic one, and the other way round.
-    strictEqual(normalizeLegacyModel("gpt-5.5", "anthropic"), "gpt-5.5");
+    strictEqual(normalizeLegacyModel("gpt-5.4", "anthropic"), "gpt-5.4");
     strictEqual(normalizeLegacyModel("opus", "openai"), "opus");
     strictEqual(normalizeLegacyModel("opus", "anthropic"), "claude-opus-5");
     // No provider to key on: nothing is a legacy alias of nothing.
