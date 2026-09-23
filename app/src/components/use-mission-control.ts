@@ -19,6 +19,7 @@ import { getConversationStatus } from "../hooks/use-conversation-vm";
 import { useWarmingConversations } from "../hooks/use-warming-conversations";
 import { latestCachedAllConversations } from "../lib/all-conversations-cache";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
+import { forgetConversationDraftsOf } from "../lib/conversation-drafts";
 import { createMission } from "../lib/create-mission";
 import { isSetupChatMode } from "../lib/integration-chat-setup";
 import { missionCardTags } from "../lib/mission-card";
@@ -45,6 +46,7 @@ import { DEFAULT_TURN_MODE } from "../lib/turn-mode";
 import type { Agent } from "../lib/types";
 import { mergeWarmingRows } from "../lib/warming-board-rows";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
+import { boardItemConversationRow } from "./board/board-item-row";
 import type { SendOverrides } from "./board/board-source";
 import { agentsByPath, missionCardAgentName } from "./board/mission-card-agent";
 import { useMcOpenConversation } from "./board/use-mc-open-conversation";
@@ -231,9 +233,14 @@ export function useMissionControl(agents: Agent[]) {
     async (item: KanbanItem) => {
       const agentPath = pathMapRef.current[item.id];
       if (!agentPath) return;
+      // The card is the only place this mission's conversation key survives the
+      // delete, so the row is read off it before the write goes out.
+      const row = boardItemConversationRow(item);
       await tauriActivity.delete(agentPath, item.id);
       // Files attached in this conversation stay in the workspace's uploads/
-      // folder — they are agent context, not conversation scratch (HOU-706).
+      // folder — they are agent context, not conversation scratch (HOU-706);
+      // the composer draft and the half-walked card beside it go.
+      forgetConversationDraftsOf(row);
       if (selectedId === item.id) setSelectedId(null);
     },
     [selectedId],

@@ -2,6 +2,11 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { subscribeHoustonEvents } from "../lib/events";
+import {
+  isSessionStatusValue,
+  retireParkedInteractionOnFeedItem,
+  retireParkedInteractionOnSessionStatus,
+} from "../lib/interaction-draft-retire";
 import { logger } from "../lib/logger";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
@@ -71,7 +76,11 @@ export function useSessionEvents() {
           const { status, session_key, agent_path } = payload.data;
           // Status/spinner state lives in the conversation VM; error surfacing
           // is the turn sink's job (it pushes the failure into the VM feed).
-          // This listener owns only the OS notification on completion.
+          // This listener owns the OS notification on completion — and the one
+          // conversation-wide effect of a settled turn that no open panel can
+          // own, since the turn may belong to a mission nobody is looking at.
+          if (isSessionStatusValue(status))
+            retireParkedInteractionOnSessionStatus(status, session_key);
           if (status === "completed") {
             // Activity status flip (→ "needs_you") is owned by the engine now
             // — `sessions::start` writes the terminal status after the runner
@@ -92,6 +101,17 @@ export function useSessionEvents() {
               },
             );
           }
+          break;
+        }
+        case "FeedItem": {
+          // The other half of the parked-card retirement: the first frame a
+          // live TURN produced on a conversation proves one took it, whichever
+          // mission (or client) started that turn. The feed itself is the
+          // conversation VM's, never this listener's.
+          retireParkedInteractionOnFeedItem(
+            payload.data.session_key,
+            payload.data.item,
+          );
           break;
         }
         case "ActivityChanged": {

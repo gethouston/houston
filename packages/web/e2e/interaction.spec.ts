@@ -3,6 +3,7 @@ import { activatePendingConnection } from "./support/activate-pending-connection
 import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { startMission } from "./support/mission";
+import { missionCard, openTeamSection } from "./support/team-nav";
 
 /**
  * Element 4 (v3): the pending-interaction hand-off, a STEPPER. When a turn
@@ -1091,6 +1092,174 @@ test("the card replaces the composer and dismiss restores it", async ({
   await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
   await expect(page.getByPlaceholder("Type another option...")).toHaveCount(0);
   await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible();
+});
+
+/**
+ * A half-walked card is a DRAFT (PRODUCT-1902): the free text typed into its
+ * escape row is parked per mission exactly like the composer's own text, so
+ * opening another mission and coming back hands the card back as it was. The
+ * card replaces the composer, and the override is torn down with the chat
+ * panel, so nothing but the parked state can carry the draft across.
+ */
+test("a draft typed into the card survives switching missions and coming back", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "q1",
+            question: "Which city are you flying to?",
+            options: [
+              { id: "paris", label: "Paris" },
+              { id: "tokyo", label: "Tokyo" },
+            ],
+          },
+          {
+            kind: "question",
+            id: "q2",
+            question: "Which week works?",
+            options: [
+              { id: "next", label: "Next week" },
+              { id: "later", label: "Later" },
+            ],
+          },
+        ],
+      },
+    },
+  });
+
+  await page.goto("/");
+  await openTeamSection(page, "Tasks");
+  await missionCard(page, "Plan a trip to Tokyo").click();
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
+  await expect(composer).toBeVisible();
+  await composer.fill("plan my trip");
+  await composer.press("Enter");
+
+  await expect(page.getByText("Which city are you flying to?")).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const freeText = page.getByPlaceholder("Type another option...");
+  await freeText.fill("hola");
+  await expect(freeText).toHaveValue("hola");
+
+  // Another mission takes the panel: the card unmounts with it.
+  await missionCard(page, "Draft the launch email").click();
+  await expect(page.getByText("Task: Draft the launch email")).toBeVisible();
+  await expect(page.getByText("Which city are you flying to?")).toHaveCount(0);
+
+  // Back on the first mission the card returns with the draft still in it.
+  await missionCard(page, "Plan a trip to Tokyo").click();
+  await expect(page.getByText("Which city are you flying to?")).toBeVisible();
+  await expect(page.getByPlaceholder("Type another option...")).toHaveValue(
+    "hola",
+  );
+});
+
+/**
+ * The same parking, with a SECOND card alive in the mission the user switches
+ * to. Each conversation parks its own, so the second card opens untouched (its
+ * own question, an empty free-text row) and the first comes back exactly where
+ * it was left — the step it stood on AND the text typed there.
+ *
+ * Two pending cards at once is the case a shared parking slot would have got
+ * wrong, and the case React itself gets wrong without a per-interaction key: the
+ * composer override sits in one position, so the second mission's card would
+ * otherwise reuse the first's component instance and inherit its state.
+ */
+test("a half-walked card and its draft survive switching to another mission with its own card", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "t1",
+            question: "Which city are you flying to?",
+            options: [
+              { id: "paris", label: "Paris" },
+              { id: "tokyo", label: "Tokyo" },
+            ],
+          },
+          {
+            kind: "question",
+            id: "t2",
+            question: "Which week works?",
+            options: [
+              { id: "next", label: "Next week" },
+              { id: "later", label: "Later" },
+            ],
+          },
+        ],
+      },
+    },
+  });
+
+  await page.goto("/");
+  await openTeamSection(page, "Tasks");
+  await missionCard(page, "Plan a trip to Tokyo").click();
+  const tripComposer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
+  await expect(tripComposer).toBeVisible();
+  await tripComposer.fill("plan my trip");
+  await tripComposer.press("Enter");
+
+  // Walk to step 2 of the trip card and type an instruction there.
+  await expect(page.getByText("Which city are you flying to?")).toBeVisible({
+    timeout: 15_000,
+  });
+  await page.getByRole("radio", { name: "Paris" }).click();
+  await expect(page.getByText("Which week works?")).toBeVisible();
+  await expect(page.getByText("2 of 2")).toBeVisible();
+  await page.getByPlaceholder("Type another option...").fill("hola");
+
+  // Arm a DIFFERENT card for the next turn, then start that turn in the other
+  // mission: both conversations now hold a pending interaction.
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: {
+      interaction: {
+        steps: [
+          {
+            kind: "question",
+            id: "e1",
+            question: "Which mailing list should it go to?",
+            options: [
+              { id: "all", label: "Everyone" },
+              { id: "beta", label: "Beta testers" },
+            ],
+          },
+        ],
+      },
+    },
+  });
+  await missionCard(page, "Draft the launch email").click();
+  await expect(page.getByText("Task: Draft the launch email")).toBeVisible();
+  const emailComposer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
+  await expect(emailComposer).toBeVisible();
+  await emailComposer.fill("draft it");
+  await emailComposer.press("Enter");
+
+  // The second card is its own: its question, and nothing typed into it.
+  await expect(
+    page.getByText("Which mailing list should it go to?"),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Which week works?")).toHaveCount(0);
+  await expect(page.getByPlaceholder("Type another option...")).toHaveValue("");
+
+  // Back to the trip: same step, same text.
+  await missionCard(page, "Plan a trip to Tokyo").click();
+  await expect(page.getByText("Which week works?")).toBeVisible();
+  await expect(page.getByText("2 of 2")).toBeVisible();
+  await expect(page.getByPlaceholder("Type another option...")).toHaveValue(
+    "hola",
+  );
 });
 
 /**

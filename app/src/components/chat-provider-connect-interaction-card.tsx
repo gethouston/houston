@@ -8,12 +8,15 @@ import {
   providerConnectStepKey,
 } from "../lib/provider-connect-step-memory";
 import { providerName } from "../lib/providers";
-import { ChatConnectStepShell } from "./chat-connect-step-shell";
+import {
+  ChatConnectStepShell,
+  type StepDraftApi,
+} from "./chat-connect-step-shell";
 import { ProviderConnectionDialogs } from "./provider-browser/provider-connection-dialogs";
 import { ProviderGlyph } from "./shell/provider-logos";
 import { useChatProviderConnect } from "./use-chat-provider-connect";
 
-interface Props extends StepChrome {
+interface Props extends StepChrome, StepDraftApi {
   stepId: string;
   /** The agent whose chat holds the card. */
   agentId: string;

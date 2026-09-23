@@ -5,6 +5,7 @@ import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
 import { useOpenConversationFeed } from "../../hooks/use-open-conversation-feed";
+import { forgetConversationDraftsOf } from "../../lib/conversation-drafts";
 import { isSetupChatMode } from "../../lib/integration-chat-setup";
 import { missionCardTags } from "../../lib/mission-card";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection";
@@ -15,7 +16,9 @@ import {
 } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
+import { boardItemConversationRow } from "./board-item-row";
 import { agentsByPath, missionCardAgentName } from "./mission-card-agent";
+import { rowSessionKey } from "./session-loading";
 
 /**
  * Cross-agent archived data: every agent's *archived* missions on one list,
@@ -109,9 +112,10 @@ export function useMissionControlArchived(agents: Agent[]) {
   const sessionKeyFor = useCallback(
     (activityId: string) => {
       const item = items.find((i) => i.id === activityId);
-      return (
-        (item?.metadata?.sessionKey as string | undefined) ??
-        `activity-${activityId}`
+      // One reading of a card's conversation key, shared with the draft seams:
+      // a card carrying none falls back to the `activity-<id>` stand-in.
+      return rowSessionKey(
+        item ? boardItemConversationRow(item) : { id: activityId },
       );
     },
     [items],
@@ -146,9 +150,14 @@ export function useMissionControlArchived(agents: Agent[]) {
     async (item: KanbanItem) => {
       const agentPath = pathMapRef.current[item.id];
       if (!agentPath) return;
+      // The card is the only place this mission's conversation key survives the
+      // delete, so the row is read off it before the write goes out.
+      const row = boardItemConversationRow(item);
       await tauriActivity.delete(agentPath, item.id);
       // Files attached in this conversation stay in the workspace's uploads/
-      // folder — they are agent context, not conversation scratch (HOU-706).
+      // folder — they are agent context, not conversation scratch (HOU-706);
+      // the composer draft and the half-walked card beside it go.
+      forgetConversationDraftsOf(row);
       if (selectedId === item.id) setSelectedId(null);
     },
     [selectedId],

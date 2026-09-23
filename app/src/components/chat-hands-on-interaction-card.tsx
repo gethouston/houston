@@ -10,9 +10,12 @@ import {
   handsOnScreenKey,
   openHandsOnSurface,
 } from "../lib/hands-on-navigation";
-import { ChatConnectStepShell } from "./chat-connect-step-shell";
+import {
+  ChatConnectStepShell,
+  type StepDraftApi,
+} from "./chat-connect-step-shell";
 
-interface Props extends StepChrome {
+interface Props extends StepChrome, StepDraftApi {
   stepId: string;
   /** The screen the agent is handing over, straight off the wire. */
   surface: string;

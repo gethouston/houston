@@ -3,12 +3,23 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
-## v96 - 2026-09-23
+## v97 - 2026-09-23
 
 A mission card wears a tag pill for work the user did not type: a routine's
 run, a mission the agent started for itself, and the agent's own set-up
 mission. At most one pill per card, and a mission the user asked for wears
 none.
+
+## v96 - 2026-09-23
+
+The interaction card's in-progress state is a draft: the step it stands on, the
+answers already given, what each connect / sign-in / key / errand step ended up
+as, and the free-text typed into any step's row are parked per conversation, so
+switching missions and coming back restores the card as it was. An approval step
+is always re-confirmed after a return rather than replayed. The parked card is
+forgotten once a turn actually runs on that conversation, whoever started it
+(this person, a routine, a teammate or another device), or the card is
+dismissed. A send the server refuses keeps it.
 
 ## v95 - 2026-09-23
 

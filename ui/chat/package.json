@@ -28,8 +28,12 @@
     "streamdown": "2.5.0",
     "use-stick-to-bottom": "1.1.6"
   },
+  "devDependencies": {
+    "jsdom": "29.1.1",
+    "tsx": "4.23.0"
+  },
   "scripts": {
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test": "node --import tsx --test tests/*.test.ts",
     "typecheck": "tsgo --noEmit"
   }
 }
