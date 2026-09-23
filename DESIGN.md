@@ -47,7 +47,8 @@ Section headers: sentence case, `text-sm font-medium`. Never uppercase / `tracki
 
 **Spacing** (`scale/spacing.json`, px): 2 · 4 · 6 · 8 · 10 · 12 · 16 · 20 · 24 · 32 · 40 · 48 · 64.
 
-**Radius** (`scale/radius.json`): `sm 4` (chips) · `md 6` (inputs) · `lg 8` (sidebar items, icon btns) · `xl 12` (cards) · `xxl 16` (large cards / dialogs) · `composer 28` · `full 9999` (pills, avatars).
+**Radius** (`scale/radius.json`): `sm 4` (chips) · `md 6` (inputs) · `lg 8` (sidebar items, icon btns) · `xl 12` (cards) · `xxl 16` (large cards, every dialog) · `composer 28` · `full 9999` (pills, avatars).
+Every dialog surface wears `xxl` (`rounded-2xl`): `Dialog` and `AlertDialog` share it through `DIALOG_CONTENT_CLASS` (`ui/core/src/components/dialog-frame.ts`, pinned by `ui/core/tests/dialog-frame.test.ts`), so a confirm, a form and a flow step have the same corner. A caller does not pass a `rounded-*` class to a dialog's content: the frame owns the radius.
 
 **Motion** (`scale/motion.json`): durations `fast 200ms` · `elegant 582ms` · `common 667ms` · `bounce 833ms` · `ambient 32000ms`. Easings `standard [0.25,0.1,0.25,1]` · `entrance [0.16,1,0.3,1]`.
 
@@ -129,5 +130,5 @@ Merge the tokenized scale (§4) with these craft rules:
 4. Scoped checks only (biome + your vitest); run **`pnpm check:parity`** whenever a shared/`ui/` component changed.
 
 ## Component inventory (`@houston-ai/core` — the primitive lock)
-accordion · agent-avatar · alert · alert-dialog · async-button · avatar · badge · button · button-group · card · carousel · catalog · catalog-add-button · catalog-detail-dialog · catalog-row · catalog-shell · collapsible · command · confirm-dialog · context-menu · dialog · dropdown-menu · empty · error-boundary · flow-choice-row · flow-sheet · form-dialog · highlighted-text · houston-avatar · hover-card · input · input-group · input-otp · kbd · model-picker · popover · progress · resizable · scroll-area · select · separator · sheet · sidebar · skeleton · sonner · spinner · status-badge · stepper · switch · tabs · textarea · toast-container · tooltip · verified-badge.
+accordion · agent-avatar · alert · alert-dialog · async-button · avatar · badge · button · button-group · card · carousel · catalog · catalog-add-button · catalog-detail-dialog · catalog-row · catalog-search-field · catalog-shell · collapsible · command · confirm-dialog · context-menu · dialog · dropdown-menu · empty · error-boundary · file-type-icons · floating-nav-bar · flow-choice-row · flow-sheet · form-dialog · highlighted-text · houston-avatar · hover-card · input · input-group · input-otp · kbd · model-picker · popover · progress · resizable · responsive-popover · scroll-area · search-clear-button · select · separator · sheet · sidebar · skeleton · sonner · spinner · status-badge · switch · tabs · textarea · toast-container · tooltip · verified-badge.
 Cross-surface product components (chat cards, board, files, etc.) live in `design/inventory/inventory.yaml` (the versioned contract) + `@houston-ai/{chat,board,agent,…}`.

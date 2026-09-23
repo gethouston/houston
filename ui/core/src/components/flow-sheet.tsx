@@ -31,7 +31,7 @@ export interface FlowSheetProps {
   showTitle?: boolean;
   /** The leading header control — one step back, never a second close. */
   back?: { label: string; onClick: () => void };
-  /** Where the flow stands: a Stepper, dots, or nothing. */
+  /** Where the flow stands: a progress bar, dots, or nothing. */
   progress?: ReactNode;
   /** The right header slot, ahead of the close X. A step counter, a skip. */
   headerAside?: ReactNode;

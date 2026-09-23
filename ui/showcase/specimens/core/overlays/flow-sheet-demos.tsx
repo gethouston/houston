@@ -5,7 +5,7 @@ import {
   FlowSheet,
   type FlowSheetSize,
   Input,
-  Stepper,
+  Progress,
 } from "@houston-ai/core";
 import { PenLine, Sparkles } from "lucide-react";
 import { useState } from "react";
@@ -71,10 +71,10 @@ export function CopyAgentFlow({ label }: { label: string }) {
             : undefined
         }
         progress={
-          <Stepper
-            steps={STEPS.map(({ id, label: name }) => ({ id, label: name }))}
-            activeStep={step.id}
-            completedSteps={STEPS.slice(0, index).map((one) => one.id)}
+          <Progress
+            className="w-32"
+            value={Math.round(((index + 1) / STEPS.length) * 100)}
+            aria-label={`Step ${index + 1} of ${STEPS.length}: ${step.label}`}
           />
         }
         footer={

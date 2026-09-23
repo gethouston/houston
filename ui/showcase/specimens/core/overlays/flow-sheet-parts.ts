@@ -38,7 +38,7 @@ export const flowSheetProps: SpecimenProp[] = [
   {
     name: "progress",
     type: "ReactNode",
-    note: "The centred slot: a Stepper, dots, or nothing.",
+    note: "The centred slot: a progress bar, dots, or nothing.",
   },
   {
     name: "headerAside",
