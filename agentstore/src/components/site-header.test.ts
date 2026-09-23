@@ -25,7 +25,13 @@ describe("site header", () => {
 
   it("pairs its ink with the tokens instead", () => {
     expect(source).toContain("text-ink");
-    expect(source).toContain("text-ink-muted");
     expect(source).toContain("border-line");
+  });
+
+  it("keeps the nav links readable on the light gutter", () => {
+    // `ink-muted` measures about 3:1 on the light gutter; the secondary links
+    // are ink at 70%, which clears 4.5:1 in both schemes.
+    expect(source).toContain("text-ink/70");
+    expect(source).not.toContain("text-ink-muted");
   });
 });

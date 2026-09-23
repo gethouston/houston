@@ -142,7 +142,7 @@ body::before {
    (tokens/semantic/elevation.dark.json), which leaves this rule for the
    unframed dialog surfaces. */
 [data-theme="dark"]
-  .bg-dialog:not(.ht-shadow-dialog):not(
+  .bg-dialog:not(:where(.ht-shadow-dialog)):not(
     :where([data-theme="light"], [data-theme="light"] *)
   ) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);

@@ -226,6 +226,16 @@ describe("the raw-palette rule", () => {
   it("catches a Tailwind palette scale on any colour utility", () => {
     ok(offends('<p className="text-red-400">'));
     ok(offends('<div className="bg-emerald-950 border-zinc-700">'));
+    ok(offends('<div className="border-t-red-500 ring-offset-red-500">'));
+    ok(offends('<p className="hover:text-red-400/50">'));
+  });
+
+  it("is not fooled by a keyword colour or a non-colour scale", () => {
+    ok(
+      !offends(
+        '<p className="text-white bg-black/50 ring-offset-2 border-b-2">',
+      ),
+    );
   });
 
   it("leaves Houston's semantic and identity tokens alone", () => {

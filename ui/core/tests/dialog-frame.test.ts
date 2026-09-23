@@ -230,7 +230,7 @@ describe("the dialog frame", () => {
     );
     assert.equal(sheen.length, 1, "one dark rule paints the dialog surface");
     assert.ok(
-      sheen[0].includes(".bg-dialog:not(.ht-shadow-dialog)"),
+      sheen[0].includes(".bg-dialog:not(:where(.ht-shadow-dialog))"),
       `${sheen[0]} still outranks .ht-shadow-dialog`,
     );
   });

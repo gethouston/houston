@@ -51,7 +51,7 @@ export function SiteHeader() {
           <span className="font-display text-[22px] font-medium tracking-tight text-ink">
             Houston
           </span>
-          <span className="hidden text-sm font-medium text-ink-muted sm:inline">
+          <span className="hidden text-sm font-medium text-ink/70 sm:inline">
             Agent Store
           </span>
         </Link>
@@ -65,7 +65,7 @@ export function SiteHeader() {
             <Link
               key={item.label}
               href={item.href}
-              className="hidden text-sm text-ink-muted transition-colors hover:text-ink sm:inline"
+              className="hidden text-sm text-ink/70 transition-colors hover:text-ink sm:inline"
             >
               {item.label}
             </Link>

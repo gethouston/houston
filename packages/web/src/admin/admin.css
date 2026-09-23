@@ -11,11 +11,28 @@
 @import "@houston/design-tokens/css";
 
 /*
- * No Tailwind preflight reaches this chunk, so the browser's default body
- * margin is reset here; the frame behind the page (the overscroll area) wears
- * the same base as the page itself, which the entry pins to the dark ladder.
+ * No Tailwind preflight reaches this chunk, so the three resets the inline
+ * styles were written against live here: border-box sizing (the page's
+ * min-height and the sign-in card's width include their padding), the
+ * browser's default body margin, and form controls inheriting the page font.
+ * The frame behind the page (the overscroll area) wears the same base as the
+ * page itself, which the entry pins to the dark ladder.
  */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   background: var(--ht-base);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
 }
