@@ -179,9 +179,13 @@ jobs:
       # micro-VM inside the worker (packages/runtime/src/code-vm). Built for
       # main only: staging is where the trial runs, and cloud's
       # roll-engine-staging.yml moves the pool to it from the dispatch below.
+      # Never on a tag (prod) and never blocking: if this fails, engine-pod
+      # still publishes and rolls, the dispatch carries no pool_image, and
+      # cloud leaves the staging vm pool on its last good image.
       - name: Build & push engine-pool-vm
         id: pool_vm
         if: steps.gate.outputs.build == 'true' && github.ref_type != 'tag'
+        continue-on-error: true
         run: |
           POOL_TAG="${{ env.REGISTRY }}/engine-pool-vm:${{ github.sha }}"
           docker build \
