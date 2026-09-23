@@ -20,16 +20,24 @@ The standard two-layer structure:
 1. **Primitives** (`tokens/primitive/*.json`) — the raw palette: `color.neutral.950`
    (`#0d0d0d`), `color.glass.white-68`, `color.status.danger`. Value-named, never
    referenced by UI directly. This is the only place a literal hex/rgba lives.
-2. **Semantic** (`tokens/semantic/color.{light,dark}.json`) — role-named aliases
+2. **Semantic** (`tokens/semantic/color.{light,dark}.json`,
+   `tokens/semantic/elevation.{light,dark}.json`) — role-named aliases
    that **reference** primitives: `ht.input -> {color.base.white}`,
-   `ht.line -> {color.brand.border-wash}`. This is what the UI consumes. Light
-   and dark are two files with the same token names and different references —
-   mirroring how the app themes: an attribute swap (`[data-theme="dark"]`), set
-   by `app/src/lib/theme.ts`.
+   `ht.line -> {color.brand.border-wash}`, and each elevation tier's layer
+   colours (`shadow.card -> {color.alpha.black-a06}`). This is what the UI
+   consumes. Light and dark are two files with the same token names and
+   different references — mirroring how the app themes: an attribute swap
+   (`[data-theme="dark"]`), set by `app/src/lib/theme.ts`.
 
 Theme-independent **scales** (`tokens/scale/*.json`) — spacing, radius,
-typography, motion, elevation — sit alongside and flow to the TypeScript output
-(`buildCss` emits only the semantic colours).
+typography, motion, breakpoint — sit alongside and flow to the TypeScript
+output.
+
+**Elevation** compiles to `--ht-shadow-<tier>` (`edge` · `field` ·
+`field-focus` · `card` · `raised` · `drag` · `dialog`) in all three CSS blocks,
+bridged in `ui/core/src/globals.css` to Tailwind v4's `--shadow-*` namespace so
+`shadow-card` is the utility and the token, not a `dark:` fork, carries the dark
+value.
 
 ## Outputs (`dist/`, a build artifact)
 
@@ -40,8 +48,8 @@ before anything imports it:
 
 | File | Surface | Shape |
 | --- | --- | --- |
-| `dist/css/tokens.css` | web / desktop | `--ht-*` custom properties: light on `:root`, dark on `[data-theme="dark"]`. **The same variable names the app + `@houston-ai/*` already consume.** |
-| `dist/ts/tokens.ts` | SDK / web JS | Typed `as const` objects: `color.{light,dark}`, `space`, `radius`, `fontSize`, `fontWeight`, `duration`, `durationMs`, `easing`, `shadow`. |
+| `dist/css/tokens.css` | web / desktop | `--ht-*` custom properties (colour + elevation): light on `:root`, dark on `[data-theme="dark"]`. **The same variable names the app + `@houston-ai/*` already consume.** |
+| `dist/ts/tokens.ts` | SDK / web JS | Typed `as const` objects: `color.{light,dark}`, `shadow.{light,dark}` (box-shadow strings per tier), `space`, `radius`, `fontSize`, `fontWeight`, `duration`, `durationMs`, `easing`. |
 
 ## The zero-diff story (web/desktop adoption)
 
@@ -77,8 +85,10 @@ NEW names while pinning the SAME resolved colours, so the same `zero-diff.test.t
 that proved CSS adoption moved zero pixels now also proves the rename moved zero
 pixels.
 
-`test/legacy-resolved.json` pins the resolved value of every `--ht-*` variable as
-it shipped pre-adoption (extracted from the old CSS, not hand-typed).
+`test/legacy-resolved.json` pins the resolved value of every `--ht-*` COLOUR
+variable as it shipped pre-adoption (extracted from the old CSS, not
+hand-typed); elevation is not a colour and has no such baseline, so
+`--ht-shadow-*` is skipped.
 `test/zero-diff.test.ts` parses the generated CSS and asserts every token matches
 that baseline **by parsed colour** (r,g,b,a), so a same-pixels reformat passes and
 a real colour change fails.

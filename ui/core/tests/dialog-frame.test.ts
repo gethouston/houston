@@ -131,11 +131,13 @@ describe("the dialog frame", () => {
     ]);
   });
 
-  it("takes its depth from the effects layer, split light from dark", () => {
+  it("takes its depth from the `dialog` elevation tier, themed by the token", () => {
     // DESIGN.md §6 bans a dark-mode drop shadow laid over the aurora, so the
     // frame cannot wear one shadow tinted twice. `shadow-lg` (shadcn's) has no
     // dark rule at all, and an arbitrary `shadow-[…rgba…]` would be a raw
-    // colour literal inside `ui/` (§3.1) — both are how the frame drifted.
+    // colour literal inside `ui/` (§3.1) — both are how the frame drifted. The
+    // token carries a light AND a dark value and re-resolves inside a pinned
+    // subtree, so the class is ONE rule reading it.
     const css = readFileSync(
       join(import.meta.dirname, "../src/canvas.css"),
       "utf8",
@@ -146,11 +148,15 @@ describe("the dialog frame", () => {
       assert.doesNotMatch(classes, /\bshadow-lg\b/);
       assert.doesNotMatch(classes, /shadow-\[/, "no raw shadow literal in ui/");
     }
-    assert.match(css, /^\.ht-shadow-dialog \{/m, "the light rule");
     assert.match(
       css,
-      /\[data-theme="dark"\]\s*\n\s*\.ht-shadow-dialog:not\(/,
-      "dark needs its own rule, guarded against a pinned-light subtree",
+      /^\.ht-shadow-dialog \{\n\s*box-shadow: var\(--ht-shadow-dialog\);\n\}/m,
+      "one rule, reading the themed token",
+    );
+    assert.doesNotMatch(
+      css,
+      /\.ht-shadow-dialog:not\(/,
+      "a dark fork means the token stopped carrying the dark value",
     );
   });
 

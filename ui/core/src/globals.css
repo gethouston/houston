@@ -190,6 +190,15 @@
   --color-person-initials: var(--ht-person-initials);
   --color-person-overflow: var(--ht-person-overflow);
   --color-person-overflow-text: var(--ht-person-overflow-text);
+  /* --shadow-* is Tailwind v4's box-shadow namespace: each tier IS the
+     `shadow-<tier>` utility, themed by its token, so no `dark:` fork exists. */
+  --shadow-edge: var(--ht-shadow-edge);
+  --shadow-field: var(--ht-shadow-field);
+  --shadow-field-focus: var(--ht-shadow-field-focus);
+  --shadow-card: var(--ht-shadow-card);
+  --shadow-raised: var(--ht-shadow-raised);
+  --shadow-drag: var(--ht-shadow-drag);
+  --shadow-dialog: var(--ht-shadow-dialog);
   --animate-caret-blink: caret-blink 1.2s ease-out infinite;
 }
 
@@ -356,7 +365,6 @@ body {
   pointer-events: none;
 }
 
-
 /* Indeterminate progress line — the same comet palette as
  * .card-running-glow, flattened into a thin bar for sections that wait on
  * one finite operation (e.g. the export wizard's anonymize pass). Give the
@@ -412,7 +420,6 @@ body {
 .typing-dot:nth-child(1) { animation-delay: 0s; }
 .typing-dot:nth-child(2) { animation-delay: 0.15s; }
 .typing-dot:nth-child(3) { animation-delay: 0.3s; }
-
 
 /* Pulsing dot for active tool */
 @keyframes tool-pulse {

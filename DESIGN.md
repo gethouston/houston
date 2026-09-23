@@ -52,7 +52,7 @@ Every dialog surface wears `xxl` (`rounded-2xl`): `Dialog` and `AlertDialog` sha
 
 **Motion** (`scale/motion.json`): durations `fast 200ms` · `elegant 582ms` · `common 667ms` · `bounce 833ms` · `ambient 32000ms`. Easings `standard [0.25,0.1,0.25,1]` · `entrance [0.16,1,0.3,1]`.
 
-**Elevation** (`scale/elevation.json`): `edge` = `0 1px 0 rgba(0,0,0,0.05)` (default flat depth) · `composer` = the signature multi-shadow. In **dark mode use NO drop shadows** — depth comes from the surface ladder + `.ht-hairline` inset ring + glass sheen.
+**Elevation** (`semantic/elevation.{light,dark}.json` → `--ht-shadow-*`, one themed value per tier, so a utility needs no `dark:` fork): `shadow-edge` (default flat depth) · `shadow-field` / `focus-within:shadow-field-focus` (composer, inputs) · `shadow-card` (floating card) · `shadow-raised` (sign-in card) · `shadow-drag` (the board's drag ghost, read as `var(--ht-shadow-drag)`) · `shadow-dialog`, worn by the ONE modal frame as `.ht-shadow-dialog` (`canvas.css`). Dark mode adds **no NEW drop shadows** — its depth comes from the surface ladder + `.ht-hairline` inset ring + glass sheen, and the tiers that do carry a dark value only re-tint the light one.
 
 **Semantic colour roles** (token | use for). Live values: `packages/design-tokens/tokens/*.json`, or component showcase → Colors (`pnpm --filter @houston-ai/showcase dev`).
 

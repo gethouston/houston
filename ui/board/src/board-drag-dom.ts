@@ -104,7 +104,7 @@ export function createDragGhost(
     pointerEvents: "none",
     zIndex: "9999",
     opacity: "0.9",
-    boxShadow: "0 12px 32px rgba(0, 0, 0, 0.22)",
+    boxShadow: "var(--ht-shadow-drag)",
     transition: "none",
   });
   positionGhost(pointerX, pointerY);

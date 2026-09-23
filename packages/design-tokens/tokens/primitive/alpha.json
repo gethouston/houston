@@ -2,7 +2,16 @@
   "color": {
     "alpha": {
       "$type": "color",
+      "black-a02": { "$value": "rgba(0, 0, 0, 0.02)" },
+      "black-a03": { "$value": "rgba(0, 0, 0, 0.03)" },
+      "black-a04": { "$value": "rgba(0, 0, 0, 0.04)" },
+      "black-a05": { "$value": "rgba(0, 0, 0, 0.05)" },
+      "black-a06": { "$value": "rgba(0, 0, 0, 0.06)" },
       "black-a10": { "$value": "rgba(0, 0, 0, 0.1)" },
+      "black-a20": { "$value": "rgba(0, 0, 0, 0.2)" },
+      "black-a22": { "$value": "rgba(0, 0, 0, 0.22)" },
+      "black-a25": { "$value": "rgba(0, 0, 0, 0.25)" },
+      "black-a62": { "$value": "rgba(0, 0, 0, 0.62)" },
       "ink-a035": { "$value": "rgba(13, 13, 13, 0.035)" },
       "ink-a06": { "$value": "rgba(13, 13, 13, 0.06)" },
       "white-a045": { "$value": "rgba(255, 255, 255, 0.045)" },

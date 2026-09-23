@@ -319,26 +319,12 @@ body {
     0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
-/* The dialog's depth: the ONE modal frame (`dialog-frame.ts`).
-   Light carries the ambient pair plus a near-ink 1px seat, so a white
-   surface still reads as lifted off a white screen. Dark drops the seat to
-   a 10% white ring and darkens the ambient instead — the same posture as
-   `.ht-shadow-modal`, and the reason the two themes need separate rules
-   rather than one shadow tinted twice.
-   These rgba are effect values (the sanctioned effects layer, like the glass
-   sheen and the modal depth above); every colour a dialog CAN tokenize —
-   surface, border, text — is a --ht-* token in `dialog-frame.ts`. */
+/* The dialog's depth: the ONE modal frame (`dialog-frame.ts`), carried by the
+   `dialog` elevation tier. Light is the ambient pair plus a near-ink 1px seat,
+   so a white surface reads as lifted off a white screen; dark trades that seat
+   for a 10% white ring over a darker ambient. Both live in the token
+   (`tokens/semantic/elevation.{light,dark}.json`), which re-resolves inside a
+   [data-theme]-pinned subtree — one rule covers every theme. */
 .ht-shadow-dialog {
-  box-shadow:
-    0 4px 4px rgba(0, 0, 0, 0.04),
-    0 4px 80px 8px rgba(0, 0, 0, 0.04),
-    0 0 1px rgba(0, 0, 0, 0.62);
-}
-
-[data-theme="dark"]
-  .ht-shadow-dialog:not(:where([data-theme="light"], [data-theme="light"] *)) {
-  box-shadow:
-    0 4px 4px rgba(0, 0, 0, 0.1),
-    0 4px 80px 8px rgba(0, 0, 0, 0.2),
-    0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--ht-shadow-dialog);
 }

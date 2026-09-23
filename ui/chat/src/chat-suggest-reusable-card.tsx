@@ -62,7 +62,7 @@ export function ChatSuggestReusableCard({
       aria-disabled={disabled || undefined}
       className={cn(
         "overflow-clip rounded-[28px] border border-line/50 bg-chip p-2.5",
-        "shadow-[0_1px_6px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_6px_rgba(0,0,0,0.2)]",
+        "shadow-card",
         disabled && "opacity-50",
       )}
     >
