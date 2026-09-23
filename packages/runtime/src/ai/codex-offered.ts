@@ -21,10 +21,8 @@
  *   refused (400 "… not supported when using Codex with a ChatGPT account")
  *           — gpt-5.3-codex-spark, gpt-5.4, gpt-5.4-mini
  *
- * Only gpt-5.3-codex-spark reaches the set below: pi 0.87.1 dropped gpt-5.4 and
- * gpt-5.4-mini from the catalog, so those two refusals have nothing left to
- * filter. gpt-5.5 travels the other way — the 2026-09-07 probe read it as `404
- * model_not_found` and this set held it out; OpenAI serves it again.
+ * Only gpt-5.3-codex-spark reaches the set below: pi 0.87.1 does not ship
+ * gpt-5.4 or gpt-5.4-mini, so those two refusals have nothing to filter.
  *
  * A LIVE listing exists and Houston's credential is accepted by it — `GET
  * https://chatgpt.com/backend-api/codex/models?client_version=<codex-cli

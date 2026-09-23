@@ -35,3 +35,21 @@ test("a Codex id the subscription serves has NO alias row (never an upgrade)", (
   // the one the user chose.
   expect(MODEL_ALIASES["openai-codex"]?.["gpt-5.5"]).toBeUndefined();
 });
+
+test("a renamed deepseek row maps to the id that replaced it", () => {
+  const deepseek = MODEL_ALIASES.deepseek ?? {};
+  expect(deepseek["deepseek-v4-flash"]).toBe("deepseek-flash");
+  // The vision variant folded into the same row: `deepseek-flash` takes
+  // text+image, so the capability the id was chosen for survives the map.
+  expect(deepseek["deepseek-v4-flash-vision-exp"]).toBe("deepseek-flash");
+  // The Pro tier is untouched — it is still its own row.
+  expect(deepseek["deepseek-v4-pro"]).toBeUndefined();
+});
+
+test("an open-catalog gateway carries only its renames", () => {
+  const opencode = MODEL_ALIASES.opencode ?? {};
+  expect(opencode["mimo-v2.5-free"]).toBe("mimo-v2.6-flash-free");
+  // Nothing else: a gateway id with no successor must keep passing through, so
+  // the picker's live list — not this table — decides what it can move to.
+  expect(Object.keys(opencode)).toEqual(["mimo-v2.5-free"]);
+});

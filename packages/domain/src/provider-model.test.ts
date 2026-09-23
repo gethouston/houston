@@ -201,6 +201,38 @@ test("api-key gateway models pass through (open catalog, no throw on getModel)",
   expect(r.diagnostics).toEqual([]);
 });
 
+test("an open-catalog gateway's curated rename is applied, with no diagnostic", () => {
+  // A gateway has no VALID_MODELS set, so every stored id passes through — but
+  // a row pi RENAMED has no model object left to build a turn on, and the only
+  // thing standing between the stored id and a dead pin is this table. opencode
+  // 0.85.1's `mimo-v2.5-free` is 0.87.1's `mimo-v2.6-flash-free`: same free
+  // tier (zero cost, text+image, 200k window), so the swap is not an upgrade.
+  const r = migrateProviderModel("opencode", "mimo-v2.5-free");
+  expect(r).toMatchObject({
+    provider: "opencode",
+    model: "mimo-v2.6-flash-free",
+  });
+  expect(r.diagnostics).toEqual([]);
+});
+
+test("a deepseek id the catalog renamed maps at the same tier", () => {
+  // pi 0.87.1 renamed `deepseek-v4-flash` to `deepseek-flash` (DeepSeek V4.1
+  // Flash) and folded the separate vision row into it. Without a row here the
+  // stored ids read as unknown: the migration rewrites them to the provider
+  // default and a routine pin on one is dropped entirely.
+  for (const stale of ["deepseek-v4-flash", "deepseek-v4-flash-vision-exp"]) {
+    const r = migrateProviderModel("deepseek", stale);
+    expect(r.provider, stale).toBe("deepseek");
+    expect(r.model, stale).toBe("deepseek-flash");
+    expect(r.diagnostics, stale).toEqual([]);
+    assertValid(r, `deepseek/${stale}`);
+  }
+  // The Pro tier stays Pro — a rename never moves a pin across tiers.
+  expect(migrateProviderModel("deepseek", "deepseek-v4-pro").model).toBe(
+    "deepseek-v4-pro",
+  );
+});
+
 test("MiniMax global provider uses the pi-ai catalog, not minimax-cn", () => {
   const r = migrateProviderModel("minimax", "MiniMax-M2.7");
   expect(r).toMatchObject({ provider: "minimax", model: "MiniMax-M2.7" });
