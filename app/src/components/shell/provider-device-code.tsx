@@ -109,7 +109,7 @@ export function ProviderDeviceCode({
           aria-live="polite"
           className={`block rounded-md border bg-input px-3 py-2 text-center font-mono ${
             copied
-              ? "text-[14px] font-medium text-success"
+              ? "text-[14px] font-medium text-success-ink"
               : "text-[20px] tracking-[0.3em]"
           }`}
         >

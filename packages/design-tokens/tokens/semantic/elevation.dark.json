@@ -24,13 +24,21 @@
       ]
     },
     "field-focus": {
+      "$description": "What a focused field HAS worn in dark: the composer spelled its focus depth as an unprefixed arbitrary shadow, which outranked the `dark:` variant beside it, so both themes resolved to these two layers.",
       "$value": [
         {
           "offsetX": "0",
           "offsetY": "1px",
           "blur": "2px",
           "spread": "0",
-          "color": "{color.alpha.black-a25}"
+          "color": "{color.alpha.black-a03}"
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "2px",
+          "blur": "6px",
+          "spread": "0",
+          "color": "{color.alpha.black-a04}"
         }
       ]
     },
@@ -68,7 +76,16 @@
       ]
     },
     "dialog": {
+      "$description": "The modal frame's depth. The glass sheen is the tier's FIRST layer, not a `.bg-dialog` rule: a descendant rule replaces the whole box-shadow, which left a framed dark dialog wearing the sheen alone.",
       "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "0",
+          "spread": "0",
+          "color": "{color.alpha.white-a06}",
+          "inset": true
+        },
         {
           "offsetX": "0",
           "offsetY": "4px",

@@ -5,10 +5,10 @@ import { describe, expect, it } from "vitest";
 import { parseColor } from "../build/color.mjs";
 
 /**
- * WCAG guard for every colour family Houston paints as IDENTITY, where a
- * washed-out hue is not a style slip but unreadable information: the two
- * families that carry a sender's NAME in chat, and the file-type tints the
- * Files list paints its icon glyphs with.
+ * WCAG guard for every colour Houston paints as INFORMATION, where a
+ * washed-out hue is not a style slip but something the user cannot read: the
+ * two families that carry a sender's NAME in chat, the file-type tints the
+ * Files list paints its icon glyphs with, and the status hues set as text.
  *
  * Chat attributes every message to its sender WhatsApp-group style: the name
  * renders inside the bubble in that sender's stable tone. Text has to clear
@@ -25,7 +25,8 @@ import { parseColor } from "../build/color.mjs";
  *   bubble surface (person)     light: chip over background
  *                               dark:  chip over background over base
  *
- *   file-type glyph surfaces    both:  input, page, checked-row fill
+ *   content surfaces            both:  input, page, recessed-row fill
+ *   (file-type glyphs, status inks)
  *
  * Values are read from the generated CSS (the same artifact the app ships), so
  * a token edit that regresses contrast fails here rather than in someone's eyes.
@@ -104,7 +105,7 @@ function bubbleSurface(theme: Theme): Rgba {
   return over(token(theme, "ht-chip"), nameSurface(theme));
 }
 
-function fileTypeSurface(theme: Theme, name: string): Rgba {
+function contentSurface(theme: Theme, name: string): Rgba {
   return name === "ht-background"
     ? nameSurface(theme)
     : over(token(theme, name), nameSurface(theme));
@@ -123,6 +124,15 @@ const FILETYPE_FAMILIES = [
   "code",
   "generic",
 ] as const;
+
+/**
+ * The status hues worn AS TEXT. `-text` is the label printed ON a status fill;
+ * these are the hue itself set on a normal surface (a "2 failed" count, a
+ * warning line under a field), which is body text and owes 4.5:1. The fills
+ * (`success` / `warning` / `danger`) do not clear it in light: amber on white
+ * measures ~2:1, which is exactly why the ink variants exist.
+ */
+const STATUS_INKS = ["success", "warning", "danger"] as const;
 
 const AGENT_TONES = [
   "charcoal",
@@ -167,7 +177,7 @@ describe.each([
       // The Files icon tile is filled with --ht-input in both themes, and the
       // glyph is the only thing inside it: a tint that fails here is a file
       // type the user cannot read at a glance.
-      const surface = fileTypeSurface(theme, "ht-input");
+      const surface = contentSurface(theme, "ht-input");
       const ratio = contrastRatio(
         over(token(theme, `ht-filetype-${family}`), surface),
         surface,
@@ -183,7 +193,7 @@ describe.each([
       ["checked row", "ht-chip-subtle"],
     ] as const) {
       it(`file-type tint "${family}" clears ${NON_TEXT_CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
-        const surface = fileTypeSurface(theme, tokenName);
+        const surface = contentSurface(theme, tokenName);
         const ratio = contrastRatio(
           over(token(theme, `ht-filetype-${family}`), surface),
           surface,
@@ -192,6 +202,26 @@ describe.each([
           ratio,
           `--ht-filetype-${family} (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${NON_TEXT_CONTRAST_FLOOR}:1 non-text floor`,
         ).toBeGreaterThanOrEqual(NON_TEXT_CONTRAST_FLOOR);
+      });
+    }
+  }
+
+  for (const status of STATUS_INKS) {
+    for (const [surfaceName, tokenName] of [
+      ["field", "ht-input"],
+      ["page", "ht-background"],
+      ["recessed row", "ht-chip-subtle"],
+    ] as const) {
+      it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
+        const surface = contentSurface(theme, tokenName);
+        const ratio = contrastRatio(
+          over(token(theme, `ht-${status}-ink`), surface),
+          surface,
+        );
+        expect(
+          ratio,
+          `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+        ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
       });
     }
   }

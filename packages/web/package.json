@@ -31,6 +31,7 @@
     "@houston-ai/review": "workspace:*",
     "@houston-ai/routines": "workspace:*",
     "@houston-ai/skills": "workspace:*",
+    "@houston/design-tokens": "workspace:*",
     "@houston/domain": "workspace:*",
     "@houston/engine-adapter": "workspace:*",
     "@houston/protocol": "workspace:*",

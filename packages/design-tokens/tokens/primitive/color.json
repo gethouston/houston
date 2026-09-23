@@ -74,11 +74,15 @@
     },
     "status": {
       "$type": "color",
+      "$description": "The status hues. The plain and `-bright` values are FILLS (a dot, a badge, a destructive button) and carry a white or black label; the `-ink` values are the same hues retuned to be legible AS TEXT on a light surface, where amber-on-white measures ~2:1.",
       "success": {
         "$value": "#00a240"
       },
       "success-bright": {
         "$value": "#22c55e"
+      },
+      "success-ink": {
+        "$value": "#007a30"
       },
       "warning": {
         "$value": "#e0ac00"
@@ -86,11 +90,20 @@
       "warning-bright": {
         "$value": "#eab308"
       },
+      "warning-ink": {
+        "$value": "#856500"
+      },
       "danger": {
         "$value": "#e02e2a"
       },
       "danger-bright": {
         "$value": "#ef4444"
+      },
+      "danger-ink": {
+        "$value": "#ca2926"
+      },
+      "danger-ink-bright": {
+        "$value": "#f87171"
       },
       "link": {
         "$value": "#1264a3"

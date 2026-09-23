@@ -63,6 +63,21 @@ describe("generated CSS elevation", () => {
     "utf8",
   );
 
+  const block = (selector: string): string => {
+    const escaped = selector.replace(/[[\]"]/g, "\\$&");
+    const found = new RegExp(`${escaped}\\s*\\{([^}]*)\\}`).exec(css);
+    expect(found, `no ${selector} block`).not.toBeNull();
+    return found?.[1] ?? "";
+  };
+
+  const tier = (selector: string, name: string): string => {
+    const value = new RegExp(`--ht-shadow-${name}\\s*:\\s*([^;]+);`).exec(
+      block(selector),
+    );
+    expect(value, `no --ht-shadow-${name} in ${selector}`).not.toBeNull();
+    return (value?.[1] ?? "").trim();
+  };
+
   // A tier missing from one block is a component with no depth under that
   // theme, which is exactly what the Tailwind bridge cannot fall back from.
   it.each([
@@ -70,12 +85,39 @@ describe("generated CSS elevation", () => {
     '[data-theme="light"]',
     '[data-theme="dark"]',
   ])("defines every tier in %s", (selector) => {
-    const escaped = selector.replace(/[[\]"]/g, "\\$&");
-    const block = new RegExp(`${escaped}\\s*\\{([^}]*)\\}`).exec(css);
-    expect(block, `no ${selector} block`).not.toBeNull();
     const defined = [
-      ...(block?.[1] ?? "").matchAll(/--ht-shadow-([a-z-]+)\s*:\s*[^;]+;/g),
+      ...block(selector).matchAll(/--ht-shadow-([a-z-]+)\s*:\s*[^;]+;/g),
     ].map((m) => m[1]);
     expect(defined).toEqual(TIERS);
+  });
+
+  it("keeps the dark focused field wearing the two layers focus already wore", () => {
+    // The composer spelled its focus depth as
+    // `focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.04)]`,
+    // an unprefixed arbitrary value that outranked the zero-specificity `dark:`
+    // variant beside it, so a focused field in DARK wore exactly these two
+    // layers too. The tier inherits that resolved value rather than inventing a
+    // dark focus depth the product never shipped.
+    expect(tier('[data-theme="dark"]', "field-focus")).toBe(
+      "0 1px 2px 0 rgba(0, 0, 0, 0.03), 0 2px 6px 0 rgba(0, 0, 0, 0.04)",
+    );
+    expect(tier('[data-theme="dark"]', "field-focus")).toBe(
+      tier(":root", "field-focus"),
+    );
+  });
+
+  it("opens the dark dialog tier with the glass sheen", () => {
+    // The sheen is the FIRST layer of the tier, not a separate `.bg-dialog`
+    // rule: a descendant rule at (0,2,0) outranks `.ht-shadow-dialog` (0,1,0)
+    // and replaces the whole box-shadow, so a framed dark dialog kept the sheen
+    // and lost every ambient layer under it.
+    expect(tier('[data-theme="dark"]', "dialog")).toBe(
+      [
+        "inset 0 1px 0 0 rgba(255, 255, 255, 0.06)",
+        "0 4px 4px 0 rgba(0, 0, 0, 0.1)",
+        "0 4px 80px 8px rgba(0, 0, 0, 0.2)",
+        "0 0 1px 0 rgba(255, 255, 255, 0.1)",
+      ].join(", "),
+    );
   });
 });

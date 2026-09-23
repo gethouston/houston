@@ -211,6 +211,30 @@ describe("the dialog-width rule", () => {
   });
 });
 
+/**
+ * Tailwind's palette scales are as hardcoded as a hex: `text-red-400` names a
+ * frozen hue no `[data-theme]` can move. The rule has to tell them apart from
+ * Houston's own numbered-looking families, which are token-backed identities.
+ */
+describe("the raw-palette rule", () => {
+  const rule = RULES.find((r) => r.name === "raw Tailwind palette colour");
+  const offends = (text: string) => {
+    ok(rule, "the rule is still registered");
+    return rule.pattern.test(text);
+  };
+
+  it("catches a Tailwind palette scale on any colour utility", () => {
+    ok(offends('<p className="text-red-400">'));
+    ok(offends('<div className="bg-emerald-950 border-zinc-700">'));
+  });
+
+  it("leaves Houston's semantic and identity tokens alone", () => {
+    ok(!offends('<p className="text-danger">'));
+    ok(!offends('<p className="text-filetype-pdf">'));
+    ok(!offends('<p className="text-success-ink bg-warning/10 border-line">'));
+  });
+});
+
 describe("the walker", () => {
   it("reads TS, TSX and CSS, and nothing else", () => {
     const files = walk(join(REPO, "ui", "core", "src"));

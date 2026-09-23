@@ -122,7 +122,7 @@ export const KanbanDetailPanel = forwardRef<
                       {(agentName ? missionLabel : subtitle) && (
                         <span className="mx-1">&middot;</span>
                       )}
-                      <span className={cn(isRunning && "text-blue-500")}>
+                      <span className={cn(isRunning && "text-link")}>
                         {labels[status] ?? status}
                       </span>
                     </>
@@ -149,7 +149,7 @@ export const KanbanDetailPanel = forwardRef<
             )}
             <div className="min-w-0 flex-1" />
             {isRunning && (
-              <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
+              <Loader2 className="size-4 animate-spin text-link shrink-0" />
             )}
             {actions}
             {onClose && (

@@ -52,14 +52,14 @@ function BashContent({
   const output = result?.content ? result : undefined;
   if (!command && !output) return null;
   return (
-    <div className="rounded-lg bg-zinc-900 text-zinc-100 overflow-hidden">
+    <div className="rounded-lg border border-line/50 overflow-hidden">
       {command && (
-        <div className="flex items-center gap-3 border-b border-zinc-800 px-3 py-1.5 text-xs font-mono">
+        <div className="flex items-center gap-3 border-b border-line/30 bg-chip-subtle/50 px-3 py-1.5 text-xs font-mono text-ink">
           <div className="min-w-0 flex-1 truncate">
-            <span className="text-zinc-500">$ </span>
+            <span className="text-ink-muted">$ </span>
             {command}
           </div>
-          {output && <CodeBlockActions code={output.content} dark />}
+          {output && <CodeBlockActions code={output.content} />}
         </div>
       )}
       {output && (
@@ -67,7 +67,6 @@ function BashContent({
           content={output.content}
           maxLines={15}
           isError={output.is_error}
-          dark
           showActions={!command}
         />
       )}
@@ -102,7 +101,7 @@ function EditContent({
 }) {
   if (result?.is_error) {
     return (
-      <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+      <div className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger-ink">
         {result.content}
       </div>
     );
@@ -144,18 +143,15 @@ function DiffLine({
   text: string;
   tone: "red" | "green";
 }) {
+  // Sign and text wear the SAME ink: the sign is the line's first character,
+  // and the `-ink` pair is the tone that stays legible on its own /10 wash.
+  const ink = tone === "red" ? "text-danger-ink" : "text-success-ink";
   return (
     <div
-      className={`${tone === "red" ? "bg-danger/10 border-b" : "bg-success/10"} px-3 py-1.5 border-line/30`}
+      className={`${tone === "red" ? "bg-danger/10 border-b" : "bg-success/10"} px-3 py-1.5 border-line/30 ${ink}`}
     >
-      <span
-        className={`${tone === "red" ? "text-red-400" : "text-green-400"} select-none`}
-      >
-        {sign}{" "}
-      </span>
-      <span className={tone === "red" ? "text-danger" : "text-success"}>
-        {truncateStr(text, 200)}
-      </span>
+      <span className="select-none">{sign} </span>
+      {truncateStr(text, 200)}
     </div>
   );
 }

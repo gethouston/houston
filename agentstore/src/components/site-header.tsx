@@ -12,7 +12,7 @@ import { UserMenu } from "./user-menu";
  * persistent catalog search in the middle, store actions + the Download
  * funnel on the right. gethouston.ai remains one hop away via the Download
  * pill and the footer. Same space chrome as the landing nav: transparent
- * over the top of the page, near-opaque dark once scrolled, never blurred.
+ * over the top of the page, near-opaque once scrolled, never blurred.
  */
 
 const STORE_LINKS = [
@@ -48,10 +48,10 @@ export function SiteHeader() {
         }`}
       >
         <Link href="/" className="flex shrink-0 items-baseline gap-2">
-          <span className="font-display text-[22px] font-medium tracking-tight text-white">
+          <span className="font-display text-[22px] font-medium tracking-tight text-ink">
             Houston
           </span>
-          <span className="hidden text-sm font-medium text-white/60 sm:inline">
+          <span className="hidden text-sm font-medium text-ink-muted sm:inline">
             Agent Store
           </span>
         </Link>
@@ -65,7 +65,7 @@ export function SiteHeader() {
             <Link
               key={item.label}
               href={item.href}
-              className="hidden text-sm text-white/70 transition-colors hover:text-white sm:inline"
+              className="hidden text-sm text-ink-muted transition-colors hover:text-ink sm:inline"
             >
               {item.label}
             </Link>
@@ -83,7 +83,7 @@ export function SiteHeader() {
             aria-expanded={open}
             aria-controls="site-nav-dropdown"
             onClick={() => setOpen((v) => !v)}
-            className="flex size-9 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 md:hidden"
+            className="flex size-9 items-center justify-center rounded-lg text-ink transition-colors hover:bg-hover md:hidden"
           >
             <svg
               viewBox="0 0 24 24"
@@ -115,7 +115,7 @@ export function SiteHeader() {
               key={item.label}
               href={item.href}
               onClick={() => setOpen(false)}
-              className="border-b border-white/10 px-1 py-2.5 text-[15px] text-white/80"
+              className="border-b border-line px-1 py-2.5 text-[15px] text-ink"
             >
               {item.label}
             </Link>
@@ -124,13 +124,13 @@ export function SiteHeader() {
               the document (and Biome's useValidAnchor flags onClick on <a>). */}
           <a
             href="https://gethouston.ai/#download"
-            className="border-b border-white/10 px-1 py-2.5 text-[15px] font-medium text-white"
+            className="border-b border-line px-1 py-2.5 text-[15px] font-medium text-ink"
           >
             Download Houston
           </a>
           <a
             href="https://gethouston.ai"
-            className="px-1 py-2.5 text-[15px] text-white/80"
+            className="px-1 py-2.5 text-[15px] text-ink"
           >
             gethouston.ai
           </a>

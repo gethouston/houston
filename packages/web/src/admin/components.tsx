@@ -35,7 +35,7 @@ export function StatCards({ overview }: { overview: Overview }) {
               fontSize: 11,
               textTransform: "uppercase",
               letterSpacing: 0.4,
-              color: C.faint,
+              color: C.muted,
             }}
           >
             {it.label}
@@ -44,7 +44,7 @@ export function StatCards({ overview }: { overview: Overview }) {
             {it.value}
           </div>
           {it.hint && (
-            <div style={{ fontSize: 12, color: C.dim, marginTop: 2 }}>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
               {it.hint}
             </div>
           )}
@@ -84,7 +84,7 @@ export function SpendPanel({
               type="button"
               onClick={() => onDays(d)}
               style={{
-                ...pill(d === days ? C.accent : C.faint),
+                ...pill(d === days ? C.accent : C.muted),
                 cursor: "pointer",
                 background: d === days ? tint(C.accent, 16) : "transparent",
               }}
@@ -125,13 +125,13 @@ export function SpendPanel({
             label={`Actual billed (last ${days}d)`}
             value="—"
             sub={actualsHint(billing)}
-            accent={billing.actualsStatus === "error" ? C.red : C.faint}
+            accent={billing.actualsStatus === "error" ? C.red : C.muted}
           />
         )}
       </div>
 
       <div
-        style={{ fontSize: 12, color: C.dim, marginTop: 12, lineHeight: 1.5 }}
+        style={{ fontSize: 12, color: C.muted, marginTop: 12, lineHeight: 1.5 }}
       >
         {billing.note}
       </div>
@@ -175,7 +175,7 @@ function Metric({
           fontSize: 11,
           textTransform: "uppercase",
           letterSpacing: 0.4,
-          color: C.faint,
+          color: C.muted,
         }}
       >
         {label}
@@ -191,7 +191,7 @@ function Metric({
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: 12, color: C.dim, marginTop: 2 }}>{sub}</div>
+        <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{sub}</div>
       )}
     </div>
   );
@@ -227,7 +227,7 @@ export function UsersTable({
         <tbody>
           {overview.users.length === 0 && (
             <tr>
-              <td style={{ ...td, color: C.dim }} colSpan={5}>
+              <td style={{ ...td, color: C.text }} colSpan={5}>
                 No users yet.
               </td>
             </tr>
@@ -266,13 +266,13 @@ function UserRow({ u, actual }: { u: UserView; actual?: number }) {
         style={{ cursor: "pointer" }}
       >
         <td style={td}>
-          <span style={{ color: C.faint, marginRight: 6 }} aria-hidden>
+          <span style={{ color: C.muted, marginRight: 6 }} aria-hidden>
             {open ? "▾" : "▸"}
           </span>
           <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
             {u.namespace}
           </span>
-          <div style={{ fontSize: 11, color: C.faint, marginLeft: 18 }}>
+          <div style={{ fontSize: 11, color: C.muted, marginLeft: 18 }}>
             {u.userId}
           </div>
         </td>
@@ -298,7 +298,7 @@ function UserRow({ u, actual }: { u: UserView; actual?: number }) {
         ))}
       {open && u.agents.length === 0 && (
         <tr style={{ background: C.panel2 }}>
-          <td style={{ ...td, paddingLeft: 28, color: C.dim }} colSpan={5}>
+          <td style={{ ...td, paddingLeft: 28, color: C.text }} colSpan={5}>
             No agents.
           </td>
         </tr>
@@ -308,7 +308,7 @@ function UserRow({ u, actual }: { u: UserView; actual?: number }) {
 }
 
 function AgentDetail({ a }: { a: AgentView }) {
-  const color = stateColor[a.state] ?? C.faint;
+  const color = stateColor[a.state] ?? C.muted;
   return (
     <div
       style={{
@@ -321,7 +321,7 @@ function AgentDetail({ a }: { a: AgentView }) {
       <span style={{ fontWeight: 600, minWidth: 120 }}>{a.name}</span>
       <span style={pill(color)}>{a.state}</span>
       {a.pod ? (
-        <span style={{ fontSize: 12, color: C.dim }}>
+        <span style={{ fontSize: 12, color: C.text }}>
           {a.pod.phase}
           {a.pod.ready ? " · ready" : " · not ready"}
           {a.pod.nodeName ? ` · ${a.pod.nodeName}` : ""}
@@ -329,9 +329,9 @@ function AgentDetail({ a }: { a: AgentView }) {
           {a.pod.restarts > 0 ? ` · ${a.pod.restarts} restarts` : ""}
         </span>
       ) : (
-        <span style={{ fontSize: 12, color: C.faint }}>no pod</span>
+        <span style={{ fontSize: 12, color: C.muted }}>no pod</span>
       )}
-      <span style={{ fontSize: 12, color: C.dim, marginLeft: "auto" }}>
+      <span style={{ fontSize: 12, color: C.text, marginLeft: "auto" }}>
         {a.storageGiB ? `${a.storageGiB} GiB · ` : ""}
         {usd(a.cost.perMonthUsd)}/mo
       </span>
@@ -348,7 +348,7 @@ export function OrphansPanel({ overview }: { overview: Overview }) {
       <div style={{ fontSize: 14, fontWeight: 700, color: C.amber }}>
         Unattributed resources ({usd(o.cost.perMonthUsd)}/mo)
       </div>
-      <div style={{ fontSize: 12, color: C.dim, marginTop: 4 }}>
+      <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
         Managed pods/volumes that match no current agent — likely leaked by a
         failed delete. Worth cleaning up.
       </div>
@@ -357,7 +357,7 @@ export function OrphansPanel({ overview }: { overview: Overview }) {
           marginTop: 10,
           fontFamily: "ui-monospace, monospace",
           fontSize: 12,
-          color: C.dim,
+          color: C.text,
         }}
       >
         {o.pods.map((p) => (

@@ -38,7 +38,7 @@ function statusIndicator(status: EventEntry["status"]) {
         <span className="flex size-2 shrink-0 rounded-full bg-action tool-active-dot" />
       );
     case "completed":
-      return <Check className="size-3 shrink-0 text-green-600" />;
+      return <Check className="size-3 shrink-0 text-success-ink" />;
     case "suppressed":
       return (
         <span className="flex size-2 shrink-0 rounded-full bg-ink-muted/30" />

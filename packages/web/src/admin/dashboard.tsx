@@ -10,9 +10,10 @@ import { OrphansPanel, SpendPanel, StatCards, UsersTable } from "./components";
 import { AdminSignIn } from "./sign-in";
 import { btn, C, ghostBtn, page, tint } from "./styles";
 import { useAdminAuth } from "./use-admin-auth";
-// /admin never mounts the app tree, so the token CSS and @houston-ai/core styles
-// must reach THIS chunk or the --ht-* vars the palette reads do not exist.
-import "@houston/app/styles/globals.css";
+// /admin never mounts the app tree, so the token CSS must reach THIS chunk or
+// the --ht-* vars the palette reads do not exist. The app's globals.css is NOT
+// that stylesheet: it locks the body's scroll for the pane-scrolling shell.
+import "./admin.css";
 
 // The /admin entry (packages/web/src/main.tsx) renders this dashboard directly,
 // NOT through app-tree.tsx, so it must install the identity log sink + window
@@ -20,6 +21,12 @@ import "@houston/app/styles/globals.css";
 // (e.g. a malformed ID token) would only reach console. Idempotent + safe on web
 // (the underlying write is a no-op shim there).
 initFrontendLogging();
+
+// An operator tool, deliberately dark whatever the device prefers (DESIGN.md §3
+// rule 4). The pin sits on the DOCUMENT root as well as the dashboard's own root
+// so <body> resolves the dark ladder too — otherwise the frame behind the page
+// paints the light base for an operator whose app theme is light.
+document.documentElement.dataset.theme = "dark";
 
 /**
  * Houston Cloud operator dashboard (served at /admin). Self-contained, like the
@@ -106,7 +113,7 @@ function Dashboard({
           <div style={{ fontSize: 20, fontWeight: 800 }}>
             Houston Cloud · Operations
           </div>
-          <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
             {loadedAt
               ? `Updated ${new Date(loadedAt).toLocaleTimeString()}`
               : "Loading…"}
@@ -156,7 +163,7 @@ function Dashboard({
           </>
         ) : (
           !error && (
-            <div style={{ color: C.dim, marginTop: 24 }}>
+            <div style={{ color: C.text, marginTop: 24 }}>
               Loading cluster state…
             </div>
           )

@@ -56,7 +56,7 @@ Every dialog surface wears `xxl` (`rounded-2xl`): `Dialog` and `AlertDialog` sha
 
 **Motion** (`scale/motion.json`): durations `fast 200ms` · `elegant 582ms` · `common 667ms` · `bounce 833ms` · `ambient 32000ms`. Easings `standard [0.25,0.1,0.25,1]` · `entrance [0.16,1,0.3,1]`.
 
-**Elevation** (`semantic/elevation.{light,dark}.json` → `--ht-shadow-*`, one themed value per tier, so a utility needs no `dark:` fork): `shadow-edge` (default flat depth) · `shadow-field` / `focus-within:shadow-field-focus` (composer, inputs) · `shadow-card` (floating card) · `shadow-raised` (sign-in card) · `shadow-drag` (the board's drag ghost, read as `var(--ht-shadow-drag)`) · `shadow-dialog`, worn by the ONE modal frame as `.ht-shadow-dialog` (`canvas.css`). Dark mode adds **no NEW drop shadows** — its depth comes from the surface ladder + `.ht-hairline` inset ring + glass sheen, and the tiers that do carry a dark value only re-tint the light one.
+**Elevation** (`semantic/elevation.{light,dark}.json` → `--ht-shadow-*`, one themed value per tier, so a utility needs no `dark:` fork): `shadow-edge` (default flat depth) · `shadow-field` / `focus-within:shadow-field-focus` (composer, inputs) · `shadow-card` (floating card) · `shadow-raised` (sign-in card) · `shadow-drag` (the board's drag ghost, read as `var(--ht-shadow-drag)`) · `shadow-dialog`, worn by the ONE modal frame as `.ht-shadow-dialog` (`canvas.css`). The tiers are the ONLY drop shadows dark mode carries: outside them, dark depth is the surface ladder + `.ht-hairline` inset ring + glass sheen. A tier's dark value may also hold that sheen as an inset layer (the `dialog` tier opens with it), because a separate `[data-theme="dark"]` sheen rule would REPLACE the tier rather than add to it; box-shadow does not accumulate across rules.
 
 **Semantic colour roles** (token | use for). Live values: `packages/design-tokens/tokens/*.json`, or component showcase → Colors (`pnpm --filter @houston-ai/showcase dev`).
 
@@ -90,7 +90,7 @@ Text · interactive · lines:
 | `border-line-input` | field borders |
 | `ring-focus` (`--ht-focus`) | focus ring — **near-ink, NOT blue** |
 
-Status (each has a `-text`): `danger` · `success` · `warning` · `highlight` (brand wash + ink `-text`).
+Status: `danger` · `success` · `warning` · `highlight` (brand wash). Each has a `-text` (the label ON the fill) and an `-ink` (the hue AS text on a surface: `text-danger-ink` / `text-success-ink` / `text-warning-ink`, contrast-guarded against `input`, `background` and `chip-subtle` in both themes by `packages/design-tokens/test/contrast.test.ts`). A fill is tuned to carry its `-text`, so it does NOT clear 4.5:1 as text: never set a status fill as a text colour. `highlight`'s `-text` is already that ink.
 Destructive chrome carries its own pair so no `dark:` fork exists: `bg-danger-fill` (the destructive button/badge fill, softened to 60% in dark) and `ring-danger-ring` (the invalid / destructive focus ring, 20% light and 40% dark).
 
 Reserved families — do not reach for outside their home:
@@ -120,7 +120,7 @@ Merge the tokenized scale (§4) with these craft rules:
 - Reflexive `01 / 02 / 03` step numbering as decoration.
 - `rounded-lg` + 1px gray border card grid as filler chrome (use the flat "plane" row language: transparent rows, `hover:bg-hover`).
 - `transition: all`.
-- **Drop shadows in dark mode** — use the surface ladder + `.ht-hairline` + glass sheen.
+- **An ad-hoc drop shadow in dark mode.** Dark depth is the surface ladder + `.ht-hairline` + glass sheen; the only dark drop shadows are the elevation tiers (§4), which carry their dark values in the token. Wear a tier, never a new shadow of your own.
 - Decorative colour on content. Colour must be semantic (status/link) or a sanctioned brand mark.
 
 ## 7. Polish checklist (pro-tells — apply before "done")

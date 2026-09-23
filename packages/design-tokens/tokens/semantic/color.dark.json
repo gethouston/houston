@@ -118,17 +118,26 @@
     "danger-ring": {
       "$value": "{color.alpha.danger-bright-a40}"
     },
+    "danger-ink": {
+      "$value": "{color.status.danger-ink-bright}"
+    },
     "success": {
       "$value": "{color.status.success-bright}"
     },
     "success-text": {
       "$value": "{color.base.black}"
     },
+    "success-ink": {
+      "$value": "{color.status.success-bright}"
+    },
     "warning": {
       "$value": "{color.status.warning-bright}"
     },
     "warning-text": {
       "$value": "{color.base.black}"
+    },
+    "warning-ink": {
+      "$value": "{color.status.warning-bright}"
     },
     "highlight": {
       "$value": "{color.brand.highlight-34}"

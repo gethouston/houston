@@ -1,0 +1,21 @@
+/*
+ * The /admin chunk's ONLY stylesheet.
+ *
+ * The operator dashboard renders outside the app tree and paints itself with
+ * inline `var(--ht-*)` styles, so the token variables are the whole of what it
+ * needs. Importing the app's globals.css instead brought the shell's
+ * `body { overflow: hidden }` along — the app scrolls inside its panes — and the
+ * dashboard, which has no scroll container of its own, could not reach a single
+ * row below the fold.
+ */
+@import "@houston/design-tokens/css";
+
+/*
+ * No Tailwind preflight reaches this chunk, so the browser's default body
+ * margin is reset here; the frame behind the page (the overscroll area) wears
+ * the same base as the page itself, which the entry pins to the dark ladder.
+ */
+body {
+  margin: 0;
+  background: var(--ht-base);
+}

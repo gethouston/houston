@@ -37,7 +37,10 @@ output.
 `field-focus` · `card` · `raised` · `drag` · `dialog`) in all three CSS blocks,
 bridged in `ui/core/src/globals.css` to Tailwind v4's `--shadow-*` namespace so
 `shadow-card` is the utility and the token, not a `dark:` fork, carries the dark
-value.
+value. A layer with `"inset": true` compiles to a CSS `inset` shadow, which is
+how a tier holds an inner sheen as one of its own layers: a separate
+`[data-theme="dark"]` sheen rule would replace the tier's whole `box-shadow`
+instead of adding to it.
 
 ## Outputs (`dist/`, a build artifact)
 
@@ -89,6 +92,20 @@ pixels.
 variable as it shipped pre-adoption (extracted from the old CSS, not
 hand-typed); elevation is not a colour and has no such baseline, so
 `--ht-shadow-*` is skipped.
+
+Two entries in that fixture are **deliberate moves off the pre-adoption
+baseline**, pinned at their new values (its `$note` says the same):
+
+- Dark `card-solid` and `tab-active` are retuned to `#1e1e20`, the frosted
+  screen's own composited tone, so a board card reads as the screen showing
+  through its column tray instead of a slab laid on it.
+- The `-ink` status hues (`success-ink`, `warning-ink`, `danger-ink`) are new
+  tokens with no pre-adoption ancestor: the status FILLS are tuned to carry a
+  white or black label and measure 3.4:1 (success) and 2.1:1 (warning) as text
+  on the light canvas, so the hue set as TEXT is its own token, guarded by
+  `test/contrast.test.ts`.
+
+Every other entry pins a pre-adoption value.
 `test/zero-diff.test.ts` parses the generated CSS and asserts every token matches
 that baseline **by parsed colour** (r,g,b,a), so a same-pixels reformat passes and
 a real colour change fails.

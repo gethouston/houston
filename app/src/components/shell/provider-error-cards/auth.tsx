@@ -91,7 +91,7 @@ export function UnauthenticatedCard({
       <RowCard
         media={
           pres.variant === "done" ? (
-            <CheckCircle2Icon className="size-5 text-green-600" />
+            <CheckCircle2Icon className="size-5 text-success-ink" />
           ) : hasProvider ? (
             <ProviderGlyph providerId={error.provider} />
           ) : (

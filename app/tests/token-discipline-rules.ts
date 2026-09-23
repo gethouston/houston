@@ -70,6 +70,17 @@ export const RULES: Rule[] = [
       "a visual change is a token edit (packages/design-tokens/tokens/*.json), never a literal — DESIGN.md §3.1",
   },
   {
+    name: "raw Tailwind palette colour",
+    // `text-red-400`, `bg-emerald-950`, `border-zinc-700`: Tailwind's own
+    // palette, which no Houston token feeds. It bypasses the theme exactly as a
+    // hex does — the hue is frozen at the value the author typed and neither
+    // theme can move it.
+    pattern:
+      /\b(?:bg|text|border|ring|outline|divide|fill|stroke|from|via|to|placeholder|caret|decoration|shadow|accent)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/,
+    remedy:
+      "status wears the semantic pair (danger/success/warning plus their -text and -ink), neutrals wear ink, ink-muted, chip and line — DESIGN.md §4",
+  },
+  {
     name: "undefined CSS variable",
     // shadcn's `hsl(var(--sidebar-border))` shape. The var resolves to nothing
     // here, so the whole declaration is dropped and the pixel looks unstyled.

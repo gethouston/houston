@@ -64,7 +64,7 @@ function ScheduleBuilderSpecimen() {
 
       <SpecimenSection
         title="States"
-        note="Each preset reveals only the fields it needs, and the reveal is animated so the card grows instead of snapping. The plain-language summary above the fields is the live read-back — it is what the reader checks, not the cron. One gap worth fixing: emptying the Custom count outlines the field in a raw `border-red-500/50`, the only colour on this surface that resolves no token."
+        note="Each preset reveals only the fields it needs, and the reveal is animated so the card grows instead of snapping. The plain-language summary above the fields is the live read-back — it is what the reader checks, not the cron. Emptying the Custom count outlines the field in `border-danger/40`."
       >
         <SpecimenRow label="Daily — just a time">
           <Builder cron="0 8 * * *" />

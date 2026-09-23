@@ -132,8 +132,19 @@ body::before {
    over arbitrary content and must never bleed it through; WebView2 in the
    desktop shell doesn't reliably composite backdrop-filter anyway (the dark
    "New agent" modal bled the Settings page through, and light washed out
-   too). Only the subtle top sheen remains. */
-[data-theme="dark"] .bg-dialog {
+   too). Only the subtle top sheen remains.
+
+   Excludes `.ht-shadow-dialog` (the modal frame, section 8): box-shadow does
+   not accumulate across rules, and this descendant rule at (0,2,0) outranks
+   that class at (0,1,0): a framed dark dialog wore this sheen INSTEAD of
+   its elevation tier and floated on nothing. The framed surface gets the same
+   sheen as the tier's own first layer
+   (tokens/semantic/elevation.dark.json), which leaves this rule for the
+   unframed dialog surfaces. */
+[data-theme="dark"]
+  .bg-dialog:not(.ht-shadow-dialog):not(
+    :where([data-theme="light"], [data-theme="light"] *)
+  ) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 

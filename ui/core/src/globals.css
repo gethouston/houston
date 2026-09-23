@@ -152,6 +152,17 @@
      `bg-danger dark:bg-danger/60`. */
   --color-danger-fill: var(--ht-danger-fill);
   --color-danger-ring: var(--ht-danger-ring);
+  /* The status hues AS TEXT (`text-success-ink`, `text-warning-ink`,
+     `text-danger-ink`): a count of failures, a warning line under a field. The
+     fills above are tuned to carry a white or black label, so on the light
+     canvas they read at 3.4:1 (success) and 2.1:1 (warning), under the
+     4.5:1 body-text floor. These are the same hues retuned per theme to clear
+     it on `input`, `background` and `chip-subtle`, guarded by
+     packages/design-tokens/test/contrast.test.ts. A status FILL keeps its
+     `-text` label colour; text on a surface takes the `-ink`. */
+  --color-success-ink: var(--ht-success-ink);
+  --color-warning-ink: var(--ht-warning-ink);
+  --color-danger-ink: var(--ht-danger-ink);
   --color-line: var(--ht-line);
   --color-line-input: var(--ht-line-input);
   --color-focus: var(--ht-focus);

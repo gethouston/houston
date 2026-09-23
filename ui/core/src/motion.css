@@ -64,15 +64,18 @@
     var(--ht-glow-amber) 84%,
     transparent 88%
   );
-  /* A mask reads only the ALPHA channel, so the colour is irrelevant:
-     currentColor is inherited opaque and every pixel masks at alpha 1. */
+  /* A mask reads only the ALPHA channel, so any opaque colour works, but NOT
+     currentColor, which resolves to the host's own text colour, alpha included:
+     inside a `text-ink/70` ancestor the mask dropped to alpha 0.7 and faded the
+     comet with the text around it. `black` is always opaque, and a keyword is
+     not a raw colour literal (DESIGN.md §3.1 bans hex/rgba, not keywords). */
   -webkit-mask:
-    linear-gradient(currentColor 0 0) content-box,
-    linear-gradient(currentColor 0 0);
+    linear-gradient(black 0 0) content-box,
+    linear-gradient(black 0 0);
   -webkit-mask-composite: xor;
   mask:
-    linear-gradient(currentColor 0 0) content-box,
-    linear-gradient(currentColor 0 0);
+    linear-gradient(black 0 0) content-box,
+    linear-gradient(black 0 0);
   mask-composite: exclude;
   animation: glow-spin 2.5s linear infinite;
   pointer-events: none;
