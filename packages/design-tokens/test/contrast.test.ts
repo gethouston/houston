@@ -134,6 +134,30 @@ const FILETYPE_FAMILIES = [
  */
 const STATUS_INKS = ["success", "warning", "danger"] as const;
 
+/**
+ * The alphas a status chip washes its own hue at (`bg-success/15`,
+ * `bg-danger/10`). A wash is NOT a neutral surface: it tints the backdrop
+ * TOWARDS the ink sitting on it, so an ink measured only against `input` /
+ * `background` / `chip` is measured against the easiest case. The densest wash
+ * on the most recessed row is the real floor, and it is where the "Connected"
+ * chip used to land at 4.31:1.
+ */
+const STATUS_WASH_ALPHAS = [0.15, 0.1] as const;
+
+/** The status chip's own fill: the hue at `alpha` over the row it sits in. */
+function washSurface(
+  theme: Theme,
+  status: (typeof STATUS_INKS)[number],
+  alpha: number,
+  surfaceToken: string,
+): Rgba {
+  const hue = token(theme, `ht-${status}`);
+  return over(
+    { ...hue, a: hue.a * alpha },
+    contentSurface(theme, surfaceToken),
+  );
+}
+
 const AGENT_TONES = [
   "charcoal",
   "forest",
@@ -223,6 +247,26 @@ describe.each([
           `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
         ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
       });
+    }
+
+    for (const alpha of STATUS_WASH_ALPHAS) {
+      for (const [surfaceName, tokenName] of [
+        ["field", "ht-input"],
+        ["page", "ht-background"],
+        ["chip row", "ht-chip"],
+      ] as const) {
+        it(`status ink "${status}" clears ${CONTRAST_FLOOR}:1 on its own ${alpha * 100}% wash over the ${surfaceName}`, () => {
+          const surface = washSurface(theme, status, alpha, tokenName);
+          const ratio = contrastRatio(
+            over(token(theme, `ht-${status}-ink`), surface),
+            surface,
+          );
+          expect(
+            ratio,
+            `--ht-${status}-ink (${theme}) measures ${ratio.toFixed(2)}:1 on a ${alpha * 100}% --ht-${status} wash over the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+          ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+        });
+      }
     }
   }
 

@@ -12,8 +12,8 @@ import { useTranslation } from "react-i18next";
  * the settled ones wear the neutral chip.
  */
 const TAG_CLASSES: Record<TaskRowStatus, string> = {
-  needs_you: "bg-warning/15 text-warning",
-  running: "bg-success/15 text-success",
+  needs_you: "bg-warning/15 text-warning-ink",
+  running: "bg-success/15 text-success-ink",
   done: "bg-chip text-chip-text",
   archived: "bg-chip text-chip-text",
 };
