@@ -24,8 +24,12 @@ import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
  *   openrouter); Houston's connect surface keeps those on the pasted-key path,
  *   so "OAuth provider" here means OAuth is the ONLY way in (openai-codex
  *   today — anthropic/github-copilot are curated `oauth` in providers.ts).
- * - `getModels(id)` — a provider's model catalog (empty for the open gateways
- *   that accept arbitrary ids, e.g. opencode).
+ * - `getModels(id)` — the finite catalog pi bakes for a provider (every builtin
+ *   has rows: 73 for opencode, 386 for openrouter, 15 for anthropic on 0.87.1).
+ *   It is pi's list, not the provider's: a gateway also routes ids pi never
+ *   baked, and a row pi RENAMED leaves a stored id with no model object behind
+ *   it — which is why a stored id is read through the domain rename map
+ *   (`@houston/domain` provider-model) and, at turn time, `safeGetModel`.
  */
 
 /** pi's builtin provider objects, constructed once (auth surface + names). */
@@ -75,8 +79,9 @@ export function piApiKeyProviderIds(): string[] {
 }
 
 /**
- * The model ids pi lists for a provider, or `[]` when it has no catalog (the
- * open gateways) or isn't a pi builtin. Never throws — a bad id is `[]`.
+ * The model ids pi lists for a provider — its baked rows, which a gateway may
+ * still accept ids outside of. `[]` for an id pi doesn't know (`getModels`
+ * throws on one). Never throws.
  */
 export function piModelIds(id: string): string[] {
   if (id === QWEN_PROVIDER_ID) return qwenModels().map((m) => m.id);

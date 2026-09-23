@@ -68,29 +68,27 @@ test("MODEL_WINDOW_OVERRIDES: Anthropic flagships are 200k default / 1M ceiling"
   expect(MODEL_WINDOW_OVERRIDES.anthropic["claude-fable-5"]).toBeUndefined();
 });
 
-test("MODEL_WINDOW_OVERRIDES: every served Codex row reads the 95%-effective window", () => {
-  // pi reports 272,000 for every served Codex row; Codex's own `/status` sizes
-  // against 95% of it. Without the override the bar divides by 272,000 and
-  // reads the chat as emptier than Codex does — on gpt-6-luna, the model every
-  // unpinned Codex turn runs on.
+test("MODEL_WINDOW_OVERRIDES: every served Codex row reads the 95%-effective window with the 1M ceiling", () => {
+  // pi reports 272,000 and one price tier for every served Codex row; Codex's
+  // own `/status` sizes against 95% of it. Without the override the bar
+  // divides by 272,000 and reads the chat as emptier than Codex does — on
+  // gpt-6-luna, the model every unpinned Codex turn runs on. Without the
+  // ceiling the bar pins at 100% at 258k and compacts a chat the provider
+  // would carry on under the opt-in 1M variant.
   for (const id of [
     "gpt-6-luna",
     "gpt-6-sol",
+    "gpt-6-astra",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
+    "gpt-5.5",
   ]) {
     expect(MODEL_WINDOW_OVERRIDES["openai-codex"][id], id).toEqual({
       default: 258_400,
+      max: 950_000,
     });
     expect(resolveModelWindow("openai-codex", id, 272_000), id).toEqual({
-      default: 258_400,
-      max: 258_400,
-    });
-  }
-  // Astra and gpt-5.5 keep their ceiling: the rows with the opt-in 1M variant.
-  for (const id of ["gpt-6-astra", "gpt-5.5"]) {
-    expect(MODEL_WINDOW_OVERRIDES["openai-codex"][id], id).toEqual({
       default: 258_400,
       max: 950_000,
     });

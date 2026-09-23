@@ -1,5 +1,10 @@
 import { expect, test } from "vitest";
-import { DEFAULT_PROVIDER, migrateProviderModel } from "./provider-model";
+import {
+  canonicalModelId,
+  canonicalProviderId,
+  DEFAULT_PROVIDER,
+  migrateProviderModel,
+} from "./provider-model";
 import { DEFAULT_MODEL, VALID_MODELS } from "./provider-model-catalog";
 
 const VALID_PROVIDERS = [
@@ -177,6 +182,24 @@ test("a genuinely new pi-ai provider id passes through UNCHANGED (not → Codex)
   expect(mistral.provider).toBe("mistral");
   expect(mistral.model).toBe("mistral-large-latest");
   expect(mistral.diagnostics).toEqual([]);
+});
+
+test("a stored id naming an Object prototype member is a table MISS, not an entry", () => {
+  // Every table here is an object literal, so a plain `table[stored]` reads its
+  // prototype: a stored provider of "constructor" answered the Object
+  // CONSTRUCTOR where an id belongs, and a stored model of "toString" answered
+  // a function the same way. Both then travel as the migrated value.
+  expect(canonicalProviderId("constructor")).toBe("constructor");
+  expect(canonicalProviderId("toString")).toBe("toString");
+  expect(canonicalModelId("opencode", "constructor")).toBe("constructor");
+  expect(canonicalModelId("anthropic", "toString")).toBe(null);
+  // The whole migration answers strings, and never throws on the way (a
+  // prototype read landed a function where `VALID_MODELS[provider]` is checked
+  // for a `.has`).
+  const r = migrateProviderModel("constructor", "toString");
+  expect(r).toMatchObject({ provider: "constructor", model: "toString" });
+  expect(typeof r.provider).toBe("string");
+  expect(migrateProviderModel("toString", undefined).model).toBe("");
 });
 
 test("missing provider/model fall soft to the defaults with provider diagnostic", () => {
