@@ -1,10 +1,10 @@
 "use client";
 
-import { ChevronLeftIcon, XIcon } from "lucide-react";
+import { ChevronLeftIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "./button";
-import { DialogClose, DialogTitle } from "./dialog";
+import { DialogCloseButton, DialogTitle } from "./dialog";
 
 /**
  * `FlowSheet`'s frames and its wide header, split from the recipe so the parts
@@ -30,7 +30,10 @@ export type FlowSheetSize = "compact" | "wide";
 /**
  * The surface. `dvh` (never `vh`) so a phone's collapsing URL bar cannot cut
  * the flow off, and `sm:` on both caps because DialogContent's unprefixed
- * `max-w-[calc(100%-2rem)]` is the phone gutter.
+ * `max-w-[calc(100%-2rem)]` is the phone gutter. The wide cap (42rem) is
+ * larger than the `sm` edge it starts at, so it keeps that gutter inside its
+ * own `min()`: the sheet reaches its full width only once the viewport can
+ * pay for cap and gutter together (704px), never edge to edge before that.
  *
  * Neither frame carries a width or height TRANSITION, deliberately: the size
  * changes as the flow walks, and animating a surface's box is layout animation
@@ -46,7 +49,7 @@ export type FlowSheetSize = "compact" | "wide";
 export const FLOW_SHEET_CONTENT_CLASSES: Record<FlowSheetSize, string> = {
   compact:
     "flex max-h-[85dvh] flex-col gap-4 overflow-y-auto p-6 motion-reduce:animate-none sm:max-w-md",
-  wide: "flex h-[85dvh] flex-col gap-0 overflow-hidden p-0 motion-reduce:animate-none sm:max-w-2xl",
+  wide: "flex h-[85dvh] flex-col gap-0 overflow-hidden p-0 motion-reduce:animate-none sm:max-w-[min(42rem,calc(100%-2rem))]",
 };
 
 /**
@@ -147,17 +150,9 @@ export function FlowSheetHeader({
         className="flex min-w-0 flex-1 items-center justify-end gap-1"
       >
         {headerAside}
-        <DialogClose asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="-mr-2 text-ink-muted hover:text-ink"
-          >
-            <XIcon aria-hidden="true" />
-            <span className="sr-only">{closeLabel}</span>
-          </Button>
-        </DialogClose>
+        {/* Pulled out by its own plate's padding so the glyph sits on the
+            header's edge, where the corner X of a compact dialog sits. */}
+        <DialogCloseButton label={closeLabel} className="-mr-1.5" />
       </div>
     </header>
   );

@@ -9,7 +9,6 @@
  * `ProviderConnections`, exactly as the old provider-settings drove it.
  */
 
-import { X } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
@@ -45,7 +44,7 @@ export function ProviderModal({
   onClose: () => void;
   onOpenModel: (key: string) => void;
 }) {
-  const { t } = useTranslation("aiHub");
+  const { t } = useTranslation(["aiHub", "common"]);
   // Tri-state (HOU-979): only a CONFIRMED connection gets the live badge, the
   // sign-out footer and the local-bridge treatment; only a CONFIRMED
   // disconnection gets the Connect CTA. An unconfirmable probe gets neither, so
@@ -84,7 +83,7 @@ export function ProviderModal({
   });
 
   const header = (
-    <div className="flex items-start gap-3 px-5 pt-5 pb-4">
+    <div className="flex items-start gap-3">
       <BrandMark providerId={provider.id} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <span className="text-lg font-semibold text-ink tracking-[-0.01em]">
@@ -117,19 +116,9 @@ export function ProviderModal({
           />
         )}
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        {connection === "disconnected" && (
-          <ConnectButton provider={provider} connections={connections} />
-        )}
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t("card.cancel")}
-          className="grid size-8 place-items-center rounded-full text-ink-muted transition-colors hover:bg-card-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          <X className="size-4" aria-hidden="true" />
-        </button>
-      </div>
+      {connection === "disconnected" && (
+        <ConnectButton provider={provider} connections={connections} />
+      )}
     </div>
   );
 
@@ -147,6 +136,7 @@ export function ProviderModal({
     <ModalShell
       open={open}
       onClose={onClose}
+      closeLabel={t("common:actions.close")}
       title={provider.name}
       description={description}
       header={header}

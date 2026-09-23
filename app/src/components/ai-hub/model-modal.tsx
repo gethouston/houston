@@ -7,7 +7,6 @@
  * collapse into one) and sort connected-first via `sortOffers`.
  */
 
-import { X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderConnections } from "../../hooks/use-provider-connections.ts";
@@ -42,7 +41,7 @@ export function ModelModal({
   onClose: () => void;
   onOpenProvider?: (provider: ProviderInfo) => void;
 }) {
-  const { t, i18n } = useTranslation("aiHub");
+  const { t, i18n } = useTranslation(["aiHub", "common"]);
   useEffect(() => {
     if (open) analytics.track("model_viewed", { model: model.key });
   }, [open, model.key]);
@@ -75,7 +74,7 @@ export function ModelModal({
   const specs = buildSpecs(model, i18n.language, t);
 
   const header = (
-    <div className="flex items-start gap-3 px-5 pt-5 pb-4">
+    <div className="flex items-start gap-3">
       <BrandMark providerId={modelMarkId(model)} size="lg" />
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
         <span className="text-lg font-semibold text-ink tracking-[-0.01em]">
@@ -83,14 +82,6 @@ export function ModelModal({
         </span>
         <span className="text-[13px] text-ink-muted">{labName(model.lab)}</span>
       </div>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label={t("card.cancel")}
-        className="grid size-8 shrink-0 place-items-center rounded-full text-ink-muted transition-colors hover:bg-card-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-      >
-        <X className="size-4" aria-hidden="true" />
-      </button>
     </div>
   );
 
@@ -98,6 +89,7 @@ export function ModelModal({
     <ModalShell
       open={open}
       onClose={onClose}
+      closeLabel={t("common:actions.close")}
       title={model.name}
       description={labName(model.lab)}
       header={header}

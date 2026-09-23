@@ -1,14 +1,24 @@
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+  Button,
+} from "@houston-ai/core";
 import { AlertCircle, Loader2, RotateCw } from "lucide-react";
+import { useRef } from "react";
 import { useTranslation } from "react-i18next";
 import houstonBlack from "../../assets/houston-black.svg";
 import houstonWhite from "../../assets/houston-icon-white.svg";
 import type { UpdateStatus } from "../../lib/update-status";
 
 /**
- * The launch-time update overlay. The launch check found a release before
- * the user started anything, so the install is already running: this is a
- * calm full-window "upgrading Houston" card with progress that ends in a
- * relaunch. Outside of an error there is nothing to click; a failed download
+ * An undismissable launch-time AlertDialog on the shared dialog frame.
+ * The install runs with progress and ends in a relaunch.
+ * Outside of an error there is nothing to click; a failed download
  * or install shows the error copy with a manual retry, and a failed relaunch
  * offers the relaunch again. Mid-session finds never come here (they end in
  * the restart pill, `update-pill.tsx`).
@@ -23,6 +33,7 @@ export function UpdateLaunchOverlay({
   onRelaunch: () => void;
 }) {
   const { t } = useTranslation("shell");
+  const content = useRef<HTMLDivElement>(null);
   const info = status.info;
   const error = status.state === "error";
   const relaunchOnly = error && status.phase === "relaunch";
@@ -42,18 +53,31 @@ export function UpdateLaunchOverlay({
   })();
 
   return (
-    <div
-      role="alertdialog"
-      aria-modal="true"
-      aria-label={t("updateChecker.launchLabel")}
-      aria-live={error ? "assertive" : "polite"}
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/25 p-4"
+    <AlertDialog
+      open
+      // Nothing dismisses this dialog: the install runs to a relaunch, and an
+      // error's only way out is the retry in the footer.
+      onOpenChange={() => undefined}
     >
-      {/* `bg-dialog`, not `bg-card`: the modal surface token is SOLID in both
-          themes — the card token is glass and bleeds the page through. */}
-      <div className="max-h-[calc(100dvh-2rem)] w-[420px] max-w-full overflow-y-auto rounded-2xl border border-line/50 bg-dialog p-6 text-ink shadow-[0_4px_4px_rgba(0,0,0,0.04),0_4px_80px_8px_rgba(0,0,0,0.04),0_0_1px_rgba(0,0,0,0.62)] dark:shadow-[0_4px_4px_rgba(0,0,0,0.1),0_4px_80px_8px_rgba(0,0,0,0.2),0_0_1px_rgba(255,255,255,0.1)]">
-        <div className="flex items-start gap-3">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-input ring-1 ring-line">
+      {/* `z-[70]`: above the tutorial band (`z-[60]`, the spotlight veil
+          over an open dialog), so a launch-time install landing mid-coaching
+          still shows its recovery controls unveiled. The only layering rule
+          a caller may add to the frame. */}
+      <AlertDialogContent
+        ref={content}
+        tabIndex={-1}
+        className="z-[70] max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md"
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        // Radix hands an alert dialog's focus to its Cancel; there is none
+        // here, and the primary is disabled while the install runs, so the
+        // surface itself takes focus or the user is left on the inert app.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          content.current?.focus({ preventScroll: true });
+        }}
+      >
+        <AlertDialogHeader>
+          <AlertDialogMedia>
             <img
               src={houstonBlack}
               alt=""
@@ -66,25 +90,24 @@ export function UpdateLaunchOverlay({
               aria-hidden="true"
               className="houston-update-logo-dark hidden size-8 object-contain"
             />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold leading-tight">
-                {t("updateChecker.launchTitle")}
-              </h2>
-              {error && <AlertCircle className="size-4 shrink-0 text-danger" />}
-            </div>
-            <p className="mt-1 text-sm leading-snug text-ink-muted">
-              {error
-                ? message
-                : t("updateChecker.launchDescription", {
-                    version: info.version,
-                  })}
-            </p>
-          </div>
-        </div>
+          </AlertDialogMedia>
+          <AlertDialogTitle className="flex items-center gap-2">
+            {t("updateChecker.launchTitle")}
+            {error && <AlertCircle className="size-4 shrink-0 text-danger" />}
+          </AlertDialogTitle>
+          {/* Pinned assertive: a live region whose politeness flips with its
+              text is announced under the old setting, or not at all. The only
+              change this text ever makes is the error. */}
+          <AlertDialogDescription aria-live="assertive">
+            {error
+              ? message
+              : t("updateChecker.launchDescription", {
+                  version: info.version,
+                })}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
 
-        <div className="mt-4 flex items-center justify-center gap-2 rounded-xl bg-chip-subtle p-3 text-xs font-medium">
+        <div className="flex items-center justify-center gap-2 rounded-xl bg-chip-subtle p-3 text-xs font-medium">
           <span className="text-ink-muted">v{info.currentVersion}</span>
           <span aria-hidden="true" className="text-ink-muted">
             →
@@ -93,8 +116,11 @@ export function UpdateLaunchOverlay({
         </div>
 
         {!error && (
-          <>
-            <p className="mt-3 text-xs leading-relaxed text-ink-muted">
+          <div>
+            <p
+              aria-live="polite"
+              className="text-xs leading-relaxed text-ink-muted"
+            >
               {message}
             </p>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-chip-subtle">
@@ -103,27 +129,28 @@ export function UpdateLaunchOverlay({
                 style={{ width: `${progress ?? 35}%` }}
               />
             </div>
-          </>
+          </div>
         )}
 
-        <button
-          type="button"
-          onClick={relaunchOnly ? onRelaunch : onRetry}
-          disabled={!error}
-          className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-action px-4 text-sm font-medium text-action-text transition-opacity hover:opacity-90 disabled:cursor-default disabled:opacity-70"
-        >
-          {error ? (
-            <RotateCw className="size-4" />
-          ) : (
-            <Loader2 className="size-4 animate-spin" />
-          )}
-          {relaunchOnly
-            ? t("updateChecker.relaunchAction")
-            : error
-              ? t("updateChecker.retryAction")
-              : t("updateChecker.installing")}
-        </button>
-      </div>
-    </div>
+        <AlertDialogFooter>
+          <Button
+            onClick={relaunchOnly ? onRelaunch : onRetry}
+            disabled={!error}
+            className="w-full"
+          >
+            {error ? (
+              <RotateCw className="size-4" />
+            ) : (
+              <Loader2 className="size-4 animate-spin" />
+            )}
+            {relaunchOnly
+              ? t("updateChecker.relaunchAction")
+              : error
+                ? t("updateChecker.retryAction")
+                : t("updateChecker.installing")}
+          </Button>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

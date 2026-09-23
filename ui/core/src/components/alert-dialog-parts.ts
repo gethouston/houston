@@ -18,7 +18,7 @@
  * `default` takes the frame's own cap.
  */
 export const ALERT_DIALOG_CONTENT_CLASS =
-  "group/alert-dialog-content data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-lg";
+  "group/alert-dialog-content sm:max-w-lg data-[size=sm]:max-w-xs";
 
 /**
  * A grid rather than the frame's plain column: on the desktop layer the media

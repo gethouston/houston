@@ -11,8 +11,11 @@
  *
  * What a caller still owns is the WIDTH (`sm:max-w-*`, always `sm:` — the
  * unprefixed `max-w-[calc(100%-2rem)]` below is the phone gutter) and, for a
- * surface whose own parts pay the padding, `p-0`. Anything else overridden at
- * a call site is a dialog drifting away from the frame again.
+ * surface whose own parts pay the padding, `p-0`. A cap at or above the `sm`
+ * edge (40rem) is written `sm:max-w-[min(<cap>,calc(100%-2rem))]`: a plain
+ * `sm:max-w-2xl` replaces the gutter with a 42rem cap the viewport cannot yet
+ * pay for, and the dialog runs edge to edge until it can. Anything else
+ * overridden at a call site is a dialog drifting away from the frame again.
  *
  * Width is also the ONE place `sm:` is legal here (DESIGN.md §3.8). Every
  * other breakpoint below is `md:`, the product's single 768px edge: unprefixed
@@ -70,6 +73,20 @@ export const DIALOG_TITLE_CLASS = "text-lg font-semibold";
 
 /** The one line under it: what happens, in the user's words. */
 export const DIALOG_DESCRIPTION_CLASS = "text-sm text-ink-muted";
+
+/**
+ * The close X. ONE control, whether it floats in the dialog's corner or sits
+ * in a header row (the wide flow sheet, the AI Hub detail): `rounded-lg` is
+ * the `lg` radius the tokens give icon buttons, and the hover plate is the
+ * same quiet one on both. Two dialogs with two shapes of X read as two
+ * components. Keyboard focus wears the Button's ring: this is often the
+ * only control a keyboard user can reach to leave the surface.
+ */
+export const DIALOG_CLOSE_CLASS =
+  "shrink-0 rounded-lg p-1.5 text-ink-muted transition-colors duration-200 outline-none hover:bg-hover hover:text-ink focus-visible:ring-[3px] focus-visible:ring-focus/50 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4";
+
+/** Where the dialog's own X floats: the top-right corner, inside the padding. */
+export const DIALOG_CLOSE_CORNER_CLASS = "absolute top-4 right-4";
 
 /**
  * The actions. Stacked bottom-up on a phone (the primary nearest the thumb),

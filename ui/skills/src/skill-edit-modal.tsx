@@ -77,7 +77,7 @@ export function SkillEditModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-2xl"
+        className="sm:max-w-[min(42rem,calc(100%-2rem))]"
         onEscapeKeyDown={skillRenameEscapeGuard}
       >
         {/* min-w-0: DialogContent is a grid; without it this item's min-content

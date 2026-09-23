@@ -489,7 +489,6 @@
     "reportErrorDescription": "Intenta otra vez en un momento."
   },
   "updateChecker": {
-    "launchLabel": "Actualización de Houston en curso",
     "launchTitle": "Actualizando Houston",
     "launchDescription": "Houston se está actualizando a la versión {{version}}. La aplicación se reiniciará en un momento.",
     "downloading": "Descargando la actualización...",

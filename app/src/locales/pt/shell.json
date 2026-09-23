@@ -489,7 +489,6 @@
     "reportErrorDescription": "Tente de novo em instantes."
   },
   "updateChecker": {
-    "launchLabel": "Atualização do Houston em andamento",
     "launchTitle": "Atualizando o Houston",
     "launchDescription": "O Houston está sendo atualizado para a versão {{version}}. O aplicativo vai reiniciar em instantes.",
     "downloading": "Baixando a atualização...",

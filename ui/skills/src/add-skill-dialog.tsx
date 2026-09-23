@@ -100,7 +100,7 @@ export function AddSkillDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl !gap-0 p-0 h-[80dvh] max-h-[720px] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-[min(48rem,calc(100%-2rem))] !gap-0 p-0 h-[80dvh] max-h-[720px] flex flex-col overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
           <DialogTitle>{l.title}</DialogTitle>
           <DialogDescription>{l.description}</DialogDescription>

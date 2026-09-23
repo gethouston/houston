@@ -3,7 +3,15 @@ import { describe, it } from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { Dialog } from "../src/components/dialog.tsx";
+import {
+  Dialog,
+  DialogCloseButton,
+  DialogContent,
+} from "../src/components/dialog.tsx";
+import {
+  DIALOG_CLOSE_CLASS,
+  DIALOG_CLOSE_CORNER_CLASS,
+} from "../src/components/dialog-frame.ts";
 import { FlowSheet } from "../src/components/flow-sheet.tsx";
 import { FlowSheetCompactHeader } from "../src/components/flow-sheet-compact-header.tsx";
 import {
@@ -37,6 +45,24 @@ function compactHeader(
       createElement(FlowSheetCompactHeader, props),
     ),
   );
+}
+
+function findCloseButton(
+  node: React.ReactNode,
+): React.ReactElement<{ className?: string }> | undefined {
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      const found = findCloseButton(child);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (!React.isValidElement(node)) return undefined;
+  if (node.type === DialogCloseButton) {
+    return node as React.ReactElement<{ className?: string }>;
+  }
+  const props = node.props as { children?: React.ReactNode };
+  return findCloseButton(props.children);
 }
 
 const slotOrder = (html: string): string[] =>
@@ -144,6 +170,36 @@ describe("the FlowSheet header", () => {
       /Cerrar/,
     );
   });
+
+  it("closes with the dialog's own X, in the frame's one shape", () => {
+    // A circle in the wide header and a squircle in the compact corner read
+    // as two components; the header X is the corner X, moved into the row.
+    const closeClass = (html: string): string =>
+      (html.match(/data-slot="dialog-close" class="([^"]*)"/)?.[1] ?? "")
+        .replaceAll("&amp;", "&")
+        .replaceAll("&#x27;", "'");
+    const inHeader = closeClass(
+      header({ title: "Copy agent", closeLabel: "Close" }),
+    );
+    for (const cls of DIALOG_CLOSE_CLASS.split(/\s+/)) {
+      assert.ok(inHeader.includes(cls), `header X wears ${cls}`);
+    }
+    assert.doesNotMatch(inHeader, /rounded-full|size-8/);
+    // The only close control of a wide flow: a keyboard user must see it.
+    assert.match(DIALOG_CLOSE_CLASS, /focus-visible:ring-/);
+    assert.doesNotMatch(DIALOG_CLOSE_CLASS, /(^|\s)focus:outline-hidden/);
+
+    // The portal never renders on the server, so the corner X is read off
+    // the tree DialogContent returns: the same component, in the corner.
+    const corner = findCloseButton(
+      (DialogContent as (p: Record<string, unknown>) => React.ReactNode)({
+        children: null,
+        closeLabel: "Close",
+      }),
+    );
+    assert.ok(corner, "DialogContent renders no DialogCloseButton");
+    assert.equal(corner.props.className, DIALOG_CLOSE_CORNER_CLASS);
+  });
 });
 
 describe("the FlowSheet frame", () => {
@@ -159,7 +215,10 @@ describe("the FlowSheet frame", () => {
 
   it("wears the tall frame when the step is a catalog to scan", () => {
     const wide = FLOW_SHEET_CONTENT_CLASSES.wide;
-    assert.match(wide, /\bsm:max-w-2xl\b/);
+    // 42rem is `2xl`, wider than the `sm` edge the cap starts at: the gutter
+    // has to live inside the cap or the sheet runs edge to edge at 640px.
+    assert.match(wide, /\bsm:max-w-\[min\(42rem,calc\(100%-2rem\)\)\]/);
+    assert.doesNotMatch(wide, /sm:max-w-2xl/);
     assert.match(wide, /(?:^|\s)h-\[85dvh\]/);
     assert.match(wide, /\bp-0\b/);
   });

@@ -1,19 +1,13 @@
 /**
- * The redesign's modal primitive. Built on the app's shared Radix Dialog
- * (`@houston-ai/core`) so focus-trap, ESC and aria come for free; the panel is
- * a three-row grid (fixed header, scrolling body, thin footer) on the shared
- * modal surface (`bg-dialog` — solid white in light, translucent frosted glass
- * in dark so the aurora canvas bleeds through) with `ht-shadow-modal` for
- * float. Core's
- * DialogContent renders the ONE scrim (`bg-black/25`); we don't stack a second.
- * The calm entry (fade + a small 0.98→1 scale, reduced-motion honored) lives in
- * `.ai-hub-modal-surface` (futuristic.css). Presentational and props-only:
- * titles/labels arrive already translated (parents own i18n).
+ * AI Hub details wear the shared Dialog frame, with a fixed header and footer
+ * around a scrolling body. Dialog owns focus trapping, Escape, the scrim and
+ * entry motion. Titles and labels arrive translated; parents own i18n.
  */
 
 import {
   cn,
   Dialog,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -23,6 +17,7 @@ import type { ReactNode } from "react";
 export function ModalShell({
   open,
   onClose,
+  closeLabel,
   title,
   description,
   children,
@@ -32,6 +27,7 @@ export function ModalShell({
 }: {
   open: boolean;
   onClose: () => void;
+  closeLabel: string;
   title: string;
   description?: string;
   children: ReactNode;
@@ -50,44 +46,44 @@ export function ModalShell({
         if (!next) onClose();
       }}
     >
-      {/* Core's DialogContent renders the single `bg-black/25` scrim itself, so
-          the panel just floats over it — one overlay, no second blur layer.
-          The width is this panel's own (`w-[min(620px,…)]`), so the cap is only
-          lifted from `sm:` up — the frame's unprefixed cap is the phone gutter
-          and an unprefixed `max-w-none` here would delete it. */}
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "grid max-h-[84dvh] min-h-[60dvh] w-[min(620px,calc(100vw-2.5rem))] grid-rows-[auto_1fr_auto] gap-0 overflow-hidden rounded-2xl border-0 bg-dialog p-0 ht-shadow-modal ai-hub-modal-surface sm:max-w-none",
+          // The wide flow sheet's width, minus the phone gutter the plain
+          // `sm:` cap would drop between 640px and the cap itself.
+          "flex max-h-[85dvh] min-h-[60dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(42rem,calc(100%-2rem))]",
           className,
         )}
       >
-        {header ? (
-          <div>
-            <DialogTitle className="sr-only">{title}</DialogTitle>
-            {srDescription}
-            {header}
+        <div className="flex shrink-0 items-start gap-2 px-5 pt-5 pb-4">
+          <div className="min-w-0 flex-1">
+            {header ? (
+              <>
+                <DialogTitle className="sr-only">{title}</DialogTitle>
+                {srDescription}
+                {header}
+              </>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <DialogTitle>{title}</DialogTitle>
+                {description ? (
+                  <DialogDescription>{description}</DialogDescription>
+                ) : null}
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-col gap-1 px-5 pt-5 pb-4">
-            <DialogTitle className="text-[17px] font-semibold text-ink tracking-[-0.01em]">
-              {title}
-            </DialogTitle>
-            {description ? (
-              <DialogDescription className="text-[13px] text-ink-muted">
-                {description}
-              </DialogDescription>
-            ) : null}
-          </div>
-        )}
-        {/* `min-h-0` lets this 1fr grid row shrink below its content so it
-            becomes the SINGLE bounded scroll area. Without it the row's default
+          <DialogCloseButton label={closeLabel} className="-mr-1.5" />
+        </div>
+        {/* `min-h-0` lets the body in this flex column shrink below its content so it
+            becomes the SINGLE bounded scroll area. Without it the body's default
             `min-height: auto` grows to the content, the modal overflows its
             `max-h`, and the inner scroll never engages — the tall provider model
             lists then read as a second, janky scroll. */}
-        <div className="min-h-0 overflow-y-auto">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
         {footer ? (
-          <div className="border-t border-line px-5 py-3">{footer}</div>
+          <div className="shrink-0 border-t border-line px-5 py-3">
+            {footer}
+          </div>
         ) : null}
       </DialogContent>
     </Dialog>
