@@ -50,22 +50,26 @@ export const MODEL_ALIASES: Partial<
     ...SONNET_ALIASES,
   },
   "openai-codex": {
-    // Codex ids the subscription no longer serves, mapped to the closest tier
-    // it does. The full tier is gpt-6-astra; the mini tier is gpt-5.4-mini.
-    // gpt-5.4 / gpt-5.5 were full-tier rows themselves until OpenAI retired
-    // them, and gpt-5.5-codex never shipped at all — they are legacy ids here
-    // for the same reason the CLI-era ones are: a stored value that must land
-    // somewhere that runs.
+    // Codex ids the subscription does not serve, mapped to the closest tier it
+    // does. The full tier is gpt-6-astra; the small/cheap tier is gpt-6-luna.
+    // gpt-5.4 was a full-tier row itself until OpenAI retired it, and
+    // gpt-5.5-codex never shipped at all — they are legacy ids here for the
+    // same reason the CLI-era ones are: a stored value that must land
+    // somewhere that runs. gpt-5.5 has no row: the subscription serves it
+    // again, so a stored pin on it stays on it.
     "gpt-5": "gpt-6-astra",
     "gpt-5-codex": "gpt-6-astra",
     "gpt-5.1": "gpt-6-astra",
     "gpt-5.2": "gpt-6-astra",
     "gpt-5.4": "gpt-6-astra",
-    "gpt-5.5": "gpt-6-astra",
     "gpt-5.5-codex": "gpt-6-astra",
     codex: "gpt-6-astra",
-    "gpt-5-mini": "gpt-5.4-mini",
-    "gpt-5.1-mini": "gpt-5.4-mini",
+    "gpt-5-mini": "gpt-6-luna",
+    "gpt-5.1-mini": "gpt-6-luna",
+    "gpt-5.4-mini": "gpt-6-luna",
+    // Houston offered Spark until the 2026-09-23 probe read it as refused, so
+    // stored pins on it exist; gpt-6-luna is the small/fast tier it named.
+    "gpt-5.3-codex-spark": "gpt-6-luna",
   },
 };
 
@@ -74,7 +78,7 @@ export const MODEL_ALIASES: Partial<
  * for a provider that has none.
  *
  * Per-provider by construction: the same bare id means different things to
- * different providers ("gpt-5.5" is a retired Codex row, and reading the
+ * different providers ("gpt-5.4" is a retired Codex row, and reading the
  * Anthropic row for it hands a Codex pin straight through as a hard pin on a
  * model the picker never showed).
  */

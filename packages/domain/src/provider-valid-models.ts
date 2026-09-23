@@ -47,18 +47,19 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "claude-sonnet-5",
   ]),
   // pi's Codex catalog MINUS the rows OpenAI refuses a ChatGPT subscription:
-  // gpt-5.5 answers `404 model_not_found` and gpt-5.4 answers `400 not
-  // supported when using Codex with a ChatGPT account` (probed live against
-  // the responses endpoint — packages/runtime/src/ai/codex-offered.ts holds the
-  // method and the verdicts). Keeping them "valid" is what let a stored id
-  // survive migration into a turn that could only fail.
+  // gpt-5.3-codex-spark answers `400 not supported when using Codex with a
+  // ChatGPT account` (probed live against the responses endpoint —
+  // packages/runtime/src/ai/codex-offered.ts holds the method and the
+  // verdicts). Keeping it "valid" is what let a stored id survive migration
+  // into a turn that could only fail.
   "openai-codex": new Set([
-    "gpt-5.3-codex-spark",
-    "gpt-5.4-mini",
+    "gpt-5.5",
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-6-astra",
+    "gpt-6-luna",
+    "gpt-6-sol",
   ]),
   // `MiniMax-M3[1m]` is the token/coding-plan SKU: hand-built on the minimax
   // provider (not in pi's catalog), so it must be a VALID id here or the migration
@@ -69,5 +70,5 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "MiniMax-M2.7-highspeed",
     "MiniMax-M3",
   ]),
-  deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
+  deepseek: new Set(["deepseek-flash", "deepseek-v4-pro"]),
 };

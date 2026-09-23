@@ -281,10 +281,10 @@ test("the name a user says for a model reaches the turn as its id", async () => 
   expect(r.status).toBe(201);
   expect(fired[0]?.pin).toMatchObject({
     provider: "openai-codex",
-    model: "gpt-5.6-luna",
+    model: "gpt-6-luna",
   });
   const created = (await onDisk()).find((a) => a.id !== PARENT.id);
-  expect(created?.model).toBe("gpt-5.6-luna");
+  expect(created?.model).toBe("gpt-6-luna");
 });
 
 test("an unknown provider is refused with the ids and names that would work", async () => {
@@ -507,7 +507,7 @@ test("the local start echoes resolved provider and model", async () => {
   );
   expect(result.body).toMatchObject({
     provider: "openai-codex",
-    model: "gpt-5.6-luna",
+    model: "gpt-6-luna",
   });
 });
 test("mission refusal copy contains no em dash", async () => {

@@ -54,15 +54,14 @@ export const config = {
   turnMaxConcurrent: Number(process.env.CP_TURN_MAX_CONCURRENT || 3),
   /**
    * Codex model ids offered in the model picker (the cloud is OpenAI/Codex-only).
-   * Every id here must be one OpenAI serves a ChatGPT subscription — the list
-   * previously named gpt-5.5 / gpt-5.5-codex / gpt-5.1, none of which the Codex
-   * backend still accepts, so picking one produced a turn that could only fail.
-   * The served set is probed and recorded in
-   * packages/runtime/src/ai/codex-offered.ts; keep this in step with it.
+   * Every id here must be one OpenAI serves a ChatGPT subscription: an id the
+   * Codex backend refuses produces a turn that can only fail. The served set is
+   * probed and recorded in packages/runtime/src/ai/codex-offered.ts; keep this
+   * in step with it, default first.
    */
   codexModels: (
     process.env.CP_CODEX_MODELS ||
-    "gpt-6-astra,gpt-5.6-sol,gpt-5.6-terra,gpt-5.6-luna"
+    "gpt-6-luna,gpt-6-sol,gpt-6-astra,gpt-5.6-sol,gpt-5.6-terra,gpt-5.6-luna,gpt-5.5"
   )
     .split(",")
     .map((s) => s.trim())

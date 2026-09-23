@@ -9,19 +9,20 @@ import { ModelNotOfferedError } from "./provider-error";
 import { providerDefaultModel, safeGetModel, safeModelIds } from "./providers";
 
 /**
- * The rows OpenAI's Codex backend answered 200 for on 2026-09-07, probed with
- * Houston's own credential (see codex-offered.ts for the full method). pi's
- * catalog also carries gpt-5.4 and gpt-5.5, which that same probe refused.
+ * The rows OpenAI's Codex backend answered 200 for on 2026-09-23 (see
+ * codex-offered.ts for the full method) and that pi 0.87.1 ships. pi's catalog
+ * also carries gpt-5.3-codex-spark, which that same probe refused.
  */
 const SERVED = [
+  "gpt-6-luna",
+  "gpt-6-sol",
   "gpt-6-astra",
   "gpt-5.6-sol",
   "gpt-5.6-terra",
   "gpt-5.6-luna",
-  "gpt-5.4-mini",
-  "gpt-5.3-codex-spark",
+  "gpt-5.5",
 ];
-const REFUSED = ["gpt-5.4", "gpt-5.5"];
+const REFUSED = ["gpt-5.3-codex-spark"];
 
 test("the Codex offer is pi's catalog minus the rows the subscription refuses", () => {
   const offered = safeModelIds(CODEX_PROVIDER_ID);
@@ -43,11 +44,12 @@ test("a turn pinned to openai-codex with NO model lands on a model Codex accepts
 });
 
 test("a pin naming a refused id fails with a served model as the switch target", () => {
-  // pi's getModel still resolves gpt-5.5, so without the offered-set check the
-  // pin sails through and the failure only appears as the provider's own 404.
+  // pi's getModel still resolves gpt-5.3-codex-spark, so without the
+  // offered-set check the pin sails through and the failure only appears as
+  // the provider's own refusal.
   let thrown: unknown;
   try {
-    safeGetModel(CODEX_PROVIDER_ID, "gpt-5.5", true);
+    safeGetModel(CODEX_PROVIDER_ID, "gpt-5.3-codex-spark", true);
   } catch (err) {
     thrown = err;
   }
@@ -64,6 +66,10 @@ test("a pin naming a refused id fails with a served model as the switch target",
 
 test("a saved refused id falls back to a served model instead of a dead turn", () => {
   expect(
-    (safeGetModel(CODEX_PROVIDER_ID, "gpt-5.5", false) as { id?: string }).id,
+    (
+      safeGetModel(CODEX_PROVIDER_ID, "gpt-5.3-codex-spark", false) as {
+        id?: string;
+      }
+    ).id,
   ).toBe(CODEX_DEFAULT_MODEL);
 });

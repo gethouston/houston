@@ -28,7 +28,7 @@ const NAMED: ProviderOption[] = [
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     connected: true,
-    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.4-mini"],
+    models: ["gpt-6-luna", "gpt-6-astra", "gpt-5.6-luna"],
   },
   {
     id: "anthropic",
@@ -117,7 +117,7 @@ test("the name the user said pins the model, never the provider default", () => 
     resolveMissionPin({ provider: "codex", model: "Luna" }, NAMED),
   ).toEqual({
     ok: true,
-    pin: { provider: "openai-codex", model: "gpt-5.6-luna" },
+    pin: { provider: "openai-codex", model: "gpt-6-luna" },
   });
   expect(
     resolveMissionPin({ provider: "anthropic", model: "Opus 4.6" }, NAMED),
@@ -127,8 +127,8 @@ test("the name the user said pins the model, never the provider default", () => 
   });
   // A name alone rides the provider the mission inherits.
   expect(
-    resolveMissionPin({ model: "5.4 mini" }, NAMED, "openai-codex"),
-  ).toEqual({ ok: true, pin: { model: "gpt-5.4-mini" } });
+    resolveMissionPin({ model: "GPT-6 Astra" }, NAMED, "openai-codex"),
+  ).toEqual({ ok: true, pin: { model: "gpt-6-astra" } });
 });
 
 // --- the pin the child mission actually carries ----------------------------

@@ -103,7 +103,7 @@ export function modelAcceptsImages(
  *
  * The provider is not optional: the same bare id means different things to
  * different providers, and reading one provider's row for another's pin is how
- * a stored Codex `gpt-5.5` survived as a hard pin on a model the picker never
+ * a stored Codex `gpt-5.4` survives as a hard pin on a model the picker never
  * shows, answered by the send as "model not available". Either id dialect is
  * accepted (`modelAliasesFor` canonicalizes). Already-explicit ids and models
  * with no alias row pass through unchanged; null/undefined returns null so it

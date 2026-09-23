@@ -91,7 +91,7 @@ test("an OAuth pi provider stays OAuth, and a non-pi id is rejected", () => {
 test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("opencode")).toBe("claude-sonnet-4-6");
   expect(providerDefaultModel("opencode-go")).toBe("glm-5.1");
-  expect(providerDefaultModel("deepseek")).toBe("deepseek-v4-flash");
+  expect(providerDefaultModel("deepseek")).toBe("deepseek-flash");
   expect(providerDefaultModel("amazon-bedrock")).toBe(
     "global.anthropic.claude-sonnet-4-6",
   );

@@ -46,10 +46,13 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // The current OpenAI line, minus pi's 2023-era gpt-4 rows. Azure serves a
   // model only when the user DEPLOYED it under that name, so a short current
   // list also keeps the "deployment named after the model id" rule legible.
-  // Wider than the `openai` set below by gpt-5.5 / gpt-5.4: those two are
-  // refused by the CODEX backend (a ChatGPT subscription), not by Azure, which
-  // runs whatever the user's own resource has deployed.
+  // Wider than the `openai` set below by gpt-5.3-codex-spark / gpt-5.4 /
+  // gpt-5.4-mini: those are refused by the CODEX backend (a ChatGPT
+  // subscription), not by Azure, which runs whatever the user's own resource
+  // has deployed.
   "azure-openai-responses": new Set([
+    "gpt-6-luna",
+    "gpt-6-sol",
     "gpt-6-astra",
     "gpt-5.5",
     "gpt-5.6-sol",
@@ -59,20 +62,21 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.4",
     "gpt-5.4-mini",
   ]),
-  // Exactly what OpenAI's Codex backend serves a ChatGPT subscription, probed
-  // live against its responses endpoint — `codexOfferedModelIds` in
-  // packages/runtime/src/ai/codex-offered.ts is the documented source and
-  // carries the evidence; `codex-models.test.ts` pins this set to it. pi's
-  // catalog is a SUPERSET: it still lists gpt-5.5 (404 `model_not_found`) and
-  // gpt-5.4 (400 "not supported when using Codex with a ChatGPT account"), and
-  // offering either can only produce a dead turn.
+  // What OpenAI's Codex backend offers a ChatGPT subscription —
+  // `codexOfferedModelIds` in packages/runtime/src/ai/codex-offered.ts is the
+  // documented source and carries the live-probe evidence;
+  // `codex-models.test.ts` pins this set to it. pi's catalog is a SUPERSET: it
+  // still lists gpt-5.3-codex-spark, which that probe answered `400 not
+  // supported when using Codex with a ChatGPT account`, and offering it can
+  // only produce a dead turn.
   openai: new Set([
+    "gpt-6-luna",
+    "gpt-6-sol",
     "gpt-6-astra",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
-    "gpt-5.3-codex-spark",
-    "gpt-5.4-mini",
+    "gpt-5.5",
   ]),
   anthropic: new Set([
     "claude-sonnet-5",

@@ -68,8 +68,6 @@ export const MODEL_WINDOW_OVERRIDES: Readonly<
   },
   "openai-codex": {
     "gpt-6-astra": { default: 258_400, max: 950_000 },
-    "gpt-5.4-mini": { default: 258_400 },
-    "gpt-5.3-codex-spark": { default: 121_600 },
   },
 };
 

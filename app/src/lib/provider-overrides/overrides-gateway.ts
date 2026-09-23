@@ -27,7 +27,7 @@ export const GATEWAY_OVERRIDES: Record<string, ProviderOverride> = {
       "gemini-3.5-flash": {
         description: "Fast and capable.",
       },
-      "mimo-v2.5-free": {
+      "mimo-v2.6-flash-free": {
         description: "Free to try.",
       },
       "nemotron-3-ultra-free": {

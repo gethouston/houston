@@ -19,14 +19,14 @@ import type { ProviderId } from "./provider-ids";
 
 export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   anthropic: "claude-sonnet-5",
-  // Codex's current full tier, and the id a pin naming `openai-codex` with NO
-  // model lands on. gpt-5.5 held this slot after OpenAI stopped serving it to
-  // ChatGPT subscriptions, so every such pin died `model_not_found` on its
-  // first turn. The runtime states this id a second time as
+  // Codex's cheapest gpt-6 tier, and the id a pin naming `openai-codex` with NO
+  // model lands on. It has to be a row the ChatGPT subscription serves: a
+  // default the Codex backend refuses kills every such pin on its first turn.
+  // The runtime states this id a second time as
   // `CODEX_DEFAULT_MODEL` (packages/runtime/src/ai/codex-offered.ts), where the
   // live probe that proves it lives; `app/tests/codex-models.test.ts` pins the
   // two together so the copy cannot drift silently.
-  "openai-codex": "gpt-6-astra",
+  "openai-codex": "gpt-6-luna",
   // The cheapest model served on every Copilot plan (HOU-578). GitHub retired
   // gpt-4.1, the old base model, on 2026-06-01 (pi dropped it in 0.85.0); under
   // usage-based billing every model spends AI credits, so the default is the
@@ -36,7 +36,7 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   opencode: "claude-sonnet-4-6",
   "opencode-go": "glm-5.1",
   openrouter: "anthropic/claude-sonnet-4.6",
-  deepseek: "deepseek-v4-flash",
+  deepseek: "deepseek-flash",
   // 3.8 Flash (GA 2026-09-02): 1M context, 64K output, and cheaper than 3.5
   // Flash while scoring higher. Also the key-verify probe model.
   google: "gemini-3.8-flash",
@@ -66,9 +66,9 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // by the same >= $1 first top-up Moonshot requires before any request works,
   // so every account that can chat has it (PRODUCT-1411).
   moonshotai: "kimi-k3",
-  // pi's azure catalog is alphabetical (gpt-4 first) — start current. The Codex
-  // backend's refusal of gpt-5.5 does not reach here: an Azure request hits the
-  // user's own resource and runs whatever they deployed.
+  // pi's azure catalog is alphabetical (gpt-4 first) — start current. What the
+  // Codex backend serves a ChatGPT subscription does not bind Azure at all: an
+  // Azure request hits the user's own resource and runs whatever they deployed.
   "azure-openai-responses": "gpt-5.5",
   // `openai-compatible` is deliberately ABSENT, not empty: the model is whatever
   // the user's local server serves, and an "" entry is non-nullish, so every

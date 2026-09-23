@@ -1,7 +1,7 @@
 import type {
-  Context,
   Model,
   SimpleStreamOptions,
+  TranscriptContext,
 } from "@earendil-works/pi-ai";
 import { streamSimple } from "@earendil-works/pi-ai/api/openai-completions";
 import type { ManagedBridgeEndpoint } from "@houston/protocol";
@@ -89,7 +89,7 @@ export function bridgeFetch(
 export function streamBridge(
   bridge: ManagedBridgeEndpoint,
   model: Model<"openai-completions">,
-  context: Context,
+  context: TranscriptContext,
   options?: SimpleStreamOptions,
 ) {
   return streamSimple(model, context, {

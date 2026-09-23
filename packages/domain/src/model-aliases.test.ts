@@ -23,7 +23,15 @@ test("the other tiers keep their own current id (there is one default, not three
 
 test("legacy dated/retired ids stay pinned at their tier (never an auto-upgrade)", () => {
   const codex = MODEL_ALIASES["openai-codex"] ?? {};
-  expect(codex["gpt-5.5"]).toBe("gpt-6-astra");
-  expect(codex["gpt-5-mini"]).toBe("gpt-5.4-mini");
-  expect(codex["gpt-5.1-mini"]).toBe("gpt-5.4-mini");
+  expect(codex["gpt-5.4"]).toBe("gpt-6-astra");
+  expect(codex["gpt-5-mini"]).toBe("gpt-6-luna");
+  expect(codex["gpt-5.1-mini"]).toBe("gpt-6-luna");
+  expect(codex["gpt-5.4-mini"]).toBe("gpt-6-luna");
+});
+
+test("a Codex id the subscription serves has NO alias row (never an upgrade)", () => {
+  // gpt-5.5 is served again, so an alias for it would silently move a stored
+  // pin onto gpt-6-astra — a model that spends the allowance far faster than
+  // the one the user chose.
+  expect(MODEL_ALIASES["openai-codex"]?.["gpt-5.5"]).toBeUndefined();
 });

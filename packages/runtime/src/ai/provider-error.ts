@@ -303,7 +303,7 @@ const COPILOT_BASE_FALLBACK = "gpt-5-mini";
  * its verdicts) on purpose, like COPILOT_BASE_FALLBACK, so this classifier
  * stays pure + unit-testable; keep the two in sync.
  */
-const CODEX_BROAD_FALLBACK = "gpt-6-astra";
+const CODEX_BROAD_FALLBACK = "gpt-6-luna";
 
 /** Longest excerpt we keep for the `unknown` card / bug report. */
 const EXCERPT_MAX = 300;

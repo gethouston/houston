@@ -26,14 +26,11 @@ test("the codex codenames a user speaks resolve to their ids", () => {
   const cases: Record<string, string> = {
     Astra: "gpt-6-astra",
     astra: "gpt-6-astra",
-    Sol: "gpt-5.6-sol",
     Terra: "gpt-5.6-terra",
-    Luna: "gpt-5.6-luna",
     "GPT-5.6 Luna": "gpt-5.6-luna",
-    Spark: "gpt-5.3-codex-spark",
-    "Codex Spark": "gpt-5.3-codex-spark",
-    "5.4 mini": "gpt-5.4-mini",
-    "gpt-5.4 MINI": "gpt-5.4-mini",
+    "GPT-5.6 Sol": "gpt-5.6-sol",
+    "GPT-6 Luna": "gpt-6-luna",
+    "GPT-5.5": "gpt-5.5",
   };
   for (const [spoken, id] of Object.entries(cases)) {
     expect(resolveSpokenModel("openai-codex", spoken)).toEqual({
@@ -71,6 +68,19 @@ test("a bare family name lands on the newest of that family, flagged", () => {
   });
   // Only one Haiku row: nothing to disambiguate, so nothing is flagged.
   expect(resolveSpokenModel("anthropic", "haiku")?.ambiguous).toBe(false);
+  // Codex codenames repeat across generations: a bare "Sol" or "Luna" lands on
+  // the gpt-6 row and says so, while "Astra" and "Terra" name one row each.
+  expect(resolveSpokenModel("openai-codex", "Sol")).toEqual({
+    id: "gpt-6-sol",
+    name: "GPT-6 Sol",
+    ambiguous: true,
+  });
+  expect(resolveSpokenModel("openai-codex", "luna")).toEqual({
+    id: "gpt-6-luna",
+    name: "GPT-6 Luna",
+    ambiguous: true,
+  });
+  expect(resolveSpokenModel("openai-codex", "Astra")?.ambiguous).toBe(false);
 });
 
 test("a name no row carries resolves to nothing at all", () => {
