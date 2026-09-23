@@ -15,8 +15,10 @@
  * the opposite of an introduction — it quotes that message back to the model
  * and forbids greeting again, and the first reply continues from it.
  *
- * The whole conversation aims at ONE outcome: the user leaves with at least one
- * Skill saved, because a Skill is the first thing they actually automated.
+ * The whole conversation aims at ONE outcome: one real job done together and
+ * then saved as a Skill. Doing it first is what makes the Skill real: a
+ * procedure written before it ever ran is a guess, and the user has seen
+ * nothing work.
  * Nothing happens before the first reply, no tool call, no self-writing: the
  * name and the job are enough to start talking, and every second before the
  * first word is the user staring at a card.
@@ -69,10 +71,12 @@ function ideasStep(roleContext: AgentRoleContext | undefined): string {
   const ideas = roleContext
     ? `3 concrete, specific jobs in ${roleContext.context} that this ${roleContext.role} repeats the same way every time`
     : `3 concrete, specific example missions you could run for them`;
-  return `Reply with ONE short line and nothing more, saying that you already have a few ideas of work you could take over. In that SAME turn, call the \`ask_user\` tool with ONE question asking which one they want to start with, and give that question 4 options (each an \`{id, label}\` row, single-select): ${ideas}. Never a category like "reporting" or "admin", name the actual job, and keep each label short enough to read on a button. The 4th option is labeled "Suggest other ideas", translated like every other label; it is the one place \`ask_user\` takes a catch-all choice, so include it here even though the tool tells you not to. The options MUST be offered through \`ask_user\`, never written out as a list in your reply, so the user can tap one instead of typing. Then end your turn. If they pick "Suggest other ideas", ask again in exactly the same shape with 3 DIFFERENT jobs.`;
+  return `Your very first action is a call to the \`ask_user\` tool. Do not write a text reply first: a text-only reply here is wrong, the card IS your first reply. Give it ONE question whose text says, in one short sentence, that you already have a few ideas of work you could take over and asks which one they want to start with, and give that question 4 options (each an \`{id, label}\` row, single-select): ${ideas}. Never a category like "reporting" or "admin", name the actual job, and keep each label short enough to read on a button. The 4th option is labeled "Suggest other ideas", translated like every other label; it is the one place \`ask_user\` takes a catch-all choice, so include it here even though the tool tells you not to. The options MUST be offered through \`ask_user\`, never written out as a list, so the user can tap one instead of typing. If they pick "Suggest other ideas", ask again in exactly the same shape with 3 DIFFERENT jobs.`;
 }
 
-const SKILL_STEP = `Once they pick one, turn it into a Skill together, fast: ask only the 2 or 3 questions you truly need (where the inputs come from, what the result should look like, who gets it), then save the procedure as a Skill and confirm in one short line what it does. Then offer to run it or to set up the next one.`;
+const DO_IT_STEP = `Once they pick one, DO that job with them right now, for real: ask only the 2 or 3 questions you truly need (where the inputs come from, what the result should look like, who gets it), then produce the actual result on a real case they give you (real names, a real week, a real draft), show it, and adjust it to their feedback. The point of this conversation is that they see the work done, not a description of it.`;
+
+const SKILL_STEP = `As soon as the result is right, save the way you did it as a Skill, confirm in one short line what it does, and tell them it will keep improving as they run it on real cases. Then offer to run it again or to take on the next job.`;
 
 const CAPTURE_STEP = `Along the way, save what they tell you the moment they say it, never later: a lasting preference or fact about how you should work goes into your instructions; anything they want on a schedule becomes a Routine, after you confirm the time with them.`;
 
@@ -89,7 +93,7 @@ export function buildSetupMissionPrompt(
   roleContext?: AgentRoleContext,
 ): string {
   const languageName = outputLanguageName(locale);
-  const steps = [ideasStep(roleContext), SKILL_STEP, CAPTURE_STEP];
+  const steps = [ideasStep(roleContext), DO_IT_STEP, SKILL_STEP, CAPTURE_STEP];
   const numbered = steps
     .map((step, index) => `${index + 1}. ${step}`)
     .join("\n\n");
@@ -105,5 +109,5 @@ Do this, in order:
 
 ${numbered}
 
-The one outcome of this conversation: at least one repeatable process saved as a Skill. Never ask a long list of questions up front, and never do anything before your first reply.`;
+The one outcome of this conversation: one real job done together, then saved as a Skill. Never ask a long list of questions up front, never save a Skill before the job is done once, and never do anything before your first reply.`;
 }

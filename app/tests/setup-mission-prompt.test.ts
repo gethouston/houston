@@ -37,15 +37,15 @@ test("the hello the user already read is quoted back, and never repeated", () =>
   }
 });
 
-test("the first reply is one line plus an ask_user question with tappable ideas", () => {
+test("the first reply IS the ask_user card, never a text-only line", () => {
   const brief = buildSetupMissionPrompt("Jerry", "en", BRIEF);
   assert.match(
     brief,
-    /1\. Reply with ONE short line and nothing more, saying that you already have a few ideas of work you could take over\./,
+    /1\. Your very first action is a call to the `ask_user` tool\. Do not write a text reply first/,
   );
   assert.match(
     brief,
-    /call the `ask_user` tool with ONE question asking which one they want to start with/,
+    /ONE question whose text says, in one short sentence, that you already have a few ideas of work you could take over and asks which one they want to start with/,
   );
   assert.match(
     brief,
@@ -71,7 +71,7 @@ test("the ideas are options on a card, never a list in the reply", () => {
     assert.match(prompt, /The 4th option is labeled "Suggest other ideas"/);
     assert.match(
       prompt,
-      /MUST be offered through `ask_user`, never written out as a list in your reply/,
+      /MUST be offered through `ask_user`, never written out as a list/,
     );
     assert.match(
       prompt,
@@ -97,20 +97,26 @@ test("without a brief the agent never guesses a job from its name", () => {
   assert.doesNotMatch(prompt, /- Role:/);
 });
 
-test("setup prompt aims the first conversation at one saved Skill", () => {
+test("setup prompt does the job first, then saves it as a Skill", () => {
   for (const prompt of [
     buildSetupMissionPrompt("Jerry", "en", BRIEF),
     buildSetupMissionPrompt("Jerry", "en"),
   ]) {
-    assert.match(prompt, /at least one repeatable process saved as a Skill/);
+    assert.match(prompt, /one real job done together, then saved as a Skill/);
+    assert.match(prompt, /never save a Skill before the job is done once/);
     assert.match(
       prompt,
-      /2\. Once they pick one, turn it into a Skill together, fast/,
+      /2\. Once they pick one, DO that job with them right now, for real/,
     );
     assert.match(prompt, /ask only the 2 or 3 questions you truly need/);
     assert.match(
       prompt,
-      /3\. Along the way, save what they tell you the moment they say it/,
+      /3\. As soon as the result is right, save the way you did it as a Skill/,
+    );
+    assert.match(prompt, /it will keep improving as they run it on real cases/);
+    assert.match(
+      prompt,
+      /4\. Along the way, save what they tell you the moment they say it/,
     );
     assert.match(prompt, /anything they want on a schedule becomes a Routine/);
   }

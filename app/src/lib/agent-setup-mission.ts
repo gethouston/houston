@@ -60,7 +60,7 @@ export async function startAgentSetupMission(
         ),
       providerOverride: opts.provider,
       modelOverride: opts.model,
-      // One short line plus a question needs no deliberation, and every second
+      // One question card needs no deliberation, and every second
       // of thinking here is the user staring at the hello waiting for more.
       effortOverride: "low",
     });

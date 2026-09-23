@@ -277,6 +277,7 @@
     "newFiles_one": "1 new file",
     "newFiles_other": "{{count}} new files",
     "instructionsUpdated": "Instructions updated",
+    "skillSaved": "Skill saved: {{name}}",
     "skillsUpdated": "Skills updated",
     "learningsUpdated": "Learnings updated",
     "openLinkFailedTitle": "Couldn’t open the link"
