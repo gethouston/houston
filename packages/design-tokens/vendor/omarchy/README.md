@@ -53,3 +53,7 @@ curl -sLo LICENSE "https://raw.githubusercontent.com/omacom/omarchy/$SHA/LICENSE
 ```
 
 The derivation in the build reads only these files, so a refresh is the whole update.
+It starts at `../../build/omarchy.mjs` (the reader and the palette registry) and the
+rules are documented in `../../../../docs/adr/0004-palette-library.md`. A refreshed
+file that changes its `mode` line, drops a hue or stops being flat
+`key = "value"` fails the build rather than landing silently.

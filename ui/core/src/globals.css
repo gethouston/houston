@@ -18,7 +18,11 @@
    tokens ship a matching [data-theme="light"] scope) — the :not() keeps
    `dark:` utilities from leaking into such a subtree via the <html> ancestor.
    Exact today because theme.ts only ever puts "dark" on <html> and "light"
-   only ever appears on pinned subtrees. */
+   only ever appears on pinned subtrees.
+
+   Mode and palette are two axes: data-palette="<id>" on <html> selects a whole
+   --ht-* set, and its block lands after the mode blocks in the imported tokens,
+   so a pinned light subtree still resolves the Houston light set by design. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *):not(:where([data-theme="light"], [data-theme="light"] *)));
 
 /* Dark mode needs the native form controls / scrollbars to follow suit; the

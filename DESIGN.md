@@ -12,6 +12,8 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
 - **Near-monochrome content, brand-coloured chrome.** Text/controls stay grayscale; colour lives in chrome (aurora, glass sheen, running-card glow) + semantic status + agent avatars + links. Never decorative colour on content surfaces.
 - Both themes ship on every screen via `[data-theme]`. Floating surfaces (modals, popovers) are **solid** in both themes — never glass, never bleed content.
 
+**Palettes.** Mode and palette are two axes. `[data-theme]` is the resolved mode; `[data-palette="<id>"]` picks one of twelve colour sets. **Houston Light** and **Houston Dark** are the defaults and the authored source of truth: they are the identity above, and every other set is an import. The ten imports are vendored Omarchy themes (Catppuccin, Nord, Gruvbox, Everforest, Tokyo Night, Flexoki, Rosé Pine Dawn, Lupine, White) derived by RULE into the full `--ht-*` set, never hand-tuned: the ladder's structure, the alpha washes and the contrast floors are Houston's, the hexes are the palette's. So every screen looks right in every palette for the same reason it looks right in both themes, and design work targets the Houston sets only. The rules live in `docs/adr/0004-palette-library.md`; a palette needing a hand-written value means the rule is wrong.
+
 ## 3. Hard rules (non-negotiable)
 1. **Semantic tokens only. Never a raw hex/rgba/px literal** in `app/` or `ui/`. A visual change is a token edit (`packages/design-tokens/tokens/*.json`), never a hardcoded value. Sanctioned raw-hex exceptions (the ONLY ones):
    - `app/src/components/shell/provider-brand-colors.ts` — brand-mark hex map (AI Hub candy store)
@@ -59,6 +61,8 @@ Every dialog surface wears `xxl` (`rounded-2xl`): `Dialog` and `AlertDialog` sha
 **Elevation** (`semantic/elevation.{light,dark}.json` → `--ht-shadow-*`, one themed value per tier, so a utility needs no `dark:` fork): `shadow-edge` (default flat depth) · `shadow-field` / `focus-within:shadow-field-focus` (composer, inputs) · `shadow-card` (floating card) · `shadow-raised` (sign-in card) · `shadow-drag` (the board's drag ghost, read as `var(--ht-shadow-drag)`) · `shadow-dialog`, worn by the ONE modal frame as `.ht-shadow-dialog` (`canvas.css`). The tiers are the ONLY drop shadows dark mode carries: outside them, dark depth is the surface ladder + `.ht-hairline` inset ring + glass sheen. A tier's dark value may also hold that sheen as an inset layer (the `dialog` tier opens with it), because a separate `[data-theme="dark"]` sheen rule would REPLACE the tier rather than add to it; box-shadow does not accumulate across rules.
 
 **Semantic colour roles** (token | use for). Live values: `packages/design-tokens/tokens/*.json`, or component showcase → Colors (`pnpm --filter @houston-ai/showcase dev`).
+
+Every role below is re-declared per palette under `[data-palette="<id>"]`, and the library itself (id, display name, mode, four swatch hexes) is the `palettes` export with its `PaletteId` type from `@houston/design-tokens`. A palette is applied by setting that attribute; never by overriding a `--ht-*` at a call site.
 
 Surface ladder (bottom → top):
 | token / utility | use for |
