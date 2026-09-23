@@ -173,7 +173,7 @@ test("an agent manager gets the Settings section with the agent actions", async 
     page.getByRole("button", { name: "Move to another team" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Delete AI Employee" }),
+    page.getByRole("button", { name: "Delete Houston" }),
   ).toBeVisible();
 });
 

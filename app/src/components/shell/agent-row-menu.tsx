@@ -59,14 +59,14 @@ export function AgentRowMenu({ agent }: { agent: Agent }) {
         <DropdownMenuContent align="start" className="w-56">
           <DropdownMenuItem onSelect={() => setDialog("copy")}>
             <Copy className="size-3.5" />
-            {t("agents:copyAgent.row")}
+            {t("agents:copyAgent.row", { name: agent.name })}
           </DropdownMenuItem>
           <DropdownMenuItem
             variant="destructive"
             onSelect={() => setDialog("delete")}
           >
             <Trash2 className="size-3.5" />
-            {t("teams:agentSettings.manage.delete")}
+            {t("teams:agentSettings.manage.delete", { name: agent.name })}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

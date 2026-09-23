@@ -227,26 +227,26 @@
     "modifiedToday": "Hoje"
   },
   "copyAgent": {
-    "row": "Copiar funcionário de IA",
-    "rowDescription": "Crie uma cópia em uma das suas equipes. As conversas não são copiadas.",
-    "title": "Copiar {{name}}",
-    "body": "A cópia começa com a mesma descrição do cargo, skills, rotinas, aprendizados e cor. As conversas ficam com o original e nunca são copiadas.",
-    "nameLabel": "Nome da cópia",
-    "nameTaken": "Já existe um funcionário de IA chamado {{name}}. Os nomes de funcionários de IA são compartilhados entre todas as suas equipes, então dê à cópia um nome próprio.",
-    "teamLabel": "Equipe da cópia",
-    "confirm": "Criar cópia",
+    "row": "Duplicar {{name}}",
+    "rowDescription": "Crie uma duplicata em uma das suas equipes. As conversas não são duplicadas.",
+    "title": "Duplicar {{name}}",
+    "body": "A duplicata começa com a mesma descrição do cargo, skills, rotinas, aprendizados e cor. As conversas ficam com o original e nunca são duplicadas.",
+    "nameLabel": "Nome da duplicata",
+    "nameTaken": "Já existe um funcionário de IA chamado {{name}}. Os nomes de funcionários de IA são compartilhados entre todas as suas equipes, então dê à duplicata um nome próprio.",
+    "teamLabel": "Equipe da duplicata",
+    "confirm": "Criar duplicata",
     "copySuffix": "cópia",
     "toasts": {
-      "createdTitle": "Cópia criada",
+      "createdTitle": "Duplicata criada",
       "createdDescription": "{{name}} está pronto.",
       "chatsCopiedTitle": "Chats copiados",
       "chatsCopiedDescription_one": "{{count}} conversa agora também vive com {{name}}.",
       "chatsCopiedDescription_other": "{{count}} conversas agora também vivem com {{name}}."
     },
     "errors": {
-      "failed": "Não foi possível copiar o funcionário de IA",
+      "failed": "Não foi possível duplicar o funcionário de IA",
       "chatsFailed": "Não foi possível copiar os chats",
-      "chatsPartial": "Alguns chats não chegaram. Copie o funcionário de IA de novo para tentar outra vez."
+      "chatsPartial": "Alguns chats não chegaram. Duplique o funcionário de IA de novo para tentar outra vez."
     },
     "wizard": {
       "source": {

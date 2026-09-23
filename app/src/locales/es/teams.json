@@ -62,7 +62,7 @@
       "chooseTeam": "Elegir un equipo",
       "moveOrganization": "Mover a otra organización",
       "moveOrganizationDescription": "Mueve este empleado de IA a una organización para que un equipo pueda trabajar con él.",
-      "delete": "Eliminar empleado de IA"
+      "delete": "Eliminar a {{name}}"
     },
     "people": {
       "helper": "Elige si todo tu equipo puede usar este empleado de IA o solo las personas que tú elijas.",

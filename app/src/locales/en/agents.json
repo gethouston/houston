@@ -227,26 +227,26 @@
     "modifiedToday": "Today"
   },
   "copyAgent": {
-    "row": "Copy AI Employee",
-    "rowDescription": "Create a duplicate in one of your teams. Conversations are not copied.",
-    "title": "Copy {{name}}",
-    "body": "The copy starts with the same job description, skills, routines, learnings and color. Conversations stay with the original and are never copied.",
-    "nameLabel": "Name for the copy",
-    "nameTaken": "An AI Employee named {{name}} already exists. AI Employee names are shared across all your teams, so give the copy its own name.",
-    "teamLabel": "Team for the copy",
-    "confirm": "Create copy",
+    "row": "Duplicate {{name}}",
+    "rowDescription": "Create a duplicate in one of your teams. Conversations are not duplicated.",
+    "title": "Duplicate {{name}}",
+    "body": "The duplicate starts with the same job description, skills, routines, learnings and color. Conversations stay with the original and are never duplicated.",
+    "nameLabel": "Name for the duplicate",
+    "nameTaken": "An AI Employee named {{name}} already exists. AI Employee names are shared across all your teams, so give the duplicate its own name.",
+    "teamLabel": "Team for the duplicate",
+    "confirm": "Create duplicate",
     "copySuffix": "copy",
     "toasts": {
-      "createdTitle": "Copy created",
+      "createdTitle": "Duplicate created",
       "createdDescription": "{{name}} is ready.",
       "chatsCopiedTitle": "Chats copied",
       "chatsCopiedDescription_one": "{{count}} conversation now lives with {{name}} too.",
       "chatsCopiedDescription_other": "{{count}} conversations now live with {{name}} too."
     },
     "errors": {
-      "failed": "We couldn't copy the AI Employee",
+      "failed": "We couldn't duplicate the AI Employee",
       "chatsFailed": "We couldn't copy the chats",
-      "chatsPartial": "Some chats did not make it. Copy the AI Employee again to retry."
+      "chatsPartial": "Some chats did not make it. Duplicate the AI Employee again to retry."
     },
     "wizard": {
       "source": {
