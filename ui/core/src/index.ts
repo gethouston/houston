@@ -57,7 +57,6 @@ export * from "./components/skeleton";
 export * from "./components/sonner";
 export * from "./components/spinner";
 export * from "./components/status-badge";
-export * from "./components/stepper";
 export * from "./components/switch";
 export * from "./components/tabs";
 export * from "./components/textarea";

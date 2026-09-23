@@ -308,7 +308,7 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 16
+    "fileCount": 17
   },
   "core-dialog": {
     "surfaces": [
@@ -335,6 +335,7 @@
       "Activity",
       "App shell",
       "Files",
+      "Integrations",
       "Permissions",
       "Store website",
       "Your Agents",
@@ -347,7 +348,7 @@
       "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 30
+    "fileCount": 31
   },
   "core-empty": {
     "surfaces": [
@@ -404,6 +405,7 @@
       "App shell",
       "Chat",
       "Files",
+      "Integrations",
       "Organization",
       "Permissions",
       "Your Agents",
@@ -412,7 +414,7 @@
       "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 30
+    "fileCount": 31
   },
   "core-hover-card": {
     "surfaces": [
@@ -437,7 +439,7 @@
       "ui/review (library)",
       "ui/store (library)"
     ],
-    "fileCount": 25
+    "fileCount": 26
   },
   "core-input-group": {
     "surfaces": [
@@ -517,7 +519,7 @@
       "ui/agent (library)",
       "ui/store (library)"
     ],
-    "fileCount": 15
+    "fileCount": 16
   },
   "core-spinner": {
     "surfaces": [
