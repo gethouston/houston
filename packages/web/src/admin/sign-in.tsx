@@ -6,7 +6,7 @@ import type { AdminAuth } from "./use-admin-auth";
 const input: CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
-  border: "1px solid #34343f",
+  border: `1px solid ${C.border}`,
   background: C.panel2,
   color: C.text,
 };
@@ -23,6 +23,7 @@ export function AdminSignIn({ auth }: { auth: AdminAuth }) {
 
   return (
     <div
+      data-theme="dark"
       style={{
         ...page,
         display: "flex",
@@ -82,7 +83,7 @@ export function AdminSignIn({ auth }: { auth: AdminAuth }) {
             autoComplete="current-password"
           />
           <button
-            style={{ ...btn, background: "#26262f" }}
+            style={{ ...btn, background: C.panel }}
             type="submit"
             disabled={busy || !email || !password}
           >

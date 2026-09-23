@@ -8,8 +8,11 @@ import {
 } from "./api";
 import { OrphansPanel, SpendPanel, StatCards, UsersTable } from "./components";
 import { AdminSignIn } from "./sign-in";
-import { btn, C, ghostBtn, page } from "./styles";
+import { btn, C, ghostBtn, page, tint } from "./styles";
 import { useAdminAuth } from "./use-admin-auth";
+// /admin never mounts the app tree, so the token CSS and @houston-ai/core styles
+// must reach THIS chunk or the --ht-* vars the palette reads do not exist.
+import "@houston/app/styles/globals.css";
 
 // The /admin entry (packages/web/src/main.tsx) renders this dashboard directly,
 // NOT through app-tree.tsx, so it must install the identity log sink + window
@@ -87,7 +90,9 @@ function Dashboard({
   }, [load]);
 
   return (
-    <div style={page}>
+    // An operator tool, deliberately dark regardless of the app theme
+    // (DESIGN.md §3 rule 4).
+    <div style={page} data-theme="dark">
       <div
         style={{
           display: "flex",
@@ -129,8 +134,8 @@ function Dashboard({
             marginTop: 14,
             padding: 12,
             borderRadius: 10,
-            background: `${C.red}1a`,
-            border: `1px solid ${C.red}55`,
+            background: tint(C.red, 10),
+            border: `1px solid ${tint(C.red, 33)}`,
             color: C.red,
             fontSize: 13,
           }}

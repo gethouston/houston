@@ -16,6 +16,7 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
 1. **Semantic tokens only. Never a raw hex/rgba/px literal** in `app/` or `ui/`. A visual change is a token edit (`packages/design-tokens/tokens/*.json`), never a hardcoded value. Sanctioned raw-hex exceptions (the ONLY ones):
    - `app/src/components/shell/provider-brand-colors.ts` — brand-mark hex map (AI Hub candy store)
    - `app/src/components/provider-browser/brand-mark.tsx`, `app/src/components/auth/provider-brand-icons.tsx` — full-colour brand marks
+   - `ui/chat/src/channel-brand-colors.ts` — the messaging channels' official brand colours (Slack, Telegram): a logo's colour is the logo
    - `app/src/main.tsx` — pre-boot fallback colour before tokens load
    - `app/index.html` + `packages/web/index.html` — the pre-paint theme frame + cache script (light screen `#fcfcfc` / dark gutter `#141416`; keep the two blocks identical)
    - `packages/web/src/new-engine/styles.ts` — entry-chunk boot-gate styles (render before any token CSS loads; gate surfaces mirror the same frame values)

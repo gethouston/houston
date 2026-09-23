@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { AgentView, BillingReport, Overview, UserView } from "./api";
 import { usd } from "./api";
-import { C, card, pill, stateColor, td, th } from "./styles";
+import { C, card, pill, stateColor, td, th, tint } from "./styles";
 
 /** Top-line cluster cards: users, agents, running pods, live burn. */
 export function StatCards({ overview }: { overview: Overview }) {
@@ -86,7 +86,7 @@ export function SpendPanel({
               style={{
                 ...pill(d === days ? C.accent : C.faint),
                 cursor: "pointer",
-                background: d === days ? `${C.accent}2a` : "transparent",
+                background: d === days ? tint(C.accent, 16) : "transparent",
               }}
             >
               {d}d
@@ -344,7 +344,7 @@ export function OrphansPanel({ overview }: { overview: Overview }) {
   const o = overview.orphans;
   if (o.pods.length === 0 && o.volumes.length === 0) return null;
   return (
-    <div style={{ ...card, marginTop: 16, borderColor: `${C.amber}66` }}>
+    <div style={{ ...card, marginTop: 16, borderColor: tint(C.amber, 40) }}>
       <div style={{ fontSize: 14, fontWeight: 700, color: C.amber }}>
         Unattributed resources ({usd(o.cost.perMonthUsd)}/mo)
       </div>

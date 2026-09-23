@@ -33,6 +33,7 @@ export const SANCTIONED = [
   "app/src/components/shell/provider-brand-colors.ts",
   "app/src/components/provider-browser/brand-mark.tsx",
   "app/src/components/auth/provider-brand-icons.tsx",
+  "ui/chat/src/channel-brand-colors.ts",
   "app/src/main.tsx",
   "packages/web/src/new-engine/styles.ts",
   "ui/core/src/canvas.css",

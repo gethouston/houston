@@ -79,22 +79,15 @@ const DEAD_CLASS = new RegExp(
 
 /**
  * Files still holding a raw colour, each blocked on a decision rather than on
- * the work: the two brand-colour maps await a doctrine call (a logo's colour is
- * the logo, so DESIGN.md §3.1 may claim them), and the operator dashboard
- * awaits the token CSS reaching the `/admin` entry, which loads its own chunk
- * and never imports `globals.css`.
+ * the work: the file-type chip accents await a design call (the muted
+ * `filetype` tokens, or a sanctioned brand-like map).
  *
  * Not an exemption and not a TODO: the list may only SHRINK. A new offender
  * fails the guard, and a file cleaned without being struck from this list
  * fails it too — so the inventory cannot rot into a permanent allowlist the
  * way a plain ignore file does.
  */
-const UNTOKENIZED = [
-  "packages/web/src/admin/sign-in.tsx",
-  "packages/web/src/admin/styles.ts",
-  "ui/chat/src/channel-brand-colors.ts",
-  "ui/chat/src/file-type-colors.ts",
-];
+const UNTOKENIZED = ["ui/chat/src/file-type-colors.ts"];
 
 describe("no dead theme tokens in the app or the ui packages", () => {
   it("every guarded name really is undefined in the token set", () => {

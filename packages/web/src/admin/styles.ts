@@ -1,20 +1,34 @@
 import type { CSSProperties } from "react";
 
-/** Dashboard palette — matches the cloud-login gate (dark, violet accent). */
+/**
+ * Dashboard palette: the Houston `--ht-*` tokens, reached as `var()` because
+ * these are inline styles rather than Tailwind utilities. The dashboard root
+ * pins `data-theme="dark"` (see dashboard.tsx and sign-in.tsx), so these always
+ * resolve to the dark ladder whatever theme the app is in.
+ */
 export const C = {
-  bg: "#0b0b0f",
-  panel: "#15151c",
-  panel2: "#0e0e13",
-  border: "#26262f",
-  text: "#e7e7ea",
-  dim: "#9a9aa6",
-  faint: "#6a6a76",
-  accent: "#7a5cff",
-  green: "#46d39a",
-  amber: "#e0b341",
-  red: "#ff7a7a",
-  blue: "#5aa9ff",
+  bg: "var(--ht-base)",
+  panel: "var(--ht-card-solid)",
+  panel2: "var(--ht-input)",
+  border: "var(--ht-line)",
+  text: "var(--ht-ink)",
+  dim: "var(--ht-ink-muted)",
+  faint: "var(--ht-ink-muted)",
+  accent: "var(--ht-link)",
+  green: "var(--ht-success)",
+  amber: "var(--ht-warning)",
+  red: "var(--ht-danger)",
+  blue: "var(--ht-link)",
 } as const;
+
+/**
+ * A translucent wash of a palette colour. Hex-alpha concatenation cannot apply
+ * to a `var()` reference, so the alpha is composited in the colour space
+ * instead.
+ */
+export function tint(color: string, percent: number): string {
+  return `color-mix(in srgb, ${color} ${percent}%, transparent)`;
+}
 
 export const page: CSSProperties = {
   minHeight: "100dvh",
@@ -82,7 +96,7 @@ export function pill(color: string): CSSProperties {
     fontSize: 11,
     fontWeight: 600,
     color,
-    background: `${color}1f`,
-    border: `1px solid ${color}55`,
+    background: tint(color, 12),
+    border: `1px solid ${tint(color, 33)}`,
   };
 }
