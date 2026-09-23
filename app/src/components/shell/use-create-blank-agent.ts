@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMoveAgentToTeam } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
-import { useProviderStatuses } from "../../hooks/use-provider-statuses";
+import {
+  type ProviderStatusScan,
+  useProviderStatuses,
+} from "../../hooks/use-provider-statuses";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { isAgentNameConflictError } from "../../lib/agent-name-conflict";
 import {
@@ -11,13 +14,16 @@ import {
 } from "../../lib/agent-role-context";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
-import { pickDefaultProviderModel } from "../../lib/default-provider-model";
+import {
+  confirmedConnectedProviders,
+  connectedProviderIds,
+} from "../../lib/connected-providers";
 import { logAndReportError } from "../../lib/error-report";
 import { showExpectedStateToast } from "../../lib/error-toast";
+import { type KickoffPin, kickoffPinFromScan } from "../../lib/kickoff-pin";
 import { newAgentPlacement } from "../../lib/new-agent-placement";
 import { openAgentBoard } from "../../lib/open-agent";
 import { hasAgentTeams } from "../../lib/org-roles";
-import { providerIsConnected } from "../../lib/provider-connection";
 import { tauriProvider } from "../../lib/tauri";
 import type { AgentDefinition } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
@@ -51,14 +57,7 @@ export function useCreateBlankAgent({
   const serverBacked = hasAgentTeams(capabilities);
   const sidebar = useSidebarLayout(currentWorkspace?.id);
   const moveToTeam = useMoveAgentToTeam();
-  const { statuses: providerStatuses } = useProviderStatuses();
-  const connectedProviders = useMemo(
-    () =>
-      Object.values(providerStatuses)
-        .filter((status) => providerIsConnected(status))
-        .map((status) => status.provider),
-    [providerStatuses],
-  );
+  const providerScan = useProviderStatuses();
 
   useEffect(() => {
     if (!open) {
@@ -81,6 +80,27 @@ export function useCreateBlankAgent({
     };
   }, [open]);
 
+  /**
+   * The pin for the new agent, decided only on a scan that can answer.
+   *
+   * The shared status query is cached for 30s and the AI hub's sign-out repaints
+   * only its OWN rows, so the scan this dialog is holding can still name a
+   * provider the user has just disconnected — which is how a new agent's first
+   * mission ended up pinned to a signed-out Anthropic. An unconfirmable scan is
+   * therefore re-probed here, and if the fresh one still cannot confirm a
+   * connection, nothing is pinned at all: the agent's first turn then falls to
+   * whatever IS connected, or surfaces the connect card.
+   */
+  const resolveKickoffPin = async (): Promise<KickoffPin> => {
+    const decide = (scan: ProviderStatusScan): KickoffPin | null =>
+      kickoffPinFromScan({
+        connected: connectedProviderIds(confirmedConnectedProviders(scan)),
+        lastUsedProvider: lastUsed?.provider,
+        lastUsedModel: lastUsed?.model,
+      });
+    return decide(providerScan) ?? decide(await providerScan.refetch()) ?? {};
+  };
+
   return {
     creating,
     createBlankAgent: async (
@@ -90,16 +110,9 @@ export function useCreateBlankAgent({
     ) => {
       const trimmed = name.trim();
       if (creating || !trimmed || !currentWorkspace) return;
-      const resolved = pickDefaultProviderModel({
-        lastUsedProvider: lastUsed?.provider,
-        lastUsedModel: lastUsed?.model,
-        connectedProviders,
-      });
-      const kickoffPin = resolved.confirmed
-        ? { provider: resolved.provider, model: resolved.model }
-        : {};
       onError(null);
       setCreating(true);
+      const kickoffPin = await resolveKickoffPin();
       let created: { id: string; name: string; color?: string };
       let agentPath: string;
       try {

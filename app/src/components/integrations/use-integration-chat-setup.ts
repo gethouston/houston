@@ -154,7 +154,7 @@ export function useIntegrationChatSetup() {
               tauriConfig.read,
               connectedProvidersRef.current,
             )),
-            buildPrompt: () => encodeIntegrationSetupMessage(),
+            kickoffPrompt: () => encodeIntegrationSetupMessage(),
           },
         );
         // createMission bypasses useCreateActivity — refetch so the panel's

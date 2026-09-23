@@ -4,28 +4,27 @@ import type { TFunction } from "i18next";
 import {
   CheckCircle2,
   ChevronDownIcon,
-  ExternalLink,
-  Globe,
   Lightbulb,
   Play,
   ScrollText,
-  Wrench,
 } from "lucide-react";
-import { useState } from "react";
 import { fileNameOf } from "../lib/agent-file-paths";
 import type {
   SemanticUpdateKind,
   TurnSummaryItem,
 } from "../lib/turn-summary-items";
 import { getFileIcon } from "./file-card";
+import { IntegrationUpdateRow } from "./turn-summary-integration-row";
+
+/** Every row species but the integration one, which renders its own row. */
+type SummaryRowItem = Exclude<TurnSummaryItem, { kind: "integration" }>;
 
 /**
  * One collapsible group of the turn-end summary ("Updates made" / "N new
- * files"). Three row species: agent files (open in preview/OS), semantic
- * updates (jump to the matching tab), and external-artifact integration rows
- * (PRODUCT-1196) — branded `Gmail · Sent email` rows that open the artifact's
- * URL when the action's result named one, with a visible external-link glyph
- * (never hover-gated). `done` renders the header's success checkmark.
+ * files"). Four row species: agent files (open in preview/OS), saved skills
+ * (named after the skill whose SKILL.md the turn wrote), semantic updates
+ * (jump to the matching tab), and external-artifact integration rows
+ * (PRODUCT-1196). `done` renders the header's success checkmark.
  */
 export function TurnSummarySection({
   title,
@@ -37,6 +36,7 @@ export function TurnSummarySection({
   onOpenSemantic,
   onOpenUrl,
   resolveBrand,
+  resolveSkillTitle,
   t,
 }: {
   title: string;
@@ -48,6 +48,8 @@ export function TurnSummarySection({
   onOpenSemantic?: (kind: SemanticUpdateKind) => void;
   onOpenUrl: (url: string) => void;
   resolveBrand: (action: string) => ChatActionBrand | undefined;
+  /** The title a saved skill's slug reads as (`lib/humanize-skill-name.ts`). */
+  resolveSkillTitle: (slug: string) => string;
   t: TFunction<"chat">;
 }) {
   return (
@@ -84,13 +86,16 @@ export function TurnSummarySection({
             const content = (
               <>
                 <ItemIcon item={item} />
-                <span className="truncate">{itemLabel(item, t)}</span>
+                <span className="truncate">
+                  {itemLabel(item, t, resolveSkillTitle)}
+                </span>
               </>
             );
-            if (item.kind === "semantic" && !onOpenSemantic)
+            // A settings target the user cannot reach is stated, not offered.
+            if (item.kind !== "file" && !onOpenSemantic)
               return (
                 <div
-                  key={item.update}
+                  key={rowKey(item)}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left"
                 >
                   {content}
@@ -98,13 +103,9 @@ export function TurnSummarySection({
               );
             return (
               <button
-                key={item.kind === "file" ? item.path : item.update}
+                key={rowKey(item)}
                 type="button"
-                onClick={() =>
-                  item.kind === "file"
-                    ? onOpenFile(item.path)
-                    : onOpenSemantic?.(item.update)
-                }
+                onClick={() => activate(item, onOpenFile, onOpenSemantic)}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-hover transition-colors"
               >
                 {content}
@@ -117,74 +118,29 @@ export function TurnSummarySection({
   );
 }
 
-/**
- * An external-artifact row: the app's logo (wrench for custom integrations,
- * globe when no brand art resolves or the favicon 404s) + `{name} · {Sent
- * email}`. With a URL the whole row is a button that opens the artifact and
- * wears a visible external-link glyph; without one it is a plain fact row.
- */
-function IntegrationUpdateRow({
-  action,
-  url,
-  brand,
-  onOpenUrl,
-}: {
-  action: string;
-  url?: string;
-  brand: ChatActionBrand | undefined;
-  onOpenUrl: (url: string) => void;
-}) {
-  const [logoFailed, setLogoFailed] = useState(false);
-  // The brand resolver only misses on an empty action; still, never render a
-  // raw slug — de-underscore it into words as the last resort.
-  const label = brand
-    ? `${brand.name} · ${brand.doneLabel ?? brand.actionLabel}`
-    : action.replace(/_/g, " ").toLowerCase();
-  const icon =
-    brand?.icon === "tool" ? (
-      <Wrench aria-hidden className="h-4 w-4 text-ink-muted shrink-0" />
-    ) : brand?.logoUrl && !logoFailed ? (
-      <img
-        alt=""
-        className="h-4 w-4 shrink-0 rounded object-contain"
-        decoding="async"
-        loading="lazy"
-        onError={() => setLogoFailed(true)}
-        src={brand.logoUrl}
-      />
-    ) : (
-      <Globe aria-hidden className="h-4 w-4 text-ink-muted shrink-0" />
-    );
-  const body = (
-    <>
-      {icon}
-      <span className="truncate">{label}</span>
-      {url && (
-        <ExternalLink
-          aria-hidden
-          className="h-3.5 w-3.5 text-ink-muted shrink-0 ml-auto"
-        />
-      )}
-    </>
-  );
-  const rowClass = "w-full flex items-center gap-2 px-3 py-2 text-sm text-left";
-  if (!url) return <div className={rowClass}>{body}</div>;
-  return (
-    <button
-      type="button"
-      onClick={() => onOpenUrl(url)}
-      className={cn(rowClass, "hover:bg-hover transition-colors")}
-    >
-      {body}
-    </button>
-  );
+function rowKey(item: SummaryRowItem): string {
+  if (item.kind === "file") return `file:${item.path}`;
+  if (item.kind === "skill") return `skill:${item.slug}`;
+  return `semantic:${item.update}`;
 }
 
-function ItemIcon({
-  item,
-}: {
-  item: Exclude<TurnSummaryItem, { kind: "integration" }>;
-}) {
+function activate(
+  item: SummaryRowItem,
+  onOpenFile: (path: string) => void,
+  onOpenSemantic?: (kind: SemanticUpdateKind) => void,
+): void {
+  if (item.kind === "file") {
+    onOpenFile(item.path);
+    return;
+  }
+  // A saved skill lands in the same place its generic row does: the agent's
+  // Skills section, which is where the saved skill can be read and edited.
+  onOpenSemantic?.(item.kind === "skill" ? "skills" : item.update);
+}
+
+function ItemIcon({ item }: { item: SummaryRowItem }) {
+  if (item.kind === "skill")
+    return <Play className="h-4 w-4 text-ink-muted shrink-0" />;
   if (item.kind === "semantic") {
     const Icon =
       item.update === "instructions"
@@ -203,9 +159,12 @@ function ItemIcon({
 }
 
 function itemLabel(
-  item: Exclude<TurnSummaryItem, { kind: "integration" }>,
+  item: SummaryRowItem,
   t: TFunction<"chat">,
+  resolveSkillTitle: (slug: string) => string,
 ): string {
+  if (item.kind === "skill")
+    return t("summary.skillSaved", { name: resolveSkillTitle(item.slug) });
   if (item.kind === "semantic") {
     if (item.update === "instructions") return t("summary.instructionsUpdated");
     if (item.update === "skills") return t("summary.skillsUpdated");

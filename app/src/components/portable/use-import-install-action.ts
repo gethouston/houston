@@ -8,6 +8,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { genericErrorDescription } from "../../lib/error-report";
+import type { KickoffPin } from "../../lib/kickoff-pin";
 import { openAgentBoard } from "../../lib/open-agent";
 import { toAgent } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
@@ -17,7 +18,6 @@ import {
   startImportedAgentSetup,
 } from "./import-install";
 import { runImportInstall } from "./import-install-flow";
-import type { KickoffPin } from "./import-install-request";
 import { createSingleFlight } from "./single-flight";
 import type { ImportSelection } from "./use-import-package";
 

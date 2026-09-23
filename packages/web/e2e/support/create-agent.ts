@@ -73,7 +73,7 @@ export async function createAgent(page: Page, name: string): Promise<void> {
   // The sheet closes and the setup-mission chat auto-opens as a right-side
   // panel. Its "Getting set up" mission uses the follow-up composer (an
   // existing conversation), so that composer is the stable "panel opened"
-  // signal — independent of the setup-mission bubble copy.
+  // signal — independent of whatever the agent says first.
   await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible({
     timeout: 10_000,
   });

@@ -18,7 +18,7 @@ describe("resolveKickoffPin", () => {
         model: "custom/live-model",
         lastUsedProvider: "anthropic",
         lastUsedModel: getDefaultModel("anthropic"),
-        connectedProviders: [],
+        connected: [],
       }),
       { provider: "openrouter", model: "custom/live-model" },
     );
@@ -32,7 +32,7 @@ describe("resolveKickoffPin", () => {
         model: getDefaultModel("anthropic"),
         lastUsedProvider: "openrouter",
         lastUsedModel: null,
-        connectedProviders: ["openrouter"],
+        connected: ["openrouter"],
       }),
       { provider: "openrouter", model: getDefaultModel("openrouter") },
     );
@@ -46,7 +46,7 @@ describe("resolveKickoffPin", () => {
         model: getDefaultModel("anthropic"),
         lastUsedProvider: "openrouter",
         lastUsedModel: "custom/live-model",
-        connectedProviders: ["openrouter"],
+        connected: ["openrouter"],
       }),
       { provider: "openrouter", model: "custom/live-model" },
     );
@@ -60,7 +60,7 @@ describe("resolveKickoffPin", () => {
         model: getDefaultModel("anthropic"),
         lastUsedProvider: "anthropic",
         lastUsedModel: getDefaultModel("anthropic"),
-        connectedProviders: [],
+        connected: [],
       }),
       {},
     );
@@ -74,9 +74,40 @@ describe("resolveKickoffPin", () => {
         model: getDefaultModel("anthropic"),
         lastUsedProvider: null,
         lastUsedModel: null,
-        connectedProviders: [],
+        connected: [],
       }),
       {},
+    );
+  });
+
+  it("pins nothing when the scan could not answer", () => {
+    // `null` is a scan still loading, failed, or carrying a provider that is
+    // still checking. The install is already running, so there is nowhere to
+    // wait: a pair that MIGHT be disconnected must not be written.
+    deepStrictEqual(
+      resolveKickoffPin({
+        userPickedModel: false,
+        provider: "anthropic",
+        model: getDefaultModel("anthropic"),
+        lastUsedProvider: "anthropic",
+        lastUsedModel: getDefaultModel("anthropic"),
+        connected: null,
+      }),
+      {},
+    );
+  });
+
+  it("still pins the user's own pick when the scan could not answer", () => {
+    deepStrictEqual(
+      resolveKickoffPin({
+        userPickedModel: true,
+        provider: "openrouter",
+        model: "custom/live-model",
+        lastUsedProvider: null,
+        lastUsedModel: null,
+        connected: null,
+      }),
+      { provider: "openrouter", model: "custom/live-model" },
     );
   });
 });

@@ -1,9 +1,19 @@
 import type { FileChangeEntry, ToolEntry } from "@houston-ai/chat";
 import { fileNameOf, toWorkspaceRelative } from "./agent-file-paths.ts";
 import {
+  isFileCreateTool,
+  isFileWriteTool,
+  toolShortName,
+} from "./file-write-tools.ts";
+import { skillFolderPathOf } from "./skill-folder-path.ts";
+import {
   integrationUpdatesOf,
   type TurnIntegrationUpdate,
 } from "./turn-integration-updates.ts";
+import {
+  extractPathsFromBashOutput,
+  isUserVisibleFilePath,
+} from "./user-visible-files.ts";
 
 export type SemanticUpdateKind = "instructions" | "skills" | "learnings";
 export type FileUpdateKind = "created" | "modified";
@@ -11,6 +21,8 @@ export type FileUpdateKind = "created" | "modified";
 export type TurnSummaryItem =
   | { kind: "file"; path: string; change: FileUpdateKind }
   | { kind: "semantic"; update: SemanticUpdateKind }
+  /** One named skill the turn SAVED (its `SKILL.md` was written). */
+  | { kind: "skill"; slug: string }
   | TurnIntegrationUpdate;
 
 export interface TurnSummaryGroups {
@@ -18,108 +30,30 @@ export interface TurnSummaryGroups {
   files: Extract<TurnSummaryItem, { kind: "file" }>[];
 }
 
-const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit"]);
-const USER_FILE_EXTENSIONS = new Set([
-  "docx",
-  "doc",
-  "xlsx",
-  "xls",
-  "pptx",
-  "ppt",
-  "pdf",
-  "png",
-  "jpg",
-  "jpeg",
-  "svg",
-  "gif",
-  "txt",
-  "rtf",
-  "csv",
-  // Plain-text formats agents routinely write as user-visible output. `md`
-  // is the one that prompted this: a real user reported a `perfil.md`
-  // from the agent never showed up in the "New files" section because md
-  // wasn't on this allowlist (it was rejected on every OS, the Windows
-  // separator bugs just made it harder to notice).
-  "md",
-  "markdown",
-  "html",
-  "json",
-  "yaml",
-  "yml",
-]);
-
-function shortName(name: string): string {
-  return name.includes("__") ? (name.split("__").pop() ?? name) : name;
+/** A semantic update, carrying the skill identity when the path names one. */
+interface PathClassification {
+  update: SemanticUpdateKind;
+  /** Set for a path inside a skill folder (see skill-folder-path.ts). */
+  slug?: string;
+  /** True only for the skill folder's own `SKILL.md`. */
+  isSkillFile?: boolean;
 }
 
-function classifyPath(
-  path: string,
-  agentPath: string,
-): SemanticUpdateKind | null {
-  // Separator handling matters here: the engine emits absolute paths in the
-  // HOST's native separator, so a plain `path.split("/").pop()` returned the
-  // whole path on Windows — the "New files" section never rendered correctly
-  // and CLAUDE.md / SKILL.md never classified as semantic updates. The shared
-  // helpers in agent-file-paths.ts are separator-agnostic.
-  const relative = toWorkspaceRelative(path, {
-    folderPath: agentPath,
-  }).toLowerCase();
-  const fileName = fileNameOf(relative);
+/** Takes an ALREADY workspace-relative path (see `addPath`). */
+function classifyPath(relative: string): PathClassification | null {
+  const lower = relative.toLowerCase();
+  const fileName = fileNameOf(lower);
 
   if (fileName === "claude.md" || fileName === "agents.md")
-    return "instructions";
-  if (relative === ".houston/learnings/learnings.json") return "learnings";
-  if (
-    relative.startsWith(".agents/skills/") ||
-    relative.startsWith(".claude/skills/") ||
-    relative.includes("/.agents/skills/") ||
-    relative.includes("/.claude/skills/")
-  ) {
-    return "skills";
-  }
-  if (fileName === "skill.md" || fileName === "skills.md") return "skills";
+    return { update: "instructions" };
+  if (lower === ".houston/learnings/learnings.json")
+    return { update: "learnings" };
+
+  const skill = skillFolderPathOf(relative);
+  if (skill) return { update: "skills", ...skill };
+  if (fileName === "skill.md" || fileName === "skills.md")
+    return { update: "skills" };
   return null;
-}
-
-export function isUserVisibleFilePath(path: string): boolean {
-  const fileName = fileNameOf(path);
-  const ext = fileName.includes(".")
-    ? fileName.split(".").pop()?.toLowerCase()
-    : "";
-  return Boolean(ext && USER_FILE_EXTENSIONS.has(ext));
-}
-
-function extractPathsFromBashOutput(output: string): string[] {
-  const paths: string[] = [];
-  const seen = new Set<string>();
-  const add = (raw: string) => {
-    const p = raw.trim();
-    if (p && !seen.has(p)) {
-      seen.add(p);
-      paths.push(p);
-    }
-  };
-
-  const labeled =
-    /(?:saved|created|wrote|written|output|file):\s*([^\r\n]+\.[a-zA-Z0-9]{1,10})/gi;
-  for (
-    let match = labeled.exec(output);
-    match !== null;
-    match = labeled.exec(output)
-  ) {
-    add(match[1]);
-  }
-
-  const bare = /^(\/[^\r\n]+\.[a-zA-Z0-9]{1,10})\s*$/gm;
-  for (
-    let match = bare.exec(output);
-    match !== null;
-    match = bare.exec(output)
-  ) {
-    add(match[1]);
-  }
-
-  return paths;
 }
 
 export function buildTurnSummaryItems(
@@ -128,27 +62,42 @@ export function buildTurnSummaryItems(
   fileChanges: FileChangeEntry[] = [],
 ): TurnSummaryItem[] {
   const semantic = new Set<SemanticUpdateKind>();
-  const files: Array<{ path: string; change: FileUpdateKind }> = [];
-  const seenFiles = new Map<string, FileUpdateKind>();
+  /** Slugs whose own `SKILL.md` was written — one named row each. */
+  const savedSkills = new Set<string>();
+  /** Slugs touched some other way; `""` when the path names no folder. */
+  const otherSkillWork = new Set<string>();
+  // Keyed by the workspace-relative path, which dedupes the SAME file arriving
+  // absolute from a tool input and relative from a `file_changes` frame; the
+  // value keeps the spelling first seen, which every opener accepts.
+  const files = new Map<string, { path: string; change: FileUpdateKind }>();
 
   const addPath = (path: string, change: FileUpdateKind) => {
-    const update = classifyPath(path, agentPath);
+    // Separator handling matters here: the engine emits absolute paths in the
+    // HOST's native separator, so a plain `path.split("/").pop()` returned the
+    // whole path on Windows — the "New files" section never rendered correctly
+    // and CLAUDE.md / SKILL.md never classified as semantic updates. The shared
+    // helpers in agent-file-paths.ts are separator-agnostic.
+    const relative = toWorkspaceRelative(path, { folderPath: agentPath });
+    const update = classifyPath(relative);
     if (update) {
-      semantic.add(update);
+      // Writing `<slug>/SKILL.md` IS saving that skill, so the rail can name
+      // it. Any other work inside a skill folder — a reference doc, a patch to
+      // an existing SKILL.md — stays the generic "Skills updated" row.
+      if (update.update !== "skills") semantic.add(update.update);
+      else if (update.isSkillFile && update.slug && change === "created")
+        savedSkills.add(update.slug);
+      else otherSkillWork.add(update.slug ?? "");
       return;
     }
-    if (!isUserVisibleFilePath(path)) return;
+    if (!isUserVisibleFilePath(relative)) return;
 
-    const existing = seenFiles.get(path);
-    if (existing === "created" || existing === change) return;
-    if (existing === "modified" && change === "created") {
-      seenFiles.set(path, change);
-      const item = files.find((file) => file.path === path);
-      if (item) item.change = change;
+    const existing = files.get(relative);
+    if (!existing) {
+      files.set(relative, { path, change });
       return;
     }
-    seenFiles.set(path, change);
-    files.push({ path, change });
+    // "Created" wins: a file both written and edited in one turn is new.
+    if (change === "created") existing.change = change;
   };
 
   for (const change of fileChanges) {
@@ -157,29 +106,42 @@ export function buildTurnSummaryItems(
 
   for (const tool of tools) {
     if (!tool.result || tool.result.is_error) continue;
-    const sn = shortName(tool.name);
 
-    if (FILE_TOOLS.has(sn)) {
+    if (isFileWriteTool(tool.name)) {
       const inp = tool.input as Record<string, unknown> | null | undefined;
       // Claude tools carry `file_path`; pi tools carry `path`.
       const fp = (inp?.file_path ?? inp?.path) as string | undefined;
-      if (fp) addPath(fp, sn === "Write" ? "created" : "modified");
-    } else if (sn === "Bash") {
+      if (fp) addPath(fp, isFileCreateTool(tool.name) ? "created" : "modified");
+    } else if (toolShortName(tool.name).toLowerCase() === "bash") {
       for (const fp of extractPathsFromBashOutput(tool.result.content)) {
         addPath(fp, "created");
       }
     }
   }
 
+  // A skill whose SKILL.md was saved already has a row that names it; the
+  // generic row is only for skill work no named row covers.
+  const uncoveredSkillWork = Array.from(otherSkillWork).some(
+    (slug) => !slug || !savedSkills.has(slug),
+  );
+  if (uncoveredSkillWork) semantic.add("skills");
+
   return [
     // External-artifact actions lead: they are the updates the user most wants
     // to review (and click through to) at a glance (PRODUCT-1196).
     ...integrationUpdatesOf(tools),
+    ...Array.from(savedSkills).map((slug) => ({
+      kind: "skill" as const,
+      slug,
+    })),
     ...Array.from(semantic).map((update) => ({
       kind: "semantic" as const,
       update,
     })),
-    ...files.map((file) => ({ kind: "file" as const, ...file })),
+    ...Array.from(files.values()).map((file) => ({
+      kind: "file" as const,
+      ...file,
+    })),
   ];
 }
 

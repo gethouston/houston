@@ -14,7 +14,8 @@
   },
   "tags": {
     "routine": "Rotina",
-    "agentStarted": "Iniciada pelo funcionário de IA"
+    "agentStarted": "Iniciada pelo funcionário de IA",
+    "setup": "Configuração"
   },
   "panel": {
     "taskLabel": "Tarefa: {{title}}",

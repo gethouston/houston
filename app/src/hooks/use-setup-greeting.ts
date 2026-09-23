@@ -1,13 +1,18 @@
 /**
- * The app's one `SetupGreetingRegistry` (HOU-867) plus the hook the chat
- * panel reads. `registerSetupGreeting` is called when the self-setup mission
- * starts (`lib/agent-setup-mission.ts`); the panel appends the derived hello
- * while the conversation is registered, the reveal beat has passed, and the
- * agent hasn't produced any output of its own yet (that last check is the
- * panel's, against the live feed).
+ * The app's one `SetupGreetingRegistry` plus the hook the chat panel reads.
+ *
+ * `lib/agent-setup-mission.ts` records a self-setup mission here the instant it
+ * starts one, and `hooks/use-setup-hello.ts` reads the record back while it
+ * lasts (see `lib/setup-mission-greeting.ts` for why the record exists and what
+ * takes over afterwards).
+ *
+ * The localStorage mirror is what carries the record through a reload during
+ * the agent's pod cold start. Losing it only costs the record — the hello still
+ * derives from the agent's job description — so a broken mirror reports and the
+ * flow continues.
  */
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { reportError } from "../lib/error-report";
 import {
   type SetupGreetingEntry,
@@ -16,8 +21,6 @@ import {
 
 const STORAGE_KEY = "houston.setup-greeting";
 
-/** localStorage, surfaced to Sentry — a broken mirror only costs the hello
- *  after a relaunch, but it must not stay invisible in beta. */
 const registry = new SetupGreetingRegistry({
   now: () => Date.now(),
   read: () => {
@@ -45,32 +48,16 @@ export function registerSetupGreeting(
 }
 
 /**
- * The agent name to greet with for this conversation, or null (not a setup
- * mission, still inside the reveal beat, or stale). Flips to the name on its
- * own when the beat elapses.
+ * The creation-time record for this conversation, or null when there is none
+ * (any other chat, another device, or a record past its TTL).
  */
-export function useSetupGreetingName(
+export function useSetupGreeting(
   agentPath: string | null | undefined,
   sessionKey: string | null | undefined,
-): string | null {
-  const entry = useSyncExternalStore(
+): SetupGreetingEntry | null {
+  return useSyncExternalStore(
     (cb) => registry.subscribe(cb),
     () =>
       agentPath && sessionKey ? registry.get(agentPath, sessionKey) : null,
   );
-  const [revealed, setRevealed] = useState(
-    () => !!entry && registry.revealDelayRemaining(entry) === 0,
-  );
-  useEffect(() => {
-    if (!entry) return;
-    const remaining = registry.revealDelayRemaining(entry);
-    if (remaining === 0) {
-      setRevealed(true);
-      return;
-    }
-    setRevealed(false);
-    const timer = setTimeout(() => setRevealed(true), remaining);
-    return () => clearTimeout(timer);
-  }, [entry]);
-  return entry && revealed ? entry.agentName : null;
 }

@@ -1,60 +1,148 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { buildSetupMissionPrompt } from "../src/lib/setup-mission-prompt.ts";
+import en from "../src/locales/en/chat.json" with { type: "json" };
+
+const BRIEF = { context: "Healthcare", role: "Operations coordinator" };
 
 test("setup prompt uses the saved context and role instead of the agent name", () => {
-  const prompt = buildSetupMissionPrompt("Jerry", "en", {
-    context: "Healthcare",
-    role: "Operations coordinator",
-  });
+  const prompt = buildSetupMissionPrompt("Jerry", "en", BRIEF);
 
   assert.match(prompt, /This is Jerry's very first conversation/);
   assert.match(prompt, /- Industry: Healthcare/);
   assert.match(prompt, /- Role: Operations coordinator/);
-  assert.match(prompt, /every example you give must be specific to it/);
+  assert.match(prompt, /every idea you offer must be specific to it/);
   assert.match(prompt, /Do not use your name to infer your role/);
 });
 
-test("the brief tells the agent to keep the block at the top of its instructions", () => {
-  const prompt = buildSetupMissionPrompt("Jerry", "en", {
-    context: "Healthcare",
-    role: "Operations coordinator",
-  });
+test("the hello the user already read is quoted back, and never repeated", () => {
   assert.match(
-    prompt,
-    /leave that block exactly as it is at the very top and write everything else below it/,
-  );
-  // An agent created without a brief has no block, so it is never told about one.
-  assert.doesNotMatch(buildSetupMissionPrompt("Jerry", "en"), /that block/);
-});
-
-test("with a brief, the examples step leads with repeatable work for that job", () => {
-  const prompt = buildSetupMissionPrompt("Jerry", "en", {
-    context: "Healthcare",
-    role: "Operations coordinator",
-  });
-
-  assert.match(
-    prompt,
-    /2\. Then propose 2 or 3 pieces of repeatable work you could take over right now/,
+    buildSetupMissionPrompt("Jerry", "en", BRIEF),
+    /"Hi, I'm Jerry, your Operations coordinator\. Give me a few seconds to get going\. The most important thing we'll do together is create Skills, so you start automating your work\."/,
   );
   assert.match(
-    prompt,
-    /recurring jobs in Healthcare that this Operations coordinator handles the same way every time/,
+    buildSetupMissionPrompt("Jerry", "en"),
+    /"Hi, I'm Jerry\. Give me a few seconds to get going\. The most important thing we'll do together is create Skills, so you start automating your work\."/,
   );
-});
-
-test("setup prompt aims the first conversation at Skills and Routines", () => {
   for (const prompt of [
-    buildSetupMissionPrompt("Jerry", "en", {
-      context: "Healthcare",
-      role: "Operations coordinator",
-    }),
+    buildSetupMissionPrompt("Jerry", "en", BRIEF),
     buildSetupMissionPrompt("Jerry", "en"),
   ]) {
-    assert.match(prompt, /at least one repeatable process saved as a Skill/);
-    assert.match(prompt, /a Routine for whatever should happen on a schedule/);
-    assert.match(prompt, /Ask only what you need to start that work/);
+    assert.match(prompt, /The user has ALREADY seen this exact message/);
+    assert.match(
+      prompt,
+      /Do NOT greet the user, do NOT introduce yourself, and do NOT say any of that again/,
+    );
+    assert.match(prompt, /Your first reply continues straight on from it/);
+    assert.doesNotMatch(prompt, /Open with EXACTLY this sentence/);
+  }
+});
+
+/**
+ * The prompt quotes the hello back to the model so it can see there is nothing
+ * left to introduce, and that quote has to be the sentence the chat ACTUALLY
+ * rendered — `chat:setupGreeting.*`. The prompt lib stays i18n-free (the
+ * node:test suite loads it directly), so the two are pinned here instead: the
+ * English source with its placeholders filled in, word for word.
+ */
+test("the quoted hello is the en chat:setupGreeting copy, word for word", () => {
+  const rendered = en.setupGreeting.textWithRole
+    .replace("{{name}}", "Jerry")
+    .replace("{{role}}", BRIEF.role);
+  assert.ok(
+    buildSetupMissionPrompt("Jerry", "en", BRIEF).includes(`"${rendered}"`),
+    "the roled prompt no longer quotes chat:setupGreeting.textWithRole",
+  );
+
+  const renderedNoRole = en.setupGreeting.text.replace("{{name}}", "Jerry");
+  assert.ok(
+    buildSetupMissionPrompt("Jerry", "en").includes(`"${renderedNoRole}"`),
+    "the roleless prompt no longer quotes chat:setupGreeting.text",
+  );
+});
+
+test("the first reply IS the ask_user card, never a text-only line", () => {
+  const brief = buildSetupMissionPrompt("Jerry", "en", BRIEF);
+  assert.match(
+    brief,
+    /1\. Your very first action is a call to the `ask_user` tool\. Do not write a text reply first/,
+  );
+  assert.match(
+    brief,
+    /ONE question whose text says, in one short sentence, that you already have a few ideas of work you could take over and asks which one they want to start with/,
+  );
+  assert.match(
+    brief,
+    /3 concrete, specific jobs in Healthcare that this Operations coordinator repeats the same way every time/,
+  );
+  assert.match(
+    buildSetupMissionPrompt("Sales Guru", "en"),
+    /3 concrete, specific example missions you could run for them/,
+  );
+});
+
+test("the ideas are options on a card, never a list in the reply", () => {
+  for (const prompt of [
+    buildSetupMissionPrompt("Jerry", "en", BRIEF),
+    buildSetupMissionPrompt("Jerry", "en"),
+  ]) {
+    assert.match(
+      prompt,
+      /4 options \(each an `\{id, label\}` row, single-select\)/,
+    );
+    assert.match(prompt, /Never a category like "reporting" or "admin"/);
+    assert.match(prompt, /short enough to read on a button/);
+    assert.match(prompt, /The 4th option is labeled "Suggest other ideas"/);
+    assert.match(
+      prompt,
+      /MUST be offered through `ask_user`, never written out as a list/,
+    );
+    assert.match(
+      prompt,
+      /If they pick "Suggest other ideas", ask again in exactly the same shape with 3 DIFFERENT jobs/,
+    );
+  }
+});
+
+test("nothing happens before the first reply: no self-written job description", () => {
+  for (const prompt of [
+    buildSetupMissionPrompt("Jerry", "en", BRIEF),
+    buildSetupMissionPrompt("Jerry", "en"),
+  ]) {
+    assert.doesNotMatch(prompt, /write the body of your own instructions/);
+    assert.match(prompt, /never do anything before your first reply/);
+  }
+});
+
+test("without a brief the agent never guesses a job from its name", () => {
+  const prompt = buildSetupMissionPrompt("Sales Guru", "en");
+  assert.match(prompt, /Do not use your name to infer your role/);
+  assert.doesNotMatch(prompt, /- Industry:/);
+  assert.doesNotMatch(prompt, /- Role:/);
+});
+
+test("setup prompt does the job first, then saves it as a Skill", () => {
+  for (const prompt of [
+    buildSetupMissionPrompt("Jerry", "en", BRIEF),
+    buildSetupMissionPrompt("Jerry", "en"),
+  ]) {
+    assert.match(prompt, /one real job done together, then saved as a Skill/);
+    assert.match(prompt, /never save a Skill before the job is done once/);
+    assert.match(
+      prompt,
+      /2\. Once they pick one, DO that job with them right now, for real/,
+    );
+    assert.match(prompt, /ask only the 2 or 3 questions you truly need/);
+    assert.match(
+      prompt,
+      /3\. As soon as the result is right, save the way you did it as a Skill/,
+    );
+    assert.match(prompt, /it will keep improving as they run it on real cases/);
+    assert.match(
+      prompt,
+      /4\. Along the way, save what they tell you the moment they say it/,
+    );
+    assert.match(prompt, /anything they want on a schedule becomes a Routine/);
   }
 });
 
@@ -69,18 +157,5 @@ test("setup prompt keeps the language directive in both shapes", () => {
   assert.match(
     buildSetupMissionPrompt("Jerry", "pt"),
     /The user's app is set to Portuguese/,
-  );
-});
-
-test("setup prompt still forbids name-derived setup without role context", () => {
-  const prompt = buildSetupMissionPrompt("Sales Guru", "en");
-
-  assert.match(prompt, /This is Sales Guru's very first conversation/);
-  assert.match(prompt, /Do not use your name to infer your role/);
-  assert.doesNotMatch(prompt, /- Industry:/);
-  assert.doesNotMatch(prompt, /- Role:/);
-  assert.match(
-    prompt,
-    /2\. Then propose 2 or 3 concrete example missions you could do for them right now/,
   );
 });

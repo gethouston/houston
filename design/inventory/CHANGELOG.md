@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v97 - 2026-09-23
+
+A mission card wears a tag pill for work the user did not type: a routine's
+run, a mission the agent started for itself, and the agent's own set-up
+mission. At most one pill per card, and a mission the user asked for wears
+none.
+
 ## v96 - 2026-09-23
 
 The interaction card's in-progress state is a draft: the step it stands on, the

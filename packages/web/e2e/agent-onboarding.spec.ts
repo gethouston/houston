@@ -9,15 +9,34 @@ import { expect, test } from "./support/fixtures";
 import { missionCard, screen } from "./support/team-nav";
 
 /**
- * The reworked agent self-setup flow. Creating an agent through the dialog no
- * longer opens a full-screen activation flow — instead the dialog fires the
+ * The agent self-setup flow. Creating an agent through the dialog fires the
  * agent's self-setup mission in the normal shell, switches to the board, and
  * auto-opens the chat panel on that mission
- * (`setActivityPanelId(conversationId, { forceOpen: true })`). The mission's
- * visible bubble is `agentOnboarding:setupMission.kickoff` ("Help me get set
- * up") and its board card is `setupMission.title` ("Getting set up"); the real
- * directive rides the hidden `buildPrompt` and never renders.
+ * (`setActivityPanelId(conversationId, { forceOpen: true })`).
+ *
+ * The user typed nothing, so the mission has NO user bubble: the directive
+ * rides the auto-continue marker and the transcript folds it away on both the
+ * live and the reload path. What the user sees is the agent speaking first, a
+ * board card titled `setupMission.title` ("Getting set up"), and the "Set up"
+ * tag on that card.
+ *
+ * The mission's first message is a hello naming the agent and the job it was
+ * hired for, from the record the create writes (`lib/setup-mission-greeting.ts`)
+ * — so it is whole in the first paint, it is the same sentence on every run, and
+ * it stays at the top of the transcript once the agent itself replies.
  */
+
+/** The hello for an agent created through `fillAgentBrief` (Finance /
+ *  Financial analyst), word for word from `chat:setupGreeting.textWithRole`. */
+function setupHello(name: string): string {
+  return `Hi, I'm ${name}, your Financial analyst. Give me a few seconds to get going. The most important thing we'll do together is create Skills, so you start automating your work.`;
+}
+
+/** Everything in the transcript that is NOT a user bubble (`is-user` is the
+ *  bubble's own marker, `chat-mentions.spec.ts` reads the same pair). */
+function agentMessages(page: Page) {
+  return page.locator("[data-conversation-message-key]:not(.is-user)");
+}
 
 /** Open the create dialog and make an agent from scratch (leaves the dialog to
  *  close itself and the setup-mission panel to auto-open). */
@@ -70,14 +89,16 @@ test("the welcome chat is live before the board sweep returns its row", async ({
 
   await createFromScratch(page, "Solstice");
 
-  // A live conversation, not an empty shell: the panel's transcript carries the
-  // user bubble the create just sent (its session key + agent path resolved).
-  await expect(page.locator(".is-user").first()).toBeVisible({
-    timeout: 4_000,
-  });
+  // The hello is derived rather than fetched, but deriving it takes the agent
+  // path and session key of a mission the sweep has not returned — so its
+  // presence here proves the panel got both from the created-mission handoff.
+  await expect(agentMessages(page).first()).toBeVisible({ timeout: 4_000 });
+  // And the transcript under it is live on that same session key: the fake
+  // host's own reply lands as a second agent message.
+  await expect(agentMessages(page).nth(1)).toBeVisible({ timeout: 10_000 });
 });
 
-test("the setup mission's visible user bubble shows the kickoff copy", async ({
+test("the setup mission opens on its hello, with no user bubble at all", async ({
   page,
 }) => {
   await page.goto("/");
@@ -87,17 +108,22 @@ test("the setup mission's visible user bubble shows the kickoff copy", async ({
     timeout: 10_000,
   });
 
-  // The visible first user bubble is the kickoff, NOT the hidden directive.
-  // Scoped to the user bubble (`.is-user`) so it tests the chat message, not the
-  // mission card's description (which also reads "Help me get set up").
-  //
-  // NOTE: until the parallel `displayText` engine fix lands, the current tree
-  // renders the full `buildPrompt` directive in this bubble instead, so this
-  // assertion is EXPECTED to fail locally until then ("bubble assertion pending
-  // displayText fix"). It encodes the CORRECT post-fix behavior on purpose.
-  await expect(
-    page.locator(".is-user").filter({ hasText: "Help me get set up" }),
-  ).toBeVisible();
+  // The hello names the job the agent was hired for, because the create
+  // recorded it alongside the name at the moment it asked for both.
+  await expect(agentMessages(page).first()).toContainText(
+    setupHello("Stratus"),
+    { timeout: 10_000 },
+  );
+
+  // The user typed nothing: the directive rides the auto-continue marker, so
+  // the transcript folds it away and the agent is the only voice here.
+  await expect(page.locator(".is-user")).toHaveCount(0);
+
+  // The agent's own reply lands UNDER the hello, never in place of it.
+  await expect(agentMessages(page).nth(1)).toBeVisible({ timeout: 10_000 });
+  await expect(agentMessages(page).first()).toContainText(
+    setupHello("Stratus"),
+  );
 });
 
 test("the setup mission shows as a card on the new agent's board", async ({
@@ -119,6 +145,8 @@ test("the setup mission shows as a card on the new agent's board", async ({
     .locator("[data-kanban-card]")
     .filter({ hasText: "Getting set up" });
   await expect(card).toHaveCount(1);
+  // The card says WHY it exists: the user never asked for this mission.
+  await expect(card.getByText("Set up", { exact: true })).toBeVisible();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
 });
 

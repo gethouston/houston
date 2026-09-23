@@ -138,7 +138,7 @@ export function useSkillChatSetup(
         // Setup chats always run as Ask first: the interview needs ask_user
         // (auto strips it) and must never open read-only in Planner.
         modeOverride: "execute",
-        buildPrompt: (activityId) => encodeSkillSetupMessage(activityId),
+        kickoffPrompt: (activityId) => encodeSkillSetupMessage(activityId),
       });
       // createMission bypasses useCreateActivity — refetch so the chat
       // view's backing activity exists before it tries to render.

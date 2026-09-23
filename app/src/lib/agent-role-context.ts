@@ -1,4 +1,7 @@
-import { composeJobDescription } from "@houston/sdk/job-description";
+import {
+  composeJobDescription,
+  parseJobDescription,
+} from "@houston/sdk/job-description";
 
 /** The brief a new agent is created with: the industry it works in and the job
  *  it fills, both as the user reads them (a translated catalog label, or their
@@ -54,6 +57,28 @@ export function createAgentRoleContext(input: {
   const context = normalizeRolePart(input.context);
   const role = normalizeRolePart(input.role);
   return context && role ? { context, role } : null;
+}
+
+/**
+ * The brief an ALREADY WRITTEN job description carries, for an agent that
+ * arrives with one instead of with answers (an import). Both facts or neither:
+ * the role sentence names the job in the industry it is done in, and half a
+ * brief is not one.
+ *
+ * Reading it at the source is what keeps the three places that name the job in
+ * agreement — the creation record, the hidden setup prompt, and the derivation
+ * that takes over once the record expires (`setup-hello.ts`), which reads this
+ * same description.
+ */
+export function jobDescriptionRoleContext(
+  instructions: string | undefined,
+): AgentRoleContext | undefined {
+  if (!instructions) return undefined;
+  const { industry, role } = parseJobDescription(instructions).fields;
+  return (
+    createAgentRoleContext({ context: industry ?? "", role: role ?? "" }) ??
+    undefined
+  );
 }
 
 /**

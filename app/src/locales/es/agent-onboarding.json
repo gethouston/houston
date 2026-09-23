@@ -1,7 +1,6 @@
 {
   "setupMission": {
     "title": "Configurando",
-    "kickoff": "Ayúdame a configurarte",
     "startFailed": "No pudimos iniciar la configuración. Inténtalo de nuevo."
   },
   "roleSetup": {

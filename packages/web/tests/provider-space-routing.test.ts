@@ -1,3 +1,4 @@
+import { bus } from "@houston/engine-adapter/bus";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 /**
@@ -121,10 +122,18 @@ test("the probe runs once the space's agents have settled", async () => {
 });
 
 test("a provider WRITE refuses before the space's agents settle, rather than guessing", async () => {
+  const events: unknown[] = [];
+  const unsubscribe = bus.on((event) => events.push(event));
+
   await expect(client().providerLogout("anthropic")).rejects.toThrow(
     /still loading/i,
   );
+  unsubscribe();
   expect(forgetCredential).not.toHaveBeenCalled();
+  // Nothing was cleared, so nothing changed: a refused sign-out must not
+  // announce a connection change, which would refresh every cached status on
+  // the strength of a write that never happened.
+  expect(events).toEqual([]);
 
   await expect(
     client().setProviderApiKey("opencode", "sk-test"),

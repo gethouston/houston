@@ -332,7 +332,7 @@ No HTTP route could be derived conservatively from the function body, so the ope
 - `integrations.writes.disconnect`: path segment depends on a value the caller may override
 - `migrationImport`: unescaped path interpolation
 - `missions.search`: hop into EngineConversationsClient.getHistory could not be resolved: the agent the client is rooted at is not a parameter
-- `providerLogout`: hop into EngineCredentialClient.logout could not be resolved: the client comes from setupRuntimeClientFor(), which is not clientFor()
+- `providerLogout`: hop into EngineCredentialClient.logout could not be resolved: the client comes from runtimeClientFor(), which is not clientFor()
 - `providers.login`: query string is assembled from values no route can name
 - `providers.refresh`: multiple request calls
 - `providers.writes.setModel`: body argument is not a parameter

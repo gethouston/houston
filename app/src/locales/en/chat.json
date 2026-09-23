@@ -3,7 +3,8 @@
     "greeting": "Hi! I'm {{name}}, your new AI Employee. Tell me about what you'd like help with: you can describe a task in your own words, share a few details about how you like things done, or attach files that give me context. The more you tell me, the better my work will fit what you need. What would you like to start with?"
   },
   "setupGreeting": {
-    "text": "Hi! I'm {{name}}. I'm getting everything ready on my end, give me a moment and I'll introduce myself properly."
+    "text": "Hi, I'm {{name}}. Give me a few seconds to get going. The most important thing we'll do together is create Skills, so you start automating your work.",
+    "textWithRole": "Hi, I'm {{name}}, your {{role}}. Give me a few seconds to get going. The most important thing we'll do together is create Skills, so you start automating your work."
   },
   "composer": {
     "placeholder": "Ask anything...",
@@ -276,6 +277,7 @@
     "newFiles_one": "1 new file",
     "newFiles_other": "{{count}} new files",
     "instructionsUpdated": "Instructions updated",
+    "skillSaved": "Skill saved: {{name}}",
     "skillsUpdated": "Skills updated",
     "learningsUpdated": "Learnings updated",
     "openLinkFailedTitle": "Couldn’t open the link"

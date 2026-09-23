@@ -74,7 +74,7 @@ import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSendPin } from "../hooks/use-send-pin";
 import { useSession } from "../hooks/use-session";
-import { useSetupGreetingName } from "../hooks/use-setup-greeting";
+import { useSetupHello } from "../hooks/use-setup-hello";
 import { useStoreSkillLocaleMigration } from "../hooks/use-store-skill-locale-migration";
 import { useWelcomeGreetingRevealed } from "../hooks/use-welcome-greeting";
 import { deriveActiveInteraction } from "../lib/active-interaction";
@@ -138,7 +138,6 @@ import { queryKeys } from "../lib/query-keys";
 import { reportRejection } from "../lib/report-rejection";
 import { showSendFailedToast } from "../lib/send-error-toast";
 import { sendPinSettled } from "../lib/send-pin-gate";
-import { hasAgentOutput } from "../lib/setup-mission-greeting";
 import {
   buildSkillClaudePrompt,
   decodeSkillMessage,
@@ -2147,9 +2146,14 @@ export function useAgentChatPanel({
   const welcomeGreetingRevealed =
     useWelcomeGreetingRevealed(selectedSessionKey);
   const agentName = agent?.name;
-  // The setup mission's instant hello (HOU-867): derived while the pod warms
-  // up, dropped the moment the agent's own first output arrives.
-  const setupGreetingName = useSetupGreetingName(path, selectedSessionKey);
+  // The self-setup mission's hello, and whether this chat is that mission at
+  // all (`hooks/use-setup-hello.ts`).
+  const { isSetupMission, hello: setupHello } = useSetupHello({
+    agentPath: path,
+    sessionKey: selectedSessionKey,
+    activityAgentMode: selectedActivity?.agent,
+    agentName,
+  });
   const mapFeedItems = useCallback(
     ({ sessionKey, items }: { sessionKey: string; items: FeedItem[] }) => {
       const mapped = filterAutoContinueFeedItems(
@@ -2162,27 +2166,21 @@ export function useAgentChatPanel({
         };
         return [greeting, ...mapped];
       }
-      if (
-        setupGreetingName &&
-        sessionKey === selectedSessionKey &&
-        !hasAgentOutput(mapped)
-      ) {
+      if (setupHello && sessionKey === selectedSessionKey) {
         const hello: FeedItem = {
           feed_type: "assistant_text",
-          data: t("chat:setupGreeting.text", { name: setupGreetingName }),
+          data: setupHello.role
+            ? t("chat:setupGreeting.textWithRole", {
+                name: setupHello.name,
+                role: setupHello.role,
+              })
+            : t("chat:setupGreeting.text", { name: setupHello.name }),
         };
-        // After the kickoff bubble — it reads as the agent's first reply.
-        return [...mapped, hello];
+        return [hello, ...mapped];
       }
       return mapped;
     },
-    [
-      welcomeGreetingRevealed,
-      agentName,
-      setupGreetingName,
-      selectedSessionKey,
-      t,
-    ],
+    [welcomeGreetingRevealed, agentName, setupHello, selectedSessionKey, t],
   );
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
@@ -2243,6 +2241,9 @@ export function useAgentChatPanel({
     // The welcome chat is only "empty" for the pre-greeting beat — skill
     // cards flashing there and vanishing under the greeting reads as a bug.
     if (isWelcomeSessionKey(selectedSessionKey)) return undefined;
+    // Same for the self-setup mission: its whole chat is the agent introducing
+    // itself, and skill cards flashing under that read as a bug.
+    if (isSetupMission) return undefined;
     if (activeSkill) return null;
     if (emptySkillShowcase.length === 0) return undefined;
     return (
@@ -2287,6 +2288,7 @@ export function useAgentChatPanel({
     t,
     applySkill,
     selectedSessionKey,
+    isSetupMission,
   ]);
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {

@@ -12,8 +12,9 @@ import {
  * Codex backend serves a ChatGPT subscription. pi-ai's baked catalog is a
  * SUPERSET of that: it lists gpt-5.3-codex-spark, which the backend answers
  * `400 not supported when using Codex with a ChatGPT account`, so picking it
- * can only produce a dead turn — and an unserved id has held the app's Codex
- * default before, i.e. the model every fresh Codex chat started on.
+ * can only produce a dead turn. The app's Codex default is the model every
+ * fresh Codex chat starts on, so an unserved id there is a dead first turn for
+ * every one of those chats.
  *
  * `packages/runtime/src/ai/codex-offered.ts` is the documented source (it holds
  * the live probe, the verdicts and the re-verify recipe). This pins BOTH app

@@ -10,15 +10,17 @@
  */
 
 import type { PortableInstalledAgent } from "@houston/engine-adapter";
+import { jobDescriptionRoleContext } from "../../lib/agent-role-context";
 import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
-import { tauriProvider } from "../../lib/tauri";
+import { logAndReportError } from "../../lib/error-report";
+import type { KickoffPin } from "../../lib/kickoff-pin";
+import { tauriAgent, tauriProvider } from "../../lib/tauri";
 import {
   type InstallImportedAgentArgs,
   importInstallRequest,
-  type KickoffPin,
   lastUsedFromPin,
 } from "./import-install-request";
 
@@ -46,7 +48,40 @@ export function startImportedAgentSetup(
   kickoffPin: KickoffPin,
 ): void {
   void finishAgentSetup(installed.agentPath, { ...kickoffPin, routine: null });
-  void startAgentSetupMission(
+  void startImportedSetupMission(installed, kickoffPin);
+}
+
+/**
+ * An imported agent arrives with the source agent's own job description instead
+ * of answers, so the brief is READ off it before the mission starts. That one
+ * read is what keeps the three places naming the job in agreement: the creation
+ * record, the hidden prompt's quoted hello, and the derivation that takes over
+ * once the record expires (`lib/setup-hello.ts`), which reads this same
+ * description. Guessing "no role" here instead would have the hello change
+ * sentence half an hour later, when the record expires and that derivation
+ * takes over.
+ *
+ * The read is served by the agent's own engine, and on the hosted profile that
+ * pod is still being provisioned at this point, so it answers `""`
+ * (`lib/tauri.ts` isAgentPathCreating) — as does a package that carried no job
+ * description. Either way this mission starts naming the agent alone and its
+ * creation record holds no role, and the hello gains the role clause as soon as
+ * the description is readable: the derivation that owns it treats an empty read
+ * as unread rather than as "hired for no job".
+ */
+async function startImportedSetupMission(
+  installed: PortableInstalledAgent,
+  kickoffPin: KickoffPin,
+): Promise<void> {
+  let instructions: string | undefined;
+  try {
+    instructions = await tauriAgent.readFile(installed.agentPath, "CLAUDE.md");
+  } catch (e) {
+    // The mission still starts: it names the agent alone, and the hello picks
+    // the role up on the next readable description.
+    logAndReportError("import_job_description_read", e);
+  }
+  await startAgentSetupMission(
     {
       id: installed.agent.id,
       name: installed.agentName,
@@ -55,5 +90,6 @@ export function startImportedAgentSetup(
     },
     kickoffPin,
     "imported",
+    jobDescriptionRoleContext(instructions),
   );
 }

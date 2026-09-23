@@ -29,7 +29,9 @@ import type {
   CreateMissionOptions,
   CreateMissionResult,
 } from "./create-mission";
+import { hiddenPromptDisplayText } from "./hidden-prompt-display-text";
 import { logger } from "./logger";
+import { hasHiddenPrompt, missionPrompt } from "./mission-prompt";
 import { landMissionRow } from "./mission-row-landing";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
 import { showSendFailedToast } from "./send-error-toast";
@@ -59,9 +61,9 @@ export function startMissionNow(
   const row = landMissionRow(agent, opts, mission);
   void (async () => {
     let prompt = text;
-    if (opts.buildPrompt) {
+    if (hasHiddenPrompt(opts)) {
       try {
-        prompt = await opts.buildPrompt(mission.conversationId);
+        prompt = await missionPrompt(opts, mission.conversationId, text);
       } catch (e) {
         // The attachment save failed: nothing was sent, so the row must not
         // keep a fake running mission on the board (createMission's rollback).
@@ -81,10 +83,7 @@ export function startMissionNow(
       effortOverride: opts.effortOverride,
       modeOverride: opts.modeOverride,
       mentions: opts.mentions,
-      // `buildPrompt` swaps in a prompt the user should not see (a hidden setup
-      // directive, or attachment paths appended to their words) — so the bubble
-      // renders the clean `text` instead, live and on every history reload.
-      displayText: opts.buildPrompt ? text : undefined,
+      displayText: hiddenPromptDisplayText(text, hasHiddenPrompt(opts)),
     });
     // The AI title pass needs the row: it lands whenever the pod answers.
     const landedId = await row;

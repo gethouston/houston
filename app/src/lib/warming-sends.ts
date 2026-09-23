@@ -9,15 +9,12 @@
  * readiness probe clears (`flushWarmingSends`), with `suppressUserBubble` so
  * the bubble is never doubled.
  *
- * Attachment prompts are built by a closure (the files can't persist): after
- * a relaunch the flush falls back to the message text alone.
+ * Which prompt the flush puts on the wire — the live builder's, the one
+ * resolved at queue time, or the user's own words — is `warming-send-prompt.ts`.
  */
 
 import type { ActivityStatus } from "@houston/engine-adapter";
-import {
-  type MessageMention,
-  pushPendingUserMessage,
-} from "@houston/engine-adapter";
+import { pushPendingUserMessage } from "@houston/engine-adapter";
 import { getConversationFeed } from "../hooks/use-conversation-vm";
 import { actingUser } from "./acting-user";
 import { isAgentGoneError } from "./agent-gone";
@@ -26,7 +23,9 @@ import type {
   ProvisioningEntry,
 } from "./agent-provisioning";
 import { getEngine } from "./engine";
+import { reportError } from "./error-report";
 import { showErrorToast } from "./error-toast";
+import { hiddenPromptDisplayText } from "./hidden-prompt-display-text";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import { refreshMissionTitle } from "./mission-title";
@@ -37,6 +36,12 @@ import {
   type RowPin,
   verifyWarmingSendPin,
 } from "./warming-send-pin";
+import {
+  chooseWarmingPrompt,
+  undeliverableSend,
+  type WarmingSendInput,
+  warmingSendRecord,
+} from "./warming-send-prompt";
 
 /** Prompt builders keyed by send id — in-memory only, lost on reload. */
 const promptBuilders = new Map<string, () => Promise<string> | string>();
@@ -48,26 +53,30 @@ export function isFlushingWarmingSends(entry: ProvisioningEntry): boolean {
   return flushing.has(entry);
 }
 
-export interface QueueWarmingSendArgs {
+/**
+ * True when this refusal means the agent vanished between the readiness probe
+ * and the write (deleted/unshared elsewhere, HOUSTON-APP-4ZF): every remaining
+ * send is doomed to the same "agent not found" 404, so the flush stops and the
+ * roster heals instead of surfacing a state the user cannot act on. The probe's
+ * own gone-check catches this before the flush starts; this guards the
+ * in-flight race.
+ */
+function abortsFlushAsAgentGone(e: unknown): boolean {
+  if (!isAgentGoneError(e)) return false;
+  logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
+  healStaleRosterFromError(e);
+  return true;
+}
+
+export interface QueueWarmingSendArgs extends WarmingSendInput {
   agentPath: string;
-  sessionKey: string;
-  /** What the user typed — bubble + fallback prompt. */
-  text: string;
-  /** Builds the real wire prompt (attachment refs). Optional. */
+  /**
+   * Builds the wire prompt at FLUSH time, because building it writes the
+   * attachments through an engine that is still coming up. A closure, so it
+   * is lost on a relaunch: a caller whose prompt is already knowable passes
+   * `prompt` instead, which the mirror carries (`warming-send-prompt.ts`).
+   */
   buildPrompt?: () => Promise<string> | string;
-  /** Board row for a NEW conversation's first message (created at flush). */
-  row?: PendingWarmingSend["row"];
-  provider?: string;
-  model?: string;
-  effort?: string;
-  mode?: "execute" | "plan" | "auto";
-  /** Teammates this message @mentions (HOU-944) — chipped on the local bubble
-   *  now, shipped with the deferred send at flush. */
-  mentions?: MessageMention[];
-  /** Set = run the async AI title pass on this text once the flush lands. */
-  titleText?: string;
-  /** Row-only entry: no bubble now, no wire send at flush (HOU-713). */
-  rowOnly?: boolean;
 }
 
 /**
@@ -78,8 +87,10 @@ export interface QueueWarmingSendArgs {
 export function buildWarmingSend(
   args: QueueWarmingSendArgs,
 ): PendingWarmingSend {
-  // A row-only entry carries no user message — nothing to render.
-  if (!args.rowOnly) {
+  // A row-only entry carries no user message — nothing to render. Neither does
+  // a Houston-started conversation (empty `text`, the whole message hidden in
+  // the prompt): an empty bubble is not a message.
+  if (!args.rowOnly && args.text.length > 0) {
     // Stamp the sender (HOU-943): the real send at flush suppresses its own
     // bubble, so this push is the row's ONLY chance to be attributed — without
     // it a warmed-up agent's first message stays nameless in a shared thread.
@@ -93,20 +104,7 @@ export function buildWarmingSend(
       args.mentions,
     );
   }
-  const send: PendingWarmingSend = {
-    id: crypto.randomUUID(),
-    sessionKey: args.sessionKey,
-    text: args.text,
-    row: args.row,
-    provider: args.provider,
-    model: args.model,
-    effort: args.effort,
-    mode: args.mode,
-    mentions: args.mentions,
-    queuedAt: Date.now(),
-    titleText: args.titleText,
-    rowOnly: args.rowOnly,
-  };
+  const send = warmingSendRecord(args);
   if (args.buildPrompt) promptBuilders.set(send.id, args.buildPrompt);
   return send;
 }
@@ -121,7 +119,7 @@ export function buildWarmingSend(
 export function restoreWarmingBubbles(entry: ProvisioningEntry): void {
   const author = actingUser();
   for (const send of entry.pendingSends ?? []) {
-    if (send.rowOnly) continue;
+    if (send.rowOnly || send.text.length === 0) continue;
     if (getConversationFeed(entry.agentPath, send.sessionKey).length === 0) {
       pushPendingUserMessage(
         entry.agentPath,
@@ -152,13 +150,15 @@ export async function flushWarmingSends(
     if (!send) break;
     const build = promptBuilders.get(send.id);
     promptBuilders.delete(send.id);
-    let prompt = send.text;
+    let built: string | undefined;
     if (build) {
       try {
-        prompt = await build();
+        built = await build();
       } catch (e) {
-        // The attachment save failed (already toasted by its own wrapper) —
-        // deliver the words rather than dropping the message with the files.
+        // The attachment save failed (already toasted by its own wrapper).
+        // What still goes out is `chooseWarmingPrompt`'s call: the prompt
+        // resolved at queue time, else the user's own words. A send that has
+        // neither is reported and skipped below.
         logger.error(`[warming-sends] prompt build failed: ${e}`);
       }
     }
@@ -193,17 +193,7 @@ export async function flushWarmingSends(
           await getEngine().updateActivity(entry.agentPath, created.id, patch);
         }
       } catch (e) {
-        // The agent vanished between the readiness probe and this write
-        // (deleted/unshared elsewhere, HOUSTON-APP-4ZF): every remaining send
-        // is doomed to the same "agent not found" 404. Abort the flush and
-        // heal the roster instead of toasting a state the user can't act on
-        // — the probe's own gone-check catches this before the flush ever
-        // starts; this guards the in-flight race.
-        if (isAgentGoneError(e)) {
-          logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
-          healStaleRosterFromError(e);
-          return;
-        }
+        if (abortsFlushAsAgentGone(e)) return;
         showErrorToast(
           "warming_sends_row",
           "mission row create/update failed",
@@ -214,6 +204,35 @@ export async function flushWarmingSends(
     }
     // Row-only entry (the welcome mission): the row IS the payload.
     if (send.rowOnly) continue;
+    const wire = chooseWarmingPrompt(send, built);
+    if (!wire) {
+      // Nothing to put on the wire. This send's whole message was hidden in a
+      // prompt (its `text` is empty by design) and neither the live builder
+      // nor the queue-time copy survived — an empty turn is refused by the
+      // runtime, so sending it would only trade a missing mission for a
+      // cryptic one. The row above still landed, so the conversation exists
+      // and the user can write in it: report, hand the card back to them, and
+      // move on to the next send.
+      const undeliverable = undeliverableSend(send, rowId);
+      reportError("warming_sends_prompt", undeliverable.reason);
+      if (undeliverable.settleRow) {
+        try {
+          await getEngine().updateActivity(
+            entry.agentPath,
+            undeliverable.settleRow.id,
+            { status: undeliverable.settleRow.status },
+          );
+        } catch (e) {
+          if (abortsFlushAsAgentGone(e)) return;
+          reportError(
+            "warming_sends_row_settle",
+            `settling an undeliverable mission row failed (session ${send.sessionKey})`,
+            e,
+          );
+        }
+      }
+      continue;
+    }
     const activityId =
       rowId ??
       (send.sessionKey.startsWith("activity-")
@@ -267,18 +286,16 @@ export async function flushWarmingSends(
       (f) => f.feed_type === "user_message",
     );
     try {
-      await tauriChat.send(entry.agentPath, prompt, send.sessionKey, {
+      await tauriChat.send(entry.agentPath, wire.prompt, send.sessionKey, {
         providerOverride: pin.provider,
         modelOverride: pin.model,
         effortOverride: pin.effort,
         modeOverride: send.mode,
         mentions: send.mentions,
         suppressUserBubble: suppress,
-        // A prompt builder rewrote the wire prompt (a hidden setup directive /
-        // attachment paths) — persist the clean `send.text` as the bubble so a
-        // history reload shows what the user saw, not the real prompt. When no
-        // builder ran, prompt === send.text and there is nothing to hide.
-        displayText: build ? send.text : undefined,
+        // A prompt from either hidden source (built now, or resolved at queue
+        // time) means the bubble must show the user's words instead.
+        displayText: hiddenPromptDisplayText(send.text, wire.source !== "text"),
       });
       // The AI title pass this mission skipped at queue time (HOU-713): the
       // row just landed and the engine answers now. Fire-and-forget — a
@@ -291,13 +308,7 @@ export async function flushWarmingSends(
         });
       }
     } catch (e) {
-      // Same in-flight race as the row create above: an agent-gone refusal
-      // dooms every remaining send, so stop instead of hammering 404s.
-      if (isAgentGoneError(e)) {
-        logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
-        healStaleRosterFromError(e);
-        return;
-      }
+      if (abortsFlushAsAgentGone(e)) return;
       // tauriChat.send already toasted the real reason; keep flushing the
       // rest — one refused turn must not strand the queue.
       logger.error(`[warming-sends] deferred send failed: ${e}`);

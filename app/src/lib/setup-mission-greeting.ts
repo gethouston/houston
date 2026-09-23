@@ -1,52 +1,55 @@
 /**
- * Instant hello for the agent's self-setup mission (HOU-867) — pure core,
- * deps injected (the wired registry + React hook live in
- * `hooks/use-setup-greeting.ts`).
+ * The self-setup mission's permanent hello: the record the app writes the
+ * moment it starts that mission, and the role the sentence names.
  *
- * The setup mission's real intro is a model turn, and on the hosted profile
- * that turn can only run once the pod finishes cold-starting — tens of
- * seconds of a silent "running" card (the regression HOU-867: HOU-713's
- * instant greeting was replaced by the model-driven intro in the self-setup
- * mission). This restores the instant first impression WITHOUT giving up the
- * real mission: the chat renders a derived, localized hello a short beat
- * after create, and drops it the moment the agent's own first output arrives.
- * The hello is DERIVED at render time, never persisted — reloads mid-warm-up
- * re-derive it from the localStorage mirror, and once the real intro is in
- * the transcript the hello never shows again.
+ * `lib/agent-setup-mission.ts` starts the mission; `lib/setup-hello.ts`
+ * decides which source the hello's two facts come from, and the chat panel
+ * renders it as that mission's first item.
+ *
+ * The app already holds the agent's name and the job it was hired for when it
+ * creates them, so it records both here instead of reading them back: on the
+ * hosted profile the agent's pod is still cold-starting at that point, its
+ * activity list has not been served yet and every file read answers empty — so
+ * a hello derived from the agent alone would either not render at all or render
+ * without the role and be rewritten with it seconds later.
+ *
+ * The record is deliberately short-lived. Past {@link SETUP_GREETING_TTL_MS},
+ * and on any other device, the hello comes from the agent's own job description
+ * ({@link setupGreetingRole}) — which the create wrote from the same answers,
+ * so the sentence the user reads is the same one either way.
+ *
+ * Deps are injected here; the app's single wired registry and the React hook
+ * over it live in `hooks/use-setup-greeting.ts`.
  */
 
-/** Feed items that mean "the agent said or did something" — the signal that
- *  the derived hello must stop rendering. */
-const AGENT_OUTPUT_TYPES = new Set([
-  "assistant_text",
-  "assistant_text_streaming",
-  "thinking",
-  "thinking_streaming",
-  "tool_call",
-]);
+import { parseJobDescription } from "@houston/sdk/job-description";
 
-export function hasAgentOutput(feed: Array<{ feed_type: string }>): boolean {
-  return feed.some((item) => AGENT_OUTPUT_TYPES.has(item.feed_type));
-}
-
-/** The hello reveals this long after the mission is registered. */
-export const SETUP_GREETING_REVEAL_MS = 1_500;
-
-/** Entries older than this are stale (warm-up long over) — never render. */
+/** Past this the conversation is no longer the one the app just created, and
+ *  the agent's own job description is the source. */
 export const SETUP_GREETING_TTL_MS = 30 * 60_000;
 
 export interface SetupGreetingEntry {
   agentPath: string;
   sessionKey: string;
   agentName: string;
+  /** The job the agent was hired for, or null when its brief names none. */
+  role: string | null;
   registeredAt: number;
 }
 
-export function greetingScopeKey(agentPath: string, sessionKey: string) {
+function greetingScopeKey(agentPath: string, sessionKey: string): string {
   return `${agentPath}\n${sessionKey}`;
 }
 
-/** Parse the persisted mirror, dropping malformed and stale entries. */
+function isFresh(entry: SetupGreetingEntry, now: number): boolean {
+  return now - entry.registeredAt < SETUP_GREETING_TTL_MS;
+}
+
+/**
+ * Parse the persisted mirror, dropping malformed and stale entries. An entry
+ * carrying no `role` key is malformed too: `null` says "this agent has no
+ * role", and a missing key would pass that off as the same answer.
+ */
 export function parsePersistedGreetings(
   raw: string | null,
   now: number,
@@ -59,16 +62,17 @@ export function parsePersistedGreetings(
     return [];
   }
   if (!Array.isArray(parsed)) return [];
-  return parsed.filter(
-    (e): e is SetupGreetingEntry =>
-      typeof e === "object" &&
-      e !== null &&
-      typeof (e as SetupGreetingEntry).agentPath === "string" &&
-      typeof (e as SetupGreetingEntry).sessionKey === "string" &&
-      typeof (e as SetupGreetingEntry).agentName === "string" &&
-      typeof (e as SetupGreetingEntry).registeredAt === "number" &&
-      now - (e as SetupGreetingEntry).registeredAt < SETUP_GREETING_TTL_MS,
-  );
+  return parsed.filter((e): e is SetupGreetingEntry => {
+    if (typeof e !== "object" || e === null) return false;
+    const entry = e as Partial<SetupGreetingEntry>;
+    if (typeof entry.agentPath !== "string") return false;
+    if (typeof entry.sessionKey !== "string") return false;
+    if (typeof entry.agentName !== "string") return false;
+    if (typeof entry.registeredAt !== "number") return false;
+    if (!("role" in entry)) return false;
+    if (entry.role !== null && typeof entry.role !== "string") return false;
+    return isFresh(entry as SetupGreetingEntry, now);
+  });
 }
 
 export interface SetupGreetingDeps {
@@ -93,37 +97,40 @@ export class SetupGreetingRegistry {
     }
   }
 
-  /** Track a just-started setup mission; the hello reveals after the beat. */
+  /**
+   * Record a just-started setup mission. Stale entries are dropped in the same
+   * move: pruning belongs to a write, because {@link get} is read from a React
+   * render and must not touch storage there.
+   */
   register(entry: Omit<SetupGreetingEntry, "registeredAt">): void {
-    const full = { ...entry, registeredAt: this.deps.now() };
-    this.entries.set(greetingScopeKey(entry.agentPath, entry.sessionKey), full);
+    const now = this.deps.now();
+    for (const [key, existing] of this.entries) {
+      if (!isFresh(existing, now)) this.entries.delete(key);
+    }
+    this.entries.set(greetingScopeKey(entry.agentPath, entry.sessionKey), {
+      ...entry,
+      registeredAt: now,
+    });
     this.persist();
     this.notify();
   }
 
-  /** The live entry for a conversation, or null (unknown or stale). */
+  /**
+   * The record for a conversation, or null when there is none or it is stale.
+   * Answers the STORED object, so a `useSyncExternalStore` snapshot taken from
+   * it is referentially stable between renders.
+   */
   get(agentPath: string, sessionKey: string): SetupGreetingEntry | null {
     const entry = this.entries.get(greetingScopeKey(agentPath, sessionKey));
     if (!entry) return null;
-    if (this.deps.now() - entry.registeredAt >= SETUP_GREETING_TTL_MS) {
-      this.entries.delete(greetingScopeKey(agentPath, sessionKey));
-      this.persist();
-      return null;
-    }
-    return entry;
-  }
-
-  /** Ms until the entry's hello reveals; 0 = revealed now. */
-  revealDelayRemaining(entry: SetupGreetingEntry): number {
-    return Math.max(
-      0,
-      entry.registeredAt + SETUP_GREETING_REVEAL_MS - this.deps.now(),
-    );
+    return isFresh(entry, this.deps.now()) ? entry : null;
   }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   private persist(): void {
@@ -134,4 +141,18 @@ export class SetupGreetingRegistry {
   private notify(): void {
     for (const listener of this.listeners) listener();
   }
+}
+
+/**
+ * The job the agent was hired for as its job description names it, or null when
+ * the description names none. An unread description answers null too, and
+ * `setup-hello.ts` holds the hello back until that read lands, so the sentence
+ * is never shown in its no-role shape and then rewritten.
+ */
+export function setupGreetingRole(
+  instructions: string | undefined,
+): string | null {
+  if (!instructions) return null;
+  const role = parseJobDescription(instructions).fields.role?.trim();
+  return role ? role : null;
 }
