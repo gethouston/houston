@@ -198,5 +198,28 @@ test("a single-use pool worker boots with remote code execution", async () => {
 test("an unknown code-execution mode still fails loudly", async () => {
   await expect(
     loadConfig({ HOUSTON_MODE: "turn", HOUSTON_CODE_EXECUTION: "sandbox" }),
-  ).rejects.toThrow("must be local, remote, or disabled");
+  ).rejects.toThrow("must be local, remote, vm, or disabled");
+});
+
+test("vm is remote to the model and the grant, with the VM as the target", async () => {
+  const config = await loadConfig({
+    HOUSTON_MODE: "turn",
+    HOUSTON_CODE_EXECUTION: "vm",
+  });
+  expect(config.codeExecution).toBe("remote");
+  expect(config.codeRunTarget).toBe("vm");
+});
+
+test("vm outside turn mode fails loudly: only a turn has an end to close it at", async () => {
+  await expect(loadConfig({ HOUSTON_CODE_EXECUTION: "vm" })).rejects.toThrow(
+    "HOUSTON_CODE_EXECUTION=vm requires HOUSTON_MODE=turn",
+  );
+});
+
+test("the gateway relay stays the default run_code target", async () => {
+  const config = await loadConfig({
+    HOUSTON_MODE: "turn",
+    HOUSTON_CODE_EXECUTION: "remote",
+  });
+  expect(config.codeRunTarget).toBe("gateway");
 });

@@ -1,6 +1,7 @@
 import { CustomIntegrationError } from "@houston/host/src/integrations/custom/types";
 import { IntegrationUpstreamError } from "@houston/host/src/integrations/types";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
+import type { TurnCodeVm } from "../code-vm/turn-code-vm";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import {
   createTurnCustomContext,
@@ -9,6 +10,7 @@ import {
 import { TurnDocConflictError } from "./turn-doc-cas";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { makeTurnCodeRoute, TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
+import { makeTurnVmCodeRoute } from "./turn-sandbox-code-vm";
 import { makeTurnCustomRoutes } from "./turn-sandbox-custom";
 import {
   makeTurnIntegrationRoutes,
@@ -31,6 +33,8 @@ export interface TurnSandboxDeps {
   orgSlug: string;
   agentSlug: string;
   fetchImpl?: typeof fetch;
+  /** Present in `vm` mode: this turn's own code micro-VM, closed on dispose. */
+  codeVm?: TurnCodeVm;
 }
 
 /** Mutation-derived views published after the turn's object sync lands. */
@@ -68,6 +72,8 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   call: SandboxFetch;
   dispose: () => Promise<void>;
   views: () => TurnSandboxViews;
+  /** Start the turn's code VM booting; a no-op outside `vm` mode. */
+  warmCode: () => void;
 } {
   const fetchImpl = deps.fetchImpl ?? fetch;
   const views: TurnSandboxViews = {};
@@ -91,10 +97,15 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   };
   const integrations = makeTurnIntegrationRoutes(deps, fetchImpl, getCustom);
   // Scope-gated at BUILD time: without `code-run` the path is simply not a
-  // route this turn has, so it 404s like any other unknown one.
-  const codeRun = deps.grant.scopes.includes("code-run")
-    ? makeTurnCodeRoute(deps, fetchImpl)
-    : null;
+  // route this turn has, so it 404s like any other unknown one. The grant
+  // decides WHETHER the turn runs code; the worker's mode decides WHERE.
+  const canRunCode = deps.grant.scopes.includes("code-run");
+  const codeVm = canRunCode ? deps.codeVm : undefined;
+  const codeRun = !canRunCode
+    ? null
+    : codeVm
+      ? makeTurnVmCodeRoute(codeVm)
+      : makeTurnCodeRoute(deps, fetchImpl);
   const customRoute = makeTurnCustomRoutes(
     deps,
     getCustom,
@@ -153,5 +164,18 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
       return json(500, { error: "sandbox request failed" });
     }
   };
-  return { call, dispose: resetCustom, views: () => ({ ...views }) };
+  const dispose = async () => {
+    // The VM goes first and regardless: it holds this tenant's processes.
+    try {
+      await deps.codeVm?.close();
+    } finally {
+      await resetCustom();
+    }
+  };
+  return {
+    call,
+    dispose,
+    views: () => ({ ...views }),
+    warmCode: () => codeVm?.warm(),
+  };
 }

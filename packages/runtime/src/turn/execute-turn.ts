@@ -123,7 +123,9 @@ export async function executeTurn(
           turnId,
           earlyEmit,
           abort.signal,
-          turnSandbox ? { call: turnSandbox.call } : undefined,
+          turnSandbox
+            ? { call: turnSandbox.call, warmCode: turnSandbox.warmCode }
+            : undefined,
           timings,
         ),
         deps.turnSessionDeps,

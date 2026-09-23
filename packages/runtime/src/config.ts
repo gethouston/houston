@@ -35,10 +35,24 @@ const turnMode = env.HOUSTON_MODE === "turn";
 function codeExecutionMode(): "local" | "remote" | "disabled" {
   const raw = env.HOUSTON_CODE_EXECUTION?.trim().toLowerCase();
   if (raw) {
-    if (raw !== "local" && raw !== "remote" && raw !== "disabled") {
+    if (
+      raw !== "local" &&
+      raw !== "remote" &&
+      raw !== "disabled" &&
+      raw !== "vm"
+    ) {
       throw new Error(
-        "HOUSTON_CODE_EXECUTION must be local, remote, or disabled",
+        "HOUSTON_CODE_EXECUTION must be local, remote, vm, or disabled",
       );
+    }
+    // `vm` is `remote` as far as the model and the grant are concerned (the
+    // run_code tool, gated by the `code-run` scope); only where the code runs
+    // differs (codeRunTarget). It exists for pool workers alone: the VM is
+    // per TURN, and only turn mode has turns with an end.
+    if (raw === "vm") {
+      if (!turnMode)
+        throw new Error("HOUSTON_CODE_EXECUTION=vm requires HOUSTON_MODE=turn");
+      return "remote";
     }
     // A turn worker needs no sandbox URL and must never be given one: the
     // gateway serves the run route under the turn grant, so the address (and
@@ -205,6 +219,14 @@ export const config = {
    * Default preserves old behavior: sandbox URL => remote, no URL => local.
    */
   codeExecution: codeExecutionMode(),
+  /**
+   * Where a turn worker's `run_code` runs: `gateway` relays it under the turn
+   * grant to the Cloud Run sandbox; `vm` (HOUSTON_CODE_EXECUTION=vm) boots a
+   * disposable Gondolin micro-VM per turn inside this pod (code-vm/).
+   */
+  codeRunTarget: (env.HOUSTON_CODE_EXECUTION?.trim().toLowerCase() === "vm"
+    ? "vm"
+    : "gateway") as "vm" | "gateway",
   /**
    * Single-use pool worker: this process serves exactly ONE claimed turn,
    * latches itself spent, and exits so the orchestrator replaces the whole pod

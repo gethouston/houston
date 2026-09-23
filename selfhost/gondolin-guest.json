@@ -1,0 +1,61 @@
+{
+  "arch": "x86_64",
+  "distro": "alpine",
+  "alpine": {
+    "version": "3.23.0",
+    "branch": "v3.23",
+    "kernelPackage": "linux-virt",
+    "kernelImage": "vmlinuz-virt",
+    "rootfsPackages": [
+      "linux-virt",
+      "rng-tools",
+      "bash",
+      "ca-certificates",
+      "curl",
+      "nodejs",
+      "python3",
+      "coreutils",
+      "findutils",
+      "freetype",
+      "libstdc++",
+      "qhull",
+      "py3-certifi",
+      "py3-charset-normalizer",
+      "py3-contourpy",
+      "py3-cycler",
+      "py3-dateutil",
+      "py3-fonttools",
+      "py3-idna",
+      "py3-kiwisolver",
+      "py3-lxml",
+      "py3-numpy",
+      "py3-openpyxl",
+      "py3-packaging",
+      "py3-pandas",
+      "py3-parsing",
+      "py3-pillow",
+      "py3-typing-extensions",
+      "py3-urllib3",
+      "py3-xlsxwriter",
+      "font-dejavu",
+      "py3-matplotlib",
+      "py3-requests"
+    ],
+    "initramfsPackages": [],
+    "krunfwVersion": "v5.2.1"
+  },
+  "postBuild": {
+    "copy": [
+      {
+        "src": "/opt/gondolin-python/site-packages",
+        "dest": "/usr/lib/python3.12/site-packages"
+      }
+    ]
+  },
+  "rootfs": {
+    "label": "gondolin-root"
+  },
+  "runtimeDefaults": {
+    "rootfsMode": "cow"
+  }
+}

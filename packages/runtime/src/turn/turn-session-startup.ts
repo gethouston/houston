@@ -46,6 +46,17 @@ async function prepareTurnSession(
   turn: TurnSessionRequest,
   deps: RunTurnDeps,
 ): Promise<TurnSessionStartup> {
+  // ONE answer for the allowlist, the tool and the prompt: whatever the grant
+  // withheld must be missing from all three, or the model is told it can run
+  // code it has no tool for.
+  const codeExecution = turnCodeExecution(
+    turn,
+    turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
+  );
+  const toolSelection = buildTurnToolSelection(turn, codeExecution);
+  // The code VM's ~4 s boot starts now, behind model setup and the first
+  // model call. A turn without run_code never boots one.
+  if (toolSelection.includeRunCode) turn.sandbox?.warmCode?.();
   const sdkLoad =
     turn.provider === "anthropic"
       ? preloadClaudeSdk(deps.claudeSdk).then((result) => {
@@ -61,16 +72,9 @@ async function prepareTurnSession(
     turn.timings,
   );
   if (sdkLoad) await sdkLoad;
-  // ONE answer for the allowlist, the tool and the prompt: whatever the grant
-  // withheld must be missing from all three, or the model is told it can run
-  // code it has no tool for.
-  const codeExecution = turnCodeExecution(
-    turn,
-    turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
-  );
-  const toolSelection = buildTurnToolSelection(turn, codeExecution);
   // The worker holds no sandbox URL, app token or GCP identity: the call rides
-  // this turn's grant through the sandbox facade, exactly like integrations.
+  // this turn's sandbox facade, which relays it under the grant or, in `vm`
+  // mode, runs it in the turn's own micro-VM.
   const codeSandbox =
     toolSelection.includeRunCode && turn.sandbox
       ? makeRunCodeTool({

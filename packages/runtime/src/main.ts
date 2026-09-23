@@ -125,6 +125,17 @@ async function start(): Promise<Server> {
     // restart guard into a silent no-op and surface only as burned claims.
     // Only the not-yet-spent path needs this (a spent pod never serves again).
     if (config.poolSingleUse && !spent) assertMarkerWritable();
+    // Before registering: a `vm` worker that cannot boot a VM would take
+    // turns and fail every one that runs code (code-vm/preflight.ts).
+    if (config.codeRunTarget === "vm") {
+      const { assertCodeVmReady } = await import("./code-vm/preflight");
+      const { bootGondolinVm } = await import("./code-vm/gondolin");
+      const { bootAndProbeMs } = await assertCodeVmReady({
+        boot: bootGondolinVm,
+        guestDir: process.env.GONDOLIN_GUEST_DIR,
+      });
+      console.info(`[code-vm] ready: boot + probe ${bootAndProbeMs} ms`);
+    }
     const registrationConfig = await loadWorkerRegistrationConfig();
     const admission = new AdmissionLimiter(turnConcurrency());
     workerRegistration =
