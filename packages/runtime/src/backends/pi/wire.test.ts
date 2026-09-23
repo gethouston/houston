@@ -609,7 +609,7 @@ test("toWire reads a terse refusal from the plan gate the same model hit a turn 
     data: {
       kind: "model_unavailable",
       model: "gpt-5.4-mini",
-      suggested_fallback: "gpt-6-astra",
+      suggested_fallback: "gpt-6-luna",
     },
   });
   expect(error).not.toHaveBeenCalled();

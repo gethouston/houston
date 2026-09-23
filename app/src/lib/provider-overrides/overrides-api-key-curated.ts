@@ -13,7 +13,7 @@ export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://platform.deepseek.com",
     apiKeyUrl: "https://platform.deepseek.com/api_keys",
     models: {
-      "deepseek-v4-flash": {
+      "deepseek-flash": {
         description: "Fast, low-cost DeepSeek model.",
       },
       "deepseek-v4-pro": {

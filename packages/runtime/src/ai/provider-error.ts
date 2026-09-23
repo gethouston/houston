@@ -295,15 +295,16 @@ const COPILOT_BASE_FALLBACK = "gpt-5-mini";
 
 /**
  * The Codex model offered as the switch target when a ChatGPT subscription
- * refuses the one a turn ran on ("The model `gpt-5.5` does not exist or you do
- * not have access to it."). pi's baked catalog outlives what OpenAI serves, so
- * a retired id can still reach a turn from a stale saved/pinned value — and the
- * card is only useful if it names one that RUNS. Duplicated from
+ * refuses the one a turn ran on ("The 'gpt-5.3-codex-spark' model is not
+ * supported when using Codex with a ChatGPT account."). pi's baked catalog is a
+ * superset of what OpenAI serves, so a refused id can still reach a turn from a
+ * stale saved/pinned value — and the card is only useful if it names one that
+ * RUNS. Duplicated from
  * `CODEX_DEFAULT_MODEL` (./codex-offered.ts, which carries the live probe and
  * its verdicts) on purpose, like COPILOT_BASE_FALLBACK, so this classifier
  * stays pure + unit-testable; keep the two in sync.
  */
-const CODEX_BROAD_FALLBACK = "gpt-6-astra";
+const CODEX_BROAD_FALLBACK = "gpt-6-luna";
 
 /** Longest excerpt we keep for the `unknown` card / bug report. */
 const EXCERPT_MAX = 300;

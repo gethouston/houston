@@ -50,8 +50,14 @@ interface WindowOverride {
  *   intentionally omitted (no evidence any is plan-gated — pi's flat 1M
  *   stands for all three).
  * - `openai-codex` — Codex's `/status` reports a 95%-EFFECTIVE window (the
- *   number the user sees). `gpt-6-astra` (1.05M window, 272k standard-price
- *   tier) carries the opt-in 1M variant (× 95%).
+ *   number the user sees), so each row's default is 95% of pi's window for it:
+ *   every served row (the gpt-6 line, the gpt-5.6 line and gpt-5.5) sits at
+ *   272,000 × 0.95 = 258,400, and every row carries the 1M × 95% ceiling of
+ *   Codex's opt-in 1M variant. pi reports one window and one price tier for
+ *   the whole line, so no row is singled out; the ceiling only ever applies
+ *   once observed usage proves it (`effectiveModelWindow`), so a row without
+ *   the variant loses nothing, while a served row WITHOUT the ceiling pins the
+ *   bar at 100% and compacts at 258k on a chat the provider would carry on.
  *
  * Every row here names a model the domain catalog still lists
  * (`@houston/domain` `VALID_MODELS`); a model the catalog drops is a row no
@@ -68,8 +74,12 @@ export const MODEL_WINDOW_OVERRIDES: Readonly<
   },
   "openai-codex": {
     "gpt-6-astra": { default: 258_400, max: 950_000 },
-    "gpt-5.4-mini": { default: 258_400 },
-    "gpt-5.3-codex-spark": { default: 121_600 },
+    "gpt-6-luna": { default: 258_400, max: 950_000 },
+    "gpt-6-sol": { default: 258_400, max: 950_000 },
+    "gpt-5.6-sol": { default: 258_400, max: 950_000 },
+    "gpt-5.6-terra": { default: 258_400, max: 950_000 },
+    "gpt-5.6-luna": { default: 258_400, max: 950_000 },
+    "gpt-5.5": { default: 258_400, max: 950_000 },
   },
 };
 

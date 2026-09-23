@@ -12,9 +12,15 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://github.com/openai/codex",
     auth: "oauth",
     models: {
+      "gpt-6-luna": {
+        description: "Houston's default. The lightest GPT-6 on your allowance.",
+      },
+      "gpt-6-sol": {
+        description: "Mid GPT-6 tier. More depth than Luna for harder work.",
+      },
       "gpt-6-astra": {
         description:
-          "Newest and most capable. Uses your allowance 2.5x faster than Sol.",
+          "Most capable GPT-6. Uses your allowance 5x faster than Sol.",
       },
       "gpt-5.6-sol": {
         description: "Previous frontier model. Strong for complex work.",
@@ -25,11 +31,8 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       "gpt-5.6-luna": {
         description: "Fast and cost-efficient for simpler tasks.",
       },
-      "gpt-5.3-codex-spark": {
-        description: "Ultra-fast coding model.",
-      },
-      "gpt-5.4-mini": {
-        description: "Small, fast, and cost-efficient for simpler tasks.",
+      "gpt-5.5": {
+        description: "Previous-generation full tier, from before GPT-5.6.",
       },
     },
   },
@@ -94,9 +97,6 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       "claude-haiku-4.5": {
         description: "Anthropic's fastest, for quick tasks. Needs Copilot Pro.",
       },
-      // Served by GitHub's Copilot gateway, which is not the ChatGPT
-      // subscription: gpt-5.5 stays runnable here even though OpenAI's own
-      // Codex backend stopped serving it (see the `openai` set above).
       "gpt-5.5": {
         description: "OpenAI's frontier model. Needs Copilot Pro.",
       },

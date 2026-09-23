@@ -238,8 +238,10 @@
       "hiddenByWorkspace_other": "{{count}} more models are turned off in your workspace"
     },
     "modelDescriptions": {
-      "gpt-6-astra": "Newest and most capable. Uses your allowance 2.5x faster than Sol.",
-      "gpt-5_5": "OpenAI's frontier model.",
+      "gpt-6-luna": "Houston's default. The lightest GPT-6 on your allowance.",
+      "gpt-6-sol": "Mid GPT-6 tier. More depth than Luna for harder work.",
+      "gpt-6-astra": "Most capable GPT-6. Uses your allowance 5x faster than Sol.",
+      "gpt-5_5": "Previous-generation full tier, from before GPT-5.6.",
       "gpt-5_6-sol": "Previous frontier model. Strong for complex work.",
       "gpt-5_6-terra": "Balanced mid-tier model.",
       "gpt-5_6-luna": "Fast and cost-efficient for simpler tasks.",

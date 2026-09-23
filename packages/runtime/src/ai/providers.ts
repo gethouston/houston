@@ -503,7 +503,13 @@ export function safeGetModel(
     // 404s) pi still resolves the id and the turn dies at the provider with the
     // provider's own wording. Failing here instead gives the typed
     // switch-model card, whose `suggested_fallback` names a model that runs.
-    // Open-catalog gateways return [] and keep passing any id through.
+    // The `offered.length` test is what carries a provider pi has no catalog
+    // for at all (an uncurated id, where `piModelIds` answers []) past the
+    // check; every provider WITH a catalog — the opencode gateways included,
+    // where pi bakes 73 and 30 rows — is validated against it. A stale gateway
+    // id is kept runnable by the domain's read-time rename map
+    // (`canonicalModelId`), not by skipping this guard: pi's `getModel` has no
+    // model object to build for an id it dropped either.
     const m =
       offered.length > 0 && !offered.includes(modelId) ? undefined : lookup(mp);
     if (!m)
@@ -514,8 +520,9 @@ export function safeGetModel(
       );
     return m;
   }
-  // Open-catalog gateways (opencode/opencode-go) return [] from getModels but
-  // accept arbitrary ids — only guard when we actually have a catalog to check.
+  // A provider pi has no catalog for answers [] here, and there is nothing to
+  // check a saved id against — its model resolves or the turn surfaces the
+  // provider's own error. Every provider WITH a catalog gets the guard.
   if (offered.length > 0 && !offered.includes(modelId)) {
     const fallback = providerDefaultModel(provider);
     console.warn(

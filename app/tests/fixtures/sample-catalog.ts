@@ -79,11 +79,12 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
       // Non-vision fixture entry (`leaves a non-vision model without the image
       // modality` reads this one).
       reasoningModel("gpt-5.6-luna", { contextWindow: 372_000 }),
+      reasoningModel("gpt-5.5", { contextWindow: 272_000 }),
       // NOT in VISIBLE_MODELS.openai — pi lists all three, the curated set
       // hides them from the picker AND the hub. The Codex backend REFUSES
-      // gpt-5.5 and gpt-5.4 for a ChatGPT subscription (see
+      // gpt-5.3-codex-spark and gpt-5.4 for a ChatGPT subscription (see
       // packages/runtime/src/ai/codex-offered.ts); gpt-5.2 is plain curation.
-      reasoningModel("gpt-5.5", { contextWindow: 272_000 }),
+      reasoningModel("gpt-5.3-codex-spark", { contextWindow: 128_000 }),
       reasoningModel("gpt-5.4", { contextWindow: 272_000 }),
       reasoningModel("gpt-5.2", { contextWindow: 272_000 }),
     ],

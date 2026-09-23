@@ -506,7 +506,7 @@ test("OpenAI model_not_found → model_unavailable, with a switch target where w
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable") {
     expect(err.model).toBe("gpt-9");
-    expect(err.suggested_fallback).toBe("gpt-6-astra");
+    expect(err.suggested_fallback).toBe("gpt-6-luna");
   }
   // A provider we have no evidence for offers none — a guessed target that
   // fails again is worse than a card that only says which model died.
@@ -1586,15 +1586,15 @@ test("a retired Codex model names a served one as the switch target", () => {
   });
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable")
-    expect(err.suggested_fallback).toBe("gpt-6-astra");
+    expect(err.suggested_fallback).toBe("gpt-6-luna");
 });
 
 test("the Codex switch target is never the model that just failed", () => {
   const err = classifyProviderError({
     provider: "openai-codex",
-    model: "gpt-6-astra",
+    model: "gpt-6-luna",
     message:
-      "The model `gpt-6-astra` does not exist or you do not have access to it.",
+      "The model `gpt-6-luna` does not exist or you do not have access to it.",
   });
   if (err.kind === "model_unavailable")
     expect(err.suggested_fallback).toBeNull();
