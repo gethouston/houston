@@ -1,7 +1,7 @@
 import type { WireFrame } from "@houston/runtime-client";
-import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { TurnSessionRequest } from "./turn-session";
 import type { TurnSessionStartupTask } from "./turn-session-startup";
+import type { TurnSandboxHandle } from "./turn-session-types";
 import type { TurnRequest } from "./types";
 
 /** Project the accepted envelope onto the provider-agnostic turn session. */
@@ -10,7 +10,7 @@ export function turnSessionRequest(
   turnId: string,
   emit: (frame: WireFrame) => void,
   signal: AbortSignal,
-  sandbox?: { call: SandboxFetch },
+  sandbox?: TurnSandboxHandle,
   timings?: Record<string, number>,
   startup?: TurnSessionStartupTask,
 ): TurnSessionRequest {

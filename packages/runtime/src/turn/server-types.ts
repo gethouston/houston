@@ -1,4 +1,5 @@
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
+import type { BootCodeVm } from "../code-vm/types";
 import type { AdmissionLimiter } from "./admission";
 import type { applyOp } from "./op-apply";
 import type { TurnCredentialWriter } from "./turn-credential";
@@ -47,6 +48,8 @@ export interface TurnServerDeps {
   poolStoreUrl?: string;
   turnLogUrl?: string;
   fetchImpl?: typeof fetch;
+  /** Test seam: how a `vm`-mode turn boots its code VM (default Gondolin). */
+  bootCodeVm?: BootCodeVm;
   heartbeatIntervalMs?: number;
   maxHydrateBytes?: number;
   /** Test seam: transient-status retry delays for transcript publication. */

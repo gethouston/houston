@@ -39,11 +39,19 @@ export interface TurnSessionRequest {
   context?: ProvidedContext;
   /** Non-secret capability scopes copied from the parsed turn grant. */
   grant?: { scopes: TurnGrantScope[] };
-  /** Turn-local routing closure; it owns all grant-bearing calls. */
-  sandbox?: { call: SandboxFetch };
+  /**
+   * Turn-local routing closure; it owns all grant-bearing calls. `warmCode`
+   * starts the turn's code VM booting (`vm` mode only).
+   */
+  sandbox?: TurnSandboxHandle;
   timings?: Record<string, number>;
   /** Setup begun after layout resolution and before bulk hydration completes. */
   startup?: TurnSessionStartupTask;
+}
+
+export interface TurnSandboxHandle {
+  call: SandboxFetch;
+  warmCode?: () => void;
 }
 
 export interface TurnDirectories {

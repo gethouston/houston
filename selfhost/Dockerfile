@@ -157,4 +157,67 @@ ENV SENTRY_DSN=$SENTRY_DSN \
 ARG BUILD_SHA=""
 ENV BUILD_SHA=$BUILD_SHA
 
+# ---------- Gondolin guest image (pool code micro-VM) ----------
+# The Alpine guest a pool worker in `vm` code execution boots once per turn
+# (packages/runtime/src/code-vm). The VM has no network, so every library
+# run_code promises (packages/code-sandbox/requirements.txt) is baked in here,
+# at Alpine's versions (close to, not exactly, the Cloud Run sandbox's pins). Built natively with the published sandbox helpers: no KVM, no
+# container runtime and no Zig needed on the build machine.
+FROM node:24-bookworm-slim AS gondolin-guest
+
+ARG GONDOLIN_VERSION=0.12.0
+ARG SANDBOX_HELPERS_URL=https://github.com/earendil-works/gondolin/releases/download/sandbox-helpers--0.12.0/gondolin-sandbox-helpers-0.12.0-x86_64.tar.gz
+ARG SANDBOX_HELPERS_SHA256=3fa9a20162c49d8ce6c3599bc63843f3f31a6149724a3b775f73b0d795f09d69
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates cpio curl debianutils e2fsprogs findutils lz4 python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN npm install --global --omit=optional "@earendil-works/gondolin@${GONDOLIN_VERSION}"
+
+RUN mkdir -p /opt/gondolin-helpers \
+    && curl --fail --location --retry 3 "$SANDBOX_HELPERS_URL" --output /tmp/helpers.tar.gz \
+    && echo "$SANDBOX_HELPERS_SHA256  /tmp/helpers.tar.gz" | sha256sum --check --strict \
+    && tar -xzf /tmp/helpers.tar.gz -C /opt/gondolin-helpers \
+    && rm /tmp/helpers.tar.gz
+
+# Alpine v3.23 (Gondolin's own tested default: its kernel modules load, the
+# 3.21 ones do not) packages every library but python-pptx, which comes as a
+# pure-Python wheel for the guest's CPython 3.12. --no-deps: Alpine supplies
+# lxml, Pillow and XlsxWriter.
+RUN python3 -m pip install \
+        --break-system-packages --only-binary=:all: --no-compile --no-deps \
+        --platform musllinux_1_2_x86_64 --python-version 3.12 \
+        --implementation cp --abi cp312 \
+        --target /opt/gondolin-python/site-packages \
+        python-pptx==1.0.2
+
+COPY selfhost/gondolin-guest.json /build/guest-config.json
+ENV GONDOLIN_SANDBOX_HELPERS_DIR=/opt/gondolin-helpers
+RUN gondolin build --config /build/guest-config.json --output /out \
+    && gondolin build --verify /out \
+    && for module in pandas openpyxl pptx matplotlib PIL requests; do \
+         debugfs -R "stat /usr/lib/python3.12/site-packages/$module" /out/rootfs.ext4 2>&1 \
+           | grep -q "Type: directory" \
+           || { echo "guest image lacks Python module: $module" >&2; exit 1; }; \
+       done
+
+# ---------- Pool worker with the code micro-VM (staging trial) ----------
+# The engine plus QEMU and the guest above. Runs as a pool worker with
+# HOUSTON_CODE_EXECUTION=vm (cloud's pool.yaml): every turn allowed to run code
+# gets its own disposable micro-VM with no NIC, destroyed when the turn ends.
+# Needs /dev/kvm (a privileged pod on a nested-virtualization node).
+FROM engine-pod AS engine-pool-vm
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends qemu-system-x86 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=gondolin-guest /out /opt/gondolin/guest
+# Gondolin keeps a session registry under XDG_CACHE_HOME; the pool's uid has
+# no home directory to default to.
+ENV GONDOLIN_GUEST_DIR=/opt/gondolin/guest \
+    XDG_CACHE_HOME=/tmp/gondolin-cache
+USER node
+
 FROM host-base AS selfhost

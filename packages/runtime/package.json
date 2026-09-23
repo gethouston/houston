@@ -13,6 +13,7 @@
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
+    "@earendil-works/gondolin": "0.12.0",
     "@earendil-works/pi-ai": "0.85.1",
     "@earendil-works/pi-coding-agent": "0.85.1",
     "@google-cloud/storage": "7.21.0",

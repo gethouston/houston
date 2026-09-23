@@ -110,7 +110,10 @@ echo "=== bun build --compile ($BUN_TARGET) → $OUT ==="
 # --sourcemap embeds the map in the binary so runtime stack traces (and the
 # Sentry events built from them) point at the original TS files instead of
 # bundled offsets. No Sentry-side upload needed — frames arrive readable.
-bun build --compile --sourcemap --target="$BUN_TARGET" "$ENTRY" --outfile "$OUT"
+# Gondolin (the pool worker's code micro-VM) stays out: the desktop runtime
+# never runs in `vm` mode, and the package is QEMU glue it cannot use.
+bun build --compile --sourcemap --target="$BUN_TARGET" \
+  --external @earendil-works/gondolin "$ENTRY" --outfile "$OUT"
 chmod +x "$OUT"
 
 SIZE="$(du -h "$OUT" | cut -f1)"
