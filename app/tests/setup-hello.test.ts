@@ -112,6 +112,34 @@ describe("deriveSetupHello", () => {
     );
   });
 
+  it("treats an EMPTY job description as unread, record or no record", () => {
+    // A just-created hosted agent's file read answers `""` while its pod is
+    // still being provisioned (`lib/tauri.ts` isAgentPathCreating), and a read
+    // that failed is swallowed into `""` by the same hook — so a fetched-but-
+    // empty description says nothing about the job. Latching on it dropped the
+    // role clause the moment the creation record expired.
+    strictEqual(
+      deriveSetupHello({
+        entry: null,
+        activityAgentMode: AGENT_SETUP_AGENT_MODE,
+        agentName: "Nova",
+        instructions: "",
+        instructionsFetched: true,
+      }).hello,
+      null,
+    );
+    deepStrictEqual(
+      deriveSetupHello({
+        entry: ENTRY,
+        activityAgentMode: AGENT_SETUP_AGENT_MODE,
+        agentName: "Nova",
+        instructions: "",
+        instructionsFetched: true,
+      }).hello,
+      { name: "Nova", role: "Financial analyst" },
+    );
+  });
+
   it("holds it back while the agent has no name to say", () => {
     strictEqual(
       deriveSetupHello({

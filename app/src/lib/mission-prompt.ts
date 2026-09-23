@@ -18,7 +18,17 @@
  */
 
 export interface MissionPromptOptions {
-  /** Hidden kickoff for a setup chat — pure, synchronous, persistable. */
+  /**
+   * Hidden kickoff for a setup chat — pure, synchronous, persistable.
+   *
+   * It MUST be wrapped in the auto-continue marker
+   * (`lib/auto-continue-message.ts` `encodeAutoContinueMessage`): the marker is
+   * the ONLY thing that keeps this prompt out of the transcript, because these
+   * missions carry no user text and the display-text path — the other way a
+   * hidden prompt is masked — resolves to nothing on an empty `text`
+   * (`lib/hidden-prompt-display-text.ts`). Unwrapped, the user reads Houston's
+   * instructions to the agent as a bubble they supposedly typed.
+   */
   kickoffPrompt?: (activityId: string) => string;
   /**
    * Builds the prompt actually sent to Claude, given the freshly-created

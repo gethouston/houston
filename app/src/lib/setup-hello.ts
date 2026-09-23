@@ -69,7 +69,7 @@ export interface SetupHelloInput extends SetupMissionMarks {
   /** The agent's name as the roster holds it — the fallback once the record
    *  that carried its own copy is gone. */
   agentName: string | undefined;
-  /** The agent's job description, once read. */
+  /** The agent's job description, once read. Empty means unread: see below. */
   instructions: string | undefined;
   /** False while that read is still in flight. */
   instructionsFetched: boolean;
@@ -80,22 +80,30 @@ export interface SetupHelloInput extends SetupMissionMarks {
  * description to be read, so the sentence is never shown without the role and
  * then rewritten with it. A missing name holds it back for the same reason:
  * "Hi, I'm ." is not a greeting.
+ *
+ * An EMPTY description is an UNREAD one, whatever the fetch flag says: a
+ * hosted agent that is still being created answers its own file reads with `""`
+ * (`lib/tauri.ts` isAgentPathCreating) and a read that failed is swallowed into
+ * `""` by the same hook, so a fetched-but-empty text says nothing about the
+ * job. Trusting it latches the hello into its no-role shape, which is the
+ * sentence the user reads the moment the creation record expires.
  */
 export function deriveSetupHello(input: SetupHelloInput): SetupHelloState {
   const isSetupMission = isSetupMissionChat(input);
   if (!isSetupMission) return { isSetupMission: false, hello: null };
 
   const name = input.entry?.agentName ?? input.agentName;
-  const ready = !!input.entry || input.instructionsFetched;
+  const description = input.instructionsFetched
+    ? input.instructions || undefined
+    : undefined;
+  const ready = !!input.entry || !!description;
   if (!ready || !name) return { isSetupMission, hello: null };
 
   return {
     isSetupMission,
     hello: {
       name,
-      role: input.entry
-        ? input.entry.role
-        : setupGreetingRole(input.instructions),
+      role: input.entry ? input.entry.role : setupGreetingRole(description),
     },
   };
 }

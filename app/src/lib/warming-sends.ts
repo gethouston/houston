@@ -38,6 +38,7 @@ import {
 } from "./warming-send-pin";
 import {
   chooseWarmingPrompt,
+  undeliverableSend,
   type WarmingSendInput,
   warmingSendRecord,
 } from "./warming-send-prompt";
@@ -50,6 +51,21 @@ const flushing = new WeakSet<ProvisioningEntry>();
 
 export function isFlushingWarmingSends(entry: ProvisioningEntry): boolean {
   return flushing.has(entry);
+}
+
+/**
+ * True when this refusal means the agent vanished between the readiness probe
+ * and the write (deleted/unshared elsewhere, HOUSTON-APP-4ZF): every remaining
+ * send is doomed to the same "agent not found" 404, so the flush stops and the
+ * roster heals instead of surfacing a state the user cannot act on. The probe's
+ * own gone-check catches this before the flush starts; this guards the
+ * in-flight race.
+ */
+function abortsFlushAsAgentGone(e: unknown): boolean {
+  if (!isAgentGoneError(e)) return false;
+  logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
+  healStaleRosterFromError(e);
+  return true;
 }
 
 export interface QueueWarmingSendArgs extends WarmingSendInput {
@@ -177,17 +193,7 @@ export async function flushWarmingSends(
           await getEngine().updateActivity(entry.agentPath, created.id, patch);
         }
       } catch (e) {
-        // The agent vanished between the readiness probe and this write
-        // (deleted/unshared elsewhere, HOUSTON-APP-4ZF): every remaining send
-        // is doomed to the same "agent not found" 404. Abort the flush and
-        // heal the roster instead of toasting a state the user can't act on
-        // — the probe's own gone-check catches this before the flush ever
-        // starts; this guards the in-flight race.
-        if (isAgentGoneError(e)) {
-          logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
-          healStaleRosterFromError(e);
-          return;
-        }
+        if (abortsFlushAsAgentGone(e)) return;
         showErrorToast(
           "warming_sends_row",
           "mission row create/update failed",
@@ -204,12 +210,27 @@ export async function flushWarmingSends(
       // prompt (its `text` is empty by design) and neither the live builder
       // nor the queue-time copy survived — an empty turn is refused by the
       // runtime, so sending it would only trade a missing mission for a
-      // cryptic one. Report and skip; the row above still landed, so the
-      // conversation exists and the user can write in it.
-      reportError(
-        "warming_sends_prompt",
-        `queued send has no prompt to deliver (session ${send.sessionKey})`,
-      );
+      // cryptic one. The row above still landed, so the conversation exists
+      // and the user can write in it: report, hand the card back to them, and
+      // move on to the next send.
+      const undeliverable = undeliverableSend(send, rowId);
+      reportError("warming_sends_prompt", undeliverable.reason);
+      if (undeliverable.settleRow) {
+        try {
+          await getEngine().updateActivity(
+            entry.agentPath,
+            undeliverable.settleRow.id,
+            { status: undeliverable.settleRow.status },
+          );
+        } catch (e) {
+          if (abortsFlushAsAgentGone(e)) return;
+          reportError(
+            "warming_sends_row_settle",
+            `settling an undeliverable mission row failed (session ${send.sessionKey})`,
+            e,
+          );
+        }
+      }
       continue;
     }
     const activityId =
@@ -287,13 +308,7 @@ export async function flushWarmingSends(
         });
       }
     } catch (e) {
-      // Same in-flight race as the row create above: an agent-gone refusal
-      // dooms every remaining send, so stop instead of hammering 404s.
-      if (isAgentGoneError(e)) {
-        logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
-        healStaleRosterFromError(e);
-        return;
-      }
+      if (abortsFlushAsAgentGone(e)) return;
       // tauriChat.send already toasted the real reason; keep flushing the
       // rest — one refused turn must not strand the queue.
       logger.error(`[warming-sends] deferred send failed: ${e}`);

@@ -37,10 +37,7 @@ export interface SetupGreetingEntry {
   registeredAt: number;
 }
 
-export function greetingScopeKey(
-  agentPath: string,
-  sessionKey: string,
-): string {
+function greetingScopeKey(agentPath: string, sessionKey: string): string {
   return `${agentPath}\n${sessionKey}`;
 }
 

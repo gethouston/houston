@@ -20,10 +20,13 @@
  *    closure, runs at flush, and after a relaunch the send falls back to the
  *    user's own words (they are the message; only the file refs are lost).
  *
+ * When neither candidate survives there is nothing to send, and what the flush
+ * owes the mission instead is {@link undeliverableSend}.
+ *
  * Kept dependency-free (type-only imports) so `node --test` can exercise it.
  */
 
-import type { MessageMention } from "@houston/engine-adapter";
+import type { ActivityStatus, MessageMention } from "@houston/engine-adapter";
 import type { PendingWarmingSend } from "./agent-provisioning";
 
 /** The persistable half of a queued send: everything but the closures. */
@@ -90,4 +93,28 @@ export function chooseWarmingPrompt(
   if (send.prompt) return { prompt: send.prompt, source: "persisted" };
   if (send.text) return { prompt: send.text, source: "text" };
   return null;
+}
+
+/** What the flush owes a send `chooseWarmingPrompt` refused. */
+export interface UndeliverableSend {
+  /** The diagnostic the report carries. */
+  reason: string;
+  /**
+   * The mission row to settle, or null when this send created none (a parked
+   * follow-up, or a create that failed). A created row carries the default
+   * `running` status and only a turn ever moves it — and the turn that would
+   * have is the one with no prompt, so the card spins over an empty chat
+   * forever unless the mission is handed back to the user.
+   */
+  settleRow: { id: string; status: ActivityStatus } | null;
+}
+
+export function undeliverableSend(
+  send: Pick<PendingWarmingSend, "sessionKey">,
+  rowId: string | null,
+): UndeliverableSend {
+  return {
+    reason: `queued send has no prompt to deliver (session ${send.sessionKey})`,
+    settleRow: rowId ? { id: rowId, status: "needs_you" } : null,
+  };
 }

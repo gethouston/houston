@@ -12,6 +12,7 @@ import {
 } from "../src/lib/mission-prompt.ts";
 import {
   chooseWarmingPrompt,
+  undeliverableSend,
   type WarmingSendInput,
   warmingSendRecord,
 } from "../src/lib/warming-send-prompt.ts";
@@ -124,6 +125,26 @@ describe("the prompt a queued warming send delivers", () => {
     strictEqual(
       await missionPrompt({ buildPrompt: async () => "built" }, "m1", "typed"),
       "built",
+    );
+  });
+
+  it("hands the mission of an undeliverable send back to the user", () => {
+    // The row landed at the flush, so it exists with the default `running`
+    // status and an empty chat — and no turn will ever settle it, because the
+    // send that would have opened it has no prompt. `needs_you` is what turns
+    // that permanent spinner into a card the user can act on.
+    deepStrictEqual(undeliverableSend({ sessionKey: "activity-m3" }, "m3"), {
+      reason: "queued send has no prompt to deliver (session activity-m3)",
+      settleRow: { id: "m3", status: "needs_you" },
+    });
+  });
+
+  it("settles nothing when the send created no row of its own", () => {
+    // A parked follow-up, or a row create that failed: there is no card to
+    // correct, only the report.
+    strictEqual(
+      undeliverableSend({ sessionKey: "activity-m4" }, null).settleRow,
+      null,
     );
   });
 
