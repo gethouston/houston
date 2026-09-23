@@ -8,7 +8,7 @@
       "pickFile": "Escolher arquivo",
       "uploadedFrom": "Compartilhado por {{name}}",
       "anonymous": "seu amigo",
-      "counts": "{{skills}} habilidades, {{routines}} rotinas, {{learnings}} aprendizados",
+      "counts": "{{skills}} skills, {{routines}} rotinas, {{learnings}} aprendizados",
       "anonymizedFlag": "Anonimizado antes do compartilhamento.",
       "scanChoiceLabel": "Quer que o Houston dê uma olhada?",
       "scanYesTitle": "Sim, revisar primeiro",
@@ -25,7 +25,7 @@
       "tagline": "Pronto para ajudar"
     },
     "step3": {
-      "title": "Escolha quais habilidades trazer",
+      "title": "Escolha quais skills trazer",
       "body": "Desmarque o que não quer trazer."
     },
     "step4": {

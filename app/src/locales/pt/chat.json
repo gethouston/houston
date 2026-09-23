@@ -119,10 +119,10 @@
   },
   "suggestReusable": {
     "title": "Salve isto para a próxima vez",
-    "skillTitle": "Salvar como Habilidade",
+    "skillTitle": "Salvar como Skill",
     "routineTitle": "Salvar como rotina",
     "learningTitle": "Lembrar disto",
-    "saveSkillMessage": "Salve o que acabei de fazer como uma Habilidade chamada \"{{title}}\".",
+    "saveSkillMessage": "Salve o que acabei de fazer como uma Skill chamada \"{{title}}\".",
     "saveRoutineMessage": "Configure isto como uma rotina recorrente chamada \"{{title}}\".",
     "saveLearningMessage": "Lembre \"{{title}}\" como um aprendizado para a próxima vez."
   },
@@ -274,7 +274,7 @@
     "newFiles_one": "1 arquivo novo",
     "newFiles_other": "{{count}} arquivos novos",
     "instructionsUpdated": "Instruções atualizadas",
-    "skillsUpdated": "Skills atualizados",
+    "skillsUpdated": "Skills atualizadas",
     "learningsUpdated": "Aprendizados atualizados",
     "openLinkFailedTitle": "Não foi possível abrir o link"
   },

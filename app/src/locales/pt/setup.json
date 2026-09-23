@@ -45,7 +45,7 @@
       },
       "createAgent": {
         "title": "Clique em Novo funcionário de IA",
-        "hint": "Comece pelo setor em que ele trabalha",
+        "hint": "Comece pela indústria em que ele trabalha",
         "already": "Você já tem um funcionário de IA."
       },
       "agentCreated": {
@@ -73,7 +73,7 @@
       },
       "createAgentDialog": {
         "briefTitle": "Diga o que ele vai fazer.",
-        "briefHint": "Escolha o setor e depois o trabalho que ele assume",
+        "briefHint": "Escolha a indústria e depois o trabalho que ele assume",
         "nameTitle": "Escolha uma cor e dê um nome.",
         "nameHint": "Depois clique em Criar funcionário de IA"
       },
@@ -143,7 +143,7 @@
   },
   "onboardingSurvey": {
     "industry": {
-      "title": "Em qual setor você trabalha?",
+      "title": "Em qual indústria você trabalha?",
       "subtitle": "Para o Houston entender o tipo de trabalho que você faz.",
       "options": {
         "technology": "Tecnologia",
@@ -152,7 +152,7 @@
         "healthcare": "Saúde",
         "education": "Educação",
         "retail": "Varejo e e-commerce",
-        "manufacturing": "Indústria",
+        "manufacturing": "Manufatura",
         "real_estate": "Imóveis",
         "marketing_agencies": "Marketing e agências",
         "government_nonprofit": "Governo e ONGs",

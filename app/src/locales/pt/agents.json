@@ -57,9 +57,9 @@
     "specific": "Instruções específicas",
     "placeholder": "Escreva as instruções para o seu funcionário de IA…",
     "brief": {
-      "industry": "Setor",
+      "industry": "Indústria",
       "role": "Cargo",
-      "addIndustry": "Adicionar setor",
+      "addIndustry": "Adicionar indústria",
       "addRole": "Adicionar cargo"
     }
   },
