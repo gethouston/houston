@@ -84,7 +84,7 @@ describe("integrations module — connect", () => {
     sdk.dispose();
   });
 
-  it("the bridge dispatch path still posts the legacy composio { toolkit } body", async () => {
+  it("the dispatch path still posts the legacy composio { toolkit } body", async () => {
     const { sdk, calls } = makeSdk();
     const ok = await sdk.dispatch({
       id: "c1",

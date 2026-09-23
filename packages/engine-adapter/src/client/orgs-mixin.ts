@@ -12,7 +12,8 @@ import { viaSdk } from "./sdk-error";
  *
  * The SDK throws on every non-2xx, so the two degradations this family has
  * (an empty roster, empty profiles) are applied HERE, on the status: the SDK
- * stays honest for iOS, and web keeps the exact answers it had.
+ * is deployment-agnostic and its contract tests pin the un-softened status, so
+ * turning one into an empty answer is web policy and belongs to the adapter.
  */
 export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Orgs extends Base {

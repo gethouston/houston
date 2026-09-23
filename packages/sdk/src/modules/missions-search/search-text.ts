@@ -6,7 +6,7 @@
  *
  * Headless: the desktop's `HighlightRange` output (a `@houston-ai/core` type) is
  * a surface concern, so this port returns only the plain snippet STRING and a
- * boolean match — a native surface re-highlights the phrase itself.
+ * boolean match — a caller re-highlights the phrase itself.
  */
 
 import type { FeedFrame } from "../turns/history";

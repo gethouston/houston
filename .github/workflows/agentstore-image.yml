@@ -20,7 +20,7 @@
 #     dispatches roll-agentstore-prod → cloud/roll-agentstore.yml rolls prod.
 # The tag pattern is deliberately NARROW: this repo's tag namespace already
 # carries other release trains — v*/cloud-v* (desktop, release.yml),
-# cloud-latest (a MOVING pointer that gets re-pushed), ios-v* (TestFlight),
+# cloud-latest (a MOVING pointer that gets re-pushed),
 # engine-v* (self-host host binary), engine-pod-v* (prod engine fleet). Each
 # train versions independently; only agentstore-v* may roll prod agentstore.
 #

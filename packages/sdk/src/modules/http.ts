@@ -35,8 +35,8 @@ export interface HttpScope {
  * answering `404`) reads it and decides for itself.
  *
  * Each subclass passes its own `name` as a string literal instead of letting
- * the base read `new.target.name`: the native-bridge bundle is minified, which
- * mangles class names, and surfaces branch on `err.name` across that bridge.
+ * the base read `new.target.name`: Vite (esbuild) minifies the production
+ * bundle and mangles class names, and surfaces branch on `err.name`.
  */
 export class SdkHttpError extends Error {
   constructor(

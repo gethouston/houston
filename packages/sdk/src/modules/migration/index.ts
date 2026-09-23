@@ -10,10 +10,11 @@
  * chunk is exported and imported on the caller's own schedule, so there is no
  * reactive scope to publish and nothing here subscribes to an event.
  *
- * The bridge's `dispatch` path is deliberately not wired: the two halves that
- * move data carry the archive as raw bytes, and everything crossing that
- * boundary is plain JSON. A native shell moves an agent with its own file
- * transport, and stamps the marker over that same transport.
+ * The `dispatch` path is deliberately not wired: everything crossing that
+ * boundary is plain JSON, and the two halves that move data carry the archive
+ * as raw bytes — `migrationExport` answers an `ArrayBuffer` and
+ * `migrationImport` takes one. The whole family is reached through the typed
+ * facade, the marker pair included.
  *
  * SEAM — the module's own {@link moduleScope}, rooted at the base URL, never
  * `clientFor(agentId)`. A 401 routes through the shared

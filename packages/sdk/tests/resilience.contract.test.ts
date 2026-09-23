@@ -194,8 +194,8 @@ describe("observer attach on a running turn", () => {
       history = await engine.getHistory(cid);
     }
 
-    // The mobile-v1 hole this closes: open the conversation through the SDK
-    // facade and see the in-flight turn.
+    // The hole this closes: open the conversation through the SDK facade and
+    // see the in-flight turn.
     await h.sdk.turns.observe(cid, SEED_AGENT_ID);
     await until(
       () => convVm(h.sdk, cid)?.running === true,

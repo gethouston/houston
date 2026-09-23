@@ -66,7 +66,7 @@ export interface ActivitiesViewModel {
   items: ActivityItem[];
 }
 
-/** The result of creating a mission: its id + the chat session to open (PARITY §6). */
+/** The result of creating a mission: its id + the chat session to open. */
 export interface CreatedActivity {
   id: string;
   sessionKey: string;
@@ -78,8 +78,8 @@ export interface CreatedActivity {
  * `POST`/`PATCH`/`DELETE` as its {@link ActivitiesModule} sibling but does NOT
  * call `refresh()` afterward, and RETURNS the raw wire {@link Activity}
  * (`create`/`setStatus`/`rename`) so the host updates its cache without an extra
- * `GET /agents/:id/activities`. The refetching facade methods are untouched —
- * iOS keeps using those verbatim.
+ * `GET /agents/:id/activities`. The refetching facade methods stay the default
+ * for a host with no read model of its own.
  */
 export interface ActivitiesWrites {
   /** `POST /agents/:id/activities`; returns the created wire activity. */
@@ -150,7 +150,8 @@ export interface ActivitiesModule {
   /**
    * No-refetch write variants for a host that owns its own reads (web under
    * `reactivity:false`): same wire writes, no post-write `refresh()`, and they
-   * return the wire entity. iOS keeps using the refetching methods above.
+   * return the wire entity. A host without one uses the refetching methods
+   * above.
    */
   writes: ActivitiesWrites;
   /** Stop the reactivity stream. Module-local; the kernel calls it on dispose. */

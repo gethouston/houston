@@ -6,9 +6,9 @@
  *
  * The REQUEST itself belongs to the files module (`files/uploads.ts`): one wire
  * body, one owner, so the `relPath` that keeps a dropped folder's nesting
- * reaches the host from the bridge exactly as it does from the Files section.
- * What lives here is what the turn adds on top — the untrusted-envelope guard
- * for the bridge command and the typed too-large error a composer renders.
+ * reaches the host from the dispatch path exactly as it does from the Files
+ * section. The turn adds the untrusted-envelope guard for the dispatch command
+ * and the typed too-large error a composer renders.
  */
 
 import type { ModuleContext } from "../../module-context";
@@ -42,7 +42,7 @@ export interface TurnAttachmentsSaveResult {
 /**
  * The upload exceeded the host's request cap (HTTP 413). Typed so a surface can
  * show a "files too large" message instead of a generic failure; the numeric
- * `status` rides the bridge command result's `error.status` (see
+ * `status` rides the dispatch command result's `error.status` (see
  * `CommandRegistry.dispatch` → `toCommandError`). No silent failure — the op
  * throws this, never swallows an oversized upload.
  */

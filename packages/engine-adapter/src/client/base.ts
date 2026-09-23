@@ -73,9 +73,9 @@ export class HoustonClientBase {
 
   /**
    * The web-side {@link HoustonSdk} — the one implementation of Houston's
-   * client behavior this adapter delegates every domain call to, the same one
-   * iOS binds. Reactivity is off: no `/v1/events` stream of its own, and no
-   * request until a mixin makes one.
+   * client behavior this adapter delegates every domain call to. Reactivity is
+   * off: no `/v1/events` stream of its own, and no request until a mixin makes
+   * one.
    */
   get engineSdk(): HoustonSdk {
     return this.ctx.sdk;

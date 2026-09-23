@@ -1,7 +1,7 @@
 /**
  * The providers module's operations — the read/merge + credential-mutation
- * functions the typed facade and the bridge command handlers both call. Kept out
- * of `index.ts` so the factory there stays a thin wiring layer.
+ * functions the typed facade and the dispatch command handlers both call. Kept
+ * out of `index.ts` so the factory there stays a thin wiring layer.
  *
  * Every call is routed through `ctx.clientFor(agentId)` (`/agents/<id>/…`, the
  * per-agent-pod credential scope). Writes mutate then refetch, so the published

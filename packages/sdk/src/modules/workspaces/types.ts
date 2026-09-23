@@ -62,7 +62,7 @@ export interface SidebarLayout {
   defaultContext?: string;
 }
 
-/** The write vocabulary — the same constants back the facade and the bridge. */
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const WorkspacesCommand = {
   List: "workspaces/list",
   ReadAgentFile: "workspaces/readAgentFile",

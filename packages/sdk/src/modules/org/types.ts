@@ -1,7 +1,7 @@
 /**
  * Wire types for the ACTIVE space's administration — who belongs to it, what
  * each of them may do, and the pending invitations — plus the command
- * vocabulary the bridge dispatches them by.
+ * vocabulary `dispatch` routes them by.
  *
  * Every shape here is space-scoped, never per-agent: the gateway resolves the
  * space from the caller's session plus the active-space header, so nothing in
@@ -14,7 +14,7 @@ import { field, requireString } from "../payload";
 
 export type { OrgRole };
 
-/** The write vocabulary — the same constants back the facade and the bridge. */
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const OrgCommand = {
   Get: "org/get",
   GetProfiles: "org/getProfiles",
@@ -31,9 +31,9 @@ export const OrgCommand = {
 export type OrgCommandType = (typeof OrgCommand)[keyof typeof OrgCommand];
 
 /**
- * The runtime mirror of the protocol's {@link OrgRole} union — a bridge payload
- * arrives untyped, and a union is not a value to check it against. A role added
- * to the protocol must be added here too, or this module refuses it.
+ * The runtime mirror of the protocol's {@link OrgRole} union — a command
+ * payload arrives untyped, and a union is not a value to check it against. A
+ * role added to the protocol must be added here too, or this module refuses it.
  */
 export const ORG_ROLES: readonly OrgRole[] = ["owner", "admin", "user"];
 
@@ -125,8 +125,6 @@ export interface AddOrgMemberResult {
   /** The invited email, echoed on the invite path. */
   email?: string;
 }
-
-/** The raw value of `key` off an untrusted command payload. */
 
 /** A required finite number off an untrusted command payload. */
 export function requireNumber(payload: unknown, key: string): number {

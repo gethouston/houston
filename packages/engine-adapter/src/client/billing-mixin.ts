@@ -8,8 +8,9 @@ import { viaSdk } from "./sdk-error";
  * `/v1/org/billing*` family, delegated to `sdk.billing`.
  *
  * The SDK throws on every non-2xx, so the one degradation this family has
- * (a not-entitled read) is applied HERE, on the status: the SDK stays honest
- * for iOS, and web keeps the exact answers it had.
+ * (a not-entitled read) is applied HERE, on the status: the SDK is
+ * deployment-agnostic and its contract tests pin the un-softened status, so
+ * turning one into a null answer is web policy and belongs to the adapter.
  */
 export function BillingMixin<TBase extends BaseCtor>(Base: TBase) {
   class Billing extends Base {

@@ -86,7 +86,7 @@ describe("HoustonSdk reactive surface", () => {
   });
 });
 
-describe("HoustonSdk.dispatch (bridge path)", () => {
+describe("HoustonSdk.dispatch (the serialized path)", () => {
   it("returns ok:false for a malformed envelope, echoing any string id", async () => {
     const sdk = makeSdk();
     const bad = { id: "42" } as unknown as {

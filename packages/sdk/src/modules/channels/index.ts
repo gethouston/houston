@@ -5,8 +5,7 @@
  * These are pure commands over hosted-gateway routes: the listing is read when
  * the Channels screen opens and every other call is a button's one-shot, so
  * there is no reactive scope to publish and nothing here subscribes to an
- * event. The same handlers back both the typed facade and the bridge
- * `dispatch` path.
+ * event. The same handlers back both the typed facade and the `dispatch` path.
  *
  * SEAM — space-scoped, NOT per-agent. The gateway resolves the space from the
  * caller's session plus the active-space header its `fetch` stamps, and binds

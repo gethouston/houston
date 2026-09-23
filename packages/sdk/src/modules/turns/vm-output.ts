@@ -10,8 +10,8 @@ import type {
 /**
  * The SDK's built-in {@link FeedOutput}: folds one conversation's pushes into a
  * reactive {@link ConversationVM} published on the `conversation/<id>` scope, so
- * any headless consumer (native shell, test) reads a turn's progress through
- * `getSnapshot`/`subscribe` alone.
+ * any headless consumer (a binding layer, a test) reads a turn's progress
+ * through `getSnapshot`/`subscribe` alone.
  *
  * Streaming text arrives cumulatively (each `assistant_text_streaming` carries
  * the full text so far), so it updates a SINGLE feed entry in place; its final
@@ -22,10 +22,10 @@ import type {
  * `persistBoardStatus` seam, because it is the ONLY signal that tells a handled
  * settle apart from a real failure: a user Stop (and a logged-out provider)
  * settles `sessionStatus === "error"` but `boardStatus === "needs_you"`, so a
- * native shell keying off `sessionStatus` alone would render a normal Stop red.
- * Read the pair: `boardStatus` `needs_you` = handled / your attention (every
- * clean finish included — a turn ending never closes a mission), `error` = a
- * genuine failure. `sessionStatus` semantics are unchanged, for web parity.
+ * surface keying off `sessionStatus` alone would render a normal Stop red. Read
+ * the pair: `boardStatus` `needs_you` = handled / your attention (every clean
+ * finish included — a turn ending never closes a mission), `error` = a genuine
+ * failure. `sessionStatus` semantics are unchanged, for web parity.
  */
 
 /**
@@ -639,8 +639,8 @@ export class ConversationVmOutput implements FeedOutput {
 
   /**
    * Fold the board-card status into the VM (NOT a no-op — this is the handled-
-   * vs-error signal a native shell reads alongside `sessionStatus`). The board
-   * is a separate SCOPE, so nothing is written there; only the conversation VM's
+   * vs-error signal a surface reads alongside `sessionStatus`). The board is a
+   * separate SCOPE, so nothing is written there; only the conversation VM's
    * `boardStatus` is updated and republished.
    */
   async persistBoardStatus(

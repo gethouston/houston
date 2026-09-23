@@ -39,11 +39,6 @@ export function shadows(tokens) {
   }));
 }
 
-/** camelCase a hyphenated token name for native identifiers: card-fg -> cardFg. */
-export function camel(name) {
-  return name.replace(/-([a-z0-9])/g, (_, c) => c.toUpperCase());
-}
-
 /** Parse a DTCG duration ("200ms" | "0.2s") to milliseconds. */
 export function durationMs(value) {
   const ms = value.match(/^([\d.]+)ms$/);

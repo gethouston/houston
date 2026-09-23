@@ -186,7 +186,7 @@ describe("how an agent-skills request fails", () => {
   });
 });
 
-describe("the bridge path", () => {
+describe("the dispatch path", () => {
   it("dispatches every skills command to the same handler", async () => {
     const { sdk, calls } = ok({ items: [] });
 

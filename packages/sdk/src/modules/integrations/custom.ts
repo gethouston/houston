@@ -6,9 +6,9 @@
  *
  * A non-2xx always throws (`modules/http.ts`), including the 404 a deployment
  * without this surface answers the definitions read with. Whether that 404 is
- * "feature absent" or a real failure is the CALLER's judgement — the web
- * adapter degrades it to an empty section, iOS surfaces it — so it is decided
- * at the surface, never swallowed here.
+ * "feature absent" or a real failure is the CALLER's judgement (the web adapter
+ * degrades it to an empty section), so it is decided at the surface, never
+ * swallowed here.
  *
  * Assistant catalog: this file is the single source of truth for these eight
  * operations, so each carries its own `@assistant` block.

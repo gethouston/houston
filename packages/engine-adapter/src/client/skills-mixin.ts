@@ -18,7 +18,7 @@ import { viaSdk } from "./sdk-error";
  * The wire is `sdk.skills.agent` (byte-identical to the control-plane calls it
  * replaced). Skill mutations need the host (cloud); standalone web has no skill
  * backend, so they no-op there (the UI still navigates) — that degradation is
- * the adapter's, never the SDK's, which stays honest for iOS.
+ * the adapter's, never the SDK's, which stays deployment-agnostic.
  */
 export function SkillsMixin<TBase extends BaseCtor>(Base: TBase) {
   class Skills extends Base {

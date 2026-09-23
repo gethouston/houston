@@ -1,8 +1,8 @@
 /**
  * `@houston/sdk` — the single headless Houston client.
  *
- * One client implementation under every surface (web, desktop, native). Reads
- * flow as scope snapshots; writes flow as commands. See README.md for the model.
+ * One client implementation under every surface (web, desktop). Reads flow as
+ * scope snapshots; writes flow as commands. See README.md for the model.
  *
  * This barrel is the package's public API: the kernel (`HoustonSdk`, the store,
  * the command registry), the shared auth surface, and each module's CONTRACT —
@@ -32,24 +32,6 @@ export {
   isUnauthorized,
   TOKEN_EXPIRED_EVENT,
 } from "./auth-expiry";
-// ===== Native bridge (dispatcher + wire vocabulary) ====================
-// The JS-side dispatcher that implements `BRIDGE.md` for embedding hosts
-// (iOS/JavaScriptCore, Android/Hermes). The self-contained IIFE bundle entry
-// lives in `bridge/entry.ts` (built via `build:bridge`) and is NOT re-exported
-// here because it installs global shims as an import side effect.
-export {
-  type Bridge,
-  createBridge,
-  type SdkFactory,
-} from "./bridge/dispatcher";
-export {
-  BRIDGE_PROTOCOL_VERSION,
-  type BridgeInbound,
-  type BridgeLogLevel,
-  type BridgeOutbound,
-  type NativePorts,
-  type SendFn,
-} from "./bridge/wire";
 export type {
   CommandEnvelope,
   CommandHandler,

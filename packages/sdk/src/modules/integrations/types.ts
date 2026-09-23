@@ -1,11 +1,11 @@
 /**
  * View-model shape, scope key, and command vocabulary for the integrations
- * module — the SDK contract every surface (web, desktop, native) binds to.
+ * module — the SDK contract every surface (desktop, web) binds to.
  *
  * Everything here is plain JSON (see `store.ts` "snapshots, not patches"): the
- * VM crosses the native bridge unchanged. The wire toolkit/connection shapes are
- * re-exported from `@houston/runtime-client` so a contract change breaks the
- * typecheck here instead of silently drifting.
+ * VM crosses a serialization boundary unchanged. The wire toolkit/connection
+ * shapes are re-exported from `@houston/runtime-client` so a contract change
+ * breaks the typecheck here instead of silently drifting.
  */
 
 import type {
@@ -57,7 +57,7 @@ export interface IntegrationsViewModel {
   connections: IntegrationConnection[];
 }
 
-/** The write vocabulary — the same constants back the facade and the bridge. */
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const IntegrationsCommand = {
   Refresh: "integrations/refresh",
   Connect: "integrations/connect",

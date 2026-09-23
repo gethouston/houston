@@ -3,17 +3,16 @@
  * one rule for collapsing their bursts. A quiet class is an expected
  * environment state (the device offline, an agent's pod waking, a bridge
  * state the SDK names in `local-model-bridge/quiet`) that the person sees as
- * ONE informational notice,
- * never a bug report, while the raw diagnostic still reaches Sentry as a
- * warning under a FIXED fingerprint per class (PRODUCT-1640): each class is
- * one issue with a count and searchable bodies, and a deploy roll can never
- * file new issues.
+ * ONE informational notice, never a bug report, while the raw diagnostic still
+ * reaches Sentry as a warning under a FIXED fingerprint per class
+ * (PRODUCT-1640): each class is one issue with a count and searchable bodies,
+ * and a deploy roll can never file new issues.
  *
- * The classifiers that NAME a class read transport and gateway shapes, so
- * they live in the engine adapter and the shells; this module holds only the
- * vocabulary and the collapse rule they share, so every surface (desktop, web,
- * iOS over the bridge) reports one episode the same way. Dependency-free and
- * erasable-syntax-only: the app's node:test entry points load it through the
+ * The classifiers that NAME a class read transport and gateway shapes, so they
+ * live in the engine adapter and the app; this module holds only the vocabulary
+ * and the collapse rule they share, so every surface (desktop, web) reports one
+ * episode the same way. Dependency-free and erasable-syntax-only: the app's
+ * node:test entry points load this module through the
  * `@houston/sdk/quiet-error-class` subpath, so the one import below is a
  * package self-reference (node resolves no extensionless relative import).
  */

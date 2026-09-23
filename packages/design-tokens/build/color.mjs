@@ -39,9 +39,3 @@ export function parseColor(raw) {
 
   throw new Error(`Unparseable colour: ${raw}`);
 }
-
-/** Round to 6 decimals, dropping a trailing `.0` for whole numbers. */
-export function num(value) {
-  const rounded = Math.round(value * 1e6) / 1e6;
-  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
-}

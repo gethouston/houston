@@ -3,10 +3,9 @@
  * what the target reports it did with it.
  *
  * There is no command vocabulary here, unlike every other plain-async module.
- * Both operations carry a zip archive as raw bytes and the bridge's `dispatch`
- * path is plain JSON end to end, so a native shell moves an agent's data with
- * its own file transport rather than through a command that could not hold the
- * archive.
+ * Both operations carry a zip archive as raw bytes and the `dispatch` path is
+ * plain JSON end to end, so the typed facade carries the archive itself rather
+ * than a command that could not hold it.
  */
 
 /** How an import chunk lands on the target agent. */

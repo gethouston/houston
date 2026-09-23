@@ -1,8 +1,8 @@
 /**
  * The mission-search module — ranked full-text search over an agent's (or every
  * agent's) missions, mirroring the desktop's semantics EXACTLY
- * (`app/src/components/mission-search.ts`, PARITY §3): a TITLE match first, then
- * a DESCRIPTION match, then the mission's lazily-fetched chat-history CONTENT,
+ * (`app/src/components/mission-search.ts`): a TITLE match first, then a
+ * DESCRIPTION match, then the mission's lazily-fetched chat-history CONTENT,
  * over the same per-feed-item searchable text. History is fetched ONLY for
  * missions not already matched by title/description, with bounded concurrency
  * and NO observers (a plain `getHistory`, never a stream). Search runs over ALL

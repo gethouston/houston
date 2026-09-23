@@ -4,8 +4,8 @@
  * id, cumulative text), the turn settles exactly once on the terminal frame,
  * and a cancel settles cleanly.
  *
- * The settled `ConversationVM` is the cross-platform feed snapshot a native
- * shell renders, so its exact JSON is pinned here as API.
+ * The settled `ConversationVM` is the feed snapshot every subscriber reads, so
+ * its exact JSON is pinned here as API.
  */
 
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
@@ -67,7 +67,7 @@ describe("turn send → stream → settle", () => {
     );
 
     const vm = convVm(h.sdk, cid);
-    // Every feed entry now carries a stamped epoch-ms `ts`; assert it is present
+    // Every feed entry carries a stamped epoch-ms `ts`; assert it is present
     // and numeric, then compare the rest of the VM structurally (ts stripped).
     for (const f of vm?.feed ?? []) expect(typeof f.ts).toBe("number");
     expect({
@@ -76,9 +76,9 @@ describe("turn send → stream → settle", () => {
     }).toEqual({
       running: false,
       sessionStatus: "completed",
-      // The persisted board status now rides the VM (the handled-vs-error
-      // signal a native shell reads); every clean settle lands `needs_you` —
-      // the engine never writes `done`, only the user moves a card there.
+      // The persisted board status rides the VM (the handled-vs-error signal a
+      // surface reads); every clean settle lands `needs_you` — the engine never
+      // writes `done`, only the user moves a card there.
       boardStatus: "needs_you",
       // No pending interaction — the canned turn ended asking nothing.
       pendingInteraction: null,
@@ -206,8 +206,8 @@ describe("multi-client conversation reactivity", () => {
     const scope = conversationScope(SEED_AGENT_ID, cid);
     const off = receiver.sdk.subscribe(scope, () => {});
     try {
-      // iOS opens the chat while it is idle. Its per-conversation observer sees
-      // the idle sync and closes; future turns must arrive through the SDK's
+      // A client opens the chat while it is idle. Its per-conversation observer
+      // sees the idle sync and closes; future turns must arrive through the SDK's
       // global ConversationsChanged reactivity path.
       await receiver.sdk.turns.observe(cid, SEED_AGENT_ID);
       await sleep(100);
@@ -270,7 +270,7 @@ describe("turn cancel", () => {
     expect(vm?.running).toBe(false);
     // A user Stop is a handled state, not the red error card. sessionStatus is
     // "error" (clears the loading flag) but the board lands on needs_you — the
-    // signal a native shell must read to avoid rendering a normal Stop red.
+    // signal a surface must read to avoid rendering a normal Stop red.
     expect(vm?.sessionStatus).toBe("error");
     expect(vm?.boardStatus).toBe("needs_you");
     const stop = vm?.feed.find(

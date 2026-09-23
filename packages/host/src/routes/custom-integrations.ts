@@ -9,9 +9,9 @@ import { defineRouteFamily } from "./registry";
 /**
  * Custom-integration SANDBOX routes (HOU-550) — `/sandbox/integrations/custom/*`
  * (per-sandbox HMAC): what the agent's setup tools call — detect a pasted URL,
- * add an integration. The USER routes (list / remove / provide-credential, on
- * three surfaces incl. the per-agent dispatch the hosted gateway proxies) live
- * in custom-integrations-user.ts.
+ * add an integration. The USER routes (list / remove / provide-credential,
+ * including the per-agent dispatch the hosted gateway proxies) live in
+ * custom-integrations-user.ts.
  */
 export interface CustomIntegrationDeps {
   customIntegrations?: CustomIntegrationManager;

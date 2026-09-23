@@ -1,8 +1,8 @@
 /**
  * Stateful AI-provider credentials for the fake host — the per-agent-pod
- * provider model the SDK `providers` module and the hosted connect flow exercise
- * (PARITY-SETTINGS §2, §6). Credentials are PER AGENT in hosted mode, so state
- * is keyed by agent id; the pre-agent `/setup-runtime/*` connect surface (the
+ * provider model the SDK `providers` module and the hosted connect flow
+ * exercise. Credentials are PER AGENT in hosted mode, so state is keyed by
+ * agent id; the pre-agent `/setup-runtime/*` connect surface (the
  * WebApp gate + ConnectView) shares the {@link FLAT_KEY} slot.
  *
  * Two seeds: per-AGENT slots start with Claude connected + active (chat,

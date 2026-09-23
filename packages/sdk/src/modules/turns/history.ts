@@ -26,7 +26,7 @@ import type { FeedAuthor, FeedMention } from "./vm-output";
  * One replayed feed frame: the SAME `{ feed_type, data }` push the turn
  * machinery emits, plus the optional multiplayer `author` on a user message
  * (carried so a shared conversation attributes each teammate's bubble on
- * reload). Plain JSON — it crosses the SDK/bridge boundary unchanged.
+ * reload). Plain JSON — it crosses the `dispatch` boundary unchanged.
  */
 export interface FeedFrame {
   feed_type: string;
@@ -43,7 +43,7 @@ export interface FeedFrame {
   /**
    * Why the engine authored a `system_message`, when it did (a restart, a
    * resume). `data` stays the English default; a surface renders its own copy
-   * by kind. Optional/additive; plain JSON across the bridge.
+   * by kind. Optional/additive; plain JSON across the `dispatch` boundary.
    */
   notice?: EngineNoticeKind;
   /**
@@ -51,7 +51,7 @@ export interface FeedFrame {
    * (`ChatMessage.ts`). Carried on every frame attributable to a message so a
    * client can render a relative time on reload. Optional/additive: absent for
    * pre-`ts` transcripts and for frames not tied to a message. Plain JSON — it
-   * crosses the SDK/bridge boundary unchanged.
+   * crosses the `dispatch` boundary unchanged.
    */
   ts?: number;
   /**
@@ -98,8 +98,8 @@ export function historyToFeed(
       // A hidden auto-continue prompt is a message the USER never wrote — the
       // engine minted it (a boot resume, a continue directive). It is model
       // input only, so it never becomes a bubble on any surface. Folded away
-      // HERE, in the shared behaviour layer, because iOS and every other SDK
-      // binder would otherwise render the raw marker text.
+      // HERE, in the shared behaviour layer, because every SDK binder would
+      // otherwise render the raw marker text.
       if (isAutoContinue(m.content)) continue;
       out.push({
         feed_type: "user_message",

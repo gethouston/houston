@@ -7,8 +7,8 @@
  * Reads: `refresh(agentId)` publishes the agent's `activities/<agentId>`
  * snapshot, republished whole on every change. Writes (`create`, `setStatus`,
  * `rename`, `delete`) mutate then refetch, so the snapshot always reflects the
- * host. The same handlers back both the typed facade and the bridge `dispatch`
- * path, so there is one implementation each.
+ * host. The same handlers back both the typed facade and the `dispatch` path,
+ * so there is one implementation each.
  *
  * Reactivity: a `/v1/events` subscription refetches on every (re)connect and on
  * each `ActivityChanged` frame for an agent we've loaded. 401s route through the

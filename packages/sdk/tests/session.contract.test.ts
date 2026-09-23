@@ -2,8 +2,8 @@
  * Session / connection contract: attaching a token drives the `connection`
  * view-model, and the token then rides real requests to the host.
  *
- * The `ConnectionViewModel` is one of the cross-platform snapshots a native
- * shell reads, so its exact JSON shape is pinned here.
+ * The `ConnectionViewModel` is one of the snapshots every subscriber reads, so
+ * its exact JSON shape is pinned here.
  */
 
 import { FAKE_TOKEN, type FakeHost } from "@houston/fake-host";

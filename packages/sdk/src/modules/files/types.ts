@@ -1,11 +1,12 @@
 /**
  * Wire types for an agent's workspace files — the listing entries, the upload
- * frame, and the command vocabulary the bridge dispatches them by.
+ * frame, and the command vocabulary `dispatch` routes them by.
  *
  * The upload shape is deliberately DOM-free. A browser hands the Files section
- * `File` objects and iOS hands it nothing of the sort, so the framing (reading
- * the bytes, base64-encoding them, reading `webkitRelativePath`) belongs to the
- * surface; what crosses into this module is the JSON the host already accepts.
+ * `File` objects and this module is deployment-agnostic, so the framing
+ * (reading the bytes, base64-encoding them, reading `webkitRelativePath`)
+ * belongs to the surface; what crosses into this module is the JSON the host
+ * already accepts.
  */
 
 import { field, requireString } from "../payload";
@@ -40,7 +41,7 @@ export interface FileUpload {
   relPath?: string;
 }
 
-/** The write vocabulary — the same constants back the facade and the bridge. */
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const FilesCommand = {
   List: "files/list",
   Read: "files/read",
@@ -68,7 +69,7 @@ export function nullableString(payload: unknown, key: string): string | null {
 
 /**
  * The upload list off an untrusted command payload, checked field by field: a
- * bridge caller's malformed entry must fail here, not halfway through a batch
+ * dispatch caller's malformed entry must fail here, not halfway through a batch
  * the host has already begun writing into the workspace.
  */
 export function requireUploads(payload: unknown, key: string): FileUpload[] {

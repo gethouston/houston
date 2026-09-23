@@ -11,8 +11,8 @@
  * README "why snapshots-not-patches").
  *
  * Everything crossing `getSnapshot`/`subscribe`/`emitEvent`/`onEvent` is plain
- * JSON — no functions, no class instances — so it can traverse a native bridge
- * or a structured-clone boundary unchanged.
+ * JSON — no functions, no class instances — so it can traverse a
+ * structured-clone boundary unchanged.
  */
 
 /**

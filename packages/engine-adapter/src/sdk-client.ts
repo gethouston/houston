@@ -3,8 +3,8 @@
  *
  * Houston's behavior — domain CRUD, turn lifecycle, reconnection — is written
  * ONCE in `@houston/sdk`, and every surface binds it: the adapter's mixins
- * delegate their calls to the modules on the SDK built here, so web and iOS run
- * the same code against the same routes.
+ * delegate their calls to the modules on the SDK built here, so every caller
+ * runs the same code against the same routes.
  *
  * **Reactivity is OFF.** The SDK is built with `reactivity: false`, so its
  * agents/activities/turns modules open no `/v1/events` stream and constructing

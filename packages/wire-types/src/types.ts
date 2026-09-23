@@ -1555,34 +1555,6 @@ export interface ImportedWorkspace {
   agentIds: string[];
 }
 
-// ---------- Tunnel (mobile pairing + paired-device management) ----------
-
-export interface TunnelStatus {
-  connected: boolean;
-  tunnelId: string | null;
-  publicHost: string | null;
-  lastActivityMs: number | null;
-}
-
-export interface PairingCode {
-  /** Full code mobile must send to `{relay}/pair/<code>` — already
-   * prefixed with `tunnelId-`. Do not split on the dash before sending.
-   */
-  code: string;
-  accessSecret: string;
-  rotatedAt: string;
-}
-
-// ---------- Push (mobile notification registration) ----------
-
-export interface PushRegisterRequest {
-  deviceToken: string;
-  platform: "apns" | "fcm";
-  installationId?: string;
-  appVersion?: string;
-  appEnv?: "prod" | "sandbox";
-}
-
 // ---------- Worktree / shell ----------
 
 export interface WorktreeInfo {

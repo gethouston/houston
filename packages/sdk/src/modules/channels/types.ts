@@ -3,10 +3,10 @@
  * accounts a person connects to their personal assistant, in the space they
  * are working in.
  *
- * Everything here is plain JSON, so it crosses the bridge's `dispatch`
- * boundary unchanged. There is no reactive scope: the listing is read when the
- * Channels screen opens and every other call is a button's one-shot, so the
- * module is plain-async and publishes nothing (the billing module's shape).
+ * Everything here is plain JSON, so it crosses the `dispatch` boundary
+ * unchanged. There is no reactive scope: the listing is read when the Channels
+ * screen opens and every other call is a button's one-shot, so the module is
+ * plain-async and publishes nothing (the billing module's shape).
  *
  * The app-facing copy of these shapes, with the guards that parse a gateway
  * answer before a surface renders it, is `@houston/wire-types`. This package
@@ -16,7 +16,7 @@
 
 import { requireString } from "../payload";
 
-/** The write vocabulary — the same handlers back the facade and the bridge. */
+/** The write vocabulary — the same handlers back the facade and `dispatch`. */
 export const ChannelsCommand = {
   Get: "channels/get",
   ConnectSlack: "channels/connectSlack",
@@ -30,7 +30,7 @@ export type ChannelsCommandType =
 
 /**
  * The runtime mirror of the messaging providers a surface can render — a
- * bridge payload arrives untyped, and a union is not a value to check it
+ * command payload arrives untyped, and a union is not a value to check it
  * against. A provider the gateway starts offering must be added here too.
  */
 export const CHANNEL_PROVIDER_IDS = ["slack"] as const;

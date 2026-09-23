@@ -9,8 +9,8 @@
  *  - decode  ← `ui/chat/src/attachment-message.ts` (`decodeAttachmentMessage`).
  *
  * Those desktop copies still exist and are deliberately NOT edited here (the
- * app owns its own copy). This is the home the SDK owns so iOS/Android emit and
- * read the EXACT same bytes; collapsing the desktop copies onto this is a
+ * app owns its own copy). This is the home the SDK owns so every surface emits
+ * and reads the EXACT same bytes; collapsing the desktop copies onto this is a
  * follow-up consolidation. The format is pinned in `attachment-text.test.ts`.
  */
 

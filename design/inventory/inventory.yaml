@@ -12,19 +12,18 @@
 #                         each surface, with the same anatomy/states/semantics?
 #
 # Every entry here is surface-AGNOSTIC. It describes the component once; each
-# surface (web/desktop, iOS, Android) then declares in its own manifest under
-# manifests/ whether it implements that component (implemented|partial|
-# not-started). scripts/check-parity.mjs (pnpm check:parity) enforces the
-# contract in CI: an enforced surface may not lag its declared inventoryVersion.
+# surface declares in its own manifest under manifests/ whether it implements
+# that component (implemented|partial|not-started). scripts/check-parity.mjs
+# (pnpm check:parity) enforces the contract in CI: an enforced surface may not
+# lag its declared inventoryVersion.
 #
-# SCOPE: only components that are genuinely cross-surface (will exist on native
-# mobile) belong here. Desktop-only chrome (menu bars, resizable panes, the file
-# tree, the schedule/cron editor, skill-authoring dialogs) is deliberately
-# excluded -- see design/inventory/README.md for the exclusion rationale.
+# SCOPE: only shared product components belong here. Desktop-only chrome (menu
+# bars, resizable panes, the file tree, the schedule/cron editor,
+# skill-authoring dialogs) is deliberately excluded -- see
+# design/inventory/README.md for the exclusion rationale.
 #
 # CHANGE FLOW: add/modify a component -> bump `version` -> add a CHANGELOG.md
-# entry -> update every ENFORCED surface manifest in the SAME PR. Unenforced
-# surfaces catch up later and bump their manifest's inventoryVersion when they do.
+# entry -> update every ENFORCED surface manifest in the SAME PR.
 #
 # Field reference (all fields required per component):
 #   id       kebab-case stable identifier (never reused/renamed without a bump)

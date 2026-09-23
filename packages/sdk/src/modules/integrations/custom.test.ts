@@ -7,8 +7,9 @@ import { IntegrationsHttpError } from "./types";
  * The SDK contract for the provider-scoped reads and the custom-connector
  * surface: the route each call issues, and the promise that a non-2xx ALWAYS
  * throws. A 404 on the definitions read means "this deployment serves no
- * custom integrations" to the web adapter and something else to iOS, so the
- * decision belongs to the surface — the SDK must never soft-result it here.
+ * custom integrations" to the web adapter and can mean something else to
+ * another caller, so the decision belongs to the surface — the SDK must never
+ * soft-result it here.
  */
 
 const BASE = "http://127.0.0.1:4317";

@@ -4,7 +4,7 @@
  * These are pure commands: a settings screen opens them, reads once, and writes
  * from a form; no host event invalidates them and no surface renders them
  * continuously, so there is no reactive scope to publish. The same handlers back
- * both the typed facade and the bridge `dispatch` path.
+ * both the typed facade and the `dispatch` path.
  *
  * SEAM — user-scoped, NOT per-agent. Both surfaces are keyed by the caller's
  * session subject and live only on the gateway, so this module talks to them

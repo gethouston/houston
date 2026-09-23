@@ -149,7 +149,7 @@ describe("activities module — no-refetch writes", () => {
   it("the refetching facade create() DOES list afterward (contrast)", async () => {
     const { sdk, calls } = makeSdk();
     await sdk.activities.create(AGENT, "Reconcile");
-    // POST then a GET list (the facade's refresh) — the behavior iOS relies on.
+    // POST then a GET list (the facade's refresh) — the behavior it guarantees.
     expect(calls.map((c) => c.method)).toEqual(["POST", "GET"]);
     const snap = sdk.getSnapshot(activitiesScope(AGENT)) as ActivitiesViewModel;
     expect(snap.loaded).toBe(true);

@@ -158,7 +158,7 @@ describe("account module — personal API keys", () => {
   });
 });
 
-describe("account module — the bridge path", () => {
+describe("account module — the dispatch path", () => {
   it("dispatches the same writes the facade calls", async () => {
     const { sdk, calls } = makeSdk(() => json(PROFILE));
 

@@ -32,8 +32,8 @@ export const TOKEN_EXPIRED_EVENT = "session/tokenExpired";
 
 /**
  * Whether `err` is an engine 401. Matches the runtime-client {@link EngineError}
- * and duck-types a `{ status: 401 }` shape so an error that crossed a bridge
- * boundary (and lost its prototype) still classifies.
+ * and duck-types a `{ status: 401 }` shape so an error that crossed the
+ * `dispatch` boundary (and lost its prototype) still classifies.
  */
 export function isUnauthorized(err: unknown): boolean {
   if (err instanceof EngineError) return err.status === 401;

@@ -140,7 +140,7 @@ describe("skills from a GitHub repository", () => {
     expect((err as Error).message).toContain("GitHub unavailable");
   });
 
-  it("registers every operation as a bridge command", () => {
+  it("registers every operation as a dispatch command", () => {
     const { commands } = makeSkillsRepo(() => json([]));
 
     for (const type of Object.values(SkillsRepoCommand))

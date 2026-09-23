@@ -3,10 +3,10 @@
  * the host stores, in batches small enough to send.
  *
  * It stays in the web adapter because `File` and `webkitRelativePath` are DOM
- * types — `@houston/sdk` is deployment-agnostic and an embedded iOS runtime has
- * neither — while the requests themselves live in `sdk.files`. The split is
- * also what keeps memory flat: a batch is framed only when it is about to be
- * sent, so a 2 GB folder drop never holds more than one batch of base64 at once.
+ * types — `@houston/sdk` is deployment-agnostic and cannot depend on them —
+ * while the requests themselves live in `sdk.files`. The split is also what
+ * keeps memory flat: a batch is framed only when it is about to be sent, so a
+ * 2 GB folder drop never holds more than one batch of base64 at once.
  *
  * Shared by composer attachments and the Files section's own upload (HOU-889),
  * which is why the plan and the framing live beside each other rather than in

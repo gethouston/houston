@@ -1,7 +1,7 @@
 /**
  * Wire types for an agent's ROUTINES — the work it repeats on a schedule and
- * the record of the times it ran — plus the command vocabulary the bridge
- * dispatches them by.
+ * the record of the times it ran — plus the command vocabulary `dispatch`
+ * routes them by.
  *
  * The routine shapes themselves belong to `@houston/protocol`, which owns the
  * on-disk `.houston` schema every host reads and writes; re-exporting them here
@@ -33,7 +33,7 @@ export interface WebhookKeyReveal {
   key_prefix: string;
 }
 
-/** The write vocabulary — the same constants back the facade and the bridge. */
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const RoutinesCommand = {
   List: "routines/list",
   ListRuns: "routines/listRuns",

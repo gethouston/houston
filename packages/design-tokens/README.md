@@ -3,9 +3,8 @@
 One source of truth for Houston's design decisions — colour, typography scale,
 spacing, radii, motion, elevation — authored once in
 [W3C Design Tokens (DTCG)](https://www.w3.org/community/design-tokens/) JSON and
-compiled to every surface: web/desktop CSS today, native SwiftUI (iOS) and
-Jetpack Compose (Android) next. **A visual change is a token edit + rebuild; all
-surfaces regenerate.**
+compiled to CSS and TypeScript for web and desktop. **A visual change is a
+token edit + rebuild; both outputs regenerate.**
 
 ## What a token is
 
@@ -29,8 +28,8 @@ The standard two-layer structure:
    by `app/src/lib/theme.ts`.
 
 Theme-independent **scales** (`tokens/scale/*.json`) — spacing, radius,
-typography, motion, elevation — sit alongside and flow to the typed/native
-outputs.
+typography, motion, elevation — sit alongside and flow to the TypeScript output
+(`buildCss` emits only the semantic colours).
 
 ## Outputs (`dist/`, a build artifact)
 
@@ -43,20 +42,6 @@ before anything imports it:
 | --- | --- | --- |
 | `dist/css/tokens.css` | web / desktop | `--ht-*` custom properties: light on `:root`, dark on `[data-theme="dark"]`. **The same variable names the app + `@houston-ai/*` already consume.** |
 | `dist/ts/tokens.ts` | SDK / web JS | Typed `as const` objects: `color.{light,dark}`, `space`, `radius`, `fontSize`, `fontWeight`, `duration`, `durationMs`, `easing`, `shadow`. |
-| `dist/swift/HoustonTokens.swift` | iOS (SwiftUI) | `HoustonThemedColor(light:dark:)` pairs resolved by the app's own `HoustonTheme`; `CGFloat` spacing/radii/sizes, `Font.Weight`, `TimeInterval` durations. |
-| `dist/kotlin/HoustonTokens.kt` | Android (Compose) | `HoustonThemedColor(light, dark)` pairs; `Dp` spacing/radii, `TextUnit` sizes, `FontWeight`, `Long` duration millis, `CubicBezierEasing`. |
-
-**Colours are theme pairs, resolved by the app's own theme state** (not the OS
-appearance) on native, matching how web toggles `[data-theme]`. Swift uses
-`Color(.sRGB, …)`, Kotlin `Color(red, green, blue, alpha)` — both carry alpha, so
-translucent glass surfaces survive.
-
-### How native pulls it in
-
-The Swift/Kotlin files have no consumers in this repo yet. They are **copied or
-code-generated into the iOS/Android app projects at their build time** (a future
-step in those repos); this package only produces the artifact. They are written
-to compile as-is against SwiftUI / Compose.
 
 ## The zero-diff story (web/desktop adoption)
 

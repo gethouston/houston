@@ -1,7 +1,7 @@
 /**
  * The turns module's command payloads + their untrusted-envelope validators.
- * The bridge path (`dispatch`) hands these raw JSON; each `as*Input` throws on
- * a bad shape (CommandRegistry.dispatch turns the throw into `ok: false`).
+ * The `dispatch` path hands these raw JSON; each `as*Input` throws on a bad
+ * shape (CommandRegistry.dispatch turns the throw into `ok: false`).
  */
 
 import { parseMentions } from "@houston/protocol";

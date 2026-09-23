@@ -6,16 +6,15 @@
  * SEAM — these are host CONTROL routes about an agent, not calls into its
  * sandbox, so they run on this module's own {@link moduleScope} rooted at the
  * base URL and never `clientFor(agentId)`. That is the whole difference from
- * `./writes.ts`, which drives the agent's own runtime (`/agents/:id/auth/*`) and
- * is what a native shell reaches over the bridge and what a LOCAL engine with no
- * gateway in front of it serves. Both surfaces are load-bearing: the runtime one
- * writes the pod's `auth.json`, this one writes the store every agent in the
- * space serves from, and the host pushes into the runtime as a side effect.
+ * `./writes.ts`, which drives the agent's own runtime (`/agents/:id/auth/*`)
+ * and is what a LOCAL engine with no gateway in front of it serves. Both
+ * surfaces are load-bearing: `./writes.ts` writes the pod's `auth.json`, this
+ * module writes the store every agent in the space serves from, and the host
+ * pushes into the runtime as a side effect.
  *
  * NOT registered as commands. Every call here carries a credential the person
- * pasted or their machine minted, and a command is the bridge's JSON `dispatch`
- * envelope — a secret must never travel one. A native shell connects providers
- * through the runtime writes it already has; the web app owns this surface.
+ * pasted or their machine minted, and a command is a JSON `dispatch` envelope —
+ * a secret must never travel one. The app owns this surface directly.
  */
 
 import type { CustomEndpoint } from "@houston/runtime-client";

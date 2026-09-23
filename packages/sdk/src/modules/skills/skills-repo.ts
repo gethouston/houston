@@ -11,8 +11,8 @@
  *
  * Nothing is swallowed: a non-2xx always throws the scope's
  * `SkillsRepoHttpError` carrying the HTTP `status`, so a surface that wants
- * "no repository backend here" instead of an error says so itself and iOS is
- * never handed an empty listing it cannot tell from a real one.
+ * "no repository backend here" instead of an error says so itself and no
+ * surface is handed an empty listing it cannot tell from a real one.
  */
 
 import type { ModuleContext } from "../../module-context";

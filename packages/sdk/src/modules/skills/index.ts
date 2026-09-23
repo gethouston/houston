@@ -11,7 +11,7 @@
  * These are pure commands: a skills screen opens them, reads once, and writes
  * from a form. No host event invalidates them and no surface renders them
  * continuously, so there is no reactive scope to publish. The same handlers back
- * both the typed facade and the bridge `dispatch` path.
+ * both the typed facade and the `dispatch` path.
  *
  * SEAM — per-agent control-plane routes proxied to the agent's pod, reached on
  * the flat {@link agentSkillsScope} rooted at the base URL rather than

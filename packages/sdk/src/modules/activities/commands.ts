@@ -8,7 +8,7 @@ import {
 } from "./payloads";
 import { ActivitiesCommand, type CreatedActivity } from "./types";
 
-/** The write/read handlers the bridge `dispatch` path shares with the facade. */
+/** The write/read handlers the `dispatch` path shares with the facade. */
 export interface ActivitiesCommandHandlers {
   refresh(agentId: string): Promise<void>;
   create(
@@ -22,7 +22,7 @@ export interface ActivitiesCommandHandlers {
 }
 
 /**
- * Wire the five `activities/*` commands to the module handlers, so the bridge
+ * Wire the five `activities/*` commands to the module handlers, so the
  * `dispatch` path and the typed facade share one implementation each.
  */
 export function registerActivitiesCommands(

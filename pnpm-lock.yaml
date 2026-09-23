@@ -660,9 +660,6 @@ importers:
       '@typescript/native-preview':
         specifier: 7.0.0-dev.20260607.1
         version: 7.0.0-dev.20260607.1
-      esbuild:
-        specifier: 0.25.12
-        version: 0.25.12
       jsdom:
         specifier: 29.1.1
         version: 29.1.1(@noble/hashes@2.2.0)

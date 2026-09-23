@@ -20,7 +20,7 @@ export interface TurnsStreamDeps {
   handlers: TurnsStreamHandlers;
 }
 
-/** Keep native conversation VMs current from the host's global event stream. */
+/** Keep subscribed conversation VMs current from the host's event stream. */
 export function startTurnsEventStream(deps: TurnsStreamDeps): () => void {
   const ac = new AbortController();
   const { clock, logger, handlers } = deps;

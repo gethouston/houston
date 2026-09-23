@@ -42,8 +42,8 @@ export { conversationListScope } from "./types";
 
 /**
  * Wire the conversation-list module: register its command handlers and return
- * the typed facade. The facade methods and the bridge (`dispatch`) share ONE
- * code path per operation, so there is no drift between them.
+ * the typed facade. The facade methods and the `dispatch` path share ONE code
+ * path per operation, so there is no drift between them.
  */
 export function createConversationsModule(ctx: ModuleContext) {
   const { store, clientFor, registerCommand } = ctx;

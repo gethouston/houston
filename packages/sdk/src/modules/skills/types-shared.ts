@@ -18,7 +18,7 @@ import type { SkillInputDef } from "./types-agent";
 
 export type { SkillDetail };
 
-/** The command vocabulary — the same constants back the facade and the bridge. */
+/** The command vocabulary — the same constants back the facade and `dispatch`. */
 export const SharedSkillsCommand = {
   List: "skills.shared/list",
   Load: "skills.shared/load",

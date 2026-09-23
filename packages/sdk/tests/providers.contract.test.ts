@@ -3,12 +3,12 @@
  * `GET /providers` + `GET /auth/status` reads coherently, and the per-agent
  * connect facade (login → LoginInfo kinds, api-key → configured flip, logout,
  * setModel → {activeProvider, model}) mutates then refetches so the snapshot
- * always reflects the pod (PARITY-SETTINGS §2, §6).
+ * always reflects the pod.
  *
  * These drive a REAL fake host over HTTP (per-agent-pod provider state), so what
  * they pin is the wire contract, not a mock's guess. The `ProvidersViewModel` is
- * a cross-platform snapshot (the AI Models grid iOS renders), so its shape is
- * pinned here as API.
+ * the snapshot every subscriber reads (the dispatch path, the adapter, a test),
+ * so its shape is pinned here as API.
  */
 
 import { type FakeHost, SEED_AGENT_ID } from "@houston/fake-host";
@@ -184,7 +184,7 @@ describe("providers — setModel (resolveModelSettings semantics)", () => {
   });
 });
 
-describe("providers — bridge dispatch parity", () => {
+describe("providers — dispatch parity", () => {
   it("runs refresh + login through the same handlers, and rejects a bad payload", async () => {
     const refreshed = await h.sdk.dispatch({
       id: "c1",

@@ -6,7 +6,7 @@
  * These are pure commands over hosted-gateway routes: a space list is read when
  * the switcher opens and every write is a form's one-shot, so there is no
  * reactive scope to publish and nothing here subscribes to an event. The same
- * handlers back both the typed facade and the bridge `dispatch` path.
+ * handlers back both the typed facade and the `dispatch` path.
  *
  * SEAM — user-scoped, NOT per-agent. Even the agent-move routes are gateway
  * control routes about WHICH namespace an agent lives in, so they run on the

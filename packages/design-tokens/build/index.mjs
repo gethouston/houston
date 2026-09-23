@@ -3,8 +3,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { collect } from "./collect.mjs";
 import { buildCss } from "./css.mjs";
-import { buildKotlin } from "./kotlin.mjs";
-import { buildSwift } from "./swift.mjs";
 import { buildTs } from "./ts.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -13,15 +11,13 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 // temp dir so it can diff a fresh build against the committed one.
 const OUT = process.env.OUT_DIR ? process.env.OUT_DIR : join(ROOT, "dist");
 
-/** All four surface outputs, keyed by their path under the output dir. */
+/** CSS and TypeScript outputs, keyed by their path under the output dir. */
 export async function build() {
   const light = await collect("light");
   const dark = await collect("dark");
   return {
     "css/tokens.css": buildCss(light, dark),
     "ts/tokens.ts": buildTs(light, dark),
-    "swift/HoustonTokens.swift": buildSwift(light, dark),
-    "kotlin/HoustonTokens.kt": buildKotlin(light, dark),
   };
 }
 

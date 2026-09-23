@@ -101,9 +101,8 @@ export function RoutinesMixin<TBase extends BaseCtor>(Base: TBase) {
      * webhook keys are unsupported here: no gateway (standalone web/desktop) or a
      * gateway that 404s the route. Calling again ROTATES the old secret away.
      *
-     * The SDK throws every non-2xx (it stays honest for iOS), so the 404 is
-     * swallowed HERE — mirroring `agentTriggerStatus`'s degrade — and every
-     * other error still surfaces.
+     * The SDK throws every non-2xx, so the 404 is swallowed HERE — mirroring
+     * `agentTriggerStatus`'s degrade — and every other error still surfaces.
      */
     async mintRoutineWebhookKey(
       agentPath: string,

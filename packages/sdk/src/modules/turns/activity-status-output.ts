@@ -28,11 +28,10 @@ export type BoardStatusPersister = (
  *
  * This is the SDK-path counterpart to the web engine-adapter's bus output
  * (`engine-adapter/feed-output.ts`), which the desktop attaches; the SDK ships
- * it as a DEFAULT output so a native shell (iOS) that never calls `addOutput`
- * still writes the card. The persist runs both fire-and-forget (turn start) and
- * awaited (turn settle); a failure is surfaced to the logger and swallowed here
- * so a dropped board write never rejects the settle or leaks an unhandled
- * rejection.
+ * it as a DEFAULT output so a binder that never calls `addOutput` still writes
+ * the card. The persist runs both fire-and-forget (turn start) and awaited
+ * (turn settle); a failure is surfaced to the logger and swallowed here so a
+ * dropped board write never rejects the settle or leaks an unhandled rejection.
  */
 export class ActivityStatusOutput implements FeedOutput {
   constructor(

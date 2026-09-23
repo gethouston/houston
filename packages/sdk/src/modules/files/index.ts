@@ -6,7 +6,7 @@
  * These are pure commands: the Files section opens them, reads once, and writes
  * from a menu; no host event invalidates the listing and nothing renders it
  * continuously, so there is no reactive scope to publish. The same handlers
- * back both the typed facade and the bridge `dispatch` path.
+ * back both the typed facade and the `dispatch` path.
  *
  * SEAM — per-agent, but NOT through `clientFor(agentId)`. The runtime client is
  * scoped to one conversation and serves none of the `/agents/:id/files*`

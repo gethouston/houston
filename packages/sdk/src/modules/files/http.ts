@@ -15,11 +15,10 @@
  * becomes a visible `tokenExpired` signal.
  *
  * The two BINARY reads (a file's bytes, the workspace zip) stay with the
- * surface that renders them: both answer a `Blob`, which no JSON bridge can
+ * surface that renders them: both answer a `Blob`, which a JSON envelope cannot
  * carry, so there is nothing for this module to hold.
  */
 
-import { base64ToBytes } from "../../bridge/base64";
 import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type { ProjectFile } from "./types";
 
@@ -28,22 +27,6 @@ export class FilesHttpError extends SdkHttpError {
   constructor(message: string, status: number) {
     super(message, status, "FilesHttpError");
   }
-}
-
-/**
- * A base64 payload as the latin1 string `atob` answers, chunked so a large file
- * never blows the call stack. Written over the bridge's own codec because
- * `atob` is a WebKit global an embedded JavaScriptCore/Hermes runtime does not
- * ship, and this module runs there too.
- */
-function decodeBase64(content: string): string {
-  const bytes = base64ToBytes(content);
-  const CHUNK = 0x8000;
-  let text = "";
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    text += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return text;
 }
 
 /**
@@ -76,9 +59,10 @@ export async function readProjectFile(
   );
   // The host frames anything it cannot serve as text (an image, a PDF) as
   // base64 and says so, so what a caller gets back is always the file's real
-  // contents rather than a mojibake transcription of its bytes.
+  // contents (as the latin1 string `atob` answers) rather than a mojibake
+  // transcription of its bytes.
   const body = (await res.json()) as { content: string; base64: boolean };
-  return body.base64 ? decodeBase64(body.content) : body.content;
+  return body.base64 ? atob(body.content) : body.content;
 }
 
 /**

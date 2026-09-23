@@ -5,7 +5,7 @@
  * These are pure commands: they read/write the gateway's user-scoped routes and
  * return the value; there is no reactive scope to publish (a preference read is
  * on-demand, and the locale write is a one-shot the surface acts on). The same
- * handlers back both the typed facade and the bridge `dispatch` path.
+ * handlers back both the typed facade and the `dispatch` path.
  *
  * SEAM — user-scoped, NOT per-agent. Preferences are keyed by the caller's
  * session `sub`, so this module talks to the flat {@link PreferencesClient}
@@ -21,7 +21,7 @@ import {
 import type { ModuleContext } from "../../module-context";
 import { requireString } from "../payload";
 
-/** The write vocabulary — the same constants back the facade and the bridge. */
+/** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const PreferencesCommand = {
   Get: "preferences/get",
   Set: "preferences/set",

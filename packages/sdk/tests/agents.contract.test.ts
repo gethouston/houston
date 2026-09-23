@@ -4,8 +4,8 @@
  * `/v1/events` reactivity feed) live-updates the snapshot without a manual
  * refresh.
  *
- * The `AgentsViewModel` is a cross-platform snapshot, so its seed shape is
- * pinned here as API.
+ * The `AgentsViewModel` is the snapshot every subscriber reads (the dispatch
+ * path, the adapter, a test), so its seed shape is pinned here as API.
  */
 
 import {

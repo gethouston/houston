@@ -1,11 +1,11 @@
 /**
  * Payload validators for the conversation-list commands.
  *
- * Command payloads arrive as `unknown` (the bridge path carries untrusted JSON
- * across a serialization boundary). Each parser narrows the shape and THROWS on
- * anything malformed — never a silent default. A throw becomes an `ok: false`
- * {@link CommandResult} in `CommandRegistry.dispatch`, so a bad payload always
- * surfaces to the caller.
+ * Command payloads arrive as `unknown` (the dispatch path carries untrusted
+ * JSON across a serialization boundary). Each parser narrows the shape and
+ * THROWS on anything malformed — never a silent default. A throw becomes an
+ * `ok: false` {@link CommandResult} in `CommandRegistry.dispatch`, so a bad
+ * payload always surfaces to the caller.
  */
 
 import { requireString } from "../payload";

@@ -19,7 +19,7 @@ interface Recorded {
  * wire, because these routes are the agent's REAL workspace: a path escaped one
  * character differently reads or deletes a different file. Nothing is swallowed
  * either — the "no workspace here" degradations belong to the CALLER (the web
- * adapter's mixin), never to this module, or iOS would be handed an empty
+ * adapter's mixin), never to this module, or a caller would be handed an empty
  * listing it cannot tell from a real one.
  */
 function makeSdk(respond: (url: string) => Response) {
@@ -179,7 +179,7 @@ describe("files module — uploads take one already-framed batch", () => {
   });
 });
 
-describe("files module — the bridge dispatch path", () => {
+describe("files module — the dispatch path", () => {
   it("runs the same request a facade call would", async () => {
     const { sdk, calls } = makeSdk(() => json([ENTRY]));
 
