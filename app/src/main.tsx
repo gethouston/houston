@@ -22,7 +22,7 @@ import { osOpenUrl } from "./lib/os-bridge";
 import { initSentry } from "./lib/sentry";
 import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 import { runStartupAnalytics } from "./lib/startup-analytics";
-import { loadTheme } from "./lib/theme";
+import { loadThemePreference } from "./lib/theme";
 import { applyBootTheme } from "./lib/theme-boot";
 
 // Sentry first so global error handlers below can capture into it from the
@@ -54,9 +54,9 @@ installGlobalErrorHandlers();
 // (see StartupEffects below), and the boot splash renders DURING that handshake
 // on the themed `bg-background` surface — so a dark-mode user would sit on the
 // light surface for the whole handshake, then snap to dark. This applies the
-// device-local mirror of the last resolved theme synchronously; `loadTheme()`
-// reconciles it against the engine moments later. No mirror yet (first launch
-// on this device) → the light default, exactly as before.
+// device-local mirror of the last resolved theme synchronously;
+// `loadThemePreference()` reconciles it against the engine moments later. No
+// mirror yet (first launch on this device) → the light default, as before.
 applyBootTheme();
 
 class ErrorBoundary extends Component<
@@ -149,7 +149,7 @@ function StartupEffects({ children }: { children: ReactNode }) {
     void whenEngineReady().then(() => {
       if (cancelled) return;
       void runStartupAnalytics(analytics, osOpenUrl);
-      void loadTheme();
+      void loadThemePreference();
     });
     return () => {
       cancelled = true;

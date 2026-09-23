@@ -28,11 +28,16 @@
          app/src/lib/theme-boot.ts; reading it here (parser-blocking, so it lands
          before first paint) lets that frame already match the theme
          `applyBootTheme()` is about to apply, instead of flashing the wrong one.
-         Values are the design tokens the first app frame paints: light
-         `--ht-background` #fcfcfc (the boot splash's screen surface) and dark
-         `--ht-base` #141416 (the opaque gutter the splash's frosted glass sits
-         on). No mirror yet (first launch) or storage unavailable -> light, the
-         document default, exactly how applyBootTheme() resolves it.
+         The mirror is JSON: the resolved mode, the palette, and the palette's
+         two first-frame hexes (`base`, the window gutter, and `screen`, the
+         surface the OS chrome matches in light). The script paints `base`
+         inline, so a non-Houston palette's first frame is its OWN gutter.
+         The CSS below is the first-launch fallback only, and its values are
+         Houston's: light `--ht-background` #fcfcfc (the boot splash's screen
+         surface) and dark `--ht-base` #141416 (the opaque gutter the splash's
+         frosted glass sits on). No mirror yet (first launch) or storage
+         unavailable -> light, the document default, exactly how
+         applyBootTheme() resolves it.
          KEEP IDENTICAL to packages/web/index.html — same document, two shells. -->
     <style>
       html {
@@ -47,14 +52,33 @@
     </style>
     <script>
       try {
-        if (localStorage.getItem("houston.theme.cache") === "dark") {
-          document.documentElement.setAttribute("data-theme", "dark");
-          document
-            .querySelector('meta[name="theme-color"]')
-            .setAttribute("content", "#141416");
+        var raw = localStorage.getItem("houston.theme.cache");
+        // The pre-palette mirror stored the bare mode. Read it as Houston's
+        // palette for that mode, with the hexes this file already carries.
+        var mirror =
+          raw === "dark" || raw === "light"
+            ? {
+                mode: raw,
+                palette: raw === "dark" ? "houston-dark" : "houston-light",
+                base: raw === "dark" ? "#141416" : "#fcfcfc",
+                screen: "#fcfcfc",
+              }
+            : JSON.parse(raw);
+        if (mirror && (mirror.mode === "dark" || mirror.mode === "light")) {
+          var root = document.documentElement;
+          if (mirror.mode === "dark") root.setAttribute("data-theme", "dark");
+          if (mirror.palette) root.setAttribute("data-palette", mirror.palette);
+          if (mirror.base) root.style.background = mirror.base;
+          var chrome = mirror.mode === "dark" ? mirror.base : mirror.screen;
+          if (chrome) {
+            document
+              .querySelector('meta[name="theme-color"]')
+              .setAttribute("content", chrome);
+          }
         }
       } catch (e) {
-        /* storage disabled/hardened webview — same as a first launch */
+        /* no mirror, junk mirror, or storage disabled/hardened webview: the
+           CSS above is the frame, same as a first launch */
       }
     </script>
     <!-- Classic (non-module) script. `defer` (not parser-blocking) so it runs

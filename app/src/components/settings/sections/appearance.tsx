@@ -1,31 +1,36 @@
 import { Moon, Palette, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { tauriPreferences } from "../../../lib/tauri";
-import { setTheme, type Theme } from "../../../lib/theme";
+import { logAndReportError } from "../../../lib/error-report";
+import { loadThemePreference, setThemePreference } from "../../../lib/theme";
+import {
+  DEFAULT_THEME_PREFERENCE,
+  type ThemeMode,
+} from "../../../lib/theme-model";
 import { SettingsControlRow } from "../settings-row";
 
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
-  const [theme, setCurrentTheme] = useState<Theme>("light");
+  const [mode, setMode] = useState<ThemeMode>(DEFAULT_THEME_PREFERENCE.mode);
 
   useEffect(() => {
-    tauriPreferences
-      .get("theme")
-      .then((v) => {
-        if (v === "dark") setCurrentTheme("dark");
-      })
-      .catch(() => {});
+    void loadThemePreference().then((pref) => {
+      if (pref) setMode(pref.mode);
+    });
   }, []);
 
-  const handleThemeToggle = async (value: Theme) => {
-    setCurrentTheme(value);
-    await setTheme(value);
+  const handleModeToggle = async (value: ThemeMode) => {
+    setMode(value);
+    try {
+      await setThemePreference({ mode: value });
+    } catch (err) {
+      logAndReportError("set_theme_preference", err);
+    }
   };
 
-  const pill = (value: Theme) =>
+  const pill = (value: ThemeMode) =>
     `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-colors ${
-      theme === value
+      mode === value
         ? "bg-action text-action-text"
         : "text-ink-muted hover:text-ink"
     }`;
@@ -35,7 +40,7 @@ export function AppearanceSection() {
       <div className="flex items-center gap-1 rounded-full bg-chip p-0.5">
         <button
           type="button"
-          onClick={() => handleThemeToggle("light")}
+          onClick={() => void handleModeToggle("light")}
           className={pill("light")}
         >
           <Sun className="size-4" />
@@ -43,7 +48,7 @@ export function AppearanceSection() {
         </button>
         <button
           type="button"
-          onClick={() => handleThemeToggle("dark")}
+          onClick={() => void handleModeToggle("dark")}
           className={pill("dark")}
         >
           <Moon className="size-4" />
