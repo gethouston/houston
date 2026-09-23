@@ -48,7 +48,7 @@ export default function RootLayout({
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constant pre-paint theme bootstrap */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="flex min-h-screen flex-col">
+      <body className="flex min-h-dvh flex-col">
         <SessionProvider>
           <div className="flex-1">{children}</div>
           <SiteFooter />

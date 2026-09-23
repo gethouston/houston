@@ -87,7 +87,7 @@ export default async function AgentDetailPage({ params }: PageParams) {
   }
 
   return (
-    <main className="canvas-screen min-h-screen bg-background text-ink">
+    <main className="canvas-screen min-h-dvh bg-background text-ink">
       <StoreNav />
       <div className="mx-auto w-full max-w-[1040px] px-6 pt-12 pb-16 md:px-8">
         <AgentDetailScreen

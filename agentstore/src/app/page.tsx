@@ -62,7 +62,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   ]);
 
   return (
-    <div className="canvas-screen min-h-screen w-full bg-background">
+    <div className="canvas-screen min-h-dvh w-full bg-background">
       <CatalogResults params={params} categories={categories} {...catalog} />
     </div>
   );
