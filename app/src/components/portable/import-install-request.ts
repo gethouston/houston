@@ -5,12 +5,7 @@
  */
 
 import type { PortableInstallRequest } from "@houston/engine-adapter";
-
-/** The provider/model pinned onto the new agent. Empty when neither is confirmed. */
-export interface KickoffPin {
-  provider?: string;
-  model?: string;
-}
+import type { KickoffPin } from "../../lib/kickoff-pin";
 
 export interface InstallImportedAgentArgs {
   packageId: string;

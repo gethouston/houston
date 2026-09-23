@@ -1,3 +1,4 @@
+import { bus } from "@houston/engine-adapter/bus";
 import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { wireAgent } from "./support/agent-list";
@@ -82,6 +83,24 @@ const credentialCalls = (): Call[] =>
       call.url.includes("/credential/") ||
       call.url.includes("/provider/openai-compatible"),
   );
+
+/** The events `run` put on the adapter's bus, in order. */
+async function busEvents(run: () => Promise<unknown>): Promise<unknown[]> {
+  const events: unknown[] = [];
+  const unsubscribe = bus.on((event) => events.push(event));
+  try {
+    await run();
+  } finally {
+    unsubscribe();
+  }
+  return events;
+}
+
+/** The benign completion a sign-out announces, for `provider`. */
+const signedOut = (provider: string) => ({
+  type: "ProviderLoginComplete",
+  data: { provider, success: false, error: null },
+});
 
 /** Assert one credential write, whole: URL, method, body bytes, headers. */
 function expectWrite(url: string, body: string | null): Call {
@@ -181,6 +200,52 @@ describe("sign-out", () => {
       `${BASE}/setup-runtime/credential/forget`,
       JSON.stringify({ provider: "anthropic" }),
     );
+  });
+
+  /**
+   * The credential is gone, so every CACHED answer that says otherwise is now
+   * wrong — the chat model picker's statuses and the create-agent dialog's pin
+   * both read one shared query that only `ProviderLoginComplete` invalidates.
+   * The announcement is therefore part of sign-out's contract on every profile
+   * and every routing path, not a courtesy of the screen that asked for it.
+   */
+  test("announces the connection change on the per-agent path", async () => {
+    const client = await withAgent();
+
+    const events = await busEvents(() => client.providerLogout("anthropic"));
+
+    expect(events).toContainEqual(signedOut("anthropic"));
+  });
+
+  test("announces it on the agentless setup-runtime path too", async () => {
+    const client = await withNoAgent();
+
+    const events = await busEvents(() => client.providerLogout("anthropic"));
+
+    expect(events).toContainEqual(signedOut("anthropic"));
+  });
+
+  test("announces it on the local profile, which has no credential store", async () => {
+    stubRouted(() => json(200, {}));
+    const client = new HoustonClient({
+      baseUrl: BASE,
+      token: "t",
+      controlPlane: false,
+    });
+
+    const events = await busEvents(() => client.providerLogout("anthropic"));
+
+    expect(events).toContainEqual(signedOut("anthropic"));
+  });
+
+  test("names the provider the CARD holds, once, for a multi-gateway sign-out", async () => {
+    // OpenCode clears two gateways; the user pressed one button on one card, so
+    // the app hears about that card exactly once.
+    const client = await withAgent();
+
+    const events = await busEvents(() => client.providerLogout("opencode"));
+
+    expect(events).toEqual([signedOut("opencode")]);
   });
 });
 

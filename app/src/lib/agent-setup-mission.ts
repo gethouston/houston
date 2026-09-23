@@ -6,17 +6,27 @@
  * says AS THEY SAY IT through its normal abilities (instructions, Skills,
  * Routines). "The agent creates itself."
  *
- * The kickoff line the user sees on the board is the visible bubble
- * (`agentOnboarding:setupMission.kickoff`); the real instructions ride the
- * hidden `buildPrompt` so they reach the engine without ever rendering as a
- * user chat line (see `createMission`'s `buildPrompt`). No CLAUDE.md mutation,
- * so there is no strip/sweep machinery to leak into later chats.
+ * The user never wrote the first message, so there is no user bubble at all:
+ * the instructions ride the auto-continue marker (`lib/auto-continue-message.ts`,
+ * the same mechanism as the routine / integration / skill setup kickoffs), which
+ * the transcript folds away on both the live and the reload path. The mission
+ * carries no description either, so nothing of the hidden prompt can surface as
+ * the board card's body. No CLAUDE.md mutation, so there is no strip/sweep
+ * machinery to leak into later chats.
+ *
+ * The first thing the user reads is not a model turn at all: the chat renders a
+ * hello as the mission's first item, from the name and job this function
+ * records at creation (`lib/setup-mission-greeting.ts`), so it is whole before
+ * the engine has warmed up and stays there afterwards. The hidden prompt tells
+ * the model that message has already been read, and the model continues from it.
  */
 
 import { registerSetupGreeting } from "../hooks/use-setup-greeting";
 import { useUIStore } from "../stores/ui";
 import type { AgentRoleContext } from "./agent-role-context";
+import { AGENT_SETUP_AGENT_MODE } from "./agent-setup-mode";
 import { analytics } from "./analytics";
+import { encodeAutoContinueMessage } from "./auto-continue-message";
 import { createMission } from "./create-mission";
 import { publishCreatedMission } from "./created-mission-handoff";
 import { showErrorToast } from "./error-toast";
@@ -39,26 +49,33 @@ export async function startAgentSetupMission(
   roleContext?: AgentRoleContext,
 ): Promise<void> {
   try {
-    const result = await createMission(
-      agent,
-      i18n.t("agentOnboarding:setupMission.kickoff"),
-      {
-        title: i18n.t("agentOnboarding:setupMission.title"),
-        buildPrompt: () =>
+    // Empty `text`: the user typed nothing, so the mission has no description
+    // and no bubble to render (see the module comment).
+    const result = await createMission(agent, "", {
+      title: i18n.t("agentOnboarding:setupMission.title"),
+      agentMode: AGENT_SETUP_AGENT_MODE,
+      buildPrompt: () =>
+        encodeAutoContinueMessage(
           buildSetupMissionPrompt(agent.name, i18n.language, roleContext),
-        providerOverride: opts.provider,
-        modelOverride: opts.model,
-        effortOverride: "medium",
-      },
-    );
+        ),
+      providerOverride: opts.provider,
+      modelOverride: opts.model,
+      // One short line plus a question needs no deliberation, and every second
+      // of thinking here is the user staring at the hello waiting for more.
+      effortOverride: "low",
+    });
     analytics.track("agent_onboarding_started", { source });
-    // Instant first impression (HOU-867): the model's real intro can't run
-    // until the pod is warm, so the chat derives a localized hello meanwhile
-    // and drops it when the intro streams in.
+    // The hello's two facts, recorded while they are still in hand. Reading
+    // them back off a hosted agent that is only now being provisioned answers
+    // nothing, and the hello is the very first thing the user reads.
+    // An import brings the source agent's own job description instead of
+    // answers (`components/portable/import-install.ts` has no role to pass),
+    // so it records none and that mission's hello names the name alone.
     registerSetupGreeting({
       agentPath: agent.folderPath,
       sessionKey: result.sessionKey,
       agentName: agent.name,
+      role: roleContext?.role ?? null,
     });
     // Name the mission for the board BEFORE its panel opens: the sweep has
     // not returned this row yet, and on a co-located engine there is no

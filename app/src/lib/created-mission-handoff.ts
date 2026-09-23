@@ -10,8 +10,7 @@
  * DIALOG, from a module-level function that cannot reach that hook's setter —
  * so it opened the panel on a card nobody could name yet: null session key,
  * null agent path, a blank welcome chat until the sweep caught up. This module
- * is the missing wire, the same shape as `registerSetupGreeting` one line below
- * it: a module-level publisher, a hook that subscribes.
+ * is the missing wire: a module-level publisher, a hook that subscribes.
  *
  * The offer is READ, never claimed. Several mission boards are kept alive at
  * once (the global one and every visited team's), so a one-shot offer is taken

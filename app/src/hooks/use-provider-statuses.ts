@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 import { newEngineActive } from "../lib/engine";
 import { osIsTauri } from "../lib/os-bridge";
 import {
@@ -20,7 +21,9 @@ import { useWorkspaceStore } from "../stores/workspaces";
 import { useCapabilities } from "./use-capabilities";
 import { useProviderCatalog } from "./use-provider-catalog";
 
-export interface ProviderStatusesState {
+/** One answer from the provider probe, in the three-valued shape every
+ *  consumer reads (see `lib/connected-providers.ts`). */
+export interface ProviderStatusScan {
   /** Status by provider id. Empty until the first fetch resolves. */
   statuses: Record<string, ProviderStatus>;
   /**
@@ -38,6 +41,22 @@ export interface ProviderStatusesState {
    * "Connect another AI" state, because a spinner with no end is worse.
    */
   isError: boolean;
+}
+
+export interface ProviderStatusesState extends ProviderStatusScan {
+  /**
+   * Probe again and resolve with the settled answer, for a caller that is
+   * about to WRITE a provider somewhere it will outlive this screen (the
+   * create-agent dialog's kickoff pin) and found the cached scan unable to
+   * confirm anything.
+   *
+   * Deliberately bypasses the `enabled` gate, which a manual refetch always
+   * does: with routing unsettled the adapter answers `unknown` for every
+   * provider WITHOUT issuing a cross-space request, and this query classifies
+   * that as unreachable — so the caller gets an honest "still cannot tell",
+   * never a fabricated empty set.
+   */
+  refetch: () => Promise<ProviderStatusScan>;
 }
 
 /**
@@ -137,6 +156,20 @@ export function useProviderStatuses(): ProviderStatusesState {
       providerStatusesRefetchInterval({ status: query.state.status }),
   });
 
+  const { refetch: refetchQuery } = query;
+  const refetch = useCallback(async (): Promise<ProviderStatusScan> => {
+    const result = await refetchQuery();
+    // The promise has settled, so "still loading" is not one of the answers;
+    // `data` may be the last good scan while `isError` is true, and the
+    // consumer's own rule (`confirmedConnectedProviders`) reads the failure
+    // first, so both are handed over as they are.
+    return {
+      statuses: result.data ?? {},
+      isLoading: false,
+      isError: result.isError,
+    };
+  }, [refetchQuery]);
+
   return {
     statuses: query.data ?? {},
     isLoading: providerStatusesLoading({
@@ -145,5 +178,6 @@ export function useProviderStatuses(): ProviderStatusesState {
       probeReady,
     }),
     isError: query.isError,
+    refetch,
   };
 }

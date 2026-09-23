@@ -14,11 +14,11 @@ import { finishAgentSetup } from "../../lib/agent-setup";
 import { startAgentSetupMission } from "../../lib/agent-setup-mission";
 import { analytics } from "../../lib/analytics";
 import { getEngine } from "../../lib/engine";
+import type { KickoffPin } from "../../lib/kickoff-pin";
 import { tauriProvider } from "../../lib/tauri";
 import {
   type InstallImportedAgentArgs,
   importInstallRequest,
-  type KickoffPin,
   lastUsedFromPin,
 } from "./import-install-request";
 

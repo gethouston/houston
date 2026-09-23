@@ -1,3 +1,4 @@
+import { bus } from "@houston/engine-adapter/bus";
 import { isNoAgentForProviderWriteError } from "@houston/engine-adapter/no-agent-provider-write-error";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
@@ -113,9 +114,19 @@ async function zeroAgentClient() {
 
 test("sign-out with no agent routes through the setup runtime, never a per-agent route", async () => {
   const c = await zeroAgentClient();
+  const events: unknown[] = [];
+  const unsubscribe = bus.on((event) => events.push(event));
 
   await c.providerLogout("anthropic");
+  unsubscribe();
 
+  // The agentless path clears a real credential, so it announces the change
+  // like every other one — the cached statuses behind the picker and the
+  // create-agent dialog are stale the moment it returns.
+  expect(events).toContainEqual({
+    type: "ProviderLoginComplete",
+    data: { provider: "anthropic", success: false, error: null },
+  });
   expect(forgetSetupCredential).toHaveBeenCalledTimes(1);
   expect(forgetSetupCredential.mock.calls[0]?.[0]).toBe("anthropic");
   expect(setupLogout).toHaveBeenCalledWith("anthropic");

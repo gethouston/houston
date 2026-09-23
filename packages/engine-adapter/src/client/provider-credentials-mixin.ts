@@ -31,7 +31,8 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
       // that's both Zen and Go, since one key connected both. Clearing a gateway
       // that was never connected is a benign no-op.
       const targets = credentialSiblings(pid);
-      if (this.ctx.cp) {
+      const cp = this.ctx.cp;
+      if (cp) {
         // Connect-once logout. Clearing only the runtime's local auth.json (what
         // engine.logout does) is NOT enough: the credential also lives in the
         // workspace's CENTRAL store, and the runtime re-pulls it from the host
@@ -48,31 +49,39 @@ export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
         requireProviderRouting(this.ctx);
         const agentId = this.ctx.providerAgentId();
         const credentials = this.ctx.sdk.providers.credentials;
-        if (!agentId) {
-          for (const target of targets) {
+        for (const target of targets) {
+          if (agentId) {
+            await viaSdk(
+              `${controlPlane.agentPath(agentId)}/credential/forget`,
+              () => credentials.forgetCredential(agentId, target),
+            );
+            await controlPlane.runtimeClientFor(cp, agentId).logout(target);
+          } else {
             await viaSdk("/setup-runtime/credential/forget", () =>
               credentials.forgetSetupCredential(target),
             );
-            await controlPlane
-              .setupRuntimeClientFor(this.ctx.cp)
-              .logout(target);
+            await controlPlane.setupRuntimeClientFor(cp).logout(target);
           }
-          return;
         }
+      } else {
         for (const target of targets) {
-          await viaSdk(
-            `${controlPlane.agentPath(agentId)}/credential/forget`,
-            () => credentials.forgetCredential(agentId, target),
-          );
-          await controlPlane
-            .runtimeClientFor(this.ctx.cp, agentId)
-            .logout(target);
+          await this.ctx.engine.logout(target);
         }
-        return;
       }
-      for (const target of targets) {
-        await this.ctx.engine.logout(target);
-      }
+      // A sign-out is a CONNECTION CHANGE, and every cached provider status has
+      // to see it — not just the screen that asked for it. `ProviderLoginComplete`
+      // is the only signal that invalidates the shared status query
+      // (`app/src/lib/agent-invalidation-plan.ts`), which the chat model picker
+      // and the create-agent dialog both read: without it a provider the user
+      // just disconnected still counted as connected for the cache's lifetime,
+      // and a new agent was pinned to it. `success: false, error: null` is the
+      // benign completion the cancel path uses — a refresh, never an error toast.
+      // This is the ONE exit, so no branch above can forget to announce itself.
+      emitEvent("ProviderLoginComplete", {
+        provider: name,
+        success: false,
+        error: null,
+      });
     }
 
     /**

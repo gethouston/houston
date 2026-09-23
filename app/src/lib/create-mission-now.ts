@@ -29,6 +29,7 @@ import type {
   CreateMissionOptions,
   CreateMissionResult,
 } from "./create-mission";
+import { hiddenPromptDisplayText } from "./hidden-prompt-display-text";
 import { logger } from "./logger";
 import { landMissionRow } from "./mission-row-landing";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
@@ -81,10 +82,7 @@ export function startMissionNow(
       effortOverride: opts.effortOverride,
       modeOverride: opts.modeOverride,
       mentions: opts.mentions,
-      // `buildPrompt` swaps in a prompt the user should not see (a hidden setup
-      // directive, or attachment paths appended to their words) — so the bubble
-      // renders the clean `text` instead, live and on every history reload.
-      displayText: opts.buildPrompt ? text : undefined,
+      displayText: hiddenPromptDisplayText(text, !!opts.buildPrompt),
     });
     // The AI title pass needs the row: it lands whenever the pod answers.
     const landedId = await row;

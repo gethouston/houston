@@ -10,11 +10,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProviderStatuses } from "../../hooks/use-provider-statuses";
+import {
+  confirmedConnectedProviders,
+  connectedProviderIds,
+} from "../../lib/connected-providers";
 import { pickDefaultProviderModel } from "../../lib/default-provider-model";
+import type { KickoffPin } from "../../lib/kickoff-pin";
 import { providerIsConnected } from "../../lib/provider-connection";
 import { getDefaultModel } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
-import type { KickoffPin } from "./import-install-request";
 import { resolveKickoffPin } from "./import-kickoff-pin";
 
 export interface ImportProviderModel {
@@ -34,13 +38,32 @@ export function useImportProviderModel(open: boolean): ImportProviderModel {
     model: string | null;
   } | null>(null);
   const userPickedModelRef = useRef(false);
-  const { statuses: providerStatuses } = useProviderStatuses();
+  const {
+    statuses: providerStatuses,
+    isLoading,
+    isError,
+  } = useProviderStatuses();
+  // What the selector SHOWS: a best-effort read of whatever the scan says so
+  // far, so the dialog never sits on a blank provider while statuses settle.
   const connectedProviders = useMemo(
     () =>
       Object.values(providerStatuses)
         .filter((status) => providerIsConnected(status))
         .map((status) => status.provider),
     [providerStatuses],
+  );
+  // What gets WRITTEN: the same scan held to a stricter standard, so a probe
+  // that is loading, failed or still checking pins nothing instead of a guess.
+  const confirmedConnected = useMemo(
+    () =>
+      connectedProviderIds(
+        confirmedConnectedProviders({
+          statuses: providerStatuses,
+          isLoading,
+          isError,
+        }),
+      ),
+    [providerStatuses, isLoading, isError],
   );
 
   useEffect(() => {
@@ -93,9 +116,9 @@ export function useImportProviderModel(open: boolean): ImportProviderModel {
         model,
         lastUsedProvider: lastUsed?.provider,
         lastUsedModel: lastUsed?.model,
-        connectedProviders,
+        connected: confirmedConnected,
       }),
-    [connectedProviders, lastUsed, model, provider],
+    [confirmedConnected, lastUsed, model, provider],
   );
 
   return {

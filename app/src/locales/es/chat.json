@@ -3,7 +3,8 @@
     "greeting": "¡Hola! Soy {{name}}, tu nuevo empleado de IA. Cuéntame en qué te gustaría que te ayude: puedes describir una tarea con tus propias palabras, compartir algunos detalles sobre cómo te gusta que se hagan las cosas o adjuntar archivos que me den contexto. Cuanto más me cuentes, mejor se ajustará mi trabajo a lo que necesitas. ¿Con qué te gustaría empezar?"
   },
   "setupGreeting": {
-    "text": "¡Hola! Soy {{name}}. Estoy preparando todo de mi lado, dame un momento y me presento como corresponde."
+    "text": "Hola, soy {{name}}. Dame unos segundos para arrancar. Lo más importante que vamos a hacer juntos es crear Skills, para que empieces a automatizar tu trabajo.",
+    "textWithRole": "Hola, soy {{name}}, tu {{role}}. Dame unos segundos para arrancar. Lo más importante que vamos a hacer juntos es crear Skills, para que empieces a automatizar tu trabajo."
   },
   "composer": {
     "placeholder": "Pregunta lo que quieras...",

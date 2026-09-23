@@ -27,6 +27,7 @@ import type {
 } from "./agent-provisioning";
 import { getEngine } from "./engine";
 import { showErrorToast } from "./error-toast";
+import { hiddenPromptDisplayText } from "./hidden-prompt-display-text";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import { refreshMissionTitle } from "./mission-title";
@@ -78,8 +79,10 @@ export interface QueueWarmingSendArgs {
 export function buildWarmingSend(
   args: QueueWarmingSendArgs,
 ): PendingWarmingSend {
-  // A row-only entry carries no user message — nothing to render.
-  if (!args.rowOnly) {
+  // A row-only entry carries no user message — nothing to render. Neither does
+  // a Houston-started conversation (empty `text`, the whole message hidden
+  // behind `buildPrompt`): an empty bubble is not a message.
+  if (!args.rowOnly && args.text.length > 0) {
     // Stamp the sender (HOU-943): the real send at flush suppresses its own
     // bubble, so this push is the row's ONLY chance to be attributed — without
     // it a warmed-up agent's first message stays nameless in a shared thread.
@@ -121,7 +124,7 @@ export function buildWarmingSend(
 export function restoreWarmingBubbles(entry: ProvisioningEntry): void {
   const author = actingUser();
   for (const send of entry.pendingSends ?? []) {
-    if (send.rowOnly) continue;
+    if (send.rowOnly || send.text.length === 0) continue;
     if (getConversationFeed(entry.agentPath, send.sessionKey).length === 0) {
       pushPendingUserMessage(
         entry.agentPath,
@@ -274,11 +277,7 @@ export async function flushWarmingSends(
         modeOverride: send.mode,
         mentions: send.mentions,
         suppressUserBubble: suppress,
-        // A prompt builder rewrote the wire prompt (a hidden setup directive /
-        // attachment paths) — persist the clean `send.text` as the bubble so a
-        // history reload shows what the user saw, not the real prompt. When no
-        // builder ran, prompt === send.text and there is nothing to hide.
-        displayText: build ? send.text : undefined,
+        displayText: hiddenPromptDisplayText(send.text, !!build),
       });
       // The AI title pass this mission skipped at queue time (HOU-713): the
       // row just landed and the engine answers now. Fire-and-forget — a

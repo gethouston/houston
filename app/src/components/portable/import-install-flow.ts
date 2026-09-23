@@ -10,10 +10,8 @@
  */
 
 import type { PortableInstalledAgent } from "@houston/engine-adapter";
-import type {
-  InstallImportedAgentArgs,
-  KickoffPin,
-} from "./import-install-request";
+import type { KickoffPin } from "../../lib/kickoff-pin";
+import type { InstallImportedAgentArgs } from "./import-install-request";
 
 export interface ImportInstallRun {
   /** What to install, or null while the sheet has no package or workspace. */

@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 95
+version: 96
 
 components:
   - id: custom-integration-details
@@ -716,6 +716,7 @@ components:
         avatar,
         title,
         status-chip,
+        tag-pill,
         actions,
         drag-handle,
         select-checkbox,
@@ -758,6 +759,10 @@ components:
       name and task line and apart from the panel controls, as a button that
       opens the full roster; it is absent while nobody but the viewer is on
       the task, so a solo chat never shows your own face as a dead control.
+      A card wears at most ONE tag pill, and only for a mission the user did not
+      start by typing: a routine's run, a mission the agent started for itself,
+      or the agent's own set-up mission. A mission the user asked for carries no
+      pill at all.
     a11y: >-
       article/button role; title as label; checkbox labeled; status not
       color-only; each action button is a >=24px hit box whose icon-only glyph
