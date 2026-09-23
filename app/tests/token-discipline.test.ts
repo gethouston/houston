@@ -88,26 +88,20 @@ const DEAD_CLASS = new RegExp(
  * doctrine call, and until it is made they are counted here.
  */
 const UNTOKENIZED = [
-  "agentstore/src/components/site-header.tsx",
   "agentstore/src/lib/export/__fixtures__/example-ir.ts",
   "agentstore/src/lib/og-card.tsx",
   "app/src/components/agent-picker-dialog.tsx",
-  "app/src/components/agent/automation-intake/trigger-app-grid.tsx",
   "app/src/components/new-mission-picker-dialog.tsx",
   "app/src/components/onboarding/cloud-migration/offer-screen.tsx",
   "app/src/components/onboarding/cloud-migration/progress-screen.tsx",
   "app/src/components/onboarding/cloud-migration/space-invaders.tsx",
   "app/src/components/onboarding/setup-card.tsx",
-  "packages/engine-adapter/src/synthetic.ts",
   "packages/web/src/admin/sign-in.tsx",
   "packages/web/src/admin/styles.ts",
   "packages/web/src/app-tree.tsx",
   "ui/chat/src/channel-brand-colors.ts",
-  "ui/chat/src/dictation-waveform-envelope.ts",
-  "ui/chat/src/dictation-waveform.tsx",
   "ui/chat/src/file-type-colors.ts",
   "ui/core/src/color-contrast.ts",
-  "ui/routines/src/styles.css",
   "ui/showcase/specimens/foundations/effects-parts.ts",
   "ui/store/src/components/skill-list.tsx",
 ];

@@ -4,29 +4,26 @@
  * white and fades out (~1.1s), so an edit made from the setup chat is
  * visibly attributed to its section. Applied by useSectionFlash; the wash
  * rides an ::after overlay so the card's own background never animates.
- * Dark theme drops the alpha: the same white reads as a bright pulse, not
- * a blinding flash. */
+ * The wash is the `flash` token (`--ht-flash`), a white alpha in both themes
+ * — dark carries the lower one, so the same white reads as a bright pulse
+ * rather than a blinding flash. */
 .routine-section-flash {
   position: relative;
 }
 
 .routine-section-flash::after {
-  /* Bright but never a whiteout — the changed values must stay readable
-   * through the flash's peak. */
-  --routine-flash: rgba(255, 255, 255, 0.65);
   content: "";
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: var(--routine-flash);
+  /* Bright but never a whiteout — the changed values must stay readable
+   * through the flash's peak. `--ht-flash` carries the per-theme alpha, so a
+   * pinned `data-theme` subtree re-resolves it with no rule of our own. */
+  background: var(--ht-flash);
   box-shadow: 0 0 0 2px
     color-mix(in srgb, var(--ht-focus, currentColor) 55%, transparent);
   animation: routine-section-flash 1.1s ease-out forwards;
-}
-
-[data-theme="dark"] .routine-section-flash::after {
-  --routine-flash: rgba(255, 255, 255, 0.14);
 }
 
 @keyframes routine-section-flash {

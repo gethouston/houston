@@ -8,6 +8,7 @@
  * string — only alpha varies, so it themes without hardcoded hex.
  */
 
+import { formatColor, parseColor } from "@houston-ai/core";
 import {
   catmullRomToBezier,
   envelopeHalfHeight,
@@ -19,11 +20,19 @@ const MIN_HALF_PX = 0.75; // silence hairline (half-height)
 const OLDEST_FADE_FRACTION = 0.1; // gentle alpha falloff on the oldest slice
 export const EDGE_ALPHA = 0.9; // solid envelope body (one shape, one alpha)
 
-/** Replace the alpha of a `rgb(...)`/`rgba(...)` color string. */
+/**
+ * Replace the alpha of a CSS colour, through `@houston-ai/core`'s parser (the
+ * repo's one colour maths). `parseColor` throws on a form it does not model
+ * (`color-mix()`, a named colour): a canvas fill is not the place to fail a
+ * frame, so the input is handed back unchanged and the stroke keeps its own
+ * opacity.
+ */
 export function withAlpha(color: string, alpha: number): string {
-  const m = color.match(/-?\d+\.?\d*/g);
-  if (!m || m.length < 3) return color;
-  return `rgba(${m[0]}, ${m[1]}, ${m[2]}, ${alpha})`;
+  try {
+    return formatColor({ ...parseColor(color), a: alpha });
+  } catch {
+    return color;
+  }
 }
 
 function topPoints(

@@ -44,9 +44,7 @@ export function SiteHeader() {
     <>
       <header
         className={`fixed inset-x-0 top-0 z-50 flex h-[65px] items-center gap-4 px-5 transition-colors duration-300 sm:px-8 ${
-          scrolled
-            ? "border-b border-white/10 bg-[rgba(11,12,19,0.94)]"
-            : "bg-transparent"
+          scrolled ? "border-b border-line bg-gutter/95" : "bg-transparent"
         }`}
       >
         <Link href="/" className="flex shrink-0 items-baseline gap-2">
@@ -75,7 +73,7 @@ export function SiteHeader() {
           <UserMenu />
           <a
             href="https://gethouston.ai/#download"
-            className="hidden h-9 items-center justify-center rounded-full bg-white px-4 text-sm font-medium text-[#0d0d0d] transition-colors hover:bg-white/85 sm:inline-flex"
+            className="hidden h-9 items-center justify-center rounded-full bg-action px-4 text-sm font-medium text-action-text transition-colors hover:bg-action/85 sm:inline-flex"
           >
             Download Houston
           </a>
@@ -109,7 +107,7 @@ export function SiteHeader() {
       {open ? (
         <div
           id="site-nav-dropdown"
-          className="fixed inset-x-0 top-[65px] z-40 flex flex-col gap-1 border-b border-white/10 bg-[#0b0c13] px-5 pt-3 pb-4 shadow-2xl md:hidden"
+          className="fixed inset-x-0 top-[65px] z-40 flex flex-col gap-1 border-b border-line bg-gutter px-5 pt-3 pb-4 shadow-2xl md:hidden"
         >
           <SearchForm placeholder="Search agents" className="mb-2" />
           {STORE_LINKS.map((item) => (

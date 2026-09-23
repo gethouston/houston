@@ -30,9 +30,11 @@ import { computeWaveformLayout } from "./dictation-waveform-math";
 /** Rocket overlay size (px). Nose points up-right at rest; +45° faces it right. */
 const ROCKET_PX = 15;
 
-function parseColor(canvas: HTMLCanvasElement): string {
-  const c = getComputedStyle(canvas).color;
-  return c && c !== "" ? c : "rgb(120,120,120)";
+/** The wrapper's `currentColor`, read per frame so a theme switch repaints the
+ *  strip without a React re-render. `color` is an inherited property, so a
+ *  connected element always resolves it to a real colour string. */
+function canvasColor(canvas: HTMLCanvasElement): string {
+  return getComputedStyle(canvas).color;
 }
 
 function modeOf(state: DictationControl["state"]): WaveformMode {
@@ -78,7 +80,7 @@ export function DictationWaveform({ control }: { control: DictationControl }) {
 
     const tick = () => {
       const c = controlRef.current;
-      const color = parseColor(canvas);
+      const color = canvasColor(canvas);
       const mode = modeOf(c.state);
       const live = c.getLevels?.() ?? [];
       const liveElapsed = c.recordingStartedAt

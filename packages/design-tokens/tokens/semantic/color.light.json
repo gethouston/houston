@@ -112,6 +112,9 @@
     "highlight-text": {
       "$value": "{color.status.highlight-ink-light}"
     },
+    "flash": {
+      "$value": "{color.alpha.white-a65}"
+    },
     "sidebar": {
       "$value": "{color.base.transparent}"
     },
