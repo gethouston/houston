@@ -11,7 +11,7 @@
     "createCheckout": "Iniciar o pagamento que assina um plano pago para este espaço de trabalho.",
     "createOrg": "Criar um espaço compartilhado para convidar seu time.",
     "createRoutine": "Criar uma rotina para o funcionário de IA repetir um trabalho em um horário.",
-    "createSkill": "Criar uma skill que o funcionário de IA pode seguir.",
+    "createSkill": "Criar uma habilidade que o funcionário de IA pode seguir.",
     "declineOrgInvite": "Recusar este convite para entrar em um espaço compartilhado.",
     "deleteActivity": "Excluir esta missão do quadro do funcionário de IA.",
     "deleteAgent": "Excluir este funcionário de IA e tudo o que está nele. Isso não pode ser desfeito.",
@@ -20,20 +20,19 @@
     "deleteOrg": "Excluir este espaço compartilhado e tudo o que está nele. Isso não pode ser desfeito.",
     "deleteOrgInvite": "Cancelar este convite pendente para o espaço.",
     "deleteRoutine": "Excluir esta rotina para que ela pare de rodar no horário dela.",
-    "deleteSharedSkill": "Excluir uma skill compartilhada com o espaço de trabalho, tirando-a de todo mundo.",
-    "deleteSkill": "Excluir esta skill para que o funcionário de IA não a tenha mais.",
+    "deleteSharedSkill": "Excluir uma habilidade compartilhada com o espaço de trabalho, tirando-a de todo mundo.",
+    "deleteSkill": "Excluir esta habilidade para que o funcionário de IA não a tenha mais.",
     "detectAgentCustomIntegration": "Verificar para que tipo de serviço este link aponta, usando este funcionário de IA.",
     "detectCustomIntegration": "Verificar para que tipo de serviço este link aponta.",
     "disconnectChannel": "Desconectar esta conta do Slack do seu assistente. Ele vai parar de ler e responder por lá.",
     "forgetCredential": "Desconectar este espaço de trabalho da conta de IA.",
     "installAgentFromGithub": "Instalar um funcionário de IA a partir de um repositório do GitHub.",
-    "installSkillsFromRepo": "Instalar no funcionário de IA skills de um repositório do GitHub.",
     "integrations.disconnect": "Desconectar um app externo da sua conta.",
     "mintRoutineWebhookKey": "Criar uma chave nova para que um serviço externo possa iniciar esta rotina. Qualquer chave anterior para de funcionar.",
     "moveAgent": "Mover este funcionário de IA para um espaço compartilhado para que seu time possa trabalhar com ele.",
-    "promoteSharedSkill": "Compartilhar a skill do funcionário de IA com todo o espaço de trabalho.",
+    "promoteSharedSkill": "Compartilhar a habilidade do funcionário de IA com todo o espaço de trabalho.",
     "pushClaudeOAuthCredential": "Enviar o login do Claude deste computador para um funcionário de IA na nuvem.",
-    "putSkillsManifest": "Escolher quais skills do funcionário de IA ficam ativas.",
+    "putSkillsManifest": "Escolher quais habilidades do funcionário de IA ficam ativas.",
     "removeAgentCustomIntegration": "Remover um app externo deste funcionário de IA.",
     "removeAgentTeamMember": "Remover esta pessoa do time.",
     "removeCustomIntegration": "Remover um app externo que você mesmo adicionou.",
@@ -41,8 +40,8 @@
     "renameAgent": "Renomear este funcionário de IA.",
     "revokeApiKey": "Revogar esta chave de API para sempre. Tudo o que ainda a usa para de funcionar.",
     "runRoutineNow": "Rodar esta rotina agora mesmo em vez de esperar o próximo horário dela.",
-    "saveSharedSkill": "Salvar mudanças em uma skill compartilhada com o espaço de trabalho, para todo mundo que a usa.",
-    "saveSkill": "Salvar mudanças nas instruções desta skill.",
+    "saveSharedSkill": "Salvar mudanças em uma habilidade compartilhada com o espaço de trabalho, para todo mundo que a usa.",
+    "saveSkill": "Salvar mudanças nas instruções desta habilidade.",
     "setAgentAssignments": "Escolher quem pode usar este funcionário de IA, e com qual nível de acesso.",
     "setAgentModelChoice": "Mudar qual modelo de IA este funcionário de IA usa.",
     "setAgentSettings": "Escolher quais apps e modelos de IA este funcionário de IA pode usar.",
@@ -74,7 +73,7 @@
     "interval": "período de cobrança",
     "inviteId": "convite",
     "kind": "tipo",
-    "manifest": "skills",
+    "manifest": "habilidades",
     "name": "nome",
     "newName": "novo nome",
     "owner": "propriedade",
@@ -113,10 +112,10 @@
       "id": "rotina"
     },
     "deleteSharedSkill": {
-      "slug": "skill"
+      "slug": "habilidade"
     },
     "deleteSkill": {
-      "slug": "skill"
+      "slug": "habilidade"
     },
     "disconnectChannel": {
       "connectionId": "conta do Slack"
@@ -125,7 +124,7 @@
       "toolkit": "app"
     },
     "promoteSharedSkill": {
-      "slug": "skill"
+      "slug": "habilidade"
     },
     "removeAgentCustomIntegration": {
       "slug": "app"
@@ -143,10 +142,10 @@
       "id": "rotina"
     },
     "saveSharedSkill": {
-      "slug": "skill"
+      "slug": "habilidade"
     },
     "saveSkill": {
-      "slug": "skill"
+      "slug": "habilidade"
     },
     "submitAgentCustomIntegrationCredential": {
       "slug": "app"

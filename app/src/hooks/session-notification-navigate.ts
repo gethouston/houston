@@ -1,5 +1,5 @@
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id";
-import { useIntegrationsNav } from "../components/integrations-view/integrations-nav-store";
+import { SKILLS_VIEW_ID } from "../components/skills-view/id";
 import { isIntegrationSetupMode } from "../lib/integration-chat-setup";
 import { logger } from "../lib/logger";
 import {
@@ -92,21 +92,19 @@ export async function navigateToNotificationTarget({
   // where the user actually was, and on macOS a bare cmd-tab refocus lands
   // here too (focus is the click proxy — there is no desktop click event).
   const prevViewMode = useUIStore.getState().viewMode;
-  const nav = useIntegrationsNav.getState();
   if (target.setupKind === "skill") {
-    // A skill-setup chat has no board card: its home is the Skills library, a
-    // tab of the Integrations screen. HOU-980's rule applies: a user already on
-    // the surface hosting the chat is never yanked elsewhere (an open chat is
-    // visible there already, a closed one was closed deliberately) — which is
-    // why this branch runs BEFORE the agent switch, so staying leaves the world
-    // untouched.
-    if (prevViewMode === INTEGRATIONS_VIEW_ID && nav.tab === "skills") {
+    // A skill-setup chat has no board card: its home is the Skills library,
+    // the screen behind the rail's Skills row. HOU-980's rule applies: a user
+    // already on the surface hosting the chat is never yanked elsewhere (an
+    // open chat is visible there already, a closed one was closed
+    // deliberately) — which is why this branch runs BEFORE the agent switch,
+    // so staying leaves the world untouched.
+    if (prevViewMode === SKILLS_VIEW_ID) {
       logger.debug("[notification] already on the Skills library, staying put");
       return;
     }
     useAgentStore.getState().setCurrent(agent);
-    useUIStore.getState().setViewMode(INTEGRATIONS_VIEW_ID);
-    nav.requestTab("skills");
+    useUIStore.getState().setViewMode(SKILLS_VIEW_ID);
     useUIStore.getState().setPendingSkillChatActivityId(target.activityId);
     return;
   }
@@ -125,12 +123,12 @@ export async function navigateToNotificationTarget({
   }
   if (target.setupKind === "integration") {
     // A custom-integration setup chat has no board card; the apps CATALOG —
-    // the Integrations screen's landing tab, which hosts the chat — is its one
-    // home, so the tab travels with the view. HOU-980's rule: never yank a user
-    // who is already there (a bare macOS refocus lands here) — leave an open
-    // chat alone, or open it in place when it was closed.
+    // the Integrations screen, which hosts the chat — is its one home.
+    // HOU-980's rule: never yank a user who is already there (a bare macOS
+    // refocus lands here) — leave an open chat alone, or open it in place when
+    // it was closed.
     const ui = useUIStore.getState();
-    if (prevViewMode === INTEGRATIONS_VIEW_ID && nav.tab === "catalog") {
+    if (prevViewMode === INTEGRATIONS_VIEW_ID) {
       if (ui.integrationSetupChatAgentId !== agent.id) {
         ui.onPanelClose?.();
         ui.setIntegrationSetupChatAgentId(agent.id);
@@ -139,7 +137,6 @@ export async function navigateToNotificationTarget({
     }
     ui.onPanelClose?.();
     ui.setViewMode(INTEGRATIONS_VIEW_ID);
-    nav.requestTab("catalog");
     ui.setIntegrationSetupChatAgentId(agent.id);
     return;
   }

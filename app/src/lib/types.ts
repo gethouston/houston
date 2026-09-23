@@ -145,14 +145,6 @@ export interface SkillDetail {
   workflow?: SkillWorkflow | null;
 }
 
-/** A skill discovered in a GitHub repo */
-export interface RepoSkill {
-  id: string;
-  name: string;
-  description: string;
-  path: string;
-}
-
 /** File entry returned by list_project_files */
 export interface FileEntry {
   path: string;

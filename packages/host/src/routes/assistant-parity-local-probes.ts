@@ -92,8 +92,6 @@ export const LOCAL_PROBES: readonly Probe[] = [
     ...AGENT,
     manifest: { version: 1, enabled: [] },
   }),
-  probe("listSkillsFromRepo", { ...AGENT, source: "" }),
-  probe("installSkillsFromRepo", { ...AGENT, body: {} }),
   probe("listSharedSkills", WORKSPACE),
   probe("loadSharedSkill", { ...WORKSPACE, slug: NO_SKILL }),
   probe("createSharedSkill", { ...WORKSPACE, body: {} }),

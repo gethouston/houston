@@ -11,6 +11,7 @@ import {
 import type { Agent } from "../../lib/types";
 import type { SharedSkillRow } from "../../lib/workspace-shared-skills";
 import { useUIStore } from "../../stores/ui";
+import { actThenRefresh } from "./skill-act-refresh";
 
 /**
  * Store-backed actions for the global Skills page (ADR 0003): content is ONE
@@ -39,16 +40,12 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     [qc, workspaceId],
   );
 
+  // One entry at a time, through the SDK: the manifest route replaces the
+  // whole list, and the SDK is where that read-modify-write is serialized per
+  // agent so two writes started together cannot drop each other.
   const setManifestEntry = useCallback(
     async (path: string, slug: string, enabled: boolean) => {
-      const manifest = await tauriSkillsManifest.get(path);
-      const set = new Set(manifest.enabled);
-      if (enabled) set.add(slug);
-      else set.delete(slug);
-      await tauriSkillsManifest.set(path, {
-        version: 1,
-        enabled: [...set].sort(),
-      });
+      await tauriSkillsManifest.setEnabled(path, slug, enabled);
     },
     [],
   );
@@ -60,6 +57,7 @@ export function useSharedSkillsActions(workspaceId: string | null) {
       row: SharedSkillRow,
       args: { content: string; contentDirty: boolean },
       plan: { enable: string[]; disable: string[] },
+      notice: string = t("global.skillUpdated"),
     ): Promise<void> => {
       if (workspaceId === null) throw new Error("no workspace");
       if (args.contentDirty) {
@@ -73,7 +71,7 @@ export function useSharedSkillsActions(workspaceId: string | null) {
       invalidate([...plan.enable, ...plan.disable]);
       if (settled.some((r) => r.status === "rejected"))
         throw new Error("skill update failed for some agents");
-      addToast({ title: t("global.skillUpdated"), variant: "success" });
+      addToast({ title: notice, variant: "success" });
     },
     [addToast, invalidate, setManifestEntry, t, workspaceId],
   );
@@ -144,11 +142,35 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     [addToast, invalidate, setManifestEntry, t, workspaceId],
   );
 
-  /** Drop an agent's overriding copy — back on the store version. */
+  /**
+   * "Disable for this AI Employee": the manifest entry off and the agent's own
+   * shadowing copy dropped. A local copy loads whether or not the manifest
+   * names it, so the two only mean anything together — which is why the order
+   * lives in the SDK and this is a delegate.
+   */
+  const disableForAgent = useCallback(
+    async (row: SharedSkillRow, agent: Agent): Promise<void> => {
+      await actThenRefresh(
+        () => tauriSkillsManifest.disableForAgent(agent.folderPath, row.slug),
+        () => invalidate([agent.folderPath]),
+      );
+      addToast({
+        title: t("global.disabledForAgent", { name: agent.name }),
+        variant: "success",
+      });
+    },
+    [addToast, invalidate, t],
+  );
+
+  /** Back on the store version: the manifest entry switched on, then the
+   *  agent's overriding copy dropped. Deleting the copy first would leave the
+   *  agent with neither version, which is why the order is the SDK's. */
   const revertOverride = useCallback(
     async (row: SharedSkillRow, agent: Agent): Promise<void> => {
-      await tauriSkills.delete(agent.folderPath, row.slug);
-      invalidate([agent.folderPath]);
+      await actThenRefresh(
+        () => tauriSkillsManifest.revertOverride(agent.folderPath, row.slug),
+        () => invalidate([agent.folderPath]),
+      );
       addToast({
         title: t("global.overrideReverted", { name: agent.name }),
         variant: "success",
@@ -163,5 +185,6 @@ export function useSharedSkillsActions(workspaceId: string | null) {
     deleteShared,
     promoteToShared,
     revertOverride,
+    disableForAgent,
   };
 }

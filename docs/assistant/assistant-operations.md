@@ -144,16 +144,15 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `deleteSharedSkill` | DELETE | confirmed: host approval required | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills |
 | `deleteSkill` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; slug: resolved:skills |
 | `getSkillsManifest` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
-| `installSkillsFromRepo` | POST | confirmed: host approval required | visible | agentId: resolved:agents; body: free text |
 | `listSharedSkills` | GET | unconfirmed: read-only HTTP GET | visible | workspaceId: resolved:workspaces |
 | `listSkills` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
-| `listSkillsFromRepo` | POST | unconfirmed: Read-only repository listing; POST carries the source address. | visible | agentId: resolved:agents; source: free text |
 | `loadSharedSkill` | GET | unconfirmed: read-only HTTP GET | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills |
 | `loadSkill` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents; slug: resolved:skills |
 | `promoteSharedSkill` | POST | confirmed: host approval required | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills; content: free text |
 | `putSkillsManifest` | PUT | confirmed: host approval required | visible | agentId: resolved:agents; manifest: free text |
 | `saveSharedSkill` | PUT | confirmed: host approval required | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills; content: free text |
 | `saveSkill` | PUT | confirmed: host approval required | visible | agentId: resolved:agents; slug: resolved:skills; content: free text |
+| `setSkillEnabled` | unroutable | unconfirmed: withheld from dispatch | the one-entry primitive behind putSkillsManifest, which is the one to dispatch; both write the same manifest, and this one reads it first so two switches started together cannot drop each other. | agentId: resolved:agents; slug: free text; enabled: free text |
 | `acceptOrgInvite` | POST | confirmed: host approval required | visible | inviteId: resolved:invites |
 | `createOrg` | POST | confirmed: host approval required | visible | name: free text |
 | `declineOrgInvite` | DELETE | confirmed: host approval required | visible | inviteId: resolved:invites |

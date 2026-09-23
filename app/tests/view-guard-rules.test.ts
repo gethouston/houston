@@ -99,6 +99,7 @@ describe("deadViewStep", () => {
   const base = {
     showAiModels: true,
     showAssistant: true,
+    showSkills: true,
     gatesReady: true,
     teams: TEAMS,
     activeTeamId: "team-a",
@@ -154,6 +155,13 @@ describe("deadViewStep", () => {
       deadViewStep({ ...base, viewMode: "ai-hub", showAiModels: false }),
       "go-home",
     );
+    // The shared library belongs to whoever OWNS the space: a caller whose
+    // gate closed under an open screen must not be left standing on it.
+    assert.equal(
+      deadViewStep({ ...base, viewMode: "skills-home", showSkills: false }),
+      "go-home",
+    );
+    assert.equal(deadViewStep({ ...base, viewMode: "skills-home" }), "keep");
   });
 
   it("sends a RETIRED view home whatever the gates say", () => {
@@ -170,12 +178,13 @@ describe("deadViewStep", () => {
     // Every gate reads false off null capabilities, so acting on that window
     // would bounce the user off a screen they are entitled to, on every boot
     // and every space switch.
-    for (const viewMode of ["ai-hub"]) {
+    for (const viewMode of ["ai-hub", "skills-home"]) {
       assert.equal(
         deadViewStep({
           ...base,
           viewMode,
           showAiModels: false,
+          showSkills: false,
           gatesReady: false,
         }),
         "wait",

@@ -1,60 +1,16 @@
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { mergeSharedIntoAgentSkills } from "../../../lib/agent-shared-skills";
 import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
-import { PageHero } from "../../shell/page-shell";
-import { SkillsContent } from "../skills-content";
-import { useAgentSharedSkills } from "../use-agent-shared-skills";
-import { useSkillSurface } from "../use-skill-surface";
+import { SkillsBody } from "../../skills-view";
 
 /**
- * Skills section: the catalog-grammar Skills surface (installed-tile strip +
- * Custom skills tab), reusing {@link useSkillSurface} for creation and GitHub
- * imports. On shared-store deployments (ADR 0003) the
- * strip also shows the workspace skills this agent's manifest enables — the
- * agent HAS them at runtime, so hiding them here made every enable look like
- * a no-op. Every strip row opens the per-agent manage dialog, which resolves
- * the slug itself: a local copy is edited/deleted in place, a store skill's
- * save writes the ONE workspace copy and its danger action is "Disable for
- * this agent" (a reversible manifest write). A row's setup chat (HOU-791)
- * stays reachable via the dialog's Edit in chat.
+ * Skills section: the SAME surface as the workspace Skills library, scoped to
+ * this AI Employee — one list of the skills it has, the same search and its
+ * own "Create skill" menu, and a row opening that skill's full-page editor in
+ * place of the list with its chat beside it.
+ *
+ * The section carries no title of its own: the settings rail names the place
+ * the user just opened, so the body starts at its tools row. The editor takes
+ * the section over in place, and its own back arrow is the one way back.
  */
 export function AgentAdminSkills({ agent }: AgentSectionProps) {
-  const { t } = useTranslation("agents");
-  const surface = useSkillSurface(agent.folderPath);
-  const shared = useAgentSharedSkills(agent.folderPath);
-
-  const merged = useMemo(
-    () =>
-      mergeSharedIntoAgentSkills({
-        local: surface.skills,
-        shared: shared.items,
-        enabled: shared.activeSlugs,
-      }),
-    [surface.skills, shared.items, shared.activeSlugs],
-  );
-  const installedSkillNames = useMemo(
-    () => new Set(merged.skills.map((s) => s.name.toLowerCase())),
-    [merged.skills],
-  );
-
-  return (
-    <div className="max-w-3xl mx-auto w-full px-6 pb-12 pt-2 flex-1 flex flex-col">
-      <PageHero
-        level={2}
-        className="mb-6"
-        title={t("subTabs.skills")}
-        subtitle={t("configure.skills.description")}
-      />
-      <SkillsContent
-        agent={agent}
-        skills={merged.skills}
-        loading={surface.skillsLoading}
-        onListFromRepo={surface.handleListFromRepo}
-        onInstallFromRepo={surface.handleInstallFromRepo}
-        onCreateFromScratch={surface.handleCreateFromScratch}
-        installedSkillNames={installedSkillNames}
-      />
-    </div>
-  );
+  return <SkillsBody agent={agent} />;
 }

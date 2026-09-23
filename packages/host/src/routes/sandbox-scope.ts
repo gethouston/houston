@@ -12,10 +12,9 @@ import { bearer, json } from "./http";
  * the right gate for the personal assistant: the coordinator is a runtime the
  * user talks to about their whole account, so a prompt injection inside its
  * chat reaches whatever its token reaches. Without this gate that includes
- * installing a community skill into an agent's tree, writing a scheduled task,
- * and executing a connected app - none of which the coordinator has a tool for,
- * and all of which the catalogued surface would have required an approval
- * receipt for (`assistant/approvals.ts`).
+ * writing a scheduled task and executing a connected app - neither of which
+ * the coordinator has a tool for, and both of which the catalogued surface
+ * would have required an approval receipt for (`assistant/approvals.ts`).
  *
  * So the coordinator's reach is stated ONCE, here, as an allowlist keyed on the
  * claim rather than on the route: its own Houston operations, the mission board

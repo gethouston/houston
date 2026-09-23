@@ -41,7 +41,7 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
   await page.goto("/");
   const menu = await openMoreMenu(page);
 
-  for (const label of ["Integrations", "AI Models"]) {
+  for (const label of ["Integrations", "AI Models", "Skills"]) {
     await expect(
       menu.getByRole("button", { name: label, exact: true }),
       `"${label}" should be a row of the More menu`,
@@ -49,20 +49,21 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
   }
 
   // Administering the space is a Settings section, reached through the gear in
-  // this menu's header line, and the shared Skills library is a TAB of the
-  // Integrations row above — never destination rows of their own here.
-  for (const name of ["Workspace management", "Skills"]) {
-    await expect(menu.getByRole("button", { name })).toHaveCount(0);
-  }
+  // this menu's header line — never a destination row of its own here.
+  await expect(
+    menu.getByRole("button", { name: "Workspace management" }),
+  ).toHaveCount(0);
 
-  // The rows carry the RAIL's tour anchors, which is what lets the guided
-  // setup ring the same destination on both breakpoints.
+  // The rows carry the RAIL's own attributes, which is what lets the guided
+  // setup ring the same destination on both breakpoints. Skills carries a test
+  // id rather than a tour anchor, because the tour does not walk it.
   for (const anchor of ["nav-integrations", "nav-ai-hub", "nav-settings"]) {
     await expect(
       moreRow(page, anchor),
       `the menu should carry the "${anchor}" anchor`,
     ).toHaveCount(1);
   }
+  await expect(menu.getByTestId("rail-skills")).toHaveCount(1);
 
   // The two help actions band the footer; neither points at a screen.
   await expect(menu.getByRole("button", { name: "Guide me" })).toBeVisible();

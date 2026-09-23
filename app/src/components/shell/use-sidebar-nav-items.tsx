@@ -32,7 +32,7 @@ export function useSidebarNavItems(
     nav?: NavMode;
   },
 ): { navSections: SidebarNavSection[]; activeNavId: string | undefined } {
-  const { showAiModels, showAssistant } = useSurfaceGates();
+  const { showAiModels, showAssistant, showSkills } = useSurfaceGates();
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   return {
@@ -40,6 +40,7 @@ export function useSidebarNavItems(
       t,
       showAiModels,
       showAssistant,
+      showSkills,
       setViewMode: (view) => {
         setViewMode(view, opts?.nav ? { nav: opts.nav } : undefined);
         closeMobileMenu();

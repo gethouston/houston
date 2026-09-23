@@ -23,9 +23,8 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
  * **Settings lives here, not among the destinations.** Those are the places
  * work happens; Settings belongs to the PERSON's chrome, which is why it sits
  * with the account. It is also the door to everything that administers the
- * SPACE — Workspace management and the shared Skills library are sections
- * behind it — so it has to be reachable in every deployment mode, whatever
- * gates a caller passes.
+ * SPACE — Workspace management is a section behind it — so it has to be
+ * reachable in every deployment mode, whatever gates a caller passes.
  *
  * **The help control sits beside it** (`sidebar-help-menu.tsx`): "Guide me" and
  * "Report a problem", the two things a stuck user reaches for. Asking for help

@@ -1,22 +1,6 @@
-import { cn, DialogTitle } from "@houston-ai/core";
+import { cn } from "@houston-ai/core";
 import { Pencil } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-
-const RENAME_INPUT_ATTR = "data-skill-rename-input";
-
-/**
- * `DialogContent` `onEscapeKeyDown` guard for dialogs hosting an
- * {@link EditableSkillTitle}: Radix hears Escape on a document-level capture
- * listener, so the input's own handler can't stop it — without this guard,
- * cancelling a rename closes the whole dialog.
- */
-export function skillRenameEscapeGuard(event: KeyboardEvent) {
-  if (
-    event.target instanceof HTMLElement &&
-    event.target.hasAttribute(RENAME_INPUT_ATTR)
-  )
-    event.preventDefault();
-}
 
 export interface EditableSkillTitleProps {
   /** The current display name (a pending rename included, if any). */
@@ -25,32 +9,31 @@ export interface EditableSkillTitleProps {
   onRename?: (title: string) => void;
   /** Accessible label for the pencil button and the name input. */
   renameLabel?: string;
-  /**
-   * Render the name as a page heading (`<h1>`) instead of a `DialogTitle`.
-   * Radix's dialog title reads a context only a `Dialog` provides, so a
-   * full-page host (the skill editor) must ask for the heading form.
-   */
-  heading?: boolean;
+  /** Where the name sits in the page's outline. `1` is a skill that owns the
+   *  screen; `2` is one opened inside a frame whose own title is the `h1`. */
+  level?: 1 | 2;
 }
 
 /**
- * EditableSkillTitle — a dialog title with a rename pencil at the end of the
- * name (PRODUCT-1018). The pencil swaps the title for an inline input; Enter
- * or blur commits the trimmed name (unchanged or empty commits are a plain
- * cancel), Escape cancels without closing the host dialog. Committing only
- * reports the name upward — persisting it is the caller's concern, so both
- * skill dialogs can ride their existing save paths.
+ * EditableSkillTitle — a skill page's heading with a rename pencil at the end
+ * of the name (PRODUCT-1018). The pencil swaps the title for an inline input;
+ * Enter or blur commits the trimmed name (unchanged or empty commits are a
+ * plain cancel), Escape cancels. Committing only reports the name upward —
+ * persisting it is the caller's concern, so a skill surface can ride its
+ * existing save path.
  *
- * The `DialogTitle` stays mounted (visually hidden while editing) so Radix
- * always finds the dialog's accessible title. A `heading` host swaps that node
- * for an `<h1>`, which carries the same name for the same reason.
+ * The heading stays mounted (visually hidden while editing) so the page always
+ * carries its accessible name. It reads as the screen's `h1` by default and
+ * steps down to an `h2` for a frame that already has one — two `h1`s on one
+ * screen leave a screen-reader user with two answers to "where am I".
  */
 export function EditableSkillTitle({
   title,
   onRename,
   renameLabel = "Rename skill",
-  heading = false,
+  level = 1,
 }: EditableSkillTitleProps) {
+  const Heading = level === 2 ? "h2" : "h1";
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(title);
   // Escape both cancels and blurs; the ref keeps the blur commit from
@@ -70,17 +53,16 @@ export function EditableSkillTitle({
     if (next && next !== title) onRename?.(next);
   }, [draft, title, onRename]);
 
-  const nameClass = cn("truncate", editing && "sr-only");
-
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      {heading ? (
-        <h1 className={cn(nameClass, "font-normal text-ink text-2xl")}>
-          {title}
-        </h1>
-      ) : (
-        <DialogTitle className={nameClass}>{title}</DialogTitle>
-      )}
+      <Heading
+        className={cn(
+          "truncate font-normal text-ink text-2xl",
+          editing && "sr-only",
+        )}
+      >
+        {title}
+      </Heading>
       {editing ? (
         <input
           // biome-ignore lint/a11y/noAutofocus: the input replaces the title the user just clicked to edit.
@@ -93,19 +75,16 @@ export function EditableSkillTitle({
               e.preventDefault();
               commit();
             } else if (e.key === "Escape") {
-              // The host dialog's Escape is fended off by
-              // `skillRenameEscapeGuard`; this handler only cancels the edit.
               cancelled.current = true;
               setEditing(false);
             }
           }}
-          {...{ [RENAME_INPUT_ATTR]: "" }}
           aria-label={renameLabel}
           className={cn(
             "min-w-0 flex-1 rounded-md border border-line/20 bg-input px-2 py-0.5",
-            "leading-tight text-ink",
-            heading ? "font-normal text-2xl" : "font-semibold text-lg",
-            "outline-none transition-shadow duration-200 focus:shadow-sm",
+            "font-normal text-2xl leading-tight text-ink",
+            "outline-none transition-colors duration-200",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
           )}
         />
       ) : (
@@ -115,7 +94,11 @@ export function EditableSkillTitle({
             onClick={start}
             aria-label={renameLabel}
             title={renameLabel}
-            className="shrink-0 rounded-md p-1 text-ink-muted transition-colors hover:bg-ink/[0.05] hover:text-ink"
+            className={cn(
+              "flex size-6 shrink-0 items-center justify-center rounded-lg",
+              "text-ink-muted transition-colors hover:bg-ink/[0.05] hover:text-ink",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+            )}
           >
             <Pencil className="size-3.5" />
           </button>

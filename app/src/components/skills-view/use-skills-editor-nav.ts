@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUIStore } from "../../stores/ui";
-import type { ManagedSkillRow } from "./manage-skill-dialog-props";
 import {
   resolvePendingSkillActivity,
   type SkillEditorView,
 } from "./skill-editor-model";
+import type { ManagedSkillRow } from "./skill-editor-props";
 
 /**
  * The Skills library's one navigation state: the list, or ONE skill's editor

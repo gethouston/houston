@@ -13,9 +13,7 @@ import {
   SpecimenSection,
   SpecimenTokens,
 } from "../../../src/specimen";
-import { houstonSkillPreview } from "./sample";
-
-const steps = houstonSkillPreview.workflow ?? [];
+import { houstonWorkflowSteps as steps } from "./sample";
 
 /**
  * What `app/` passes for `renderIntegration`: the Composio toolkit slug
@@ -55,7 +53,7 @@ function SkillWorkflowStepsSpecimen() {
     >
       <SpecimenSection
         title="Anatomy"
-        note="The panel is a recessed plane, not a card: it sits inside the skill dialog and the preview modal, both of which already float."
+        note="The panel is a recessed plane, not a card: it sits on the skill's own page, in the reading column the surface already provides."
       >
         <SpecimenRow label="Full procedure">
           <div className="w-full max-w-lg">

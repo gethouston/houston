@@ -50,8 +50,6 @@ import "../agents-activity";
 import "../missions-remote-inbound";
 import "../skills-manifest";
 import "../skills";
-import "../skills-repo-list";
-import "../skills-remote";
 import "../portable-preview";
 import "../portable-export";
 import "../migration";

@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 97
+version: 99
 
 components:
   - id: custom-integration-details
@@ -1001,41 +1001,44 @@ components:
 
   - id: skill-row
     title: Skill row
-    purpose: A skill in the Skills surface, chat picker, or community catalog.
-    anatomy: [icon, name, description, install-or-check]
-    states: [available, installed, installing, error, editing]
-    variants: [installed-row, picker-select-row, community-catalog-row]
+    purpose: A skill in the Skills surface, the chat picker, or the add-an-existing-skill list.
+    anatomy: [icon, name, description, holders-or-add]
+    states: [rows, loading, empty, no-matches, error, adding]
+    variants: [library-row, agent-row, picker-select-row, addable-row]
     behavior: >-
-      Community rows ride the shared catalog grammar (CatalogRow): the row
-      opens the skill's info modal from anywhere on it, a ghost round + installs
-      (spinner while in flight, a quiet check once installed). Installed skills are the same
-      CatalogRow grammar in the consolidated strip above the Store / Custom
-      skills tabs (CatalogShell), capped to a preview behind a "Show all"
-      expander at rest; a row opens the edit modal, whose footer carries
-      Save/Cancel and the destructive Delete (confirm-gated). The chat picker
-      uses the same installed row renderer with search and title-sorted rows;
-      selecting a row places that skill in the composer. No separate
-      skill-detail surface.
-    a11y: rows are single labeled buttons beside a labeled install button, never nested; install state conveyed as text.
+      Rows ride the shared catalog grammar (CatalogRow) in the "Your skills"
+      strip (CatalogShell), capped to a preview behind a "Show all" expander at
+      rest and uncapped while a search is active. A row OPENS that skill's
+      full-page editor in place of the list -- there is no modal, and no
+      Store / Custom tab strip. The workspace library's rows carry the stack of
+      AI Employees holding the skill and a "Shared" chip for a workspace-store
+      skill; an employee's own scoped list carries neither, because the place it
+      stands in already answers that. The chat picker uses the same row
+      renderer with search and title-sorted rows; selecting a row places that
+      skill in the composer. The add-an-existing-skill list is the same row
+      with one "Add" action at its right edge, which loads the workspace skill
+      onto that employee and drops the row from the list.
+    a11y: >-
+      a row is ONE labeled button; any action beside it is a sibling, never
+      nested, and names the skill it acts on. State is conveyed as text, never
+      colour alone.
     since: 1
 
   - id: skill-workflow-steps
     title: Skill workflow steps
     purpose: >-
       A skill Houston wrote, shown as the numbered procedure it is rather than
-      as SKILL.md markdown -- in the skill's manage dialog and in the preview a
-      row opens.
+      as SKILL.md markdown -- the default reading of the skill's own page.
     anatomy: [heading, step-index, step-title, step-app-chip, step-detail]
     states: [steps, titles-only, app-tagged, absent]
-    variants: [manage-dialog, preview-modal]
+    variants: [skill-page]
     behavior: >-
       The steps are parsed from the skill's own SKILL.md by the domain
       (Houston-authored skills carry a workflow marker; imported ones do not),
-      so the panel is present exactly when a parsed procedure exists. When it
-      is, the raw instructions move behind a secondary disclosure that is
-      always visible, never hover-gated -- editing keeps working there and
-      through "Edit in chat". An imported skill renders no panel and keeps its
-      instructions as the body. A step that acts on a connected app carries
+      so the panel is present exactly when a parsed procedure exists. The page
+      opens on it and swaps to the raw markdown through the header's Workflow /
+      Text control; a skill with no parsed procedure opens on the text, which
+      then IS the skill. A step that acts on a connected app carries
       that app on its title row, as the app's name and mark plus the action it
       runs ("Gmail · Send email"); resolving the toolkit slug to a name and
       logo is the surface's job, and unresolved it reads as the slug and the

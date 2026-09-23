@@ -5,29 +5,28 @@ import { tauriSharedSkills, tauriSkills } from "../../lib/tauri";
 import type {
   ManagedSkillRow,
   SharedDialogActions,
-} from "./manage-skill-dialog-props";
+} from "./skill-editor-props";
 import { useMissingSkillDismiss } from "./use-missing-skill-dismiss";
 
 /** How the "Agents with this skill" list behaves for a row, by its origin. */
 export type SkillAssignmentMode = "editable" | "locked";
 
 /**
- * Everything the two skill detail surfaces — the per-agent manage dialog and
- * the library's full-page editor — need before either of them is a surface:
- * which copy of the skill is canonical, who may be assigned it, the SKILL.md
- * itself, and the uncommitted rename typed into the title.
+ * Everything the skill editor needs before it is a surface: which copy of the
+ * skill is canonical, who may be assigned it, the SKILL.md itself, and the
+ * uncommitted rename typed into the title.
  *
- * Both read the SAME query key, which is what lets a chat rewriting SKILL.md
- * (`SkillsChanged` / `SharedSkillsChanged`) move whichever of them is open. The
- * one load failure that is not Houston's fault — the skill was deleted under
- * the open surface — leaves through {@link useMissingSkillDismiss} with a toast
- * that says so.
+ * It reads the same query key the list rides, which is what lets a chat
+ * rewriting SKILL.md (`SkillsChanged` / `SharedSkillsChanged`) move the open
+ * editor. The one load failure that is not Houston's fault — the skill was
+ * deleted under the open surface — leaves through
+ * {@link useMissingSkillDismiss} with a toast that says so.
  */
 export function useSkillDetailSurface(args: {
-  /** The open row; null keeps the dialog closed and the query idle. */
+  /** The open row; null keeps the query idle. */
   row: ManagedSkillRow | null;
   shared?: SharedDialogActions;
-  /** Leave the surface: the dialog closes, the editor returns to the list. */
+  /** Leave the surface: the editor returns to the list. */
   onLeave: () => void;
 }) {
   const { row, shared, onLeave } = args;
@@ -41,7 +40,11 @@ export function useSkillDetailSurface(args: {
   const canonicalPath = row?.agents[0]?.folderPath;
   const slug = row?.slug;
 
-  const { data: detail, error } = useQuery({
+  const {
+    data: detail,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: isShared
       ? queryKeys.sharedSkillDetail(shared.workspaceId, slug ?? "")
       : queryKeys.skillDetail(canonicalPath ?? "", slug ?? ""),
@@ -71,6 +74,8 @@ export function useSkillDetailSurface(args: {
     canonicalPath,
     detail,
     error,
+    /** Read the skill again after a load that did not answer. */
+    refetch,
     rename,
     setRename,
   };

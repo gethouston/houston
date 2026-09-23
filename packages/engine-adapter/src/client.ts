@@ -51,7 +51,6 @@ import { ProviderStatusMixin } from "./client/provider-status-mixin";
 import { RoutinesMixin } from "./client/routines-mixin";
 import { SharedSkillsMixin } from "./client/shared-skills-mixin";
 import { SkillsMixin } from "./client/skills-mixin";
-import { SkillsRepoMixin } from "./client/skills-repo-mixin";
 import { SpacesMixin } from "./client/spaces-mixin";
 import { TeamsMixin } from "./client/teams-mixin";
 import { WorkspacesMixin } from "./client/workspaces-mixin";
@@ -83,7 +82,6 @@ export const MIXINS = [
   ChatHistoryMixin,
   ChatSendMixin,
   ChatControlsMixin,
-  SkillsRepoMixin,
   SkillsMixin,
   RoutinesMixin,
   SharedSkillsMixin,

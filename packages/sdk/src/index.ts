@@ -48,6 +48,27 @@ export * from "./contracts-agent";
 export * from "./contracts-conversation";
 export * from "./local-model-bridge";
 export type { ModuleContext } from "./module-context";
+// The rules around a skill still being built in chat: what counts as one,
+// which is picked back up, which are listed, and discarding one.
+export {
+  type CreateChatStart,
+  type DraftResume,
+  discardDraftThenRestart,
+  findDraftSkillChatActivities,
+  isSkillSetupMode,
+  resolveCreateChatStart,
+  resolveDraftResume,
+  SKILL_SETUP_AGENT_MODE,
+  type SkillDraftActivity,
+  type SkillDraftClaim,
+  skillDraftLastWorkedAt,
+  unfinishedDraftRows,
+} from "./modules/skills/drafts";
+export {
+  createSkillDraftWrites,
+  type SkillDraftActivityWrites,
+  type SkillDraftWrites,
+} from "./modules/skills/drafts-writes";
 export type {
   Clock,
   KeyValueStore,

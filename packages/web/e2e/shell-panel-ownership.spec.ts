@@ -87,22 +87,23 @@ test("leaving a board with the new-mission composer open still lets it reopen", 
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 });
 
-test("the Skills library's create chat claims the panel from its tab", async ({
+test("the Skills library's create chat claims the panel from its screen", async ({
   page,
 }) => {
   await page.goto("/");
 
-  // The library is a TAB of the Integrations screen, so its chat claims the
-  // shared panel from inside that screen — the claim is the surface rendering
-  // the panel, never the view mode it happens to sit under.
+  // The library is a screen of its own, so its chat claims the shared panel
+  // from inside it — the claim is the surface rendering the panel, never the
+  // view mode it happens to sit under.
   await openSkillsLibrary(page);
   await expect(page.getByTestId("mission-panel")).toBeHidden();
+  // The library has one way to create, so its button IS the guided chat. One
+  // agent in the workspace, so there is nobody to pick and the chat opens
+  // straight away, beside the library rather than over it.
   await screen(page).getByRole("button", { name: "Create skill" }).click();
-  // One agent in the workspace, so there is nobody to pick and the guided
-  // chat opens straight away, beside the library rather than over it.
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
-  // Off to a team's board: Integrations is kept alive with the chat still
+  // Off to a team's board: the Skills screen is kept alive with the chat still
   // mounted, so the chat has to release the panel itself.
   await openTeamSection(page, "Tasks");
   await expect(page.getByTestId("mission-panel")).toBeHidden();

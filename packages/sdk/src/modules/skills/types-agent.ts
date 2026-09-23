@@ -4,8 +4,8 @@
  * command vocabulary `dispatch` routes them by.
  *
  * Everything here is agent-scoped: every operation names an agent id. The
- * workspace-wide shared library and the GitHub repositories are separate
- * families with their own types in this module.
+ * workspace-wide shared library is a separate family with its own types in
+ * this module.
  */
 
 import { SdkHttpError } from "../http";
@@ -15,9 +15,8 @@ import { requireString } from "../payload";
  * The write vocabulary — the same constants back the facade and `dispatch`.
  *
  * Every command in the SDK is `<family>/<verb>`, so an agent's own skills are
- * plain `skills/*`. The two sibling families name themselves apart in the
- * family half (`skills.shared/*`, `skills.repo/*`) rather than by repeating
- * the noun in each verb.
+ * plain `skills/*`. The sibling family names itself apart in the family half
+ * (`skills.shared/*`) rather than by repeating the noun in each verb.
  */
 export const AgentSkillsCommand = {
   List: "skills/list",
@@ -27,6 +26,10 @@ export const AgentSkillsCommand = {
   Delete: "skills/delete",
   GetManifest: "skills/getManifest",
   PutManifest: "skills/putManifest",
+  SetEnabled: "skills/setEnabled",
+  RevertOverride: "skills/revertOverride",
+  DisableForAgent: "skills/disableForAgent",
+  DiscardDraft: "skills/discardDraft",
 } as const;
 
 export type AgentSkillsCommandType =

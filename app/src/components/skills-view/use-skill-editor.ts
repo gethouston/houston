@@ -2,25 +2,26 @@ import { useRef, useState } from "react";
 import { withSkillTitle } from "../../lib/skill-title";
 import type { Agent } from "../../lib/types";
 import type { SharedSkillRow } from "../../lib/workspace-shared-skills";
-import type {
-  ManagedSkillRow,
-  ManageSkillDialogProps,
-  SharedDialogActions,
-} from "./manage-skill-dialog-props";
 import {
   reconcileSkillDraft,
   type SkillDraft,
   seedSkillDraft,
   skillDraftDirty,
 } from "./skill-editor-model";
-import { useManageSkillSave } from "./use-manage-skill-save";
+import type {
+  ManagedSkillRow,
+  SharedDialogActions,
+  SkillEditorActions,
+} from "./skill-editor-props";
+import { offersPromoteToWorkspace } from "./skills-scope";
 import { useSkillDetailSurface } from "./use-skill-detail-surface";
+import { useSkillSave } from "./use-skill-save";
 
-export interface SkillEditorArgs {
+export interface SkillEditorArgs extends SkillEditorActions {
   row: ManagedSkillRow;
   agents: Agent[];
-  onApply: ManageSkillDialogProps["onApply"];
-  onDeleteEverywhere: ManageSkillDialogProps["onDeleteEverywhere"];
+  /** The one AI Employee this surface is scoped to, or null for the library. */
+  scopedAgent: Agent | null;
   shared?: SharedDialogActions;
   /** Leave the editor and return to the library list. */
   onBack: () => void;
@@ -28,17 +29,24 @@ export interface SkillEditorArgs {
 
 /**
  * The full-page skill editor's state: the skill's canonical SKILL.md, the
- * draft over it, the agent selection, and the one save that commits all three
- * through the same flow the manage dialog uses.
+ * draft over it, the agent selection, and the one save that commits all three.
  *
- * The detail query is the SAME key the dialog read, so the chat on the right
+ * The detail query is the SAME key the list rides, so the chat on the right
  * writing SKILL.md invalidates it (`SkillsChanged` / `SharedSkillsChanged`)
  * and the left pane follows live — keeping a dirty draft and offering a
  * reload instead of discarding typed work.
  */
 export function useSkillEditor(args: SkillEditorArgs) {
-  const { row, agents, onApply, onDeleteEverywhere, shared, onBack } = args;
-  const { isShared, assignment, detail, error, rename, setRename } =
+  const {
+    row,
+    agents,
+    scopedAgent,
+    onApply,
+    onDeleteEverywhere,
+    shared,
+    onBack,
+  } = args;
+  const { isShared, assignment, detail, error, refetch, rename, setRename } =
     useSkillDetailSurface({ row, shared, onLeave: onBack });
 
   // Seeded the moment the content lands, then reconciled against every later
@@ -58,7 +66,7 @@ export function useSkillEditor(args: SkillEditorArgs) {
   // adopted when the save actually LANDS — adopting it optimistically would
   // disable Save after a failed write, with the user's text still on screen.
   const savedContent = useRef<string | null>(null);
-  const flow = useManageSkillSave({
+  const flow = useSkillSave({
     row,
     agents,
     isShared,
@@ -102,6 +110,11 @@ export function useSkillEditor(args: SkillEditorArgs) {
   };
 
   const asShared = row as SharedSkillRow;
+  const promotable = offersPromoteToWorkspace({
+    scopedAgentId: scopedAgent?.id ?? null,
+    origin: row.origin,
+    sharedStore: shared !== undefined,
+  });
   return {
     detail,
     error,
@@ -113,6 +126,10 @@ export function useSkillEditor(args: SkillEditorArgs) {
       setDraft((current) => (current ? { ...current, text } : current)),
     /** Drop the draft for the server copy the chat just wrote. */
     reload: () => setDraft(detail ? seedSkillDraft(detail.content) : null),
+    /** Ask for the skill again after a load that did not answer. */
+    retryLoad: () => {
+      void refetch();
+    },
     /** Throw the whole edit away: text, rename and assignment together. */
     discard: () => {
       setDraft(detail ? seedSkillDraft(detail.content) : null);
@@ -143,7 +160,7 @@ export function useSkillEditor(args: SkillEditorArgs) {
           }
         : undefined,
     onPromote:
-      shared !== undefined && row.origin === "local"
+      promotable && shared
         ? async () => {
             await shared.onPromote(asShared);
             onBack();

@@ -55,9 +55,9 @@ describe("parseSettingsSection", () => {
     strictEqual(parseSettingsSection("timeWorked"), null);
     strictEqual(parseSettingsSection("organization"), null);
     strictEqual(parseSettingsSection("workspace"), "workspace");
-    // The shared Skills library is a TAB of the Integrations screen, not a
-    // section: neither the old section id nor the older top-level view id may
-    // land a stale pin on a screen that no longer exists.
+    // The shared Skills library is a TOP-LEVEL view, not a Settings section:
+    // neither the old section id nor the view id may resolve here, or a stale
+    // pin would open Settings on a section that does not exist.
     strictEqual(parseSettingsSection("skills"), null);
     strictEqual(parseSettingsSection("skills-home"), null);
     strictEqual(parseSettingsSection("permissions"), null);

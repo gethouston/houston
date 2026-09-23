@@ -1,12 +1,7 @@
 {
   "$comment": "Written exceptions for scripts/check-sdk-parity.ts, which FAILS the process on any violation not listed here. An entry is { rule, key, reason } and nothing else; `key` is the violation identity the report prints, and `reason` must be at least 20 characters saying WHY parity stops here. An entry whose violation no longer reproduces fails the gate as stale: the PR that binds the route is the one that deletes its excuse and lowers `baseline`. Keys read as the report prints them: `host|gateway METHOD /path` for a route, `proxy METHOD /path` for a runtime-proxy member, and `client <adapter method>` for a method of the shipped client's mixin chain that reaches a server with no @houston/sdk method behind it. `baseline` may only go down on its own; raising it is a visible diff a reviewer must accept, because it means a new route shipped with no client behind it.",
-  "baseline": 105,
+  "baseline": 104,
   "entries": [
-    {
-      "rule": "sdk-route-unbound",
-      "key": "host POST /v1/skills/repo/list",
-      "reason": "the user-level spelling of the GitHub repo listing; a top-level /v1/skills/* has no pod to land on behind the gateway, so the SDK calls the agent-scoped twin the Add Skills dialog browses with"
-    },
     {
       "rule": "sdk-route-unbound",
       "key": "host POST /v1/portable/preview",

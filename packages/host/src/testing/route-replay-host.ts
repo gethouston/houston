@@ -132,10 +132,11 @@ export async function close(server: Server): Promise<void> {
 }
 
 /**
- * Loopback-only fetch. Several routes reach real services (skills.sh, GitHub,
- * the Agent Store) through the global `fetch`; leaving that open would make the
- * baseline depend on the network. The fence answers every outbound call the
- * same way, so what the baseline records is the handler's own code path.
+ * Loopback-only fetch. Several routes reach real services (GitHub, the Agent
+ * Store, the integration provider) through the global `fetch`; leaving that
+ * open would make the baseline depend on the network. The fence answers every
+ * outbound call the same way, so what the baseline records is the handler's
+ * own code path.
  */
 export function fenceOutboundFetch(): () => void {
   const real = globalThis.fetch;

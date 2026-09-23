@@ -17,11 +17,15 @@ import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import { BackControl } from "../shell/back-control";
 import { HEADER_HEIGHT_DESKTOP } from "../shell/page-header/page-header-layout";
 import { SkillIcon } from "../skill-icon";
-import type { ManagedSkillRow } from "./manage-skill-dialog-props";
 import type { SkillEditorView } from "./skill-editor-model";
+import type { ManagedSkillRow } from "./skill-editor-props";
+import type { SkillsFrame } from "./skills-surface-frame";
 
 export interface SkillEditorHeaderProps {
   row: ManagedSkillRow;
+  /** The frame the editor stands in: a page strip, or a section's own header
+   *  inside the settings rail's column, which already carries the gutter. */
+  frame: SkillsFrame;
   /** The pending rename, or null when the name is the stored one. */
   rename: string | null;
   /** Commit a rename into the draft. Omit while the skill is still loading. */
@@ -36,6 +40,11 @@ export interface SkillEditorHeaderProps {
   /** "Enable for all agents" — shared rows not yet on every agent. */
   onEnableAll?: () => Promise<void>;
   onDelete: () => void;
+  /** Overrides the danger item's label — an employee's own section stops
+   *  LOADING a workspace skill rather than deleting everyone's copy. */
+  deleteLabel?: string;
+  /** Inert while the act the item starts is already writing. */
+  deleteDisabled?: boolean;
 }
 
 /**
@@ -56,6 +65,7 @@ export interface SkillEditorHeaderProps {
  */
 export function SkillEditorHeader({
   row,
+  frame,
   rename,
   onRename,
   view,
@@ -65,13 +75,16 @@ export function SkillEditorHeader({
   onPromote,
   onEnableAll,
   onDelete,
+  deleteLabel,
+  deleteDisabled,
 }: SkillEditorHeaderProps) {
   const { t } = useTranslation(["skills", "common"]);
 
   return (
     <div
       className={cn(
-        "flex shrink-0 flex-col gap-3 px-5 pt-3 pb-3 md:flex-row md:items-center md:gap-4 md:py-0",
+        "flex shrink-0 flex-col gap-3 pt-3 pb-3 md:flex-row md:items-center md:gap-4 md:py-0",
+        frame === "screen" ? "px-5" : "mb-2",
         HEADER_HEIGHT_DESKTOP,
       )}
     >
@@ -87,10 +100,11 @@ export function SkillEditorHeader({
         />
         <div className="flex min-w-0 flex-col md:flex-row md:items-baseline md:gap-2">
           <EditableSkillTitle
-            heading
             title={rename ?? skillDisplayTitle(row.summary)}
             onRename={onRename}
             renameLabel={t("skills:detail.rename")}
+            // The settings rail's section lozenge is already the screen's h1.
+            level={frame === "inline" ? 2 : 1}
           />
           {row.summary.description && (
             <p className="min-w-0 truncate text-ink-muted text-sm">
@@ -166,8 +180,12 @@ export function SkillEditorHeader({
                 {t("skills:global.manage.enableAll")}
               </DropdownMenuItem>
             )}
-            <DropdownMenuItem variant="destructive" onSelect={onDelete}>
-              {t("common:actions.delete")}
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={deleteDisabled}
+              onSelect={onDelete}
+            >
+              {deleteLabel ?? t("common:actions.delete")}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

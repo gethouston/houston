@@ -94,6 +94,68 @@ export function SkillsMixin<TBase extends BaseCtor>(Base: TBase) {
       emitLocalEcho("SkillsChanged", { agentPath });
       return saved;
     }
+    /** One skill on or off, leaving the rest of the manifest alone. The SDK
+     *  serializes these per agent, so two started together both land. */
+    async setSkillEnabled(
+      agentPath: string,
+      slug: string,
+      enabled: boolean,
+    ): Promise<SkillsManifest> {
+      if (!this.ctx.cp) throw new Error("Skills manifests need a host agent.");
+      const saved = await viaSdk(
+        `${controlPlane.agentPath(agentPath)}/skills-manifest`,
+        () =>
+          this.ctx.sdk.skills.agent.setSkillEnabled(agentPath, slug, enabled),
+      );
+      emitLocalEcho("SkillsChanged", { agentPath });
+      return saved;
+    }
+
+    // ---- the two composed acts on a WORKSPACE skill ----
+    // Each is a manifest write plus the agent's own shadowing copy, and the
+    // SDK owns the order they happen in. The adapter only names the route the
+    // act starts on and echoes the change, which it does whether or not the
+    // act finished: the manifest half can land and the copy delete fail after
+    // it, and readers left on the state from before that write have nothing
+    // to tell them so. The rejection still reaches the caller.
+    /** Back onto the workspace version: the entry on, then the copy dropped. */
+    async revertSkillOverride(agentPath: string, slug: string): Promise<void> {
+      if (!this.ctx.cp) throw new Error("Skills manifests need a host agent.");
+      try {
+        await viaSdk(
+          `${controlPlane.agentPath(agentPath)}/skills-manifest`,
+          () => this.ctx.sdk.skills.agent.revertSkillOverride(agentPath, slug),
+        );
+      } finally {
+        emitLocalEcho("SkillsChanged", { agentPath });
+      }
+    }
+    /** Off this agent: the entry off, then the copy that would still load. */
+    async disableSkillForAgent(agentPath: string, slug: string): Promise<void> {
+      if (!this.ctx.cp) throw new Error("Skills manifests need a host agent.");
+      try {
+        await viaSdk(
+          `${controlPlane.agentPath(agentPath)}/skills-manifest`,
+          () => this.ctx.sdk.skills.agent.disableSkillForAgent(agentPath, slug),
+        );
+      } finally {
+        emitLocalEcho("SkillsChanged", { agentPath });
+      }
+    }
+    /** Throw away an unfinished creation chat: the board's own archive write,
+     *  composed in the SDK, so what the surface stops offering to resume and
+     *  what the board shows as archived are one change. */
+    async discardSkillDraft(
+      agentPath: string,
+      activityId: string,
+    ): Promise<void> {
+      if (!this.ctx.cp) throw new Error("Skill drafts need a host agent.");
+      await viaSdk(
+        `${controlPlane.agentPath(agentPath)}/activities/${encodeURIComponent(activityId)}`,
+        () => this.ctx.sdk.skills.discardSkillDraft(agentPath, activityId),
+      );
+      emitLocalEcho("ActivityChanged", { agentPath });
+    }
   }
   return Skills;
 }

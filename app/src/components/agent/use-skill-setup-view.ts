@@ -39,14 +39,14 @@ export function useSkillSetupView(
   }
 
   // A session-finished notification lands as a one-shot activity id; select
-  // its skill/draft chat, or clear a stale/foreign id once both data sources
-  // have loaded.
+  // its skill/draft chat, or clear a stale/foreign id once the activities are
+  // the authoritative read (a cached placeholder carries no skill stamp).
   const pendingActivityId = useUIStore((s) => s.pendingSkillChatActivityId);
   const setPendingSkillChatActivityId = useUIStore(
     (s) => s.setPendingSkillChatActivityId,
   );
   useEffect(() => {
-    if (!pendingActivityId || !chatSetup.activitiesLoaded) return;
+    if (!pendingActivityId || !chatSetup.activitiesSettled) return;
     const activity = chatSetup.activityById(pendingActivityId);
     setPendingSkillChatActivityId(null);
     if (!activity || activity.status === "archived") return;
@@ -143,26 +143,6 @@ export function useSkillSetupView(
     [],
   );
 
-  // Abandon a draft: archive its chat so it stops showing as a resumable
-  // item. Failures surface via call()'s own toast path.
-  const discardDraft = useCallback(
-    (activityId: string) => {
-      setSelected((s) =>
-        s?.kind === "draft" && s.activityId === activityId ? null : s,
-      );
-      tauriActivity
-        .update(agent.folderPath, activityId, { status: "archived" })
-        .then(() =>
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.activity(agent.folderPath),
-          }),
-        )
-        // call() already toasted the failure; log so the rejection isn't silent.
-        .catch((err) => logger.error(`[skill-chat] discard failed: ${err}`));
-    },
-    [agent.folderPath, queryClient],
-  );
-
   const deselect = useCallback(() => setSelected(null), []);
 
   return {
@@ -170,7 +150,6 @@ export function useSkillSetupView(
     startCreate,
     openSkillChat,
     resumeDraft,
-    discardDraft,
     deselect,
   };
 }

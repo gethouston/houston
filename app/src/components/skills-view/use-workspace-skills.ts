@@ -1,5 +1,6 @@
 import { useQueries } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { isStaleRosterReadError } from "../../lib/agent-gone";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriSkills } from "../../lib/tauri";
 import type { Agent, SkillSummary } from "../../lib/types";
@@ -23,8 +24,14 @@ export function useWorkspaceSkills(agents: Agent[]): {
   /** folderPath → that agent's current list (undefined while loading). */
   listsByPath: Map<string, SkillSummary[] | undefined>;
   loading: boolean;
+  /** At least one agent's list did not answer, so what is on screen is not the
+   *  workspace. The failure is already toasted and reported by the engine call
+   *  itself (`lib/tauri`), so the surface only has to SAY it. */
+  failed: boolean;
+  /** Read every agent's list again — the user-initiated retry. */
+  retry: () => void;
 } {
-  const { lists, loading } = useQueries({
+  const { lists, loading, failed, retry } = useQueries({
     queries: agents.map((agent) => ({
       queryKey: queryKeys.skills(agent.folderPath),
       queryFn: () => tauriSkills.list(agent.folderPath),
@@ -34,6 +41,15 @@ export function useWorkspaceSkills(agents: Agent[]): {
     combine: (results) => ({
       lists: results.map((r) => r.data),
       loading: results.some((r) => r.isLoading),
+      // A stale roster's gone agent is not a failure: it is silenced at the
+      // call and heals itself (HOUSTON-APP-544), and calling it one would put
+      // a red screen over a space switch.
+      failed: results.some(
+        (r) => r.isError && !isStaleRosterReadError(r.error),
+      ),
+      retry: () => {
+        for (const result of results) void result.refetch();
+      },
     }),
   });
 
@@ -50,5 +66,5 @@ export function useWorkspaceSkills(agents: Agent[]): {
     [agents, listsByPath],
   );
 
-  return { rows, listsByPath, loading };
+  return { rows, listsByPath, loading, failed, retry };
 }

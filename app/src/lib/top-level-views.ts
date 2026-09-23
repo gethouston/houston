@@ -18,10 +18,15 @@
  * detail panel. It is the one view gated on DISCOVERY rather than on a role —
  * a deployment that holds no assistant has neither the row nor the screen.
  *
+ * The shared Skills library is here too, beside Integrations: what every agent
+ * in the space can do is a place the user goes, the same way the apps they can
+ * reach is. It is gated on `showSkills` — editing a skill edits every agent in
+ * the space at once, so the screen belongs to whoever OWNS the space.
+ *
  * The Academy is here, at the foot of the rail: learning to fly is a place the
  * user goes, so it owns the whole window, and a read it owns is active while
  * ITS OWN screen is, never while `settings` is. Settings holds the standing
- * setup (About me, Workspace management, the shared Skills library) plus Danger
+ * setup (About me, Workspace management) plus Danger
  * (`lib/settings-sections.ts`).
  *
  * Two things deliberately live one level down instead of here: agent policy,
@@ -38,6 +43,7 @@ import { ACADEMY_VIEW_ID } from "../components/academy/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../components/agents-home/id.ts";
 import { ASSISTANT_VIEW_ID } from "../components/assistant/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
+import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
 import { TEAMS_HOME_VIEW_ID } from "../components/teams-home/id.ts";
 import { TEAM_VIEW_ID, type TeamSectionId } from "./teams-model.ts";
 
@@ -46,6 +52,7 @@ export {
   AGENTS_HOME_VIEW_ID,
   ASSISTANT_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
+  SKILLS_VIEW_ID,
   TEAM_VIEW_ID,
   TEAMS_HOME_VIEW_ID,
 };
@@ -60,6 +67,7 @@ export type TopLevelViewId =
   | typeof SETTINGS_VIEW_ID
   | typeof AI_HUB_VIEW_ID
   | typeof INTEGRATIONS_VIEW_ID
+  | typeof SKILLS_VIEW_ID
   | typeof TEAM_VIEW_ID
   | typeof TEAMS_HOME_VIEW_ID;
 
@@ -70,6 +78,7 @@ export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   SETTINGS_VIEW_ID,
   AI_HUB_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
+  SKILLS_VIEW_ID,
   TEAM_VIEW_ID,
   TEAMS_HOME_VIEW_ID,
 ]);
@@ -127,9 +136,9 @@ export function isActiveTopLevelView(
 
 /**
  * Whether a top-level `viewMode` points at a view whose gate is off for this
- * caller: the AI Models hub hides from plain members, and the assistant exists
- * only where discovery hands out an address. The sidebar entry is already
- * hidden,
+ * caller: the AI Models hub hides from plain members, the shared Skills library
+ * belongs to whoever owns the space, and the assistant exists only where
+ * discovery hands out an address. The sidebar entry is already hidden,
  * so a STALE `viewMode` (the role changed on a space switch, or the install
  * moved off the hosted cloud, while the page was open) would otherwise fall
  * through every render branch and strand the user on the shell's engine pane
@@ -147,9 +156,11 @@ export function blockedTopLevelView(
   gates: {
     showAiModels: boolean;
     showAssistant: boolean;
+    showSkills: boolean;
   },
 ): boolean {
   if (viewMode === AI_HUB_VIEW_ID) return !gates.showAiModels;
   if (viewMode === ASSISTANT_VIEW_ID) return !gates.showAssistant;
+  if (viewMode === SKILLS_VIEW_ID) return !gates.showSkills;
   return false;
 }

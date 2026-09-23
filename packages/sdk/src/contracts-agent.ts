@@ -1,7 +1,7 @@
 /**
  * One agent's contract: its list entry and library, its mission board, its
- * files and routines, its skills (its own, the workspace library, the
- * repositories), and the AI providers and outside apps it reaches.
+ * files and routines, its skills (its own and the workspace library), and the
+ * AI providers and outside apps it reaches.
  *
  * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
  */
@@ -142,11 +142,3 @@ export {
   type SharedSkillsList,
   type SharedSkillsModule,
 } from "./modules/skills/types-shared";
-// ===== Skills repository contract =====================================
-export {
-  type RepoSkill,
-  type SkillsRepo,
-  SkillsRepoCommand,
-  type SkillsRepoCommandType,
-  SkillsRepoHttpError,
-} from "./modules/skills/types-skills-repo";

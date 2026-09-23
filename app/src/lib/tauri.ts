@@ -97,7 +97,6 @@ import {
 import type {
   Agent,
   FileEntry,
-  RepoSkill,
   SkillDetail,
   SkillSummary,
   Workspace,
@@ -821,29 +820,6 @@ export const tauriSkills = {
       getEngine().deleteSkill(agentPath, name),
     );
   },
-  listFromRepo: (agentPath: string, source: string) =>
-    call<RepoSkill[]>(
-      "list_skills_from_repo",
-      () => getEngine().listSkillsFromRepo(agentPath, source),
-      undefined,
-      // The Add Skills dialog renders repo failures (typo'd repo, private,
-      // no skills) inline with plain-English copy — no red bug toast.
-      { toast: false },
-    ),
-  installFromRepo: (agentPath: string, source: string, skills: RepoSkill[]) => {
-    blockWriteWhileWarming(agentPath);
-    return call<string[]>(
-      "install_skills_from_repo",
-      () =>
-        getEngine().installSkillsFromRepo({
-          workspacePath: agentPath,
-          source,
-          skills,
-        }),
-      undefined,
-      { toast: false },
-    );
-  },
 };
 
 export const tauriSharedSkills = {
@@ -955,6 +931,41 @@ export const tauriSkillsManifest = {
     blockWriteWhileWarming(agentPath);
     return call<SkillsManifest>("put_skills_manifest", () =>
       getEngine().putSkillsManifest(agentPath, manifest),
+    );
+  },
+  /** One skill on or off. The read-modify-write lives in the SDK, serialized
+   *  per agent, so two adds in the same sitting never drop each other. */
+  setEnabled: (agentPath: string, slug: string, enabled: boolean) => {
+    blockWriteWhileWarming(agentPath);
+    return call<SkillsManifest>("set_skill_enabled", () =>
+      getEngine().setSkillEnabled(agentPath, slug, enabled),
+    );
+  },
+  /** Back onto the workspace version of a skill this agent shadowed with its
+   *  own copy. The entry and the copy move together, in the SDK's order. */
+  revertOverride: (agentPath: string, slug: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("revert_skill_override", () =>
+      getEngine().revertSkillOverride(agentPath, slug),
+    );
+  },
+  /** Stop this agent loading a workspace skill, copy and entry together. */
+  disableForAgent: (agentPath: string, slug: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("disable_skill_for_agent", () =>
+      getEngine().disableSkillForAgent(agentPath, slug),
+    );
+  },
+};
+
+/** An unfinished skill-creation chat, from the surfaces that list them. */
+export const tauriSkillDrafts = {
+  /** Throw the chat away: it stops being offered to resume. The archive is the
+   *  SDK's own composed write, so every client retires a draft the same way. */
+  discard: (agentPath: string, activityId: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call<void>("discard_skill_draft", () =>
+      getEngine().discardSkillDraft(agentPath, activityId),
     );
   },
 };

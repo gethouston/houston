@@ -35,8 +35,8 @@ interface SettingsIndexProps {
  * The page holds ONE general group (identity, About me, appearance, language,
  * notifications, then the standing setup of the space and the help-shaped
  * rows), plus Danger. One row administers the SPACE rather than the person:
- * Workspace management. The shared Skills library lives on the Integrations
- * screen, as its Skills tab.
+ * Workspace management. The shared Skills library is a screen of its own, off
+ * the rail's Skills row, so no row here leads to it.
  *
  * The page OPENS on the signed-in person: identity is the header, and
  * everything below it is a preference.

@@ -194,7 +194,7 @@ describe("what the model and the approver read", () => {
       "| Operation | Method | Confirmation | Hidden reason | Parameters |",
     );
     expect(doc).toContain("resolved:teams");
-    expect(doc).toContain("unconfirmed: Read-only repository listing");
+    expect(doc).toContain("unconfirmed: Reversible display preference");
     expect(doc).toContain("open: The directory lists routines, not their runs");
     for (const op of live.catalog.operations)
       expect(doc).toContain(`| \`${op.name}\` |`);

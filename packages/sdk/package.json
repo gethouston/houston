@@ -50,6 +50,10 @@
     "./local-model-bridge/errors": {
       "types": "./src/local-model-bridge/errors.ts",
       "import": "./src/local-model-bridge/errors.ts"
+    },
+    "./skill-drafts": {
+      "types": "./src/modules/skills/drafts.ts",
+      "import": "./src/modules/skills/drafts.ts"
     }
   },
   "files": [

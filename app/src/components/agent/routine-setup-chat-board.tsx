@@ -6,17 +6,15 @@
  * panel, the SAME one the Activity mission board opens, for a routine's chat.
  */
 
-import type { Activity } from "@houston/engine-adapter";
 import type { KanbanItem } from "@houston-ai/board";
 import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-import { type ReactNode, useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useConversationFeed } from "../../hooks/use-conversation-vm";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { modelAcceptsImages } from "../../lib/providers";
 import { type HistoryLoadOptions, tauriChat } from "../../lib/tauri";
-import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { useAgentBoardSend } from "../board/use-agent-board-send";
@@ -25,37 +23,10 @@ import { useBoardSendQueue } from "../board/use-board-send-queue";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
+import type { RoutineSetupChatBoardProps } from "./routine-setup-chat-board-props";
 import { setupChatItem } from "./routines-tab-model";
 
 const noop = () => {};
-
-interface Props {
-  /** The agent this chat runs against: its engine answers, its folder resolves
-   *  links, and the panel shows its avatar, colour and name. */
-  agent: Agent;
-  activity: Activity;
-  sessionKey: string | null;
-  /** The shell-level panel node this board portals its detail panel into — the
-   *  SAME app-wide panel the Activity mission board opens (one shared UI path). */
-  panelContainer: HTMLElement | null;
-  /** Leading slot before the agent avatar (the integration chat's Back button).
-   *  Omit for none — the routines split deselects via the close X instead. */
-  panelLeading?: ReactNode;
-  /** Deselect handler: when supplied, the panel shows its close X and clicking
-   *  it deselects the item (closing the pane). Omit for a non-dismissable
-   *  companion (the integration chat exits via its own chrome). */
-  onPanelClose?: () => void;
-  /** Overrides the panel's task line (routines pass "Routine: {name}"). Omit
-   *  to keep the localized "Task: {title}" — the custom-integration setup chat
-   *  reuses this board and IS a task, so it wants that line. */
-  missionLabel?: string;
-  /** Header actions on the panel's right side (the integration setup chat
-   *  puts its "Done" button here). Omit for none (routines). */
-  panelActions?: ReactNode;
-  /** Model-facing context prepended to every outgoing prompt, hidden from
-   *  the transcript (the skill chat pins its bound skill). Omit for none. */
-  promptContext?: string;
-}
 
 export function RoutineSetupChatBoard({
   agent,
@@ -67,7 +38,8 @@ export function RoutineSetupChatBoard({
   panelActions,
   onPanelClose,
   promptContext,
-}: Props) {
+  disableComposerAutoFocus,
+}: RoutineSetupChatBoardProps) {
   const { t } = useTranslation("board");
   const path = agent.folderPath;
   const openHref = useOpenAgentHref(path);
@@ -158,6 +130,7 @@ export function RoutineSetupChatBoard({
         panelContainer={panelContainer}
         // The close X shows only when a deselect handler is wired (`onPanelClose`).
         hidePanelClose={onPanelClose ? undefined : true}
+        disableComposerAutoFocus={disableComposerAutoFocus}
         feedItems={feedItems}
         isLoading={send.effectiveLoading}
         sessionKeyFor={keyForSession}

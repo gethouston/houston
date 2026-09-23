@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { InstalledAgentConfig } from "@houston/protocol";
 import type { UserId } from "../domain/types";
-import { normalizeSource } from "../skills/github-parse";
 import type { Vfs } from "../vfs";
+import { normalizeSource } from "./github-source";
 import { json, readJson } from "./http";
 import { defineRoute } from "./registry";
 

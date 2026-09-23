@@ -1,81 +1,26 @@
 {
-  "page": {
-    "title": "Skills",
-    "description": "Procedimientos reutilizables que este empleado de IA puede ejecutar."
-  },
   "grid": {
     "loading": "Cargando skills...",
-    "addSkill": "Añadir skill",
     "yourSkillsHeading": "Tus skills",
-    "availableHeading": "Disponibles",
     "searchSkills": "Buscar skills",
     "clearSearch": "Borrar búsqueda",
     "noMatchingSkills": "Ninguna skill coincide con tu búsqueda",
     "showAllSkills": "Ver las {{count}} skills",
-    "sharedBadge": "Compartida"
-  },
-  "addDialog": {
-    "title": "Añadir skills",
-    "description": "Instala procedimientos reutilizables para tu empleado de IA.",
-    "repoTab": "GitHub",
-    "scratchTab": "Desde cero",
-    "repo": {
-      "sourcePlaceholder": "owner/repo",
-      "findSkills": "Buscar skills",
-      "installSelected": "Instalar {{count}}",
-      "skillsFound_one": "1 skill encontrada",
-      "skillsFound_other": "{{count}} skills encontradas",
-      "selectAll": "Seleccionar todo",
-      "deselectAll": "Deseleccionar todo",
-      "inputHint": "Ingresa un repositorio público de GitHub en formato owner/repo",
-      "installedSummary_one": "Se instaló 1 skill: {{names}}",
-      "installedSummary_other": "Se instalaron {{count}} skills: {{names}}",
-      "installAnotherRepo": "Instalar desde otro repositorio"
-    },
-    "scratch": {
-      "titleLabel": "¿Qué debería hacer esta skill?",
-      "titlePlaceholder": "Redactar un contrato",
-      "titleHint": "Usa la frase que dirías en el chat. Houston la convierte en un slug.",
-      "slugPreviewPrefix": "Se guarda como",
-      "descriptionLabel": "Descripción en una línea",
-      "descriptionPlaceholder": "Redacta un borrador de contrato que puedes revisar y firmar.",
-      "descriptionHint": "Se muestra en la tarjeta. Di qué obtiene el usuario, no cómo funciona.",
-      "bodyLabel": "Instrucciones para el empleado de IA",
-      "bodyPlaceholder": "## Procedimiento\n\n1. Pregunta al usuario qué tipo de contrato.\n2. Trae la última versión desde Drive.\n3. Complétalo y compártelo para revisión.\n",
-      "bodyHint": "Markdown. El empleado de IA lo lee cuando se ejecuta la skill.",
-      "submit": "Crear skill",
-      "submitting": "Creando...",
-      "errorTitleRequired": "Dale un título a tu skill.",
-      "errorDescriptionRequired": "La descripción es obligatoria. Agrega una línea que diga qué hace esta skill.",
-      "errorBodyRequired": "Agrega al menos un paso.",
-      "errorSlugTaken": "Ya existe una skill con este nombre."
-    }
-  },
-  "preview": {
-    "install": "Instalar",
-    "installing": "Instalando...",
-    "installed": "Instalada",
-    "loadFailed": "No se pudo cargar la descripción completa. Aún puedes instalar.",
-    "noDescription": "Sin descripción.",
-    "bySource": "de {{owner}} · {{repo}}",
-    "installsCount_one": "{{formatted}} instalación",
-    "installsCount_other": "{{formatted}} instalaciones",
-    "categoryHeading": "Categoría",
-    "tagsHeading": "Etiquetas",
-    "viewInstructions": "Ver instrucciones completas",
-    "hideInstructions": "Ocultar instrucciones completas",
-    "instructionsHeading": "Instrucciones completas",
-    "alsoMatches": "También coincide con: {{keywords}}"
+    "sharedBadge": "Compartida",
+    "agentStackLabel": "Empleados de IA con esta skill: {{names}}",
+    "emptyTitle": "Aún no tienes skills",
+    "emptyDescription": "Las skills son las tareas que tus empleados de IA saben hacer. Usa \"{{action}}\" para crear la primera.",
+    "noMatchesTitle": "Ninguna skill coincide con \"{{query}}\"",
+    "noMatchesDescription": "Prueba con otra palabra o borra la búsqueda para verlas todas."
   },
   "detail": {
     "saveChanges": "Guardar cambios",
     "loadFailed": "No se pudieron cargar las instrucciones de esta skill.",
+    "loadFailedDescription": "No se perdió nada. Inténtalo de nuevo en un momento.",
     "unavailableToast": "Esa skill ya no existe.",
     "instructionsPlaceholder": "Instrucciones para esta skill...",
+    "instructionsLabel": "Instrucciones para el empleado de IA",
     "workflowHeading": "Flujo de trabajo",
-    "showInstructions": "Ver instrucciones",
-    "hideInstructions": "Ocultar instrucciones",
-    "integrations": "Funciona con",
     "rename": "Renombrar skill"
   },
   "editor": {
@@ -95,54 +40,36 @@
     "updatedInChat": "Esta skill se actualizó en el chat.",
     "reload": "Recargar"
   },
-  "categories": {
-    "Advisory": "Asesoría",
-    "Bookkeeping": "Contabilidad",
-    "Compliance": "Cumplimiento",
-    "Contracts": "Contratos",
-    "Drafting": "Redacción",
-    "Entity": "Entidad",
-    "IP": "Propiedad intelectual",
-    "Inbox": "Bandeja de entrada",
-    "Marketing": "Marketing",
-    "Operations": "Operaciones",
-    "Outbound": "Prospección",
-    "People": "Personal",
-    "Sales": "Ventas",
-    "Setup": "Configuración",
-    "Support": "Soporte",
-    "Tracking": "Seguimiento"
-  },
-  "tabs": {
-    "custom": "Skills personalizadas",
-    "customEmptyDescription": "Describe lo que necesitas y constrúyela junto a tu empleado de IA, o agrégala tú mismo.",
-    "createSkill": "Crear skill"
-  },
   "setupChat": {
     "missionTitle": "Nueva skill",
     "skillLabel": "Skill: {{name}}",
     "opening": "Abriendo el chat...",
     "editManually": "Editar manualmente",
     "draftInProgress": "Skill en construcción. Retoma donde quedaste.",
+    "draftInProgressAt": "Skill en construcción. Última edición {{when}}.",
     "discardDraft": "Descartar borrador",
     "close": "Cerrar"
   },
   "global": {
     "pageTitle": "Skills",
     "createSkill": "Crear skill",
+    "createMenu": {
+      "withChat": "Crear con el chat",
+      "addExisting": "Agregar una skill existente"
+    },
+    "addExisting": {
+      "title": "Agregar una skill existente",
+      "description": "Skills que tu espacio de trabajo ya tiene y este empleado de IA no.",
+      "add": "Agregar",
+      "addNamed": "Agregar {{name}}",
+      "emptyTitle": "No queda nada por agregar",
+      "emptyDescription": "Este empleado de IA ya tiene todas las skills que comparte tu espacio de trabajo. Crea una nueva para darle más.",
+      "added": "{{name}} agregada"
+    },
     "noAgentsTitle": "Aún no hay empleados de IA",
     "noAgentsDescription": "Primero crea un empleado de IA. Las skills viven con tus empleados de IA, y esta página las administra en todos ellos.",
-    "installedTo_one": "Añadida a {{count}} empleado de IA",
-    "installedTo_other": "Añadida a {{count}} empleados de IA",
-    "installFailedFor": "No pudimos añadir la skill para {{names}}",
     "skillUpdated": "Skill actualizada",
     "skillRemoved": "Skill eliminada",
-    "install": {
-      "title": "Añadir \"{{name}}\" a empleados de IA",
-      "description": "Elige qué empleados de IA reciben esta skill.",
-      "confirm_one": "Añadir a {{count}} empleado de IA",
-      "confirm_other": "Añadir a {{count}} empleados de IA"
-    },
     "manage": {
       "agentsLabel": "Empleados de IA con esta skill",
       "keepOneAgent": "Mantén al menos un empleado de IA, o usa Eliminar para quitar la skill de todos.",
@@ -154,7 +81,6 @@
       "deleteConfirmTitle": "¿Eliminar \"{{name}}\"?",
       "deleteConfirmDescription_one": "Esto quita la skill de {{count}} empleado de IA ({{names}}). No se puede deshacer.",
       "deleteConfirmDescription_other": "Esto quita la skill de {{count}} empleados de IA ({{names}}). No se puede deshacer.",
-      "editInChat": "Editar en el chat",
       "enableAll": "Activar para todos los empleados de IA",
       "modifiedOn": "{{name}} tiene una copia modificada",
       "revert": "Usar versión del espacio",
@@ -170,20 +96,23 @@
     "enabledForAll_one": "Activada para {{count}} empleado de IA",
     "enabledForAll_other": "Activada para {{count}} empleados de IA",
     "overrideReverted": "{{name}} vuelve a usar la versión del espacio de trabajo",
-    "promoted": "La skill ahora se comparte en tu espacio de trabajo"
-  },
-  "fromYourAgents": {
-    "heading": "De tus otros empleados de IA",
-    "installAria": "Añadir {{name}} a este empleado de IA",
-    "installedAria": "{{name}} ya está en este empleado de IA",
-    "fromAgent": "Del empleado de IA {{agent}}"
-  },
-  "fromWorkspace": {
-    "heading": "De tu espacio",
-    "enableAria": "Activar {{name}}",
-    "enabledAria": "{{name}} está activada",
-    "enable": "Activar",
-    "enabling": "Activando...",
-    "enabled": "Activada"
+    "disabledForAgent": "{{name}} ya no usa esta skill",
+    "unfinishedDraft": "Sin terminar: {{title}}",
+    "scopedOverride": {
+      "title": "Este empleado de IA tiene su propia versión",
+      "description": "Estás editando la versión que usa este empleado de IA. La versión del espacio de trabajo no cambia.",
+      "disableConfirmTitle": "¿Eliminar la versión propia de este empleado de IA?",
+      "disableConfirmBody": "Este empleado de IA deja de usar la habilidad y su versión propia se elimina junto con todo lo que no hayas guardado aquí. La versión del espacio de trabajo y los demás empleados de IA no cambian. Esto no se puede deshacer.",
+      "revertConfirmTitle": "¿Volver a la versión del espacio de trabajo?",
+      "revertConfirmBody": "Este empleado de IA usará la versión del espacio de trabajo de ahora en adelante y su versión propia se elimina junto con todo lo que no hayas guardado aquí. Esto no se puede deshacer."
+    },
+    "scopedWorkspace": {
+      "title": "Esta es la versión del espacio de trabajo",
+      "description": "Los cambios se aplican a todos los empleados de IA que usan esta skill."
+    },
+    "promoted": "La skill ahora se comparte en tu espacio de trabajo",
+    "loadFailedTitle": "No pudimos cargar tus skills",
+    "loadFailedDescription": "Algo salió mal al leerlas. Inténtalo de nuevo en un momento.",
+    "retry": "Reintentar"
   }
 }

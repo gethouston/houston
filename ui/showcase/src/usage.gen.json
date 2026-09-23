@@ -155,9 +155,10 @@
   },
   "core-alert-dialog": {
     "surfaces": [
+      "App shell",
       "Onboarding"
     ],
-    "fileCount": 1
+    "fileCount": 2
   },
   "core-async-button": {
     "surfaces": [
@@ -168,6 +169,7 @@
       "Integrations",
       "Onboarding",
       "Organization",
+      "Skills",
       "app/src/components"
     ],
     "fileCount": 15
@@ -224,10 +226,9 @@
       "ui/chat (library)",
       "ui/review (library)",
       "ui/routines (library)",
-      "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 141
+    "fileCount": 138
   },
   "core-button-group": {
     "surfaces": [
@@ -245,48 +246,44 @@
   "core-catalog": {
     "surfaces": [
       "AI Models",
-      "Agent surfaces",
       "Integrations",
       "Skills",
       "app/src/components"
     ],
-    "fileCount": 10
+    "fileCount": 8
   },
   "core-catalog-row": {
     "surfaces": [
       "AI Models",
-      "Agent surfaces",
       "Integrations",
+      "Skills",
       "app/src/components"
     ],
-    "fileCount": 8
+    "fileCount": 6
   },
   "core-catalog-search-field": {
     "surfaces": [
       "AI Models",
       "Activity",
       "Skills",
-      "app/src/components",
       "ui/agent (library)",
       "ui/store (library)"
     ],
-    "fileCount": 9
+    "fileCount": 8
   },
   "core-catalog-shell": {
     "surfaces": [
       "AI Models",
       "Integrations",
-      "Skills",
-      "app/src/components"
+      "Skills"
     ],
-    "fileCount": 4
+    "fileCount": 3
   },
   "core-collapsible": {
     "surfaces": [
-      "ui/chat (library)",
-      "ui/skills (library)"
+      "ui/chat (library)"
     ],
-    "fileCount": 6
+    "fileCount": 5
   },
   "core-command": {
     "surfaces": [
@@ -308,7 +305,7 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 17
+    "fileCount": 16
   },
   "core-dialog": {
     "surfaces": [
@@ -321,14 +318,14 @@
       "Permissions",
       "Routines",
       "Settings",
+      "Skills",
       "Store website",
       "Your Agents",
       "Your teams",
       "app/src/components",
-      "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 35
+    "fileCount": 30
   },
   "core-dropdown-menu": {
     "surfaces": [
@@ -337,6 +334,7 @@
       "Files",
       "Integrations",
       "Permissions",
+      "Skills",
       "Store website",
       "Your Agents",
       "Your teams",
@@ -345,7 +343,6 @@
       "ui/chat (library)",
       "ui/layout (library)",
       "ui/routines (library)",
-      "ui/skills (library)",
       "ui/store (library)"
     ],
     "fileCount": 31
@@ -366,7 +363,7 @@
       "ui/events (library)",
       "ui/routines (library)"
     ],
-    "fileCount": 21
+    "fileCount": 23
   },
   "core-flow-choice-row": {
     "surfaces": [
@@ -408,6 +405,7 @@
       "Integrations",
       "Organization",
       "Permissions",
+      "Skills",
       "Your Agents",
       "Your teams",
       "app/src/components",
@@ -514,12 +512,13 @@
       "Integrations",
       "Organization",
       "Settings",
+      "Skills",
       "Store website",
       "app/src/components",
       "ui/agent (library)",
       "ui/store (library)"
     ],
-    "fileCount": 16
+    "fileCount": 17
   },
   "core-spinner": {
     "surfaces": [
@@ -537,10 +536,9 @@
       "Store website",
       "Store website (admin)",
       "app/src/components",
-      "ui/skills (library)",
       "ui/store (library)"
     ],
-    "fileCount": 42
+    "fileCount": 39
   },
   "core-status-badge": {
     "surfaces": [
@@ -562,6 +560,7 @@
   },
   "core-tabs": {
     "surfaces": [
+      "Skills",
       "Store website (admin)",
       "app/src/components"
     ],
@@ -570,8 +569,8 @@
   "core-textarea": {
     "surfaces": [
       "Onboarding",
+      "Skills",
       "Store website",
-      "app/src/components",
       "ui/store (library)"
     ],
     "fileCount": 6
@@ -656,37 +655,12 @@
     ],
     "fileCount": 2
   },
-  "skills-add-skill-dialog": {
-    "surfaces": [
-      "Skills"
-    ],
-    "fileCount": 1
-  },
-  "skills-edit-modal": {
-    "surfaces": [
-      "Skills"
-    ],
-    "fileCount": 1
-  },
-  "skills-owner-avatar": {
-    "surfaces": [
-      "ui/skills (internal)"
-    ],
-    "fileCount": 1
-  },
-  "skills-preview-modal": {
-    "surfaces": [
-      "Agent surfaces"
-    ],
-    "fileCount": 2
-  },
   "skills-workflow-steps": {
     "surfaces": [
       "Integrations",
-      "app/src/components",
-      "ui/skills (internal)"
+      "Skills"
     ],
-    "fileCount": 3
+    "fileCount": 2
   },
   "store-design-sheet": {
     "surfaces": [

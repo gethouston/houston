@@ -75,7 +75,7 @@ export async function applyRouteOp(
     ? await customIntegrationContext(op, filesystem, fetchImpl)
     : null;
   try {
-    return await runRouteOp(op, filesystem, decoded, custom, fetchImpl);
+    return await runRouteOp(op, filesystem, decoded, custom);
   } finally {
     // The per-op executor holds live MCP connections — a long-lived worker
     // must not accumulate them. A close failure is diagnostics only: it must
@@ -92,7 +92,6 @@ async function runRouteOp(
   filesystem: TurnFilesystem,
   decoded: string,
   custom: CustomContext | null,
-  fetchImpl?: typeof fetch,
 ): Promise<OpResult> {
   const agentId = engineAgentId(filesystem);
   const include = agentRouteScope(filesystem.workspaceRel);
@@ -108,7 +107,6 @@ async function runRouteOp(
       vfs,
       request,
       ...(custom ? { customIntegrations: custom.manager } : {}),
-      ...(fetchImpl ? { fetchImpl } : {}),
     });
   const result = await dispatch({
     method: op.op.method,
