@@ -101,7 +101,7 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
     >
       <div className="flex flex-col items-center gap-3 text-center">
         {startError ? (
-          <div className="flex w-full max-w-md flex-col items-center gap-3 self-center rounded-2xl border border-line bg-card p-6 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+          <div className="flex w-full max-w-md flex-col items-center gap-3 self-center rounded-2xl border border-line bg-card p-6 text-ink shadow-raised">
             <p className="text-sm">{t("progress.startFailed")}</p>
             <p className="text-xs text-ink-muted">{startError}</p>
             <AsyncButton className="rounded-full" onClick={() => start()}>
@@ -109,7 +109,7 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
             </AsyncButton>
           </div>
         ) : anyError ? (
-          <div className="flex w-full flex-col gap-3 rounded-2xl border border-line bg-card p-6 text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)]">
+          <div className="flex w-full flex-col gap-3 rounded-2xl border border-line bg-card p-6 text-ink shadow-raised">
             <p className="text-center text-xs text-ink-muted">
               {t("progress.overall", {
                 done: done.length,

@@ -23,9 +23,11 @@ const ROOTS = [
  * DESIGN.md §3.1, verbatim: the ONLY files allowed a raw colour.
  *
  * Brand marks (a logo's colour is the logo), the pre-boot frame that paints
- * before any token CSS exists, and the effects layer — aurora and glass sheen
- * are authored values, not semantic roles. Anything else wanting one is a
- * missing token.
+ * before any token CSS exists, the effects layer and the specimen that
+ * documents it (aurora and glass sheen are authored values, not semantic
+ * roles), the colour maths that parses and formats every colour form, and the
+ * social share image that next/og renders to a PNG with no CSS variables to
+ * read. Anything else wanting one is a missing token.
  */
 export const SANCTIONED = [
   "app/src/components/shell/provider-brand-colors.ts",
@@ -35,6 +37,9 @@ export const SANCTIONED = [
   "packages/web/src/new-engine/styles.ts",
   "ui/core/src/canvas.css",
   "app/src/styles/futuristic.css",
+  "ui/showcase/specimens/foundations/effects-parts.ts",
+  "ui/core/src/color-contrast.ts",
+  "agentstore/src/lib/og-card.tsx",
 ];
 
 export interface Rule {
@@ -118,6 +123,8 @@ export function sourceRoots(): string[] {
 export function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
+    // Fixture data is not a pixel: it never renders.
+    if (name === "__fixtures__") continue;
     if (statSync(full).isDirectory()) walk(full, out);
     else if (/\.(tsx?|css)$/.test(full)) out.push(full);
   }

@@ -20,6 +20,9 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
    - `app/index.html` + `packages/web/index.html` — the pre-paint theme frame + cache script (light screen `#fcfcfc` / dark gutter `#141416`; keep the two blocks identical)
    - `packages/web/src/new-engine/styles.ts` — entry-chunk boot-gate styles (render before any token CSS loads; gate surfaces mirror the same frame values)
    - the effects layer — aurora / glass-sheen rgba in `ui/core/src/canvas.css`, `.ht-live-glow` + onboarding effects in `app/src/styles/futuristic.css` (sanctioned effect values, not tokenized)
+   - `ui/showcase/specimens/foundations/effects-parts.ts` — the showcase specimen documenting that effects layer's authored values; it mirrors `canvas.css`, which wins any disagreement
+   - `ui/core/src/color-contrast.ts` — the colour maths: it parses and formats every colour form, so the format strings live there and nowhere else
+   - `agentstore/src/lib/og-card.tsx` — the social share image: a rendered PNG with its own art direction, drawn by next/og without CSS variables
 2. **Use `@houston-ai/core` primitives** (§ inventory). Never invent a parallel component; never import another component library. Search core + the shadcn registry before building.
 3. **Lucide icons only**, `currentColor`, 20px standard (`h-5 w-5`), 16px small, 24px large, stroke 2px. **No emoji as icons, ever.**
 4. **Every screen ships light AND dark** via `[data-theme]`. Pin a subtree with `data-theme="light|dark"` on a wrapper when it must defy the app theme (e.g. the first-run flow pins its calm light setup canvas). Keep the `:not(:where([data-theme="light"], …))` guard on any new dark-scoped descendant rule.

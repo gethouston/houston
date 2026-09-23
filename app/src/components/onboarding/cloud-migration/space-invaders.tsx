@@ -38,9 +38,10 @@ export function SpaceInvaders({ className }: { className?: string }) {
     let best = bestRef.current ?? 0;
     let recordedOver = false;
     let elapsed = 0;
-    // Filled from the canvas's resolved `color` (text-ink) on resize, before the
-    // first draw; the literal is only a pre-resize fallback (dark ink on light).
-    let color = "#0d0d0d";
+    // Read from the canvas's resolved `color` (the `text-ink` utility) on every
+    // resize, so the sprites track the theme. `resize()` below runs
+    // synchronously before the first frame, so this empty start is never drawn.
+    let color = "";
     if (bestRef.current === null) {
       try {
         best = Number(localStorage.getItem(BEST_KEY)) || 0;
@@ -56,7 +57,7 @@ export function SpaceInvaders({ className }: { className?: string }) {
       const cssW = canvas.clientWidth || W;
       canvas.width = Math.round(cssW * dpr);
       canvas.height = Math.round(cssW * (H / W) * dpr);
-      color = getComputedStyle(canvas).color || "#0d0d0d";
+      color = getComputedStyle(canvas).color;
     }
     resize();
     const ro = new ResizeObserver(resize);

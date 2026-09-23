@@ -74,14 +74,16 @@ class ErrorBoundary extends Component<
   }
   render() {
     if (this.state.error) {
+      // The token CSS is a static import of this module (globals.css, below), so
+      // the --ht-* vars are already in the document when the tree crashes.
       return (
         <div
           style={{
             position: "fixed",
             inset: 0,
             padding: 32,
-            background: "#1e1e1e",
-            color: "#ffdddd",
+            background: "var(--ht-base)",
+            color: "var(--ht-ink)",
             fontFamily: "ui-monospace, Menlo, monospace",
             fontSize: 13,
             whiteSpace: "pre-wrap",
@@ -91,7 +93,7 @@ class ErrorBoundary extends Component<
         >
           <h1
             style={{
-              color: "#ff6666",
+              color: "var(--ht-danger)",
               fontSize: 24,
               margin: 0,
               marginBottom: 16,
@@ -99,7 +101,7 @@ class ErrorBoundary extends Component<
           >
             App crashed
           </h1>
-          <p style={{ fontSize: 15, marginBottom: 16, color: "#ffffff" }}>
+          <p style={{ fontSize: 15, marginBottom: 16, color: "var(--ht-ink)" }}>
             {this.state.error.message}
           </p>
           <pre style={{ fontSize: 12, opacity: 0.85 }}>

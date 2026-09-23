@@ -51,7 +51,7 @@ export function AgentPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl h-[80vh] flex flex-col gap-0 p-0 overflow-hidden">
+      <DialogContent className="sm:max-w-xl h-[80dvh] flex flex-col gap-0 p-0 overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
           <DialogTitle>{title ?? t("agentPicker.title")}</DialogTitle>
           <DialogDescription>

@@ -78,32 +78,22 @@ const DEAD_CLASS = new RegExp(
 );
 
 /**
- * Files that predate this guard and still hold a raw colour or a `vh` height.
+ * Files still holding a raw colour, each blocked on a decision rather than on
+ * the work: the two brand-colour maps await a doctrine call (a logo's colour is
+ * the logo, so DESIGN.md §3.1 may claim them), and the operator dashboard
+ * awaits the token CSS reaching the `/admin` entry, which loads its own chunk
+ * and never imports `globals.css`.
  *
  * Not an exemption and not a TODO: the list may only SHRINK. A new offender
  * fails the guard, and a file cleaned without being struck from this list
  * fails it too — so the inventory cannot rot into a permanent allowlist the
- * way a plain ignore file does. Several of these are arguably the effects
- * layer or a brand-mark map and belong in DESIGN.md §3.1 instead; that is a
- * doctrine call, and until it is made they are counted here.
+ * way a plain ignore file does.
  */
 const UNTOKENIZED = [
-  "agentstore/src/lib/export/__fixtures__/example-ir.ts",
-  "agentstore/src/lib/og-card.tsx",
-  "app/src/components/agent-picker-dialog.tsx",
-  "app/src/components/new-mission-picker-dialog.tsx",
-  "app/src/components/onboarding/cloud-migration/offer-screen.tsx",
-  "app/src/components/onboarding/cloud-migration/progress-screen.tsx",
-  "app/src/components/onboarding/cloud-migration/space-invaders.tsx",
-  "app/src/components/onboarding/setup-card.tsx",
   "packages/web/src/admin/sign-in.tsx",
   "packages/web/src/admin/styles.ts",
-  "packages/web/src/app-tree.tsx",
   "ui/chat/src/channel-brand-colors.ts",
   "ui/chat/src/file-type-colors.ts",
-  "ui/core/src/color-contrast.ts",
-  "ui/showcase/specimens/foundations/effects-parts.ts",
-  "ui/store/src/components/skill-list.tsx",
 ];
 
 describe("no dead theme tokens in the app or the ui packages", () => {
@@ -237,5 +227,11 @@ describe("the walker", () => {
     );
     ok(files.some((f) => f.endsWith(".tsx")));
     ok(!files.some((f) => /\.(json|md|svg)$/.test(f)));
+  });
+
+  it("skips __fixtures__, whose data never renders", () => {
+    const files = walk(join(REPO, "agentstore", "src", "lib", "export"));
+    ok(files.length > 0, "the export dir still has sources to walk");
+    ok(!files.some((f) => f.includes("__fixtures__")));
   });
 });

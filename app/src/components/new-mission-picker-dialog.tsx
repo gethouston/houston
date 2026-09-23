@@ -53,7 +53,7 @@ export function NewMissionPickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[80vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+      <DialogContent className="flex h-[80dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
           <DialogTitle>{t("dashboard:skillPicker.title")}</DialogTitle>
           <DialogDescription>

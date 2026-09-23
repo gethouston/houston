@@ -81,7 +81,7 @@ export function SkillList({
         open={active !== null}
         onOpenChange={(open) => !open && setActive(null)}
       >
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-xl">
+        <DialogContent className="max-h-[80dvh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>{active ? displayTitle(active) : null}</DialogTitle>
           </DialogHeader>
