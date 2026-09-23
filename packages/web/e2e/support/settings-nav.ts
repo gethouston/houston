@@ -6,9 +6,10 @@ import { screen } from "./team-nav";
  * Navigating the rail's ANCHORLESS top-level destinations, plus Settings and
  * the sections inside it.
  *
- * The **Assistant** is the one rail row addressed here: it leads the rail's
- * unlabelled run, carries no tour anchor (the tour does not walk it), and is
- * gated on discovery rather than on a role.
+ * Two rail rows are addressed here, both anchorless because the tour walks
+ * neither. The **Assistant** leads the rail's unlabelled run, gated on
+ * discovery rather than on a role; **Skills** closes that run, gated on space
+ * ownership.
  *
  * Everything else here is inside SETTINGS. **Workspace management** is a
  * Settings section (`settings:nav.workspace` = "Workspace management"): it
@@ -17,10 +18,9 @@ import { screen } from "./team-nav";
  * it is discovered through a team's focused agent screen (`team-nav.ts`
  * `openAgentSettings`).
  *
- * The shared **Skills** library is not a Settings section: it is the Skills TAB
- * of the Integrations screen, shown to the space owner. Its two helpers live
- * here because every spec that reaches for them reaches for the Settings ones
- * in the same breath.
+ * The shared **Skills** library is not a Settings section: it is a screen of
+ * its own, shown to the space owner. Its two helpers live here because every
+ * spec that reaches for them reaches for the Settings ones in the same breath.
  *
  * English is forced by the boot seed, so the labels are stable. Settings itself
  * keeps its `nav-settings` anchor.
@@ -128,31 +128,27 @@ export async function openWorkspaceManagement(page: Page): Promise<void> {
 }
 
 /**
- * The Integrations header's Skills lozenge — the door to the shared library
- * every agent in the space draws from. Shown to the SPACE OWNER, because
- * editing a skill edits everyone's agents at once.
+ * The rail's Skills row — the door to the shared library every agent in the
+ * space draws from. Shown to the SPACE OWNER, because editing a skill edits
+ * everyone's agents at once.
  *
- * Addressed by its `data-integrations-tab` id, like Admin's section lozenges,
- * so it survives label changes and matches in either header form (the wide
- * cluster and the narrow switcher's menu both carry it).
+ * By test id, like the AI Manager row and for the same reason: it carries no
+ * tour anchor (the tour does not walk it), and its label is product copy that
+ * moves. The phone's More menu draws the same row with the same attributes.
  */
-export function skillsTab(page: Page): Locator {
-  return screen(page).locator("[data-integrations-tab='skills']");
+export function skillsRow(page: Page): Locator {
+  return page.getByTestId("rail-skills");
 }
 
 /**
- * Open the shared Skills library: the Integrations screen, on its Skills tab.
- * The landing waits on the BODY's `data-integrations-section` marker, not just
- * the lozenge's `aria-current` — the lozenge repaints synchronously on click,
- * so only the body attribute proves the tab actually swapped in before a
- * spec's first assertion runs.
+ * Open the shared Skills library: its own screen, from its own rail row. The
+ * landing waits on the SCREEN marker rather than the row's highlight — the row
+ * repaints synchronously on click, so only the screen attribute proves the
+ * view actually swapped in before a spec's first assertion runs.
  */
 export async function openSkillsLibrary(page: Page): Promise<void> {
-  await page.locator('[data-tour-target="nav-integrations"]').click();
-  await skillsTab(page).click();
-  await expect(
-    screen(page).locator("[data-integrations-section='skills']"),
-  ).toBeVisible();
+  await skillsRow(page).click();
+  await expect(screen(page)).toHaveAttribute("data-screen", "skills-home");
 }
 
 /**

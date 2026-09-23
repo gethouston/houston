@@ -13,14 +13,14 @@ import { screen } from "./support/team-nav";
  *    Covered by `agent-policy.spec.ts`; it is NOT the global Integrations page,
  *    which is always the personal catalog now;
  *  - CATALOG + ACCOUNTS (the caller's personal connected apps) → the global
- *    Integrations page, its landing tab, visible to EVERY role in every mode (a
- *    plain member keeps its nav). The SHARED SKILLS library is the screen's
- *    second tab, behind the space-owner gate (`settings-ia.spec.ts`,
- *    `spaces-gating.spec.ts`). Opening a connected app's detail modal shows info +
- *    reconnect + disconnect ONLY — which agents may use an app is managed in one
- *    place, the agent's own settings page, never here. Settings > Connected
- *    accounts is GONE (no settings row at all; the sidebar nav is the one way
- *    in);
+ *    Integrations page, its one surface, visible to EVERY role in every mode (a
+ *    plain member keeps its nav). The SHARED SKILLS library is a screen of its
+ *    own from its own rail row, behind the space-owner gate
+ *    (`settings-ia.spec.ts`, `spaces-gating.spec.ts`). Opening a connected app's
+ *    detail modal shows info + reconnect + disconnect ONLY — which agents may
+ *    use an app is managed in one place, the agent's own settings page, never
+ *    here. Settings > Connected accounts is GONE (no settings row at all; the
+ *    sidebar nav is the one way in);
  *
  * The per-agent Integrations TAB is GONE with the agent tab shell: connections
  * are the caller's, not an agent's (Composio platform mode), so the global page
@@ -80,8 +80,7 @@ test("Teams member: no Admin dashboard, but the Integrations nav opens the perso
   ).toBeVisible();
 
   // The rail stays put while Settings is open, so the catalog is one click
-  // away. The identity lozenge carries the screen's h1 whether or not the
-  // Skills tab stands beside it.
+  // away, and the identity lozenge carries the screen's h1.
   await integrationsNav.click();
   await expect(
     page.getByRole("heading", { name: "Integrations", exact: true }),

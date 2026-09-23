@@ -27,7 +27,6 @@
     "disconnectChannel": "Disconnect this Slack account from your assistant. It stops reading and answering there.",
     "forgetCredential": "Sign this workspace out of the AI account.",
     "installAgentFromGithub": "Install an AI Employee from a GitHub repository.",
-    "installSkillsFromRepo": "Install skills from a GitHub repository into the AI Employee.",
     "integrations.disconnect": "Disconnect an outside app from your account.",
     "mintRoutineWebhookKey": "Create a fresh key that lets an outside service start this routine. Any key issued before stops working.",
     "moveAgent": "Move this AI Employee into a shared space so teammates can work with it.",

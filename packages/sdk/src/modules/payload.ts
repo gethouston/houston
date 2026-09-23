@@ -27,6 +27,20 @@ export function requireString(payload: unknown, key: string): string {
   return value;
 }
 
+/**
+ * A required boolean off an untrusted command payload.
+ *
+ * Coercing would turn every missing or mistyped flag into `false`, which on a
+ * switch is the OFF side acted on as though the caller had asked for it.
+ */
+export function requireBoolean(payload: unknown, key: string): boolean {
+  const value = field(payload, key);
+  if (typeof value !== "boolean") {
+    throw new Error(`'${key}' must be true or false`);
+  }
+  return value;
+}
+
 /** A required list of non-empty strings (a batch of ids) off that payload. */
 export function requireStrings(payload: unknown, key: string): string[] {
   const value = field(payload, key);

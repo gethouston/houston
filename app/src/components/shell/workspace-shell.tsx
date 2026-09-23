@@ -41,7 +41,7 @@ interface WorkspaceShellProps {
  * panel beside it.
  *
  * Every screen is a top-level view (`topLevelScreenViews`) — Mission Control, a
- * team, Integrations, Skills, the Store, Settings, the AI hub. Agents have no
+ * team, Integrations, Skills, Settings, the AI hub. Agents have no
  * screen of their own: an agent's work is a slice of its TEAM's sections, and
  * configuring one is the agent settings page reached through Team Settings.
  * `lib/agent-nav.ts` owns that translation, so the frame never has to know it,
@@ -63,11 +63,12 @@ export function WorkspaceShell({
   );
   // The gated top-level screens. `showAiModels` keeps a stale `viewMode` from
   // showing the AI Models hub to a plain member (it is owner/admin only in a
-  // Teams workspace: org-level providers + admin model policy), and
-  // `showAssistant` does the same where discovery serves no assistant. `ready`
-  // says whether the gates mean anything yet, so the guard waits instead of
-  // bouncing a user mid-load.
-  const { showAiModels, showAssistant, ready } = useSurfaceGates();
+  // Teams workspace: org-level providers + admin model policy), `showSkills`
+  // does the same for the shared library (a skill edit reaches every agent in
+  // the space, so it is the owner's), and `showAssistant` for a deployment
+  // that serves no assistant. `ready` says whether the gates mean anything
+  // yet, so the guard waits instead of bouncing a user mid-load.
+  const { showAiModels, showAssistant, showSkills, ready } = useSurfaceGates();
   // Keying the kept-alive set by workspace drops every cached screen when the
   // user switches workspace/space: their contents are workspace-scoped.
   const currentWorkspace = useWorkspaceStore((s) => s.current);
@@ -75,6 +76,7 @@ export function WorkspaceShell({
   useWorkspaceViewGuards({
     showAiModels,
     showAssistant,
+    showSkills,
     ready,
   });
   useKeyboardShortcuts();
@@ -135,6 +137,7 @@ export function WorkspaceShell({
                     views={topLevelScreenViews({
                       showAiModels,
                       showAssistant,
+                      showSkills,
                     })}
                   />
                 </div>

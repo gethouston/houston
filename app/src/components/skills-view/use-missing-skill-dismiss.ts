@@ -7,18 +7,18 @@ import { useUIStore } from "../../stores/ui";
 import type {
   ManagedSkillRow,
   SharedDialogActions,
-} from "./manage-skill-dialog-props";
+} from "./skill-editor-props";
 
 /**
  * The one load failure that is NOT a Houston problem: the skill was deleted
  * while its row sat on screen (another window, an agent, a hand on the disk),
  * so the detail GET answers 404 ({@link isMissingSkillError}).
  *
- * A generic "couldn't load this skill's instructions" inside an open dialog
- * reads as a fault worth retrying, and it leaves the dead row on the page
- * behind it. This says the true thing in one calm toast, shuts the dialog
+ * A generic "couldn't load this skill's instructions" inside an open editor
+ * reads as a fault worth retrying, and it leaves the dead row on the list
+ * behind it. This says the true thing in one calm toast, leaves the surface
  * nothing is behind, and refetches the list the row came from so the row goes
- * away with it. Every OTHER load error keeps the dialog open with its inline
+ * away with it. Every OTHER load error keeps the editor open with its inline
  * message, because retrying those is worth the user's time.
  */
 export function useMissingSkillDismiss(args: {

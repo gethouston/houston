@@ -1,30 +1,20 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useCallback, useEffect, useRef } from "react";
 import { useActivity } from "../../hooks/queries";
-import { useConnectedProviders } from "../../hooks/use-connected-providers";
-import { analytics } from "../../lib/analytics";
-import { connectedProviderIds } from "../../lib/connected-providers";
-import { createMission } from "../../lib/create-mission";
 import { skillDisplayTitle } from "../../lib/humanize-skill-name";
 import { logger } from "../../lib/logger";
 import { queryKeys } from "../../lib/query-keys";
-import {
-  encodeSkillModifyMessage,
-  encodeSkillSetupMessage,
-} from "../../lib/skill-chat-prompts";
 import {
   findDraftSkillChatActivities,
   findSkillChatActivity,
   findSkillChatHeal,
   findSkillChatTitleHeal,
   isSkillSetupMode,
-  SKILL_SETUP_AGENT_MODE,
 } from "../../lib/skill-chat-setup";
 import { tauriActivity } from "../../lib/tauri";
 import type { Agent, SkillSummary } from "../../lib/types";
-import { readAgentRunOverrides } from "./routine-run-overrides";
 import { useOrgSkillDefault } from "./use-org-skill-default";
+import { useSkillChatWrites } from "./use-skill-chat-writes";
 
 /**
  * Owns a custom skill's setup chat (HOU-791 — a routine's setup-chat experience
@@ -39,23 +29,15 @@ export function useSkillChatSetup(
   agent: Agent,
   skills: SkillSummary[] | undefined,
 ) {
-  const { t } = useTranslation("skills");
   const path = agent.folderPath;
   const queryClient = useQueryClient();
-  const { data: rawItems } = useActivity(path);
-  const [pending, setPending] = useState(false);
+  const {
+    data: rawItems,
+    isPlaceholderData,
+    isError: activitiesFailed,
+  } = useActivity(path);
+  const writes = useSkillChatWrites(agent);
   const shareNewSkill = useOrgSkillDefault(agent);
-
-  // Which providers the user is actually signed into — the kickoff turn must
-  // run on one of them, never on an agent-configured provider they never
-  // connected (PRODUCT-1236). `null` = could not confirm, so the pin defers to
-  // the stored provider. Held in a ref so the start callbacks read the latest
-  // scan without re-creating on every status refetch.
-  const connectedProvidersRef = useRef<readonly string[] | null>(null);
-  connectedProvidersRef.current = connectedProviderIds(useConnectedProviders());
-
-  const mode = SKILL_SETUP_AGENT_MODE;
-  const missionTitle = t("setupChat.missionTitle");
 
   // Every unlinked, live create-chat for this agent — a person can be
   // building several skills at once.
@@ -117,113 +99,21 @@ export function useSkillChatSetup(
       });
   }, [rawItems, skills, path, queryClient, shareNewSkill]);
 
-  /**
-   * Start a brand-new create-chat. Always creates a fresh one — "Create with
-   * AI" means new, even while other drafts are still unfinished; those stay
-   * put as their own resumable items. Returns the new activity id (or null on
-   * failure) so the caller can open it right away.
-   */
-  const startDraft = useCallback(async () => {
-    if (pending) return null; // a start is already in flight — never double-create
-    setPending(true);
-    try {
-      // The kickoff needs the activity's own id (the agent writes it into the
-      // skill's `setup_activity_id`), so the prompt is built after create.
-      const { conversationId } = await createMission(agent, "", {
-        title: missionTitle,
-        agentMode: mode,
-        // Pin the agent's configured brain onto the kickoff turn, gated on
-        // what the user has actually connected (see helper).
-        ...(await readAgentRunOverrides(path, connectedProvidersRef.current)),
-        // Setup chats always run as Ask first: the interview needs ask_user
-        // (auto strips it) and must never open read-only in Planner.
-        modeOverride: "execute",
-        kickoffPrompt: (activityId) => encodeSkillSetupMessage(activityId),
-      });
-      // createMission bypasses useCreateActivity — refetch so the chat
-      // view's backing activity exists before it tries to render.
-      queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
-      analytics.track("skill_chat_setup_started");
-      return conversationId;
-    } catch {
-      // Every failure path here surfaces via call() (activity create's
-      // read/write, the session send) — a toast here would double up.
-      return null;
-    } finally {
-      setPending(false);
-    }
-  }, [agent, path, pending, queryClient, missionTitle]);
-
-  /**
-   * Start the persistent chat for a skill that doesn't have one yet, and
-   * stamp the durable reverse link so every future open resumes it. (The
-   * forward frontmatter link stays agent-owned; the client never rewrites
-   * SKILL.md, so a concurrent agent edit can't be clobbered.)
-   */
-  const startForSkill = useCallback(
-    async (skill: SkillSummary) => {
-      if (pending) return false; // a start is already in flight — never double-create
-      setPending(true);
-      try {
-        const { conversationId } = await createMission(
-          agent,
-          encodeSkillModifyMessage({
-            slug: skill.name,
-            displayName: skillDisplayTitle(skill),
-          }),
-          {
-            title: skillDisplayTitle(skill),
-            agentMode: mode,
-            // Same brain pin as startDraft, and the same Ask first pin —
-            // setup chats are interactive by design.
-            ...(await readAgentRunOverrides(
-              path,
-              connectedProvidersRef.current,
-            )),
-            modeOverride: "execute",
-          },
-        );
-        try {
-          // The durable direction: agents never rewrite activity.json.
-          await tauriActivity.update(path, conversationId, {
-            skill_slug: skill.name,
-          });
-        } catch (err) {
-          // The chat exists but the link write failed: archive it so it can
-          // never linger as a bogus "draft" row on the Custom tab (the heal's
-          // title-match adoption is a repair, not a license to leak).
-          logger.error(`[skill-chat] link stamp failed, retiring chat: ${err}`);
-          await tauriActivity
-            .update(path, conversationId, { status: "archived" })
-            .catch((cleanupErr) =>
-              logger.error(`[skill-chat] orphan cleanup failed: ${cleanupErr}`),
-            );
-          throw err;
-        }
-        queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
-        return true;
-      } catch {
-        // Every failure path here surfaces via call() (createMission's
-        // read/write/send, the link write) — a toast here would double up.
-        return false;
-      } finally {
-        setPending(false);
-      }
-    },
-    [agent, path, pending, queryClient],
-  );
-
   return {
     draftActivities,
     activityFor,
     activityById,
     /** The raw activity list (claim heuristics need the full picture). */
     activities: rawItems,
-    /** Whether the activity query has resolved (vs. still loading) — lets the
-     *  surface distinguish "no match yet" from "loaded, genuinely no match". */
-    activitiesLoaded: rawItems !== undefined,
-    startDraft,
-    startForSkill,
-    pending,
+    /** Whether that list is this agent's OWN answer. A cold open is served the
+     *  cross-agent conversation cache as a placeholder, whose rows carry no
+     *  `skill_slug` stamp: every claimed chat reads as an unfinished draft
+     *  until the real read lands, so any decision taken on it is taken on a
+     *  list that is about to change. */
+    activitiesSettled: rawItems !== undefined && !isPlaceholderData,
+    /** Whether the read failed outright — settledness never arrives, so a
+     *  surface waiting on it needs to be told to stop waiting. */
+    activitiesFailed,
+    ...writes,
   };
 }

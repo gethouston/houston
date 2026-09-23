@@ -52,10 +52,11 @@ function gatedRuns(source: string): [string, string][] {
 describe("the rail's primary run", () => {
   const primary = navSection("primary");
 
-  it("is Houston, AI Models, and Integrations only", () => {
+  it("is Houston, AI Models, Integrations and Skills only", () => {
     assert.deepEqual(gatedRuns(primary), [
       ["showAssistant", "assistant"],
       ["showAiModels", "aiModels"],
+      ["showSkills", "skills"],
     ]);
     assert.equal(
       primary.match(/\n {10}id: /g)?.length,
@@ -154,16 +155,34 @@ describe("the rail's labelled bands", () => {
     assert.ok(!NAV.includes("TIME_WORKED_VIEW_ID"), "no Time worked row");
   });
 
-  it("leaves Workspace management to Settings and Skills to Integrations", () => {
+  it("leaves Workspace management to Settings and gives Skills its own row", () => {
     // Administering the space is standing setup, so it is a Settings section.
-    // The shared library rides the Integrations row instead, as its Skills
-    // tab: neither is a rail destination of its own.
+    // The shared library is a destination instead: a rail row of its own,
+    // right after Integrations, on the space-owner gate.
     assert.ok(SETTINGS_SECTIONS.includes('"workspace"'));
     assert.ok(!SETTINGS_SECTIONS.includes('"skills"'), "not a section");
     assert.ok(!NAV.includes('label: t("settings:nav.workspace")'));
-    assert.ok(!NAV.includes("SKILLS_VIEW_ID"), "no Skills row");
+    assert.ok(NAV.includes("id: SKILLS_VIEW_ID"), "the Skills row");
+    assert.ok(NAV.includes('label: t("shell:sidebar.skills")'));
+    assert.ok(NAV.includes("onClick: () => setViewMode(SKILLS_VIEW_ID)"));
+    assert.ok(VIEWS.includes("SKILLS_VIEW_ID"), "a real top-level view");
+    // The tour does not walk it, so it carries a test id rather than an
+    // anchor: a target in the union no step spotlights is dead weight.
     assert.ok(!NAV.includes('tourAnchor("nav-skills")'), "no Skills anchor");
-    assert.ok(!VIEWS.includes("SKILLS_VIEW_ID"), "no such top-level view");
+    assert.ok(NAV.includes('"data-testid": "rail-skills"'));
+  });
+
+  it("puts Skills directly after Integrations, on the space-owner gate", () => {
+    const primary = navSection("primary");
+    assert.ok(
+      primary.indexOf("id: INTEGRATIONS_VIEW_ID") <
+        primary.indexOf("showSkills ?"),
+      "Skills follows Integrations",
+    );
+    assert.ok(
+      HOOK.includes("showSkills"),
+      "the hook feeds the gate from useSurfaceGates",
+    );
   });
 });
 

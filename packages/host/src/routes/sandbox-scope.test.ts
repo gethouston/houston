@@ -63,8 +63,6 @@ const ROUTES: readonly [path: string, allowed: boolean][] = [
   ["/sandbox/credential", true],
   ["/sandbox/credential/revoked", true],
   ["/sandbox/provider-usage", true],
-  ["/sandbox/skills/search", false],
-  ["/sandbox/skills/install", false],
   ["/sandbox/routines/save", false],
   ["/sandbox/integrations/search", false],
   ["/sandbox/integrations/execute", false],
@@ -91,7 +89,7 @@ test("an assistant pod's single agent is held to the same scope", () => {
   // On a managed pod the coordinator is an ordinarily-named agent, so the
   // identity comes from the gateway-stamped assistant user id, not the name.
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "owner");
-  expect(callWith("ws/Assistant", "/sandbox/skills/install", true).status).toBe(
+  expect(callWith("ws/Assistant", "/sandbox/routines/save", true).status).toBe(
     403,
   );
   expect(
@@ -101,9 +99,9 @@ test("an assistant pod's single agent is held to the same scope", () => {
 
 test("an ordinary agent's pod is not the assistant, whatever it is named", () => {
   vi.stubEnv("HOUSTON_ASSISTANT_USER_ID", "");
-  expect(
-    callWith("ws/Assistant", "/sandbox/skills/install", true).refused,
-  ).toBe(false);
+  expect(callWith("ws/Assistant", "/sandbox/routines/save", true).refused).toBe(
+    false,
+  );
 });
 
 test("paths outside /sandbox and calls with no token are left to their routes", () => {
@@ -117,8 +115,8 @@ test("paths outside /sandbox and calls with no token are left to their routes", 
   expect(
     refuseOutOfCoordinatorScope(
       { vault },
-      "/sandbox/skills/install",
-      new URL("http://host.invalid/sandbox/skills/install"),
+      "/sandbox/routines/save",
+      new URL("http://host.invalid/sandbox/routines/save"),
       { headers: {} } as unknown as IncomingMessage,
       res,
     ),

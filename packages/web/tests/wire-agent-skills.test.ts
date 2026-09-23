@@ -29,7 +29,7 @@ import {
 const BASE = "http://host";
 const AGENT = "a1";
 
-const { calls, reset, restore, stubFetch } = createWireCapture();
+const { calls, reset, restore, stubFetch, stubRouted } = createWireCapture();
 
 beforeEach(() => {
   installLocalStorage();
@@ -211,6 +211,39 @@ describe("the delegated manifest calls", () => {
     expectGatewayHeaders(calls[0]);
   });
 
+  test("one skill's switch reads the manifest, then writes it back whole", async () => {
+    stubFetch(() => json(200, MANIFEST));
+
+    await expect(
+      client().setSkillEnabled(AGENT, "invoices", true),
+    ).resolves.toEqual(MANIFEST);
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0].method).toBe("GET");
+    expect(calls[0].url).toBe(`${BASE}/agents/${AGENT}/skills-manifest`);
+    expect(calls[1].method).toBe("PUT");
+    expect(calls[1].url).toBe(`${BASE}/agents/${AGENT}/skills-manifest`);
+    // The read's list plus the one slug, sorted: nothing else moves.
+    expect(calls[1].body).toBe(
+      JSON.stringify({ version: 1, enabled: ["invoices", "triage"] }),
+    );
+    expectGatewayHeaders(calls[1]);
+  });
+
+  test("discarding a draft chat is the activity's own archive PATCH", async () => {
+    stubFetch(() => json(200, { id: "act-1", status: "archived" }));
+
+    await expect(
+      client().discardSkillDraft(AGENT, "act-1"),
+    ).resolves.toBeUndefined();
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0].method).toBe("PATCH");
+    expect(calls[0].url).toBe(`${BASE}/agents/${AGENT}/activities/act-1`);
+    expect(calls[0].body).toBe(JSON.stringify({ status: "archived" }));
+    expectGatewayHeaders(calls[0]);
+  });
+
   test("a rejected manifest reaches the caller as the host's 400", async () => {
     stubFetch(() => json(400, { error: "unknown slug" }));
 
@@ -221,6 +254,80 @@ describe("the delegated manifest calls", () => {
     expect(err).toBeInstanceOf(HoustonEngineError);
     expect(err.status).toBe(400);
     expect(err.body).toEqual({ error: "unknown slug" });
+  });
+});
+
+/**
+ * A workspace skill an agent keeps its own copy of takes TWO writes to move:
+ * the manifest entry, and the copy that loads with or without it. The order is
+ * the capability, so the wire proof is the SEQUENCE — the copy is deleted last,
+ * after the entry the agent still needs has landed.
+ */
+describe("the two composed acts on a workspace skill", () => {
+  const trace = () =>
+    calls.map((call) => `${call.method} ${new URL(call.url).pathname}`);
+
+  const manifestThenDelete = (enabled: string[]) =>
+    stubRouted((call) =>
+      call.url.endsWith("/skills-manifest")
+        ? json(200, { version: 1, enabled })
+        : json(200, { ok: true }),
+    );
+
+  test("reverting switches the entry ON, then deletes the agent's copy", async () => {
+    manifestThenDelete([]);
+
+    await client().revertSkillOverride(AGENT, "triage");
+
+    expect(trace()).toEqual([
+      `GET /agents/${AGENT}/skills-manifest`,
+      `PUT /agents/${AGENT}/skills-manifest`,
+      `DELETE /agents/${AGENT}/skills/triage`,
+    ]);
+    expect(calls[1].body).toBe(
+      JSON.stringify({ version: 1, enabled: ["triage"] }),
+    );
+    expectGatewayHeaders(calls[2]);
+  });
+
+  test("disabling switches the entry OFF, then deletes the agent's copy", async () => {
+    manifestThenDelete(["triage"]);
+
+    await client().disableSkillForAgent(AGENT, "triage");
+
+    expect(trace()).toEqual([
+      `GET /agents/${AGENT}/skills-manifest`,
+      `PUT /agents/${AGENT}/skills-manifest`,
+      `DELETE /agents/${AGENT}/skills/triage`,
+    ]);
+    expect(calls[1].body).toBe(JSON.stringify({ version: 1, enabled: [] }));
+  });
+
+  test("an agent that kept no copy of its own is finished, not failed", async () => {
+    stubRouted((call) =>
+      call.url.endsWith("/skills-manifest")
+        ? json(200, { version: 1, enabled: ["triage"] })
+        : json(404, { error: "skill not found" }),
+    );
+
+    await expect(
+      client().disableSkillForAgent(AGENT, "triage"),
+    ).resolves.toBeUndefined();
+  });
+
+  test("a copy that could not be deleted never reports as deleted", async () => {
+    stubRouted((call) =>
+      call.url.endsWith("/skills-manifest")
+        ? json(200, { version: 1, enabled: ["triage"] })
+        : json(403, { error: "read-only" }),
+    );
+
+    const err = await client()
+      .disableSkillForAgent(AGENT, "triage")
+      .catch((e) => e);
+
+    expect(err).toBeInstanceOf(HoustonEngineError);
+    expect(err.status).toBe(403);
   });
 });
 
@@ -257,5 +364,14 @@ describe("off-cloud, where there is no skill backend", () => {
     await expect(
       solo().putSkillsManifest(AGENT, { version: 1, enabled: [] }),
     ).rejects.toThrow("Skills manifests need a host agent.");
+    await expect(solo().setSkillEnabled(AGENT, "triage", true)).rejects.toThrow(
+      "Skills manifests need a host agent.",
+    );
+    await expect(solo().revertSkillOverride(AGENT, "triage")).rejects.toThrow(
+      "Skills manifests need a host agent.",
+    );
+    await expect(solo().disableSkillForAgent(AGENT, "triage")).rejects.toThrow(
+      "Skills manifests need a host agent.",
+    );
   });
 });

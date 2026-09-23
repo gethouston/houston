@@ -80,7 +80,6 @@
   },
   "home": {
     "tabs": {
-      "label": "Integration sections",
       "catalog": "Integrations"
     },
     "searchPlaceholder": "Search integrations",

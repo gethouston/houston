@@ -1,74 +1,69 @@
 import {
-  CATALOG_PLANE_MAX_W,
-  cn,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  Spinner,
   useIsMobile,
 } from "@houston-ai/core";
-import { type ReactNode, useCallback, useRef, useState } from "react";
+import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCapabilities } from "../../hooks/use-capabilities";
+import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { useWorkspaceStore } from "../../stores/workspaces";
-import { PageContainer } from "../shell/page-shell";
-import type {
-  ManagedSkillRow,
-  SharedDialogActions,
-} from "./manage-skill-dialog-props";
+import { effectiveSkillsByPath } from "./effective-skills";
+import { SkillDraftRows } from "./skill-draft-rows";
 import { SkillEditorPage } from "./skill-editor-page";
+import { SkillsListSkeleton, SkillsRetryEmpty } from "./skills-list-states";
 import { SkillsReady } from "./skills-ready";
-import { useGlobalChatFlow } from "./use-global-chat-flow";
-import { useSharedSkills } from "./use-shared-skills";
-import { useSharedSkillsActions } from "./use-shared-skills-actions";
+import { SkillsSurfaceFrame } from "./skills-surface-frame";
+import { useAddExistingSkill } from "./use-add-existing-skill";
+import { useScopedSkillRows } from "./use-scoped-skill-rows";
+import { useSkillCreateFlow } from "./use-skill-create-flow";
 import { useSkillsEditorNav } from "./use-skills-editor-nav";
+import { useSkillsModels } from "./use-skills-models";
 import { useSkillsViewActions } from "./use-skills-view-actions";
-import { useWorkspaceSkills } from "./use-workspace-skills";
+import { useUnfinishedSkillDrafts } from "./use-unfinished-skill-drafts";
 import { useWorkspaceSkillRows } from "./workspace-skill-rows";
 
 /**
- * The shared Skills library: one place to see and manage skills across every
- * agent in the workspace. A shared deployment stores a skill once and agents
- * enable it; elsewhere installs and edits fan out through agent-scoped routes.
+ * The Skills surface, in both of its scopes.
  *
- * A BODY, not a page: it is the Skills tab of the Integrations screen, which
- * owns the header strip and the tools provider around it. Two screens share
- * that frame. The LIST is the library, under the screen's tab cluster
- * (`listHeader`); clicking a skill replaces the whole thing with that skill's
- * EDITOR — its workflow (or markdown) here, its chat in the shell's right
- * panel. The editor brings its OWN strip, whose back arrow returns to the
- * list, so the tab cluster and that back never stand in the same row.
- * "Create skill" opens the guided create chat in the same panel with the list
- * still on the left.
+ * Unscoped it is the workspace LIBRARY: every AI Employee's skills in one
+ * list, each row carrying who holds it. Given an `agent` it is that employee's
+ * own Skills section in the settings rail — the same list, the same states,
+ * the same search and its own "Create skill" menu, narrowed to what that
+ * employee has and standing inside the frame the rail already provides.
+ *
+ * Either way the LIST is the library; clicking a skill replaces it with that
+ * skill's EDITOR — its workflow (or markdown) here, its chat in the shell's
+ * right panel. The editor brings its OWN header, whose back arrow returns the
+ * list. "Create skill" opens the guided create chat in the same panel with the
+ * list still on the left; on an employee's own section it is a menu, whose
+ * second way puts a skill the workspace already holds on that employee.
  */
-export function SkillsBody({ listHeader }: { listHeader: ReactNode }) {
+export function SkillsBody({
+  listHeader,
+  agent,
+}: {
+  listHeader?: ReactNode;
+  /** Scope the surface to ONE AI Employee; omit for the workspace library. */
+  agent?: Agent;
+}) {
   const { t } = useTranslation("skills");
-  const agents = useAgentStore((s) => s.agents);
-  const workspaceId = useWorkspaceStore((s) => s.current?.id ?? null);
-  const { capabilities } = useCapabilities();
-  // Store-backed when the deployment serves the workspace-shared skills store
-  // (ADR 0003); otherwise the copy-based HOU-792 model, unchanged.
-  const sharedMode =
-    capabilities?.sharedSkills === true && workspaceId !== null;
-  const copyModel = useWorkspaceSkills(agents);
-  const sharedModel = useSharedSkills({
-    enabled: sharedMode,
-    workspaceId,
-    agents,
-    listsByPath: copyModel.listsByPath,
-  });
+  const workspaceAgents = useAgentStore((s) => s.agents);
+  const agents = useMemo(
+    () => (agent ? [agent] : workspaceAgents),
+    [agent, workspaceAgents],
+  );
+  const models = useSkillsModels(agents);
+  // The shared store lists every skill it holds, so a scoped surface drops the
+  // ones this employee does not load and points what is left at the copy that
+  // employee runs; the copy-based model is already narrow.
+  const rows = useScopedSkillRows(
+    models.rows,
+    models.listsByPath,
+    agent ?? null,
+  );
   const actions = useSkillsViewActions();
-  const sharedActions = useSharedSkillsActions(workspaceId);
-
-  const rows: ManagedSkillRow[] = sharedMode
-    ? sharedModel.rows
-    : copyModel.rows;
-  const listsByPath = copyModel.listsByPath;
-  const loading = sharedMode
-    ? copyModel.loading || sharedModel.loading
-    : copyModel.loading;
   const [query, setQuery] = useState("");
 
   // The panel COVERS the content below md, so a phone opens the chat on
@@ -81,32 +76,57 @@ export function SkillsBody({ listHeader }: { listHeader: ReactNode }) {
   const onEditSkill = useCallback((slug: string) => {
     openTextRef.current(slug);
   }, []);
-  const chat = useGlobalChatFlow({ agents, listsByPath, onEditSkill });
+  // The chat is fed what each employee RUNS, not just its own copies: a
+  // workspace skill it loads has no copy, and its chat has to find it.
+  const skillsByPath = useMemo(
+    () =>
+      effectiveSkillsByPath({
+        rows: models.rows,
+        listsByPath: models.listsByPath,
+      }),
+    [models.rows, models.listsByPath],
+  );
+  const create = useSkillCreateFlow({
+    agents: workspaceAgents,
+    scopedAgent: agent ?? null,
+    skillsByPath,
+    skillsFailed: models.failed,
+    onEditSkill,
+  });
+  // Reads the UNSCOPED rows: a workspace skill this employee does not have
+  // yet is exactly what the dialog offers, and scoping already dropped it.
+  const addExisting = useAddExistingSkill({
+    agent: agent ?? null,
+    rows: models.rows,
+    shared: models.shared,
+    loading: models.loading,
+    failed: models.failed,
+    onRetry: models.retry,
+  });
   const nav = useSkillsEditorNav({
     rows,
-    rowsLoaded: !loading,
-    openChat: chat.openForSkill,
-    closeChat: chat.close,
+    rowsLoaded: !models.loading,
+    openChat: create.openForSkill,
+    closeChat: create.close,
     autoOpenChat: !isMobile,
   });
   openTextRef.current = nav.openText;
 
-  const { installed, installedCount } = useWorkspaceSkillRows(
+  const { installed, installedCount } = useWorkspaceSkillRows({
     rows,
     query,
-    nav.open,
+    onOpenEditor: nav.open,
+    showAgentStack: agent === undefined,
+  });
+  // A creation chat closed before the skill exists is listed here or nowhere:
+  // setup chats are kept off every mission board. It sits ABOVE the skills as
+  // the thing still being made, out of their count and their search.
+  const drafts = useUnfinishedSkillDrafts(
+    agent ?? null,
+    skillsByPath,
+    create.openActivityId,
   );
-  const sharedProps: SharedDialogActions | undefined =
-    sharedMode && workspaceId !== null
-      ? {
-          workspaceId,
-          onApply: sharedActions.applyShared,
-          onDelete: (row) => sharedActions.deleteShared(row, agents),
-          onRevert: sharedActions.revertOverride,
-          onEnableAll: (row) => sharedActions.enableForAll(row, agents),
-          onPromote: sharedActions.promoteToShared,
-        }
-      : undefined;
+  const frame = agent ? "inline" : "screen";
   const editing = nav.editing;
 
   return (
@@ -116,56 +136,65 @@ export function SkillsBody({ listHeader }: { listHeader: ReactNode }) {
           key={editing.slug}
           row={editing}
           agents={agents}
+          scopedAgent={agent ?? null}
+          frame={frame}
           onApply={actions.applySkillChanges}
           onDeleteEverywhere={actions.deleteSkillEverywhere}
-          shared={sharedProps}
+          shared={models.shared}
           view={nav.view}
           onViewChange={nav.setView}
           onBack={nav.close}
           onOpenChat={
-            !chat.open && editing.agents.length > 0
-              ? () => chat.openForSkill(editing)
+            !create.open && editing.agents.length > 0
+              ? () => create.openForSkill(editing)
               : undefined
           }
         />
       ) : (
-        <div className="flex h-full min-h-0 flex-col">
-          {listHeader}
-          <div
-            data-integrations-section="skills"
-            className="flex-1 overflow-y-auto [scrollbar-gutter:stable]"
-          >
-            <PageContainer width="wide" className="pt-6 pb-10">
-              <div className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}>
-                {agents.length === 0 ? (
-                  <Empty>
-                    <EmptyHeader>
-                      <EmptyTitle>{t("global.noAgentsTitle")}</EmptyTitle>
-                      <EmptyDescription>
-                        {t("global.noAgentsDescription")}
-                      </EmptyDescription>
-                    </EmptyHeader>
-                  </Empty>
-                ) : loading && rows.length === 0 ? (
-                  <div className="flex items-center gap-2 text-ink-muted text-sm">
-                    <Spinner className="size-3.5" />
-                    {t("grid.loading")}
-                  </div>
-                ) : (
-                  <SkillsReady
-                    query={query}
-                    onQueryChange={setQuery}
-                    onCreateWithAi={chat.startCreate}
-                    installed={installed}
-                    installedCount={installedCount}
-                  />
-                )}
-              </div>
-            </PageContainer>
-          </div>
-        </div>
+        <SkillsSurfaceFrame
+          frame={frame}
+          header={listHeader}
+          padClassName="pt-6 pb-10"
+          // The list marker names its scope, so a test can wait for the ONE it
+          // opened while the other scope sits in a kept-alive screen.
+          dataAttrs={{ "data-skills-list": agent ? "agent" : "workspace" }}
+        >
+          {agents.length === 0 ? (
+            <Empty>
+              <EmptyHeader>
+                <EmptyTitle>{t("global.noAgentsTitle")}</EmptyTitle>
+                <EmptyDescription>
+                  {t("global.noAgentsDescription")}
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : models.loading && rows.length === 0 ? (
+            <SkillsListSkeleton />
+          ) : models.failed && rows.length === 0 ? (
+            // Rows that DID land keep the list: a partial read is still the
+            // user's skills, and the failure was already toasted.
+            <SkillsRetryEmpty
+              title={t("global.loadFailedTitle")}
+              description={t("global.loadFailedDescription")}
+              onRetry={models.retry}
+            />
+          ) : (
+            <SkillsReady
+              query={query}
+              onQueryChange={setQuery}
+              onCreateWithChat={create.startChat}
+              onAddExisting={addExisting.start}
+              drafts={
+                <SkillDraftRows drafts={drafts} onOpen={create.openDraft} />
+              }
+              installed={installed}
+              installedCount={installedCount}
+            />
+          )}
+        </SkillsSurfaceFrame>
       )}
-      {chat.node}
+      {create.node}
+      {addExisting.node}
     </>
   );
 }

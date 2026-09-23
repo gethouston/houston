@@ -3,6 +3,20 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v99 - 2026-09-23
+
+A skill row opens that skill's full-page editor in place of the list: no
+modal, and no Store / Custom tab strip. The workspace library's rows carry
+the holders' stack and the shared chip; an employee's own scoped list carries
+neither. The same row, with one "Add" action, is the add-an-existing-skill
+list that loads a workspace skill onto an employee.
+
+## v98 - 2026-09-23
+
+The skill workflow panel has one home: the skill's own page, which opens on it.
+The raw markdown is the page's other reading, reached from the header's
+Workflow / Text control, and a skill with no parsed procedure opens on the text.
+
 ## v97 - 2026-09-23
 
 A mission card wears a tag pill for work the user did not type: a routine's

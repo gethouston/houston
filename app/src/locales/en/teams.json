@@ -1,6 +1,6 @@
 {
   "agentAdmin": {
-    "title": "AI Employee settings",
+    "title": "Settings",
     "rows": {
       "knowledge": {
         "title": "Learnings"
@@ -53,7 +53,7 @@
     }
   },
   "agentSettings": {
-    "railLabel": "AI Employee settings sections",
+    "railLabel": "Settings sections",
     "manage": {
       "sectionTitle": "Settings",
       "identity": "Change color & name",
@@ -528,7 +528,7 @@
       "onlyTeamDeleteDescription": "This is your only team, so it can't be deleted."
     },
     "agentTabs": {
-      "settings": "AI Employee settings"
+      "settings": "Settings"
     },
     "archive": {
       "open": "Archived",

@@ -10,6 +10,8 @@ import { AiHubView } from "../ai-hub/ai-hub-view";
 import { ASSISTANT_VIEW_ID, AssistantView } from "../assistant";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
 import { SettingsView } from "../settings/settings-view";
+import { SKILLS_VIEW_ID } from "../skills-view/id";
+import { SkillsPage } from "../skills-view/skills-page";
 import { TeamView } from "../team-view/team-view";
 import { TEAMS_HOME_VIEW_ID } from "../teams-home/id";
 import { TeamsHomeView } from "../teams-home/teams-home-view";
@@ -19,9 +21,12 @@ import type { KeepAliveView } from "./keep-alive-views";
  * The cached top-level screens, separated from the shell's agent-tab chrome.
  *
  * The Academy is ungated: learning the product exists in every deployment.
- * Settings carries its own sections — About me, Workspace management (which
- * holds everything that administers the space) and the shared Skills library
- * (`lib/settings-sections.ts`).
+ * Settings carries its own sections — About me and Workspace management, which
+ * holds everything that administers the space (`lib/settings-sections.ts`).
+ *
+ * The shared Skills library is its own screen, gated like the rail row that
+ * opens it: a skill edit reaches every agent in the space, so the surface
+ * belongs to whoever owns it.
  *
  * Agent policy is reached through each team's focused agent screen, and the
  * space's own administration through Settings, so neither owns a screen here.
@@ -33,6 +38,7 @@ import type { KeepAliveView } from "./keep-alive-views";
 export function topLevelScreenViews(gates: {
   showAiModels: boolean;
   showAssistant: boolean;
+  showSkills: boolean;
 }): KeepAliveView[] {
   return [
     // The app's landing screen, and the Agents tab's root on the phone.
@@ -56,6 +62,7 @@ export function topLevelScreenViews(gates: {
       enabled: true,
       content: <IntegrationsView />,
     },
+    { id: SKILLS_VIEW_ID, enabled: gates.showSkills, content: <SkillsPage /> },
     { id: TEAM_VIEW_ID, enabled: true, content: <TeamView /> },
   ];
 }

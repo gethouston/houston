@@ -35,10 +35,6 @@ export const GROUP_PHASES = {
   "pod-activity": "user",
   metrics: "user",
   feedback: "user",
-  // The GitHub repo listing answers top-level for direct API callers; the
-  // shipped clients call the agent-scoped twin (routes/skills-remote.ts) so the
-  // hosted gateway can proxy it.
-  "skills-repo-list": "user",
   "shared-skills": "user",
   account: "user",
   "portable-account": "user",
@@ -82,7 +78,6 @@ export const GROUP_PHASES = {
   "agent-file": "agent",
   "skills-manifest": "agent",
   skills: "agent",
-  "skills-remote": "agent",
   "workspace-files": "agent",
   attachments: "agent",
   "portable-preview": "agent",

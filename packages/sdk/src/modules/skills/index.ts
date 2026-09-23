@@ -1,12 +1,11 @@
 /**
  * The skills module — everything a skill can be reached by, under one facade.
  *
- * A skill is a procedure an agent follows. Three families share the name and
+ * A skill is a procedure an agent follows. Two families share the name and
  * little else, so the facade keeps them apart rather than flattening them:
  * `sdk.skills.agent` is one agent's OWN skills (its `.agents/skills/` plus the
- * manifest saying which of them are switched on), `sdk.skills.shared` the
- * workspace-wide library every agent in a space can draw from, and
- * `sdk.skills.repo` installing a GitHub repository's.
+ * manifest saying which of them are switched on), and `sdk.skills.shared` the
+ * workspace-wide library every agent in a space can draw from.
  *
  * These are pure commands: a skills screen opens them, reads once, and writes
  * from a form. No host event invalidates them and no surface renders them
@@ -21,32 +20,23 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import {
+  createActivitiesHttp,
+  createActivitiesWrites,
+} from "../activities/http";
 import { moduleScope } from "../http";
 import { requireString } from "../payload";
 import {
-  createSkill,
-  deleteSkill,
-  getSkillsManifest,
-  listSkills,
-  loadSkill,
-  putSkillsManifest,
-  saveSkill,
-} from "./agent-skills";
+  type AgentSkillsFacade,
+  createAgentSkillsFacade,
+  registerAgentSkillCommands,
+} from "./agent-facade";
+import { createSkillDraftWrites, type SkillDraftWrites } from "./drafts-writes";
 import { createSharedSkills } from "./shared-skills";
-import { createSkillsRepo } from "./skills-repo";
-import {
-  AgentSkillsCommand,
-  AgentSkillsHttpError,
-  type NewSkill,
-  requireManifest,
-  requireNewSkill,
-  type SkillDetail,
-  type SkillSummary,
-  type SkillsManifest,
-} from "./types-agent";
+import { AgentSkillsCommand, AgentSkillsHttpError } from "./types-agent";
 import type { SharedSkillsModule } from "./types-shared";
-import type { SkillsRepo } from "./types-skills-repo";
 
+export type { AgentSkillsFacade } from "./agent-facade";
 export type {
   HostSkillSummary,
   NewSkill,
@@ -61,84 +51,29 @@ export {
   AgentSkillsHttpError,
 } from "./types-agent";
 
-/** One agent's own skills and its manifest. Every call throws on a non-2xx. */
-export interface AgentSkillsFacade {
-  /** The skills this agent can follow, summaries only. */
-  listSkills(agentId: string): Promise<SkillSummary[]>;
-  /** One skill's full detail, including its instructions. */
-  loadSkill(agentId: string, slug: string): Promise<SkillDetail>;
-  /** Add a skill to this agent. No body on success. */
-  createSkill(agentId: string, body: NewSkill): Promise<void>;
-  /** Overwrite a skill's instructions in place — no earlier copy is kept. */
-  saveSkill(agentId: string, slug: string, content: string): Promise<void>;
-  /** Remove a skill from this agent. */
-  deleteSkill(agentId: string, slug: string): Promise<void>;
-  /** Which of this agent's skills are switched on. */
-  getSkillsManifest(agentId: string): Promise<SkillsManifest>;
-  /** Replace the whole enabled list; echoes what the host stored. */
-  putSkillsManifest(
-    agentId: string,
-    manifest: SkillsManifest,
-  ): Promise<SkillsManifest>;
-}
-
 /** The typed facade for every skill family. */
-export interface SkillsModule {
+export interface SkillsModule extends SkillDraftWrites {
   /** One agent's own skills (`.agents/skills/`) and its manifest. */
   agent: AgentSkillsFacade;
   /** The workspace-wide library every agent in a space can draw from. */
   shared: SharedSkillsModule;
-  /** A GitHub repository's skills, and installing one onto an agent. */
-  repo: SkillsRepo;
 }
 
 export function createSkillsModule(ctx: ModuleContext): SkillsModule {
-  const scope = moduleScope(ctx, "skills", AgentSkillsHttpError);
-
-  const agent: AgentSkillsFacade = {
-    listSkills: (agentId) => listSkills(scope, agentId),
-    loadSkill: (agentId, slug) => loadSkill(scope, agentId, slug),
-    createSkill: (agentId, body) => createSkill(scope, agentId, body),
-    saveSkill: (agentId, slug, content) =>
-      saveSkill(scope, agentId, slug, content),
-    deleteSkill: (agentId, slug) => deleteSkill(scope, agentId, slug),
-    getSkillsManifest: (agentId) => getSkillsManifest(scope, agentId),
-    putSkillsManifest: (agentId, manifest) =>
-      putSkillsManifest(scope, agentId, manifest),
-  };
-
-  ctx.registerCommand(AgentSkillsCommand.List, (p) =>
-    agent.listSkills(requireString(p, "agentId")),
+  const agent = createAgentSkillsFacade(
+    moduleScope(ctx, "skills", AgentSkillsHttpError),
   );
-  ctx.registerCommand(AgentSkillsCommand.Load, (p) =>
-    agent.loadSkill(requireString(p, "agentId"), requireString(p, "slug")),
+  registerAgentSkillCommands(ctx, agent);
+  // A creation chat is a conversation on the agent's board, so throwing one
+  // away is the board's own archive write.
+  const drafts = createSkillDraftWrites(
+    createActivitiesWrites(createActivitiesHttp(ctx)),
   );
-  ctx.registerCommand(AgentSkillsCommand.Create, (p) =>
-    agent.createSkill(requireString(p, "agentId"), requireNewSkill(p, "body")),
-  );
-  ctx.registerCommand(AgentSkillsCommand.Save, (p) =>
-    agent.saveSkill(
+  ctx.registerCommand(AgentSkillsCommand.DiscardDraft, (p) =>
+    drafts.discardSkillDraft(
       requireString(p, "agentId"),
-      requireString(p, "slug"),
-      requireString(p, "content"),
+      requireString(p, "activityId"),
     ),
   );
-  ctx.registerCommand(AgentSkillsCommand.Delete, (p) =>
-    agent.deleteSkill(requireString(p, "agentId"), requireString(p, "slug")),
-  );
-  ctx.registerCommand(AgentSkillsCommand.GetManifest, (p) =>
-    agent.getSkillsManifest(requireString(p, "agentId")),
-  );
-  ctx.registerCommand(AgentSkillsCommand.PutManifest, (p) =>
-    agent.putSkillsManifest(
-      requireString(p, "agentId"),
-      requireManifest(p, "manifest"),
-    ),
-  );
-
-  return {
-    agent,
-    shared: createSharedSkills(ctx),
-    repo: createSkillsRepo(ctx),
-  };
+  return { agent, shared: createSharedSkills(ctx), ...drafts };
 }

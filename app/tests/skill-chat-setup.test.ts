@@ -518,62 +518,73 @@ describe("skill chat setup message", () => {
 });
 
 /**
- * The agent's Skills section has exactly ONE writable door: the per-agent
- * manage dialog (HOU-792). The raw `SkillEditModal` chain that used to sit
- * beside it is gone — nothing opened it any more, so a second, invisible way
- * to rewrite a skill's markdown lingered behind a state no caller could set.
+ * An AI Employee's Skills section IS the workspace Skills surface, scoped: it
+ * mounts `SkillsBody` with that employee, so there is exactly one list, one
+ * set of states and one writable door — the full-page skill editor.
  *
  * Pinned on the source because the claim is about which surfaces EXIST, which
  * no render of a reachable surface can show.
  */
-describe("the agent Skills section's one writable door", () => {
+describe("the agent Skills section is the shared surface, scoped", () => {
   const read = (p: string) =>
     readFileSync(new URL(`../src/components/${p}`, import.meta.url), "utf8");
-  const content = read("agent/skills-content.tsx");
-  const dialogs = read("agent/skills-content-dialogs.tsx");
-  const surface = read("agent/use-skill-surface.ts");
-  const props = read("agent/skills-content-props.ts");
+  const section = read("agent/agent-admin/agent-admin-skills.tsx");
+  const body = read("skills-view/skills-view.tsx");
+  const controls = read("skills-view/skills-controls.tsx");
 
-  it("routes every writable path to the manage dialog", () => {
-    // A strip row, the Custom tab's workspace row, and the setup chat's
-    // "Edit manually" all open the same slug-resolving dialog.
-    ok(/useInstalledSkillsStrip\(\s*skills,\s*setManagingSlug,/.test(content));
-    ok(content.includes("onManageSkill: setManagingSlug"));
-    ok(content.includes("onEditSkill: setManagingSlug"));
-    ok(dialogs.includes("<AgentSkillManageDialog"));
+  it("mounts the shared body with the agent as its scope", () => {
+    ok(section.includes("<SkillsBody"), "renders the shared body");
+    ok(section.includes("agent={agent}"), "scoped to this employee");
+    ok(
+      !section.includes("CatalogShell"),
+      "the section builds no catalog of its own",
+    );
   });
 
-  it("keeps no raw-markdown editor beside it", () => {
+  it("carries no title of its own — the settings rail already names it", () => {
+    ok(!section.includes("PageHero"), "no hero above the section's tools row");
+    ok(!section.includes("listHeader"), "the body draws the section itself");
+  });
+
+  it("keeps no second list, tile strip or manage dialog", () => {
     for (const [name, src] of [
-      ["skills-content", content],
-      ["skills-content-dialogs", dialogs],
-      ["skills-content-props", props],
-      ["use-skill-surface", surface],
+      ["agent-admin-skills", section],
+      ["skills-view", body],
     ] as const) {
-      ok(!src.includes("SkillEditModal"), `${name} must not mount the modal`);
-      ok(!src.includes("editingSkill"), `${name} must keep no editing state`);
+      ok(
+        !src.includes("useInstalledSkillsStrip"),
+        `${name} must not rebuild the tile strip`,
+      );
+      ok(
+        !src.includes("ManageSkillDialog"),
+        `${name} must not reopen the manage dialog`,
+      );
     }
   });
 
-  it("leaves the content mutations to that dialog's own actions", () => {
-    // `useSkillSurface` reads the list and installs; saving and deleting a
-    // skill belong to `useSkillsViewActions` behind the manage dialog.
-    ok(!surface.includes("useSaveSkill"));
-    ok(!surface.includes("useDeleteSkill"));
-    ok(surface.includes("useSkills("));
-  });
-
-  it("offers no skills.sh community browse", () => {
-    // The skills.sh marketplace is gone: a skill arrives from the agent-guided
-    // create chat, a GitHub repo, from scratch, the workspace store, or another
-    // of the user's agents. Nothing here may reach a community directory again.
+  it("offers no remote skill import", () => {
+    // Skills arrive from the guided create chat or from the workspace store.
+    // Nothing here may reach a GitHub repo or a community directory again.
     for (const [name, src] of [
-      ["skills-content", content],
-      ["skills-content-props", props],
-      ["use-skill-surface", surface],
+      ["agent-admin-skills", section],
+      ["skills-view", body],
+      ["skills-controls", controls],
     ] as const) {
       ok(!src.includes("Community"), `${name} must not touch community skills`);
       ok(!src.includes("Marketplace"), `${name} must mount no marketplace`);
+      ok(!src.includes("Repo"), `${name} must not import from a repo`);
+      ok(!src.includes("Github"), `${name} must carry no GitHub affordance`);
     }
+  });
+
+  it("gives the scoped surface the second way in, and the library one button", () => {
+    // The library stands on no employee, so it has nothing to add a skill TO
+    // and its control stays a single button.
+    ok(controls.includes("onAddExisting === undefined"), "the library's fork");
+    ok(controls.includes('t("global.createMenu.addExisting")'));
+    ok(
+      body.includes("useAddExistingSkill"),
+      "the surface wires the add-existing flow",
+    );
   });
 });

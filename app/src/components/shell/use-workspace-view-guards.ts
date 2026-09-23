@@ -28,7 +28,8 @@ import {
  *    own during the read.
  * 2. **The open view must exist.** Every screen is a top-level view now, so a
  *    `viewMode` no screen answers to, a view this caller's gates hide (the AI
- *    Models hub for a plain member, Admin for anyone but an owner/admin of a
+ *    Models hub for a plain member, the shared Skills library for anyone but
+ *    the space's owner, Admin for anyone but an owner/admin of a
  *    team space, the assistant where discovery hands out no address), or a team
  *    that stopped existing under an open team view all fall through every render
  *    branch and strand the user on a blank card. Each goes home. Two cases WAIT
@@ -46,10 +47,11 @@ import {
 export function useWorkspaceViewGuards(gates: {
   showAiModels: boolean;
   showAssistant: boolean;
+  showSkills: boolean;
   /** False while the reads behind the gates are still loading. */
   ready: boolean;
 }): void {
-  const { showAiModels, showAssistant, ready } = gates;
+  const { showAiModels, showAssistant, showSkills, ready } = gates;
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const openTeamView = useUIStore((s) => s.openTeamView);
@@ -93,6 +95,7 @@ export function useWorkspaceViewGuards(gates: {
       viewMode,
       showAiModels,
       showAssistant,
+      showSkills,
       gatesReady: ready,
       teams,
       activeTeamId,
@@ -110,6 +113,7 @@ export function useWorkspaceViewGuards(gates: {
     setViewMode,
     showAiModels,
     showAssistant,
+    showSkills,
     teams,
     viewMode,
   ]);

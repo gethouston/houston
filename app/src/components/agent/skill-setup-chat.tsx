@@ -1,6 +1,6 @@
 import type { Activity } from "@houston/engine-adapter";
-import { Button } from "@houston-ai/core";
-import { Loader2, X } from "lucide-react";
+import { Button, Spinner } from "@houston-ai/core";
+import { X } from "lucide-react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
@@ -35,6 +35,9 @@ interface Props {
    *  the editor's Text view beside the chat on the Skills library, the edit
    *  modal on the per-agent surface. Only offered on an installed skill's chat. */
   onEditManually?: () => void;
+  /** Throw this unfinished chat away and start over on a fresh one. Only
+   *  offered on a draft that exists (nothing to discard before it does). */
+  onDiscardDraft?: () => void;
 }
 
 /**
@@ -60,6 +63,7 @@ export function SkillSetupChat({
   skillSlug,
   onClose,
   onEditManually,
+  onDiscardDraft,
 }: Props) {
   const { t } = useTranslation("skills");
   const { panelContainer, setPanelOpen } = useShellDetailPanel();
@@ -118,14 +122,14 @@ export function SkillSetupChat({
               type="button"
               onClick={onClose}
               aria-label={t("setupChat.close")}
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink"
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
             >
               <X className="size-4" strokeWidth={1.75} />
             </button>
           </div>
         </div>
         <div className="flex min-h-0 flex-1 items-center justify-center gap-2 text-ink-muted">
-          <Loader2 className="size-4 animate-spin" />
+          <Spinner className="size-4" />
           <span className="text-sm">{t("setupChat.opening")}</span>
         </div>
       </div>
@@ -137,12 +141,17 @@ export function SkillSetupChat({
 
   const sessionKey = activity.session_key ?? `activity-${activity.id}`;
 
-  // The manual editor stays one click away — always visible in the header,
-  // never behind a menu (no hover-only affordances).
-  const editManuallyButton =
+  // The manual editor and the way out of an unfinished chat stay one click
+  // away — always visible in the header, never behind a menu (no hover-only
+  // affordances).
+  const headerActions =
     kind === "skill" && onEditManually ? (
       <Button variant="outline" size="sm" onClick={onEditManually}>
         {t("setupChat.editManually")}
+      </Button>
+    ) : kind === "draft" && onDiscardDraft ? (
+      <Button variant="outline" size="sm" onClick={onDiscardDraft}>
+        {t("setupChat.discardDraft")}
       </Button>
     ) : undefined;
 
@@ -157,8 +166,10 @@ export function SkillSetupChat({
         sessionKey={sessionKey}
         panelContainer={isActive ? panelContainer : null}
         missionLabel={missionLabel}
-        panelActions={editManuallyButton}
+        panelActions={headerActions}
         onPanelClose={onClose}
+        // Beside the editor the user may already be renaming or typing.
+        disableComposerAutoFocus={kind === "skill"}
         // Every send re-asserts which skill this chat manages — the model
         // must never have to remember it from the kickoff alone (it was
         // observed asking "which skill?" inside a skill's own chat).

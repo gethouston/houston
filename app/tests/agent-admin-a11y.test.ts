@@ -36,14 +36,10 @@ describe("Agent Settings a11y", () => {
     const learnings = read(
       "../src/components/agent/agent-admin/agent-admin-knowledge.tsx",
     );
-    const skills = read(
-      "../src/components/agent/agent-admin/agent-admin-skills.tsx",
-    );
     ok(sections.includes("<PageHero"), "shared sections use PageHero");
     ok(sections.includes("level={2}"), "shared hero is an h2");
     ok(people.includes("<PageHero"), "People uses PageHero");
     ok(learnings.includes("<PageHero"), "Learnings uses PageHero");
-    ok(skills.includes("<PageHero"), "Skills uses PageHero");
     ok(
       people.includes("titleId={titleId}"),
       "People hero exposes its title id",
@@ -51,6 +47,29 @@ describe("Agent Settings a11y", () => {
     ok(
       peopleSection.includes("titleId={headingId}"),
       "People hero names its radios",
+    );
+  });
+
+  it("Skills opens on its tools row, with no hero of its own", () => {
+    // The Skills section IS the workspace Skills surface scoped to this
+    // employee, and the settings rail already names the place the user opened:
+    // a hero here would repeat that title above the section's own search.
+    const skills = read(
+      "../src/components/agent/agent-admin/agent-admin-skills.tsx",
+    );
+    ok(!skills.includes("PageHero"), "no second title over the surface");
+    ok(skills.includes("<SkillsBody"), "the shared surface is the section");
+  });
+
+  it("a skill opened from the rail titles itself below that lozenge", () => {
+    // The editor replaces the section in place, and the rail's own lozenge is
+    // already the screen's h1 — the skill's name is the level beneath it.
+    const header = read(
+      "../src/components/skills-view/skill-editor-header.tsx",
+    );
+    ok(
+      /level=\{frame === "inline" \? 2 : 1\}/.test(header),
+      "the editable title takes its heading level from the frame",
     );
   });
 });

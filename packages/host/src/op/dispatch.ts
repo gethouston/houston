@@ -60,7 +60,6 @@ export async function dispatchAgentOp(opts: {
   workspacesRoot: string;
   agentId: string;
   request: AgentOpRequest;
-  fetchImpl?: typeof fetch;
   /** Wired for custom-integration ops (see op/handler-chain.ts). */
   customIntegrations?: CustomIntegrationManager;
   /** The handlers' file port, rooted at `workspacesRoot`. Default: the real
@@ -124,7 +123,6 @@ export async function dispatchAgentOp(opts: {
           ? { actingAuthor: opts.request.actingAuthor }
           : {}),
         triggersEnabled: opts.request.triggersEnabled,
-        ...(opts.fetchImpl ? { fetchImpl: opts.fetchImpl } : {}),
         ...(opts.customIntegrations
           ? { customIntegrations: opts.customIntegrations }
           : {}),

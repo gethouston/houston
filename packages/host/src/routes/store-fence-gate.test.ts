@@ -45,16 +45,13 @@ describe("isFencedWrite", () => {
     expect(isFencedWrite("POST", "/feedback", "agents")).toBe(false);
   });
 
-  it("gates the runtime's routine/learning/mission/skill saves only", () => {
+  it("gates the runtime's routine/learning/mission saves only", () => {
     expect(isFencedWrite("POST", "/sandbox/routines", "sandbox")).toBe(true);
     expect(isFencedWrite("PATCH", "/sandbox/routines/r1", "sandbox")).toBe(
       true,
     );
     expect(isFencedWrite("POST", "/sandbox/learnings", "sandbox")).toBe(true);
     expect(isFencedWrite("POST", "/sandbox/missions/start", "sandbox")).toBe(
-      true,
-    );
-    expect(isFencedWrite("POST", "/sandbox/skills/install", "sandbox")).toBe(
       true,
     );
     // The credential serve and the integration proxy never touch the tree.

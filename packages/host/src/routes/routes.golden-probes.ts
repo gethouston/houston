@@ -51,7 +51,6 @@ export const USER_PROBES: string[] = [
   "GET /activity",
   "GET /metrics",
   "POST /feedback",
-  "POST /v1/skills/repo/list",
   "GET /v1/workspaces/:workspaceId/shared-skills",
   "GET /v1/workspaces/:workspaceId/shared-skills/:slug",
   "POST /v1/workspaces/:workspaceId/shared-skills",

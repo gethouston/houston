@@ -12,7 +12,6 @@ import { handlePortablePreview } from "../routes/portable-preview";
 import type { Answer } from "../routes/registry/types";
 import { handleSkills } from "../routes/skills";
 import { handleSkillsManifest } from "../routes/skills-manifest";
-import { handleSkillsRemote } from "../routes/skills-remote";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
 import type { Vfs } from "../vfs";
@@ -27,7 +26,6 @@ export interface AgentOpChainDeps {
   actingSub?: string;
   actingAuthor?: ActivityContributor;
   triggersEnabled: boolean;
-  fetchImpl?: typeof fetch;
   /** Wired for custom-integration ops only (a per-op manager over the
    *  hydrated definitions file + the gateway's secret store). */
   customIntegrations?: CustomIntegrationManager;
@@ -100,18 +98,6 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
       req,
       res,
       deps.emit,
-    ),
-  "skills-remote": (deps, method, rest, req, res) =>
-    handleSkillsRemote(
-      deps.vfs,
-      deps.paths,
-      deps.ctx,
-      method,
-      rest,
-      req,
-      res,
-      deps.emit,
-      deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {},
     ),
   // Files (list/read/download/archive/import/move/rename/folder): the Files
   // tab, byte-identical to the pod.

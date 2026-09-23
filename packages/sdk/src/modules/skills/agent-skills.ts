@@ -1,7 +1,7 @@
 /**
  * The per-AGENT skill REST calls — the skills that live in one agent's own
- * `.agents/skills/`, plus that agent's skills manifest — over the injected
- * `fetch`.
+ * `.agents/skills/` — over the injected `fetch`. That agent's manifest, which
+ * says which of its skills are switched on, is {@link ./agent-manifest}.
  *
  * These are control-plane routes proxied to the agent's pod
  * (`/agents/:id/skills*`): the runtime client does not serve them, so the module
@@ -19,7 +19,6 @@ import {
   type NewSkill,
   type SkillDetail,
   type SkillSummary,
-  type SkillsManifest,
   toClientSummary,
 } from "./types-agent";
 
@@ -132,48 +131,4 @@ export async function deleteSkill(
     `/agents/${encodeURIComponent(agentId)}/skills/${encodeURIComponent(slug)}`,
     { method: "DELETE" },
   );
-}
-
-/**
- * Reads which of an agent's skills are switched on.
- * @param agentId The agent this acts on, by the id listAgents returns. An
- *   agent's name is not its id, so read the id from listAgents first.
- * @assistant group:skills
- */
-export async function getSkillsManifest(
-  scope: HttpScope,
-  agentId: string,
-): Promise<SkillsManifest> {
-  const res = await httpRequest(
-    scope,
-    `/agents/${encodeURIComponent(agentId)}/skills-manifest`,
-  );
-  return (await res.json()) as SkillsManifest;
-}
-
-/**
- * Chooses which of an agent's skills are switched on.
- *
- * @param agentId The agent this acts on, by the id listAgents returns. An
- *   agent's name is not its id, so read the id from listAgents first.
- * @param manifest The complete enabled skill list. Every omitted skill is
- *   disabled. Read getSkillsManifest first and send the full revised
- *   manifest.
- * @assistant group:skills
- * @assistant confirm: outward. It replaces the whole list, so every skill left out of it is switched off in the same call.
- */
-export async function putSkillsManifest(
-  scope: HttpScope,
-  agentId: string,
-  manifest: SkillsManifest,
-): Promise<SkillsManifest> {
-  const res = await httpRequest(
-    scope,
-    `/agents/${encodeURIComponent(agentId)}/skills-manifest`,
-    {
-      method: "PUT",
-      body: JSON.stringify(manifest),
-    },
-  );
-  return (await res.json()) as SkillsManifest;
 }

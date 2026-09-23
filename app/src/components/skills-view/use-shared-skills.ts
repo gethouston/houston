@@ -31,6 +31,11 @@ export function useSharedSkills(args: {
   rows: SharedSkillRow[];
   sharedSlugs: Set<string>;
   loading: boolean;
+  /** The store read (or an agent's manifest) did not answer. Already toasted
+   *  and reported at the call — the surface only says it. */
+  failed: boolean;
+  /** Read the store and every manifest again. */
+  retry: () => void;
 } {
   const { enabled, workspaceId, agents, listsByPath } = args;
   const shared = useQuery({
@@ -42,13 +47,18 @@ export function useSharedSkills(args: {
   });
 
   // Gated on the roster having settled for the current space, and with the
-  // agent-gone 404 / not-readable 403 silenced — same contract as the per-agent hook
-  // (`use-agent-shared-skills`): a space switch or a stale roster must not
-  // turn this fan-out into a storm of red "agent not found" toasts
-  // (HOUSTON-APP-544). A gone agent's row simply carries no manifest, and the
-  // heal below removes it from the roster.
+  // agent-gone 404 / not-readable 403 silenced: a space switch or a stale
+  // roster must not turn this fan-out into a storm of red "agent not found"
+  // toasts (HOUSTON-APP-544). A gone agent's row simply carries no manifest,
+  // and the heal below removes it from the roster.
   const rosterSettled = useAgentStore(agentRosterSettled);
-  const { manifests, manifestsLoading, agentGone } = useQueries({
+  const {
+    manifests,
+    manifestsLoading,
+    manifestsFailed,
+    agentGone,
+    retryManifests,
+  } = useQueries({
     queries:
       enabled && rosterSettled
         ? agents.map((agent) => ({
@@ -64,7 +74,13 @@ export function useSharedSkills(args: {
     combine: (results) => ({
       manifests: results.map((r) => r.data?.enabled),
       manifestsLoading: results.some((r) => r.isLoading),
+      manifestsFailed: results.some(
+        (r) => r.isError && !isStaleRosterReadError(r.error),
+      ),
       agentGone: results.some((r) => isStaleRosterReadError(r.error)),
+      retryManifests: () => {
+        for (const result of results) void result.refetch();
+      },
     }),
   });
   useStaleRosterHeal(agentGone);
@@ -97,5 +113,10 @@ export function useSharedSkills(args: {
     rows,
     sharedSlugs,
     loading: enabled && (shared.isLoading || manifestsLoading),
+    failed: enabled && (shared.isError || manifestsFailed),
+    retry: () => {
+      void shared.refetch();
+      retryManifests();
+    },
   };
 }

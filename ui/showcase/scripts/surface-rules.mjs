@@ -51,6 +51,7 @@ export const SURFACE_RULES = {
   "app/src/components/agent/webhook-": "Routines",
 
   "app/src/components/skill-": "Skills",
+  "app/src/components/skills-view/": "Skills",
   "app/src/components/selected-skill-": "Skills",
   "app/src/components/user-skill-": "Skills",
   "app/src/components/agent/skill": "Skills",

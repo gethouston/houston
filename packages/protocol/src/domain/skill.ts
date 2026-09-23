@@ -80,15 +80,3 @@ export interface SkillsManifest {
   /** Shared skill slugs this agent loads (sorted, deduped). */
   enabled: string[];
 }
-
-/** A skill discovered in a GitHub repo (one per SKILL.md found). */
-export interface RepoSkill {
-  /** The install slug — the SKILL.md's frontmatter name or its directory. */
-  id: string;
-  /** Human-readable title (SKILL.md `# Heading`, or title-cased id). */
-  name: string;
-  /** Short description from the SKILL.md frontmatter, if any. */
-  description: string;
-  /** Full path within the repo (e.g. `research/SKILL.md`). */
-  path: string;
-}

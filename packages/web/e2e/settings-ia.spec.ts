@@ -9,7 +9,7 @@ import {
   openAdmin,
   openSettings,
   settingsBackInStrip,
-  skillsTab,
+  skillsRow,
 } from "./support/settings-nav";
 import { navRow, screen } from "./support/team-nav";
 
@@ -21,14 +21,13 @@ import { navRow, screen } from "./support/team-nav";
  * hold, and each of them broke a real user path when it didn't:
  *
  * 1. the rail carries exactly the top-level entries the IA names — ONE
- *    unlabelled run (Assistant, AI Models, Integrations) over "Your teams" —
- *    with the Academy, Settings and the help control in the footer;
- * 2. four destinations live BEHIND that run rather than in it: agent policy is
+ *    unlabelled run (Assistant, AI Models, Integrations, Skills) over "Your
+ *    teams" — with the Academy, Settings and the help control in the footer;
+ * 2. three destinations live BEHIND that run rather than in it: agent policy is
  *    reached through each team's focused agent screen (per team, in every
- *    deployment), **Time worked** and **Admin** are sections of Workspace
- *    management, and **Skills** is a tab of the Integrations screen. Each is
- *    asserted absent from the rail by name, so a top-level row for any of them
- *    fails here;
+ *    deployment), and **Time worked** and **Admin** are sections of Workspace
+ *    management. Each is asserted absent from the rail by name, so a top-level
+ *    row for any of them fails here;
  * 3. Settings holds the standing setup: the general group everybody sees, the
  *    two rows that administer the space, plus Danger. The guided tour lives in
  *    the footer's help control and the Context editors in their own surfaces,
@@ -50,8 +49,8 @@ import { navRow, screen } from "./support/team-nav";
  */
 
 /**
- * Teams owner on a gateway that meters running time, so the Skills tab exists
- * on Integrations (it rides space ownership) and the Admin dashboard is this
+ * Teams owner on a gateway that meters running time, so the Skills row exists
+ * in the rail (it rides space ownership) and the Admin dashboard is this
  * caller's to open.
  *
  * `computeUsage` is on deliberately even though nothing in this spec opens
@@ -94,8 +93,11 @@ test("the sidebar carries only the IA's top-level entries", async ({
   for (const id of ["ai-hub", "integrations"] as const) {
     await expect(navRow(page, id)).toBeVisible();
   }
+  // Skills closes the run, right after Integrations. Anchorless like the
+  // Assistant, so it is addressed by its own test id.
+  await expect(skillsRow(page)).toBeVisible();
   // "Your teams" is the rail's ONE band: nothing is labelled above it, even
-  // for the space owner, whose Skills library is a tab of Integrations.
+  // for the space owner, who holds one more destination than a member.
   await expect(sidebar.getByText("Workspace", { exact: true })).toHaveCount(0);
   await expect(sidebar.getByText("Your teams")).toBeVisible();
   // The footer cluster: the Academy directly above Settings. The Academy
@@ -109,8 +111,6 @@ test("the sidebar carries only the IA's top-level entries", async ({
   await expect(railButton(page, "Permissions")).toHaveCount(0);
   await expect(railButton(page, "Time worked")).toHaveCount(0);
   await expect(railButton(page, "Admin")).toHaveCount(0);
-  // Skills went the same way: the shared library is a tab of Integrations.
-  await expect(railButton(page, "Skills")).toHaveCount(0);
   // About me is a Settings section and the Inbox screen is gone, so neither
   // may hold a rail slot as well.
   await expect(railButton(page, "About me")).toHaveCount(0);
@@ -127,13 +127,13 @@ test("the sidebar carries only the IA's top-level entries", async ({
   await expect(page.locator('[data-tour-target="nav-usage"]')).toHaveCount(0);
 });
 
-test("a plain member gets no Skills tab on Integrations", async ({
+test("a plain member gets no Skills row in the rail", async ({
   page,
   request,
 }) => {
   // The shared library is the space OWNER's authority: editing a skill edits
   // every agent in the space at once. A plain member does not hold it, so the
-  // Integrations header carries the catalog lozenge alone.
+  // rail's lead run ends at Integrations.
   //
   // NO `spaces` on purpose: on a C8 host the PERSONAL space has single-player
   // semantics, so `isSpaceOwner` hands Skills back to whoever is in it whatever
@@ -155,13 +155,14 @@ test("a plain member gets no Skills tab on Integrations", async ({
   await expect(railButton(page, "Academy")).toBeVisible();
   await expect(navRow(page, "settings")).toBeVisible();
 
-  // On the Integrations screen the catalog paints (it is everyone's) and the
-  // Skills lozenge is simply absent — the gate, not an unpainted page.
+  // The Skills row is simply absent — the gate, not an unpainted rail, which
+  // is what the positive signals above already ruled out. The Integrations
+  // screen still paints its catalog: that one is everyone's.
+  await expect(skillsRow(page)).toHaveCount(0);
   await navRow(page, "integrations").click();
   await expect(
     screen(page).locator("[data-integrations-section='catalog']"),
   ).toBeVisible();
-  await expect(skillsTab(page)).toHaveCount(0);
 
   // Settings keeps no door to it either: the library left the index with the
   // section, so its old row must not come back.

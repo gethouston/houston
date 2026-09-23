@@ -1,6 +1,7 @@
 import { expect, test } from "./support/fixtures";
 import { openSkillsLibrary } from "./support/settings-nav";
 import { openAgentSkills } from "./support/skills-nav";
+import { screen } from "./support/team-nav";
 
 /**
  * The skills surfaces must render without React integrity errors. Guards two
@@ -9,6 +10,9 @@ import { openAgentSkills } from "./support/skills-nav";
  * nested buttons corrupt the DOM tree and break clicking), and the sidebar's
  * activity-cache subscription re-rendering synchronously from another
  * component's render (setState-in-render).
+ *
+ * Both scopes of the one surface are walked: an AI Employee's own Skills
+ * section and the workspace library.
  */
 test("skills surfaces render without React integrity errors", async ({
   page,
@@ -20,7 +24,7 @@ test("skills surfaces render without React integrity errors", async ({
     if (msg.type() === "error") errors.push(msg.text());
   });
 
-  // Seed a shared skill so the "From your workspace" rows render.
+  // Seed a shared skill so the store-backed rows take part.
   await request.post(`${fakeHost.url}/v1/workspaces/default/shared-skills`, {
     data: {
       name: "meeting-prep",
@@ -32,12 +36,16 @@ test("skills surfaces render without React integrity errors", async ({
 
   await page.goto("/");
   await openAgentSkills(page);
-  await expect(page.getByText("From your workspace")).toBeVisible();
+  // The seeded skill sits in the workspace store and this employee loads none
+  // of it, so its section is the empty state: the "Your skills" heading and
+  // its count stand over rows, never over an absence.
+  await expect(screen(page).getByText("No skills yet")).toBeVisible();
 
-  // The shared library, reached the way a user reaches it: Integrations, then
-  // its Skills tab (which disambiguates it from the agent's own Skills tab).
+  // The shared library, reached the way a user reaches it: the rail's Skills
+  // row, which disambiguates it from the agent's own Skills section.
   await openSkillsLibrary(page);
   await expect(page.getByRole("tab")).toHaveCount(0);
+  // The library creates one way, so its button opens the guided chat itself.
   await page.getByRole("button", { name: "Create skill" }).click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 

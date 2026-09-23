@@ -32,14 +32,13 @@ export type NavRowId = "integrations" | "ai-hub" | "settings";
 /**
  * One top-level rail row — a destination that belongs to nobody.
  *
- * The rail is ONE unlabelled run — the AI Manager, AI Models and Integrations,
- * the destinations a user reaches for without being asked — over "Your teams",
- * with the Academy and Settings in the footer. The shared Skills library is the
- * Skills TAB of the Integrations screen (`settings-nav.ts` `openSkillsLibrary`),
- * not a row here. **The AI Manager and the Academy are deliberately absent from
- * this union**: neither carries a tour anchor, because a target the tour never
- * spotlights is dead weight — address the AI Manager by its own test id
- * (`settings-nav.ts` `assistantRow`).
+ * The rail is ONE unlabelled run — the AI Manager, AI Models, Integrations and
+ * Skills, the destinations a user reaches for without being asked — over "Your
+ * teams", with the Academy and Settings in the footer. **The AI Manager, Skills
+ * and the Academy are deliberately absent from this union**: none carries a
+ * tour anchor, because a target the tour never spotlights is dead weight —
+ * address the AI Manager and Skills by their own test ids (`settings-nav.ts`
+ * `assistantRow` / `skillsRow`).
  *
  * There is NO global mission board among them: every board belongs to a team,
  * so a spec that wants the app's home board asks for

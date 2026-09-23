@@ -132,10 +132,6 @@ export async function handleSkills(
  * The five pairs one regex serves. The family owns both of its paths for
  * every method, so a wrong verb still reaches the handler — which answers the
  * unwired-vfs 503 BEFORE its 405, an order the dispatcher's own 405 would skip.
- *
- * `skills/repo/list` and its sibling are NOT in this family: the regex above
- * stops at one segment after `skills`, so the two-segment repository paths in
- * skills-remote.ts never collide with it despite the shared prefix.
  */
 defineRouteFamily({
   group: "skills",

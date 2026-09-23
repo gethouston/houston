@@ -45,12 +45,6 @@ export const FIELD_SOURCES: readonly EntityRule[] = [
     unlisted:
       "Toolkits belong to the integration provider, so read the slugs from integrationToolkits.",
   },
-  {
-    names: ["body.skills"],
-    discovery: "listSkillsFromRepo",
-    unlisted:
-      "A repository's skills are outside Houston, so read their names from listSkillsFromRepo.",
-  },
   // The people an agent is assigned to, as a LIST of user ids. The object form
   // of the same parameter carries `userId` per entry, which the nested walk
   // claims through the `userId` rule above.

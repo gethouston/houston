@@ -6,7 +6,7 @@ import {
   openAdmin,
   openAdminSection,
   openSkillsLibrary,
-  skillsTab,
+  skillsRow,
 } from "./support/settings-nav";
 import {
   navRow,
@@ -194,11 +194,11 @@ test("team space: inviting a fresh email through Admin > People renders a pendin
 });
 
 /**
- * The Integrations header's Skills lozenge is the same question asked of a
- * different surface: skills are what every agent in the space can do, so
- * editing them edits everyone's agents at once and that belongs to whoever
- * OWNS the space (`isSpaceOwner`). A personal space has single-player
- * semantics, so its one human owns it whatever their org role reads.
+ * The rail's Skills row is the same question asked of a different surface:
+ * skills are what every agent in the space can do, so editing them edits
+ * everyone's agents at once and that belongs to whoever OWNS the space
+ * (`isSpaceOwner`). A personal space has single-player semantics, so its one
+ * human owns it whatever their org role reads.
  */
 test("Skills belongs to the space owner: a Manager loses it in a team space", async ({
   page,
@@ -208,20 +208,16 @@ test("Skills belongs to the space owner: a Manager loses it in a team space", as
   await armTeamWorkspace(request);
   await page.goto("/");
 
-  // Personal space first: single-player semantics, so the tab is theirs.
-  await navRow(page, "integrations").click();
-  await expect(skillsTab(page)).toBeVisible();
+  // Personal space first: single-player semantics, so the row is theirs.
+  await expect(skillsRow(page)).toBeVisible();
 
   await switchToSpace(page, TEAM.name);
 
-  // In the team space an admin runs the place but does not own it, so the tab
-  // goes. The catalog body stays — it is everyone's — which is what makes the
-  // absence a gate rather than an unpainted screen.
-  await navRow(page, "integrations").click();
-  await expect(skillsTab(page)).toHaveCount(0);
-  await expect(
-    screen(page).locator("[data-integrations-section='catalog']"),
-  ).toBeVisible();
+  // In the team space an admin runs the place but does not own it, so the row
+  // goes. The Integrations row stays — it is everyone's — which is what makes
+  // the absence a gate rather than an unpainted rail.
+  await expect(skillsRow(page)).toHaveCount(0);
+  await expect(navRow(page, "integrations")).toBeVisible();
 
   // And it really is about OWNERSHIP, not about being junior: the same caller
   // still reaches the owner/admin dashboard through Settings.
@@ -235,12 +231,11 @@ test("the space owner keeps Skills in their team space", async ({
   await armCapabilities(request, SPACES_OWNER_CAPS);
   await armTeamWorkspace(request);
   await page.goto("/");
-  await navRow(page, "integrations").click();
-  await expect(skillsTab(page)).toBeVisible();
+  await expect(skillsRow(page)).toBeVisible();
 
   await switchToSpace(page, TEAM.name);
   await openSkillsLibrary(page);
-  // The library itself, under the Integrations tab cluster.
+  // The library itself, under the screen's own header strip.
   await expect(
     screen(page).getByRole("button", { name: "Create skill" }),
   ).toBeVisible();

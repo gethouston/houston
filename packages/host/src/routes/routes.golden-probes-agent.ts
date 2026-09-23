@@ -55,8 +55,6 @@ export const AGENT_PROBES: string[] = [
   "POST /agents/:agentId/skills",
   "PUT /agents/:agentId/skills/:slug",
   "DELETE /agents/:agentId/skills/:slug",
-  "POST /agents/:agentId/skills/repo/list",
-  "POST /agents/:agentId/skills/repo/install",
   "GET /agents/:agentId/files",
   "GET /agents/:agentId/files/download",
   "GET /agents/:agentId/files/archive",

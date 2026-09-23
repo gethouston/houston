@@ -25,23 +25,6 @@ import { useWorkspaceStore } from "../../stores/workspaces";
  *  the rest see the key and skip. */
 const inFlight = new Set<string>();
 
-/** Per-agent serialization of THIS module's manifest read-modify-writes: two
- *  skills finishing their create chats concurrently on the same agent must
- *  not race each other's GET → PUT and drop a slug (last-writer-wins). Other
- *  surfaces' manifest writers keep their own existing GET → PUT pattern; this
- *  queue only closes the race the org-share default itself introduces. */
-const manifestQueues = new Map<string, Promise<void>>();
-function enqueueManifestWrite(
-  path: string,
-  op: () => Promise<void>,
-): Promise<void> {
-  const next = (manifestQueues.get(path) ?? Promise.resolve())
-    .catch(() => {})
-    .then(op);
-  manifestQueues.set(path, next);
-  return next;
-}
-
 /**
  * Org skill by default (HOU-1192): returns the fire-and-forget callback the
  * claim sites invoke with a freshly agent-created skill's slug. On shared-
@@ -85,16 +68,9 @@ export function useOrgSkillDefault(agent: Agent): (slug: string) => void {
               silence: isOrgSkillShareDeclined,
             });
           },
-          enable: (path, name) =>
-            enqueueManifestWrite(path, async () => {
-              const manifest = await tauriSkillsManifest.get(path);
-              const enabled = new Set(manifest.enabled);
-              enabled.add(name);
-              await tauriSkillsManifest.set(path, {
-                version: 1,
-                enabled: [...enabled].sort(),
-              });
-            }),
+          enable: async (path, name) => {
+            await tauriSkillsManifest.setEnabled(path, name, true);
+          },
           // The delete's SkillsChanged refetch drops the local row from the
           // merged strip; the shared row must already be in cache by then, or
           // the ghost-skill deselect closes the open setup chat. Refresh the

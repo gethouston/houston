@@ -1,5 +1,12 @@
-import { Button, CatalogSearchField } from "@houston-ai/core";
-import { Plus } from "lucide-react";
+import {
+  Button,
+  CatalogSearchField,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@houston-ai/core";
+import { Library, MessageCircle, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   HeaderToolsRow,
@@ -10,16 +17,24 @@ import {
 export function SkillsControls({
   query,
   onQueryChange,
-  onCreateWithAi,
+  onCreateWithChat,
+  onAddExisting,
   variant,
 }: {
   query: string;
   onQueryChange: (query: string) => void;
-  onCreateWithAi: () => void;
+  /** Build a skill together with the AI Employee — the primary path. */
+  onCreateWithChat: () => void;
+  /** Put a skill the workspace already holds on THIS AI Employee. The library
+   *  stands on no employee to add to, so it passes nothing and the control is
+   *  a single button again. */
+  onAddExisting?: () => void;
   variant: "strip" | "row";
 }) {
   const { t } = useTranslation("skills");
   const inStrip = variant === "strip";
+  const label = t("global.createSkill");
+  const buttonClass = inStrip ? "h-8" : undefined;
 
   return (
     <HeaderToolsRow
@@ -34,14 +49,35 @@ export function SkillsControls({
         />
       }
     >
-      <Button
-        type="button"
-        onClick={onCreateWithAi}
-        className={inStrip ? "h-8" : undefined}
-      >
-        <Plus className="size-4" />
-        {t("global.createSkill")}
-      </Button>
+      {onAddExisting === undefined ? (
+        <Button
+          type="button"
+          className={buttonClass}
+          onClick={onCreateWithChat}
+        >
+          <Plus className="size-4" />
+          {label}
+        </Button>
+      ) : (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" className={buttonClass}>
+              <Plus className="size-4" />
+              {label}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={onCreateWithChat}>
+              <MessageCircle className="size-4" />
+              {t("global.createMenu.withChat")}
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onAddExisting}>
+              <Library className="size-4" />
+              {t("global.createMenu.addExisting")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </HeaderToolsRow>
   );
 }

@@ -80,7 +80,6 @@
   },
   "home": {
     "tabs": {
-      "label": "Secciones de integraciones",
       "catalog": "Integraciones"
     },
     "searchPlaceholder": "Buscar integraciones",

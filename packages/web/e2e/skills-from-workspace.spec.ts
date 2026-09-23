@@ -1,12 +1,15 @@
+import { SEED_AGENT_ID } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import { openSkillsLibrary } from "./support/settings-nav";
 import { openAgentSkills } from "./support/skills-nav";
+import { screen } from "./support/team-nav";
 
 /**
- * "From your workspace" (ADR 0003): once a skill is shared it stops living ON
- * agents, so the discovery list's "From your other AI Employees" section can no
- * longer offer it — this section does. Enabling is a one-click reversible manifest
- * write (never a copy), an enabled store skill is the agent's skill and shows
- * in its "Your skills" strip, and a row opens the preview modal.
+ * A workspace-shared skill (ADR 0003) lives in the store, never on an agent:
+ * an AI Employee LOADS it through its manifest, which is a reversible write
+ * and never a copy. The library's editor is where a skill is put on every
+ * employee; the employee's own scoped editor is where it is taken off again,
+ * and a content edit from either side writes the ONE workspace copy.
  */
 
 const SKILL = {
@@ -16,7 +19,7 @@ const SKILL = {
     '---\nname: meeting-prep\ntitle: "Meeting prep"\ndescription: "Prep before meetings"\n---\n# Steps\n',
 };
 
-test("a workspace-shared skill is one-click enabled and joins Your skills", async ({
+test("a workspace skill is enabled from the library and disabled from the employee", async ({
   page,
   request,
   fakeHost,
@@ -28,110 +31,112 @@ test("a workspace-shared skill is one-click enabled and joins Your skills", asyn
   expect(res.status()).toBe(201);
 
   await page.goto("/");
-  await openAgentSkills(page);
-  await expect(page.getByText("From your workspace")).toBeVisible();
-  await expect(page.getByText("Prep before meetings")).toBeVisible();
-  // Not enabled yet: no strip, no check.
-  await expect(page.getByText("Your skills")).toHaveCount(0);
 
-  await page
-    .getByRole("button", { name: "Enable Meeting prep", exact: true })
-    .click();
-  await expect(
-    page.getByRole("img", { name: "Meeting prep is enabled" }),
-  ).toBeVisible();
-
-  // The enabled store skill IS the agent's skill now: the "Your skills"
-  // strip appears with its row (one strip row + one section row).
-  await expect(page.getByText("Your skills")).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: /^Meeting prep\b/ }),
-  ).toHaveCount(2);
-});
-
-test("a workspace row opens the preview and its Enable commits", async ({
-  page,
-  request,
-  fakeHost,
-}) => {
-  const res = await request.post(
-    `${fakeHost.url}/v1/workspaces/default/shared-skills`,
-    { data: SKILL },
-  );
-  expect(res.status()).toBe(201);
-
-  await page.goto("/");
-  await openAgentSkills(page);
-  await page.getByRole("button", { name: /^Meeting prep\b/ }).click();
-
-  // The preview modal: workspace by-line, full body, Enable as the commit.
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("From your workspace")).toBeVisible();
-  await dialog.getByRole("button", { name: "View full instructions" }).click();
-  await expect(dialog.getByText("# Steps")).toBeVisible();
-  await dialog.getByRole("button", { name: "Enable", exact: true }).click();
-  await expect(dialog.getByText("Enabled")).toBeVisible();
-  await page.keyboard.press("Escape");
-
-  await expect(
-    page.getByRole("img", { name: "Meeting prep is enabled" }),
-  ).toBeVisible();
-});
-
-test("an active workspace skill is editable and can be disabled here", async ({
-  page,
-  request,
-  fakeHost,
-}) => {
-  const res = await request.post(
-    `${fakeHost.url}/v1/workspaces/default/shared-skills`,
-    { data: SKILL },
-  );
-  expect(res.status()).toBe(201);
-
-  await page.goto("/");
-  await openAgentSkills(page);
-  await page
-    .getByRole("button", { name: "Enable Meeting prep", exact: true })
-    .click();
-  await expect(
-    page.getByRole("img", { name: "Meeting prep is enabled" }),
-  ).toBeVisible();
-
-  // The strip row opens the MANAGE dialog: editable content, Edit in chat,
-  // and "Disable for this AI Employee" instead of Delete.
-  await page
+  // The library lists the store's skill before any employee loads it, and its
+  // editor's More actions menu is what puts it on them.
+  await openSkillsLibrary(page);
+  await screen(page)
     .getByRole("button", { name: /^Meeting prep\b/ })
-    .first()
     .click();
-  const dialog = page.getByRole("dialog");
-  const editor = dialog.getByLabel("Instructions for the AI Employee");
-  await expect(editor).toBeVisible();
+  await screen(page)
+    .getByTestId("skill-editor")
+    .getByRole("button", { name: "More actions" })
+    .click();
+  await page
+    .getByRole("menuitem", { name: "Enable for all AI Employees" })
+    .click();
+
+  // The employee's own section now lists it, and its editor carries no
+  // cross-agent assignment — the section it stands in already answers that.
+  await openAgentSkills(page);
+  await screen(page)
+    .getByRole("button", { name: /^Meeting prep\b/ })
+    .click();
+  const editor = screen(page).getByTestId("skill-editor");
   await expect(
-    dialog.getByRole("button", { name: "Edit in chat" }),
+    // Level 2 inside the rail: its section lozenge is the screen's h1.
+    editor.getByRole("heading", { name: "Meeting prep", level: 2 }),
   ).toBeVisible();
-  await expect(dialog.getByText("AI Employees with this skill")).toHaveCount(0);
+  await expect(editor.getByText("AI Employees with this skill")).toHaveCount(0);
+  // The scoped editor says which copy it edits: this one is the workspace's.
+  await expect(editor.getByText("This is the workspace version")).toBeVisible();
 
   // A content edit saves to the ONE workspace copy.
-  await editor.fill("---\nname: meeting-prep\n---\n# Steps v2\n");
-  await dialog.getByRole("button", { name: "Save changes" }).click();
-  await expect(dialog).toHaveCount(0);
-  await page
+  const body = editor.getByLabel("Instructions for the AI Employee");
+  await body.fill("---\nname: meeting-prep\n---\n# Steps v2\n");
+  await editor.getByRole("button", { name: "Save changes" }).click();
+  await editor.getByRole("button", { name: "Back to skills" }).click();
+  await screen(page)
     .getByRole("button", { name: /^Meeting prep\b/ })
-    .first()
     .click();
   await expect(
-    page.getByRole("dialog").getByLabel("Instructions for the AI Employee"),
+    editor.getByLabel("Instructions for the AI Employee"),
   ).toHaveValue(/# Steps v2/);
 
-  // Disabling is reversible: the skill leaves this agent, stays in the store.
+  // Disabling is reversible: the skill leaves this employee, stays in the
+  // store, and the editor returns to the employee's own list.
+  await editor.getByRole("button", { name: "More actions" }).click();
   await page
-    .getByRole("dialog")
+    .getByRole("menuitem", { name: "Disable for this AI Employee" })
+    .click();
+  await expect(screen(page).getByTestId("skill-editor")).toHaveCount(0);
+  await expect(
+    screen(page).getByRole("button", { name: /^Meeting prep\b/ }),
+  ).toHaveCount(0);
+});
+
+test("an employee's own version of a workspace skill goes only after a confirm that names it", async ({
+  page,
+  request,
+  fakeHost,
+}) => {
+  const stored = await request.post(
+    `${fakeHost.url}/v1/workspaces/default/shared-skills`,
+    { data: SKILL },
+  );
+  expect(stored.status()).toBe(201);
+  // The same slug on the employee itself: its copy loads instead of the store
+  // version, and the aggregate folds it into that row as an override.
+  const own = await request.post(
+    `${fakeHost.url}/agents/${SEED_AGENT_ID}/skills`,
+    {
+      data: {
+        name: SKILL.name,
+        description: SKILL.description,
+        content: "# Steps, this employee's way\n",
+      },
+    },
+  );
+  expect(own.status()).toBe(201);
+
+  await page.goto("/");
+  await openAgentSkills(page);
+  await screen(page)
+    .getByRole("button", { name: /^Meeting prep\b/ })
+    .click();
+  const editor = screen(page).getByTestId("skill-editor");
+  await expect(
+    editor.getByText("This AI Employee has its own version"),
+  ).toBeVisible();
+  await expect(
+    editor.getByRole("button", { name: "Use workspace version" }),
+  ).toBeVisible();
+
+  // Both acts delete that version, and neither control says so on its own.
+  await editor.getByRole("button", { name: "More actions" }).click();
+  await page
+    .getByRole("menuitem", { name: "Disable for this AI Employee" })
+    .click();
+  const confirm = page.getByRole("alertdialog");
+  await expect(
+    confirm.getByText("Delete this AI Employee's own version?"),
+  ).toBeVisible();
+  await confirm
     .getByRole("button", { name: "Disable for this AI Employee" })
     .click();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+
+  await expect(screen(page).getByTestId("skill-editor")).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: "Enable Meeting prep", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("Your skills")).toHaveCount(0);
+    screen(page).getByRole("button", { name: /^Meeting prep\b/ }),
+  ).toHaveCount(0);
 });

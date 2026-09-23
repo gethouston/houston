@@ -1,6 +1,6 @@
 {
   "agentAdmin": {
-    "title": "Configurações do funcionário de IA",
+    "title": "Configurações",
     "rows": {
       "knowledge": {
         "title": "Aprendizados"
@@ -53,7 +53,7 @@
     }
   },
   "agentSettings": {
-    "railLabel": "Seções das configurações do funcionário de IA",
+    "railLabel": "Seções das configurações",
     "manage": {
       "sectionTitle": "Configurações",
       "identity": "Alterar cor e nome",
@@ -528,7 +528,7 @@
       "onlyTeamDeleteDescription": "Esta é sua única equipe, então ela não pode ser excluída."
     },
     "agentTabs": {
-      "settings": "Configurações do funcionário de IA"
+      "settings": "Configurações"
     },
     "archive": {
       "open": "Arquivadas",

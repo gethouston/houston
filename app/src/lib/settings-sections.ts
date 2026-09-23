@@ -13,9 +13,10 @@
  * of it. The gates that hide a section hide its INDEX ROW
  * (`hooks/use-surface-gates.ts`); the gateway is what enforces the claim.
  *
- * The shared Skills library is NOT here: it is the Skills tab of the
- * Integrations screen, beside the apps catalog, because both answer what a
- * person's agents can reach outside themselves.
+ * The shared Skills library is NOT here: it is a screen of its own, opened
+ * from the rail's Skills row. An AI Employee's own Skills section is that same
+ * surface scoped to that employee, and it lives in the agent's settings, not
+ * in this list.
  */
 export const SETTINGS_SECTION_IDS = [
   "profile",

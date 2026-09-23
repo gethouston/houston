@@ -1,18 +1,35 @@
-import { expect, type Page } from "@playwright/test";
+import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
+import { type APIRequestContext, expect, type Page } from "@playwright/test";
 import { openAgentSettings, screen } from "./team-nav";
 
 /**
  * The prologues every per-agent skills spec opens with.
  *
- * The agent's Skills section has ONE discovery tab, so the catalog shell draws
- * no tablist at all: the section IS the custom-skills list. Every spec that
- * reached it through a "Custom skills" tab was really asking for the section,
- * which is what these helpers say instead — one place to re-point if the
- * surface's anchor ever moves again.
+ * An AI Employee's Skills section IS the workspace Skills surface scoped to
+ * that employee: one list of what it has, the same search, and its own
+ * "Create skill" menu. There is no discovery tab and no tile strip, so these
+ * helpers name the section itself — one place to re-point if its anchor ever
+ * moves again.
  */
 
 /** The seeded agent every skills spec works against. */
 const DEFAULT_AGENT = "Houston";
+
+/** One skill as a spec seeds it: the slug the host stores it under, and the
+ *  title the surfaces display (the humanized slug, since nothing writes a
+ *  frontmatter `title:` until the rename pencil does). */
+export const SEEDED_SKILLS = [
+  {
+    slug: "invoice-triage",
+    title: "Invoice triage",
+    description: "Sort incoming invoices.",
+  },
+  {
+    slug: "meeting-notes",
+    title: "Meeting notes",
+    description: "Write up what was decided.",
+  },
+] as const;
 
 /**
  * Open one agent's Skills section, landed.
@@ -32,25 +49,49 @@ export async function openAgentSkills(
 }
 
 /**
- * Install the fake host's canned dozen onto an agent through the real GitHub
- * flow — the shortest path to a skill that exists on an agent AND in the
- * shared library, which is the state the editor and dialog specs assert on.
+ * Put {@link SEEDED_SKILLS} on the seeded agent through the host's own skill
+ * create route, server to server — the shortest path to an employee that HAS
+ * skills, which is the state the editor specs assert on.
  *
- * Leaves the Add dialog closed and the agent's Skills section on screen.
+ * The content carries no Houston workflow marker, so the editor's Workflow
+ * view shows its empty state and the Text view is the file itself.
+ *
+ * Call it before `page.goto("/")`: the list is read once and refreshed by
+ * host events, so seeding first spares every spec a reload.
  */
-export async function installRepoSkills(
-  page: Page,
-  agentName: string = DEFAULT_AGENT,
+export async function seedAgentSkills(
+  request: APIRequestContext,
 ): Promise<void> {
-  await openAgentSkills(page, agentName);
-  await page.getByRole("button", { name: "Add skill" }).click();
-  const addDialog = page.getByRole("dialog");
-  await addDialog.getByRole("button", { name: "GitHub" }).click();
-  await addDialog.getByPlaceholder("owner/repo").fill("mattpocock/skills");
-  await addDialog.getByRole("button", { name: "Find skills" }).click();
-  await expect(addDialog.getByText("12 skills found")).toBeVisible();
-  await addDialog.getByRole("button", { name: "Install 12" }).click();
-  await expect(addDialog.getByText(/Installed 12 skills/)).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(addDialog).toHaveCount(0);
+  for (const skill of SEEDED_SKILLS) {
+    const res = await request.post(
+      `${FAKE_HOST_URL}/agents/${SEED_AGENT_ID}/skills`,
+      {
+        data: {
+          name: skill.slug,
+          description: skill.description,
+          content: `# ${skill.title}\n`,
+        },
+      },
+    );
+    expect(res.status()).toBe(201);
+  }
+}
+
+/** Seed a skill into the WORKSPACE store, which no employee loads yet — what
+ *  "Add an existing skill" offers. */
+export async function seedWorkspaceSkill(
+  request: APIRequestContext,
+  skill: { name: string; title: string; description: string },
+): Promise<void> {
+  const res = await request.post(
+    `${FAKE_HOST_URL}/v1/workspaces/default/shared-skills`,
+    {
+      data: {
+        name: skill.name,
+        description: skill.description,
+        content: `---\nname: ${skill.name}\ntitle: "${skill.title}"\ndescription: "${skill.description}"\n---\n# Steps\n`,
+      },
+    },
+  );
+  expect(res.status()).toBe(201);
 }

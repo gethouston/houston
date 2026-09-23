@@ -41,38 +41,39 @@ describe("one way back, everywhere", () => {
   });
 });
 
-describe("one skill body, parameterised by surface", () => {
-  it("the page's copy is gone and both callers pass a variant", () => {
+/**
+ * One skill body and one frame serve both scopes of the Skills surface: the
+ * workspace library and an AI Employee's own Skills section. Pinned on the
+ * SOURCE because the claim is about which surfaces exist, which no render of a
+ * reachable surface can show.
+ */
+describe("one skill editor, parameterised by frame", () => {
+  it("keeps no second, dialog-shaped body", () => {
     const body = read("../src/components/skills-view/skill-body-editor.tsx");
-    ok(body.includes('variant: "dialog"'), "the dialog surface");
-    ok(body.includes('variant: "page"'), "the page surface");
+    ok(!body.includes('variant: "dialog"'), "no dialog surface survives");
+    ok(!body.includes("DialogFooter"), "the editor is a page, not a modal");
+  });
+
+  it("the editor binds the shared detail hook", () => {
     ok(
-      read("../src/components/skills-view/manage-skill-body.tsx").includes(
-        'variant="dialog"',
-      ),
-    );
-    ok(
-      read("../src/components/skills-view/skill-editor-page.tsx").includes(
-        'variant="page"',
+      read("../src/components/skills-view/use-skill-editor.ts").includes(
+        "useSkillDetailSurface",
       ),
     );
   });
 
-  it("both detail surfaces bind ONE detail hook", () => {
+  it("both scopes stand in the same frame component", () => {
     for (const rel of [
-      "../src/components/skills-view/use-skill-editor.ts",
-      "../src/components/skills-view/manage-skill-dialog.tsx",
+      "../src/components/skills-view/skills-view.tsx",
+      "../src/components/skills-view/skill-editor-page.tsx",
     ])
-      ok(
-        read(rel).includes("useSkillDetailSurface"),
-        `${rel} binds the shared detail surface`,
-      );
+      ok(read(rel).includes("SkillsSurfaceFrame"), `${rel} uses the frame`);
   });
 
-  it("the manage dialog stays inside the file law", () => {
+  it("the editor stays inside the file law", () => {
     const lines = read(
-      "../src/components/skills-view/manage-skill-dialog.tsx",
+      "../src/components/skills-view/skill-editor-page.tsx",
     ).split("\n").length;
-    ok(lines <= 200, `manage-skill-dialog.tsx is ${lines} lines`);
+    ok(lines <= 200, `skill-editor-page.tsx is ${lines} lines`);
   });
 });

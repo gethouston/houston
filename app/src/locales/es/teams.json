@@ -1,6 +1,6 @@
 {
   "agentAdmin": {
-    "title": "Configuración del empleado de IA",
+    "title": "Configuración",
     "rows": {
       "knowledge": {
         "title": "Aprendizajes"
@@ -53,7 +53,7 @@
     }
   },
   "agentSettings": {
-    "railLabel": "Secciones de la configuración del empleado de IA",
+    "railLabel": "Secciones de la configuración",
     "manage": {
       "sectionTitle": "Configuración",
       "identity": "Cambiar color y nombre",
@@ -528,7 +528,7 @@
       "onlyTeamDeleteDescription": "Este es tu único equipo, así que no se puede eliminar."
     },
     "agentTabs": {
-      "settings": "Configuración del empleado de IA"
+      "settings": "Configuración"
     },
     "archive": {
       "open": "Archivadas",

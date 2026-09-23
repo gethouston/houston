@@ -186,6 +186,109 @@ describe("how an agent-skills request fails", () => {
   });
 });
 
+/**
+ * A manifest PUT replaces the WHOLE enabled list, so switching one skill on is
+ * a read then a write. Two of them in flight on the same agent — two Adds in
+ * the same sitting — would both read the list before either wrote it, and the
+ * second write would drop the first. The SDK serializes them per agent so
+ * every surface gets that for free.
+ */
+function manifestHost(options: { failFirstPut?: boolean } = {}) {
+  const calls: Recorded[] = [];
+  let enabled: string[] = [];
+  let puts = 0;
+  const fetchImpl = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const method = init?.method ?? "GET";
+      const body = typeof init?.body === "string" ? init.body : null;
+      calls.push({ method, url: String(input), body });
+      // A round trip the caller has to wait for: without it the read and the
+      // write of one toggle could never interleave with another's.
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      if (method === "PUT") {
+        puts += 1;
+        if (options.failFirstPut === true && puts === 1)
+          return json({ error: "read-only" }, 403);
+        if (body !== null)
+          enabled = (JSON.parse(body) as { enabled: string[] }).enabled;
+      }
+      return json({ version: 1, enabled });
+    },
+  );
+  const store = new Map<string, string>();
+  const ports: SdkPorts = {
+    fetch: fetchImpl as unknown as typeof fetch,
+    storage: {
+      get: async (k) => store.get(k) ?? null,
+      set: async (k, v) => void store.set(k, v),
+      delete: async (k) => void store.delete(k),
+    },
+    clock: { now: () => 0, setTimeout: () => 0, clearTimeout: () => {} },
+    logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  };
+  const config: SdkConfig = { baseUrl: BASE, ports, reactivity: false };
+  return { sdk: new HoustonSdk(config), calls, read: () => enabled };
+}
+
+describe("switching one of an agent's skills on", () => {
+  it("keeps both concurrent switches, never only the last one", async () => {
+    const { sdk, read } = manifestHost();
+
+    await Promise.all([
+      sdk.skills.agent.setSkillEnabled("a1", "triage", true),
+      sdk.skills.agent.setSkillEnabled("a1", "invoices", true),
+    ]);
+
+    expect(read()).toEqual(["invoices", "triage"]);
+  });
+
+  it("leaves every other skill alone when it switches one off", async () => {
+    const { sdk, read } = manifestHost();
+
+    await sdk.skills.agent.setSkillEnabled("a1", "triage", true);
+    await sdk.skills.agent.setSkillEnabled("a1", "invoices", true);
+    const manifest = await sdk.skills.agent.setSkillEnabled(
+      "a1",
+      "triage",
+      false,
+    );
+
+    expect(read()).toEqual(["invoices"]);
+    expect(manifest).toEqual({ version: 1, enabled: ["invoices"] });
+  });
+
+  it("reads and writes the agent's own manifest route", async () => {
+    const { sdk, calls } = manifestHost();
+
+    await sdk.skills.agent.setSkillEnabled("a1", "triage", true);
+
+    expect(calls).toEqual([
+      { method: "GET", url: `${BASE}/agents/a1/skills-manifest`, body: null },
+      {
+        method: "PUT",
+        url: `${BASE}/agents/a1/skills-manifest`,
+        body: JSON.stringify({ version: 1, enabled: ["triage"] }),
+      },
+    ]);
+  });
+
+  it("lets a failed switch through without stalling the one behind it", async () => {
+    // ONE sdk, ONE agent, BOTH started before either settles: the claim is
+    // that the queue carries on past a rejection, and a second call awaited
+    // after the first already failed never joined a chain at all.
+    const { sdk } = manifestHost({ failFirstPut: true });
+
+    const failed = sdk.skills.agent.setSkillEnabled("a1", "triage", true);
+    const behind = sdk.skills.agent.setSkillEnabled("a1", "invoices", true);
+
+    await expect(failed).rejects.toBeInstanceOf(AgentSkillsHttpError);
+    await expect(behind).resolves.toEqual({
+      version: 1,
+      enabled: ["invoices"],
+    });
+  });
+});
+
 describe("the dispatch path", () => {
   it("dispatches every skills command to the same handler", async () => {
     const { sdk, calls } = ok({ items: [] });

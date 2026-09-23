@@ -39,13 +39,13 @@ export interface SurfaceGates {
    */
   showAiModels: boolean;
   /**
-   * The Skills TAB of the Integrations screen, beside the apps catalog. Skills
+   * The shared Skills library: its rail row and the screen behind it. Skills
    * are what every agent in the space can do, so editing them edits everyone's
    * agents at once: that belongs to whoever OWNS the space (`isSpaceOwner`),
-   * not to the manager who runs it and not to a member who uses it. A LOZENGE
-   * gate — a caller without it sees the catalog alone, and the screen falls
-   * back to it if the gate closes under an open tab. The gateway is the
-   * enforcer; a hidden tab is the whole of the claim being made here.
+   * not to the manager who runs it and not to a member who uses it. A caller
+   * without it has no row and no screen, and a `viewMode` left on the library
+   * when the gate closes goes home (`blockedTopLevelView`). The gateway is the
+   * enforcer; a hidden row is the whole of the claim being made here.
    */
   showSkills: boolean;
   /**

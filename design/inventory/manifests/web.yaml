@@ -185,15 +185,15 @@ components:
 
   skill-row:
     status: partial
-    ref: "ui/skills skill-row.tsx + app/src/components/skills/skill-catalog-rows.tsx + app/src/components/agent/installed-skills-strip.tsx"
+    ref: "app/src/components/skills/skill-catalog-rows.tsx + app/src/components/skills-view/workspace-skill-rows.tsx"
     notes: >-
       Rides the shared ui/ catalog family (CatalogRow / CatalogAddButton /
-      CatalogShowMore / CatalogShell); the skills composition itself is split
-      between ui/skills and app/. Extract the surface before mobile.
+      CatalogShowMore / CatalogShell); the row composition itself lives in
+      app/. Extract the surface before mobile.
 
   skill-workflow-steps:
     status: implemented
-    ref: "ui/skills skill-workflow-steps.tsx + skill-instructions-disclosure.tsx, over packages/domain skill-workflow.ts"
+    ref: "ui/skills skill-workflow-steps.tsx, over packages/domain skill-workflow.ts"
 
   empty-state:
     status: implemented

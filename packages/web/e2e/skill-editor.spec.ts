@@ -1,6 +1,6 @@
 import { expect, test } from "./support/fixtures";
 import { openSkillsLibrary } from "./support/settings-nav";
-import { installRepoSkills } from "./support/skills-nav";
+import { seedAgentSkills } from "./support/skills-nav";
 import { screen } from "./support/team-nav";
 
 /**
@@ -9,9 +9,10 @@ import { screen } from "./support/team-nav";
  * The library row opens the skill IN PLACE of the list (no modal), and the
  * editor's header carries the Workflow / Text switch — the one control that
  * decides whether a non-technical owner reads their skill as numbered steps or
- * as the markdown behind them. An imported skill has no parsed workflow, so its
- * Workflow view says so and offers the way across rather than showing an empty
- * panel; the Text view is always the real SKILL.md in an editable field.
+ * as the markdown behind them. A skill written as plain instructions has no
+ * parsed workflow, so its Workflow view says so and offers the way across
+ * rather than showing an empty panel; the Text view is always the real
+ * SKILL.md in an editable field.
  *
  * The editor's own back arrow (under the tab cluster, not a browser step) is
  * what returns the list, because the editor replaced it.
@@ -19,22 +20,23 @@ import { screen } from "./support/team-nav";
 
 test("the library opens a skill in its editor, switches how it reads, and comes back", async ({
   page,
+  request,
 }) => {
+  await seedAgentSkills(request);
   await page.goto("/");
-  await installRepoSkills(page);
 
-  // Integrations, then its Skills tab: the shared library's one door.
+  // The rail's Skills row: the shared library's one door.
   await openSkillsLibrary(page);
   await expect(
     screen(page).getByRole("button", { name: "Create skill" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: /^Repo Skill 1\b/ }).click();
+  await page.getByRole("button", { name: /^Invoice triage\b/ }).click();
 
   // The row opened the skill's own page in place of the list.
   const editor = page.getByTestId("skill-editor");
   await expect(
-    editor.getByRole("heading", { name: "Repo Skill 1", level: 1 }),
+    editor.getByRole("heading", { name: "Invoice triage", level: 1 }),
   ).toBeVisible();
 
   // The header's switch: the skill's two readings, never both at once.
@@ -52,14 +54,14 @@ test("the library opens a skill in its editor, switches how it reads, and comes 
   await expect(markdown).toBeVisible();
   await expect(textView).toHaveAttribute("aria-selected", "true");
 
-  // Workflow: the steps, or — for an imported skill that has none — the notice
-  // that points back at the text. Either way the markdown field is gone, which
-  // is what proves the views really swapped.
+  // Workflow: the steps, or — for a skill written as plain instructions — the
+  // notice that points back at the text. Either way the markdown field is
+  // gone, which is what proves the views really swapped.
   await workflowView.click();
   await expect(workflowView).toHaveAttribute("aria-selected", "true");
   await expect(markdown).toHaveCount(0);
-  // The seeded repo skill carries no Houston workflow marker, so the Workflow
-  // view must show its empty state rather than a step list.
+  // The seeded skill carries no Houston workflow marker, so the Workflow view
+  // must show its empty state rather than a step list.
   await expect(
     editor.getByText("This skill has no step-by-step workflow yet"),
   ).toBeVisible();

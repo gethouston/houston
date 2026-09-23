@@ -1,6 +1,10 @@
 import type { SidebarNavItemEntry } from "@houston-ai/layout";
-import { Boxes, GraduationCap } from "lucide-react";
-import { ACADEMY_VIEW_ID, AI_HUB_VIEW_ID } from "../../lib/top-level-views";
+import { Boxes, GraduationCap, ListChecks } from "lucide-react";
+import {
+  ACADEMY_VIEW_ID,
+  AI_HUB_VIEW_ID,
+  SKILLS_VIEW_ID,
+} from "../../lib/top-level-views";
 import { HoustonLogo } from "../assistant/houston-logo";
 import { ASSISTANT_VIEW_ID } from "../assistant/id";
 import type { SidebarChromeT } from "./sidebar-chrome";
@@ -12,6 +16,8 @@ export interface GatedNavRows {
   assistant: SidebarNavItemEntry;
   /** `showAiModels` — the AI Models hub, in the unlabelled leading run. */
   aiModels: SidebarNavItemEntry;
+  /** `showSkills` — the shared Skills library, closing the leading run. */
+  skills: SidebarNavItemEntry;
 }
 
 /**
@@ -19,10 +25,10 @@ export interface GatedNavRows {
  * (`sidebar-nav-sections.tsx`).
  *
  * They are the only rows with anything to say beyond an id, a label and a
- * glyph — a test id on the Assistant, a tour anchor on AI Models — so
- * keeping them here leaves the composition file free to state the information
- * architecture and nothing else. The UNGATED rows stay inline there: a row
- * every deployment has is part of the IA, not a variable in it.
+ * glyph — a test id on the Assistant and on Skills, a tour anchor on AI
+ * Models — so keeping them here leaves the composition file free to state the
+ * information architecture and nothing else. The UNGATED rows stay inline
+ * there: a row every deployment has is part of the IA, not a variable in it.
  */
 export function gatedNavRows(args: {
   t: SidebarChromeT;
@@ -46,6 +52,16 @@ export function gatedNavRows(args: {
       icon: <Boxes className="h-4 w-4" />,
       onClick: () => setViewMode(AI_HUB_VIEW_ID),
       dataAttrs: tourAnchor("nav-ai-hub"),
+    },
+    skills: {
+      id: SKILLS_VIEW_ID,
+      label: t("shell:sidebar.skills"),
+      // No tour anchor: the tour does not walk this row, and a target in the
+      // anchor union that no step spotlights is dead weight the union exists
+      // to prevent. A test id gives the specs the same stable handle.
+      icon: <ListChecks className="h-4 w-4" />,
+      onClick: () => setViewMode(SKILLS_VIEW_ID),
+      dataAttrs: { "data-testid": "rail-skills" },
     },
   };
 }

@@ -1346,19 +1346,6 @@ export interface SkillsManifest {
   enabled: string[];
 }
 
-export interface RepoSkill {
-  id: string;
-  name: string;
-  description: string;
-  path: string;
-}
-
-export interface InstallFromRepoRequest {
-  workspacePath: string;
-  source: string;
-  skills: RepoSkill[];
-}
-
 // ---------- Providers / preferences ----------
 
 /**

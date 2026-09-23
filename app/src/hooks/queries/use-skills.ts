@@ -1,7 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriSkills } from "../../lib/tauri";
-import type { RepoSkill } from "../../lib/types";
 
 export function useSkills(agentPath: string | undefined) {
   return useQuery({
@@ -28,57 +27,5 @@ export function useSkillDetail(
     },
     enabled: !!agentPath && !!name,
     staleTime: 30_000,
-  });
-}
-
-export function useCreateSkill(agentPath: string | undefined) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (args: {
-      name: string;
-      description: string;
-      content: string;
-    }) => {
-      if (!agentPath) throw new Error("agentPath is required");
-      return tauriSkills.create(
-        agentPath,
-        args.name,
-        args.description,
-        args.content,
-      );
-    },
-    onSuccess: () => {
-      if (agentPath)
-        qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
-    },
-  });
-}
-
-export function useListSkillsFromRepo(agentPath: string | undefined) {
-  return useMutation({
-    mutationFn: (source: string) => {
-      if (!agentPath) throw new Error("agentPath is required");
-      return tauriSkills.listFromRepo(agentPath, source);
-    },
-  });
-}
-
-export function useInstallSkillFromRepo(agentPath: string | undefined) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      source,
-      skills,
-    }: {
-      source: string;
-      skills: RepoSkill[];
-    }) => {
-      if (!agentPath) throw new Error("agentPath is required");
-      return tauriSkills.installFromRepo(agentPath, source, skills);
-    },
-    onSuccess: () => {
-      if (agentPath)
-        qc.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
-    },
   });
 }

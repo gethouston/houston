@@ -95,13 +95,7 @@ export {
   type SettledConversations,
   useSettledConversations,
 } from "./use-settled-conversations";
-export {
-  useCreateSkill,
-  useInstallSkillFromRepo,
-  useListSkillsFromRepo,
-  useSkillDetail,
-  useSkills,
-} from "./use-skills";
+export { useSkillDetail, useSkills } from "./use-skills";
 export {
   useAgentMoveStatus,
   useMoveAgent,
