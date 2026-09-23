@@ -65,7 +65,9 @@ Surface ladder (bottom → top):
 |---|---|
 | `bg-gutter` (`--ht-base`) | window frame / gutter the sidebar melts into |
 | `bg-background` (`--ht-background`) | the floating "screen" — **standard main pane** (via `.canvas-screen`) |
+| `bg-pane` (`--ht-pane`) | a chat pane's own header/footer chrome: the screen tone in light, nothing in dark so the glass shows through |
 | `bg-input` (`--ht-input`) | fields, composer, pills — slightly recessed on the screen |
+| `bg-field` / `hover:bg-field-hover` (`--ht-field`) | a CONTROL's resting and hover fill (outline button, active tab pill): `input` in light, the field-border wash in dark |
 | `bg-card` (`--ht-card`) | cards/panels that **float above** the canvas |
 | `bg-card-solid` (`--ht-card-solid`) | the board's resting cards and its "+" bar: opaque, the screen tone in both themes so a card reads as the screen showing through the column tray, never glass (a board of blurred cards is muddy and a GPU cost) |
 | `bg-popover` / `bg-dialog` | menus / modals — **SOLID both themes, never blur, never alpha** |
@@ -78,7 +80,9 @@ Text · interactive · lines:
 | `text-ink-muted` | secondary text |
 | `bg-action` / `text-action-text` | filled CTA fill/label (also progress, tab underline, switches, status dots) |
 | `text-link` (+ `bg-link/10` tint) | inline link chips in chat/prose — Slack-blue text on a soft tint, underline on hover; the ONE sanctioned blue |
+| `bg-bubble` | the user chat bubble's fill — near-ink in light, the subtle white wash in dark |
 | `text-bubble-text` | the user chat bubble's text — pure white in BOTH themes (the near-white grays read dull over the bubble fill) |
+| `bg-bubble-chip` / `text-bubble-chip-text` | a chip INSIDE the user bubble (mention, link) — measured against the bubble, not the canvas |
 | `text-prose-text` | the AGENT's long-form chat prose — same as `ink` in light, pure white in dark. Chat only; app primary text stays `text-ink` |
 | `bg-hover` / `text-hover-text` | row + menu hover fill |
 | `bg-chip` / `text-chip-text` | soft chips / badges |
@@ -87,6 +91,7 @@ Text · interactive · lines:
 | `ring-focus` (`--ht-focus`) | focus ring — **near-ink, NOT blue** |
 
 Status (each has a `-text`): `danger` · `success` · `warning` · `highlight` (brand wash + ink `-text`).
+Destructive chrome carries its own pair so no `dark:` fork exists: `bg-danger-fill` (the destructive button/badge fill, softened to 60% in dark) and `ring-danger-ring` (the invalid / destructive focus ring, 20% light and 40% dark).
 
 Reserved families — do not reach for outside their home:
 - `sidebar*` (`-text`/`-line`/`-hover`/`-active`): sidebar is transparent; `sidebar-active` is the selected-row fill, a clear step above hover.

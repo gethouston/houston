@@ -27,11 +27,11 @@ export interface MentionChipProps {
 const BASE =
   "rounded-sm px-1 py-0.5 font-semibold [overflow-wrap:anywhere] whitespace-normal";
 
-/** Someone else. Soft chip fill on the canvas; inside the user bubble a light
- *  wash over the near-ink fill (light) / an ink wash over the light fill
- *  (dark), so it reads in both. */
+/** Someone else. Soft chip fill on the canvas; inside the user bubble the
+ *  `bubble-chip` pair, which is measured against the BUBBLE rather than the
+ *  canvas, so the wash and its label read over the fill in either theme. */
 const OTHER =
-  "bg-chip text-chip-text group-[.is-user]:bg-input/20 group-[.is-user]:text-input dark:group-[.is-user]:bg-ink/10 dark:group-[.is-user]:text-ink";
+  "bg-chip text-chip-text group-[.is-user]:bg-bubble-chip group-[.is-user]:text-bubble-chip-text";
 
 /** The viewer. The highlight wash carries in both themes; inside the light
  *  user bubble the wash sits over near-ink, so the label flips to the bubble's

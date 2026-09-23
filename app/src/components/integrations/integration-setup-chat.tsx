@@ -96,7 +96,7 @@ export function IntegrationSetupChat({
   if (!activity) {
     return createPortal(
       <div className="flex h-full min-h-0 flex-col">
-        <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
+        <div className="shrink-0 bg-pane px-4 py-3">
           <div className="mx-auto flex w-full max-w-3xl items-center gap-3">
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
               {t("custom.setupChat.missionTitle")}

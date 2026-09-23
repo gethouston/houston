@@ -15,11 +15,12 @@ import type { ReactNode } from "react";
  * The chip background is the resting affordance (hover only ADDS the
  * underline, never carries it alone). `box-decoration-break: clone` keeps
  * rounded ends on every line when a long chip wraps. Inside the USER's
- * action-filled bubble the blue fails contrast against the fill, so those
- * keep the bubble's own ink over the same tint.
+ * action-filled bubble the blue fails contrast against the fill, so those wear
+ * `bubble-chip-text` — the label tone measured against the bubble — over the
+ * same tint.
  */
 export const AUTOLINK_CLASS =
-  "text-link bg-link/10 rounded px-1 py-0.5 [box-decoration-break:clone] [-webkit-box-decoration-break:clone] hover:underline underline-offset-4 [overflow-wrap:anywhere] group-[.is-user]:text-input dark:group-[.is-user]:text-ink";
+  "text-link bg-link/10 rounded px-1 py-0.5 [box-decoration-break:clone] [-webkit-box-decoration-break:clone] hover:underline underline-offset-4 [overflow-wrap:anywhere] group-[.is-user]:text-bubble-chip-text";
 
 export interface AutolinkProps {
   href: string;

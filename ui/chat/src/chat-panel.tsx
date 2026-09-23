@@ -154,7 +154,7 @@ export function ChatPanel({
   return (
     <div
       ref={panelRef}
-      className="relative flex flex-1 flex-col min-h-0 overflow-hidden bg-background dark:bg-transparent"
+      className="relative flex flex-1 flex-col min-h-0 overflow-hidden bg-pane"
       {...dropProps}
     >
       <ChatDropOverlay

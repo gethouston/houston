@@ -119,7 +119,7 @@ export function RoutineSetupChat({
   // live board below, so the pre-model states share the same surface.
   if (!activity) {
     const slimHeader = (title?: string) => (
-      <div className="shrink-0 bg-background px-4 py-3 dark:bg-transparent">
+      <div className="shrink-0 bg-pane px-4 py-3">
         <div className="max-w-3xl mx-auto w-full flex items-center gap-3">
           {title && (
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">

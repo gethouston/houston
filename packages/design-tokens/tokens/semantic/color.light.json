@@ -7,8 +7,17 @@
     "background": {
       "$value": "{color.base.white}"
     },
+    "pane": {
+      "$value": "{color.base.white}"
+    },
     "input": {
       "$value": "{color.neutral.50}"
+    },
+    "field": {
+      "$value": "{color.neutral.50}"
+    },
+    "field-hover": {
+      "$value": "{color.neutral.100}"
     },
     "card": {
       "$value": "{color.glass.white-68}"
@@ -73,8 +82,17 @@
     "tab-active": {
       "$value": "{color.base.white}"
     },
+    "bubble": {
+      "$value": "{color.cool.ink}"
+    },
     "bubble-text": {
       "$value": "{color.base.white}"
+    },
+    "bubble-chip": {
+      "$value": "{color.alpha.neutral50-a20}"
+    },
+    "bubble-chip-text": {
+      "$value": "{color.neutral.50}"
     },
     "prose-text": {
       "$value": "{color.cool.ink}"
@@ -93,6 +111,12 @@
     },
     "danger-text": {
       "$value": "{color.base.white}"
+    },
+    "danger-fill": {
+      "$value": "{color.status.danger}"
+    },
+    "danger-ring": {
+      "$value": "{color.alpha.danger-a20}"
     },
     "success": {
       "$value": "{color.status.success}"
