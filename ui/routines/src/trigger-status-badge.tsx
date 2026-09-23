@@ -17,30 +17,11 @@
 import { Button, cn } from "@houston-ai/core";
 import { DEFAULT_TRIGGER_LABELS, type TriggerLabels } from "./labels";
 import {
-  type TriggerBadgeState,
-  triggerBadgeState,
-  triggerStatusDetail,
-} from "./trigger-status-view";
+  TRIGGER_DOT_CLASS,
+  TRIGGER_TONE_CLASS,
+} from "./trigger-status-badge-styles";
+import { triggerBadgeState, triggerStatusDetail } from "./trigger-status-view";
 import type { TriggerStatusItem } from "./types";
-
-const TONE: Record<TriggerBadgeState, string> = {
-  active: "text-success",
-  pending: "text-ink-muted",
-  paused_disconnected: "text-warning",
-  paused_revoked: "text-warning",
-  error: "text-danger",
-  unknown: "text-ink-muted",
-};
-
-const DOT: Record<TriggerBadgeState, string> = {
-  active: "bg-success",
-  pending: "bg-ink-muted",
-  paused_disconnected: "bg-warning",
-  paused_revoked: "bg-warning",
-  error: "bg-danger",
-  // A hollow, pulsing ring — visibly "checking", never a healthy fill.
-  unknown: "border border-ink-muted animate-pulse",
-};
 
 export interface TriggerStatusBadgeProps {
   /** Live status. Absent renders the muted "checking" (`unknown`) chip. */
@@ -75,10 +56,15 @@ export function TriggerStatusBadge({
     <span
       className={cn(
         "inline-flex items-center gap-1.5 text-xs font-medium",
-        TONE[state],
+        TRIGGER_TONE_CLASS[state],
       )}
     >
-      <span className={cn("size-1.5 shrink-0 rounded-full", DOT[state])} />
+      <span
+        className={cn(
+          "size-1.5 shrink-0 rounded-full",
+          TRIGGER_DOT_CLASS[state],
+        )}
+      />
       {label}
     </span>
   );

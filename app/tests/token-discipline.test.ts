@@ -143,7 +143,7 @@ describe("no raw visual values outside the sanctioned files", () => {
     for (const rule of RULES) ok(rule.remedy.length > 20, rule.name);
   });
 
-  it("finds no raw hex, rgba, undefined var, vh height, max-md: or bare dialog width", () => {
+  it("finds no raw hex, rgba, palette class, undefined var, vh height, max-md: or bare dialog width", () => {
     const known = new Set(UNTOKENIZED);
     const offences = guardedFiles()
       .filter((file) => !known.has(file))
@@ -227,6 +227,7 @@ describe("the raw-palette rule", () => {
     ok(offends('<p className="text-red-400">'));
     ok(offends('<div className="bg-emerald-950 border-zinc-700">'));
     ok(offends('<div className="border-t-red-500 ring-offset-red-500">'));
+    ok(offends('<ul className="divide-y divide-y-gray-200">'));
     ok(offends('<p className="hover:text-red-400/50">'));
   });
 

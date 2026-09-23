@@ -33,7 +33,7 @@ function NumberStepper({
     <div
       className={cn(
         "inline-flex items-center rounded-lg border bg-input transition-opacity",
-        invalid ? "border-danger/40" : "border-line/20",
+        invalid ? "border-danger-ring" : "border-line/20",
       )}
     >
       <button

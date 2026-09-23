@@ -23,9 +23,9 @@ export const C = {
   muted: "var(--ht-ink-muted)",
   /** The filled-CTA fill; its label is `--ht-action-text`, never a raw white. */
   accent: "var(--ht-action)",
-  green: "var(--ht-success)",
-  amber: "var(--ht-warning)",
-  red: "var(--ht-danger)",
+  green: "var(--ht-success-ink)",
+  amber: "var(--ht-warning-ink)",
+  red: "var(--ht-danger-ink)",
   blue: "var(--ht-link)",
 } as const;
 

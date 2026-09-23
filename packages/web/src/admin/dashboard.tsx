@@ -6,7 +6,9 @@ import {
   fetchOverview,
   type Overview,
 } from "./api";
-import { OrphansPanel, SpendPanel, StatCards, UsersTable } from "./components";
+import { OrphansPanel, StatCards } from "./components";
+import { SpendPanel } from "./components-spend";
+import { UsersTable } from "./components-users";
 import { AdminSignIn } from "./sign-in";
 import { btn, C, ghostBtn, page, tint } from "./styles";
 import { useAdminAuth } from "./use-admin-auth";

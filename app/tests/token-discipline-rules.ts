@@ -76,7 +76,7 @@ export const RULES: Rule[] = [
     // hex does — the hue is frozen at the value the author typed and neither
     // theme can move it.
     pattern:
-      /\b(?:bg|text|border(?:-[trblxyse])?|ring(?:-offset)?|inset-ring|inset-shadow|outline|divide|fill|stroke|from|via|to|placeholder|caret|decoration|shadow|accent)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/,
+      /\b(?:bg|text|border(?:-[trblxyse])?|ring(?:-offset)?|inset-ring|inset-shadow|outline|divide(?:-[xy])?|fill|stroke|from|via|to|placeholder|caret|decoration|shadow|accent)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/,
     remedy:
       "status wears the semantic pair (danger/success/warning plus their -text and -ink), neutrals wear ink, ink-muted, chip and line — DESIGN.md §4",
   },
