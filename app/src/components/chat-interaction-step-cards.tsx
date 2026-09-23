@@ -80,18 +80,10 @@ export function interactionStepCards(args: {
     },
     renderSignin: (step, api) => (
       <ChatSigninInteractionCard
+        {...api}
         key={step.id}
         stepId={step.id}
-        pager={api.pager}
-        onDismiss={api.onDismiss}
-        dismissLabel={api.dismissLabel}
-        collapseLabel={api.collapseLabel}
-        expandLabel={api.expandLabel}
-        disabled={api.disabled}
-        open={api.open}
-        onOpenChange={api.onOpenChange}
         reason={step.reason}
-        revisited={api.revisited}
         onSignedIn={() => {
           // FINAL state: signed in wins over any earlier skip.
           outcomes.signin = "signedIn";
@@ -108,19 +100,11 @@ export function interactionStepCards(args: {
     ),
     renderConnect: (step, api) => (
       <ChatConnectInteractionCard
+        {...api}
         key={step.id}
         stepId={step.id}
-        pager={api.pager}
-        onDismiss={api.onDismiss}
-        dismissLabel={api.dismissLabel}
-        collapseLabel={api.collapseLabel}
-        expandLabel={api.expandLabel}
-        disabled={api.disabled}
-        open={api.open}
-        onOpenChange={api.onOpenChange}
         agentId={agentId}
         reason={step.reason}
-        revisited={api.revisited}
         onConnected={(_toolkit, appName) => {
           outcomes.connects.set(step.id, { name: appName, connected: true });
           api.onConnected();
@@ -139,20 +123,12 @@ export function interactionStepCards(args: {
     ),
     renderCredential: (step, api) => (
       <ChatCredentialInteractionCard
+        {...api}
         key={step.id}
         stepId={step.id}
         agentId={agentId}
-        pager={api.pager}
-        onDismiss={api.onDismiss}
-        dismissLabel={api.dismissLabel}
-        collapseLabel={api.collapseLabel}
-        expandLabel={api.expandLabel}
-        disabled={api.disabled}
-        open={api.open}
-        onOpenChange={api.onOpenChange}
         toolkit={step.toolkit}
         reason={step.reason}
-        revisited={api.revisited}
         onSaved={(name, mode) => {
           outcomes.credentialModes.set(name, mode);
           outcomes.credentials.set(step.id, { name, saved: true });

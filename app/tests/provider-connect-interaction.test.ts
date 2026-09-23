@@ -102,7 +102,7 @@ test("the card keys its memory by the whole request, never the bare step id", ()
 test("a requested provider is named through the gated connect list", () => {
   // The card resolves through `getConnectProviders`; a title resolved off the
   // raw catalog named a provider the card itself reports as unavailable.
-  const steps = readSrc("../src/components/chat-interaction-steps.tsx");
+  const steps = readSrc("../src/components/chat-interaction-steps.ts");
   ok(
     steps.includes("title: resolveProviderName(step.provider)"),
     "the mapped title uses the gated resolver",

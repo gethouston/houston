@@ -3,6 +3,7 @@ import {
   InteractionModal,
   InteractionModalTitle,
   type StepChrome,
+  type StepFooterApi,
 } from "@houston-ai/chat";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
@@ -10,7 +11,14 @@ import { useTranslation } from "react-i18next";
 import { ChatStepDeclineButton } from "./chat-step-decline-button";
 import { useInteractionStepKeys } from "./use-interaction-step-keys";
 
-interface Props extends StepChrome {
+/**
+ * The step's free-text, parked by the stepper rather than by the row: what a
+ * person typed into a connect / sign-in / credential / hands-on step must
+ * survive the card being torn down when they open another mission.
+ */
+export type StepDraftApi = Pick<StepFooterApi, "draft" | "onDraftChange">;
+
+interface Props extends StepChrome, StepDraftApi {
   /** The step's stable id — fades the modal body on a step swap. */
   stepId: string;
   /** The identity mark left of the title (brand logo, helmet, key glyph). */
@@ -70,6 +78,8 @@ export function ChatConnectStepShell({
   children,
   cta,
   busy,
+  draft,
+  onDraftChange,
   onDecline,
   onEnter,
   stepActive = true,
@@ -142,9 +152,17 @@ export function ChatConnectStepShell({
         done ? undefined : (
           <InlineTextRow
             disabled={busy}
-            onSubmit={onDecline}
+            // The decline commits nothing, so the step keeps its draft: empty
+            // the row here or the text the user already SENT sits in it again
+            // when they walk back onto the step.
+            onSubmit={(text) => {
+              onDecline(text);
+              onDraftChange("");
+            }}
+            onValueChange={onDraftChange}
             placeholder={t("interaction.declinePlaceholder")}
             sendLabel={t("questionCard.send")}
+            value={draft}
           />
         )
       }

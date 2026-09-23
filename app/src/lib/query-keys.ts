@@ -27,7 +27,7 @@ export const queryKeys = {
   routines: (agentPath: string) => ["routines", agentPath] as const,
   learnings: (agentPath: string) => ["learnings", agentPath] as const,
   routineRuns: (agentPath: string) => ["routine-runs", agentPath] as const,
-  allConversations: (agentPaths: string[]) =>
+  allConversations: (agentPaths: readonly string[]) =>
     ["all-conversations", ...agentPaths] as const,
   chatHistory: (agentPath: string, sessionKey: string) =>
     ["chat-history", agentPath, sessionKey] as const,

@@ -667,3 +667,92 @@ describe("branded question", () => {
     assert.equal(hasSelectableOptions(Q_BRANDED.options), true);
   });
 });
+
+describe("skip after an earlier answer", () => {
+  const steps = [Q1, Q2, CONNECT];
+
+  // The restore path makes this common: hydration rewinds the cursor behind an
+  // approval while keeping the answers already committed, so the user re-walks
+  // a step they answered before and may decline it the second time.
+  it("drops the answer committed on an earlier visit to the skipped step", () => {
+    let s = answerWithOption(initialStepperState(), steps, "o1").state;
+    s = goBack(s); // back onto the answered q1
+    s = skipStep(s, steps).state; // decline it after all
+    assert.equal(s.answers.q1, undefined);
+    assert.deepEqual(toCompletedAnswers(steps, s.answers), []);
+    assert.equal(s.current, 1);
+  });
+
+  it("clears only the skipped step, keeping the other answers", () => {
+    let s = answerWithOption(initialStepperState(), steps, "o1").state;
+    s = setDraft(s, "q2", "Running late");
+    s = answerWithText(s, steps).state; // q2 answered -> connect
+    s = goBack(s); // back onto the answered q2
+    s = skipStep(s, steps).state; // decline q2 -> connect
+    const done = advanceConnect(s, steps);
+    assert.deepEqual(done.completed, [
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "John",
+        source: "option",
+        optionId: "o1",
+      },
+    ]);
+  });
+
+  it("completes without the declined answer when the skip is terminal", () => {
+    let s = answerWithOption(initialStepperState(), [Q1, Q2], "o1").state;
+    s = setDraft(s, "q2", "hi");
+    s = answerWithText(s, [Q1, Q2]).state; // q2 answered; the cursor stays here
+    const done = skipStep(s, [Q1, Q2]); // decline q2 after all
+    assert.deepEqual(done.completed, [
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "John",
+        source: "option",
+        optionId: "o1",
+      },
+    ]);
+  });
+
+  it("leaves the answer map untouched on a never-answered step", () => {
+    const s = initialStepperState();
+    assert.equal(skipStep(s, steps).state.answers, s.answers); // same reference
+  });
+
+  it("leaves the answer map untouched when the skipped step is a connect", () => {
+    const flow = [Q1, CONNECT, SIGNIN];
+    const s = answerWithOption(initialStepperState(), flow, "o1").state;
+    assert.equal(skipStep(s, flow).state.answers, s.answers); // same reference
+  });
+});
+
+describe("advances other than skip keep the committed answers", () => {
+  it("keeps an already-selected option when send fires with no typed text", () => {
+    let s = answerWithOption(initialStepperState(), [Q1, Q2], "o1").state;
+    s = goBack(s);
+    const t = answerWithText(s, [Q1, Q2]); // send with an empty draft
+    assert.deepEqual(t.state.answers.q1, { answer: "John", optionId: "o1" });
+    assert.equal(t.state.current, 1);
+  });
+
+  it("keeps prior answers across connect, signin, credential and custom", () => {
+    const flow = [Q1, CONNECT, SIGNIN, CREDENTIAL, CUSTOM];
+    let s = answerWithOption(initialStepperState(), flow, "o1").state;
+    s = advanceConnect(s, flow).state;
+    s = advanceSignin(s, flow).state;
+    s = advanceCredential(s, flow).state;
+    const done = advanceCustom(s, flow);
+    assert.deepEqual(done.completed, [
+      {
+        stepId: "q1",
+        question: "Who is it for?",
+        answer: "John",
+        source: "option",
+        optionId: "o1",
+      },
+    ]);
+  });
+});

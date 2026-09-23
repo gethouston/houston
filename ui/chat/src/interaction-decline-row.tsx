@@ -13,7 +13,9 @@ import { normalizeAnswer } from "./interaction-card-model.ts";
  * is text), so nothing about it needs learning. Never hover-gated: present at
  * rest on every live step.
  *
- * Owns its own draft (a step with no question has no draft slot in the stepper).
+ * Owns its own draft unless the consumer supplies `value` + `onValueChange`, in
+ * which case the text lives wherever the consumer parks it — how a non-question
+ * step's typed instruction survives the card being remounted.
  * `onSubmit` fires with the trimmed text (never empty) via {@link normalizeAnswer};
  * the consuming card turns that into its decline-with-instruction / redirection.
  * Enter or the arrow sends. Props-only, i18n-agnostic: the consumer passes the
@@ -23,15 +25,25 @@ export function InlineTextRow({
   placeholder,
   sendLabel,
   disabled,
+  value: controlled,
+  onValueChange,
   onSubmit,
 }: {
   placeholder: string;
   /** aria-label of the arrow-up send button ("Send"). */
   sendLabel: string;
   disabled: boolean;
+  /** The typed text, when the consumer parks it. Omitted = the row keeps it. */
+  value?: string;
+  onValueChange?: (value: string) => void;
   onSubmit: (text: string) => void;
 }) {
-  const [value, setValue] = useState("");
+  const [internal, setInternal] = useState("");
+  const value = controlled ?? internal;
+  const setValue = (next: string) => {
+    setInternal(next);
+    onValueChange?.(next);
+  };
   const text = normalizeAnswer(value);
   const submit = () => {
     if (text !== null) onSubmit(text);

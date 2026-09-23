@@ -19,8 +19,16 @@ import { tauriActivity } from "../lib/tauri";
 import { useUIStore } from "../stores/ui";
 
 export interface PersistedInteractionWriters {
-  /** Clear the whole persisted interaction (the user interrupted a sequence). */
-  clearPersistedInteraction: () => Promise<void>;
+  /**
+   * Clear the whole persisted interaction (the user interrupted a sequence).
+   *
+   * Resolves TRUE only when the card is genuinely gone — the activity write
+   * landed, or there was no activity holding one. A failed write toasts and
+   * resolves false rather than throwing (as does a call made with no agent
+   * path, which writes nothing), so the caller must not read the awaited call
+   * as confirmation on its own.
+   */
+  clearPersistedInteraction: () => Promise<boolean>;
   /**
    * Persist `interaction` minus ONE step — the per-offer dismissal, so skipping
    * the action bubbles never takes the save-as-reusable card with it. The
@@ -70,15 +78,24 @@ export function usePersistedInteraction(args: {
 
   // Keyed on the STABLE id strings (never the activity object), so an activity
   // query refetch mid-sequence hands the panel the same callbacks.
+  // Reports whether the write LANDED, in three outcomes: true when the activity
+  // took it (or there was no activity holding one), false + a toast when the
+  // write failed (the user is told, nothing throws), and false with NO toast
+  // when there is no agent path — nothing was attempted, so there is nothing to
+  // tell the user. The panel guards on the path before it ever gets here; the
+  // boolean is the only way a caller can tell a persisted card that is gone
+  // from one that is still there.
   const persist = useCallback(
-    async (next: PendingInteraction | null) => {
-      if (!agentPath) return;
+    async (next: PendingInteraction | null): Promise<boolean> => {
+      if (!agentPath) return false;
+      let written = true;
       if (activityId) {
         try {
           await tauriActivity.update(agentPath, activityId, {
             pending_interaction: next,
           });
         } catch (err) {
+          written = false;
           addToast({
             title: t("chat:errors.interactionDismissFailed"),
             description: genericErrorDescription("interaction_dismiss", err),
@@ -87,6 +104,7 @@ export function usePersistedInteraction(args: {
         }
       }
       resyncInteraction();
+      return written;
     },
     [agentPath, activityId, resyncInteraction, addToast, t],
   );
@@ -105,6 +123,8 @@ export function usePersistedInteraction(args: {
       // Nothing changed: no write, no invalidation, no repaint.
       if (!write) return;
       lastWrite.current = write;
+      // The remainder is chained from `lastWrite`, so a failed write is already
+      // told to the user and nothing here branches on it.
       await persist(write.written);
     },
     [persist],

@@ -5,10 +5,10 @@ import {
 } from "../lib/agent-selection";
 import { analytics } from "../lib/analytics";
 import { getEngine, isEngineReady } from "../lib/engine";
+import { prepareAgentDraftForget } from "../lib/forget-agent-drafts";
 import { tauriAgents, tauriPreferences } from "../lib/tauri";
 import type { Agent } from "../lib/types";
 import { useAgentProvisioningStore } from "./agent-provisioning";
-import { useDraftStore } from "./drafts";
 
 export interface CreatedAgent {
   agent: Agent;
@@ -165,15 +165,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   delete: async (workspaceId, id) => {
     const wasCurrent = get().current?.id === id;
+    // `AgentsChanged` lands before the delete answers, so the roster can drop
+    // this agent before the await resumes: capture its keys while it names it.
+    const forgetDrafts = prepareAgentDraftForget(id, get().agents);
     await tauriAgents.delete(workspaceId, id);
     // A deleted agent is never "being created" — stop the probe and the UI.
     useAgentProvisioningStore.getState().clearProvisioning(id);
-    // The server confirmed the delete — reflect it in the UI NOW.
-    // Conversation state lives in the SDK conversation VM; a deleted agent's
-    // scopes are simply never subscribed again. Uploaded files need no
-    // cleanup either: they live in the agent's workspace, which died with it.
-    // Clear the free-form chat draft for this agent.
-    useDraftStore.getState().clearDraft(`chat-${id}`);
+    // The server confirmed the delete — reflect it in the UI NOW. Conversation
+    // state lives in the SDK conversation VM (a deleted agent's scopes are
+    // never subscribed again) and its uploads died with the agent's workspace.
+    forgetDrafts();
     let nextCurrent: Agent | null = null;
     set((s) => {
       const agents = s.agents.filter((a) => a.id !== id);
