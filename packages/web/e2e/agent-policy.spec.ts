@@ -117,11 +117,11 @@ test("the team's agent list drills into seven settings lozenges", async ({
   ).toBeVisible();
   // The manage card carries the copy door alongside identity, move and delete.
   await expect(
-    page.getByRole("button", { name: /Copy AI Employee/ }),
+    page.getByRole("button", { name: /Duplicate Finance Bot/ }),
   ).toBeVisible();
 });
 
-test("Copy AI Employee opens pre-named with the first free name and refuses a taken one", async ({
+test("Duplicate opens pre-named with the first free name and refuses a taken one", async ({
   page,
   request,
 }) => {
@@ -129,13 +129,15 @@ test("Copy AI Employee opens pre-named with the first free name and refuses a ta
   await armOrg(request);
   await page.goto("/");
   await openAgentSettings(page, "Finance Bot", null);
-  await page.getByRole("button", { name: /Copy AI Employee/ }).click();
+  await page.getByRole("button", { name: /Duplicate Finance Bot/ }).click();
 
   // Names are unique per workspace (not per team), so the dialog opens on the
   // first free "<name> copy" instead of a name the create would 409 on.
   const nameField = page.locator("#agent-copy-name");
   await expect(nameField).toHaveValue("Finance Bot copy");
-  await expect(page.getByRole("button", { name: "Create copy" })).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "Create duplicate" }),
+  ).toBeEnabled();
 
   // Typing a taken name (copying next to the original keeps the original's
   // name taken) names the conflict inline and disables the create.
@@ -144,7 +146,7 @@ test("Copy AI Employee opens pre-named with the first free name and refuses a ta
     page.getByText("An AI Employee named Finance Bot already exists"),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Create copy" }),
+    page.getByRole("button", { name: "Create duplicate" }),
   ).toBeDisabled();
 });
 

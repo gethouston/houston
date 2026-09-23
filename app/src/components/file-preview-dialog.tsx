@@ -128,7 +128,7 @@ export function FilePreviewDialog({
         className={
           fullPage
             ? "h-[92dvh] sm:max-w-[95vw] grid-rows-[auto_minmax(0,1fr)_auto]"
-            : "sm:max-w-3xl"
+            : "sm:max-w-[min(48rem,calc(100%-2rem))]"
         }
       >
         <DialogHeader className="min-w-0">

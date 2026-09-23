@@ -5,7 +5,7 @@ Mandatory context for every coding agent (Claude Code / Codex) before touching U
 Canonical sources, in precedence order: `packages/design-tokens/tokens/*.json` (source of truth — **tokens win on any conflict**) › this file (the doctrine). If this file disagrees with the token JSON, the JSON is right — fix this file.
 
 ## 2. Product design identity
-Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy, not corporate. Current look = the **futuristic theme**: the shared canvas `ui/core/src/canvas.css` (aurora, glass surfaces, depth utilities — imported after core globals so its overrides win; also consumed by the store playground and, eventually, agents.gethouston.ai) plus the app-only chrome left in `app/src/styles/futuristic.css` (AI-Hub `.ht-live-glow` / modal surface).
+Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy, not corporate. Current look = the **futuristic theme**: the shared canvas `ui/core/src/canvas.css` (aurora, glass surfaces, depth utilities — imported after core globals so its overrides win; also consumed by the store playground and, eventually, agents.gethouston.ai) plus the app-only chrome left in `app/src/styles/futuristic.css` (AI-Hub `.ht-live-glow` and onboarding effects).
 - **Arc / Zen "canvas" layout.** Main content floats as a rounded "screen" card (`bg-background`, `.canvas-screen`) on a recessed window **gutter** (`bg-gutter`); the sidebar is transparent and melts into the gutter.
 - **Dark mode is the loved baseline** — a slow-drifting multi-radial **aurora glow** (blue/indigo/orange, 32s) on `body::before` + translucent **glass** surfaces with `backdrop-filter` blur.
 - **Light mode** — cool solid light palette (gutter, screen, and slightly recessed fields), no glow mesh (read as glitter over solids). Clean by restraint. ("Aurora" refers ONLY to the dark-mode glow — themes are just "light" and "dark".)
@@ -19,7 +19,7 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
    - `app/src/main.tsx` — pre-boot fallback colour before tokens load
    - `app/index.html` + `packages/web/index.html` — the pre-paint theme frame + cache script (light screen `#fcfcfc` / dark gutter `#141416`; keep the two blocks identical)
    - `packages/web/src/new-engine/styles.ts` — entry-chunk boot-gate styles (render before any token CSS loads; gate surfaces mirror the same frame values)
-   - the effects layer — aurora / glass-sheen rgba in `ui/core/src/canvas.css`, `.ht-live-glow` + AI-Hub chrome in `app/src/styles/futuristic.css` (sanctioned effect values, not tokenized)
+   - the effects layer — aurora / glass-sheen rgba in `ui/core/src/canvas.css`, `.ht-live-glow` + onboarding effects in `app/src/styles/futuristic.css` (sanctioned effect values, not tokenized)
 2. **Use `@houston-ai/core` primitives** (§ inventory). Never invent a parallel component; never import another component library. Search core + the shadcn registry before building.
 3. **Lucide icons only**, `currentColor`, 20px standard (`h-5 w-5`), 16px small, 24px large, stroke 2px. **No emoji as icons, ever.**
 4. **Every screen ships light AND dark** via `[data-theme]`. Pin a subtree with `data-theme="light|dark"` on a wrapper when it must defy the app theme (e.g. the first-run flow pins its calm light setup canvas). Keep the `:not(:where([data-theme="light"], …))` guard on any new dark-scoped descendant rule.
@@ -94,7 +94,7 @@ Merge the tokenized scale (§4) with these craft rules:
 - UI motion **<300ms** (`fast 200ms`) — reserve `elegant 582ms`+ for designated "elegant" moments only.
 - **Exits faster than entrances.** Ease-**out** for entrances (`entrance [0.16,1,0.3,1]`); **never ease-in** for UI reveals.
 - Animate **only `transform` + `opacity`.** Never layout/color/box-shadow per frame.
-- Never from `scale(0)` — start ≥ `scale(0.95)` (see AI-Hub modal: `0.98→1`).
+- Never from `scale(0)` — start ≥ `scale(0.95)` (see `zoom-in-95` in `dialog-frame.ts`).
 - **NO animation on high-frequency interactions** — menus, dropdowns, keyboard-driven actions open instantly.
 - Respect `prefers-reduced-motion`: collapse to opacity-only or static (the aurora already branches on it).
 - Gestures / drags → springs, interruptible (Framer `{type:"spring", stiffness:300, damping:30}`); reordering lists use the `layout` prop + `AnimatePresence mode="popLayout"`.

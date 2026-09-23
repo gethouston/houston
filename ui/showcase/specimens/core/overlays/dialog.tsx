@@ -21,6 +21,7 @@ import {
   SpecimenSection,
   SpecimenTokens,
 } from "../../../src/specimen";
+import { HeaderCloseDialog } from "./dialog-header-close";
 import { dialogProps } from "./dialog-parts";
 
 /**
@@ -129,6 +130,9 @@ function DialogSpecimen() {
         </SpecimenRow>
         <SpecimenRow label="Footer close button">
           <FooterCloseDialog />
+        </SpecimenRow>
+        <SpecimenRow label="Header close (DialogCloseButton)">
+          <HeaderCloseDialog />
         </SpecimenRow>
       </SpecimenSection>
 

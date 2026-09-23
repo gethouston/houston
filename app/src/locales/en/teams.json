@@ -62,7 +62,7 @@
       "chooseTeam": "Choose a team",
       "moveOrganization": "Move to another organization",
       "moveOrganizationDescription": "Move this AI Employee into an organization so a team can work with it.",
-      "delete": "Delete AI Employee"
+      "delete": "Delete {{name}}"
     },
     "people": {
       "helper": "Pick whether everyone on your team can use this AI Employee, or only the people you choose.",

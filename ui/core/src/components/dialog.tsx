@@ -7,6 +7,8 @@ import type * as React from "react";
 import { cn } from "../utils";
 import { Button } from "./button";
 import {
+  DIALOG_CLOSE_CLASS,
+  DIALOG_CLOSE_CORNER_CLASS,
   DIALOG_CONTENT_CLASS,
   DIALOG_DESCRIPTION_CLASS,
   DIALOG_FOOTER_CLASS,
@@ -37,6 +39,31 @@ function DialogClose({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Close>) {
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />;
+}
+
+/**
+ * The close X, in the frame's one shape. `DialogContent` floats it in its
+ * corner; a recipe with a header row of its own (the wide FlowSheet) places
+ * it in that row instead, and passes nothing else.
+ */
+function DialogCloseButton({
+  label,
+  className,
+  ...props
+}: Omit<React.ComponentProps<typeof DialogPrimitive.Close>, "children"> & {
+  /** Screen-reader label. Override when localizing. */
+  label: string;
+}) {
+  return (
+    <DialogPrimitive.Close
+      data-slot="dialog-close"
+      className={cn(DIALOG_CLOSE_CLASS, className)}
+      {...props}
+    >
+      <XIcon />
+      <span className="sr-only">{label}</span>
+    </DialogPrimitive.Close>
+  );
 }
 
 function DialogOverlay({
@@ -80,13 +107,10 @@ function DialogContent({
       >
         {children}
         {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-lg p-1.5 text-ink-muted transition-colors duration-200 hover:bg-hover hover:text-ink focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
-          >
-            <XIcon />
-            <span className="sr-only">{closeLabel}</span>
-          </DialogPrimitive.Close>
+          <DialogCloseButton
+            label={closeLabel}
+            className={DIALOG_CLOSE_CORNER_CLASS}
+          />
         )}
       </DialogPrimitive.Content>
     </DialogPortal>
@@ -159,6 +183,7 @@ function DialogDescription({
 export {
   Dialog,
   DialogClose,
+  DialogCloseButton,
   DialogContent,
   DialogDescription,
   DialogFooter,

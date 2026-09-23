@@ -68,7 +68,7 @@ export function ManageSkillDialog({
     <>
       <Dialog open onOpenChange={(open) => !open && onClose()}>
         <DialogContent
-          className="sm:max-w-2xl"
+          className="sm:max-w-[min(42rem,calc(100%-2rem))]"
           onEscapeKeyDown={skillRenameEscapeGuard}
         >
           <DialogHeader className="min-w-0">

@@ -105,13 +105,13 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
         )}
         <SettingsRow
           icon={Copy}
-          title={t("agents:copyAgent.row")}
+          title={t("agents:copyAgent.row", { name: agent.name })}
           description={t("agents:copyAgent.rowDescription")}
           onClick={() => setCopyOpen(true)}
         />
         <SettingsRow
           icon={Trash2}
-          title={t("teams:agentSettings.manage.delete")}
+          title={t("teams:agentSettings.manage.delete", { name: agent.name })}
           destructive
           chevron={false}
           onClick={() => setDeleting(true)}

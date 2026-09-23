@@ -120,12 +120,12 @@ export function useLessonRun(spec: LessonSpec | undefined): LessonRun {
     setActiveLessonId(null);
   }, [setActiveLessonId]);
 
-  // Escape leaves the lesson, on every beat. The overlay stands over the app
-  // without inerting it, so the key has to be taken here rather than left to a
-  // dialog primitive, and the whisper beat has no keyboard path to its close
-  // at all. Capture, so the key that ends the lesson is not also read as
-  // "close this" by whatever the lesson is standing on — and trusted-only
-  // (`lessonExitKey`), so the app's own synthetic Escapes cannot end the run.
+  // Escape leaves the lesson on every beat. The docked beats are a modal
+  // dialog whose Escape is taken here in window capture, so the dialog never
+  // closes on its own and the whisper beat, which has no dialog, exits the
+  // same way. Stopping propagation keeps the key from also closing whatever
+  // the lesson stands on. Trusted-only (`lessonExitKey`), so the app's own
+  // synthetic Escapes cannot end the run.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!lessonExitKey(event)) return;

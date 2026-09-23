@@ -489,7 +489,6 @@
     "reportErrorDescription": "Try again in a moment."
   },
   "updateChecker": {
-    "launchLabel": "Houston update in progress",
     "launchTitle": "Upgrading Houston",
     "launchDescription": "Houston is updating to version {{version}}. The app will restart in a moment.",
     "downloading": "Downloading update...",

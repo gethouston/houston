@@ -553,7 +553,7 @@ test("agent Settings hides Move when there is no other team", async ({
     page.getByRole("button", { name: "Change color & name" }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "Delete AI Employee" }),
+    page.getByRole("button", { name: `Delete ${SEED_AGENT_NAME}` }),
   ).toBeVisible();
   // One team in the workspace, so there is nowhere to move to and the entry
   // is absent rather than opening on "no other teams".

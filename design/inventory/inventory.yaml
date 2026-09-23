@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 94
+version: 95
 
 components:
   - id: custom-integration-details
@@ -1867,7 +1867,9 @@ components:
       A modal dialog whose accessible name is the step's title: drawn as the
       dialog title in a compact frame, and in a wide one screen-reader-only
       unless the caller asks for it; back and close are real, separately named
-      controls; the entrance collapses under reduced motion.
+      controls, and close is the dialog's own X (the same control every dialog
+      closes with, with a visible keyboard focus ring); the entrance collapses
+      under reduced motion.
     since: 89
   - id: flow-choice-row
     title: Flow choice row

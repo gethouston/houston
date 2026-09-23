@@ -3,6 +3,16 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v95 - 2026-09-23
+
+Every dialog closes with one X: the dialog's own control, an 8px squircle
+with a visible keyboard focus ring, in the corner of a compact dialog and in
+the header row of a wide flow sheet. The launch update screen, the Academy
+lesson panel and the AI Models detail stand on the shared dialog frame: the
+AI Models detail takes the wide flow sheet's width and the frame's entrance,
+and the lesson panel is modal. A wide cap keeps the phone gutter inside its
+own `min()` until the viewport can pay for both.
+
 ## v94 - 2026-09-16
 
 Settings includes Channels: Slack OAuth connection, an expiring copyable DM

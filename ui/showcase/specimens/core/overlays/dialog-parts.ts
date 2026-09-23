@@ -32,6 +32,11 @@ export const dialogProps: SpecimenProp[] = [
     note: 'Default "Close". Screen-reader label for that X.',
   },
   {
+    name: "DialogCloseButton.label",
+    type: "string",
+    note: "The corner X as a standalone control, for a recipe's own header row.",
+  },
+  {
     name: "DialogFooter.showCloseButton",
     type: "boolean",
     note: "Default false. Appends an outline Button that closes.",

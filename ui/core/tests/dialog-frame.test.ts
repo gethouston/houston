@@ -168,6 +168,15 @@ describe("the dialog frame", () => {
       contentClass(DialogContent, { className: "sm:max-w-md" }),
       /\bsm:max-w-md\b/,
     );
+    // The alert's default width must be a plain `sm:max-w-lg` too: a default
+    // guarded by `data-[size=default]:` survives tailwind-merge AND outranks
+    // the caller's rule on specificity, so the caller's width is silently
+    // dead. The merged result has to carry the caller's cap alone.
+    const alert = contentClass(AlertDialogContent, {
+      className: "sm:max-w-md",
+    });
+    assert.match(alert, /\bsm:max-w-md\b/);
+    assert.doesNotMatch(alert, /sm:max-w-lg\b/);
   });
 
   it("lets a child clip instead of pushing the surface past its width", () => {
@@ -254,10 +263,9 @@ describe("the frame's breakpoints", () => {
 
   it("still sizes the alert's two widths at sm:, the one exception", () => {
     assert.match(ALERT_DIALOG_CONTENT_CLASS, /\bdata-\[size=sm\]:max-w-xs\b/);
-    assert.match(
-      ALERT_DIALOG_CONTENT_CLASS,
-      /\bdata-\[size=default\]:sm:max-w-lg\b/,
-    );
+    // Unguarded on purpose: guarded by `data-[size=default]:` it would
+    // survive tailwind-merge and outrank a caller's own `sm:max-w-*`.
+    assert.match(ALERT_DIALOG_CONTENT_CLASS, /(^|\s)sm:max-w-lg\b/);
   });
 
   it("moves the confirm's media beside its title at md:, not sm:", () => {

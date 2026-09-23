@@ -106,7 +106,6 @@ const UNTOKENIZED = [
   "app/src/components/onboarding/cloud-migration/progress-screen.tsx",
   "app/src/components/onboarding/cloud-migration/space-invaders.tsx",
   "app/src/components/onboarding/setup-card.tsx",
-  "app/src/components/shell/update-launch-overlay.tsx",
   "packages/engine-adapter/src/synthetic.ts",
   "packages/web/src/admin/sign-in.tsx",
   "packages/web/src/admin/styles.ts",
