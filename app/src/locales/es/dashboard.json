@@ -40,8 +40,8 @@
     "description": "Elige un empleado de IA para abrir una nueva conversación."
   },
   "skillPicker": {
-    "title": "Elige un skill",
-    "descriptionWithAgent": "Explora los skills que {{name}} ya sabe hacer.",
+    "title": "Elige una skill",
+    "descriptionWithAgent": "Explora las skills que {{name}} ya sabe hacer.",
     "empty": "Aún no hay skills.",
     "skillsLoading": "Cargando skills..."
   }

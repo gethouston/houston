@@ -50,7 +50,7 @@
   },
   "chatEmpty": {
     "heading": "¿En qué te ayudo?",
-    "subheading": "Toca un skill para empezar, o escribe lo que necesitas abajo.",
+    "subheading": "Toca una skill para empezar, o escribe lo que necesitas abajo.",
     "seeMore_one": "Ver {{count}} skill más",
     "seeMore_other": "Ver {{count}} skills más"
   },
