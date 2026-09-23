@@ -71,7 +71,7 @@
       "$value": "{color.alpha.white-a06}"
     },
     "tab-active": {
-      "$value": "{color.neutral.700}"
+      "$value": "{color.cool.card-dark}"
     },
     "bubble-text": {
       "$value": "{color.base.white}"
