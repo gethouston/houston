@@ -274,9 +274,9 @@ body {
 
 /* ── 7. Kanban card resting fill ────────────────────────────────
    The resting (non-selected) card uses a palette token, --ht-card-solid:
-   white in light, a cool neutral one step above the frosted screen in
-   dark (the gutter's hue family, so cards, columns and gutter share one
-   temperature under the aurora). Solid, not translucent: glass on the
+   white in light, the frosted screen's own composited tone in
+   dark (#1e1e20: the card is the screen showing through the lighter column
+   tray, the same logic as light). Solid, not translucent: glass on the
    already-frosted screen goes muddy and a board of blurred cards is a
    GPU cost. Running cards use the SAME fill for their center (--glow-bg)
    so every non-selected card reads uniformly — only the running card's

@@ -63,7 +63,7 @@ Surface ladder (bottom → top):
 | `bg-background` (`--ht-background`) | the floating "screen" — **standard main pane** (via `.canvas-screen`) |
 | `bg-input` (`--ht-input`) | fields, composer, pills — slightly recessed on the screen |
 | `bg-card` (`--ht-card`) | cards/panels that **float above** the canvas |
-| `bg-card-solid` (`--ht-card-solid`) | the board's resting cards and its "+" bar: opaque, cool-neutral in dark, never glass (a board of blurred cards is muddy and a GPU cost) |
+| `bg-card-solid` (`--ht-card-solid`) | the board's resting cards and its "+" bar: opaque, the screen tone in both themes so a card reads as the screen showing through the column tray, never glass (a board of blurred cards is muddy and a GPU cost) |
 | `bg-popover` / `bg-dialog` | menus / modals — **SOLID both themes, never blur, never alpha** |
 | `bg-chip` / `bg-chip-subtle` | recessed panels below the card tier (board columns, rows) |
 
