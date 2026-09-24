@@ -71,3 +71,31 @@ export function nudge(from, toward, surfacesFor, floor, label) {
     `${label}: cannot reach ${floor}:1 on every surface, even at ${formatColor(toward)}`,
   );
 }
+
+/**
+ * Bind the ladder to one palette: the returned `step(role, from, floor, extra)`
+ * walks `from` toward that palette's own ink until it clears `floor` on every
+ * row, plus whatever washes `extra` says the role is printed on, and notes how
+ * far it had to travel.
+ *
+ * @param {Record<string, string> & { id: string, foreground: string }} p
+ * @param {import("./color.mjs").Rgba[]} rows the palette's plain surfaces
+ * @param {string[]} notes
+ */
+export function inkStepper(p, rows, notes) {
+  return (role, from, floor, extra = () => []) => {
+    const { value, steps } = nudge(
+      from,
+      p.foreground,
+      (candidate) => [...rows, ...extra(candidate)],
+      floor,
+      `${p.id}: --ht-${role}`,
+    );
+    if (steps > 0) {
+      notes.push(
+        `${p.id}: ${role} ${formatColor(from)} -> ${formatColor(value)} (${steps * 2}% toward ink, floor ${floor}:1)`,
+      );
+    }
+    return value;
+  };
+}

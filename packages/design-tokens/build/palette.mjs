@@ -1,7 +1,8 @@
-import { composite, formatColor } from "./color.mjs";
+import { composite, formatColor, hue } from "./color.mjs";
 import { colors } from "./model.mjs";
 import { loadPalette, PALETTE_ORDER } from "./omarchy.mjs";
 import { paletteCta } from "./palette-cta.mjs";
+import { paletteStatus } from "./palette-status.mjs";
 import { paletteSurfaces } from "./palette-surfaces.mjs";
 import { paletteText } from "./palette-text.mjs";
 
@@ -15,13 +16,24 @@ import { paletteText } from "./palette-text.mjs";
  * The families Houston AUTHORS rather than derives; an imported palette inherits
  * them from the Houston set of its own mode, unchanged. They are identity (agent
  * helmets, file-type glyphs, human avatars), the brand comet, and one effect
- * wash — none of them is a surface a terminal palette gets a say in, and each is
- * already contrast-tuned against the ladder every palette keeps.
+ * wash: none of them is a surface a terminal palette gets a say in, and each is
+ * already contrast-tuned against the ladder every palette keeps. The status
+ * family and the link are inherited for the same reason, but they are re-measured
+ * on the palette's surfaces, so `palette-status.mjs` owns them.
  */
 const AUTHORED = ["glow-", "agent-", "filetype-", "person-", "flash"];
 
 const isAuthored = (name) =>
   AUTHORED.some((family) => name === family || name.startsWith(family));
+
+/**
+ * The hue a set spends colour on: its action colour when that carries a hue at
+ * all, which for an import IS its accent, worn by the button, the action colour
+ * and the focus ring. Houston's own action is ink by doctrine, so its sets fall
+ * through to the link, the one place they spend colour on content.
+ */
+const chromatic = (byName) =>
+  hue(byName.action) === null ? byName.link : byName.action;
 
 /** The four hexes the picker paints a palette's swatch with. */
 function swatch(byName) {
@@ -31,9 +43,7 @@ function swatch(byName) {
     base: formatColor(base),
     background: formatColor(screen),
     ink: formatColor(composite(byName.ink, screen)),
-    // The chromatic accent as the UI actually wears it: the link hue, which is
-    // the one place Houston spends colour on content.
-    accent: formatColor(composite(byName.link, screen)),
+    accent: formatColor(composite(chromatic(byName), screen)),
   };
 }
 
@@ -51,10 +61,11 @@ export function derivePalette(base, p) {
   const notes = [];
   const surfaces = paletteSurfaces(p, notes);
   const text = paletteText(p, surfaces, notes);
+  const status = paletteStatus(indexByName(base), p, surfaces, notes);
   // The light primary button IS the accent fill, the same one `action-text` was
   // measured on, so the button reuses that measurement rather than repeating it.
   const cta = paletteCta(p, surfaces, text["action-text"], notes);
-  const derived = { ...surfaces, ...text, ...cta };
+  const derived = { ...surfaces, ...text, ...status, ...cta };
   for (const role of Object.keys(derived)) {
     if (!base.some((entry) => entry.name === role)) {
       throw new Error(

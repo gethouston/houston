@@ -1,8 +1,14 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-// @ts-expect-error -- plain .mjs build helper, no type declarations needed here.
-import { composite, contrast, parseColor, withAlpha } from "../build/color.mjs";
+import {
+  composite,
+  contrast,
+  hueDistance,
+  parseColor,
+  withAlpha,
+  // @ts-expect-error -- plain .mjs build helper, no type declarations needed here.
+} from "../build/color.mjs";
 // @ts-expect-error -- plain .mjs build helper, no type declarations needed here.
 import { loadPalette } from "../build/omarchy.mjs";
 import { palettes } from "../dist/ts/tokens.ts";
@@ -85,6 +91,14 @@ const HOUSTON_CTA = {
     "ht-cta-rim-hover": "rgba(255, 255, 255, 0.3)",
   },
 } as const;
+
+/**
+ * How far a status hue may drift from Houston's while the ladder walks it toward
+ * a palette's own ink. Twenty degrees is a shade of the same colour; a hue that
+ * travels further is a different colour, and a gray is no colour at all
+ * (`hueDistance` answers `Infinity` for one).
+ */
+const HUE_TOLERANCE = 20;
 
 /** A nudged role: the floor it owes, and the wash it is printed on. */
 type Nudged = {
@@ -318,6 +332,28 @@ describe.each(imported)("palette $id", (palette) => {
       ratio,
       `--ht-action-text (${vars["ht-action-text"]}) measures ${ratio.toFixed(2)}:1 on --ht-action`,
     ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  /**
+   * Status is SEMANTICS, not surface, so the whole family and the link are
+   * Houston's own, taken from the set of the same mode. A terminal palette's
+   * red, green and yellow are what a shell prints error text in, and in the
+   * `white` theme they are three grays: derived from those, a "Delete forever"
+   * pill would be indistinguishable from a normal button and a resting link
+   * would be plain black text. The fills carry Houston's hue exactly; the inks
+   * and `link` climb THIS palette's ladder, so they may drift, but never off
+   * their family. That the nudge kept them readable here is what the contrast
+   * matrix above proves.
+   */
+  it("status hues are Houston's family, nudged", () => {
+    for (const role of ["danger", "success", "warning", "link"] as const) {
+      const name = `ht-${role}`;
+      const distance = hueDistance(vars[name], expected[name]) as number;
+      expect(
+        distance,
+        `--${name} (${vars[name]}) sits ${distance}° from Houston ${palette.mode}'s ${expected[name]}`,
+      ).toBeLessThanOrEqual(HUE_TOLERANCE);
+    }
   });
 
   for (const status of ["danger", "success", "warning"] as const) {

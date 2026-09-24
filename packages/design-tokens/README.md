@@ -69,13 +69,21 @@ complete `--ht-*` role set by one table of rules:
   cannot silently keep a Houston hex inside someone else's scheme.
 - `build/palette-surfaces.mjs` keeps Houston's ladder structure and alpha washes
   with the palette's hexes.
-- `build/palette-text.mjs` derives ink, the status hues, the action colour and
-  the focus ring (`action` and `focus` are the palette's own accent, with
-  `action-text` measured on it at 4.5:1 or the build fails), and names the wash
-  each role worn AS TEXT is printed on.
-- `build/palette-ladder.mjs` is the contrast ladder those roles climb: they step
-  toward the palette's own ink in 2% mixes, each rung snapped to the hex the CSS
-  ships, until they clear 4.5:1 (3:1 for `ink-muted`) on all four rows (screen,
+- `build/palette-text.mjs` derives ink, the user's chat bubble, and the action
+  colour and focus ring (`action` and `focus` are the palette's own accent, with
+  `action-text` measured on it at 4.5:1 or the build fails).
+- `build/palette-status.mjs` holds the status family and the link, which are
+  INHERITED from the Houston set of the same mode rather than derived: a
+  palette's red, green and yellow are what a terminal prints error text in, and
+  the `white` theme has none (its three hues are `#2a2a2a`, `#3a3a3a`, `#4a4a4a`
+  and its blue is `#1a1a1a`), so deriving them cost the product its danger,
+  success, warning and links. The palette still decides how they are worn on its
+  own surfaces: each label is re-picked on its fill from the palette's own tones,
+  keeping the side Houston's label sits on, and the inks and `link` climb the
+  ladder below.
+- `build/palette-ladder.mjs` is the contrast ladder the roles worn AS TEXT climb:
+  they step toward the palette's own ink in 2% mixes, each rung snapped to the hex
+  the CSS ships, until they clear 4.5:1 (3:1 for `ink-muted`) on all four rows (screen,
   field, chip row, recessed row) and on their wash over each of those rows. A
   status ink's wash is its own hue at 10% and 15%; `link`'s wash is 10% of
   `link` ITSELF, the chat link chip, so each rung re-composites its own backdrop.

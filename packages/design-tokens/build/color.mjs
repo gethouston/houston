@@ -119,6 +119,47 @@ export function composite(fg, bg) {
   };
 }
 
+/**
+ * Hue in degrees, or `null` for a gray. Channels that differ by less than one
+ * eight-bit step are no hue at all, and that null is the whole difference
+ * between "the same family as Houston's red" and "a palette that has no red":
+ * the `white` theme's red, green and yellow are #2a2a2a, #3a3a3a and #4a4a4a.
+ *
+ * @param {Rgba | string} color
+ * @returns {number | null}
+ */
+export function hue(color) {
+  const { r, g, b } = rgba(color);
+  const max = Math.max(r, g, b);
+  const chroma = max - Math.min(r, g, b);
+  if (chroma < 1 / 255) return null;
+  const sector =
+    max === r
+      ? (g - b) / chroma
+      : max === g
+        ? 2 + (b - r) / chroma
+        : 4 + (r - g) / chroma;
+  return (((sector * 60) % 360) + 360) % 360;
+}
+
+/**
+ * The shorter way round the colour wheel between two hues, in degrees, and
+ * `Infinity` when either colour is a gray: a gray is not a hue that happens to
+ * sit far away, it is the absence of one, so a role that lost its hue can never
+ * pass for a role that was merely nudged.
+ *
+ * @param {Rgba | string} a
+ * @param {Rgba | string} b
+ * @returns {number}
+ */
+export function hueDistance(a, b) {
+  const ha = hue(a);
+  const hb = hue(b);
+  if (ha === null || hb === null) return Number.POSITIVE_INFINITY;
+  const diff = Math.abs(ha - hb) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+
 /** WCAG 2.x relative luminance. The colour must already be opaque to mean anything. */
 export function luminance(color) {
   const { r, g, b } = rgba(color);
