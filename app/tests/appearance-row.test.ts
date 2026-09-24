@@ -67,13 +67,16 @@ describe("the Appearance row's preference", () => {
     );
   });
 
-  it("disposes the committer on unmount, so the last pick still lands", () => {
+  it("disposes the committer on unmount and on unload, so the last pick still lands", () => {
     // The cleanup is the ONE thing the mount effect exists for besides waiting
     // on the read: closing Settings inside the debounce window would otherwise
-    // drop the pick the user just made.
+    // drop the pick the user just made. A reload or quit runs no React
+    // cleanup, so the same flush also answers the page's own unload.
+    assert.match(src, /const flush = \(\) => built\?\.dispose\(\);/);
+    assert.match(src, /window\.addEventListener\("pagehide", flush\)/);
     assert.match(
       src,
-      /return \(\) => \{\s*live = false;\s*built\?\.dispose\(\);/,
+      /return \(\) => \{\s*live = false;\s*window\.removeEventListener\("pagehide", flush\);\s*flush\(\);/,
     );
   });
 });

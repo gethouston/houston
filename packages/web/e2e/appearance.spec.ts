@@ -215,6 +215,18 @@ test("a dark palette paints under dark mode and survives a reload", async ({
   );
   expect(gutter).not.toBe("");
 
+  // Picks persist through a short debounce; a reload before the store holds
+  // them would test the debounce, not the reload.
+  await expect
+    .poll(() =>
+      page.evaluate(() => [
+        localStorage.getItem("houston.pref.theme"),
+        localStorage.getItem("houston.pref.theme.dark"),
+        localStorage.getItem("houston.pref.theme.light"),
+      ]),
+    )
+    .toEqual(["dark", "nord", "catppuccin-latte"]);
+
   await recordFirstFrame(page);
   await page.reload();
   // The mirror, not the engine: the pick is already painted on the frame the

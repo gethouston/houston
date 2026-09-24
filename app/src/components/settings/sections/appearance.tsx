@@ -70,10 +70,15 @@ export function AppearanceSection() {
     });
     // Closing Settings mid-burst must not drop the last pick: disposing stores
     // what is painted at once instead of waiting out a delay nobody is left to
-    // interrupt, and stops the committer touching a row that is gone.
+    // interrupt, and stops the committer touching a row that is gone. A reload
+    // or quit runs no React cleanup, so the page's own unload is the second
+    // trigger for the same flush.
+    const flush = () => built?.dispose();
+    window.addEventListener("pagehide", flush);
     return () => {
       live = false;
-      built?.dispose();
+      window.removeEventListener("pagehide", flush);
+      flush();
     };
   }, []);
   const [palettesOpen, setPalettesOpen] = useState(false);
