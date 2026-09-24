@@ -647,6 +647,9 @@ importers:
 
   packages/sdk:
     dependencies:
+      '@houston/design-tokens':
+        specifier: workspace:*
+        version: link:../design-tokens
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
