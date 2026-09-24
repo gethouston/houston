@@ -2,8 +2,7 @@ import { Spinner } from "@houston-ai/core";
 import { motion, type Transition, useReducedMotion } from "framer-motion";
 import { useEffect } from "react";
 import i18n from "../../lib/i18n";
-import { osIsTauri } from "../../lib/os-bridge";
-import { isMac } from "../../lib/platform";
+import { WindowDragStrip } from "./window-drag-strip";
 
 /** Motion tokens: `easing.entrance` + `duration.elegant` (582ms). The boot
  *  splash is a designated elegant moment, so it earns the long ease-out. */
@@ -39,17 +38,7 @@ export function WorkspaceLoading() {
 
   return (
     <div className="canvas-screen fixed inset-0 flex flex-col bg-background">
-      {/* macOS titleBarStyle: Overlay draws no native bar, so without a drag
-          region the window can't be moved from a full-screen gate surface.
-          Same strip as the workspace shell's, floated over the top edge so the
-          splash layout doesn't shift; the content stays below 28px. Gated like
-          the shell's: only the macOS desktop build uses the overlay title bar. */}
-      {osIsTauri() && isMac && (
-        <div
-          data-tauri-drag-region
-          className="absolute inset-x-0 top-0 z-20 h-7"
-        />
-      )}
+      <WindowDragStrip />
       <div className="flex flex-1 items-center justify-center px-6">
         <motion.div
           role="status"

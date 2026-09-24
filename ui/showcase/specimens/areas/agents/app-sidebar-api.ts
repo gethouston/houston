@@ -121,7 +121,7 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
   {
     name: "labels",
     type: "SidebarLabels",
-    note: "The two strings the rail renders itself: `addItem` (the add-agent row, and its tooltip on the icon rail) and `collapseSidebar` (the collapse button). English defaults, so a host that passes nothing still gets readable words. Everything else on the rail is a name or a node the host composed.",
+    note: "Labels for the add row and the collapse/expand control. English defaults keep both states readable.",
   },
   {
     name: "addItemDataAttrs",

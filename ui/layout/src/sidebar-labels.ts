@@ -9,9 +9,15 @@
 export interface SidebarLabels {
   addItem?: string;
   collapseSidebar?: string;
+  expandSidebar?: string;
 }
 
-export const DEFAULT_SIDEBAR_LABELS: Required<SidebarLabels> = {
+export const DEFAULT_SIDEBAR_LABELS: SidebarLabels & {
+  addItem: string;
+  collapseSidebar: string;
+  expandSidebar: string;
+} = {
   addItem: "Add item",
   collapseSidebar: "Collapse sidebar",
+  expandSidebar: "Expand sidebar",
 };

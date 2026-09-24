@@ -1,14 +1,12 @@
 import {
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@houston-ai/core";
-import { ChevronDown, PanelLeftOpen, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 
 export interface WorkspaceSwitcherProps {
   workspaces: { id: string; name: string }[];
@@ -18,17 +16,10 @@ export interface WorkspaceSwitcherProps {
   onCreate: () => void;
   /** Icon-only rail: render a compact monogram button instead of the name row. */
   collapsed?: boolean;
+  /** Tight top spacing when the host reserves a controls row above the header. */
+  compactTop?: boolean;
   /** Label for the "create workspace" action (defaults to English). */
   createLabel?: string;
-  /**
-   * Collapsed rail only: the monogram becomes the expand-sidebar button —
-   * it shows the workspace initial at rest and swaps to the expand icon on
-   * hover/focus. Clicking expands instead of opening the switcher menu
-   * (the menu is reachable once expanded).
-   */
-  onExpand?: () => void;
-  /** Label for the expand-sidebar action (defaults to English). */
-  expandLabel?: string;
 }
 
 function workspaceMonogram(name: string): string {
@@ -43,9 +34,8 @@ export function WorkspaceSwitcher({
   onSwitch,
   onCreate,
   collapsed = false,
+  compactTop = false,
   createLabel = "Create workspace",
-  onExpand,
-  expandLabel = "Expand sidebar",
 }: WorkspaceSwitcherProps) {
   const menu = (
     <DropdownMenuContent align="start" className="w-48">
@@ -66,38 +56,13 @@ export function WorkspaceSwitcher({
     </DropdownMenuContent>
   );
 
-  if (collapsed && onExpand) {
-    return (
-      <div
-        className="flex justify-center px-2 pt-3 pb-1"
-        data-tauri-drag-region
-      >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label={expandLabel}
-              onClick={onExpand}
-              className="group flex size-9 items-center justify-center rounded-lg bg-hover text-sm font-semibold text-ink transition-colors hover:bg-hover/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              <span className="group-hover:hidden group-focus-visible:hidden">
-                {workspaceMonogram(currentName)}
-              </span>
-              <PanelLeftOpen className="hidden size-4 group-hover:block group-focus-visible:block" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
-            {expandLabel}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    );
-  }
-
   if (collapsed) {
     return (
       <div
-        className="flex justify-center px-2 pt-3 pb-1"
+        className={cn(
+          "flex justify-center px-2 pt-3 pb-1",
+          compactTop && "pt-0",
+        )}
         data-tauri-drag-region
       >
         <DropdownMenu>
@@ -119,7 +84,10 @@ export function WorkspaceSwitcher({
 
   return (
     <div
-      className="flex items-center gap-1 px-2 pt-3 pb-1"
+      className={cn(
+        "flex items-center gap-1 px-2 pt-3 pb-1",
+        compactTop && "pt-0",
+      )}
       data-tauri-drag-region
     >
       <DropdownMenu>

@@ -5,8 +5,6 @@ import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { useSettingsLanding } from "../../hooks/use-settings-landing";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { phoneChromeHidden } from "../../lib/mobile-tabs";
-import { osIsTauri } from "../../lib/os-bridge";
-import { isMac } from "../../lib/platform";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { LessonRunner } from "../academy/lessons/lesson-runner";
@@ -23,7 +21,6 @@ import { KeepAliveViews } from "./keep-alive-views";
 import { MobileMoreMenu } from "./mobile-more-menu";
 import { MobileNavBar } from "./mobile-nav-bar";
 import { ShellPanelCard } from "./shell-panel-card";
-import { ShellTitleStrip } from "./shell-title-strip";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
 import { topLevelScreenViews } from "./top-level-screen-views";
@@ -82,7 +79,6 @@ export function WorkspaceShell({
   useKeyboardShortcuts();
 
   const isMobile = useIsMobile();
-  const overlayTitleBar = osIsTauri() && isMac;
   // The phone's pushed chat screen: chat is a PLACE below md, full-screen
   // over the content with the bottom chrome gone (`phoneChromeHidden` says
   // when). Desktop ignores the pair entirely.
@@ -97,8 +93,8 @@ export function WorkspaceShell({
   return (
     <DetailPanelProvider value={panelContainer}>
       {/* Transparent so the window background reads up through the content.
-          Column layout: a seamless overlay title-bar strip on top, then the
-          sidebar + content row below it.
+          The rail reserves space for native window controls; the content
+          card reaches the top gutter. The column also hosts phone navigation.
           h-dvh (not h-screen) so mobile browser chrome (the collapsing URL
           bar) never pushes the composer below the visible viewport.
           The shell stays fully interactive under the in-app onboarding: the
@@ -108,7 +104,6 @@ export function WorkspaceShell({
           floating screen card. The desktop keeps the Arc canvas, where the
           transparent frame lets the window background read through. */}
       <div className="flex h-dvh flex-col bg-background text-ink md:bg-transparent">
-        <ShellTitleStrip overlayTitleBar={overlayTitleBar} />
         <div className="flex min-h-0 flex-1">
           <Sidebar>
             {/* Transparent row: on the desktop the window gutter shows in the

@@ -29,6 +29,7 @@ export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
   return {
     addItem: t("shell:sidebar.addAgent"),
     collapseSidebar: t("shell:sidebar.collapse"),
+    expandSidebar: t("shell:sidebar.expand"),
   };
 }
 
@@ -44,8 +45,7 @@ export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
  * Pending invitations addressed to the caller render directly BELOW this
  * header, in the sidebar's `headerBelow` band (`SidebarInviteInbox`,
  * `pending-invites.tsx`) — same place in the user's eye, but its own full-width
- * row: the header line is shared with the collapse toggle, which would both
- * squeeze the cards and drag the toggle down to the middle of them.
+ * row, independent of the switcher and the window controls.
  */
 export function SidebarWorkspaceHeader(props: {
   t: SidebarChromeT;
@@ -53,9 +53,9 @@ export function SidebarWorkspaceHeader(props: {
   currentId: string | null;
   currentName: string | undefined;
   collapsed: boolean;
+  compactTop?: boolean;
   onSwitch: (workspaceId: string) => void;
   onCreate: () => void;
-  onExpand: () => void;
 }) {
   const { t } = props;
   const { capabilities } = useCapabilities();
@@ -72,13 +72,12 @@ export function SidebarWorkspaceHeader(props: {
           spacesEnabled ? () => setCreateOrganizationOpen(true) : props.onCreate
         }
         collapsed={props.collapsed}
+        compactTop={props.compactTop}
         createLabel={
           spacesEnabled
             ? t("teams:createTeam.trigger")
             : t("shell:sidebar.createWorkspace")
         }
-        onExpand={props.onExpand}
-        expandLabel={t("shell:sidebar.expand")}
       />
       {spacesEnabled ? (
         <CreateOrganizationDialog

@@ -84,7 +84,7 @@ export function LiveSidebar({
             onSwitch={setWorkspaceId}
             onCreate={() => setWorkspaceId("personal")}
             collapsed={collapsed}
-            onExpand={collapsed ? () => setCollapsed(false) : undefined}
+            compactTop={collapsed}
           />
         ) : undefined
       }

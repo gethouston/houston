@@ -1,22 +1,19 @@
 import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
-import { PanelLeftClose } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { SidebarBand } from "./sidebar-band";
 import { sidebarBandInset } from "./sidebar-geometry";
 import { SidebarNavItem } from "./sidebar-nav";
 import type { SidebarNavItemEntry, SidebarNavSection } from "./sidebar-props";
 
-/**
- * The rail's collapse control, for the EXPANDED state only. Collapsed, the
- * header's monogram doubles as the expand button and clicking any dead space on
- * the rail expands it too, so a second control here would be a third way to do
- * the same thing.
- */
+/** The rail's visible collapse or expand control in both sidebar states. */
 export function SidebarCollapseToggle({
   label,
   onToggle,
+  collapsed = false,
 }: {
   label: string;
   onToggle: () => void;
+  collapsed?: boolean;
 }) {
   return (
     <Tooltip>
@@ -27,7 +24,11 @@ export function SidebarCollapseToggle({
           onClick={onToggle}
           className="flex size-7 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <PanelLeftClose className="size-4" />
+          {collapsed ? (
+            <PanelLeftOpen className="size-4" />
+          ) : (
+            <PanelLeftClose className="size-4" />
+          )}
         </button>
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={8}>

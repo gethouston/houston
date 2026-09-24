@@ -6,6 +6,7 @@ import { ACADEMY_VIEW_ID, SETTINGS_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import { SidebarHelpMenu } from "./sidebar-help-menu";
 import { academyNavRow } from "./sidebar-nav-rows";
+import { UpdateChecker } from "./update-checker";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
@@ -59,7 +60,8 @@ export function SidebarFooter(props: { collapsed: boolean }) {
     },
   });
   return (
-    <div className="flex flex-col">
+    <div data-testid="sidebar-footer" className="flex flex-col">
+      <UpdateChecker collapsed={props.collapsed} />
       {/* Collapsed, the row is a fixed 36px glyph box rather than a full-width
           button, so the rail centres it exactly as it centres the Settings
           cluster below. */}

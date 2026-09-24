@@ -64,12 +64,14 @@ export function SidebarRail({
   model,
   t,
   mobile,
+  windowControlsInset = false,
   gutterChildren,
 }: {
   model: SidebarRailModel;
   t: TFunction<["shell", "common", "portable", "teams", "agents"]>;
   /** Hosted in the mobile drawer (always expanded, no collapse toggle). */
   mobile: boolean;
+  windowControlsInset?: boolean;
   /** The floating "screen" the desktop rail sits beside. */
   gutterChildren?: ReactNode;
 }) {
@@ -102,6 +104,7 @@ export function SidebarRail({
 
   return (
     <AppSidebar
+      windowControlsInset={!mobile && windowControlsInset}
       collapsed={effectiveCollapsed}
       onToggleCollapsed={mobile ? undefined : onToggleCollapsed}
       header={
@@ -111,14 +114,13 @@ export function SidebarRail({
           currentId={currentWorkspace?.id ?? null}
           currentName={currentWorkspace?.name}
           collapsed={effectiveCollapsed}
+          compactTop={!mobile && (windowControlsInset || effectiveCollapsed)}
           onSwitch={onSwitchWorkspace}
           onCreate={onCreateWorkspace}
-          onExpand={onExpand}
         />
       }
       // Pending team invitations: same place in the eye (right under the
-      // switcher, where a user picks a space), but their OWN full-width row —
-      // the header line belongs to the switcher and the collapse toggle.
+      // switcher, where a user picks a space), in their own full-width row.
       headerBelow={
         <SidebarInviteInbox
           collapsed={effectiveCollapsed}

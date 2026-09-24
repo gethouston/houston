@@ -34,7 +34,7 @@ const LAUNCH_INFO: UpdateInfo = {
 };
 const POLL_INFO: UpdateInfo = { ...LAUNCH_INFO, origin: "poll" };
 
-export function useUpdatePreview(): ReactElement | null {
+export function useUpdatePreview(collapsed = false): ReactElement | null {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
 
   useEffect(() => {
@@ -88,6 +88,7 @@ export function useUpdatePreview(): ReactElement | null {
     setTimeout(() => setStatus(null), 1500);
   };
   return createElement(UpdatePill, {
+    collapsed,
     status: status as UpdatePillStatus,
     onInstall: restart,
     onRelaunch: restart,
