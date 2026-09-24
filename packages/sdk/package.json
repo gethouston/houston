@@ -15,6 +15,10 @@
       "types": "./src/react/index.ts",
       "import": "./src/react/index.ts"
     },
+    "./appearance": {
+      "types": "./src/modules/appearance/model.ts",
+      "import": "./src/modules/appearance/model.ts"
+    },
     "./agent-name": {
       "types": "./src/agent-name.ts",
       "import": "./src/agent-name.ts"
@@ -80,6 +84,7 @@
     "vitest": "3.2.6"
   },
   "dependencies": {
+    "@houston/design-tokens": "workspace:*",
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*"

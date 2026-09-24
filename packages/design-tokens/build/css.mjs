@@ -24,6 +24,13 @@ const HEADER = `/**
  * that subtree. With a plain "@theme" the utilities would read a --color-* that
  * resolved once at :root and merely inherited down, and the pin would be inert
  * — see the note in ui/core/src/globals.css.
+ *
+ * Mode and palette are two axes: [data-theme] is the resolved MODE, and one
+ * [data-palette="<id>"] block per imported palette carries that palette's
+ * complete set. The palette blocks come LAST, so at equal specificity they win
+ * over the mode block on the same element (the <html> root). Houston Light and
+ * Houston Dark emit no block — they ARE the three blocks above. See
+ * docs/adr/0004-palette-library.md.
  */`;
 
 function block(selector, entries) {
@@ -42,11 +49,21 @@ const elevations = (tokens) =>
 const vars = (tokens) => [...colors(tokens), ...elevations(tokens)];
 
 /**
- * @param {import("./collect.mjs").collect} _
  * @param {{ path: string[], value: string }[]} light
  * @param {{ path: string[], value: string }[]} dark
+ * @param {{ id: string, mode: "light" | "dark", emitsBlock: boolean, colors: { name: string, value: string }[] }[]} palettes
  */
-export function buildCss(light, dark) {
+export function buildCss(light, dark, palettes) {
+  const imported = palettes
+    .filter((palette) => palette.emitsBlock)
+    .flatMap((palette) => [
+      "",
+      block(`[data-palette="${palette.id}"]`, [
+        ...palette.colors,
+        // Elevation is authored per mode, so a palette wears its mode's ladder.
+        ...elevations(palette.mode === "light" ? light : dark),
+      ]),
+    ]);
   return [
     HEADER,
     "",
@@ -55,6 +72,7 @@ export function buildCss(light, dark) {
     block('[data-theme="light"]', vars(light)),
     "",
     block('[data-theme="dark"]', vars(dark)),
+    ...imported,
     "",
   ].join("\n");
 }

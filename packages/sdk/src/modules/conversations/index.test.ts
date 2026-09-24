@@ -6,6 +6,7 @@ import { CommandRegistry } from "../../commands";
 import type { ModuleContext } from "../../module-context";
 import type { SdkConfig } from "../../ports";
 import { ScopeStore } from "../../store";
+import { memoryKv } from "../../test-ports";
 import {
   type ConversationListVM,
   conversationListScope,
@@ -82,11 +83,8 @@ function makeCtx(fetchImpl: typeof fetch) {
     baseUrl: BASE,
     ports: {
       fetch: fetchImpl,
-      storage: {
-        get: async () => null,
-        set: async () => {},
-        delete: async () => {},
-      },
+      storage: memoryKv(),
+      devicePreferences: memoryKv(),
       clock: { now: () => 0, setTimeout: () => 0, clearTimeout: () => {} },
       logger: { debug() {}, info() {}, warn() {}, error() {} },
     },

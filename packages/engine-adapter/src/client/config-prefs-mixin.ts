@@ -3,6 +3,9 @@ import type { ProjectConfig } from "@houston/wire-types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
 import { DEFAULT_AGENT_ID, DEFAULT_WORKSPACE_ID } from "../synthetic";
+// The device layout lives in ONE module: the SDK reads the same keys through its
+// `devicePreferences` port, and a store that refuses still throws from there.
+import { clearLocalPref, readLocalPref, writeLocalPref } from "./device-prefs";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
@@ -34,19 +37,38 @@ const ACCOUNT_PREF_KEYS = new Set([
   "onboarding_completed",
 ]);
 
-function readLocalPref(key: string): string | null {
+/** The raw diagnostic of a store that refused, for the two notes below. */
+function storageReason(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+/**
+ * The same two calls for an ACCOUNT key's pre-fix device copy, where the host
+ * is the source of truth and has already answered: a store that refuses the
+ * read holds no copy this build could lift anyway, and one that refuses the
+ * removal leaves a copy nothing reads (the lift runs only when the host answers
+ * null). Rejecting the account read or write over either would turn a
+ * preference that DID land on the host into a failure the user cannot act on,
+ * so both stay diagnostics.
+ */
+function legacyLocalPref(key: string): string | null {
   try {
-    return localStorage.getItem(`houston.pref.${key}`);
-  } catch {
-    return null; /* storage disabled */
+    return readLocalPref(key);
+  } catch (err) {
+    console.warn(
+      `[engine-adapter] device copy of "${key}" unreadable, nothing to lift: ${storageReason(err)}`,
+    );
+    return null;
   }
 }
 
-function removeLocalPref(key: string): void {
+function dropLegacyLocalPref(key: string): void {
   try {
-    localStorage.removeItem(`houston.pref.${key}`);
-  } catch {
-    /* storage disabled */
+    clearLocalPref(key);
+  } catch (err) {
+    console.warn(
+      `[engine-adapter] device copy of "${key}" left behind, the account value wins: ${storageReason(err)}`,
+    );
   }
 }
 
@@ -68,12 +90,12 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
         // account keys in localStorage only, so the host never learned them.
         // Migrate the stored value up (and drop the local copy) rather than
         // re-deriving it — a deliberately chosen timezone must survive.
-        const legacy = readLocalPref(key);
+        const legacy = legacyLocalPref(key);
         if (legacy !== null) {
           await viaSdk(controlPlane.prefPath(key), () =>
             this.ctx.sdk.preferences.set(key, legacy),
           );
-          removeLocalPref(key);
+          dropLegacyLocalPref(key);
           return legacy;
         }
         return null;
@@ -101,15 +123,11 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
         await viaSdk(controlPlane.prefPath(key), () =>
           this.ctx.sdk.preferences.set(key, value),
         );
-        removeLocalPref(key);
+        dropLegacyLocalPref(key);
         return;
       }
-      if (value === null) return removeLocalPref(key);
-      try {
-        localStorage.setItem(`houston.pref.${key}`, value);
-      } catch {
-        /* storage disabled */
-      }
+      if (value === null) return clearLocalPref(key);
+      writeLocalPref(key, value);
     }
     async getAgentConfig(): Promise<ProjectConfig> {
       const { provider, model } = await this.ctx.activeOld();

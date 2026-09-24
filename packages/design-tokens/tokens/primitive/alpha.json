@@ -26,9 +26,12 @@
       "white-a06": { "$value": "rgba(255, 255, 255, 0.06)" },
       "white-a08": { "$value": "rgba(255, 255, 255, 0.08)" },
       "white-a10": { "$value": "rgba(255, 255, 255, 0.1)" },
+      "white-a13": { "$value": "rgba(255, 255, 255, 0.13)" },
       "white-a14": { "$value": "rgba(255, 255, 255, 0.14)" },
       "white-a16": { "$value": "rgba(255, 255, 255, 0.16)" },
+      "white-a20": { "$value": "rgba(255, 255, 255, 0.2)" },
       "white-a24": { "$value": "rgba(255, 255, 255, 0.24)" },
+      "white-a30": { "$value": "rgba(255, 255, 255, 0.3)" },
       "white-a65": { "$value": "rgba(255, 255, 255, 0.65)" }
     },
     "glass": {

@@ -156,10 +156,17 @@ const REPO_SCOPES = ["@houston/", "@houston-ai/"];
  * already ship, not because the bypass is right — the list may shrink (route a
  * caller through a `tauri.ts` namespace and delete its line) and may only grow
  * with a reviewer's agreement. Repo-relative, with extension.
+ *
+ * `theme-facade.ts` IS that layer, not a bypass of it: it holds one namespace in
+ * its own file because tauri.ts is already the app's whole engine surface, and it
+ * wraps every call in the same `engineCall` policy the namespaces still there use.
+ * An owner earns its place that way, by surfacing failures through tauri.ts, and
+ * never merely by being a lib file.
  */
 const ENGINE_CLIENT_OWNERS = new Set([
   "app/src/lib/engine.ts",
   "app/src/lib/tauri.ts",
+  "app/src/lib/theme-facade.ts",
 ]);
 const ENGINE_CALL_BYPASS = new Set([
   "app/src/components/agent-actions/use-copy-agent.ts",
@@ -178,7 +185,6 @@ const ENGINE_CALL_BYPASS = new Set([
   "app/src/lib/local-bridge-binding.ts",
   "app/src/lib/mission-row-landing.ts",
   "app/src/lib/mission-title.ts",
-  "app/src/lib/theme-boot.ts",
   "app/src/lib/warming-sends.ts",
   "app/src/main.tsx",
   "app/src/stores/agent-provisioning.ts",

@@ -18,7 +18,11 @@
    tokens ship a matching [data-theme="light"] scope) — the :not() keeps
    `dark:` utilities from leaking into such a subtree via the <html> ancestor.
    Exact today because theme.ts only ever puts "dark" on <html> and "light"
-   only ever appears on pinned subtrees. */
+   only ever appears on pinned subtrees.
+
+   Mode and palette are two axes: data-palette="<id>" on <html> selects a whole
+   --ht-* set, and its block lands after the mode blocks in the imported tokens,
+   so a pinned light subtree still resolves the Houston light set by design. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *):not(:where([data-theme="light"], [data-theme="light"] *)));
 
 /* Dark mode needs the native form controls / scrollbars to follow suit; the
@@ -116,6 +120,17 @@
   --color-popover-text: var(--ht-popover-text);
   --color-action: var(--ht-action);
   --color-action-text: var(--ht-action-text);
+  /* The filled primary button's own five: fill, label, hover fill and the 1px
+     rim in both states. Separate from `action` (which also paints progress,
+     tab underlines, switches and status dots) because the button is the one
+     place Houston spends a near-ink solid in light and a white frost in dark,
+     while an imported palette paints all five from its accent. The rules that
+     wear them live in canvas.css §4. */
+  --color-cta: var(--ht-cta);
+  --color-cta-text: var(--ht-cta-text);
+  --color-cta-hover: var(--ht-cta-hover);
+  --color-cta-rim: var(--ht-cta-rim);
+  --color-cta-rim-hover: var(--ht-cta-rim-hover);
   --color-link: var(--ht-link);
   --color-chip: var(--ht-chip);
   --color-chip-solid: var(--ht-chip-solid);

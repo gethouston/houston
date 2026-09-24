@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { analytics } from "../lib/analytics";
+import { readBootPreference } from "../lib/boot-preference";
 import { setActiveOrg } from "../lib/engine";
 import { queryClient } from "../lib/query-client";
 import { resetCacheForSpaceChange } from "../lib/space-cache";
@@ -86,9 +87,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       // Restore the last-selected space alongside the list. On a personal-only
       // host the persisted id resolves to the sole default workspace, so this
       // stays byte-identical to the old isDefault-then-first resolution.
+      //
+      // The preference read goes through `readBootPreference`, so a device store
+      // that refuses the read (blocked site data, partitioned webview) resolves
+      // to "no last space" and is reported, instead of rejecting into this
+      // catch: the list is the load, and the restored id is a convenience on top
+      // of it. Sharing one catch with the list is what turned a blocked
+      // localStorage into the workspace-load failure screen.
       const [listed, lastId] = await Promise.all([
         tauriWorkspaces.list(),
-        tauriPreferences.get("last_workspace_id"),
+        readBootPreference("last_workspace_id"),
       ]);
       const workspaces = withoutPendingDeletes(listed, pendingWorkspaceDeletes);
       const current = resolveActiveWorkspace(workspaces, lastId);
@@ -98,7 +106,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       setActiveOrg(current ? orgSlugFromWorkspaceId(current.id) : null);
       set({ workspaces, current, loadError: false });
     } catch {
-      // No reporting here: both awaited calls run through `call()`
+      // No reporting here: the space list runs through `call()`
       // (`lib/tauri.ts`), which already toasts the failure AND captures it to
       // Sentry. This catch only settles state — it records that the attempt
       // failed so a gated screen can offer a retry (SettingsView) instead of

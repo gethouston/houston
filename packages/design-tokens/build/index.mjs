@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { collect } from "./collect.mjs";
 import { buildCss } from "./css.mjs";
+import { buildPalettes } from "./palette.mjs";
 import { buildTs } from "./ts.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -11,18 +12,26 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 // temp dir so it can diff a fresh build against the committed one.
 const OUT = process.env.OUT_DIR ? process.env.OUT_DIR : join(ROOT, "dist");
 
-/** CSS and TypeScript outputs, keyed by their path under the output dir. */
+/**
+ * CSS and TypeScript outputs, keyed by their path under the output dir, plus the
+ * derivation notes (chip fallbacks and contrast nudges) the build prints.
+ */
 export async function build() {
   const light = await collect("light");
   const dark = await collect("dark");
+  const palettes = buildPalettes(light, dark);
   return {
-    "css/tokens.css": buildCss(light, dark),
-    "ts/tokens.ts": buildTs(light, dark),
+    files: {
+      "css/tokens.css": buildCss(light, dark, palettes),
+      "ts/tokens.ts": buildTs(light, dark, palettes),
+    },
+    notes: palettes.flatMap((palette) => palette.notes),
   };
 }
 
 async function main() {
-  const files = await build();
+  const { files, notes } = await build();
+  for (const note of notes) process.stdout.write(`  note ${note}\n`);
   for (const [rel, content] of Object.entries(files)) {
     const dest = join(OUT, rel);
     mkdirSync(dirname(dest), { recursive: true });

@@ -33,7 +33,7 @@ import { isIdentityConfigured } from "@houston/app/lib/identity";
 import { initFrontendLogging, logger } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
 import { initSentry } from "@houston/app/lib/sentry";
-import { loadTheme } from "@houston/app/lib/theme";
+import { loadThemePreference } from "@houston/app/lib/theme";
 import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode, useEffect, useState } from "react";
@@ -157,7 +157,7 @@ function useEngineTheme(): void {
   useEffect(() => {
     let cancelled = false;
     void whenEngineReady().then(() => {
-      if (!cancelled) void loadTheme();
+      if (!cancelled) void loadThemePreference();
     });
     return () => {
       cancelled = true;

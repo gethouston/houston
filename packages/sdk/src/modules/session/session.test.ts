@@ -7,6 +7,7 @@ import type { ModuleContext } from "../../module-context";
 import type { KeyValueStore, SdkPorts } from "../../ports";
 import { HoustonSdk } from "../../sdk";
 import { ScopeStore, type SdkEvent } from "../../store";
+import { memoryKv } from "../../test-ports";
 import {
   connectAuthExpiry,
   createAuthFetch,
@@ -54,6 +55,7 @@ function ports(storage: KeyValueStore): SdkPorts {
   return {
     fetch: vi.fn(async () => new Response("{}", { status: 200 })),
     storage,
+    devicePreferences: memoryKv(),
     clock: { now: () => 0, setTimeout: () => 0, clearTimeout: () => undefined },
     logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   };

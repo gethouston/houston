@@ -36,12 +36,59 @@ const boxShadows = (tokens, indent) =>
     indent,
   );
 
-export function buildTs(light, dark) {
+/**
+ * The palette library as the picker reads it: ordered, named, and carrying four
+ * resolved hexes per palette so a swatch needs no CSS-variable lookup.
+ */
+const paletteList = (palettes) =>
+  `[\n${palettes
+    .map((p) =>
+      [
+        "  {",
+        `    id: ${JSON.stringify(p.id)},`,
+        `    name: ${JSON.stringify(p.name)},`,
+        `    mode: ${JSON.stringify(p.mode)},`,
+        `    swatch: ${strLit(
+          Object.entries(p.swatch).map(([name, value]) => ({ name, value })),
+          "      ",
+        )},`,
+        "  },",
+      ].join("\n"),
+    )
+    .join("\n")}\n]`;
+
+export function buildTs(light, dark, palettes) {
   const durations = scale(light, "duration");
   const parts = [
     HEADER,
     "",
     'export type ThemeName = "light" | "dark";',
+    "",
+    "/**",
+    " * One entry of the palette library. `mode` is the resolved theme a palette",
+    " * belongs to; `swatch` holds the four hexes the picker paints, already",
+    " * composited so a translucent screen tone is a real colour.",
+    " */",
+    "export type Palette = {",
+    "  readonly id: string;",
+    "  readonly name: string;",
+    '  readonly mode: "light" | "dark";',
+    "  readonly swatch: {",
+    "    readonly base: string;",
+    "    readonly background: string;",
+    "    readonly ink: string;",
+    "    readonly accent: string;",
+    "  };",
+    "};",
+    "",
+    "/**",
+    " * Every palette, in picker order: the two authored Houston sets, then the",
+    " * imported light palettes, then the dark ones. An imported palette is worn by",
+    ' * setting data-palette="<id>" alongside the resolved data-theme.',
+    " */",
+    `export const palettes = ${paletteList(palettes)} as const satisfies readonly Palette[];`,
+    "",
+    'export type PaletteId = (typeof palettes)[number]["id"];',
     "",
     "/** Semantic colours, keyed by the same names as the --ht-* CSS variables. */",
     `export const color = {\n  light: ${strLit(colors(light), "    ")},\n  dark: ${strLit(

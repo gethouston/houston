@@ -12,6 +12,8 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
 - **Near-monochrome content, brand-coloured chrome.** Text/controls stay grayscale; colour lives in chrome (aurora, glass sheen, running-card glow) + semantic status + agent avatars + links. Never decorative colour on content surfaces.
 - Both themes ship on every screen via `[data-theme]`. Floating surfaces (modals, popovers) are **solid** in both themes — never glass, never bleed content.
 
+**Palettes.** Mode and palette are two axes. `[data-theme]` is the resolved mode; `[data-palette="<id>"]` picks one of twelve colour sets. **Houston Light** and **Houston Dark** are the defaults and the authored source of truth: they are the identity above, and every other set is an import. The ten imports are vendored Omarchy themes (Catppuccin, Nord, Gruvbox, Everforest, Tokyo Night, Flexoki, Rosé Pine Dawn, Lupine, White) derived by RULE into the full `--ht-*` set, never hand-tuned: the ladder's structure, the alpha washes and the contrast floors are Houston's, the hexes are the palette's except the status family and links, which stay Houston's because status is semantics rather than surface (a palette whose red, green and yellow are grays would otherwise have no danger, success, warning or link at all) and are re-measured on the palette's surfaces, and an import wears its own accent as `action` and `focus` (the Houston sets keep the ink CTA of the identity above). So every screen looks right in every palette for the same reason it looks right in both themes, and design work targets the Houston sets only. The rules live in `docs/adr/0004-palette-library.md`; a palette needing a hand-written value means the rule is wrong.
+
 ## 3. Hard rules (non-negotiable)
 1. **Semantic tokens only. Never a raw hex/rgba/px literal** in `app/` or `ui/`. A visual change is a token edit (`packages/design-tokens/tokens/*.json`), never a hardcoded value. Sanctioned raw-hex exceptions (the ONLY ones):
    - `app/src/components/shell/provider-brand-colors.ts` — brand-mark hex map (AI Hub candy store)
@@ -60,6 +62,8 @@ Every dialog surface wears `xxl` (`rounded-2xl`): `Dialog` and `AlertDialog` sha
 
 **Semantic colour roles** (token | use for). Live values: `packages/design-tokens/tokens/*.json`, or component showcase → Colors (`pnpm --filter @houston-ai/showcase dev`).
 
+Every role below is re-declared per palette under `[data-palette="<id>"]`, and the library itself (id, display name, mode, four swatch hexes) is the `palettes` export with its `PaletteId` type from `@houston/design-tokens`. A palette is applied by setting that attribute; never by overriding a `--ht-*` at a call site.
+
 Surface ladder (bottom → top):
 | token / utility | use for |
 |---|---|
@@ -79,7 +83,8 @@ Text · interactive · lines:
 | `text-ink` | primary text |
 | `text-ink-muted` | secondary text |
 | `bg-action` / `text-action-text` | filled CTA fill/label (also progress, tab underline, switches, status dots) |
-| `text-link` (+ `bg-link/10` tint) | inline link chips in chat/prose — Slack-blue text on a soft tint, underline on hover; the ONE sanctioned blue |
+| `bg-cta` / `text-cta-text` (+ `cta-hover`, `cta-rim`, `cta-rim-hover`) | the filled primary Button's own pair — Houston: near-ink solid in light, white frost in dark; an import: a solid accent pill in light, an accent-tinted frost pill in dark — distinct from `action`, which also paints progress, switches and status dots. Worn by `canvas.css` §4, never by a call site |
+| `text-link` (+ `bg-link/10` tint) | inline link chips in chat/prose — Slack-blue text on a soft tint, underline on hover; the ONE sanctioned blue, in EVERY palette: an import inherits this hue and re-measures it on its own surfaces, because a link is semantics (ADR 0004) |
 | `bg-bubble` | the user chat bubble's fill — near-ink in light, the subtle white wash in dark |
 | `text-bubble-text` | the user chat bubble's text — pure white in BOTH themes (the near-white grays read dull over the bubble fill) |
 | `bg-bubble-chip` / `text-bubble-chip-text` | a chip INSIDE the user bubble (mention, link) — measured against the bubble, not the canvas |
@@ -88,7 +93,7 @@ Text · interactive · lines:
 | `bg-chip` / `text-chip-text` | soft chips / badges |
 | `border-line` (`--ht-line`) | hairlines (prefer `.ht-hairline` outline on cards) |
 | `border-line-input` | field borders |
-| `ring-focus` (`--ht-focus`) | focus ring — **near-ink, NOT blue** |
+| `ring-focus` (`--ht-focus`) | focus ring — **near-ink, NOT blue** in Houston's own sets, while an imported palette wears its accent here (ADR 0004) |
 
 Status: `danger` · `success` · `warning` · `highlight` (brand wash). Each has a `-text` (the label ON the fill) and an `-ink` (the hue AS text on a surface: `text-danger-ink` / `text-success-ink` / `text-warning-ink`, contrast-guarded against `input`, `background` and `chip-subtle` in both themes by `packages/design-tokens/test/contrast.test.ts`). A fill is tuned to carry its `-text`, so it does NOT clear 4.5:1 as text: never set a status fill as a text colour. `highlight`'s `-text` is already that ink.
 Destructive chrome carries its own pair so no `dark:` fork exists: `bg-danger-fill` (the destructive button/badge fill, softened to 60% in dark) and `ring-danger-ring` (the invalid / destructive focus ring, 20% light and 40% dark).

@@ -54,6 +54,7 @@ export class HoustonSdk implements SdkModules {
   readonly providers: SdkModules["providers"];
   readonly integrations: SdkModules["integrations"];
   readonly preferences: SdkModules["preferences"];
+  readonly appearance: SdkModules["appearance"];
   readonly spaces: SdkModules["spaces"];
   readonly workspaces: SdkModules["workspaces"];
   readonly account: SdkModules["account"];
@@ -115,6 +116,7 @@ export class HoustonSdk implements SdkModules {
     this.providers = moduleFactories.createProvidersModule(ctx);
     this.integrations = moduleFactories.createIntegrationsModule(ctx);
     this.preferences = moduleFactories.createPreferencesModule(ctx);
+    this.appearance = moduleFactories.createAppearanceModule(ctx);
     this.spaces = moduleFactories.createSpacesModule(ctx);
     this.workspaces = moduleFactories.createWorkspacesModule(ctx);
     this.account = moduleFactories.createAccountModule(ctx);

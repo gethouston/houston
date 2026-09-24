@@ -11,6 +11,7 @@
 import { createAccountModule } from "./modules/account";
 import { createActivitiesModule } from "./modules/activities";
 import { createAgentsModule } from "./modules/agents";
+import { createAppearanceModule } from "./modules/appearance";
 import { createBillingModule } from "./modules/billing";
 import { createChannelsModule } from "./modules/channels";
 import { createConversationsModule } from "./modules/conversations";
@@ -49,6 +50,8 @@ export interface SdkModules {
   readonly integrations: ReturnType<typeof createIntegrationsModule>;
   /** Preferences facade (key/value preferences + workspace locale). */
   readonly preferences: ReturnType<typeof createPreferencesModule>;
+  /** Appearance facade (this device's theme mode and its two palette picks). */
+  readonly appearance: ReturnType<typeof createAppearanceModule>;
   /** Spaces facade (memberships, invitations, agent moves between spaces). */
   readonly spaces: ReturnType<typeof createSpacesModule>;
   /** Workspaces facade (workspace list, agent docs, context notes, sidebar). */
@@ -84,6 +87,7 @@ export const moduleFactories = {
   createAccountModule,
   createActivitiesModule,
   createAgentsModule,
+  createAppearanceModule,
   createBillingModule,
   createChannelsModule,
   createConversationsModule,

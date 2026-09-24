@@ -153,6 +153,15 @@ async function call<T>(
 }
 
 /**
+ * The same wrapper for the one namespace of this layer that lives in a file of
+ * its own (`./theme-facade`, split out because this module is already the app's
+ * whole engine surface). It is this policy layer's own seam, not a licence to
+ * reach the engine elsewhere: a namespace belongs here or in a file
+ * `scripts/check-boundaries.mjs` names, and nowhere else.
+ */
+export { call as engineCall };
+
+/**
  * A passive agent-scoped READ — fired by roster-driven queries and event
  * refetches, never by a user action. When the local roster is stale (the
  * agent was deleted/unshared on another device, or a space switch refired

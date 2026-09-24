@@ -1,7 +1,8 @@
 /**
  * The account's contract: who the caller is (session, profile, API keys), the
  * space they work in (org roster, spaces, teams, workspaces, the subscription
- * behind a team) and the preferences that follow them across surfaces.
+ * behind a team), the preferences that follow them across surfaces, and the
+ * appearance of the device they are working on (which does not follow them).
  *
  * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
  */
@@ -17,6 +18,39 @@ export {
   type EditableProfileCustom,
   type EditableProfileUpdate,
 } from "./modules/account";
+// ===== Appearance module contract ======================================
+// The vocabulary and its rules are also published as `@houston/sdk/appearance`,
+// for a surface's pre-paint path: it resolves a theme before any kernel exists.
+export {
+  AppearanceCommand,
+  type AppearanceCommandType,
+  type AppearanceModule,
+} from "./modules/appearance";
+export {
+  THEME_KEYS,
+  type ThemeKey,
+  type ThemeReading,
+  type UnusableThemeValue,
+} from "./modules/appearance/device-keys";
+export {
+  DEFAULT_PALETTE,
+  DEFAULT_THEME_PREFERENCE,
+  followsSystem,
+  listPalettes,
+  type Palette,
+  type PaletteId,
+  type PaletteSwatch,
+  paletteSwatch,
+  parsePaletteId,
+  parseThemeMode,
+  type ResolvedMode,
+  type ResolvedTheme,
+  resolveTheme,
+  sameTheme,
+  type ThemeMode,
+  type ThemePreference,
+} from "./modules/appearance/model";
+export { InvalidThemeError } from "./modules/appearance/validate";
 // ===== Billing module contract =========================================
 // `BillingSummary` is the spaces module's — a space carries the same value on
 // `OrgSummary.billing` — so it is exported once, under Spaces.

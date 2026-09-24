@@ -150,66 +150,85 @@ body::before {
 
 
 /* ── 4. Flat primary button ─────────────────────────────────────
-   Deliberately FLAT — no gradients, no bevels, no inset/outer shadows,
-   nothing that fakes depth or 3D. Just a plain fill + white text.
-     · DARK mode — a flat translucent pill with a plain 1px hairline
-       rim (the reference's edge), lightly frosted behind.
-     · LIGHT mode — a flat SOLID dark pill (translucent reads as a
-       disabled grey on white); no rim, no frost.
-   White text in both, monochrome.
+   Deliberately FLAT: no gradients, no bevels, nothing that fakes depth.
+   The fill, the label and the 1px rim ARE the `cta` tokens
+   (tokens/semantic/color.{light,dark}.json), so the button is whatever
+   the active palette says it is. Houston light spends a near-ink solid
+   with a transparent rim, Houston dark spends a white frost: those same
+   tokens plus the blur below, which is the one effect value here. An
+   imported palette supplies its own accent, and the button wears it.
+
+   The rim is an inset box-shadow, not a border. The Button base
+   (`button.tsx`) reserves none for this variant, and the box is sized
+   `h-9 px-4` with `box-sizing: border-box` and an auto width, so a real
+   1px border would widen every primary by 2px. An inset ring paints the
+   same hairline at the same edge and costs no layout.
 
    Scoped to the Button component's default variant. We key on
    `[data-variant="default"]` + the element (button/a), NOT
    `[data-slot="button"]`: when a Button is wrapped in a Radix
    `asChild` trigger (e.g. `<TooltipTrigger asChild><Button>`), the
    trigger's own `data-slot="tooltip-trigger"` is spread onto the
-   button AFTER Button's `data-slot="button"`, clobbering it — so a
+   button AFTER Button's `data-slot="button"`, clobbering it, so a
    data-slot selector silently misses every tooltip-wrapped primary
    (the top-right "New mission" button was the casualty). `data-variant`
    survives the merge, and only Button renders a `<button>`/`<a>` with
    it (badges/menus/tabs-list carry data-variant on non-button
-   elements), so this stays precise. It still avoids `.bg-action`,
-   which also paints progress bars, tab underlines, switches and
-   status dots. Unlayered, so it outranks the Tailwind utilities
-   (`bg-action`, `text-action-text`, `hover:bg-action/70`)
+   elements), so this stays precise. It spends `cta` rather than
+   `.bg-action`, which also paints progress bars, tab underlines,
+   switches and status dots. Unlayered, so it outranks the Tailwind
+   utilities (`bg-action`, `text-action-text`, `hover:bg-action/70`)
    regardless of import order. The label + the currentColor HoustonLogo
-   take `color` from these rules: white in both modes (the base sets
-   `#fff`; the reference uses white text in dark too).
+   take `color` from these rules.
 
-   Knobs: light fill colour (`#1b1b1e`, darker = stronger), dark fill
-   alpha (`rgba(255,255,255,0.08)`) + the dark rim alpha. */
+   The rim and the keyboard focus ring share the one `box-shadow` slot, so the
+   focus rule restates the rim beside the ring. Button's base ring is Tailwind's
+   `focus-visible:ring-[3px]`, itself a box-shadow, and this section is
+   unlayered, so the rim alone would replace it and leave the primary with no
+   visible focus (its `focus-visible:border-focus` colours a border this variant
+   reserves no width for). `--ht-focus` is the focus token, near-ink in Houston
+   and the accent in an imported palette, at the ≥2px DESIGN.md §7 asks for, and
+   a box-shadow ring follows the pill radius. The base's `outline-none` holds:
+   nothing here touches `outline`. The focus rule comes after the hover rule, of
+   equal specificity, so the ring survives while the pointer rests on a
+   keyboard-focused button. Because it restates the RESTING rim, that pair needs
+   a third rule for the state where both apply: a pointer resting on a
+   keyboard-focused button must show the hover rim under the ring, or the button
+   loses its hover the moment it is also focused.
+
+   One rule per state covers both modes: the tokens re-resolve inside a
+   [data-theme]-pinned subtree, so only the dark frost needs a scope. */
 [data-variant="default"]:is(button, a) {
-  /* LIGHT: flat SOLID dark pill, white text. A translucent dark fill
-     reads as washed-out grey on white — i.e. "disabled" — so it's
-     solid. Still flat: no gradient, no border, no shadow, no bevel. */
-  color: #fff;
-  background: #1b1b1e;
-  border: none;
-  box-shadow: none;
+  color: var(--ht-cta-text);
+  background: var(--ht-cta);
+  box-shadow: inset 0 0 0 1px var(--ht-cta-rim);
 }
 
 [data-variant="default"]:is(button, a):hover {
-  background: #2a2a2d;
+  background: var(--ht-cta-hover);
+  box-shadow: inset 0 0 0 1px var(--ht-cta-rim-hover);
+}
+
+[data-variant="default"]:is(button, a):focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--ht-cta-rim),
+    0 0 0 3px var(--ht-focus);
+}
+
+[data-variant="default"]:is(button, a):hover:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--ht-cta-rim-hover),
+    0 0 0 3px var(--ht-focus);
 }
 
 [data-theme="dark"]
   [data-variant="default"]:is(button, a):not(
     :where([data-theme="light"], [data-theme="light"] *)
   ) {
-  /* DARK: flat translucent pill + a plain 1px hairline rim (the
-     reference's edge — a flat line, NOT a bevel/shadow). Light frost. */
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  /* The frost itself: the blur is the effect, every colour above is the
+     token. A light-pinned subtree keeps the light button, unblurred. */
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-}
-
-[data-theme="dark"]
-  [data-variant="default"]:is(button, a):not(
-    :where([data-theme="light"], [data-theme="light"] *)
-  ):hover {
-  background: rgba(255, 255, 255, 0.13);
-  border-color: rgba(255, 255, 255, 0.3);
 }
 
 /* ── 5. Glass active tab (segmented control) ───────────────────

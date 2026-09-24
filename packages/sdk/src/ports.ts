@@ -62,8 +62,28 @@ export interface SdkLogger {
 export interface SdkPorts {
   /** HTTP transport, shaped exactly like the global `fetch`. */
   fetch: typeof fetch;
-  /** Persistent key/value storage. */
+  /** Persistent key/value storage the SDK keeps its OWN state in (the session
+   *  token). Namespaced by the host, so nothing here collides with the app's
+   *  state, and a store that is unavailable may degrade to memory. */
   storage: KeyValueStore;
+  /**
+   * This device's own UI preferences — the store the surrounding app already
+   * keeps them in, under the key names it has always used, so a capability moved
+   * into the SDK reads back what the user picked before the move. Separate from
+   * {@link SdkPorts.storage} on purpose, and in two ways:
+   *
+   * - the KEY NAMES are the app's, not the SDK's, because these values are read
+   *   by the app's own pre-paint path as well as by an SDK module;
+   * - a failure REJECTS rather than degrading to memory. A device preference is
+   *   a user action ("use this appearance"), so a store that is blocked or full
+   *   has to surface: a write that resolved having stored nothing is how a pick
+   *   survives on screen and is gone on the next launch.
+   *
+   * Device state only — never account state. Anything that must follow the user
+   * to their other devices is a user-scoped preference and belongs on the
+   * gateway (`modules/preferences`), not here.
+   */
+  devicePreferences: KeyValueStore;
   /** Time + scheduling. */
   clock: Clock;
   /** Structured logging sink. */

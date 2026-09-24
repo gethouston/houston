@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SdkConfig, SdkPorts } from "../../ports";
 import { HoustonSdk } from "../../sdk";
+import { memoryKv } from "../../test-ports";
 import { AgentSkillsCommand, AgentSkillsHttpError } from "./index";
 
 const BASE = "http://127.0.0.1:4317";
@@ -55,11 +56,8 @@ function makeSdk(answer: (path: string) => Response) {
   const store = new Map<string, string>();
   const ports: SdkPorts = {
     fetch: fetchImpl as unknown as typeof fetch,
-    storage: {
-      get: async (k) => store.get(k) ?? null,
-      set: async (k, v) => void store.set(k, v),
-      delete: async (k) => void store.delete(k),
-    },
+    storage: memoryKv(store),
+    devicePreferences: memoryKv(),
     clock: { now: () => 0, setTimeout: () => 0, clearTimeout: () => {} },
     logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   };
@@ -218,6 +216,7 @@ function manifestHost(options: { failFirstPut?: boolean } = {}) {
   const store = new Map<string, string>();
   const ports: SdkPorts = {
     fetch: fetchImpl as unknown as typeof fetch,
+    devicePreferences: memoryKv(),
     storage: {
       get: async (k) => store.get(k) ?? null,
       set: async (k, v) => void store.set(k, v),

@@ -81,6 +81,19 @@ function splitSelectorList(list: string): string[] {
 const code = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 /**
+ * The RULES of one numbered canvas.css section, comments stripped: the slice
+ * starts after the section header's own comment closes, so what comes back is
+ * only what the browser reads for that section.
+ */
+const canvasSection = (n: number): string => {
+  const css = sheet("canvas.css");
+  const heading = css.indexOf(`─ ${n}. `);
+  const next = css.indexOf(`─ ${n + 1}. `);
+  assert.ok(heading > 0 && next > heading, `canvas.css has no section ${n}`);
+  return code(css.slice(css.indexOf("*/", heading) + 2, next));
+};
+
+/**
  * Every selector a stylesheet declares, one per element a rule paints, written
  * on one line: whitespace collapsed, and the padding a wrapped `:not(…)` picks
  * up removed, so a selector compares the same however it is formatted. The regex
@@ -394,6 +407,72 @@ describe("the shared stylesheets", () => {
         `${selector} leaks the dark look into a light-pinned subtree`,
       );
     }
+  });
+
+  it("paints the primary button from the cta tokens alone", () => {
+    // DESIGN.md §4: `bg-cta`/`text-cta-text` (plus the rim pair) ARE the filled
+    // primary button, so an imported palette repaints it by declaring its own
+    // values. A literal in this section is Houston's look nailed into every
+    // palette — the bug where "New task" stayed near-ink on an imported set.
+    const section = canvasSection(4);
+    assert.doesNotMatch(
+      section,
+      /#[0-9a-fA-F]{3,8}\b|(?<![a-zA-Z])rgba?\(/,
+      "section 4 carries a raw colour; the button's colours are tokens",
+    );
+    for (const role of [
+      "cta",
+      "cta-text",
+      "cta-hover",
+      "cta-rim",
+      "cta-rim-hover",
+    ]) {
+      assert.match(section, new RegExp(`var\\(--ht-${role}\\)`), role);
+    }
+  });
+
+  it("keeps the keyboard focus ring visible on the primary button", () => {
+    // DESIGN.md §7: focus is a ≥2px ring drawn as a box-shadow so it follows
+    // the radius. Button's base ring is Tailwind's `ring-[3px]`, itself a
+    // box-shadow, so §4's unlayered rim shadow replaces it outright, and the
+    // `focus-visible:border-focus` beside it colours a border with no width:
+    // the primary button showed no focus at all. One box-shadow slot holds
+    // both, so §4 paints the rim and the ring together.
+    const rule = [...canvasSection(4).matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
+      (match) => match[1].includes(":focus-visible"),
+    );
+    assert.ok(rule, "section 4 draws no focus ring on the primary button");
+    assert.match(rule[1], /\[data-variant="default"\]:is\(button, a\)/);
+    const declarations = rule[2].replace(/\s+/g, " ");
+    assert.match(
+      declarations,
+      /box-shadow:[^;]*\binset 0 0 0 1px var\(--ht-cta-rim\)/,
+      "the focus rule drops the rim the base rule paints",
+    );
+    assert.match(
+      declarations,
+      /box-shadow:[^;]*\b0 0 0 3px var\(--ht-focus\)/,
+      "the focus rule paints no ring in the focus token",
+    );
+  });
+
+  it("keeps the hover rim under the ring when the pointer rests on it", () => {
+    // The focus rule restates the RESTING rim, and it has to come last so the
+    // ring survives a hover, so hover + focus together would take the resting
+    // rim back: the button would lose its hover the moment it is also focused.
+    const rule = [...canvasSection(4).matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
+      (match) => match[1].includes(":hover:focus-visible"),
+    );
+    assert.ok(
+      rule,
+      "section 4 drops the hover rim on a focused primary button",
+    );
+    const declarations = rule[2].replace(/\s+/g, " ");
+    assert.match(
+      declarations,
+      /box-shadow:[^;]*\binset 0 0 0 1px var\(--ht-cta-rim-hover\)/,
+    );
+    assert.match(declarations, /box-shadow:[^;]*\b0 0 0 3px var\(--ht-focus\)/);
   });
 
   it("masks the running ring with a colour of its own", () => {

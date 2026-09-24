@@ -28,8 +28,8 @@ export type Theme = "light" | "dark";
 
 /**
  * Pin the app theme by setting `data-theme` on `<html>` (mirrors
- * app/src/lib/theme.ts `applyTheme`: dark → set, light → remove). Call after
- * `page.goto` and once the shell is visible, before the screenshot.
+ * app/src/lib/theme-boot.ts `applyThemeAttribute`: dark → set, light → remove).
+ * Call after `page.goto` and once the shell is visible, before the screenshot.
  */
 export async function pinTheme(page: Page, theme: Theme): Promise<void> {
   await page.evaluate((t: Theme) => {
@@ -37,9 +37,9 @@ export async function pinTheme(page: Page, theme: Theme): Promise<void> {
     if (t === "dark") el.setAttribute("data-theme", "dark");
     else el.removeAttribute("data-theme");
     // Also align the device-local preference + boot mirror: on web the theme
-    // pref resolves device-locally, so if the one-shot `loadTheme()` lands
-    // AFTER this pin (slow load), it re-applies the SAME theme instead of
-    // silently flipping the baseline back.
+    // pref resolves device-locally, so if the one-shot
+    // `loadThemePreference()` lands AFTER this pin (slow load), it re-applies
+    // the SAME theme instead of silently flipping the baseline back.
     localStorage.setItem("houston.pref.theme", t);
     localStorage.setItem("houston.theme.cache", t);
   }, theme);
