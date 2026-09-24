@@ -456,6 +456,25 @@ describe("the shared stylesheets", () => {
     );
   });
 
+  it("keeps the hover rim under the ring when the pointer rests on it", () => {
+    // The focus rule restates the RESTING rim, and it has to come last so the
+    // ring survives a hover, so hover + focus together would take the resting
+    // rim back: the button would lose its hover the moment it is also focused.
+    const rule = [...canvasSection(4).matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
+      (match) => match[1].includes(":hover:focus-visible"),
+    );
+    assert.ok(
+      rule,
+      "section 4 drops the hover rim on a focused primary button",
+    );
+    const declarations = rule[2].replace(/\s+/g, " ");
+    assert.match(
+      declarations,
+      /box-shadow:[^;]*\binset 0 0 0 1px var\(--ht-cta-rim-hover\)/,
+    );
+    assert.match(declarations, /box-shadow:[^;]*\b0 0 0 3px var\(--ht-focus\)/);
+  });
+
   it("masks the running ring with a colour of its own", () => {
     // A mask reads the ALPHA channel only, so any opaque colour does the job,
     // but `currentColor` resolves to the host's TEXT colour, alpha included, so

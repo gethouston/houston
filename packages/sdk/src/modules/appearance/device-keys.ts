@@ -51,6 +51,9 @@ const FIELD_KEYS = [
   ["dark", THEME_KEYS.dark],
 ] as const;
 
+/** One field of a preference beside the device key that holds it. */
+type FieldKey = (typeof FIELD_KEYS)[number];
+
 /**
  * Read the three keys and collapse them into a preference. A key that is absent
  * lands on its default silently (a fresh install); a key that HOLDS something
@@ -112,19 +115,60 @@ export async function readTheme(
 }
 
 /**
- * Write only the keys whose value MOVED. A picker that re-sends the whole
- * preference must not rewrite the two fields the user never touched, and `base`
- * is what is already stored — not what is on screen — so a paint that ran ahead
- * of the write cannot make a real change look like a no-op.
+ * Put the keys already written back to the preference still saved. Best effort:
+ * the store just refused a write, so it may refuse these too, and a key that
+ * stays ahead is named rather than swallowed. The original refusal is what the
+ * caller hears, so this never throws.
+ */
+async function rollback(
+  store: KeyValueStore,
+  written: readonly FieldKey[],
+  base: ThemePreference,
+  logger: SdkLogger,
+): Promise<void> {
+  for (const [field, key] of written) {
+    try {
+      await store.set(key, base[field]);
+    } catch (err) {
+      logger.warn("appearance: a key is left ahead of the saved preference", {
+        key,
+        saved: base[field],
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+}
+
+/**
+ * Write only the keys whose value MOVED, one at a time, and keep them
+ * all-or-nothing. A picker that re-sends the whole preference must not rewrite
+ * the two fields the user never touched, and `base` is what is already stored,
+ * not what is on screen, so a paint that ran ahead of the write cannot make a
+ * real change look like a no-op.
+ *
+ * A pick can move two keys at once (a mode and the palette that mode wears), and
+ * the device holds one key per field, so that is two writes. Sending them
+ * together would let the store take one and refuse the other: the device would
+ * then hold half a choice, and the next boot would paint a mode with the palette
+ * of the choice before it. So the keys go out in sequence and a refusal puts the
+ * earlier ones back, which is also the invariant every caller diffs against: a
+ * rejected write leaves `base` the preference that is saved.
  */
 export async function writeChangedKeys(
   store: KeyValueStore,
   next: ThemePreference,
   base: ThemePreference,
+  logger: SdkLogger,
 ): Promise<void> {
-  await Promise.all(
-    FIELD_KEYS.filter(([f]) => next[f] !== base[f]).map(([f, key]) =>
-      store.set(key, next[f]),
-    ),
-  );
+  const written: FieldKey[] = [];
+  for (const entry of FIELD_KEYS.filter(([f]) => next[f] !== base[f])) {
+    const [field, key] = entry;
+    try {
+      await store.set(key, next[field]);
+    } catch (err) {
+      await rollback(store, written, base, logger);
+      throw err;
+    }
+    written.push(entry);
+  }
 }

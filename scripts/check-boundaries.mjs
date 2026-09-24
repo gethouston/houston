@@ -160,8 +160,8 @@ const REPO_SCOPES = ["@houston/", "@houston-ai/"];
  * `theme-facade.ts` IS that layer, not a bypass of it: it holds one namespace in
  * its own file because tauri.ts is already the app's whole engine surface, and it
  * wraps every call in the same `engineCall` policy the namespaces still there use.
- * An owner earns its place that way — by surfacing failures through tauri.ts —
- * and never merely by being a lib file.
+ * An owner earns its place that way, by surfacing failures through tauri.ts, and
+ * never merely by being a lib file.
  */
 const ENGINE_CLIENT_OWNERS = new Set([
   "app/src/lib/engine.ts",

@@ -143,6 +143,28 @@ export function hue(color) {
 }
 
 /**
+ * HSL saturation, in [0, 1]: how much colour a hue actually carries.
+ *
+ * A hue angle on its own says nothing about that. Two channels one eight-bit step
+ * apart have a perfectly well-defined hue, so a near-gray answers "blue" as
+ * confidently as a blue does, and a status role that walked itself down to
+ * `#3a3a3b` would still pass a hue comparison while reading as gray on screen.
+ * This is the second half of that check (`packages/design-tokens/test`).
+ *
+ * @param {Rgba | string} color
+ * @returns {number}
+ */
+export function saturation(color) {
+  const { r, g, b } = rgba(color);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const chroma = max - min;
+  if (chroma === 0) return 0;
+  const lightness = (max + min) / 2;
+  return chroma / (1 - Math.abs(2 * lightness - 1));
+}
+
+/**
  * The shorter way round the colour wheel between two hues, in degrees, and
  * `Infinity` when either colour is a gray: a gray is not a hue that happens to
  * sit far away, it is the absence of one, so a role that lost its hue can never

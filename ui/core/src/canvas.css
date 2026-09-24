@@ -191,7 +191,10 @@ body::before {
    a box-shadow ring follows the pill radius. The base's `outline-none` holds:
    nothing here touches `outline`. The focus rule comes after the hover rule, of
    equal specificity, so the ring survives while the pointer rests on a
-   keyboard-focused button.
+   keyboard-focused button. Because it restates the RESTING rim, that pair needs
+   a third rule for the state where both apply: a pointer resting on a
+   keyboard-focused button must show the hover rim under the ring, or the button
+   loses its hover the moment it is also focused.
 
    One rule per state covers both modes: the tokens re-resolve inside a
    [data-theme]-pinned subtree, so only the dark frost needs a scope. */
@@ -209,6 +212,12 @@ body::before {
 [data-variant="default"]:is(button, a):focus-visible {
   box-shadow:
     inset 0 0 0 1px var(--ht-cta-rim),
+    0 0 0 3px var(--ht-focus);
+}
+
+[data-variant="default"]:is(button, a):hover:focus-visible {
+  box-shadow:
+    inset 0 0 0 1px var(--ht-cta-rim-hover),
     0 0 0 3px var(--ht-focus);
 }
 

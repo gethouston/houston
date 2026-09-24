@@ -12,17 +12,21 @@ import {
   SelectValue,
 } from "@houston-ai/core";
 import { Palette } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { logAndReportError } from "../../../lib/error-report";
 import {
   applyThemePreference,
   currentThemePreference,
-  setThemePreference,
+  persistThemePreference,
+  themeReady,
 } from "../../../lib/theme";
 import { useIsDarkTheme } from "../../../lib/use-is-dark-theme";
 import { SettingsControlRow } from "../settings-row";
-import { createAppearanceCommitter } from "./appearance-commit";
+import {
+  type AppearanceCommitter,
+  createAppearanceCommitter,
+} from "./appearance-commit";
 import { MODE_LABEL_KEY, MODE_ORDER, summaryParts } from "./appearance-model";
 import { PalettesDialog } from "./appearance-palettes";
 
@@ -38,22 +42,40 @@ import { PalettesDialog } from "./appearance-palettes";
 
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
-  // The preference the app is PAINTED with, read synchronously: boot already
-  // loaded it from the engine, so the row opens on the real picks with nothing
-  // to wait for. Reading it again here would apply it a second time, rewrite the
-  // device mirror and re-release the native window, and a read that FAILED would
-  // sit the row on the defaults while the screen wore the real picks, so the
-  // next pick would persist a combination the user never chose.
+  // What the row SHOWS: the preference in force, read synchronously so the row
+  // opens on the picks the app is already wearing. Reading it from the engine
+  // again here would apply it a second time, rewrite the device mirror and
+  // re-release the native window, so the row never re-reads.
   const [pref, setPref] = useState<ThemePreference>(currentThemePreference);
-  // Built once, from the preference the row opened on: the committer owns the
-  // debounce and both mirrors (painted, saved), so a re-render must not reset it.
-  const [committer] = useState(() =>
-    createAppearanceCommitter(pref, setPref, {
-      apply: applyThemePreference,
-      persist: setThemePreference,
-      report: logAndReportError,
-    }),
-  );
+  // What the row WRITES through, and the reason the controls open closed: the
+  // committer diffs every write against the preference already SAVED, so it can
+  // only be built once the boot read has said what that is. Seeding it from the
+  // defaults while that read is still in flight (a cold engine makes it a real
+  // wait) would persist a combination nobody chose over the real picks. A read
+  // that FAILED never opens the controls at all: what is saved stays unknown,
+  // and `loadThemePreference` has already reported it.
+  const [committer, setCommitter] = useState<AppearanceCommitter | null>(null);
+  useEffect(() => {
+    let built: AppearanceCommitter | null = null;
+    let live = true;
+    void themeReady().then((saved) => {
+      if (!live || saved === null) return;
+      setPref(saved);
+      built = createAppearanceCommitter(saved, setPref, {
+        apply: applyThemePreference,
+        persist: persistThemePreference,
+        report: logAndReportError,
+      });
+      setCommitter(built);
+    });
+    // Closing Settings mid-burst must not drop the last pick: disposing stores
+    // what is painted at once instead of waiting out a delay nobody is left to
+    // interrupt, and stops the committer touching a row that is gone.
+    return () => {
+      live = false;
+      built?.dispose();
+    };
+  }, []);
   const [palettesOpen, setPalettesOpen] = useState(false);
   // The mode ON SCREEN, which is what `system` makes ambiguous: it follows the
   // OS live, so only the painted attribute knows which section is in force.
@@ -76,11 +98,12 @@ export function AppearanceSection() {
         <div className="flex items-center gap-2">
           <Select
             value={pref.mode}
+            disabled={committer === null}
             // The menu only ever emits the three values below; parsing rather
             // than casting keeps that a fact the types check.
             onValueChange={(value) => {
               const mode = parseThemeMode(value);
-              if (mode) committer.commit({ mode });
+              if (mode) committer?.commit({ mode });
             }}
           >
             {/* `min-h-11` is the phone thumb target; the desktop control keeps
@@ -102,6 +125,7 @@ export function AppearanceSection() {
           <Button
             variant="outline"
             className="min-h-11 md:min-h-9"
+            disabled={committer === null}
             onClick={() => setPalettesOpen(true)}
           >
             {t("appearance.customize")}
@@ -114,7 +138,7 @@ export function AppearanceSection() {
         pref={pref}
         resolved={resolved}
         onPick={(mode, id) =>
-          committer.commit(mode === "dark" ? { dark: id } : { light: id })
+          committer?.commit(mode === "dark" ? { dark: id } : { light: id })
         }
       />
     </>

@@ -6,6 +6,7 @@ import {
   contrast,
   hueDistance,
   parseColor,
+  saturation,
   withAlpha,
   // @ts-expect-error -- plain .mjs build helper, no type declarations needed here.
 } from "../build/color.mjs";
@@ -100,6 +101,46 @@ const HOUSTON_CTA = {
  */
 const HUE_TOLERANCE = 20;
 
+/**
+ * How much colour a nudged status role must still carry, as HSL saturation.
+ *
+ * A hue angle alone does not say a colour is coloured: channels one eight-bit
+ * step apart carry a perfectly well-defined hue, so `#3a3a3b` is "blue" and would
+ * pass the tolerance above while a "Delete forever" pill read as plain gray. The
+ * floor is what makes the hue check mean something. Every shipped role clears
+ * 0.29 (Everforest's link is the closest), so 0.25 leaves the ladder room to walk
+ * a role toward a palette's ink without letting it arrive at a gray.
+ */
+const CHROMA_FLOOR = 0.25;
+
+/**
+ * The status roles the ladder NUDGES: the three inks, the link and the highlight
+ * label, each printed as text and therefore re-measured on this palette's own
+ * surfaces. They may drift, so they get the hue-and-chroma pair; everything else
+ * in the family is inherited verbatim and gets pinned as an exact colour.
+ */
+const NUDGED_HUES = [
+  "ht-danger-ink",
+  "ht-success-ink",
+  "ht-warning-ink",
+  "ht-link",
+  "ht-highlight-text",
+] as const;
+
+/**
+ * The status roles inherited UNCHANGED: every fill, the destructive ring and the
+ * highlight wash. Nothing measures them against a palette surface, so a drift of
+ * one step here is a derivation reaching a family it has no say in.
+ */
+const INHERITED = [
+  "ht-danger",
+  "ht-danger-fill",
+  "ht-danger-ring",
+  "ht-success",
+  "ht-warning",
+  "ht-highlight",
+] as const;
+
 /** A nudged role: the floor it owes, and the wash it is printed on. */
 type Nudged = {
   name: string;
@@ -181,6 +222,19 @@ describe("the palette library", () => {
         `--ht-action (${base[mode]["ht-action"]}) is a hue, not ink`,
       ).toBe(1);
       expect(action.a).toBe(1);
+    });
+
+    it(`Houston ${mode} swatches the link, the one colour it spends`, () => {
+      // Houston's action is ink by doctrine, so its primary button is near-ink
+      // in light and white frost in dark: a tile painted from that would be a
+      // fourth gray beside three others. The link is the one place these two
+      // sets spend colour on content, so it is what the tile shows. An import
+      // has an accent and shows that instead.
+      const houston = palettes.find((p) => p.id === `houston-${mode}`);
+      expect(houston).toBeDefined();
+      expect(parseColor(houston?.swatch.accent ?? "")).toEqual(
+        parseColor(base[mode]["ht-link"]),
+      );
     });
 
     it(`Houston ${mode} keeps its own primary button`, () => {
@@ -316,6 +370,17 @@ describe.each(imported)("palette $id", (palette) => {
     }
   }
 
+  it("swatches the colour its primary button paints", () => {
+    // The picker paints a tile from these four hexes and a filled pill from the
+    // fourth, so that fourth hex has to be the colour the real button wears: the
+    // accent, which IS `--ht-cta` in light and the hue the frost pill and its rim
+    // carry in dark. Reading it off the palette's ACTION role instead let a
+    // monochrome import (the `white` theme, whose accent is a gray) fall through
+    // to Houston's blue link and show a blue pill over a gray button.
+    const accent = parseColor(loadPalette(palette).accent) as Rgba;
+    expect(parseColor(palette.swatch.accent)).toEqual(accent);
+  });
+
   it("wears its own accent as the action colour and the focus ring", () => {
     // Read from the vendored file, not from the build's own maths: the palette
     // IS its accent, and a derivation that quietly substituted another hue
@@ -340,19 +405,35 @@ describe.each(imported)("palette $id", (palette) => {
    * red, green and yellow are what a shell prints error text in, and in the
    * `white` theme they are three grays: derived from those, a "Delete forever"
    * pill would be indistinguishable from a normal button and a resting link
-   * would be plain black text. The fills carry Houston's hue exactly; the inks
-   * and `link` climb THIS palette's ladder, so they may drift, but never off
-   * their family. That the nudge kept them readable here is what the contrast
+   * would be plain black text.
+   *
+   * So the fills are inherited verbatim, and pinned here as the exact colours
+   * they are. Only the roles worn AS TEXT climb THIS palette's ladder: they may
+   * drift, but never off their family and never into a gray, which is what the
+   * chroma floor is for. That the nudge kept them readable is what the contrast
    * matrix above proves.
    */
-  it("status hues are Houston's family, nudged", () => {
-    for (const role of ["danger", "success", "warning", "link"] as const) {
-      const name = `ht-${role}`;
+  it("inherits Houston's status fills unchanged", () => {
+    for (const name of INHERITED) {
+      expect(
+        parseColor(vars[name]),
+        `--${name} (${vars[name]}) moved off Houston ${palette.mode}'s ${expected[name]}`,
+      ).toEqual(parseColor(expected[name]));
+    }
+  });
+
+  it("nudges the status text onto its own ladder, never off the family", () => {
+    for (const name of NUDGED_HUES) {
       const distance = hueDistance(vars[name], expected[name]) as number;
       expect(
         distance,
         `--${name} (${vars[name]}) sits ${distance}° from Houston ${palette.mode}'s ${expected[name]}`,
       ).toBeLessThanOrEqual(HUE_TOLERANCE);
+      const chroma = saturation(vars[name]) as number;
+      expect(
+        chroma,
+        `--${name} (${vars[name]}) carries ${chroma.toFixed(2)} saturation: a hue this washed out reads as gray`,
+      ).toBeGreaterThanOrEqual(CHROMA_FLOOR);
     }
   });
 

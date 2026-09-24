@@ -98,6 +98,48 @@ describe("resolving the system appearance", () => {
   });
 });
 
+/**
+ * The surface half of the preference: who paints, and who waits for the read.
+ *
+ * `theme.ts` reaches the engine adapter and the reporters, which only the bundler
+ * resolves, so this asserts on its source with comments stripped (the same reason
+ * `os-bridge-barrel.test.ts` reads source). What it pins is a pair of rules the
+ * Appearance row depends on and neither the compiler nor a render test can see:
+ * the write path never paints, and the boot read's answer is available to a row
+ * that mounted while it was still in flight.
+ */
+describe("the surface half of the preference", () => {
+  const src = readFileSync(
+    new URL("../src/lib/theme.ts", import.meta.url),
+    "utf8",
+  )
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/.*$/gm, "");
+
+  it("stores a pick without painting it", () => {
+    assert.match(src, /export function persistThemePreference\(/);
+    assert.equal(
+      src.match(/applyThemePreference\(/g)?.length,
+      1,
+      "only the boot read paints: a write that painted its own result would put a superseded pick back on the page when a newer one landed mid-flight",
+    );
+  });
+
+  it("answers the boot read to whoever is waiting on it, failure included", () => {
+    assert.match(
+      src,
+      /export function themeReady\(\): Promise<ThemePreference \| null>/,
+      "a row that mounts mid-read must be able to wait for the saved preference",
+    );
+    assert.match(src, /settleBoot\(pref\)/, "the read's answer is announced");
+    assert.match(
+      src,
+      /settleBoot\(null\)/,
+      "a FAILED read is announced too: a waiter must never be told the defaults are what is saved, and must never hang",
+    );
+  });
+});
+
 describe("the native window the apply path asks for", () => {
   // CODE only: the module's own comments spell these calls out, so asserting on
   // the raw file would pass on a comment while the call said something else.

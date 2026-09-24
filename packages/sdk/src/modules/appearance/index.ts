@@ -74,7 +74,7 @@ export function createAppearanceModule(ctx: ModuleContext): AppearanceModule {
     validatePatch(patch);
     const base = previous ?? (await getTheme()).pref;
     const next: ThemePreference = { ...base, ...patch };
-    await writeChangedKeys(devicePreferences, next, base);
+    await writeChangedKeys(devicePreferences, next, base, logger);
     return next;
   };
 

@@ -194,6 +194,142 @@ describe("appearance.setTheme", () => {
   });
 });
 
+/**
+ * A write that moves two keys and fails on the second.
+ *
+ * The device holds one key per field, so a two-key pick is two writes, and a
+ * store that takes the first and refuses the second would leave the device
+ * holding half a preference: the next boot paints a mode with the palette of the
+ * choice before it. The module keeps the pair all-or-nothing, which is also the
+ * invariant a debounced picker's diff depends on: a rejected write means the
+ * SAVED preference is still the one the caller passed as `previous`.
+ */
+describe("appearance.setTheme when the store fails part way", () => {
+  const SAVED: ThemePreference = {
+    mode: "light",
+    light: "catppuccin-latte",
+    dark: "nord",
+  };
+
+  /** A store that refuses `set` for one key and records every write in order. */
+  function brittleKv(
+    map: Map<string, string>,
+    refuse: (key: string) => Error | null,
+  ) {
+    const writes: string[] = [];
+    let inFlight = 0;
+    let overlapped = false;
+    const store: KeyValueStore = {
+      get: async (key) => map.get(key) ?? null,
+      set: async (key, value) => {
+        inFlight += 1;
+        overlapped ||= inFlight > 1;
+        await Promise.resolve();
+        writes.push(key);
+        const refusal = refuse(key);
+        inFlight -= 1;
+        if (refusal) throw refusal;
+        map.set(key, value);
+      },
+      delete: async (key) => void map.delete(key),
+    };
+    return {
+      store,
+      writes,
+      get overlapped() {
+        return overlapped;
+      },
+    };
+  }
+
+  const seed = (): Map<string, string> =>
+    new Map([
+      [THEME_KEYS.mode, SAVED.mode],
+      [THEME_KEYS.light, SAVED.light],
+      [THEME_KEYS.dark, SAVED.dark],
+    ]);
+
+  it("writes the keys one at a time", async () => {
+    const map = seed();
+    const brittle = brittleKv(map, () => null);
+    const { appearance } = makeSdk({}, brittle.store);
+
+    await appearance.setTheme({ mode: "dark", dark: "gruvbox" }, SAVED);
+
+    expect(brittle.writes).toEqual([THEME_KEYS.mode, THEME_KEYS.dark]);
+    expect(
+      brittle.overlapped,
+      "two keys in flight at once can half-succeed with nothing to roll back",
+    ).toBe(false);
+  });
+
+  it("rolls the key it did store back to the preference still saved", async () => {
+    const map = seed();
+    const refused = new Error("quota exceeded");
+    const brittle = brittleKv(map, (key) =>
+      key === THEME_KEYS.dark ? refused : null,
+    );
+    const { appearance } = makeSdk({}, brittle.store);
+
+    await expect(
+      appearance.setTheme({ mode: "dark", dark: "gruvbox" }, SAVED),
+    ).rejects.toBe(refused);
+
+    expect(brittle.writes).toEqual([
+      THEME_KEYS.mode,
+      THEME_KEYS.dark,
+      THEME_KEYS.mode,
+    ]);
+    expect(Object.fromEntries(map)).toEqual({
+      [THEME_KEYS.mode]: SAVED.mode,
+      [THEME_KEYS.light]: SAVED.light,
+      [THEME_KEYS.dark]: SAVED.dark,
+    });
+  });
+
+  it("reads back exactly the preference the caller still holds as saved", async () => {
+    const map = seed();
+    const brittle = brittleKv(map, (key) =>
+      key === THEME_KEYS.dark ? new Error("quota exceeded") : null,
+    );
+    const { appearance } = makeSdk({}, brittle.store);
+
+    await expect(
+      appearance.setTheme({ mode: "dark", dark: "gruvbox" }, SAVED),
+    ).rejects.toThrow(/quota exceeded/);
+
+    await expect(appearance.getTheme()).resolves.toEqual({
+      pref: SAVED,
+      unusable: [],
+    });
+  });
+
+  it("names the key left ahead when the rollback is refused too", async () => {
+    const map = seed();
+    const refused = new Error("quota exceeded");
+    const brittle = brittleKv(map, (key) =>
+      key === THEME_KEYS.mode && map.get(THEME_KEYS.mode) === "dark"
+        ? new Error("rollback blocked")
+        : key === THEME_KEYS.dark
+          ? refused
+          : null,
+    );
+    const { appearance, logger } = makeSdk({}, brittle.store);
+
+    // The original refusal is what the caller hears: the rollback is a repair
+    // attempt, and its own failure must not mask the reason the pick was lost.
+    await expect(
+      appearance.setTheme({ mode: "dark", dark: "gruvbox" }, SAVED),
+    ).rejects.toBe(refused);
+
+    expect(map.get(THEME_KEYS.mode)).toBe("dark");
+    expect(logger.warn).toHaveBeenCalledWith(
+      "appearance: a key is left ahead of the saved preference",
+      expect.objectContaining({ key: THEME_KEYS.mode }),
+    );
+  });
+});
+
 describe("appearance over dispatch", () => {
   it("answers the same preference the facade does", async () => {
     const { sdk } = makeSdk({ [THEME_KEYS.mode]: "system" });

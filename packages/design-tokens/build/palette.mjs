@@ -27,23 +27,32 @@ const isAuthored = (name) =>
   AUTHORED.some((family) => name === family || name.startsWith(family));
 
 /**
- * The hue a set spends colour on: its action colour when that carries a hue at
- * all, which for an import IS its accent, worn by the button, the action colour
- * and the focus ring. Houston's own action is ink by doctrine, so its sets fall
- * through to the link, the one place they spend colour on content.
+ * The colour Houston's own two sets show in a swatch. Their action is ink by
+ * doctrine and their primary button is near-ink in light and white frost in dark,
+ * so a tile painted from either would be a fourth gray beside three others. The
+ * link is the one place these sets spend colour on content, which makes it the
+ * honest fourth hex; the `hue` guard is what states that the action carries none.
  */
-const chromatic = (byName) =>
+const houstonChromatic = (byName) =>
   hue(byName.action) === null ? byName.link : byName.action;
 
-/** The four hexes the picker paints a palette's swatch with. */
-function swatch(byName) {
+/**
+ * The four hexes the picker paints a palette's swatch with. `accent` is the
+ * colour a filled primary button actually wears, because the tile paints a pill
+ * from it: for an import that is its accent, worn solid in light (`--ht-cta` IS
+ * that accent) and as the frost tint and rim in dark. Reading it off the ACTION
+ * role instead sent a monochrome import (the `white` theme, whose accent is a
+ * gray) through the guard above and into Houston's blue link, so its tile showed
+ * a blue pill over a gray button.
+ */
+function swatch(byName, accent = houstonChromatic(byName)) {
   const base = byName.base;
   const screen = composite(byName.background, base);
   return {
     base: formatColor(base),
     background: formatColor(screen),
     ink: formatColor(composite(byName.ink, screen)),
-    accent: formatColor(composite(chromatic(byName), screen)),
+    accent: formatColor(composite(accent, screen)),
   };
 }
 
@@ -86,7 +95,7 @@ export function derivePalette(base, p) {
     mode: p.mode,
     emitsBlock: true,
     colors: entries,
-    swatch: swatch(indexByName(entries)),
+    swatch: swatch(indexByName(entries), p.accent),
     notes,
   };
 }
