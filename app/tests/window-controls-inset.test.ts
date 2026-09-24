@@ -155,4 +155,42 @@ describe("native window fullscreen listener", () => {
     ]);
     stop();
   });
+
+  it("drops a failure that settles after a newer read, so it cannot latch", async () => {
+    let rejectFirst: ((err: unknown) => void) | undefined;
+    const reads: Array<() => Promise<boolean>> = [
+      () =>
+        new Promise<boolean>((_, reject) => {
+          rejectFirst = reject;
+        }),
+      async () => false,
+    ];
+    const current = new Error("current read failed");
+    let resize: (() => void) | undefined;
+    const reports: unknown[] = [];
+    const stop = watchFullscreen(
+      {
+        isFullscreen: () => {
+          const read = reads.shift();
+          return read ? read() : Promise.reject(current);
+        },
+        onResized: async (handler) => {
+          resize = handler;
+          return () => undefined;
+        },
+      },
+      () => undefined,
+      (_code, err) => reports.push(err),
+    );
+    await settle();
+    assert.ok(resize && rejectFirst);
+    resize();
+    await settle();
+    rejectFirst(new Error("stale read failed"));
+    await settle();
+    resize();
+    await settle();
+    assert.deepEqual(reports, [current]);
+    stop();
+  });
 });

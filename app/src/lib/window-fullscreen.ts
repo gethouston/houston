@@ -23,6 +23,10 @@ export function watchFullscreen(
         onChange(value);
       }
     } catch (err) {
+      // A superseded read's failure is not this window's state: the newer
+      // read reports its own failure, and a stale one must not set the latch
+      // after a newer success cleared it.
+      if (disposed || current !== revision) return;
       if (!fullscreenFailureReported) {
         fullscreenFailureReported = true;
         report("window_controls_fullscreen", err);

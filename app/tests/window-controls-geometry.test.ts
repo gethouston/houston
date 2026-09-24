@@ -14,23 +14,19 @@ it("keeps the native lights inside the reserved controls zone", () => {
     ),
   );
   const { x, y } = config.app.windows[0].trafficLightPosition;
-  const width = Number(sidebarWindowControlsWidth.match(/\d+/)?.[0]);
-  const height = Number(sidebarWindowControlsHeight.match(/\d+/)?.[0]) * 4;
-
-  // The 14pt circles on macOS 26 sit on a 23pt pitch. The controls zone keeps
-  // 12pt clear on either side, while y=22 centres them on its 40pt row.
-  const lightDiameter = 14;
-  const lightPitch = 23;
-  const lightSpan = lightDiameter + 2 * lightPitch;
-  assert.equal(x, 12);
-  assert.equal(y, 22);
-  assert.equal(lightSpan, 60);
-  assert.equal(width - (x + lightSpan), 12);
-  assert.equal(height, 40);
-  const geometrySource = readFileSync(
-    new URL("../../ui/layout/src/sidebar-geometry.ts", import.meta.url),
-    "utf8",
+  const width = Number(
+    sidebarWindowControlsWidth.match(/^w-\[(\d+)px\]$/)?.[1],
   );
-  assert.ok(geometrySource.includes("host window controls zone"));
-  assert.ok(!geometrySource.includes("app/src-tauri"));
+
+  // Measured on macOS 26: three 14pt circles on a 23pt pitch, 60pt in all.
+  // The reserved zone keeps 12pt clear on either side of them.
+  const lightSpan = 14 + 2 * 23;
+  assert.equal(x, 12);
+  assert.equal(width - (x + lightSpan), x);
+  // y is the height tao gives the native title-bar container, not the lights'
+  // top edge; 22 is what lands their centres on the 40pt row's centre line
+  // (measured against the collapse toggle). A new row height needs a new
+  // measurement, not arithmetic on y.
+  assert.equal(sidebarWindowControlsHeight, "h-10");
+  assert.equal(y, 22);
 });

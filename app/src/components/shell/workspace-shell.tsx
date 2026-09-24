@@ -113,7 +113,8 @@ export function WorkspaceShell({
               panel are each their OWN rounded "screen" card so the rounding
               reads against it. The phone has no gutter, so no gap and no
               rounding. `relative` anchors the phone's full-screen mission
-              panel overlay. */}
+              panel overlay. In the macOS desktop window that gap is also a
+              window drag region, like the gutter around it. */}
             <div
               data-tauri-drag-region={osIsTauri() && isMac ? true : undefined}
               className="relative flex min-w-0 flex-1 gap-0 overflow-hidden md:gap-2"
