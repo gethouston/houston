@@ -70,11 +70,12 @@
           if (mirror.palette) root.setAttribute("data-palette", mirror.palette);
           if (mirror.base) root.style.background = mirror.base;
           var chrome = mirror.mode === "dark" ? mirror.base : mirror.screen;
-          if (chrome) {
-            document
-              .querySelector('meta[name="theme-color"]')
-              .setAttribute("content", chrome);
-          }
+          // The meta ships in this document, so a null means something stripped
+          // it: throwing here would cost the whole frame, `data-theme` included.
+          // ES2015 spelling (no optional chaining): shipped as authored, like
+          // public/compat-gate.js.
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (chrome && meta) meta.setAttribute("content", chrome);
         }
       } catch (e) {
         /* no mirror, junk mirror, or storage disabled/hardened webview: the

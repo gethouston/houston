@@ -7,16 +7,12 @@ import {
   SelectValue,
 } from "@houston-ai/core";
 import { Palette } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { logAndReportError } from "../../../lib/error-report";
+import { applyThemePreference, setThemePreference } from "../../../lib/theme";
+import { currentThemePreference } from "../../../lib/theme-apply";
 import {
-  applyThemePreference,
-  loadThemePreference,
-  setThemePreference,
-} from "../../../lib/theme";
-import {
-  DEFAULT_THEME_PREFERENCE,
   parseThemeMode,
   type ResolvedMode,
   type ThemePreference,
@@ -38,17 +34,17 @@ import { PalettesDialog } from "./appearance-palettes";
 
 export function AppearanceSection() {
   const { t } = useTranslation("settings");
-  const [pref, setPref] = useState<ThemePreference>(DEFAULT_THEME_PREFERENCE);
+  // The preference the app is PAINTED with, read synchronously: boot already
+  // loaded it from the engine, so the row opens on the real picks with nothing
+  // to wait for. Reading it again here would apply it a second time, rewrite the
+  // device mirror and re-release the native window, and a read that FAILED would
+  // sit the row on the defaults while the screen wore the real picks, so the
+  // next pick would persist a combination the user never chose.
+  const [pref, setPref] = useState<ThemePreference>(currentThemePreference);
   const [palettesOpen, setPalettesOpen] = useState(false);
   // The mode ON SCREEN, which is what `system` makes ambiguous: it follows the
   // OS live, so only the painted attribute knows which section is in force.
   const resolved: ResolvedMode = useIsDarkTheme() ? "dark" : "light";
-
-  useEffect(() => {
-    void loadThemePreference().then((saved) => {
-      if (saved) setPref(saved);
-    });
-  }, []);
 
   /**
    * Optimistic: the pick paints and the control moves at once. A failed write

@@ -306,7 +306,7 @@ set a 390×844 viewport per test):
 | First-run language gate | one (the flow pins `data-theme="light"` itself) | `onboarding.visual.spec.ts` |
 
 Theme is pinned by setting `data-theme` on `<html>` before the app mounts
-(`visual/support.ts` `seedTheme`) — NOT the `houston.pref.theme` preference: the
+(`visual/support.ts` `pinTheme`) — NOT the `houston.pref.theme` preference: the
 web entry reads that preference only after it mounts (`loadThemePreference` in
 `app-tree.tsx`), which would race the screenshot; the attribute is deterministic.
 

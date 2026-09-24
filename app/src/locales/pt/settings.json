@@ -61,7 +61,7 @@
     "summary": "{{mode}} · {{light}} / {{dark}}",
     "customize": "Personalizar",
     "palettesTitle": "Paletas",
-    "palettesDescription": "Escolha uma paleta para o modo claro e outra para o escuro. O que você vê atrás desta janela é o resultado ao vivo.",
+    "palettesDescription": "Escolha uma paleta para o modo claro e outra para o escuro. O que você vê atrás desta janela é o resultado em tempo real.",
     "lightSection": "Claro",
     "darkSection": "Escuro",
     "showsInLight": "Aparece quando o app está no modo claro",

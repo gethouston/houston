@@ -84,7 +84,7 @@ Text · interactive · lines:
 | `text-ink-muted` | secondary text |
 | `bg-action` / `text-action-text` | filled CTA fill/label (also progress, tab underline, switches, status dots) |
 | `bg-cta` / `text-cta-text` (+ `cta-hover`, `cta-rim`, `cta-rim-hover`) | the filled primary Button's own pair — Houston: near-ink solid in light, white frost in dark; an import: a solid accent pill in light, an accent-tinted frost pill in dark — distinct from `action`, which also paints progress, switches and status dots. Worn by `canvas.css` §4, never by a call site |
-| `text-link` (+ `bg-link/10` tint) | inline link chips in chat/prose — Slack-blue text on a soft tint, underline on hover; the ONE sanctioned blue |
+| `text-link` (+ `bg-link/10` tint) | inline link chips in chat/prose — Slack-blue text on a soft tint, underline on hover; the ONE sanctioned blue in Houston's own sets, while an imported palette prints its own blue here (ADR 0004) |
 | `bg-bubble` | the user chat bubble's fill — near-ink in light, the subtle white wash in dark |
 | `text-bubble-text` | the user chat bubble's text — pure white in BOTH themes (the near-white grays read dull over the bubble fill) |
 | `bg-bubble-chip` / `text-bubble-chip-text` | a chip INSIDE the user bubble (mention, link) — measured against the bubble, not the canvas |
@@ -93,7 +93,7 @@ Text · interactive · lines:
 | `bg-chip` / `text-chip-text` | soft chips / badges |
 | `border-line` (`--ht-line`) | hairlines (prefer `.ht-hairline` outline on cards) |
 | `border-line-input` | field borders |
-| `ring-focus` (`--ht-focus`) | focus ring — **near-ink, NOT blue** |
+| `ring-focus` (`--ht-focus`) | focus ring — **near-ink, NOT blue** in Houston's own sets, while an imported palette wears its accent here (ADR 0004) |
 
 Status: `danger` · `success` · `warning` · `highlight` (brand wash). Each has a `-text` (the label ON the fill) and an `-ink` (the hue AS text on a surface: `text-danger-ink` / `text-success-ink` / `text-warning-ink`, contrast-guarded against `input`, `background` and `chip-subtle` in both themes by `packages/design-tokens/test/contrast.test.ts`). A fill is tuned to carry its `-text`, so it does NOT clear 4.5:1 as text: never set a status fill as a text colour. `highlight`'s `-text` is already that ink.
 Destructive chrome carries its own pair so no `dark:` fork exists: `bg-danger-fill` (the destructive button/badge fill, softened to 60% in dark) and `ring-danger-ring` (the invalid / destructive focus ring, 20% light and 40% dark).
